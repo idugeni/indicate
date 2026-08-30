@@ -17,6 +17,7 @@ export function emptyStage3State(overrides: Partial<Stage3TenantState> = {}): St
     organizationId: ORG_ID, organizationName: 'Test Organization', domains: [], regions: [], sites: [], siteSettings: [],
     roles: [{ id: ROLE_ID, organizationId: ORG_ID, name: 'Admin', active: true, permissions: new Set(Object.values(STAGE3_PERMISSIONS)), version: 1, createdAt: now, updatedAt: now }],
     memberships: [{ id: USER_ID, organizationId: ORG_ID, userId: USER_ID, displayName: 'Editor', roleId: ROLE_ID, status: 'active', version: 1, createdAt: now, updatedAt: now }],
+    telegramMappings: [],
     publishers: [], affiliations: [], categories: [], authors: [], articles: [], articleSites: [], media: [], publishingJobs: [], publishingJobTargets: [], auditLogs: [],
     ...overrides,
   };

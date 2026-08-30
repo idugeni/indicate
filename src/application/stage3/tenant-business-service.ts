@@ -245,6 +245,13 @@ export class TenantBusinessService {
       requireRecord(transaction.state.roles, value.roleId);
       const before = transaction.state.memberships.find(({ userId }) => userId === value.userId);
       if (before !== undefined && value.expectedVersion !== undefined) requireVersion(before, value.expectedVersion);
+      for (let index = 0; index < transaction.state.telegramMappings.length; index += 1) {
+        const mapping = transaction.state.telegramMappings[index]!;
+        const diverges = value.status !== 'active' || mapping.roleId !== value.roleId;
+        if (mapping.userId === value.userId && mapping.status === 'active' && diverges) {
+          transaction.state.telegramMappings[index] = { ...mapping, status: 'inactive', updatedAt: now };
+        }
+      }
       const persistedDisplayName = before?.displayName ?? await transaction.resolveUserDisplayName(value.userId);
       if (persistedDisplayName === null) throw new Stage3AccessDeniedError();
       const after: MembershipRecord = before === undefined

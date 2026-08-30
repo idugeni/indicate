@@ -53,6 +53,12 @@ export class AuthorizationService {
       const roleAvailable = membershipAvailable
         && await transaction.resourceExists({ type: 'role', id: input.roleId });
       if (!permissionStillActive || !membershipAvailable || !roleAvailable) {
+        await transaction.appendAudit({
+          action: 'membership.role.change',
+          targetType: 'membership',
+          outcome: 'denied',
+          changedFields: [],
+        });
         return { authorized: false as const };
       }
       const changed = await transaction.changeMembershipRole({ userId: input.userId, roleId: input.roleId });
@@ -87,7 +93,15 @@ export class AuthorizationService {
     const transactionResult = await input.transactionManager.execute(authorization.value, async (transaction) => {
       const permissionStillActive = await transaction.revalidatePermission(input.permission);
       const resourceStillAvailable = input.resource === undefined || await transaction.resourceExists(input.resource);
-      if (!permissionStillActive || !resourceStillAvailable) return { authorized: false as const };
+      if (!permissionStillActive || !resourceStillAvailable) {
+        await transaction.appendAudit({
+          action: input.audit.action,
+          targetType: input.audit.targetType,
+          outcome: 'denied',
+          changedFields: [],
+        });
+        return { authorized: false as const };
+      }
       const result = await input.mutate(transaction);
       await transaction.appendAudit(input.audit);
       return { authorized: true as const, result };

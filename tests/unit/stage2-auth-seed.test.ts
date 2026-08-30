@@ -124,7 +124,7 @@ describe('Stage 2 authentication and tenant authorization', () => {
     expect(store.clearedOrganizations).toEqual([null]);
   });
 
-  it('denies unavailable Membership and Role targets without a success audit', async () => {
+  it('denies unavailable Membership and Role targets with sanitized denial audits', async () => {
     const database = new InMemoryStage2Database();
     const organizationId = actor().organizationId!;
     const foreignOrganizationId = '00000000-0000-4000-8000-000000000002';
@@ -149,7 +149,7 @@ describe('Stage 2 authentication and tenant authorization', () => {
     database.addResource('role', unavailableRoleId, foreignOrganizationId);
     const service = new AuthorizationService(database);
     const missingMembership = await service.changeMembershipRole({
-      actor: actor(), organizationId, userId: unavailableUserId,
+      actor: { ...actor(), requestId: 'missing-membership' }, organizationId, userId: unavailableUserId,
       roleId: '00000000-0000-4000-8000-000000000020', transactionManager: database,
     });
     database.addMembership({
@@ -161,12 +161,19 @@ describe('Stage 2 authentication and tenant authorization', () => {
       permissions: new Set(),
     });
     const crossOrganizationRole = await service.changeMembershipRole({
-      actor: actor(), organizationId, userId: unavailableUserId,
+      actor: { ...actor(), requestId: 'cross-organization-role' }, organizationId, userId: unavailableUserId,
       roleId: unavailableRoleId, transactionManager: database,
     });
-    expect(missingMembership).toEqual(crossOrganizationRole);
-    expect(missingMembership.ok).toBe(false);
-    expect(database.snapshot().auditLogs).toHaveLength(0);
+    expect(missingMembership).toMatchObject({ ok: false, error: { error: { code: 'RESOURCE_UNAVAILABLE' } } });
+    expect(crossOrganizationRole).toMatchObject({ ok: false, error: { error: { code: 'RESOURCE_UNAVAILABLE' } } });
+    if (missingMembership.ok || crossOrganizationRole.ok) return;
+    expect(missingMembership.error.error).toEqual(crossOrganizationRole.error.error);
+    const denialAudits = database.snapshot().auditLogs;
+    expect(denialAudits).toHaveLength(2);
+    expect(denialAudits).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: 'membership.role.change', targetType: 'membership', outcome: 'denied', changedFields: [] }),
+    ]));
+    expect(denialAudits.every((event) => event.targetId === undefined)).toBe(true);
   });
 
   it('rolls a mutation back when its required audit append fails', async () => {
