@@ -78,6 +78,13 @@
       "when": 1788118000000,
       "tag": "0010_stage6_security_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788119000000,
+      "tag": "0011_stage6_strict_platform_authorization",
+      "breakpoints": true
     }
   ]
 }
