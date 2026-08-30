@@ -46,6 +46,7 @@ const required = [
   'stage6_provision_platform_permission',
   'stage6_list_platform_permissions',
   'stage6_role_permission_scope_guard',
+  'stage6_strict_platform_authorization',
   'platform_user_permissions',
   'stage6_prepare_replay_outcome',
   'stage6_finalize_replay',

@@ -6,6 +6,7 @@ import { RateLimitService } from '@/application/stage6/rate-limit-service';
 import { trustedCloudflareSource } from '@/application/stage6/trusted-request-boundary';
 import { telegramUpdateSchema } from '@/application/stage6/schemas';
 import { signWebhook, webhookBodyDigest } from '@/application/stage6/webhook-service';
+import { normalizeStage6Timestamp } from '@/infrastructure/db/repositories/drizzle-stage6-repository';
 import { InMemoryRateLimitAdapter } from '@/infrastructure/testing/rate-limit-memory';
 
 describe('Stage 6 external-entry-point primitives', () => {
@@ -30,6 +31,16 @@ describe('Stage 6 external-entry-point primitives', () => {
     const hasher = new ScryptApiKeyHasher();
     await expect(hasher.verify('secret-one', salt, first)).resolves.toBe(true);
     await expect(hasher.verify('secret-two', salt, first)).resolves.toBe(false);
+  });
+
+  it('normalizes Date and raw postgres.js timestamptz values and rejects malformed timestamps', () => {
+    expect(normalizeStage6Timestamp(new Date('2026-08-30T23:41:14.157Z'))).toBe('2026-08-30T23:41:14.157Z');
+    expect(normalizeStage6Timestamp('2026-08-30 23:41:14.157683+00')).toBe('2026-08-30T23:41:14.157Z');
+    expect(normalizeStage6Timestamp('2026-08-31T06:41:14.157683+07:00')).toBe('2026-08-30T23:41:14.157Z');
+    expect(() => normalizeStage6Timestamp('2026-02-30 00:00:00+00')).toThrow(TypeError);
+    expect(() => normalizeStage6Timestamp('not-a-timestamp')).toThrow(TypeError);
+    expect(() => normalizeStage6Timestamp(new Date(Number.NaN))).toThrow(TypeError);
+    expect(() => normalizeStage6Timestamp(1788133274 as unknown as Date)).toThrow(TypeError);
   });
 
   it('accepts real Telegram document fields without a caller-supplied checksum', () => {

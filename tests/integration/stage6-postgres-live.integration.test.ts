@@ -36,7 +36,7 @@ suite('live PostgreSQL 17 Stage 6 runtime-role contract', () => {
   beforeAll(async () => {
     const owner = ownerClient!;
     const version = await owner<{ server_version_num: string }[]>`SHOW server_version_num`.then((rows) => Number(rows[0]?.server_version_num ?? 0)); expect(version).toBeGreaterThanOrEqual(170000);
-    const migration = await owner<{ found: boolean }[]>`SELECT EXISTS(SELECT 1 FROM indicate_schema_migrations WHERE version = 11) AS found`; expect(migration[0]?.found).toBe(true);
+    const migration = await owner<{ found: boolean }[]>`SELECT EXISTS(SELECT 1 FROM indicate_schema_migrations WHERE version = 12) AS found`; expect(migration[0]?.found).toBe(true);
     await owner.unsafe(`ALTER ROLE indicate_runtime PASSWORD '${runtimePassword}'`);
     await owner`INSERT INTO organizations (id, name, slug) VALUES (${ids.organization}::uuid, 'Stage6 Live', 'stage6-live')`;
     await owner`INSERT INTO users (id, auth_user_id, display_name) VALUES (${ids.user}::uuid, ${ids.authUser}::uuid, 'Stage6 User'), (${ids.attackerUser}::uuid, ${ids.attackerAuthUser}::uuid, 'Stage6 Attacker')`;
@@ -65,7 +65,8 @@ suite('live PostgreSQL 17 Stage 6 runtime-role contract', () => {
       await transaction`SELECT indicate_private.set_verified_user_context(${ids.authUser}::uuid)`;
       await transaction`INSERT INTO role_permissions (organization_id, role_id, permission_id) VALUES (${ids.organization}::uuid, ${ids.role}::uuid, '00000000-0000-4000-8000-000000006001'::uuid)`;
     })).rejects.toBeTruthy();
-    await expect(runtimeClient!`SELECT * FROM indicate_private.stage6_list_customers(${ids.user}::uuid)`).rejects.toBeTruthy();
+    await expect(runtimeClient!`SELECT indicate_private.stage6_has_platform_permission(${ids.user}::uuid, 'platform.customer.admin') AS allowed`).resolves.toEqual([{ allowed: false }]);
+    await expect(runtimeClient!`SELECT * FROM indicate_private.stage6_list_customers(${ids.user}::uuid)`).rejects.toMatchObject({ code: '42501' });
     await expect(runtimeClient!.begin(async (transaction) => {
       await transaction`SELECT indicate_private.set_tenant_context(${ids.organization}::uuid, ${ids.attackerUser}::uuid, 'runtime-platform-impersonation')`;
       await transaction`SELECT indicate_private.set_verified_user_context(${ids.attackerAuthUser}::uuid)`;

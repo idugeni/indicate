@@ -11,40 +11,62 @@ import type * as schema from '../schema';
 
 type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
-const iso = (value: Date) => value.toISOString(); const optionalIso = (value: Date | null) => value?.toISOString() ?? null;
+type RawTimestamp = Date | string;
+const POSTGRES_TIMESTAMP = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?(Z|([+-])(\d{2})(?::?(\d{2}))?)$/;
+
+export function normalizeStage6Timestamp(value: RawTimestamp): string {
+  if (value instanceof Date) {
+    if (!Number.isFinite(value.getTime())) throw new TypeError('Invalid Stage 6 database timestamp.');
+    return value.toISOString();
+  }
+  if (typeof value !== 'string') throw new TypeError('Invalid Stage 6 database timestamp.');
+  const match = POSTGRES_TIMESTAMP.exec(value);
+  if (match === null) throw new TypeError('Invalid Stage 6 database timestamp.');
+  const year = Number(match[1]); const month = Number(match[2]); const day = Number(match[3]);
+  const hour = Number(match[4]); const minute = Number(match[5]); const second = Number(match[6]);
+  const fraction = match[7] ?? ''; const offsetHour = Number(match[10] ?? 0); const offsetMinute = Number(match[11] ?? 0);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (month < 1 || month > 12 || day < 1 || day > monthDays[month - 1]! || hour > 23 || minute > 59 || second > 59 || offsetHour > 15 || offsetMinute > 59) throw new TypeError('Invalid Stage 6 database timestamp.');
+  const milliseconds = Number(fraction.padEnd(3, '0').slice(0, 3));
+  const utc = new Date(0); utc.setUTCFullYear(year, month - 1, day); utc.setUTCHours(hour, minute, second, milliseconds);
+  const direction = match[9] === '-' ? -1 : match[9] === '+' ? 1 : 0;
+  return new Date(utc.getTime() - direction * (offsetHour * 60 + offsetMinute) * 60_000).toISOString();
+}
+const optionalIso = (value: RawTimestamp | null) => value === null ? null : normalizeStage6Timestamp(value);
 function uniqueViolation(error: unknown): boolean { let current: unknown = error; const seen = new Set<object>(); while (typeof current === 'object' && current !== null && !seen.has(current)) { seen.add(current); if ('code' in current && current.code === '23505') return true; current = 'cause' in current ? current.cause : undefined; } return false; }
 function deniedViolation(error: unknown): boolean { return typeof error === 'object' && error !== null && 'code' in error && error.code === '42501'; }
 
 function mapKey(row: typeof apiKeys.$inferSelect): StoredApiKey {
-  return { id: row.id, organizationId: row.organizationId, lookupId: row.lookupId, name: row.name, salt: row.salt, verificationHash: row.verificationHash, scopes: row.scopes, status: row.status, predecessorId: row.predecessorId, expiresAt: optionalIso(row.expiresAt), lastUsedAt: optionalIso(row.lastUsedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) };
+  return { id: row.id, organizationId: row.organizationId, lookupId: row.lookupId, name: row.name, salt: row.salt, verificationHash: row.verificationHash, scopes: row.scopes, status: row.status, predecessorId: row.predecessorId, expiresAt: optionalIso(row.expiresAt), lastUsedAt: optionalIso(row.lastUsedAt), version: row.version, createdAt: normalizeStage6Timestamp(row.createdAt), updatedAt: normalizeStage6Timestamp(row.updatedAt) };
 }
 type RawApiKeyRow = {
   organization_id: string; id: string; lookup_id: string; name: string; salt: string;
   verification_hash: string; scopes: string[]; status: StoredApiKey['status']; predecessor_id: string | null;
-  expires_at: Date | null; last_used_at: Date | null; version: number; created_at: Date; updated_at: Date;
+  expires_at: RawTimestamp | null; last_used_at: RawTimestamp | null; version: number; created_at: RawTimestamp; updated_at: RawTimestamp;
 };
 function mapRawKey(row: RawApiKeyRow): StoredApiKey {
-  return { id: row.id, organizationId: row.organization_id, lookupId: row.lookup_id, name: row.name, salt: row.salt, verificationHash: row.verification_hash, scopes: row.scopes, status: row.status, predecessorId: row.predecessor_id, expiresAt: optionalIso(row.expires_at), lastUsedAt: optionalIso(row.last_used_at), version: row.version, createdAt: iso(row.created_at), updatedAt: iso(row.updated_at) };
+  return { id: row.id, organizationId: row.organization_id, lookupId: row.lookup_id, name: row.name, salt: row.salt, verificationHash: row.verification_hash, scopes: row.scopes, status: row.status, predecessorId: row.predecessor_id, expiresAt: optionalIso(row.expires_at), lastUsedAt: optionalIso(row.last_used_at), version: row.version, createdAt: normalizeStage6Timestamp(row.created_at), updatedAt: normalizeStage6Timestamp(row.updated_at) };
 }
 function mapTelegramMapping(row: typeof telegramIdentityMappings.$inferSelect): TelegramMappingRecord {
-  return { id: row.id, organizationId: row.organizationId, userId: row.userId, roleId: row.roleId, telegramUserId: row.telegramUserId, telegramChatId: row.telegramChatId, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) };
+  return { id: row.id, organizationId: row.organizationId, userId: row.userId, roleId: row.roleId, telegramUserId: row.telegramUserId, telegramChatId: row.telegramChatId, status: row.status, version: row.version, createdAt: normalizeStage6Timestamp(row.createdAt), updatedAt: normalizeStage6Timestamp(row.updatedAt) };
 }
 type RawClaimRow = {
   source: string; replay_id: string; organization_id: string | null; body_digest: string;
   identity_binding_digest: string | null; claim_token: string; business_receipt: Record<string, unknown> | null; status: WebhookReplayClaim['status']; pending_status: 'processed' | 'rejected' | null;
-  outcome: Record<string, unknown> | null; received_at: Date; lease_expires_at: Date; attempt_count: number; expires_at: Date;
+  outcome: Record<string, unknown> | null; received_at: RawTimestamp; lease_expires_at: RawTimestamp; attempt_count: number; expires_at: RawTimestamp;
 };
 function mapRawClaim(row: RawClaimRow): WebhookReplayClaim {
   return {
     source: row.source, replayId: row.replay_id, organizationId: row.organization_id, bodyDigest: row.body_digest,
     identityBindingDigest: row.identity_binding_digest, claimToken: row.claim_token, businessReceipt: row.business_receipt,
     status: row.status, pendingStatus: row.pending_status, outcome: row.outcome,
-    receivedAt: iso(row.received_at), leaseExpiresAt: iso(row.lease_expires_at), attemptCount: row.attempt_count, expiresAt: iso(row.expires_at),
+    receivedAt: normalizeStage6Timestamp(row.received_at), leaseExpiresAt: normalizeStage6Timestamp(row.lease_expires_at), attemptCount: row.attempt_count, expiresAt: normalizeStage6Timestamp(row.expires_at),
   };
 }
-type CustomerRow = { id: string; name: string; slug: string; status: 'active' | 'inactive' | 'archived'; customer_metadata: Record<string, unknown>; version: number; created_at: Date; updated_at: Date; subscription_plan: string | null; subscription_status: SubscriptionRecord['status'] | null; period_starts_at: Date | null; period_ends_at: Date | null; subscription_version: number | null; subscription_created_at: Date | null; subscription_updated_at: Date | null };
+type CustomerRow = { id: string; name: string; slug: string; status: 'active' | 'inactive' | 'archived'; customer_metadata: Record<string, unknown>; version: number; created_at: RawTimestamp; updated_at: RawTimestamp; subscription_plan: string | null; subscription_status: SubscriptionRecord['status'] | null; period_starts_at: RawTimestamp | null; period_ends_at: RawTimestamp | null; subscription_version: number | null; subscription_created_at: RawTimestamp | null; subscription_updated_at: RawTimestamp | null };
 function mapCustomer(row: CustomerRow): CustomerProjection {
-  return { customer: { id: row.id, name: row.name, slug: row.slug, status: row.status, customerMetadata: row.customer_metadata, version: row.version, createdAt: iso(row.created_at), updatedAt: iso(row.updated_at) }, subscription: row.subscription_plan === null || row.subscription_status === null || row.subscription_version === null || row.subscription_created_at === null || row.subscription_updated_at === null ? null : { organizationId: row.id, plan: row.subscription_plan, status: row.subscription_status, periodStartsAt: optionalIso(row.period_starts_at), periodEndsAt: optionalIso(row.period_ends_at), version: row.subscription_version, createdAt: iso(row.subscription_created_at), updatedAt: iso(row.subscription_updated_at) } };
+  return { customer: { id: row.id, name: row.name, slug: row.slug, status: row.status, customerMetadata: row.customer_metadata, version: row.version, createdAt: normalizeStage6Timestamp(row.created_at), updatedAt: normalizeStage6Timestamp(row.updated_at) }, subscription: row.subscription_plan === null || row.subscription_status === null || row.subscription_version === null || row.subscription_created_at === null || row.subscription_updated_at === null ? null : { organizationId: row.id, plan: row.subscription_plan, status: row.subscription_status, periodStartsAt: optionalIso(row.period_starts_at), periodEndsAt: optionalIso(row.period_ends_at), version: row.subscription_version, createdAt: normalizeStage6Timestamp(row.subscription_created_at), updatedAt: normalizeStage6Timestamp(row.subscription_updated_at) } };
 }
 
 export class DrizzleStage6Repository implements Stage6Repository {
@@ -104,7 +126,7 @@ export class DrizzleStage6Repository implements Stage6Repository {
   async updateTelegramMapping(actor: AuthorizedTenantActorContext, input: { readonly mappingId: string; readonly expectedVersion: number; readonly userId: string; readonly roleId: string; readonly telegramUserId: string; readonly telegramChatId: string; readonly status: TelegramMappingRecord['status']; readonly now: string }): Promise<TelegramMappingRecord> {
     try { return await this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorize(tx, actor, STAGE6_PERMISSIONS.telegramManage); const member = await tx.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.organizationId, actor.organizationId), eq(memberships.userId, input.userId), eq(memberships.roleId, input.roleId), eq(memberships.status, 'active'))).limit(1); if (member.length !== 1) throw new Stage6AccessDeniedError(); const rows = await tx.update(telegramIdentityMappings).set({ userId: input.userId, roleId: input.roleId, telegramUserId: input.telegramUserId, telegramChatId: input.telegramChatId, status: input.status, version: input.expectedVersion + 1, updatedAt: new Date(input.now) }).where(and(eq(telegramIdentityMappings.organizationId, actor.organizationId), eq(telegramIdentityMappings.id, input.mappingId), eq(telegramIdentityMappings.version, input.expectedVersion))).returning(); if (rows.length !== 1) throw new Stage6ConflictError(); await this.audit(tx, actor, actor.organizationId, 'telegram_mapping.update', 'telegram_mapping', input.mappingId, { status: input.status, userId: input.userId, roleId: input.roleId }, new Date(input.now)); return mapTelegramMapping(rows[0]!); }); } catch (error) { if (uniqueViolation(error)) throw new Stage6ConflictError(); throw error; }
   }
-  async readTelegramConversation(identity: TelegramIdentity): Promise<TelegramConversation | null> { return this.database.transaction(async (tx) => { await this.context(tx, identity.organizationId, identity.mappingId, 'telegram-conversation'); const rows = await tx.select().from(telegramConversations).where(and(eq(telegramConversations.organizationId, identity.organizationId), eq(telegramConversations.telegramChatId, identity.telegramChatId), eq(telegramConversations.telegramUserId, identity.telegramUserId))).limit(1); const row = rows[0]; return row === undefined ? null : { source: 'telegram', organizationId: row.organizationId, chatId: row.telegramChatId, userId: row.telegramUserId, step: row.step as TelegramConversation['step'], data: row.data, updatedAt: iso(row.updatedAt), expiresAt: iso(row.expiresAt) }; }); }
+  async readTelegramConversation(identity: TelegramIdentity): Promise<TelegramConversation | null> { return this.database.transaction(async (tx) => { await this.context(tx, identity.organizationId, identity.mappingId, 'telegram-conversation'); const rows = await tx.select().from(telegramConversations).where(and(eq(telegramConversations.organizationId, identity.organizationId), eq(telegramConversations.telegramChatId, identity.telegramChatId), eq(telegramConversations.telegramUserId, identity.telegramUserId))).limit(1); const row = rows[0]; return row === undefined ? null : { source: 'telegram', organizationId: row.organizationId, chatId: row.telegramChatId, userId: row.telegramUserId, step: row.step as TelegramConversation['step'], data: row.data, updatedAt: normalizeStage6Timestamp(row.updatedAt), expiresAt: normalizeStage6Timestamp(row.expiresAt) }; }); }
   async saveTelegramConversation(identity: TelegramIdentity, conversation: TelegramConversation): Promise<void> { await this.database.transaction(async (tx) => { await this.context(tx, identity.organizationId, identity.mappingId, 'telegram-conversation'); await tx.insert(telegramConversations).values({ organizationId: identity.organizationId, mappingId: identity.mappingId, telegramUserId: identity.telegramUserId, telegramChatId: identity.telegramChatId, step: conversation.step, data: conversation.data as Record<string, unknown>, expiresAt: new Date(conversation.expiresAt), updatedAt: new Date(conversation.updatedAt) }).onConflictDoUpdate({ target: [telegramConversations.organizationId, telegramConversations.telegramChatId, telegramConversations.telegramUserId], set: { mappingId: identity.mappingId, step: conversation.step, data: conversation.data as Record<string, unknown>, expiresAt: new Date(conversation.expiresAt), updatedAt: new Date(conversation.updatedAt) } }); }); }
   async clearTelegramConversation(identity: TelegramIdentity): Promise<void> { await this.database.transaction(async (tx) => { await this.context(tx, identity.organizationId, identity.mappingId, 'telegram-conversation'); await tx.delete(telegramConversations).where(and(eq(telegramConversations.organizationId, identity.organizationId), eq(telegramConversations.telegramChatId, identity.telegramChatId), eq(telegramConversations.telegramUserId, identity.telegramUserId))); }); }
 
@@ -188,13 +210,13 @@ export class DrizzleStage6Repository implements Stage6Repository {
         const rows = await tx.select().from(subscriptions).where(eq(subscriptions.organizationId, input.organizationId)).limit(1);
         const row = rows[0];
         if (row === undefined) throw new Stage6ConflictError();
-        return { organizationId: row.organizationId, plan: row.plan, status: row.status, periodStartsAt: optionalIso(row.periodStartsAt), periodEndsAt: optionalIso(row.periodEndsAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) };
+        return { organizationId: row.organizationId, plan: row.plan, status: row.status, periodStartsAt: optionalIso(row.periodStartsAt), periodEndsAt: optionalIso(row.periodEndsAt), version: row.version, createdAt: normalizeStage6Timestamp(row.createdAt), updatedAt: normalizeStage6Timestamp(row.updatedAt) };
       });
     } catch (error) {
       if (deniedViolation(error)) throw new Stage6AccessDeniedError();
       throw error;
     }
   }
-  async readSubscription(actor: AuthorizedTenantActorContext): Promise<SubscriptionRecord | null> { return this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorizeAny(tx, actor, [STAGE6_PERMISSIONS.subscriptionRead, STAGE6_PERMISSIONS.subscriptionManage]); const rows = await tx.select().from(subscriptions).where(eq(subscriptions.organizationId, actor.organizationId)).limit(1); const row = rows[0]; return row === undefined ? null : { organizationId: row.organizationId, plan: row.plan, status: row.status, periodStartsAt: optionalIso(row.periodStartsAt), periodEndsAt: optionalIso(row.periodEndsAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) }; }); }
+  async readSubscription(actor: AuthorizedTenantActorContext): Promise<SubscriptionRecord | null> { return this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorizeAny(tx, actor, [STAGE6_PERMISSIONS.subscriptionRead, STAGE6_PERMISSIONS.subscriptionManage]); const rows = await tx.select().from(subscriptions).where(eq(subscriptions.organizationId, actor.organizationId)).limit(1); const row = rows[0]; return row === undefined ? null : { organizationId: row.organizationId, plan: row.plan, status: row.status, periodStartsAt: optionalIso(row.periodStartsAt), periodEndsAt: optionalIso(row.periodEndsAt), version: row.version, createdAt: normalizeStage6Timestamp(row.createdAt), updatedAt: normalizeStage6Timestamp(row.updatedAt) }; }); }
   async recordDenial(actor: AuthorizedTenantActorContext, action: string, targetType: string, now: string): Promise<void> { await this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await tx.insert(auditLogs).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, action, targetType, targetId: null, outcome: 'denied', changedFields: [], requestId: actor.requestId, occurredAt: new Date(now) }); }); }
 }
