@@ -43,6 +43,7 @@ const ids = {
   analyticsReadPermission: '00000000-0000-4000-8000-000000000029',
   apiKey: '00000000-0000-4000-8000-000000000026',
   telegramMapping: '00000000-0000-4000-8000-000000000027',
+  authorizationTelegramMapping: '00000000-0000-4000-8000-000000000044',
   domainA: '00000000-0000-4000-8000-000000000030',
   domainB: '00000000-0000-4000-8000-000000000031',
   regionA: '00000000-0000-4000-8000-000000000032',
@@ -63,6 +64,10 @@ function runtimeUrl(ownerUrl: string): string {
   url.username = 'indicate_runtime';
   url.password = runtimePassword;
   return url.toString();
+}
+
+function timestampIso(value: Date | string): string {
+  return (value instanceof Date ? value : new Date(value)).toISOString();
 }
 
 function actor(permissionSet: ReadonlySet<string> = new Set()): ActorContext {
@@ -127,10 +132,15 @@ suite('live PostgreSQL Stage 2 contract', () => {
     )`;
     await ownerClient`INSERT INTO telegram_identity_mappings (
       organization_id, id, telegram_user_id, telegram_chat_id, user_id, role_id
-    ) VALUES (
-      ${ids.organizationA}::uuid, ${ids.telegramMapping}::uuid, 'telegram-user', 'telegram-chat',
-      ${ids.targetUser}::uuid, ${ids.editorRole}::uuid
-    )`;
+    ) VALUES
+      (
+        ${ids.organizationA}::uuid, ${ids.telegramMapping}::uuid, 'telegram-user', 'telegram-chat',
+        ${ids.targetUser}::uuid, ${ids.editorRole}::uuid
+      ),
+      (
+        ${ids.organizationA}::uuid, ${ids.authorizationTelegramMapping}::uuid, 'authorization-user', 'authorization-chat',
+        ${ids.actorUser}::uuid, ${ids.editorRole}::uuid
+      )`;
     await ownerClient`INSERT INTO regions (organization_id, id, external_key, name, slug)
       VALUES (${ids.organizationA}::uuid, ${ids.regionA}::uuid, 'live-region', 'Live Region', 'live-region')`;
     await ownerClient`INSERT INTO articles (
@@ -231,7 +241,7 @@ suite('live PostgreSQL Stage 2 contract', () => {
       permissionSet: new Set(['ignored-client-claim']), entryPoint: 'api', requestId: 'live-api',
     };
     const telegramActor: ActorContext = {
-      actorType: 'telegram', actorId: ids.telegramMapping, organizationId: ids.organizationA,
+      actorType: 'telegram', actorId: ids.authorizationTelegramMapping, organizationId: ids.organizationA,
       permissionSet: new Set(), entryPoint: 'telegram', requestId: 'live-telegram',
     };
     const systemActor: ActorContext = {
@@ -542,10 +552,10 @@ suite('live PostgreSQL Stage 2 contract', () => {
     await ownerClient`UPDATE article_sites
       SET active = true, version = version + 1, updated_at = '2026-10-15T00:00:00.000Z'
       WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.articleSiteHistorical}::uuid`;
-    const stableOutcome = await ownerClient<{ state_occurred_at: Date; updated_at: Date }[]>`SELECT state_occurred_at, updated_at FROM article_sites
+    const stableOutcome = await ownerClient<{ state_occurred_at: Date | string; updated_at: Date | string }[]>`SELECT state_occurred_at, updated_at FROM article_sites
       WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.articleSiteHistorical}::uuid`;
-    expect(stableOutcome[0]?.state_occurred_at.toISOString()).toBe('2026-09-10T00:00:00.000Z');
-    expect(stableOutcome[0]?.updated_at.toISOString()).toBe('2026-10-15T00:00:00.000Z');
+    expect(timestampIso(stableOutcome[0]!.state_occurred_at)).toBe('2026-09-10T00:00:00.000Z');
+    expect(timestampIso(stableOutcome[0]!.updated_at)).toBe('2026-10-15T00:00:00.000Z');
 
     const analytics = await service.analytics(runtimeActor, { from: '2026-09-01T00:00:00.000Z', to: '2026-09-30T23:59:59.999Z' });
     expect(analytics.ok).toBe(true); if (!analytics.ok) return;
