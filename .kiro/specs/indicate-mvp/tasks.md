@@ -227,106 +227,106 @@ Implement Indicate MVP as one TypeScript Next.js App Router modular monolith ser
   - Ensure all tests pass, ask the user if questions arise.
   - _Requirements: 19.9, 19.10, 20.1–20.6, 20.8, 20.9, 20.12, 20.19_
 
-- [ ] 9. Major Stage 4 — implement R2 media, durable publication, Upstash dispatch, concurrency control, retries, and results
-  - [ ] 9.1 Implement the private R2 adapter and atomic object-key reservation
+- [x] 9. Major Stage 4 — implement R2 media, durable publication, Upstash dispatch, concurrency control, retries, and results
+  - [x] 9.1 Implement the private R2 adapter and atomic object-key reservation
     - Create server-only exact-key HEAD/sign PUT/sign GET/delete adapters and a reservation repository using globally unique database candidates before authorization.
     - Generate sanitized collision-resistant names under only `articles/{articleId}/`, `sites/{siteId}/`, or `assets/`; preserve occupied objects and metadata and never grant list/prefix access.
     - _Requirements: 11.1–11.9, 11.20–11.22, 11.27_
 
-  - [ ] 9.2 Implement media upload completion, tenant/public authorization, cleanup, audit, and invalidation intents
+  - [x] 9.2 Implement media upload completion, tenant/public authorization, cleanup, audit, and invalidation intents
     - Validate type/size/purpose/owner, compare R2 HEAD metadata/checksum to reservation data, activate metadata atomically with audit, and enqueue cleanup for rejected/orphan objects.
     - Authorize exact-key private reads only for active Site Settings references or Articles published to the resolved Site; deny cross-Site/cross-Organization/unpublished/archived/unreferenced assets without metadata disclosure.
     - Wire CMS media operations to the shared service.
     - _Requirements: 7.8, 11.10–11.19, 11.23–11.27_
 
-  - [ ] 9.3 Implement canonical publication fingerprints and transactional idempotent acceptance
+  - [x] 9.3 Implement canonical publication fingerprints and transactional idempotent acceptance
     - Create versioned canonical option serialization and fingerprinting over Organization, Article, sorted distinct Site set, and options.
     - In one transaction authorize all targets, insert/reuse one Organization/idempotency job, reconcile Article Site rows, create immutable job targets, set queued states, and append audit; return conflict without mutation for fingerprint mismatch.
     - _Requirements: 12.1–12.13_
 
-  - [ ] 9.4 Implement Upstash due-queue scheduling, atomic claims, leases, and state mirroring
+  - [x] 9.4 Implement Upstash due-queue scheduling, atomic claims, leases, and state mirroring
     - Create environment-namespaced sorted-set/script adapters with bounded payloads/TTLs and explicit claim tokens.
     - Dispatch only durable job IDs after commit, mark recoverable dispatch state when Redis fails, and treat Redis as a non-authoritative projection.
     - _Requirements: 12.7, 12.14–12.18, 12.45_
 
-  - [ ] 9.5 Implement fenced Publication Worker state transitions and retry planning
+  - [x] 9.5 Implement fenced Publication Worker state transitions and retry planning
     - Atomically claim jobs/targets, increment fencing tokens, transition only through the complete allowed Job and Article Site relations, and make terminal repeats idempotent.
     - Persist transition plus audit before acknowledgement, prevent stale workers from writing, preserve successful targets, and bound attempts/delays by Runtime Configuration.
     - _Requirements: 6.12, 12.19–12.39, 12.44, 12.46–12.48_
 
-  - [ ] 9.6 Implement bounded publication, dispatch, lease, transition, and cleanup reconciliation
+  - [x] 9.6 Implement bounded publication, dispatch, lease, transition, and cleanup reconciliation
     - Create secured short-batch worker/reconciler handlers for durable dispatch gaps, due retries, expired leases, incomplete acknowledgements, and cleanup tasks.
     - Use indexed database scans and same logical IDs; duplicate/overlapping invocations must not duplicate jobs, Article Sites, queue claims, or external outcomes.
     - _Requirements: 12.14–12.18, 12.20–12.37, 12.47, 12.48_
 
-  - [ ] 9.7 Implement publication result/status projections and CMS publishing wiring
+  - [x] 9.7 Implement publication result/status projections and CMS publishing wiring
     - Derive final state, successful count, and exact persisted successful URL set from target outcomes; expose tenant-scoped job attempts/failures/status to shared services and CMS.
     - Keep failures sanitized and ensure every acknowledged state is durable and audited.
     - _Requirements: 7.9, 12.38–12.46, 18.12, 18.13_
 
-  - [ ]* 9.8 Write the property test for collision-safe structured object keys
+  - [x]* 9.8 Write the property test for collision-safe structured object keys
     - **Property 14: Object-key reservation preserves prefix and existing data**
     - **Validates: Requirements 11.3, 11.4, 11.5, 11.6, 11.20, 11.21, 11.22, 21.9, 21.27**
 
-  - [ ]* 9.9 Write the property test for media authorization graphs
+  - [x]* 9.9 Write the property test for media authorization graphs
     - **Property 15: Media access follows the exact ownership and publication graph**
     - **Validates: Requirements 11.7, 11.8, 11.9, 11.14, 11.15, 11.23, 11.24, 11.25, 11.27, 21.10, 21.30**
 
-  - [ ]* 9.10 Write the property test for canonical publication fingerprints
+  - [x]* 9.10 Write the property test for canonical publication fingerprints
     - **Property 16: Publication fingerprints are canonical**
     - **Validates: Requirements 12.1, 12.2**
 
-  - [ ]* 9.11 Write the property test for matching concurrent idempotent requests
+  - [x]* 9.11 Write the property test for matching concurrent idempotent requests
     - **Property 17: Matching idempotent publication requests converge**
     - **Validates: Requirements 12.3, 12.4, 12.8, 12.9, 21.11**
 
-  - [ ]* 9.12 Write the property test for fingerprint conflict preservation
+  - [x]* 9.12 Write the property test for fingerprint conflict preservation
     - **Property 18: Fingerprint conflicts preserve the original job**
     - **Validates: Requirements 12.10, 21.12**
 
-  - [ ]* 9.13 Write the property test for tenant-partitioned idempotency keys
+  - [x]* 9.13 Write the property test for tenant-partitioned idempotency keys
     - **Property 19: Idempotency keys are tenant-partitioned**
     - **Validates: Requirements 12.11, 21.13**
 
-  - [ ]* 9.14 Write the property test for bounded dispatch reconciliation
+  - [x]* 9.14 Write the property test for bounded dispatch reconciliation
     - **Property 20: Dispatch reconciliation is idempotent and bounded**
     - **Validates: Requirements 12.14, 12.15, 12.16, 12.17, 12.18, 21.28**
 
-  - [ ]* 9.15 Write the property test for complete publishing transition relations
+  - [x]* 9.15 Write the property test for complete publishing transition relations
     - **Property 21: Publishing transitions match the complete allowed model**
     - **Validates: Requirements 12.20, 12.21, 12.23, 12.24, 12.25, 12.26, 12.27, 12.32, 12.33, 12.36, 21.14, 21.15**
 
-  - [ ]* 9.16 Write the property test for terminal transition idempotency
+  - [x]* 9.16 Write the property test for terminal transition idempotency
     - **Property 22: Terminal transitions are idempotent**
     - **Validates: Requirements 12.34, 12.35, 21.16**
 
-  - [ ]* 9.17 Write the property test for target-to-job aggregation
+  - [x]* 9.17 Write the property test for target-to-job aggregation
     - **Property 23: Job state is the exact aggregate of target states**
     - **Validates: Requirements 12.28, 12.29, 12.30, 12.31, 21.14**
 
-  - [ ]* 9.18 Write the property test for bounded retries that preserve successes
+  - [x]* 9.18 Write the property test for bounded retries that preserve successes
     - **Property 24: Retry execution remains within policy and preserves successes**
     - **Validates: Requirements 12.19, 12.25, 12.27, 12.37, 21.17**
 
-  - [ ]* 9.19 Write the property test for exact Publication Results
+  - [x]* 9.19 Write the property test for exact Publication Results
     - **Property 25: Publication Result is derived exactly from successful targets**
     - **Validates: Requirements 12.38, 12.39, 12.40, 12.41, 12.42, 12.43, 21.18**
 
-  - [ ]* 9.20 Write the property test for worker fencing
+  - [x]* 9.20 Write the property test for worker fencing
     - **Property 26: Fencing permits one current worker owner**
     - **Validates: Requirements 12.22, 12.44, 12.47, 12.48**
 
-  - [ ]* 9.21 Write R2, Redis, database-concurrency, and recovery integration tests
+  - [x]* 9.21 Write R2, Redis, database-concurrency, and recovery integration tests
     - Test occupied-key retry, metadata mismatch, upload rejection/cleanup, exact public media reads, transaction rollback, concurrent matching/conflicting publication requests, Redis dispatch outage/recovery, duplicate reconciliation, expired leases, stale fences, partial success, and sanitized results.
     - Use mocked/in-memory provider ports for generated tests plus representative managed-service contract cases.
     - _Requirements: 11.1–11.27, 12.1–12.48, 20.6, 20.13, 21.26–21.28, 21.30_
 
-  - [ ]* 9.22 Write Stage 4 media and publication critical-flow E2E tests
+  - [x]* 9.22 Write Stage 4 media and publication critical-flow E2E tests
     - Cover CMS upload authorization/completion, Site assignment, asynchronous multi-Site request, status polling, partial failure/retry, final URL display, and cross-tenant media/job denial.
     - Execute with bounded deterministic fakes and Playwright non-interactively.
     - _Requirements: 7.8, 7.9, 11.1–11.27, 12.1–12.48, 20.5, 20.13_
 
-- [ ] 10. Major Stage 4 quality-gate checkpoint
+- [x] 10. Major Stage 4 quality-gate checkpoint
   - Run typecheck, lint, Vitest unit/property/integration suites in single-run mode and Playwright Stage 4 critical-flow E2E non-interactively.
   - Verify R2 prefixes/reservations/authorization, publication idempotency, queue recovery, fencing, retries, all state transitions, result counts/URLs, tenant isolation, and failure atomicity; block Major Stage 5 on failure.
   - Ensure all tests pass, ask the user if questions arise.
