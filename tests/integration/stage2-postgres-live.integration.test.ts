@@ -29,9 +29,11 @@ const ids = {
   actorUser: '00000000-0000-4000-8000-000000000010',
   targetUser: '00000000-0000-4000-8000-000000000011',
   foreignUser: '00000000-0000-4000-8000-000000000012',
+  authorizationTelegramUser: '00000000-0000-4000-8000-000000000013',
   actorAuth: '00000000-0000-4000-8000-000000000090',
   targetAuth: '00000000-0000-4000-8000-000000000091',
   foreignAuth: '00000000-0000-4000-8000-000000000092',
+  authorizationTelegramAuth: '00000000-0000-4000-8000-000000000093',
   concurrentAuth: '00000000-0000-4000-8000-000000000099',
   editorRole: '00000000-0000-4000-8000-000000000020',
   managerRole: '00000000-0000-4000-8000-000000000021',
@@ -92,6 +94,21 @@ suite('live PostgreSQL Stage 2 contract', () => {
   const transactionManager = runtimeDatabase === null ? null : new DrizzleTenantTransactionManager(runtimeDatabase);
   const authorizationService = authorizationRepository === null ? null : new AuthorizationService(authorizationRepository);
 
+  async function setTargetMembershipFixture(roleId: string, mappingActive: boolean): Promise<void> {
+    if (ownerClient === null) return;
+    await ownerClient.begin(async (transaction) => {
+      await transaction`UPDATE telegram_identity_mappings
+        SET status = 'inactive', updated_at = now()
+        WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.targetUser}::uuid`;
+      await transaction`UPDATE memberships
+        SET role_id = ${roleId}::uuid, status = 'active', version = version + 1, updated_at = now()
+        WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.targetUser}::uuid`;
+      await transaction`UPDATE telegram_identity_mappings
+        SET role_id = ${ids.editorRole}::uuid, status = ${mappingActive ? 'active' : 'inactive'}, updated_at = now()
+        WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.telegramMapping}::uuid`;
+    });
+  }
+
   beforeAll(async () => {
     if (ownerClient === null) return;
     for (const file of migrationFiles) {
@@ -109,7 +126,8 @@ suite('live PostgreSQL Stage 2 contract', () => {
     await ownerClient`INSERT INTO users (id, auth_user_id, display_name) VALUES
       (${ids.actorUser}::uuid, ${ids.actorAuth}::uuid, 'Editor'),
       (${ids.targetUser}::uuid, ${ids.targetAuth}::uuid, 'Target'),
-      (${ids.foreignUser}::uuid, ${ids.foreignAuth}::uuid, 'Foreign Editor')`;
+      (${ids.foreignUser}::uuid, ${ids.foreignAuth}::uuid, 'Foreign Editor'),
+      (${ids.authorizationTelegramUser}::uuid, ${ids.authorizationTelegramAuth}::uuid, 'Authorization Telegram User')`;
     await ownerClient`INSERT INTO roles (organization_id, id, name) VALUES
       (${ids.organizationA}::uuid, ${ids.editorRole}::uuid, 'Editor'),
       (${ids.organizationA}::uuid, ${ids.managerRole}::uuid, 'Manager'),
@@ -121,6 +139,7 @@ suite('live PostgreSQL Stage 2 contract', () => {
     await ownerClient`INSERT INTO memberships (organization_id, user_id, role_id) VALUES
       (${ids.organizationA}::uuid, ${ids.actorUser}::uuid, ${ids.editorRole}::uuid),
       (${ids.organizationA}::uuid, ${ids.targetUser}::uuid, ${ids.editorRole}::uuid),
+      (${ids.organizationA}::uuid, ${ids.authorizationTelegramUser}::uuid, ${ids.editorRole}::uuid),
       (${ids.organizationB}::uuid, ${ids.foreignUser}::uuid, ${ids.foreignRole}::uuid)`;
     await ownerClient`INSERT INTO domains (organization_id, id, normalized_hostname) VALUES
       (${ids.organizationA}::uuid, ${ids.domainA}::uuid, 'a.example.web.id'),
@@ -139,7 +158,7 @@ suite('live PostgreSQL Stage 2 contract', () => {
       ),
       (
         ${ids.organizationA}::uuid, ${ids.authorizationTelegramMapping}::uuid, 'authorization-user', 'authorization-chat',
-        ${ids.actorUser}::uuid, ${ids.editorRole}::uuid
+        ${ids.authorizationTelegramUser}::uuid, ${ids.editorRole}::uuid
       )`;
     await ownerClient`INSERT INTO regions (organization_id, id, external_key, name, slug)
       VALUES (${ids.organizationA}::uuid, ${ids.regionA}::uuid, 'live-region', 'Live Region', 'live-region')`;
@@ -216,6 +235,7 @@ suite('live PostgreSQL Stage 2 contract', () => {
       .sort((left, right) => left.userId.localeCompare(right.userId))).toEqual([
       { userId: ids.actorUser, displayName: 'Editor' },
       { userId: ids.targetUser, displayName: 'Target' },
+      { userId: ids.authorizationTelegramUser, displayName: 'Authorization Telegram User' },
     ].sort((left, right) => left.userId.localeCompare(right.userId)));
     const target = listed.value.memberships.find(({ userId }) => userId === ids.targetUser)!;
     const changed = await service.saveMembership(runtimeActor, { userId: target.userId, roleId: ids.managerRole, status: 'active', expectedVersion: target.version });
@@ -269,78 +289,94 @@ suite('live PostgreSQL Stage 2 contract', () => {
     const roleChangeActor = { ...actor(), requestId: 'live-membership-role-change' };
     let roleChange: ReturnType<typeof authorizationService.changeMembershipRole> | undefined;
     let roleChangeCompleted = false;
-    await ownerClient.begin(async (transaction) => {
-      await transaction`INSERT INTO telegram_identity_mappings (
-        organization_id, id, telegram_user_id, telegram_chat_id, user_id, role_id
-      ) VALUES (
-        ${ids.organizationA}::uuid, ${concurrentMappingId}::uuid, 'concurrent-user', 'concurrent-chat',
-        ${ids.targetUser}::uuid, ${ids.editorRole}::uuid
-      )`;
-      roleChange = authorizationService.changeMembershipRole({
-        actor: roleChangeActor,
-        organizationId: ids.organizationA,
-        userId: ids.targetUser,
-        roleId: ids.managerRole,
-        transactionManager,
+    let observedLockWait = false;
+    let completedWhileLocked = true;
+    try {
+      await setTargetMembershipFixture(ids.editorRole, true);
+      await ownerClient.begin(async (transaction) => {
+        await transaction`INSERT INTO telegram_identity_mappings (
+          organization_id, id, telegram_user_id, telegram_chat_id, user_id, role_id
+        ) VALUES (
+          ${ids.organizationA}::uuid, ${concurrentMappingId}::uuid, 'concurrent-user', 'concurrent-chat',
+          ${ids.targetUser}::uuid, ${ids.editorRole}::uuid
+        )`;
+        roleChange = authorizationService.changeMembershipRole({
+          actor: roleChangeActor,
+          organizationId: ids.organizationA,
+          userId: ids.targetUser,
+          roleId: ids.managerRole,
+          transactionManager,
+        });
+        void roleChange.then(
+          () => { roleChangeCompleted = true; },
+          () => { roleChangeCompleted = true; },
+        );
+        for (let attempt = 0; attempt < 100 && !observedLockWait && !roleChangeCompleted; attempt += 1) {
+          const waiting = await ownerClient<{ count: number }[]>`SELECT count(*)::integer AS count
+            FROM pg_stat_activity
+            WHERE usename = 'indicate_runtime' AND wait_event_type = 'Lock'`;
+          observedLockWait = (waiting[0]?.count ?? 0) > 0;
+          if (!observedLockWait) await new Promise((resolveDelay) => setTimeout(resolveDelay, 20));
+        }
+        completedWhileLocked = roleChangeCompleted;
       });
-      void roleChange.then(
-        () => { roleChangeCompleted = true; },
-        () => { roleChangeCompleted = true; },
-      );
-      let observedLockWait = false;
-      for (let attempt = 0; attempt < 100 && !observedLockWait && !roleChangeCompleted; attempt += 1) {
-        const waiting = await ownerClient<{ count: number }[]>`SELECT count(*)::integer AS count
-          FROM pg_stat_activity
-          WHERE usename = 'indicate_runtime' AND wait_event_type = 'Lock'`;
-        observedLockWait = (waiting[0]?.count ?? 0) > 0;
-        if (!observedLockWait) await new Promise((resolveDelay) => setTimeout(resolveDelay, 20));
-      }
       expect(observedLockWait).toBe(true);
-      expect(roleChangeCompleted).toBe(false);
-    });
-    await expect(roleChange!).resolves.toEqual({ ok: true, value: true });
-    const membership = await ownerClient<{ role_id: string }[]>`SELECT role_id FROM memberships
-      WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.targetUser}::uuid`;
-    expect(membership[0]?.role_id).toBe(ids.managerRole);
-    const audits = await ownerClient<{ action: string; outcome: string; target_id: string | null }[]>`SELECT action, outcome, target_id FROM audit_logs
-      WHERE organization_id = ${ids.organizationA}::uuid
-        AND request_id = ${roleChangeActor.requestId}
-        AND action = 'membership.role.change'
-        AND target_id = ${ids.targetUser}`;
-    expect(audits).toEqual([{ action: 'membership.role.change', outcome: 'succeeded', target_id: ids.targetUser }]);
-    const mappings = await ownerClient<{ status: string }[]>`SELECT status FROM telegram_identity_mappings
-      WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.telegramMapping}::uuid`;
-    expect(mappings[0]?.status).toBe('inactive');
-    const inconsistentMappings = await ownerClient<{ count: number }[]>`SELECT count(*)::integer AS count
-      FROM telegram_identity_mappings mapping
-      INNER JOIN memberships membership
-        ON membership.organization_id = mapping.organization_id AND membership.user_id = mapping.user_id
-      WHERE mapping.organization_id = ${ids.organizationA}::uuid
-        AND mapping.user_id = ${ids.targetUser}::uuid
-        AND mapping.status = 'active'
-        AND (membership.status <> 'active' OR membership.role_id <> mapping.role_id)`;
-    expect(inconsistentMappings[0]?.count).toBe(0);
-    await expect(ownerClient`UPDATE telegram_identity_mappings SET status = 'active'
-      WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.telegramMapping}::uuid`).rejects.toThrow();
+      expect(completedWhileLocked).toBe(false);
+      expect(roleChange).toBeDefined();
+      await expect(roleChange!).resolves.toEqual({ ok: true, value: true });
+      const membership = await ownerClient<{ role_id: string }[]>`SELECT role_id FROM memberships
+        WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.targetUser}::uuid`;
+      expect(membership[0]?.role_id).toBe(ids.managerRole);
+      const audits = await ownerClient<{ action: string; outcome: string; target_id: string | null }[]>`SELECT action, outcome, target_id FROM audit_logs
+        WHERE organization_id = ${ids.organizationA}::uuid
+          AND request_id = ${roleChangeActor.requestId}
+          AND action = 'membership.role.change'
+          AND target_id = ${ids.targetUser}`;
+      expect(audits).toEqual([{ action: 'membership.role.change', outcome: 'succeeded', target_id: ids.targetUser }]);
+      const mappings = await ownerClient<{ status: string }[]>`SELECT status FROM telegram_identity_mappings
+        WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.telegramMapping}::uuid`;
+      expect(mappings[0]?.status).toBe('inactive');
+      const inconsistentMappings = await ownerClient<{ count: number }[]>`SELECT count(*)::integer AS count
+        FROM telegram_identity_mappings mapping
+        INNER JOIN memberships membership
+          ON membership.organization_id = mapping.organization_id AND membership.user_id = mapping.user_id
+        WHERE mapping.organization_id = ${ids.organizationA}::uuid
+          AND mapping.user_id = ${ids.targetUser}::uuid
+          AND mapping.status = 'active'
+          AND (membership.status <> 'active' OR membership.role_id <> mapping.role_id)`;
+      expect(inconsistentMappings[0]?.count).toBe(0);
+      await expect(ownerClient`UPDATE telegram_identity_mappings SET status = 'active'
+        WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.telegramMapping}::uuid`).rejects.toThrow();
+    } finally {
+      if (roleChange !== undefined) await roleChange.catch(() => undefined);
+      await setTargetMembershipFixture(ids.editorRole, true);
+      await ownerClient`DELETE FROM telegram_identity_mappings
+        WHERE organization_id = ${ids.organizationA}::uuid AND id = ${concurrentMappingId}::uuid`;
+    }
   });
 
   it('rolls back the production mutation when audit INSERT is unavailable', async () => {
     if (authorizationService === null || transactionManager === null || ownerClient === null) return;
-    await ownerClient.unsafe('REVOKE INSERT ON audit_logs FROM indicate_runtime');
+    await setTargetMembershipFixture(ids.managerRole, false);
     try {
-      await expect(authorizationService.changeMembershipRole({
-        actor: actor(),
-        organizationId: ids.organizationA,
-        userId: ids.targetUser,
-        roleId: ids.editorRole,
-        transactionManager,
-      })).rejects.toThrow();
+      await ownerClient.unsafe('REVOKE INSERT ON audit_logs FROM indicate_runtime');
+      try {
+        await expect(authorizationService.changeMembershipRole({
+          actor: actor(),
+          organizationId: ids.organizationA,
+          userId: ids.targetUser,
+          roleId: ids.editorRole,
+          transactionManager,
+        })).rejects.toThrow();
+      } finally {
+        await ownerClient.unsafe('GRANT INSERT ON audit_logs TO indicate_runtime');
+      }
+      const membership = await ownerClient<{ role_id: string }[]>`SELECT role_id FROM memberships
+        WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.targetUser}::uuid`;
+      expect(membership[0]?.role_id).toBe(ids.managerRole);
     } finally {
-      await ownerClient.unsafe('GRANT INSERT ON audit_logs TO indicate_runtime');
+      await setTargetMembershipFixture(ids.editorRole, true);
     }
-    const membership = await ownerClient<{ role_id: string }[]>`SELECT role_id FROM memberships
-      WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.targetUser}::uuid`;
-    expect(membership[0]?.role_id).toBe(ids.managerRole);
   });
 
   it('returns same-shape denials and writes target-free denial audits for absent and cross-organization targets', async () => {
@@ -376,25 +412,34 @@ suite('live PostgreSQL Stage 2 contract', () => {
   it('revalidates Membership permission after a concurrent revocation', async () => {
     if (authorizationService === null || transactionManager === null || ownerClient === null) return;
     let pendingChange: ReturnType<typeof authorizationService.changeMembershipRole> | undefined;
-    await ownerClient.begin(async (transaction) => {
-      await transaction`SELECT user_id FROM memberships
-        WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.actorUser}::uuid FOR UPDATE`;
-      pendingChange = authorizationService.changeMembershipRole({
-        actor: actor(), organizationId: ids.organizationA,
-        userId: ids.targetUser, roleId: ids.editorRole,
-        transactionManager,
-      });
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-      await transaction`UPDATE memberships SET status = 'inactive'
-        WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.actorUser}::uuid`;
-    });
-    expect(pendingChange).toBeDefined();
-    await expect(pendingChange!).resolves.toMatchObject({ ok: false });
-    const target = await ownerClient<{ role_id: string }[]>`SELECT role_id FROM memberships
-      WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.targetUser}::uuid`;
-    expect(target[0]?.role_id).toBe(ids.managerRole);
+    await setTargetMembershipFixture(ids.managerRole, false);
     await ownerClient`UPDATE memberships SET status = 'active'
       WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.actorUser}::uuid`;
+    try {
+      await ownerClient.begin(async (transaction) => {
+        await transaction`SELECT user_id FROM memberships
+          WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.actorUser}::uuid FOR UPDATE`;
+        pendingChange = authorizationService.changeMembershipRole({
+          actor: actor(), organizationId: ids.organizationA,
+          userId: ids.targetUser, roleId: ids.editorRole,
+          transactionManager,
+        });
+        void pendingChange.catch(() => undefined);
+        await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+        await transaction`UPDATE memberships SET status = 'inactive'
+          WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.actorUser}::uuid`;
+      });
+      expect(pendingChange).toBeDefined();
+      await expect(pendingChange!).resolves.toMatchObject({ ok: false });
+      const target = await ownerClient<{ role_id: string }[]>`SELECT role_id FROM memberships
+        WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.targetUser}::uuid`;
+      expect(target[0]?.role_id).toBe(ids.managerRole);
+    } finally {
+      if (pendingChange !== undefined) await pendingChange.catch(() => undefined);
+      await ownerClient`UPDATE memberships SET status = 'active'
+        WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.actorUser}::uuid`;
+      await setTargetMembershipFixture(ids.editorRole, true);
+    }
   }, 30_000);
 
   it.each(['role', 'grant'] as const)('revalidates after concurrent %s revocation', async (revocation) => {
@@ -404,47 +449,55 @@ suite('live PostgreSQL Stage 2 contract', () => {
     await ownerClient`INSERT INTO role_permissions (organization_id, role_id, permission_id)
       VALUES (${ids.organizationA}::uuid, ${ids.editorRole}::uuid, ${ids.membershipPermission}::uuid)
       ON CONFLICT DO NOTHING`;
+    await setTargetMembershipFixture(ids.managerRole, false);
     const revocationActor = { ...actor(), requestId: `live-${revocation}-revocation` };
     let pendingChange: ReturnType<typeof authorizationService.changeMembershipRole> | undefined;
-    await ownerClient.begin(async (transaction) => {
-      if (revocation === 'role') {
-        await transaction`SELECT id FROM roles
-          WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.editorRole}::uuid FOR UPDATE`;
-      } else {
-        await transaction`SELECT permission_id FROM role_permissions
-          WHERE organization_id = ${ids.organizationA}::uuid
-            AND role_id = ${ids.editorRole}::uuid
-            AND permission_id = ${ids.membershipPermission}::uuid FOR UPDATE`;
-      }
-      pendingChange = authorizationService.changeMembershipRole({
-        actor: revocationActor, organizationId: ids.organizationA,
-        userId: ids.targetUser, roleId: ids.editorRole,
-        transactionManager,
+    try {
+      await ownerClient.begin(async (transaction) => {
+        if (revocation === 'role') {
+          await transaction`SELECT id FROM roles
+            WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.editorRole}::uuid FOR UPDATE`;
+        } else {
+          await transaction`SELECT permission_id FROM role_permissions
+            WHERE organization_id = ${ids.organizationA}::uuid
+              AND role_id = ${ids.editorRole}::uuid
+              AND permission_id = ${ids.membershipPermission}::uuid FOR UPDATE`;
+        }
+        pendingChange = authorizationService.changeMembershipRole({
+          actor: revocationActor, organizationId: ids.organizationA,
+          userId: ids.targetUser, roleId: ids.editorRole,
+          transactionManager,
+        });
+        void pendingChange.catch(() => undefined);
+        await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+        if (revocation === 'role') {
+          await transaction`UPDATE roles SET active = false
+            WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.editorRole}::uuid`;
+        } else {
+          await transaction`DELETE FROM role_permissions
+            WHERE organization_id = ${ids.organizationA}::uuid
+              AND role_id = ${ids.editorRole}::uuid
+              AND permission_id = ${ids.membershipPermission}::uuid`;
+        }
       });
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-      if (revocation === 'role') {
-        await transaction`UPDATE roles SET active = false
-          WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.editorRole}::uuid`;
-      } else {
-        await transaction`DELETE FROM role_permissions
-          WHERE organization_id = ${ids.organizationA}::uuid
-            AND role_id = ${ids.editorRole}::uuid
-            AND permission_id = ${ids.membershipPermission}::uuid`;
-      }
-    });
-    await expect(pendingChange!).resolves.toMatchObject({ ok: false });
-    const target = await ownerClient<{ role_id: string }[]>`SELECT role_id FROM memberships
-      WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.targetUser}::uuid`;
-    expect(target[0]?.role_id).toBe(ids.managerRole);
-    const denialAudits = await ownerClient<{ action: string; outcome: string; target_id: string | null }[]>`SELECT action, outcome, target_id
-      FROM audit_logs
-      WHERE organization_id = ${ids.organizationA}::uuid AND request_id = ${revocationActor.requestId}`;
-    expect(denialAudits).toEqual([{ action: 'membership.role.change', outcome: 'denied', target_id: null }]);
-    await ownerClient`UPDATE roles SET active = true
-      WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.editorRole}::uuid`;
-    await ownerClient`INSERT INTO role_permissions (organization_id, role_id, permission_id)
-      VALUES (${ids.organizationA}::uuid, ${ids.editorRole}::uuid, ${ids.membershipPermission}::uuid)
-      ON CONFLICT DO NOTHING`;
+      expect(pendingChange).toBeDefined();
+      await expect(pendingChange!).resolves.toMatchObject({ ok: false });
+      const target = await ownerClient<{ role_id: string }[]>`SELECT role_id FROM memberships
+        WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.targetUser}::uuid`;
+      expect(target[0]?.role_id).toBe(ids.managerRole);
+      const denialAudits = await ownerClient<{ action: string; outcome: string; target_id: string | null }[]>`SELECT action, outcome, target_id
+        FROM audit_logs
+        WHERE organization_id = ${ids.organizationA}::uuid AND request_id = ${revocationActor.requestId}`;
+      expect(denialAudits).toEqual([{ action: 'membership.role.change', outcome: 'denied', target_id: null }]);
+    } finally {
+      if (pendingChange !== undefined) await pendingChange.catch(() => undefined);
+      await ownerClient`UPDATE roles SET active = true
+        WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.editorRole}::uuid`;
+      await ownerClient`INSERT INTO role_permissions (organization_id, role_id, permission_id)
+        VALUES (${ids.organizationA}::uuid, ${ids.editorRole}::uuid, ${ids.membershipPermission}::uuid)
+        ON CONFLICT DO NOTHING`;
+      await setTargetMembershipFixture(ids.editorRole, true);
+    }
   }, 30_000);
 
   it('converges concurrent identity linkage and preserves one unique tenant relation', async () => {
