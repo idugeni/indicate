@@ -1,0 +1,3 @@
+export async function transfer() {
+  return fetch('https://api.vercel.com/v4/domains/example.web.id/nameservers', { method: 'PATCH' });
+}

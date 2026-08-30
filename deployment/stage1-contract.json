@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "application": {
+    "codebases": 1,
+    "nextApplications": 1,
+    "publicTemplates": 1,
+    "tenantSpecificBuilds": false
+  },
+  "resources": {
+    "vercelProjects": 1,
+    "supabaseProjects": 1,
+    "supabaseDatabases": 1,
+    "supabaseAuthInstances": 1,
+    "r2Buckets": 1,
+    "upstashRedisResources": 1,
+    "perTenantResources": false
+  },
+  "cloudflare": {
+    "authoritativeNameservers": true,
+    "authoritativeDns": true,
+    "authoritativeWildcardDns": true,
+    "authoritativeSslProxy": true,
+    "authoritativeCdn": true
+  },
+  "vercel": {
+    "hostingOnly": true,
+    "domainAssociation": "exact_only",
+    "nameserverTransferAllowed": false,
+    "wildcardRegistrationAllowed": false
+  }
+}

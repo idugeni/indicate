@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+:root {
+  --background: oklch(0.985 0.005 255);
+  --foreground: oklch(0.205 0.025 255);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.205 0.025 255);
+  --primary: oklch(0.48 0.2 255);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.94 0.02 255);
+  --secondary-foreground: oklch(0.25 0.03 255);
+  --muted: oklch(0.95 0.01 255);
+  --muted-foreground: oklch(0.48 0.03 255);
+  --border: oklch(0.88 0.02 255);
+  --ring: oklch(0.55 0.18 255);
+  --radius: 0.75rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --radius-md: var(--radius);
+  --font-sans: Arial, Helvetica, sans-serif;
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 3px;
+}
+
+
+.cms-shell { min-height: 100vh; }
+.cms-topbar { align-items: center; background: #102a43; color: white; display: flex; gap: 1rem; justify-content: space-between; padding: 1rem 1.5rem; }
+.cms-topbar div, .cms-topbar label { align-items: center; display: flex; gap: .75rem; }
+.cms-topbar select { background: white; border-radius: .45rem; color: #102a43; padding: .55rem; }
+.cms-layout { display: grid; grid-template-columns: minmax(13rem, 17rem) 1fr; min-height: calc(100vh - 4.5rem); }
+.cms-nav { align-content: start; background: #eaf2f8; display: grid; gap: .35rem; padding: 1rem; }
+.cms-nav button { background: transparent; border: 0; border-radius: .5rem; color: #173f5f; cursor: pointer; padding: .8rem; text-align: left; }
+.cms-nav button[aria-current='page'] { background: #173f75; color: white; font-weight: 700; }
+.cms-nav button:disabled { cursor: not-allowed; opacity: .55; }
+.cms-content { max-width: 90rem; min-width: 0; padding: 1.5rem; width: 100%; }
+.eyebrow { color: #526d82; font-size: .8rem; font-weight: 700; letter-spacing: .08em; margin: 0; text-transform: uppercase; }
+.cms-content h1 { margin-top: .25rem; }
+.cms-alert { background: #fff1f1; border: 1px solid #cc4b4b; border-radius: .5rem; color: #8a1c1c; padding: .75rem; }
+.tenant-records { display: flex; gap: .5rem; list-style: none; padding: 0; }
+.tenant-records li { background: #eef3f7; border-radius: 999px; padding: .3rem .7rem; }
+.metric-grid, .cms-data-grid, .cms-form-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+.metric, .cms-card, .cms-form { background: white; border: 1px solid #d5e0e8; border-radius: .75rem; box-shadow: 0 3px 12px rgb(16 42 67 / 7%); padding: 1rem; }
+.metric { display: grid; gap: .3rem; }
+.metric strong { color: #173f75; font-size: 2rem; }
+.cms-form { display: grid; gap: .75rem; margin-bottom: 1rem; }
+.cms-form label, .cms-form fieldset { display: grid; gap: .3rem; }
+.cms-form input, .cms-form select, .cms-form textarea { border: 1px solid #9fb3c2; border-radius: .4rem; font: inherit; padding: .6rem; }
+.cms-form textarea { min-height: 7rem; resize: vertical; }
+.cms-form button { background: #173f75; border: 0; border-radius: .4rem; color: white; cursor: pointer; font-weight: 700; padding: .7rem 1rem; }
+.cms-card ul { padding-left: 1.2rem; }
+@media (max-width: 760px) {
+  .cms-topbar, .cms-topbar div, .cms-topbar label { align-items: stretch; flex-direction: column; }
+  .cms-layout { display: block; }
+  .cms-nav { display: flex; overflow-x: auto; }
+  .cms-nav button { flex: 0 0 auto; }
+  .cms-content { box-sizing: border-box; padding: 1rem; }
+  .tenant-records { flex-wrap: wrap; }
+}

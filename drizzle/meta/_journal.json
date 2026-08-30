@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1788105281761,
+      "tag": "0000_stage2_core_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788105298677,
+      "tag": "0001_stage2_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788106167567,
+      "tag": "0002_stage2_publisher_actor_constraints",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788107000000,
+      "tag": "0003_stage2_authorization_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788108000000,
+      "tag": "0004_stage3_verified_user_context",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788110000000,
+      "tag": "0005_stage3_discovery_outcome_timestamp",
+      "breakpoints": true
+    }
+  ]
+}

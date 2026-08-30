@@ -1,0 +1,3 @@
+'use client';
+import { secret } from './helper.fixture';
+export const clientValue = secret;

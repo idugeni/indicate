@@ -1,0 +1,49 @@
+{
+  "pbtResults": {
+    "7.9 Write the property test for scoped aggregate equivalence": {
+      "status": "passed",
+      "lastRunTimestamp": 1788115848178
+    },
+    "3.6 Write the property test for context exclusivity": {
+      "status": "passed",
+      "lastRunTimestamp": 1788115846780
+    },
+    "3.7 Write the property test for configuration redaction": {
+      "status": "passed",
+      "lastRunTimestamp": 1788115846979
+    },
+    "5.8 Write the property test for tenant relation coherence and atomicity": {
+      "status": "passed",
+      "lastRunTimestamp": 1788115847362
+    },
+    "5.9 Write the property test for seed reconciliation": {
+      "status": "passed",
+      "lastRunTimestamp": 1788115847591
+    },
+    "5.10 Write the property test for RBAC combinations": {
+      "status": "passed",
+      "lastRunTimestamp": 1788115847931
+    },
+    "7.10 Write the property test for verified public claims": {
+      "status": "passed",
+      "lastRunTimestamp": 1788115848331
+    },
+    "7.11 Write the property test for canonical Article round trips": {
+      "status": "passed",
+      "lastRunTimestamp": 1788115848750
+    },
+    "7.12 Write the property test for distinct canonical Site assignment": {
+      "status": "passed",
+      "lastRunTimestamp": 1788115848923
+    },
+    "7.13 Write the property test for published Site content selection": {
+      "status": "passed",
+      "lastRunTimestamp": 1788115849355
+    },
+    "7.14 Write the property test for immutable atomic auditing": {
+      "status": "passed",
+      "lastRunTimestamp": 1788115849435
+    }
+  },
+  "executionHistory": {}
+}
