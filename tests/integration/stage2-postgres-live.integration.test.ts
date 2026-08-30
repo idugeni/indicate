@@ -145,9 +145,12 @@ suite('live PostgreSQL Stage 2 contract', () => {
       (${ids.organizationA}::uuid, ${ids.domainA}::uuid, 'a.example.web.id'),
       (${ids.organizationB}::uuid, ${ids.domainB}::uuid, 'b.example.web.id')`;
     await ownerClient`INSERT INTO api_keys (
-      organization_id, id, lookup_id, salt, verification_hash, scopes
+      organization_id, id, lookup_id, name, salt, verification_hash, scopes
     ) VALUES (
-      ${ids.organizationA}::uuid, ${ids.apiKey}::uuid, 'live-key', 'salt', 'hash', ARRAY['membership.manage']::text[]
+      ${ids.organizationA}::uuid, ${ids.apiKey}::uuid,
+      'stage2-live-key-0001', 'Stage 2 live integration test key',
+      'stage2-live-test-salt-not-secret', 'stage2-live-test-verification-hash-not-secret',
+      ARRAY['membership.manage']::text[]
     )`;
     await ownerClient`INSERT INTO telegram_identity_mappings (
       organization_id, id, telegram_user_id, telegram_chat_id, user_id, role_id
