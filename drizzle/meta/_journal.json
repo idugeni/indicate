@@ -64,6 +64,20 @@
       "when": 1788115000000,
       "tag": "0008_stage5_production_boundaries",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788117000000,
+      "tag": "0009_stage6_external_entrypoints",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788118000000,
+      "tag": "0010_stage6_security_hardening",
+      "breakpoints": true
     }
   ]
 }

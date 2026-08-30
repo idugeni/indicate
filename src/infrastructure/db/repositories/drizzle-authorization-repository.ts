@@ -89,7 +89,11 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
           eq(rolePermissions.organizationId, roles.organizationId),
           eq(rolePermissions.roleId, roles.id),
         ))
-        .leftJoin(permissions, eq(permissions.id, rolePermissions.permissionId))
+        .leftJoin(permissions, and(
+          eq(permissions.id, rolePermissions.permissionId),
+          eq(permissions.organizationId, memberships.organizationId),
+          eq(permissions.scope, 'organization'),
+        ))
         .where(and(
           eq(memberships.organizationId, organizationId),
           eq(memberships.userId, userId),
@@ -97,13 +101,17 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
         ));
       const first = rows[0];
       if (first === undefined) return null;
+      const platformRows = await transaction.execute<{ name: string }>(sql`SELECT name FROM indicate_private.stage6_list_platform_permissions(${userId}::uuid)`);
       return {
         organizationId: first.organizationId,
         userId: first.userId,
         roleId: first.roleId,
         status: first.membershipStatus,
         roleActive: first.roleActive,
-        permissions: new Set(rows.flatMap((row) => row.permissionName === null ? [] : [row.permissionName])),
+        permissions: new Set([
+          ...rows.flatMap((row) => row.permissionName === null ? [] : [row.permissionName]),
+          ...platformRows.map(({ name }) => name),
+        ]),
       };
     });
   }

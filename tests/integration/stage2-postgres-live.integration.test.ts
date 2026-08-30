@@ -18,7 +18,7 @@ import { UuidGenerator } from '@/infrastructure/system/uuid-generator';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const projectRoot = resolve(import.meta.dirname, '../..');
-const migrationFiles = ['drizzle/0000_stage2_core_schema.sql', 'drizzle/0001_stage2_security.sql', 'drizzle/0002_stage2_publisher_actor_constraints.sql', 'drizzle/0003_stage2_authorization_hardening.sql', 'drizzle/0004_stage3_verified_user_context.sql', 'drizzle/0005_stage3_discovery_outcome_timestamp.sql', 'drizzle/0006_stage4_media_publication_runtime.sql', 'drizzle/0007_stage5_public_delivery.sql', 'drizzle/0008_stage5_production_boundaries.sql'];
+const migrationFiles = ['drizzle/0000_stage2_core_schema.sql', 'drizzle/0001_stage2_security.sql', 'drizzle/0002_stage2_publisher_actor_constraints.sql', 'drizzle/0003_stage2_authorization_hardening.sql', 'drizzle/0004_stage3_verified_user_context.sql', 'drizzle/0005_stage3_discovery_outcome_timestamp.sql', 'drizzle/0006_stage4_media_publication_runtime.sql', 'drizzle/0007_stage5_public_delivery.sql', 'drizzle/0008_stage5_production_boundaries.sql', 'drizzle/0009_stage6_external_entrypoints.sql', 'drizzle/0010_stage6_security_hardening.sql'];
 const runtimePassword = 'stage2-runtime-contract-password';
 
 const ids = {
@@ -133,7 +133,7 @@ suite('live PostgreSQL Stage 2 contract', () => {
       (${ids.organizationA}::uuid, ${ids.managerRole}::uuid, 'Manager'),
       (${ids.organizationB}::uuid, ${ids.foreignRole}::uuid, 'Foreign Role')`;
     await ownerClient`INSERT INTO permissions (id, organization_id, name, scope, description) VALUES
-      (${ids.membershipPermission}::uuid, NULL, 'membership.manage', 'platform', 'Manage memberships')`;
+      (${ids.membershipPermission}::uuid, ${ids.organizationA}::uuid, 'membership.manage', 'organization', 'Manage memberships')`;
     await ownerClient`INSERT INTO role_permissions (organization_id, role_id, permission_id) VALUES
       (${ids.organizationA}::uuid, ${ids.editorRole}::uuid, ${ids.membershipPermission}::uuid)`;
     await ownerClient`INSERT INTO memberships (organization_id, user_id, role_id) VALUES
@@ -190,7 +190,7 @@ suite('live PostgreSQL Stage 2 contract', () => {
       const visible = await transaction<{ normalized_hostname: string }[]>`SELECT normalized_hostname FROM domains ORDER BY normalized_hostname`;
       expect(visible.map((row) => row.normalized_hostname)).toEqual(['a.example.web.id']);
       const platformPermissions = await transaction<{ name: string }[]>`SELECT name FROM permissions WHERE scope = 'platform'`;
-      expect(platformPermissions.map(({ name }) => name)).toContain('membership.manage');
+      expect(platformPermissions.map(({ name }) => name)).toContain('platform.customer.admin');
       await transaction`INSERT INTO audit_logs (
         organization_id, id, actor_type, actor_id, entry_point, action, target_type, outcome, request_id
       ) VALUES (
@@ -642,7 +642,7 @@ suite('live PostgreSQL Stage 2 contract', () => {
     await ownerClient`INSERT INTO permissions (id, organization_id, name, scope, description) VALUES
       (${domainPermission}::uuid, ${ids.organizationA}::uuid, 'domain.manage', 'organization', 'Manage domains'),
       (${rolePermission}::uuid, ${ids.organizationA}::uuid, 'role.manage', 'organization', 'Manage roles'),
-      (${articleReadPermission}::uuid, NULL, 'article.read', 'platform', 'Read articles')`;
+      (${articleReadPermission}::uuid, ${ids.organizationA}::uuid, 'article.read', 'organization', 'Read articles')`;
     await ownerClient`INSERT INTO role_permissions (organization_id, role_id, permission_id) VALUES
       (${ids.organizationA}::uuid, ${ids.editorRole}::uuid, ${domainPermission}::uuid),
       (${ids.organizationA}::uuid, ${ids.editorRole}::uuid, ${rolePermission}::uuid)`;

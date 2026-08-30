@@ -9,11 +9,13 @@ import { createValidRuntimeEnvironment } from '../helpers/runtime-environment';
 const secretKeyArbitrary = fc.constantFrom(
   'SUPABASE_SERVICE_ROLE_KEY',
   'CLOUDFLARE_API_TOKEN',
+  'CLOUDFLARE_ORIGIN_SECRET',
   'VERCEL_API_TOKEN',
   'R2_SECRET_ACCESS_KEY',
   'UPSTASH_REDIS_REST_TOKEN',
   'TELEGRAM_BOT_TOKEN',
   'TELEGRAM_WEBHOOK_SECRET',
+  'GENERIC_WEBHOOK_SECRET',
   'CRON_SECRET',
 );
 

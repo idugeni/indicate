@@ -83,6 +83,16 @@ export const permissions = pgTable('permissions', {
   uniqueIndex('permissions_organization_name_unique').on(table.organizationId, table.name).where(sql`${table.scope} = 'organization'`),
 ]);
 
+export const platformUserPermissions = pgTable('platform_user_permissions', {
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  permissionId: uuid('permission_id').notNull().references(() => permissions.id, { onDelete: 'restrict' }),
+  provisionedBy: text('provisioned_by').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  primaryKey({ name: 'platform_user_permissions_pk', columns: [table.userId, table.permissionId] }),
+  index('platform_user_permissions_user_idx').on(table.userId),
+]);
+
 export const memberships = pgTable('memberships', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
@@ -183,6 +193,7 @@ export const apiKeys = pgTable('api_keys', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   id: uuid('id').notNull(),
   lookupId: text('lookup_id').notNull(),
+  name: text('name').notNull(),
   salt: text('salt').notNull(),
   verificationHash: text('verification_hash').notNull(),
   scopes: text('scopes').array().default(sql`ARRAY[]::text[]`).notNull(),
@@ -190,12 +201,15 @@ export const apiKeys = pgTable('api_keys', {
   predecessorId: uuid('predecessor_id'),
   expiresAt: timestamp('expires_at', { withTimezone: true }),
   lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  version: integer('version').default(1).notNull(),
   ...timestamps,
 }, (table) => [
   primaryKey({ name: 'api_keys_pk', columns: [table.organizationId, table.id] }),
   unique('api_keys_lookup_id_unique').on(table.lookupId),
   foreignKey({ name: 'api_keys_predecessor_fk', columns: [table.organizationId, table.predecessorId], foreignColumns: [table.organizationId, table.id] }).onDelete('restrict'),
   index('api_keys_organization_status_idx').on(table.organizationId, table.status),
+  check('api_keys_version_positive', sql`${table.version} > 0`),
+  check('api_keys_bounded_identity', sql`length(${table.lookupId}) BETWEEN 16 AND 128 AND length(${table.name}) BETWEEN 1 AND 120`),
 ]);
 
 export const telegramIdentityMappings = pgTable('telegram_identity_mappings', {
@@ -206,6 +220,7 @@ export const telegramIdentityMappings = pgTable('telegram_identity_mappings', {
   userId: uuid('user_id').notNull(),
   roleId: uuid('role_id').notNull(),
   status: recordStatus('status').default('active').notNull(),
+  version: integer('version').default(1).notNull(),
   ...timestamps,
 }, (table) => [
   primaryKey({ name: 'telegram_identity_mappings_pk', columns: [table.organizationId, table.id] }),
@@ -213,4 +228,5 @@ export const telegramIdentityMappings = pgTable('telegram_identity_mappings', {
   foreignKey({ name: 'telegram_identity_membership_fk', columns: [table.organizationId, table.userId], foreignColumns: [memberships.organizationId, memberships.userId] }).onDelete('cascade'),
   foreignKey({ name: 'telegram_identity_role_fk', columns: [table.organizationId, table.roleId], foreignColumns: [roles.organizationId, roles.id] }).onDelete('restrict'),
   index('telegram_identity_status_idx').on(table.organizationId, table.status),
+  check('telegram_identity_mappings_version_positive', sql`${table.version} > 0`),
 ]);

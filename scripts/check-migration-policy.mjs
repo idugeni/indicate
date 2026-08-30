@@ -39,6 +39,19 @@ const required = [
   'fail_stage5_invalidation',
   'stage5_site_hostname_guard',
   'cache_bypasses',
+  'resolve_stage6_api_key_lookup',
+  'resolve_stage6_telegram_identity',
+  'stage6_replay_claim_organization',
+  'stage6_has_platform_permission',
+  'stage6_provision_platform_permission',
+  'stage6_list_platform_permissions',
+  'stage6_role_permission_scope_guard',
+  'platform_user_permissions',
+  'stage6_prepare_replay_outcome',
+  'stage6_finalize_replay',
+  'stage6_bind_replay_identity',
+  'stage6_create_customer',
+  'telegram_conversations',
 ];
 const failures = required.filter((fragment) => !combined.includes(fragment));
 if (!editorialSchema.includes("check('media_key_reservation_owner_prefix'")) failures.push('Drizzle reservation prefix constraint is missing migration parity');
