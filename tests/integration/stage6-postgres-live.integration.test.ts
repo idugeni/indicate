@@ -68,12 +68,12 @@ suite('live PostgreSQL 17 Stage 6 runtime-role contract', () => {
     await expect(runtimeClient!`SELECT indicate_private.stage6_has_platform_permission(${ids.user}::uuid, 'platform.customer.admin') AS allowed`).resolves.toEqual([{ allowed: false }]);
     await expect(runtimeClient!`SELECT * FROM indicate_private.stage6_list_customers(${ids.user}::uuid)`).rejects.toMatchObject({ code: '42501' });
     await expect(runtimeClient!.begin(async (transaction) => {
-      await transaction`SELECT indicate_private.set_tenant_context(${ids.organization}::uuid, ${ids.attackerUser}::uuid, 'runtime-platform-impersonation')`;
+      await transaction`SELECT indicate_private.set_tenant_context(${ids.organization}::uuid, ${ids.attackerUser}, 'runtime-platform-impersonation')`;
       await transaction`SELECT indicate_private.set_verified_user_context(${ids.attackerAuthUser}::uuid)`;
       await transaction`SELECT * FROM indicate_private.stage6_list_customers(${ids.user}::uuid)`;
     })).rejects.toMatchObject({ code: '42501' });
     await expect(runtimeClient!.begin(async (transaction) => {
-      await transaction`SELECT indicate_private.set_tenant_context(${ids.organization}::uuid, ${ids.user}::uuid, 'runtime-platform-authorized')`;
+      await transaction`SELECT indicate_private.set_tenant_context(${ids.organization}::uuid, ${ids.user}, 'runtime-platform-authorized')`;
       await transaction`SELECT indicate_private.set_verified_user_context(${ids.authUser}::uuid)`;
       return transaction<{ allowed: boolean }[]>`SELECT indicate_private.stage6_has_platform_permission(${ids.user}::uuid, 'platform.customer.admin') AS allowed`;
     })).resolves.toMatchObject([{ allowed: true }]);
