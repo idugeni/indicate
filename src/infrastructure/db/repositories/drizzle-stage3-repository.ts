@@ -43,12 +43,13 @@ export class DrizzleStage3Repository implements Stage3Repository {
   private async load(transaction: Transaction, organizationId: string): Promise<Stage3TenantState> {
     const organization = await transaction.select().from(organizations).where(and(eq(organizations.id, organizationId), eq(organizations.status, 'active'))).limit(1);
     if (organization[0] === undefined) throw new Stage3AccessDeniedError();
-    const [domainRows, regionRows, siteRows, settingsRows, roleRows, grantRows, membershipRows, publisherRows, affiliationRows, categoryRows, authorRows, articleRows, assignmentRows, mediaRows, jobRows, targetRows, auditRows] = await Promise.all([
+    const [domainRows, regionRows, siteRows, settingsRows, roleRows, grantRows, membershipRows, telegramMappingRows, publisherRows, affiliationRows, categoryRows, authorRows, articleRows, assignmentRows, mediaRows, jobRows, targetRows, auditRows] = await Promise.all([
       transaction.select().from(domains).where(eq(domains.organizationId, organizationId)), transaction.select().from(regions).where(eq(regions.organizationId, organizationId)),
       transaction.select().from(sites).where(eq(sites.organizationId, organizationId)), transaction.select().from(siteSettings).where(eq(siteSettings.organizationId, organizationId)),
       transaction.select().from(roles).where(eq(roles.organizationId, organizationId)),
       transaction.select({ roleId: rolePermissions.roleId, permission: permissions.name }).from(rolePermissions).innerJoin(permissions, eq(permissions.id, rolePermissions.permissionId)).where(eq(rolePermissions.organizationId, organizationId)),
       transaction.select().from(memberships).where(eq(memberships.organizationId, organizationId)),
+      transaction.select().from(telegramIdentityMappings).where(eq(telegramIdentityMappings.organizationId, organizationId)),
       transaction.select().from(publishers).where(eq(publishers.organizationId, organizationId)), transaction.select().from(officialAffiliations).where(eq(officialAffiliations.organizationId, organizationId)),
       transaction.select().from(categories).where(eq(categories.organizationId, organizationId)), transaction.select().from(authors).where(eq(authors.organizationId, organizationId)),
       transaction.select().from(articles).where(eq(articles.organizationId, organizationId)), transaction.select().from(articleSites).where(eq(articleSites.organizationId, organizationId)),
@@ -77,6 +78,7 @@ export class DrizzleStage3Repository implements Stage3Repository {
       siteSettings: settingsRows.map((row) => ({ id: row.siteId, organizationId, siteId: row.siteId, name: row.name, description: row.description, colors: row.colors, socialLinks: row.socialLinks, seo: row.seo, navigation: row.navigation.map((item) => ({ label: String(item.label ?? ''), path: String(item.path ?? '/') })), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       roles: roleRows.map((row) => ({ id: row.id, organizationId, name: row.name, active: row.active, permissions: permissionsByRole.get(row.id) ?? new Set(), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       memberships: membershipRows.map((membership) => ({ id: membership.userId, organizationId, userId: membership.userId, displayName: membershipDisplayNames.get(membership.userId)!, roleId: membership.roleId, status: membership.status, version: membership.version, createdAt: iso(membership.createdAt), updatedAt: iso(membership.updatedAt) })),
+      telegramMappings: telegramMappingRows.map((mapping) => ({ id: mapping.id, organizationId, userId: mapping.userId, roleId: mapping.roleId, status: mapping.status, createdAt: iso(mapping.createdAt), updatedAt: iso(mapping.updatedAt) })),
       publishers: publisherRows.map((row) => ({ id: row.id, organizationId, name: row.name, type: row.type, attributionLabel: row.attributionLabel, contacts: Object.fromEntries(Object.entries(row.contacts).map(([key, value]) => [key, String(value)])), evidenceReference: row.evidenceReference, verificationStatus: row.verificationStatus, submittedBy: row.submittedBy, submittedAt: optionalIso(row.submittedAt), verifiedBy: row.verifiedBy, verifiedAt: optionalIso(row.verifiedAt), rejectionReason: row.rejectionReason, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       affiliations: affiliationRows.map((row) => ({ id: row.id, organizationId, publisherId: row.publisherId, siteId: row.siteId, institutionName: row.institutionName, claimScopes: row.claimScopes, evidenceReference: row.evidenceReference, active: row.active, verifiedAt: optionalIso(row.verifiedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       categories: categoryRows.map((row) => ({ id: row.id, organizationId, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
@@ -160,6 +162,19 @@ export class DrizzleStage3Repository implements Stage3Repository {
       if (selected.some((permission) => permission === undefined)) throw new Stage3AccessDeniedError();
       await transaction.delete(rolePermissions).where(and(eq(rolePermissions.organizationId, state.organizationId), eq(rolePermissions.roleId, row.id)));
       if (selected.length > 0) await transaction.insert(rolePermissions).values(selected.map((permission) => ({ organizationId: state.organizationId, roleId: row.id, permissionId: permission!.id })));
+    }
+    for (const row of state.telegramMappings) {
+      const prior = before.telegramMappings.find(({ id }) => id === row.id);
+      if (prior === undefined) throw new Stage3AccessDeniedError();
+      if (prior.status === row.status) continue;
+      const changed = await transaction.update(telegramIdentityMappings).set({ status: row.status, updatedAt: new Date(row.updatedAt) }).where(and(
+        eq(telegramIdentityMappings.organizationId, state.organizationId),
+        eq(telegramIdentityMappings.id, row.id),
+        eq(telegramIdentityMappings.userId, row.userId),
+        eq(telegramIdentityMappings.roleId, row.roleId),
+        eq(telegramIdentityMappings.status, prior.status),
+      )).returning({ id: telegramIdentityMappings.id });
+      if (changed.length !== 1) throw new Stage3ConflictError();
     }
     for (const row of state.memberships) {
       const prior = before.memberships.find(({ userId }) => userId === row.userId);

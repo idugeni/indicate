@@ -67,6 +67,16 @@ export interface MembershipRecord extends VersionedRecord {
   readonly status: LifecycleStatus;
 }
 
+export interface TelegramIdentityMappingSummary {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly userId: string;
+  readonly roleId: string;
+  readonly status: LifecycleStatus;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
 export interface PublisherRecord extends VersionedRecord {
   readonly name: string;
   readonly type: PublisherType;
@@ -181,6 +191,7 @@ export interface Stage3TenantState {
   readonly siteSettings: readonly SiteSettingsRecord[];
   readonly roles: readonly RoleRecord[];
   readonly memberships: readonly MembershipRecord[];
+  readonly telegramMappings: readonly TelegramIdentityMappingSummary[];
   readonly publishers: readonly PublisherRecord[];
   readonly affiliations: readonly OfficialAffiliationRecord[];
   readonly categories: readonly CategoryRecord[];

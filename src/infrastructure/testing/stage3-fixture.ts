@@ -36,6 +36,7 @@ function tenant(organizationId: string, organizationName: string, suffix: string
     siteSettings: [{ ...base(organizationId, siteId), siteId, name: `${organizationName} News`, description: `${organizationName} publication`, colors: { primary: '#173f75' }, socialLinks: {}, seo: {}, navigation: [{ label: 'Home', path: '/' }] }],
     roles: [{ ...base(organizationId, ROLE_ID), name: 'Administrator', active: true, permissions: allPermissions }],
     memberships: [{ ...base(organizationId, STAGE3_USER_ID), userId: STAGE3_USER_ID, displayName: 'Stage 3 Test Editor', roleId: ROLE_ID, status: 'active' }],
+    telegramMappings: [],
     publishers: [{ ...base(organizationId, publisherId), name: `${organizationName} Publisher`, type: 'independent_publisher', attributionLabel: `${organizationName} Independent`, contacts: {}, evidenceReference: 'evidence/reference', verificationStatus: 'verified', submittedBy: STAGE3_USER_ID, submittedAt: now, verifiedBy: STAGE3_USER_ID, verifiedAt: now, rejectionReason: null, status: 'active' }],
     affiliations: [],
     categories: [{ ...base(organizationId, categoryId), name: 'Local', slug: 'local', status: 'active' }],

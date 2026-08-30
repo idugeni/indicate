@@ -211,6 +211,9 @@ suite('live PostgreSQL Stage 2 contract', () => {
     const changed = await service.saveMembership(runtimeActor, { userId: target.userId, roleId: ids.managerRole, status: 'active', expectedVersion: target.version });
     expect(changed).toMatchObject({ ok: true, value: { displayName: 'Target', roleId: ids.managerRole } });
     if (!changed.ok) return;
+    const invalidatedMappings = await ownerClient<{ status: string }[]>`SELECT status FROM telegram_identity_mappings
+      WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.targetUser}::uuid`;
+    expect(invalidatedMappings).toEqual([{ status: 'inactive' }]);
     const restored = await service.saveMembership(runtimeActor, { userId: target.userId, roleId: ids.editorRole, status: 'active', expectedVersion: changed.value.version });
     expect(restored).toMatchObject({ ok: true, value: { displayName: 'Target', roleId: ids.editorRole } });
 
@@ -253,6 +256,7 @@ suite('live PostgreSQL Stage 2 contract', () => {
   it('uses production adapters for same-organization role mutation and atomic audit', async () => {
     if (authorizationService === null || transactionManager === null || ownerClient === null) return;
     const concurrentMappingId = crypto.randomUUID();
+    const roleChangeActor = { ...actor(), requestId: 'live-membership-role-change' };
     let roleChange: ReturnType<typeof authorizationService.changeMembershipRole> | undefined;
     let roleChangeCompleted = false;
     await ownerClient.begin(async (transaction) => {
@@ -263,7 +267,7 @@ suite('live PostgreSQL Stage 2 contract', () => {
         ${ids.targetUser}::uuid, ${ids.editorRole}::uuid
       )`;
       roleChange = authorizationService.changeMembershipRole({
-        actor: actor(),
+        actor: roleChangeActor,
         organizationId: ids.organizationA,
         userId: ids.targetUser,
         roleId: ids.managerRole,
@@ -288,9 +292,12 @@ suite('live PostgreSQL Stage 2 contract', () => {
     const membership = await ownerClient<{ role_id: string }[]>`SELECT role_id FROM memberships
       WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.targetUser}::uuid`;
     expect(membership[0]?.role_id).toBe(ids.managerRole);
-    const audits = await ownerClient<{ action: string }[]>`SELECT action FROM audit_logs
-      WHERE organization_id = ${ids.organizationA}::uuid AND target_id = ${ids.targetUser}::uuid`;
-    expect(audits.map(({ action }) => action)).toEqual(['membership.role.change']);
+    const audits = await ownerClient<{ action: string; outcome: string; target_id: string | null }[]>`SELECT action, outcome, target_id FROM audit_logs
+      WHERE organization_id = ${ids.organizationA}::uuid
+        AND request_id = ${roleChangeActor.requestId}
+        AND action = 'membership.role.change'
+        AND target_id = ${ids.targetUser}`;
+    expect(audits).toEqual([{ action: 'membership.role.change', outcome: 'succeeded', target_id: ids.targetUser }]);
     const mappings = await ownerClient<{ status: string }[]>`SELECT status FROM telegram_identity_mappings
       WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.telegramMapping}::uuid`;
     expect(mappings[0]?.status).toBe('inactive');
@@ -326,23 +333,34 @@ suite('live PostgreSQL Stage 2 contract', () => {
     expect(membership[0]?.role_id).toBe(ids.managerRole);
   });
 
-  it('returns the same denial for absent Membership and cross-organization Role targets without auditing', async () => {
+  it('returns same-shape denials and writes target-free denial audits for absent and cross-organization targets', async () => {
     if (authorizationService === null || transactionManager === null || ownerClient === null) return;
-    const auditCountBefore = await ownerClient<{ count: number }[]>`SELECT count(*)::integer AS count FROM audit_logs`;
+    const absentActor = { ...actor(), requestId: 'live-denial-absent-membership' };
+    const crossOrganizationActor = { ...actor(), requestId: 'live-denial-cross-role' };
     const absent = await authorizationService.changeMembershipRole({
-      actor: actor(), organizationId: ids.organizationA,
+      actor: absentActor, organizationId: ids.organizationA,
       userId: '00000000-0000-4000-8000-000000000019', roleId: ids.editorRole,
       transactionManager,
     });
     const crossOrganization = await authorizationService.changeMembershipRole({
-      actor: actor(), organizationId: ids.organizationA,
+      actor: crossOrganizationActor, organizationId: ids.organizationA,
       userId: ids.targetUser, roleId: ids.foreignRole,
       transactionManager,
     });
-    expect(absent).toEqual(crossOrganization);
-    expect(absent.ok).toBe(false);
-    const auditCountAfter = await ownerClient<{ count: number }[]>`SELECT count(*)::integer AS count FROM audit_logs`;
-    expect(auditCountAfter[0]?.count).toBe(auditCountBefore[0]?.count);
+    expect(absent).toMatchObject({ ok: false, error: { error: { code: 'RESOURCE_UNAVAILABLE' } } });
+    expect(crossOrganization).toMatchObject({ ok: false, error: { error: { code: 'RESOURCE_UNAVAILABLE' } } });
+    if (absent.ok || crossOrganization.ok) return;
+    expect(absent.error.error).toEqual(crossOrganization.error.error);
+    const denialAudits = await ownerClient<{ request_id: string; target_id: string | null; action: string; outcome: string }[]>`SELECT request_id, target_id, action, outcome
+      FROM audit_logs
+      WHERE organization_id = ${ids.organizationA}::uuid
+        AND action = 'membership.role.change'
+        AND (request_id = ${absentActor.requestId} OR request_id = ${crossOrganizationActor.requestId})
+      ORDER BY request_id`;
+    expect(denialAudits).toEqual([
+      { request_id: absentActor.requestId, target_id: null, action: 'membership.role.change', outcome: 'denied' },
+      { request_id: crossOrganizationActor.requestId, target_id: null, action: 'membership.role.change', outcome: 'denied' },
+    ]);
   });
 
   it('revalidates Membership permission after a concurrent revocation', async () => {
@@ -376,7 +394,7 @@ suite('live PostgreSQL Stage 2 contract', () => {
     await ownerClient`INSERT INTO role_permissions (organization_id, role_id, permission_id)
       VALUES (${ids.organizationA}::uuid, ${ids.editorRole}::uuid, ${ids.membershipPermission}::uuid)
       ON CONFLICT DO NOTHING`;
-    const auditCountBefore = await ownerClient<{ count: number }[]>`SELECT count(*)::integer AS count FROM audit_logs`;
+    const revocationActor = { ...actor(), requestId: `live-${revocation}-revocation` };
     let pendingChange: ReturnType<typeof authorizationService.changeMembershipRole> | undefined;
     await ownerClient.begin(async (transaction) => {
       if (revocation === 'role') {
@@ -389,7 +407,7 @@ suite('live PostgreSQL Stage 2 contract', () => {
             AND permission_id = ${ids.membershipPermission}::uuid FOR UPDATE`;
       }
       pendingChange = authorizationService.changeMembershipRole({
-        actor: actor(), organizationId: ids.organizationA,
+        actor: revocationActor, organizationId: ids.organizationA,
         userId: ids.targetUser, roleId: ids.editorRole,
         transactionManager,
       });
@@ -408,8 +426,10 @@ suite('live PostgreSQL Stage 2 contract', () => {
     const target = await ownerClient<{ role_id: string }[]>`SELECT role_id FROM memberships
       WHERE organization_id = ${ids.organizationA}::uuid AND user_id = ${ids.targetUser}::uuid`;
     expect(target[0]?.role_id).toBe(ids.managerRole);
-    const auditCountAfter = await ownerClient<{ count: number }[]>`SELECT count(*)::integer AS count FROM audit_logs`;
-    expect(auditCountAfter[0]?.count).toBe(auditCountBefore[0]?.count);
+    const denialAudits = await ownerClient<{ action: string; outcome: string; target_id: string | null }[]>`SELECT action, outcome, target_id
+      FROM audit_logs
+      WHERE organization_id = ${ids.organizationA}::uuid AND request_id = ${revocationActor.requestId}`;
+    expect(denialAudits).toEqual([{ action: 'membership.role.change', outcome: 'denied', target_id: null }]);
     await ownerClient`UPDATE roles SET active = true
       WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.editorRole}::uuid`;
     await ownerClient`INSERT INTO role_permissions (organization_id, role_id, permission_id)
@@ -512,8 +532,12 @@ suite('live PostgreSQL Stage 2 contract', () => {
       publisherId: ids.publisher, siteId: ids.siteARegional, institutionName: 'Updated Institution', version: 2,
     });
     const affiliationAudits = await ownerClient<{ after: { publisherId: string; siteId: string; institutionName: string } }[]>`SELECT after FROM audit_logs
-      WHERE organization_id = ${ids.organizationA}::uuid AND target_id = ${ids.affiliation}::uuid AND action = 'affiliation.update'`;
-    expect(affiliationAudits.at(-1)?.after).toMatchObject({ publisherId: ids.publisher, siteId: ids.siteARegional, institutionName: 'Updated Institution' });
+      WHERE organization_id = ${ids.organizationA}::uuid
+        AND request_id = ${runtimeActor.requestId}
+        AND target_id = ${ids.affiliation}
+        AND action = 'affiliation.update'`;
+    expect(affiliationAudits).toHaveLength(1);
+    expect(affiliationAudits[0]?.after).toMatchObject({ publisherId: ids.publisher, siteId: ids.siteARegional, institutionName: 'Updated Institution' });
 
     await ownerClient`UPDATE article_sites
       SET active = true, version = version + 1, updated_at = '2026-10-15T00:00:00.000Z'

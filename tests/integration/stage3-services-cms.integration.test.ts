@@ -99,7 +99,16 @@ describe('Stage 3 tenant business services', () => {
     const fixture = createStage3Fixture();
     const original = structuredClone(fixture.repository.snapshot(ALPHA_ORGANIZATION_ID)!);
     const role = original.roles[0]!;
-    const state = { ...original, roles: [{ ...role, permissions: new Set([STAGE3_PERMISSIONS.siteRead, STAGE3_PERMISSIONS.membershipManage]) }] };
+    const member = original.memberships[0]!;
+    const state = {
+      ...original,
+      roles: [{ ...role, permissions: new Set([STAGE3_PERMISSIONS.siteRead, STAGE3_PERMISSIONS.membershipManage]) }],
+      telegramMappings: [{
+        id: '00000000-0000-4000-8000-000000000099', organizationId: ALPHA_ORGANIZATION_ID,
+        userId: member.userId, roleId: member.roleId, status: 'active' as const,
+        createdAt: member.createdAt, updatedAt: member.updatedAt,
+      }],
+    };
     const repository = new InMemoryStage3Repository([state]);
     const service = new TenantBusinessService(repository, new SequenceIdentifierGenerator());
     const siteOnlyActor = { ...createStage3Actor(), permissionSet: new Set([STAGE3_PERMISSIONS.siteRead]) };
@@ -113,10 +122,10 @@ describe('Stage 3 tenant business services', () => {
     expect(domainConfiguration).toMatchObject({ ok: true, value: { sites: [], roles: [], memberships: [] } });
     if (domainConfiguration.ok) expect(domainConfiguration.value.domains.length).toBeGreaterThan(0);
     const actor = { ...createStage3Actor(), permissionSet: new Set([STAGE3_PERMISSIONS.siteRead, STAGE3_PERMISSIONS.membershipManage]) };
-    const member = state.memberships[0]!;
     const changed = await service.saveMembership(actor, { userId: member.userId, roleId: member.roleId, status: 'inactive', expectedVersion: member.version });
     expect(changed).toMatchObject({ ok: true, value: { displayName: member.displayName, status: 'inactive' } });
     expect(repository.snapshot(ALPHA_ORGANIZATION_ID)?.memberships[0]?.displayName).toBe(member.displayName);
+    expect(repository.snapshot(ALPHA_ORGANIZATION_ID)?.telegramMappings).toMatchObject([{ userId: member.userId, status: 'inactive' }]);
     const callerControlledName = await service.saveMembership(actor, { userId: member.userId, displayName: 'Tenant attempted rename', roleId: member.roleId, status: 'active', expectedVersion: member.version + 1 });
     expect(callerControlledName).toMatchObject({ ok: false, error: { error: { code: 'INVALID_INPUT' } } });
   });
@@ -132,11 +141,23 @@ describe('Stage 3 tenant business services', () => {
     expect(repository.snapshot(ALPHA_ORGANIZATION_ID)?.roles).toEqual(before);
   });
 
-  it('rolls back every security-sensitive mutation when audit persistence fails', async () => {
-    const repository = new InMemoryStage3Repository([createStage3Fixture().repository.snapshot(ALPHA_ORGANIZATION_ID)!]);
+  it('rolls back Membership and Telegram-mapping changes when audit persistence fails', async () => {
+    const original = createStage3Fixture().repository.snapshot(ALPHA_ORGANIZATION_ID)!;
+    const membership = original.memberships[0]!;
+    const state = {
+      ...original,
+      telegramMappings: [{
+        id: '00000000-0000-4000-8000-000000000099', organizationId: ALPHA_ORGANIZATION_ID,
+        userId: membership.userId, roleId: membership.roleId, status: 'active' as const,
+        createdAt: membership.createdAt, updatedAt: membership.updatedAt,
+      }],
+    };
+    const repository = new InMemoryStage3Repository([state]);
     const service = new TenantBusinessService(repository, new SequenceIdentifierGenerator());
     const before = repository.snapshot(ALPHA_ORGANIZATION_ID); repository.failNextAudit = true;
-    const result = await service.createCategory(createStage3Actor(), { name: 'Rollback', slug: 'rollback', status: 'active' });
+    const result = await service.saveMembership(createStage3Actor(), {
+      userId: membership.userId, roleId: membership.roleId, status: 'inactive', expectedVersion: membership.version,
+    });
     expect(result).toMatchObject({ ok: false, error: { error: { code: 'INTERNAL_ERROR' } } });
     expect(repository.snapshot(ALPHA_ORGANIZATION_ID)).toEqual(before);
   });
