@@ -2,6 +2,7 @@ import type { AuthorizedTenantActorContext } from '@/domain/context/operation-co
 import type { Stage3TenantState } from '@/domain/stage3/models';
 import { STAGE3_PERMISSIONS } from '@/domain/stage3/permissions';
 import { STAGE4_PERMISSION_NAMES } from '@/domain/stage4/permissions';
+import { STAGE6_PLATFORM_PERMISSION_NAMES, STAGE6_TENANT_PERMISSION_NAMES } from '@/domain/stage6/permissions';
 import { InMemoryStage3Repository } from './stage3-memory';
 
 export const STAGE3_USER_ID = '00000000-0000-4000-8000-000000000010';
@@ -17,7 +18,8 @@ export const ALPHA_CATEGORY_ID = '00000000-0000-4000-8000-000000000105';
 export const ALPHA_AUTHOR_ID = '00000000-0000-4000-8000-000000000106';
 export const ALPHA_ARTICLE_ID = '00000000-0000-4000-8000-000000000107';
 
-const allPermissions = new Set([...Object.values(STAGE3_PERMISSIONS), ...STAGE4_PERMISSION_NAMES]);
+const tenantPermissions = new Set([...Object.values(STAGE3_PERMISSIONS), ...STAGE4_PERMISSION_NAMES, ...STAGE6_TENANT_PERMISSION_NAMES]);
+const actorPermissions = new Set([...tenantPermissions, ...STAGE6_PLATFORM_PERMISSION_NAMES]);
 const now = '2026-08-30T00:00:00.000Z';
 const base = (organizationId: string, id: string) => ({ id, organizationId, version: 1, createdAt: now, updatedAt: now });
 
@@ -35,7 +37,7 @@ function tenant(organizationId: string, organizationName: string, suffix: string
     regions: [{ ...base(organizationId, regionId), externalKey: `region-${suffix}`, name: `${organizationName} Region`, slug: `region-${suffix}`, status: 'active' }],
     sites: [{ ...base(organizationId, siteId), domainId, regionId, normalizedHostname: `region-${suffix}.${suffix}.example.test`, status: 'active', activationState: 'active' }],
     siteSettings: [{ ...base(organizationId, siteId), siteId, name: `${organizationName} News`, description: `${organizationName} publication`, colors: { primary: '#173f75' }, socialLinks: {}, seo: {}, navigation: [{ label: 'Home', path: '/' }] }],
-    roles: [{ ...base(organizationId, ROLE_ID), name: 'Administrator', active: true, permissions: allPermissions }],
+    roles: [{ ...base(organizationId, ROLE_ID), name: 'Administrator', active: true, permissions: tenantPermissions }],
     memberships: [{ ...base(organizationId, STAGE3_USER_ID), userId: STAGE3_USER_ID, displayName: 'Stage 3 Test Editor', roleId: ROLE_ID, status: 'active' }],
     telegramMappings: [],
     publishers: [{ ...base(organizationId, publisherId), name: `${organizationName} Publisher`, type: 'independent_publisher', attributionLabel: `${organizationName} Independent`, contacts: {}, evidenceReference: 'evidence/reference', verificationStatus: 'verified', submittedBy: STAGE3_USER_ID, submittedAt: now, verifiedBy: STAGE3_USER_ID, verifiedAt: now, rejectionReason: null, status: 'active' }],
@@ -57,7 +59,7 @@ export function createStage3RepositoryFixture() {
 }
 
 export function createStage3Actor(organizationId = ALPHA_ORGANIZATION_ID, requestId = 'stage3-request'): AuthorizedTenantActorContext {
-  return Object.freeze({ actorType: 'user', actorId: STAGE3_USER_ID, verifiedAuthUserId: STAGE3_AUTH_USER_ID, organizationId, permissionSet: new Set(allPermissions), entryPoint: 'cms', requestId });
+  return Object.freeze({ actorType: 'user', actorId: STAGE3_USER_ID, verifiedAuthUserId: STAGE3_AUTH_USER_ID, organizationId, permissionSet: new Set(actorPermissions), entryPoint: 'cms', requestId });
 }
 
 const globalFixture = globalThis as typeof globalThis & { __indicateStage3Fixture?: ReturnType<typeof createStage3RepositoryFixture> };

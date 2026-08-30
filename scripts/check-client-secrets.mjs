@@ -8,9 +8,9 @@ const applicationRoots = [join(root, 'app'), join(root, 'src')];
 const fixtureRoot = process.env.CLIENT_POLICY_FIXTURE_ROOT ? resolve(process.env.CLIENT_POLICY_FIXTURE_ROOT) : null;
 const sensitiveNames = [
   'SUPABASE_SERVICE_ROLE_KEY', 'DATABASE_POOL_URL', 'DATABASE_DIRECT_URL',
-  'CLOUDFLARE_API_TOKEN', 'VERCEL_API_TOKEN', 'R2_ACCESS_KEY_ID',
+  'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ORIGIN_SECRET', 'VERCEL_API_TOKEN', 'R2_ACCESS_KEY_ID',
   'R2_SECRET_ACCESS_KEY', 'UPSTASH_REDIS_REST_TOKEN', 'TELEGRAM_BOT_TOKEN',
-  'TELEGRAM_WEBHOOK_SECRET', 'CRON_SECRET',
+  'TELEGRAM_WEBHOOK_SECRET', 'GENERIC_WEBHOOK_SECRET', 'CRON_SECRET',
 ];
 const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.mjs', ...(fixtureRoot ? ['.fixture'] : [])]);
 

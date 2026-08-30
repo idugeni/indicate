@@ -60,6 +60,7 @@ const rawRuntimeConfigSchema = z
 
     CLOUDFLARE_ACCOUNT_ID: z.string().min(1),
     CLOUDFLARE_API_TOKEN: secretSchema,
+    CLOUDFLARE_ORIGIN_SECRET: secretSchema,
     CLOUDFLARE_ZONE_IDS: csvSchema.pipe(z.array(z.string().min(1)).length(3)),
     CLOUDFLARE_EXPECTED_NAMESERVERS: csvSchema.pipe(z.array(hostnameSchema).min(2).max(5)),
     CLOUDFLARE_SSL_MODE: z.literal('full_strict'),
@@ -95,6 +96,7 @@ const rawRuntimeConfigSchema = z
 
     TELEGRAM_BOT_TOKEN: secretSchema,
     TELEGRAM_WEBHOOK_SECRET: secretSchema,
+    GENERIC_WEBHOOK_SECRET: secretSchema,
     TELEGRAM_WEBHOOK_URL: httpsUrlSchema,
     WEBHOOK_FRESHNESS_SECONDS: boundedInteger(300, 30, 900),
     WEBHOOK_REPLAY_TTL_SECONDS: boundedInteger(900, 30, 86_400),
@@ -190,6 +192,7 @@ export interface RuntimeConfig {
   readonly cloudflare: {
     readonly accountId: string;
     readonly apiToken: string;
+    readonly originSecret: string;
     readonly zoneIds: readonly [string, string, string];
     readonly expectedNameservers: readonly string[];
     readonly sslMode: 'full_strict';
@@ -231,6 +234,7 @@ export interface RuntimeConfig {
   readonly security: {
     readonly webhookFreshnessSeconds: number;
     readonly webhookReplayTtlSeconds: number;
+    readonly genericWebhookSecret: string;
     readonly cronSecret: string;
     readonly redactionPolicyVersion: string;
   };
@@ -281,6 +285,7 @@ function toRuntimeConfig(value: ParsedRuntimeEnvironment): RuntimeConfig {
     cloudflare: Object.freeze({
       accountId: value.CLOUDFLARE_ACCOUNT_ID,
       apiToken: value.CLOUDFLARE_API_TOKEN,
+      originSecret: value.CLOUDFLARE_ORIGIN_SECRET,
       zoneIds: Object.freeze(zones),
       expectedNameservers: Object.freeze(value.CLOUDFLARE_EXPECTED_NAMESERVERS),
       sslMode: value.CLOUDFLARE_SSL_MODE,
@@ -322,6 +327,7 @@ function toRuntimeConfig(value: ParsedRuntimeEnvironment): RuntimeConfig {
     security: Object.freeze({
       webhookFreshnessSeconds: value.WEBHOOK_FRESHNESS_SECONDS,
       webhookReplayTtlSeconds: value.WEBHOOK_REPLAY_TTL_SECONDS,
+      genericWebhookSecret: value.GENERIC_WEBHOOK_SECRET,
       cronSecret: value.CRON_SECRET,
       redactionPolicyVersion: value.REDACTION_POLICY_VERSION,
     }),

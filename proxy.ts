@@ -19,15 +19,15 @@ export function proxy(request: NextRequest) {
   const webhook = (process.env.WEBHOOK_HOST ?? 'webhook.indicate.web.id').toLowerCase();
 
   if (parsed.hostname === cms) {
-    if (path.startsWith('/api/public') || path === '/domain-pending') return new NextResponse('Not Found', { status: 404, headers: noindex });
+    if (path.startsWith('/api/public') || path.startsWith('/api/v1/') || path.startsWith('/api/webhooks/') || path === '/domain-pending') return new NextResponse('Not Found', { status: 404, headers: noindex });
     return NextResponse.next();
   }
   if (parsed.hostname === api) {
-    if (!path.startsWith('/api/') || path.startsWith('/api/cms') || path.startsWith('/api/internal') || path.startsWith('/api/public')) return new NextResponse('Not Found', { status: 404, headers: noindex });
+    if (!path.startsWith('/api/v1/')) return new NextResponse('Not Found', { status: 404, headers: noindex });
     return NextResponse.next();
   }
   if (parsed.hostname === webhook) {
-    if (!path.startsWith('/api/webhooks/') && !path.startsWith('/api/telegram/')) return new NextResponse('Not Found', { status: 404, headers: noindex });
+    if (!path.startsWith('/api/webhooks/')) return new NextResponse('Not Found', { status: 404, headers: noindex });
     return NextResponse.next();
   }
   if (process.env.NODE_ENV !== 'production' && process.env.APP_ENVIRONMENT === 'test') {
@@ -40,7 +40,7 @@ export function proxy(request: NextRequest) {
     );
     if (!isConfiguredPublicHost) return new NextResponse('Not Found', { status: 404, headers: noindex });
   }
-  if (path.startsWith('/cms') || path.startsWith('/auth') || path.startsWith('/sign-in') || path.startsWith('/api/cms') || path.startsWith('/api/internal') || path.startsWith('/api/health')) return new NextResponse('Not Found', { status: 404, headers: noindex });
+  if (path.startsWith('/cms') || path.startsWith('/auth') || path.startsWith('/sign-in') || path.startsWith('/api/cms') || path.startsWith('/api/internal') || path.startsWith('/api/health') || path.startsWith('/api/v1/') || path.startsWith('/api/webhooks/')) return new NextResponse('Not Found', { status: 404, headers: noindex });
   return NextResponse.next();
 }
 export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'] };

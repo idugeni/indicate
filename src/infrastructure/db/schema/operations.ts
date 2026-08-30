@@ -16,7 +16,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { articleSites, articles, publishingState, taskStatus } from './editorial';
-import { organizations } from './identity';
+import { organizations, telegramIdentityMappings } from './identity';
 
 export const dispatchStatus = pgEnum('dispatch_status', ['pending', 'scheduled', 'leased', 'acknowledged', 'failed']);
 export const replayClaimStatus = pgEnum('replay_claim_status', ['claimed', 'processed', 'rejected']);
@@ -114,14 +114,42 @@ export const webhookReplayClaims = pgTable('webhook_replay_claims', {
   source: text('source').notNull(),
   replayId: text('replay_id').notNull(),
   organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
+  bodyDigest: text('body_digest').notNull(),
+  identityBindingDigest: text('identity_binding_digest'),
+  claimToken: uuid('claim_token').defaultRandom().notNull(),
+  businessReceipt: jsonb('business_receipt').$type<Record<string, unknown>>(),
   status: replayClaimStatus('status').default('claimed').notNull(),
+  pendingStatus: replayClaimStatus('pending_status'),
   outcomeReference: text('outcome_reference'),
+  outcome: jsonb('outcome').$type<Record<string, unknown>>(),
   receivedAt: timestamp('received_at', { withTimezone: true }).defaultNow().notNull(),
+  leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }).notNull(),
+  attemptCount: integer('attempt_count').default(1).notNull(),
+  outcomeReadyAt: timestamp('outcome_ready_at', { withTimezone: true }),
+  processedAt: timestamp('processed_at', { withTimezone: true }),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
 }, (table) => [
   primaryKey({ name: 'webhook_replay_claims_pk', columns: [table.source, table.replayId] }),
   index('webhook_replay_claims_expiry_idx').on(table.expiresAt),
-  check('webhook_replay_claims_bounded_identity', sql`length(${table.source}) BETWEEN 1 AND 100 AND length(${table.replayId}) BETWEEN 1 AND 255`),
+  index('webhook_replay_claims_reconciliation_idx').on(table.status, table.pendingStatus, table.leaseExpiresAt),
+  check('webhook_replay_claims_bounded_identity', sql`length(${table.source}) BETWEEN 1 AND 100 AND length(${table.replayId}) BETWEEN 1 AND 255 AND length(${table.bodyDigest}) = 64 AND (${table.identityBindingDigest} IS NULL OR length(${table.identityBindingDigest}) = 64) AND ${table.attemptCount} > 0`),
+  check('webhook_replay_claims_pending_terminal', sql`${table.pendingStatus} IS NULL OR ${table.pendingStatus} IN ('processed', 'rejected')`),
+]);
+
+export const telegramConversations = pgTable('telegram_conversations', {
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  mappingId: uuid('mapping_id').notNull(),
+  telegramUserId: text('telegram_user_id').notNull(),
+  telegramChatId: text('telegram_chat_id').notNull(),
+  step: text('step').notNull(),
+  data: jsonb('data').$type<Record<string, unknown>>().default({}).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  ...timestamps,
+}, (table) => [
+  primaryKey({ name: 'telegram_conversations_pk', columns: [table.organizationId, table.telegramChatId, table.telegramUserId] }),
+  foreignKey({ name: 'telegram_conversations_mapping_fk', columns: [table.organizationId, table.mappingId], foreignColumns: [telegramIdentityMappings.organizationId, telegramIdentityMappings.id] }).onDelete('cascade'),
+  index('telegram_conversations_expiry_idx').on(table.expiresAt),
+  check('telegram_conversations_bounded_step', sql`length(${table.step}) BETWEEN 1 AND 100`),
 ]);
 
 export const seedRuns = pgTable('seed_runs', {

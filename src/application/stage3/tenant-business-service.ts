@@ -153,6 +153,7 @@ export class TenantBusinessService {
         domains: domainState?.domains ?? [], regions: regionState?.regions ?? [],
         sites: siteState?.sites ?? [], siteSettings: siteState?.siteSettings ?? [],
         roles: roleManage?.roles ?? [], memberships: membershipState?.memberships ?? [],
+        telegramMappings: membershipState?.telegramMappings ?? [],
       } };
     } catch {
       return { ok: false as const, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };

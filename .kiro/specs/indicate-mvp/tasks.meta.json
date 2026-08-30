@@ -119,6 +119,22 @@
     "11.13 Write the property test for affected-surface invalidation": {
       "status": "passed",
       "lastRunTimestamp": 1788126506417
+    },
+    "13.7 Write the property test for CMS/Telegram behavioral parity": {
+      "status": "passed",
+      "lastRunTimestamp": 1788129910311
+    },
+    "13.8 Write the property test for API Key lifecycle secrecy and scope": {
+      "status": "passed",
+      "lastRunTimestamp": 1788129910710
+    },
+    "13.9 Write the property test for bounded rate limiting": {
+      "status": "passed",
+      "lastRunTimestamp": 1788129910910
+    },
+    "13.10 Write the property test for atomic webhook replay claims": {
+      "status": "passed",
+      "lastRunTimestamp": 1788132058391
     }
   },
   "executionHistory": {}

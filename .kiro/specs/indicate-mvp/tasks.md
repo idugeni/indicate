@@ -332,81 +332,81 @@ Implement Indicate MVP as one TypeScript Next.js App Router modular monolith ser
   - Ensure all tests pass, ask the user if questions arise.
   - _Requirements: 19.10, 19.11, 20.1–20.6, 20.8, 20.9, 20.13, 20.19_
 
-- [ ] 11. Major Stage 5 — implement Cloudflare/Vercel hostname activation, exact routing, public template, SEO, and hostname-aware caching
-  - [ ] 11.1 Implement strict hostname normalization, request classification, and exact active Site resolution
+- [x] 11. Major Stage 5 — implement Cloudflare/Vercel hostname activation, exact routing, public template, SEO, and hostname-aware caching
+  - [x] 11.1 Implement strict hostname normalization, request classification, and exact active Site resolution
     - Create pure hostname value objects and server request adapters that reject missing/malformed/repeated/forwarded overrides with 400 before tenant lookup.
     - Normalize case, one terminal dot, valid port, and IDN ASCII; classify exact reserved control-plane hosts first, then exact unique active Sites, with generic non-indexable unknown/ambiguous outcomes and no suffix/substring fallback.
     - _Requirements: 3.8–3.19, 3.21–3.23_
 
-  - [ ] 11.2 Implement the resumable Cloudflare/Vercel exact-domain activation saga and deployment checks
+  - [x] 11.2 Implement the resumable Cloudflare/Vercel exact-domain activation saga and deployment checks
     - Validate Cloudflare nameservers, proxied apex/wildcard records, edge TLS and Full (strict), associate each exact Site hostname with the single Vercel project, verify a pending probe, then activate/audit/invalidate transactionally.
     - Persist phases/retries, deactivate in the database first, validate old/new mappings, and never transfer nameservers to Vercel or create Vercel wildcard registrations.
     - _Requirements: 3.1–3.7, 3.17, 3.18, 3.20, 5.9, 5.10, 19.5, 19.17, 19.18_
 
-  - [ ] 11.3 Build the one responsive shared Public News Template
+  - [x] 11.3 Build the one responsive shared Public News Template
     - Create shared header, persisted navigation, homepage, listing, Article detail, Category, search, sidebar, footer, Site-branded 404/error, and Site-safe asset fallback components.
     - Apply Site Settings only from Hostname Context, reserve media dimensions, support mobile/tablet/desktop without horizontal overflow, and preserve keyboard/focus usability.
     - _Requirements: 1.10, 14.1–14.24_
 
-  - [ ] 11.4 Wire public routes to scoped content and media services
+  - [x] 11.4 Wire public routes to scoped content and media services
     - Implement homepage/list/detail/category/search/feed route adapters using exact Hostname Context and active published Article Site relations.
     - Return branded 404 for recognized Sites and generic noindex outcomes for unknown hosts; never expose another Site’s content or assets on data failure.
     - _Requirements: 10.5–10.13, 11.23–11.27, 14.12–14.24_
 
-  - [ ] 11.5 Implement hostname-correct SEO builders and serializers
+  - [x] 11.5 Implement hostname-correct SEO builders and serializers
     - Create one absolute URL builder plus escaped metadata, Open Graph, NewsArticle, Breadcrumb, Organization, WebSite, robots, sitemap, and RSS serializers derived from exact Hostname Context.
     - Include only Site-visible published content and currently verified claims; emit noindex and no cross-Site canonical/structured data for unknown, 404, pending, or error outcomes.
     - _Requirements: 15.1–15.17_
 
-  - [ ] 11.6 Implement canonical hostname-aware cache identities and safe reads
+  - [x] 11.6 Implement canonical hostname-aware cache identities and safe reads
     - Include normalized host, Organization, Site, Region, locale, path, normalized query, preview, auth class, routing version, and content version in canonical identities.
     - Bypass missing contexts, isolate preview/authenticated traffic, validate embedded context on every hit, and namespace Redis coordination by environment/Organization/Site.
     - _Requirements: 16.1–16.8, 16.14, 16.15_
 
-  - [ ] 11.7 Implement durable invalidation planning, provider dispatch, and safe fallback
+  - [x] 11.7 Implement durable invalidation planning, provider dispatch, and safe fallback
     - Convert Article/publication, Site Settings, hostname/Region, Publisher/verification/affiliation, and media-reference mutations into transactional invalidation tasks covering Next.js tags/paths, Redis versions, and exact Cloudflare URL/hostname purges.
     - On failure set Site-scoped bypass and retry boundedly before broader Site purge; invalidate previous and current hostname contexts without touching unrelated Sites.
     - _Requirements: 11.26, 15.16, 16.9–16.13_
 
-  - [ ]* 11.8 Write the property test for convergent hostname normalization
+  - [x]* 11.8 Write the property test for convergent hostname normalization
     - **Property 3: Hostname normalization converges**
     - **Validates: Requirements 3.8, 3.9, 3.10, 21.6**
 
-  - [ ]* 11.9 Write the property test for exact active Site resolution
+  - [x]* 11.9 Write the property test for exact active Site resolution
     - **Property 4: Site resolution is exact and active**
     - **Validates: Requirements 3.11, 3.12, 3.13, 3.14, 3.15, 3.18, 21.7**
 
-  - [ ]* 11.10 Write the property test for reserved control-plane conflicts
+  - [x]* 11.10 Write the property test for reserved control-plane conflicts
     - **Property 5: Control-plane hostnames cannot become public Sites**
     - **Validates: Requirements 3.21, 3.22, 3.23, 21.31**
 
-  - [ ]* 11.11 Write the property test for hostname-correct safe SEO
+  - [x]* 11.11 Write the property test for hostname-correct safe SEO
     - **Property 28: SEO output is hostname-correct, visible, and syntactically safe**
     - **Validates: Requirements 15.1, 15.2, 15.3, 15.4, 15.5, 15.6, 15.7, 15.8, 15.9, 15.10, 15.11, 15.12, 15.13, 15.17, 21.8**
 
-  - [ ]* 11.12 Write the property test for complete cache partitioning
+  - [x]* 11.12 Write the property test for complete cache partitioning
     - **Property 29: Cache identities partition every selection dimension**
     - **Validates: Requirements 16.1, 16.2, 16.3, 16.4, 16.5, 16.6, 16.7, 16.8, 16.14, 16.15, 21.19, 21.20**
 
-  - [ ]* 11.13 Write the property test for affected-surface invalidation
+  - [x]* 11.13 Write the property test for affected-surface invalidation
     - **Property 30: Invalidation planning covers every affected Site surface**
     - **Validates: Requirements 11.26, 15.16, 16.9, 16.10, 16.11, 16.12**
 
-  - [ ]* 11.14 Write public UI unit and accessibility tests
+  - [x]* 11.14 Write public UI unit and accessibility tests
     - Test every public surface, Site settings/fallbacks, responsive component states, keyboard/focus behavior, media dimensions, branded 404/error handling, and safe untrusted text rendering.
     - _Requirements: 14.1–14.24, 20.14_
 
-  - [ ]* 11.15 Write hostname, domain-activation, SEO, cache, and invalidation integration tests
+  - [x]* 11.15 Write hostname, domain-activation, SEO, cache, and invalidation integration tests
     - Test malformed/unknown/near-match/deactivated/ambiguous hosts, reserved conflicts, Cloudflare-authoritative checks, exact Vercel associations, pending/failed saga recovery, serializer parsing, cache-hit context validation, targeted purge, and bypass fallback.
     - Use provider contract fakes plus representative DNS/domain/cache API checks; assert no Vercel nameserver or wildcard operation exists.
     - _Requirements: 3.1–3.23, 15.1–15.17, 16.1–16.15, 20.14_
 
-  - [ ]* 11.16 Write Stage 5 public-host critical-flow E2E tests
+  - [x]* 11.16 Write Stage 5 public-host critical-flow E2E tests
     - Cover apex and regional host rendering, all public surfaces, exact-host isolation, cross-Site Article/media 404s, unknown/error noindex, canonical/OG/JSON-LD/robots/sitemap/RSS outputs, responsive viewport projects, and cache partition behavior.
     - Run Playwright non-interactively with explicit Host values and isolated tenant fixtures.
     - _Requirements: 3.8–3.23, 10.5–10.13, 14.1–14.24, 15.1–15.17, 16.1–16.15, 20.5, 20.14_
 
-- [ ] 12. Major Stage 5 quality-gate checkpoint
+- [x] 12. Major Stage 5 quality-gate checkpoint
   - Run typecheck, lint, Vitest unit/property/integration suites in single-run mode and Playwright Stage 5 critical-flow E2E non-interactively.
   - Verify Cloudflare authority, exact hostname behavior, reserved hosts, public surfaces/responsiveness, branded errors, SEO correctness/safety, media isolation, cache partitioning/invalidation, and no Vercel nameserver transfer; block Major Stage 6 on failure.
   - Ensure all tests pass, ask the user if questions arise.

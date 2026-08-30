@@ -8,12 +8,13 @@ export interface OrganizationOption {
   readonly records: readonly string[];
 }
 
-type View = 'dashboard' | 'configuration' | 'publishers' | 'editorial' | 'media' | 'publishing' | 'analytics' | 'audit';
+type View = 'dashboard' | 'configuration' | 'publishers' | 'editorial' | 'media' | 'publishing' | 'analytics' | 'audit' | 'settings' | 'customers';
 const navigation: readonly { readonly view: View; readonly label: string }[] = [
   { view: 'dashboard', label: 'Dashboard' }, { view: 'configuration', label: 'Domains, regions & sites' },
   { view: 'publishers', label: 'Publishers' }, { view: 'editorial', label: 'Articles' },
   { view: 'media', label: 'Media' }, { view: 'publishing', label: 'Publishing' },
   { view: 'analytics', label: 'Analytics' }, { view: 'audit', label: 'Audit logs' },
+  { view: 'settings', label: 'Settings' }, { view: 'customers', label: 'Customers' },
 ];
 
 interface ApiError { readonly error?: { readonly message?: string; readonly fields?: Readonly<Record<string, readonly string[]>> } }
@@ -33,7 +34,7 @@ export function CmsWorkspace({ displayName, organizations }: { readonly displayN
   const load = useCallback(async (nextView: View, nextOrganization = organizationId) => {
     if (!nextOrganization) return;
     setBusy(true); setError(null);
-    const apiStage = nextView === 'media' || nextView === 'publishing' ? 'stage4' : 'stage3';
+    const apiStage = nextView === 'media' || nextView === 'publishing' ? 'stage4' : nextView === 'settings' || nextView === 'customers' ? 'stage6' : 'stage3';
     const response = await fetch(`/api/cms/${apiStage}?organizationId=${encodeURIComponent(nextOrganization)}&view=${nextView}${filterQuery}`, { cache: 'no-store' });
     const body = await response.json() as unknown;
     if (organizationRef.current !== nextOrganization) { setBusy(false); return; }
@@ -45,7 +46,7 @@ export function CmsWorkspace({ displayName, organizations }: { readonly displayN
   useEffect(() => {
     if (!organizationId) return;
     const controller = new AbortController();
-    const apiStage = view === 'media' || view === 'publishing' ? 'stage4' : 'stage3';
+    const apiStage = view === 'media' || view === 'publishing' ? 'stage4' : view === 'settings' || view === 'customers' ? 'stage6' : 'stage3';
     fetch(`/api/cms/${apiStage}?organizationId=${encodeURIComponent(organizationId)}&view=${view}${filterQuery}`, { cache: 'no-store', signal: controller.signal })
       .then(async (response) => ({ response, body: await response.json() as unknown }))
       .then(({ response, body }) => {
@@ -67,7 +68,7 @@ export function CmsWorkspace({ displayName, organizations }: { readonly displayN
   const command = async (action: string, payload: unknown): Promise<unknown> => {
     const commandOrganization = organizationId;
     setBusy(true); setError(null);
-    const apiStage = action.startsWith('media.') || action.startsWith('publication.') ? 'stage4' : 'stage3';
+    const apiStage = action.startsWith('media.') || action.startsWith('publication.') ? 'stage4' : action.startsWith('api-key.') || action.startsWith('telegram-mapping.') || action.startsWith('customer.') || action.startsWith('subscription.') ? 'stage6' : 'stage3';
     const response = await fetch(`/api/cms/${apiStage}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ organizationId: commandOrganization, action, payload }) });
     const body = await response.json() as unknown;
     if (organizationRef.current !== commandOrganization) { setBusy(false); return null; }
@@ -94,7 +95,6 @@ export function CmsWorkspace({ displayName, organizations }: { readonly displayN
       <div className="cms-layout">
         <nav aria-label="CMS navigation" className="cms-nav">
           {navigation.map((item) => <button aria-current={view === item.view ? 'page' : undefined} key={item.view} onClick={() => setView(item.view)}>{item.label}</button>)}
-          <button onClick={() => setView('configuration')}>Settings</button>
         </nav>
         <main className="cms-content">
           <header><p className="eyebrow">{active?.name ?? 'No active membership'}</p><h1>{navigation.find((item) => item.view === view)?.label}</h1></header>
@@ -107,6 +107,8 @@ export function CmsWorkspace({ displayName, organizations }: { readonly displayN
           {view === 'configuration' ? <ConfigurationForms data={data} command={command} /> : null}
           {view === 'media' ? <MediaForm data={data} command={command} /> : null}
           {view === 'publishing' ? <PublishingForm data={data} command={command} /> : null}
+          {view === 'settings' ? <Stage6SettingsForm data={data} command={command} organizationId={organizationId} /> : null}
+          {view === 'customers' ? <CustomerAdminForm data={data} command={command} /> : null}
           <DataView view={view} data={data} />
         </main>
       </div>
@@ -210,5 +212,26 @@ function DataView({ view, data }: { readonly view: View; readonly data: unknown 
   }
   const source = Array.isArray(data) ? { records: data } : data as Record<string, unknown>;
   const collections = Object.entries(source).filter(([, value]) => Array.isArray(value));
-  return <div className="cms-data-grid">{collections.map(([name, values]) => <section className="cms-card" key={name}><h2>{name.replaceAll(/([A-Z])/g, ' $1')}</h2>{(values as Record<string, unknown>[]).length === 0 ? <p>No records</p> : <ul>{(values as Record<string, unknown>[]).slice(0, 20).map((item, index) => <li key={String(item.id ?? `${name}-${index}`)}>{String(item.name ?? item.title ?? item.action ?? item.key ?? item.normalizedHostname ?? item.displayName ?? item.id)}</li>)}</ul>}</section>)}</div>;
+  return <div className="cms-data-grid">{collections.map(([name, values]) => <section className="cms-card" key={name}><h2>{name.replaceAll(/([A-Z])/g, ' $1')}</h2>{(values as Record<string, unknown>[]).length === 0 ? <p>No records</p> : <ul>{(values as Record<string, unknown>[]).slice(0, 20).map((item, index) => <li key={String(item.id ?? `${name}-${index}`)}>{String(item.name ?? item.title ?? item.action ?? item.key ?? item.normalizedHostname ?? item.displayName ?? (item.customer as { name?: string } | undefined)?.name ?? item.id)}</li>)}</ul>}</section>)}</div>;
+}
+
+
+function Stage6SettingsForm({ data, command, organizationId }: { readonly data: unknown; readonly command: (action: string, payload: unknown) => Promise<unknown>; readonly organizationId: string }) {
+  const [issuedPlaintext, setIssuedPlaintext] = useState<string | null>(null);
+  const model = data as { apiKeys?: { id: string; name: string; status: string; version: number; scopes: string[] }[]; subscription?: { plan: string; status: string; version: number } | null; telegramMappings?: { id: string; userId: string; roleId: string; telegramUserId: string; telegramChatId: string; status: string; version: number }[] } | null;
+  return <div className="cms-form-grid">
+    <form className="cms-form" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); void command('api-key.issue', { name: form.get('name'), scopes: String(form.get('scopes')).split(',').map((value) => value.trim()).filter(Boolean), expiresAt: null }).then((result) => setIssuedPlaintext((result as { plaintext?: string } | null)?.plaintext ?? null)); }}><h2>Issue API key</h2><label>Name<input name="name" required /></label><label>Scopes<input name="scopes" defaultValue="article.read,publishing.read" required /></label><button type="submit">Issue API key</button>{issuedPlaintext === null ? null : <output aria-label="One-time API key">{issuedPlaintext}</output>}</form>
+    <form className="cms-form" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); const key = model?.apiKeys?.find(({ id }) => id === form.get('apiKeyId')); if (key !== undefined) void command(String(form.get('action')), { apiKeyId: key.id, expectedVersion: key.version }).then((result) => { const plaintext = (result as { plaintext?: string } | null)?.plaintext; if (plaintext !== undefined) setIssuedPlaintext(plaintext); }); }}><h2>API key lifecycle</h2><label>API key<select name="apiKeyId">{model?.apiKeys?.map((key) => <option key={key.id} value={key.id}>{key.name} · {key.status}</option>)}</select></label><label>Action<select name="action"><option value="api-key.rotate">Rotate</option><option value="api-key.revoke">Revoke</option></select></label><button type="submit">Apply API key action</button></form>
+    <form className="cms-form" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); void command('subscription.update', { organizationId, expectedVersion: model?.subscription?.version, plan: form.get('plan'), status: form.get('status'), periodStartsAt: null, periodEndsAt: null }); }}><h2>Subscription Settings</h2><label>Plan<input name="plan" defaultValue={model?.subscription?.plan ?? 'mvp'} required /></label><label>Status<select name="status" defaultValue={model?.subscription?.status ?? 'active'}><option>trialing</option><option>active</option><option>past_due</option><option>suspended</option><option>cancelled</option></select></label><button type="submit">Update Subscription</button></form>
+    <form className="cms-form" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); void command('telegram-mapping.create', { userId: form.get('userId'), roleId: form.get('roleId'), telegramUserId: form.get('telegramUserId'), telegramChatId: form.get('telegramChatId') }); }}><h2>Create Telegram mapping</h2><label>User ID<input name="userId" required /></label><label>Role ID<input name="roleId" required /></label><label>Telegram user ID<input name="telegramUserId" required /></label><label>Telegram chat ID<input name="telegramChatId" required /></label><button type="submit">Create Telegram mapping</button></form>
+    <form className="cms-form" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); const mapping = model?.telegramMappings?.find(({ id }) => id === form.get('mappingId')); if (mapping !== undefined) void command('telegram-mapping.update', { mappingId: mapping.id, expectedVersion: mapping.version, userId: mapping.userId, roleId: mapping.roleId, telegramUserId: mapping.telegramUserId, telegramChatId: mapping.telegramChatId, status: form.get('status') }); }}><h2>Telegram mapping lifecycle</h2><label>Mapping<select name="mappingId">{model?.telegramMappings?.map((mapping) => <option key={mapping.id} value={mapping.id}>{mapping.telegramUserId} · {mapping.status}</option>)}</select></label><label>Status<select name="status"><option>active</option><option>inactive</option><option>archived</option></select></label><button type="submit">Update Telegram mapping</button></form>
+  </div>;
+}
+
+function CustomerAdminForm({ data, command }: { readonly data: unknown; readonly command: (action: string, payload: unknown) => Promise<unknown> }) {
+  const customers = Array.isArray(data) ? data as { customer: { id: string; name: string; slug: string; status: string; version: number; customerMetadata: Record<string, unknown> } }[] : [];
+  return <div className="cms-form-grid">
+    <form className="cms-form" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); void command('customer.create', { name: form.get('name'), slug: form.get('slug'), customerMetadata: {}, subscription: { plan: 'mvp', status: 'trialing', periodStartsAt: null, periodEndsAt: null } }); }}><h2>Create Customer</h2><label>Name<input name="name" required /></label><label>Slug<input name="slug" required pattern="[a-z0-9-]+" /></label><button type="submit">Create Customer</button></form>
+    <form className="cms-form" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); const item = customers.find(({ customer }) => customer.id === form.get('organizationId'))?.customer; if (item !== undefined) void command('customer.update', { organizationId: item.id, expectedVersion: item.version, name: item.name, slug: item.slug, status: form.get('status'), customerMetadata: item.customerMetadata }); }}><h2>Customer lifecycle</h2><label>Customer<select name="organizationId">{customers.map(({ customer }) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select></label><label>Status<select name="status"><option>active</option><option>inactive</option><option>archived</option></select></label><button type="submit">Update Customer</button></form>
+  </div>;
 }

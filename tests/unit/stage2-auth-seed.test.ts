@@ -251,6 +251,8 @@ describe('Stage 2 seed and migration gates', () => {
     await expect(checkSchemaVersion({ readCurrentVersion: async () => 6 })).resolves.toMatchObject({ ready: false, actualVersion: 6 });
     await expect(checkSchemaVersion({ readCurrentVersion: async () => 7 })).resolves.toMatchObject({ ready: false, actualVersion: 7 });
     await expect(checkSchemaVersion({ readCurrentVersion: async () => 8 })).resolves.toMatchObject({ ready: false, actualVersion: 8 });
-    await expect(checkSchemaVersion({ readCurrentVersion: async () => 9 })).resolves.toMatchObject({ ready: true, actualVersion: 9 });
+    await expect(checkSchemaVersion({ readCurrentVersion: async () => 9 })).resolves.toMatchObject({ ready: false, actualVersion: 9 });
+    await expect(checkSchemaVersion({ readCurrentVersion: async () => 10 })).resolves.toMatchObject({ ready: false, actualVersion: 10 });
+    await expect(checkSchemaVersion({ readCurrentVersion: async () => 11 })).resolves.toMatchObject({ ready: true, actualVersion: 11 });
   });
 });

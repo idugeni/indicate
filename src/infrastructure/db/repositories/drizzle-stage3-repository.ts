@@ -36,7 +36,7 @@ export class DrizzleStage3Repository implements Stage3Repository {
       .innerJoin(roles, and(eq(roles.organizationId, memberships.organizationId), eq(roles.id, memberships.roleId)))
       .innerJoin(rolePermissions, and(eq(rolePermissions.organizationId, roles.organizationId), eq(rolePermissions.roleId, roles.id)))
       .innerJoin(permissions, eq(permissions.id, rolePermissions.permissionId))
-      .where(and(eq(memberships.organizationId, actor.organizationId), eq(memberships.userId, actor.actorId), eq(memberships.status, 'active'), eq(roles.active, true), eq(permissions.name, permission)))
+      .where(and(eq(memberships.organizationId, actor.organizationId), eq(memberships.userId, actor.actorId), eq(memberships.status, 'active'), eq(roles.active, true), eq(permissions.organizationId, actor.organizationId), eq(permissions.scope, 'organization'), eq(permissions.name, permission)))
       .limit(1).for('update', { of: memberships });
     if (grants.length !== 1) throw new Stage3AccessDeniedError();
   }
@@ -48,7 +48,7 @@ export class DrizzleStage3Repository implements Stage3Repository {
       transaction.select().from(domains).where(eq(domains.organizationId, organizationId)), transaction.select().from(regions).where(eq(regions.organizationId, organizationId)),
       transaction.select().from(sites).where(eq(sites.organizationId, organizationId)), transaction.select().from(siteSettings).where(eq(siteSettings.organizationId, organizationId)),
       transaction.select().from(roles).where(eq(roles.organizationId, organizationId)),
-      transaction.select({ roleId: rolePermissions.roleId, permission: permissions.name }).from(rolePermissions).innerJoin(permissions, eq(permissions.id, rolePermissions.permissionId)).where(eq(rolePermissions.organizationId, organizationId)),
+      transaction.select({ roleId: rolePermissions.roleId, permission: permissions.name }).from(rolePermissions).innerJoin(permissions, and(eq(permissions.id, rolePermissions.permissionId), eq(permissions.organizationId, organizationId), eq(permissions.scope, 'organization'))).where(eq(rolePermissions.organizationId, organizationId)),
       transaction.select().from(memberships).where(eq(memberships.organizationId, organizationId)),
       transaction.select().from(telegramIdentityMappings).where(eq(telegramIdentityMappings.organizationId, organizationId)),
       transaction.select().from(publishers).where(eq(publishers.organizationId, organizationId)), transaction.select().from(officialAffiliations).where(eq(officialAffiliations.organizationId, organizationId)),
@@ -157,7 +157,7 @@ export class DrizzleStage3Repository implements Stage3Repository {
         const changed = await transaction.update(roles).set({ name: row.name, active: row.active, version: row.version, updatedAt: new Date(row.updatedAt) }).where(and(eq(roles.organizationId, state.organizationId), eq(roles.id, row.id), eq(roles.version, prior.version))).returning({ id: roles.id });
         if (changed.length !== 1) throw new Stage3ConflictError();
       }
-      const permissionRows = await transaction.select({ id: permissions.id, name: permissions.name }).from(permissions).where(or(isNull(permissions.organizationId), eq(permissions.organizationId, state.organizationId)));
+      const permissionRows = await transaction.select({ id: permissions.id, name: permissions.name }).from(permissions).where(and(eq(permissions.organizationId, state.organizationId), eq(permissions.scope, 'organization')));
       const permissionByName = new Map(permissionRows.map((permission) => [permission.name, permission]));
       const selected = [...row.permissions].map((name) => permissionByName.get(name));
       if (selected.some((permission) => permission === undefined)) throw new Stage3AccessDeniedError();
