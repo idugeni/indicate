@@ -248,6 +248,7 @@ describe('Stage 2 seed and migration gates', () => {
   it('fails activation when the required schema version is absent', async () => {
     await expect(checkSchemaVersion({ readCurrentVersion: async () => null })).resolves.toMatchObject({ ready: false, actualVersion: null });
     await expect(checkSchemaVersion({ readCurrentVersion: async () => 5 })).resolves.toMatchObject({ ready: false, actualVersion: 5 });
-    await expect(checkSchemaVersion({ readCurrentVersion: async () => 6 })).resolves.toMatchObject({ ready: true, actualVersion: 6 });
+    await expect(checkSchemaVersion({ readCurrentVersion: async () => 6 })).resolves.toMatchObject({ ready: false, actualVersion: 6 });
+    await expect(checkSchemaVersion({ readCurrentVersion: async () => 7 })).resolves.toMatchObject({ ready: true, actualVersion: 7 });
   });
 });

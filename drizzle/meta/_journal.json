@@ -43,6 +43,13 @@
       "when": 1788110000000,
       "tag": "0005_stage3_discovery_outcome_timestamp",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788112000000,
+      "tag": "0006_stage4_media_publication_runtime",
+      "breakpoints": true
     }
   ]
 }

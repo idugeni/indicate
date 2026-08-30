@@ -12,4 +12,5 @@ export interface RedisCoordinationPort extends HealthCheckPort {
   schedule(logicalId: string, dueAt: Date): Promise<void>;
   claimDue(now: Date, limit: number, leaseSeconds: number): Promise<readonly QueueClaim[]>;
   acknowledge(claim: QueueClaim): Promise<void>;
+  mirrorState(organizationId: string, logicalId: string, state: string, ttlSeconds: number): Promise<void>;
 }

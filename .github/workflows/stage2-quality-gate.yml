@@ -1,4 +1,4 @@
-name: Stage 3 Quality Gate
+name: Stage 4 Quality Gate
 
 on:
   pull_request:
@@ -20,7 +20,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:stage3
+      - run: npm run test:providers:stage4
+      - run: npm run test:stage4
         env:
           CI: true
           SECRET_SCAN_SENTINEL: stage2-client-secret-sentinel
