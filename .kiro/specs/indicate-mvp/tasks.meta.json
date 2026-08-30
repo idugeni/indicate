@@ -95,6 +95,30 @@
     "9.20 Write the property test for worker fencing": {
       "status": "passed",
       "lastRunTimestamp": 1788121968946
+    },
+    "11.9 Write the property test for exact active Site resolution": {
+      "status": "passed",
+      "lastRunTimestamp": 1788126036409
+    },
+    "11.8 Write the property test for convergent hostname normalization": {
+      "status": "passed",
+      "lastRunTimestamp": 1788126505222
+    },
+    "11.10 Write the property test for reserved control-plane conflicts": {
+      "status": "passed",
+      "lastRunTimestamp": 1788126505420
+    },
+    "11.11 Write the property test for hostname-correct safe SEO": {
+      "status": "passed",
+      "lastRunTimestamp": 1788126848147
+    },
+    "11.12 Write the property test for complete cache partitioning": {
+      "status": "passed",
+      "lastRunTimestamp": 1788126506220
+    },
+    "11.13 Write the property test for affected-surface invalidation": {
+      "status": "passed",
+      "lastRunTimestamp": 1788126506417
     }
   },
   "executionHistory": {}

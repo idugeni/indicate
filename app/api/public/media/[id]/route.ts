@@ -1,0 +1,9 @@
+import { headers } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { getRuntimeConfig } from '@/config/server';
+import { createRuntimeDatabase } from '@/infrastructure/db/client';
+import { DrizzleStage4Repository } from '@/infrastructure/db/repositories/drizzle-stage4-repository';
+import { R2ObjectStorageAdapter } from '@/infrastructure/storage/r2-object-storage';
+import { stage5Composition } from '../../../../stage5-composition';
+export const dynamic = 'force-dynamic';
+export async function GET(_request: Request, { params }: { readonly params: Promise<{ id: string }> }) { const requestId = crypto.randomUUID(); const { id } = await params; const result = await stage5Composition().resolver.classify((await headers()).get('host')); if (result.kind !== 'site' || process.env.STAGE2_E2E_MODE === '1') return new NextResponse(null, { status: 404, headers: { 'Cache-Control': 'no-store' } }); const config = getRuntimeConfig(); const runtime = createRuntimeDatabase(config); try { const repository = new DrizzleStage4Repository(runtime.db); const asset = await repository.authorizePublicMedia(result.context, id, requestId); if (asset === null || asset.state !== 'active') return new NextResponse(null, { status: 404, headers: { 'Cache-Control': 'no-store' } }); const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey }); const authorization = await storage.authorizeExactGet(asset.objectKey, config.r2.readTtlSeconds); return NextResponse.redirect(authorization.url, { status: 307, headers: { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' } }); } catch { return new NextResponse(null, { status: 404, headers: { 'Cache-Control': 'no-store' } }); } finally { await runtime.close(); } }

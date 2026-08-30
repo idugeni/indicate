@@ -22,7 +22,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], launchOptions: { args: ['--host-resolver-rules=MAP alpha.example.web.id 127.0.0.1, MAP wonosobo.alpha.example.web.id 127.0.0.1, MAP unknown.example.web.id 127.0.0.1'] } },
     },
   ],
   webServer: {

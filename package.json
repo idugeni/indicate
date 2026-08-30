@@ -31,13 +31,16 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:postgres:stage2": "vitest run --config vitest.integration.config.ts tests/integration/stage2-postgres-live.integration.test.ts",
     "test:postgres:stage4": "vitest run --config vitest.integration.config.ts tests/integration/stage4-postgres-live.integration.test.ts",
+    "test:postgres:stage5": "vitest run --config vitest.integration.config.ts tests/integration/stage5-postgres-live.integration.test.ts",
     "test:providers:stage4": "vitest run --config vitest.integration.config.ts tests/integration/stage4-provider-live.integration.test.ts",
-    "test:postgres:live": "npm run test:postgres:stage2 && npm run test:postgres:stage4",
+    "test:providers:stage5": "vitest run --config vitest.integration.config.ts tests/integration/stage5-provider-live.integration.test.ts",
+    "test:postgres:live": "npm run test:postgres:stage2 && npm run test:postgres:stage4 && npm run test:postgres:stage5",
     "test:e2e": "playwright test",
     "test:stage1": "npm run config:validate:stage1 && npm run typecheck && npm run lint && npm run test:unit && npm run test:property && npm run test:integration && npm run build:secure && npm run test:e2e",
     "test:stage2": "npm run config:validate:stage1 && npm run typecheck && npm run lint && npm run test:unit && npm run test:property && npm run test:integration && npm run build:secure && npm run test:e2e",
     "test:stage3": "npm run config:validate:stage1 && npm run typecheck && npm run lint && npm run test:unit && npm run test:property && npm run test:integration && npm run build:secure && npm run test:e2e",
-    "test:stage4": "npm run config:validate:stage1 && npm run typecheck && npm run lint && npm run test:unit && npm run test:property && npm run test:integration && npm run build:secure && npm run test:e2e"
+    "test:stage4": "npm run config:validate:stage1 && npm run typecheck && npm run lint && npm run test:unit && npm run test:property && npm run test:integration && npm run build:secure && npm run test:e2e",
+    "test:stage5": "npm run config:validate:stage1 && npm run typecheck && npm run lint && npm run test:unit && npm run test:property && npm run test:integration && npm run build:secure && npm run test:e2e"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1121.0",

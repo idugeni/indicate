@@ -6,10 +6,11 @@ import type { AuditRecord, Stage3TenantState } from '@/domain/stage3/models';
 import { Stage3AccessDeniedError, Stage3ConflictError, type MutableTenantState, type Stage3Repository, type Stage3Transaction } from '@/ports/stage3-repository';
 import { redact } from '@/shared/security/redaction';
 import {
-  apiKeys, articleSites, articles, auditLogs, authors, categories, domains, media, memberships, officialAffiliations, organizations,
+  apiKeys, articleSites, articles, auditLogs, authors, categories, domains, invalidationTasks, media, memberships, officialAffiliations, organizations,
   permissions, publishers, publishingJobs, publishingJobTargets, regions, rolePermissions, roles, sites, siteSettings, telegramIdentityMappings, users,
 } from '../schema';
 import type * as schema from '../schema';
+import { completeInvalidationValues } from './stage5-invalidation-values';
 
 type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -192,6 +193,41 @@ export class DrizzleStage3Repository implements Stage3Repository {
     for (const row of state.authors) await transaction.insert(authors).values({ organizationId: state.organizationId, id: row.id, displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [authors.organizationId, authors.id], set: { displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
     for (const row of state.articles) await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, slug: row.slug, title: row.title, body: row.body, source: row.source, status: row.status, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, slug: row.slug, title: row.title, body: row.body, source: row.source, status: row.status, archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
     for (const row of state.articleSites) await transaction.insert(articleSites).values({ organizationId: state.organizationId, id: row.id, articleId: row.articleId, siteId: row.siteId, state: row.state, stateOccurredAt: new Date(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), active: row.active, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articleSites.organizationId, articleSites.id], set: { state: row.state, stateOccurredAt: new Date(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), active: row.active, version: row.version, updatedAt: new Date(row.updatedAt) } });
+    await this.enqueueStage5Invalidations(transaction, before, state);
     if (pendingAudits.length > 0) await transaction.insert(auditLogs).values(pendingAudits.map((row) => ({ organizationId: row.organizationId, id: row.id, actorType: row.actorType, actorId: row.actorId, entryPoint: row.entryPoint, action: row.action, targetType: row.targetType, targetId: row.targetId, outcome: row.outcome, changedFields: [...row.changedFields], before: row.before, after: row.after, requestId: row.requestId, occurredAt: new Date(row.occurredAt) })));
+  }
+
+  private async enqueueStage5Invalidations(transaction: Transaction, before: Stage3TenantState, state: MutableTenantState): Promise<void> {
+    type Aggregate = { siteId: string; previousHostname: string | null; currentHostname: string | null; reasons: Set<string>; articleSlugs: Set<string>; categorySlugs: Set<string> };
+    const affected = new Map<string, Aggregate>();
+    const priorSite = (siteId: string) => before.sites.find((site) => site.id === siteId);
+    const currentSite = (siteId: string) => state.sites.find((site) => site.id === siteId);
+    const add = (siteId: string, reason: string, articleSlugs: readonly string[] = [], categorySlugs: readonly string[] = []) => {
+      const prior = priorSite(siteId); const current = currentSite(siteId); if (prior === undefined && current === undefined) return;
+      const aggregate = affected.get(siteId) ?? { siteId, previousHostname: prior?.normalizedHostname ?? null, currentHostname: current?.normalizedHostname ?? null, reasons: new Set<string>(), articleSlugs: new Set<string>(), categorySlugs: new Set<string>() };
+      aggregate.reasons.add(reason); for (const slug of articleSlugs) aggregate.articleSlugs.add(slug); for (const slug of categorySlugs) aggregate.categorySlugs.add(slug); affected.set(siteId, aggregate);
+    };
+    const changed = (left: unknown, right: unknown) => JSON.stringify(left) !== JSON.stringify(right);
+    const articleDetails = (articleId: string) => {
+      const prior = before.articles.find((article) => article.id === articleId); const current = state.articles.find((article) => article.id === articleId);
+      const categoryIds = [prior?.categoryId, current?.categoryId].filter((id): id is string => id !== null && id !== undefined);
+      const categorySlugs = categoryIds.flatMap((id) => [before.categories.find((category) => category.id === id)?.slug, state.categories.find((category) => category.id === id)?.slug]).filter((slug): slug is string => slug !== undefined);
+      return { slugs: [prior?.slug, current?.slug].filter((slug): slug is string => slug !== undefined), categorySlugs };
+    };
+    for (const site of state.sites) { const prior = priorSite(site.id); if (prior !== undefined && changed({ host: prior.normalizedHostname, region: prior.regionId, status: prior.status, activation: prior.activationState }, { host: site.normalizedHostname, region: site.regionId, status: site.status, activation: site.activationState })) add(site.id, 'site.mapping'); }
+    for (const region of state.regions) { const prior = before.regions.find((item) => item.id === region.id); if (prior !== undefined && changed(prior, region)) for (const site of state.sites.filter((item) => item.regionId === region.id)) add(site.id, 'region.changed'); }
+    for (const settings of state.siteSettings) { const prior = before.siteSettings.find((item) => item.siteId === settings.siteId); if (prior !== undefined && changed(prior, settings)) add(settings.siteId, 'site_settings.changed'); }
+    for (const article of state.articles) {
+      const prior = before.articles.find((item) => item.id === article.id); if (prior === undefined || !changed(prior, article)) continue;
+      const details = articleDetails(article.id);
+      const relations = [...before.articleSites, ...state.articleSites].filter((relation) => relation.articleId === article.id);
+      for (const relation of relations) add(relation.siteId, 'article.changed', details.slugs, details.categorySlugs);
+    }
+    for (const relation of state.articleSites) { const prior = before.articleSites.find((item) => item.id === relation.id); if (prior === undefined || changed(prior, relation)) { const details = articleDetails(relation.articleId); add(relation.siteId, 'article_site.changed', details.slugs, details.categorySlugs); if (prior !== undefined && prior.siteId !== relation.siteId) add(prior.siteId, 'article_site.changed', details.slugs, details.categorySlugs); } }
+    for (const publisher of state.publishers) { const prior = before.publishers.find((item) => item.id === publisher.id); if (prior === undefined || !changed(prior, publisher)) continue; for (const article of state.articles.filter((item) => item.publisherId === publisher.id)) { const details = articleDetails(article.id); for (const relation of state.articleSites.filter((item) => item.articleId === article.id)) add(relation.siteId, 'publisher.changed', details.slugs, details.categorySlugs); } }
+    for (const affiliation of state.affiliations) { const prior = before.affiliations.find((item) => item.id === affiliation.id); if (prior !== undefined && !changed(prior, affiliation)) continue; const publisherIds = [prior?.publisherId, affiliation.publisherId].filter((id): id is string => id !== undefined); const siteIds = [prior?.siteId, affiliation.siteId].filter((id): id is string => id !== undefined); for (const article of state.articles.filter((item) => item.publisherId !== null && publisherIds.includes(item.publisherId))) { const details = articleDetails(article.id); for (const siteId of siteIds) if (state.articleSites.some((item) => item.articleId === article.id && item.siteId === siteId)) add(siteId, 'affiliation.changed', details.slugs, details.categorySlugs); } }
+    for (const category of state.categories) { const prior = before.categories.find((item) => item.id === category.id); if (prior === undefined || !changed(prior, category)) continue; for (const article of state.articles.filter((item) => item.categoryId === category.id)) { const details = articleDetails(article.id); for (const relation of state.articleSites.filter((item) => item.articleId === article.id)) add(relation.siteId, 'category.changed', details.slugs, [...details.categorySlugs, category.slug]); } }
+    for (const author of state.authors) { const prior = before.authors.find((item) => item.id === author.id); if (prior === undefined || !changed(prior, author)) continue; for (const article of state.articles.filter((item) => item.authorId === author.id)) { const details = articleDetails(article.id); for (const relation of state.articleSites.filter((item) => item.articleId === article.id)) add(relation.siteId, 'author.changed', details.slugs, details.categorySlugs); } }
+    for (const aggregate of affected.values()) await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId: state.organizationId, siteId: aggregate.siteId, previousHostname: aggregate.previousHostname, currentHostname: aggregate.currentHostname, reason: [...aggregate.reasons].sort().join(','), articleSlugs: [...aggregate.articleSlugs], categorySlugs: [...aggregate.categorySlugs] }));
   }
 }

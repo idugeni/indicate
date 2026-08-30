@@ -17,11 +17,12 @@ import {
 } from '@/ports/stage4-repository';
 import { redact } from '@/shared/security/redaction';
 import {
-  articleSites, articles, auditLogs, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks,
-  organizations, permissions, publicationTransitionReceipts, publishingJobs, publishingJobTargets, rolePermissions,
+  articleSites, articles, auditLogs, categories, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks,
+  organizations, permissions, publicationTransitionReceipts, publishingJobs, publishingJobTargets, regions, rolePermissions,
   roles, sites, siteSettings,
 } from '../schema';
 import type * as schema from '../schema';
+import { completeInvalidationValues } from './stage5-invalidation-values';
 
 type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -109,6 +110,16 @@ export class DrizzleStage4Repository implements Stage4Repository {
     const rows = await transaction.insert(publicationTransitionReceipts).values({ organizationId: job.organizationId, id: crypto.randomUUID(), transitionId: crypto.randomUUID(), jobId: job.id, targetId, fromState, toState, fencingToken: job.fencingToken, acknowledgedAt: acknowledged ? now : null, createdAt: now }).returning();
     return rows[0]!;
   }
+  private async enqueuePublicInvalidation(transaction: Transaction, organizationId: string, siteId: string, reason: string, now: Date, articleId?: string, mediaId?: string): Promise<void> {
+    const siteRows = await transaction.select({ hostname: sites.normalizedHostname }).from(sites).where(and(eq(sites.organizationId, organizationId), eq(sites.id, siteId))).limit(1);
+    const site = siteRows[0]; if (site === undefined) return;
+    let articleSlugs: string[] = []; let categorySlugs: string[] = [];
+    if (articleId !== undefined) {
+      const rows = await transaction.select({ articleSlug: articles.slug, categorySlug: categories.slug }).from(articles).leftJoin(categories, and(eq(categories.organizationId, articles.organizationId), eq(categories.id, articles.categoryId))).where(and(eq(articles.organizationId, organizationId), eq(articles.id, articleId))).limit(1);
+      if (rows[0] !== undefined) { articleSlugs = [rows[0].articleSlug]; if (rows[0].categorySlug !== null) categorySlugs = [rows[0].categorySlug]; }
+    }
+    await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId, siteId, currentHostname: site.hostname, reason, articleSlugs, categorySlugs, mediaIds: mediaId === undefined ? [] : [mediaId], now }));
+  }
 
   async recordDenial(actor: AuthorizedTenantActorContext, action: string, targetType: string, now: string): Promise<void> {
     await this.database.transaction(async (transaction) => {
@@ -157,7 +168,7 @@ export class DrizzleStage4Repository implements Stage4Repository {
       const rows = await transaction.insert(media).values({ organizationId: actor.organizationId, id: input.mediaId, objectKey: reservation.objectKey, purpose: reservation.purpose, mediaType: input.mediaType, sizeBytes: input.sizeBytes, checksum: input.checksum, ...ownerColumns(ownerFromRow(reservation)), state: 'active', createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning();
       await transaction.update(mediaKeyReservations).set({ status: 'used', updatedAt: new Date(input.now) }).where(and(eq(mediaKeyReservations.organizationId, actor.organizationId), eq(mediaKeyReservations.id, reservation.id)));
       const affected = reservation.siteId !== null ? [reservation.siteId] : reservation.articleId !== null ? (await transaction.select({ siteId: articleSites.siteId }).from(articleSites).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.articleId, reservation.articleId), eq(articleSites.active, true)))).map(({ siteId }) => siteId) : [];
-      for (const siteId of new Set(affected)) await transaction.insert(invalidationTasks).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), siteId, tags: [`site:${siteId}`, `media:${input.mediaId}`], urls: [], reason: 'media.activated', status: 'pending' });
+      for (const siteId of new Set(affected)) await this.enqueuePublicInvalidation(transaction, actor.organizationId, siteId, 'media.activated', new Date(input.now), reservation.articleId ?? undefined, input.mediaId);
       await this.audit(transaction, actor, 'media.activate', 'media', input.mediaId, { objectKey: reservation.objectKey, purpose: reservation.purpose }, new Date(input.now));
       return mapMedia(rows[0]!);
     });
@@ -186,7 +197,7 @@ export class DrizzleStage4Repository implements Stage4Repository {
       const articleRefs = await transaction.select({ siteId: articleSites.siteId }).from(articleSites)
         .innerJoin(articles, and(eq(articles.organizationId, articleSites.organizationId), eq(articles.id, articleSites.articleId)))
         .where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.active, true), eq(articleSites.state, 'published'), eq(articles.status, 'active'), articleReference));
-      for (const siteId of new Set([...settingsRefs, ...articleRefs].map(({ siteId }) => siteId))) await transaction.insert(invalidationTasks).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), siteId, tags: [`site:${siteId}`, `media:${mediaId}`], urls: [], reason: 'media.archived', status: 'pending' });
+      for (const siteId of new Set([...settingsRefs, ...articleRefs].map(({ siteId }) => siteId))) await this.enqueuePublicInvalidation(transaction, actor.organizationId, siteId, 'media.archived', new Date(now), existing.articleId ?? undefined, mediaId);
       await this.audit(transaction, actor, 'media.archive', 'media', mediaId, { state: 'archived' }, new Date(now));
       return mapMedia(rows[0]!);
     });
@@ -210,13 +221,16 @@ export class DrizzleStage4Repository implements Stage4Repository {
     return this.database.transaction(async (transaction) => {
       await this.context(transaction, context.organizationId, `public:${context.siteId}`, requestId);
       const mediaRows = await transaction.select().from(media).where(and(eq(media.organizationId, context.organizationId), eq(media.id, mediaId), eq(media.state, 'active'))).limit(1);
-      const siteRows = await transaction.select().from(sites).where(and(eq(sites.organizationId, context.organizationId), eq(sites.id, context.siteId), eq(sites.status, 'active'), eq(sites.activationState, 'active'))).limit(1);
+      const siteRows = await transaction.select({ site: sites }).from(sites)
+        .innerJoin(domains, and(eq(domains.organizationId, sites.organizationId), eq(domains.id, sites.domainId), eq(domains.status, 'active')))
+        .leftJoin(regions, and(eq(regions.organizationId, sites.organizationId), eq(regions.id, sites.regionId)))
+        .where(and(eq(sites.organizationId, context.organizationId), eq(sites.id, context.siteId), eq(sites.normalizedHostname, context.normalizedHostname), eq(sites.status, 'active'), eq(sites.activationState, 'active'), eq(sites.routingVersion, context.routingVersion), or(sql`${sites.regionId} IS NULL`, eq(regions.status, 'active')))).limit(1);
       if (mediaRows[0] === undefined || siteRows[0] === undefined) return null;
       const settings = await transaction.select().from(siteSettings).where(and(eq(siteSettings.organizationId, context.organizationId), eq(siteSettings.siteId, context.siteId))).limit(1);
       const relations = await transaction.select().from(articleSites).where(and(eq(articleSites.organizationId, context.organizationId), eq(articleSites.siteId, context.siteId), eq(articleSites.active, true)));
       const articleRows = await transaction.select({ id: articles.id, status: articles.status, leadMediaId: articles.leadMediaId }).from(articles).where(eq(articles.organizationId, context.organizationId));
       const asset = mapMedia(mediaRows[0]);
-      const site = { id: siteRows[0].id, organizationId: context.organizationId, active: true, normalizedHostname: siteRows[0].normalizedHostname, settingsMediaIds: settings[0] === undefined ? [] : [settings[0].logoMediaId, settings[0].faviconMediaId, settings[0].fallbackMediaId].filter((value): value is string => value !== null) };
+      const site = { id: siteRows[0].site.id, organizationId: context.organizationId, active: true, normalizedHostname: siteRows[0].site.normalizedHostname, settingsMediaIds: settings[0] === undefined ? [] : [settings[0].logoMediaId, settings[0].faviconMediaId, settings[0].fallbackMediaId].filter((value): value is string => value !== null) };
       const refs = relations.map((row) => ({ id: row.id, organizationId: row.organizationId, articleId: row.articleId, siteId: row.siteId, active: row.active, state: row.state, publishedUrl: row.publishedUrl, publishedAt: optionalIso(row.publishedAt), version: row.version }));
       const articleRefs = articleRows.map((row) => ({ id: row.id, organizationId: context.organizationId, active: row.status === 'active', leadMediaId: row.leadMediaId }));
       if (!canPublicAccessMedia({ context, media: asset, site, articles: articleRefs, articleSites: refs })) return null;
@@ -370,6 +384,10 @@ export class DrizzleStage4Repository implements Stage4Repository {
       const targetRows = await transaction.update(publishingJobTargets).set({ state: input.toState, attempt: input.toState === 'processing' ? target.attempt + 1 : target.attempt, fencingToken: claim.fencingToken, nextAttemptAt: input.nextAttemptAt === undefined ? target.nextAttemptAt : new Date(input.nextAttemptAt), startedAt: input.toState === 'processing' ? new Date(input.now) : target.startedAt, finishedAt: input.toState === 'published' || input.toState === 'failed' ? new Date(input.now) : null, publishedUrl: input.toState === 'published' ? input.publishedUrl ?? null : target.publishedUrl, publishedAt: input.toState === 'published' ? new Date(input.now) : target.publishedAt, sanitizedError: input.sanitizedError ?? (input.toState === 'processing' ? null : target.sanitizedError), updatedAt: new Date(input.now) }).where(and(eq(publishingJobTargets.organizationId, claim.organizationId), eq(publishingJobTargets.id, target.id), eq(publishingJobTargets.fencingToken, target.fencingToken))).returning();
       if (targetRows.length !== 1) throw new Stage4ConflictError('stale_fence');
       await transaction.update(articleSites).set({ state: input.toState, stateOccurredAt: new Date(input.now), publishedUrl: input.toState === 'published' ? input.publishedUrl ?? null : null, publishedAt: input.toState === 'published' ? new Date(input.now) : null, sanitizedFailure: input.sanitizedError ?? null, attempt: input.toState === 'processing' ? target.attempt + 1 : target.attempt, version: sql`${articleSites.version} + 1`, updatedAt: new Date(input.now) }).where(and(eq(articleSites.organizationId, claim.organizationId), eq(articleSites.id, target.articleSiteId)));
+      if (input.toState === 'published') {
+        const relation = (await transaction.select({ siteId: articleSites.siteId, articleId: articleSites.articleId }).from(articleSites).where(and(eq(articleSites.organizationId, claim.organizationId), eq(articleSites.id, target.articleSiteId))).limit(1))[0];
+        if (relation !== undefined) await this.enqueuePublicInvalidation(transaction, claim.organizationId, relation.siteId, 'publication.published', new Date(input.now), relation.articleId);
+      }
       const stateRows = await transaction.select({ state: publishingJobTargets.state }).from(publishingJobTargets).where(and(eq(publishingJobTargets.organizationId, claim.organizationId), eq(publishingJobTargets.jobId, claim.jobId)));
       let aggregate = aggregateJobState(stateRows.map(({ state }) => state)); if (aggregate === 'queued') aggregate = 'processing';
       const terminal = aggregate === 'published' || aggregate === 'failed';

@@ -31,6 +31,14 @@ const required = [
   'find_stage4_expired_leases',
   'claim_stage4_transition_receipts',
   'claim_stage4_cleanup_tasks',
+  'claim_stage5_invalidation_tasks',
+  'resolve_stage5_public_host',
+  'is_stage5_pending_host',
+  'claim_stage5_activation_attempts',
+  'complete_stage5_invalidation',
+  'fail_stage5_invalidation',
+  'stage5_site_hostname_guard',
+  'cache_bypasses',
 ];
 const failures = required.filter((fragment) => !combined.includes(fragment));
 if (!editorialSchema.includes("check('media_key_reservation_owner_prefix'")) failures.push('Drizzle reservation prefix constraint is missing migration parity');

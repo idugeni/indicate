@@ -303,16 +303,23 @@ export const domainActivationAttempts = pgTable('domain_activation_attempts', {
   id: uuid('id').notNull(),
   siteId: uuid('site_id').notNull(),
   hostname: text('hostname').notNull(),
+  previousHostname: text('previous_hostname'),
+  operation: text('operation').$type<'activate' | 'deactivate'>().default('activate').notNull(),
   phase: text('phase').notNull(),
   status: taskStatus('status').default('pending').notNull(),
   attempts: integer('attempts').default(0).notNull(),
   nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).defaultNow().notNull(),
+  reconciliationClaimToken: uuid('reconciliation_claim_token'),
+  reconciliationClaimExpiresAt: timestamp('reconciliation_claim_expires_at', { withTimezone: true }),
+  sanitizedFailure: jsonb('sanitized_failure').$type<Record<string, unknown>>(),
   externalStatus: jsonb('external_status').$type<Record<string, unknown>>().default({}).notNull(),
   ...timestamps,
 }, (table) => [
   primaryKey({ name: 'domain_activation_attempts_pk', columns: [table.organizationId, table.id] }),
   foreignKey({ name: 'domain_activation_attempts_site_fk', columns: [table.organizationId, table.siteId], foreignColumns: [sites.organizationId, sites.id] }).onDelete('cascade'),
   index('domain_activation_attempts_due_idx').on(table.status, table.nextAttemptAt),
+  index('domain_activation_attempts_claim_idx').on(table.status, table.nextAttemptAt, table.reconciliationClaimExpiresAt),
+  check('domain_activation_attempts_operation_check', sql`${table.operation} IN ('activate', 'deactivate')`),
   check('domain_activation_attempts_nonnegative', sql`${table.attempts} >= 0`),
 ]);
 
@@ -323,17 +330,36 @@ export const invalidationTasks = pgTable('invalidation_tasks', {
   previousHostname: text('previous_hostname'),
   currentHostname: text('current_hostname'),
   tags: text('tags').array().default(sql`ARRAY[]::text[]`).notNull(),
+  paths: text('paths').array().default(sql`ARRAY[]::text[]`).notNull(),
   urls: text('urls').array().default(sql`ARRAY[]::text[]`).notNull(),
   reason: text('reason').notNull(),
   status: taskStatus('status').default('pending').notNull(),
   attempts: integer('attempts').default(0).notNull(),
   nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).defaultNow().notNull(),
+  reconciliationClaimToken: uuid('reconciliation_claim_token'),
+  reconciliationClaimExpiresAt: timestamp('reconciliation_claim_expires_at', { withTimezone: true }),
   sanitizedFailure: jsonb('sanitized_failure').$type<Record<string, unknown>>(),
   ...timestamps,
 }, (table) => [
   primaryKey({ name: 'invalidation_tasks_pk', columns: [table.organizationId, table.id] }),
+  unique('invalidation_tasks_id_unique').on(table.id),
   foreignKey({ name: 'invalidation_tasks_site_fk', columns: [table.organizationId, table.siteId], foreignColumns: [sites.organizationId, sites.id] }).onDelete('cascade'),
   index('invalidation_tasks_due_idx').on(table.status, table.nextAttemptAt),
+  index('invalidation_tasks_claim_idx').on(table.status, table.reconciliationClaimExpiresAt),
+  check('invalidation_tasks_attempts_nonnegative', sql`${table.attempts} >= 0`),
+]);
+
+export const cacheBypasses = pgTable('cache_bypasses', {
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
+  siteId: uuid('site_id').notNull(),
+  bypass: boolean('bypass').default(true).notNull(),
+  version: integer('version').default(1).notNull(),
+  reason: text('reason').notNull(),
+  ...timestamps,
+}, (table) => [
+  primaryKey({ name: 'cache_bypasses_pk', columns: [table.organizationId, table.siteId] }),
+  foreignKey({ name: 'cache_bypasses_site_fk', columns: [table.organizationId, table.siteId], foreignColumns: [sites.organizationId, sites.id] }).onDelete('cascade'),
+  check('cache_bypasses_version_positive', sql`${table.version} > 0`),
 ]);
 
 void domains;

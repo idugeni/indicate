@@ -3,6 +3,7 @@ import type { HealthCheckPort } from '@/ports/health-check';
 export interface CloudflareZoneStatus {
   readonly hostname: string;
   readonly nameserversAuthoritative: boolean;
+  readonly publicDelegationAuthoritative: boolean;
   readonly apexProxied: boolean;
   readonly wildcardProxied: boolean;
   readonly sslMode: 'full_strict';
