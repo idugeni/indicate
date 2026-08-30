@@ -18,7 +18,7 @@ import { UuidGenerator } from '@/infrastructure/system/uuid-generator';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const projectRoot = resolve(import.meta.dirname, '../..');
-const migrationFiles = ['drizzle/0000_stage2_core_schema.sql', 'drizzle/0001_stage2_security.sql', 'drizzle/0002_stage2_publisher_actor_constraints.sql', 'drizzle/0003_stage2_authorization_hardening.sql', 'drizzle/0004_stage3_verified_user_context.sql', 'drizzle/0005_stage3_discovery_outcome_timestamp.sql', 'drizzle/0006_stage4_media_publication_runtime.sql'];
+const migrationFiles = ['drizzle/0000_stage2_core_schema.sql', 'drizzle/0001_stage2_security.sql', 'drizzle/0002_stage2_publisher_actor_constraints.sql', 'drizzle/0003_stage2_authorization_hardening.sql', 'drizzle/0004_stage3_verified_user_context.sql', 'drizzle/0005_stage3_discovery_outcome_timestamp.sql', 'drizzle/0006_stage4_media_publication_runtime.sql', 'drizzle/0007_stage5_public_delivery.sql', 'drizzle/0008_stage5_production_boundaries.sql'];
 const runtimePassword = 'stage2-runtime-contract-password';
 
 const ids = {
@@ -557,6 +557,8 @@ suite('live PostgreSQL Stage 2 contract', () => {
       ${ids.organizationA}::uuid, ${ids.publisher}::uuid, 'Live Publisher', 'organization', 'Live Publisher',
       'proof/live', 'verified', ${ids.actorUser}::uuid, now(), ${ids.actorUser}::uuid, now()
     )`;
+    await ownerClient`UPDATE articles SET publisher_id = ${ids.publisher}::uuid
+      WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.articleA}::uuid`;
     await ownerClient`INSERT INTO official_affiliations (
       organization_id, id, publisher_id, site_id, institution_name, claim_scopes, evidence_reference, active, verified_at
     ) VALUES (
@@ -582,6 +584,18 @@ suite('live PostgreSQL Stage 2 contract', () => {
 
     const service = new TenantBusinessService(new DrizzleStage3Repository(runtimeDatabase), new UuidGenerator());
     const runtimeActor = actor(new Set(['publisher.read', 'publisher.verify', 'analytics.read'])) as ReturnType<typeof actor> & { organizationId: string };
+    const createdAffiliation = await service.createAffiliation(runtimeActor, {
+      publisherId: ids.publisher,
+      siteId: ids.siteASecond,
+      institutionName: 'Second Institution',
+      claimScopes: ['site_name'],
+      evidenceReference: 'proof/second',
+    });
+    expect(createdAffiliation).toMatchObject({ ok: true, value: { publisherId: ids.publisher, siteId: ids.siteASecond } });
+    const affiliationInvalidations = await ownerClient<{ reason: string }[]>`SELECT reason FROM invalidation_tasks
+      WHERE organization_id = ${ids.organizationA}::uuid AND site_id = ${ids.siteASecond}::uuid
+        AND reason LIKE '%affiliation.changed%'`;
+    expect(affiliationInvalidations).toHaveLength(1);
     const updated = await service.updateAffiliation(runtimeActor, {
       id: ids.affiliation, expectedVersion: 1, institutionName: 'Updated Institution',
       claimScopes: ['site_name', 'article_attribution'], evidenceReference: 'proof/updated', active: true,

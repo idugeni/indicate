@@ -1,6 +1,6 @@
 import type { SchemaGateResult, SchemaVersionPort } from '@/ports/schema-version';
 
-export const REQUIRED_SCHEMA_VERSION = 7;
+export const REQUIRED_SCHEMA_VERSION = 9;
 
 export async function checkSchemaVersion(
   port: SchemaVersionPort,

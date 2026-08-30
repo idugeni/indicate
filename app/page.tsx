@@ -1,43 +1,14 @@
+import type { Metadata } from 'next';
+import { headers } from 'next/headers';
+import { notFound } from 'next/navigation';
+import { buildSeoDocument } from '@/application/stage5/seo';
 import { Badge } from '@/shared/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { ListingPage } from './public-template';
+import { stage5Composition } from './stage5-composition';
 
-const topology = [
-  ['Application', 'One Next.js App Router deployment'],
-  ['Identity and data', 'One Supabase project with Auth and PostgreSQL'],
-  ['Media', 'One private Cloudflare R2 bucket'],
-  ['Coordination', 'One Upstash Redis resource'],
-  ['Network authority', 'Cloudflare DNS, TLS proxy, and CDN'],
-  ['Hosting', 'One Vercel project with exact domains only'],
-] as const;
-
-export default function FoundationPage() {
-  return (
-    <main className="min-h-screen bg-background px-6 py-16 text-foreground" data-stage="foundation">
-      <section className="mx-auto flex w-full max-w-5xl flex-col gap-8" aria-labelledby="page-title">
-        <div className="space-y-4">
-          <Badge>Major Stage 1</Badge>
-          <h1 id="page-title" className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
-            One secure foundation for every Indicate publication.
-          </h1>
-          <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-            The control plane is ready for tenant-safe services. Public domains remain data-driven,
-            Cloudflare-authoritative, and isolated within one shared application topology.
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2" aria-label="Approved shared topology">
-          {topology.map(([title, description]) => (
-            <Card key={title}>
-              <CardHeader>
-                <CardTitle>{title}</CardTitle>
-              </CardHeader>
-              <CardContent>{description}</CardContent>
-            </Card>
-          ))}
-        </div>
-        <p className="text-sm text-muted-foreground" role="status">
-          Foundation healthy. Tenant data services are intentionally unavailable until their gated stage.
-        </p>
-      </section>
-    </main>
-  );
-}
+export const dynamic = 'force-dynamic';
+const topology = [['Application', 'One Next.js App Router deployment'], ['Identity and data', 'One Supabase project with Auth and PostgreSQL'], ['Media', 'One private Cloudflare R2 bucket'], ['Coordination', 'One Upstash Redis resource'], ['Network authority', 'Cloudflare DNS, TLS proxy, and CDN'], ['Hosting', 'One Vercel project with exact domains only']] as const;
+async function classify() { const requestHeaders = await headers(); const composition = stage5Composition(); return { ...composition, classification: await composition.resolver.classify(requestHeaders.get('host')) }; }
+export async function generateMetadata(): Promise<Metadata> { const { classification, content, config } = await classify(); if (classification.kind === 'control') return { title: 'Indicate Control Plane', description: 'Shared control plane for the Indicate publishing platform.', robots: { index: false, follow: false } }; if (classification.kind === 'ambiguous') return { title: 'Configuration Error', robots: { index: false, follow: false } }; if (classification.kind !== 'site') return { title: 'Not Found', robots: { index: false, follow: false } }; const site = await content.load(classification.context, {}, { path: '/', locale: config.seo.defaultLocale }); if (site === null) return { robots: { index: false, follow: false } }; const seo = buildSeoDocument(site, { path: '/' }); return { title: seo.title, description: seo.description, robots: { index: true, follow: true }, icons: site.settings.faviconUrl === null ? undefined : { icon: site.settings.faviconUrl }, alternates: { canonical: seo.canonical! }, openGraph: { ...seo.openGraph!, images: [seo.openGraph!.image] } }; }
+export default async function RootPage() { const { classification, content, config } = await classify(); if (classification.kind === 'control' && classification.surface === 'cms') return <main className="min-h-screen bg-background px-6 py-16 text-foreground" data-stage="foundation"><section className="mx-auto flex w-full max-w-5xl flex-col gap-8" aria-labelledby="page-title"><div className="space-y-4"><Badge>Shared Control Plane</Badge><h1 id="page-title" className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">One secure foundation for every Indicate publication.</h1><p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">The control plane is ready for tenant-safe services. Public domains remain data-driven, Cloudflare-authoritative, and isolated within one shared application topology.</p></div><div className="grid gap-4 md:grid-cols-2" aria-label="Approved shared topology">{topology.map(([title, description]) => <Card key={title}><CardHeader><CardTitle>{title}</CardTitle></CardHeader><CardContent>{description}</CardContent></Card>)}</div><p className="text-sm text-muted-foreground" role="status">Foundation healthy. Tenant data services are intentionally unavailable until their gated stage.</p></section></main>; if (classification.kind === 'ambiguous') throw new Error('AMBIGUOUS_PUBLIC_HOST_CONFIGURATION'); if (classification.kind !== 'site') notFound(); const site = await content.load(classification.context, {}, { path: '/', locale: config.seo.defaultLocale }); if (site === null) notFound(); return <ListingPage site={site} title={site.settings.name} />; }

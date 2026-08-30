@@ -3,6 +3,7 @@ import type { HealthCheckPort } from '@/ports/health-check';
 export interface ExactDomainAssociationResult {
   readonly hostname: string;
   readonly associated: boolean;
+  readonly verified: boolean;
   readonly verificationChallenge?: {
     readonly type: 'TXT';
     readonly name: string;
