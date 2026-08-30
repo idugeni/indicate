@@ -146,82 +146,82 @@ Implement Indicate MVP as one TypeScript Next.js App Router modular monolith ser
   - Ensure all tests pass, ask the user if questions arise.
   - _Requirements: 19.8, 19.9, 20.1–20.6, 20.8, 20.9, 20.11, 20.19_
 
-- [ ] 7. Major Stage 3 — implement shared Business Services, CMS operations, editorial workflows, analytics, and auditing
-  - [ ] 7.1 Implement the shared service transaction/audit foundation
+- [x] 7. Major Stage 3 — implement shared Business Services, CMS operations, editorial workflows, analytics, and auditing
+  - [x] 7.1 Implement the shared service transaction/audit foundation
     - Create application command/query handlers, tenant repository adapters, optimistic version helpers, atomic mutation-plus-audit execution, denial auditing, immutable audit querying, and sanitized operational outcomes.
     - Ensure CMS, later API/Telegram adapters, and workers can invoke these services without direct tenant SQL.
     - _Requirements: 6.14–6.16, 7.16–7.21, 18.1–18.17_
 
-  - [ ] 7.2 Build the protected CMS shell and Active Organization experience
+  - [x] 7.2 Build the protected CMS shell and Active Organization experience
     - Create the `indicate.web.id` protected layout, navigation, responsive shell, permission-aware route guards, organization selector, dashboard placeholders, form error preservation, and shared shadcn/Tailwind patterns.
     - Re-authorize and reload all tenant data after organization changes; never render another Organization’s stale data.
     - _Requirements: 7.1, 7.2, 7.15–7.22_
 
-  - [ ] 7.3 Implement Domain, Region, Site, Site Settings, Membership, Role, and audit-log CMS modules
+  - [x] 7.3 Implement Domain, Region, Site, Site Settings, Membership, Role, and audit-log CMS modules
     - Add tenant-aware list/read/create/update/activate/deactivate service methods and Server Actions/routes with Zod validation, optimistic conflicts, required Permissions, and atomic audit events.
     - Keep hostname activation external effects pending for Stage 5 while persisting validated tenant configuration safely.
     - _Requirements: 7.3, 7.4, 7.5, 7.12, 7.13, 7.15–7.22, 18.9–18.11_
 
-  - [ ] 7.4 Implement the Publisher Registry and verified-affiliation lifecycle
+  - [x] 7.4 Implement the Publisher Registry and verified-affiliation lifecycle
     - Create Publisher CRUD/archive, submit/approve/reject, evidence-change re-verification, and Official Affiliation services plus CMS screens.
     - Enforce same-Organization ownership, verifier Permissions, controlled institutional claims, field errors, and atomic before/after audits.
     - _Requirements: 7.6, 8.1–8.18_
 
-  - [ ] 7.5 Implement canonical Article, Category, Author, assignment, and archive workflows
+  - [x] 7.5 Implement canonical Article, Category, Author, assignment, and archive workflows
     - Create Zod schemas, tenant-safe repositories, create/read/update/archive/restore, optimistic version conflicts, Category/Author management, and set-based Site assignment.
     - Preserve one canonical Article content row, reject an invalid assignment atomically, and audit every material lifecycle change.
     - _Requirements: 7.7, 7.14, 9.1–9.15_
 
-  - [ ] 7.6 Implement scoped editorial filtering and public-content query contracts
+  - [x] 7.6 Implement scoped editorial filtering and public-content query contracts
     - Add reusable Region/Site/Category/Publisher/Author/state/search filters that combine all supplied dimensions inside one Organization.
     - Implement public query contracts that require active published Article Site relations and never fall back to unscoped content; Stage 5 will bind them to public routes.
     - _Requirements: 10.1–10.13_
 
-  - [ ] 7.7 Implement dashboard, Basic Analytics, publishing-status projections, and zero/error behavior
+  - [x] 7.7 Implement dashboard, Basic Analytics, publishing-status projections, and zero/error behavior
     - Create scoped aggregate repositories and CMS surfaces for required Article, Site, Region, Category, Publisher, job, and outcome measures.
     - Return zero/empty series for no matches and reject/sanitize any query that cannot preserve Organization scope.
     - _Requirements: 7.23–7.28, 7.11, 18.12–18.15_
 
-  - [ ] 7.8 Complete the Stage 3 CMS module wiring
+  - [x] 7.8 Complete the Stage 3 CMS module wiring
     - Wire dashboard, domains, regions, sites, publishers, articles/Categories/Authors, media and publishing placeholders, analytics, settings, and audit logs to shared authorization and query/service contracts.
     - Keep platform customers/subscriptions, external media effects, and publication execution behind their Stage 4/6 dependencies while exposing no orphaned direct-data paths.
     - _Requirements: 7.2–7.9, 7.11–7.28_
 
-  - [ ]* 7.9 Write the property test for scoped aggregate equivalence
+  - [x]* 7.9 Write the property test for scoped aggregate equivalence
     - **Property 9: Tenant aggregates equal a scoped reference model**
     - **Validates: Requirements 7.23, 7.24, 7.25, 7.26, 7.27, 18.14, 18.15**
 
-  - [ ]* 7.10 Write the property test for verified public claims
+  - [x]* 7.10 Write the property test for verified public claims
     - **Property 10: Public claims never exceed verified affiliation**
     - **Validates: Requirements 8.8, 8.9, 8.10, 8.11, 8.12, 8.13, 8.14, 15.8**
 
-  - [ ]* 7.11 Write the property test for canonical Article round trips
+  - [x]* 7.11 Write the property test for canonical Article round trips
     - **Property 11: Canonical Article round trips preserve identity and ownership**
     - **Validates: Requirements 9.2, 9.5, 9.6, 21.1, 21.2**
 
-  - [ ]* 7.12 Write the property test for distinct canonical Site assignment
+  - [x]* 7.12 Write the property test for distinct canonical Site assignment
     - **Property 12: Site assignment is a canonical distinct set**
     - **Validates: Requirements 9.7, 9.8, 9.9, 9.10, 9.11, 21.3, 21.4**
 
-  - [ ]* 7.13 Write the property test for published Site content selection
+  - [x]* 7.13 Write the property test for published Site content selection
     - **Property 13: Public content selection requires a published Site relation**
     - **Validates: Requirements 10.1, 10.2, 10.3, 10.5, 10.6, 10.7, 10.8, 10.9, 10.10, 10.11, 21.23**
 
-  - [ ]* 7.14 Write the property test for immutable atomic auditing
+  - [x]* 7.14 Write the property test for immutable atomic auditing
     - **Property 34: Audit is attributable, immutable, redacted, scoped, and atomic**
     - **Validates: Requirements 18.1, 18.2, 18.3, 18.4, 18.5, 18.6, 18.7, 18.8, 18.9, 18.10, 18.16, 18.17, 21.22**
 
-  - [ ]* 7.15 Write Stage 3 service and CMS integration tests
+  - [x]* 7.15 Write Stage 3 service and CMS integration tests
     - Test all CMS actions, field errors, optimistic conflicts, Publisher verification, official-claim boundaries, canonical content preservation, filter combinations, aggregates, immutable audit queries, denial logs, and injected audit failures.
     - Include tenant-isolation and complete rollback assertions for every security-sensitive mutation family.
     - _Requirements: 7.2–7.32, 8.1–8.18, 9.1–9.15, 10.1–10.13, 18.1–18.17, 20.6, 20.12_
 
-  - [ ]* 7.16 Write Stage 3 CMS critical-flow E2E tests
+  - [x]* 7.16 Write Stage 3 CMS critical-flow E2E tests
     - Cover the required CMS areas, responsive navigation, organization switching, corrected form resubmission, Publisher verification, Article lifecycle/assignment/filtering, dashboard/analytics empty states, and audit filtering.
     - Exclude Stage 6 platform-customer workflows until their service implementation exists.
     - _Requirements: 7.1–7.28, 8.1–8.18, 9.1–9.15, 20.5, 20.12_
 
-- [ ] 8. Major Stage 3 quality-gate checkpoint
+- [x] 8. Major Stage 3 quality-gate checkpoint
   - Run typecheck, lint, all Vitest suites in single-run mode, and Playwright Stage 3 critical-flow E2E non-interactively.
   - Verify every Stage 3 CMS area, tenant-scoped aggregates, Publisher/attribution rules, canonical Articles, filters, audit immutability/redaction/atomicity, and cross-Organization denial; block Major Stage 4 on failure.
   - Ensure all tests pass, ask the user if questions arise.

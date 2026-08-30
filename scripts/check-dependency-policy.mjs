@@ -3,6 +3,9 @@ import { readFile } from 'node:fs/promises';
 const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const approved = new Set([
   '@playwright/test',
+  '@aws-sdk/client-s3',
+  '@aws-sdk/s3-request-presigner',
+  '@upstash/redis',
   '@radix-ui/react-slot',
   '@supabase/ssr',
   '@supabase/supabase-js',

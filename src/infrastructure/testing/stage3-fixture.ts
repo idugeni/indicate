@@ -1,6 +1,7 @@
 import type { AuthorizedTenantActorContext } from '@/domain/context/operation-context';
 import type { Stage3TenantState } from '@/domain/stage3/models';
 import { STAGE3_PERMISSIONS } from '@/domain/stage3/permissions';
+import { STAGE4_PERMISSION_NAMES } from '@/domain/stage4/permissions';
 import { InMemoryStage3Repository } from './stage3-memory';
 
 export const STAGE3_USER_ID = '00000000-0000-4000-8000-000000000010';
@@ -16,7 +17,7 @@ export const ALPHA_CATEGORY_ID = '00000000-0000-4000-8000-000000000105';
 export const ALPHA_AUTHOR_ID = '00000000-0000-4000-8000-000000000106';
 export const ALPHA_ARTICLE_ID = '00000000-0000-4000-8000-000000000107';
 
-const allPermissions = new Set(Object.values(STAGE3_PERMISSIONS));
+const allPermissions = new Set([...Object.values(STAGE3_PERMISSIONS), ...STAGE4_PERMISSION_NAMES]);
 const now = '2026-08-30T00:00:00.000Z';
 const base = (organizationId: string, id: string) => ({ id, organizationId, version: 1, createdAt: now, updatedAt: now });
 

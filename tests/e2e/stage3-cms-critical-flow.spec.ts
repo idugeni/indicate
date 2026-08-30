@@ -10,7 +10,8 @@ test('renders the protected responsive CMS shell and every Stage 3 area', async 
   await page.goto('/cms');
   await expect(page.getByText('Indicate CMS')).toBeVisible();
   for (const label of ['Dashboard', 'Domains, regions & sites', 'Publishers', 'Articles', 'Analytics', 'Audit logs', 'Settings']) await expect(page.getByRole('button', { name: label })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Media (Stage 4)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Media', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Publishing', exact: true })).toBeEnabled();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('.cms-content')).toBeVisible();
   await expect(page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).resolves.toBe(true);

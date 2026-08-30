@@ -18,7 +18,7 @@ import { UuidGenerator } from '@/infrastructure/system/uuid-generator';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const projectRoot = resolve(import.meta.dirname, '../..');
-const migrationFiles = ['drizzle/0000_stage2_core_schema.sql', 'drizzle/0001_stage2_security.sql', 'drizzle/0002_stage2_publisher_actor_constraints.sql', 'drizzle/0003_stage2_authorization_hardening.sql', 'drizzle/0004_stage3_verified_user_context.sql', 'drizzle/0005_stage3_discovery_outcome_timestamp.sql'];
+const migrationFiles = ['drizzle/0000_stage2_core_schema.sql', 'drizzle/0001_stage2_security.sql', 'drizzle/0002_stage2_publisher_actor_constraints.sql', 'drizzle/0003_stage2_authorization_hardening.sql', 'drizzle/0004_stage3_verified_user_context.sql', 'drizzle/0005_stage3_discovery_outcome_timestamp.sql', 'drizzle/0006_stage4_media_publication_runtime.sql'];
 const runtimePassword = 'stage2-runtime-contract-password';
 
 const ids = {
@@ -568,13 +568,16 @@ suite('live PostgreSQL Stage 2 contract', () => {
     ) VALUES
       (${ids.organizationA}::uuid, ${ids.articleSiteHistorical}::uuid, ${ids.articleA}::uuid, ${ids.siteARegional}::uuid, 'published', '2026-09-10T00:00:00.000Z', 'https://live-region.a.example.web.id/live-article', '2026-09-10T00:00:00.000Z', false, '2026-07-01T00:00:00.000Z', '2026-09-10T00:00:00.000Z'),
       (${ids.organizationA}::uuid, ${ids.articleSiteCurrent}::uuid, ${ids.articleA}::uuid, ${ids.siteASecond}::uuid, 'queued', '2026-10-01T00:00:00.000Z', NULL, NULL, true, '2026-10-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z')`;
+    await ownerClient`UPDATE publishing_jobs SET state = 'processing', updated_at = '2026-09-11T00:00:00.000Z'
+      WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.publishingJob}::uuid`;
     await ownerClient`UPDATE publishing_jobs SET state = 'published', finalized_at = '2026-09-12T00:00:00.000Z', updated_at = '2026-09-12T00:00:00.000Z'
       WHERE organization_id = ${ids.organizationA}::uuid AND id = ${ids.publishingJob}::uuid`;
     await ownerClient`INSERT INTO publishing_job_targets (
-      organization_id, id, job_id, article_site_id, state, finished_at, updated_at
+      organization_id, id, job_id, article_site_id, state, published_url, published_at, finished_at, updated_at
     ) VALUES (
       ${ids.organizationA}::uuid, ${ids.jobTarget}::uuid, ${ids.publishingJob}::uuid,
-      ${ids.articleSiteHistorical}::uuid, 'published', '2026-09-12T00:00:00.000Z', '2026-09-12T00:00:00.000Z'
+      ${ids.articleSiteHistorical}::uuid, 'published', 'https://live-region.a.example.web.id/live-article',
+      '2026-09-10T00:00:00.000Z', '2026-09-12T00:00:00.000Z', '2026-09-12T00:00:00.000Z'
     )`;
 
     const service = new TenantBusinessService(new DrizzleStage3Repository(runtimeDatabase), new UuidGenerator());

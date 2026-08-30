@@ -7,6 +7,7 @@ const files = (await readdir(directory)).filter((name) => name.endsWith('.sql'))
 const journal = JSON.parse(await readFile(join(directory, 'meta', '_journal.json'), 'utf8'));
 const journalTags = new Set(journal.entries.map((entry) => entry.tag));
 const combined = (await Promise.all(files.map((name) => readFile(join(directory, name), 'utf8')))).join('\n');
+const editorialSchema = await readFile(join(root, 'src', 'infrastructure', 'db', 'schema', 'editorial.ts'), 'utf8');
 const required = [
   'CREATE TABLE "organizations"',
   'CREATE TABLE "audit_logs"',
@@ -22,8 +23,17 @@ const required = [
   'list_active_organizations_for_verified_user',
   'state_occurred_at',
   'article_sites_state_occurred_at_guard',
+  'media_key_reservation_owner_prefix',
+  'stage4_publishing_job_transition_guard',
+  'stage4_publishing_target_transition_guard',
+  'stage4_article_site_transition_guard',
+  'claim_stage4_dispatch_gaps',
+  'find_stage4_expired_leases',
+  'claim_stage4_transition_receipts',
+  'claim_stage4_cleanup_tasks',
 ];
 const failures = required.filter((fragment) => !combined.includes(fragment));
+if (!editorialSchema.includes("check('media_key_reservation_owner_prefix'")) failures.push('Drizzle reservation prefix constraint is missing migration parity');
 for (const file of files) {
   const tag = file.slice(0, -'.sql'.length);
   if (!journalTags.has(tag)) failures.push(`migration ${tag} is absent from Drizzle journal discovery`);

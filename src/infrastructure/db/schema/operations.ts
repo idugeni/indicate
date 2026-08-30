@@ -42,6 +42,8 @@ export const publishingJobs = pgTable('publishing_jobs', {
   leaseOwner: text('lease_owner'),
   leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
   fencingToken: integer('fencing_token').default(0).notNull(),
+  reconciliationClaimToken: uuid('reconciliation_claim_token'),
+  reconciliationClaimExpiresAt: timestamp('reconciliation_claim_expires_at', { withTimezone: true }),
   finalizedAt: timestamp('finalized_at', { withTimezone: true }),
   version: integer('version').default(1).notNull(),
   ...timestamps,
@@ -52,6 +54,7 @@ export const publishingJobs = pgTable('publishing_jobs', {
   foreignKey({ name: 'publishing_jobs_article_fk', columns: [table.organizationId, table.articleId], foreignColumns: [articles.organizationId, articles.id] }).onDelete('restrict'),
   index('publishing_jobs_dispatch_due_idx').on(table.dispatchStatus, table.nextDispatchAt),
   index('publishing_jobs_state_lease_idx').on(table.state, table.leaseExpiresAt),
+  index('publishing_jobs_reconciliation_claim_idx').on(table.dispatchStatus, table.reconciliationClaimExpiresAt),
   index('publishing_jobs_organization_date_idx').on(table.organizationId, table.createdAt),
   check('publishing_jobs_bounded_fields', sql`${table.fingerprintVersion} > 0 AND ${table.dispatchAttempts} >= 0 AND ${table.fencingToken} >= 0 AND ${table.version} > 0`),
   check('publishing_jobs_idempotency_length', sql`length(${table.idempotencyKey}) BETWEEN 1 AND 200`),
@@ -68,6 +71,8 @@ export const publishingJobTargets = pgTable('publishing_job_targets', {
   nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).defaultNow().notNull(),
   startedAt: timestamp('started_at', { withTimezone: true }),
   finishedAt: timestamp('finished_at', { withTimezone: true }),
+  publishedUrl: text('published_url'),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
   sanitizedError: jsonb('sanitized_error').$type<Record<string, unknown>>(),
   ...timestamps,
 }, (table) => [
@@ -80,6 +85,7 @@ export const publishingJobTargets = pgTable('publishing_job_targets', {
   index('publishing_job_targets_job_state_idx').on(table.organizationId, table.jobId, table.state),
   index('publishing_job_targets_retry_due_idx').on(table.state, table.nextAttemptAt),
   check('publishing_job_targets_bounded_fields', sql`${table.attempt} >= 0 AND ${table.fencingToken} >= 0`),
+  check('publishing_job_targets_published_outcome', sql`${table.state} <> 'published' OR (${table.publishedUrl} IS NOT NULL AND ${table.publishedAt} IS NOT NULL)`),
 ]);
 
 export const publicationTransitionReceipts = pgTable('publication_transition_receipts', {
@@ -92,6 +98,8 @@ export const publicationTransitionReceipts = pgTable('publication_transition_rec
   toState: publishingState('to_state').notNull(),
   fencingToken: integer('fencing_token').notNull(),
   acknowledgedAt: timestamp('acknowledged_at', { withTimezone: true }),
+  reconciliationClaimToken: uuid('reconciliation_claim_token'),
+  reconciliationClaimExpiresAt: timestamp('reconciliation_claim_expires_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   primaryKey({ name: 'publication_transition_receipts_pk', columns: [table.organizationId, table.id] }),
@@ -99,6 +107,7 @@ export const publicationTransitionReceipts = pgTable('publication_transition_rec
   foreignKey({ name: 'publication_transition_receipts_job_fk', columns: [table.organizationId, table.jobId], foreignColumns: [publishingJobs.organizationId, publishingJobs.id] }).onDelete('cascade'),
   foreignKey({ name: 'publication_transition_receipts_target_fk', columns: [table.organizationId, table.targetId], foreignColumns: [publishingJobTargets.organizationId, publishingJobTargets.id] }).onDelete('cascade'),
   index('publication_transition_receipts_unacknowledged_idx').on(table.acknowledgedAt),
+  index('publication_transition_receipts_claim_idx').on(table.acknowledgedAt, table.reconciliationClaimExpiresAt),
 ]);
 
 export const webhookReplayClaims = pgTable('webhook_replay_claims', {

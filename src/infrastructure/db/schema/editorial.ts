@@ -124,6 +124,7 @@ export const articles = pgTable('articles', {
   index('articles_organization_status_date_idx').on(table.organizationId, table.status, table.publishedAt),
   index('articles_organization_region_idx').on(table.organizationId, table.regionId),
   index('articles_organization_category_idx').on(table.organizationId, table.categoryId),
+  index('articles_organization_lead_media_idx').on(table.organizationId, table.leadMediaId).where(sql`${table.leadMediaId} IS NOT NULL`),
   check('articles_version_positive', sql`${table.version} > 0`),
 ]);
 
@@ -236,7 +237,7 @@ export const mediaKeyReservations = pgTable('media_key_reservations', {
   organizationAsset: boolean('organization_asset').default(false).notNull(),
   expectedMediaType: text('expected_media_type').notNull(),
   expectedSizeBytes: integer('expected_size_bytes').notNull(),
-  expectedChecksum: text('expected_checksum'),
+  expectedChecksum: text('expected_checksum').notNull(),
   status: reservationStatus('status').default('reserved').notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   ...timestamps,
@@ -246,7 +247,13 @@ export const mediaKeyReservations = pgTable('media_key_reservations', {
   foreignKey({ name: 'media_key_reservations_article_fk', columns: [table.organizationId, table.articleId], foreignColumns: [articles.organizationId, articles.id] }).onDelete('restrict'),
   foreignKey({ name: 'media_key_reservations_site_fk', columns: [table.organizationId, table.siteId], foreignColumns: [sites.organizationId, sites.id] }).onDelete('restrict'),
   check('media_key_reservation_exactly_one_owner', sql`num_nonnulls(${table.articleId}, ${table.siteId}) + CASE WHEN ${table.organizationAsset} THEN 1 ELSE 0 END = 1`),
+  check('media_key_reservation_owner_prefix', sql`(
+    (${table.articleId} IS NOT NULL AND ${table.objectKey} LIKE ('articles/' || ${table.articleId}::text || '/%'))
+    OR (${table.siteId} IS NOT NULL AND ${table.objectKey} LIKE ('sites/' || ${table.siteId}::text || '/%'))
+    OR (${table.organizationAsset} AND ${table.objectKey} LIKE 'assets/%')
+  )`),
   check('media_key_reservation_size_positive', sql`${table.expectedSizeBytes} > 0`),
+  check('media_key_reservation_sha256_checksum', sql`${table.expectedChecksum} ~ '^[A-Za-z0-9+/]{43}=$'`),
   index('media_key_reservations_expiry_status_idx').on(table.status, table.expiresAt),
 ]);
 
@@ -258,11 +265,14 @@ export const objectCleanupTasks = pgTable('object_cleanup_tasks', {
   status: taskStatus('status').default('pending').notNull(),
   attempts: integer('attempts').default(0).notNull(),
   nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).defaultNow().notNull(),
+  reconciliationClaimToken: uuid('reconciliation_claim_token'),
+  reconciliationClaimExpiresAt: timestamp('reconciliation_claim_expires_at', { withTimezone: true }),
   sanitizedFailure: jsonb('sanitized_failure').$type<Record<string, unknown>>(),
   ...timestamps,
 }, (table) => [
   primaryKey({ name: 'object_cleanup_tasks_pk', columns: [table.organizationId, table.id] }),
   index('object_cleanup_tasks_due_idx').on(table.status, table.nextAttemptAt),
+  index('object_cleanup_tasks_claim_idx').on(table.status, table.reconciliationClaimExpiresAt),
   check('object_cleanup_tasks_attempts_nonnegative', sql`${table.attempts} >= 0`),
 ]);
 
