@@ -18,7 +18,7 @@ import { UuidGenerator } from '@/infrastructure/system/uuid-generator';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const projectRoot = resolve(import.meta.dirname, '../..');
-const migrationFiles = ['drizzle/0000_stage2_core_schema.sql', 'drizzle/0001_stage2_security.sql', 'drizzle/0002_stage2_publisher_actor_constraints.sql', 'drizzle/0003_stage2_authorization_hardening.sql', 'drizzle/0004_stage3_verified_user_context.sql', 'drizzle/0005_stage3_discovery_outcome_timestamp.sql', 'drizzle/0006_stage4_media_publication_runtime.sql', 'drizzle/0007_stage5_public_delivery.sql', 'drizzle/0008_stage5_production_boundaries.sql', 'drizzle/0009_stage6_external_entrypoints.sql', 'drizzle/0010_stage6_security_hardening.sql', 'drizzle/0011_stage6_strict_platform_authorization.sql'];
+const migrationFiles = ['drizzle/0000_stage2_core_schema.sql', 'drizzle/0001_stage2_security.sql', 'drizzle/0002_stage2_publisher_actor_constraints.sql', 'drizzle/0003_stage2_authorization_hardening.sql', 'drizzle/0004_stage3_verified_user_context.sql', 'drizzle/0005_stage3_discovery_outcome_timestamp.sql', 'drizzle/0006_stage4_media_publication_runtime.sql', 'drizzle/0007_stage5_public_delivery.sql', 'drizzle/0008_stage5_production_boundaries.sql', 'drizzle/0009_stage6_external_entrypoints.sql', 'drizzle/0010_stage6_security_hardening.sql', 'drizzle/0011_stage6_strict_platform_authorization.sql', 'drizzle/0012_stage7_readiness_discovery.sql', 'drizzle/0013_stage7_migration_body_digests.sql'];
 const runtimePassword = 'stage2-runtime-contract-password';
 
 const ids = {

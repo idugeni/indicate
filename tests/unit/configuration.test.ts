@@ -74,6 +74,37 @@ describe('runtime configuration', () => {
     expect(JSON.stringify(result.issues)).not.toContain('1000001');
   });
 
+  it('requires bounded non-placeholder control-plane and webhook secrets in production', () => {
+    const result = validateRuntimeConfig(createValidRuntimeEnvironment({
+      NODE_ENV: 'production', APP_ENVIRONMENT: 'production', SCHEMA_GATE_MODE: 'live',
+      CLOUDFLARE_ORIGIN_SECRET: 'change-me', TELEGRAM_WEBHOOK_SECRET: 'test-secret',
+      GENERIC_WEBHOOK_SECRET: 'placeholder', CRON_SECRET: 'short',
+    }));
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.issues.filter(({ category }) => category === 'production_secret_not_bounded').map(({ path }) => path).sort()).toEqual([
+      'CLOUDFLARE_ORIGIN_SECRET', 'CRON_SECRET', 'GENERIC_WEBHOOK_SECRET', 'TELEGRAM_WEBHOOK_SECRET',
+    ]);
+    expect(JSON.stringify(result.issues)).not.toMatch(/change-me|test-secret|placeholder/u);
+  });
+
+  it('requires production-strength R2 data-plane credentials without exposing values', () => {
+    const result = validateRuntimeConfig(createValidRuntimeEnvironment({
+      NODE_ENV: 'production', APP_ENVIRONMENT: 'production', SCHEMA_GATE_MODE: 'live',
+      CLOUDFLARE_ORIGIN_SECRET: 'prod_origin_4de950a83132408a96731e48',
+      TELEGRAM_WEBHOOK_SECRET: 'prod_telegram_24fa9321c7894c91',
+      GENERIC_WEBHOOK_SECRET: 'prod_generic_808d8277eb274cf1',
+      CRON_SECRET: 'prod_cron_7f4f678c63b24437b4eb2a88',
+      R2_ACCESS_KEY_ID: 'short-r2-key', R2_SECRET_ACCESS_KEY: 'stage1-client-secret-sentinel-r2-secret',
+    }));
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.issues.filter(({ category }) => category === 'production_credential_not_bounded').map(({ path }) => path).sort()).toEqual([
+      'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY',
+    ]);
+    expect(JSON.stringify(result.issues)).not.toMatch(/short-r2-key|sentinel-r2-secret/u);
+  });
+
   it('exposes only explicitly public Supabase values', () => {
     const config = getPublicConfig(createValidRuntimeEnvironment());
     expect(config).toEqual({

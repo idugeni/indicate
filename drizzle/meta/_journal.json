@@ -85,6 +85,20 @@
       "when": 1788119000000,
       "tag": "0011_stage6_strict_platform_authorization",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788120000000,
+      "tag": "0012_stage7_readiness_discovery",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788121000000,
+      "tag": "0013_stage7_migration_body_digests",
+      "breakpoints": true
     }
   ]
 }

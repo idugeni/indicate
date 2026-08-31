@@ -11,8 +11,9 @@ import type { Stage5Repository } from '@/ports/stage5-repository';
 declare global { var __indicateStage5Repository: Stage5Repository | undefined; }
 function repository(): Stage5Repository {
   if (globalThis.__indicateStage5Repository !== undefined) return globalThis.__indicateStage5Repository;
-  if (process.env.STAGE2_E2E_MODE === '1' && process.env.APP_ENVIRONMENT === 'test') globalThis.__indicateStage5Repository = createStage5E2eRepository();
-  else { const config = getRuntimeConfig(); globalThis.__indicateStage5Repository = new DrizzleStage5Repository(createRuntimeDatabase(config).db, config.seo.fallbackAssetUrl); }
+  const config = getRuntimeConfig();
+  if (process.env.STAGE2_E2E_MODE === '1' && process.env.APP_ENVIRONMENT === 'test') globalThis.__indicateStage5Repository = createStage5E2eRepository(config);
+  else globalThis.__indicateStage5Repository = new DrizzleStage5Repository(createRuntimeDatabase(config).db, config.seo.fallbackAssetUrl);
   return globalThis.__indicateStage5Repository;
 }
 export function stage5Composition() {

@@ -94,6 +94,42 @@ describe('policy negative fixtures', () => {
     expect(`${result.stdout}${result.stderr}`).toContain('reachable from a client module');
   });
 
+  it.each([
+    ['environment', 'env', /plaintext|production-looking credential/u],
+    ['environment rc', 'envrc', /plaintext|production-looking credential/u],
+    ['PEM', 'pem', /production-looking credential/u],
+    ['private-key', 'key', /production-looking credential/u],
+    ['PKCS#12', 'p12', /key-store artifact/u],
+    ['PKCS#12 pfx', 'pfx', /key-store artifact/u],
+    ['Java key store', 'jks', /key-store artifact/u],
+    ['Terraform variables', 'tfvars', /plaintext|production-looking credential/u],
+    ['TOML', 'toml', /plaintext|production-looking credential/u],
+    ['INI', 'ini', /plaintext|production-looking credential/u],
+    ['properties', 'properties', /plaintext|production-looking credential/u],
+    ['shell', 'shell', /plaintext|production-looking credential/u],
+    ['Markdown', 'markdown', /production-looking credential/u],
+    ['source fixture', 'source', /production-looking credential/u],
+  ])('rejects production-looking credentials in %s artifacts', (_kind, directory, expected) => {
+    const fixture = resolve(projectRoot, 'tests/fixtures/policy/stage7', directory);
+    const result = spawnSync(process.execPath, ['scripts/check-stage7-policy.mjs'], {
+      cwd: projectRoot,
+      env: { ...process.env, STAGE7_POLICY_FIXTURE_ROOT: fixture },
+      encoding: 'utf8',
+    });
+    expect(result.status).toBe(1);
+    expect(`${result.stdout}${result.stderr}`).toMatch(expected);
+  });
+
+  it('accepts placeholder and near-match values in newly scanned configuration formats', () => {
+    const fixture = resolve(projectRoot, 'tests/fixtures/policy/stage7/near-match');
+    const result = spawnSync(process.execPath, ['scripts/check-stage7-policy.mjs'], {
+      cwd: projectRoot,
+      env: { ...process.env, STAGE7_POLICY_FIXTURE_ROOT: fixture },
+      encoding: 'utf8',
+    });
+    expect(result.status, `${result.stdout}${result.stderr}`).toBe(0);
+  });
+
   it('rejects Vercel wildcard and per-tenant resource provisioning operations', () => {
     const fixture = resolve(projectRoot, 'tests/fixtures/policy/deployment');
     const result = spawnSync(process.execPath, ['scripts/check-deployment-policy.mjs'], {
