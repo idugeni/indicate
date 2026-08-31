@@ -412,63 +412,63 @@ Implement Indicate MVP as one TypeScript Next.js App Router modular monolith ser
   - Ensure all tests pass, ask the user if questions arise.
   - _Requirements: 19.11, 19.12, 20.1–20.6, 20.8, 20.9, 20.14, 20.19_
 
-- [ ] 13. Major Stage 6 — implement Telegram parity, API credentials, rate limits, replay defense, customers, and subscriptions
-  - [ ] 13.1 Implement Telegram webhook authentication and shared-service conversation workflows
+- [x] 13. Major Stage 6 — implement Telegram parity, API credentials, rate limits, replay defense, customers, and subscriptions
+  - [x] 13.1 Implement Telegram webhook authentication and shared-service conversation workflows
     - Validate the Telegram secret header, freshness, and replay claim before mapping identity; implement Article fields/image/Region/Site/publication/status/link steps with concise field guidance.
     - Convert transport input to the same Zod schemas and Article/Media/Publication service commands used by CMS, and record mapped actor plus Telegram entry point without secrets.
     - _Requirements: 13.1–13.19_
 
-  - [ ] 13.2 Implement Organization-scoped API Key issue, authentication, rotation, and revocation
+  - [x] 13.2 Implement Organization-scoped API Key issue, authentication, rotation, and revocation
     - Use lookup ID plus high-entropy secret, random salt and one-way derived hash, constant-time verification, one-time plaintext response, scopes/status/expiry, and atomic audited rotation/revocation.
     - Never persist or log plaintext credentials; roll back credential state when audit persistence fails.
     - _Requirements: 17.2–17.9, 17.23, 17.24_
 
-  - [ ] 13.3 Implement endpoint-class rate-limit policies and Upstash enforcement
+  - [x] 13.3 Implement endpoint-class rate-limit policies and Upstash enforcement
     - Validate bounded policies, partition authenticated identities by endpoint/Organization/actor and public identities by validated source, and use atomic Redis operations with explicit fail-closed/low-risk behavior.
     - Return HTTP 429 with bounded retry guidance and no cross-tenant key collisions.
     - _Requirements: 17.10–17.14_
 
-  - [ ] 13.4 Implement generic authenticated webhook freshness and atomic replay processing
+  - [x] 13.4 Implement generic authenticated webhook freshness and atomic replay processing
     - Verify source-specific signatures over raw bodies, bounded timestamps, and unique source/replay claims before tenant mutation.
     - Persist one logical outcome for duplicates and reject invalid/stale/replayed requests before additional tenant changes.
     - _Requirements: 17.15–17.20_
 
-  - [ ] 13.5 Implement platform Customer and Organization Subscription administration
+  - [x] 13.5 Implement platform Customer and Organization Subscription administration
     - Create platform-permission-protected customer list/create/read/update/activate/deactivate and tenant subscription status/update services plus CMS surfaces.
     - Enforce platform Permission separately from tenant roles and commit customer/subscription changes with affected-Organization audit events atomically.
     - _Requirements: 7.10, 7.12, 7.29–7.32_
 
-  - [ ] 13.6 Complete settings, API, Telegram, and platform-route wiring
+  - [x] 13.6 Complete settings, API, Telegram, and platform-route wiring
     - Wire Membership/Role/API Key/Subscription/Telegram mapping settings, stable API envelopes, protected webhook routes, and customer navigation to shared services.
     - Apply Zod at every server boundary, Non-Disclosing Denials, rate policies, secret redaction, and server-only credential imports.
     - _Requirements: 7.12, 13.1–13.19, 17.1–17.25_
 
-  - [ ]* 13.7 Write the property test for CMS/Telegram behavioral parity
+  - [x]* 13.7 Write the property test for CMS/Telegram behavioral parity
     - **Property 27: CMS and Telegram commands are behaviorally equivalent**
     - **Validates: Requirements 13.3, 13.4, 13.5, 13.6, 13.7, 13.8, 13.9, 13.10, 13.11, 13.12, 13.13, 21.24**
 
-  - [ ]* 13.8 Write the property test for API Key lifecycle secrecy and scope
+  - [x]* 13.8 Write the property test for API Key lifecycle secrecy and scope
     - **Property 31: API key lifecycle preserves credential secrecy and scope**
     - **Validates: Requirements 17.2, 17.3, 17.4, 17.5, 17.6, 17.7, 17.8, 17.9**
 
-  - [ ]* 13.9 Write the property test for bounded rate limiting
+  - [x]* 13.9 Write the property test for bounded rate limiting
     - **Property 32: Rate limits never exceed configured allowances**
     - **Validates: Requirements 17.10, 17.11, 17.12, 17.13, 17.14**
 
-  - [ ]* 13.10 Write the property test for atomic webhook replay claims
+  - [x]* 13.10 Write the property test for atomic webhook replay claims
     - **Property 33: Webhook replay claims produce one logical outcome**
     - **Validates: Requirements 17.15, 17.16, 17.17, 17.18, 17.19, 17.20, 21.29**
 
-  - [ ]* 13.11 Write Telegram, API Key, rate-limit, replay, customer, and subscription integration tests
+  - [x]* 13.11 Write Telegram, API Key, rate-limit, replay, customer, and subscription integration tests
     - Test valid/invalid Telegram source and mapping, CMS/Telegram command equivalence, API key issuance/rotation/revocation/scope, rate partition/excess/failure policy, concurrent replay, platform customer permission, subscription rollback, and secret-free audits/errors.
     - _Requirements: 7.29–7.32, 13.1–13.19, 17.1–17.25, 20.6, 20.15_
 
-  - [ ]* 13.12 Write Stage 6 cross-entry-point critical-flow E2E tests
+  - [x]* 13.12 Write Stage 6 cross-entry-point critical-flow E2E tests
     - Cover Telegram Article/image/Region/Site/publication/status/link flows, equivalent CMS outcomes, API key lifecycle, 429 responses, duplicate webhook outcomes, authorized platform customer management, and unauthorized customer denial.
     - Execute Playwright and webhook simulations once, non-interactively.
     - _Requirements: 7.29–7.32, 13.1–13.19, 17.1–17.25, 20.5, 20.15_
 
-- [ ] 14. Major Stage 6 quality-gate checkpoint
+- [x] 14. Major Stage 6 quality-gate checkpoint
   - Run typecheck, lint, Vitest unit/property/integration suites in single-run mode and Playwright Stage 6 critical-flow E2E non-interactively.
   - Verify Telegram authentication/parity, API Key lifecycle, rate limits, replay atomicity, customer/subscription authorization, tenant isolation, failure atomicity, and client/server secret boundaries; block Major Stage 7 on failure.
   - Ensure all tests pass, ask the user if questions arise.
