@@ -3,6 +3,7 @@ node_modules/
 coverage/
 playwright-report/
 test-results/
+.stage7-evidence/
 .env
 .env.local
 .env.*.local

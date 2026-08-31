@@ -20,8 +20,11 @@ async function authenticate(context: BrowserContext) {
 async function cms(request: APIRequestContext, action: string, payload: unknown) {
   return request.post('/api/cms/stage6', { data: { organizationId: ORG, action, payload } });
 }
+const telegramOccurredAt = new Map<number, number>();
 async function telegram(request: APIRequestContext, updateId: number, message: Record<string, unknown>) {
-  return request.post('/api/webhooks/telegram', { headers: { ...trustedEdgeHeaders('webhook.indicate.web.id'), 'x-telegram-bot-api-secret-token': TELEGRAM_SECRET }, data: { update_id: updateId, message: { date: Math.floor(Date.now() / 1_000), from: { id: 600001 }, chat: { id: 600002 }, ...message } } });
+  const occurredAt = telegramOccurredAt.get(updateId) ?? Math.floor(Date.now() / 1_000);
+  telegramOccurredAt.set(updateId, occurredAt);
+  return request.post('/api/webhooks/telegram', { headers: { ...trustedEdgeHeaders('webhook.indicate.web.id'), 'x-telegram-bot-api-secret-token': TELEGRAM_SECRET }, data: { update_id: updateId, message: { date: occurredAt, from: { id: 600001 }, chat: { id: 600002 }, ...message } } });
 }
 
 test.beforeEach(async ({ context }) => authenticate(context));
@@ -43,6 +46,11 @@ test('completes Telegram Article, image, Region, Site, publication, status, link
   expect((await telegram(page.request, 6199, { text: '/regions' })).status()).toBe(200);
   const invalid = await page.request.post('/api/webhooks/telegram', { headers: { ...trustedEdgeHeaders('webhook.indicate.web.id'), 'x-telegram-bot-api-secret-token': 'wrong' }, data: { update_id: 6200, message: { date: Math.floor(Date.now() / 1_000), from: { id: 600001 }, chat: { id: 600002 }, text: '/regions' } } });
   expect(invalid.status()).toBe(404);
+
+  const readiness = await page.request.post('/api/webhooks/readiness/telegram-secret', { headers: { ...trustedEdgeHeaders('webhook.indicate.web.id'), 'x-telegram-bot-api-secret-token': TELEGRAM_SECRET } });
+  expect(readiness.status()).toBe(204);
+  expect((await page.request.post('/api/webhooks/readiness/telegram-secret', { headers: { ...trustedEdgeHeaders('webhook.indicate.web.id'), 'x-telegram-bot-api-secret-token': 'wrong-secret' } })).status()).toBe(404);
+  expect((await page.request.post('/api/webhooks/readiness/telegram-secret', { headers: { ...trustedEdgeHeaders('api.indicate.web.id'), 'x-telegram-bot-api-secret-token': TELEGRAM_SECRET } })).status()).toBe(404);
 });
 
 test('shows one-time API credentials, rotates/revokes them, and invokes the stable API envelope', async ({ page }) => {

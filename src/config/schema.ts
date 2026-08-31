@@ -115,6 +115,26 @@ const rawRuntimeConfigSchema = z
     SITE_FALLBACK_ASSET_URL: httpsUrlSchema,
   })
   .superRefine((value, context) => {
+    if (value.NODE_ENV === 'production') {
+      for (const [name, secret] of [
+        ['CLOUDFLARE_ORIGIN_SECRET', value.CLOUDFLARE_ORIGIN_SECRET],
+        ['TELEGRAM_WEBHOOK_SECRET', value.TELEGRAM_WEBHOOK_SECRET],
+        ['GENERIC_WEBHOOK_SECRET', value.GENERIC_WEBHOOK_SECRET],
+        ['CRON_SECRET', value.CRON_SECRET],
+      ] as const) {
+        if (secret.length < 24 || /(?:change[ -]?me|example|placeholder|sentinel|development|test-secret)/iu.test(secret)) {
+          context.addIssue({ code: 'custom', path: [name], message: 'production_secret_not_bounded' });
+        }
+      }
+      for (const [name, secret, minimum] of [
+        ['R2_ACCESS_KEY_ID', value.R2_ACCESS_KEY_ID, 20],
+        ['R2_SECRET_ACCESS_KEY', value.R2_SECRET_ACCESS_KEY, 32],
+      ] as const) {
+        if (secret.length < minimum || /(?:change[ -]?me|example|placeholder|sentinel|development|test-secret)/iu.test(secret)) {
+          context.addIssue({ code: 'custom', path: [name], message: 'production_credential_not_bounded' });
+        }
+      }
+    }
     if (value.NODE_ENV === 'production' && value.SCHEMA_GATE_MODE !== 'live') {
       context.addIssue({ code: 'custom', path: ['SCHEMA_GATE_MODE'], message: 'live_schema_gate_required_in_production' });
     }

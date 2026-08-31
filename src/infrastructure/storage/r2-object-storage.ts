@@ -18,9 +18,9 @@ export class R2ObjectStorageAdapter implements ObjectStoragePort {
   private readonly client: S3Client;
   private readonly now: () => Date;
 
-  constructor(private readonly config: R2ObjectStorageConfig) {
+  constructor(private readonly config: R2ObjectStorageConfig, client?: S3Client) {
     this.now = config.now ?? (() => new Date());
-    this.client = new S3Client({
+    this.client = client ?? new S3Client({
       region: 'auto',
       endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
       credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey },

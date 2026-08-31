@@ -1,0 +1,4 @@
+# Clean near matches must not trigger production credential detection.
+R2_SECRET_ACCESS_KEY = "replace-with-secret"
+example_access_key = "AKIAABCDEFGHIJKLM"
+private_key_label = "BEGIN PUBLIC KEY"

@@ -1,4 +1,4 @@
-name: Stage 5 Quality Gate
+name: Stage 7 Quality Gate
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ permissions:
 jobs:
   quality-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,8 +20,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:providers:stage5
-      - run: npm run test:stage5
+      - run: npm run test:providers:stage6
+      - run: npm run test:stage7
         env:
           CI: true
           SECRET_SCAN_SENTINEL: stage2-client-secret-sentinel
@@ -48,6 +48,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run test:postgres:live
+      - name: Run live PostgreSQL contracts including Stage 7 runtime readiness
+        run: npm run test:postgres:live
         env:
           TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/indicate_test
