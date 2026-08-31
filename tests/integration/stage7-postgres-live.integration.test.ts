@@ -30,16 +30,35 @@ const suite = databaseUrl === undefined ? describe.skip : describe;
 const NOW = new Date('2026-08-31T08:00:00.000Z');
 const idFor = (value: string, suffix: string) => `${value.slice(0, -suffix.length)}${suffix}`;
 
+const PRODUCTION_API_KEY_PATTERN = /^ind_live_[A-Za-z0-9_-]{16}\.[A-Za-z0-9_-]{43}$/;
+
 class LiveMatrixApiKeyHasher implements ApiKeyHasher {
   async hash(secret: string, salt: string): Promise<string> { return createHash('sha256').update(`${salt}:${secret}`).digest('base64'); }
   async verify(secret: string, salt: string, expectedHash: string): Promise<boolean> { return (await this.hash(secret, salt)) === expectedHash; }
 }
 function liveCredential(ordinal: number) {
-  const lookupId = `s7live${String(ordinal).padStart(11, '0')}`;
+  const lookupId = `s7live${String(ordinal).padStart(10, '0')}`;
   const secret = `${ordinal}${'x'.repeat(42)}`;
   const salt = Buffer.from(`stage7-live-salt-${ordinal}`).toString('base64');
   return { lookupId, secret, salt, plaintext: `ind_live_${lookupId}.${secret}` };
 }
+
+describe('Stage 7 live API key credential fixture', () => {
+  it('uses the production credential shape with a unique lookup ID for each configured root', () => {
+    const credentials = createStage7ReadinessFixture(stage7RuntimeConfig()).roots.map(({ ordinal }) => liveCredential(ordinal));
+
+    expect(credentials).toHaveLength(3);
+    for (const credential of credentials) {
+      expect(credential.lookupId).toHaveLength(16);
+      expect(credential.lookupId).toMatch(/^[A-Za-z0-9_-]{16}$/);
+      expect(credential.secret).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(credential.plaintext).toBe(`ind_live_${credential.lookupId}.${credential.secret}`);
+      expect(credential.plaintext).toMatch(PRODUCTION_API_KEY_PATTERN);
+    }
+    expect(new Set(credentials.map(({ lookupId }) => lookupId)).size).toBe(credentials.length);
+    expect(new Set(credentials.map(({ plaintext }) => plaintext)).size).toBe(credentials.length);
+  });
+});
 
 function runtimeUrl(ownerUrl: string): string {
   const value = new URL(ownerUrl);
