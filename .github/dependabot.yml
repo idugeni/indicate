@@ -16,6 +16,12 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    # TypeScript is pinned at v6 deliberately: typescript-eslint hard-throws
+    # on TS >= 7 and breaks `npm run lint` (see closed #4). Revisit when the
+    # parser supports TS 7; 6.x patches still flow.
+    ignore:
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:
