@@ -61,7 +61,7 @@ const rawRuntimeConfigSchema = z
     CLOUDFLARE_ACCOUNT_ID: z.string().min(1),
     CLOUDFLARE_API_TOKEN: secretSchema,
     CLOUDFLARE_ORIGIN_SECRET: secretSchema,
-    CLOUDFLARE_ZONE_IDS: csvSchema.pipe(z.array(z.string().min(1)).length(3)),
+    CLOUDFLARE_ZONE_IDS: csvSchema.pipe(z.array(z.string().min(1)).min(1).max(3)),
     CLOUDFLARE_EXPECTED_NAMESERVERS: csvSchema.pipe(z.array(hostnameSchema).min(2).max(5)),
     CLOUDFLARE_SSL_MODE: z.literal('full_strict'),
 
@@ -210,7 +210,7 @@ export interface RuntimeConfig {
     readonly accountId: string;
     readonly apiToken: string;
     readonly originSecret: string;
-    readonly zoneIds: readonly [string, string, string];
+    readonly zoneIds: readonly string[];
     readonly expectedNameservers: readonly string[];
     readonly sslMode: 'full_strict';
   };
@@ -280,7 +280,7 @@ export type RuntimeConfigResult =
 
 function toRuntimeConfig(value: ParsedRuntimeEnvironment): RuntimeConfig {
   const roots = value.MVP_ROOT_HOSTS as [string, string, string];
-  const zones = value.CLOUDFLARE_ZONE_IDS as [string, string, string];
+  const zones = value.CLOUDFLARE_ZONE_IDS;
   return Object.freeze({
     environment: value.APP_ENVIRONMENT,
     schemaGateMode: value.SCHEMA_GATE_MODE,
