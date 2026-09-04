@@ -1,0 +1,17 @@
+# Line endings are part of this repository's integrity contract, not a style
+# preference. Reviewed migration bodies in src/domain/release/migration-manifest.ts
+# and the reviewed synthetic fixture allowances in scripts/check-release-policy.mjs
+# are SHA-256 digests of exact file bytes. A CRLF checkout changes every digest,
+# which fails the schema manifest, production readiness, and the secret scanner.
+# Normalize everything to LF so digests are identical on every platform.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

@@ -1,0 +1,80 @@
+name: Bug report
+description: Reproducible defect on a specific commit. For vulnerabilities, use SECURITY.md instead.
+title: "fix(<scope>): <short description>"
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report suspected vulnerabilities here — email officialelsa21@gmail.com per `SECURITY.md`. Never paste credentials, database URLs, tokens, signed URLs, or production host data.
+  - type: input
+    id: commit
+    attributes:
+      label: Commit SHA
+      description: Exact commit you reproduced on (e.g. HEAD of main).
+      placeholder: "e.g. 26b3eea"
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - Dashboard (control-plane host)
+        - API (API host)
+        - Webhook / Telegram (webhook host)
+        - Public tenant site (exact hostname)
+        - Build / typecheck / lint / migration tooling
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should happen under exact-host isolation and fail-closed release.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead, with redacted logs/responses.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction steps
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: gate
+    attributes:
+      label: Local gate evidence
+      description: Output of typecheck / lint / build and GET /api/health (secrets redacted).
+      value: |
+        npm run typecheck:
+        npm run lint:
+        npm run build:
+        GET /api/health:
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: Node version, APP_ENVIRONMENT, and whether migrations were applied in filename order.
+      placeholder: "Node 22, APP_ENVIRONMENT=development, migrations applied in order"
+    validations:
+      required: false
+  - type: checkboxes
+    id: secrets
+    attributes:
+      label: Secret hygiene
+      options:
+        - label: I removed all credentials, tokens, signed URLs, and production host data from this report.
+          required: true

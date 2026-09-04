@@ -1,0 +1,251 @@
+import type { Metadata } from 'next';
+import type { NetworkArticle, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
+
+function absoluteSiteUrl(context: ResolvedSiteContext, path: string): string {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const url = new URL(normalizedPath, `https://${context.normalizedHostname}`);
+  if (url.hostname !== context.normalizedHostname) throw new Error('Invalid site URL path');
+  return url.toString();
+}
+
+export function absoluteSiteAssetUrl(context: ResolvedSiteContext, value: string): string {
+  const parsed = new URL(value, `https://${context.normalizedHostname}`);
+  return absoluteSiteUrl(context, `${parsed.pathname}${parsed.search}`);
+}
+
+function xml(value: string): string {
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
+}
+function safeJson(value: unknown): string {
+  return JSON.stringify(value).replaceAll('<', '\\u003c').replaceAll('>', '\\u003e').replaceAll('&', '\\u0026').replaceAll('\u2028', '\\u2028').replaceAll('\u2029', '\\u2029');
+}
+
+export interface SeoDocument {
+  readonly title: string;
+  readonly description: string;
+  readonly canonical: string | null;
+  readonly robots: 'index, follow' | 'noindex, nofollow';
+  readonly openGraph: Readonly<{ title: string; description: string; url: string; siteName: string; type: 'website' | 'article'; image: string }> | null;
+  readonly jsonLd: readonly Readonly<Record<string, unknown>>[];
+}
+
+/** Shared indexable robots (tenant + control-plane public surfaces). */
+export function indexableRobots(): Metadata['robots'] {
+  return {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-snippet': -1,
+      'max-image-preview': 'large',
+      'max-video-preview': -1,
+    },
+  };
+}
+
+/** Shared non-indexable robots; follows links so equity still flows (search, missing content). */
+export function nonIndexableRobots(): Metadata['robots'] {
+  return {
+    index: false,
+    follow: true,
+    googleBot: {
+      index: false,
+      follow: true,
+      noimageindex: true,
+      'max-snippet': -1,
+      'max-image-preview': 'none',
+      'max-video-preview': -1,
+    },
+  };
+}
+
+/** Tenant favicon fragment; empty when the site sets no custom icon. */
+export function tenantFavicon(faviconUrl: string | null | undefined): Pick<Metadata, 'icons'> {
+  return faviconUrl === null || faviconUrl === undefined || faviconUrl === '' ? {} : { icons: { icon: faviconUrl } };
+}
+
+/** Uniform metadata for missing network content (unknown slug, empty id). */
+export function notFoundMetadata(): Metadata {
+  return { title: 'Not Found', robots: { index: false, follow: false } };
+}
+
+export function buildSeoDocument(site: NetworkSiteData, options: { readonly path: string; readonly article?: NetworkArticle; readonly indexable?: boolean }): SeoDocument {
+  const indexable = options.indexable ?? true;
+  const article = options.article;
+  const title = article === undefined ? site.settings.name : `${article.title} | ${site.settings.name}`;
+  const description = article?.description ?? site.settings.description;
+  if (!indexable) return { title, description, canonical: null, robots: 'noindex, nofollow', openGraph: null, jsonLd: [] };
+  const canonical = absoluteSiteUrl(site.context, options.path);
+  const image = absoluteSiteAssetUrl(site.context, article?.imageUrl ?? site.settings.fallbackImageUrl);
+  const logo = site.settings.logoUrl === null ? null : absoluteSiteAssetUrl(site.context, site.settings.logoUrl);
+  const publisher = article?.officialInstitution ?? article?.publisherName ?? site.settings.name;
+  const jsonLd: Record<string, unknown>[] = [
+    { '@context': 'https://schema.org', '@type': 'WebSite', name: site.settings.name, url: absoluteSiteUrl(site.context, '/') },
+    { '@context': 'https://schema.org', '@type': 'Organization', name: publisher, url: absoluteSiteUrl(site.context, '/'), ...(logo === null ? {} : { logo }) },
+  ];
+  if (article !== undefined) {
+    jsonLd.push({ '@context': 'https://schema.org', '@type': 'NewsArticle', headline: article.title, description: article.description, datePublished: article.publishedAt, dateModified: article.updatedAt, mainEntityOfPage: canonical, image: [image], author: { '@type': 'Person', name: article.authorName ?? article.attribution }, publisher: { '@type': 'Organization', name: publisher, ...(logo === null ? {} : { logo: { '@type': 'ImageObject', url: logo } }) } });
+    jsonLd.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Beranda', item: absoluteSiteUrl(site.context, '/') }, ...(article.categoryName === null || article.categorySlug === null ? [] : [{ '@type': 'ListItem', position: 2, name: article.categoryName, item: absoluteSiteUrl(site.context, `/categories/${article.categorySlug}`) }]), { '@type': 'ListItem', position: article.categoryName === null ? 2 : 3, name: article.title, item: canonical }] });
+  }
+  return { title, description, canonical, robots: 'index, follow', openGraph: { title, description, url: canonical, siteName: site.settings.name, type: article === undefined ? 'website' : 'article', image }, jsonLd };
+}
+
+export interface WebSiteSchema {
+  readonly '@context': 'https://schema.org';
+  readonly '@type': 'WebSite';
+  readonly name: string;
+  readonly url: string;
+}
+
+export interface OrganizationSchema {
+  readonly '@context': 'https://schema.org';
+  readonly '@type': 'Organization';
+  readonly name: string;
+  readonly url: string;
+  readonly logo?: string;
+}
+
+export interface NewsArticleSchema {
+  readonly '@context': 'https://schema.org';
+  readonly '@type': 'NewsArticle';
+  readonly headline: string;
+  readonly description: string;
+  readonly datePublished: string;
+  readonly dateModified: string;
+  readonly mainEntityOfPage: string;
+  readonly image: readonly string[];
+  readonly author: Readonly<{ '@type': 'Person'; name: string }>;
+  readonly publisher: Readonly<{
+    '@type': 'Organization';
+    name: string;
+    logo?: Readonly<{ '@type': 'ImageObject'; url: string }>;
+  }>;
+}
+
+export interface BreadcrumbItemSchema {
+  readonly '@type': 'ListItem';
+  readonly position: number;
+  readonly name: string;
+  readonly item: string;
+}
+
+export interface BreadcrumbListSchema {
+  readonly '@context': 'https://schema.org';
+  readonly '@type': 'BreadcrumbList';
+  readonly itemListElement: readonly BreadcrumbItemSchema[];
+}
+
+export interface FaqQuestionSchema {
+  readonly '@type': 'Question';
+  readonly name: string;
+  readonly acceptedAnswer: Readonly<{ '@type': 'Answer'; text: string }>;
+}
+
+export interface FaqPageSchema {
+  readonly '@context': 'https://schema.org';
+  readonly '@type': 'FAQPage';
+  readonly mainEntity: readonly FaqQuestionSchema[];
+}
+
+export type JsonLdSchema =
+  | WebSiteSchema
+  | OrganizationSchema
+  | NewsArticleSchema
+  | BreadcrumbListSchema
+  | FaqPageSchema
+  | Readonly<Record<string, unknown>>;
+
+export function buildFaqPageSchema(
+  items: readonly Readonly<{ question: string; answer: string }>[],
+): FaqPageSchema {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: { '@type': 'Answer', text: item.answer },
+    })),
+  };
+}
+
+export function serializeJsonLd(documents: readonly Readonly<Record<string, unknown>>[]): string {
+  return safeJson(documents.length === 1 ? documents[0] : documents);
+}
+
+export function serializeRobots(site: NetworkSiteData): string {
+  const custom = site.settings.robots.filter((line) => line.trim().length > 0);
+  const lines = [
+    'User-agent: *',
+    ...custom,
+    'Allow: /',
+    'Allow: /articles/',
+    'Allow: /categories/',
+    // Search pages are noindex: disallow them to keep crawl budget on canonical URLs.
+    'Disallow: /search',
+    'Disallow: /api/',
+    'Disallow: /dashboard',
+    'Disallow: /auth',
+    'Disallow: /sign-in',
+    'Disallow: /domain-pending',
+  ];
+  return `${lines.join('\n')}\nSitemap: ${absoluteSiteUrl(site.context, '/sitemap.xml')}\n`;
+}
+
+interface SitemapEntry {
+  readonly loc: string;
+  readonly lastmod: string;
+  readonly changefreq: 'daily' | 'weekly' | 'monthly';
+  readonly priority: string;
+}
+
+function toLastmod(value: string, fallback: string): string {
+  const time = new Date(value).getTime();
+  if (Number.isNaN(time)) return fallback;
+  return new Date(time).toISOString();
+}
+
+export function serializeSitemap(site: NetworkSiteData): string {
+  const now = new Date().toISOString();
+  const homepageLastmod = site.articles.reduce<string>(
+    (latest, article) => (article.updatedAt > latest ? article.updatedAt : latest),
+    now,
+  );
+  const entries: SitemapEntry[] = [
+    { loc: absoluteSiteUrl(site.context, '/'), lastmod: toLastmod(homepageLastmod, now), changefreq: 'daily', priority: '1.0' },
+    { loc: absoluteSiteUrl(site.context, '/articles'), lastmod: toLastmod(homepageLastmod, now), changefreq: 'daily', priority: '0.8' },
+  ];
+  const seenCategories = new Set<string>();
+  for (const article of site.articles) {
+    if (article.categorySlug !== null && !seenCategories.has(article.categorySlug)) {
+      seenCategories.add(article.categorySlug);
+      entries.push({
+        loc: absoluteSiteUrl(site.context, `/categories/${article.categorySlug}`),
+        lastmod: toLastmod(article.updatedAt, now),
+        changefreq: 'daily',
+        priority: '0.7',
+      });
+    }
+  }
+  for (const article of site.articles) {
+    entries.push({
+      loc: absoluteSiteUrl(site.context, `/articles/${article.slug}`),
+      lastmod: toLastmod(article.updatedAt, now),
+      changefreq: 'weekly',
+      priority: '0.8',
+    });
+  }
+  const body = entries
+    .map(
+      (entry) =>
+        `<url><loc>${xml(entry.loc)}</loc><lastmod>${xml(entry.lastmod)}</lastmod><changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority></url>`,
+    )
+    .join('');
+  return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${body}</urlset>`;
+}
+
+export function serializeRss(site: NetworkSiteData): string {
+  const channel = absoluteSiteUrl(site.context, '/');
+  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>${xml(site.settings.name)}</title><link>${xml(channel)}</link><description>${xml(site.settings.description)}</description>${site.articles.map((article) => `<item><title>${xml(article.title)}</title><link>${xml(absoluteSiteUrl(site.context, `/articles/${article.slug}`))}</link><guid isPermaLink="true">${xml(absoluteSiteUrl(site.context, `/articles/${article.slug}`))}</guid><description>${xml(article.description)}</description><pubDate>${new Date(article.publishedAt).toUTCString()}</pubDate></item>`).join('')}</channel></rss>`;
+}

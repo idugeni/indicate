@@ -1,0 +1,66 @@
+import { Suspense } from 'react';
+import type { Metadata } from 'next';
+import { ListingPage } from '@/modules/site/components/network/network-listing';
+import { Section } from '@/modules/site/components/layout/content';
+import { Skeleton } from '@/components/ui/skeleton';
+import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
+
+export const dynamic = 'force-dynamic';
+
+type Props = {
+  readonly searchParams: Promise<{ q?: string } & { [key: string]: string | string[] | undefined }>;
+};
+
+function normalizeQuery(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return (value[0] ?? '').slice(0, 120);
+  return (value ?? '').slice(0, 120);
+}
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const resolved = await searchParams;
+  return networkMetadata('/search', { search: normalizeQuery(resolved.q) });
+}
+
+function SearchResultsSkeleton() {
+  return (
+    <Section aria-busy="true" aria-label="Memuat hasil pencarian">
+      <div className="grid items-start gap-10 md:grid-cols-[minmax(0,1fr)_16rem]">
+        <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2" aria-hidden="true">
+          {[0, 1, 2, 3].map((n) => (
+            <div key={n} className="border-t-2 border-hairline pt-4">
+              <Skeleton className="aspect-video w-full bg-bg-raised" />
+              <Skeleton className="mt-4 h-4 w-3/4 bg-bg-raised" />
+              <Skeleton className="mt-2 h-3 w-1/2 bg-bg-raised" />
+            </div>
+          ))}
+        </div>
+        <Skeleton className="h-40 w-full bg-bg-raised" aria-hidden="true" />
+      </div>
+    </Section>
+  );
+}
+
+async function SearchResults({ query }: { readonly query: string }) {
+  const site = await resolveNetworkSite({ search: query }, '/search');
+  return <ListingPage site={site} title={query === '' ? 'Pencarian' : `Hasil untuk “${query}”`} />;
+}
+
+/** Search shell streams results behind Suspense so the form stays interactive (near-zero INP) while the index query runs. */
+export default async function SearchPage({ searchParams }: Props) {
+  const resolved = await searchParams;
+  const q = normalizeQuery(resolved.q);
+  return (
+    <>
+      <form className="public-search" action="/search" role="search">
+        <label htmlFor="public-search">Cari berita</label>
+        <div>
+          <input id="public-search" name="q" defaultValue={q} maxLength={120} autoComplete="off" />
+          <button type="submit">Cari</button>
+        </div>
+      </form>
+      <Suspense fallback={<SearchResultsSkeleton />}>
+        <SearchResults query={q} />
+      </Suspense>
+    </>
+  );
+}

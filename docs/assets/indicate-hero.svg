@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430" role="img" aria-labelledby="hero-title hero-desc">
+  <title id="hero-title">Indicate multi-tenant publishing platform</title>
+  <desc id="hero-desc">Indicate provides one central editorial control plane, durable PostgreSQL-backed publication workflows, and exact-host isolation for multiple news sites in one shared application.</desc>
+  <defs>
+    <linearGradient id="hero-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071426"/>
+      <stop offset="0.55" stop-color="#102A43"/>
+      <stop offset="1" stop-color="#123D4A"/>
+    </linearGradient>
+    <linearGradient id="hero-brand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5EEAD4"/>
+      <stop offset="1" stop-color="#7DD3FC"/>
+    </linearGradient>
+    <filter id="hero-shadow" x="-20%" y="-30%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="7" stdDeviation="10" flood-color="#020617" flood-opacity="0.36"/>
+    </filter>
+    <marker id="hero-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#5EEAD4"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="430" rx="28" fill="url(#hero-bg)"/>
+  <circle cx="1080" cy="30" r="180" fill="#2DD4BF" opacity="0.07"/>
+  <circle cx="1000" cy="430" r="260" fill="#38BDF8" opacity="0.06"/>
+  <path d="M0 335C230 290 385 405 620 350C860 294 1020 350 1200 310V430H0Z" fill="#020617" opacity="0.16"/>
+
+  <g font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <g transform="translate(60 62)">
+      <rect width="52" height="52" rx="15" fill="url(#hero-brand)"/>
+      <path d="M16 14h20v7h-7v11h7v7H16v-7h7V21h-7z" fill="#071426"/>
+      <text x="70" y="42" fill="#F8FAFC" font-size="48" font-weight="750" letter-spacing="-1.5">Indicate</text>
+      <text x="0" y="103" fill="#E2EEF5" font-size="23" font-weight="650">One editorial control plane.</text>
+      <text x="0" y="136" fill="#E2EEF5" font-size="23" font-weight="650">Every publication exactly isolated.</text>
+      <text x="0" y="180" fill="#A9C4D3" font-size="17">Durable, hostname-aware publishing</text>
+      <text x="0" y="206" fill="#A9C4D3" font-size="17">for many news domains.</text>
+    </g>
+
+    <g filter="url(#hero-shadow)">
+      <rect x="500" y="60" width="320" height="210" rx="24" fill="#0B1F33" stroke="#5EEAD4" stroke-width="2"/>
+      <rect x="526" y="86" width="60" height="60" rx="16" fill="#134E4A"/>
+      <path d="M541 102h30v6h-30zm0 13h30v6h-30zm0 13h20v6h-20z" fill="#99F6E4"/>
+      <text x="604" y="114" fill="#F8FAFC" font-size="23" font-weight="750">Central CMS</text>
+      <text x="604" y="142" fill="#B7CEDA" font-size="16">Editorial · API · Telegram</text>
+      <line x1="526" y1="171" x2="794" y2="171" stroke="#315268"/>
+      <circle cx="540" cy="201" r="6" fill="#5EEAD4"/>
+      <text x="558" y="207" fill="#E2EEF5" font-size="17">Canonical article workflow</text>
+      <circle cx="540" cy="236" r="6" fill="#7DD3FC"/>
+      <text x="558" y="242" fill="#E2EEF5" font-size="17">Durable publication intent</text>
+    </g>
+
+    <path d="M820 108C850 108 850 103 882 103" fill="none" stroke="#5EEAD4" stroke-width="3" marker-end="url(#hero-arrow)"/>
+    <path d="M820 165H882" fill="none" stroke="#5EEAD4" stroke-width="3" marker-end="url(#hero-arrow)"/>
+    <path d="M820 222C850 222 850 227 882 227" fill="none" stroke="#5EEAD4" stroke-width="3" marker-end="url(#hero-arrow)"/>
+
+    <g filter="url(#hero-shadow)">
+      <rect x="892" y="68" width="248" height="72" rx="17" fill="#102C44" stroke="#4E748B"/>
+      <circle cx="920" cy="104" r="10" fill="#5EEAD4"/>
+      <text x="942" y="101" fill="#F8FAFC" font-size="18" font-weight="750">north.news.test</text>
+      <text x="942" y="123" fill="#B7CEDA" font-size="16">exact active host</text>
+
+      <rect x="892" y="148" width="248" height="72" rx="17" fill="#102C44" stroke="#4E748B"/>
+      <circle cx="920" cy="184" r="10" fill="#7DD3FC"/>
+      <text x="942" y="181" fill="#F8FAFC" font-size="18" font-weight="750">city.news.test</text>
+      <text x="942" y="203" fill="#B7CEDA" font-size="16">exact active host</text>
+
+      <rect x="892" y="228" width="248" height="72" rx="17" fill="#102C44" stroke="#4E748B"/>
+      <circle cx="920" cy="264" r="10" fill="#A5B4FC"/>
+      <text x="942" y="261" fill="#F8FAFC" font-size="18" font-weight="750">coast.news.test</text>
+      <text x="942" y="283" fill="#B7CEDA" font-size="16">exact active host</text>
+    </g>
+
+    <g transform="translate(60 332)">
+      <rect width="1080" height="70" rx="19" fill="#071A2A" stroke="#315268"/>
+      <g transform="translate(25 17)">
+        <circle cx="18" cy="18" r="18" fill="#134E4A"/>
+        <path d="M11 18h14M18 11v14" stroke="#99F6E4" stroke-width="2.5"/>
+        <text x="48" y="16" fill="#F1F5F9" font-size="17" font-weight="750">One shared application</text>
+        <text x="48" y="38" fill="#A9C4D3" font-size="16">multi-tenant by design</text>
+      </g>
+      <line x1="360" y1="15" x2="360" y2="55" stroke="#315268"/>
+      <g transform="translate(390 17)">
+        <circle cx="18" cy="18" r="18" fill="#153B57"/>
+        <path d="M10 18l6 6 11-13" fill="none" stroke="#BAE6FD" stroke-width="2.7"/>
+        <text x="48" y="16" fill="#F1F5F9" font-size="17" font-weight="750">Exact-host isolation</text>
+        <text x="48" y="38" fill="#A9C4D3" font-size="16">no fallback tenant</text>
+      </g>
+      <line x1="715" y1="15" x2="715" y2="55" stroke="#315268"/>
+      <g transform="translate(745 17)">
+        <circle cx="18" cy="18" r="18" fill="#312E81"/>
+        <path d="M10 14c0-4 16-4 16 0v10c0 4-16 4-16 0zm0 0c0 4 16 4 16 0m-16 6c0 4 16 4 16 0" fill="none" stroke="#C7D2FE" stroke-width="2.2"/>
+        <text x="48" y="16" fill="#F1F5F9" font-size="17" font-weight="750">PostgreSQL authority</text>
+        <text x="48" y="38" fill="#A9C4D3" font-size="16">durable jobs and audit</text>
+      </g>
+    </g>
+  </g>
+</svg>

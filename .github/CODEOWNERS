@@ -1,0 +1,7 @@
+# Code owners for Indicate.
+#
+# The release path is fail-closed: configuration, policies, secure build, and
+# readiness block advancement on failure. Keep this file restrictive and update
+# it when ownership changes.
+
+* @idugeni

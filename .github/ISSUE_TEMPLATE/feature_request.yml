@@ -1,0 +1,60 @@
+name: Feature request
+description: Proposed capability with tenant-isolation and migration analysis.
+title: "feat(<scope>): <short description>"
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read `docs/ARCHITECTURE.md` and `docs/PRD.md` first. Proposals that break the one-app / one-project / exact-host invariants need requirements and architecture revision before code.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: Whose workflow is blocked, and what is impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: What should the system do, on which surface (Dashboard, API, Telegram, worker, public template)?
+    validations:
+      required: true
+  - type: textarea
+    id: tenancy
+    attributes:
+      label: Tenant-isolation analysis
+      description: How is organizationId derived? How are public reads hostname-scoped? What is denied, and how?
+      value: |
+        organizationId source:
+        Hostname/cache/SEO impact:
+        Denial behavior:
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Data and migration impact
+      description: Schema changes, compatibility (expand → backfill → verify → contract), audit impact.
+      value: |
+        Schema impact: none / describe
+        Compatibility:
+        Audit impact:
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope confirmation
+      options:
+        - label: This proposal keeps one Next.js app, one Vercel project, one Supabase project/database, one R2 bucket, and one Redis resource — or explicitly requests an architecture revision.
+          required: true
+        - label: No secrets, credentials, or production host data are included in this request.
+          required: true

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/idugeni/indicate/blob/main/SECURITY.md
+    about: Do not file public issues for vulnerabilities — email officialelsa21@gmail.com.
+  - name: Support and setup questions
+    url: https://github.com/idugeni/indicate/blob/main/SUPPORT.md
+    about: Read the docs and support guide before opening an issue.

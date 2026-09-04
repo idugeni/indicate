@@ -1,0 +1,281 @@
+import 'server-only';
+
+import { z } from 'zod';
+
+import { normalizeConfiguredHostname } from '@/core/hostname/normalize-configured-hostname';
+import { BOOTSTRAP_ENVIRONMENTS, SCHEMA_GATE_MODES, type BootstrapEnvironment, type SchemaGateMode } from '@/core/config/bootstrap/bootstrap-env';
+import { SecretString } from '@/core/config/secret-string';
+
+export { normalizeConfiguredHostname };
+
+const SECRET_MIN_LENGTH = 8;
+
+/** `INDICATE_*` prefixes owned here: unknown keys under them fail; unrelated platform keys ignored. */
+const INDICATE_NAMESPACE_PREFIXES = [
+  'DASHBOARD_',
+  'API_',
+  'WEBHOOK_',
+  'NEXT_PUBLIC_SUPABASE_',
+  'SUPABASE_',
+  'DATABASE_',
+  'CLOUDFLARE_',
+  'VERCEL_',
+  'R2_',
+  'UPSTASH_',
+  'TELEGRAM_',
+  'GENERIC_',
+  'CRON_',
+  'REDACTION_',
+  'MVP_',
+  'MEDIA_',
+  'PUBLISH_',
+  'CACHE_',
+  'RATE_LIMIT_',
+  'DEFAULT_',
+  'SITE_',
+  'REDIS_',
+  'TENANCY_',
+  'APP_',
+] as const;
+
+const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
+  'NODE_ENV',
+  'APP_ENVIRONMENT',
+  'SCHEMA_GATE_MODE',
+  'DASHBOARD_HOST',
+  'API_HOST',
+  'WEBHOOK_HOST',
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'SUPABASE_SECRET_KEY',
+  'SUPABASE_PROJECT_REF',
+  'DATABASE_POOL_URL',
+  'DATABASE_DIRECT_URL',
+  'CLOUDFLARE_API_TOKEN',
+  'CLOUDFLARE_ORIGIN_SECRET',
+  'VERCEL_API_TOKEN',
+  'R2_ACCESS_KEY_ID',
+  'R2_SECRET_ACCESS_KEY',
+  'UPSTASH_REDIS_REST_URL',
+  'UPSTASH_REDIS_REST_TOKEN',
+  'TELEGRAM_BOT_TOKEN',
+  'TELEGRAM_WEBHOOK_SECRET',
+  'GENERIC_WEBHOOK_SECRET',
+  'CRON_SECRET',
+]);
+
+const hostnameSchema = z
+  .string()
+  .transform((value, context) => {
+    const normalized = normalizeConfiguredHostname(value);
+    if (normalized === null) {
+      context.addIssue({ code: 'custom', message: 'invalid_hostname' });
+      return z.NEVER;
+    }
+    return normalized;
+  })
+  .pipe(z.string());
+
+const secretSchema = z.string().min(SECRET_MIN_LENGTH, 'secret_too_short');
+const httpsUrlSchema = z.url().refine((value) => value.startsWith('https://'), 'https_required');
+
+const bootstrapSchema = z
+  .object({
+    NODE_ENV: z.enum(BOOTSTRAP_ENVIRONMENTS).default('development'),
+    APP_ENVIRONMENT: z.enum(BOOTSTRAP_ENVIRONMENTS).default('development'),
+    SCHEMA_GATE_MODE: z.enum(SCHEMA_GATE_MODES).default('contract'),
+    DASHBOARD_HOST: hostnameSchema.default('indicate.web.id'),
+    API_HOST: hostnameSchema.default('api.indicate.web.id'),
+    WEBHOOK_HOST: hostnameSchema.default('webhook.indicate.web.id'),
+
+    NEXT_PUBLIC_SUPABASE_URL: httpsUrlSchema,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(8).optional(),
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(8).optional(),
+    SUPABASE_SERVICE_ROLE_KEY: secretSchema.optional(),
+    // Legacy pre-cutover aliases; anon/publishable are both public client values.
+    SUPABASE_SECRET_KEY: secretSchema.optional(),
+    SUPABASE_PROJECT_REF: z.string().regex(/^[a-z0-9]{8,32}$/).optional(),
+    DATABASE_POOL_URL: z.url({ protocol: /^postgresql$/ }),
+    DATABASE_DIRECT_URL: z.url({ protocol: /^postgresql$/ }),
+
+    CLOUDFLARE_API_TOKEN: secretSchema,
+    CLOUDFLARE_ORIGIN_SECRET: secretSchema,
+    VERCEL_API_TOKEN: secretSchema,
+    R2_ACCESS_KEY_ID: secretSchema,
+    R2_SECRET_ACCESS_KEY: secretSchema,
+    UPSTASH_REDIS_REST_URL: httpsUrlSchema,
+    UPSTASH_REDIS_REST_TOKEN: secretSchema,
+    TELEGRAM_BOT_TOKEN: secretSchema,
+    TELEGRAM_WEBHOOK_SECRET: secretSchema,
+    GENERIC_WEBHOOK_SECRET: secretSchema,
+    CRON_SECRET: secretSchema,
+  })
+  .superRefine((value, context) => {
+    if (value.NODE_ENV === 'production') {
+      for (const [name, secret] of [
+        ['CLOUDFLARE_API_TOKEN', value.CLOUDFLARE_API_TOKEN],
+        ['CLOUDFLARE_ORIGIN_SECRET', value.CLOUDFLARE_ORIGIN_SECRET],
+        ['VERCEL_API_TOKEN', value.VERCEL_API_TOKEN],
+        ['TELEGRAM_BOT_TOKEN', value.TELEGRAM_BOT_TOKEN],
+        ['TELEGRAM_WEBHOOK_SECRET', value.TELEGRAM_WEBHOOK_SECRET],
+        ['GENERIC_WEBHOOK_SECRET', value.GENERIC_WEBHOOK_SECRET],
+        ['CRON_SECRET', value.CRON_SECRET],
+      ] as const) {
+        if (secret.length < 24 || /(?:change[ -]?me|example|placeholder|sentinel|development|test-secret)/iu.test(secret)) {
+          context.addIssue({ code: 'custom', path: [name], message: 'production_secret_not_bounded' });
+        }
+      }
+    }
+    if (value.NODE_ENV === 'production' && value.SCHEMA_GATE_MODE !== 'live') {
+      context.addIssue({ code: 'custom', path: ['SCHEMA_GATE_MODE'], message: 'live_schema_gate_required_in_production' });
+    }
+    if (value.NODE_ENV !== 'production' && value.APP_ENVIRONMENT !== value.NODE_ENV) {
+      context.addIssue({ code: 'custom', path: ['APP_ENVIRONMENT'], message: 'environment_must_match_node_env' });
+    }
+    const controlHosts = [value.DASHBOARD_HOST, value.API_HOST, value.WEBHOOK_HOST];
+    if (new Set(controlHosts).size !== controlHosts.length) {
+      context.addIssue({ code: 'custom', path: ['DASHBOARD_HOST'], message: 'control_hosts_must_be_distinct' });
+    }
+  })
+  .superRefine((value, context) => {
+    const projectRef = value.SUPABASE_PROJECT_REF;
+    if (projectRef !== undefined) {
+      const supabaseHost = new URL(value.NEXT_PUBLIC_SUPABASE_URL).hostname;
+      const pooledDatabase = new URL(value.DATABASE_POOL_URL);
+      const directDatabase = new URL(value.DATABASE_DIRECT_URL);
+      if (supabaseHost !== `${projectRef}.supabase.co`) {
+        context.addIssue({ code: 'custom', path: ['NEXT_PUBLIC_SUPABASE_URL'], message: 'supabase_project_identity_mismatch' });
+      }
+      if (value.DATABASE_POOL_URL.includes(projectRef) === false && !pooledDatabase.hostname.endsWith('.pooler.supabase.com')) {
+        context.addIssue({ code: 'custom', path: ['DATABASE_POOL_URL'], message: 'supabase_project_identity_mismatch' });
+      }
+      if (directDatabase.hostname !== `db.${projectRef}.supabase.co`) {
+        context.addIssue({ code: 'custom', path: ['DATABASE_DIRECT_URL'], message: 'supabase_project_identity_mismatch' });
+      }
+    }
+  });
+
+type ParsedBootstrap = z.infer<typeof bootstrapSchema>;
+
+export interface BootstrapConfig {
+  readonly environment: BootstrapEnvironment;
+  readonly schemaGateMode: SchemaGateMode;
+  readonly controlHosts: Readonly<{
+    readonly dashboard: string;
+    readonly api: string;
+    readonly webhook: string;
+    readonly reserved: ReadonlySet<string>;
+  }>;
+  readonly supabase: Readonly<{
+    readonly projectRef?: string;
+    readonly url: string;
+    /** Public, client-safe anonymized key (not a secret). */
+    readonly anonKey: string;
+    readonly serviceRoleKey: SecretString;
+  }>;
+  readonly database: Readonly<{
+    readonly pooledUrl: SecretString;
+    readonly directUrl: SecretString;
+  }>;
+  readonly credentials: Readonly<{
+    readonly cloudflareApiToken: SecretString;
+    readonly cloudflareOriginSecret: SecretString;
+    readonly vercelApiToken: SecretString;
+    readonly r2AccessKeyId: SecretString;
+    readonly r2SecretAccessKey: SecretString;
+    readonly upstashRestUrl: string;
+    readonly upstashRestToken: SecretString;
+    readonly telegramBotToken: SecretString;
+    readonly telegramWebhookSecret: SecretString;
+    readonly genericWebhookSecret: SecretString;
+    readonly cronSecret: SecretString;
+  }>;
+}
+
+export interface ConfigIssue {
+  readonly path: string;
+  readonly category: string;
+}
+
+export type BootstrapConfigResult =
+  | { readonly success: true; readonly config: BootstrapConfig }
+  | { readonly success: false; readonly issues: readonly ConfigIssue[] };
+
+function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
+  const serviceRoleKey = value.SUPABASE_SERVICE_ROLE_KEY ?? value.SUPABASE_SECRET_KEY ?? '';
+  const anonKey = value.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? value.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '';
+  const projectRef = value.SUPABASE_PROJECT_REF;
+  return Object.freeze({
+    environment: value.APP_ENVIRONMENT,
+    schemaGateMode: value.SCHEMA_GATE_MODE,
+    controlHosts: Object.freeze({
+      dashboard: value.DASHBOARD_HOST,
+      api: value.API_HOST,
+      webhook: value.WEBHOOK_HOST,
+      reserved: new Set([value.DASHBOARD_HOST, value.API_HOST, value.WEBHOOK_HOST]),
+    }),
+    supabase: Object.freeze({
+      projectRef,
+      url: value.NEXT_PUBLIC_SUPABASE_URL,
+      anonKey,
+      serviceRoleKey: SecretString.fromPlain(serviceRoleKey),
+    }),
+    database: Object.freeze({
+      pooledUrl: SecretString.fromPlain(value.DATABASE_POOL_URL),
+      directUrl: SecretString.fromPlain(value.DATABASE_DIRECT_URL),
+    }),
+    credentials: Object.freeze({
+      cloudflareApiToken: SecretString.fromPlain(value.CLOUDFLARE_API_TOKEN),
+      cloudflareOriginSecret: SecretString.fromPlain(value.CLOUDFLARE_ORIGIN_SECRET),
+      vercelApiToken: SecretString.fromPlain(value.VERCEL_API_TOKEN),
+      r2AccessKeyId: SecretString.fromPlain(value.R2_ACCESS_KEY_ID),
+      r2SecretAccessKey: SecretString.fromPlain(value.R2_SECRET_ACCESS_KEY),
+      upstashRestUrl: value.UPSTASH_REDIS_REST_URL,
+      upstashRestToken: SecretString.fromPlain(value.UPSTASH_REDIS_REST_TOKEN),
+      telegramBotToken: SecretString.fromPlain(value.TELEGRAM_BOT_TOKEN),
+      telegramWebhookSecret: SecretString.fromPlain(value.TELEGRAM_WEBHOOK_SECRET),
+      genericWebhookSecret: SecretString.fromPlain(value.GENERIC_WEBHOOK_SECRET),
+      cronSecret: SecretString.fromPlain(value.CRON_SECRET),
+    }),
+  } as BootstrapConfig);
+}
+
+/** Pure Bootstrap validation: no PostgreSQL/provider init; failures expose only allowlisted paths + stable categories. Pre-cutover keeps legacy fields as authority; post-cutover legacy fields fail closed. */
+export function validateBootstrapConfig(environment: Record<string, string | undefined>): BootstrapConfigResult {
+  // Authority is APP_ENVIRONMENT — `next start` forces NODE_ENV=production.
+  const postCutover = environment.APP_ENVIRONMENT === 'production';
+  const unknown = postCutover ? detectUnknownIndicateKeys(environment, BOOTSTRAP_ALLOWED_KEYS) : [];
+  const parsed = bootstrapSchema.safeParse(environment);
+  if (!parsed.success) {
+    const issues = parsed.error.issues
+      .map((issue) => ({
+        path: issue.path.join('.') || 'configuration',
+        category: issue.message,
+      }))
+      .concat(unknown)
+      .sort((left, right) => `${left.path}:${left.category}`.localeCompare(`${right.path}:${right.category}`));
+    return { success: false, issues: Object.freeze(issues) };
+  }
+  if (unknown.length > 0) {
+    return { success: false, issues: Object.freeze(unknown) };
+  }
+  return { success: true, config: toBootstrapConfig(parsed.data) };
+}
+
+function detectUnknownIndicateKeys(
+  environment: Record<string, string | undefined>,
+  allowed: ReadonlySet<string>,
+): ConfigIssue[] {
+  const issues: ConfigIssue[] = [];
+  for (const key of Object.keys(environment)) {
+    if (allowed.has(key) || key === 'NODE_ENV' || key.startsWith('_') || key.startsWith('npm_') || key.startsWith('NPM_')) {
+      continue;
+    }
+    if (INDICATE_NAMESPACE_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+      issues.push({ path: key, category: 'unknown_configuration_key' });
+    }
+  }
+  return issues;
+}

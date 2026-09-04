@@ -1,0 +1,31 @@
+name: Release Quality Gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# NOTE: Vitest/Playwright suites dan skrip policy/test (test:*, policy:*)
+# sengaja di-strip dari tree pada 4e72fc3 ("strip test and policy tooling",
+# recoverable dari git history). Gate ini hanya menjalankan pemeriksaan yang
+# ADA: typecheck, lint, dan production build. Jangan rujuk skrip test yang
+# belum dikembalikan — lihat riwayat commit tersebut bila ingin me-restore.
+# Job live-postgres-contract dihapus dengan alasan yang sama; kembalikan
+# bersamaan dengan suit kontraknya, bukan sebelumnya.
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build

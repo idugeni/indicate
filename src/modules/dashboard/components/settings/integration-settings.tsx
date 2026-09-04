@@ -1,0 +1,231 @@
+'use client';
+
+import { useId, useState, useTransition, type FormEvent } from 'react';
+import {
+  Check,
+  Copy,
+  KeyRound,
+  Loader2,
+  Plus,
+  Sparkles,
+  Users,
+} from 'lucide-react';
+import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { Input } from '@/components/ui/input';
+
+export function IntegrationSettings({
+  command,
+}: {
+  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+}) {
+  const [issuedPlaintext, setIssuedPlaintext] = useState<string | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const apiKeyNameId = useId();
+  const apiKeyScopesId = useId();
+  const tgUserId = useId();
+  const tgRoleId = useId();
+  const tgTgUserId = useId();
+  const tgChatId = useId();
+
+  const [isIssuing, startIssueTransition] = useTransition();
+  const [isCreatingMapping, startMappingTransition] = useTransition();
+
+  const handleCopyKey = async () => {
+    if (!issuedPlaintext) return;
+    await navigator.clipboard.writeText(issuedPlaintext);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const handleIssueKey = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    startIssueTransition(async () => {
+      const result = (await command('api-key.issue', {
+        name: String(formData.get('name') ?? '').trim(),
+        scopes: String(formData.get('scopes') ?? '')
+          .split(',')
+          .map((v) => v.trim())
+          .filter(Boolean),
+        expiresAt: null,
+      })) as { readonly plaintext?: string } | null;
+
+      if (result?.plaintext) {
+        setIssuedPlaintext(result.plaintext);
+      }
+      form.reset();
+    });
+  };
+
+  const handleCreateMapping = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    startMappingTransition(async () => {
+      await command('telegram-mapping.create', {
+        userId: String(formData.get('userId') ?? '').trim(),
+        roleId: String(formData.get('roleId') ?? '').trim(),
+        telegramUserId: String(formData.get('telegramUserId') ?? '').trim(),
+        telegramChatId: String(formData.get('telegramChatId') ?? '').trim(),
+      });
+      form.reset();
+    });
+  };
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <SectionCard icon={KeyRound} title="Kunci API" eyebrow="Token akses">
+
+        <form onSubmit={handleIssueKey} className="space-y-3.5">
+          <div className="space-y-1.5">
+            <label htmlFor={apiKeyNameId} className="font-mono text-xs text-paper-dim">
+              Nama Pengenal Kunci (Label)
+            </label>
+            <Input
+              id={apiKeyNameId}
+              name="name"
+              required
+              disabled={isIssuing}
+              placeholder="Edge Ingestion Service"
+              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor={apiKeyScopesId} className="font-mono text-xs text-paper-dim">
+              Cakupan Hak Akses (Comma-separated Scopes)
+            </label>
+            <Input
+              id={apiKeyScopesId}
+              name="scopes"
+              defaultValue="article.read,publishing.read"
+              required
+              disabled={isIssuing}
+              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isIssuing}
+            className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+          >
+            {isIssuing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            <span>Terbitkan Kunci API</span>
+          </button>
+
+          {issuedPlaintext ? (
+            <div className="mt-3 space-y-2 rounded border border-brass/40 bg-bg p-3">
+              <span className="block font-mono text-[10px] uppercase tracking-wider text-brass">
+                Kunci Rahasia Sekali Lihat (Simpan Sekarang)
+              </span>
+              <div className="flex items-center justify-between gap-2">
+                <code className="break-all font-mono text-xs text-paper">
+                  {issuedPlaintext}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => void handleCopyKey()}
+                  className="flex h-7 w-7 flex-none items-center justify-center rounded border border-hairline bg-bg-raised text-paper-dim hover:text-paper"
+                  aria-label="Salin API Key"
+                >
+                  {isCopied ? (
+                    <Check className="h-3.5 w-3.5 text-signal" aria-hidden="true" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </form>
+      </SectionCard>
+
+      <SectionCard icon={Users} title="Telegram dispatcher" eyebrow="Notifikasi">
+
+        <form onSubmit={handleCreateMapping} className="space-y-3.5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor={tgUserId} className="font-mono text-xs text-paper-dim">
+                User ID
+              </label>
+              <Input
+                id={tgUserId}
+                name="userId"
+                required
+                disabled={isCreatingMapping}
+                placeholder="usr_01h..."
+                className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor={tgRoleId} className="font-mono text-xs text-paper-dim">
+                Role ID
+              </label>
+              <Input
+                id={tgRoleId}
+                name="roleId"
+                required
+                disabled={isCreatingMapping}
+                placeholder="role_editor"
+                className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor={tgTgUserId} className="font-mono text-xs text-paper-dim">
+                Telegram User ID
+              </label>
+              <Input
+                id={tgTgUserId}
+                name="telegramUserId"
+                required
+                disabled={isCreatingMapping}
+                placeholder="109283746"
+                className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor={tgChatId} className="font-mono text-xs text-paper-dim">
+                Telegram Chat ID
+              </label>
+              <Input
+                id={tgChatId}
+                name="telegramChatId"
+                required
+                disabled={isCreatingMapping}
+                placeholder="-100987654321"
+                className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isCreatingMapping}
+            className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded border border-hairline-strong bg-bg px-3.5 font-sans text-xs font-semibold text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50"
+          >
+            {isCreatingMapping ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Plus className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
+            )}
+            <span>Tautkan Kanal Telegram</span>
+          </button>
+        </form>
+      </SectionCard>
+    </div>
+  );
+}
