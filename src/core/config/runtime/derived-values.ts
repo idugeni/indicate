@@ -1,14 +1,12 @@
 import 'server-only';
 
-import { REDIS_NAMESPACE_VERSION } from '@/core/config/runtime/runtime-constants';
-import type { BootstrapEnvironment } from '@/core/config/bootstrap/bootstrap-env';
-
 export const TELEGRAM_WEBHOOK_PATH = '/api/webhooks/telegram' as const;
 
 export function deriveTelegramWebhookUrl(normalizedWebhookHost: string): string {
   return `https://${normalizedWebhookHost}${TELEGRAM_WEBHOOK_PATH}`;
 }
 
-export function deriveRedisNamespace(environment: BootstrapEnvironment): string {
-  return `indicate:${environment}:v${REDIS_NAMESPACE_VERSION}`;
+/** Redis key namespace; bumping the cache version repartitions every key. */
+export function deriveRedisNamespace(environment: string, cacheVersion: number): string {
+  return `indicate:${environment}:v${cacheVersion}`;
 }

@@ -97,7 +97,7 @@ async function handleGET() {
   const identity = await auth.verifyCookieSession();
   if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.legacy);
+  const runtime = createRuntimeDatabase(context.bootstrap);
   try {
     const authorization = new DrizzleAuthorizationRepository(runtime.db);
     const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
@@ -127,7 +127,7 @@ async function handlePOST(request: Request) {
   const identity = await auth.verifyCookieSession();
   if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.legacy);
+  const runtime = createRuntimeDatabase(context.bootstrap);
   try {
     const authorization = new DrizzleAuthorizationRepository(runtime.db);
     const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());

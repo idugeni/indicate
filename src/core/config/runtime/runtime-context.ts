@@ -7,21 +7,21 @@ import { DrizzleRuntimeConfigRepository } from '@/data/repos/runtime-config/read
 import { RuntimeConfigSnapshotCache } from '@/core/system/runtime-config-snapshot-cache';
 import { HrTimeMonotonicClock } from '@/core/system/monotonic-clock';
 import { createRuntimeDatabase } from '@/data/client';
-import { getRuntimeConfig } from '@/core/config/runtime/legacy-config';
+import { deriveRedisNamespace } from '@/core/config/runtime/derived-values';
+import { RuntimeConfigReadError } from '@/modules/persisted-config/ports';
 import type { RuntimeConfig } from '@/core/config/runtime/runtime-schema';
 
 export interface RuntimeContext {
   readonly bootstrap: BootstrapConfig;
-  /** Valid DB snapshot; null before migration/backfill completes. */
-  readonly snapshot: RuntimeConfigSnapshot | null;
-  /** Legacy env-derived config; ignore after cutover. */
-  readonly legacy: RuntimeConfig;
-  readonly source: 'postgres' | 'legacy';
+  /** Valid PostgreSQL snapshot; absence fails closed, never falls back. */
+  readonly snapshot: RuntimeConfigSnapshot;
+  /** Service configuration assembled from Bootstrap + snapshot. */
+  readonly config: RuntimeConfig;
 }
 
 let hydratedPromise: Promise<RuntimeContext> | null = null;
 
-/** Single-flight server runtime context via the bounded cache; callers must honor `source`, never fall back to legacy after cutover. */
+/** Single-flight server runtime context via the bounded cache. */
 export async function getServerRuntimeContext(): Promise<RuntimeContext> {
   if (hydratedPromise === null) {
     hydratedPromise = initializeContext();
@@ -31,34 +31,111 @@ export async function getServerRuntimeContext(): Promise<RuntimeContext> {
 
 let cache: RuntimeConfigSnapshotCache | null = null;
 
-function legacyFailOpen(bootstrap: BootstrapConfig, legacy: RuntimeConfig): RuntimeContext {
-  const context: RuntimeContext = Object.freeze({ bootstrap, snapshot: null, legacy, source: 'legacy' });
-  return context;
+function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigSnapshot): RuntimeConfig {
+  const shared = snapshot.sharedDeployment;
+  const policies = snapshot.policies;
+  return Object.freeze({
+    environment: bootstrap.environment,
+    schemaGateMode: bootstrap.schemaGateMode,
+    hosts: Object.freeze({
+      dashboard: bootstrap.controlHosts.dashboard,
+      api: bootstrap.controlHosts.api,
+      webhook: bootstrap.controlHosts.webhook,
+      reserved: new Set(bootstrap.controlHosts.reserved),
+    }),
+    supabase: Object.freeze({
+      pooledDatabaseUrl: bootstrap.database.pooledUrl.reveal(),
+    }),
+    cloudflare: Object.freeze({
+      accountId: shared.cloudflareAccountId,
+      apiToken: bootstrap.credentials.cloudflareApiToken.reveal(),
+      originSecret: bootstrap.credentials.cloudflareOriginSecret.reveal(),
+    }),
+    vercel: Object.freeze({
+      projectId: shared.vercelProjectId,
+      teamId: shared.vercelTeamId,
+      apiToken: bootstrap.credentials.vercelApiToken.reveal(),
+      productionTarget: shared.vercelProductionTargetHostname,
+    }),
+    r2: Object.freeze({
+      accountId: shared.r2AccountId,
+      bucketName: shared.r2BucketName,
+      accessKeyId: bootstrap.credentials.r2AccessKeyId.reveal(),
+      secretAccessKey: bootstrap.credentials.r2SecretAccessKey.reveal(),
+      maxBytes: policies.media.maxObjectBytes,
+      uploadTtlSeconds: policies.media.uploadAuthorizationSeconds,
+      readTtlSeconds: policies.media.readAuthorizationSeconds,
+      allowedTypes: policies.media.allowedMimeTypes,
+    }),
+    redis: Object.freeze({
+      url: bootstrap.credentials.upstashRestUrl,
+      token: bootstrap.credentials.upstashRestToken.reveal(),
+      resourceId: shared.upstashRedisResourceId,
+      namespace: deriveRedisNamespace(bootstrap.environment, policies.cache.cacheVersion),
+    }),
+    publishing: Object.freeze({
+      maxAttempts: policies.publication.maxAttempts,
+      retryDelaysSeconds: policies.publication.retryDelaysSeconds,
+      leaseSeconds: policies.publication.leaseSeconds,
+      batchSize: policies.publication.batchSize,
+      functionDeadlineSeconds: policies.publication.functionDeadlineSeconds,
+    }),
+    telegram: Object.freeze({
+      botToken: bootstrap.credentials.telegramBotToken.reveal(),
+      webhookSecret: bootstrap.credentials.telegramWebhookSecret.reveal(),
+    }),
+    security: Object.freeze({
+      webhookFreshnessSeconds: policies.webhook.freshnessSeconds,
+      webhookReplayTtlSeconds: policies.webhook.replayRetentionSeconds,
+      genericWebhookSecret: bootstrap.credentials.genericWebhookSecret.reveal(),
+      cronSecret: bootstrap.credentials.cronSecret.reveal(),
+    }),
+    cache: Object.freeze({
+      defaultTtlSeconds: policies.cache.publicCacheSeconds,
+    }),
+    rateLimits: Object.freeze({
+      mutation: Object.freeze({
+        allowance: policies.rateLimit.mutation.allowance,
+        windowSeconds: policies.rateLimit.mutation.windowSeconds,
+      }),
+      webhook: Object.freeze({
+        allowance: policies.rateLimit.webhook.allowance,
+        windowSeconds: policies.rateLimit.webhook.windowSeconds,
+      }),
+      publicRead: Object.freeze({
+        allowance: policies.rateLimit.public_read.allowance,
+        windowSeconds: policies.rateLimit.public_read.windowSeconds,
+      }),
+    }),
+    seo: Object.freeze({
+      defaultLocale: bootstrap.seo.defaultLocale,
+      fallbackAssetUrl: bootstrap.seo.fallbackAssetUrl,
+    }),
+  });
 }
 
 async function initializeContext(): Promise<RuntimeContext> {
   const bootstrap = getBootstrapConfig();
-  const legacy = getRuntimeConfig();
 
   if (cache === null) {
-    try {
-      const runtime = createRuntimeDatabase(bootstrap);
-      const repository = new DrizzleRuntimeConfigRepository(runtime.db);
-      cache = new RuntimeConfigSnapshotCache({ repository, clock: new HrTimeMonotonicClock() });
-      // Singleton owns the client for the app lifetime (covers 300s refreshes).
-      void runtime;
-    } catch {
-      return legacyFailOpen(bootstrap, legacy);
-    }
+    const runtime = createRuntimeDatabase(bootstrap);
+    const repository = new DrizzleRuntimeConfigRepository(runtime.db);
+    cache = new RuntimeConfigSnapshotCache({ repository, clock: new HrTimeMonotonicClock() });
+    // Singleton owns the client for the app lifetime (covers 300s refreshes).
+    void runtime;
   }
 
-  try {
-    const entry = await cache.get(bootstrap.environment);
-    const context: RuntimeContext = Object.freeze({ bootstrap, snapshot: entry.snapshot, legacy, source: 'postgres' });
-    return context;
-  } catch {
-    return legacyFailOpen(bootstrap, legacy);
-  }
+  const entry = await cache.get(bootstrap.environment).catch((error: unknown) => {
+    throw new RuntimeConfigReadError(
+      error instanceof Error ? `runtime configuration snapshot unavailable: ${error.message}` : 'runtime configuration snapshot unavailable',
+    );
+  });
+  const context: RuntimeContext = Object.freeze({
+    bootstrap,
+    snapshot: entry.snapshot,
+    config: buildServiceConfig(bootstrap, entry.snapshot),
+  });
+  return context;
 }
 
 let registerPromise: Promise<RuntimeContext> | null = null;

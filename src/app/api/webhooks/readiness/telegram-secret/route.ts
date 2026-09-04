@@ -42,7 +42,7 @@ export async function handleTelegramSecretReadiness(
 }
 
 export async function handleTelegramSecretReadinessPOST(request: Request) {
-  const context = await getServerRuntimeContext(); const config = context.legacy;
+  const context = await getServerRuntimeContext(); const config = context.config;
   const production = await createProductionIntegrationsContext();
   try {
     return await handleTelegramSecretReadiness(request, config, production.rateLimits);

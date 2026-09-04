@@ -12,7 +12,7 @@ function authorized(request: Request, secret: string): boolean {
 }
 
 async function handlePOST(request: Request) {
-  const context = await getServerRuntimeContext(); const config = context.legacy;
+  const context = await getServerRuntimeContext(); const config = context.config;
   if (!authorized(request, config.security.cronSecret)) return new NextResponse('Not Found', { status: 404, headers: { 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
   const composition = await deliveryOperationsComposition();
   try {

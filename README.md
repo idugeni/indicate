@@ -41,7 +41,7 @@
 > **Specified, not implemented:** [database-backed-runtime-config](.kiro/specs/database-backed-runtime-config/) has an approved requirements/design/task set, but its implementation tasks remain pending.
 
 > [!WARNING]
-> Until that feature is implemented, [.env.example](.env.example) remains the authority for the **currently implemented legacy runtime**, including environment-derived domain inventory, provider identifiers, policies, locale, and fallback values. Do not remove those values based only on the newer specification.
+> [.env.example](.env.example) is the authority for the bootstrap environment: connections, secrets, hosts, and build-time values. Tunable policies and deployment identifiers live in PostgreSQL runtime config and are managed through the superadmin surface, not environment variables.
 
 Production readiness is environment-dependent. Always run the applicable deterministic, provider, and readiness gates against authorized resources before making a promotion decision.
 
@@ -95,7 +95,7 @@ Install or provide:
    npm ci
    ```
 
-2. Copy the current legacy configuration contract and replace every placeholder with authorized **development** values:
+2. Copy the bootstrap configuration contract and replace every placeholder with authorized **development** values:
 
    ```sh
    cp .env.example .env.local

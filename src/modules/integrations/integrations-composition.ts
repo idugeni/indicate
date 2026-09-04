@@ -10,6 +10,7 @@ import { TelegramMappingService } from '@/modules/integrations/telegram-mapping-
 import { TelegramWorkflowService } from '@/modules/integrations/telegram-workflow-service';
 import { WebhookService } from '@/modules/integrations/webhook-service';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
+import type { BootstrapConfig } from '@/core/config/bootstrap/bootstrap-schema';
 import type { RuntimeConfig } from '@/core/config/runtime/runtime-schema';
 import { createRuntimeDatabase } from '@/data/client';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
@@ -21,8 +22,8 @@ import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage
 import { TelegramBotApiAdapter } from '@/integrations/telegram/telegram-bot-api';
 import { UuidGenerator } from '@/core/system/uuid-generator';
 
-export function createProductionIntegrations(config: RuntimeConfig) {
-  const runtime = createRuntimeDatabase(config); const identifiers = new UuidGenerator();
+export function createProductionIntegrations(config: RuntimeConfig, bootstrap: BootstrapConfig) {
+  const runtime = createRuntimeDatabase(bootstrap); const identifiers = new UuidGenerator();
   const repository = new DrizzleIntegrationsRepository(runtime.db); const dashboard = new DrizzleDashboardRepository(runtime.db); const publishing = new DrizzlePublishingRepository(runtime.db);
   const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey });
   const queue = new UpstashPublicationQueueAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace, resourceId: config.redis.resourceId });
@@ -44,5 +45,5 @@ export function createProductionIntegrations(config: RuntimeConfig) {
 
 export async function createProductionIntegrationsContext() {
   const context = await getServerRuntimeContext();
-  return createProductionIntegrations(context.legacy);
+  return createProductionIntegrations(context.config, context.bootstrap);
 }

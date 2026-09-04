@@ -20,9 +20,9 @@ function matchesSecret(value: string | null, expected: string): boolean {
 }
 
 async function handleGET(request: Request) {
-  const context = await getServerRuntimeContext(); const config = context.legacy; const requestId = resolveRequestId(request);
+  const context = await getServerRuntimeContext(); const config = context.config; const requestId = resolveRequestId(request);
   if (!matchesSecret(request.headers.get('authorization'), config.security.cronSecret)) return NextResponse.json(createPublicError('UNAUTHENTICATED', 'Authentication is required.', requestId), { status: 401 });
-  const runtime = createRuntimeDatabase(config);
+  const runtime = createRuntimeDatabase(context.bootstrap);
   try {
     const repository = new DrizzlePublishingRepository(runtime.db);
     const queue = new UpstashPublicationQueueAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace, resourceId: config.redis.resourceId });

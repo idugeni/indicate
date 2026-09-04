@@ -29,7 +29,7 @@ import {
 
 async function withRuntimeDatabase<T>(read: (db: Parameters<typeof readServiceTiers>[0]) => Promise<T>): Promise<T | null> {
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.legacy);
+  const runtime = createRuntimeDatabase(context.bootstrap);
   try {
     return await read(runtime.db);
   } catch {

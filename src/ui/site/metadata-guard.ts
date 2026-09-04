@@ -4,7 +4,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 
 import { getPublicConfig } from '@/core/config/public-config';
-import { getRuntimeConfig } from '@/core/config/runtime/legacy-config';
+import { getBootstrapConfig } from '@/core/config/bootstrap/bootstrap-config';
 import { deliveryComposition } from '@/modules/delivery';
 import { indexableRobots } from '@/modules/site/seo';
 import { SERVICE_NAME } from '@/ui/site/marketing-content';
@@ -21,7 +21,7 @@ function controlPlaneOrigin(): string {
     const siteUrl = getPublicConfig(process.env).siteUrl.trim();
     return new URL(siteUrl).toString().replace(/\/$/, '');
   } catch {
-    const dashboardHost = getRuntimeConfig().hosts.dashboard;
+    const dashboardHost = getBootstrapConfig().controlHosts.dashboard;
     return `https://${dashboardHost}`;
   }
 }

@@ -44,7 +44,7 @@ async function contextFor(organizationId: string, requestId: string): Promise<Co
   const publicConfig = getPublicConfig(process.env);
   const auth = createSupabaseSsrAuthAdapter({ url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey, cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }) });
   const identity = await auth.verifyCookieSession(); if (identity === null) return createNonDisclosingDenial(requestId);
-  const context = await getServerRuntimeContext(); const config = context.legacy; const runtime = createRuntimeDatabase(config); const authorization = new DrizzleAuthorizationRepository(runtime.db);
+  const context = await getServerRuntimeContext(); const config = context.config; const runtime = createRuntimeDatabase(context.bootstrap); const authorization = new DrizzleAuthorizationRepository(runtime.db);
   const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator()); if (!local.ok) { await runtime.close(); return createNonDisclosingDenial(requestId); }
   const membership = await authorization.findActiveMembership(organizationId, local.value.id); if (membership === null || !membership.roleActive) { await runtime.close(); return createNonDisclosingDenial(requestId); }
   const actor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), entryPoint: 'dashboard', requestId };

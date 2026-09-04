@@ -4,12 +4,6 @@ import 'server-only';
 
 export const RUNTIME_CONFIG_SNAPSHOT_TTL_SECONDS = 300;
 
-/** Redis namespace version; bumping repartitions every key. */
-export const REDIS_NAMESPACE_VERSION = 2;
-
-/** Authority generation: 1 = legacy env-derived, 2 = PostgreSQL-authoritative. */
-export const CONFIG_AUTHORITY_GENERATION = 2;
-
 /** Bootstrap grammar: 1 = monolithic, 2 = reduced allowlist. */
 export const BOOTSTRAP_GRAMMAR_VERSION = 2;
 

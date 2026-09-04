@@ -7,7 +7,7 @@ import { FALLBACK_PACKAGES, type PricingPackage } from '@/modules/site/component
 export async function loadPricingPackages(): Promise<readonly PricingPackage[]> {
   try {
     const context = await getServerRuntimeContext();
-    const runtime = createRuntimeDatabase(context.legacy);
+    const runtime = createRuntimeDatabase(context.bootstrap);
     try {
       const rows = await new DrizzleBillingRepository(runtime.db).listPackages();
       if (rows.length > 0) return rows;

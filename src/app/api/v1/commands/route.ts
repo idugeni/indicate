@@ -16,7 +16,7 @@ const retryHeaders = (error: PublicErrorEnvelope) => ({ 'Retry-After': error.err
 
 async function handlePOST(request: Request) {
   const requestId = resolveRequestId(request);
-  const context = await getServerRuntimeContext(); const config = context.legacy;
+  const context = await getServerRuntimeContext(); const config = context.config;
   const source = trustedCloudflareSource(request, config.hosts.api, config.cloudflare.originSecret);
   if (source === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
 

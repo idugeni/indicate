@@ -186,7 +186,7 @@ export const runtimeConfigReleaseManifests = pgTable('runtime_config_release_man
   grammarVersion: integer('grammar_version').notNull(),
   parityStart: timestamp('parity_start', { withTimezone: true }).notNull(),
   parityEnd: timestamp('parity_end', { withTimezone: true }).notNull(),
-  legacySourceVersion: text('legacy_source_version').notNull(),
+  sourceVersion: text('source_version').notNull(),
   expectedSourceCount: integer('expected_source_count').notNull(),
   targetSchemaVersion: integer('target_schema_version').notNull(),
   candidateAppVersion: text('candidate_app_version').notNull(),

@@ -9,7 +9,7 @@ import { resolveRequestId } from '@/core/observability/request-id';
 
 const status = (error: PublicErrorEnvelope) => error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 404;
 async function handlePOST(request: Request) {
-  const requestId = resolveRequestId(request); const context = await getServerRuntimeContext(); const config = context.legacy;
+  const requestId = resolveRequestId(request); const context = await getServerRuntimeContext(); const config = context.config;
   const source = trustedCloudflareSource(request, config.hosts.webhook, config.cloudflare.originSecret);
   if (source === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const production = await createProductionIntegrationsContext(); const limiter = production.rateLimits;

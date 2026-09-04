@@ -12,8 +12,8 @@ import { VercelExactDomainAdapter } from '@/integrations/vercel/exact-domain-ada
 
 export async function deliveryOperationsComposition() {
   const context = await getServerRuntimeContext();
-  const config = context.legacy;
-  const runtime = createRuntimeDatabase(config);
+  const config = context.config;
+  const runtime = createRuntimeDatabase(context.bootstrap);
   const repository = new DrizzleDeliveryRepository(runtime.db, config.seo.fallbackAssetUrl);
   const cloudflare = new CloudflareAuthorityAdapter(config.cloudflare.accountId, config.cloudflare.apiToken, config.vercel.productionTarget);
   const vercel = new VercelExactDomainAdapter(config.vercel.projectId, config.vercel.teamId, config.vercel.apiToken);

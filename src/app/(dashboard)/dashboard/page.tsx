@@ -22,8 +22,8 @@ async function resolveDisplayAvatarUrl(
   if (stored.startsWith('https://')) return stored;
   if (!stored.startsWith('r2:')) return null;
   try {
-    const storage = new R2ObjectStorageAdapter({ accountId: context.legacy.r2.accountId, bucketName: context.legacy.r2.bucketName, accessKeyId: context.legacy.r2.accessKeyId, secretAccessKey: context.legacy.r2.secretAccessKey });
-    const authorization = await storage.authorizeExactGet(stored.slice('r2:'.length), context.legacy.r2.readTtlSeconds);
+    const storage = new R2ObjectStorageAdapter({ accountId: context.config.r2.accountId, bucketName: context.config.r2.bucketName, accessKeyId: context.config.r2.accessKeyId, secretAccessKey: context.config.r2.secretAccessKey });
+    const authorization = await storage.authorizeExactGet(stored.slice('r2:'.length), context.config.r2.readTtlSeconds);
     return authorization.url;
   } catch {
     return null;
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
   const identity = await auth.verifyCookieSession(); if (identity === null) redirect('/sign-in');
   const displayName = identity.displayName;
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.legacy);
+  const runtime = createRuntimeDatabase(context.bootstrap);
   try {
     const repository = new DrizzleAuthorizationRepository(runtime.db);
     const discovery = await resolveVerifiedUserOrganizations(identity, repository, new UuidGenerator()); if (!discovery.ok) redirect('/sign-in');

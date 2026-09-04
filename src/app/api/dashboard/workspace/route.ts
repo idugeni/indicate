@@ -43,7 +43,7 @@ async function contextFor(organizationId: string, requestId: string, headers: He
   const auth = createSupabaseSsrAuthAdapter({ url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey, cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }) });
   const identity = await auth.verifyCookieSession(); if (identity === null) return createNonDisclosingDenial(requestId);
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.legacy);
+  const runtime = createRuntimeDatabase(context.bootstrap);
   const authorization = new DrizzleAuthorizationRepository(runtime.db);
   const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
   if (!local.ok) { await runtime.close(); return createNonDisclosingDenial(requestId); }

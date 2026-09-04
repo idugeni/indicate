@@ -25,16 +25,8 @@ const INDICATE_NAMESPACE_PREFIXES = [
   'TELEGRAM_',
   'GENERIC_',
   'CRON_',
-  'REDACTION_',
-  'MVP_',
-  'MEDIA_',
-  'PUBLISH_',
-  'CACHE_',
-  'RATE_LIMIT_',
   'DEFAULT_',
   'SITE_',
-  'REDIS_',
-  'TENANCY_',
   'APP_',
 ] as const;
 
@@ -48,6 +40,8 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  'DEFAULT_LOCALE',
+  'SITE_FALLBACK_ASSET_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
   'SUPABASE_SECRET_KEY',
   'SUPABASE_PROJECT_REF',
@@ -93,8 +87,10 @@ const bootstrapSchema = z
     NEXT_PUBLIC_SUPABASE_URL: httpsUrlSchema,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(8).optional(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(8).optional(),
+    DEFAULT_LOCALE: z.string().regex(/^[a-z]{2}-[A-Z]{2}$/).default('id-ID'),
+    SITE_FALLBACK_ASSET_URL: httpsUrlSchema,
     SUPABASE_SERVICE_ROLE_KEY: secretSchema.optional(),
-    // Legacy pre-cutover aliases; anon/publishable are both public client values.
+    // Compatibility aliases; anon/publishable are both public client values.
     SUPABASE_SECRET_KEY: secretSchema.optional(),
     SUPABASE_PROJECT_REF: z.string().regex(/^[a-z0-9]{8,32}$/).optional(),
     DATABASE_POOL_URL: z.url({ protocol: /^postgresql$/ }),
@@ -168,6 +164,10 @@ export interface BootstrapConfig {
     readonly webhook: string;
     readonly reserved: ReadonlySet<string>;
   }>;
+  readonly seo: Readonly<{
+    readonly defaultLocale: string;
+    readonly fallbackAssetUrl: string;
+  }>;
   readonly supabase: Readonly<{
     readonly projectRef?: string;
     readonly url: string;
@@ -216,6 +216,10 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       webhook: value.WEBHOOK_HOST,
       reserved: new Set([value.DASHBOARD_HOST, value.API_HOST, value.WEBHOOK_HOST]),
     }),
+    seo: Object.freeze({
+      defaultLocale: value.DEFAULT_LOCALE,
+      fallbackAssetUrl: value.SITE_FALLBACK_ASSET_URL,
+    }),
     supabase: Object.freeze({
       projectRef,
       url: value.NEXT_PUBLIC_SUPABASE_URL,
@@ -242,7 +246,7 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
   } as BootstrapConfig);
 }
 
-/** Pure Bootstrap validation: no PostgreSQL/provider init; failures expose only allowlisted paths + stable categories. Pre-cutover keeps legacy fields as authority; post-cutover legacy fields fail closed. */
+/** Pure Bootstrap validation: no PostgreSQL/provider init; failures expose only allowlisted paths + stable categories. */
 export function validateBootstrapConfig(environment: Record<string, string | undefined>): BootstrapConfigResult {
   // Authority is APP_ENVIRONMENT — `next start` forces NODE_ENV=production.
   const postCutover = environment.APP_ENVIRONMENT === 'production';

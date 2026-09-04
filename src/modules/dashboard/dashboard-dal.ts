@@ -29,7 +29,7 @@ function loadDashboardProjection(input: {
   const cached = unstable_cache(
     async (): Promise<DashboardProjection> => {
       const context = await getServerRuntimeContext();
-      const runtime = createRuntimeDatabase(context.legacy);
+      const runtime = createRuntimeDatabase(context.bootstrap);
       try {
         const service = new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator());
         const actor: AuthorizedTenantActorContext = {
@@ -76,7 +76,7 @@ export async function getDashboardSnapshot(organizationId: string): Promise<Dash
     const identity = await auth.verifyCookieSession();
     if (identity === null) return null;
     const context = await getServerRuntimeContext();
-    const runtime = createRuntimeDatabase(context.legacy);
+    const runtime = createRuntimeDatabase(context.bootstrap);
     try {
       const authorization = new DrizzleAuthorizationRepository(runtime.db);
       const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());

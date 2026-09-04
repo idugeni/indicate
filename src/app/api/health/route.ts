@@ -14,7 +14,8 @@ async function handleGET() {
       status: 'ok',
       configuration: 'valid',
       environment: context.bootstrap.environment,
-      configurationSource: context.source === 'postgres' ? 'postgres' : 'legacy',
+      configurationSource: 'postgres',
+      configurationVersion: context.snapshot.configurationVersion,
     },
     {
       headers: {

@@ -52,20 +52,20 @@ async function handlePOST(request: Request) {
   const identity = await auth.verifyCookieSession();
   if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.legacy);
+  const runtime = createRuntimeDatabase(context.bootstrap);
   try {
     const repository = new DrizzleAuthorizationRepository(runtime.db);
     const local = await resolveVerifiedLocalUser(identity, repository, new UuidGenerator());
     if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
-    const storage = new R2ObjectStorageAdapter({ accountId: context.legacy.r2.accountId, bucketName: context.legacy.r2.bucketName, accessKeyId: context.legacy.r2.accessKeyId, secretAccessKey: context.legacy.r2.secretAccessKey });
+    const storage = new R2ObjectStorageAdapter({ accountId: context.config.r2.accountId, bucketName: context.config.r2.bucketName, accessKeyId: context.config.r2.accessKeyId, secretAccessKey: context.config.r2.secretAccessKey });
     if (parsed.data.action === 'request-upload') {
-      const allowedTypes = context.legacy.r2.allowedTypes;
+      const allowedTypes = context.config.r2.allowedTypes;
       const ext = (AVATAR_EXTENSIONS as Readonly<Record<string, string>>)[parsed.data.contentType];
       if (ext === undefined || !allowedTypes.includes(parsed.data.contentType)) {
         return NextResponse.json(createPublicError('INVALID_INPUT', 'Invalid profile command.', requestId), { status: 400 });
       }
       const key = `${AVATAR_KEY_PREFIX}${local.value.id}/avatar.${ext}`;
-      const authorization = await storage.authorizeExactPut(key, parsed.data.contentType, parsed.data.checksumSha256, context.legacy.r2.uploadTtlSeconds);
+      const authorization = await storage.authorizeExactPut(key, parsed.data.contentType, parsed.data.checksumSha256, context.config.r2.uploadTtlSeconds);
       return NextResponse.json({ key, url: authorization.url, expiresAt: authorization.expiresAt.toISOString(), requiredHeaders: authorization.requiredHeaders });
     }
     const expectedPrefix = `${AVATAR_KEY_PREFIX}${local.value.id}/`;

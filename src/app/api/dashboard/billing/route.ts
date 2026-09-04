@@ -44,7 +44,7 @@ async function sessionFor(requestId: string): Promise<Session | PublicErrorEnvel
   const identity = await auth.verifyCookieSession();
   if (identity === null) return createNonDisclosingDenial(requestId);
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.legacy);
+  const runtime = createRuntimeDatabase(context.bootstrap);
   const authorization = new DrizzleAuthorizationRepository(runtime.db);
   const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
   if (!local.ok || local.value.status !== 'active') { await runtime.close(); return createNonDisclosingDenial(requestId); }
@@ -59,8 +59,8 @@ async function sessionFor(requestId: string): Promise<Session | PublicErrorEnvel
 
 async function withService<T>(session: Session, run: (service: BillingService) => Promise<T>): Promise<T> {
   const context = await getServerRuntimeContext();
-  const config = context.legacy;
-  const runtime = createRuntimeDatabase(config);
+  const config = context.config;
+  const runtime = createRuntimeDatabase(context.bootstrap);
   try {
     const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey });
     const service = new BillingService(
@@ -82,9 +82,9 @@ async function handleGET(request: Request) {
   // Katalog publik tanpa sesi.
   if (parsed.data.scope === 'packages') {
     const context = await getServerRuntimeContext();
-    const runtime = createRuntimeDatabase(context.legacy);
+    const runtime = createRuntimeDatabase(context.bootstrap);
     try {
-      const service = new BillingService(new DrizzleBillingRepository(runtime.db), new UuidGenerator(), new R2ObjectStorageAdapter({ accountId: context.legacy.r2.accountId, bucketName: context.legacy.r2.bucketName, accessKeyId: context.legacy.r2.accessKeyId, secretAccessKey: context.legacy.r2.secretAccessKey }), { allowedTypes: [], maxBytes: 0, uploadTtlSeconds: 0, readTtlSeconds: 0 });
+      const service = new BillingService(new DrizzleBillingRepository(runtime.db), new UuidGenerator(), new R2ObjectStorageAdapter({ accountId: context.config.r2.accountId, bucketName: context.config.r2.bucketName, accessKeyId: context.config.r2.accessKeyId, secretAccessKey: context.config.r2.secretAccessKey }), { allowedTypes: [], maxBytes: 0, uploadTtlSeconds: 0, readTtlSeconds: 0 });
       const result = await service.packages();
       return result.ok ? NextResponse.json(result.value) : response(result.error);
     } finally {
