@@ -51,8 +51,8 @@ export function ArticleCard({
   if (featured) {
     return (
       <article className="network-card group col-span-full">
-        <div className="grid items-start gap-6 md:grid-cols-2">
-          <div className="media-frame aspect-video overflow-hidden bg-bg-raised-2">
+        <div className="grid items-start gap-6 p-5 sm:p-6 md:grid-cols-2">
+          <div className="media-frame aspect-video overflow-hidden rounded-md bg-bg-raised-2">
             {article.imageUrl ? (
               <Image
                 src={article.imageUrl}
@@ -108,7 +108,7 @@ export function ArticleCard({
 
   return (
     <article className="network-card group flex flex-col">
-      <div className="media-frame aspect-video overflow-hidden bg-bg-raised-2">
+      <div className="media-frame aspect-video overflow-hidden border-b border-hairline bg-bg-raised-2">
         {article.imageUrl ? (
           <Image
             src={article.imageUrl}
@@ -126,7 +126,7 @@ export function ArticleCard({
         )}
       </div>
 
-      <div className="flex flex-1 flex-col pt-4">
+      <div className="flex flex-1 flex-col p-5">
         <p className="m-0 flex items-center justify-between gap-2 font-mono text-[11px]">
           <span className="uppercase tracking-wider text-brass">
             {article.categoryName ?? 'Warta Terkini'}
@@ -341,13 +341,13 @@ export function ListingPage({
           <section className="space-y-10" aria-label={title}>
             {site.articles.length === 0 ? (
               <div
-                className="border-t-2 border-hairline py-12"
+                className="rounded-lg border border-dashed border-hairline-strong p-8 text-center sm:p-12"
                 role="status"
               >
                 <h2 className="m-0 font-serif text-xl font-bold text-paper">
                   Belum ada laporan terbit
                 </h2>
-                <p className="m-0 mt-2 max-w-md font-sans text-sm leading-relaxed text-paper-dim">
+                <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed text-paper-dim">
                   Konten editorial untuk kanal ini sedang dalam antrean pemrosesan sinyal atau validasi redaksi.
                 </p>
               </div>

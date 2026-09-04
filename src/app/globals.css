@@ -342,19 +342,11 @@
   }
 
   .network-card {
-    background: transparent;
-    border: 0;
-    border-top: 2px solid var(--hairline);
-    border-radius: 0;
+    background: var(--bg-raised);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
     min-width: 0;
     overflow: hidden;
-    padding-top: 1.25rem;
-    padding-bottom: 1.25rem;
-  }
-
-  .network-card > :not(.media-frame) {
-    margin-left: 0;
-    margin-right: 0;
   }
 
   .network-card h2 {

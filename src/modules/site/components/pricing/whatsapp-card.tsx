@@ -8,7 +8,7 @@ export function WhatsAppCard({
   return (
     <div
       role="note"
-      className="grid w-full gap-4 border-t-2 border-signal/60 py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+      className="grid w-full gap-4 rounded-lg border border-hairline bg-bg-raised p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:p-6"
     >
       <div className="flex items-start gap-3">
         <MessageCircle className="mt-0.5 h-5 w-5 flex-none text-signal" aria-hidden="true" />

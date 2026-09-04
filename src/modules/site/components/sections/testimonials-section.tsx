@@ -10,13 +10,16 @@ export async function TestimonialsSection() {
       eyebrow="Testimoni"
       description="Evaluasi pengelola grup media multi-portal mengenai keandalan sindikasi sinyal, efisiensi kerja redaksi terpusat, dan isolasi tenant."
     >
-      <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         {items.map((item) => (
-          <figure key={item.author} className="m-0 border-l-2 border-brass/60 pl-5">
+          <figure
+            key={item.author}
+            className="m-0 flex flex-col justify-between gap-5 rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6"
+          >
             <blockquote className="m-0 font-serif text-base leading-relaxed text-paper">
               &ldquo;{item.quote}&rdquo;
             </blockquote>
-            <figcaption className="mt-4 font-sans text-xs">
+            <figcaption className="border-t border-hairline pt-4 font-sans text-xs">
               <strong className="block font-semibold text-paper">{item.author}</strong>
               <span className="mt-0.5 block text-paper-faint">
                 {item.role} · {item.media}

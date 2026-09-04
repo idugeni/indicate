@@ -11,12 +11,12 @@ export async function FaqSection() {
       eyebrow="FAQ"
       description="Jawaban atas pertanyaan seputar teknis, lisensi, dan infrastruktur Indicate."
     >
-      <div className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {items.map((faq, index) => (
           <article
             key={faq.id}
             id={faq.id}
-            className="scroll-mt-24 border-t border-hairline py-5"
+            className="scroll-mt-24 rounded-lg border border-hairline bg-bg-raised p-5 transition-colors duration-180 hover:border-hairline-strong sm:p-6"
           >
             <h3 className="m-0 flex items-baseline gap-3 font-sans text-sm font-semibold tracking-tight text-paper">
               <span className="font-mono text-[11px] font-normal tabular-nums text-brass">

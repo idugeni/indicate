@@ -70,7 +70,7 @@ export function LivePreviewSection() {
           </div>
         </div>
 
-        <div className="min-h-[200px] border border-hairline bg-bg-raised/40 p-4 font-mono text-xs text-paper-dim sm:p-5">
+        <div className="min-h-[200px] rounded-lg border border-hairline bg-bg-raised/40 p-4 font-mono text-xs text-paper-dim sm:p-5">
           <div
             id="preview-panel-dashboard"
             role="tabpanel"

@@ -74,7 +74,7 @@ export function slugify(value: string): string {
 }
 
 export const CARD_CLASS =
-  'group flex flex-col gap-3 border-t-2 border-hairline bg-transparent pt-5 transition-colors duration-180 hover:border-brass/60';
+  'group flex flex-col gap-3 rounded-lg border border-hairline bg-bg-raised p-5 transition-colors duration-180 hover:border-hairline-strong sm:p-6';
 
 export const ICON_BOX_CLASS = 'flex h-8 w-8 items-center text-brass';
 

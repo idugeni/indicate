@@ -22,14 +22,16 @@ export function EmptyState({
       role="status"
       aria-live="polite"
       className={cn(
-        'flex flex-col items-start gap-2 border-t-2 border-hairline py-8',
+        'flex flex-col items-center gap-2 rounded-lg border border-dashed border-hairline-strong px-6 py-10 text-center sm:py-12',
         className
       )}
     >
-      <span className="flex items-center gap-2 font-sans text-sm font-semibold text-paper">
-        {icon ?? <Inbox className="h-4 w-4 text-paper-faint" aria-hidden="true" />}
-        {title}
+      <span className="flex h-10 w-10 items-center justify-center rounded-full border border-hairline bg-bg-raised text-paper-faint">
+        {icon ?? <Inbox className="h-4 w-4" aria-hidden="true" />}
       </span>
+      <h3 className="m-0 mt-2 font-sans text-sm font-semibold tracking-tight text-paper">
+        {title}
+      </h3>
       <p className="m-0 max-w-md font-sans text-sm leading-relaxed text-paper-dim">
         {description}
       </p>

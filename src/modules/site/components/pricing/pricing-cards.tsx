@@ -66,7 +66,7 @@ export function PricingCards({ packages }: { readonly packages: readonly Pricing
         return (
           <article
             key={pkg.id}
-            className={`flex flex-col border-t-2 pt-5 ${isFeatured ? 'border-brass' : 'border-hairline'}`}
+            className={`flex flex-col rounded-lg border bg-bg-raised p-5 transition-colors duration-180 sm:p-6 ${isFeatured ? 'border-brass' : 'border-hairline hover:border-hairline-strong'}`}
           >
             <div className="flex items-baseline justify-between gap-2">
               <h3 className="m-0 font-sans text-base font-semibold tracking-tight text-paper">

@@ -106,7 +106,7 @@ export function TemplateShowcaseSection({
               {currentTemplate.description}
             </p>
 
-            <div className="mt-5 border border-hairline p-4 font-mono text-[11px] text-paper-dim sm:p-5">
+            <div className="mt-5 rounded-lg border border-hairline bg-bg-raised/40 p-4 font-mono text-[11px] text-paper-dim sm:p-5">
               <div className="flex items-center justify-between border-b border-hairline pb-3">
                 <div className="flex items-center gap-2">
                   <span
