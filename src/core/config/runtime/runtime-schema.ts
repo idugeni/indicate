@@ -48,7 +48,7 @@ const rawRuntimeConfigSchema = z
     DASHBOARD_HOST: hostnameSchema.default('indicate.web.id'),
     API_HOST: hostnameSchema.default('api.indicate.web.id'),
     WEBHOOK_HOST: hostnameSchema.default('webhook.indicate.web.id'),
-    MVP_ROOT_HOSTS: csvSchema.pipe(z.array(rootHostnameSchema).length(3)),
+    MVP_ROOT_HOSTS: csvSchema.pipe(z.array(rootHostnameSchema).max(3)),
 
     NEXT_PUBLIC_SITE_URL: z.url().default('https://indicate.web.id'),
     NEXT_PUBLIC_SUPABASE_URL: httpsUrlSchema,
@@ -195,7 +195,7 @@ export interface RuntimeConfig {
     readonly dashboard: string;
     readonly api: string;
     readonly webhook: string;
-    readonly mvpRoots: readonly [string, string, string];
+    readonly mvpRoots: readonly string[];
     readonly reserved: ReadonlySet<string>;
   };
   readonly supabase: {
@@ -279,7 +279,7 @@ export type RuntimeConfigResult =
   | { readonly success: false; readonly issues: readonly ConfigValidationIssue[] };
 
 function toRuntimeConfig(value: ParsedRuntimeEnvironment): RuntimeConfig {
-  const roots = value.MVP_ROOT_HOSTS as [string, string, string];
+  const roots = value.MVP_ROOT_HOSTS;
   const zones = value.CLOUDFLARE_ZONE_IDS;
   return Object.freeze({
     environment: value.APP_ENVIRONMENT,
