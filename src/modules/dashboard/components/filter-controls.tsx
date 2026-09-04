@@ -53,7 +53,7 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
   };
 
   return (
-    <section aria-label={`Filter data untuk ${view}`} className="border-t border-hairline pt-4">
+    <section aria-label={`Filter data untuk ${view}`} className="rounded-lg border border-hairline bg-bg-raised p-4 sm:p-5">
       <form
         aria-label={`Filter data untuk ${view}`}
         onSubmit={(event) => {

@@ -17,8 +17,11 @@ export function SectionCard({
   readonly children: ReactNode;
 }) {
   return (
-    <section aria-label={title} className="border-t-2 border-hairline pt-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+    <section
+      aria-label={title}
+      className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline pb-4">
         <h3 className="m-0 flex items-center gap-2 font-sans text-sm font-semibold tracking-tight text-paper">
           <Icon className="h-4 w-4 text-brass" aria-hidden="true" />
           {title}

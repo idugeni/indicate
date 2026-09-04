@@ -84,7 +84,7 @@ export function ConfigurationPanel({
 
   return (
     <div className="grid gap-x-8 gap-y-8 md:grid-cols-3">
-      <section aria-label="Tambah domain" className="border-t-2 border-hairline pt-5">
+      <section aria-label="Tambah domain" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <div className="flex items-baseline gap-2">
           <span className="font-mono text-[11px] tabular-nums text-brass">01</span>
           <h3 className="m-0 flex items-center gap-2 font-sans text-sm font-semibold tracking-tight text-paper">
@@ -123,7 +123,7 @@ export function ConfigurationPanel({
         </form>
       </section>
 
-      <section aria-label="Tambah wilayah" className="border-t-2 border-hairline pt-5">
+      <section aria-label="Tambah wilayah" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <div className="flex items-baseline gap-2">
           <span className="font-mono text-[11px] tabular-nums text-brass">02</span>
           <h3 className="m-0 flex items-center gap-2 font-sans text-sm font-semibold tracking-tight text-paper">
@@ -177,7 +177,7 @@ export function ConfigurationPanel({
         </form>
       </section>
 
-      <section aria-label="Tambah kanal" className="border-t-2 border-hairline pt-5">
+      <section aria-label="Tambah kanal" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <div className="flex items-baseline gap-2">
           <span className="font-mono text-[11px] tabular-nums text-brass">03</span>
           <h3 className="m-0 flex items-center gap-2 font-sans text-sm font-semibold tracking-tight text-paper">

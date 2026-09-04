@@ -363,7 +363,7 @@ export function ListingPage({
             )}
           </section>
 
-          <aside className="space-y-5 border-t-2 border-[var(--site-accent)] pt-5" aria-label="Tentang kanal">
+          <aside className="space-y-5 rounded-lg border border-hairline bg-bg-raised p-5" aria-label="Tentang kanal">
             <div>
               <h2 className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">
                 Profil kanal

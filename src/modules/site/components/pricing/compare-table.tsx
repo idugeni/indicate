@@ -81,7 +81,7 @@ export function CompareTable() {
       role="region"
       aria-label="Perbandingan paket"
       tabIndex={0}
-      className="overflow-x-auto border-y border-hairline"
+      className="overflow-x-auto rounded-lg border border-hairline bg-bg-raised p-2 sm:p-4"
     >
       <Table className="w-full min-w-[640px]">
         <TableHeader>

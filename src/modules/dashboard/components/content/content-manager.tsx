@@ -204,11 +204,11 @@ export function ContentManager() {
       </div>
       {error ? <FormNotice tone="error">{error}</FormNotice> : null}
       {notice ? <FormNotice tone="success">{notice}</FormNotice> : null}
-      <div>
+      <div className="grid gap-4">
         {rows.map((row) => {
           const current = getDraft(def.idKey, row);
           return (
-            <section key={String(row[def.idKey])} aria-label={String(row[def.idKey])} className="border-t border-hairline py-5 first:border-t-2 first:border-hairline-strong">
+            <section key={String(row[def.idKey])} aria-label={String(row[def.idKey])} className="rounded-lg border border-hairline bg-bg-raised p-4 sm:p-5">
               <p className="m-0 font-mono text-xs tabular-nums text-paper-dim">{String(row[def.idKey])}</p>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 {def.fields.map((field) => (

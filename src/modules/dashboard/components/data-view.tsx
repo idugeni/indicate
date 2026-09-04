@@ -171,8 +171,11 @@ export function DataView({
         ) : null}
 
         {jobs ? (
-          <section aria-label="Distribusi antrean sindikasi">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <section
+            aria-label="Distribusi antrean sindikasi"
+            className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6"
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-3">
               <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
                 Antrean sindikasi per status
               </h2>
@@ -180,7 +183,7 @@ export function DataView({
                 {jobTotal.toLocaleString('id-ID')} tugas
               </p>
             </div>
-            <ul className="m-0 mt-3 grid list-none gap-0 border-t border-hairline p-0">
+            <ul className="m-0 grid list-none gap-0 p-0">
               {jobEntries.map(([state, count]) => {
                 const meta = resolveStatus(state);
                 const pct = jobTotal > 0 ? (Number(count) / jobTotal) * 100 : 0;
@@ -254,7 +257,7 @@ export function DataView({
           .trim();
 
         return (
-          <section key={collectionKey} aria-label={formattedTitle}>
+          <section key={collectionKey} aria-label={formattedTitle} className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
             <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-3">
               <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
                 {formattedTitle}
@@ -308,7 +311,7 @@ export function DataView({
                       return (
                         <TableRow
                           key={itemId}
-                          className="border-b border-hairline/60 transition-colors duration-180 hover:bg-bg-raised/40"
+                          className="border-b border-hairline/60 transition-colors duration-180 hover:bg-bg-raised-2"
                         >
                           <TableCell className="py-3">
                             <div className="font-sans font-medium text-paper">

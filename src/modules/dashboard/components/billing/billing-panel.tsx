@@ -170,7 +170,7 @@ export function BillingPanel({
 
   return (
     <div className="grid grid-cols-1 items-start gap-x-10 gap-y-8 md:grid-cols-2">
-      <section aria-label="Status langganan" className="border-t-2 border-hairline pt-5">
+      <section aria-label="Status langganan" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Langganan</p>
         <p className="m-0 mt-2 font-sans text-lg font-semibold tracking-tight text-paper">
           {state === null ? 'Memuat…' : state === 'platform' ? 'Platform — bebas' : state === 'active' ? 'Aktif' : state === 'grace' || state === 'past_due' ? 'Tenggang baca-saja — segera perpanjang' : state === 'none' ? 'Belum berlangganan' : `Terbatas (${state})`}
@@ -203,7 +203,7 @@ export function BillingPanel({
         </div>
       </section>
 
-      <section aria-label="Order saya" className="border-t-2 border-hairline pt-5">
+      <section aria-label="Order saya" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Order saya</p>
         <ul className="m-0 mt-2 grid list-none gap-0 p-0">
           {orders.map((order) => (
@@ -235,7 +235,7 @@ export function BillingPanel({
       </section>
 
       {isPlatform ? (
-        <section aria-label="Antrean verifikasi" className="border-t-2 border-brass/60 pt-5 md:col-span-2">
+        <section aria-label="Antrean verifikasi" className="rounded-lg border border-brass/60 bg-bg-raised p-5 sm:p-6 md:col-span-2">
           <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-brass">Antrean verifikasi platform</p>
           <ul className="m-0 mt-2 grid list-none gap-0 p-0 md:grid-cols-2 md:gap-x-10">
             {pending.map((order) => (
