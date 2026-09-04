@@ -83,7 +83,7 @@ export interface SiteSettings {
   readonly seoSchemaVersion: number;
   readonly fallbackMediaId: string | null;
   readonly fallbackMediaObjectKey: string | null;
-  readonly fallbackMediaState: string;
+  readonly fallbackMediaState: string | null;
   readonly fallbackMediaOrganizationId: string | null;
   readonly version: number;
 }

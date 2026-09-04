@@ -74,17 +74,20 @@ export class DrizzleRuntimeConfigRepository implements RuntimeConfigReadReposito
       environment: environment as PersistedRuntimeConfigReadModel['environment'],
       configurationVersion: revision,
       readAt: new Date().toISOString(),
-      sharedDeployment: this.safeCast(sharedRow),
+      sharedDeployment: this.safeCast(sharedRow === undefined ? undefined : this.toCanonicalRow(sharedRow)),
       mediaPolicy: this.safeCast(byKind.get('media_policy')?.fields),
       publicationPolicy: this.safeCast(byKind.get('publication_policy')?.fields),
       webhookPolicy: this.safeCast(byKind.get('webhook_policy')?.fields),
       cachePolicy: this.safeCast(byKind.get('cache_policy')?.fields),
       rateLimitPolicies: policyRows
         .filter((row) => row.policy_kind === 'rate_limit_policy')
-        .map((row) => this.safeCast(row.fields)),
-      domains: this.safeCast(domainRows),
-      sites: this.safeCast(siteRows),
-      siteSettings: this.safeCast(settingsRows),
+        .map((row) => this.safeCast({
+          ...this.toCanonicalRow(this.safeCast<Record<string, unknown>>(row.fields)),
+          endpointClass: row.endpoint_class,
+        })),
+      domains: domainRows.map((row) => this.safeCast(this.toCanonicalRow(row))),
+      sites: this.safeCast(siteRows.map((row) => this.toCanonicalRow(row))),
+      siteSettings: this.safeCast(settingsRows.map((row) => this.toCanonicalRow(row))),
     };
   }
 
@@ -93,11 +96,29 @@ export class DrizzleRuntimeConfigRepository implements RuntimeConfigReadReposito
     return value as T;
   }
 
+  /**
+   * Wire normalization: SQL functions return snake_case keys while the parser
+   * speaks camelCase, and the driver delivers bigint/timestamptz as
+   * string/Date instead of number/string. Normalize here so the parser only
+   * ever sees canonical shapes; never partially.
+   */
+  private toCanonicalRow(value: Record<string, unknown>): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(value)) {
+      const camel = key.replace(/_([a-z0-9])/g, (_, char: string) => char.toUpperCase());
+      out[camel] = entry instanceof Date ? entry.toISOString() : entry;
+    }
+    return out;
+  }
+
   private async peekRevision(source: PostgresJsDatabase<typeof schema> | Parameters<Parameters<PostgresJsDatabase<typeof schema>['transaction']>[0]>[0], environment: string): Promise<number | null> {
     const rows = await source.execute<{ version: number | null }>(
       sql`SELECT indicate_private.read_runtime_config_revision(${environment}) AS version`,
     );
-    return rows[0]?.version ?? null;
+    // The driver delivers bigint as string; coerce so revision math and the
+    // positive-int parser rule see a real number (null stays null).
+    const raw = rows[0]?.version ?? null;
+    return raw === null ? null : Number(raw);
   }
 
   async readInventoryVersion(environment: string): Promise<{ readonly configurationVersion: number }> {
@@ -105,6 +126,6 @@ export class DrizzleRuntimeConfigRepository implements RuntimeConfigReadReposito
     const rows = await this.database.execute<{ version: number | null }>(
       sql`SELECT indicate_private.read_runtime_config_revision(${environment}) AS version`,
     );
-    return { configurationVersion: rows[0]?.version ?? 0 };
+    return { configurationVersion: Number(rows[0]?.version ?? 0) };
   }
 }

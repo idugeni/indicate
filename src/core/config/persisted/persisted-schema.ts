@@ -112,7 +112,7 @@ export const siteSettingsSchema = z
     seoSchemaVersion: z.number().int().min(1).max(MAX_SCHEMA_VERSION),
     fallbackMediaId: z.uuid().nullable(),
     fallbackMediaObjectKey: z.string().min(1).nullable(),
-    fallbackMediaState: z.string().min(1),
+    fallbackMediaState: z.string().min(1).nullable(),
     fallbackMediaOrganizationId: z.uuid().nullable(),
     version: z.number().int().positive(),
   })
@@ -141,7 +141,9 @@ export const runtimeSiteSchema = z
     version: z.number().int().positive(),
     domainOrganizationId: z.uuid(),
     domainNormalizedHostname: hostnameField,
-    settingsVersion: z.number().int().positive(),
+    // Zero means the site has no settings row yet; the proof below still
+    // requires every active site to resolve exactly one.
+    settingsVersion: z.number().int().min(0),
   })
   .strict();
 
