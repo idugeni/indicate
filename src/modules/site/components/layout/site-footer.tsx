@@ -162,26 +162,31 @@ export async function CallToAction() {
           </div>
         </div>
 
-        <ol className="m-0 grid list-none content-start gap-0 p-0">
-          {rows.map((channel, index) => (
-            <li
-              key={channel.title}
-              className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-4 border-t border-hairline py-5 last:border-b"
-            >
-              <span className="font-mono text-xs tabular-nums text-brass">
-                {String(index + 1).padStart(2, '0')}
-              </span>
-              <div>
-                <h3 className="m-0 font-sans text-base font-semibold tracking-tight text-paper">
-                  {channel.title}
-                </h3>
-                <p className="m-0 mt-1 max-w-md font-sans text-sm leading-relaxed text-paper-dim">
-                  {channel.description}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ol>
+        <div className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
+          <p className="m-0 border-b border-hairline pb-4 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">
+            Hubungi tim kami
+          </p>
+          <ol className="m-0 grid list-none content-start gap-0 divide-y divide-hairline p-0">
+            {rows.map((channel, index) => (
+              <li
+                key={channel.title}
+                className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-4 py-5 first:pt-5 last:pb-1"
+              >
+                <span className="font-mono text-xs tabular-nums text-brass">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <div>
+                  <h3 className="m-0 font-sans text-base font-semibold tracking-tight text-paper">
+                    {channel.title}
+                  </h3>
+                  <p className="m-0 mt-1 max-w-md font-sans text-sm leading-relaxed text-paper-dim">
+                    {channel.description}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
       </Container>
     </section>
   );
