@@ -29,9 +29,9 @@ export default function SiteLoading() {
             <Skeleton className="h-8 w-2/3 bg-bg-raised-2" />
             <Skeleton className="h-4 w-full bg-bg-raised-2" />
           </div>
-          <div className="grid gap-x-8 gap-y-8 sm:grid-cols-2 xl:grid-cols-4" aria-hidden="true">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-hidden="true">
             {[0, 1, 2, 3].map((n) => (
-              <div key={n} className="border-t-2 border-hairline pt-4">
+              <div key={n} className="rounded-lg border border-hairline bg-bg-raised p-4">
                 <Skeleton className="h-4 w-2/3 bg-bg-raised-2" />
                 <Skeleton className="mt-3 h-20 w-full bg-bg-raised-2" />
               </div>

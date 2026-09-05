@@ -25,16 +25,16 @@ function SearchResultsSkeleton() {
   return (
     <Section aria-busy="true" aria-label="Memuat hasil pencarian">
       <div className="grid items-start gap-10 md:grid-cols-[minmax(0,1fr)_16rem]">
-        <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2" aria-hidden="true">
+        <div className="grid gap-x-6 gap-y-6 sm:grid-cols-2" aria-hidden="true">
           {[0, 1, 2, 3].map((n) => (
-            <div key={n} className="border-t-2 border-hairline pt-4">
-              <Skeleton className="aspect-video w-full bg-bg-raised" />
-              <Skeleton className="mt-4 h-4 w-3/4 bg-bg-raised" />
-              <Skeleton className="mt-2 h-3 w-1/2 bg-bg-raised" />
+            <div key={n} className="rounded-lg border border-hairline bg-bg-raised p-4">
+              <Skeleton className="aspect-video w-full bg-bg-raised-2" />
+              <Skeleton className="mt-4 h-4 w-3/4 bg-bg-raised-2" />
+              <Skeleton className="mt-2 h-3 w-1/2 bg-bg-raised-2" />
             </div>
           ))}
         </div>
-        <Skeleton className="h-40 w-full bg-bg-raised" aria-hidden="true" />
+        <Skeleton className="h-40 w-full rounded-lg border border-hairline bg-bg-raised" aria-hidden="true" />
       </div>
     </Section>
   );

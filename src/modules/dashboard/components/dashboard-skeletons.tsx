@@ -18,30 +18,30 @@ function ShimmerShell({
 export function DashboardFormSkeleton() {
   return (
     <ShimmerShell label="Memuat formulir">
-      <div className="grid gap-8 md:grid-cols-2">
-        <div className="space-y-3 border-t-2 border-hairline pt-4">
-          <Skeleton className="h-4 w-32 bg-bg-raised" />
-          <Skeleton className="h-10 w-full bg-bg-raised" />
-          <Skeleton className="h-10 w-full bg-bg-raised" />
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-3 rounded-lg border border-hairline bg-bg-raised p-5">
+          <Skeleton className="h-4 w-32 bg-bg-raised-2" />
+          <Skeleton className="h-10 w-full bg-bg-raised-2" />
+          <Skeleton className="h-10 w-full bg-bg-raised-2" />
         </div>
-        <div className="space-y-3 border-t-2 border-hairline pt-4">
-          <Skeleton className="h-4 w-24 bg-bg-raised" />
-          <Skeleton className="h-10 w-full bg-bg-raised" />
-          <Skeleton className="h-10 w-full bg-bg-raised" />
+        <div className="space-y-3 rounded-lg border border-hairline bg-bg-raised p-5">
+          <Skeleton className="h-4 w-24 bg-bg-raised-2" />
+          <Skeleton className="h-10 w-full bg-bg-raised-2" />
+          <Skeleton className="h-10 w-full bg-bg-raised-2" />
         </div>
       </div>
     </ShimmerShell>
   );
 }
 
-/** Stats fallback mirroring the ledger metrics row. */
+/** Stats fallback mirroring the metrics boxes. */
 export function DashboardStatsSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-6 lg:grid-cols-4" aria-hidden="true">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-hidden="true">
       {[0, 1, 2, 3].map((index) => (
-        <div key={index} className="border-l-2 border-hairline pl-3.5">
-          <Skeleton className="h-3 w-20 bg-bg-raised" />
-          <Skeleton className="mt-2 h-7 w-24 bg-bg-raised" />
+        <div key={index} className="rounded-lg border border-hairline bg-bg-raised p-5">
+          <Skeleton className="h-3 w-20 bg-bg-raised-2" />
+          <Skeleton className="mt-2 h-7 w-24 bg-bg-raised-2" />
         </div>
       ))}
     </div>

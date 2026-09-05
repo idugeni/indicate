@@ -44,9 +44,9 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
     <main
       role="alert"
       aria-live="assertive"
-      className="flex min-h-svh items-center p-6"
+      className="flex min-h-svh items-center justify-center p-6"
     >
-      <div className="mx-auto w-full max-w-lg border-t-2 border-error pt-6">
+      <div className="mx-auto w-full max-w-lg rounded-lg border border-hairline bg-bg-raised p-8 text-center">
         <p className="m-0 font-mono text-xs font-medium uppercase tracking-wider text-error">Gangguan sementara</p>
         <h1 className="m-0 mt-3 font-sans text-2xl font-bold tracking-tight text-paper">{pageTitle}</h1>
         <p className="m-0 mt-3 font-sans text-sm leading-relaxed text-paper-dim">
@@ -62,7 +62,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
           </code>
         </p>
 
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Button type="button" onClick={reset}>
             Coba lagi
           </Button>

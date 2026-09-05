@@ -46,7 +46,7 @@ export default async function NotFound() {
 
   return (
     <main className="flex min-h-screen items-center bg-bg p-6 text-paper">
-      <div className="mx-auto w-full max-w-md border-t-2 border-hairline-strong pt-6">
+      <div className="mx-auto w-full max-w-md rounded-lg border border-hairline bg-bg-raised p-8 text-center">
         <p className="m-0 font-mono text-xs font-medium uppercase tracking-wider text-brass">404 · Not found</p>
         <h1 className="m-0 mt-2 font-sans text-2xl font-bold tracking-tight">Halaman tidak ditemukan</h1>
         <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-paper-dim">

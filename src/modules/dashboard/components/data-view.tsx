@@ -150,18 +150,18 @@ export function DataView({
     return (
       <div className="space-y-10">
         {numericMetrics.length > 0 ? (
-          <dl className="m-0 grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
+          <dl className="m-0 grid grid-cols-2 gap-4 lg:grid-cols-4">
             {numericMetrics.map(([key, value]) => {
               const formattedTitle = key
                 .replace(/([A-Z])/g, ' $1')
                 .trim();
 
               return (
-                <div key={key} className="border-l-2 border-hairline-strong pl-3.5">
+                <div key={key} className="rounded-lg border border-hairline bg-bg-raised p-5">
                   <dt className="font-mono text-[11px] uppercase tracking-wider text-paper-faint">
                     {formattedTitle}
                   </dt>
-                  <dd className="m-0 mt-1.5 font-mono text-2xl font-bold tabular-nums text-paper">
+                  <dd className="m-0 mt-1.5 font-mono text-2xl font-bold tabular-nums tracking-tight text-paper">
                     {Number(value).toLocaleString('id-ID')}
                   </dd>
                 </div>

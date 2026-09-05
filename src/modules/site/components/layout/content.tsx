@@ -373,7 +373,7 @@ export interface DocSectionItem {
 export function DocSections({ items }: { readonly items: readonly DocSectionItem[] }) {
   return (
     <div className="grid w-full gap-10">
-      <nav aria-label="Daftar isi" className="w-full border-y border-hairline py-5">
+      <nav aria-label="Daftar isi" className="w-full rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <p className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">
           Daftar Isi — {items.length} bagian
         </p>
@@ -393,9 +393,9 @@ export function DocSections({ items }: { readonly items: readonly DocSectionItem
           ))}
         </ol>
       </nav>
-      <div className="grid w-full gap-x-10 gap-y-8 md:grid-cols-2">
+      <div className="grid w-full gap-4 md:grid-cols-2">
         {items.map((section, index) => (
-          <article key={section.heading} id={slugify(section.heading)} className="scroll-mt-24 border-t-2 border-hairline pt-5">
+          <article key={section.heading} id={slugify(section.heading)} className="scroll-mt-24 rounded-lg border border-hairline bg-bg-raised p-5 transition-colors duration-180 hover:border-hairline-strong sm:p-6">
             <div className="flex items-baseline gap-3">
               <NumberMark index={index} className="tabular-nums text-brass" />
               <h2 className="m-0 font-sans text-base font-semibold tracking-tight text-paper">
@@ -417,10 +417,10 @@ export interface StatBandItem {
 
 export function StatBand({ items }: { readonly items: readonly StatBandItem[] }) {
   return (
-    <dl className="grid grid-cols-2 gap-x-8 gap-y-6 lg:grid-cols-4">
+    <dl className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {items.map((item) => (
-        <div key={item.label} className="border-l-2 border-brass/60 pl-4">
-          <dd className="m-0 order-first font-mono text-3xl font-bold tabular-nums text-paper">
+        <div key={item.label} className="rounded-lg border border-hairline bg-bg-raised p-5">
+          <dd className="m-0 font-mono text-3xl font-bold tabular-nums tracking-tight text-paper">
             {item.value}
           </dd>
           <dt className="mt-1.5 font-sans text-xs leading-snug text-paper-dim">{item.label}</dt>
@@ -452,14 +452,14 @@ export function toFaqGridItems(
 /** Interactive FAQ variant; `hiddenUntilFound` keeps answers findable and crawlable. */
 export function FaqAccordion({ items }: { readonly items: readonly FaqGridItem[] }) {
   return (
-    <div className="mx-auto w-full max-w-3xl border-t border-hairline">
-      <Accordion hiddenUntilFound className="w-full">
+    <div className="mx-auto w-full max-w-3xl">
+      <Accordion hiddenUntilFound className="grid w-full gap-4">
         {items.map((faq, index) => (
           <AccordionItem
             key={faq.id}
             value={faq.id}
             id={faq.id}
-            className="scroll-mt-24 border-b border-hairline"
+            className="scroll-mt-24 rounded-lg border border-hairline bg-bg-raised px-5 transition-colors duration-180 not-last:border-b-0 hover:border-hairline-strong sm:px-6"
           >
             <AccordionTrigger className="gap-4 py-5 text-left hover:no-underline">
               <NumberMark index={index} className="flex-none tabular-nums" />
@@ -467,7 +467,7 @@ export function FaqAccordion({ items }: { readonly items: readonly FaqGridItem[]
                 {faq.question}
               </span>
             </AccordionTrigger>
-            <AccordionContent className="pb-6 pl-10">
+            <AccordionContent className="pb-5 pl-10">
               <p className="m-0 max-w-2xl font-sans text-sm leading-relaxed text-paper-dim">
                 {faq.answer}
               </p>

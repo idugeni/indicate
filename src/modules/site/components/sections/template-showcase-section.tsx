@@ -172,7 +172,7 @@ export function TemplateShowcaseSection({
             </div>
           </div>
 
-          <div>
+          <div className="rounded-lg border border-hairline bg-bg-raised p-5">
             <div className="flex items-baseline justify-between border-b border-hairline pb-3">
               <h4 className="m-0 font-sans text-sm font-semibold text-paper">
                 Klaster warna

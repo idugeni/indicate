@@ -44,8 +44,13 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
           .error-card {
             width: 100%;
             max-width: 32rem;
-            border-top: 2px solid #d9705f;
-            padding-top: 1.5rem;
+            margin-left: auto;
+            margin-right: auto;
+            background-color: #161d2e;
+            border: 1px solid #2a3348;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
           }
           .eyebrow {
             margin: 0 0 0.5rem;
