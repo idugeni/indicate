@@ -40,14 +40,17 @@ export function HeroSection() {
             </p>
           </div>
 
-          <div className="border-t-2 border-brass/60 pt-5">
-            <div className="flex items-baseline justify-between gap-4">
+          <div className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-4">
               <h2 className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-dim">
                 Peta sinyal jaringan
               </h2>
-              <span className="font-mono text-[11px] tabular-nums text-paper-faint">langsung</span>
+              <p className="m-0 flex items-center gap-1.5 font-mono text-[11px] tabular-nums text-signal">
+                <span className="h-1.5 w-1.5 bg-signal" aria-hidden="true" />
+                <span>Langsung · RTT &lt; 45ms</span>
+              </p>
             </div>
-            <div className="mt-4">
+            <div className="mt-2">
               <SignalNetwork />
             </div>
           </div>

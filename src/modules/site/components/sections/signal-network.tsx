@@ -8,16 +8,11 @@ const TARGET_CHANNELS = [
 export function SignalNetwork() {
   return (
     <div aria-label="Arsitektur routing sinyal">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="m-0 font-sans text-sm font-semibold text-paper">
-          Redaksi sentral → bus idempoten → kanal edge
-        </p>
-        <p className="m-0 font-mono text-[11px] tabular-nums text-signal">
-          Live · RTT &lt; 45ms
-        </p>
-      </div>
+      <p className="m-0 py-3 font-sans text-sm font-semibold text-paper">
+        Redaksi sentral → bus idempoten → kanal edge
+      </p>
 
-      <ol className="m-0 mt-4 grid list-none gap-0 border-t border-hairline p-0 font-mono text-xs">
+      <ol className="m-0 grid list-none gap-0 border-t border-hairline p-0 font-mono text-xs">
         <li className="flex items-baseline justify-between gap-4 border-b border-hairline py-2.5">
           <span className="text-paper">Redaksi Sentral Terpadu</span>
           <span className="text-right text-paper-faint">sig_core_01 · Strict RLS</span>
@@ -29,7 +24,7 @@ export function SignalNetwork() {
         {TARGET_CHANNELS.map((channel) => (
           <li
             key={channel}
-            className="flex items-baseline justify-between gap-4 border-b border-hairline py-2.5"
+            className="flex items-baseline justify-between gap-4 border-b border-hairline py-2.5 last:border-b-0"
           >
             <span className="truncate text-paper-dim">{channel}</span>
             <span className="flex-none text-signal">sinkron</span>
