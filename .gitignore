@@ -19,6 +19,12 @@ semantic-review/
 .gemini/
 .claude/
 
+# Bundle skill AI pihak ketiga (845+ berkas, reproducible via skills-lock.json).
+# Skill milik repo (indicate-conventions) tetap ter-track via negasi.
+.agents/skills/*
+!.agents/skills/indicate-conventions/
+.kiro/skills/*
+
 # Settings IDE per-mesin (.mcp.json di root tetap shared)
 .vscode/
 .kiro/settings/
