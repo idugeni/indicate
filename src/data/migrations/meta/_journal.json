@@ -624,6 +624,13 @@
       "when": 1788787000000,
       "tag": "20260907120000_invoice_list",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1788788000000,
+      "tag": "20260907130000_ops_fk_covering_indexes",
+      "breakpoints": true
     }
   ]
 }
