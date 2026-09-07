@@ -290,6 +290,13 @@ function detectUnknownIndicateKeys(
     if (allowed.has(key) || key === 'NODE_ENV' || key.startsWith('_') || key.startsWith('npm_') || key.startsWith('NPM_')) {
       continue;
     }
+    // Namespace milik Vercel (VERCEL_ENV, VERCEL_URL, VERCEL_REGION, ...) disuntik
+    // platform saat build/run dan bukan milik kontrak konfigurasi ini. Kunci
+    // fungsional VERCEL_API_TOKEN tetap wajib via skema, jadi typo di sana
+    // tetap gagal validasi.
+    if (key.startsWith('VERCEL_')) {
+      continue;
+    }
     if (INDICATE_NAMESPACE_PREFIXES.some((prefix) => key.startsWith(prefix))) {
       issues.push({ path: key, category: 'unknown_configuration_key' });
     }
