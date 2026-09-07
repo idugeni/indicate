@@ -16,5 +16,10 @@ export default defineConfig([
       '@typescript-eslint/no-explicit-any': 'error',
     },
   },
-  globalIgnores(['.next/**']),
+  globalIgnores([
+    '.next/**',
+    // Bundel skill agen pihak ketiga (vendor JS, bukan kode aplikasi).
+    '.agents/**',
+    '.claude/**',
+  ]),
 ]);

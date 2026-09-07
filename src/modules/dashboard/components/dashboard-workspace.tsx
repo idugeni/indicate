@@ -303,7 +303,8 @@ const CLOCK_FORMAT = new Intl.DateTimeFormat('id-ID', {
 function LiveClock() {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
-    setNow(new Date());
+    // setState-in-effect: defer ke microtask agar setState tetap async.
+    void Promise.resolve().then(() => setNow(new Date()));
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
