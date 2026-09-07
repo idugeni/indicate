@@ -6,8 +6,8 @@
   "type": "module",
   "description": "Indicate adalah platform sindikasi media multi-tenant terpusat: satu ruang redaksi untuk mengelola ratusan portal berita di banyak domain, region, dan subdomain. Redaksi menulis satu artikel lalu menerbitkannya ke banyak publisher dan wilayah sekaligus, masing-masing dengan domain, konfigurasi, SEO, varian konten, dan status publikasi sendiri. Dilengkapi penerbitan antrean terisolasi per-target (retry, unpublish, bulk), resolusi hostname berbasis database, isolasi cache dan SEO per-host, dashboard multi-organisasi dengan RBAC, integrasi Telegram dan API key, serta jejak audit hanya-tambah.",
   "author": {
-    "name": "Eliyanto Sarage",
-    "email": "officialelsa21@gmail.com"
+    "name": "PT SANCA PHENA CAKRA",
+    "email": "sancaphenacakra@gmail.com"
   },
   "repository": {
     "type": "git",
@@ -15,7 +15,7 @@
   },
   "bugs": {
     "url": "https://github.com/idugeni/indicate/issues",
-    "email": "officialelsa21@gmail.com"
+    "email": "sancaphenacakra@gmail.com"
   },
   "homepage": "https://github.com/idugeni/indicate#readme",
   "keywords": [
