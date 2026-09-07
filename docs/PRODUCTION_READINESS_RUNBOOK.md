@@ -15,7 +15,6 @@ Cloudflare must remain authoritative for nameservers, DNS, wildcard records, edg
 
 ## Owner-gated items (dashboard/provider actions no agent can perform)
 
-- Supabase Dashboard → Auth → enable **Leaked Password Protection** (closes the only security-advisor WARN).
 - Cloudflare R2 WORM audit: bucket `indicate-audit-worm` + lock `worm-indefinite` + `R2_AUDIT_BUCKET_NAME` (production env) selesai 2026-09-07; kredensial utama mencakup bucket ini (token scoped terpisah opsional). Redeploy production sekali agar env terbaca cron 05:00; lalu konfirmasi baris `audit_worm_export` harian di `retention_runs`.
 - Per enterprise deal: sign SOW (from `docs/SOW-TEMPLATE.md`) + DPA (`docs/DPA.md`); confirm Vercel plan capacity for the new domains (PRD §23).
 
