@@ -6,8 +6,10 @@ export default defineConfig([
   ...nextVitals,
   ...nextTypeScript,
   {
-    // eslint-plugin-react@7 memakai context.getFilename() yang dihapus di
-    // ESLint 10 saat version: 'detect'. Versi eksplisit melewati deteksi itu.
+    // ESLint di-pin di major 9: plugin bawaan eslint-config-next
+    // (react@7, import@2, jsx-a11y@6) peer-nya mentok di ESLint 9, dan
+    // major 10 hanya menambah warning ERESOLVE di tiap install.
+    // Versi React eksplisit agar melewati auto-deteksi yang rapuh.
     settings: {
       react: { version: '19.2.8' },
     },
