@@ -37,7 +37,7 @@ export class RuntimeConfigSnapshotCache {
     repository: RuntimeConfigReadRepository;
     clock: MonotonicClock;
     ttlSeconds?: number;
-    snapshotStore?: SnapshotSharedStore;
+    snapshotStore?: SnapshotSharedStore | null;
     snapshotStoreTtlSeconds?: number;
   }) {
     this.#repository = input.repository;
