@@ -7,6 +7,18 @@
       "schedule": "0 1 * * *"
     },
     {
+      "path": "/api/internal/maintenance/view-flush",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/internal/maintenance/view-flush",
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/internal/maintenance/view-flush",
+      "schedule": "0 19 * * *"
+    },
+    {
       "path": "/api/health",
       "schedule": "0 2 * * *"
     },
