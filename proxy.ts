@@ -157,6 +157,14 @@ export function proxy(request: NextRequest) {
 
   if (parsed.hostname === dashboard) {
     if (path.startsWith('/api/network') || path.startsWith('/api/v1/') || path.startsWith('/api/webhooks/') || path === '/domain-pending') return deny(404, request.headers);
+    // Landing publik (/) identik untuk semua pengunjung tanpa sesi: boleh di-cache
+    // edge 60 dtk + SWR 300 dtk. Kunci cache Cloudflare mencakup host+path, jadi
+    // tidak bercampur dengan /dashboard, /api/*, atau host tenant.
+    if (path === '/' && request.method === 'GET') {
+      const cached = nextWithCorrelation(request);
+      cached.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+      return cached;
+    }
     return nextWithCorrelation(request);
   }
   if (parsed.hostname === api) {
