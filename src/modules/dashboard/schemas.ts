@@ -67,7 +67,7 @@ export const articleCreateSchema = z.object({
 export const articleUpdateSchema = articleCreateSchema.extend({ id, expectedVersion });
 export const articleTransitionSchema = z.object({ id, expectedVersion }).strict();
 export const assignmentSchema = z.object({ articleId: id, siteIds: z.array(id).max(200) }).strict();
-export const siteViewsSchema = z.object({ articleId: id, siteId: id, customViewCount: z.int().min(0).max(1_000_000_000) }).strict();
+export const siteViewsSchema = z.object({ articleId: id, siteId: id, viewCount: z.int().min(0).max(1_000_000_000) }).strict();
 export const articleFilterSchema = z.object({
   regionId: id.optional(), siteId: id.optional(), categoryId: id.optional(), publisherId: id.optional(), authorId: id.optional(),
   publicationState: z.enum(['queued', 'processing', 'published', 'failed', 'retrying', 'unpublished']).optional(),

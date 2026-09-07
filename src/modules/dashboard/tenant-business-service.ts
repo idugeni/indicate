@@ -465,7 +465,7 @@ export class TenantBusinessService {
       }
       for (const site of targetSites) {
         const existing = transaction.state.articleSites.find(({ articleId, siteId }) => articleId === article.id && siteId === site.id);
-        if (existing === undefined) transaction.state.articleSites.push({ ...this.base(actor, now), articleId: article.id, siteId: site.id, state: 'queued', stateOccurredAt: now, publishedUrl: null, publishedAt: null, active: true, viewCount: 0, customViewCount: 0 });
+        if (existing === undefined) transaction.state.articleSites.push({ ...this.base(actor, now), articleId: article.id, siteId: site.id, state: 'queued', stateOccurredAt: now, publishedUrl: null, publishedAt: null, active: true, viewCount: 0 });
         else Object.assign(existing, { active: true, version: existing.version + 1, updatedAt: now });
       }
       const after = transaction.state.articleSites.filter(({ articleId, active }) => articleId === article.id && active);
@@ -482,9 +482,9 @@ export class TenantBusinessService {
       if (site.organizationId !== actor.organizationId) throw new DashboardAccessDeniedError();
       const before = transaction.state.articleSites.find(({ articleId, siteId }) => articleId === value.articleId && siteId === value.siteId);
       if (before === undefined) throw new DashboardConflictError();
-      const after = { ...before, customViewCount: value.customViewCount, version: before.version + 1, updatedAt: now };
+      const after = { ...before, viewCount: value.viewCount, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.articleSites, after);
-      this.audit(transaction, 'article.sites.views.set', 'article_site', before.id, { customViewCount: before.customViewCount }, { customViewCount: after.customViewCount });
+      this.audit(transaction, 'article.sites.views.set', 'article_site', before.id, { viewCount: before.viewCount }, { viewCount: after.viewCount });
       return after;
     }});
   }

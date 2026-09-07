@@ -115,7 +115,7 @@ export function EditorialForm({
       await onSetViews({
         articleId: formData.get('viewsArticleId'),
         siteId: formData.get('viewsSiteId'),
-        customViewCount: Number(formData.get('customViewCount') ?? 0),
+        viewCount: Number(formData.get('viewCount') ?? 0),
       });
       form.reset();
     });
@@ -368,7 +368,7 @@ export function EditorialForm({
 
         <form onSubmit={handleSetViews} className="mt-5 space-y-3 border-t border-hairline pt-5">
           <p className="m-0 font-mono text-xs text-paper-dim">
-            Tampilan manual per kanal (ditambah hitungan real otomatis)
+            Jumlah tayang absolut (real menumpuk di atas angka ini)
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -408,11 +408,11 @@ export function EditorialForm({
           </div>
           <div className="space-y-1.5">
             <label htmlFor={viewsCountInputId} className="font-mono text-xs text-paper-dim">
-              Angka dasar manual
+              Jumlah tayang
             </label>
             <Input
               id={viewsCountInputId}
-              name="customViewCount"
+              name="viewCount"
               type="number"
               min={0}
               max={1000000000}

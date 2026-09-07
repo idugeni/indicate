@@ -153,7 +153,6 @@ export interface ArticleSiteRecord extends VersionedRecord {
   readonly publishedAt: string | null;
   readonly active: boolean;
   readonly viewCount: number;
-  readonly customViewCount: number;
 }
 
 export interface MediaSummary {

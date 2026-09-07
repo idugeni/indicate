@@ -645,6 +645,13 @@
       "when": 1788790000000,
       "tag": "20260907150000_article_tags",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1788791000000,
+      "tag": "20260907160000_merge_view_counts",
+      "breakpoints": true
     }
   ]
 }

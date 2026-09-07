@@ -132,6 +132,15 @@ export function proxy(request: NextRequest) {
       requestHeaders.set('host', getControlHosts().dashboard);
     });
   }
+  // Preview deployment Vercel (di balik SSO dashboard) diperlakukan sebagai
+  // permukaan dashboard agar bisa dibuka dari dasbor Vercel — preseden yang
+  // sama dengan pemetaan localhost. Tidak berlaku untuk host asing lainnya.
+  const previewHost = process.env.VERCEL_URL?.replace(/:\d+$/u, '').toLowerCase();
+  if (previewHost !== undefined && previewHost !== '' && localAuthority === previewHost) {
+    return nextWithCorrelation(request, (requestHeaders) => {
+      requestHeaders.set('host', getControlHosts().dashboard);
+    });
+  }
   const parsed = normalizeRequestHostname(rawHost);
   if (!parsed.ok) return deny(400, request.headers);
   const canonicalSlash = trailingSlashRedirect(request);
