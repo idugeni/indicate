@@ -132,11 +132,12 @@ export function proxy(request: NextRequest) {
       requestHeaders.set('host', getControlHosts().dashboard);
     });
   }
-  // Preview deployment Vercel (di balik SSO dashboard) diperlakukan sebagai
-  // permukaan dashboard agar bisa dibuka dari dasbor Vercel — preseden yang
-  // sama dengan pemetaan localhost. Tidak berlaku untuk host asing lainnya.
-  const previewHost = process.env.VERCEL_URL?.replace(/:\d+$/u, '').toLowerCase();
-  if (previewHost !== undefined && previewHost !== '' && localAuthority === previewHost) {
+  // Host deployment Vercel (*.vercel.app) milik project ini diperlakukan sebagai
+  // permukaan dashboard: VERCEL_URL per deployment tidak stabil (unik per build),
+  // tetapi request *.vercel.app yang sampai ke project ini pasti deployment kita
+  // sendiri (routing Vercel per host; preview terkunci SSO dashboard).
+  // Host asing lain tetap 404.
+  if (localAuthority !== undefined && localAuthority.endsWith('.vercel.app')) {
     return nextWithCorrelation(request, (requestHeaders) => {
       requestHeaders.set('host', getControlHosts().dashboard);
     });
