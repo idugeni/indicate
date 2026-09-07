@@ -46,7 +46,7 @@ async function handleGET(request: Request) {
   const context = await contextFor(parsed.data.organizationId, requestId); if (isError(context)) return response(context);
   try {
     if (parsed.data.view === 'customers') { const result = parsed.data.customerId === undefined ? await context.customers.list(context.actor) : await context.customers.read(context.actor, parsed.data.customerId); return result.ok ? NextResponse.json(result.value) : response(result.error); }
-    const [keys, subscription, telegramMappings] = await Promise.all([context.apiKeys.list(context.actor), context.customers.readSubscription(context.actor), context.telegramMappings.list(context.actor)]); if (!keys.ok) return response(keys.error); if (!subscription.ok) return response(subscription.error); if (!telegramMappings.ok) return response(telegramMappings.error); return NextResponse.json({ apiKeys: keys.value, subscription: subscription.value, telegramMappings: telegramMappings.value });
+    const [keys, subscription, telegramMappings, outbox] = await Promise.all([context.apiKeys.list(context.actor), context.customers.readSubscription(context.actor), context.telegramMappings.list(context.actor), context.telegramMappings.listOutbox(context.actor)]); if (!keys.ok) return response(keys.error); if (!subscription.ok) return response(subscription.error); if (!telegramMappings.ok) return response(telegramMappings.error); if (!outbox.ok) return response(outbox.error); return NextResponse.json({ apiKeys: keys.value, subscription: subscription.value, telegramMappings: telegramMappings.value, outbox: outbox.value });
   } finally { await context.close(); }
 }
 

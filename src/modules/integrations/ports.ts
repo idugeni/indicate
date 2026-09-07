@@ -60,6 +60,7 @@ export interface IntegrationsRepository {
   claimOutboxMessages(now: string, limit: number): Promise<readonly TelegramOutboxRecord[]>;
   ackOutboxMessage(input: { readonly id: string; readonly ok: boolean; readonly retryAfterSeconds: number | null; readonly error: string | null; readonly now: string }): Promise<void>;
   listBroadcastTargets(actorId: string): Promise<readonly { readonly organizationId: string; readonly chatId: string }[]>;
+  listOutboxMessages(actorId: string): Promise<readonly TelegramOutboxRecord[]>;
 
   claimReplay(input: ReplayClaimInput): Promise<ReplayClaimResult>;
   bindReplayIdentity(source: string, replayId: string, bodyDigest: string, claimToken: string, organizationId: string, identityBindingDigest: string): Promise<WebhookReplayClaim>;

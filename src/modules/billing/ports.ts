@@ -1,5 +1,5 @@
 import type { ActorContext } from '@/core/operation-context';
-import type { ActiveOrderRecord, EnterpriseLeadRecord, OrderRecord, PackageRecord, PendingOrderRecord } from '@/modules/billing/models';
+import type { ActiveOrderRecord, EnterpriseLeadRecord, InvoiceRecord, OrderRecord, PackageRecord, PendingOrderRecord } from '@/modules/billing/models';
 
 export class BillingAccessDeniedError extends Error {}
 export class BillingConflictError extends Error {}
@@ -14,6 +14,7 @@ export interface BillingRepository {
   refundOrder(actor: ActorContext, input: { readonly orderId: string; readonly requestId: string; readonly now: string }): Promise<OrderRecord>;
   listEnterpriseLeads(actor: ActorContext): Promise<readonly EnterpriseLeadRecord[]>;
   submitLead(input: { readonly nama: string; readonly email: string; readonly kebutuhan: string; readonly consentedAt: string; readonly consentTextVersion: string; readonly ipHash: string }): Promise<{ readonly id: string }>;
+  listInvoices(actor: ActorContext): Promise<readonly InvoiceRecord[]>;
   decideOrder(actor: ActorContext, input: { readonly orderId: string; readonly approve: boolean; readonly orgId: string | null; readonly requestId: string; readonly now: string }): Promise<OrderRecord>;
   readOrderProofKey(actor: ActorContext, orderId: string): Promise<string | null>;
   readSubscriptionState(actor: ActorContext, organizationId: string): Promise<string>;

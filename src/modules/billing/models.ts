@@ -50,6 +50,16 @@ export interface EnterpriseLeadRecord {
   readonly createdAt: string;
 }
 
+export interface InvoiceRecord {
+  readonly id: string;
+  readonly orderId: string;
+  readonly orgId: string | null;
+  readonly packageName: string;
+  readonly amount: number;
+  readonly paidAt: string;
+  readonly createdAt: string;
+}
+
 export interface ProofUploadAuthorization {
   readonly orderId: string;
   readonly objectKey: string;

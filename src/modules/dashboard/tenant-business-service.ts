@@ -2,9 +2,9 @@ import type { z } from 'zod';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type {
-  AnalyticsProjection, ArticleFilter, ArticleRecord, AuditFilter, AuditRecord, AuthorRecord, CategoryRecord,
+  ActivationAttemptRecord, AnalyticsProjection, ArticleFilter, ArticleRecord, AuditFilter, AuditRecord, AuthorRecord, CategoryRecord,
   DashboardProjection, DomainRecord, MembershipRecord, OfficialAffiliationRecord, PublisherRecord, NetworkPublisherClaim,
-  RegionRecord, RoleListItem, RoleRecord, SiteRecord, SiteSettingsRecord, DashboardTenantState,
+  RegionRecord, RetentionRunRecord, RoleListItem, RoleRecord, SiteRecord, SiteSettingsRecord, DashboardTenantState,
 } from '@/modules/dashboard/models';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
 import {
@@ -153,12 +153,19 @@ export class TenantBusinessService {
       const membershipState = membershipRead ?? membershipManage;
       const anyState = domainState ?? regionState ?? siteState ?? roleManage ?? membershipState;
       if (anyState === null) return this.denied(actor, 'configuration.list', 'configuration');
+      let activationAttempts: readonly ActivationAttemptRecord[] = [];
+      const attemptsPermission = siteRead !== null ? DASHBOARD_PERMISSIONS.siteRead : siteManage !== null ? DASHBOARD_PERMISSIONS.siteManage : null;
+      if (siteState !== null && attemptsPermission !== null) {
+        try { activationAttempts = await this.repository.activationAttempts(actor, attemptsPermission); }
+        catch (error) { if (!(error instanceof DashboardAccessDeniedError)) throw error; }
+      }
       return { ok: true as const, value: {
         organizationName: anyState.organizationName,
         domains: domainState?.domains ?? [], regions: regionState?.regions ?? [],
         sites: siteState?.sites ?? [], siteSettings: siteState?.siteSettings ?? [],
         roles: (roleManage?.roles ?? []).map(roleJson), memberships: membershipState?.memberships ?? [],
         telegramMappings: membershipState?.telegramMappings ?? [],
+        activationAttempts,
       } };
     } catch {
       return { ok: false as const, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
@@ -506,11 +513,19 @@ export class TenantBusinessService {
       repository.analyticsSummary(actor, DASHBOARD_PERMISSIONS.analyticsRead, parsed.data));
   }
 
-  auditLogs(actor: AuthorizedTenantActorContext, rawFilter: unknown = {}): Promise<Result<readonly AuditRecord[], PublicErrorEnvelope>> {
+  async auditLogs(actor: AuthorizedTenantActorContext, rawFilter: unknown = {}): Promise<Result<{ readonly auditLogs: readonly AuditRecord[]; readonly retentionRuns: readonly RetentionRunRecord[] }, PublicErrorEnvelope>> {
     const parsed = auditFilterSchema.safeParse(rawFilter);
     if (!parsed.success) return Promise.resolve(this.invalid(actor, parsed.error));
-    return this.summarize(actor, 'audit.list', 'audit_log', (repository) =>
-      repository.auditLogPage(actor, DASHBOARD_PERMISSIONS.auditRead, defined(parsed.data) as AuditFilter));
+    try {
+      const [auditLogs, retentionRuns] = await Promise.all([
+        this.repository.auditLogPage(actor, DASHBOARD_PERMISSIONS.auditRead, defined(parsed.data) as AuditFilter),
+        this.repository.retentionRuns(actor, DASHBOARD_PERMISSIONS.auditRead),
+      ]);
+      return { ok: true, value: { auditLogs, retentionRuns } };
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'audit.list', 'audit_log');
+      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+    }
   }
 
   private async summarize<T>(

@@ -1,5 +1,5 @@
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { AnalyticsProjection, AuditFilter, AuditRecord, DashboardProjection, DashboardTenantState } from '@/modules/dashboard/models';
+import type { ActivationAttemptRecord, AnalyticsProjection, AuditFilter, AuditRecord, DashboardProjection, DashboardTenantState, RetentionRunRecord } from '@/modules/dashboard/models';
 
 export type MutableTenantState = {
   -readonly [Key in keyof DashboardTenantState]: DashboardTenantState[Key] extends readonly (infer Item)[] ? Item[] : DashboardTenantState[Key];
@@ -23,6 +23,10 @@ export interface DashboardRepository {
   ): Promise<AnalyticsProjection>;
   /** Log audit terbaru (desc, dibatasi) sesuai filter; tanpa memuat state tenan penuh. */
   auditLogPage(actor: AuthorizedTenantActorContext, permission: string, filter: AuditFilter): Promise<readonly AuditRecord[]>;
+  /** Bukti runs retensi/sweep (global + org); tanpa memuat state tenan penuh. */
+  retentionRuns(actor: AuthorizedTenantActorContext, permission: string): Promise<readonly RetentionRunRecord[]>;
+  /** Upaya aktivasi domain (desc, dibatasi); tanpa memuat state tenan penuh. */
+  activationAttempts(actor: AuthorizedTenantActorContext, permission: string): Promise<readonly ActivationAttemptRecord[]>;
   recordDenied(actor: AuthorizedTenantActorContext, action: string, targetType: string): Promise<void>;
   execute<T>(
     actor: AuthorizedTenantActorContext,

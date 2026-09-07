@@ -2,7 +2,7 @@ import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type { TelegramMappingRecord } from '@/modules/integrations/models';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import type { IdentifierGenerator } from '@/core/system/ports';
-import { IntegrationsAccessDeniedError, IntegrationsConflictError, IntegrationsSubscriptionInactiveError, type IntegrationsRepository } from '@/modules/integrations/ports';
+import { IntegrationsAccessDeniedError, IntegrationsConflictError, IntegrationsSubscriptionInactiveError, type IntegrationsRepository, type TelegramOutboxRecord } from '@/modules/integrations/ports';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
 import { telegramBroadcastSchema, telegramMappingCreateSchema, telegramMappingUpdateSchema, TELEGRAM_LINK_CONSENT_VERSION } from '@/modules/integrations/schemas';
@@ -49,6 +49,15 @@ export class TelegramMappingService {
     const parsed = telegramMappingUpdateSchema.safeParse(raw); if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the Telegram mapping fields.', actor.requestId) };
     if (!this.allowed(actor)) return this.denied(actor, 'telegram_mapping.update.denied');
     try { return { ok: true, value: await this.repository.updateTelegramMapping(actor, { ...parsed.data, now: this.clock.now().toISOString() }) }; } catch (error) { return this.error(actor, 'telegram_mapping.update.denied', error); }
+  }
+
+  /** Outbox platform (pending/dead): hanya super_admin/customerAdmin; user biasa dapat list kosong. */
+  async listOutbox(actor: AuthorizedTenantActorContext): Promise<Result<readonly TelegramOutboxRecord[], PublicErrorEnvelope>> {
+    const platform = actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) === true
+      || actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.customerAdmin) === true;
+    if (actor.actorType !== 'user' || !platform) return { ok: true, value: Object.freeze([]) };
+    try { return { ok: true, value: await this.repository.listOutboxMessages(actor.actorId) }; }
+    catch { return { ok: true, value: Object.freeze([]) } };
   }
 
   /** Broadcast platform: antrekan satu pesan ke semua mapping aktif (worker mengirim berirama). */

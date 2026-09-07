@@ -42,6 +42,16 @@ interface PendingRow extends OrderRow {
   readonly userEmail: string;
 }
 
+interface InvoiceRow {
+  readonly id: string;
+  readonly orderId: string;
+  readonly orgId: string | null;
+  readonly packageName: string;
+  readonly amount: number;
+  readonly paidAt: string;
+  readonly createdAt: string;
+}
+
 interface LeadRow {
   readonly id: string;
   readonly nama: string;
@@ -69,6 +79,7 @@ export function BillingPanel({
   const [state, setState] = useState<string | null>(null);
   const [packages, setPackages] = useState<readonly PackageOption[]>([]);
   const [orders, setOrders] = useState<readonly OrderRow[]>([]);
+  const [invoices, setInvoices] = useState<readonly InvoiceRow[]>([]);
   const [pending, setPending] = useState<readonly PendingRow[]>([]);
   const [activeList, setActiveList] = useState<readonly ActiveOrderRow[]>([]);
   const [leads, setLeads] = useState<readonly LeadRow[]>([]);
@@ -87,13 +98,15 @@ export function BillingPanel({
     setBusy(true);
     setError(null);
     try {
-      const [stateBody, orderBody, packageBody] = await Promise.all([
+      const [stateBody, orderBody, packageBody, invoiceBody] = await Promise.all([
         api(`/api/dashboard/billing?scope=subscription-state&organizationId=${encodeURIComponent(organizationId)}`) as Promise<{ state: string }>,
         api('/api/dashboard/billing?scope=orders') as Promise<readonly OrderRow[]>,
         api('/api/dashboard/billing?scope=packages') as Promise<readonly PackageOption[]>,
+        api('/api/dashboard/billing?scope=invoices') as Promise<readonly InvoiceRow[]>,
       ]);
       setState(stateBody.state);
       setOrders(orderBody);
+      setInvoices(invoiceBody);
       // Enterprise custom only via lead review, never direct order.
       const orderable = packageBody.filter((pkg) => pkg.priceIdr > 0);
       setPackages(orderable);
@@ -351,6 +364,23 @@ export function BillingPanel({
             </li>
           ))}
           {orders.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada order.</li> : null}
+        </ul>
+      </section>
+
+      <section aria-label="Faktur saya" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
+        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Faktur saya</p>
+        <ul className="m-0 mt-2 grid list-none gap-0 p-0">
+          {invoices.map((invoice) => (
+            <li key={invoice.id} className="border-b border-hairline py-3 last:border-b-0">
+              <p className="m-0 font-sans text-sm font-medium text-paper">
+                {invoice.packageName} — {formatIdr(invoice.amount)}
+              </p>
+              <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
+                Lunas {invoice.paidAt} · {invoice.id}
+              </p>
+            </li>
+          ))}
+          {invoices.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada faktur.</li> : null}
         </ul>
       </section>
 

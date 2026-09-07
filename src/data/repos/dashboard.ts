@@ -2,13 +2,13 @@ import { and, eq, gt, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { AnalyticsProjection, AuditFilter, AuditRecord, DashboardProjection, DashboardTenantState } from '@/modules/dashboard/models';
+import type { AnalyticsProjection, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, RetentionRunRecord } from '@/modules/dashboard/models';
 import { DashboardAccessDeniedError, DashboardConflictError, DashboardQuotaExceededError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
 import { quotaExceeded, type QuotaResource } from '@/modules/billing/quota';
 import { readPlanQuota } from '@/data/repos/shared/plan-quota';
 import { redact } from '@/core/security/redaction';
 import {
-  apiKeys, articleSites, articles, auditLogs, authors, categories, domains, invalidationTasks, media, memberships, officialAffiliations, organizations,
+  apiKeys, articleSites, articles, auditLogs, authors, categories, domainActivationAttempts, domains, invalidationTasks, media, memberships, officialAffiliations, organizations,
   permissions, publishers, publishingJobs, publishingJobTargets, regions, rolePermissions, roles, sites, siteSettings, telegramIdentityMappings, users,
 } from '@/data/schema';
 import type * as schema from '@/data/schema';
@@ -217,8 +217,64 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     });
   }
 
-  async read(actor: AuthorizedTenantActorContext, permission: string): Promise<DashboardTenantState> {
+  async retentionRuns(actor: AuthorizedTenantActorContext, permission: string): Promise<readonly RetentionRunRecord[]> {
     return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const organization = await transaction.select({ id: organizations.id }).from(organizations).where(and(eq(organizations.id, actor.organizationId), eq(organizations.status, 'active'))).limit(1);
+      if (organization.length !== 1) throw new DashboardAccessDeniedError();
+      const rows = await transaction.execute<{
+        readonly id: string; readonly organization_id: string | null; readonly category: string;
+        readonly purged_count: number; readonly started_at: Date; readonly finished_at: Date;
+      }>(sql`SELECT * FROM indicate_private.retention_list(${actor.actorId}::uuid, ${actor.organizationId}::uuid)`);
+      return Object.freeze(rows.map((row) => ({
+        id: row.id,
+        organizationId: row.organization_id,
+        name: `${row.category} — ${row.purged_count} purged`,
+        status: 'success' as const,
+        category: row.category,
+        purgedCount: row.purged_count,
+        startedAt: row.started_at.toISOString(),
+        finishedAt: row.finished_at.toISOString(),
+      })));
+    });
+  }
+
+  async activationAttempts(actor: AuthorizedTenantActorContext, permission: string): Promise<readonly ActivationAttemptRecord[]> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const organization = await transaction.select({ id: organizations.id }).from(organizations).where(and(eq(organizations.id, actor.organizationId), eq(organizations.status, 'active'))).limit(1);
+      if (organization.length !== 1) throw new DashboardAccessDeniedError();
+      const rows = await transaction
+        .select({
+          id: domainActivationAttempts.id,
+          siteId: domainActivationAttempts.siteId,
+          hostname: domainActivationAttempts.hostname,
+          operation: domainActivationAttempts.operation,
+          status: domainActivationAttempts.status,
+          attempts: domainActivationAttempts.attempts,
+          nextAttemptAt: domainActivationAttempts.nextAttemptAt,
+        })
+        .from(domainActivationAttempts)
+        .where(eq(domainActivationAttempts.organizationId, actor.organizationId))
+        .orderBy(sql`${domainActivationAttempts.updatedAt} DESC`)
+        .limit(100);
+      return Object.freeze(rows.map((row) => ({
+        id: row.id,
+        organizationId: actor.organizationId,
+        name: `${row.operation} ${row.hostname}`,
+        status: row.status,
+        siteId: row.siteId,
+        hostname: row.hostname,
+        operation: row.operation,
+        attempts: row.attempts,
+        nextAttemptAt: row.nextAttemptAt.toISOString(),
+      })));
+    });
+  }
+
+  async read(actor: AuthorizedTenantActorContext, permission: string): Promise<DashboardTenantState> {    return this.database.transaction(async (transaction) => {
       await this.establishContext(transaction, actor);
       await this.authorize(transaction, actor, permission); return this.load(transaction, actor.organizationId);
     });

@@ -176,6 +176,11 @@ export class DrizzleIntegrationsRepository implements IntegrationsRepository {
     return rows.map((row) => Object.freeze({ organizationId: row.organization_id, chatId: row.chat_id }));
   }
 
+  async listOutboxMessages(actorId: string): Promise<readonly TelegramOutboxRecord[]> {
+    const rows = await this.database.execute<{ id: string; organization_id: string | null; chat_id: string; text: string; status: TelegramOutboxRecord['status']; attempts: number }>(sql`SELECT * FROM indicate_private.outbox_list_platform(${actorId}::uuid)`);
+    return rows.map((row) => Object.freeze({ id: row.id, organizationId: row.organization_id, chatId: row.chat_id, text: row.text, status: row.status, attempts: row.attempts }));
+  }
+
   async claimReplay(input: ReplayClaimInput): Promise<ReplayClaimResult> {
     const executeClaim = () => this.database.execute<RawClaimRow & { claim_kind: 'created' | 'reclaimed' | 'duplicate' }>(sql`SELECT * FROM indicate_private.replay_claim(${input.source}, ${input.replayId}, ${input.organizationId}::uuid, ${input.bodyDigest}, ${input.receivedAt}::timestamptz, ${input.leaseExpiresAt}::timestamptz, ${input.expiresAt}::timestamptz)`);
     let rows = await executeClaim();

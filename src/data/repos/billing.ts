@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { ActorContext } from '@/core/operation-context';
-import type { ActiveOrderRecord, BillingOrderStatus, EnterpriseLeadRecord, OrderRecord, PackageRecord, PendingOrderRecord } from '@/modules/billing/models';
+import type { ActiveOrderRecord, BillingOrderStatus, EnterpriseLeadRecord, InvoiceRecord, OrderRecord, PackageRecord, PendingOrderRecord } from '@/modules/billing/models';
 import { BillingAccessDeniedError, BillingConflictError, type BillingRepository } from '@/modules/billing/ports';
 import { packages } from '@/data/schema';
 import type * as schema from '@/data/schema';
@@ -158,6 +158,20 @@ export class DrizzleBillingRepository implements BillingRepository {
       return Object.freeze({ id });
     } catch (error) {
       if (error instanceof BillingConflictError) throw error;
+      if (deniedViolation(error)) throw new BillingAccessDeniedError();
+      throw error;
+    }
+  }
+
+  async listInvoices(actor: ActorContext): Promise<readonly InvoiceRecord[]> {
+    const { id } = userActor(actor);
+    try {
+      const rows = await this.database.execute<{ id: string; order_id: string; org_id: string | null; package_name: string | null; amount: number; paid_at: Date | string; created_at: Date | string }>(sql`SELECT * FROM indicate_private.invoice_list(${id}::uuid)`);
+      return rows.map((row) => Object.freeze({
+        id: row.id, orderId: row.order_id, orgId: row.org_id, packageName: row.package_name ?? 'Paket',
+        amount: row.amount, paidAt: iso(row.paid_at), createdAt: iso(row.created_at),
+      }));
+    } catch (error) {
       if (deniedViolation(error)) throw new BillingAccessDeniedError();
       throw error;
     }

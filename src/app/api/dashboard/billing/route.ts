@@ -20,7 +20,7 @@ import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope 
 import type { Result } from '@/core/result';
 
 const getSchema = z.object({
-  scope: z.enum(['packages', 'orders', 'pending', 'active-orders', 'leads', 'proof-view', 'subscription-state']),
+  scope: z.enum(['packages', 'orders', 'pending', 'active-orders', 'leads', 'invoices', 'proof-view', 'subscription-state']),
   orderId: z.uuid().optional(),
   organizationId: z.uuid().optional(),
 });
@@ -100,6 +100,7 @@ async function handleGET(request: Request) {
         : scope === 'pending' ? await service.pendingOrders(session.actor)
           : scope === 'active-orders' ? await service.activeOrders(session.actor)
           : scope === 'leads' ? await service.enterpriseLeads(session.actor)
+            : scope === 'invoices' ? await service.myInvoices(session.actor)
             : scope === 'proof-view' && parsed.data.orderId !== undefined ? await service.proofViewUrl(session.actor, parsed.data.orderId)
             : scope === 'subscription-state' && parsed.data.organizationId !== undefined ? await service.subscriptionState(session.actor, parsed.data.organizationId)
               : { ok: false as const, error: createPublicError('INVALID_INPUT', 'Invalid billing query.', requestId) };

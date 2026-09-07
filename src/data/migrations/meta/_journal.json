@@ -610,6 +610,20 @@
       "when": 1788785000000,
       "tag": "20260907100000_delivery_previous_host_owned",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1788786000000,
+      "tag": "20260907110000_ops_visibility",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1788787000000,
+      "tag": "20260907120000_invoice_list",
+      "breakpoints": true
     }
   ]
 }

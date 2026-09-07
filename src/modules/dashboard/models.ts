@@ -196,6 +196,31 @@ export interface AuditRecord {
   readonly occurredAt: string;
 }
 
+/** Baris bukti retensi/sweep untuk view audit (nama ramah dibentuk di repo). */
+export interface RetentionRunRecord {
+  readonly id: string;
+  readonly organizationId: string | null;
+  readonly name: string;
+  readonly status: 'success';
+  readonly category: string;
+  readonly purgedCount: number;
+  readonly startedAt: string;
+  readonly finishedAt: string;
+}
+
+/** Baris upaya aktivasi domain untuk view konfigurasi. */
+export interface ActivationAttemptRecord {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly name: string;
+  readonly status: string;
+  readonly siteId: string;
+  readonly hostname: string;
+  readonly operation: string;
+  readonly attempts: number;
+  readonly nextAttemptAt: string;
+}
+
 export interface DashboardTenantState {
   readonly organizationId: string;
   readonly organizationName: string;

@@ -1,5 +1,5 @@
 import type { ActorContext } from '@/core/operation-context';
-import type { ActiveOrderRecord, EnterpriseLeadRecord, OrderRecord, PackageRecord, PendingOrderRecord, ProofUploadAuthorization } from '@/modules/billing/models';
+import type { ActiveOrderRecord, EnterpriseLeadRecord, InvoiceRecord, OrderRecord, PackageRecord, PendingOrderRecord, ProofUploadAuthorization } from '@/modules/billing/models';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import type { ObjectStoragePort } from '@/integrations/storage/ports';
@@ -64,6 +64,15 @@ export class BillingService {
       return { ok: true, value: await this.repository.listMyOrders(actor) };
     } catch (error) {
       return this.error(actor.requestId, 'order.list', error);
+    }
+  }
+
+  async myInvoices(actor: ActorContext): Promise<Result<readonly InvoiceRecord[], PublicErrorEnvelope>> {
+    if (!this.userActor(actor)) return this.denied(actor.requestId);
+    try {
+      return { ok: true, value: await this.repository.listInvoices(actor) };
+    } catch (error) {
+      return this.error(actor.requestId, 'invoice.list', error);
     }
   }
 
