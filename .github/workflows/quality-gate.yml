@@ -19,6 +19,34 @@ jobs:
   quality-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Build memprerender dengan snapshot runtime asli: butuh kredensial baca.
+    # Nilai diisi dari GitHub Secrets (repo settings) — JANGAN tulis literal di sini.
+    env:
+      APP_ENVIRONMENT: test
+      SCHEMA_GATE_MODE: contract
+      DASHBOARD_HOST: indicate.web.id
+      API_HOST: api.indicate.web.id
+      WEBHOOK_HOST: webhook.indicate.web.id
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_SITE_URL: https://indicate.web.id
+      SITE_DEFAULT_ASSET_URL: ${{ secrets.SITE_DEFAULT_ASSET_URL }}
+      DEFAULT_LOCALE: id-ID
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      DATABASE_POOL_URL: ${{ secrets.DATABASE_POOL_URL }}
+      DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ORIGIN_SECRET: ${{ secrets.CLOUDFLARE_ORIGIN_SECRET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+      GENERIC_WEBHOOK_SECRET: ${{ secrets.GENERIC_WEBHOOK_SECRET }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v7
