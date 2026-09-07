@@ -47,6 +47,24 @@ const nextConfig: NextConfig = {
 
   serverExternalPackages: ['postgres', 'drizzle-orm'],
 
+  // Landing publik di host dashboard identik untuk semua pengunjung tanpa sesi:
+  // tandai cacheable di edge (Cloudflare mengunci per host+path). Halaman lain
+  // (dashboard, API, host tenant) tidak tersentuh.
+  async headers() {
+    return [
+      {
+        source: '/',
+        has: [{ type: 'host', value: getControlHosts().dashboard }],
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=60, stale-while-revalidate=300',
+          },
+        ],
+      },
+    ];
+  },
+
   images: {
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [
