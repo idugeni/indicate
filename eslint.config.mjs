@@ -21,5 +21,6 @@ export default defineConfig([
     // Bundel skill agen pihak ketiga (vendor JS, bukan kode aplikasi).
     '.agents/**',
     '.claude/**',
+    '.kiro/**',
   ]),
 ]);
