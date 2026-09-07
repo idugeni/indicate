@@ -5,6 +5,7 @@ import type { BootstrapConfig } from '@/core/config/bootstrap/bootstrap-schema';
 import type { RuntimeConfigSnapshot } from '@/core/config/persisted/parser';
 import { DrizzleRuntimeConfigRepository } from '@/data/repos/runtime-config/reader';
 import { RuntimeConfigSnapshotCache } from '@/core/system/runtime-config-snapshot-cache';
+import { UpstashSnapshotStore } from '@/integrations/redis/upstash-snapshot-store';
 import { HrTimeMonotonicClock } from '@/core/system/monotonic-clock';
 import { createRuntimeDatabase } from '@/data/client';
 import { deriveRedisNamespace } from '@/core/config/runtime/derived-values';
@@ -145,7 +146,12 @@ async function initializeContext(): Promise<RuntimeContext> {
     const runtime = createRuntimeDatabase(bootstrap);
     await assertSchemaGate(runtime.client);
     const repository = new DrizzleRuntimeConfigRepository(runtime.db);
-    cache = new RuntimeConfigSnapshotCache({ repository, clock: new HrTimeMonotonicClock() });
+    const snapshotStore = new UpstashSnapshotStore({
+      url: bootstrap.credentials.upstashRestUrl,
+      token: bootstrap.credentials.upstashRestToken.reveal(),
+      namespace: `indicate:shared:${bootstrap.environment}`,
+    });
+    cache = new RuntimeConfigSnapshotCache({ repository, clock: new HrTimeMonotonicClock(), snapshotStore });
     // Singleton owns the client for the app lifetime (covers 300s refreshes).
     void runtime;
   }

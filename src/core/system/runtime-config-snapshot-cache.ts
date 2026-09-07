@@ -11,6 +11,12 @@ export interface CacheEntry {
   readonly source: 'postgres';
 }
 
+/** Lapis kedua bersama (mis. Redis): kunci mencakup revision sehingga tidak ada bacaan basi. */
+export interface SnapshotSharedStore {
+  read(environment: string, revision: number): Promise<unknown | null>;
+  write(environment: string, revision: number, model: unknown, ttlSeconds: number): Promise<void>;
+}
+
 export interface SnapshotStatus {
   readonly configurationVersion: number;
   readonly ageSeconds: number;
@@ -22,6 +28,8 @@ export interface SnapshotStatus {
 export class RuntimeConfigSnapshotCache {
   readonly #repository: RuntimeConfigReadRepository;
   readonly #clock: MonotonicClock;
+  readonly #store: SnapshotSharedStore | null;
+  readonly #storeTtlSeconds: number;
   #active: { environment: string; entry: CacheEntry } | null = null;
   #refreshing: { environment: string; promise: Promise<CacheEntry> } | null = null;
 
@@ -29,9 +37,13 @@ export class RuntimeConfigSnapshotCache {
     repository: RuntimeConfigReadRepository;
     clock: MonotonicClock;
     ttlSeconds?: number;
+    snapshotStore?: SnapshotSharedStore;
+    snapshotStoreTtlSeconds?: number;
   }) {
     this.#repository = input.repository;
     this.#clock = input.clock;
+    this.#store = input.snapshotStore ?? null;
+    this.#storeTtlSeconds = input.snapshotStoreTtlSeconds ?? RUNTIME_CONFIG_SNAPSHOT_TTL_SECONDS;
     void input.ttlSeconds;
   }
 
@@ -57,15 +69,36 @@ export class RuntimeConfigSnapshotCache {
   }
 
   private async performRefresh(environment: string): Promise<CacheEntry> {
+    // Jalur cepat lintas instance: revision murah + model mentah dari lapis bersama,
+    // divalidasi parser yang sama sebelum diadopsi. Gagal apa pun → baca penuh.
+    if (this.#store !== null) {
+      try {
+        const { configurationVersion } = await this.#repository.readInventoryVersion(environment);
+        const shared = await this.#store.read(environment, configurationVersion);
+        if (shared !== null) {
+          const sharedParsed = parsePersistedReadModel(shared as PersistedRuntimeConfigReadModel, environment);
+          if (sharedParsed.success) return this.adopt(environment, sharedParsed.snapshot);
+        }
+      } catch {
+        /* fall through to full read */
+      }
+    }
     const read: PersistedRuntimeConfigReadModel = await this.#repository.readComplete(environment);
     const parsed = parsePersistedReadModel(read, environment);
     if (!parsed.success) {
       // Rejected parse keeps the old entry on its original expiry; never adopt a partial value.
       throw new Error('configuration snapshot rejected by parser');
     }
+    if (this.#store !== null) {
+      await this.#store.write(environment, parsed.snapshot.configurationVersion, read, this.#storeTtlSeconds);
+    }
+    return this.adopt(environment, parsed.snapshot);
+  }
+
+  private adopt(environment: string, snapshot: CacheEntry['snapshot']): CacheEntry {
     const readAt = this.#clock.now();
     const entry: CacheEntry = Object.freeze({
-      snapshot: parsed.snapshot,
+      snapshot: snapshot,
       readAtMonotonic: readAt,
       expiresAtMonotonic: Object.freeze({ value: readAt.value + RUNTIME_CONFIG_SNAPSHOT_TTL_SECONDS }),
       source: 'postgres',
