@@ -23,8 +23,11 @@ jobs:
     # Build memprerender dengan snapshot runtime asli: butuh kredensial baca.
     # Nilai diisi dari GitHub Secrets (repo settings) — JANGAN tulis literal di sini.
     env:
-      APP_ENVIRONMENT: test
-      SCHEMA_GATE_MODE: contract
+      # `next build` memaksa NODE_ENV=production; validator menuntut APP_ENVIRONMENT
+      # sama + gate live. Gate tetap disarmed karena migration_gate_events kosong
+      # (standing decision) — build hanya membaca snapshot.
+      APP_ENVIRONMENT: production
+      SCHEMA_GATE_MODE: live
       DASHBOARD_HOST: indicate.web.id
       API_HOST: api.indicate.web.id
       WEBHOOK_HOST: webhook.indicate.web.id
