@@ -2,7 +2,7 @@ import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import {
   readColorPresets,
   readContactChannels,
@@ -30,13 +30,13 @@ import {
 
 async function withRuntimeDatabase<T>(read: (db: Parameters<typeof readServiceTiers>[0]) => Promise<T>): Promise<T | null> {
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.bootstrap);
+  // Pool bersama proses (bukan buka-tutup per getter): tiap handshake TLS ke
+  // Seoul ±1 dtk; pool idle menutup sendiri via idle_timeout.
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
   try {
     return await read(runtime.db);
   } catch {
     return null;
-  } finally {
-    await runtime.close();
   }
 }
 
