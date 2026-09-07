@@ -20,5 +20,6 @@ export interface ObjectStoragePort extends HealthCheckPort {
   headExact(key: string): Promise<StoredObjectMetadata | null>;
   authorizeExactPut(key: string, contentType: string, checksumSha256: string, expiresInSeconds: number): Promise<ExactObjectAuthorization>;
   authorizeExactGet(key: string, expiresInSeconds: number): Promise<ExactObjectAuthorization>;
+  putExact(key: string, body: Uint8Array, contentType: string): Promise<{ readonly etag: string | null }>;
   deleteExact(key: string): Promise<void>;
 }

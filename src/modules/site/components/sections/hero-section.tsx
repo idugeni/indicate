@@ -8,8 +8,8 @@ import { cn } from '@/ui/cn';
 export function HeroSection() {
   return (
     <>
-      <section className="border-b border-hairline">
-        <Container className="grid gap-10 py-14 md:py-20 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-end">
+      <section className="bg-[radial-gradient(circle_at_1px_1px,color-mix(in_srgb,var(--hairline)_55%,transparent)_1px,transparent_0)] bg-[size:22px_22px]">
+        <Container className="grid min-h-[calc(100svh-3.5rem)] content-center gap-10 py-14 md:py-20 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-center">
           <div>
             <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium uppercase tracking-wider text-brass">
               <span aria-hidden="true" className="h-px w-8 flex-none bg-brass/70" />
@@ -57,7 +57,7 @@ export function HeroSection() {
         </Container>
       </section>
 
-      <Container className="py-14 md:py-16">
+      <Container className="py-14 md:py-20">
         <LivePreviewSection />
       </Container>
     </>

@@ -41,7 +41,7 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
   'DEFAULT_LOCALE',
-  'SITE_FALLBACK_ASSET_URL',
+  'SITE_DEFAULT_ASSET_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
   'SUPABASE_SECRET_KEY',
   'SUPABASE_PROJECT_REF',
@@ -52,6 +52,9 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'VERCEL_API_TOKEN',
   'R2_ACCESS_KEY_ID',
   'R2_SECRET_ACCESS_KEY',
+  'R2_AUDIT_BUCKET_NAME',
+  'R2_AUDIT_ACCESS_KEY_ID',
+  'R2_AUDIT_SECRET_ACCESS_KEY',
   'UPSTASH_REDIS_REST_URL',
   'UPSTASH_REDIS_REST_TOKEN',
   'TELEGRAM_BOT_TOKEN',
@@ -88,7 +91,7 @@ const bootstrapSchema = z
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(8).optional(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(8).optional(),
     DEFAULT_LOCALE: z.string().regex(/^[a-z]{2}-[A-Z]{2}$/).default('id-ID'),
-    SITE_FALLBACK_ASSET_URL: httpsUrlSchema,
+    SITE_DEFAULT_ASSET_URL: httpsUrlSchema,
     SUPABASE_SERVICE_ROLE_KEY: secretSchema.optional(),
     // Compatibility aliases; anon/publishable are both public client values.
     SUPABASE_SECRET_KEY: secretSchema.optional(),
@@ -101,6 +104,9 @@ const bootstrapSchema = z
     VERCEL_API_TOKEN: secretSchema,
     R2_ACCESS_KEY_ID: secretSchema,
     R2_SECRET_ACCESS_KEY: secretSchema,
+    R2_AUDIT_BUCKET_NAME: z.string().regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/).optional(),
+    R2_AUDIT_ACCESS_KEY_ID: secretSchema.optional(),
+    R2_AUDIT_SECRET_ACCESS_KEY: secretSchema.optional(),
     UPSTASH_REDIS_REST_URL: httpsUrlSchema,
     UPSTASH_REDIS_REST_TOKEN: secretSchema,
     TELEGRAM_BOT_TOKEN: secretSchema,
@@ -166,7 +172,7 @@ export interface BootstrapConfig {
   }>;
   readonly seo: Readonly<{
     readonly defaultLocale: string;
-    readonly fallbackAssetUrl: string;
+    readonly defaultAssetUrl: string;
   }>;
   readonly supabase: Readonly<{
     readonly projectRef?: string;
@@ -185,6 +191,10 @@ export interface BootstrapConfig {
     readonly vercelApiToken: SecretString;
     readonly r2AccessKeyId: SecretString;
     readonly r2SecretAccessKey: SecretString;
+    /** WORM audit bucket (opsional; export audit mati bila null). Kredensial audit scoped terpisah bila diisi. */
+    readonly r2AuditBucketName: string | null;
+    readonly r2AuditAccessKeyId: SecretString | null;
+    readonly r2AuditSecretAccessKey: SecretString | null;
     readonly upstashRestUrl: string;
     readonly upstashRestToken: SecretString;
     readonly telegramBotToken: SecretString;
@@ -218,7 +228,7 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
     }),
     seo: Object.freeze({
       defaultLocale: value.DEFAULT_LOCALE,
-      fallbackAssetUrl: value.SITE_FALLBACK_ASSET_URL,
+      defaultAssetUrl: value.SITE_DEFAULT_ASSET_URL,
     }),
     supabase: Object.freeze({
       projectRef,
@@ -236,6 +246,9 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       vercelApiToken: SecretString.fromPlain(value.VERCEL_API_TOKEN),
       r2AccessKeyId: SecretString.fromPlain(value.R2_ACCESS_KEY_ID),
       r2SecretAccessKey: SecretString.fromPlain(value.R2_SECRET_ACCESS_KEY),
+      r2AuditBucketName: value.R2_AUDIT_BUCKET_NAME ?? null,
+      r2AuditAccessKeyId: value.R2_AUDIT_ACCESS_KEY_ID === undefined ? null : SecretString.fromPlain(value.R2_AUDIT_ACCESS_KEY_ID),
+      r2AuditSecretAccessKey: value.R2_AUDIT_SECRET_ACCESS_KEY === undefined ? null : SecretString.fromPlain(value.R2_AUDIT_SECRET_ACCESS_KEY),
       upstashRestUrl: value.UPSTASH_REDIS_REST_URL,
       upstashRestToken: SecretString.fromPlain(value.UPSTASH_REDIS_REST_TOKEN),
       telegramBotToken: SecretString.fromPlain(value.TELEGRAM_BOT_TOKEN),

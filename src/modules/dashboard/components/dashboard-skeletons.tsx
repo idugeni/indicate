@@ -8,7 +8,7 @@ function ShimmerShell({
   readonly children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-8" aria-busy="true" aria-label={label} role="status">
+    <div className="animate-in space-y-8 fade-in duration-200" aria-busy="true" aria-label={label} role="status">
       {children}
     </div>
   );
@@ -37,8 +37,8 @@ export function DashboardFormSkeleton() {
 /** Stats fallback mirroring the metrics boxes. */
 export function DashboardStatsSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-hidden="true">
-      {[0, 1, 2, 3].map((index) => (
+    <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
+      {[0, 1, 2, 3, 4, 5].map((index) => (
         <div key={index} className="rounded-lg border border-hairline bg-bg-raised p-5">
           <Skeleton className="h-3 w-20 bg-bg-raised-2" />
           <Skeleton className="mt-2 h-7 w-24 bg-bg-raised-2" />

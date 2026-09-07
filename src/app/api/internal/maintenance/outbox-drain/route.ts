@@ -1,0 +1,34 @@
+import { NextResponse } from 'next/server';
+
+import { createProductionIntegrationsContext } from '@/modules/integrations/integrations-composition';
+import { withApiAccess } from '@/core/observability/api-access';
+import { resolveRequestId } from '@/core/observability/request-id';
+import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
+
+function authorized(request: Request, secret: string): boolean {
+  const presented = request.headers.get('authorization');
+  const expected = `Bearer ${secret}`;
+  if (presented === null || presented.length !== expected.length) return false;
+  let mismatch = 0;
+  for (let index = 0; index < presented.length; index += 1) {
+    mismatch |= presented.charCodeAt(index) ^ expected.charCodeAt(index);
+  }
+  return mismatch === 0;
+}
+
+async function handleGET(request: Request) {
+  const requestId = resolveRequestId(request);
+  const context = await getServerRuntimeContext();
+  if (!authorized(request, context.config.security.cronSecret)) {
+    return new NextResponse('Not Found', { status: 404, headers: { 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
+  }
+  const composition = await createProductionIntegrationsContext();
+  try {
+    const summary = await composition.telegram.processOutbox(20, requestId);
+    return NextResponse.json({ requestId, ...summary }, { headers: { 'Cache-Control': 'private, no-store' } });
+  } finally {
+    await composition.close();
+  }
+}
+
+export const GET = withApiAccess('GET /api/internal/maintenance/outbox-drain', handleGET);

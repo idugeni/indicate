@@ -1,6 +1,5 @@
 import { ImageResponse } from 'next/og';
 
-export const runtime = 'nodejs';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -42,10 +41,10 @@ export default function DefaultOpenGraphImage() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ fontSize: '60px', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.03em' }}>
-            Satu ruang redaksi untuk seluruh jaringan portal berita Anda.
+            One Signal, Multiple Distribution Channels.
           </div>
           <div style={{ fontSize: '26px', color: '#9fa6b8' }}>
-            Dashboard terpusat · Sindikasi multi-situs · indicate.web.id
+            Centralized dashboard · Multi-site syndication · indicate.web.id
           </div>
         </div>
         <div
@@ -58,7 +57,7 @@ export default function DefaultOpenGraphImage() {
           }}
         >
           <div style={{ width: '48px', height: '2px', backgroundColor: '#cc9a44' }} />
-          Jaringan Sindikasi Media Daerah
+          Regional Media Syndication Network
         </div>
       </div>
     ),

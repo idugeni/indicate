@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server';
+import { connection, NextResponse } from 'next/server';
 
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { withApiAccess } from '@/core/observability/api-access';
 
-export const dynamic = 'force-dynamic';
-
 async function handleGET() {
+  // Health membaca snapshot konfigurasi per request: tetap dinamis.
+  await connection();
   const context = await getServerRuntimeContext();
   return NextResponse.json(
     {

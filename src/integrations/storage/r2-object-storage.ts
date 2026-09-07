@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { createHash } from 'node:crypto';
+
 import { DeleteObjectCommand, HeadBucketCommand, HeadObjectCommand, PutObjectCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -66,6 +68,18 @@ export class R2ObjectStorageAdapter implements ObjectStoragePort {
   async authorizeExactGet(key: string, expiresInSeconds: number): Promise<ExactObjectAuthorization> {
     const url = await getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.config.bucketName, Key: key }), { expiresIn: expiresInSeconds });
     return Object.freeze({ key, url, requiredHeaders: Object.freeze({}), expiresAt: new Date(this.now().getTime() + expiresInSeconds * 1_000) });
+  }
+
+  async putExact(key: string, body: Uint8Array, contentType: string): Promise<{ readonly etag: string | null }> {
+    const checksum = createHash('sha256').update(body).digest('base64');
+    const result = await this.client.send(new PutObjectCommand({
+      Bucket: this.config.bucketName,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+      ChecksumSHA256: checksum,
+    }));
+    return Object.freeze({ etag: result.ETag ?? null });
   }
 
   async deleteExact(key: string): Promise<void> {

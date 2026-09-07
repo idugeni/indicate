@@ -23,7 +23,11 @@ export const telegramMappingCreateSchema = z.object({
   roleId: id,
   telegramUserId: z.string().trim().min(1).max(100),
   telegramChatId: z.string().trim().min(1).max(100),
+  consentIpHash: z.string().regex(/^[0-9a-f]{64}$/).nullable().default(null),
 }).strict();
+
+/** Versi teks persetujuan penautan Telegram (PENDING A6 consent trail). */
+export const TELEGRAM_LINK_CONSENT_VERSION = 'telegram-link/1';
 export const telegramMappingUpdateSchema = z.object({
   mappingId: id,
   expectedVersion,
@@ -32,6 +36,10 @@ export const telegramMappingUpdateSchema = z.object({
   telegramUserId: z.string().trim().min(1).max(100),
   telegramChatId: z.string().trim().min(1).max(100),
   status: z.enum(['active', 'inactive', 'archived']),
+}).strict();
+
+export const telegramBroadcastSchema = z.object({
+  text: z.string().trim().min(1).max(4000),
 }).strict();
 
 /** Trial writes disabled; legacy 'trialing' rows stay readable but reject on write. */

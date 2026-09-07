@@ -107,7 +107,7 @@ export function PublishingForm({
   };
 
   return (
-    <div className="grid max-w-5xl gap-10 lg:grid-cols-2">
+    <div className="grid min-w-0 gap-4 lg:grid-cols-2">
       <SectionCard icon={Send} title="Terbitkan ke kanal" eyebrow="Penerbitan">
 
         <form onSubmit={handlePublish} className="space-y-4">

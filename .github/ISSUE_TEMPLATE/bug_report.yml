@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Do not report suspected vulnerabilities here — email officialelsa21@gmail.com per `SECURITY.md`. Never paste credentials, database URLs, tokens, signed URLs, or production host data.
+        Do not report suspected vulnerabilities here — email sancaphenacakra@gmail.com per `SECURITY.md`. Never paste credentials, database URLs, tokens, signed URLs, or production host data.
   - type: input
     id: commit
     attributes:

@@ -173,7 +173,11 @@ Detailed procedures: [database migration operations](docs/MIGRATIONS.md) and [pr
 
 ## License
 
-Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 Eliyanto Sarage.
+Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 Eliyanto Sarage. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for upstream attributions.
+
+All trademarks (Google, Cloudflare, Vercel, Supabase, Telegram, PostgreSQL, Next.js, React) are property of their respective owners; nominative use here implies no endorsement.
+
+Descriptions of architecture (exact-host isolation, durable publication, private media, fail-closed) describe design intent, not an SLA — service levels are governed solely by `/terms` §17 and any signed Enterprise SOW.
 
 ---
 

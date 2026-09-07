@@ -26,7 +26,7 @@ export function LivePreviewSection() {
   const { register, tabIndexFor, onKeyDown } = useRovingSelection(TAB_VALUES, activeTab, setActiveTab);
 
   return (
-    <div className="w-full border-t-2 border-hairline pt-5">
+    <div className="w-full rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
       <div className="w-full">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -60,7 +60,7 @@ export function LivePreviewSection() {
                   className={`border-b-2 pb-2 font-mono text-xs transition-colors ${
                     selected
                       ? 'border-brass text-paper'
-                      : 'border-transparent text-paper-faint hover:text-paper'
+                      : 'border-transparent text-paper-faint hover:border-brass/40 hover:text-paper'
                   }`}
                 >
                   {tab.label}
@@ -70,13 +70,13 @@ export function LivePreviewSection() {
           </div>
         </div>
 
-        <div className="min-h-[200px] rounded-lg border border-hairline bg-bg-raised/40 p-4 font-mono text-xs text-paper-dim sm:p-5">
+        <div className="grid min-h-[200px] rounded-lg border border-hairline bg-bg p-4 font-mono text-xs text-paper-dim sm:p-5">
           <div
             id="preview-panel-dashboard"
             role="tabpanel"
             aria-labelledby="preview-tab-dashboard"
-            hidden={activeTab !== 'dashboard'}
-            className="m-0 space-y-3"
+            aria-hidden={activeTab !== 'dashboard'}
+            className={`m-0 col-start-1 row-start-1 flex flex-col space-y-3 ${activeTab !== 'dashboard' ? 'invisible' : ''}`}
           >
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline pb-2.5">
               <span className="flex items-center gap-2 font-semibold text-paper">
@@ -88,7 +88,7 @@ export function LivePreviewSection() {
               </span>
             </div>
 
-            <div className="grid gap-1.5 leading-relaxed">
+            <div className="flex flex-1 flex-col justify-evenly gap-1.5 leading-relaxed">
               <p className="m-0">
                 <span className="text-paper-faint">ORGANIZATION:</span>{' '}
                 <span className="text-paper">Media Nusantara Group (org_01h8x)</span>
@@ -112,8 +112,8 @@ export function LivePreviewSection() {
             id="preview-panel-telegram"
             role="tabpanel"
             aria-labelledby="preview-tab-telegram"
-            hidden={activeTab !== 'telegram'}
-            className="m-0 space-y-3"
+            aria-hidden={activeTab !== 'telegram'}
+            className={`m-0 col-start-1 row-start-1 flex flex-col space-y-3 ${activeTab !== 'telegram' ? 'invisible' : ''}`}
           >
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline pb-2.5">
               <div className="flex items-center gap-2 text-paper">
@@ -123,7 +123,7 @@ export function LivePreviewSection() {
               <span className="text-[11px] text-paper-faint">10:14:02 WIB</span>
             </div>
 
-            <div className="space-y-2 border border-hairline p-3 text-paper">
+            <div className="flex flex-1 flex-col justify-evenly gap-2 border border-hairline p-3 text-paper">
               <div className="text-xs text-paper-dim">
                 <span className="text-brass">INBOUND:</span> /publish #1092 --target=portal-alpha.web.id
               </div>
@@ -144,8 +144,8 @@ export function LivePreviewSection() {
             id="preview-panel-routing"
             role="tabpanel"
             aria-labelledby="preview-tab-routing"
-            hidden={activeTab !== 'routing'}
-            className="m-0 space-y-3"
+            aria-hidden={activeTab !== 'routing'}
+            className={`m-0 col-start-1 row-start-1 flex flex-col space-y-3 ${activeTab !== 'routing' ? 'invisible' : ''}`}
           >
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline pb-2.5">
               <span className="flex items-center gap-2 font-semibold text-paper">
@@ -155,11 +155,11 @@ export function LivePreviewSection() {
               <span className="text-[11px] text-paper-faint">EDGE CACHE WARM</span>
             </div>
 
-            <div className="grid grid-cols-1 gap-px border border-hairline bg-hairline sm:grid-cols-3">
+            <div className="grid flex-1 auto-rows-fr grid-cols-1 gap-px border border-hairline bg-hairline sm:grid-cols-3">
               {ROUTING_NODES.map((node) => (
                 <div
                   key={node.host}
-                  className="bg-bg p-3"
+                  className="flex flex-col justify-between gap-2 bg-bg p-3"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="min-w-0 truncate font-sans text-xs font-semibold text-paper">

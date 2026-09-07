@@ -8,7 +8,7 @@
 | [Bug report](.github/ISSUE_TEMPLATE/bug_report.yml) | Reproducible defects on a specific commit |
 | [Feature request](.github/ISSUE_TEMPLATE/feature_request.yml) | Proposed capabilities with tenant-isolation analysis |
 | [Contributing guide](CONTRIBUTING.md) | Environment setup, conventions, PR process |
-| Email `officialelsa21@gmail.com` | Security issues (see [SECURITY.md](SECURITY.md)) and private matters only |
+| Email `sancaphenacakra@gmail.com` | Security issues (see [SECURITY.md](SECURITY.md)) and private matters only |
 
 Response target: **5 business days** for public issues. Security reports follow
 the [72-hour acknowledgement target](SECURITY.md#reporting-a-vulnerability).
@@ -55,4 +55,4 @@ promotion decision — see the
 
 Suspected vulnerabilities (isolation bypass, auth bypass, secret leak, RLS
 regression) must **not** be filed as public issues. Follow
-[SECURITY.md](SECURITY.md) and email `officialelsa21@gmail.com` instead.
+[SECURITY.md](SECURITY.md) and email `sancaphenacakra@gmail.com` instead.

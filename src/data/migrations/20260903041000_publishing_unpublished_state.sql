@@ -5,4 +5,4 @@
 
 ALTER TYPE publishing_state ADD VALUE 'unpublished';--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (60, 'publishing_unpublished_state', 'sha256:673d0de4e1eaba41c43b29bf927676dc88a94ed97d05d4f8150dc9ed24a89279');
+VALUES (60, 'publishing_unpublished_state', 'sha256:501add921dcf4a38e130a9577d6f79e9ffab08defa1c90febc22268010e70f4a');

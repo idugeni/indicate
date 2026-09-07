@@ -126,9 +126,9 @@ Bagian ini adalah fondasi yang sudah terbukti tepat dan **tidak boleh diubah** t
 | `--brass-soft` | `#E4B96A` | Aksen sekunder — hover state dari brass, penekanan teks |
 | `--brass-dim` | `#8A6B33` | Brass versi redup — dipakai di atas latar terang atau untuk elemen non-interaktif bertema brass |
 | `--signal` | `#5FCBB0` | Status teknis "aktif/live/berhasil" — **khusus data**, bukan dekorasi |
-| `--paper` | `#EDEADF` | Teks utama (putih hangat) |
+| `--paper` | `#edeadd` | Teks utama (putih hangat) |
 | `--paper-dim` | `#9FA6B8` | Teks sekunder / body copy |
-| `--paper-faint` | `#6B7284` | Teks tersier / metadata / label kecil |
+| `--paper-faint` | `#8b93a7` | Teks tersier / metadata / label kecil — diubah dari `#6B7284` karena nilai lama gagal WCAG 2.2 AA (±3.9:1), lihat komentar di `src/app/globals.css` |
 
 ### 3.2 Surface Hierarchy
 
@@ -206,6 +206,8 @@ Dipakai untuk memodulasi warna dasar komponen (brass untuk primary, netral untuk
 | Metadata / caption | `0.8–0.86rem` | sama | Plex Sans atau Plex Mono | 400 | 1.4 |
 | Technical data | `0.78–0.95rem` | sama | Plex Mono | 400–500 | 1.4 |
 
+> **Status implementasi:** aturan global `h1, h2, h3, h4, .font-display` di `src/app/globals.css` saat ini me-render Plex Sans 700 — belum mengikuti skala Fraunces 500 di atas. Fraunces baru dipakai di momen display terpilih (mis. `.network-card h2`, `.public-sidebar h2`). Skala di tabel ini tetap menjadi target kontrak; selaraskan CSS atau revisi aturan ini sebelum menambah heading baru.
+
 ### 4.3 Heading Hierarchy
 
 - **H1** hanya muncul sekali per halaman — judul utama.
@@ -245,6 +247,8 @@ Dipakai untuk memodulasi warna dasar komponen (brass untuk primary, netral untuk
 
 ### 5.1 Spacing Scale
 
+> **Status implementasi:** token `--space-*` belum diimplementasikan sebagai CSS variable — kode saat ini memakai nilai literal. Skala di bawah adalah target kontrak; implementasikan tokennya atau pakai nilai literal yang ekuivalen sampai token tersedia.
+
 Skala berbasis `4px`, dengan penamaan token semantik agar konsisten dipakai lintas komponen:
 
 | Token | Nilai | Peran |
@@ -271,6 +275,8 @@ Skala berbasis `4px`, dengan penamaan token semantik agar konsisten dipakai lint
 **Prinsip:** jarak besar dipakai untuk memisahkan *konteks*, jarak kecil dipakai untuk mengelompokkan *hubungan*. Dua elemen yang berhubungan erat (label + value) selalu lebih dekat daripada dua elemen yang tidak berhubungan (akhir satu section + awal section berikutnya).
 
 ### 5.3 Container & Page Padding
+
+> **Status implementasi:** token `--container-max` dan `--page-padding-*` belum diimplementasikan sebagai CSS variable. Nilai di bawah adalah target kontrak.
 
 | Token | Nilai |
 |---|---|
@@ -311,6 +317,8 @@ INDICATE memakai **density sedang** secara default — cukup lapang untuk terasa
 **Prinsip utama: mobile bukan desktop yang diperkecil.** Setiap breakpoint mengubah *bagaimana informasi disusun*, bukan sekadar menyusutkan ukuran.
 
 ### 7.1 Breakpoints
+
+> **Status implementasi:** token `--bp-*` belum diimplementasikan sebagai CSS variable — kode memakai media query literal (`820px`, `560px` di `src/app/globals.css`). Tabel di bawah adalah target kontrak perilaku per breakpoint.
 
 | Nama | Lebar | Dipakai untuk |
 |---|---|---|
@@ -530,6 +538,7 @@ Lihat [9.2](#92-loading-states) untuk detail lengkap.
 - **Tidak ada infinite decorative animation** (tidak ada elemen yang terus bergerak/berkedip tanpa henti tanpa alasan status).
 - **Tidak ada excessive motion** — maksimal satu momen animasi terkoordinasi per section/halaman.
 - **`prefers-reduced-motion: reduce` wajib dihormati** di seluruh produk: semua animasi non-esensial (termasuk Signal Network) dinonaktifkan total, digantikan dengan state akhir statis langsung.
+- **View Transitions ditunda (keputusan September 2026).** Next.js 16 menyediakan `<ViewTransition>` (morph, directional slide, Suspense reveal, crossfade), tetapi pola ini belum diadopsi karena melanggar dua aturan di atas untuk navigasi rutin. Pengecualian hanya dibuka lewat amandemen dokumen ini dengan kriteria: (1) transisi mengomunikasikan makna nyata (mis. kontinuitas objek yang sama, bukan dekorasi), (2) ada satu anchor diam sebagai referensi spasial, (3) durasi ≤400ms dan nonaktif total saat `prefers-reduced-motion`.
 
 ---
 
@@ -713,4 +722,4 @@ Jika kebutuhan baru **belum punya pattern** yang sesuai di dokumen ini, dokumen 
 
 ---
 
-*Dokumen ini didampingi oleh `indicate-brand.html` sebagai referensi implementasi visual awal. Implementasi lebih lanjut (dashboard, aplikasi produk) wajib merujuk ke token dan aturan dalam dokumen ini, bukan meniru langsung dari satu file HTML referensi.*
+*Dokumen ini adalah otoritas visual tunggal. File `indicate-brand.html` yang dirujuk revisi-revisi awal tidak ada di tree — jangan mencari atau menirunya; implementasi (dashboard, aplikasi produk) wajib merujuk ke token dan aturan dalam dokumen ini.*

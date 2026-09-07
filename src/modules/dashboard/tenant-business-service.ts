@@ -4,11 +4,11 @@ import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type {
   AnalyticsProjection, ArticleFilter, ArticleRecord, AuditFilter, AuditRecord, AuthorRecord, CategoryRecord,
   DashboardProjection, DomainRecord, MembershipRecord, OfficialAffiliationRecord, PublisherRecord, NetworkPublisherClaim,
-  RegionRecord, RoleRecord, SiteRecord, SiteSettingsRecord, DashboardTenantState,
+  RegionRecord, RoleListItem, RoleRecord, SiteRecord, SiteSettingsRecord, DashboardTenantState,
 } from '@/modules/dashboard/models';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
 import {
-  buildAnalytics, buildDashboard, buildNetworkPublisherClaim, filterArticles, filterAuditLogs, selectNetworkArticles,
+  buildNetworkPublisherClaim, filterArticles, selectNetworkArticles,
 } from '@/modules/dashboard/policies';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import {
@@ -46,6 +46,10 @@ function changedFields(before: Readonly<Record<string, unknown>>, after: Readonl
 
 function publicRecord(value: object): Readonly<Record<string, unknown>> {
   return Object.fromEntries(Object.entries(value).filter(([key]) => !['createdAt', 'updatedAt'].includes(key)));
+}
+
+function roleJson(role: RoleRecord): RoleListItem {
+  return { ...role, permissions: [...role.permissions] };
 }
 
 function defined<T extends object>(value: T): T {
@@ -153,7 +157,7 @@ export class TenantBusinessService {
         organizationName: anyState.organizationName,
         domains: domainState?.domains ?? [], regions: regionState?.regions ?? [],
         sites: siteState?.sites ?? [], siteSettings: siteState?.siteSettings ?? [],
-        roles: roleManage?.roles ?? [], memberships: membershipState?.memberships ?? [],
+        roles: (roleManage?.roles ?? []).map(roleJson), memberships: membershipState?.memberships ?? [],
         telegramMappings: membershipState?.telegramMappings ?? [],
       } };
     } catch {
@@ -230,7 +234,7 @@ export class TenantBusinessService {
     return this.mutate({ actor, raw, schema: roleCreateSchema, permission: DASHBOARD_PERMISSIONS.roleManage, action: 'role.create', targetType: 'role', execute: (transaction, value, now) => {
       if (transaction.state.roles.some(({ name }) => name.toLowerCase() === value.name.toLowerCase())) throw new DashboardConflictError();
       const record: RoleRecord = { ...this.base(actor, now), name: value.name, tier: value.tier, active: value.active, permissions: new Set(value.permissions) };
-      transaction.state.roles.push(record); this.audit(transaction, 'role.create', 'role', record.id, null, { ...record, permissions: [...record.permissions] }); return record;
+      transaction.state.roles.push(record); this.audit(transaction, 'role.create', 'role', record.id, null, { ...record, permissions: [...record.permissions] }); return roleJson(record);
     }});
   }
 
@@ -238,7 +242,7 @@ export class TenantBusinessService {
     return this.mutate({ actor, raw, schema: roleUpdateSchema, permission: DASHBOARD_PERMISSIONS.roleManage, action: 'role.update', targetType: 'role', execute: (transaction, value, now) => {
       const before = requireRecord(transaction.state.roles, value.id); requireVersion(before, value.expectedVersion);
       const after: RoleRecord = { ...before, name: value.name, tier: value.tier ?? before.tier, active: value.active, permissions: new Set(value.permissions), version: before.version + 1, updatedAt: now };
-      replaceById(transaction.state.roles, after); this.audit(transaction, 'role.update', 'role', after.id, { ...before, permissions: [...before.permissions] }, { ...after, permissions: [...after.permissions] }); return after;
+      replaceById(transaction.state.roles, after); this.audit(transaction, 'role.update', 'role', after.id, { ...before, permissions: [...before.permissions] }, { ...after, permissions: [...after.permissions] }); return roleJson(after);
     }});
   }
 
@@ -483,18 +487,43 @@ export class TenantBusinessService {
   }
 
   dashboard(actor: AuthorizedTenantActorContext): Promise<Result<DashboardProjection, PublicErrorEnvelope>> {
-    return this.query(actor, DASHBOARD_PERMISSIONS.dashboardRead, 'dashboard.read', 'dashboard', buildDashboard);
+    return this.dashboardCounts(actor);
+  }
+
+  private async dashboardCounts(actor: AuthorizedTenantActorContext): Promise<Result<DashboardProjection, PublicErrorEnvelope>> {
+    try {
+      return { ok: true, value: await this.repository.dashboardCounts(actor, DASHBOARD_PERMISSIONS.dashboardRead) };
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'dashboard.read', 'dashboard');
+      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+    }
   }
 
   analytics(actor: AuthorizedTenantActorContext, rawFilter: unknown = {}): Promise<Result<AnalyticsProjection, PublicErrorEnvelope>> {
     const parsed = analyticsFilterSchema.safeParse(rawFilter);
     if (!parsed.success) return Promise.resolve(this.invalid(actor, parsed.error));
-    return this.query(actor, DASHBOARD_PERMISSIONS.analyticsRead, 'analytics.read', 'analytics', (state) => buildAnalytics(state, parsed.data));
+    return this.summarize(actor, 'analytics.read', 'analytics', (repository) =>
+      repository.analyticsSummary(actor, DASHBOARD_PERMISSIONS.analyticsRead, parsed.data));
   }
 
   auditLogs(actor: AuthorizedTenantActorContext, rawFilter: unknown = {}): Promise<Result<readonly AuditRecord[], PublicErrorEnvelope>> {
     const parsed = auditFilterSchema.safeParse(rawFilter);
     if (!parsed.success) return Promise.resolve(this.invalid(actor, parsed.error));
-    return this.query(actor, DASHBOARD_PERMISSIONS.auditRead, 'audit.list', 'audit_log', (state) => filterAuditLogs(state.auditLogs, defined(parsed.data) as AuditFilter));
+    return this.summarize(actor, 'audit.list', 'audit_log', (repository) =>
+      repository.auditLogPage(actor, DASHBOARD_PERMISSIONS.auditRead, defined(parsed.data) as AuditFilter));
+  }
+
+  private async summarize<T>(
+    actor: AuthorizedTenantActorContext,
+    action: string,
+    targetType: string,
+    run: (repository: DashboardRepository) => Promise<T>,
+  ): Promise<Result<T, PublicErrorEnvelope>> {
+    try {
+      return { ok: true, value: await run(this.repository) };
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, action, targetType);
+      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+    }
   }
 }

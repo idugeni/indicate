@@ -38,6 +38,13 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
 
+  // Model render Cache Components (Next.js 16): shell statis + streaming.
+  // Rute dinamis memakai `await connection()`.
+  cacheComponents: true,
+  // Prefetch App Shell per rute (satu artefak per rute, dipakai ulang semua link).
+  // `staleTimes` disengaja tidak dipakai: masih eksperimental dan tidak disarankan produksi.
+  partialPrefetching: true,
+
   serverExternalPackages: ['postgres', 'drizzle-orm'],
 
   images: {
@@ -46,15 +53,15 @@ const nextConfig: NextConfig = {
       ...tenantImagePatterns(),
       {
         protocol: 'https',
-        hostname: '**.supabase.co',
+        hostname: '*.supabase.co',
       },
       {
         protocol: 'https',
-        hostname: '**.cloudflarestorage.com',
+        hostname: '*.r2.cloudflarestorage.com',
       },
       {
         protocol: 'https',
-        hostname: '**.indicate.web.id',
+        hostname: '*.indicate.web.id',
       },
     ],
   },

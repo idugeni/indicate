@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   boolean,
   check,
   foreignKey,
@@ -31,6 +32,7 @@ export const publisherVerificationStatus = pgEnum('publisher_verification_status
 export const articleStatus = pgEnum('article_status', ['draft', 'active', 'archived']);
 export const publishingState = pgEnum('publishing_state', ['queued', 'processing', 'published', 'failed', 'retrying', 'unpublished']);
 export const mediaState = pgEnum('media_state', ['reserved', 'active', 'rejected', 'archived']);
+export const reportStatus = pgEnum('report_status', ['received', 'under_review', 'action_taken', 'rejected']);
 export const reservationStatus = pgEnum('reservation_status', ['reserved', 'used', 'occupied', 'expired']);
 export const taskStatus = pgEnum('task_status', ['pending', 'processing', 'completed', 'failed']);
 export const auditActorType = pgEnum('audit_actor_type', ['user', 'api_key', 'telegram', 'system']);
@@ -187,6 +189,10 @@ export const media = pgTable('media', {
   mediaType: text('media_type').notNull(),
   sizeBytes: integer('size_bytes').notNull(),
   checksum: text('checksum').notNull(),
+  thumbObjectKey: text('thumb_object_key'),
+  /** Kewajiban atribusi UU Hak Cipta (migrasi v76); opsional pra-pengisian. */
+  licenseSource: text('license_source'),
+  attribution: text('attribution'),
   state: mediaState('state').default('reserved').notNull(),
   articleId: uuid('article_id'),
   siteId: uuid('site_id'),
@@ -220,7 +226,7 @@ export const siteSettings = pgTable('site_settings', {
   navigation: jsonb('navigation').$type<readonly Record<string, unknown>[]>().default([]).notNull(),
   logoMediaId: uuid('logo_media_id'),
   faviconMediaId: uuid('favicon_media_id'),
-  fallbackMediaId: uuid('fallback_media_id'),
+  defaultMediaId: uuid('default_media_id'),
   // Nullable during backfill; required for active Sites.
   locale: text('locale'),
   seoDefaultTitle: text('seo_default_title'),
@@ -235,7 +241,7 @@ export const siteSettings = pgTable('site_settings', {
   foreignKey({ name: 'site_settings_site_fk', columns: [table.organizationId, table.siteId], foreignColumns: [sites.organizationId, sites.id] }).onDelete('cascade'),
   foreignKey({ name: 'site_settings_logo_media_fk', columns: [table.organizationId, table.logoMediaId], foreignColumns: [media.organizationId, media.id] }).onDelete('restrict'),
   foreignKey({ name: 'site_settings_favicon_media_fk', columns: [table.organizationId, table.faviconMediaId], foreignColumns: [media.organizationId, media.id] }).onDelete('restrict'),
-  foreignKey({ name: 'site_settings_fallback_media_fk', columns: [table.organizationId, table.fallbackMediaId], foreignColumns: [media.organizationId, media.id] }).onDelete('restrict'),
+  foreignKey({ name: 'site_settings_default_media_fk', columns: [table.organizationId, table.defaultMediaId], foreignColumns: [media.organizationId, media.id] }).onDelete('restrict'),
   check('site_settings_version_positive', sql`${table.version} > 0`),
   check('site_settings_locale_shape', sql`${table.locale} IS NULL OR ${table.locale} ~ '^[a-z]{2}-[A-Z]{2}$'`),
   check('site_settings_seo_schema_version_bounds', sql`${table.seoSchemaVersion} IS NULL OR (${table.seoSchemaVersion} >= 1 AND ${table.seoSchemaVersion} <= 2147483647)`),
@@ -305,11 +311,37 @@ export const auditLogs = pgTable('audit_logs', {
   after: jsonb('after').$type<Record<string, unknown>>(),
   requestId: text('request_id').notNull(),
   occurredAt: timestamp('occurred_at', { withTimezone: true }).defaultNow().notNull(),
+  /** Rantai hash Fase C (migrasi v74): diisi trigger DB, jangan ditulis aplikasi. */
+  seq: bigint('seq', { mode: 'number' }),
+  prevHash: text('prev_hash'),
+  signature: text('signature'),
 }, (table) => [
   primaryKey({ name: 'audit_logs_pk', columns: [table.organizationId, table.id] }),
   index('audit_logs_organization_date_idx').on(table.organizationId, table.occurredAt),
   index('audit_logs_organization_action_target_idx').on(table.organizationId, table.action, table.targetType),
   index('audit_logs_organization_actor_outcome_idx').on(table.organizationId, table.actorId, table.outcome),
+]);
+
+export const contentReports = pgTable('content_reports', {
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
+  id: uuid('id').primaryKey().defaultRandom(),
+  siteId: uuid('site_id'),
+  articleId: uuid('article_id'),
+  reporterContact: text('reporter_contact').notNull(),
+  reasonCategory: text('reason_category').notNull(),
+  details: text('details').notNull(),
+  articleUrl: text('article_url'),
+  status: reportStatus('status').default('received').notNull(),
+  decidedBy: uuid('decided_by'),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  decisionNote: text('decision_note'),
+  ...timestamps,
+}, (table) => [
+  foreignKey({ name: 'content_reports_site_fk', columns: [table.organizationId, table.siteId], foreignColumns: [sites.organizationId, sites.id] }).onDelete('restrict'),
+  foreignKey({ name: 'content_reports_article_fk', columns: [table.organizationId, table.articleId], foreignColumns: [articles.organizationId, articles.id] }).onDelete('restrict'),
+  index('content_reports_org_status_idx').on(table.organizationId, table.status),
+  index('content_reports_org_site_idx').on(table.organizationId, table.siteId),
+  index('content_reports_org_article_idx').on(table.organizationId, table.articleId),
 ]);
 
 export const domainActivationAttempts = pgTable('domain_activation_attempts', {

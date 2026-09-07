@@ -66,6 +66,13 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
       uploadTtlSeconds: policies.media.uploadAuthorizationSeconds,
       readTtlSeconds: policies.media.readAuthorizationSeconds,
       allowedTypes: policies.media.allowedMimeTypes,
+      audit: bootstrap.credentials.r2AuditBucketName === null
+        ? null
+        : {
+            bucketName: bootstrap.credentials.r2AuditBucketName,
+            accessKeyId: bootstrap.credentials.r2AuditAccessKeyId?.reveal() ?? bootstrap.credentials.r2AccessKeyId.reveal(),
+            secretAccessKey: bootstrap.credentials.r2AuditSecretAccessKey?.reveal() ?? bootstrap.credentials.r2SecretAccessKey.reveal(),
+          },
     }),
     redis: Object.freeze({
       url: bootstrap.credentials.upstashRestUrl,
@@ -109,9 +116,26 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
     }),
     seo: Object.freeze({
       defaultLocale: bootstrap.seo.defaultLocale,
-      fallbackAssetUrl: bootstrap.seo.fallbackAssetUrl,
+      defaultAssetUrl: bootstrap.seo.defaultAssetUrl,
     }),
   });
+}
+
+/**
+ * Fail-closed schema gate (docs/MIGRATIONS.md promotion gate): when a
+ * required_version row exists, the applied ledger must satisfy it or the
+ * process refuses to activate. No row means disarmed (pre-production) and
+ * behavior is unchanged. Versions are not secrets.
+ */
+async function assertSchemaGate(client: Pick<ReturnType<typeof createRuntimeDatabase>, 'client'>['client']): Promise<void> {
+  const gates = await client<{ required_version: number }[]>`SELECT required_version FROM public.migration_gate_events ORDER BY checked_at DESC LIMIT 1`;
+  const required = gates[0]?.required_version;
+  if (required === undefined) return;
+  const ledgers = await client<{ applied_version: number | null }[]>`SELECT max(version)::int AS applied_version FROM public.indicate_schema_migrations`;
+  const applied = ledgers[0]?.applied_version ?? 0;
+  if (applied < required) {
+    throw new Error(`schema_gate_unsatisfied: applied=${applied} required=${required}`);
+  }
 }
 
 async function initializeContext(): Promise<RuntimeContext> {
@@ -119,6 +143,7 @@ async function initializeContext(): Promise<RuntimeContext> {
 
   if (cache === null) {
     const runtime = createRuntimeDatabase(bootstrap);
+    await assertSchemaGate(runtime.client);
     const repository = new DrizzleRuntimeConfigRepository(runtime.db);
     cache = new RuntimeConfigSnapshotCache({ repository, clock: new HrTimeMonotonicClock() });
     // Singleton owns the client for the app lifetime (covers 300s refreshes).

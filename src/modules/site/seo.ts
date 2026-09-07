@@ -77,7 +77,7 @@ export function buildSeoDocument(site: NetworkSiteData, options: { readonly path
   const description = article?.description ?? site.settings.description;
   if (!indexable) return { title, description, canonical: null, robots: 'noindex, nofollow', openGraph: null, jsonLd: [] };
   const canonical = absoluteSiteUrl(site.context, options.path);
-  const image = absoluteSiteAssetUrl(site.context, article?.imageUrl ?? site.settings.fallbackImageUrl);
+  const image = absoluteSiteAssetUrl(site.context, article?.imageUrl ?? site.settings.defaultImageUrl);
   const logo = site.settings.logoUrl === null ? null : absoluteSiteAssetUrl(site.context, site.settings.logoUrl);
   const publisher = article?.officialInstitution ?? article?.publisherName ?? site.settings.name;
   const jsonLd: Record<string, unknown>[] = [

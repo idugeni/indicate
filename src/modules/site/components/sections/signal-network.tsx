@@ -14,19 +14,19 @@ export function SignalNetwork() {
 
       <ol className="m-0 grid list-none gap-0 border-t border-hairline p-0 font-mono text-xs">
         <li className="flex items-baseline justify-between gap-4 border-b border-hairline py-2.5">
-          <span className="text-paper">Redaksi Sentral Terpadu</span>
-          <span className="text-right text-paper-faint">sig_core_01 · Strict RLS</span>
+          <span className="min-w-0 truncate text-paper">Redaksi Sentral Terpadu</span>
+          <span className="flex-none text-right text-paper-faint">sig_core_01 · Strict RLS</span>
         </li>
         <li className="flex items-baseline justify-between gap-4 border-b border-hairline py-2.5">
-          <span className="text-paper">Bus idempoten</span>
-          <span className="text-right text-paper-faint">retry · unpublish · bulk</span>
+          <span className="min-w-0 truncate text-paper">Bus idempoten</span>
+          <span className="flex-none text-right text-paper-faint">retry · unpublish · bulk</span>
         </li>
         {TARGET_CHANNELS.map((channel) => (
           <li
             key={channel}
             className="flex items-baseline justify-between gap-4 border-b border-hairline py-2.5 last:border-b-0"
           >
-            <span className="truncate text-paper-dim">{channel}</span>
+            <span className="min-w-0 truncate text-paper-dim">{channel}</span>
             <span className="flex-none text-signal">sinkron</span>
           </li>
         ))}

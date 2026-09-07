@@ -31,7 +31,7 @@ export function siteMetadata(title: string, description: string, path: string): 
   const canonical = `${origin}${path}`;
   const pageTitle = `${title} | ${SERVICE_NAME}`;
   return {
-    title: pageTitle,
+    title,
     description,
     alternates: {
       canonical,

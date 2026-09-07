@@ -27,6 +27,7 @@ export interface ActivateMediaInput {
   readonly mediaType: string;
   readonly sizeBytes: number;
   readonly checksum: string;
+  readonly thumbObjectKey: string | null;
   readonly now: string;
 }
 

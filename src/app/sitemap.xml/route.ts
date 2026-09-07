@@ -1,11 +1,10 @@
+import { connection } from 'next/server';
 import { headers } from 'next/headers';
 import { denied } from '@/core/routing/deny';
 import { serializeSitemap } from '@/modules/site/seo';
 import { withApiAccess } from '@/core/observability/api-access';
 import { SERVICE_PATHS } from '@/core/routing/control-plane-paths';
 import { deliveryComposition } from '@/modules/delivery';
-
-export const dynamic = 'force-dynamic';
 
 // Control-plane sitemap branch: without it the robots.txt Sitemap: line would advertise a 404.
 function controlPlaneSitemap(host: string): string {
@@ -20,6 +19,8 @@ function controlPlaneSitemap(host: string): string {
 }
 
 async function handleGET() {
+  // Sitemap per-host + DB: tetap dinamis per request (pengganti force-dynamic).
+  await connection();
   const { resolver, content, config } = await deliveryComposition();
   const result = await resolver.classify((await headers()).get('host'));
   if (result.kind === 'control' && result.surface === 'dashboard') {

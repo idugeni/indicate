@@ -98,7 +98,7 @@ export function CustomerManagement({
   };
 
   return (
-    <div className="grid w-full grid-cols-1 items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
+    <div className="grid w-full grid-cols-1 items-start gap-4 lg:grid-cols-3">
       <SectionCard icon={Users} title="Tenant baru" eyebrow="Registrasi akun">
 
         <form onSubmit={handleCreateCustomer} className="space-y-3.5">

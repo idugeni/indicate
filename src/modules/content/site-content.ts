@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { cacheLife, cacheTag } from 'next/cache';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { createRuntimeDatabase } from '@/data/client';
 import {
@@ -40,6 +41,9 @@ async function withRuntimeDatabase<T>(read: (db: Parameters<typeof readServiceTi
 }
 
 export async function getServiceTiers(): Promise<readonly ServiceTierRow[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('site-content');
   const rows = await withRuntimeDatabase((db) => readServiceTiers(db));
   if (rows !== null && rows.length > 0) return rows;
   return Object.freeze(PRICING_PLANS.map((plan) => Object.freeze({
@@ -50,6 +54,9 @@ export async function getServiceTiers(): Promise<readonly ServiceTierRow[]> {
 }
 
 export async function getTestimonials(): Promise<readonly TestimonialRow[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('site-content');
   const rows = await withRuntimeDatabase((db) => readTestimonials(db));
   if (rows !== null && rows.length > 0) return rows;
   // Tanpa fallback: testimoni fiktif dilarang tayang sebagai konten nyata.
@@ -57,6 +64,9 @@ export async function getTestimonials(): Promise<readonly TestimonialRow[]> {
 }
 
 export async function getFaqs(): Promise<readonly (FaqRow & { readonly id: string })[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('site-content');
   const rows = await withRuntimeDatabase((db) => readFaqs(db));
   if (rows !== null && rows.length > 0) return rows;
   return Object.freeze(FAQ_ITEMS.map((item, index) => Object.freeze({
@@ -65,6 +75,9 @@ export async function getFaqs(): Promise<readonly (FaqRow & { readonly id: strin
 }
 
 export async function getShowcaseNames(): Promise<readonly string[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('site-content');
   const rows = await withRuntimeDatabase((db) => readShowcaseNames(db));
   if (rows !== null && rows.length > 0) return rows;
   // Tanpa fallback: logo media fiktif dilarang tayang sebagai konten nyata.
@@ -72,12 +85,18 @@ export async function getShowcaseNames(): Promise<readonly string[]> {
 }
 
 export async function getContactChannels(): Promise<readonly FeatureItem[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('site-content');
   const rows = await withRuntimeDatabase((db) => readContactChannels(db));
   if (rows !== null && rows.length > 0) return rows;
   return CONTACT_CHANNELS;
 }
 
 export async function getColorPresets(): Promise<readonly NetworkColorPreset[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('site-content');
   const rows = await withRuntimeDatabase((db) => readColorPresets(db));
   if (rows !== null && rows.length > 0) {
     return Object.freeze(rows.map((row) => Object.freeze({
@@ -89,6 +108,9 @@ export async function getColorPresets(): Promise<readonly NetworkColorPreset[]> 
 }
 
 export async function getTemplatePresets(): Promise<readonly MasterTemplatePreset[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('site-content');
   const rows = await withRuntimeDatabase((db) => readTemplatePresets(db));
   if (rows !== null && rows.length > 0) {
     const categories = Object.freeze(['news', 'editorial', 'tech', 'official', 'visual', 'live'] as const);

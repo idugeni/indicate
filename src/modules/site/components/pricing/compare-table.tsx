@@ -1,7 +1,7 @@
 import { Check, Minus } from 'lucide-react';
 
+import { cn } from '@/ui/cn';
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -83,7 +83,10 @@ export function CompareTable() {
       tabIndex={0}
       className="overflow-x-auto rounded-lg border border-hairline bg-bg-raised p-2 sm:p-4"
     >
-      <Table className="w-full min-w-[640px]">
+      {/* Satu-satunya scroll container adalah div[role=region] di atas;
+          pakai <table> native agar tidak ada overflow-x-auto ganda
+          dari wrapper shadcn Table. */}
+      <table className={cn('w-full caption-bottom min-w-[640px] text-sm')}>
         <TableHeader>
           <TableRow className="border-b border-hairline hover:bg-transparent">
             {HEADERS.map((header, index) => (
@@ -116,7 +119,7 @@ export function CompareTable() {
             </TableRow>
           ))}
         </TableBody>
-      </Table>
+      </table>
     </div>
   );
 }

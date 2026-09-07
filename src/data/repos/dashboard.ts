@@ -2,7 +2,7 @@ import { and, eq, gt, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { AuditRecord, DashboardTenantState } from '@/modules/dashboard/models';
+import type { AnalyticsProjection, AuditFilter, AuditRecord, DashboardProjection, DashboardTenantState } from '@/modules/dashboard/models';
 import { DashboardAccessDeniedError, DashboardConflictError, DashboardQuotaExceededError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
 import { quotaExceeded, type QuotaResource } from '@/modules/billing/quota';
 import { readPlanQuota } from '@/data/repos/shared/plan-quota';
@@ -95,10 +95,171 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     };
   }
 
+  async analyticsSummary(
+    actor: AuthorizedTenantActorContext,
+    permission: string,
+    filter: { readonly from?: string | undefined; readonly to?: string | undefined },
+  ): Promise<AnalyticsProjection> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const organization = await transaction.select({ id: organizations.id }).from(organizations).where(and(eq(organizations.id, actor.organizationId), eq(organizations.status, 'active'))).limit(1);
+      if (organization.length !== 1) throw new DashboardAccessDeniedError();
+      const orgId = actor.organizationId;
+      const from: string | null = filter.from ?? null;
+      const to: string | null = filter.to ?? null;
+      const inArticleRange = sql`(${from}::timestamptz IS NULL OR created_at >= ${from}::timestamptz) AND (${to}::timestamptz IS NULL OR created_at <= ${to}::timestamptz)`;
+      const [byRegion, byCategory, byPublisher, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions] = await Promise.all([
+        transaction.execute<{ key: string; count: number }>(sql`
+          SELECT region_id AS key, count(*)::int AS count FROM articles
+          WHERE organization_id = ${orgId} AND ${inArticleRange} GROUP BY region_id`),
+        transaction.execute<{ key: string; count: number }>(sql`
+          SELECT category_id AS key, count(*)::int AS count FROM articles
+          WHERE organization_id = ${orgId} AND category_id IS NOT NULL AND ${inArticleRange} GROUP BY category_id`),
+        transaction.execute<{ key: string; count: number }>(sql`
+          SELECT publisher_id AS key, count(*)::int AS count FROM articles
+          WHERE organization_id = ${orgId} AND publisher_id IS NOT NULL AND ${inArticleRange} GROUP BY publisher_id`),
+        transaction.execute<{ key: string; count: number }>(sql`
+          SELECT state AS key, count(*)::int AS count FROM publishing_jobs
+          WHERE organization_id = ${orgId}
+            AND (${from}::timestamptz IS NULL OR COALESCE(finalized_at, updated_at) >= ${from}::timestamptz)
+            AND (${to}::timestamptz IS NULL OR COALESCE(finalized_at, updated_at) <= ${to}::timestamptz)
+          GROUP BY state`),
+        transaction.execute<{ key: string; count: number }>(sql`
+          SELECT s.site_id AS key, count(*)::int AS count FROM article_sites s
+          JOIN articles a ON a.organization_id = ${orgId} AND a.id = s.article_id
+          WHERE s.organization_id = ${orgId} AND s.active
+            AND (${from}::timestamptz IS NULL OR a.created_at >= ${from}::timestamptz)
+            AND (${to}::timestamptz IS NULL OR a.created_at <= ${to}::timestamptz)
+          GROUP BY s.site_id`),
+        transaction.execute<{ key: string; count: number }>(sql`
+          SELECT s.site_id || ':' || s.state AS key, count(*)::int AS count FROM article_sites s
+          WHERE s.organization_id = ${orgId}
+            AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
+            AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)
+          GROUP BY s.site_id, s.state`),
+        transaction.execute<{ siteId: string; regionId: string; state: string }>(sql`
+          SELECT s.site_id AS "siteId", COALESCE(st.region_id, ar.region_id) AS "regionId", j.state AS state
+          FROM publishing_jobs j
+          JOIN publishing_job_targets t ON t.organization_id = ${orgId} AND t.job_id = j.id
+          JOIN article_sites s ON s.organization_id = ${orgId} AND s.id = t.article_site_id
+          JOIN articles ar ON ar.organization_id = ${orgId} AND ar.id = j.article_id
+          JOIN sites st ON st.organization_id = ${orgId} AND st.id = s.site_id
+          WHERE j.organization_id = ${orgId}
+            AND (${from}::timestamptz IS NULL OR COALESCE(j.finalized_at, j.updated_at) >= ${from}::timestamptz)
+            AND (${to}::timestamptz IS NULL OR COALESCE(j.finalized_at, j.updated_at) <= ${to}::timestamptz)`),
+        transaction.execute<{ siteId: string; regionId: string; state: string }>(sql`
+          SELECT s.site_id AS "siteId", COALESCE(st.region_id, ar.region_id) AS "regionId", s.state AS state
+          FROM article_sites s
+          JOIN articles ar ON ar.organization_id = ${orgId} AND ar.id = s.article_id
+          JOIN sites st ON st.organization_id = ${orgId} AND st.id = s.site_id
+          WHERE s.organization_id = ${orgId}
+            AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
+            AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)`),
+      ]);
+      const points = (rows: readonly { key: string; count: number }[]) =>
+        [...rows].map(({ key, count }) => ({ key, count })).sort((a, b) => a.key.localeCompare(b.key));
+      const dimensionPoints = (rows: readonly { siteId: string; regionId: string | null; state: string }[]) => {
+        const counts = new Map<string, number>();
+        for (const row of rows) {
+          if (row.regionId === null) continue;
+          const key = `${row.siteId}:${row.regionId}:${row.state}`;
+          counts.set(key, (counts.get(key) ?? 0) + 1);
+        }
+        return [...counts].sort(([left], [right]) => left.localeCompare(right)).map(([key, count]) => ({ key, count }));
+      };
+      return Object.freeze({
+        articlesByRegion: points(byRegion),
+        articlesBySite: points(bySite),
+        articlesByCategory: points(byCategory),
+        articlesByPublisher: points(byPublisher),
+        jobsByState: points(jobsByState),
+        jobsBySiteRegionAndState: dimensionPoints(jobDimensions),
+        outcomesBySiteAndState: points(outcomesBySite),
+        outcomesBySiteRegionAndState: dimensionPoints(outcomeDimensions),
+      });
+    });
+  }
+
+  async auditLogPage(actor: AuthorizedTenantActorContext, permission: string, filter: AuditFilter): Promise<readonly AuditRecord[]> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const organization = await transaction.select({ id: organizations.id }).from(organizations).where(and(eq(organizations.id, actor.organizationId), eq(organizations.status, 'active'))).limit(1);
+      if (organization.length !== 1) throw new DashboardAccessDeniedError();
+      const orgId = actor.organizationId;
+      const rows = await transaction.execute<{
+        readonly id: string; readonly actorType: AuditRecord['actorType']; readonly actorId: string;
+        readonly entryPoint: AuditRecord['entryPoint']; readonly action: string; readonly targetType: string;
+        readonly targetId: string | null; readonly outcome: AuditRecord['outcome'];
+        readonly changedFields: readonly string[]; readonly before: Readonly<Record<string, unknown>> | null;
+        readonly after: Readonly<Record<string, unknown>> | null; readonly requestId: string; readonly occurredAt: Date;
+      }>(sql`
+        SELECT id, actor_type AS "actorType", actor_id AS "actorId", entry_point AS "entryPoint",
+          action, target_type AS "targetType", target_id AS "targetId", outcome,
+          changed_fields AS "changedFields", before, after, request_id AS "requestId", occurred_at AS "occurredAt"
+        FROM audit_logs
+        WHERE organization_id = ${orgId}
+          AND (${filter.actorId ?? null} IS NULL OR actor_id = ${filter.actorId ?? null})
+          AND (${filter.action ?? null} IS NULL OR action = ${filter.action ?? null})
+          AND (${filter.targetType ?? null} IS NULL OR target_type = ${filter.targetType ?? null})
+          AND (${filter.outcome ?? null} IS NULL OR outcome = ${filter.outcome ?? null})
+          AND (${filter.from ?? null}::timestamptz IS NULL OR occurred_at >= ${filter.from ?? null}::timestamptz)
+          AND (${filter.to ?? null}::timestamptz IS NULL OR occurred_at <= ${filter.to ?? null}::timestamptz)
+        ORDER BY occurred_at DESC
+        LIMIT 500`);
+      return Object.freeze(rows.map((row) => ({
+        id: row.id, organizationId: orgId, actorType: row.actorType, actorId: row.actorId, entryPoint: row.entryPoint,
+        action: row.action, targetType: row.targetType, targetId: row.targetId, outcome: row.outcome,
+        changedFields: [...row.changedFields], before: row.before, after: row.after,
+        requestId: row.requestId, occurredAt: row.occurredAt.toISOString(),
+      })));
+    });
+  }
+
   async read(actor: AuthorizedTenantActorContext, permission: string): Promise<DashboardTenantState> {
     return this.database.transaction(async (transaction) => {
       await this.establishContext(transaction, actor);
       await this.authorize(transaction, actor, permission); return this.load(transaction, actor.organizationId);
+    });
+  }
+
+  async dashboardCounts(actor: AuthorizedTenantActorContext, permission: string): Promise<DashboardProjection> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const organization = await transaction.select({ id: organizations.id }).from(organizations).where(and(eq(organizations.id, actor.organizationId), eq(organizations.status, 'active'))).limit(1);
+      if (organization.length !== 1) throw new DashboardAccessDeniedError();
+      const [row] = await transaction.execute<{
+        readonly activeDomains: number; readonly activeSites: number; readonly activeArticles: number; readonly archivedArticles: number;
+        readonly jobsQueued: number; readonly jobsProcessing: number; readonly jobsPublished: number; readonly jobsFailed: number; readonly jobsRetrying: number;
+        readonly successfulSiteOutcomes: number; readonly failedSiteOutcomes: number; readonly activeMedia: number;
+      }>(sql`
+        SELECT
+          (SELECT count(*)::int FROM domains WHERE organization_id = ${actor.organizationId} AND status = 'active') AS "activeDomains",
+          (SELECT count(*)::int FROM sites WHERE organization_id = ${actor.organizationId} AND status = 'active') AS "activeSites",
+          (SELECT count(*)::int FROM articles WHERE organization_id = ${actor.organizationId} AND status = 'active') AS "activeArticles",
+          (SELECT count(*)::int FROM articles WHERE organization_id = ${actor.organizationId} AND status = 'archived') AS "archivedArticles",
+          (SELECT count(*)::int FROM publishing_jobs WHERE organization_id = ${actor.organizationId} AND state = 'queued') AS "jobsQueued",
+          (SELECT count(*)::int FROM publishing_jobs WHERE organization_id = ${actor.organizationId} AND state = 'processing') AS "jobsProcessing",
+          (SELECT count(*)::int FROM publishing_jobs WHERE organization_id = ${actor.organizationId} AND state = 'published') AS "jobsPublished",
+          (SELECT count(*)::int FROM publishing_jobs WHERE organization_id = ${actor.organizationId} AND state = 'failed') AS "jobsFailed",
+          (SELECT count(*)::int FROM publishing_jobs WHERE organization_id = ${actor.organizationId} AND state = 'retrying') AS "jobsRetrying",
+          (SELECT count(*)::int FROM article_sites WHERE organization_id = ${actor.organizationId} AND state = 'published') AS "successfulSiteOutcomes",
+          (SELECT count(*)::int FROM article_sites WHERE organization_id = ${actor.organizationId} AND state = 'failed') AS "failedSiteOutcomes",
+          (SELECT count(*)::int FROM media WHERE organization_id = ${actor.organizationId} AND state = 'active') AS "activeMedia"
+      `);
+      if (row === undefined) throw new DashboardAccessDeniedError();
+      return Object.freeze({
+        activeDomains: row.activeDomains,
+        activeSites: row.activeSites,
+        activeArticles: row.activeArticles,
+        archivedArticles: row.archivedArticles,
+        jobsByState: { queued: row.jobsQueued, processing: row.jobsProcessing, published: row.jobsPublished, failed: row.jobsFailed, retrying: row.jobsRetrying } as DashboardProjection['jobsByState'],
+        successfulSiteOutcomes: row.successfulSiteOutcomes,
+        failedSiteOutcomes: row.failedSiteOutcomes,
+        activeMedia: row.activeMedia,
+      });
     });
   }
 

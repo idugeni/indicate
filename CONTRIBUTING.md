@@ -8,6 +8,17 @@ By contributing, you agree to follow our
 the [Apache License 2.0](LICENSE). Security-sensitive reports follow
 [SECURITY.md](SECURITY.md); general help follows [SUPPORT.md](SUPPORT.md).
 
+## Developer Certificate of Origin (DCO)
+
+All commits must carry a `Signed-off-by` trailer (`git commit -s`), certifying
+the [Developer Certificate of Origin v1.1](https://developercertificate.org/):
+you wrote the change or have the right to submit it under Apache-2.0, and you
+consent to the inbound=outbound license without additional terms. By signing
+off you also grant the patent license contemplated by Apache-2.0 §3 for your
+contribution. Contributions without a sign-off are not merged. Do not submit
+third-party code, stock assets, or commercial fonts without proving a
+compatible license in the PR.
+
 ## Prerequisites
 
 | Requirement | Version | Purpose |
@@ -246,7 +257,7 @@ Scopes: `site`, `network`, `dashboard`, `auth`, `api`, `publishing`, `content`,
 - **Atomic audit.** Security-sensitive changes and required audit records
   commit in the same transaction.
 - **Report privately.** Suspected vulnerabilities go to
-  `officialelsa21@gmail.com` per [SECURITY.md](SECURITY.md) — never a public
+  `sancaphenacakra@gmail.com` per [SECURITY.md](SECURITY.md) — never a public
   issue.
 
 ## Design system

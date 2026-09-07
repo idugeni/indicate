@@ -7,8 +7,6 @@ import { CHANNEL_ICONS, FeatureGrid, Prose, SecondaryCta, Section, withIcons } f
 import { WhatsAppCard } from '@/modules/site/components/pricing/whatsapp-card';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
-export const dynamic = 'force-dynamic';
-
 const DESCRIPTION =
   'Ada pertanyaan soal paket, pindahan sistem, atau kebutuhan khusus? Hubungi kami — dijawab manusia, paling lambat 1x24 jam kerja.';
 

@@ -141,9 +141,21 @@ export interface SectionProps extends HTMLAttributes<HTMLElement> {
   readonly eyebrow?: string;
   readonly children?: ReactNode;
   /** Vertical rhythm variant for long pages. */
-  readonly tone?: 'default' | 'raised' | 'band';
+  readonly tone?: 'default' | 'raised' | 'soft' | 'warm' | 'band';
 }
 
+/**
+ * Public page section: vertical rhythm (py-14 md:py-20) + optional tone
+ * background/border + exactly one inner Container.
+ *
+ * Bare usage (no title/description/eyebrow, e.g. /contact WhatsAppCard,
+ * /privacy + /terms LegalDocument): renders Container + children with no
+ * header.mb-10. Rhythm then comes from the section padding alone — pass
+ * aria-label in that case so the section stays labelled for AT.
+ *
+ * Tones `raised` and `band` both use border-y (1px) so toned sections can be
+ * reordered without changing border weight; brass color is band's identity.
+ */
 export function Section({
   title,
   description,
@@ -165,7 +177,9 @@ export function Section({
       className={cn(
         'py-14 md:py-20',
         tone === 'raised' && 'border-y border-hairline bg-bg-raised/40',
-        tone === 'band' && 'border-t-2 border-brass/60',
+        tone === 'soft' && 'bg-bg-raised/40',
+        tone === 'warm' && 'bg-brass/[0.04]',
+        tone === 'band' && 'border-y border-brass/60',
         className,
       )}
       {...props}
@@ -205,8 +219,7 @@ export function Section({
   );
 }
 
-export interface PageHeaderProps extends HTMLAttributes<HTMLElement> {
-  readonly title: string;
+export interface PageHeaderProps extends HTMLAttributes<HTMLElement> {  readonly title: string;
   readonly description?: string | undefined;
   readonly eyebrow?: string | undefined;
   readonly actions?: ReactNode | undefined;
@@ -306,9 +319,11 @@ export function FeatureGrid({
   className,
   ...props
 }: FeatureGridProps) {
+  // Breakpoint rule: 2-col splits at sm, 3+ col at lg
+  // (PricingCards xl:4 is the documented exception).
   const colClass =
     columns === 2
-      ? 'md:grid-cols-2'
+      ? 'sm:grid-cols-2'
       : columns === 4
         ? 'sm:grid-cols-2 lg:grid-cols-4'
         : 'sm:grid-cols-2 lg:grid-cols-3';
@@ -393,7 +408,7 @@ export function DocSections({ items }: { readonly items: readonly DocSectionItem
           ))}
         </ol>
       </nav>
-      <div className="grid w-full gap-4 md:grid-cols-2">
+      <div className="grid w-full gap-4 sm:grid-cols-2">
         {items.map((section, index) => (
           <article key={section.heading} id={slugify(section.heading)} className="scroll-mt-24 rounded-lg border border-hairline bg-bg-raised p-5 transition-colors duration-180 hover:border-hairline-strong sm:p-6">
             <div className="flex items-baseline gap-3">
@@ -403,6 +418,71 @@ export function DocSections({ items }: { readonly items: readonly DocSectionItem
               </h2>
             </div>
             <p className="m-0 mt-3 font-sans text-sm leading-relaxed text-paper-dim">{section.body}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Legal document rendering for /terms + /privacy: a flowing ruled document,
+ * not cards. The TOC is a compact two-column index with hairline rules and
+ * the sections stack full-width with dividers, constrained to a readable
+ * measure (max-w-3xl). Body copy is justified for a formal legal feel.
+ */
+export function LegalDocument({ items }: { readonly items: readonly DocSectionItem[] }) {
+  return (
+    <div className="mx-auto w-full max-w-3xl">
+      <nav
+        aria-label="Daftar isi"
+        className="rounded-md border border-hairline bg-bg-raised px-4 py-4 sm:px-5"
+      >
+        <div className="flex items-baseline justify-between gap-4">
+          <p className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">
+            Daftar Isi
+          </p>
+          <p className="m-0 font-mono text-[11px] tabular-nums tracking-wide text-paper-faint">
+            {items.length} bagian
+          </p>
+        </div>
+        <ol className="m-0 mt-3 grid list-none gap-x-6 p-0 sm:grid-cols-2">
+          {items.map((section, index) => (
+            <li key={section.heading} className="border-b border-hairline/60">
+              <a
+                href={`#${slugify(section.heading)}`}
+                className="group flex items-baseline gap-2.5 py-2 font-sans text-[13px] leading-snug text-paper-dim transition-colors hover:text-paper"
+              >
+                <span className="flex-none font-mono text-[10px] tabular-nums text-brass">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <span className="decoration-brass/60 underline-offset-4 group-hover:underline">
+                  {section.heading}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ol>
+      </nav>
+      <div className="mt-12 md:mt-16">
+        {items.map((section, index) => (
+          <article
+            key={section.heading}
+            id={slugify(section.heading)}
+            className={cn(
+              'scroll-mt-28',
+              index > 0 && 'mt-10 border-t border-hairline pt-10 md:mt-12 md:pt-12',
+            )}
+          >
+            <p className="m-0 font-mono text-[11px] font-medium uppercase tabular-nums tracking-wider text-brass">
+              Bagian {String(index + 1).padStart(2, '0')}
+            </p>
+            <h2 className="m-0 mt-2 font-serif text-[1.35rem] font-medium leading-[1.3] tracking-tight text-balance text-paper md:text-[1.6rem]">
+              {section.heading}
+            </h2>
+            <p className="m-0 mt-3.5 text-justify font-sans text-[15px] leading-[1.85] text-paper-dim hyphens-auto">
+              {section.body}
+            </p>
           </article>
         ))}
       </div>
@@ -459,7 +539,7 @@ export function FaqAccordion({ items }: { readonly items: readonly FaqGridItem[]
             key={faq.id}
             value={faq.id}
             id={faq.id}
-            className="scroll-mt-24 rounded-lg border border-hairline bg-bg-raised px-5 transition-colors duration-180 not-last:border-b-0 hover:border-hairline-strong sm:px-6"
+            className="scroll-mt-24 rounded-lg border border-hairline bg-bg-raised px-5 transition-colors duration-180 hover:border-hairline-strong sm:px-6"
           >
             <AccordionTrigger className="gap-4 py-5 text-left hover:no-underline">
               <NumberMark index={index} className="flex-none tabular-nums" />

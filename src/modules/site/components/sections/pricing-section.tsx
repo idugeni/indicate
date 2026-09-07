@@ -7,6 +7,7 @@ export async function PricingSection() {
   return (
     <Section
       title="Punya portal berita sendiri, mulai hari ini"
+      eyebrow="Paket"
       description="Semua paket terima beres — website langsung tayang, tinggal dipakai menulis."
     >
       <PricingCards packages={packages} />

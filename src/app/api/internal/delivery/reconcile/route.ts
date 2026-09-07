@@ -11,7 +11,7 @@ function authorized(request: Request, secret: string): boolean {
   return timingSafeEqual(Buffer.from(presented), Buffer.from(expected));
 }
 
-async function handlePOST(request: Request) {
+async function runReconcile(request: Request) {
   const context = await getServerRuntimeContext(); const config = context.config;
   if (!authorized(request, config.security.cronSecret)) return new NextResponse('Not Found', { status: 404, headers: { 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
   const composition = await deliveryOperationsComposition();
@@ -22,4 +22,15 @@ async function handlePOST(request: Request) {
   } finally { await composition.runtime.close(); }
 }
 
+async function handlePOST(request: Request) {
+  return runReconcile(request);
+}
+
+// Vercel Cron hanya mengirim GET (dengan header Authorization Bearer CRON_SECRET
+// otomatis bila env CRON_SECRET tersedia); POST dipertahankan untuk pemicu eksternal.
+async function handleGET(request: Request) {
+  return runReconcile(request);
+}
+
 export const POST = withApiAccess('POST /api/internal/delivery/reconcile', handlePOST);
+export const GET = withApiAccess('GET /api/internal/delivery/reconcile', handleGET);

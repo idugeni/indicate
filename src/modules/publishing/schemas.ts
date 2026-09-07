@@ -6,16 +6,29 @@ const mediaOwnerSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('organization') }).strict(),
 ]);
 
+const checksumField = z.string().trim().regex(/^[A-Za-z0-9+/]{43}=$/, 'Expected a base64-encoded SHA-256 checksum.');
+
 export const mediaReservationSchema = z.object({
   filename: z.string().trim().min(1).max(255),
   mediaType: z.string().trim().min(1).max(100),
   sizeBytes: z.number().int().positive(),
-  checksum: z.string().trim().regex(/^[A-Za-z0-9+/]{43}=$/, 'Expected a base64-encoded SHA-256 checksum.'),
+  checksum: checksumField,
   purpose: z.string().trim().min(1).max(100),
   owner: mediaOwnerSchema,
+  thumb: z.object({
+    mediaType: z.string().trim().min(1).max(100),
+    sizeBytes: z.number().int().positive(),
+    checksum: checksumField,
+  }).strict().optional(),
 }).strict();
 
-export const mediaCompletionSchema = z.object({ reservationId: z.uuid() }).strict();
+export const mediaCompletionSchema = z.object({
+  reservationId: z.uuid(),
+  thumb: z.object({
+    sizeBytes: z.number().int().positive(),
+    checksum: checksumField,
+  }).strict().optional(),
+}).strict();
 export const mediaReadSchema = z.object({ mediaId: z.uuid() }).strict();
 export const mediaArchiveSchema = z.object({ mediaId: z.uuid(), expectedVersion: z.number().int().positive() }).strict();
 

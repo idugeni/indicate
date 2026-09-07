@@ -1,5 +1,5 @@
 import type { AuthorizedTenantActorContext, HostnameContext } from '@/core/operation-context';
-import { buildStructuredObjectKey } from '@/modules/publishing/object-key';
+import { buildStructuredObjectKey, buildThumbObjectKey } from '@/modules/publishing/object-key';
 import type { MediaAssetRecord } from '@/modules/publishing/models';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import type { ExactObjectAuthorization, ObjectStoragePort } from '@/integrations/storage/ports';
@@ -21,6 +21,11 @@ export interface UploadReservationResult {
   readonly reservationId: string;
   readonly objectKey: string;
   readonly authorization: ExactObjectAuthorization;
+  /** Present only when the client declared a thumbnail variant. */
+  readonly thumb: {
+    readonly objectKey: string;
+    readonly authorization: ExactObjectAuthorization;
+  } | null;
 }
 
 export class MediaService {
@@ -63,7 +68,13 @@ export class MediaService {
         if (existing !== null) { await this.repository.markReservationOccupied(actor, reservationId, now.toISOString()); continue; }
         try {
           const authorization = await this.storage.authorizeExactPut(key, value.mediaType, value.checksum, this.policy.uploadTtlSeconds);
-          return { ok: true, value: Object.freeze({ reservationId, objectKey: key, authorization }) };
+          let thumb: UploadReservationResult['thumb'] = null;
+          if (value.thumb !== undefined) {
+            const thumbKey = buildThumbObjectKey(key);
+            const thumbAuthorization = await this.storage.authorizeExactPut(thumbKey, value.thumb.mediaType, value.thumb.checksum, this.policy.uploadTtlSeconds);
+            thumb = { objectKey: thumbKey, authorization: thumbAuthorization };
+          }
+          return { ok: true, value: Object.freeze({ reservationId, objectKey: key, authorization, thumb }) };
         } catch (error) {
           await this.repository.markReservationOccupied(actor, reservationId, now.toISOString());
           void sanitizeError(error);
@@ -91,7 +102,17 @@ export class MediaService {
         await this.repository.rejectMedia(actor, reservation.id, 'uploaded_metadata_mismatch', this.clock.now().toISOString());
         return { ok: false, error: createPublicError('INVALID_INPUT', 'Uploaded object metadata does not match the authorization.', actor.requestId) };
       }
-      return { ok: true, value: await this.repository.activateMedia(actor, { reservationId: reservation.id, mediaId: this.identifiers.create(), mediaType: metadata.contentType, sizeBytes: metadata.contentLength, checksum: metadata.checksum, now: this.clock.now().toISOString() }) };
+      // Thumbnail is best-effort: a missing or mismatched variant never blocks
+      // activation of the verified full object.
+      let thumbObjectKey: string | null = null;
+      if (parsed.data.thumb !== undefined) {
+        const candidate = buildThumbObjectKey(reservation.objectKey);
+        const thumbMeta = await this.storage.headExact(candidate);
+        if (thumbMeta !== null && thumbMeta.contentLength === parsed.data.thumb.sizeBytes && thumbMeta.checksum !== null && thumbMeta.checksum === parsed.data.thumb.checksum) {
+          thumbObjectKey = candidate;
+        }
+      }
+      return { ok: true, value: await this.repository.activateMedia(actor, { reservationId: reservation.id, mediaId: this.identifiers.create(), mediaType: metadata.contentType, sizeBytes: metadata.contentLength, checksum: metadata.checksum, thumbObjectKey, now: this.clock.now().toISOString() }) };
     } catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'media.upload.complete.denied', 'media');
       if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Perpanjang paket untuk mengunggah media.', actor.requestId) };

@@ -1,14 +1,12 @@
-import { cache } from 'react';
+import { cache, Suspense } from 'react';
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { buildSeoDocument, indexableRobots, notFoundMetadata, tenantFavicon } from '@/modules/site/seo';
-import { SERVICE_SUMMARY, SERVICE_TAGLINE } from '@/ui/site/marketing-content';
+import { SERVICE_SUMMARY } from '@/ui/site/marketing-content';
 import { LandingPage } from '@/modules/site/components/landing-page';
 import { ListingPage } from '@/modules/site/components/network/network-listing';
 import { deliveryComposition } from '@/modules/delivery';
-
-export const dynamic = 'force-dynamic';
 
 const resolveRouteContext = cache(async () => {
   const requestHeaders = await headers();
@@ -35,7 +33,6 @@ export async function generateMetadata(): Promise<Metadata> {
   if (classification.kind === 'control') {
     if (classification.surface === 'dashboard') {
       return {
-        title: `${SERVICE_TAGLINE} | Indicate`,
         description: SERVICE_SUMMARY,
         robots: indexableRobots(),
         twitter: { card: 'summary_large_image' },
@@ -43,7 +40,7 @@ export async function generateMetadata(): Promise<Metadata> {
     }
 
     return {
-      title: 'Indicate Control Plane',
+      title: { absolute: 'Indicate Control Plane' },
       description: 'Shared control plane for the Indicate publishing platform.',
       robots: { index: false, follow: false },
     };
@@ -90,7 +87,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function RootPage() {
+/** Klasifikasi host + muat konten butuh request + DB → streaming di belakang fallback. */
+async function RootContent() {
   const { classification, site } = await resolveRouteContext();
 
   if (classification.kind === 'control' && classification.surface === 'dashboard') {
@@ -106,4 +104,22 @@ export default async function RootPage() {
   }
 
   return <ListingPage site={site} title={site.settings.name} />;
+}
+
+function RootLoading() {
+  return (
+    <div aria-busy="true" aria-label="Memuat halaman" className="mx-auto w-full max-w-6xl px-6 py-14 md:py-20">
+      <div className="h-4 w-40 animate-pulse rounded bg-bg-raised-2" />
+      <div className="mt-4 h-10 w-3/4 animate-pulse rounded bg-bg-raised-2" />
+      <div className="mt-4 h-4 w-1/2 animate-pulse rounded bg-bg-raised-2" />
+    </div>
+  );
+}
+
+export default function RootPage() {
+  return (
+    <Suspense fallback={<RootLoading />}>
+      <RootContent />
+    </Suspense>
+  );
 }

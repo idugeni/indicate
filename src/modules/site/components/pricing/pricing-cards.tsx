@@ -2,6 +2,15 @@
 
 import Link from 'next/link';
 import { Check } from 'lucide-react';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 
 export interface PricingPackage {
   readonly id: string;
@@ -64,43 +73,45 @@ export function PricingCards({ packages }: { readonly packages: readonly Pricing
         const isEnterprise = pkg.plan === 'enterprise';
         const isFeatured = pkg.plan === 'pro';
         return (
-          <article
+          <Card
             key={pkg.id}
-            className={`flex flex-col rounded-lg border bg-bg-raised p-5 transition-colors duration-180 sm:p-6 ${isFeatured ? 'border-brass' : 'border-hairline hover:border-hairline-strong'}`}
+            className={`rounded-lg border bg-bg-raised py-5 ring-0 transition-colors duration-180 ${isFeatured ? 'border-brass' : 'border-hairline hover:border-hairline-strong'}`}
           >
-            <div className="flex items-baseline justify-between gap-2">
-              <h3 className="m-0 font-sans text-base font-semibold tracking-tight text-paper">
+            <CardHeader>
+              <CardTitle className="font-sans text-base font-semibold tracking-tight text-paper">
                 {pkg.name}
-              </h3>
+              </CardTitle>
               {isFeatured ? (
-                <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-brass">
+                <CardAction className="font-mono text-[11px] font-medium uppercase tracking-wider text-brass">
                   Paling laris
-                </span>
+                </CardAction>
               ) : null}
-            </div>
-            <p className="m-0 mt-1 font-sans text-xs text-paper-faint">
-              {isEnterprise ? 'Ada kebutuhan khusus? Mari duduk bersama' : 'Per bulan, terima beres'}
-            </p>
+              <CardDescription className="font-sans text-xs text-paper-faint">
+                {isEnterprise ? 'Ada kebutuhan khusus? Mari duduk bersama' : 'Per bulan, terima beres'}
+              </CardDescription>
+            </CardHeader>
 
-            <p className="m-0 mt-4 font-mono tabular-nums">
-              <span className="text-3xl font-bold tracking-tight text-paper">
-                {pkg.priceIdr === 0 ? 'Kustom' : formatIdr(pkg.priceIdr)}
-              </span>
-              {pkg.priceIdr === 0 ? null : (
-                <span className="ml-1 text-xs text-paper-faint">/bln</span>
-              )}
-            </p>
+            <CardContent>
+              <p className="m-0 font-mono tabular-nums">
+                <span className="text-3xl font-bold tracking-tight text-paper">
+                  {pkg.priceIdr === 0 ? 'Kustom' : formatIdr(pkg.priceIdr)}
+                </span>
+                {pkg.priceIdr === 0 ? null : (
+                  <span className="ml-1 text-xs text-paper-faint">/bln</span>
+                )}
+              </p>
 
-            <ul className="m-0 mt-5 grid list-none gap-2.5 border-t border-hairline p-0 pt-5 font-sans text-sm leading-relaxed text-paper-dim">
-              {quotaFeatures(pkg).map((feat) => (
-                <li key={feat} className="flex items-start gap-2.5">
-                  <Check className="mt-1 h-3.5 w-3.5 flex-none text-signal" aria-hidden="true" />
-                  <span>{feat}</span>
-                </li>
-              ))}
-            </ul>
+              <ul className="m-0 mt-5 grid list-none gap-2.5 border-t border-hairline p-0 pt-5 font-sans text-sm leading-relaxed text-paper-dim">
+                {quotaFeatures(pkg).map((feat) => (
+                  <li key={feat} className="flex items-start gap-2.5">
+                    <Check className="mt-1 h-3.5 w-3.5 flex-none text-signal" aria-hidden="true" />
+                    <span>{feat}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
 
-            <div className="mt-6 pt-1">
+            <CardFooter className="mt-auto flex-col items-stretch rounded-b-lg border-hairline bg-transparent p-5">
               {isEnterprise ? (
                 <a
                   href="https://wa.me/6285641159405?text=Halo%20Indicate%2C%20saya%20tertarik%20paket%20Enterprise%20(100%20domain).%20Mohon%20jadwal%20peninjauan%20kebutuhan."
@@ -127,8 +138,8 @@ export function PricingCards({ packages }: { readonly packages: readonly Pricing
                   ? 'Ceritakan kebutuhan Anda — kami susun penawaran yang pas.'
                   : 'Pesan hari ini, bayar, unggah bukti — tim kami aktifkan untuk Anda.'}
               </p>
-            </div>
-          </article>
+            </CardFooter>
+          </Card>
         );
       })}
     </div>

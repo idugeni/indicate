@@ -26,7 +26,7 @@ export interface PublicSiteSettings {
   readonly navigation: readonly { readonly label: string; readonly path: string }[];
   readonly logoUrl: string | null;
   readonly faviconUrl: string | null;
-  readonly fallbackImageUrl: string;
+  readonly defaultImageUrl: string;
   readonly robots: readonly string[];
 }
 
@@ -49,6 +49,7 @@ export interface NetworkArticle {
   readonly publishedAt: string;
   readonly updatedAt: string;
   readonly imageUrl: string | null;
+  readonly thumbnailUrl: string | null;
   readonly imageWidth: number | null;
   readonly imageHeight: number | null;
 }

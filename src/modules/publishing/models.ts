@@ -33,6 +33,7 @@ export interface MediaAssetRecord {
   readonly mediaType: string;
   readonly sizeBytes: number;
   readonly checksum: string;
+  readonly thumbObjectKey: string | null;
   readonly owner: MediaOwner;
   readonly state: 'active' | 'rejected' | 'archived';
   readonly version: number;

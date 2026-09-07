@@ -6,6 +6,13 @@ import type { Result } from '@/core/result';
 import { rateLimitPolicySchema } from '@/modules/integrations/schemas';
 
 const identityPart = (value: string) => value.replace(/[^A-Za-z0-9:_-]/g, '_').slice(0, 200);
+/**
+ * Failure-mode nyata saat ini: seluruh pemanggil (webhook, mutation dasbor,
+ * API v1, intake laporan publik) memakai 'closed' — Redis down berarti tolak
+ * dengan DEPENDENCY_UNAVAILABLE, bukan lolos. 'open_low_risk' disediakan hanya
+ * untuk pembacaan publik berisiko rendah di masa depan; jangan memakainya
+ * untuk endpoint tulis/autentikasi tanpa tinjauan keamanan.
+ */
 export class RateLimitService {
   constructor(private readonly port: RateLimitPort, private readonly clock: { now(): Date } = { now: () => new Date() }) {}
 

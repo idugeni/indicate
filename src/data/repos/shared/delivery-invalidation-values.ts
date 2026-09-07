@@ -20,6 +20,11 @@ export function completeInvalidationValues(input: CompleteInvalidationInput) {
   for (const slug of articleSlugs) paths.add(`/articles/${slug}`);
   for (const slug of categorySlugs) paths.add(`/categories/${slug}`);
   const tags = new Set([`org:${input.organizationId}`, `site:${input.siteId}`, ...hostnames.map((hostname) => `host:${hostname}`), ...articleSlugs.map((slug) => `article:${slug}`), ...(input.mediaIds ?? []).map((id) => `media:${id}`)]);
+  // Media bytes are never cached, but their edge-cached 307 redirects are:
+  // purge the media route (full + thumb twin) through exact-URL purge only.
+  // They stay out of `paths` because Next path revalidation is unreliable for
+  // query-string route variants.
+  const mediaUrls = (input.mediaIds ?? []).flatMap((id) => [`/api/network/media/${id}`, `/api/network/media/${id}?variant=thumb`]);
   const date = input.now ?? new Date();
   return {
     organizationId: input.organizationId,
@@ -29,7 +34,7 @@ export function completeInvalidationValues(input: CompleteInvalidationInput) {
     currentHostname: input.currentHostname ?? null,
     tags: [...tags].sort(),
     paths: [...paths].sort(),
-    urls: hostnames.flatMap((hostname) => [...paths].map((path) => `https://${hostname}${path}`)).sort(),
+    urls: [...hostnames.flatMap((hostname) => [...paths].map((path) => `https://${hostname}${path}`)), ...hostnames.flatMap((hostname) => mediaUrls.map((path) => `https://${hostname}${path}`))].sort(),
     reason: input.reason,
     status: 'pending' as const,
     attempts: 0,

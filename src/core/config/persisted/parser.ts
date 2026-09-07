@@ -81,10 +81,10 @@ export interface SiteSettings {
   readonly seoRobotsDirective: 'index,follow' | 'noindex,nofollow';
   readonly seoOpenGraphSiteName: string;
   readonly seoSchemaVersion: number;
-  readonly fallbackMediaId: string | null;
-  readonly fallbackMediaObjectKey: string | null;
-  readonly fallbackMediaState: string | null;
-  readonly fallbackMediaOrganizationId: string | null;
+  readonly defaultMediaId: string | null;
+  readonly defaultMediaObjectKey: string | null;
+  readonly defaultMediaState: string | null;
+  readonly defaultMediaOrganizationId: string | null;
   readonly version: number;
 }
 
@@ -243,15 +243,15 @@ export function parsePersistedReadModel(
       proof.push({ path: `sites.${raw.siteId}.siteSettings`, category: 'site_settings_missing' });
     } else if (settings.organizationId !== raw.organizationId || settings.siteId !== raw.siteId) {
       proof.push({ path: `sites.${raw.siteId}.siteSettings`, category: 'site_settings_cross_tenant' });
-    } else if (settings.fallbackMediaId !== null) {
-      if (settings.fallbackMediaState !== 'active') {
-        proof.push({ path: `siteSettings.${key(settings)}.fallbackMediaId`, category: 'fallback_media_inactive' });
+    } else if (settings.defaultMediaId !== null) {
+      if (settings.defaultMediaState !== 'active') {
+        proof.push({ path: `siteSettings.${key(settings)}.defaultMediaId`, category: 'default_media_inactive' });
       }
-      if (settings.fallbackMediaOrganizationId !== raw.organizationId) {
-        proof.push({ path: `siteSettings.${key(settings)}.fallbackMediaId`, category: 'fallback_media_cross_tenant' });
+      if (settings.defaultMediaOrganizationId !== raw.organizationId) {
+        proof.push({ path: `siteSettings.${key(settings)}.defaultMediaId`, category: 'default_media_cross_tenant' });
       }
-      if (settings.fallbackMediaObjectKey === null) {
-        proof.push({ path: `siteSettings.${key(settings)}.fallbackMediaId`, category: 'fallback_media_missing_object' });
+      if (settings.defaultMediaObjectKey === null) {
+        proof.push({ path: `siteSettings.${key(settings)}.defaultMediaId`, category: 'default_media_missing_object' });
       }
     }
   }

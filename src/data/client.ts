@@ -20,3 +20,21 @@ export function createRuntimeDatabase(config: BootstrapConfig) {
     close: async () => client.end({ timeout: 5 }),
   });
 }
+
+const sharedPools = new Map<string, Pick<ReturnType<typeof createRuntimeDatabase>, 'client' | 'db'>>();
+
+/**
+ * Process-wide pool keyed by connection URL; never closed by callers so hot
+ * paths skip the ~1s TLS handshake per request. Idle connections still
+ * self-close via `idle_timeout`. Shape omits `close` so owned-vs-shared
+ * misuse fails at compile time.
+ */
+export function getSharedRuntimeDatabase(config: BootstrapConfig) {
+  const key = config.database.pooledUrl.reveal();
+  const existing = sharedPools.get(key);
+  if (existing !== undefined) return existing;
+  const { client, db } = createRuntimeDatabase(config);
+  const shared = Object.freeze({ client, db });
+  sharedPools.set(key, shared);
+  return shared;
+}

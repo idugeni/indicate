@@ -8,4 +8,4 @@ ALTER TABLE public.article_sites ADD COLUMN custom_title text;--> statement-brea
 ALTER TABLE public.article_sites ADD COLUMN custom_description text;--> statement-breakpoint
 ALTER TABLE public.article_sites ADD COLUMN custom_image_media_id uuid;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (59, 'publication_overrides', 'sha256:c50be8fe5e4fb80ea33ba68fec8f99ed33492128d5dec79633d9bb341a593292');
+VALUES (59, 'publication_overrides', 'sha256:019aedae063ec26380b72439ed59c008166d5a8d3b429be3e7b28c16d2fe99f6');

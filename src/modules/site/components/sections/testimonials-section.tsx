@@ -9,6 +9,7 @@ export async function TestimonialsSection() {
       title="Kata pengelola jaringan"
       eyebrow="Testimoni"
       description="Evaluasi pengelola grup media multi-portal mengenai keandalan sindikasi sinyal, efisiensi kerja redaksi terpusat, dan isolasi tenant."
+      tone="warm"
     >
       <div className="grid gap-4 md:grid-cols-2">
         {items.map((item) => (

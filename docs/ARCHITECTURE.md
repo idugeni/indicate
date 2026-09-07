@@ -366,7 +366,7 @@ Service validation returns one non-disclosing denial for absent, unauthorized, a
 
 ### 9.6 Canonical editorial model
 
-`articles` is the only canonical title/body/source store. `article_sites` contains the same-organization Site assignment, current publication state, generated URL, publication timestamp, attempt/version, and sanitized failure. It has a unique Organization/Article/Site key and never stores title or body.
+`articles` is the only canonical body/source store. `article_sites` contains the same-organization Site assignment, current publication state, generated URL, publication timestamp, attempt/version, sanitized failure, and optional per-site overrides (`custom_title`, `custom_description`, `custom_image_media_id`). It has a unique Organization/Article/Site key and never stores body copy — only the canonical article holds the body.
 
 Article writes use an Organization, ID, and expected version predicate. A stale update affects zero rows and returns a conflict. Archive retains canonical content and all relationships.
 
@@ -422,6 +422,10 @@ Absent, unauthorized, and cross-organization resources map to the same external 
 8. On mismatch, reject activation and create exact-key cleanup intent.
 9. On match, create/activate Media metadata, consume the reservation, and append Audit Log in one database transaction.
 10. For public reads, resolve Hostname Context and prove either active Site Settings reference or an Article published to that Site before issuing a short-lived exact-key GET authorization.
+11. Serve reads as edge-cacheable 307 redirects to the signed URL (`public, max-age=60, s-maxage=60, stale-while-revalidate=30`), never the bytes. The 60s edge TTL stays far below the shortest read authorization TTL, so a cached redirect can never outlive its signature by more than the bound.
+12. Listing thumbnails are derived server-side from the reserved key (`-thumb` infix, same prefix/token), verified like full objects at completion, and served through the same route with `?variant=thumb` (a distinct edge key). Absence or mismatch degrades to the full object; it never blocks activation.
+
+Edge-cache purge contract: every invalidation task carrying `mediaIds` also purges `https://{hostname}/api/network/media/{mediaId}` and its `?variant=thumb` twin alongside the HTML paths. Between a media mutation and the dispatcher run, plus at most 60s of edge TTL, a stale redirect may persist; the R2 object itself is private and short-lived-signed either way.
 
 No flow grants bucket list, prefix access, public bucket access, or cross-Site fallback.
 
@@ -429,14 +433,15 @@ No flow grants bucket list, prefix access, public bucket access, or cross-Site f
 
 ### 12.1 Canonical fingerprint
 
-The Request Fingerprint is a versioned SHA-256 digest of canonical serialization containing:
+The Request Fingerprint is a versioned SHA-256 digest (`FINGERPRINT_VERSION = 1`, `v1:<hex>` in `src/modules/publishing/publication-policy.ts`) of canonical serialization containing:
 
 - `organizationId`;
 - `articleId`;
 - sorted distinct target Site IDs;
-- normalized publication options.
+- normalized publication options;
+- canonicalized per-site overrides, included only when non-empty.
 
-Permutations and duplicate target representations converge. A semantic change in Organization, Article, distinct targets, or options produces another fingerprint subject to normal cryptographic assumptions.
+Permutations and duplicate target representations converge. A semantic change in Organization, Article, distinct targets, options, or overrides produces another fingerprint subject to normal cryptographic assumptions — the same key, sites, and options with different overrides yield `IDEMPOTENCY_CONFLICT`, not reuse.
 
 ### 12.2 Transactional acceptance
 
@@ -463,6 +468,7 @@ processing -> published  | retrying | failed
 retrying   -> processing | failed
 published  -> published  (idempotent repeat)
 failed     -> failed     (idempotent repeat)
+unpublished -> unpublished (idempotent repeat)
 ```
 
 Article Site allowed transitions:
@@ -471,18 +477,23 @@ Article Site allowed transitions:
 queued     -> processing
 processing -> published | retrying | failed
 retrying   -> processing | failed
-published  -> published (idempotent repeat)
-failed     -> failed    (idempotent repeat)
+published  -> published (idempotent repeat) | unpublished (withdrawal)
+failed     -> failed (idempotent repeat) | retrying (requeue)
+unpublished -> unpublished (idempotent repeat)
 ```
+
+Withdrawing a published target sets target and Article Site state to `unpublished`, clears `published_url`/`published_at`, bumps the version, and enqueues public invalidation (`src/data/repos/publishing/repository.ts`).
 
 Every other transition returns `INVALID_STATE_TRANSITION` and preserves state and outcome. Repeated terminal transitions preserve URL, timestamp, sanitized failure, and result.
 
-Job aggregation after target mutation is exact:
+Job aggregation after target mutation is exact (`aggregateJobState` in `src/modules/publishing/publication-policy.ts`):
 
 1. any processing target -> `processing`;
-2. otherwise any incomplete retrying target -> `retrying`;
+2. otherwise any retrying target -> `retrying`;
 3. all published -> `published`;
-4. all terminal with at least one failed -> `failed`.
+4. all published/failed with at least one failed (no unpublished present) -> `failed`;
+5. all published/failed/unpublished with at least one unpublished -> `unpublished` (unpublished wins over failed in mixed terminal sets);
+6. otherwise -> `queued`.
 
 ### 12.4 Redis dispatch and claims
 
@@ -520,7 +531,7 @@ Sanitized failures contain stable codes and bounded context but no provider secr
 
 ### 13.1 Layers
 
-- Next.js data/full-route cache for public query results, tagged by host, Organization, Site, Article, Category, Publisher, and SEO dependencies.
+- Next.js data/full-route cache for public query results, tagged by host, Organization, Site, Article, Category, Publisher, and SEO dependencies. Lapisan ini dimigrasi ke Cache Components (`cacheComponents`, `use cache`, `cacheLife`, `cacheTag`) secara bertahap mulai grup `(site)`; kunci cache wajib mengikuti identitas §13.2.
 - Cloudflare CDN for anonymous successful public GET/HEAD responses; URL identity includes scheme, normalized host, path, and normalized query.
 - Upstash version and invalidation coordination; Redis is not the sole rendered-content store.
 
@@ -577,7 +588,7 @@ Validated bounded policies use atomic Redis operations. Security-sensitive mutat
 
 Audit Logs are append-only tenant records containing actor type/ID, Organization, entry point, action, target type/ID where safe, outcome, timestamp, request ID, changed fields, and redacted before/after values.
 
-Security-sensitive changes and required audits execute in one transaction. Audit failure rolls back the mutation and prevents acknowledgement. Database grants and a trigger reject application UPDATE/DELETE. Queries always include Active Organization and optional actor/action/target/outcome/date filters.
+Security-sensitive changes and required audits execute in one transaction. Audit failure rolls back the mutation and prevents acknowledgement. Database grants and a trigger reject application UPDATE/DELETE. Queries always include Active Organization and optional actor/action/target/outcome/date filters. Post-response work that may be lost or retried (notifications, non-critical metrics/projections) may use Next.js `after()`; required audits and `invalidation_tasks` never move there.
 
 Denied requests record enough context for security review without disclosing a foreign target to the requester. Audit content excludes plaintext secrets, hashes, signatures, signed URLs, temporary credentials, raw provider failures, and stack traces.
 
@@ -633,7 +644,7 @@ Transaction rules:
 
 One server-only Zod contract validates at build/promotion and process startup:
 
-- control-plane and exactly three MVP root hosts;
+- control-plane hosts and tenant root hosts (unbounded; resolved from persisted domain records);
 - Supabase public Auth values, privileged server Auth value, pooled runtime DB URL, and direct migration DB URL;
 - Cloudflare zone IDs, expected nameservers, least-privilege DNS/cache token, proxy and SSL expectations;
 - Vercel project identifiers, token, and production target;
@@ -655,7 +666,7 @@ Drizzle migrations are forward-only and reviewed. Runtime uses a pooled connecti
 
 The seed command:
 
-1. parses exactly three root hostnames from Runtime Configuration;
+1. parses tenant root hostnames from persisted domain records with no fixed count;
 2. normalizes and rejects invalid, duplicate, reserved, or production-hardcoded values;
 3. validates Wonosobo, Magelang, and Semarang stable descriptors;
 4. opens one transaction and takes a seed-run lock;
@@ -674,7 +685,7 @@ Additional Central Java regions use the same data path without source changes.
 4. Apply reviewed Drizzle migrations with the direct migration credential and verify schema version.
 5. Deploy the one application to the one Vercel project without changing production traffic.
 6. Validate Supabase Auth/database, private R2, Upstash, Telegram webhook, cron secret, Cloudflare authority/routes/proxy/TLS, and every active Site’s exact Vercel association.
-7. Run smoke checks across control-plane hosts and the configured three-root/three-region matrix.
+7. Run smoke checks across control-plane hosts and every active root domain and region.
 8. Promote only if all checks pass.
 
 ### 20.4 Rollback
@@ -702,7 +713,7 @@ Implementation may begin only after both documentation artifacts are explicitly 
 4. **Major Publishing — Media and publication:** private R2 media, durable jobs, Upstash dispatch, idempotency, leases/fencing, bounded retries, results.
 5. **Major Delivery — Public delivery:** Cloudflare/Vercel exact-domain activation, hostname resolver, shared public template, SEO, cache/invalidation.
 6. **Major Integrations — External entry points:** Telegram, API Keys, rate limiting, replay defense, customer/subscription administration.
-7. **Major Release — Production readiness:** automated validation across exactly three configured root domains and Wonosobo, Magelang, and Semarang.
+7. **Major Release — Production readiness:** automated validation across all active root domains and regions, starting with Wonosobo, Magelang, and Semarang.
 
 Each stage begins only after the prior stage passes its complete Quality Gate. Any sequencing change must first be approved and recorded here with dependency rationale.
 

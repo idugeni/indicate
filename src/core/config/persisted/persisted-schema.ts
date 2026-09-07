@@ -110,10 +110,10 @@ export const siteSettingsSchema = z
     seoRobotsDirective: z.enum(SEO_ROBOTS_DIRECTIVES),
     seoOpenGraphSiteName: z.string().refine((value) => unicodeLength(value) >= 1 && unicodeLength(value) <= 160),
     seoSchemaVersion: z.number().int().min(1).max(MAX_SCHEMA_VERSION),
-    fallbackMediaId: z.uuid().nullable(),
-    fallbackMediaObjectKey: z.string().min(1).nullable(),
-    fallbackMediaState: z.string().min(1).nullable(),
-    fallbackMediaOrganizationId: z.uuid().nullable(),
+    defaultMediaId: z.uuid().nullable(),
+    defaultMediaObjectKey: z.string().min(1).nullable(),
+    defaultMediaState: z.string().min(1).nullable(),
+    defaultMediaOrganizationId: z.uuid().nullable(),
     version: z.number().int().positive(),
   })
   .strict();

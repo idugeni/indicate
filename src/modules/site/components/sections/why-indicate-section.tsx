@@ -8,9 +8,8 @@ export function WhyIndicateSection() {
       title="Mengapa Indicate"
       eyebrow="Pembeda"
       description="Enam pilar arsitektural yang membedakan platform redaksi terpusat dari instalasi situs lepas yang terfragmentasi."
-      tone="raised"
     >
-      <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {(VALUE_PROPOSITIONS as FeatureItem[]).map((prop, index) => {
           return (
             <div key={prop.title} className={CARD_CLASS}>

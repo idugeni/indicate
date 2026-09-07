@@ -8,6 +8,7 @@ semantic-review/
 .env
 .env.local
 .env.*.local
+.env.production
 *.tsbuildinfo
 .DS_Store
 

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { currentYear } from '@/modules/site/current-year';
 
 const LEDGER: readonly { readonly title: string; readonly detail: string }[] = Object.freeze([
   { title: 'Tulis sekali', detail: 'Satu naskah, satu antrean redaksi.' },
@@ -7,7 +8,8 @@ const LEDGER: readonly { readonly title: string; readonly detail: string }[] = O
   { title: 'Teraudit penuh', detail: 'Setiap aksi tercatat, hanya-tambah.' },
 ]);
 
-export function BrandPanel() {
+export async function BrandPanel() {
+  const year = await currentYear();
   return (
     <div className="hidden border-r border-hairline bg-bg-raised/40 p-12 md:flex md:flex-col md:justify-between">
       <Link href="/" className="flex items-center gap-3 no-underline" aria-label="Indicate beranda">
@@ -48,7 +50,7 @@ export function BrandPanel() {
       </div>
 
       <p className="m-0 font-mono text-[11px] text-paper-faint">
-        © {new Date().getUTCFullYear()} Indicate · Asia/Jakarta
+        © {year} Eliyanto Sarage · Indicate · Asia/Jakarta
       </p>
     </div>
   );

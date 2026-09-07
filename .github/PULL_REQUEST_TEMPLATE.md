@@ -78,6 +78,11 @@ GET /api/health    # valid configuration before/after (for runtime or migration 
 - [ ] If this fixes a vulnerability: coordinated disclosure per
       [SECURITY.md](../SECURITY.md) (no public exploit detail before fix).
 
+## Origin / license checklist
+
+- [ ] All commits carry `Signed-off-by` (DCO v1.1); no third-party code/assets without a compatible license noted above.
+- [ ] Upstream attributions updated in `THIRD-PARTY-NOTICES.md` when a dependency, font, icon, or vendored component changes.
+
 ## Docs updated
 
 - [ ] `README.md` / `docs/ARCHITECTURE.md` / `docs/MIGRATIONS.md` /

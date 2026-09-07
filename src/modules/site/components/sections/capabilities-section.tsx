@@ -13,7 +13,7 @@ export function CapabilitiesSection() {
       title="Kemampuan utama"
       eyebrow="Cakupan"
       description="Siap digunakan sejak hari pertama — tanpa instalasi terpisah per portal."
-      tone="raised"
+      tone="soft"
     >
       <div className="grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
         {(CAPABILITIES as CapabilityItem[]).map((cap) => {

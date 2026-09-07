@@ -215,6 +215,14 @@
     outline-offset: 2px;
   }
 
+  /* Tailwind v4 preflight no longer sets pointer on buttons; restore it
+     globally so every native button and role=button reads as interactive.
+     Disabled controls keep the default cursor. */
+  button:enabled,
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
@@ -237,6 +245,10 @@
 }
 
 @layer components {
+  /* Milik route group (network) — artikel, search, kategori — BUKAN halaman
+     publik (site). Lebar aktual halaman (site) adalah Container max-w-6xl
+     (72rem), bukan .public-layout 76rem di bawah. Jangan pakai kelas-kelas
+     ini untuk /services, /pricing, /about, /faq, /contact, /privacy, /terms. */
   .network-shell {
     --site-primary: #0b5d4b;
     --site-accent: #e9a23b;

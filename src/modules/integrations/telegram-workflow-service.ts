@@ -4,12 +4,14 @@ import type { TenantBusinessService } from '@/modules/dashboard/tenant-business-
 import type { MediaService } from '@/modules/publishing/media-service';
 import type { PublicationService } from '@/modules/publishing/publication-service';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { TelegramConversation, TelegramIdentity, TelegramUpdate, TelegramWorkflowResult, WebhookReplayClaim } from '@/modules/integrations/models';
+import type { TelegramConversation, TelegramHandleOutcome, TelegramIdentity, TelegramPendingReply, TelegramUpdate, TelegramWorkflowResult, WebhookReplayClaim } from '@/modules/integrations/models';
 import type { IntegrationsRepository } from '@/modules/integrations/ports';
+import { TelegramRateLimitedError } from '@/modules/integrations/ports';
 import type { TelegramMediaTransferPort } from '@/modules/integrations/ports';
 import type { TelegramPort } from '@/modules/integrations/ports';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
+import { logEvent } from '@/core/observability/logger';
 import { telegramUpdateSchema } from '@/modules/integrations/schemas';
 
 export interface TelegramSharedServices {
@@ -78,7 +80,56 @@ export class TelegramWorkflowService {
     if (receipt.action === 'publication.request') return { reply: `Publication accepted. Job: ${receipt.targetId}`, recovered: true };
     return null;
   }
-  private async replayPrepared(claim: WebhookReplayClaim, chatId: string, requestId: string): Promise<Result<TelegramWorkflowResult, PublicErrorEnvelope>> {
+  /** Delivery runs in `after()` via `deliverReplies()` — never awaited here, so the webhook response is not held by the Telegram API call. */
+  async deliverReplies(replies: readonly TelegramPendingReply[], requestId: string): Promise<void> {
+    for (const reply of replies) {
+      try {
+        await this.telegram.send(reply);
+      } catch (error) {
+        // Balasan tidak boleh hilang: persist ke outbox untuk retry backoff worker.
+        try {
+          await this.repository.enqueueOutboxMessage({ organizationId: null, chatId: reply.chatId, text: reply.text, now: this.clock.now().toISOString() });
+        } catch {
+          logEvent('warn', { event: 'telegram.reply.deferred_failed', requestId, context: { chatId: reply.chatId, name: error instanceof Error ? error.name : 'UnknownError' } });
+        }
+      }
+    }
+  }
+
+  /** Worker drain: klaim antrean, kirim berirama, ack dengan backoff + hormat retry_after. */
+  async processOutbox(limit: number, requestId: string): Promise<{ readonly claimed: number; readonly sent: number; readonly failed: number }> {
+    const now = this.clock.now();
+    let claimed = 0;
+    let sent = 0;
+    let failed = 0;
+    let messages: readonly { readonly id: string; readonly chatId: string; readonly text: string }[] = [];
+    try {
+      messages = await this.repository.claimOutboxMessages(now.toISOString(), Math.max(1, Math.min(limit, 50)));
+    } catch (error) {
+      logEvent('warn', { event: 'telegram.outbox.claim_failed', requestId, context: { name: error instanceof Error ? error.name : 'UnknownError' } });
+      return { claimed, sent, failed };
+    }
+    claimed = messages.length;
+    for (const message of messages) {
+      try {
+        await this.telegram.send({ chatId: message.chatId, text: message.text });
+        await this.repository.ackOutboxMessage({ id: message.id, ok: true, retryAfterSeconds: null, error: null, now: this.clock.now().toISOString() });
+        sent += 1;
+      } catch (error) {
+        const retryAfter = error instanceof TelegramRateLimitedError ? error.retryAfterSeconds : null;
+        const name = error instanceof Error ? error.name : 'UnknownError';
+        try {
+          await this.repository.ackOutboxMessage({ id: message.id, ok: false, retryAfterSeconds: retryAfter, error: name.slice(0, 200), now: this.clock.now().toISOString() });
+        } catch {
+          logEvent('warn', { event: 'telegram.outbox.ack_failed', requestId, context: { chatId: message.chatId, name } });
+        }
+        failed += 1;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    }
+    return { claimed, sent, failed };
+  }
+  private async replayPrepared(claim: WebhookReplayClaim, chatId: string, requestId: string, pending: TelegramPendingReply[]): Promise<Result<TelegramWorkflowResult, PublicErrorEnvelope>> {
     let replayClaim = claim;
     if (replayClaim.outcome === null) {
       const recovered = this.recoveredBusinessOutcome(replayClaim);
@@ -90,7 +141,7 @@ export class TelegramWorkflowService {
     const outcome = replayClaim.outcome;
     if (outcome === null) return { ok: false, error: createPublicError('CONFLICT', 'Telegram update is already processing.', requestId) };
     const reply = typeof outcome.reply === 'string' ? outcome.reply : 'Telegram update already processed.';
-    try { await this.telegram.send({ chatId, text: reply }); } catch { /* replay outcome remains durable */ }
+    pending.push({ chatId, text: reply });
     const terminalStatus = replayClaim.status === 'claimed' ? replayClaim.pendingStatus : replayClaim.status;
     if (terminalStatus === 'processed') return { ok: true, value: { reply } };
     const code = outcome.code;
@@ -103,10 +154,12 @@ export class TelegramWorkflowService {
     return { ok: false, error: createPublicError(publicCode, message, requestId, fields) };
   }
 
-  async handle(secretHeader: string | null, raw: unknown, requestId = crypto.randomUUID()): Promise<Result<TelegramWorkflowResult, PublicErrorEnvelope>> {
-    if (secretHeader === null || !safeEqual(secretHeader, this.webhookSecret)) return { ok: false, error: createNonDisclosingDenial(requestId) };
-    const update = this.parse(raw); if (update === null) return { ok: false, error: createPublicError('INVALID_INPUT', 'Invalid Telegram update.', requestId) };
-    const now = this.clock.now(); if (Math.abs(now.getTime() - new Date(update.occurredAt).getTime()) > this.freshnessSeconds * 1_000) return { ok: false, error: createNonDisclosingDenial(requestId) };
+  async handle(secretHeader: string | null, raw: unknown, requestId = crypto.randomUUID()): Promise<TelegramHandleOutcome> {
+    const pending: TelegramPendingReply[] = [];
+    const done = (result: Result<TelegramWorkflowResult, PublicErrorEnvelope>): TelegramHandleOutcome => ({ result, pendingReplies: pending });
+    if (secretHeader === null || !safeEqual(secretHeader, this.webhookSecret)) return done({ ok: false, error: createNonDisclosingDenial(requestId) });
+    const update = this.parse(raw); if (update === null) return done({ ok: false, error: createPublicError('INVALID_INPUT', 'Invalid Telegram update.', requestId) });
+    const now = this.clock.now(); if (Math.abs(now.getTime() - new Date(update.occurredAt).getTime()) > this.freshnessSeconds * 1_000) return done({ ok: false, error: createNonDisclosingDenial(requestId) });
     const bodyDigest = digest(JSON.stringify(raw));
     try {
       const claimed = await this.repository.claimReplay({
@@ -114,18 +167,18 @@ export class TelegramWorkflowService {
         leaseExpiresAt: new Date(now.getTime() + Math.min(30, this.replayTtlSeconds) * 1_000).toISOString(),
         expiresAt: new Date(now.getTime() + this.replayTtlSeconds * 1_000).toISOString(),
       });
-      if (claimed.claim.bodyDigest !== bodyDigest) return { ok: false, error: createNonDisclosingDenial(requestId) };
+      if (claimed.claim.bodyDigest !== bodyDigest) return done({ ok: false, error: createNonDisclosingDenial(requestId) });
       if (claimed.kind === 'duplicate') {
-        if (claimed.claim.status !== 'claimed' || claimed.claim.pendingStatus !== null || claimed.claim.businessReceipt !== null) return this.replayPrepared(claimed.claim, update.chatId, requestId);
-        return { ok: false, error: createPublicError('CONFLICT', 'Telegram update is already processing.', requestId) };
+        if (claimed.claim.status !== 'claimed' || claimed.claim.pendingStatus !== null || claimed.claim.businessReceipt !== null) return done(await this.replayPrepared(claimed.claim, update.chatId, requestId, pending));
+        return done({ ok: false, error: createPublicError('CONFLICT', 'Telegram update is already processing.', requestId) });
       }
       const identity = await this.repository.resolveTelegramIdentity(update.userId, update.chatId);
       if (identity === null) {
         const denial = createNonDisclosingDenial(requestId); const reply = this.safeFailureReply(denial);
         await this.repository.prepareReplayOutcome('telegram', update.updateId, bodyDigest, claimed.claim.claimToken, 'rejected', { code: denial.error.code, message: denial.error.message, reply }, this.clock.now().toISOString());
         await this.finalizePrepared('telegram', update.updateId, bodyDigest, claimed.claim.claimToken);
-        try { await this.telegram.send({ chatId: update.chatId, text: reply }); } catch { /* denial outcome remains replayable */ }
-        return { ok: false, error: denial };
+        pending.push({ chatId: update.chatId, text: reply });
+        return done({ ok: false, error: denial });
       }
       const identityDigest = digest(`${identity.organizationId}:${identity.mappingId}:${identity.telegramUserId}:${identity.telegramChatId}`);
       await this.repository.bindReplayIdentity('telegram', update.updateId, bodyDigest, claimed.claim.claimToken, identity.organizationId, identityDigest);
@@ -141,14 +194,14 @@ export class TelegramWorkflowService {
         };
         await this.repository.prepareReplayOutcome('telegram', update.updateId, bodyDigest, claimed.claim.claimToken, 'rejected', replayOutcome, this.clock.now().toISOString());
         await this.finalizePrepared('telegram', update.updateId, bodyDigest, claimed.claim.claimToken);
-        try { await this.telegram.send({ chatId: update.chatId, text: reply }); } catch { /* failure outcome remains replayable */ }
-        return result;
+        pending.push({ chatId: update.chatId, text: reply });
+        return done(result);
       }
       await this.repository.prepareReplayOutcome('telegram', update.updateId, bodyDigest, claimed.claim.claimToken, 'processed', { reply: result.value.reply }, this.clock.now().toISOString());
       await this.finalizePrepared('telegram', update.updateId, bodyDigest, claimed.claim.claimToken);
-      try { await this.telegram.send({ chatId: update.chatId, text: result.value.reply }); } catch { /* business outcome is already durable and replayable */ }
-      return { ok: true, value: { ...result.value, actor } };
-    } catch { return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'Telegram processing is temporarily unavailable.', requestId) }; }
+      pending.push({ chatId: update.chatId, text: result.value.reply });
+      return done({ ok: true, value: { ...result.value, actor } });
+    } catch { return done({ ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'Telegram processing is temporarily unavailable.', requestId) }); }
   }
 
   private async execute(identity: TelegramIdentity, actor: AuthorizedTenantActorContext, shared: TelegramSharedServices, update: TelegramUpdate): Promise<Result<TelegramWorkflowResult, PublicErrorEnvelope>> {

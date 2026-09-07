@@ -12,4 +12,4 @@ UPDATE public.service_tiers SET price = 'Rp149.000', target = 'Punya 10 portal b
 UPDATE public.service_tiers SET price = 'Rp299.000', target = 'Satu redaksi untuk 50 portal daerah', features = '["50 website berita siap tayang", "Terbit sekali, tayang di mana-mana", "Kelola dari HP, kerja dari mana saja", "Bantuan prioritas yang cepat tanggap"]', updated_at = now() WHERE slug = 'growth';--> statement-breakpoint
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (56, 'billing_tier_ladder', 'sha256:2b383ecff5460252d7e8d2e8ef3d7bd40703884dc0c');
+VALUES (56, 'billing_tier_ladder', 'sha256:2b383ecff5460252d7e8d2e8ef3d7cf7530c933157c75ef3d7bd40703884dc0c');

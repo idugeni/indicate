@@ -1,4 +1,6 @@
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
+import type { Result } from '@/core/result';
+import type { PublicErrorEnvelope } from '@/core/errors';
 
 export type ApiKeyStatus = 'active' | 'revoked' | 'expired';
 export interface ApiKeyRecord {
@@ -37,6 +39,9 @@ export interface TelegramMappingRecord {
   readonly telegramChatId: string;
   readonly status: 'active' | 'inactive' | 'archived';
   readonly version: number;
+  readonly consentedAt: string | null;
+  readonly consentTextVersion: string | null;
+  readonly ipHash: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -79,6 +84,15 @@ export interface TelegramWorkflowResult {
   readonly reply: string;
   readonly actor?: AuthorizedTenantActorContext;
   readonly businessResult?: unknown;
+}
+/** Outgoing chat reply queued during `handle()`; delivery is deferred to `after()` by the caller. */
+export interface TelegramPendingReply {
+  readonly chatId: string;
+  readonly text: string;
+}
+export interface TelegramHandleOutcome {
+  readonly result: Result<TelegramWorkflowResult, PublicErrorEnvelope>;
+  readonly pendingReplies: readonly TelegramPendingReply[];
 }
 
 export interface WebhookReplayClaim {

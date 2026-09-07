@@ -13,15 +13,15 @@ export default function PublicLoading() {
       <main className="public-layout" aria-hidden="true">
         <section className="article-grid">
           {[0, 1, 2, 3].map((n) => (
-            <div key={n} className="border-t-2 border-hairline pt-4">
-              <Skeleton className="aspect-video w-full bg-muted" />
-              <Skeleton className="mt-4 h-4 w-3/4 bg-muted" />
-              <Skeleton className="mt-2 h-3 w-1/2 bg-muted" />
+            <div key={n} className="rounded-lg border border-hairline bg-bg-raised p-4">
+              <Skeleton className="aspect-video w-full bg-bg-raised-2" />
+              <Skeleton className="mt-4 h-4 w-3/4 bg-bg-raised-2" />
+              <Skeleton className="mt-2 h-3 w-1/2 bg-bg-raised-2" />
             </div>
           ))}
         </section>
         <aside className="public-sidebar">
-          <Skeleton className="h-40 w-full bg-muted" />
+          <Skeleton className="h-40 w-full rounded-lg border border-hairline bg-bg-raised" />
         </aside>
       </main>
     </div>

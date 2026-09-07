@@ -1,11 +1,10 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
+import Form from 'next/form';
 import { ListingPage } from '@/modules/site/components/network/network-listing';
 import { Section } from '@/modules/site/components/layout/content';
 import { Skeleton } from '@/components/ui/skeleton';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
-
-export const dynamic = 'force-dynamic';
 
 type Props = {
   readonly searchParams: Promise<{ q?: string } & { [key: string]: string | string[] | undefined }>;
@@ -19,6 +18,33 @@ function normalizeQuery(value: string | string[] | undefined): string {
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const resolved = await searchParams;
   return networkMetadata('/search', { search: normalizeQuery(resolved.q) });
+}
+
+function SearchFormFallback() {
+  // Sengaja <form> polos (bukan next/form): tetap berfungsi sebelum hidrasi.
+  return (
+    <form className="public-search" action="/search" role="search" aria-busy="true">
+      <label htmlFor="public-search">Cari berita</label>
+      <div>
+        <input id="public-search" name="q" defaultValue="" maxLength={120} autoComplete="off" />
+        <button type="submit">Cari</button>
+      </div>
+    </form>
+  );
+}
+
+async function SearchForm({ searchParams }: Props) {
+  const resolved = await searchParams;
+  const q = normalizeQuery(resolved.q);
+  return (
+    <Form className="public-search" action="/search" role="search">
+      <label htmlFor="public-search">Cari berita</label>
+      <div>
+        <input id="public-search" name="q" defaultValue={q} maxLength={120} autoComplete="off" />
+        <button type="submit">Cari</button>
+      </div>
+    </Form>
+  );
 }
 
 function SearchResultsSkeleton() {
@@ -40,26 +66,22 @@ function SearchResultsSkeleton() {
   );
 }
 
-async function SearchResults({ query }: { readonly query: string }) {
+async function SearchResults({ searchParams }: Props) {
+  const resolved = await searchParams;
+  const query = normalizeQuery(resolved.q);
   const site = await resolveNetworkSite({ search: query }, '/search');
   return <ListingPage site={site} title={query === '' ? 'Pencarian' : `Hasil untuk “${query}”`} />;
 }
 
-/** Search shell streams results behind Suspense so the form stays interactive (near-zero INP) while the index query runs. */
-export default async function SearchPage({ searchParams }: Props) {
-  const resolved = await searchParams;
-  const q = normalizeQuery(resolved.q);
+/** Form dan hasil adalah island terpisah: form interaktif segera, hasil menyusul via streaming. */
+export default function SearchPage({ searchParams }: Props) {
   return (
     <>
-      <form className="public-search" action="/search" role="search">
-        <label htmlFor="public-search">Cari berita</label>
-        <div>
-          <input id="public-search" name="q" defaultValue={q} maxLength={120} autoComplete="off" />
-          <button type="submit">Cari</button>
-        </div>
-      </form>
+      <Suspense fallback={<SearchFormFallback />}>
+        <SearchForm searchParams={searchParams} />
+      </Suspense>
       <Suspense fallback={<SearchResultsSkeleton />}>
-        <SearchResults query={q} />
+        <SearchResults searchParams={searchParams} />
       </Suspense>
     </>
   );

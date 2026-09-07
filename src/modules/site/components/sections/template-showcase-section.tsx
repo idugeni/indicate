@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Layout } from 'lucide-react';
 import { Section } from '@/modules/site/components/layout/content';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useRovingSelection } from '@/ui/hooks/use-roving-selection';
 import {
   type MasterTemplatePreset,
@@ -30,7 +31,6 @@ export function TemplateShowcaseSection({
   readonly templates: readonly MasterTemplatePreset[];
   readonly colors: readonly NetworkColorPreset[];
 }) {
-  const TEMPLATE_IDS: readonly string[] = templates.map((tmpl) => tmpl.id);
   const COLOR_IDS: readonly string[] = colors.map((preset) => preset.id);
   const defaultTemplate = templates[0]?.id ?? TEMPLATE_FALLBACK.id;
   const defaultColor = colors[0]?.id ?? COLOR_FALLBACK.id;
@@ -38,7 +38,6 @@ export function TemplateShowcaseSection({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(defaultTemplate);
   const [selectedColorId, setSelectedColorId] = useState<string>(defaultColor);
 
-  const templateNav = useRovingSelection(TEMPLATE_IDS, selectedTemplateId, setSelectedTemplateId);
   const colorNav = useRovingSelection(COLOR_IDS, selectedColorId, setSelectedColorId);
 
   const currentTemplate: MasterTemplatePreset =
@@ -52,46 +51,30 @@ export function TemplateShowcaseSection({
   return (
     <Section
       title="Master Template & Klaster Warna Siap Pakai"
+      eyebrow="Template"
       description="Kombinasikan matriks layout dan warna branding semantik agar setiap domain dalam jaringan Anda memiliki identitas visual unik tanpa merusak integritas arsitektur redaksi."
     >
-      <div className="space-y-6">
-        <div
-          role="tablist"
+      <Tabs value={selectedTemplateId} onValueChange={setSelectedTemplateId} className="flex w-full flex-col gap-4">
+        <TabsList
+          variant="default"
           aria-label="Daftar Master Template"
-          onKeyDown={templateNav.onKeyDown}
-          className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-hairline"
+          className="flex w-full flex-row flex-wrap justify-start gap-2 bg-transparent p-0"
         >
-          {templates.map((tmpl) => {
-            const isSelected = selectedTemplateId === tmpl.id;
-            return (
-              <button
-                key={tmpl.id}
-                ref={templateNav.register(tmpl.id)}
-                type="button"
-                role="tab"
-                id={`tab-${tmpl.id}`}
-                tabIndex={templateNav.tabIndexFor(tmpl.id)}
-                aria-selected={isSelected}
-                aria-controls="template-preview-panel"
-                onClick={() => setSelectedTemplateId(tmpl.id)}
-                className={`whitespace-nowrap border-b-2 pb-2 font-mono text-xs transition-colors duration-180 ${
-                  isSelected
-                    ? 'border-brass font-semibold text-paper'
-                    : 'border-transparent text-paper-faint hover:text-paper'
-                }`}
-              >
-                {tmpl.name}
-              </button>
-            );
-          })}
-        </div>
+          {templates.map((tmpl) => (
+            <TabsTrigger
+              key={tmpl.id}
+              value={tmpl.id}
+              className="h-auto flex-none whitespace-nowrap rounded-md border border-hairline bg-bg-raised px-2.5 py-1 font-mono text-xs text-paper-faint after:hidden transition-colors duration-180 hover:border-hairline-strong hover:text-paper data-active:border-brass data-active:bg-bg-raised-2 data-active:text-paper"
+            >
+              {tmpl.name}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <div
-            id="template-preview-panel"
-            role="tabpanel"
-            aria-labelledby={`tab-${currentTemplate.id}`}
-            className="border-t-2 border-hairline pt-5"
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+          <TabsContent
+            value={selectedTemplateId}
+            className="min-w-0 rounded-lg border border-hairline bg-bg-raised p-4 sm:p-5"
           >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h3 className="m-0 font-sans text-base font-semibold tracking-tight text-paper">
@@ -106,8 +89,8 @@ export function TemplateShowcaseSection({
               {currentTemplate.description}
             </p>
 
-            <div className="mt-5 rounded-lg border border-hairline bg-bg-raised/40 p-4 font-mono text-[11px] text-paper-dim sm:p-5">
-              <div className="flex items-center justify-between border-b border-hairline pb-3">
+            <div className="mt-4 rounded-lg border border-hairline bg-bg p-3 font-mono text-[11px] text-paper-dim sm:p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline pb-3">
                 <div className="flex items-center gap-2">
                   <span
                     className="h-2 w-2"
@@ -127,7 +110,7 @@ export function TemplateShowcaseSection({
               </div>
 
               <div className="grid grid-cols-1 gap-px bg-hairline sm:grid-cols-3">
-                <div className="flex min-h-[140px] flex-col justify-between bg-bg p-4 sm:col-span-2">
+                <div className="flex min-h-[112px] flex-col justify-between bg-bg p-4 sm:col-span-2">
                   <div>
                     <div className="flex items-center gap-1.5 font-semibold text-paper">
                       <Layout className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
@@ -157,7 +140,7 @@ export function TemplateShowcaseSection({
                   </div>
                 </div>
 
-                <div className="flex min-h-[140px] flex-col justify-between bg-bg p-4">
+                <div className="flex min-h-[112px] flex-col justify-between bg-bg p-4">
                   <div>
                     <span className="font-semibold text-brass">[SIDEBAR]</span>
                       <p className="mt-2 font-sans text-xs leading-relaxed text-paper-faint">
@@ -170,10 +153,10 @@ export function TemplateShowcaseSection({
                 </div>
               </div>
             </div>
-          </div>
+          </TabsContent>
 
-          <div className="rounded-lg border border-hairline bg-bg-raised p-5">
-            <div className="flex items-baseline justify-between border-b border-hairline pb-3">
+          <div className="rounded-lg border border-hairline bg-bg-raised p-4">
+            <div className="flex items-baseline justify-between gap-2 border-b border-hairline pb-3">
               <h4 className="m-0 font-sans text-sm font-semibold text-paper">
                 Klaster warna
               </h4>
@@ -182,11 +165,16 @@ export function TemplateShowcaseSection({
               </span>
             </div>
 
+            <p className="m-0 mt-3 font-mono text-[11px] tabular-nums text-paper-dim" aria-live="polite">
+              <span className="font-semibold text-paper">{currentColor.name}</span>
+              <span className="text-paper-faint"> · {currentColor.primary} · {currentColor.accent}</span>
+            </p>
+
             <div
               role="radiogroup"
               aria-label="Pilihan Klaster Warna"
               onKeyDown={colorNav.onKeyDown}
-              className="max-h-80 overflow-y-auto"
+              className="mt-3 flex flex-wrap gap-2"
             >
               {colors.map((preset) => {
                 const isSelected = selectedColorId === preset.id;
@@ -198,37 +186,32 @@ export function TemplateShowcaseSection({
                     role="radio"
                     tabIndex={colorNav.tabIndexFor(preset.id)}
                     aria-checked={isSelected}
+                    aria-label={preset.name}
+                    title={`${preset.name} · ${preset.primary} · ${preset.accent}`}
                     onClick={() => setSelectedColorId(preset.id)}
-                    className={`flex w-full items-center justify-between gap-3 border-b border-hairline py-2.5 text-left transition-colors duration-180 ${
-                      isSelected ? 'text-paper' : 'text-paper-dim hover:text-paper'
+                    className={`flex h-9 w-14 overflow-hidden rounded border transition-colors duration-180 ${
+                      isSelected
+                        ? 'border-brass'
+                        : 'border-hairline hover:border-hairline-strong'
                     }`}
                   >
-                    <div>
-                      <span className="block font-mono text-xs font-medium">
-                        {isSelected ? '● ' : ''}
-                        {preset.name}
-                      </span>
-                      <span className="font-mono text-[10px] tabular-nums text-paper-faint">
-                        {preset.primary} · {preset.accent}
-                      </span>
-                    </div>
-                    <div className="flex flex-none items-center gap-1.5" aria-hidden="true">
-                      <span
-                        className="h-3.5 w-3.5 border border-hairline-strong"
-                        style={{ backgroundColor: preset.primary }}
-                      />
-                      <span
-                        className="h-3.5 w-3.5 border border-hairline-strong"
-                        style={{ backgroundColor: preset.accent }}
-                      />
-                    </div>
+                    <span
+                      className="h-full flex-1"
+                      style={{ backgroundColor: preset.primary }}
+                      aria-hidden="true"
+                    />
+                    <span
+                      className="h-full flex-1"
+                      style={{ backgroundColor: preset.accent }}
+                      aria-hidden="true"
+                    />
                   </button>
                 );
               })}
             </div>
           </div>
         </div>
-      </div>
+      </Tabs>
     </Section>
   );
 }

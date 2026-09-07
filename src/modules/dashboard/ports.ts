@@ -1,5 +1,5 @@
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { AuditRecord, DashboardTenantState } from '@/modules/dashboard/models';
+import type { AnalyticsProjection, AuditFilter, AuditRecord, DashboardProjection, DashboardTenantState } from '@/modules/dashboard/models';
 
 export type MutableTenantState = {
   -readonly [Key in keyof DashboardTenantState]: DashboardTenantState[Key] extends readonly (infer Item)[] ? Item[] : DashboardTenantState[Key];
@@ -13,6 +13,16 @@ export interface DashboardTransaction {
 
 export interface DashboardRepository {
   read(actor: AuthorizedTenantActorContext, permission: string): Promise<DashboardTenantState>;
+  /** Ringkasan hitung untuk view dashboard; tanpa memuat state tenan penuh. */
+  dashboardCounts(actor: AuthorizedTenantActorContext, permission: string): Promise<DashboardProjection>;
+  /** Agregasi analitik (group-by) untuk rentang tanggal; tanpa memuat state tenan penuh. */
+  analyticsSummary(
+    actor: AuthorizedTenantActorContext,
+    permission: string,
+    filter: { readonly from?: string | undefined; readonly to?: string | undefined },
+  ): Promise<AnalyticsProjection>;
+  /** Log audit terbaru (desc, dibatasi) sesuai filter; tanpa memuat state tenan penuh. */
+  auditLogPage(actor: AuthorizedTenantActorContext, permission: string, filter: AuditFilter): Promise<readonly AuditRecord[]>;
   recordDenied(actor: AuthorizedTenantActorContext, action: string, targetType: string): Promise<void>;
   execute<T>(
     actor: AuthorizedTenantActorContext,

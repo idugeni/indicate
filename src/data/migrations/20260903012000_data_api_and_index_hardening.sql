@@ -145,4 +145,4 @@ END
 $verify$;--> statement-breakpoint
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (17, 'data_api_and_index_hardening', 'sha256:8f72552e4142ce585137c6cf1604184a67d669e1642032cc973ae6c1711c9dfc');
+VALUES (17, 'data_api_and_index_hardening', 'sha256:4f9a3e1ea036b75199ddc55863b0c78e7a9831e71617b329d51ea015721e5a89');

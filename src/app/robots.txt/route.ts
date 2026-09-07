@@ -1,10 +1,10 @@
+import { connection } from 'next/server';
 import { headers } from 'next/headers';
 import { deniedRobotsTxt } from '@/core/routing/deny';
 import { serializeRobots } from '@/modules/site/seo';
 import { withApiAccess } from '@/core/observability/api-access';
 import { LEGAL_ROUTES, SITE_ROUTES } from '@/ui/site/marketing-content';
 import { deliveryComposition } from '@/modules/delivery';
-export const dynamic = 'force-dynamic';
 // Control-plane robots: advertise public service paths, keep auth/machine surfaces out of the index.
 const controlPlaneRobots = (host: string) => [
   'User-agent: *',
@@ -24,6 +24,8 @@ const controlPlaneRobots = (host: string) => [
   '',
 ].join('\n');
 async function handleGET() {
+  // Robots per-host + DB: tetap dinamis per request (pengganti force-dynamic).
+  await connection();
   const host = (await headers()).get('host'); const { resolver, content, config } = await deliveryComposition(); const result = await resolver.classify(host); if (result.kind === 'control' && result.surface === 'dashboard') return new Response(controlPlaneRobots(config.hosts.dashboard), { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=300' } }); if (result.kind !== 'site') return deniedRobotsTxt(result.kind === 'invalid' ? 400 : result.kind === 'ambiguous' ? 500 : 404); const site = await content.load(result.context, {}, { path: '/robots.txt', locale: config.seo.defaultLocale }); if (site === null) return deniedRobotsTxt(404); return new Response(serializeRobots(site), { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=300' } }); }
 
 export const GET = withApiAccess('GET /robots.txt', handleGET);

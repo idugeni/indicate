@@ -50,4 +50,4 @@ END
 $verify$;--> statement-breakpoint
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (16, 'operational_table_read_policies', 'sha256:8e8c93740aaae7782c45713b92e7ac4fd81220bc6a4f3647e7d8273be75cc144');
+VALUES (16, 'operational_table_read_policies', 'sha256:aeb5fcff577a43bdd81ccf7ff767e838d2cc7c0ac0a35f1306b137b042f3a599');

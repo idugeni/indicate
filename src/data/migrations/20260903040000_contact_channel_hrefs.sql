@@ -11,4 +11,4 @@ INSERT INTO public.contact_channels (key, title, description, href, sort_order) 
   ('visit', 'Peninjauan bersama', 'Sesi daring untuk menelusuri dasbor dan alur penerbitan — jadwalkan lewat WhatsApp atau surel.', NULL, 4)
 ON CONFLICT (key) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description, href = EXCLUDED.href, sort_order = EXCLUDED.sort_order;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (58, 'contact_channel_hrefs', 'sha256:f5bafeff83d231cc767e3bf62ce588ba523fd6decb51adb69bb010c42965a833');
+VALUES (58, 'contact_channel_hrefs', 'sha256:fa08361431055962bcd035b3036a8e17fc39711fb1fe4a720cea042cbb9d7da4');

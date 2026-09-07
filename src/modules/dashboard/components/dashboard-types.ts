@@ -16,7 +16,8 @@ export type View =
   | 'settings'
   | 'customers'
   | 'content'
-  | 'billing';
+  | 'billing'
+  | 'moderation';
 
 export type IconComponent = ComponentType<{
   className?: string;
@@ -128,5 +129,10 @@ export const VIEW_METADATA_REGISTRY: Record<View, ViewMetadata> = {
     title: 'Langganan & Tagihan',
     eyebrow: 'Billing',
     description: 'Status paket, order dan bukti bayar, invoice, serta antrean verifikasi platform.',
+  },
+  moderation: {
+    title: 'Moderasi & Hak Data',
+    eyebrow: 'Trust & Safety',
+    description: 'Laporan konten publik dengan SLA 1x24 jam dan tiket permintaan data (DSAR) dengan SLA 30 hari.',
   },
 };

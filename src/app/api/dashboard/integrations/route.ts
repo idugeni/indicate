@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
@@ -20,6 +21,7 @@ import { UpstashRateLimitAdapter } from '@/integrations/redis/upstash-rate-limit
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
+import { extractClientIp } from '@/core/routing/platform-guard';
 import type { Result } from '@/core/result';
 
 const querySchema = z.object({ organizationId: z.uuid(), view: z.enum(['settings', 'customers']), customerId: z.uuid().optional() });
@@ -53,11 +55,18 @@ async function handlePOST(request: Request) {
   if (denyCrossSiteMutation(request)) return response(createNonDisclosingDenial(requestId));
   const parsed = commandSchema.safeParse(await request.json().catch(() => null)); if (!parsed.success) return response(createPublicError('INVALID_INPUT', 'Invalid Integrations command.', requestId));
   const context = await contextFor(parsed.data.organizationId, requestId); if (isError(context)) return response(context);
+  // Consent trail penautan Telegram: hash IP admin pemohon (PENDING A6).
+  const clientIp = extractClientIp(request.headers);
+  const consentIpHash = clientIp === null ? null : createHash('sha256').update(clientIp).digest('hex');
+  const withConsent = (payload: unknown): unknown =>
+    parsed.data.action === 'telegram-mapping.create' && typeof payload === 'object' && payload !== null
+      ? { ...(payload as Record<string, unknown>), consentIpHash }
+      : payload;
   try {
     const limited = await context.rateLimits.enforce(context.rateLimits.authenticatedKey('dashboard-mutation', context.actor), context.policy, requestId); if (!limited.ok) return response(limited.error);
     const actions: Readonly<Record<string, (payload: unknown) => Promise<Result<unknown, PublicErrorEnvelope>>>> = {
       'api-key.issue': (payload) => context.apiKeys.issue(context.actor, payload), 'api-key.rotate': (payload) => context.apiKeys.rotate(context.actor, payload), 'api-key.revoke': (payload) => context.apiKeys.revoke(context.actor, payload),
-      'telegram-mapping.create': (payload) => context.telegramMappings.create(context.actor, payload), 'telegram-mapping.update': (payload) => context.telegramMappings.update(context.actor, payload),
+      'telegram-mapping.create': (payload) => context.telegramMappings.create(context.actor, withConsent(payload)), 'telegram-mapping.update': (payload) => context.telegramMappings.update(context.actor, payload), 'telegram.broadcast': (payload) => context.telegramMappings.broadcast(context.actor, payload),
       'customer.create': (payload) => context.customers.create(context.actor, payload), 'customer.update': (payload) => context.customers.update(context.actor, payload), 'subscription.update': (payload) => context.customers.updateSubscription(context.actor, payload), 'membership.assign-first': (payload) => context.customers.assignFirstAdmin(context.actor, payload),
     };
     const action = actions[parsed.data.action]; if (action === undefined) return response(createPublicError('INVALID_INPUT', 'Unknown Integrations command.', requestId)); const result = await action(parsed.data.payload); return result.ok ? NextResponse.json(result.value) : response(result.error);

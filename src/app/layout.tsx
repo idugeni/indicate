@@ -1,22 +1,9 @@
 import type { Metadata, Viewport } from 'next';
-import { headers } from 'next/headers';
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
-import type { CSSProperties, ReactNode } from 'react';
-import { deliveryComposition } from '@/modules/delivery';
+import type { ReactNode } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/ui/cn';
 import './globals.css';
-
-interface BrandTheme {
-  name: string;
-  primary: string;
-  accent: string;
-}
-
-type BrandCSSProperties = CSSProperties & {
-  '--site-primary'?: string;
-  '--site-accent'?: string;
-};
 
 export const viewport: Viewport = {
   themeColor: '#0e1320',
@@ -42,7 +29,7 @@ const METADATA_BASE = resolveMetadataBase();
 export const metadata: Metadata = {
   metadataBase: METADATA_BASE,
   title: {
-    default: 'Indicate — Satu Ruang Redaksi untuk Banyak Portal Berita',
+    default: 'Indicate — One Signal, Multiple Distribution Channels',
     template: '%s | Indicate',
   },
   description:
@@ -72,7 +59,7 @@ export const metadata: Metadata = {
     locale: 'id_ID',
     url: METADATA_BASE.toString(),
     siteName: 'Indicate',
-    title: 'Indicate — Satu Ruang Redaksi untuk Banyak Portal Berita',
+    title: 'Indicate — One Signal, Multiple Distribution Channels',
     description:
       'Indicate menyatukan pengelolaan puluhan domain berita ke dalam satu Dashboard terpusat.',
     images: [
@@ -80,13 +67,13 @@ export const metadata: Metadata = {
         url: '/opengraph-image',
         width: 1200,
         height: 630,
-        alt: 'Indicate — Satu ruang redaksi untuk seluruh jaringan portal berita Anda',
+        alt: 'Indicate — One Signal, Multiple Distribution Channels',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Indicate — Satu Ruang Redaksi untuk Banyak Portal Berita',
+    title: 'Indicate — One Signal, Multiple Distribution Channels',
     description:
       'Indicate menyatukan pengelolaan puluhan domain berita ke dalam satu Dashboard terpusat.',
     images: ['/opengraph-image'],
@@ -117,59 +104,17 @@ const plexMono = IBM_Plex_Mono({
   display: 'swap',
 });
 
-const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
-
-function sanitizeColor(color: string | undefined, fallback: string): string {
-  if (!color) return fallback;
-  const trimmed = color.trim();
-  return HEX_COLOR_REGEX.test(trimmed) ? trimmed : fallback;
-}
-
-async function resolveBrandTheme(): Promise<BrandTheme | null> {
-  try {
-    const headerList = await headers();
-    const host = headerList.get('host');
-    if (!host) return null;
-
-    const composition = await deliveryComposition();
-    const classification = await composition.resolver.classify(host);
-
-    if (classification.kind !== 'site') {
-      return null;
-    }
-
-    const site = await composition.content.load(
-      classification.context,
-      {},
-      { path: '/_site-shell', locale: composition.config.seo.defaultLocale }
-    );
-
-    if (!site) return null;
-
-    return {
-      name: site.settings.name,
-      primary: sanitizeColor(site.settings.colors.primary, '#0b5d4b'),
-      accent: sanitizeColor(site.settings.colors.accent, '#e9a23b'),
-    };
-  } catch {
-    return null;
-  }
-}
-
-export default async function RootLayout({
+/**
+ * Brand tema portal TIDAK lagi di-resolve di root layout: pembacaan host + DB
+ * di sini menahan prerender seluruh rute (blocking-prerender-dynamic).
+ * Portal memakai variabel inline dari `NetworkTemplate` (per Site, di dalam
+ * Suspense streaming); shell kontrol tidak butuh brand.
+ */
+export default function RootLayout({
   children,
 }: Readonly<{
   children: ReactNode;
 }>) {
-  const brand = await resolveBrandTheme();
-
-  const inlineStyle: BrandCSSProperties | undefined = brand
-    ? {
-        '--site-primary': brand.primary,
-        '--site-accent': brand.accent,
-      }
-    : undefined;
-
   return (
     <html
       lang="id"
@@ -181,11 +126,7 @@ export default async function RootLayout({
         plexMono.variable
       )}
     >
-      <body
-        data-public-site-name={brand?.name}
-        style={inlineStyle}
-        className="min-h-screen bg-bg text-paper antialiased"
-      >
+      <body className="min-h-screen bg-bg text-paper antialiased">
         {children}
         <Toaster />
       </body>

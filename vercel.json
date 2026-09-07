@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/health",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/internal/maintenance/worm-export",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/internal/maintenance/outbox-drain",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}

@@ -56,4 +56,4 @@ END
 $$;--> statement-breakpoint
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (14, 'migration_body_digests', 'sha256:81a82af6942df1ae906d6e3b76d4bd9906dfc5efb65cd30cb8e2aabd372c91a3');
+VALUES (14, 'migration_body_digests', 'sha256:1c63d8dc80a2f8364564e264da18055980a178d65043861ff9f4d8ed99365fc9');

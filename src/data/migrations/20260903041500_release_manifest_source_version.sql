@@ -7,4 +7,4 @@
 
 ALTER TABLE public.runtime_config_release_manifests RENAME COLUMN legacy_source_version TO source_version;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (61, 'release_manifest_source_version', 'sha256:b04b87352195d9f4d47a96475c94ba67bc9c6cf4340631cdfd9c1cf3796e0841');
+VALUES (61, 'release_manifest_source_version', 'sha256:d964c9cc8b7f459386704716e48ec545cdd24772b249248ed956d4620462c2f7');

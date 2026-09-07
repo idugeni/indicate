@@ -51,11 +51,15 @@ export interface IntegrationsRepository {
 
   resolveTelegramIdentity(telegramUserId: string, telegramChatId: string): Promise<TelegramIdentity | null>;
   listTelegramMappings(actor: AuthorizedTenantActorContext): Promise<readonly TelegramMappingRecord[]>;
-  createTelegramMapping(actor: AuthorizedTenantActorContext, input: { readonly id: string; readonly userId: string; readonly roleId: string; readonly telegramUserId: string; readonly telegramChatId: string; readonly now: string }): Promise<TelegramMappingRecord>;
+  createTelegramMapping(actor: AuthorizedTenantActorContext, input: { readonly id: string; readonly userId: string; readonly roleId: string; readonly telegramUserId: string; readonly telegramChatId: string; readonly consentedAt: string | null; readonly consentTextVersion: string | null; readonly ipHash: string | null; readonly now: string }): Promise<TelegramMappingRecord>;
   updateTelegramMapping(actor: AuthorizedTenantActorContext, input: { readonly mappingId: string; readonly expectedVersion: number; readonly userId: string; readonly roleId: string; readonly telegramUserId: string; readonly telegramChatId: string; readonly status: TelegramMappingRecord['status']; readonly now: string }): Promise<TelegramMappingRecord>;
   readTelegramConversation(identity: TelegramIdentity): Promise<TelegramConversation | null>;
   saveTelegramConversation(identity: TelegramIdentity, conversation: TelegramConversation): Promise<void>;
   clearTelegramConversation(identity: TelegramIdentity): Promise<void>;
+  enqueueOutboxMessage(input: { readonly organizationId: string | null; readonly chatId: string; readonly text: string; readonly now: string }): Promise<{ readonly id: string }>;
+  claimOutboxMessages(now: string, limit: number): Promise<readonly TelegramOutboxRecord[]>;
+  ackOutboxMessage(input: { readonly id: string; readonly ok: boolean; readonly retryAfterSeconds: number | null; readonly error: string | null; readonly now: string }): Promise<void>;
+  listBroadcastTargets(actorId: string): Promise<readonly { readonly organizationId: string; readonly chatId: string }[]>;
 
   claimReplay(input: ReplayClaimInput): Promise<ReplayClaimResult>;
   bindReplayIdentity(source: string, replayId: string, bodyDigest: string, claimToken: string, organizationId: string, identityBindingDigest: string): Promise<WebhookReplayClaim>;
@@ -81,6 +85,21 @@ export interface RateLimitPort {
 export interface TelegramMessage {
   readonly chatId: string;
   readonly text: string;
+}
+
+export class TelegramRateLimitedError extends Error {
+  constructor(readonly retryAfterSeconds: number | null) {
+    super('Telegram rate limited.');
+  }
+}
+
+export interface TelegramOutboxRecord {
+  readonly id: string;
+  readonly organizationId: string | null;
+  readonly chatId: string;
+  readonly text: string;
+  readonly status: 'pending' | 'sending' | 'sent' | 'dead';
+  readonly attempts: number;
 }
 
 export interface TelegramPort extends HealthCheckPort {

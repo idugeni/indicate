@@ -4,6 +4,7 @@ import { HeroSection } from '@/modules/site/components/sections/hero-section';
 import { LogoCloudSection } from '@/modules/site/components/sections/logo-cloud-section';
 import { PricingSection } from '@/modules/site/components/sections/pricing-section';
 import { ProofStatsSection } from '@/modules/site/components/sections/proof-stats-section';
+import { SecuritySection } from '@/modules/site/components/sections/security-section';
 import { CallToAction, SiteShell } from '@/modules/site/components/layout/site-shell';
 import { TemplateShowcaseSection } from '@/modules/site/components/sections/template-showcase-section';
 import { TestimonialsSection } from '@/modules/site/components/sections/testimonials-section';
@@ -19,6 +20,7 @@ export async function LandingPage() {
         <HeroSection />
         <LogoCloudSection />
         <ProofStatsSection />
+        <SecuritySection />
         <WhyIndicateSection />
         <WorkflowSection />
         <TemplateShowcaseSection templates={templates} colors={colors} />

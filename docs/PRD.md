@@ -12,7 +12,7 @@
 
 Indicate MVP is a multi-tenant media syndication and publishing platform operated from the central Dashboard at `indicate.web.id`. A single shared deployment serves multiple Indonesian `.web.id` news domains and their regional subdomains. The Dashboard, APIs, background publishing, and Telegram workflows use the same tenant-aware business services so that behavior and authorization do not diverge by entry point.
 
-The MVP starts with exactly three root-domain hostnames supplied through runtime configuration and with the Wonosobo, Magelang, and Semarang regions. The product must remain data- and configuration-driven so it can grow to as many as 100 active root domains and all Central Java regions without tenant-specific applications or deployments.
+Tenant root domains are data-driven with no fixed count — hundreds to thousands are supported from the start — beginning with the Wonosobo, Magelang, and Semarang regions. The product must remain data- and configuration-driven so it can grow without tenant-specific applications or deployments.
 
 ## 2. Product goals
 
@@ -77,7 +77,7 @@ Absent, unauthorized, and cross-organization tenant resources use the same non-d
 
 ### Domain and regional scale
 
-- Runtime configuration supplies exactly three syntactically valid, distinct root-domain hostnames for MVP bootstrap.
+- Persisted domain records supply syntactically valid, distinct root-domain hostnames with no fixed count; bootstrap requires at least one active root domain.
 - Production root hostnames must not be hardcoded in source.
 - Initial regions are Wonosobo, Magelang, and Semarang.
 - Additional Central Java regions use stable identifiers, names, and hostname-safe slugs and require no source-code change.
@@ -291,7 +291,7 @@ No application implementation begins until both documentation artifacts are expl
 4. **Major Publishing:** private R2 media, Publishing Jobs, Upstash dispatch, idempotency, leases/fencing, bounded retries, and Publication Results.
 5. **Major Delivery:** Cloudflare/Vercel hostname activation, exact hostname resolution, shared public template, complete SEO, and hostname-aware caching/invalidation.
 6. **Major Integrations:** Telegram parity, API Key lifecycle, rate limits, replay defense, customer management, and subscriptions.
-7. **Major Release:** production-readiness validation across the three configured root domains and Wonosobo, Magelang, and Semarang.
+7. **Major Release:** production-readiness validation across all active root domains, starting with Wonosobo, Magelang, and Semarang.
 
 Every stage begins only after the preceding stage passes its complete Quality Gate. Any sequencing change requires prior reviewer approval and an Architecture Document update explaining the dependency rationale.
 

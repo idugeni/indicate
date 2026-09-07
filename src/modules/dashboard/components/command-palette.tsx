@@ -46,20 +46,25 @@ const COMMAND_ACTIONS: readonly CommandAction[] = [
   { id: 'auth', label: 'Autentikasi & Sesi Pengguna', category: 'Sistem', href: '/sign-in', icon: Settings },
 ];
 
-export function CommandPalette() {
+export function CommandPalette({ showTrigger = true }: { readonly showTrigger?: boolean }) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const [selectedIndex, setSelectedIndex] = React.useState(0);
-  const [isAppleDevice, setIsAppleDevice] = React.useState(false);
 
   const router = useRouter();
   const listRef = React.useRef<HTMLDivElement>(null);
+  const scrolledOnce = React.useRef(false);
+
+  // Defensive: Base UI scroll-lock can stick when the dialog unmounts
+  // mid-exit (e.g. selecting an item that navigates to another layout).
+  React.useEffect(() => () => {
+    document.documentElement.style.removeProperty('overflow');
+    document.body.style.removeProperty('overflow');
+    document.body.removeAttribute('data-scroll-locked');
+    document.documentElement.removeAttribute('data-scroll-locked');
+  }, []);
 
   React.useEffect(() => {
-    queueMicrotask(() =>
-      setIsAppleDevice(/(Mac|iPhone|iPod|iPad)/i.test(navigator.userAgent))
-    );
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
@@ -113,7 +118,15 @@ export function CommandPalette() {
   };
 
   React.useEffect(() => {
+    if (open) scrolledOnce.current = false;
+  }, [open]);
+
+  React.useEffect(() => {
     if (!listRef.current) return;
+    if (!scrolledOnce.current) {
+      scrolledOnce.current = true;
+      return;
+    }
     const activeElement = listRef.current.querySelector<HTMLElement>('[data-selected="true"]');
     if (activeElement) {
       activeElement.scrollIntoView({ block: 'nearest' });
@@ -125,28 +138,18 @@ export function CommandPalette() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-haspopup="dialog"
-        aria-label="Buka navigasi cepat"
-        className="hidden items-center gap-2 rounded border border-hairline bg-bg-raised px-2.5 py-1.5 font-mono text-xs text-paper-dim transition-colors duration-180 hover:border-hairline-strong hover:bg-bg-raised-2 hover:text-paper md:flex"
-      >
-        <Search className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
-        <span>Navigasi Cepat...</span>
-        <kbd className="ml-1 rounded border border-hairline-strong bg-bg px-1.5 py-0.5 font-mono text-[10px] text-paper-faint">
-          {isAppleDevice ? '⌘K' : 'Ctrl+K'}
-        </kbd>
-      </button>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-haspopup="dialog"
-        aria-label="Buka navigasi cepat"
-        className="inline-flex h-8 w-8 items-center justify-center rounded border border-hairline bg-bg-raised text-paper-dim transition-colors duration-180 hover:border-hairline-strong hover:text-paper md:hidden"
-      >
-        <Search className="h-4 w-4 text-brass" aria-hidden="true" />
-      </button>
+      {showTrigger ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+          aria-label="Buka navigasi cepat"
+          title="Navigasi cepat (Ctrl+K)"
+          className="inline-flex h-9 w-9 items-center justify-center rounded border border-hairline bg-bg-raised text-paper-dim transition-colors duration-180 hover:border-hairline-strong hover:text-paper"
+        >
+          <Search className="h-4 w-4 text-brass" aria-hidden="true" />
+        </button>
+      ) : null}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-xl overflow-hidden rounded border border-hairline bg-bg-raised p-0 shadow-none">

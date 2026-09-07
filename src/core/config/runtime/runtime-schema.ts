@@ -37,6 +37,12 @@ export interface RuntimeConfig {
     readonly uploadTtlSeconds: number;
     readonly readTtlSeconds: number;
     readonly allowedTypes: readonly string[];
+    /** Bucket WORM audit harian; null bila belum dikonfigurasi (export nonaktif). */
+    readonly audit: {
+      readonly bucketName: string;
+      readonly accessKeyId: string;
+      readonly secretAccessKey: string;
+    } | null;
   };
   readonly redis: {
     readonly url: string;
@@ -70,6 +76,6 @@ export interface RuntimeConfig {
   }>>;
   readonly seo: {
     readonly defaultLocale: string;
-    readonly fallbackAssetUrl: string;
+    readonly defaultAssetUrl: string;
   };
 }

@@ -83,4 +83,4 @@ END
 $verify$;--> statement-breakpoint
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (15, 'updated_at_integrity_guard', 'sha256:b980b8f0cf65f832609501512308a36d92a27252b7771a9ab0bc3784ca8b0ca7');
+VALUES (15, 'updated_at_integrity_guard', 'sha256:f2dbac5ae8a410d26f6dd4a55219432416f9b87870eff0b44f9b94de6cedbf39');

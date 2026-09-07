@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import type { DomainEntity, RegionEntity, SiteEntity } from '@/modules/dashboard/components/shared/types';
+import { MediaPolicySection } from '@/modules/dashboard/components/infrastructure/media-policy-section';
 
 export function ConfigurationPanel({
   data,
@@ -83,6 +84,7 @@ export function ConfigurationPanel({
   };
 
   return (
+    <div className="space-y-8">
     <div className="grid gap-x-8 gap-y-8 md:grid-cols-3">
       <section aria-label="Tambah domain" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <div className="flex items-baseline gap-2">
@@ -252,6 +254,8 @@ export function ConfigurationPanel({
           </button>
         </form>
       </section>
+    </div>
+      <MediaPolicySection />
     </div>
   );
 }

@@ -1,0 +1,466 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+
+import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+
+interface ReportRow {
+  readonly id: string;
+  readonly orgId: string;
+  readonly siteId: string | null;
+  readonly articleId: string | null;
+  readonly reporterContact: string;
+  readonly reasonCategory: string;
+  readonly details: string;
+  readonly articleUrl: string | null;
+  readonly status: string;
+  readonly createdAt: string;
+}
+
+interface PrivacyRow {
+  readonly id: string;
+  readonly ticketNumber: string;
+  readonly orgId: string;
+  readonly requestType: string;
+  readonly details: string;
+  readonly status: string;
+  readonly createdAt: string;
+}
+
+interface HoldRow {
+  readonly id: string;
+  readonly orgId: string;
+  readonly reason: string;
+  readonly heldBy: string;
+  readonly createdAt: string;
+  readonly releasedAt: string | null;
+  readonly releasedBy: string | null;
+}
+
+interface ErasureRow {
+  readonly id: string;
+  readonly orgId: string;
+  readonly requestedBy: string;
+  readonly reason: string;
+  readonly status: string;
+  readonly scheduledFor: string;
+  readonly attempts: number;
+  readonly completedAt: string | null;
+  readonly createdAt: string;
+}
+
+async function api(path: string, init?: RequestInit) {
+  const response = await fetch(path, { cache: 'no-store', ...init });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return (await response.json()) as unknown;
+}
+
+const CATEGORY_LABELS: Readonly<Record<string, string>> = {
+  copyright: 'Hak cipta',
+  defamation: 'Pencemaran nama',
+  privacy: 'Privasi',
+  hate: 'Ujaran kebencian',
+  misinformation: 'Misinformasi',
+  other: 'Lainnya',
+};
+
+export function ModerationPanel({ organizationId }: { readonly organizationId: string }) {
+  const [reports, setReports] = useState<readonly ReportRow[]>([]);
+  const [privacy, setPrivacy] = useState<readonly PrivacyRow[]>([]);
+  const [holds, setHolds] = useState<readonly HoldRow[]>([]);
+  const [holdOrgId, setHoldOrgId] = useState('');
+  const [holdReason, setHoldReason] = useState('');
+  const [erasures, setErasures] = useState<readonly ErasureRow[]>([]);
+  const [erasureOrgId, setErasureOrgId] = useState('');
+  const [erasureReason, setErasureReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [decisionNote, setDecisionNote] = useState<{ [id: string]: string }>({});
+  const [privacyType, setPrivacyType] = useState('access');
+  const [privacyDetails, setPrivacyDetails] = useState('');
+
+  const reload = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const [reportBody, privacyBody, holdsBody, erasureBody] = await Promise.all([
+        api('/api/dashboard/moderation?scope=reports') as Promise<readonly ReportRow[]>,
+        api('/api/dashboard/moderation?scope=privacy-requests') as Promise<readonly PrivacyRow[]>,
+        api('/api/dashboard/moderation?scope=holds') as Promise<readonly HoldRow[]>,
+        api('/api/dashboard/moderation?scope=erasure-requests') as Promise<readonly ErasureRow[]>,
+      ]);
+      setReports(reportBody);
+      setPrivacy(privacyBody);
+      setHolds(holdsBody);
+      setErasures(erasureBody);
+    } catch {
+      setError('Gagal memuat data moderasi.');
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(() => reload());
+  }, [reload]);
+
+  const post = useCallback(
+    async (action: string, payload: Record<string, unknown>) => {
+      const body = (await api('/api/dashboard/moderation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, payload }),
+      })) as unknown;
+      return body;
+    },
+    [],
+  );
+
+  const decideReport = async (reportId: string, actionTaken: boolean) => {
+    if (actionTaken && !window.confirm('Tandai laporan ini sudah ditindak (pastikan penarikan konten via alur unpublish sudah dilakukan)?')) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const note = decisionNote[reportId]?.trim() || null;
+      await post('report.decide', { reportId, actionTaken, note });
+      setNotice(actionTaken ? 'Laporan ditandai sudah ditindak.' : 'Laporan ditolak.');
+      await reload();
+    } catch {
+      setError('Keputusan laporan gagal disimpan.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitPrivacy = async () => {
+    if (privacyDetails.trim().length < 10) {
+      setError('Uraian permintaan minimal 10 karakter.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const body = (await post('privacy.submit', { orgId: organizationId, requestType: privacyType, details: privacyDetails.trim() })) as { ticketNumber: string };
+      setNotice(`Permintaan tercatat dengan tiket ${body.ticketNumber}. Target penyelesaian 30 hari kalender.`);
+      setPrivacyDetails('');
+      await reload();
+    } catch {
+      setError('Permintaan data gagal dikirim.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const createHold = async () => {
+    if (holdOrgId.trim() === '' || holdReason.trim().length < 10) {
+      setError('Isi UUID organisasi dan alasan hold (min. 10 karakter).');
+      return;
+    }
+    if (!window.confirm(`Tahan penghapusan untuk org ${holdOrgId.trim()}? Penyapuan dan erasure melewatkan org ini sampai hold dilepas.`)) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await post('hold.create', { organizationId: holdOrgId.trim(), reason: holdReason.trim() });
+      setNotice('Litigation hold aktif.');
+      setHoldOrgId('');
+      setHoldReason('');
+      await reload();
+    } catch {
+      setError('Hold gagal disimpan (mungkin org sudah di-hold).');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const requestErasure = async () => {
+    if (erasureOrgId.trim() === '' || erasureReason.trim().length < 10) {
+      setError('Isi UUID organisasi dan alasan erasure (min. 10 karakter).');
+      return;
+    }
+    if (!window.confirm(`Hapus operasional org ${erasureOrgId.trim()} secara permanen? Arsip legal (audit, invoice, order) dipertahankan. Aksi ini tidak bisa dibatalkan setelah worker berjalan.`)) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await post('erasure.request', {
+        organizationId: erasureOrgId.trim(),
+        reason: erasureReason.trim(),
+        scheduledFor: new Date().toISOString(),
+      });
+      setNotice('Erasure diminta. Worker harian mengeksekusi; org di-hold akan dilewatkan.');
+      setErasureOrgId('');
+      setErasureReason('');
+      await reload();
+    } catch {
+      setError('Permintaan erasure gagal disimpan.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const releaseHold = async (holdId: string) => {    if (!window.confirm('Lepas hold ini? Penghapusan terjadwal berjalan kembali.')) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await post('hold.release', { holdId });
+      setNotice('Hold dilepas.');
+      await reload();
+    } catch {
+      setError('Pelepasan hold gagal.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const decidePrivacy = async (ticket: string, status: string) => {    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await post('privacy.decide', { ticket, status, note: decisionNote[ticket]?.trim() || null });
+      setNotice(`Tiket ${ticket} → ${status}.`);
+      await reload();
+    } catch {
+      setError('Keputusan tiket gagal disimpan.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 items-start gap-x-10 gap-y-8 md:grid-cols-2">
+      <section aria-label="Laporan konten" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6 md:col-span-2">
+        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Laporan konten publik</p>
+        <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
+          SLA peninjauan 1x24 jam (Ketentuan §14). Tindakan penarikan dilakukan lewat alur unpublish yang sudah ada,
+          lalu laporan ditandai di sini sebagai bukti penanganan.
+        </p>
+        {busy ? <p className="m-0 mt-1 font-sans text-xs text-paper-faint">Memuat…</p> : null}
+        {error ? <FormNotice tone="error">{error}</FormNotice> : null}
+        {notice ? <FormNotice tone="success">{notice}</FormNotice> : null}
+        <ul className="m-0 mt-2 grid list-none gap-0 p-0 md:grid-cols-2 md:gap-x-10">
+          {reports.map((report) => (
+            <li key={report.id} className="border-b border-hairline py-3">
+              <p className="m-0 font-sans text-sm font-medium text-paper">
+                {CATEGORY_LABELS[report.reasonCategory] ?? report.reasonCategory} · {report.status}
+              </p>
+              <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">{report.details}</p>
+              <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
+                {report.id} · {report.reporterContact}
+              </p>
+              {report.status === 'received' || report.status === 'under_review' ? (
+                <div className="mt-2 flex flex-col gap-2">
+                  <input
+                    type="text" value={decisionNote[report.id] ?? ''} disabled={busy}
+                    onChange={(event) => setDecisionNote((prev) => ({ ...prev, [report.id]: event.target.value }))}
+                    placeholder="Catatan penanganan (opsional)"
+                    aria-label="Catatan penanganan laporan"
+                    className="h-8 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button" onClick={() => void decideReport(report.id, true)} disabled={busy}
+                      className="h-8 bg-brass px-3 font-sans text-xs font-semibold text-bg hover:bg-brass-soft disabled:opacity-50"
+                    >
+                      Sudah ditindak
+                    </button>
+                    <button
+                      type="button" onClick={() => void decideReport(report.id, false)} disabled={busy}
+                      className="h-8 border border-hairline-strong px-3 font-sans text-xs text-paper hover:border-paper-faint disabled:opacity-50"
+                    >
+                      Tolak
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </li>
+          ))}
+          {reports.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada laporan konten.</li> : null}
+        </ul>
+      </section>
+
+      <section aria-label="Permintaan data" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
+        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Permintaan data baru (DSAR)</p>
+        <div className="mt-3 flex flex-col gap-2">
+          <select
+            value={privacyType} onChange={(event) => setPrivacyType(event.target.value)} disabled={busy}
+            aria-label="Jenis permintaan data"
+            className="h-9 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+          >
+            <option value="access">Akses / salinan data</option>
+            <option value="correction">Koreksi data</option>
+            <option value="deletion">Penghapusan data</option>
+            <option value="portability">Portabilitas data</option>
+            <option value="restriction">Pembatasan pemrosesan</option>
+          </select>
+          <textarea
+            value={privacyDetails} onChange={(event) => setPrivacyDetails(event.target.value)} disabled={busy}
+            placeholder="Uraian spesifik permintaan (min. 10 karakter)"
+            aria-label="Uraian permintaan data" rows={3}
+            className="border border-hairline-strong bg-bg px-3 py-2 font-sans text-xs text-paper"
+          />
+          <button
+            type="button" onClick={submitPrivacy} disabled={busy}
+            className="h-9 bg-brass px-4 font-sans text-xs font-semibold text-bg hover:bg-brass-soft disabled:opacity-50"
+          >
+            Kirim permintaan
+          </button>
+        </div>
+      </section>
+
+      <section aria-label="Tiket permintaan data" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
+        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Tiket DSAR (SLA 30 hari)</p>
+        <ul className="m-0 mt-2 grid list-none gap-0 p-0">
+          {privacy.map((ticket) => (
+            <li key={ticket.id} className="border-b border-hairline py-3 last:border-b-0">
+              <p className="m-0 font-sans text-sm font-medium text-paper">
+                {ticket.ticketNumber} · {ticket.requestType} · {ticket.status}
+              </p>
+              <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">{ticket.details}</p>
+              {ticket.status === 'open' || ticket.status === 'in_progress' ? (
+                <div className="mt-2 flex flex-col gap-2">
+                  <input
+                    type="text" value={decisionNote[ticket.ticketNumber] ?? ''} disabled={busy}
+                    onChange={(event) => setDecisionNote((prev) => ({ ...prev, [ticket.ticketNumber]: event.target.value }))}
+                    placeholder="Catatan penyelesaian (opsional)"
+                    aria-label="Catatan penyelesaian tiket"
+                    className="h-8 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    {(['in_progress', 'fulfilled', 'rejected'] as const).map((status) => (
+                      <button
+                        key={status} type="button" onClick={() => void decidePrivacy(ticket.ticketNumber, status)} disabled={busy}
+                        className="h-8 border border-hairline-strong px-3 font-sans text-xs text-paper hover:border-paper-faint disabled:opacity-50"
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </li>
+          ))}
+          {privacy.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada tiket permintaan data.</li> : null}
+        </ul>
+      </section>
+
+      <section aria-label="Litigation hold" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6 md:col-span-2">
+        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Litigation hold (tunda hapus resmi)</p>
+        <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
+          Org yang di-hold dilewatkan penyapuan retensi dan erasure sampai hold dilepas. Satu hold aktif per org.
+        </p>
+        <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="hold-org-id" className="font-sans text-xs font-medium text-paper-dim">
+              UUID organisasi
+            </label>
+            <input
+              id="hold-org-id" value={holdOrgId} onChange={(event) => setHoldOrgId(event.target.value)} disabled={busy}
+              placeholder="UUID organisasi…" spellCheck={false}
+              className="h-9 border border-hairline-strong bg-bg px-3 font-mono text-xs text-paper"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="hold-reason" className="font-sans text-xs font-medium text-paper-dim">
+              Alasan perkara (min. 10 karakter)
+            </label>
+            <input
+              id="hold-reason" value={holdReason} onChange={(event) => setHoldReason(event.target.value)} disabled={busy}
+              placeholder="Perkara No. … / permintaan aparat …"
+              className="h-9 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              type="button" onClick={() => void createHold()} disabled={busy}
+              className="h-9 bg-brass px-4 font-sans text-xs font-semibold text-bg hover:bg-brass-soft disabled:opacity-50"
+            >
+              Tahan hapus
+            </button>
+          </div>
+        </div>
+        <ul className="m-0 mt-2 grid list-none gap-0 p-0 md:grid-cols-2 md:gap-x-10">
+          {holds.map((hold) => (
+            <li key={hold.id} className="border-b border-hairline py-3">
+              <p className="m-0 font-sans text-sm font-medium text-paper">
+                {hold.releasedAt === null ? 'Aktif' : 'Dilepas'} · {hold.orgId}
+              </p>
+              <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">{hold.reason}</p>
+              <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
+                {hold.id} · {hold.createdAt}
+              </p>
+              {hold.releasedAt === null ? (
+                <div className="mt-2">
+                  <button
+                    type="button" onClick={() => void releaseHold(hold.id)} disabled={busy}
+                    className="h-8 border border-hairline-strong px-3 font-sans text-xs text-paper hover:border-paper-faint disabled:opacity-50"
+                  >
+                    Lepas hold
+                  </button>
+                </div>
+              ) : null}
+            </li>
+          ))}
+          {holds.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada hold.</li> : null}
+        </ul>
+      </section>
+
+      <section aria-label="Erasure organisasi" className="rounded-lg border border-error/60 bg-bg-raised p-5 sm:p-6 md:col-span-2">
+        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Erasure organisasi penuh</p>
+        <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
+          Hapus permanen data operasional + anonimkan PII anggota. Arsip legal (audit, invoice, order,
+          langganan) dipertahankan; org menjadi archived. Org di-hold atau org platform ditolak worker.
+        </p>
+        <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="erasure-org-id" className="font-sans text-xs font-medium text-paper-dim">
+              UUID organisasi
+            </label>
+            <input
+              id="erasure-org-id" value={erasureOrgId} onChange={(event) => setErasureOrgId(event.target.value)} disabled={busy}
+              placeholder="UUID organisasi…" spellCheck={false}
+              className="h-9 border border-hairline-strong bg-bg px-3 font-mono text-xs text-paper"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="erasure-reason" className="font-sans text-xs font-medium text-paper-dim">
+              Alasan (min. 10 karakter)
+            </label>
+            <input
+              id="erasure-reason" value={erasureReason} onChange={(event) => setErasureReason(event.target.value)} disabled={busy}
+              placeholder="Terminasi + retensi terpenuhi …"
+              className="h-9 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              type="button" onClick={() => void requestErasure()} disabled={busy}
+              className="h-9 border border-error px-4 font-sans text-xs font-semibold text-error hover:border-error disabled:opacity-50"
+            >
+              Minta erasure
+            </button>
+          </div>
+        </div>
+        <ul className="m-0 mt-2 grid list-none gap-0 p-0 md:grid-cols-2 md:gap-x-10">
+          {erasures.map((row) => (
+            <li key={row.id} className="border-b border-hairline py-3">
+              <p className="m-0 font-sans text-sm font-medium text-paper">
+                {row.status} · {row.orgId}
+              </p>
+              <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">{row.reason}</p>
+              <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
+                {row.id} · {row.createdAt}
+                {row.completedAt ? ` → ${row.completedAt}` : ''}
+              </p>
+            </li>
+          ))}
+          {erasures.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada permintaan erasure.</li> : null}
+        </ul>
+      </section>
+    </div>
+  );
+}

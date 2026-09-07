@@ -5,7 +5,7 @@ import type { IdentifierGenerator } from '@/core/system/ports';
 import { IntegrationsAccessDeniedError, IntegrationsConflictError, IntegrationsSubscriptionInactiveError, type IntegrationsRepository } from '@/modules/integrations/ports';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
-import { telegramMappingCreateSchema, telegramMappingUpdateSchema } from '@/modules/integrations/schemas';
+import { telegramBroadcastSchema, telegramMappingCreateSchema, telegramMappingUpdateSchema, TELEGRAM_LINK_CONSENT_VERSION } from '@/modules/integrations/schemas';
 
 export class TelegramMappingService {
   constructor(private readonly repository: IntegrationsRepository, private readonly identifiers: IdentifierGenerator, private readonly clock: { now(): Date } = { now: () => new Date() }) {}
@@ -27,11 +27,46 @@ export class TelegramMappingService {
   async create(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<TelegramMappingRecord, PublicErrorEnvelope>> {
     const parsed = telegramMappingCreateSchema.safeParse(raw); if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the Telegram mapping fields.', actor.requestId) };
     if (!this.allowed(actor)) return this.denied(actor, 'telegram_mapping.create.denied');
-    try { return { ok: true, value: await this.repository.createTelegramMapping(actor, { id: this.identifiers.create(), ...parsed.data, now: this.clock.now().toISOString() }) }; } catch (error) { return this.error(actor, 'telegram_mapping.create.denied', error); }
+    try {
+      const now = this.clock.now().toISOString();
+      return {
+        ok: true,
+        value: await this.repository.createTelegramMapping(actor, {
+          id: this.identifiers.create(),
+          userId: parsed.data.userId,
+          roleId: parsed.data.roleId,
+          telegramUserId: parsed.data.telegramUserId,
+          telegramChatId: parsed.data.telegramChatId,
+          consentedAt: now,
+          consentTextVersion: TELEGRAM_LINK_CONSENT_VERSION,
+          ipHash: parsed.data.consentIpHash,
+          now,
+        }),
+      };
+    } catch (error) { return this.error(actor, 'telegram_mapping.create.denied', error); }
   }
   async update(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<TelegramMappingRecord, PublicErrorEnvelope>> {
     const parsed = telegramMappingUpdateSchema.safeParse(raw); if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the Telegram mapping fields.', actor.requestId) };
     if (!this.allowed(actor)) return this.denied(actor, 'telegram_mapping.update.denied');
     try { return { ok: true, value: await this.repository.updateTelegramMapping(actor, { ...parsed.data, now: this.clock.now().toISOString() }) }; } catch (error) { return this.error(actor, 'telegram_mapping.update.denied', error); }
+  }
+
+  /** Broadcast platform: antrekan satu pesan ke semua mapping aktif (worker mengirim berirama). */
+  async broadcast(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<{ readonly enqueued: number }, PublicErrorEnvelope>> {
+    const platform = actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) === true
+      || actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.customerAdmin) === true;
+    if (actor.actorType !== 'user' || !platform) return this.denied(actor, 'telegram.broadcast.denied');
+    const parsed = telegramBroadcastSchema.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the broadcast fields.', actor.requestId) };
+    try {
+      const targets = await this.repository.listBroadcastTargets(actor.actorId);
+      const now = this.clock.now().toISOString();
+      for (const target of targets) {
+        await this.repository.enqueueOutboxMessage({ organizationId: target.organizationId, chatId: target.chatId, text: parsed.data.text, now });
+      }
+      return { ok: true, value: Object.freeze({ enqueued: targets.length }) };
+    } catch (error) {
+      return this.error(actor, 'telegram.broadcast.denied', error);
+    }
   }
 }

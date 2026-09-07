@@ -7,8 +7,6 @@ import { JsonLd } from '@/modules/site/components/network/json-ld';
 import { FaqAccordion, Section, SecondaryCta, toFaqGridItems } from '@/modules/site/components/layout/content';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
-export const dynamic = 'force-dynamic';
-
 const DESCRIPTION = 'Pertanyaan yang paling sering diajukan tentang pengelolaan banyak domain berita dari satu tempat.';
 
 export function generateMetadata(): Metadata {

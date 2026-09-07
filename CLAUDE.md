@@ -4,11 +4,13 @@ Multi-tenant media syndication platform — one central Dashboard operating many
 
 ## Tech stack
 
+Exact pins live in `package.json`; the majors below are the contract.
+
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 16.3.3 (App Router) |
-| UI | React 19.2.8, Tailwind CSS 4, shadcn/ui, Radix |
-| Language | TypeScript 5.9.3 (strict mode) |
+| Framework | Next.js 16 (App Router) |
+| UI | React 19, Tailwind CSS 4, shadcn/ui, Radix |
+| Language | TypeScript 6 (strict mode + `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes`) |
 | Database | PostgreSQL 17 via Supabase, Drizzle ORM |
 | Validation | Zod 4 |
 | Object storage | Cloudflare R2 (private) |
@@ -18,53 +20,43 @@ Multi-tenant media syndication platform — one central Dashboard operating many
 
 ## Architecture
 
-Hexagonal / ports-and-adapters modular monolith. One application, one database, one deployment.
+Hexagonal / ports-and-adapters modular monolith under `src/`. One application, one database, one deployment.
 
 **Dependency direction:**
 
 ```
-app/ → application/ → domain/ + ports/ ← infrastructure/
+src/app/ → src/modules/ → src/core/ + ports ← src/integrations/
+                                              ↘ src/data/ (persistence)
 ```
 
-Application code lives at the repository root (no `src/` wrapper), keeping `app/` purely for routing. Domain folders: `domain/`, `application/`, `ports/`, `infrastructure/`, `db/`, `config/`, `shared/`, `lib/`.
-
-- `domain/` — Pure domain models, value objects, policies. No I/O, no framework imports.
-- `application/` — Tenant-aware use cases and business services. Orchestrates domain and ports.
-- `ports/` — Repository and provider interfaces (TypeScript interfaces only).
-- `infrastructure/` — Concrete adapters: Supabase, R2, Redis, Cloudflare, Vercel, Telegram, system.
-- `db/` — Drizzle schema, client factory, and repository implementations.
-- `config/` — Zod-validated environment schema (`schema.ts`), public config (`public.ts`), runtime context.
-- `shared/` — Cross-cutting: errors, hostname normalization, security utilities, routing, types, UI components.
-- `lib/` — Framework-specific adapters (Supabase SSR client).
+- `src/modules/` — Product capabilities, each with its own `ports.ts` interfaces where applicable. No I/O straight from callers: adapters invoke shared application services.
+- `src/integrations/` — Concrete provider adapters: Supabase, R2 storage, Redis, Cloudflare, Vercel, Telegram. Server-only.
+- `src/core/` — Shared kernel: `config/`, errors, operation context, hostname, observability, routing, security, system, transactions.
+- `src/data/` — Drizzle schema, client factory, repository implementations, migrations.
+- `src/app/` — Purely routing (see below); business logic lives in `src/modules/` and `src/data/`.
 
 ## App Router conventions
+
+All routes live under `src/app/` (there is no root-level `app/`).
 
 ### Route groups
 
 ```
-app/
+src/app/
 ├── (site)/     # Service landing and informational pages (Dashboard host only)
-├── (network)/        # Tenant-facing public content (articles, categories, search)
-├── (auth)/          # Authentication flows (sign-in, callback)
-├── (dashboard)/           # Protected editorial Dashboard
-├── api/             # API routes (health, v1, dashboard, internal, public, webhooks)
-├── _composition/    # Shared composition roots (cross-group)
-└── _lib/            # Shared route-specific utilities
+├── (network)/  # Tenant-facing public content (articles, categories, search)
+├── (auth)/     # Authentication flows (sign-in, callback)
+├── (dashboard)/# Protected editorial Dashboard
+├── api/        # API routes (health, v1, dashboard, internal, network, webhooks)
+├── domain-pending/  # Activation-pending probe route
+├── llms.txt/ | robots.txt/ | rss.xml/ | sitemap.xml/  # Machine-readable surfaces
+├── manifest.ts # PWA manifest
+└── page.tsx | layout.tsx | globals.css | error.tsx | global-error.tsx | not-found.tsx | opengraph-image.tsx
 ```
 
-Route groups do not affect URL paths. `(site)/pricing/page.tsx` serves `/pricing`.
+Route groups do not affect URL paths. `src/app/(site)/pricing/page.tsx` serves `/pricing`.
 
-### Private folders
-
-Underscore-prefixed folders are excluded from routing:
-
-- `_components/` — Route-group-specific React components
-- `_composition/` — Dependency injection / service wiring per group
-- `_lib/` — Group-specific utilities and guards
-
-### Composition roots
-
-Each route group may have its own `_composition/` directory wiring services for that concern. Shared compositions used across groups live in `app/_composition/`.
+There are no `_composition/`, `_lib/`, or `_components/` group folders. Services are wired directly in route handlers via shared modules — do not invent underscore-prefixed composition roots without updating this doc.
 
 ### Convention files per segment
 
@@ -93,21 +85,21 @@ Configured in `tsconfig.json`:
 
 ## Import boundaries
 
-- `src/modules/` encapsulates product capabilities (`auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `persisted-config`, `publishing`, `site`); each module exposes a public entry via `index.ts`.
+- `src/modules/` encapsulates product capabilities (`auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `persisted-config`, `publishing`, `site`). Only `dashboard`, `delivery`, and `integrations` currently expose a barrel `index.ts` — import every other module by file path (e.g. `@/modules/publishing/publication-policy`), never by bare module specifier.
 - `src/integrations/` holds provider adapters (`supabase`, `storage`, `redis`, `telegram`, `cloudflare`, `vercel`) and stays server-only.
 - `src/core/` holds the shared kernel (`config/`, errors, operation context, hostname, observability, routing, security, system, transactions).
 - `src/app/` handles Next.js App Router concerns only and delegates all business logic to `src/modules/` and `src/data/`.
 
 ## Multi-tenant routing
 
-`proxy.ts` (Next.js 16 proxy convention) performs hostname-based request routing:
+`proxy.ts` at the repo root (Next.js 16 proxy convention) performs hostname-based request routing:
 
 - **Dashboard host** → control-plane pages and API
 - **API host** → v1 API surface
 - **Webhook host** → webhook endpoints
 - **Public tenant hosts** → exact-match hostname resolution to one Site
 
-Every tenant operation resolves exactly one Organization. Public reads resolve Organization and Site from one exact normalized hostname. No fallback tenant exists.
+Every tenant operation resolves exactly one Organization. Public reads resolve Organization and Site from one exact normalized hostname. No fallback tenant exists. Exception: a one-label suffix check applies only when `APP_ENVIRONMENT=test` outside the production edge (`proxy.ts`). Denials are non-disclosing (`deny()` → opaque 404/400 + `noindex`), with platform security headers (CSP/HSTS) applied at the edge.
 
 ## Server-only enforcement
 
@@ -115,7 +107,7 @@ Server-side modules import `server-only` at the top. The `server-only` npm packa
 
 ## UI components
 
-shadcn/ui components live in `src/components/ui/`. Config in `components.json` (aliases point to `@/components/ui` and `@/ui/cn`).
+shadcn/ui components live in `src/components/ui/`. Config in `components.json` (aliases: `components` → `@/components`, `utils` → `@/ui/cn`, `ui` → `@/components/ui`, `lib` → `@/core`, `hooks` → `@/ui/hooks`).
 
 ## Commands
 
@@ -128,24 +120,26 @@ shadcn/ui components live in `src/components/ui/`. Config in `components.json` (
 | `npm run start` | Serve production build |
 | `npm run typecheck` | TypeScript without emit |
 | `npm run lint` | ESLint (max-warnings=0) |
+| `npm run audit:production` | `npm audit` for production deps at high severity |
 
 ### Database
 
-Migrations in `src/data/migrations/` are applied manually in filename order against `DATABASE_DIRECT_URL`; there are no `db:*` npm scripts. Verify via `GET /api/health`.
+Migrations in `src/data/migrations/` are applied manually in filename order against `DATABASE_DIRECT_URL`; there are no `db:*` npm scripts. Verify via `GET /api/health` (reports configuration validity and the Postgres snapshot version; the fail-closed schema-version gate is evaluated at runtime-context initialization, not in the handler).
 
 ## Database
 
 - **ORM:** Drizzle with PostgreSQL dialect
-- **Schema:** `src/data/schema/` (editorial, identity, operations, runtime-config)
-- **Migrations:** `src/data/migrations/`, forward-only, hand-written SQL
-- **Client:** Singleton via `src/data/client.ts`, pooled URL for runtime, direct URL for migrations
+- **Schema:** `src/data/schema/` (billing, content, editorial, identity, operations, runtime-config)
+- **Migrations:** `src/data/migrations/`, forward-only SQL with Drizzle-kit metadata in `meta/`
+- **Client:** factory `createRuntimeDatabase()` in `src/data/client.ts` (pooled URL, `prepare: false`); singleton ownership lives in `src/core/config/runtime/runtime-context.ts`
 
 ## Configuration
 
-- **Environment schema:** `src/core/config/runtime/runtime-schema.ts` — Zod-validated, all required values fail-closed
-- **Public config:** `src/core/config/public-config.ts` — browser-safe subset
-- **Runtime context:** `src/core/config/runtime/runtime-context.ts` — registered via `instrumentation.ts`
-- **Contract:** `.env.example` — authoritative for currently implemented environment variables
+- **Environment schema:** `src/core/config/bootstrap/bootstrap-schema.ts` — Zod-validated, all required values fail-closed (`APP_ENVIRONMENT` is authoritative; `SCHEMA_GATE_MODE` must be `live` in production)
+- **Assembled config shape:** `src/core/config/runtime/runtime-schema.ts` — plain `RuntimeConfig` interface combining bootstrap env and the Postgres runtime snapshot; it does not parse env itself
+- **Public config:** `src/core/config/public-config.ts` — browser-safe subset (`NEXT_PUBLIC_*` only)
+- **Runtime context:** `src/core/config/runtime/runtime-context.ts` — single-flight init, registered via root `instrumentation.ts`
+- **Contract:** `.env.example` — authoritative for bootstrap environment variables (`DATABASE_POOL_URL` for runtime, `DATABASE_DIRECT_URL` for migrations)
 
 ## File naming
 
@@ -164,7 +158,7 @@ Migrations in `src/data/migrations/` are applied manually in filename order agai
 
 ## Design system
 
-All visual decisions follow `DESIGN.md`. Dark indigo control-room aesthetic, brass accent, Fraunces + IBM Plex type system. See `DESIGN.md` for tokens, components, and anti-slop rules.
+All visual decisions follow `docs/DESIGN.md`. Dark indigo control-room aesthetic, brass accent, Fraunces + IBM Plex type system. See `docs/DESIGN.md` for tokens, components, and anti-slop rules.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

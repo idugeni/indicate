@@ -93,10 +93,10 @@ export interface PersistedSiteSettings {
   readonly seoRobotsDirective: 'index,follow' | 'noindex,nofollow';
   readonly seoOpenGraphSiteName: string;
   readonly seoSchemaVersion: number;
-  readonly fallbackMediaId: string | null;
-  readonly fallbackMediaObjectKey: string | null;
-  readonly fallbackMediaState: 'active' | string;
-  readonly fallbackMediaOrganizationId: string | null;
+  readonly defaultMediaId: string | null;
+  readonly defaultMediaObjectKey: string | null;
+  readonly defaultMediaState: 'active' | string;
+  readonly defaultMediaOrganizationId: string | null;
   readonly version: number;
 }
 

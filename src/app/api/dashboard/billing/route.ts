@@ -20,7 +20,7 @@ import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope 
 import type { Result } from '@/core/result';
 
 const getSchema = z.object({
-  scope: z.enum(['packages', 'orders', 'pending', 'proof-view', 'subscription-state']),
+  scope: z.enum(['packages', 'orders', 'pending', 'active-orders', 'leads', 'proof-view', 'subscription-state']),
   orderId: z.uuid().optional(),
   organizationId: z.uuid().optional(),
 });
@@ -98,7 +98,9 @@ async function handleGET(request: Request) {
       const scope = parsed.data.scope;
       const result = scope === 'orders' ? await service.myOrders(session.actor)
         : scope === 'pending' ? await service.pendingOrders(session.actor)
-          : scope === 'proof-view' && parsed.data.orderId !== undefined ? await service.proofViewUrl(session.actor, parsed.data.orderId)
+          : scope === 'active-orders' ? await service.activeOrders(session.actor)
+          : scope === 'leads' ? await service.enterpriseLeads(session.actor)
+            : scope === 'proof-view' && parsed.data.orderId !== undefined ? await service.proofViewUrl(session.actor, parsed.data.orderId)
             : scope === 'subscription-state' && parsed.data.organizationId !== undefined ? await service.subscriptionState(session.actor, parsed.data.organizationId)
               : { ok: false as const, error: createPublicError('INVALID_INPUT', 'Invalid billing query.', requestId) };
       return result.ok ? NextResponse.json(result.value) : response(result.error);
@@ -122,6 +124,7 @@ async function handlePOST(request: Request) {
         'proof.authorize': (payload) => service.authorizeProofUpload(session.actor, payload),
         'proof.submit': (payload) => service.submitProof(session.actor, payload),
         'order.decide': (payload) => service.decideOrder(session.actor, payload),
+        'order.refund': (payload) => service.refundOrder(session.actor, payload),
         'invite.create': (payload) => service.createInvitation(session.actor, payload),
         'invite.redeem': (payload) => service.redeemInvitation(session.actor, payload),
       };

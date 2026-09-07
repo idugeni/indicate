@@ -2,6 +2,7 @@
   "name": "indicate",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "description": "Indicate adalah platform sindikasi media multi-tenant terpusat: satu ruang redaksi untuk mengelola ratusan portal berita di banyak domain, region, dan subdomain. Redaksi menulis satu artikel lalu menerbitkannya ke banyak publisher dan wilayah sekaligus, masing-masing dengan domain, konfigurasi, SEO, varian konten, dan status publikasi sendiri. Dilengkapi penerbitan antrean terisolasi per-target (retry, unpublish, bulk), resolusi hostname berbasis database, isolasi cache dan SEO per-host, dashboard multi-organisasi dengan RBAC, integrasi Telegram dan API key, serta jejak audit hanya-tambah.",
   "author": {
@@ -41,8 +42,8 @@
     "audit:production": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1126.0",
-    "@aws-sdk/s3-request-presigner": "^3.1126.0",
+    "@aws-sdk/client-s3": "^3.1127.0",
+    "@aws-sdk/s3-request-presigner": "^3.1127.0",
     "@base-ui/react": "^1.8.0",
     "@radix-ui/react-accordion": "^1.2.20",
     "@radix-ui/react-alert-dialog": "^1.1.23",
@@ -107,10 +108,10 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "drizzle-kit": "^0.31.10",
-    "eslint": "^10.9.1",
+    "eslint": "^10.10.0",
     "eslint-config-next": "^16.3.4",
     "postcss": "^8.5.28",
     "tailwindcss": "4.3.3",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   }
 }

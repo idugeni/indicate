@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { FaGoogle } from 'react-icons/fa6';
 
 import { Button } from '@/components/ui/button';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
@@ -24,7 +23,9 @@ export function GoogleButton() {
 
   return (
     <Button type="button" variant="outline" size="lg" onClick={() => void handleGoogle()} disabled={busy} className="w-full justify-center">
-      <FaGoogle className="h-4 w-4" aria-hidden="true" />
+      <span aria-hidden="true" className="flex h-4 w-4 items-center justify-center font-sans text-sm font-bold">
+        G
+      </span>
       {busy ? 'Membuka Google...' : 'Lanjutkan dengan Google'}
     </Button>
   );

@@ -10,7 +10,10 @@ import { customerCreateSchema, customerUpdateSchema, subscriptionUpdateSchema } 
 
 export class CustomerService {
   constructor(private readonly repository: IntegrationsRepository, private readonly identifiers: IdentifierGenerator, private readonly clock: { now(): Date } = { now: () => new Date() }) {}
-  private platform(actor: AuthorizedTenantActorContext): boolean { return actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.customerAdmin) ?? false; }
+  private platform(actor: AuthorizedTenantActorContext): boolean {
+    return actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) === true
+      || actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.customerAdmin) === true;
+  }
   private async denied(actor: AuthorizedTenantActorContext, action: string, targetType: string): Promise<Result<never, PublicErrorEnvelope>> {
     try { await this.repository.recordDenial(actor, action, targetType, this.clock.now().toISOString()); } catch { /* denial remains non-disclosing if audit persistence is unavailable */ }
     return { ok: false, error: createNonDisclosingDenial(actor.requestId) };

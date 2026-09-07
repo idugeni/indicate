@@ -14,8 +14,6 @@ import {
 } from '@/modules/site/components/layout/content';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
-export const dynamic = 'force-dynamic';
-
 const DESCRIPTION =
   'Kami membangun Indicate karena lelah melihat redaksi kecil membayar mahal untuk sistem yang rumit. Satu ruang redaksi, banyak portal, terima beres.';
 

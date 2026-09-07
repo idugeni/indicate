@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { PricingCards } from '@/modules/site/components/pricing/pricing-cards';
+import { LeadForm } from '@/modules/site/components/pricing/lead-form';
 import { siteMetadata } from '@/ui/site/metadata-guard';
 import { loadPricingPackages } from '@/modules/site/components/pricing/pricing-server';
 import { CompareTable } from '@/modules/site/components/pricing/compare-table';
@@ -16,8 +17,6 @@ import {
   withIcons,
 } from '@/modules/site/components/layout/content';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
-
-export const dynamic = 'force-dynamic';
 
 const DESCRIPTION =
   'Pilih paket sesuai besarnya jaringan berita Anda. Semua paket terima beres — website langsung tayang, tinggal dipakai menulis.';
@@ -56,6 +55,13 @@ export default async function HargaPage() {
       </Section>
       <Section title="Jaminan kami" description="Komitmen yang tertulis, bukan sekadar janji." eyebrow="Jaminan" tone="band">
         <FeatureGrid items={withIcons(GUARANTEES, GUARANTEE_ICONS)} columns={2} />
+      </Section>
+      <Section
+        title="Butuh Enterprise?"
+        description="Ceritakan kebutuhan (jumlah domain, wilayah, jadwal). Kami menghubungi maksimal 1x24 jam hari kerja."
+        eyebrow="Kontak Enterprise"
+      >
+        <LeadForm />
       </Section>
       <Section
         title="Masih ragu?"

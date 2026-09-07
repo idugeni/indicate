@@ -17,6 +17,18 @@ export function objectKeyPrefix(owner: MediaOwner): string {
   return 'assets/';
 }
 
+/**
+ * Derives the listing-thumbnail key from a full object key by inserting a
+ * `-thumb` infix before the extension. Deterministic: the server derives it
+ * from the reserved key and never trusts a client-supplied thumb key.
+ */
+export function buildThumbObjectKey(objectKey: string): string {
+  const extension = EXTENSION_PATTERN.exec(objectKey)?.[1];
+  const suffix = extension === undefined ? '' : `.${extension}`;
+  const base = extension === undefined ? objectKey : objectKey.slice(0, -(extension.length + 1));
+  return `${base}-thumb${suffix}`;
+}
+
 export function buildStructuredObjectKey(owner: MediaOwner, filename: string, collisionToken: string): string {
   const normalizedToken = collisionToken.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 64);
   if (normalizedToken.length < 12) throw new Error('Collision token must contain at least 12 safe characters.');

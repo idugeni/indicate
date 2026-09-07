@@ -1,12 +1,13 @@
 import type { ActorContext } from '@/core/operation-context';
-import type { OrderRecord, PackageRecord, PendingOrderRecord, ProofUploadAuthorization } from '@/modules/billing/models';
+import type { ActiveOrderRecord, EnterpriseLeadRecord, OrderRecord, PackageRecord, PendingOrderRecord, ProofUploadAuthorization } from '@/modules/billing/models';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import type { ObjectStoragePort } from '@/integrations/storage/ports';
 import { BillingAccessDeniedError, BillingConflictError, type BillingRepository } from '@/modules/billing/ports';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
-import { inviteCreateSchema, inviteRedeemSchema, orderCreateSchema, orderDecideSchema, proofAuthorizeSchema, proofSubmitSchema } from '@/modules/billing/schemas';
+import { inviteCreateSchema, inviteRedeemSchema, leadSubmitSchema, orderCreateSchema, orderDecideSchema, orderRefundSchema, proofAuthorizeSchema, proofSubmitSchema, LEAD_CONSENT_TEXT_VERSION } from '@/modules/billing/schemas';
+import { TERMS_VERSION } from '@/ui/site/marketing-content';
 
 export interface ProofUploadPolicy {
   readonly allowedTypes: readonly string[];
@@ -70,9 +71,13 @@ export class BillingService {
     if (!this.userActor(actor)) return this.denied(actor.requestId);
     const parsed = orderCreateSchema.safeParse(raw);
     if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the order fields.', actor.requestId) };
+    // Clickwrap: tolak versi Terms basi agar bukti persetujuan selalu mengikat versi berlaku.
+    if (parsed.data.termsVersion !== TERMS_VERSION) {
+      return { ok: false, error: createPublicError('INVALID_INPUT', 'Please accept the current Terms version.', actor.requestId) };
+    }
     try {
       const now = this.clock.now().toISOString();
-      return { ok: true, value: await this.repository.createOrder(actor, { packageId: parsed.data.packageId, orgId: parsed.data.orgId, requestId: actor.requestId, now }) };
+      return { ok: true, value: await this.repository.createOrder(actor, { packageId: parsed.data.packageId, orgId: parsed.data.orgId, requestId: actor.requestId, now, termsVersion: parsed.data.termsVersion }) };
     } catch (error) {
       return this.error(actor.requestId, 'order.create', error);
     }
@@ -132,6 +137,15 @@ export class BillingService {
     }
   }
 
+  async enterpriseLeads(actor: ActorContext): Promise<Result<readonly EnterpriseLeadRecord[], PublicErrorEnvelope>> {
+    if (!this.userActor(actor) || !this.platform(actor)) return this.denied(actor.requestId);
+    try {
+      return { ok: true, value: await this.repository.listEnterpriseLeads(actor) };
+    } catch (error) {
+      return this.error(actor.requestId, 'lead.list', error);
+    }
+  }
+
   async decideOrder(actor: ActorContext, raw: unknown): Promise<Result<OrderRecord, PublicErrorEnvelope>> {
     if (!this.userActor(actor) || !this.platform(actor)) return this.denied(actor.requestId);
     const parsed = orderDecideSchema.safeParse(raw);
@@ -141,6 +155,27 @@ export class BillingService {
       return { ok: true, value: await this.repository.decideOrder(actor, { orderId: parsed.data.orderId, approve: parsed.data.approve, orgId: parsed.data.orgId, requestId: actor.requestId, now }) };
     } catch (error) {
       return this.error(actor.requestId, 'order.decide', error);
+    }
+  }
+
+  async activeOrders(actor: ActorContext): Promise<Result<readonly ActiveOrderRecord[], PublicErrorEnvelope>> {
+    if (!this.userActor(actor) || !this.platform(actor)) return this.denied(actor.requestId);
+    try {
+      return { ok: true, value: await this.repository.listActiveOrders(actor) };
+    } catch (error) {
+      return this.error(actor.requestId, 'order.active', error);
+    }
+  }
+
+  async refundOrder(actor: ActorContext, raw: unknown): Promise<Result<OrderRecord, PublicErrorEnvelope>> {
+    if (!this.userActor(actor) || !this.platform(actor)) return this.denied(actor.requestId);
+    const parsed = orderRefundSchema.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the refund fields.', actor.requestId) };
+    try {
+      const now = this.clock.now().toISOString();
+      return { ok: true, value: await this.repository.refundOrder(actor, { orderId: parsed.data.orderId, requestId: actor.requestId, now }) };
+    } catch (error) {
+      return this.error(actor.requestId, 'order.refund', error);
     }
   }
 
@@ -193,6 +228,24 @@ export class BillingService {
       return { ok: true, value: Object.freeze({ organizationId: await this.repository.redeemInvitation(actor, { ...parsed.data, requestId: actor.requestId, now }) }) };
     } catch (error) {
       return this.error(actor.requestId, 'invite.redeem', error);
+    }
+  }
+
+  /** Intake lead enterprise publik (tanpa sesi): consent wajib dicentang di formulir. */
+  async submitLead(raw: unknown, requestId: string, ipHash: string): Promise<Result<{ readonly id: string }, PublicErrorEnvelope>> {
+    const parsed = leadSubmitSchema.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the lead fields.', requestId) };
+    try {
+      const now = this.clock.now().toISOString();
+      return {
+        ok: true,
+        value: await this.repository.submitLead({
+          nama: parsed.data.nama, email: parsed.data.email, kebutuhan: parsed.data.kebutuhan,
+          consentedAt: now, consentTextVersion: LEAD_CONSENT_TEXT_VERSION, ipHash,
+        }),
+      };
+    } catch (error) {
+      return this.error(requestId, 'lead.submit', error);
     }
   }
 }

@@ -17,8 +17,6 @@ import {
 } from '@/modules/site/components/layout/content';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
-export const dynamic = 'force-dynamic';
-
 const DESCRIPTION =
   'Semua yang didapat di tiap paket: website siap tayang, redaksi terpusat, penerbitan multi-situs, dan pendampingan manusia.';
 

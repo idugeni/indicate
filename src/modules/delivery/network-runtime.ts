@@ -1,18 +1,45 @@
 import 'server-only';
 import type { Metadata } from 'next';
+import { cacheLife, cacheTag } from 'next/cache';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { buildSeoDocument, indexableRobots, nonIndexableRobots, tenantFavicon } from '@/modules/site/seo';
-import type { NetworkContentQuery, NetworkSiteData } from '@/modules/delivery/models';
+import type { NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
 import { deliveryComposition } from '@/modules/delivery';
+
+/**
+ * Konten tenant per-host di Next cache. Tag memakai kosakata yang sama dengan
+ * `planInvalidation()` (`host:`/`site:`/`org:`) sehingga dispatcher invalidasi
+ * yang sudah ada (publish/unpublish/media/hostname) fan-out otomatis tanpa
+ * perubahan dispatcher. Key cache mencakup context + query + path + locale.
+ */
+async function loadCachedNetworkSite(
+  context: ResolvedSiteContext,
+  query: NetworkContentQuery,
+  path: string,
+  locale: string,
+): Promise<NetworkSiteData | null> {
+  'use cache';
+  cacheLife('minutes');
+  cacheTag(`host:${context.normalizedHostname}`, `site:${context.siteId}`, `org:${context.organizationId}`);
+  const { content } = await deliveryComposition();
+  return content.load(context, query, { path, locale });
+}
 
 export async function resolveNetworkSite(query: NetworkContentQuery = {}, path = '/'): Promise<NetworkSiteData> {
   const requestHeaders = await headers();
-  const { resolver, content, config } = await deliveryComposition();
-  const classification = await resolver.classify(requestHeaders.get('host'));
+  const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host');
+  const { resolver, config } = await deliveryComposition();
+  const classification = await resolver.classify(host);
   if (classification.kind === 'ambiguous') throw new Error('AMBIGUOUS_PUBLIC_HOST_CONFIGURATION');
   if (classification.kind !== 'site') notFound();
-  const site = await content.load(classification.context, query, { path, locale: config.seo.defaultLocale });
+  // Sanitasi di sini agar key cache stabil (load internal memakai aturan yang sama).
+  const sanitized: NetworkContentQuery = {
+    ...(query.articleSlug === undefined ? {} : { articleSlug: query.articleSlug.trim().toLowerCase() }),
+    ...(query.categorySlug === undefined ? {} : { categorySlug: query.categorySlug.trim().toLowerCase() }),
+    ...(query.search === undefined || query.search.trim() === '' ? {} : { search: query.search.trim().slice(0, 120) }),
+  };
+  const site = await loadCachedNetworkSite(classification.context, sanitized, path, config.seo.defaultLocale);
   if (site === null) notFound();
   return site;
 }

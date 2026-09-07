@@ -137,7 +137,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.mediaManage); await this.enforceWritableSubscription(transaction, actor);
       const reservations = await transaction.select().from(mediaKeyReservations).where(and(eq(mediaKeyReservations.organizationId, actor.organizationId), eq(mediaKeyReservations.id, input.reservationId), eq(mediaKeyReservations.status, 'reserved'), gt(mediaKeyReservations.expiresAt, sql`clock_timestamp()`))).limit(1).for('update');
       const reservation = reservations[0]; if (reservation === undefined) throw new PublishingAccessDeniedError();
-      const rows = await transaction.insert(media).values({ organizationId: actor.organizationId, id: input.mediaId, objectKey: reservation.objectKey, purpose: reservation.purpose, mediaType: input.mediaType, sizeBytes: input.sizeBytes, checksum: input.checksum, ...getOwnerColumns(mapOwnerFromRow(reservation)), state: 'active', createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning();
+      const rows = await transaction.insert(media).values({ organizationId: actor.organizationId, id: input.mediaId, objectKey: reservation.objectKey, purpose: reservation.purpose, mediaType: input.mediaType, sizeBytes: input.sizeBytes, checksum: input.checksum, thumbObjectKey: input.thumbObjectKey, ...getOwnerColumns(mapOwnerFromRow(reservation)), state: 'active', createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning();
       await transaction.update(mediaKeyReservations).set({ status: 'used', updatedAt: new Date(input.now) }).where(and(eq(mediaKeyReservations.organizationId, actor.organizationId), eq(mediaKeyReservations.id, reservation.id)));
       const affected = reservation.siteId !== null ? [reservation.siteId] : reservation.articleId !== null ? (await transaction.select({ siteId: articleSites.siteId }).from(articleSites).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.articleId, reservation.articleId), eq(articleSites.active, true)))).map(({ siteId }) => siteId) : [];
       for (const siteId of new Set(affected)) await this.enqueuePublicInvalidation(transaction, actor.organizationId, siteId, 'media.activated', new Date(input.now), reservation.articleId ?? undefined, input.mediaId);
@@ -162,7 +162,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       if (existing.version !== expectedVersion) throw new PublishingConflictError();
       const rows = await transaction.update(media).set({ state: 'archived', version: existing.version + 1, updatedAt: new Date(now) }).where(and(eq(media.organizationId, actor.organizationId), eq(media.id, mediaId), eq(media.version, existing.version), eq(media.state, 'active'))).returning();
       if (rows.length !== 1) throw new PublishingConflictError();
-      const settingsRefs = await transaction.select({ siteId: siteSettings.siteId }).from(siteSettings).where(and(eq(siteSettings.organizationId, actor.organizationId), or(eq(siteSettings.logoMediaId, mediaId), eq(siteSettings.faviconMediaId, mediaId), eq(siteSettings.fallbackMediaId, mediaId))));
+      const settingsRefs = await transaction.select({ siteId: siteSettings.siteId }).from(siteSettings).where(and(eq(siteSettings.organizationId, actor.organizationId), or(eq(siteSettings.logoMediaId, mediaId), eq(siteSettings.faviconMediaId, mediaId), eq(siteSettings.defaultMediaId, mediaId))));
       const articleReference = existing.articleId === null
         ? eq(articles.leadMediaId, mediaId)
         : or(eq(articles.id, existing.articleId), eq(articles.leadMediaId, mediaId));
@@ -202,7 +202,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       const relations = await transaction.select().from(articleSites).where(and(eq(articleSites.organizationId, context.organizationId), eq(articleSites.siteId, context.siteId), eq(articleSites.active, true)));
       const articleRows = await transaction.select({ id: articles.id, status: articles.status, leadMediaId: articles.leadMediaId }).from(articles).where(eq(articles.organizationId, context.organizationId));
       const asset = mapMedia(mediaRows[0]);
-      const site = { id: siteRows[0].site.id, organizationId: context.organizationId, active: true, normalizedHostname: siteRows[0].site.normalizedHostname, settingsMediaIds: settings[0] === undefined ? [] : [settings[0].logoMediaId, settings[0].faviconMediaId, settings[0].fallbackMediaId].filter((value): value is string => value !== null) };
+      const site = { id: siteRows[0].site.id, organizationId: context.organizationId, active: true, normalizedHostname: siteRows[0].site.normalizedHostname, settingsMediaIds: settings[0] === undefined ? [] : [settings[0].logoMediaId, settings[0].faviconMediaId, settings[0].defaultMediaId].filter((value): value is string => value !== null) };
       const refs = relations.map((row) => ({ id: row.id, organizationId: row.organizationId, articleId: row.articleId, siteId: row.siteId, active: row.active, state: row.state, publishedUrl: row.publishedUrl, publishedAt: optionalIso(row.publishedAt), version: row.version }));
       const articleRefs = articleRows.map((row) => ({ id: row.id, organizationId: context.organizationId, active: row.status === 'active', leadMediaId: row.leadMediaId }));
       if (!canPublicAccessMedia({ context, media: asset, site, articles: articleRefs, articleSites: refs })) return null;
@@ -550,7 +550,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         transaction.select().from(publicationTransitionReceipts).where(eq(publicationTransitionReceipts.organizationId, organizationId)),
         transaction.select().from(auditLogs).where(eq(auditLogs.organizationId, organizationId)),
       ]);
-      const settingsBySite = new Map(settingsRows.map((row) => [row.siteId, [row.logoMediaId, row.faviconMediaId, row.fallbackMediaId].filter((value): value is string => value !== null)]));
+      const settingsBySite = new Map(settingsRows.map((row) => [row.siteId, [row.logoMediaId, row.faviconMediaId, row.defaultMediaId].filter((value): value is string => value !== null)]));
       return {
         organizationId,
         articles: articleRows.map((row) => ({ id: row.id, organizationId, active: row.status === 'active', leadMediaId: row.leadMediaId })),

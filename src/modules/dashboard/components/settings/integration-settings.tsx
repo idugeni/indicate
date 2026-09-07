@@ -15,8 +15,10 @@ import { Input } from '@/components/ui/input';
 
 export function IntegrationSettings({
   command,
+  isPlatform = false,
 }: {
   readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly isPlatform?: boolean;
 }) {
   const [issuedPlaintext, setIssuedPlaintext] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
@@ -30,6 +32,9 @@ export function IntegrationSettings({
 
   const [isIssuing, startIssueTransition] = useTransition();
   const [isCreatingMapping, startMappingTransition] = useTransition();
+  const [isBroadcasting, startBroadcastTransition] = useTransition();
+  const [broadcastText, setBroadcastText] = useState('');
+  const [broadcastNotice, setBroadcastNotice] = useState<string | null>(null);
 
   const handleCopyKey = async () => {
     if (!issuedPlaintext) return;
@@ -59,7 +64,6 @@ export function IntegrationSettings({
       form.reset();
     });
   };
-
   const handleCreateMapping = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -73,6 +77,16 @@ export function IntegrationSettings({
         telegramChatId: String(formData.get('telegramChatId') ?? '').trim(),
       });
       form.reset();
+    });
+  };
+
+  const handleBroadcast = () => {
+    if (broadcastText.trim().length === 0) return;
+    if (!window.confirm('Kirim broadcast ke SEMUA kanal Telegram aktif? Pesan diantrekan dan dikirim berirama oleh worker.')) return;
+    startBroadcastTransition(async () => {
+      const result = (await command('telegram.broadcast', { text: broadcastText.trim() })) as { readonly enqueued?: number } | null;
+      setBroadcastNotice(`Broadcast diantrekan ke ${result?.enqueued ?? 0} kanal.`);
+      setBroadcastText('');
     });
   };
 
@@ -225,6 +239,35 @@ export function IntegrationSettings({
             <span>Tautkan Kanal Telegram</span>
           </button>
         </form>
+        {isPlatform ? (
+          <div className="mt-5 border-t border-hairline pt-5">
+            <p className="m-0 font-sans text-sm font-semibold text-paper">Broadcast platform</p>
+            <p className="m-0 mt-1 font-sans text-xs text-paper-dim">
+              Satu pesan ke semua kanal aktif. Diantrekan, dikirim berirama worker, retry otomatis bila kena batas.
+            </p>
+            <textarea
+              value={broadcastText}
+              onChange={(event) => setBroadcastText(event.target.value)}
+              disabled={isBroadcasting}
+              rows={3}
+              maxLength={4000}
+              placeholder="Pengumuman untuk semua kanal…"
+              aria-label="Teks broadcast"
+              className="mt-2 w-full border border-hairline-strong bg-bg px-3 py-2 font-sans text-xs text-paper"
+            />
+            {broadcastNotice ? (
+              <p className="m-0 mt-1 font-sans text-xs text-signal">{broadcastNotice}</p>
+            ) : null}
+            <button
+              type="button"
+              onClick={handleBroadcast}
+              disabled={isBroadcasting || broadcastText.trim().length === 0}
+              className="mt-2 inline-flex h-8 items-center justify-center gap-1.5 bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+            >
+              <span>Antrekan broadcast</span>
+            </button>
+          </div>
+        ) : null}
       </SectionCard>
     </div>
   );

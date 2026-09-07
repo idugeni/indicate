@@ -4,6 +4,7 @@ import { useId, useState, useTransition, type FormEvent } from 'react';
 import { Loader2, UploadCloud } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { Input } from '@/components/ui/input';
+import { formatBytes, prepareImageUpload } from '@/modules/publishing/compress-image';
 
 export function MediaForm({
   data,
@@ -38,11 +39,16 @@ export function MediaForm({
 
     startUploadTransition(async () => {
       try {
-        setUploadStatus('Menghitung checksum hash SHA-256...');
-        const buffer = await file.arrayBuffer();
-        const digestBuffer = await crypto.subtle.digest('SHA-256', buffer);
-        const hashArray = Array.from(new Uint8Array(digestBuffer));
-        const checksum = btoa(hashArray.map((b) => String.fromCharCode(b)).join(''));
+        setUploadStatus('Menganalisis & mengompresi gambar di perangkat…');
+        const prepared = await prepareImageUpload(file);
+        const checksum = prepared.checksum;
+        if (prepared.mode === 'compressed') {
+          setUploadStatus(
+            `Terkompresi ${formatBytes(file.size)} → ${formatBytes(prepared.sizeBytes)} (WebP). Membuat reservasi penyimpanan bucket...`,
+          );
+        } else {
+          setUploadStatus('Gambar sudah efisien, lanjut tanpa kompresi ulang...');
+        }
 
         const ownerKind = String(values.get('ownerKind'));
         const ownerId = String(values.get('ownerId'));
@@ -53,20 +59,32 @@ export function MediaForm({
               ? { kind: 'site', siteId: ownerId }
               : { kind: 'organization' };
 
-        setUploadStatus('Membuat reservasi penyimpanan bucket...');
+        const thumbSpec = prepared.thumb === null ? null : {
+          mediaType: 'image/webp' as const,
+          sizeBytes: prepared.thumb.sizeBytes,
+          checksum: prepared.thumb.checksum,
+        };
         const reserved = (await command('media.reserve', {
-          filename: file.name,
-          mediaType: file.type,
-          sizeBytes: file.size,
+          filename: prepared.filename,
+          mediaType: prepared.mediaType,
+          sizeBytes: prepared.sizeBytes,
           checksum,
           purpose: values.get('purpose'),
           owner,
+          ...(thumbSpec === null ? {} : { thumb: thumbSpec }),
         })) as {
           readonly reservationId?: string;
           readonly authorization?: {
             readonly url?: string;
             readonly requiredHeaders?: Record<string, string>;
           };
+          readonly thumb?: {
+            readonly objectKey?: string;
+            readonly authorization?: {
+              readonly url?: string;
+              readonly requiredHeaders?: Record<string, string>;
+            };
+          } | null;
         } | null;
 
         if (
@@ -82,7 +100,7 @@ export function MediaForm({
         const uploadResponse = await fetch(reserved.authorization.url, {
           method: 'PUT',
           headers: reserved.authorization.requiredHeaders,
-          body: file,
+          body: prepared.blob,
         });
 
         if (!uploadResponse.ok) {
@@ -90,8 +108,23 @@ export function MediaForm({
           return;
         }
 
+        // Varian thumb bersifat best-effort: kegagalannya tidak menggagalkan aset utama.
+        let thumbPayload: { readonly sizeBytes: number; readonly checksum: string } | undefined;
+        const thumbAuth = reserved.thumb?.authorization;
+        if (prepared.thumb !== null && thumbAuth?.url !== undefined && thumbAuth.requiredHeaders !== undefined) {
+          setUploadStatus('Mengunggah varian thumb untuk listing…');
+          const thumbResponse = await fetch(thumbAuth.url, {
+            method: 'PUT',
+            headers: thumbAuth.requiredHeaders,
+            body: prepared.thumb.blob,
+          });
+          if (thumbResponse.ok) {
+            thumbPayload = { sizeBytes: prepared.thumb.sizeBytes, checksum: prepared.thumb.checksum };
+          }
+        }
+
         setUploadStatus('Menyelesaikan verifikasi manifest aset...');
-        await command('media.complete', { reservationId: reserved.reservationId });
+        await command('media.complete', thumbPayload === undefined ? { reservationId: reserved.reservationId } : { reservationId: reserved.reservationId, thumb: thumbPayload });
 
         setUploadStatus('Aset media berhasil diverifikasi dan disimpan.');
         form.reset();
@@ -102,7 +135,7 @@ export function MediaForm({
   };
 
   return (
-    <div className="max-w-xl">
+    <div>
       <SectionCard icon={UploadCloud} title="Unggah media" eyebrow="Verifikasi SHA-256">
 
         <form onSubmit={handleUpload} className="space-y-3.5">

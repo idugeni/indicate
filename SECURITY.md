@@ -34,7 +34,7 @@ General bugs without a security impact belong in the public
 
 **Do not open a public issue for a suspected vulnerability.**
 
-Email **officialelsa21@gmail.com** with:
+Email **sancaphenacakra@gmail.com** with:
 
 1. Affected commit SHA or tag, and environment (`APP_ENVIRONMENT`).
 2. Host/route involved (Dashboard host, API host, webhook host, tenant host).

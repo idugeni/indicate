@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 
 import { Container } from '@/modules/site/components/layout/content';
+import { BackToTop } from '@/modules/site/components/layout/back-to-top';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { buildSeoDocument } from '@/modules/site/seo';
 import { JsonLd } from '@/modules/site/components/network/json-ld';
@@ -55,6 +56,7 @@ export function ArticleCard({
           <div className="media-frame aspect-video overflow-hidden rounded-md bg-bg-raised-2">
             {article.imageUrl ? (
               <Image
+                unoptimized
                 src={article.imageUrl}
                 alt={article.title}
                 priority
@@ -111,7 +113,8 @@ export function ArticleCard({
       <div className="media-frame aspect-video overflow-hidden border-b border-hairline bg-bg-raised-2">
         {article.imageUrl ? (
           <Image
-            src={article.imageUrl}
+            unoptimized
+            src={article.thumbnailUrl ?? article.imageUrl}
             alt={article.title}
             loading="lazy"
             className="h-full w-full object-cover"
@@ -210,6 +213,7 @@ export async function NetworkTemplate({
             <div className="network-brand flex items-center gap-3">
               {site.settings.logoUrl ? (
                 <Image
+                  unoptimized
                   src={site.settings.logoUrl}
                   alt=""
                   aria-hidden="true"
@@ -300,6 +304,7 @@ export async function NetworkTemplate({
             </div>
           </Container>
         </footer>
+        <BackToTop />
       </div>
   );
 }
@@ -465,6 +470,7 @@ export function ArticlePage({
         {article.imageUrl ? (
           <div className="aspect-video overflow-hidden border border-hairline bg-bg-raised-2">
             <Image
+              unoptimized
               src={article.imageUrl}
               alt={article.title}
               priority
@@ -483,6 +489,14 @@ export function ArticlePage({
             </p>
           ))}
         </div>
+
+        <p className="m-0 font-sans text-xs leading-relaxed text-paper-faint">
+          Menemukan pelanggaran pada artikel ini?{' '}
+          <Link href={`/report?artikel=${encodeURIComponent(article.slug)}`} className="underline transition-colors duration-180 hover:text-paper">
+            Laporkan konten
+          </Link>{' '}
+          — ditinjau paling lambat 1x24 jam.
+        </p>
 
         <JsonLd schemas={seo.jsonLd} />
       </article>

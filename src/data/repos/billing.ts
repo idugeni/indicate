@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { ActorContext } from '@/core/operation-context';
-import type { BillingOrderStatus, OrderRecord, PackageRecord, PendingOrderRecord } from '@/modules/billing/models';
+import type { ActiveOrderRecord, BillingOrderStatus, EnterpriseLeadRecord, OrderRecord, PackageRecord, PendingOrderRecord } from '@/modules/billing/models';
 import { BillingAccessDeniedError, BillingConflictError, type BillingRepository } from '@/modules/billing/ports';
 import { packages } from '@/data/schema';
 import type * as schema from '@/data/schema';
@@ -53,10 +53,12 @@ export class DrizzleBillingRepository implements BillingRepository {
     try {
       return await this.database.transaction(async (tx) => {
         await this.billingContext(tx, actor);
-        const rows = await tx.execute<{ id: string; package_name: string; plan: string; price_idr: number; status: BillingOrderStatus; org_id: string | null; created_at: Date | string }>(sql`SELECT * FROM indicate_private.billing_order_list_mine(${id}::uuid)`);
+        const rows = await tx.execute<{ id: string; package_name: string; plan: string; price_idr: number; status: BillingOrderStatus; org_id: string | null; terms_version: string | null; terms_accepted_at: Date | string | null; created_at: Date | string }>(sql`SELECT * FROM indicate_private.billing_order_list_mine(${id}::uuid)`);
         return rows.map((row) => Object.freeze({
           id: row.id, packageId: '', packageName: row.package_name, plan: row.plan as OrderRecord['plan'],
-          priceIdr: row.price_idr, status: row.status, orgId: row.org_id, proofUrl: null, createdAt: iso(row.created_at),
+          priceIdr: row.price_idr, status: row.status, orgId: row.org_id, proofUrl: null,
+          termsVersion: row.terms_version, termsAcceptedAt: row.terms_accepted_at === null ? null : iso(row.terms_accepted_at),
+          createdAt: iso(row.created_at),
         }));
       });
     } catch (error) {
@@ -66,24 +68,26 @@ export class DrizzleBillingRepository implements BillingRepository {
   }
 
   private async fetchOrder(tx: Transaction, orderId: string): Promise<OrderRecord> {
-    const rows = await tx.execute<{ id: string; package_id: string; package_name: string; plan: string; price_idr: number; status: BillingOrderStatus; org_id: string | null; proof_url: string | null; created_at: Date | string }>(sql`
-      SELECT o.id, o.package_id, p.name AS package_name, p.plan, p.price_idr, o.status, o.org_id, o.proof_url, o.created_at
+    const rows = await tx.execute<{ id: string; package_id: string; package_name: string; plan: string; price_idr: number; status: BillingOrderStatus; org_id: string | null; proof_url: string | null; terms_version: string | null; terms_accepted_at: Date | string | null; created_at: Date | string }>(sql`
+      SELECT o.id, o.package_id, p.name AS package_name, p.plan, p.price_idr, o.status, o.org_id, o.proof_url, o.terms_version, o.terms_accepted_at, o.created_at
       FROM public.orders o JOIN public.packages p ON p.id = o.package_id WHERE o.id = ${orderId}::uuid LIMIT 1
     `);
     const row = rows[0];
     if (row === undefined) throw new BillingConflictError();
     return Object.freeze({
       id: row.id, packageId: row.package_id, packageName: row.package_name, plan: row.plan as OrderRecord['plan'],
-      priceIdr: row.price_idr, status: row.status, orgId: row.org_id, proofUrl: row.proof_url, createdAt: iso(row.created_at),
+      priceIdr: row.price_idr, status: row.status, orgId: row.org_id, proofUrl: row.proof_url,
+      termsVersion: row.terms_version, termsAcceptedAt: row.terms_accepted_at === null ? null : iso(row.terms_accepted_at),
+      createdAt: iso(row.created_at),
     });
   }
 
-  async createOrder(actor: ActorContext, input: { readonly packageId: string; readonly orgId: string | null; readonly requestId: string; readonly now: string }): Promise<OrderRecord> {
+  async createOrder(actor: ActorContext, input: { readonly packageId: string; readonly orgId: string | null; readonly requestId: string; readonly now: string; readonly termsVersion: string }): Promise<OrderRecord> {
     const { id } = userActor(actor);
     try {
       return await this.database.transaction(async (tx) => {
         await this.billingContext(tx, actor);
-        const created = await tx.execute<{ billing_order_create: string }>(sql`SELECT indicate_private.billing_order_create(${id}::uuid, ${input.requestId}, ${input.packageId}::uuid, ${input.orgId}::uuid, ${input.now}::timestamptz) AS billing_order_create`);
+        const created = await tx.execute<{ billing_order_create: string }>(sql`SELECT indicate_private.billing_order_create(${id}::uuid, ${input.requestId}, ${input.packageId}::uuid, ${input.orgId}::uuid, ${input.termsVersion}, ${input.now}::timestamptz) AS billing_order_create`);
         const orderId = created[0]?.billing_order_create;
         if (orderId === undefined) throw new BillingConflictError();
         return this.fetchOrder(tx, orderId);
@@ -116,14 +120,44 @@ export class DrizzleBillingRepository implements BillingRepository {
     try {
       return await this.database.transaction(async (tx) => {
         await this.billingContext(tx, actor);
-        const rows = await tx.execute<{ id: string; user_email: string; org_id: string | null; package_name: string; plan: string; price_idr: number; proof_url: string | null; created_at: Date | string }>(sql`SELECT * FROM indicate_private.billing_order_list_pending(${id}::uuid)`);
+        const rows = await tx.execute<{ id: string; user_email: string; org_id: string | null; package_name: string; plan: string; price_idr: number; proof_url: string | null; terms_version: string | null; terms_accepted_at: Date | string | null; created_at: Date | string }>(sql`SELECT * FROM indicate_private.billing_order_list_pending(${id}::uuid)`);
         return rows.map((row) => Object.freeze({
           id: row.id, packageId: '', packageName: row.package_name, plan: row.plan as PendingOrderRecord['plan'],
           priceIdr: row.price_idr, status: 'waiting_verification' as const, orgId: row.org_id, proofUrl: row.proof_url,
+          termsVersion: row.terms_version, termsAcceptedAt: row.terms_accepted_at === null ? null : iso(row.terms_accepted_at),
           createdAt: iso(row.created_at), userEmail: row.user_email,
         }));
       });
     } catch (error) {
+      if (deniedViolation(error)) throw new BillingAccessDeniedError();
+      throw error;
+    }
+  }
+
+  async listEnterpriseLeads(actor: ActorContext): Promise<readonly EnterpriseLeadRecord[]> {
+    const { id } = userActor(actor);
+    try {
+      return await this.database.transaction(async (tx) => {
+        await this.billingContext(tx, actor);
+        const rows = await tx.execute<{ id: string; nama: string; email: string; kebutuhan: string; created_at: Date | string }>(sql`SELECT * FROM indicate_private.billing_lead_list(${id}::uuid)`);
+        return rows.map((row) => Object.freeze({
+          id: row.id, nama: row.nama, email: row.email, kebutuhan: row.kebutuhan, createdAt: iso(row.created_at),
+        }));
+      });
+    } catch (error) {
+      if (deniedViolation(error)) throw new BillingAccessDeniedError();
+      throw error;
+    }
+  }
+
+  async submitLead(input: { readonly nama: string; readonly email: string; readonly kebutuhan: string; readonly consentedAt: string; readonly consentTextVersion: string; readonly ipHash: string }): Promise<{ readonly id: string }> {
+    try {
+      const rows = await this.database.execute<{ billing_lead_create: string }>(sql`SELECT indicate_private.billing_lead_create(${input.nama}, ${input.email}, ${input.kebutuhan}, ${input.consentedAt}::timestamptz, ${input.consentTextVersion}, ${input.ipHash}) AS billing_lead_create`);
+      const id = rows[0]?.billing_lead_create;
+      if (id === undefined) throw new BillingConflictError();
+      return Object.freeze({ id });
+    } catch (error) {
+      if (error instanceof BillingConflictError) throw error;
       if (deniedViolation(error)) throw new BillingAccessDeniedError();
       throw error;
     }
@@ -136,6 +170,40 @@ export class DrizzleBillingRepository implements BillingRepository {
         await this.billingContext(tx, actor);
         const updated = await tx.execute<{ billing_order_decide: boolean }>(sql`SELECT indicate_private.billing_order_decide(${id}::uuid, ${input.requestId}, ${input.orderId}::uuid, ${input.approve}, ${input.orgId}::uuid, ${input.now}::timestamptz) AS billing_order_decide`);
         if (updated[0]?.billing_order_decide !== true) throw new BillingConflictError();
+        return this.fetchOrder(tx, input.orderId);
+      });
+    } catch (error) {
+      if (error instanceof BillingConflictError) throw error;
+      if (deniedViolation(error)) throw new BillingAccessDeniedError();
+      throw error;
+    }
+  }
+
+  async listActiveOrders(actor: ActorContext): Promise<readonly ActiveOrderRecord[]> {
+    const { id } = userActor(actor);
+    try {
+      return await this.database.transaction(async (tx) => {
+        await this.billingContext(tx, actor);
+        const rows = await tx.execute<{ id: string; user_email: string; org_id: string | null; package_name: string; plan: string; price_idr: number; created_at: Date | string }>(sql`SELECT * FROM indicate_private.billing_order_list_active(${id}::uuid)`);
+        return rows.map((row) => Object.freeze({
+          id: row.id, packageName: row.package_name, plan: row.plan as ActiveOrderRecord['plan'],
+          priceIdr: row.price_idr, status: 'active' as const, orgId: row.org_id,
+          createdAt: iso(row.created_at), userEmail: row.user_email,
+        }));
+      });
+    } catch (error) {
+      if (deniedViolation(error)) throw new BillingAccessDeniedError();
+      throw error;
+    }
+  }
+
+  async refundOrder(actor: ActorContext, input: { readonly orderId: string; readonly requestId: string; readonly now: string }): Promise<OrderRecord> {
+    const { id } = userActor(actor);
+    try {
+      return await this.database.transaction(async (tx) => {
+        await this.billingContext(tx, actor);
+        const updated = await tx.execute<{ billing_order_refund: boolean }>(sql`SELECT indicate_private.billing_order_refund(${id}::uuid, ${input.requestId}, ${input.orderId}::uuid, ${input.now}::timestamptz) AS billing_order_refund`);
+        if (updated[0]?.billing_order_refund !== true) throw new BillingConflictError();
         return this.fetchOrder(tx, input.orderId);
       });
     } catch (error) {

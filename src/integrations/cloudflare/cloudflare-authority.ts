@@ -28,6 +28,12 @@ export class CloudflareAuthorityAdapter implements CloudflareAuthorityPort {
       ...init,
       headers: { Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/json', ...init?.headers },
     });
+    if (response.status === 429) {
+      // Rate-limit tertinggal di pesan (observability); retry berbatas ditangani
+      // dispatcher invalidasi via failInvalidation, bukan di sini.
+      const retryAfter = response.headers.get('retry-after') ?? 'unknown';
+      throw new Error(`cloudflare_rate_limited:retry_after_${retryAfter}`);
+    }
     if (!response.ok) throw new Error('cloudflare_unavailable');
     const body = (await response.json()) as CloudflareEnvelope<T>;
     if (!body.success) throw new Error(`cloudflare_unavailable${body.errors?.[0]?.code !== undefined ? ':' + body.errors[0].code : ''}`);

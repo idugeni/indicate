@@ -64,6 +64,15 @@ export interface RoleRecord extends VersionedRecord {
   readonly permissions: ReadonlySet<string>;
 }
 
+/**
+ * Bentuk serial JSON peran untuk respons API. Domain memakai `Set`,
+ * yang hilang saat `NextResponse.json` — DTO ini membawa array agar
+ * UI bisa membaca dan mengirim kembali daftar permission apa adanya.
+ */
+export interface RoleListItem extends Omit<RoleRecord, 'permissions'> {
+  readonly permissions: readonly string[];
+}
+
 export interface MembershipRecord extends VersionedRecord {
   readonly userId: string;
   readonly displayName: string;

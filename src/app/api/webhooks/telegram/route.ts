@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 
 import { trustedCloudflareSource } from '@/modules/integrations/trusted-request-boundary';
 import { createProductionIntegrationsContext } from '@/modules/integrations';
@@ -17,7 +17,11 @@ async function handlePOST(request: Request) {
     const limited = await limiter.enforce(limiter.publicKey('telegram-webhook', source), { ...config.rateLimits.webhook, failureMode: 'closed' }, requestId);
     if (!limited.ok) return NextResponse.json(limited.error, { status: status(limited.error), headers: { 'Retry-After': limited.error.error.fields?.retryAfterSeconds?.[0] ?? '1' } });
     const service = production.telegram;
-    const result = await service.handle(request.headers.get('x-telegram-bot-api-secret-token'), await request.json().catch(() => null), requestId);
+    const outcome = await service.handle(request.headers.get('x-telegram-bot-api-secret-token'), await request.json().catch(() => null), requestId);
+    const result = outcome.result;
+    // Balasan chat dikirim setelah respons: outcome sudah durable + replayable,
+    // dan deliverReplies tidak pernah melempar (kegagalan tercatat sebagai warn).
+    if (outcome.pendingReplies.length > 0) after(() => service.deliverReplies(outcome.pendingReplies, requestId));
     return result.ok ? NextResponse.json({ ok: true, result: { reply: result.value.reply }, requestId }) : NextResponse.json(result.error, { status: status(result.error) });
   } finally { await production.close(); }
 }

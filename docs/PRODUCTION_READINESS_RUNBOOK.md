@@ -9,15 +9,21 @@ Cloudflare must remain authoritative for nameservers, DNS, wildcard records, edg
 ## Preconditions
 
 1. Run `npm run typecheck` and `npm run lint` with zero warnings.
-2. Apply all reviewed forward migrations using the direct migration credential. The application schema gate requires version 14 or newer, and this release’s local migration manifest must contain the reviewed 14-migration sequence through `0013_stage7_migration_body_digests` with every full migration-body digest verified.
+2. Apply all reviewed forward migrations using the direct migration credential, in the order recorded by Drizzle's `src/data/migrations/meta/_journal.json`. The fail-closed schema gate compares the applied schema against `migration_gate_events.required_version` during runtime-context initialization (`registerServerRuntime`); a mismatch blocks application activation.
 3. Configure least-privilege production credentials through server-only environment values. Include both the Cloudflare management-plane credential used to inspect R2 privacy and the R2 S3 access-key/secret credentials used by the media data plane and read-only `HeadBucket` readiness probe. Do not place credentials in command arguments, logs, fixtures, reports, or repository files.
-4. Confirm the Telegram webhook and every exact Site hostname are already configured. The readiness command is read-only.
+4. Confirm the Telegram webhook and every exact Site hostname are already configured. The readiness sequence is read-only.
+
+## Owner-gated items (dashboard/provider actions no agent can perform)
+
+- Supabase Dashboard → Auth → enable **Leaked Password Protection** (closes the only security-advisor WARN).
+- Cloudflare R2 WORM audit: bucket `indicate-audit-worm` + lock `worm-indefinite` + `R2_AUDIT_BUCKET_NAME` (production env) selesai 2026-09-07; kredensial utama mencakup bucket ini (token scoped terpisah opsional). Redeploy production sekali agar env terbaca cron 05:00; lalu konfirmasi baris `audit_worm_export` harian di `retention_runs`.
+- Per enterprise deal: sign SOW (from `docs/SOW-TEMPLATE.md`) + DPA (`docs/DPA.md`); confirm Vercel plan capacity for the new domains (PRD §23).
 
 ## Production checks
 
 No readiness automation ships in this tree; perform each check below manually in the production environment with `NODE_ENV=production` and `SCHEMA_GATE_MODE=live`. It validates the complete Runtime Configuration and then checks:
 
-- the 14-entry local forward-migration manifest, full migration-body SHA-256 digests (including content after each self-registration), the exact applied migration sequence, and database schema version 14 or newer;
+- the applied migration sequence against `meta/_journal.json`, the `migration_gate_events.required_version` gate, and the runtime configuration snapshot version (surfaced via `GET /api/health` as `configurationVersion`);
 - Supabase Auth health and PostgreSQL connectivity;
 - the configured R2 bucket’s S3 `HeadBucket` data-plane health using the production media access-key/secret credentials, absence of public custom domains, and disabled managed public domain;
 - Upstash connectivity;
@@ -28,9 +34,15 @@ No readiness automation ships in this tree; perform each check below manually in
 - proxied apex and wildcard CNAME routes and Full (strict) mode;
 - successful HTTPS through Cloudflare for all 12 configured apex/regional Sites;
 - verified exact-domain association with the one Vercel project for all 12 Sites;
-- exact active, Organization-coherent database mappings for all 12 Sites.
+- exact active, Organization-coherent database mappings for all 12 Sites;
+- Cache Components efficacy and isolation: publish/unpublish on one Site completes its `invalidation_tasks` (dispatcher: Next tags + paths + Cloudflare purge + Redis bump) and the change is visible on that Site's portal within the `minutes` cacheLife bound, while an unrelated Site's portal shows no change and no cross-host content;
+- deferred delivery health: Telegram webhook replies arrive after the 200 response (no response held by Bot API latency); only `warn`-level `telegram.reply.deferred_failed` lines — never response failures — are acceptable evidence of downstream slowness;
+- instant navigation smoke: client transitions between control-plane pages and portal listing/detail complete without full reload or layout shift; the header pending dot appears only on genuinely slow transitions;
+- structured data: NewsArticle/Breadcrumb/Organization/WebSite JSON-LD per portal template passes Rich Results/Schema validation with no cross-tenant canonical or URL;
+- platform currency: Vercel project Node.js is 22+ (20.x is rejected for new builds after Oct 2026; repo pins 24 via `.nvmrc`); the `CRON_SECRET` env equals the configured cron secret (Vercel Cron auto-sends it as Bearer auth) and both internal cron routes (`/api/internal/publishing` GET, `/api/internal/delivery/reconcile` GET/POST) respond authenticated-only; the daily `/api/health` keep-alive cron from `vercel.json` is registered (prevents Supabase Free auto-pause — do not remove while on the Free plan);
+- edge protection posture: exactly one layer owns each rule — Vercel Bot Protection/WAF rulesets for portal abuse and Cloudflare Cache Rules (portal pages/feeds, Tiered Cache; never the signed media 307s) — with Cloudflare purge quota verified against publish fan-out volume.
 
-A successful report contains only check names, `passed`, and the category `ready`. A failed report contains stable sanitized categories only. Provider bodies, tokens, signed URLs, database URLs, root identifiers, and internal errors are not emitted. Any unavailable, ambiguous, incomplete, public, mismatched, or unexpected provider response fails the command.
+A successful report contains only check names, `passed`, and the category `ready`. A failed report contains stable sanitized categories only. Provider bodies, tokens, signed URLs, database URLs, root identifiers, and internal errors are not emitted. Any unavailable, ambiguous, incomplete, public, mismatched, or unexpected provider response fails the check.
 
 ## Promotion procedure
 
@@ -62,6 +74,6 @@ After rollback:
 - Provider health proves reachability and the inspected contract at check time; it does not guarantee future availability.
 - Cloudflare DNS and Vercel domain APIs can be eventually consistent. Do not bypass a failure; retry after the persisted activation/reconciliation workflow converges.
 - R2 privacy validation requires Cloudflare API permission to read managed and custom bucket-domain state. The separate read-only S3 `HeadBucket` data-plane probe uses the same R2 access-key/secret credentials configured for production media operations; missing, invalid, or mismatched credentials fail closed.
-- Telegram exposes the webhook URL but not the configured secret token. The command validates the server-side secret contract and exact URL.
+- Telegram exposes the webhook URL but not the configured secret token. Each check validates the server-side secret contract and exact URL.
 - HTTPS checks require a Cloudflare response marker and a successful Site `robots.txt` response. Network restrictions or missing Cloudflare markers fail closed.
-- The command performs no write probe against production PostgreSQL, R2, Redis, Cloudflare, Vercel, or Telegram. Write behavior is out of scope for this read-only command.
+- No check performs a write probe against production PostgreSQL, R2, Redis, Cloudflare, Vercel, or Telegram. Write behavior is out of scope for these read-only checks.

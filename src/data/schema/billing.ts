@@ -19,6 +19,7 @@ export const billingOrderStatus = pgEnum('billing_order_status', [
   'waiting_verification',
   'active',
   'rejected',
+  'refunded',
 ]);
 
 const timestamps = {
@@ -56,6 +57,9 @@ export const orders = pgTable('orders', {
   packageId: uuid('package_id').notNull().references(() => packages.id, { onDelete: 'restrict' }),
   status: billingOrderStatus('status').default('pending_payment').notNull(),
   proofUrl: text('proof_url'),
+  /** Bukti clickwrap Fase B (migrasi v68); NULL = order pra-clickwrap. */
+  termsVersion: text('terms_version'),
+  termsAcceptedAt: timestamp('terms_accepted_at', { withTimezone: true }),
   decidedBy: uuid('decided_by'),
   decidedAt: timestamp('decided_at', { withTimezone: true }),
   ...timestamps,
@@ -82,10 +86,14 @@ export const enterpriseLeads = pgTable('enterprise_leads', {
   nama: text('nama').notNull(),
   email: text('email').notNull(),
   kebutuhan: text('kebutuhan').notNull(),
+  consentedAt: timestamp('consented_at', { withTimezone: true }),
+  consentTextVersion: text('consent_text_version'),
+  ipHash: text('ip_hash'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   index('enterprise_leads_email_idx').on(table.email),
   check('enterprise_leads_bounded', sql`length(${table.nama}) BETWEEN 1 AND 200 AND length(${table.email}) BETWEEN 3 AND 320 AND length(${table.kebutuhan}) BETWEEN 1 AND 4000`),
+  check('enterprise_leads_ip_hash', sql`${table.ipHash} IS NULL OR ${table.ipHash} ~ '^[0-9a-f]{64}$'`),
 ]);
 
 export const orgInvitations = pgTable('org_invitations', {

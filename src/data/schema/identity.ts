@@ -23,6 +23,8 @@ export const subscriptionStatus = pgEnum('subscription_status', ['trialing', 'ac
 export const subscriptionPlan = pgEnum('subscription_plan', ['starter', 'growth', 'pro', 'enterprise']);
 export const apiKeyStatus = pgEnum('api_key_status', ['active', 'revoked', 'expired']);
 export const siteActivationState = pgEnum('site_activation_state', ['inactive', 'pending', 'active', 'failed']);
+export const privacyRequestType = pgEnum('privacy_request_type', ['access', 'correction', 'deletion', 'portability', 'restriction']);
+export const privacyRequestStatus = pgEnum('privacy_request_status', ['open', 'in_progress', 'fulfilled', 'rejected']);
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -236,6 +238,24 @@ export const apiKeys = pgTable('api_keys', {
   check('api_keys_bounded_identity', sql`length(${table.lookupId}) BETWEEN 16 AND 128 AND length(${table.name}) BETWEEN 1 AND 120`),
 ]);
 
+export const privacyRequests = pgTable('privacy_requests', {
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
+  id: uuid('id').primaryKey().defaultRandom(),
+  ticketNumber: text('ticket_number').notNull(),
+  requesterUserId: uuid('requester_user_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
+  requestType: privacyRequestType('request_type').notNull(),
+  details: text('details').notNull(),
+  status: privacyRequestStatus('status').default('open').notNull(),
+  decidedBy: uuid('decided_by'),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  decisionNote: text('decision_note'),
+  ...timestamps,
+}, (table) => [
+  unique('privacy_requests_ticket_unique').on(table.ticketNumber),
+  index('privacy_requests_org_status_idx').on(table.organizationId, table.status),
+  index('privacy_requests_requester_idx').on(table.requesterUserId),
+]);
+
 export const telegramIdentityMappings = pgTable('telegram_identity_mappings', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   id: uuid('id').notNull(),
@@ -245,6 +265,9 @@ export const telegramIdentityMappings = pgTable('telegram_identity_mappings', {
   roleId: uuid('role_id').notNull(),
   status: recordStatus('status').default('active').notNull(),
   version: integer('version').default(1).notNull(),
+  consentedAt: timestamp('consented_at', { withTimezone: true }),
+  consentTextVersion: text('consent_text_version'),
+  ipHash: text('ip_hash'),
   ...timestamps,
 }, (table) => [
   primaryKey({ name: 'telegram_identity_mappings_pk', columns: [table.organizationId, table.id] }),
@@ -253,4 +276,5 @@ export const telegramIdentityMappings = pgTable('telegram_identity_mappings', {
   foreignKey({ name: 'telegram_identity_role_fk', columns: [table.organizationId, table.roleId], foreignColumns: [roles.organizationId, roles.id] }).onDelete('restrict'),
   index('telegram_identity_status_idx').on(table.organizationId, table.status),
   check('telegram_identity_mappings_version_positive', sql`${table.version} > 0`),
+  check('telegram_identity_mappings_ip_hash', sql`${table.ipHash} IS NULL OR ${table.ipHash} ~ '^[0-9a-f]{64}$'`),
 ]);

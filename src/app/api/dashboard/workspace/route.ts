@@ -9,7 +9,7 @@ import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { UuidGenerator } from '@/core/system/uuid-generator';
@@ -30,7 +30,7 @@ const querySchema = z.object({
 });
 const commandSchema = z.object({ organizationId: organizationSchema, action: z.string().min(1).max(100), payload: z.unknown() });
 
-interface ServiceContext { readonly actor: AuthorizedTenantActorContext; readonly service: TenantBusinessService; close(): Promise<void> }
+interface ServiceContext { readonly actor: AuthorizedTenantActorContext; readonly service: TenantBusinessService }
 type ContextResult = ServiceContext | ReturnType<typeof createNonDisclosingDenial>;
 const isContextError = (value: ContextResult): value is ReturnType<typeof createNonDisclosingDenial> => 'error' in value;
 const responseStatus = (error: ReturnType<typeof createNonDisclosingDenial>) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404
@@ -43,27 +43,27 @@ async function contextFor(organizationId: string, requestId: string, headers: He
   const auth = createSupabaseSsrAuthAdapter({ url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey, cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }) });
   const identity = await auth.verifyCookieSession(); if (identity === null) return createNonDisclosingDenial(requestId);
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.bootstrap);
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
   const authorization = new DrizzleAuthorizationRepository(runtime.db);
   const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
-  if (!local.ok) { await runtime.close(); return createNonDisclosingDenial(requestId); }
+  if (!local.ok) return createNonDisclosingDenial(requestId);
   const membership = await authorization.findActiveMembership(organizationId, local.value.id);
   if (membership === null || !membership.roleActive) {
     const deniedActor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(), platformPermissionSet: new Set(), entryPoint: 'dashboard', requestId };
     try { await new DrizzleDashboardRepository(runtime.db).recordDenied(deniedActor, 'dashboard.organization.authorize', 'organization'); }
-    catch { await runtime.close(); return createPublicError('DEPENDENCY_UNAVAILABLE', 'The operation could not be completed.', requestId); }
-    await runtime.close(); return createNonDisclosingDenial(requestId);
+    catch { return createPublicError('DEPENDENCY_UNAVAILABLE', 'The operation could not be completed.', requestId); }
+    return createNonDisclosingDenial(requestId);
   }
   // Platform-only callers need an on_behalf ticket for dashboard surfaces; otherwise deny + audit.
   if (isPlatformOnlyWithoutTicket({ orgPermissionCount: membership.orgPermissions.size, platformPermissionCount: membership.platformPermissions.size, headers })) {
     const deniedActor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(), platformPermissionSet: new Set(), entryPoint: 'dashboard', requestId };
     try { await new DrizzleDashboardRepository(runtime.db).recordDenied(deniedActor, 'dashboard.platform_token.denied', 'organization'); }
-    catch { await runtime.close(); return createPublicError('DEPENDENCY_UNAVAILABLE', 'The operation could not be completed.', requestId); }
-    await runtime.close(); return createNonDisclosingDenial(requestId);
+    catch { return createPublicError('DEPENDENCY_UNAVAILABLE', 'The operation could not be completed.', requestId); }
+    return createNonDisclosingDenial(requestId);
   }
   return {
     actor: { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), entryPoint: 'dashboard', requestId },
-    service: new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator()), close: runtime.close,
+    service: new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator()),
   };
 }
 
@@ -82,9 +82,8 @@ async function handleGET(request: Request) {
     return NextResponse.json(createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', requestId, fields), { status: 400 });
   }
   const context = await contextFor(parsed.data.organizationId, requestId, request.headers); if (isContextError(context)) return NextResponse.json(context, { status: responseStatus(context) });
-  try {
-    const { actor, service } = context;
-    const compact = (entries: readonly (readonly [string, string | undefined])[]) => Object.fromEntries(entries.filter(([, item]) => item !== undefined));
+  const { actor, service } = context;
+  const compact = (entries: readonly (readonly [string, string | undefined])[]) => Object.fromEntries(entries.filter(([, item]) => item !== undefined));
     const editorialFilter = compact([['regionId', parsed.data.regionId], ['siteId', parsed.data.siteId], ['categoryId', parsed.data.categoryId], ['publisherId', parsed.data.publisherId], ['authorId', parsed.data.authorId], ['publicationState', parsed.data.publicationState], ['search', parsed.data.search]]);
     const rangeFilter = compact([['from', parsed.data.from], ['to', parsed.data.to]]);
     const auditFilter = { ...rangeFilter, ...compact([['actorId', parsed.data.actorId], ['action', parsed.data.action], ['targetType', parsed.data.targetType], ['outcome', parsed.data.outcome]]) };
@@ -94,7 +93,6 @@ async function handleGET(request: Request) {
       : parsed.data.view === 'editorial' ? await service.listEditorial(actor, editorialFilter)
       : parsed.data.view === 'analytics' ? await service.analytics(actor, rangeFilter) : await service.auditLogs(actor, auditFilter);
     return result.ok ? NextResponse.json(result.value) : NextResponse.json(result.error, { status: responseStatus(result.error) });
-  } finally { await context.close(); }
 }
 
 async function handlePOST(request: Request) {
@@ -103,9 +101,8 @@ async function handlePOST(request: Request) {
   const parsed = commandSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json(createPublicError('INVALID_INPUT', 'Invalid command.', requestId), { status: 400 });
   const context = await contextFor(parsed.data.organizationId, requestId, request.headers); if (isContextError(context)) return NextResponse.json(context, { status: responseStatus(context) });
-  try {
-    const { actor, service } = context;
-    const actions: Readonly<Record<string, (payload: unknown) => Promise<Result<unknown, PublicErrorEnvelope>>>> = {
+  const { actor, service } = context;
+  const actions: Readonly<Record<string, (payload: unknown) => Promise<Result<unknown, PublicErrorEnvelope>>>> = {
       'domain.create': (payload) => service.createDomain(actor, payload), 'domain.update': (payload) => service.updateDomain(actor, payload),
       'region.create': (payload) => service.createRegion(actor, payload), 'region.update': (payload) => service.updateRegion(actor, payload),
       'site.create': (payload) => service.createSite(actor, payload), 'site.update': (payload) => service.updateSite(actor, payload), 'site.settings.update': (payload) => service.saveSiteSettings(actor, payload),
@@ -117,7 +114,6 @@ async function handlePOST(request: Request) {
     const action = actions[parsed.data.action]; if (action === undefined) return NextResponse.json(createPublicError('INVALID_INPUT', 'Unknown command.', requestId), { status: 400 });
     const result = await action(parsed.data.payload);
     return result.ok ? NextResponse.json(result.value) : NextResponse.json(result.error, { status: responseStatus(result.error) });
-  } finally { await context.close(); }
 }
 
 export const GET = withApiAccess('GET /api/dashboard/workspace', handleGET);

@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { z } from 'zod';
 
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
@@ -144,6 +145,14 @@ async function handlePOST(request: Request) {
         case 'color.save': await repository.saveColorPreset(identity.authUserId, local.value.id, command.row); break;
         case 'template.save': await repository.saveTemplatePreset(identity.authUserId, local.value.id, command.row); break;
         case 'row.delete': await repository.deleteContentRow(identity.authUserId, local.value.id, command.kind, command.id); break;
+      }
+      // Konten marketing di-cache per jam (tag site-content): invalidasi segera
+      // agar perubahan admin langsung tayang; kegagalan revalidasi tidak
+      // menggagalkan mutasi (penyembuhan via expiry).
+      try {
+        revalidateTag('site-content', 'max');
+      } catch {
+        /* TTL 'hours' menyembuhkan; mutasi admin tetap sukses. */
       }
       return NextResponse.json({ ok: true });
     } catch (error) {

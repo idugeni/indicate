@@ -2,14 +2,11 @@ import type { Metadata } from 'next';
 
 import { TERMS_SECTIONS } from '@/ui/site/marketing-content';
 import { siteMetadata } from '@/ui/site/metadata-guard';
-import { Section, DocSections } from '@/modules/site/components/layout/content';
+import { Section, LegalDocument } from '@/modules/site/components/layout/content';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
-export const dynamic = 'force-dynamic';
-
-const DESCRIPTION = 'Aturan main yang adil dan bisa dibaca manusia: paket, bayar, tenggang, dan hak Anda.';
-
-
+const DESCRIPTION =
+  'Kontrak layanan Indicate yang lengkap dan dapat dibaca manusia: 24 bagian yang mengatur lingkup layanan, paket dan pembayaran, aktivasi 30 hari, masa tenggang 7 hari, keamanan, SLA, tanggung jawab editorial, hingga penyelesaian sengketa menurut hukum Indonesia.';
 
 export function generateMetadata(): Metadata {
   return siteMetadata('Ketentuan Layanan', DESCRIPTION, '/terms');
@@ -17,9 +14,15 @@ export function generateMetadata(): Metadata {
 
 export default function KetentuanPage() {
   return (
-    <PublicPage eyebrow="Hukum" title="Ketentuan Layanan" description={DESCRIPTION} trail={[{ href: '/', label: 'Beranda' }]}>
+    <PublicPage
+      eyebrow="Hukum"
+      title="Ketentuan Layanan"
+      description={DESCRIPTION}
+      meta={['Berlaku efektif 7 September 2026', '24 bagian berversi', 'Hukum Indonesia']}
+      trail={[{ href: '/', label: 'Beranda' }]}
+    >
       <Section aria-label="Isi Ketentuan Layanan">
-        <DocSections items={TERMS_SECTIONS} />
+        <LegalDocument items={TERMS_SECTIONS} />
       </Section>
     </PublicPage>
   );

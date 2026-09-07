@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import type { ExactObjectAuthorization } from '@/integrations/storage/ports';
 import type { TelegramPort } from '@/modules/integrations/ports';
+import { TelegramRateLimitedError } from '@/modules/integrations/ports';
 import type { PreparedTelegramMedia, TelegramMediaTransferPort } from '@/modules/integrations/ports';
 
 const fileResponseSchema = z.object({ ok: z.literal(true), result: z.object({ file_path: z.string().min(1).max(500) }) });
@@ -35,6 +36,12 @@ export class TelegramBotApiAdapter implements TelegramPort, TelegramMediaTransfe
       body: JSON.stringify({ chat_id: message.chatId, text: message.text.slice(0, 4096), disable_web_page_preview: true }),
       signal: AbortSignal.timeout(10_000),
     });
+    if (response.status === 429) {
+      // Hormati batas Bot API: lempar terketik agar pemanggil mengantrekan ulang dengan backoff, bukan membanjiri.
+      const payload = (await response.json().catch(() => null)) as { readonly parameters?: { readonly retry_after?: unknown } } | null;
+      const retryAfter = payload?.parameters?.retry_after;
+      throw new TelegramRateLimitedError(typeof retryAfter === 'number' && retryAfter > 0 ? Math.floor(retryAfter) : null);
+    }
     if (!response.ok) throw new Error('Telegram send failed.');
   }
 

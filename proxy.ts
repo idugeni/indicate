@@ -67,6 +67,18 @@ function deny(status: number, incoming: Headers): NextResponse {
   return withSecurityHeaders(response);
 }
 
+/** Mask IP ke /24 (IPv4) / /48 (IPv6) sebelum log: minimalisasi UU PDP, retensi drain 30 hari. */
+function maskClientIp(ip: string | null): string | null {
+  if (ip === null || ip === '') return null;
+  if (ip.includes('.')) {
+    const parts = ip.split('.');
+    if (parts.length !== 4) return 'redacted';
+    return `${parts[0]}.${parts[1]}.${parts[2]}.0/24`;
+  }
+  const head = ip.split(':').slice(0, 3).join(':');
+  return head === '' ? 'redacted' : `${head}::/48`;
+}
+
 /** Edge denials can't write to the DB, so they emit structured log lines for the log drain instead. */
 function auditEdgeDeny(request: NextRequest, event: string): void {
   const { requestId } = ensureRequestId(request.headers);
@@ -78,7 +90,7 @@ function auditEdgeDeny(request: NextRequest, event: string): void {
     requestId,
     method: request.method,
     path: request.nextUrl.pathname,
-    ip: extractClientIp(request.headers),
+    ip: maskClientIp(extractClientIp(request.headers)),
   }));
 }
 

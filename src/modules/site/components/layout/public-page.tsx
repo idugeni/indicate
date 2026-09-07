@@ -25,7 +25,9 @@ export function PublicPage({
   return (
     <>
       <PageHeader eyebrow={eyebrow} title={title} description={description} meta={meta} actions={actions} crumbs={trail} />
-      <div>{children}</div>
+      {/* Jangan taruh spacing di sini: ritme vertikal milik tiap Section (py-14 md:py-20).
+          Fragment grouping saja — bukan constraint, bukan container. */}
+      {children}
       <CallToAction />
     </>
   );

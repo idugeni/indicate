@@ -42,4 +42,4 @@ BEGIN
 END
 $$;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (62, 'fix_site_settings_robots_cast', 'sha256:8021001122933d5b7b439b781ae7559826aaa0ba4af4cf0046ec221f19ee3855');
+VALUES (62, 'fix_site_settings_robots_cast', 'sha256:90701d84dbb02442ee4b650d91dbd8fdf8226873a6bcce9a077cee3b4862bf80');
