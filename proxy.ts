@@ -129,7 +129,11 @@ export function proxy(request: NextRequest) {
   const isLocalHost = localAuthority === '127.0.0.1' || localAuthority === 'localhost';
   if (isLocalHost) {
     return nextWithCorrelation(request, (requestHeaders) => {
+      // Pembaca hilir mengutamakan x-forwarded-host (page.tsx, not-found.tsx,
+      // network-runtime.ts), jadi kedua header harus ditulis ulang — menulis
+      // `host` saja tidak berpengaruh di Vercel yang selalu menyetel keduanya.
       requestHeaders.set('host', getControlHosts().dashboard);
+      requestHeaders.set('x-forwarded-host', getControlHosts().dashboard);
     });
   }
   // Host deployment Vercel (*.vercel.app) milik project ini diperlakukan sebagai
@@ -140,6 +144,7 @@ export function proxy(request: NextRequest) {
   if (localAuthority !== undefined && localAuthority.endsWith('.vercel.app')) {
     return nextWithCorrelation(request, (requestHeaders) => {
       requestHeaders.set('host', getControlHosts().dashboard);
+      requestHeaders.set('x-forwarded-host', getControlHosts().dashboard);
     });
   }
   const parsed = normalizeRequestHostname(rawHost);

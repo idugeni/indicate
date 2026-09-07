@@ -18,7 +18,11 @@ export class HostnameResolver {
     const normalized = normalizeRequestHostname(rawHost);
     if (!normalized.ok) return { kind: 'invalid', status: 400, robots: 'noindex, nofollow' };
     let hostname = normalized.hostname;
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    // Host deployment milik project ini (localhost + *.vercel.app) dipetakan ke
+    // dashboard. Pertahanan lapis kedua bila rewrite header di proxy terlewat
+    // (pembaca hilir mengutamakan x-forwarded-host yang di Vercel selalu berisi
+    // host asli deployment). Host asing lain tetap unknown → 404.
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.vercel.app')) {
       const dashboardHost = Array.from(this.controls.entries()).find(([, surface]) => surface === 'dashboard')?.[0];
       if (dashboardHost !== undefined) hostname = dashboardHost;
     }
