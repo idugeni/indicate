@@ -19,6 +19,7 @@ jobs:
   quality-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    environment: production
     # Build memprerender dengan snapshot runtime asli: butuh kredensial baca.
     # Nilai diisi dari GitHub Secrets (repo settings) — JANGAN tulis literal di sini.
     env:
