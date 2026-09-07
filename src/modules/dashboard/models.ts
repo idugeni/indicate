@@ -137,6 +137,7 @@ export interface ArticleRecord extends VersionedRecord {
   readonly title: string;
   readonly body: string;
   readonly source: string;
+  readonly tags: readonly string[];
   readonly status: ArticleStatus;
   readonly publishedAt: string | null;
   readonly archivedAt: string | null;
@@ -151,6 +152,8 @@ export interface ArticleSiteRecord extends VersionedRecord {
   readonly publishedUrl: string | null;
   readonly publishedAt: string | null;
   readonly active: boolean;
+  readonly viewCount: number;
+  readonly customViewCount: number;
 }
 
 export interface MediaSummary {

@@ -778,6 +778,7 @@ export function DashboardWorkspace({
                 data={data}
                 onSubmit={(payload) => command('article.create', payload)}
                 onAssign={(payload) => command('article.sites.assign', payload)}
+                onSetViews={(payload) => command('article.sites.views.set', payload)}
               />
             ) : null}
             {view === 'configuration' ? (

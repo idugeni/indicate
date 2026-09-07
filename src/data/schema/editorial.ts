@@ -112,6 +112,7 @@ export const articles = pgTable('articles', {
   title: text('title').notNull(),
   body: text('body').notNull(),
   source: text('source').notNull(),
+  tags: text('tags').array().default(sql`ARRAY[]::text[]`).notNull(),
   status: articleStatus('status').default('draft').notNull(),
   publishedAt: timestamp('published_at', { withTimezone: true }),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
@@ -148,6 +149,8 @@ export const articleSites = pgTable('article_sites', {
   customTitle: text('custom_title'),
   customDescription: text('custom_description'),
   customImageMediaId: uuid('custom_image_media_id'),
+  viewCount: integer('view_count').default(0).notNull(),
+  customViewCount: integer('custom_view_count').default(0).notNull(),
   ...timestamps,
 }, (table) => [
   primaryKey({ name: 'article_sites_pk', columns: [table.organizationId, table.id] }),
@@ -158,6 +161,7 @@ export const articleSites = pgTable('article_sites', {
   index('article_sites_site_state_date_idx').on(table.organizationId, table.siteId, table.state, table.publishedAt),
   index('article_sites_outcome_date_idx').on(table.organizationId, table.siteId, table.state, table.stateOccurredAt),
   check('article_sites_attempt_nonnegative', sql`${table.attempt} >= 0 AND ${table.version} > 0`),
+  check('article_sites_view_counts_nonnegative', sql`${table.viewCount} >= 0 AND ${table.customViewCount} >= 0`),
   check('article_sites_published_outcome', sql`${table.state} <> 'published' OR (${table.publishedUrl} IS NOT NULL AND ${table.publishedAt} IS NOT NULL)`),
 ]);
 

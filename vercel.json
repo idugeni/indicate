@@ -3,6 +3,10 @@
   "regions": ["sin1"],
   "crons": [
     {
+      "path": "/api/internal/maintenance/view-flush",
+      "schedule": "0 1 * * *"
+    },
+    {
       "path": "/api/health",
       "schedule": "0 2 * * *"
     },

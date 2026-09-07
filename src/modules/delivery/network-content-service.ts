@@ -17,6 +17,7 @@ export class NetworkContentService {
     const sanitized: NetworkContentQuery = {
       ...(query.articleSlug === undefined ? {} : { articleSlug: query.articleSlug.trim().toLowerCase() }),
       ...(query.categorySlug === undefined ? {} : { categorySlug: query.categorySlug.trim().toLowerCase() }),
+      ...(query.tag === undefined || query.tag.trim() === '' ? {} : { tag: query.tag.trim().toLowerCase().slice(0, 60) }),
       ...(query.search === undefined || query.search.trim() === '' ? {} : { search: query.search.trim().slice(0, 120) }),
     };
     const load = () => this.repository.loadNetworkSite(context, sanitized);

@@ -36,8 +36,8 @@ export interface NetworkArticle {
   readonly title: string;
   readonly description: string;
   readonly body: string;
-  readonly regionId: string;
-  readonly categoryId: string | null;
+  readonly tags: readonly string[];
+  readonly regionId: string;  readonly categoryId: string | null;
   readonly categorySlug: string | null;
   readonly categoryName: string | null;
   readonly authorName: string | null;
@@ -48,6 +48,8 @@ export interface NetworkArticle {
   readonly officialInstitution: string | null;
   readonly publishedAt: string;
   readonly updatedAt: string;
+  readonly articleSiteId: string;
+  readonly viewCount: number;
   readonly imageUrl: string | null;
   readonly thumbnailUrl: string | null;
   readonly imageWidth: number | null;
@@ -64,6 +66,7 @@ export interface NetworkContentQuery {
   readonly categorySlug?: string;
   readonly search?: string;
   readonly articleSlug?: string;
+  readonly tag?: string;
 }
 
 export type ActivationOperation = 'activate' | 'deactivate';

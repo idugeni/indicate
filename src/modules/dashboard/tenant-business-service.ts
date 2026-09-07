@@ -21,7 +21,7 @@ import {
   auditFilterSchema, authorCreateSchema, authorUpdateSchema, categoryCreateSchema, categoryUpdateSchema,
   domainCreateSchema, domainUpdateSchema, membershipSchema, publisherCreateSchema, publisherDecisionSchema,
   publisherUpdateSchema, regionCreateSchema, regionUpdateSchema, roleCreateSchema, roleUpdateSchema,
-  siteCreateSchema, siteSettingsSchema, siteUpdateSchema,
+  siteCreateSchema, siteSettingsSchema, siteUpdateSchema, siteViewsSchema,
 } from '@/modules/dashboard/schemas';
 
 interface ClockLike { now(): Date }
@@ -420,7 +420,7 @@ export class TenantBusinessService {
     return this.mutate({ actor, raw, schema: articleUpdateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.update', targetType: 'article', execute: (transaction, value, now) => {
       this.requireArticleReferences(transaction.state, value);
       const before = requireRecord(transaction.state.articles, value.id); requireVersion(before, value.expectedVersion);
-      const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: value.categoryId, authorId: value.authorId, slug: value.slug, title: value.title, body: value.body, source: value.source, status: value.status, version: before.version + 1, updatedAt: now };
+      const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: value.categoryId, authorId: value.authorId, slug: value.slug, title: value.title, body: value.body, source: value.source, tags: [...value.tags], status: value.status, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.articles, after); this.audit(transaction, 'article.update', 'article', after.id, before, after); return after;
     }});
   }
@@ -465,11 +465,26 @@ export class TenantBusinessService {
       }
       for (const site of targetSites) {
         const existing = transaction.state.articleSites.find(({ articleId, siteId }) => articleId === article.id && siteId === site.id);
-        if (existing === undefined) transaction.state.articleSites.push({ ...this.base(actor, now), articleId: article.id, siteId: site.id, state: 'queued', stateOccurredAt: now, publishedUrl: null, publishedAt: null, active: true });
+        if (existing === undefined) transaction.state.articleSites.push({ ...this.base(actor, now), articleId: article.id, siteId: site.id, state: 'queued', stateOccurredAt: now, publishedUrl: null, publishedAt: null, active: true, viewCount: 0, customViewCount: 0 });
         else Object.assign(existing, { active: true, version: existing.version + 1, updatedAt: now });
       }
       const after = transaction.state.articleSites.filter(({ articleId, active }) => articleId === article.id && active);
       this.audit(transaction, 'article.sites.assign', 'article', article.id, { siteIds: before.map(({ siteId }) => siteId).sort() }, { siteIds: after.map(({ siteId }) => siteId).sort() });
+      return after;
+    }});
+  }
+
+  setArticleSiteViews(actor: AuthorizedTenantActorContext, raw: unknown) {
+    return this.mutate({ actor, raw, schema: siteViewsSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.sites.views.set', targetType: 'article_site', execute: (transaction, value, now) => {
+      const article = requireRecord(transaction.state.articles, value.articleId);
+      if (article.organizationId !== actor.organizationId) throw new DashboardAccessDeniedError();
+      const site = requireRecord(transaction.state.sites, value.siteId);
+      if (site.organizationId !== actor.organizationId) throw new DashboardAccessDeniedError();
+      const before = transaction.state.articleSites.find(({ articleId, siteId }) => articleId === value.articleId && siteId === value.siteId);
+      if (before === undefined) throw new DashboardConflictError();
+      const after = { ...before, customViewCount: value.customViewCount, version: before.version + 1, updatedAt: now };
+      replaceById(transaction.state.articleSites, after);
+      this.audit(transaction, 'article.sites.views.set', 'article_site', before.id, { customViewCount: before.customViewCount }, { customViewCount: after.customViewCount });
       return after;
     }});
   }

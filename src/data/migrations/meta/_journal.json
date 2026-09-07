@@ -631,6 +631,20 @@
       "when": 1788788000000,
       "tag": "20260907130000_ops_fk_covering_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1788789000000,
+      "tag": "20260907140000_article_site_view_counts",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1788790000000,
+      "tag": "20260907150000_article_tags",
+      "breakpoints": true
     }
   ]
 }

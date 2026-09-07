@@ -6,6 +6,8 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  Eye,
+  PenLine,
   Rss,
   Search,
   ShieldCheck,
@@ -13,6 +15,7 @@ import {
 
 import { Container } from '@/modules/site/components/layout/content';
 import { BackToTop } from '@/modules/site/components/layout/back-to-top';
+import { ShareBox } from '@/modules/site/components/network/share-box';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { buildSeoDocument } from '@/modules/site/seo';
 import { JsonLd } from '@/modules/site/components/network/json-ld';
@@ -25,6 +28,12 @@ const TIME_ZONE_ID = 'Asia/Jakarta';
 function getReadingTime(text: string): number {
   const words = text.trim().split(/\s+/u).filter(Boolean).length;
   return Math.max(1, Math.ceil(words / 200));
+}
+
+/** Tampilan ringkas id-ID: 999, 1,2 rb, 3,4 jt. */
+export function formatCompactViews(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return '0';
+  return new Intl.NumberFormat('id-ID', { notation: 'compact' }).format(Math.floor(value));
 }
 
 function formatDate(isoString: string, dateStyle: 'medium' | 'full' = 'medium'): string {
@@ -48,6 +57,7 @@ export function ArticleCard({
   readonly featured?: boolean;
 }) {
   const readingTime = getReadingTime(article.body || article.description || '');
+  const viewLabel = formatCompactViews(article.viewCount);
 
   if (featured) {
     return (
@@ -79,6 +89,11 @@ export function ArticleCard({
               <span className="flex items-center gap-1 normal-case tracking-normal text-paper-faint">
                 <Clock className="h-3 w-3" aria-hidden="true" />
                 <span>{readingTime} mnt baca</span>
+              </span>
+              <span aria-hidden="true" className="text-hairline-strong">·</span>
+              <span className="flex items-center gap-1 normal-case tabular-nums tracking-normal text-paper-faint">
+                <Eye className="h-3 w-3" aria-hidden="true" />
+                <span>{viewLabel} dibaca</span>
               </span>
             </p>
 
@@ -138,6 +153,10 @@ export function ArticleCard({
             <Clock className="h-3 w-3" aria-hidden="true" />
             <span>{readingTime} mnt</span>
           </span>
+        </p>
+        <p className="m-0 mt-1.5 flex items-center gap-1 font-mono text-[11px] tabular-nums text-paper-faint">
+          <Eye className="h-3 w-3" aria-hidden="true" />
+          <span>{viewLabel} dibaca</span>
         </p>
 
         <h2 className="m-0 mt-2 font-serif text-lg font-bold leading-snug tracking-tight text-paper">
@@ -396,9 +415,15 @@ export function ListingPage({
 export function ArticlePage({
   site,
   article,
+  related = [],
+  newer = null,
+  older = null,
 }: {
   readonly site: NetworkSiteData;
   readonly article: NetworkArticle;
+  readonly related?: readonly NetworkArticle[];
+  readonly newer?: NetworkArticle | null;
+  readonly older?: NetworkArticle | null;
 }) {
   const seo = buildSeoDocument(site, { path: `/articles/${article.slug}`, article });
   const readingTime = getReadingTime(article.body || '');
@@ -460,9 +485,21 @@ export function ArticlePage({
               ) : null}
             </p>
 
-            <p className="m-0 flex items-center gap-1.5 font-mono text-[11px] tabular-nums text-paper-faint">
-              <Calendar className="h-3 w-3" aria-hidden="true" />
-              <time dateTime={article.publishedAt}>{formatDate(article.publishedAt, 'full')}</time>
+            <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] tabular-nums text-paper-faint">
+              <span className="inline-flex items-center gap-1.5">
+                <Calendar className="h-3 w-3" aria-hidden="true" />
+                <time dateTime={article.publishedAt}>{formatDate(article.publishedAt, 'full')}</time>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Eye className="h-3 w-3" aria-hidden="true" />
+                <span>{formatCompactViews(article.viewCount)} dibaca</span>
+              </span>
+              {article.updatedAt !== article.publishedAt ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <PenLine className="h-3 w-3" aria-hidden="true" />
+                  <span>Diperbarui <time dateTime={article.updatedAt}>{formatDate(article.updatedAt, 'medium')}</time></span>
+                </span>
+              ) : null}
             </p>
           </div>
         </header>
@@ -482,6 +519,20 @@ export function ArticlePage({
           </div>
         ) : null}
 
+        {article.tags.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2" aria-label="Topik artikel">
+            {article.tags.map((tag) => (
+              <Link
+                key={tag}
+                href={`/tags/${encodeURIComponent(tag)}`}
+                className="rounded border border-hairline bg-bg-raised px-2.5 py-1 font-mono text-[11px] text-paper-dim transition-colors duration-180 hover:border-brass hover:text-paper"
+              >
+                #{tag}
+              </Link>
+            ))}
+          </div>
+        ) : null}
+
         <div className="article-body space-y-6 border-b border-hairline pb-12 font-serif text-base leading-[1.85] text-paper sm:text-lg">
           {paragraphs.map((paragraph, index) => (
             <p key={`${index}-${paragraph.slice(0, 16)}`} className="m-0">
@@ -489,6 +540,68 @@ export function ArticlePage({
             </p>
           ))}
         </div>
+
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-11 w-11 flex-none border border-hairline">
+              <AvatarFallback className="bg-bg-raised-2 font-mono text-sm font-semibold text-brass">
+                {(article.authorName ?? article.attribution).slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="m-0 truncate font-sans text-sm font-semibold text-paper">
+                {article.authorName ?? article.attribution}
+              </p>
+              <p className="m-0 font-sans text-xs text-paper-faint">Penulis redaksi</p>
+            </div>
+          </div>
+          {article.officialInstitution ? (
+            <p className="m-0 inline-flex items-center gap-1.5 rounded border border-hairline bg-bg-raised px-3 py-2 font-sans text-xs text-paper-dim sm:justify-self-end">
+              <ShieldCheck className="h-3.5 w-3.5 flex-none text-signal" aria-hidden="true" />
+              <span>{article.officialInstitution}</span>
+            </p>
+          ) : null}
+        </div>
+
+        <ShareBox title={article.title} />
+
+        {related.length > 0 ? (
+          <section aria-label="Artikel terkait" className="border-t border-hairline pt-8">
+            <h2 className="m-0 font-sans text-base font-semibold tracking-tight text-paper">
+              Artikel terkait
+            </h2>
+            <div className="mt-4 grid gap-x-6 gap-y-8 sm:grid-cols-2">
+              {related.map((item) => (
+                <ArticleCard article={item} key={item.id} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {newer !== null || older !== null ? (
+          <nav aria-label="Navigasi artikel" className="grid gap-3 border-t border-hairline pt-8 sm:grid-cols-2">
+            <div className="min-w-0">
+              {newer !== null ? (
+                <Link href={`/articles/${newer.slug}`} className="group block">
+                  <span className="font-mono text-[11px] uppercase tracking-wider text-paper-faint">← Lebih baru</span>
+                  <span className="mt-1 block truncate font-sans text-sm font-medium text-paper group-hover:text-brass-soft">
+                    {newer.title}
+                  </span>
+                </Link>
+              ) : null}
+            </div>
+            <div className="min-w-0 sm:text-right">
+              {older !== null ? (
+                <Link href={`/articles/${older.slug}`} className="group block">
+                  <span className="font-mono text-[11px] uppercase tracking-wider text-paper-faint">Lebih lama →</span>
+                  <span className="mt-1 block truncate font-sans text-sm font-medium text-paper group-hover:text-brass-soft">
+                    {older.title}
+                  </span>
+                </Link>
+              ) : null}
+            </div>
+          </nav>
+        ) : null}
 
         <p className="m-0 font-sans text-xs leading-relaxed text-paper-faint">
           Menemukan pelanggaran pada artikel ini?{' '}

@@ -25,10 +25,12 @@ export function EditorialForm({
   data,
   onSubmit,
   onAssign,
+  onSetViews,
 }: {
   readonly data: unknown;
   readonly onSubmit: (payload: unknown) => Promise<unknown>;
   readonly onAssign: (payload: unknown) => Promise<unknown>;
+  readonly onSetViews: (payload: unknown) => Promise<unknown>;
 }) {
   const model = data as {
     readonly regions?: readonly RegionEntity[];
@@ -46,12 +48,17 @@ export function EditorialForm({
   const slugInputId = useId();
   const titleInputId = useId();
   const sourceInputId = useId();
+  const tagsInputId = useId();
   const bodyInputId = useId();
   const assignArticleSelectId = useId();
+  const viewsArticleSelectId = useId();
+  const viewsSiteSelectId = useId();
+  const viewsCountInputId = useId();
 
   const [slug, setSlug] = useState('');
   const [isSubmitting, startSubmitTransition] = useTransition();
   const [isAssigning, startAssignTransition] = useTransition();
+  const [isSettingViews, startViewsTransition] = useTransition();
 
   const handleTitleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     if (!slug) {
@@ -74,6 +81,11 @@ export function EditorialForm({
         title: String(formData.get('title') ?? '').trim(),
         body: String(formData.get('body') ?? '').trim(),
         source: String(formData.get('source') ?? '').trim(),
+        tags: String(formData.get('tags') ?? '')
+          .split(',')
+          .map((tag) => tag.trim().toLowerCase().replace(/\s+/g, '-'))
+          .filter((tag) => tag.length > 0)
+          .slice(0, 10),
         status: 'draft',
       });
       form.reset();
@@ -91,6 +103,21 @@ export function EditorialForm({
         articleId: formData.get('articleId'),
         siteIds: formData.getAll('siteIds'),
       });
+    });
+  };
+
+  const handleSetViews = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    startViewsTransition(async () => {
+      await onSetViews({
+        articleId: formData.get('viewsArticleId'),
+        siteId: formData.get('viewsSiteId'),
+        customViewCount: Number(formData.get('customViewCount') ?? 0),
+      });
+      form.reset();
     });
   };
 
@@ -228,6 +255,19 @@ export function EditorialForm({
           </div>
 
           <div className="space-y-1.5">
+            <label htmlFor={tagsInputId} className="font-mono text-xs text-paper-dim">
+              Topik (koma, maks. 10)
+            </label>
+            <Input
+              id={tagsInputId}
+              name="tags"
+              disabled={isSubmitting}
+              placeholder="cth: wonosobo, pertanian, apbd"
+              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+            />
+          </div>
+
+          <div className="space-y-1.5">
             <label htmlFor={bodyInputId} className="font-mono text-xs text-paper-dim">
               Isi Naskah Lengkap (Plain Text / Paragraf Terstruktur)
             </label>
@@ -324,6 +364,75 @@ export function EditorialForm({
               <span>Terapkan Pemetaan Kanal</span>
             </button>
           </div>
+        </form>
+
+        <form onSubmit={handleSetViews} className="mt-5 space-y-3 border-t border-hairline pt-5">
+          <p className="m-0 font-mono text-xs text-paper-dim">
+            Tampilan manual per kanal (ditambah hitungan real otomatis)
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor={viewsArticleSelectId} className="font-mono text-xs text-paper-dim">
+                Artikel
+              </label>
+              <select
+                id={viewsArticleSelectId}
+                name="viewsArticleId"
+                disabled={isSettingViews}
+                className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+              >
+                {model?.articles?.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor={viewsSiteSelectId} className="font-mono text-xs text-paper-dim">
+                Kanal
+              </label>
+              <select
+                id={viewsSiteSelectId}
+                name="viewsSiteId"
+                disabled={isSettingViews}
+                className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+              >
+                {model?.sites?.map((site) => (
+                  <option key={site.id} value={site.id}>
+                    {site.normalizedHostname}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor={viewsCountInputId} className="font-mono text-xs text-paper-dim">
+              Angka dasar manual
+            </label>
+            <Input
+              id={viewsCountInputId}
+              name="customViewCount"
+              type="number"
+              min={0}
+              max={1000000000}
+              defaultValue={0}
+              disabled={isSettingViews}
+              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isSettingViews}
+            className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded border border-hairline-strong bg-bg px-3.5 font-sans text-xs font-semibold text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50"
+          >
+            {isSettingViews ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Check className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
+            )}
+            <span>Simpan tampilan manual</span>
+          </button>
         </form>
       </SectionCard>
     </div>
