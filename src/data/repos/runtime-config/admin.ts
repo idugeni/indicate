@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type * as schema from '@/data/schema';
+import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 
 type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -48,7 +49,7 @@ async function verifiedPlatformActor(
   await transaction.execute(sql`SELECT set_config('app.actor_id', ${localUserId}, true)`);
   await transaction.execute(sql`SELECT indicate_private.set_verified_user_context(${authUserId}::uuid)`);
   const rows = await transaction.execute<{ allowed: boolean }>(sql`
-    SELECT indicate_private.permission_has_platform(${localUserId}::uuid, 'platform.runtime_config.manage') AS allowed
+    SELECT indicate_private.permission_has_platform(${localUserId}::uuid, ${INTEGRATIONS_PERMISSIONS.runtimeConfigManage}) AS allowed
   `);
   if (rows[0]?.allowed !== true) throw new RuntimeConfigAdminAccessDeniedError();
 }

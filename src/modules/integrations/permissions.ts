@@ -8,6 +8,12 @@ export const INTEGRATIONS_PERMISSIONS = Object.freeze({
   superAdmin: 'platform.super_admin',
   /** @deprecated Kept for transition; honored alongside superAdmin until removal. */
   customerAdmin: 'platform.customer.admin',
+  /** Manage dynamic marketing content and theme presets (platform scope). */
+  contentManage: 'platform.content.manage',
+  /** Mutate shared runtime configuration and provider mappings (platform scope). */
+  runtimeConfigManage: 'platform.runtime_config.manage',
+  /** Mutate Site Settings for a Site (platform scope, checked per tenant). */
+  siteSettingsManage: 'site_settings.manage',
 } as const);
 
 export const INTEGRATIONS_TENANT_PERMISSION_NAMES = Object.freeze([

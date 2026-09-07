@@ -114,7 +114,7 @@ const LoginMethodsForm = dynamic(
 
 export type { OrganizationOption } from '@/modules/dashboard/components/dashboard-types';
 
-const CONTENT_MANAGE_PERMISSION = 'platform.content.manage';
+const CONTENT_MANAGE_PERMISSION = INTEGRATIONS_PERMISSIONS.contentManage;
 
 /** Dark dashboard tooltip: content and its arrow share the raised surface. */
 const DASHBOARD_TOOLTIP_CONTENT =

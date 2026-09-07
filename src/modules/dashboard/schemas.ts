@@ -26,8 +26,23 @@ export const siteSettingsSchema = z.object({
 }).strict();
 const permissionNames = z.array(z.string().trim().min(1).max(100).refine(isDashboardPermission, 'Unknown or unavailable permission.')).max(100);
 const roleTierSchema = z.enum(['admin', 'user', 'superadmin']);
-export const roleCreateSchema = z.object({ name: z.string().trim().min(1).max(100), tier: roleTierSchema.default('user'), active: z.boolean().default(true), permissions: permissionNames }).strict();
-export const roleUpdateSchema = roleCreateSchema.extend({ id, expectedVersion, tier: roleTierSchema.optional() });
+/**
+ * Display-name guard: a role name must not impersonate a *different* system
+ * tier. Authorization never reads names (ID-joined permission sets only), but
+ * the dashboard shows them, so `tier: user` named "Superadmin" would mislead.
+ * A name matching the record's own tier stays allowed (e.g. the platform
+ * `Superadmin` row, or an org that genuinely calls its admins "Admin").
+ * Missing tier on update is treated as `user` (safe default; forms always
+ * send tier, and the DB trigger remains the final backstop for superadmin).
+ */
+function tierNameConsistent(value: { readonly name: string; readonly tier?: string | undefined }): boolean {
+  const lowered = value.name.toLowerCase();
+  if (!(roleTierSchema.options as readonly string[]).includes(lowered)) return true;
+  return (value.tier ?? 'user') === lowered;
+}
+const tierNameMessage = 'Role name must not impersonate a different system tier.';
+export const roleCreateSchema = z.object({ name: z.string().trim().min(1).max(100), tier: roleTierSchema.default('user'), active: z.boolean().default(true), permissions: permissionNames }).strict().refine(tierNameConsistent, tierNameMessage);
+export const roleUpdateSchema = z.object({ name: z.string().trim().min(1).max(100), tier: roleTierSchema.optional(), active: z.boolean().default(true), permissions: permissionNames, id, expectedVersion }).strict().refine(tierNameConsistent, tierNameMessage);
 export const membershipSchema = z.object({ userId: id, roleId: id, status: lifecycleStatus.default('active'), expectedVersion: expectedVersion.optional() }).strict();
 
 export const publisherCreateSchema = z.object({

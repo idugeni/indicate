@@ -2,6 +2,7 @@ import { eq, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type * as schema from '@/data/schema';
+import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import {
   colorPresets,
   contactChannels,
@@ -39,7 +40,7 @@ export class DrizzleContentAdminRepository {
 
   private async platform<T>(authUserId: string, localUserId: string, operation: (tx: Transaction) => Promise<T>): Promise<T> {
     return this.database.transaction(async (transaction) => {
-      await verifiedPlatformActor(transaction, authUserId, localUserId, 'platform.content.manage');
+      await verifiedPlatformActor(transaction, authUserId, localUserId, INTEGRATIONS_PERMISSIONS.contentManage);
       return operation(transaction);
     });
   }
