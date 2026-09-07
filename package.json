@@ -31,7 +31,7 @@
     "supabase"
   ],
   "engines": {
-    "node": ">=22.0.0"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "next dev",
@@ -73,7 +73,7 @@
     "@radix-ui/react-tooltip": "^1.2.16",
     "@shadcn/react": "^0.3.1",
     "@supabase/ssr": "^0.12.6",
-    "@supabase/supabase-js": "^2.115.0",
+    "@supabase/supabase-js": "^2.116.0",
     "@upstash/redis": "^1.38.4",
     "class-variance-authority": "^0.7.1",
     "client-only": "^0.0.1",
@@ -83,7 +83,7 @@
     "drizzle-orm": "^0.45.2",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.5.0",
-    "lucide-react": "^1.41.0",
+    "lucide-react": "^1.42.0",
     "next": "16.3.4",
     "next-themes": "^0.4.6",
     "postgres": "^3.4.9",
@@ -92,7 +92,7 @@
     "react-dom": "19.2.8",
     "react-hook-form": "^7.87.0",
     "react-icons": "^5.7.0",
-    "react-resizable-panels": "^4.12.3",
+    "react-resizable-panels": "^4.12.4",
     "recharts": "^3.10.1",
     "server-only": "^0.0.1",
     "shadcn": "^4.21.0",
@@ -103,8 +103,9 @@
     "zod": "4.5.4"
   },
   "devDependencies": {
+    "@typescript/native": "npm:typescript@^7.0.2",
     "@tailwindcss/postcss": "4.3.3",
-    "@types/node": "^26.4.1",
+    "@types/node": "^26.5.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "drizzle-kit": "^0.31.10",
@@ -112,6 +113,6 @@
     "eslint-config-next": "^16.3.4",
     "postcss": "^8.5.28",
     "tailwindcss": "4.3.3",
-    "typescript": "^5.9.3"
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
   }
 }
