@@ -38,10 +38,7 @@ export function CustomerManagement({
         slug: String(formData.get('slug') ?? '').trim(),
         customerMetadata: {},
         subscription: {
-          plan: String(formData.get('plan') ?? 'starter'),
-          status: 'active',
-          periodStartsAt: null,
-          periodEndsAt: null,
+          status: String(formData.get('status') ?? 'active'),
         },
       });
       form.reset();
@@ -135,20 +132,18 @@ export function CustomerManagement({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={`${slugInputId}-plan`} className="font-mono text-xs text-paper-dim">
-              Paket Langganan Awal
+            <label htmlFor={`${slugInputId}-status`} className="font-mono text-xs text-paper-dim">
+              Status Awal (aktivasi manual setelah bayar)
             </label>
             <select
-              id={`${slugInputId}-plan`}
-              name="plan"
+              id={`${slugInputId}-status`}
+              name="status"
               disabled={isCreatingCustomer}
-              defaultValue="starter"
+              defaultValue="active"
               className="h-8 w-full rounded border border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper"
             >
-              <option value="starter">Starter — 10 domain & situs</option>
-              <option value="growth">Growth — 50 domain & situs</option>
-              <option value="pro">Pro — 100 domain & situs</option>
-              <option value="enterprise">Enterprise — custom (via sales)</option>
+              <option value="active">Aktif — langsung berjalan</option>
+              <option value="suspended">Ditangguhkan — aktifkan belakangan</option>
             </select>
           </div>
 

@@ -15,19 +15,6 @@ import { UuidGenerator } from '@/core/system/uuid-generator';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
 
-const tierSchema = z.object({
-  slug: z.string().trim().min(1).max(60),
-  name: z.string().trim().min(1).max(120),
-  target: z.string().trim().min(1).max(200),
-  summary: z.string().trim().min(1).max(500),
-  price: z.string().trim().min(1).max(60),
-  period: z.string().trim().max(60),
-  features: z.array(z.string().trim().min(1).max(300)).max(30),
-  highlighted: z.boolean(),
-  cta: z.string().trim().min(1).max(120),
-  sortOrder: z.number().int().min(0).max(1000),
-  active: z.boolean(),
-}).strict();
 const testimonialSchema = z.object({
   id: z.uuid(),
   quote: z.string().trim().min(1).max(2000),
@@ -73,7 +60,6 @@ const templateSchema = z.object({
 }).strict();
 
 const commandSchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('tier.save'), row: tierSchema }),
   z.object({ action: z.literal('testimonial.save'), row: testimonialSchema }),
   z.object({ action: z.literal('faq.save'), row: faqSchema }),
   z.object({ action: z.literal('showcase.save'), row: showcaseSchema }),
@@ -82,7 +68,7 @@ const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('template.save'), row: templateSchema }),
   z.object({
     action: z.literal('row.delete'),
-    kind: z.enum(['tier', 'testimonial', 'faq', 'showcase', 'channel', 'color', 'template']),
+    kind: z.enum(['testimonial', 'faq', 'showcase', 'channel', 'color', 'template']),
     id: z.string().min(1).max(200),
   }),
 ]);
@@ -137,7 +123,6 @@ async function handlePOST(request: Request) {
     try {
       const command = parsed.data;
       switch (command.action) {
-        case 'tier.save': await repository.saveServiceTier(identity.authUserId, local.value.id, command.row); break;
         case 'testimonial.save': await repository.saveTestimonial(identity.authUserId, local.value.id, command.row); break;
         case 'faq.save': await repository.saveFaq(identity.authUserId, local.value.id, command.row); break;
         case 'showcase.save': await repository.saveShowcaseEntry(identity.authUserId, local.value.id, command.row); break;

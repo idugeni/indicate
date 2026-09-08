@@ -43,13 +43,6 @@ export class DashboardConflictError extends Error {
   constructor() { super('The record was changed by another operation.'); }
 }
 
-export class DashboardQuotaExceededError extends Error {
-  constructor(
-    readonly resource: string,
-    readonly limit: number,
-  ) { super(`Subscription quota exceeded for ${resource} (limit ${limit}).`); }
-}
-
 /** Outside the writable states, mutations fail explicitly (renew prompt, not a non-disclosing denial). */
 export class DashboardSubscriptionInactiveError extends Error {
   constructor(

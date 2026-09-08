@@ -12,92 +12,6 @@ export interface FeatureItem {
   readonly href?: string;
 }
 
-export interface ServiceTierItem {
-  readonly slug: 'starter' | 'growth' | 'pro' | 'enterprise';
-  readonly name: string;
-  readonly target: string;
-  readonly summary: string;
-  readonly price: string;
-  readonly period: string;
-  readonly features: readonly string[];
-  readonly highlighted: boolean;
-  readonly cta: string;
-}
-
-/** Single tier source for homepage + /pricing. Prices must mirror the `packages` table; DB `service_tiers` overrides when reachable. */
-export const SERVICE_TIERS: readonly ServiceTierItem[] = Object.freeze([
-  {
-    slug: 'starter',
-    name: 'Starter',
-    target: 'Punya 10 portal berita sendiri mulai hari ini',
-    summary: 'Terima beres: website berita profesional yang langsung bisa dipakai menulis dan terbit.',
-    price: 'Rp149.000',
-    period: '/bulan',
-    features: [
-      '10 website berita siap tayang',
-      'Desain cantik tinggal pilih',
-      'Domain, hosting, dan keamanan kami yang urus',
-      'Bantuan ramah lewat email',
-    ],
-    highlighted: false,
-    cta: 'Mulai Sekarang',
-  },
-  {
-    slug: 'growth',
-    name: 'Growth',
-    target: 'Satu redaksi untuk 50 portal daerah',
-    summary: 'Tulis satu kali, berita Anda tayang di semua portal sekaligus.',
-    price: 'Rp299.000',
-    period: '/bulan',
-    features: [
-      '50 website berita siap tayang',
-      'Terbit sekali, tayang di mana-mana',
-      'Kelola dari HP, kerja dari mana saja',
-      'Bantuan prioritas yang cepat tanggap',
-    ],
-    highlighted: false,
-    cta: 'Mulai Sekarang',
-  },
-  {
-    slug: 'pro',
-    name: 'Pro',
-    target: 'Untuk grup media yang serius bertumbuh',
-    summary: 'Kapasitas besar plus tim kami dampingi sampai benar-benar jalan.',
-    price: 'Rp550.000',
-    period: '/bulan',
-    features: [
-      '100 website berita siap tayang',
-      'Ajak rekan redaksi bergabung (10 orang)',
-      'Pindahan dari sistem lama kami bantu',
-      'Didampingi sampai jalan',
-    ],
-    highlighted: true,
-    cta: 'Ambil yang Pro',
-  },
-  {
-    slug: 'enterprise',
-    name: 'Enterprise',
-    target: 'Ada kebutuhan khusus? Mari duduk bersama',
-    summary: 'Ceritakan kebutuhan Anda, kami rancangkan solusinya.',
-    price: 'Kustom',
-    period: '',
-    features: [
-      'Jumlah website mengikuti kebutuhan',
-      'Pindahan data massal kami yang kerjakan',
-      'Kontak khusus yang siap dihubungi',
-      'Didampingi sampai jalan',
-    ],
-    highlighted: false,
-    cta: 'Hubungi Tim Penjualan',
-  },
-]);
-
-/** @deprecated Gunakan SERVICE_TIERS agar homepage dan /pricing memakai satu skema. */
-export const PRICING_PLANS: readonly ServiceTierItem[] = SERVICE_TIERS;
-
-/** @deprecated Gunakan ServiceTierItem. */
-export type PricingPlanItem = ServiceTierItem;
-
 export interface FaqItem {
   readonly id?: string;
   readonly question: string;
@@ -117,8 +31,6 @@ export interface ProofPointItem {
 }
 
 export const SERVICE_NAME = 'Indicate';
-/** Versi Ketentuan Layanan yang berlaku; dicatat pada setiap order sebagai bukti persetujuan (clickwrap). */
-export const TERMS_VERSION = '2026-09-07';
 export const SERVICE_TAGLINE = 'Satu ruang redaksi untuk seluruh jaringan portal berita Anda.';
 /**
  * Logo instansi fallback untuk avatar publisher: dipakai bila publisher belum
@@ -132,7 +44,7 @@ export const SERVICE_SUMMARY =
 
 export const SITE_ROUTES: readonly NavigationLink[] = Object.freeze([
   { href: '/services', label: 'Layanan' },
-  { href: '/pricing', label: 'Paket' },
+  { href: '/pricing', label: 'Harga' },
   { href: '/about', label: 'Tentang' },
   { href: '/faq', label: 'FAQ' },
   { href: '/contact', label: 'Kontak' },
@@ -145,8 +57,6 @@ export const LEGAL_ROUTES: readonly NavigationLink[] = Object.freeze([
 
 /** Every site path, kept in sync with the routing contract in shared/. */
 export const SITE_PATHS = SERVICE_PATHS;
-
-export const ENTERPRISE_NETWORK_LOGOS: readonly string[] = Object.freeze([]);
 
 export const PROOF_POINTS: readonly ProofPointItem[] = Object.freeze([
   { term: 'Satu Aplikasi', detail: 'Semua domain dilayani dari satu penyebaran terpusat, bukan satu aplikasi terpisah per pelanggan.' },
@@ -184,9 +94,9 @@ export const VALUE_PROPOSITIONS: readonly FeatureItem[] = Object.freeze([
       'Nama domain dibeli dan dipegang atas nama Anda sendiri. Berhenti kapan pun: domain, konten, dan data dibawa pergi tanpa sandera.',
   },
   {
-    title: 'Harga jelas di depan',
+    title: 'Biaya jelas, tanpa paket',
     description:
-      'Paket dihitung dari jumlah website, tercantum terbuka di halaman Paket. Tidak ada biaya tersembunyi, tidak ada negosiasi berlapis untuk paket standar.',
+      'Tidak ada tingkatan paket: Anda menghubungi kami, sepakat soal biaya, lalu organisasi Anda diaktifkan dan berjalan terus. Tidak ada biaya tersembunyi.',
   },
 ]);
 
@@ -209,7 +119,7 @@ export const USE_CASES: readonly FeatureItem[] = Object.freeze([
   {
     title: 'Komunitas dan kampus',
     description:
-      'Mulai dari satu portal kecil dengan paket Starter, tambah portal baru kapan pun tanpa pindah sistem.',
+      'Mulai dari satu portal kecil, tambah portal baru kapan pun tanpa pindah sistem.',
   },
 ]);
 
@@ -263,14 +173,14 @@ export const CAPABILITIES: readonly FeatureItem[] = Object.freeze([
 
 export const WORKFLOW_STEPS: readonly FeatureItem[] = Object.freeze([
   {
-    title: 'Pilih paket',
+    title: 'Hubungi kami',
     description:
-      'Tentukan berapa website yang dibutuhkan dan pilih paketnya. Paket Enterprise didahului obrolan kebutuhan lewat WhatsApp.',
+      'Ceritakan kebutuhan lewat WhatsApp atau surel — jumlah portal, wilayah, dan jadwal yang diinginkan.',
   },
   {
-    title: 'Bayar dan kirim bukti',
+    title: 'Sepakat dan bayar',
     description:
-      'Buat order dari dasbor, bayar, lalu unggah bukti bayarnya. Tim kami memverifikasi paling lambat 1x24 jam.',
+      'Biaya disepakati di depan lewat obrolan langsung. Pembayaran manual ke rekening resmi yang kami informasikan.',
   },
   {
     title: 'Kami siapkan semuanya',
@@ -293,17 +203,17 @@ export const GUARANTEES: readonly FeatureItem[] = Object.freeze([
   {
     title: 'Aktif maks. 1x24 jam',
     description:
-      'Setelah bukti bayar diverifikasi, langganan aktif paling lambat 1x24 jam. Anda dipandu statusnya dari dasbor.',
+      'Setelah pembayaran terkonfirmasi, organisasi Anda diaktifkan paling lambat 1x24 jam. Anda dipandu statusnya dari dasbor.',
   },
   {
-    title: 'Data aman saat tenggang',
+    title: 'Aktif terus, tanpa kedaluwarsa',
     description:
-      'Masa aktif habis bukan akhir dunia: 7 hari tenggang baca menjaga data tetap utuh dan terlihat sambil menunggu perpanjangan.',
+      'Tidak ada masa aktif 30 hari dan tidak ada masa tenggang: selama status aktif, seluruh fungsi berjalan penuh.',
   },
   {
-    title: 'Pindah paket bebas',
+    title: 'Biaya disepakati di depan',
     description:
-      'Naik atau turun paket kapan saja lewat order baru. Masa aktif dihitung ulang 30 hari sejak disetujui.',
+      'Nominal disepakati lewat obrolan langsung sebelum Anda membayar. Tidak ada tagihan kejutan di tengah jalan.',
   },
   {
     title: 'Berhenti tanpa sandera',
@@ -331,12 +241,12 @@ export const FAQ_ITEMS: readonly FaqItem[] = Object.freeze([
   {
     id: 'faq-4',
     question: 'Bagaimana cara mulai berlangganan?',
-    answer: 'Daftar akun, pilih paket, buat order, bayar, lalu unggah bukti bayarnya. Tim kami memverifikasi paling lambat 1x24 jam, setelah itu langganan aktif 30 hari.'
+    answer: 'Hubungi kami lewat WhatsApp atau surel, ceritakan kebutuhan Anda, sepakati biayanya, lalu lakukan pembayaran manual. Setelah terkonfirmasi, organisasi Anda kami aktifkan paling lambat 1x24 jam dan berjalan terus.'
   },
   {
     id: 'faq-5',
-    question: 'Apa yang terjadi kalau masa aktif habis?',
-    answer: 'Anda mendapat masa tenggang baca 7 hari — data aman dan masih bisa dilihat — lalu status menunggak baca-saja hingga 30 hari sebelum layanan ditangguhkan. Perpanjang kapan saja untuk kembali menulis dan menerbitkan seperti biasa.'
+    question: 'Apakah langganan bisa kedaluwarsa?',
+    answer: 'Tidak ada masa aktif yang kedaluwarsa dan tidak ada masa tenggang: selama status organisasi Anda aktif, seluruh fungsi berjalan penuh. Penonaktifan hanya terjadi atas permintaan Anda atau pelanggaran ketentuan.'
   },
   {
     id: 'faq-6',
@@ -345,13 +255,13 @@ export const FAQ_ITEMS: readonly FaqItem[] = Object.freeze([
   },
   {
     id: 'faq-7',
-    question: 'Bisakah naik atau turun paket di tengah jalan?',
-    answer: 'Bisa. Buat order paket baru dari halaman Langganan; setelah diverifikasi, paket langsung berganti dan masa aktif dihitung ulang 30 hari.'
+    question: 'Apakah ada tingkatan paket?',
+    answer: 'Tidak ada. Semua pelanggan mendapat fungsi yang sama; yang membedakan hanya kebutuhan Anda yang kami diskusikan di awal. Satu-satunya hal yang disesuaikan adalah biaya kesepakatan.'
   },
   {
     id: 'faq-8',
-    question: 'Bagaimana paket Enterprise bekerja?',
-    answer: 'Hubungi tim penjualan lewat WhatsApp, ceritakan kebutuhan dan jumlah websitenya. Kami susun penawaran yang pas, lalu jadwalkan onboarding dan pindahan data.'
+    question: 'Berapa biayanya?',
+    answer: 'Hubungi kami lewat WhatsApp, ceritakan kebutuhan dan jumlah websitenya. Kami memberi angka pasti di depan sebelum Anda membayar apa pun.'
   },
   {
     id: 'faq-9',
@@ -361,17 +271,17 @@ export const FAQ_ITEMS: readonly FaqItem[] = Object.freeze([
   {
     id: 'faq-10',
     question: 'Saya sudah punya website berjalan. Bisa pindah?',
-    answer: 'Bisa. Paket Pro ke atas mencakup bantuan pindahan, dan paket Enterprise mencakup pindahan data massal yang kami kerjakan. Ceritakan sistem lama Anda saat mendaftar.'
+    answer: 'Bisa. Ceritakan sistem lama Anda saat menghubungi kami; bantuan pindahan kami sesuaikan dengan kebutuhan.'
   },
   {
     id: 'faq-11',
     question: 'Apakah ada masa percobaan gratis?',
-    answer: 'Tidak ada trial otomatis, tapi Anda bisa melihat semua paket beserta batasnya secara terbuka sebelum membayar. Paket Starter mulai Rp149rb per bulan.'
+    answer: 'Tidak ada trial otomatis. Sebagai gantinya Anda bisa melihat cara kerja dasbor lewat sesi peninjauan bersama sebelum memutuskan.'
   },
   {
     id: 'faq-12',
     question: 'Bagaimana kalau butuh bantuan?',
-    answer: 'Paket Starter dan Growth dilayani lewat email dan prioritas; paket Pro didampingi sampai jalan; Enterprise punya kontak khusus. Semua paket dijawab manusia, bukan bot.'
+    answer: 'Semua pelanggan didampingi manusia lewat kanal yang jelas — bukan bot. Prioritas penanganan mengikuti dampak: situs tidak bisa diakses ditangani lebih dulu.'
   },
   {
     id: 'faq-13',
@@ -388,7 +298,7 @@ export const CONTACT_CHANNELS: readonly FeatureItem[] = Object.freeze([
   },
   {
     title: 'WhatsApp',
-    description: '0856-4115-9405 — jalur tercepat untuk paket Enterprise, pindahan sistem, atau pertanyaan harga.',
+    description: '0856-4115-9405 — jalur tercepat untuk pembelian, pindahan sistem, atau pertanyaan layanan.',
     href: 'https://wa.me/6285641159405?text=Halo%20Indicate%2C%20saya%20ingin%20bertanya.',
   },
   {
@@ -404,7 +314,7 @@ export const CONTACT_CHANNELS: readonly FeatureItem[] = Object.freeze([
 
 export const ABOUT_STORY: readonly string[] = Object.freeze([
   'Indicate lahir dari pengalaman mendampingi grup media yang portalnya tumbuh lebih cepat dari timnya. Tiap portal baru berarti pengeluaran baru yang berlipat — padahal yang dibutuhkan redaksi hanya tempat menulis dan tombol terbitkan.',
-  'Kami membalik pendekatannya: satu ruang redaksi untuk seluruh jaringan portal. Nambah portal tidak lagi jadi proyek besar yang mahal. Harga mengikuti jumlah website secara terbuka, dan domain tetap milik Anda sepenuhnya.',
+  'Kami membalik pendekatannya: satu ruang redaksi untuk seluruh jaringan portal. Nambah portal tidak lagi jadi proyek besar yang mahal. Biaya disepakati di depan lewat obrolan langsung, dan domain tetap milik Anda sepenuhnya.',
   'Hari ini Indicate melayani redaksi solo hingga grup media — semuanya dengan janji yang sama: Anda terima beres, kami yang mengurus mesinnya.',
 ]);
 
@@ -415,9 +325,9 @@ export const ABOUT_PRINCIPLES: readonly FeatureItem[] = Object.freeze([
       'Anda tidak perlu tahu cara kerja server, cache, atau DNS. Tugas Anda menulis dan menerbitkan; tugas kami memastikan semuanya jalan.',
   },
   {
-    title: 'Harga di depan, bukan di belakang',
+    title: 'Biaya jelas, tanpa paket',
     description:
-      'Semua paket dan batasnya tercantum terbuka. Tidak ada biaya tersembunyi, tidak ada kejutan tagihan, tidak ada negosiasi berlapis untuk paket standar.',
+      'Tidak ada tingkatan dan tidak ada biaya tersembunyi: nominal disepakati lewat obrolan langsung sebelum Anda membayar.',
   },
   {
     title: 'Milik Anda tetap milik Anda',
@@ -427,12 +337,12 @@ export const ABOUT_PRINCIPLES: readonly FeatureItem[] = Object.freeze([
   {
     title: 'Dijawab manusia',
     description:
-      'Bantuan ditangani orang sungguhan yang paham redaksi, bukan bot yang memutar-mutar jawaban. Paket Pro didampingi sampai jalan.',
+      'Bantuan ditangani orang sungguhan yang paham redaksi, bukan bot yang memutar-mutar jawaban. Didampingi sampai jalan.',
   },
   {
-    title: 'Jujur soal batas',
+    title: 'Tanpa batas paket',
     description:
-      'Setiap paket mencantumkan batasnya dengan jelas: jumlah website, anggota, dan masa aktif. Kalau butuh lebih, naik paket — bukan bayar denda siluman.',
+      'Tidak ada kuota tingkatan yang mengunci fitur: selama status aktif, seluruh fungsi tersedia penuh untuk kebutuhan redaksi Anda.',
   },
   {
     title: 'Bukti, bukan janji',
@@ -456,11 +366,11 @@ export interface DocSectionItem {
 export const TERMS_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   {
     heading: '1. Definisi',
-    body: 'Dalam Ketentuan Layanan ini, “Indicate”, “kami”, atau “Penyelenggara” berarti penyelenggara layanan Indicate beserta karyawan, kontraktor, dan afiliasinya yang bertindak atas nama Penyelenggara. “Pelanggan”, “Anda”, atau “Organisasi” berarti badan usaha, lembaga, atau perorangan yang memesan dan menggunakan layanan, termasuk setiap pengurus dan anggota redaksi yang diberi akses oleh Pelanggan. “Layanan” berarti platform Indicate secara keseluruhan: situs web berita siap tayang, ruang redaksi terpusat, penerbitan multi-situs, penyimpanan dan penayangan media, dasbor penagihan, serta pendampingan manusia sesuai paket. “Konten Pelanggan” berarti seluruh artikel, gambar, video, logo, teks, metadata SEO, dan materi lain yang diunggah, ditulis, atau diterbitkan Pelanggan melalui Layanan. “Masa Aktif” berarti periode 30 hari kalender sejak persetujuan order. “Masa Tenggang” berarti periode 7 hari kalender setelah Masa Aktif berakhir sebagaimana diatur pada Bagian 9. Ketentuan ini, halaman Paket, setiap order yang disetujui, dan — untuk paket Enterprise — surat perintah kerja (statement of work) yang ditandatangani bersama, secara bersama-sama membentuk “Kontrak”. Jika terdapat pertentangan, urutan keberlakuan adalah: surat perintah kerja Enterprise, order yang disetujui, halaman Paket pada saat order disetujui, lalu Ketentuan ini. Penyelenggara adalah PT SANCA PHENA CAKRA, berdomisili di Jl. Raya Kalierang Gg. Melati RT 001/RW 005, Kalierang, Selomerto, Kabupaten Wonosobo, Jawa Tengah 56361 (NPWP tercantum pada faktur resmi), surel sancaphenacakra@gmail.com, telepon 0856-4115-9405.',
+    body: 'Dalam Ketentuan Layanan ini, “Indicate”, “kami”, atau “Penyelenggara” berarti penyelenggara layanan Indicate beserta karyawan, kontraktor, dan afiliasinya yang bertindak atas nama Penyelenggara. “Pelanggan”, “Anda”, atau “Organisasi” berarti badan usaha, lembaga, atau perorangan yang memesan dan menggunakan layanan, termasuk setiap pengurus dan anggota redaksi yang diberi akses oleh Pelanggan. “Layanan” berarti platform Indicate secara keseluruhan: situs web berita siap tayang, ruang redaksi terpusat, penerbitan multi-situs, penyimpanan dan penayangan media, dasbor, serta pendampingan manusia. “Konten Pelanggan” berarti seluruh artikel, gambar, video, logo, teks, metadata SEO, dan materi lain yang diunggah, ditulis, atau diterbitkan Pelanggan melalui Layanan. Tidak ada tingkatan paket, tidak ada masa aktif berkala: status langganan hanya aktif, ditangguhkan, atau dibatalkan sebagaimana diatur pada Bagian 8. Kontrak terbentuk dari kesepakatan biaya melalui kontak resmi ditambah Ketentuan ini. Penyelenggara adalah PT SANCA PHENA CAKRA, berdomisili di Jl. Raya Kalierang Gg. Melati RT 001/RW 005, Kalierang, Selomerto, Kabupaten Wonosobo, Jawa Tengah 56361 (NPWP tercantum pada arsip penagihan resmi), surel sancaphenacakra@gmail.com, telepon 0856-4115-9405.',
   },
   {
     heading: '2. Lingkup layanan dan hal yang dikecualikan',
-    body: 'Indicate menyediakan layanan terkelola terima beres: penyediaan dan hosting situs berita sesuai paket, satu ruang redaksi terpusat untuk menulis dan mengelola artikel lintas situs, penerbitan satu-klik ke situs tujuan yang dipilih, penyimpanan objek privat untuk media dengan penayangan melalui otorisasi bertanda tangan berumur pendek, pengelolaan domain dan situs, kanal, kategori, penulis, dan peran redaksi, serta pendampingan aktivasi dan operasional oleh manusia. Pengadaan dan kepemilikan nama domain berada di luar lingkup Layanan — domain sepenuhnya milik dan tanggung jawab Pelanggan — namun tim kami membantu mengarahkan nameserver, memverifikasi propagasi DNS, dan mengaitkan domain ke situs Anda tanpa biaya tambahan yang wajar. Yang secara tegas dikecualikan dari Layanan standar adalah: pengembangan perangkat lunak kustom di luar konfigurasi yang tersedia, migrasi massal arsip historis dari sistem lama kecuali disepakati tertulis, jasa hukum atau editorial (penyuntingan naskah, verifikasi fakta, kurasi), pengadaan lisensi pihak ketiga seperti foto stok, font komersial, atau layanan analitik berbayar, serta penanganan insiden yang disebabkan penyalahgunaan kredensial oleh pihak Pelanggan. Setiap pekerjaan di luar lingkup ditawarkan sebagai layanan profesional terpisah dengan penawaran tertulis.',
+    body: 'Indicate menyediakan layanan terkelola terima beres: penyediaan dan hosting situs berita, satu ruang redaksi terpusat untuk menulis dan mengelola artikel lintas situs, penerbitan satu-klik ke situs tujuan yang dipilih, penyimpanan objek privat untuk media dengan penayangan melalui otorisasi bertanda tangan berumur pendek, pengelolaan domain dan situs, kanal, kategori, penulis, dan peran redaksi, serta pendampingan aktivasi dan operasional oleh manusia. Pengadaan dan kepemilikan nama domain berada di luar lingkup Layanan — domain sepenuhnya milik dan tanggung jawab Pelanggan — namun tim kami membantu mengarahkan nameserver, memverifikasi propagasi DNS, dan mengaitkan domain ke situs Anda tanpa biaya tambahan yang wajar. Yang secara tegas dikecualikan dari Layanan standar adalah: pengembangan perangkat lunak kustom di luar konfigurasi yang tersedia, migrasi massal arsip historis dari sistem lama kecuali disepakati tertulis, jasa hukum atau editorial (penyuntingan naskah, verifikasi fakta, kurasi), pengadaan lisensi pihak ketiga seperti foto stok, font komersial, atau layanan analitik berbayar, serta penanganan insiden yang disebabkan penyalahgunaan kredensial oleh pihak Pelanggan. Setiap pekerjaan di luar lingkup ditawarkan sebagai layanan profesional terpisah dengan penawaran tertulis.',
   },
   {
     heading: '3. Kelayakan dan kewenangan',
@@ -471,32 +381,32 @@ export const TERMS_SECTIONS: readonly DocSectionItem[] = Object.freeze([
     body: 'Setiap Pelanggan menerima satu ruang organisasi dengan peran bertingkat: pengurus organisasi (owner/admin), editor, penulis, dan peran baca sesuai kebutuhan redaksi. Pengurus organisasi berwenang menambah, mengubah peran, menonaktifkan, dan menghapus anggota kapan saja dari dasbor, dan setiap perubahan berlaku serta-merta. Anda bertanggung jawab penuh menjaga kerahasiaan kata sandi, sesi masuk, token integrasi, dan kunci API milik organisasi Anda, termasuk menerapkan kata sandi yang kuat, membatasi perangkat bersama, dan mencabut akses anggota yang sudah tidak berhak — misalnya karyawan yang mengundurkan diri — pada hari yang sama. Apabila terjadi dugaan pembobolan, phising, atau akses tidak sah, Anda wajib segera mengganti kredensial yang terdampak, mencabut sesi aktif, dan memberi tahu kami melalui kanal kontak resmi agar kami dapat membantu pembekuan dan investigasi. Kami menerapkan penyimpanan kata sandi satu arah (hashing modern dengan salt), pemisahan kredensial sistem pada penyimpanan rahasia sisi server, dan pencatatan audit hanya-tambah untuk aktivitas sensitif. Kami tidak pernah meminta kata sandi Anda melalui surel atau pesan instan, dan setiap permintaan demikian harus diabaikan serta dilaporkan.',
   },
   {
-    heading: '5. Pemesanan, penawaran, dan pembentukan kontrak',
-    body: 'Alur pemesanan standar adalah: Anda memilih paket pada halaman Paket, melunasi pembayaran sesuai instruksi, mengunggah bukti bayar dari dasbor, lalu tim kami memverifikasi dan menyetujui order. Kontrak terbentuk pada saat order Anda disetujui dan status langganan berubah menjadi aktif, bukan pada saat Anda menekan tombol bayar atau mengunggah bukti. Harga, jumlah situs, dan masa aktif yang mengikat adalah yang tercantum pada order yang disetujui, termasuk setiap penyesuaian tertulis yang kami konfirmasi. Kami dapat menolak order yang melewati batas kapasitas operasional, memuat domain yang bermasalah secara hukum, atau terindikasi penipuan, dengan pengembalian dana penuh atas pembayaran yang sudah diterima untuk order yang ditolak tersebut. Untuk paket Enterprise, Kontrak terbentuk melalui proposal, peninjauan kebutuhan, dan surat perintah kerja yang ditandatangani, dan ketentuan surat perintah kerja tersebut berlaku melengkapi — bukan menggantikan — Ketentuan ini kecuali dinyatakan sebaliknya secara tertulis.',
+    heading: '5. Pemesanan dan pembentukan kontrak',
+    body: 'Alur pemesanan standar adalah: Anda menghubungi kami lewat halaman Kontak, menceritakan kebutuhan, menyepakati biaya di depan, lalu melakukan pembayaran manual ke rekening resmi yang kami informasikan. Kontrak terbentuk pada saat organisasi Anda kami aktifkan, bukan pada saat Anda membayar. Kami dapat menolak pemesanan yang melewati batas kapasitas operasional, memuat domain yang bermasalah secara hukum, atau terindikasi penipuan, dengan pengembalian dana penuh atas pembayaran yang sudah diterima untuk pemesanan yang ditolak tersebut. Untuk kebutuhan khusus, ruang lingkup tambahan dituangkan dalam kesepakatan tertulis yang berlaku melengkapi Ketentuan ini kecuali dinyatakan sebaliknya secara tertulis.',
   },
   {
-    heading: '6. Paket, harga, pajak, dan transparansi',
-    body: 'Harga setiap paket tercantum terbuka pada halaman Paket dan dihitung berdasarkan jumlah website yang termasuk dalam paket; tidak ada biaya tersembunyi di dalam paket standar. Harga yang berlaku bagi Anda adalah harga pada saat order disetujui, dan perubahan harga di kemudian hari tidak berlaku surut terhadap Masa Aktif yang sedang berjalan — harga baru hanya berlaku untuk perpanjangan atau order baru setelah perubahan diumumkan. Harga yang tercantum belum termasuk pajak yang diwajibkan peraturan perundang-undangan (termasuk PPN apabila berlaku), biaya perbankan atau gerbang pembayaran, serta biaya registrar domain yang dibayarkan langsung oleh Anda kepada registrar pilihan Anda. Apabila terjadi kesalahan penulisan harga yang nyata dan tidak wajar, kami akan memberi tahu Anda sebelum order disetujui dan memberi pilihan untuk melanjutkan dengan harga yang benar atau menerima pengembalian dana penuh. Riwayat order, faktur, dan status langganan selalu dapat diperiksa dari dasbor organisasi Anda demi keterbukaan penuh. Kebijakan refund: order yang ditolak mendapat pengembalian penuh; kesalahan penulisan harga yang nyata dapat dilanjutkan dengan harga yang benar atau pengembalian penuh; refund pasca-aktivasi hanya atas persetujuan platform — status order berubah menjadi refunded dan tercatat pada jejak audit — dan diproses paling lambat 14 hari kerja ke rekening asal; penghentian sukarela dan perpindahan turun paket tidak dihitung pro-rata pada paket standar; bukti order dan riwayat tersedia di dasbor, sedangkan faktur pajak resmi diterbitkan atas nama PT SANCA PHENA CAKRA mengikuti ketentuan perpajakan yang berlaku pada saat transaksi.',
+    heading: '6. Biaya, pajak, dan transparansi',
+    body: 'Tidak ada daftar harga paket: nominal disepakati lewat obrolan langsung sebelum Anda membayar, dan itulah angka yang mengikat. Harga yang tercantum belum termasuk pajak yang diwajibkan peraturan perundang-undangan (termasuk PPN apabila berlaku), biaya perbankan, serta biaya registrar domain yang dibayarkan langsung oleh Anda kepada registrar pilihan Anda. Apabila terjadi kesalahan penulisan nominal yang nyata dan tidak wajar, kami akan memberi tahu Anda sebelum aktivasi dan memberi pilihan untuk melanjutkan dengan angka yang benar atau menerima pengembalian dana penuh. Status langganan selalu dapat diperiksa dari dasbor organisasi Anda demi keterbukaan penuh. Kebijakan refund: pemesanan yang ditolak mendapat pengembalian penuh; refund pasca-aktivasi hanya atas persetujuan platform dan diproses paling lambat 14 hari kerja ke rekening asal; penghentian sukarela tidak dihitung pro-rata; arsip penagihan tersedia di dasbor, sedangkan dokumen pajak resmi diterbitkan atas nama PT SANCA PHENA CAKRA mengikuti ketentuan perpajakan yang berlaku pada saat transaksi.',
   },
   {
-    heading: '7. Pembayaran, verifikasi, dan keterlambatan',
-    body: 'Pembayaran dilakukan melalui metode yang kami sediakan dan dianggap lunas setelah dana efektif diterima. Detail tujuan pembayaran (rekening/e-wallet) kami informasikan melalui kanal kontak resmi pada halaman Kontak setelah Anda membuat order — jangan mentransfer ke rekening dari sumber lain yang mengatasnamakan kami. Tim verifikasi memeriksa kecocokan nominal, tanggal, dan identitas pembayar paling lambat 1x24 jam pada hari kerja; apabila bukti tidak terbaca, nominal kurang, atau pengirim tidak teridentifikasi, kami akan meminta perbaikan dan tenggat verifikasi dihitung ulang sejak bukti yang benar diterima. Order yang belum disetujui tidak menimbulkan Masa Aktif. Keterlambatan pembayaran di luar Masa Tenggang mengakibatkan penangguhan kemampuan menulis dan menerbitkan sebagaimana diatur pada Bagian 9, tanpa menghapus Konten Pelanggan. Kami tidak mengenakan denda keterlambatan pada paket standar; pada paket Enterprise, ketentuan denda — bila ada — hanya berlaku apabila disepakati tertulis dalam surat perintah kerja. Setiap sengketa tagihan wajib diajukan paling lambat 14 hari kalender sejak order disetujui agar dapat kami selidiki selagi jejak transaksi masih hangat. Refund yang disetujui tidak otomatis menangguhkan langganan — penangguhan diputuskan operator secara terpisah dan diberitahukan kepada Anda.',
+    heading: '7. Pembayaran dan verifikasi',
+    body: 'Pembayaran dilakukan manual ke rekening resmi yang kami informasikan melalui kanal kontak resmi pada halaman Kontak setelah kesepakatan — jangan mentransfer ke rekening dari sumber lain yang mengatasnamakan kami. Pembayaran dianggap lunas setelah dana efektif diterima dan kami konfirmasi; aktivasi dilakukan paling lambat 1x24 jam sejak konfirmasi. Setiap sengketa tagihan wajib diajukan paling lambat 14 hari kalender sejak pembayaran agar dapat kami selidiki selagi jejak transaksi masih hangat.',
   },
   {
-    heading: '8. Aktivasi, masa aktif 30 hari, dan perpanjangan',
-    body: 'Begitu order disetujui, langganan Anda aktif selama 30 hari kalender penuh terhitung sejak tanggal dan jam persetujuan, dan situs Anda diaktifkan paling lambat 1x24 jam sejak persetujuan kecuali terdapat kendala DNS di sisi registrar yang berada di luar kendali kami. Selama Masa Aktif, seluruh fungsi sesuai paket tersedia penuh: menulis, mengunggah media, menerbitkan lintas situs, mengelola pengguna, dan mengunduh arsip. Anda dapat memperpanjang kapan saja sebelum atau sesudah Masa Aktif berakhir dengan membuat order perpanjangan baru; Masa Aktif yang baru dihitung 30 hari sejak tanggal persetujuan order perpanjangan tersebut, bukan ditumpuk di atas sisa masa sebelumnya. Pengingat kedaluwarsa ditampilkan pada dasbor dan — apabila Anda mengaktifkannya — dikirim melalui kanal notifikasi yang Anda pilih. Perpanjangan yang disetujui selama Masa Tenggang otomatis memulihkan fungsi penuh tanpa jeda tambahan dan tanpa denda.',
+    heading: '8. Aktivasi dan masa berlaku',
+    body: 'Begitu pembayaran terkonfirmasi, organisasi Anda diaktifkan — paling lambat 1x24 jam kecuali terdapat kendala DNS di sisi registrar yang berada di luar kendali kami. Selama status aktif, seluruh fungsi tersedia penuh: menulis, mengunggah media, menerbitkan lintas situs, mengelola pengguna, dan mengunduh arsip. Tidak ada masa aktif berkala yang kedaluwarsa dan tidak ada masa tenggang: status aktif berjalan terus sampai Anda meminta penghentian atau kami menangguhkan karena pelanggaran.',
   },
   {
-    heading: '9. Masa tenggang 7 hari, penangguhan, dan pemutusan',
-    body: 'Apabila Masa Aktif berakhir dan belum ada perpanjangan yang disetujui, Anda otomatis memasuki Masa Tenggang baca selama 7 hari kalender: situs publik tetap tayang, data utuh dan terlihat, namun kemampuan menulis, mengunggah, menerbitkan, dan mengubah konfigurasi dijeda sementara. Masa Tenggang diberikan tanpa denda dan tanpa penghapusan data, dan Anda dapat keluar dari Masa Tenggang kapan saja dengan memperpanjang sesuai Bagian 8. Apabila belum diperpanjang setelah Masa Tenggang, status berubah menjadi menunggak (past due) baca-saja hingga 30 hari sejak Masa Aktif berakhir; setelah 30 hari tanpa perpanjangan, Layanan memasuki status ditangguhkan: situs publik dapat dinonaktifkan dan akses dasbor dibatasi hingga fungsi baca arsip, semata-mata untuk melindungi integritas data Anda. Penangguhan bukan penghapusan — data Anda dipertahankan sesuai jadwal retensi pada Kebijakan Privasi — dan pemulihan penuh dilakukan segera setelah perpanjangan disetujui. Kami hanya melakukan pemutusan permanen dan penghapusan data operasional setelah seluruh kewajiban selesai dan tenggat retensi terpenuhi, atau lebih awal atas permintaan tertulis Anda.',
+    heading: '9. Penangguhan dan pemutusan',
+    body: 'Kami hanya menangguhkan layanan karena pelanggaran ketentuan (setelah peringatan tertulis sebagaimana Bagian 15), perintah hukum, atau atas permintaan tertulis Anda. Penangguhan bukan penghapusan — data Anda dipertahankan sesuai jadwal retensi pada Kebijakan Privasi — dan pemulihan penuh dilakukan segera setelah dasar penangguhan selesai. Kami hanya melakukan pemutusan permanen dan penghapusan data operasional setelah seluruh kewajiban selesai dan tenggat retensi terpenuhi, atau lebih awal atas permintaan tertulis Anda.',
   },
   {
-    heading: '10. Naik dan turun paket serta perubahan kuota situs',
-    body: 'Anda dapat berpindah paket kapan saja dengan membuat order baru untuk paket tujuan; tidak ada biaya penalti untuk berpindah. Setelah order disetujui, paket yang baru langsung berlaku dan Masa Aktif 30 hari dihitung ulang penuh sejak tanggal persetujuan order tersebut. Pada perpindahan naik (upgrade), seluruh situs dan kapasitas paket baru langsung tersedia, dan konten serta konfigurasi yang sudah ada dipertahankan. Pada perpindahan turun (downgrade) ke paket dengan kuota situs lebih kecil, Anda wajib terlebih dahulu menentukan situs mana yang tetap aktif; apabila tidak ditentukan, sistem mempertahankan situs dengan aktivitas penerbitan terbaru hingga batas kuota dan menonaktifkan sisanya secara non-destruktif sehingga dapat diaktifkan kembali pada perpanjangan berikutnya. Selisih harga akibat perpindahan di tengah masa berjalan tidak dihitung pro-rata pada paket standar kecuali dinyatakan tertulis; pada paket Enterprise, penyesuaian mengikuti surat perintah kerja.',
+    heading: '10. Perubahan kebutuhan',
+    body: 'Kebutuhan bertambah (portal baru, anggota baru, pindahan sistem) atau berkurang? Sampaikan lewat kanal kontak resmi; penyesuaian — termasuk biaya bila ada — disepakati tertulis sebelum berlaku. Tidak ada penalti perubahan dan tidak ada hitungan pro-rata yang rumit.',
   },
   {
-    heading: '11. Paket Enterprise, SOW, dan onboarding',
-    body: 'Paket Enterprise dirancang untuk grup media dan kebutuhan khusus: kuota situs besar, kebutuhan kepatuhan tambahan, integrasi khusus, atau jadwal onboarding bertahap. Cakupan, harga, jadwal, tanggung jawab masing-masing pihak, kriteria penerimaan (acceptance criteria), dan tingkat layanan khusus dituangkan dalam surat perintah kerja yang ditandatangani bersama sebelum pekerjaan dimulai. Onboarding Enterprise mencakup penemuan kebutuhan, konfigurasi awal situs dan peran, pengarahan DNS dan TLS, uji penerbitan ujung-ke-ujung, serta serah terima operasional dengan dokumentasi. Setiap perubahan ruang lingkup setelah surat perintah kerja ditandatangani dituangkan dalam adendum tertulis; pekerjaan di luar adendum tidak dimulai sebelum disetujui. Apabila surat perintah kerja mengatur hal yang berbeda dari Ketentuan ini, surat perintah kerja tersebut yang berlaku untuk pelanggan Enterprise yang bersangkutan sepanjang tidak melanggar hukum yang berlaku.',
+    heading: '11. Kebutuhan khusus dan onboarding',
+    body: 'Untuk kebutuhan khusus — grup media besar, kepatuhan tambahan, integrasi khusus, atau jadwal onboarding bertahap — cakupan, jadwal, tanggung jawab masing-masing pihak, dan kriteria penerimaan dituangkan dalam kesepakatan tertulis sebelum pekerjaan dimulai. Onboarding mencakup penemuan kebutuhan, konfigurasi awal situs dan peran, pengarahan DNS dan TLS, uji penerbitan ujung-ke-ujung, serta serah terima operasional dengan dokumentasi. Setiap perubahan ruang lingkup setelah kesepakatan ditandatangani dituangkan dalam adendum tertulis; pekerjaan di luar adendum tidak dimulai sebelum disetujui.',
   },
   {
     heading: '12. Domain, DNS, TLS, dan konektivitas',
@@ -520,11 +430,11 @@ export const TERMS_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   },
   {
     heading: '17. Ketersediaan, pemeliharaan, dan SLA',
-    body: 'Kami mengupayakan Layanan tersedia setiap saat dan memantau ketersediaan, latensi, serta kegagalan penerbitan secara proaktif. Pemeliharaan terjadwal yang berpotensi menimbulkan gangguan dilakukan pada jam sepi dengan pemberitahuan terlebih dahulu melalui dasbor atau kanal status, sedangkan pemeliharaan darurat untuk keamanan dapat dilakukan sewaktu-waktu dengan pemberitahuan menyusul. Pada paket standar, target ketersediaan adalah upaya terbaik yang wajar (best effort) tanpa kredit layanan; janji tingkat layanan (SLA) dengan target terukur, kredit, dan jalur eskalasi prioritas hanya berlaku apabila disepakati tertulis, umumnya pada paket Enterprise dalam surat perintah kerja. Pengecualian SLA — di mana pun disepakati — mencakup pemadaman penyedia infrastruktur di luar kendali wajar kami, keadaan kahar, kesalahan konfigurasi DNS atau registrar oleh Pelanggan, serangan siber berskala internet, serta penangguhan karena tunggakan di luar Masa Tenggang. Setiap klaim SLA wajib diajukan dengan bukti waktu dan dampak dalam tenggat yang tercantum pada surat perintah kerja.',
+    body: 'Kami mengupayakan Layanan tersedia setiap saat dan memantau ketersediaan, latensi, serta kegagalan penerbitan secara proaktif. Pemeliharaan terjadwal yang berpotensi menimbulkan gangguan dilakukan pada jam sepi dengan pemberitahuan terlebih dahulu melalui dasbor atau kanal status, sedangkan pemeliharaan darurat untuk keamanan dapat dilakukan sewaktu-waktu dengan pemberitahuan menyusul. Target ketersediaan adalah upaya terbaik yang wajar (best effort) tanpa kredit layanan; janji tingkat layanan (SLA) dengan target terukur, kredit, dan jalur eskalasi prioritas hanya berlaku apabila disepakati tertulis. Pengecualian SLA — di mana pun disepakati — mencakup pemadaman penyedia infrastruktur di luar kendali wajar kami, keadaan kahar, kesalahan konfigurasi DNS atau registrar oleh Pelanggan, serangan siber berskala internet, serta penangguhan karena pelanggaran. Setiap klaim SLA wajib diajukan dengan bukti waktu dan dampak dalam tenggat yang tercantum pada kesepakatan tertulis.',
   },
   {
     heading: '18. Dukungan dan pendampingan',
-    body: 'Setiap paket mencakup pendampingan manusia dalam Bahasa Indonesia: bantuan aktivasi dan pengarahan DNS, panduan penggunaan dasbor redaksi, serta penanganan kendala operasional. Saluran dukungan resmi adalah halaman Kontak dan kanal yang tercantum di dasbor; dukungan melalui kanal tidak resmi tidak dijamin ditindaklanjuti. Prioritas penanganan mengikuti dampak: situs tidak dapat diakses publik ditangani sebelum permintaan konfigurasi kosmetik. Cakupan dukungan standar tidak mencakup penulisan atau penyuntingan naskah, desain kustom di luar templat yang tersedia, pengembangan integrasi khusus, atau investigasi forensik atas perangkat milik Pelanggan — layanan tersebut dapat ditawarkan sebagai layanan profesional terpisah. Kami mencatat setiap tiket dukungan beserta penyelesaiannya untuk pengendalian mutu, dan Anda dapat meminta ringkasan riwayat dukungan organisasi Anda.',
+    body: 'Setiap pelanggan mendapat pendampingan manusia dalam Bahasa Indonesia: bantuan aktivasi dan pengarahan DNS, panduan penggunaan dasbor redaksi, serta penanganan kendala operasional. Saluran dukungan resmi adalah halaman Kontak dan kanal yang tercantum di dasbor; dukungan melalui kanal tidak resmi tidak dijamin ditindaklanjuti. Prioritas penanganan mengikuti dampak: situs tidak dapat diakses publik ditangani sebelum permintaan konfigurasi kosmetik. Cakupan dukungan standar tidak mencakup penulisan atau penyuntingan naskah, desain kustom di luar templat yang tersedia, pengembangan integrasi khusus, atau investigasi forensik atas perangkat milik Pelanggan — layanan tersebut dapat ditawarkan sebagai layanan profesional terpisah. Kami mencatat setiap tiket dukungan beserta penyelesaiannya untuk pengendalian mutu, dan Anda dapat meminta ringkasan riwayat dukungan organisasi Anda.',
   },
   {
     heading: '19. Privasi, pemrosesan data, dan subprosesor',
@@ -540,15 +450,15 @@ export const TERMS_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   },
   {
     heading: '22. Keadaan kahar (force majeure)',
-    body: 'Tidak ada pihak yang bertanggung jawab atas keterlambatan atau kegagalan memenuhi kewajiban (selain kewajiban pembayaran yang telah jatuh tempo) apabila disebabkan peristiwa di luar kendali wajarnya, termasuk bencana alam, kebakaran, banjir, pandemi, perang, terorisme, kerusuhan, pemadaman listrik regional, gangguan internet backbone, serangan siber berskala luas, tindakan pemerintah, atau kegagalan penyedia infrastruktur kritis. Pihak yang terdampak wajib segera memberi tahu pihak lain, mengupayakan mitigasi yang wajar, dan melanjutkan pelaksanaan segera setelah peristiwa berakhir. Apabila peristiwa kahar berlangsung terus-menerus lebih dari 30 hari kalender dan secara material menghalangi penyediaan Layanan inti, setiap pihak dapat mengakhiri bagian Kontrak yang terdampak dengan pemberitahuan tertulis, dengan pengembalian pro-rata atas porsi prabayar yang belum digunakan untuk paket standar.',
+    body: 'Tidak ada pihak yang bertanggung jawab atas keterlambatan atau kegagalan memenuhi kewajiban (selain kewajiban pembayaran yang telah jatuh tempo) apabila disebabkan peristiwa di luar kendali wajarnya, termasuk bencana alam, kebakaran, banjir, pandemi, perang, terorisme, kerusuhan, pemadaman listrik regional, gangguan internet backbone, serangan siber berskala luas, tindakan pemerintah, atau kegagalan penyedia infrastruktur kritis. Pihak yang terdampak wajib segera memberi tahu pihak lain, mengupayakan mitigasi yang wajar, dan melanjutkan pelaksanaan segera setelah peristiwa berakhir. Apabila peristiwa kahar berlangsung terus-menerus lebih dari 30 hari kalender dan secara material menghalangi penyediaan Layanan inti, setiap pihak dapat mengakhiri bagian Kontrak yang terdampak dengan pemberitahuan tertulis.',
   },
   {
     heading: '23. Jangka waktu, penghentian, ekspor data, dan penghapusan',
-    body: 'Kontrak berlaku selama Masa Aktif dan setiap perpanjangannya, termasuk Masa Tenggang dan masa penangguhan hingga data dihapus atau Kontrak diakhiri. Anda dapat berhenti kapan saja tanpa penalti dengan tidak memperpanjang; untuk penghentian segera atas permintaan, kirimkan permintaan tertulis dari pengurus organisasi dan kami akan menonaktifkan Layanan dalam tenggat wajar setelah verifikasi identitas. Sebelum penghentian berlaku, gunakan fungsi ekspor di dasbor untuk mengunduh artikel, media, dan data konfigurasi — kami menyediakan format yang wajar dan dapat dibaca mesin. Setelah penghentian, data operasional dihapus dalam tenggat wajar paling lama 90 hari, kecuali arsip transaksi dan jejak audit yang wajib disimpan menurut hukum sebagaimana dijelaskan pada Kebijakan Privasi. Kami dapat mengakhiri Kontrak dengan pemberitahuan 30 hari apabila Anda melanggar Ketentuan secara material dan tidak memperbaikinya setelah peringatan tertulis, atau serta-merta untuk pelanggaran berat pada Bagian 15 atau perintah hukum. Pengakhiran tidak menghapus kewajiban pembayaran yang telah jatuh tempo maupun ketentuan yang menurut sifatnya tetap berlaku.',
+    body: 'Kontrak berlaku selama status langganan aktif. Anda dapat berhenti kapan saja tanpa penalti: kirimkan permintaan tertulis dari pengurus organisasi dan kami akan menonaktifkan Layanan dalam tenggat wajar setelah verifikasi identitas. Sebelum penghentian berlaku, gunakan fungsi ekspor di dasbor untuk mengunduh artikel, media, dan data konfigurasi — kami menyediakan format yang wajar dan dapat dibaca mesin. Setelah penghentian, data operasional dihapus dalam tenggat wajar paling lama 90 hari, kecuali arsip penagihan dan jejak audit yang wajib disimpan menurut hukum sebagaimana dijelaskan pada Kebijakan Privasi. Kami dapat mengakhiri Kontrak dengan pemberitahuan 30 hari apabila Anda melanggar Ketentuan secara material dan tidak memperbaikinya setelah peringatan tertulis, atau serta-merta untuk pelanggaran berat pada Bagian 15 atau perintah hukum. Pengakhiran tidak menghapus kewajiban pembayaran yang telah jatuh tempo maupun ketentuan yang menurut sifatnya tetap berlaku.',
   },
   {
     heading: '24. Perubahan ketentuan, pemberitahuan, hukum, sengketa, dan kontak',
-    body: 'Kami dapat memperbarui Ketentuan ini untuk mencerminkan perubahan fitur, regulasi, atau praktik keamanan. Perubahan material akan diumumkan melalui dasbor atau surel pemberitahuan paling lambat 14 hari sebelum berlaku, disertai tanggal efektif dan ringkasan perubahan; penggunaan Layanan setelah tanggal efektif dianggap sebagai persetujuan atas versi baru. Apabila Anda tidak setuju, Anda dapat berhenti dengan tidak memperpanjang sebelum tanggal efektif, dan versi sebelumnya tetap berlaku hingga Masa Aktif berjalan berakhir. Pemberitahuan resmi kepada kami disampaikan melalui halaman Kontak, surel sancaphenacakra@gmail.com, atau WhatsApp 0856-4115-9405, dan kepada Anda melalui alamat surel organisasi atau pengumuman dasbor. Kontrak ini diatur oleh dan ditafsirkan menurut hukum Republik Indonesia. Setiap perselisihan diselesaikan terlebih dahulu melalui musyawarah untuk mufakat dalam 30 hari sejak pemberitahuan sengketa; apabila gagal, sengketa diselesaikan melalui pengadilan yang berwenang di Indonesia atau — untuk pelanggan Enterprise — melalui forum yang disepakati dalam surat perintah kerja. Ketentuan ini berlaku efektif sejak 7 September 2026. Untuk pertanyaan mengenai Ketentuan ini, hubungi kami melalui halaman Kontak atau surel sancaphenacakra@gmail.com.',
+    body: 'Kami dapat memperbarui Ketentuan ini untuk mencerminkan perubahan fitur, regulasi, atau praktik keamanan. Perubahan material akan diumumkan melalui dasbor atau surel pemberitahuan paling lambat 14 hari sebelum berlaku, disertai tanggal efektif dan ringkasan perubahan; penggunaan Layanan setelah tanggal efektif dianggap sebagai persetujuan atas versi baru. Apabila Anda tidak setuju, Anda dapat berhenti dengan tidak memperpanjang sebelum tanggal efektif, dan versi sebelumnya tetap berlaku hingga Masa Aktif berjalan berakhir. Pemberitahuan resmi kepada kami disampaikan melalui halaman Kontak, surel sancaphenacakra@gmail.com, atau WhatsApp 0856-4115-9405, dan kepada Anda melalui alamat surel organisasi atau pengumuman dasbor. Kontrak ini diatur oleh dan ditafsirkan menurut hukum Republik Indonesia. Setiap perselisihan diselesaikan terlebih dahulu melalui musyawarah untuk mufakat dalam 30 hari sejak pemberitahuan sengketa; apabila gagal, sengketa diselesaikan melalui pengadilan yang berwenang di Indonesia. Ketentuan ini berlaku efektif sejak 7 September 2026. Untuk pertanyaan mengenai Ketentuan ini, hubungi kami melalui halaman Kontak atau surel sancaphenacakra@gmail.com.',
   },
 ]);
 
@@ -559,11 +469,11 @@ export const PRIVACY_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   },
   {
     heading: '2. Kategori data pribadi yang kami proses',
-    body: 'Kami memproses enam kategori data. Pertama, data identitas dan kontak akun: nama, surel, peran redaksi, foto profil opsional, serta pengenal autentikasi yang diterbitkan penyedia identitas. Kedua, data konten dan editorial: artikel, draf, kategori, tag, penulis, atribusi penerbit, komentar internal, dan riwayat revisi yang Anda kelola. Ketiga, data media: berkas gambar, video, dan dokumen yang Anda unggah beserta metadata teknisnya (ukuran, dimensi, tipe berkas). Keempat, data transaksi dan penagihan: nominal order, tanggal pembayaran, identitas pengirim, dan salinan bukti bayar sebagai arsip transaksi. Kelima, data operasional dan keamanan: jejak audit aktivitas sensitif, log akses dan galat yang telah disanitasi dari nilai rahasia, preferensi konfigurasi situs, serta catatan tiket dukungan. Keenam, data teknis pembaca situs publik Anda: log standar keamanan dan keandalan seperti alamat IP yang disamarkan, jenis peramban, halaman yang diakses, dan waktu akses — tanpa profil iklan dan tanpa penjualan data. Kami tidak meminta dan meminta Anda untuk tidak mengunggah data yang tidak diperlukan untuk penerbitan, terutama nomor identitas kependudukan, data biometrik, atau data kesehatan, kecuali terdapat dasar hukum yang sah dan telah dikonsultasikan dengan kami.',
+    body: 'Kami memproses enam kategori data. Pertama, data identitas dan kontak akun: nama, surel, peran redaksi, foto profil opsional, serta pengenal autentikasi yang diterbitkan penyedia identitas. Kedua, data konten dan editorial: artikel, draf, kategori, tag, penulis, atribusi penerbit, komentar internal, dan riwayat revisi yang Anda kelola. Ketiga, data media: berkas gambar, video, dan dokumen yang Anda unggah beserta metadata teknisnya (ukuran, dimensi, tipe berkas). Keempat, data penagihan: nominal dan tanggal pembayaran serta identitas pengirim sebagai arsip penagihan. Kelima, data operasional dan keamanan: jejak audit aktivitas sensitif, log akses dan galat yang telah disanitasi dari nilai rahasia, preferensi konfigurasi situs, serta catatan tiket dukungan. Keenam, data teknis pembaca situs publik Anda: log standar keamanan dan keandalan seperti alamat IP yang disamarkan, jenis peramban, halaman yang diakses, dan waktu akses — tanpa profil iklan dan tanpa penjualan data. Kami tidak meminta dan meminta Anda untuk tidak mengunggah data yang tidak diperlukan untuk penerbitan, terutama nomor identitas kependudukan, data biometrik, atau data kesehatan, kecuali terdapat dasar hukum yang sah dan telah dikonsultasikan dengan kami.',
   },
   {
     heading: '3. Sumber data',
-    body: 'Sebagian besar data berasal langsung dari Anda dan anggota redaksi Anda: saat mendaftar, mengundang anggota, menulis artikel, mengunggah media, mengunggah bukti bayar, mengubah konfigurasi, atau menghubungi dukungan. Sebagian data dihasilkan otomatis oleh sistem untuk menjalankan Layanan: stempel waktu penerbitan, pengenal objek media, catatan audit atas tindakan sensitif, serta log teknis untuk keamanan dan diagnosis. Sebagian kecil data berasal dari penyedia infrastruktur tepercaya kami — misalnya status pengiriman surel, hasil validasi DNS, atau peristiwa keamanan tepi — yang dibatasi pada apa yang diperlukan untuk fungsi tersebut. Kami tidak membeli basis data pemasaran, tidak melakukan pengerukan profil dari media sosial, dan tidak menggabungkan data Anda dengan sumber periklanan pihak ketiga.',
+    body: 'Sebagian besar data berasal langsung dari Anda dan anggota redaksi Anda: saat mendaftar, mengundang anggota, menulis artikel, mengunggah media, mengubah konfigurasi, atau menghubungi dukungan. Sebagian data dihasilkan otomatis oleh sistem untuk menjalankan Layanan: stempel waktu penerbitan, pengenal objek media, catatan audit atas tindakan sensitif, serta log teknis untuk keamanan dan diagnosis. Sebagian kecil data berasal dari penyedia infrastruktur tepercaya kami — misalnya status pengiriman surel, hasil validasi DNS, atau peristiwa keamanan tepi — yang dibatasi pada apa yang diperlukan untuk fungsi tersebut. Kami tidak membeli basis data pemasaran, tidak melakukan pengerukan profil dari media sosial, dan tidak menggabungkan data Anda dengan sumber periklanan pihak ketiga.',
   },
   {
     heading: '4. Tujuan dan dasar hukum pemrosesan',
@@ -571,7 +481,7 @@ export const PRIVACY_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   },
   {
     heading: '5. Data anak dan data sensitif',
-    body: 'Layanan ditujukan untuk redaksi profesional dan bukan untuk anak di bawah umur. Kami tidak secara sadar mengumpulkan data pribadi anak; apabila Anda mengetahui adanya akun anak atau unggahan data anak yang tidak sah, beri tahu kami agar kami dapat menghapusnya setelah verifikasi. Untuk data pribadi yang bersifat spesifik menurut UU PDP — termasuk data kesehatan, biometrik, genetika, catatan kejahatan, data anak, dan data keuangan pribadi — kami menerapkan prinsip larangan umum: jangan unggah ke Layanan kecuali benar-benar diperlukan, memiliki dasar hukum eksplisit, dan, untuk konten pemberitaan yang memuat data demikian, telah melalui penilaian kepentingan publik serta penyuntingan yang meminimalkan paparan (misalnya penyamaran identitas korban). Bukti pembayaran yang memuat nomor rekening akan diperlakukan sebagai arsip terbatas yang hanya dapat diakses tim verifikasi dan disimpan sesuai jadwal retensi, tidak pernah ditampilkan kembali ke dasbor publik atau disertakan dalam ekspor umum.',
+    body: 'Layanan ditujukan untuk redaksi profesional dan bukan untuk anak di bawah umur. Kami tidak secara sadar mengumpulkan data pribadi anak; apabila Anda mengetahui adanya akun anak atau unggahan data anak yang tidak sah, beri tahu kami agar kami dapat menghapusnya setelah verifikasi. Untuk data pribadi yang bersifat spesifik menurut UU PDP — termasuk data kesehatan, biometrik, genetika, catatan kejahatan, data anak, dan data keuangan pribadi — kami menerapkan prinsip larangan umum: jangan unggah ke Layanan kecuali benar-benar diperlukan, memiliki dasar hukum eksplisit, dan, untuk konten pemberitaan yang memuat data demikian, telah melalui penilaian kepentingan publik serta penyuntingan yang meminimalkan paparan (misalnya penyamaran identitas korban).',
   },
   {
     heading: '6. Cookie, penyimpanan lokal, dan telemetri',
@@ -583,7 +493,7 @@ export const PRIVACY_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   },
   {
     heading: '8. Enkripsi, kata sandi, dan pengelolaan rahasia',
-    body: 'Seluruh lalu lintas antara peramban dan Layanan dilindungi enkripsi saat transit (TLS) dengan konfigurasi modern, dan data sensitif saat tersimpan dilindungi enkripsi yang dikelola penyedia terkelola. Kata sandi tidak pernah disimpan dalam bentuk yang dapat dibaca balik: kami hanya menyimpan hash satu arah dengan salt memakai fungsi hashing kata sandi modern yang tahan terhadap serangan kamus dan brute force, dan proses masuk diverifikasi tanpa pernah mendekripsi apa pun. Kredensial sistem, kunci API antar layanan, dan token integrasi disimpan pada penyimpanan rahasia sisi server, tidak pernah dikirim ke peramban, tidak dicatat pada log, dan tidak disertakan pada pesan galat — setiap pelanggaran prinsip ini diperlakukan sebagai insiden keamanan. Bukti pembayaran hanya dibuka oleh tim verifikasi untuk keperluan persetujuan order, lalu disimpan sebagai arsip transaksi dengan akses terbatas; kami tidak pernah meminta kata sandi atau kode otentikasi Anda melalui surel atau pesan instan. Anda bertanggung jawab menerapkan kata sandi yang kuat dan mencabut akses anggota yang sudah tidak berhak pada hari yang sama.',
+    body: 'Seluruh lalu lintas antara peramban dan Layanan dilindungi enkripsi saat transit (TLS) dengan konfigurasi modern, dan data sensitif saat tersimpan dilindungi enkripsi yang dikelola penyedia terkelola. Kata sandi tidak pernah disimpan dalam bentuk yang dapat dibaca balik: kami hanya menyimpan hash satu arah dengan salt memakai fungsi hashing kata sandi modern yang tahan terhadap serangan kamus dan brute force, dan proses masuk diverifikasi tanpa pernah mendekripsi apa pun. Kredensial sistem, kunci API antar layanan, dan token integrasi disimpan pada penyimpanan rahasia sisi server, tidak pernah dikirim ke peramban, tidak dicatat pada log, dan tidak disertakan pada pesan galat — setiap pelanggaran prinsip ini diperlakukan sebagai insiden keamanan. Kami tidak pernah meminta kata sandi atau kode otentikasi Anda melalui surel atau pesan instan. Anda bertanggung jawab menerapkan kata sandi yang kuat dan mencabut akses anggota yang sudah tidak berhak pada hari yang sama.',
   },
   {
     heading: '9. Penyimpanan media dan tautan bertanda tangan',
@@ -595,15 +505,15 @@ export const PRIVACY_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   },
   {
     heading: '11. Subprosesor dan penyedia infrastruktur',
-    body: 'Untuk menjalankan Layanan, kami menggunakan subprosesor terkelola yang masing-masing hanya menerima data minimum yang diperlukan untuk fungsinya, berdasarkan kontrak pemrosesan data yang mewajibkan kerahasiaan, keamanan, dan larangan penggunaan di luar instruksi. Kategori dan peran mereka adalah: (a) basis data terkelola dan layanan autentikasi — menyimpan data akun, konten, dan konfigurasi serta menerbitkan sesi masuk; (b) penyimpanan objek privat — menyimpan berkas media Anda; (c) layanan antrian dan cache — mengoordinasikan penjadwalan penerbitan, batas laju, dan invalidasi cache tanpa menjadi catatan utama; (d) jaringan tepi dan DNS — menghantarkan halaman publik dengan cepat dan aman melalui TLS; (e) hosting aplikasi — menjalankan kode Layanan; dan (f) kanal notifikasi operasional seperti surel transaksional — mengirim pemberitahuan order dan keamanan yang Anda minta. Kami tidak menjual data kepada subprosesor dan tidak mengizinkan mereka menggunakannya untuk periklanan. Daftar nama dagang terkini, lokasi pemrosesan, dan fungsi masing-masing tersedia atas permintaan melalui kontak privasi, dan perubahan subprosesor yang material akan diberitahukan paling lambat 14 hari sebelum berlaku sehingga Anda dapat mengajukan keberatan yang wajar.',
+    body: 'Untuk menjalankan Layanan, kami menggunakan subprosesor terkelola yang masing-masing hanya menerima data minimum yang diperlukan untuk fungsinya, berdasarkan kontrak pemrosesan data yang mewajibkan kerahasiaan, keamanan, dan larangan penggunaan di luar instruksi. Kategori dan peran mereka adalah: (a) basis data terkelola dan layanan autentikasi — menyimpan data akun, konten, dan konfigurasi serta menerbitkan sesi masuk; (b) penyimpanan objek privat — menyimpan berkas media Anda; (c) layanan antrian dan cache — mengoordinasikan penjadwalan penerbitan, batas laju, dan invalidasi cache tanpa menjadi catatan utama; (d) jaringan tepi dan DNS — menghantarkan halaman publik dengan cepat dan aman melalui TLS; (e) hosting aplikasi — menjalankan kode Layanan; dan (f) kanal notifikasi operasional seperti surel transaksional — mengirim pemberitahuan penagihan dan keamanan yang Anda minta. Kami tidak menjual data kepada subprosesor dan tidak mengizinkan mereka menggunakannya untuk periklanan. Daftar nama dagang terkini, lokasi pemrosesan, dan fungsi masing-masing tersedia atas permintaan melalui kontak privasi, dan perubahan subprosesor yang material akan diberitahukan paling lambat 14 hari sebelum berlaku sehingga Anda dapat mengajukan keberatan yang wajar.',
   },
   {
     heading: '12. Lokasi penyimpanan dan transfer data',
-    body: 'Data utama diproses dan disimpan pada infrastruktur terkelola yang kami pilih karena postur keamanannya; salinan cadangan terenkripsi dapat berada di wilayah berbeda dalam jaringan penyedia yang sama untuk tujuan pemulihan bencana. Apabila pemrosesan melibatkan transfer lintas negara, kami memastikan mekanisme yang diakui — seperti klausul kontrak baku, penilaian dampak transfer, dan enkripsi — serta membatasi transfer pada data yang benar-benar perlu diproses di lokasi tersebut. Penayangan halaman publik secara alami melibatkan jaringan tepi global agar pembaca menerima konten dari titik terdekat; yang direplikasi adalah salinan cache konten publik Anda, bukan basis data akun Anda. Kami tidak menempatkan basis data utama di yurisdiksi yang melemahkan perlindungan hukum Anda tanpa pemberitahuan dan dasar yang sah. Atas permintaan pelanggan Enterprise, pembatasan domisili data tertentu dapat disepakati dalam surat perintah kerja sepanjang didukung penyedia infrastruktur.',
+    body: 'Data utama diproses dan disimpan pada infrastruktur terkelola yang kami pilih karena postur keamanannya; salinan cadangan terenkripsi dapat berada di wilayah berbeda dalam jaringan penyedia yang sama untuk tujuan pemulihan bencana. Apabila pemrosesan melibatkan transfer lintas negara, kami memastikan mekanisme yang diakui — seperti klausul kontrak baku, penilaian dampak transfer, dan enkripsi — serta membatasi transfer pada data yang benar-benar perlu diproses di lokasi tersebut. Penayangan halaman publik secara alami melibatkan jaringan tepi global agar pembaca menerima konten dari titik terdekat; yang direplikasi adalah salinan cache konten publik Anda, bukan basis data akun Anda. Kami tidak menempatkan basis data utama di yurisdiksi yang melemahkan perlindungan hukum Anda tanpa pemberitahuan dan dasar yang sah. Pembatasan domisili data tertentu dapat disepakati tertulis sepanjang didukung penyedia infrastruktur.',
   },
   {
     heading: '13. Masa retensi dan jadwal penghapusan',
-    body: 'Kami menyimpan data tidak lebih lama dari yang diperlukan untuk tujuannya, lalu menghapus atau menganonimkan. Jadwal baku kami adalah: data akun dan konten aktif dipertahankan selama langganan berjalan termasuk Masa Tenggang dan masa penangguhan; setelah penghentian, data operasional (artikel, media, konfigurasi, keanggotaan) dihapus dalam tenggat wajar paling lama 90 hari sejak seluruh kewajiban selesai, kecuali Anda meminta penghapusan lebih cepat yang akan kami prioritaskan; salinan cadangan terenkripsi bergulir dan akan terhapus menurut siklus rotasi cadangan tanpa pemulihan selektif per artikel; arsip transaksi (order, faktur, bukti bayar) disimpan hingga 10 tahun untuk memenuhi kewajiban perpajakan dan pembuktian keuangan; jejak audit keamanan disimpan hingga 5 tahun sebagai bukti pertanggungjawaban; log teknis berumur pendek disimpan 30–90 hari lalu diagregasi atau dihapus; dan tiket dukungan disimpan hingga 2 tahun untuk pengendalian mutu. Data kedaluwarsa bantu (undangan basi, klaim replay kedaluwarsa, tugas cleanup selesai, percakapan Telegram kedaluwarsa) disapu otomatis setiap malam dan setiap penyapuan dicatat sebagai bukti. Apabila hukum mewajibkan penyimpanan lebih lama untuk perkara tertentu (litigation hold), penghapusan ditunda sebatas yang diwajibkan dan dilanjutkan segera setelah dasarnya berakhir.',
+    body: 'Kami menyimpan data tidak lebih lama dari yang diperlukan untuk tujuannya, lalu menghapus atau menganonimkan. Jadwal baku kami adalah: data akun dan konten aktif dipertahankan selama langganan berjalan; setelah penghentian, data operasional (artikel, media, konfigurasi, keanggotaan) dihapus dalam tenggat wajar paling lama 90 hari sejak seluruh kewajiban selesai, kecuali Anda meminta penghapusan lebih cepat yang akan kami prioritaskan; salinan cadangan terenkripsi bergulir dan akan terhapus menurut siklus rotasi cadangan tanpa pemulihan selektif per artikel; arsip penagihan disimpan hingga 10 tahun untuk memenuhi kewajiban perpajakan dan pembuktian keuangan; jejak audit keamanan disimpan hingga 5 tahun sebagai bukti pertanggungjawaban; log teknis berumur pendek disimpan 30–90 hari lalu diagregasi atau dihapus; dan tiket dukungan disimpan hingga 2 tahun untuk pengendalian mutu. Data kedaluwarsa bantu (undangan basi, klaim replay kedaluwarsa, tugas cleanup selesai, percakapan Telegram kedaluwarsa) disapu otomatis setiap malam dan setiap penyapuan dicatat sebagai bukti. Apabila hukum mewajibkan penyimpanan lebih lama untuk perkara tertentu (litigation hold), penghapusan ditunda sebatas yang diwajibkan dan dilanjutkan segera setelah dasarnya berakhir.',
   },
   {
     heading: '14. Hak Anda sebagai subjek data menurut UU PDP',
@@ -619,15 +529,15 @@ export const PRIVACY_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   },
   {
     heading: '17. Data pembaca portal Anda dan peran kami',
-    body: 'Halaman publik portal Anda tidak meminta data pribadi pembaca, tidak menyediakan formulir pelacakan perilaku, dan tidak memasang pelacak iklan. Satu-satunya pemrosesan pembaca di sisi kami adalah log teknis standar untuk keamanan dan keandalan — seperti alamat IP yang disamarkan, halaman yang diakses, dan waktu akses — yang disimpan terbatas, tidak dijual, dan tidak digunakan untuk membangun profil pemasaran. Apabila Anda di kemudian hari menambahkan formulir (misalnya buletin, komentar, atau analitik pihak ketiga) ke situs Anda, Anda bertindak sebagai pengendali atas data yang dikumpulkan formulir tersebut dan bertanggung jawab menyediakan pemberitahuan serta memperoleh persetujuan yang sah dari pembaca; konfigurasi demikian berada di luar tanggung jawab bawaan kami. Kami menyediakan mekanisme yang wajar untuk membantu Anda memenuhi permintaan hak pembaca — seperti menghapus cache halaman yang memuat data yang ditarik — sejauh secara teknis memungkinkan. Setiap perjanjian pemrosesan data lanjutan untuk kebutuhan kepatuhan Enterprise dapat dituangkan dalam adendum pemrosesan data (DPA) atas permintaan.',
+    body: 'Halaman publik portal Anda tidak meminta data pribadi pembaca, tidak menyediakan formulir pelacakan perilaku, dan tidak memasang pelacak iklan. Satu-satunya pemrosesan pembaca di sisi kami adalah log teknis standar untuk keamanan dan keandalan — seperti alamat IP yang disamarkan, halaman yang diakses, dan waktu akses — yang disimpan terbatas, tidak dijual, dan tidak digunakan untuk membangun profil pemasaran. Apabila Anda di kemudian hari menambahkan formulir (misalnya buletin, komentar, atau analitik pihak ketiga) ke situs Anda, Anda bertindak sebagai pengendali atas data yang dikumpulkan formulir tersebut dan bertanggung jawab menyediakan pemberitahuan serta memperoleh persetujuan yang sah dari pembaca; konfigurasi demikian berada di luar tanggung jawab bawaan kami. Kami menyediakan mekanisme yang wajar untuk membantu Anda memenuhi permintaan hak pembaca — seperti menghapus cache halaman yang memuat data yang ditarik — sejauh secara teknis memungkinkan. Setiap perjanjian pemrosesan data lanjutan dapat dituangkan dalam adendum pemrosesan data (DPA) atas permintaan.',
   },
   {
     heading: '18. Komunikasi operasional dan preferensi pemasaran',
-    body: 'Kami mengirim tiga jenis komunikasi. Pemberitahuan transaksional dan keamanan — seperti status verifikasi order, pengingat kedaluwarsa, peringatan masuk yang mencurigakan, dan pemberitahuan insiden — merupakan bagian dari Layanan dan tidak dapat dimatikan selama Anda memiliki akun aktif, karena tanpanya Anda berisiko kehilangan akses atau melewatkan tenggat penting. Pembaruan produk esensial — seperti perubahan material pada Ketentuan atau Kebijakan ini — diumumkan melalui dasbor dan, untuk perubahan material, melalui surel. Komunikasi pemasaran — seperti penawaran paket baru atau undangan webinar — hanya dikirim atas persetujuan dan setiap pesannya memuat tautan berhenti berlangganan yang berfungsi dalam satu klik; penarikan persetujuan berlaku untuk pengiriman berikutnya dan tidak memengaruhi legalitas pengiriman sebelumnya. Kami tidak pernah menjual daftar kontak Anda dan tidak membagikan surel Anda kepada pengiklan.',
+    body: 'Kami mengirim tiga jenis komunikasi. Pemberitahuan transaksional dan keamanan — seperti pemberitahuan penagihan, peringatan masuk yang mencurigakan, dan pemberitahuan insiden — merupakan bagian dari Layanan dan tidak dapat dimatikan selama Anda memiliki akun aktif, karena tanpanya Anda berisiko kehilangan akses atau melewatkan tenggat penting. Pembaruan produk esensial — seperti perubahan material pada Ketentuan atau Kebijakan ini — diumumkan melalui dasbor dan, untuk perubahan material, melalui surel. Komunikasi pemasaran — seperti penawaran paket baru atau undangan webinar — hanya dikirim atas persetujuan dan setiap pesannya memuat tautan berhenti berlangganan yang berfungsi dalam satu klik; penarikan persetujuan berlaku untuk pengiriman berikutnya dan tidak memengaruhi legalitas pengiriman sebelumnya. Kami tidak pernah menjual daftar kontak Anda dan tidak membagikan surel Anda kepada pengiklan.',
   },
   {
     heading: '19. Perubahan kebijakan, versi, dan arsip',
-    body: 'Kami meninjau Kebijakan ini paling sedikit setahun sekali dan setiap kali terdapat perubahan fitur, regulasi, atau subprosesor. Perubahan material — misalnya kategori data baru, tujuan baru, subprosesor baru, atau perubahan masa retensi — diumumkan melalui dasbor dan surel pemberitahuan paling lambat 14 hari sebelum tanggal efektif, disertai ringkasan perubahan dan tautan ke versi sebelumnya. Perubahan non-material seperti perbaikan bahasa atau pembaruan kontak berlaku sejak dipublikasikan. Penggunaan Layanan setelah tanggal efektif dianggap sebagai persetujuan atas versi baru; apabila Anda tidak setuju, Anda dapat berhenti dengan tidak memperpanjang sebelum tanggal efektif dan versi sebelumnya tetap berlaku hingga Masa Aktif berjalan berakhir. Setiap versi bertanggal dan diarsipkan; Anda dapat meminta salinan versi yang berlaku pada periode tertentu untuk keperluan audit melalui kontak privasi. Kebijakan ini terakhir diperbarui dan berlaku efektif sejak 5 September 2026.',
+    body: 'Kami meninjau Kebijakan ini paling sedikit setahun sekali dan setiap kali terdapat perubahan fitur, regulasi, atau subprosesor. Perubahan material — misalnya kategori data baru, tujuan baru, subprosesor baru, atau perubahan masa retensi — diumumkan melalui dasbor dan surel pemberitahuan paling lambat 14 hari sebelum tanggal efektif, disertai ringkasan perubahan dan tautan ke versi sebelumnya. Perubahan non-material seperti perbaikan bahasa atau pembaruan kontak berlaku sejak dipublikasikan. Penggunaan Layanan setelah tanggal efektif dianggap sebagai persetujuan atas versi baru; apabila Anda tidak setuju, Anda dapat berhenti dengan tidak memperpanjang sebelum tanggal efektif dan versi sebelumnya tetap berlaku hingga status langganan Anda berakhir. Setiap versi bertanggal dan diarsipkan; Anda dapat meminta salinan versi yang berlaku pada periode tertentu untuk keperluan audit melalui kontak privasi. Kebijakan ini terakhir diperbarui dan berlaku efektif sejak 5 September 2026.',
   },
   {
     heading: '20. Kontak privasi, penanggung jawab, dan pengaduan ke otoritas',

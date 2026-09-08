@@ -122,13 +122,9 @@ export interface CustomerRecord {
   readonly createdAt: string;
   readonly updatedAt: string;
 }
-export type SubscriptionPlan = 'starter' | 'growth' | 'pro' | 'enterprise';
 export interface SubscriptionRecord {
   readonly organizationId: string;
-  readonly plan: SubscriptionPlan;
   readonly status: 'trialing' | 'active' | 'past_due' | 'suspended' | 'cancelled';
-  readonly periodStartsAt: string | null;
-  readonly periodEndsAt: string | null;
   readonly version: number;
   readonly createdAt: string;
   readonly updatedAt: string;

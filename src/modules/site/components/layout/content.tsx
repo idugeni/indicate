@@ -319,8 +319,7 @@ export function FeatureGrid({
   className,
   ...props
 }: FeatureGridProps) {
-  // Breakpoint rule: 2-col splits at sm, 3+ col at lg
-  // (PricingCards xl:4 is the documented exception).
+  // Breakpoint rule: 2-col splits at sm, 3+ col at lg.
   const colClass =
     columns === 2
       ? 'sm:grid-cols-2'

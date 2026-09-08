@@ -1,6 +1,6 @@
-# Surat Perintah Kerja (SOW) — Template Enterprise
+# Surat Perintah Kerja (SOW) — Template Kebutuhan Khusus
 
-**Status:** dilengkapi per pelanggan Enterprise dan ditandatangani bersama DPA.
+**Status:** dilengkapi per pelanggan bila ada pekerjaan kustom dan ditandatangani bersama DPA.
 **Dasar:** Ketentuan Layanan (`/terms` §11); SOW ini melengkapi Ketentuan, bukan menggantikannya, kecuali dinyatakan tertulis.
 
 ## 1. Para pihak

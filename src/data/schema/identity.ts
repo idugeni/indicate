@@ -20,7 +20,6 @@ export const recordStatus = pgEnum('record_status', ['active', 'inactive', 'arch
 export const roleTier = pgEnum('role_tier', ['admin', 'user', 'superadmin']);
 export const permissionScope = pgEnum('permission_scope', ['organization', 'platform']);
 export const subscriptionStatus = pgEnum('subscription_status', ['trialing', 'active', 'past_due', 'suspended', 'cancelled']);
-export const subscriptionPlan = pgEnum('subscription_plan', ['starter', 'growth', 'pro', 'enterprise']);
 export const apiKeyStatus = pgEnum('api_key_status', ['active', 'revoked', 'expired']);
 export const siteActivationState = pgEnum('site_activation_state', ['inactive', 'pending', 'active', 'failed']);
 export const privacyRequestType = pgEnum('privacy_request_type', ['access', 'correction', 'deletion', 'portability', 'restriction']);
@@ -194,25 +193,11 @@ export const sites = pgTable('sites', {
 
 export const subscriptions = pgTable('subscriptions', {
   organizationId: uuid('organization_id').primaryKey().references(() => organizations.id, { onDelete: 'cascade' }),
-  plan: subscriptionPlan('plan').notNull(),
   status: subscriptionStatus('status').notNull(),
-  periodStartsAt: timestamp('period_starts_at', { withTimezone: true }),
-  periodEndsAt: timestamp('period_ends_at', { withTimezone: true }),
   version: integer('version').default(1).notNull(),
   ...timestamps,
 }, (table) => [
   check('subscriptions_version_positive', sql`${table.version} > 0`),
-]);
-
-/** Per-plan quotas (NULL = unlimited); enforced on domain/site/member/api-key creation. */
-export const planQuotas = pgTable('plan_quotas', {
-  plan: subscriptionPlan('plan').primaryKey(),
-  maxDomains: integer('max_domains'),
-  maxSites: integer('max_sites'),
-  maxMembers: integer('max_members'),
-  maxApiKeys: integer('max_api_keys'),
-}, (table) => [
-  check('plan_quotas_nonnegative', sql`(${table.maxDomains} IS NULL OR ${table.maxDomains} > 0) AND (${table.maxSites} IS NULL OR ${table.maxSites} > 0) AND (${table.maxMembers} IS NULL OR ${table.maxMembers} > 0) AND (${table.maxApiKeys} IS NULL OR ${table.maxApiKeys} > 0)`),
 ]);
 
 export const apiKeys = pgTable('api_keys', {

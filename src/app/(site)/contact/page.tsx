@@ -8,7 +8,7 @@ import { WhatsAppCard } from '@/modules/site/components/pricing/whatsapp-card';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
 const DESCRIPTION =
-  'Ada pertanyaan soal paket, pindahan sistem, atau kebutuhan khusus? Hubungi kami — dijawab manusia, paling lambat 1x24 jam kerja.';
+  'Ada pertanyaan soal biaya, pindahan sistem, atau kebutuhan khusus? Hubungi kami — dijawab manusia, paling lambat 1x24 jam kerja.';
 
 export function generateMetadata(): Metadata {
   return siteMetadata('Kontak', DESCRIPTION, '/contact');
@@ -23,7 +23,7 @@ export default async function KontakPage() {
       description={DESCRIPTION}
       meta={['Respons 1x24 jam kerja', 'Dijawab manusia', 'Tanpa antre tiket']}
       trail={[{ href: '/', label: 'Beranda' }]}
-      actions={<SecondaryCta href="/pricing">Lihat Paket Dulu</SecondaryCta>}
+      actions={<SecondaryCta href="/pricing">Lihat Info Harga</SecondaryCta>}
     >
       <Section>
         <WhatsAppCard />

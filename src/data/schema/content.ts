@@ -1,7 +1,6 @@
 import {
   boolean,
   integer,
-  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -15,21 +14,6 @@ const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 };
-
-export const serviceTiers = pgTable('service_tiers', {
-  slug: text('slug').primaryKey(),
-  name: text('name').notNull(),
-  target: text('target').notNull(),
-  summary: text('summary').notNull(),
-  price: text('price').notNull(),
-  period: text('period').notNull(),
-  features: jsonb('features').$type<readonly string[]>().default([]).notNull(),
-  highlighted: boolean('highlighted').default(false).notNull(),
-  cta: text('cta').notNull(),
-  sortOrder: integer('sort_order').default(0).notNull(),
-  active: boolean('active').default(true).notNull(),
-  ...timestamps,
-});
 
 export const testimonials = pgTable('testimonials', {
   id: uuid('id').primaryKey(),

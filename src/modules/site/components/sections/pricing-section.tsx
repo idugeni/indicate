@@ -1,16 +1,14 @@
 import { Section } from '@/modules/site/components/layout/content';
-import { PricingCards } from '@/modules/site/components/pricing/pricing-cards';
-import { loadPricingPackages } from '@/modules/site/components/pricing/pricing-server';
+import { WhatsAppCard } from '@/modules/site/components/pricing/whatsapp-card';
 
-export async function PricingSection() {
-  const packages = await loadPricingPackages();
+export function PricingSection() {
   return (
     <Section
       title="Punya portal berita sendiri, mulai hari ini"
-      eyebrow="Paket"
-      description="Semua paket terima beres — website langsung tayang, tinggal dipakai menulis."
+      eyebrow="Harga"
+      description="Tanpa katalog paket: hubungi kami, sepakati biaya di depan, dan mulai dipakai setelah aktivasi."
     >
-      <PricingCards packages={packages} />
+      <WhatsAppCard message="Halo Indicate, saya ingin bertanya soal biaya." />
     </Section>
   );
 }

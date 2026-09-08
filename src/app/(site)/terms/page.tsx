@@ -6,7 +6,7 @@ import { Section, LegalDocument } from '@/modules/site/components/layout/content
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
 const DESCRIPTION =
-  'Kontrak layanan Indicate yang lengkap dan dapat dibaca manusia: 24 bagian yang mengatur lingkup layanan, paket dan pembayaran, aktivasi 30 hari, masa tenggang 7 hari, keamanan, SLA, tanggung jawab editorial, hingga penyelesaian sengketa menurut hukum Indonesia.';
+  'Kontrak layanan Indicate yang lengkap dan dapat dibaca manusia: 24 bagian yang mengatur lingkup layanan, biaya dan pembayaran, aktivasi manual, keamanan, SLA, tanggung jawab editorial, hingga penyelesaian sengketa menurut hukum Indonesia.';
 
 export function generateMetadata(): Metadata {
   return siteMetadata('Ketentuan Layanan', DESCRIPTION, '/terms');

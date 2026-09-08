@@ -123,12 +123,12 @@ export const VIEW_METADATA_REGISTRY: Record<View, ViewMetadata> = {
   content: {
     title: 'Konten Dinamis & Tema',
     eyebrow: 'Platform Content',
-    description: 'Paket layanan, testimoni, FAQ, etalase media, kanal kontak, dan preset tema yang tayang di situs publik.',
+    description: 'Testimoni, FAQ, etalase media, kanal kontak, dan preset tema yang tayang di situs publik.',
   },
   billing: {
-    title: 'Langganan & Tagihan',
+    title: 'Langganan',
     eyebrow: 'Billing',
-    description: 'Status paket, order dan bukti bayar, invoice, serta antrean verifikasi platform.',
+    description: 'Status aktivasi organisasi.',
   },
   moderation: {
     title: 'Moderasi & Hak Data',

@@ -12,7 +12,6 @@ import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { createRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzleBillingRepository } from '@/data/repos/billing';
-import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
 import { UuidGenerator } from '@/core/system/uuid-generator';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
@@ -20,8 +19,7 @@ import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope 
 import type { Result } from '@/core/result';
 
 const getSchema = z.object({
-  scope: z.enum(['packages', 'orders', 'pending', 'active-orders', 'leads', 'invoices', 'proof-view', 'subscription-state']),
-  orderId: z.uuid().optional(),
+  scope: z.enum(['subscription-state', 'invoices']),
   organizationId: z.uuid().optional(),
 });
 const commandSchema = z.object({ action: z.string().min(1).max(100), payload: z.unknown() }).strict();
@@ -59,14 +57,9 @@ async function sessionFor(requestId: string): Promise<Session | PublicErrorEnvel
 
 async function withService<T>(session: Session, run: (service: BillingService) => Promise<T>): Promise<T> {
   const context = await getServerRuntimeContext();
-  const config = context.config;
   const runtime = createRuntimeDatabase(context.bootstrap);
   try {
-    const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey });
-    const service = new BillingService(
-      new DrizzleBillingRepository(runtime.db), new UuidGenerator(), storage,
-      { allowedTypes: ['image/png', 'image/jpeg', 'image/webp'], maxBytes: 5 * 1024 * 1024, uploadTtlSeconds: 600, readTtlSeconds: config.r2.readTtlSeconds },
-    );
+    const service = new BillingService(new DrizzleBillingRepository(runtime.db));
     return await run(service);
   } finally {
     await runtime.close();
@@ -77,34 +70,22 @@ async function withService<T>(session: Session, run: (service: BillingService) =
 async function handleGET(request: Request) {
   const requestId = resolveRequestId(request);
   const url = new URL(request.url);
-  const parsed = getSchema.safeParse({ scope: url.searchParams.get('scope'), orderId: url.searchParams.get('orderId') ?? undefined, organizationId: url.searchParams.get('organizationId') ?? undefined });
+  const parsed = getSchema.safeParse({ scope: url.searchParams.get('scope'), organizationId: url.searchParams.get('organizationId') ?? undefined });
   if (!parsed.success) return response(createNonDisclosingDenial(requestId));
-  // Katalog publik tanpa sesi.
-  if (parsed.data.scope === 'packages') {
-    const context = await getServerRuntimeContext();
-    const runtime = createRuntimeDatabase(context.bootstrap);
-    try {
-      const service = new BillingService(new DrizzleBillingRepository(runtime.db), new UuidGenerator(), new R2ObjectStorageAdapter({ accountId: context.config.r2.accountId, bucketName: context.config.r2.bucketName, accessKeyId: context.config.r2.accessKeyId, secretAccessKey: context.config.r2.secretAccessKey }), { allowedTypes: [], maxBytes: 0, uploadTtlSeconds: 0, readTtlSeconds: 0 });
-      const result = await service.packages();
-      return result.ok ? NextResponse.json(result.value) : response(result.error);
-    } finally {
-      await runtime.close();
-    }
-  }
   const session = await sessionFor(requestId);
   if ('error' in session) return response(session);
   try {
     return await withService(session, async (service) => {
       const scope = parsed.data.scope;
-      const result = scope === 'orders' ? await service.myOrders(session.actor)
-        : scope === 'pending' ? await service.pendingOrders(session.actor)
-          : scope === 'active-orders' ? await service.activeOrders(session.actor)
-          : scope === 'leads' ? await service.enterpriseLeads(session.actor)
-            : scope === 'invoices' ? await service.myInvoices(session.actor)
-            : scope === 'proof-view' && parsed.data.orderId !== undefined ? await service.proofViewUrl(session.actor, parsed.data.orderId)
-            : scope === 'subscription-state' && parsed.data.organizationId !== undefined ? await service.subscriptionState(session.actor, parsed.data.organizationId)
-              : { ok: false as const, error: createPublicError('INVALID_INPUT', 'Invalid billing query.', requestId) };
-      return result.ok ? NextResponse.json(result.value) : response(result.error);
+      if (scope === 'subscription-state' && parsed.data.organizationId !== undefined) {
+        const result = await service.subscriptionState(session.actor, parsed.data.organizationId);
+        return result.ok ? NextResponse.json(result.value) : response(result.error);
+      }
+      if (scope === 'invoices' && parsed.data.organizationId !== undefined) {
+        const result = await service.listInvoices(session.actor, parsed.data.organizationId);
+        return result.ok ? NextResponse.json(result.value) : response(result.error);
+      }
+      return response(createPublicError('INVALID_INPUT', 'Invalid billing query.', requestId));
     });
   } catch {
     return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'Billing is temporarily unavailable.', requestId));
@@ -121,13 +102,10 @@ async function handlePOST(request: Request) {
   try {
     return await withService(session, async (service) => {
       const actions: Readonly<Record<string, (payload: unknown) => Promise<Result<unknown, PublicErrorEnvelope>>>> = {
-        'order.create': (payload) => service.createOrder(session.actor, payload),
-        'proof.authorize': (payload) => service.authorizeProofUpload(session.actor, payload),
-        'proof.submit': (payload) => service.submitProof(session.actor, payload),
-        'order.decide': (payload) => service.decideOrder(session.actor, payload),
-        'order.refund': (payload) => service.refundOrder(session.actor, payload),
         'invite.create': (payload) => service.createInvitation(session.actor, payload),
         'invite.redeem': (payload) => service.redeemInvitation(session.actor, payload),
+        'invoice.create': (payload) => service.createInvoice(session.actor, payload),
+        'invoice.void': (payload) => service.voidInvoice(session.actor, payload),
       };
       const action = actions[parsed.data.action];
       if (action === undefined) return response(createPublicError('INVALID_INPUT', 'Unknown billing command.', requestId));

@@ -5,7 +5,7 @@ import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type { ApiKeyRecord, IssuedApiKey } from '@/modules/integrations/models';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import type { IdentifierGenerator } from '@/core/system/ports';
-import { IntegrationsAccessDeniedError, IntegrationsConflictError, IntegrationsQuotaExceededError, IntegrationsSubscriptionInactiveError, type NewStoredApiKey, type IntegrationsRepository } from '@/modules/integrations/ports';
+import { IntegrationsAccessDeniedError, IntegrationsConflictError, IntegrationsSubscriptionInactiveError, type NewStoredApiKey, type IntegrationsRepository } from '@/modules/integrations/ports';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
 import { apiKeyIssueSchema, apiKeyRevokeSchema, apiKeyRotateSchema } from '@/modules/integrations/schemas';
@@ -85,8 +85,8 @@ export class ApiKeyService {
       return { ok: true, value: Object.freeze({ key, plaintext: material.plaintext }) };
     } catch (error) {
       if (error instanceof IntegrationsAccessDeniedError) return this.denied(actor, 'api_key.issue.denied');
-      if (error instanceof IntegrationsSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Perpanjang paket untuk menerbitkan API key.', actor.requestId) };
-      if (error instanceof IntegrationsQuotaExceededError) return { ok: false, error: createPublicError('FORBIDDEN', error.message, actor.requestId) }; if (error instanceof IntegrationsConflictError) return { ok: false, error: createPublicError('CONFLICT', 'The API key could not be issued.', actor.requestId) };
+      if (error instanceof IntegrationsSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat menerbitkan API key.', actor.requestId) };
+      if (error instanceof IntegrationsConflictError) return { ok: false, error: createPublicError('CONFLICT', 'The API key could not be issued.', actor.requestId) };
       return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The API key could not be issued.', actor.requestId) };
     }
   }
@@ -120,8 +120,8 @@ export class ApiKeyService {
       return { ok: true, value: Object.freeze({ key, plaintext: material.plaintext }) };
     } catch (error) {
       if (error instanceof IntegrationsAccessDeniedError) return this.denied(actor, 'api_key.rotate.denied');
-      if (error instanceof IntegrationsSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Perpanjang paket untuk merotasi API key.', actor.requestId) };
-      if (error instanceof IntegrationsQuotaExceededError) return { ok: false, error: createPublicError('FORBIDDEN', error.message, actor.requestId) }; if (error instanceof IntegrationsConflictError) return { ok: false, error: createPublicError('CONFLICT', 'The API key changed before rotation.', actor.requestId) };
+      if (error instanceof IntegrationsSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat merotasi API key.', actor.requestId) };
+      if (error instanceof IntegrationsConflictError) return { ok: false, error: createPublicError('CONFLICT', 'The API key changed before rotation.', actor.requestId) };
       return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The API key could not be rotated.', actor.requestId) };
     }
   }

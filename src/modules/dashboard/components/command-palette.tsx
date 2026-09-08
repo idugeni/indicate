@@ -42,7 +42,7 @@ const COMMAND_ACTIONS: readonly CommandAction[] = [
   { id: 'publishers', label: 'Direktori Penerbit & Media Terafiliasi', category: 'Infrastruktur', href: '/dashboard?view=publishers', icon: Users },
   { id: 'analytics', label: 'Metrik & Throughput Jaringan', category: 'Infrastruktur', href: '/dashboard?view=analytics', icon: BarChart3 },
   { id: 'settings', label: 'Kunci API & Integrasi Edge Gateway', category: 'Sistem', href: '/dashboard?view=settings', icon: KeyRound },
-  { id: 'billing', label: 'Langganan & Tagihan', category: 'Sistem', href: '/dashboard?view=billing', icon: CreditCard },
+  { id: 'billing', label: 'Langganan', category: 'Sistem', href: '/dashboard?view=billing', icon: CreditCard },
   { id: 'auth', label: 'Autentikasi & Sesi Pengguna', category: 'Sistem', href: '/sign-in', icon: Settings },
 ];
 

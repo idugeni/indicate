@@ -14,10 +14,10 @@ export function WhatsAppCard({
         <MessageCircle className="mt-0.5 h-5 w-5 flex-none text-signal" aria-hidden="true" />
         <div>
           <p className="m-0 font-sans text-sm font-semibold text-paper">
-            Jalur tercepat: WhatsApp tim penjualan
+            Jalur tercepat: WhatsApp kami
           </p>
           <p className="m-0 mt-1 max-w-xl font-sans text-sm leading-relaxed text-paper-dim">
-            Untuk paket Enterprise, pindahan sistem, atau pertanyaan harga — langsung terhubung, tanpa antre tiket.
+            Untuk pembelian, pindahan sistem, atau pertanyaan layanan — langsung terhubung, tanpa antre tiket.
           </p>
         </div>
       </div>

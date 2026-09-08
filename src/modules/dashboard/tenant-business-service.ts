@@ -12,7 +12,7 @@ import {
 } from '@/modules/dashboard/policies';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import {
-  DashboardAccessDeniedError, DashboardConflictError, DashboardQuotaExceededError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction,
+  DashboardAccessDeniedError, DashboardConflictError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction,
 } from '@/modules/dashboard/ports';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
@@ -113,8 +113,7 @@ export class TenantBusinessService {
     } catch (error) {
       if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', input.actor.requestId, error.fields) };
       if (error instanceof DashboardAccessDeniedError) return this.denied(input.actor, input.action, input.targetType);
-      if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Perpanjang paket untuk melanjutkan perubahan.', input.actor.requestId) };
-      if (error instanceof DashboardQuotaExceededError) return { ok: false, error: createPublicError('FORBIDDEN', error.message, input.actor.requestId) };
+      if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', input.actor.requestId) };
       if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, input.actor.requestId) };
       return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', input.actor.requestId) };
     }

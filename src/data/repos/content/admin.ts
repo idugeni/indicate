@@ -8,7 +8,6 @@ import {
   contactChannels,
   faqs,
   mediaShowcase,
-  serviceTiers,
   templatePresets,
   testimonials,
 } from '@/data/schema';
@@ -47,8 +46,7 @@ export class DrizzleContentAdminRepository {
 
   async listContent(authUserId: string, localUserId: string) {
     return this.platform(authUserId, localUserId, async (tx) => {
-      const [tiers, quotes, faqRows, showcase, channels, colors, templates] = await Promise.all([
-        tx.select().from(serviceTiers),
+      const [quotes, faqRows, showcase, channels, colors, templates] = await Promise.all([
         tx.select().from(testimonials),
         tx.select().from(faqs),
         tx.select().from(mediaShowcase),
@@ -56,29 +54,7 @@ export class DrizzleContentAdminRepository {
         tx.select().from(colorPresets),
         tx.select().from(templatePresets),
       ]);
-      return Object.freeze({ tiers, quotes, faqRows, showcase, channels, colors, templates });
-    });
-  }
-
-  async saveServiceTier(authUserId: string, localUserId: string, row: {
-    readonly slug: string; readonly name: string; readonly target: string; readonly summary: string;
-    readonly price: string; readonly period: string; readonly features: readonly string[];
-    readonly highlighted: boolean; readonly cta: string; readonly sortOrder: number; readonly active: boolean;
-  }): Promise<void> {
-    return this.platform(authUserId, localUserId, async (tx) => {
-      await tx.insert(serviceTiers).values({
-        slug: row.slug, name: row.name, target: row.target, summary: row.summary,
-        price: row.price, period: row.period, features: [...row.features],
-        highlighted: row.highlighted, cta: row.cta, sortOrder: row.sortOrder, active: row.active,
-        updatedAt: new Date(),
-      }).onConflictDoUpdate({
-        target: serviceTiers.slug,
-        set: {
-          name: row.name, target: row.target, summary: row.summary, price: row.price,
-          period: row.period, features: [...row.features], highlighted: row.highlighted,
-          cta: row.cta, sortOrder: row.sortOrder, active: row.active, updatedAt: new Date(),
-        },
-      });
+      return Object.freeze({ quotes, faqRows, showcase, channels, colors, templates });
     });
   }
 
@@ -151,10 +127,9 @@ export class DrizzleContentAdminRepository {
     });
   }
 
-  async deleteContentRow(authUserId: string, localUserId: string, kind: 'tier' | 'testimonial' | 'faq' | 'showcase' | 'channel' | 'color' | 'template', id: string): Promise<void> {
+  async deleteContentRow(authUserId: string, localUserId: string, kind: 'testimonial' | 'faq' | 'showcase' | 'channel' | 'color' | 'template', id: string): Promise<void> {
     return this.platform(authUserId, localUserId, async (tx) => {
-      if (kind === 'tier') await tx.delete(serviceTiers).where(eq(serviceTiers.slug, id));
-      else if (kind === 'testimonial') await tx.delete(testimonials).where(eq(testimonials.id, id));
+      if (kind === 'testimonial') await tx.delete(testimonials).where(eq(testimonials.id, id));
       else if (kind === 'faq') await tx.delete(faqs).where(eq(faqs.id, id));
       else if (kind === 'showcase') await tx.delete(mediaShowcase).where(eq(mediaShowcase.id, id));
       else if (kind === 'channel') await tx.delete(contactChannels).where(eq(contactChannels.key, id));

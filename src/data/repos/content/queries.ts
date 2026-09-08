@@ -9,24 +9,11 @@ import {
   contactChannels,
   faqs,
   mediaShowcase,
-  serviceTiers,
   templatePresets,
   testimonials,
 } from '@/data/schema';
 
 type Database = PostgresJsDatabase<typeof schema>;
-
-export interface ServiceTierRow {
-  readonly slug: string;
-  readonly name: string;
-  readonly target: string;
-  readonly summary: string;
-  readonly price: string;
-  readonly period: string;
-  readonly features: readonly string[];
-  readonly highlighted: boolean;
-  readonly cta: string;
-}
 
 export interface TestimonialRow {
   readonly quote: string;
@@ -55,19 +42,6 @@ export interface TemplatePresetRow {
   readonly name: string;
   readonly description: string;
   readonly category: string;
-}
-
-function asStringArray(value: unknown): readonly string[] {
-  return Object.freeze(Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []);
-}
-
-export async function readServiceTiers(db: Database): Promise<readonly ServiceTierRow[]> {
-  const rows = await db.select().from(serviceTiers).where(eq(serviceTiers.active, true)).orderBy(asc(serviceTiers.sortOrder), asc(serviceTiers.slug));
-  return Object.freeze(rows.map((row) => Object.freeze({
-    slug: row.slug, name: row.name, target: row.target, summary: row.summary,
-    price: row.price, period: row.period, features: asStringArray(row.features),
-    highlighted: row.highlighted, cta: row.cta,
-  })));
 }
 
 export async function readTestimonials(db: Database): Promise<readonly TestimonialRow[]> {

@@ -1,6 +1,5 @@
 import { sql } from 'drizzle-orm';
 import {
-  boolean,
   check,
   index,
   integer,
@@ -14,88 +13,36 @@ import {
 
 import { organizations, users } from '@/data/schema/identity';
 
-export const billingOrderStatus = pgEnum('billing_order_status', [
-  'pending_payment',
-  'waiting_verification',
-  'active',
-  'rejected',
-  'refunded',
-]);
+export const invoiceStatus = pgEnum('invoice_status', ['paid', 'voided']);
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 };
 
-/** Katalog paket jual; `plan` 1:1 ke `subscription_plan`. */
-export const packages = pgTable('packages', {
-  id: uuid('id').primaryKey(),
-  name: text('name').notNull(),
-  plan: text('plan').notNull(),
-  priceIdr: integer('price_idr').notNull(),
-  maxDomains: integer('max_domains'),
-  maxSites: integer('max_sites'),
-  maxMembers: integer('max_members'),
-  maxApiKeys: integer('max_api_keys'),
-  active: boolean('active').default(true).notNull(),
-  ...timestamps,
-}, (table) => [
-  uniqueIndex('packages_plan_unique').on(table.plan),
-  check('packages_price_nonnegative', sql`${table.priceIdr} >= 0`),
-  check('packages_plan_values', sql`${table.plan} IN ('starter', 'growth', 'pro', 'enterprise')`),
-  check(
-    'packages_quota_nonnegative',
-    sql`(${table.maxDomains} IS NULL OR ${table.maxDomains} > 0) AND (${table.maxSites} IS NULL OR ${table.maxSites} > 0) AND (${table.maxMembers} IS NULL OR ${table.maxMembers} > 0) AND (${table.maxApiKeys} IS NULL OR ${table.maxApiKeys} > 0)`,
-  ),
-  index('packages_active_idx').on(table.active),
-]);
-
-export const orders = pgTable('orders', {
-  id: uuid('id').primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
-  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'restrict' }),
-  packageId: uuid('package_id').notNull().references(() => packages.id, { onDelete: 'restrict' }),
-  status: billingOrderStatus('status').default('pending_payment').notNull(),
-  proofUrl: text('proof_url'),
-  /** Bukti clickwrap Fase B (migrasi v68); NULL = order pra-clickwrap. */
-  termsVersion: text('terms_version'),
-  termsAcceptedAt: timestamp('terms_accepted_at', { withTimezone: true }),
-  decidedBy: uuid('decided_by'),
-  decidedAt: timestamp('decided_at', { withTimezone: true }),
-  ...timestamps,
-}, (table) => [
-  index('orders_org_status_idx').on(table.orgId, table.status),
-  index('orders_user_idx').on(table.userId),
-  index('orders_package_idx').on(table.packageId),
-  index('orders_status_idx').on(table.status),
-]);
-
+/** Invoice manual era aktivasi manual: dicatat superadmin setelah pembayaran terkonfirmasi. */
 export const invoices = pgTable('invoices', {
-  id: uuid('id').primaryKey(),
-  orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
-  amount: integer('amount').notNull(),
-  paidAt: timestamp('paid_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
+  number: text('number').notNull(),
+  amountIdr: integer('amount_idr').notNull(),
+  currency: text('currency').default('IDR').notNull(),
+  status: invoiceStatus('status').default('paid').notNull(),
+  paidAt: timestamp('paid_at', { withTimezone: true }).notNull(),
+  billingNote: text('billing_note'),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  voidedAt: timestamp('voided_at', { withTimezone: true }),
+  voidReason: text('void_reason'),
+  version: integer('version').default(1).notNull(),
+  ...timestamps,
 }, (table) => [
-  check('invoices_amount_nonnegative', sql`${table.amount} >= 0`),
-  index('invoices_order_idx').on(table.orderId),
+  uniqueIndex('invoices_number_unique').on(table.number),
+  check('invoices_amount_nonnegative', sql`${table.amountIdr} >= 0`),
+  check('invoices_version_positive', sql`${table.version} > 0`),
+  index('invoices_org_paid_idx').on(table.organizationId, table.paidAt),
 ]);
 
-export const enterpriseLeads = pgTable('enterprise_leads', {
-  id: uuid('id').primaryKey(),
-  nama: text('nama').notNull(),
-  email: text('email').notNull(),
-  kebutuhan: text('kebutuhan').notNull(),
-  consentedAt: timestamp('consented_at', { withTimezone: true }),
-  consentTextVersion: text('consent_text_version'),
-  ipHash: text('ip_hash'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [
-  index('enterprise_leads_email_idx').on(table.email),
-  check('enterprise_leads_bounded', sql`length(${table.nama}) BETWEEN 1 AND 200 AND length(${table.email}) BETWEEN 3 AND 320 AND length(${table.kebutuhan}) BETWEEN 1 AND 4000`),
-  check('enterprise_leads_ip_hash', sql`${table.ipHash} IS NULL OR ${table.ipHash} ~ '^[0-9a-f]{64}$'`),
-]);
-
+/** Undangan member sekali pakai (bukan billing; onboarding keanggotaan). */
 export const orgInvitations = pgTable('org_invitations', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),

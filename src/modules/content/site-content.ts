@@ -1,24 +1,23 @@
 import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
+import type * as schema from '@/data/schema';
 import {
   readColorPresets,
   readContactChannels,
   readFaqs,
-  readServiceTiers,
   readShowcaseNames,
   readTemplatePresets,
   readTestimonials,
   type FaqRow,
-  type ServiceTierRow,
   type TestimonialRow,
 } from '@/data/repos/content/queries';
 import {
   CONTACT_CHANNELS,
   FAQ_ITEMS,
-  PRICING_PLANS,
   type FeatureItem,
 } from '@/ui/site/marketing-content';
 import {
@@ -28,7 +27,7 @@ import {
   type NetworkColorPreset,
 } from '@/ui/themes';
 
-async function withRuntimeDatabase<T>(read: (db: Parameters<typeof readServiceTiers>[0]) => Promise<T>): Promise<T | null> {
+async function withRuntimeDatabase<T>(read: (db: PostgresJsDatabase<typeof schema>) => Promise<T>): Promise<T | null> {
   const context = await getServerRuntimeContext();
   // Pool bersama proses (bukan buka-tutup per getter): tiap handshake TLS ke
   // Seoul ±1 dtk; pool idle menutup sendiri via idle_timeout.
@@ -38,19 +37,6 @@ async function withRuntimeDatabase<T>(read: (db: Parameters<typeof readServiceTi
   } catch {
     return null;
   }
-}
-
-export async function getServiceTiers(): Promise<readonly ServiceTierRow[]> {
-  'use cache';
-  cacheLife('hours');
-  cacheTag('site-content');
-  const rows = await withRuntimeDatabase((db) => readServiceTiers(db));
-  if (rows !== null && rows.length > 0) return rows;
-  return Object.freeze(PRICING_PLANS.map((plan) => Object.freeze({
-    slug: plan.slug, name: plan.name, target: plan.target, summary: plan.summary,
-    price: plan.price, period: plan.period, features: plan.features,
-    highlighted: plan.highlighted, cta: plan.cta,
-  })));
 }
 
 export async function getTestimonials(): Promise<readonly TestimonialRow[]> {

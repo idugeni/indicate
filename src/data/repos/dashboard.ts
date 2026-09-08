@@ -3,9 +3,7 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type { AnalyticsProjection, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, RetentionRunRecord } from '@/modules/dashboard/models';
-import { DashboardAccessDeniedError, DashboardConflictError, DashboardQuotaExceededError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
-import { quotaExceeded, type QuotaResource } from '@/modules/billing/quota';
-import { readPlanQuota } from '@/data/repos/shared/plan-quota';
+import { DashboardAccessDeniedError, DashboardConflictError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
 import { redact } from '@/core/security/redaction';
 import {
   apiKeys, articleSites, articles, auditLogs, authors, categories, domainActivationAttempts, domains, invalidationTasks, media, memberships, officialAffiliations, organizations,
@@ -356,7 +354,6 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         appendAudit: (event) => pendingAudits.push({ ...event, id: crypto.randomUUID(), organizationId: actor.organizationId, actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, requestId: actor.requestId, occurredAt: new Date().toISOString(), before: event.before === null ? null : redact(event.before) as Record<string, unknown>, after: event.after === null ? null : redact(event.after) as Record<string, unknown> }),
       };
       const result = await operation(dashboardTransaction);
-      await this.enforceSubscriptionQuotas(transaction, actor.organizationId, before, state);
       await this.persist(transaction, before, state, pendingAudits);
       return result;
     });
@@ -369,30 +366,6 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     const state = rows[0]?.state;
     if (state === 'platform' || state === 'active') return;
     throw new DashboardSubscriptionInactiveError(state ?? 'none');
-  }
-
-  private async enforceSubscriptionQuotas(
-    transaction: Transaction,
-    organizationId: string,
-    before: DashboardTenantState,
-    state: MutableTenantState,
-  ): Promise<void> {
-    const addedIds = (beforeIds: readonly string[], afterIds: readonly string[]): number => {
-      const known = new Set(beforeIds);
-      return afterIds.filter((id) => !known.has(id)).length;
-    };
-    const counts: ReadonlyArray<{ readonly resource: QuotaResource; readonly current: number; readonly added: number }> = [
-      { resource: 'domain', current: before.domains.length, added: addedIds(before.domains.map((row) => row.id), state.domains.map((row) => row.id)) },
-      { resource: 'site', current: before.sites.length, added: addedIds(before.sites.map((row) => row.id), state.sites.map((row) => row.id)) },
-      { resource: 'member', current: before.memberships.length, added: addedIds(before.memberships.map((row) => row.userId), state.memberships.map((row) => row.userId)) },
-    ];
-    if (counts.every(({ added: n }) => n === 0)) return;
-    const quota = await readPlanQuota(transaction, organizationId);
-    if (quota === null) return;
-    for (const { resource, current, added: n } of counts) {
-      const { exceeded, limit } = quotaExceeded(quota, resource, current, n);
-      if (exceeded && limit !== null) throw new DashboardQuotaExceededError(resource, limit);
-    }
   }
 
   private async persist(transaction: Transaction, before: DashboardTenantState, state: MutableTenantState, pendingAudits: readonly AuditRecord[]): Promise<void> {

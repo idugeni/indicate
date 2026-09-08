@@ -290,6 +290,17 @@ sequenceDiagram
 | AuditService | append and query | Append-only, redacted, tenant-filtered |
 | CacheInvalidationService | plan, dispatch, reconcile | Durable tasks and Site-safe fallback |
 
+### 8.1 Billing model (manual activation)
+
+There are no packages, tiers, prices, orders, or invoices. A subscription is a
+status-only row (`active` / `suspended` / `cancelled`) with no plan and no
+period: an active organization keeps running indefinitely, with no grace,
+expiry sweep, or quota enforcement. Purchase happens out-of-band (buyer
+contacts the owner); the owner flips the status in the superadmin dashboard
+after manual payment. Member onboarding via invites is unrelated to billing
+and stays. Dormant billing artifacts from the package era were removed;
+see the migration history for the exact drop list.
+
 ## 9. Data architecture
 
 ### 9.1 Conventions

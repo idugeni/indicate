@@ -42,18 +42,15 @@ export const telegramBroadcastSchema = z.object({
   text: z.string().trim().min(1).max(4000),
 }).strict();
 
-/** Trial writes disabled; legacy 'trialing' rows stay readable but reject on write. */
-const subscriptionWriteStatus = z.enum(['active', 'past_due', 'suspended', 'cancelled']);
+/** Manual activation writes only; no plans, no periods. */
+const subscriptionWriteStatus = z.enum(['active', 'suspended', 'cancelled']);
 
 export const customerCreateSchema = z.object({
   name: z.string().trim().min(1).max(200),
   slug: z.string().trim().min(1).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   customerMetadata: z.record(z.string(), z.unknown()).default({}),
   subscription: z.object({
-    plan: z.enum(['starter', 'growth', 'pro', 'enterprise']),
     status: subscriptionWriteStatus,
-    periodStartsAt: z.iso.datetime().nullable().default(null),
-    periodEndsAt: z.iso.datetime().nullable().default(null),
   }).strict().optional(),
 }).strict();
 export const customerUpdateSchema = z.object({
@@ -67,10 +64,7 @@ export const customerUpdateSchema = z.object({
 export const subscriptionUpdateSchema = z.object({
   organizationId: id,
   expectedVersion: expectedVersion.optional(),
-  plan: z.enum(['starter', 'growth', 'pro', 'enterprise']),
   status: subscriptionWriteStatus,
-  periodStartsAt: z.iso.datetime().nullable().default(null),
-  periodEndsAt: z.iso.datetime().nullable().default(null),
 }).strict();
 
 export const genericWebhookHeadersSchema = z.object({

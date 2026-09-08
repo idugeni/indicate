@@ -107,13 +107,13 @@ async function DashboardBody() {
             href="/contact"
             className="inline-flex items-center justify-center rounded bg-brass px-5 py-2.5 font-sans text-sm font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft"
           >
-            Hubungi Penjualan
+            Hubungi Kami
           </a>
           <a
             href="/pricing"
             className="inline-flex items-center justify-center rounded border border-hairline-strong bg-transparent px-5 py-2.5 font-sans text-sm font-medium text-paper-dim transition-colors duration-180 hover:text-paper"
           >
-            Lihat Paket
+            Lihat Info Harga
           </a>
           <SignOutDialog mode="button" />
         </div>

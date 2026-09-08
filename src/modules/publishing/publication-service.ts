@@ -47,7 +47,7 @@ export class PublicationService {
       return { ok: true, value: status };
     } catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'publication.request.denied');
-      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Perpanjang paket untuk meminta penerbitan.', actor.requestId) };
+      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat meminta penerbitan.', actor.requestId) };
       return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The publication request could not be completed.', actor.requestId) };
     }
   }
@@ -84,7 +84,7 @@ export class PublicationService {
       return refreshed === null ? this.denied(actor, 'publication.retry.denied') : { ok: true, value: refreshed };
     } catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'publication.retry.denied');
-      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Perpanjang paket untuk mengulang penerbitan.', actor.requestId) };
+      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat mengulang penerbitan.', actor.requestId) };
       if (error instanceof PublishingConflictError) return { ok: false, error: createPublicError('INVALID_STATE_TRANSITION', 'The job is currently leased by a worker. Try again shortly.', actor.requestId) };
       return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The retry request could not be completed.', actor.requestId) };
     }
@@ -98,7 +98,7 @@ export class PublicationService {
       return { ok: true, value: status };
     } catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'publication.unpublish.denied');
-      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Perpanjang paket untuk menarik publikasi.', actor.requestId) };
+      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat menarik publikasi.', actor.requestId) };
       if (error instanceof PublishingConflictError) return { ok: false, error: createPublicError('INVALID_STATE_TRANSITION', 'The job is currently leased by a worker. Try again shortly.', actor.requestId) };
       return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The unpublish request could not be completed.', actor.requestId) };
     }
@@ -132,7 +132,7 @@ export class PublicationService {
       return { ok: true, value: results };
     } catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'publication.request.denied');
-      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Perpanjang paket untuk meminta penerbitan.', actor.requestId) };
+      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat meminta penerbitan.', actor.requestId) };
       return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The bulk publication request could not be completed.', actor.requestId) };
     }
   }

@@ -27,7 +27,7 @@ export default function TentangPage() {
       eyebrow="Tentang"
       title="Redaksi kecil berhak atas sistem besar"
       description={DESCRIPTION}
-      meta={['4 paket transparan', 'Aktif 1x24 jam', 'Tenggang 7 hari', 'Dijawab manusia']}
+      meta={['Tanpa paket bertingkat', 'Aktif 1x24 jam', 'Berjalan terus', 'Dijawab manusia']}
       trail={[{ href: '/', label: 'Beranda' }]}
       actions={
         <>
@@ -50,10 +50,10 @@ export default function TentangPage() {
       <Section title="Angka yang kami pegang" eyebrow="Fakta" tone="raised">
         <StatBand
           items={[
-            { value: '4', label: 'Paket dengan harga terbuka' },
-            { value: '30', label: 'Hari masa aktif per langganan' },
-            { value: '7', label: 'Hari tenggang baca' },
+            { value: '1', label: 'Harga yang disepakati di depan' },
             { value: '24', label: 'Jam maks. aktivasi' },
+            { value: '59', label: 'UPT aktif terdaftar' },
+            { value: '0', label: 'Biaya tersembunyi' },
           ]}
         />
       </Section>

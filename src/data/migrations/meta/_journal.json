@@ -673,6 +673,41 @@
       "when": 1788794000000,
       "tag": "20260907190000_publisher_humas_attribution",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1788795000000,
+      "tag": "20260907200000_retire_packages_manual_activation",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1788796000000,
+      "tag": "20260907210000_faq_manual_activation_copy",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1788797000000,
+      "tag": "20260907220000_rename_invite_deny_policy",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1788798000000,
+      "tag": "20260907230000_drop_billing_order_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1788799000000,
+      "tag": "20260907240000_manual_invoices",
+      "breakpoints": true
     }
   ]
 }

@@ -1,17 +1,15 @@
 import type { Metadata } from 'next';
-import { PricingCards } from '@/modules/site/components/pricing/pricing-cards';
-import { LeadForm } from '@/modules/site/components/pricing/lead-form';
 import { siteMetadata } from '@/ui/site/metadata-guard';
-import { loadPricingPackages } from '@/modules/site/components/pricing/pricing-server';
-import { CompareTable } from '@/modules/site/components/pricing/compare-table';
-import { FAQ_ITEMS, GUARANTEES } from '@/ui/site/marketing-content';
+import { getContactChannels } from '@/modules/content/site-content';
+import { WhatsAppCard } from '@/modules/site/components/pricing/whatsapp-card';
+import { CONTACT_CHANNELS as CONTACT_CHANNEL_FALLBACK, CONTACT_CHECKLIST, FAQ_ITEMS, GUARANTEES } from '@/ui/site/marketing-content';
 import {
+  CHANNEL_ICONS,
   FaqAccordion,
   FeatureGrid,
   GUARANTEE_ICONS,
   PrimaryCta,
   Prose,
-  SecondaryCta,
   Section,
   toFaqGridItems,
   withIcons,
@@ -19,49 +17,55 @@ import {
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
 const DESCRIPTION =
-  'Pilih paket sesuai besarnya jaringan berita Anda. Semua paket terima beres — website langsung tayang, tinggal dipakai menulis.';
+  'Tidak ada daftar harga paket: hubungi kami, sepakati biaya di depan, dan organisasi Anda diaktifkan maksimal 1x24 jam — berjalan terus tanpa kedaluwarsa.';
 
 export function generateMetadata(): Metadata {
-  return siteMetadata('Paket', DESCRIPTION, '/pricing');
+  return siteMetadata('Harga', DESCRIPTION, '/pricing');
 }
 
 export default async function HargaPage() {
-  const packages = await loadPricingPackages();
+  const channels = await getContactChannels();
   return (
     <PublicPage
-      eyebrow="Paket"
-      title="Punya portal berita sendiri, mulai hari ini"
+      eyebrow="Harga"
+      title="Satu harga yang disepakati, bukan katalog paket"
       description={DESCRIPTION}
-      meta={['Aktif maks. 1x24 jam', 'Tenggang baca 7 hari', 'Berhenti kapan saja']}
+      meta={['Aktif maks. 1x24 jam', 'Berjalan terus', 'Tanpa biaya tersembunyi']}
       trail={[{ href: '/', label: 'Beranda' }]}
       actions={
         <>
-          <PrimaryCta href="/sign-up">Mulai Sekarang</PrimaryCta>
-          <SecondaryCta href="/contact">Tanya Dulu</SecondaryCta>
+          <PrimaryCta href="/contact">Hubungi Kami</PrimaryCta>
         </>
       }
     >
-      <Section title="Paket transparan" description="Semua paket terima beres — website langsung tayang, tinggal dipakai menulis." eyebrow="Harga">
-        <PricingCards packages={packages} />
-        <Prose className="mt-8">
-          <p className="m-0">
-            Nama domain tetap milik Anda. Semua paket berlaku 30 hari dan bisa diperpanjang kapan saja —
-            sebelum berakhir pun Anda tetap bisa membaca dan mengurus tagihan dengan tenang.
-          </p>
-        </Prose>
+      <Section title="Cara membeli" description="Tiga langkah, tanpa formulir rumit." eyebrow="Alur">
+        <WhatsAppCard message="Halo Indicate, saya ingin bertanya soal biaya." />
       </Section>
-      <Section title="Bandingkan paket" description="Satu tabel, semua perbedaan penting." eyebrow="Perbandingan" tone="raised">
-        <CompareTable />
+      <Section title="Sebelum menghubungi" description="Siapkan info ini agar obrolan cepat menemukan angka." eyebrow="Persiapan">
+        <Prose>
+          <ul className="grid list-disc gap-2 pl-5 sm:grid-cols-2">
+            {CONTACT_CHECKLIST.map((item) => <li key={item}>{item}</li>)}
+          </ul>
+        </Prose>
       </Section>
       <Section title="Jaminan kami" description="Komitmen yang tertulis, bukan sekadar janji." eyebrow="Jaminan" tone="band">
         <FeatureGrid items={withIcons(GUARANTEES, GUARANTEE_ICONS)} columns={2} />
       </Section>
       <Section
-        title="Butuh Enterprise?"
-        description="Ceritakan kebutuhan (jumlah domain, wilayah, jadwal). Kami menghubungi maksimal 1x24 jam hari kerja."
-        eyebrow="Kontak Enterprise"
+        title="Kanal lain"
+        description="Selain WhatsApp, kami bisa dihubungi lewat kanal berikut."
+        eyebrow="Kontak"
+        tone="raised"
       >
-        <LeadForm />
+        <FeatureGrid
+          items={withIcons(
+            (channels.length > 0 ? channels : CONTACT_CHANNEL_FALLBACK).filter(
+              (channel) => !channel.title.toLowerCase().includes('whatsapp'),
+            ),
+            CHANNEL_ICONS,
+          )}
+          columns={2}
+        />
       </Section>
       <Section
         title="Masih ragu?"

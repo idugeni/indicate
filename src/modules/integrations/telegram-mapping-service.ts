@@ -16,7 +16,7 @@ export class TelegramMappingService {
   }
   private async error(actor: AuthorizedTenantActorContext, action: string, value: unknown): Promise<Result<never, PublicErrorEnvelope>> {
     if (value instanceof IntegrationsAccessDeniedError) return this.denied(actor, action);
-    if (value instanceof IntegrationsSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Perpanjang paket untuk mengubah pemetaan Telegram.', actor.requestId) };
+    if (value instanceof IntegrationsSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat mengubah pemetaan Telegram.', actor.requestId) };
     if (value instanceof IntegrationsConflictError) return { ok: false, error: createPublicError('CONFLICT', 'The Telegram mapping changed before this operation.', actor.requestId) };
     return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'Telegram mappings are temporarily unavailable.', actor.requestId) };
   }

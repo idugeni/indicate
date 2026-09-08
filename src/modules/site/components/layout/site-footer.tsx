@@ -23,7 +23,7 @@ const FOOTER_COLUMNS: readonly FooterColumn[] = Object.freeze([
     label: 'Tautan footer platform',
     links: Object.freeze([
       { href: '/services', label: 'Layanan Sindikasi' },
-      { href: '/pricing', label: 'Paket & Lisensi' },
+      { href: '/pricing', label: 'Harga' },
       { href: '/faq', label: 'Pusat Bantuan' },
     ]),
   },
@@ -157,7 +157,7 @@ export async function CallToAction() {
             <div className="min-w-0">
               <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium uppercase tracking-wider text-brass">
                 <span aria-hidden="true" className="h-px w-8 flex-none bg-brass/70" />
-                Kesiapan Enterprise
+                Kesiapan Bermigrasi
               </p>
               <h2 className="m-0 mt-4 max-w-2xl font-sans text-xl font-bold leading-tight tracking-tight text-balance text-paper sm:text-2xl">
                 Konsolidasikan seluruh jaringan redaksi Anda.
@@ -172,7 +172,7 @@ export async function CallToAction() {
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </PrimaryCta>
               <SecondaryCta href="/services" className="lg:w-full">
-                <span>Lihat Layanan & Harga</span>
+                <span>Lihat Layanan</span>
               </SecondaryCta>
             </div>
           </div>

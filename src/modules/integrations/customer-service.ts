@@ -30,7 +30,6 @@ export class CustomerService {
   }
   async create(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<CustomerProjection, PublicErrorEnvelope>> {
     const parsed = customerCreateSchema.safeParse(raw); if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the customer fields.', actor.requestId) };
-    if ((parsed.data.subscription?.status as string | undefined) === 'trialing') return { ok: false, error: createPublicError('INVALID_INPUT', 'Trial subscriptions are disabled. Choose an active plan.', actor.requestId) };
     if (!this.platform(actor)) return this.denied(actor, 'customer.create.denied', 'organization');
     const now = this.clock.now().toISOString();
     try {
@@ -52,17 +51,13 @@ export class CustomerService {
   }
   async updateSubscription(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<SubscriptionRecord, PublicErrorEnvelope>> {
     const parsed = subscriptionUpdateSchema.safeParse(raw); if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the subscription fields.', actor.requestId) };
-    if ((parsed.data as { status?: string }).status === 'trialing') return { ok: false, error: createPublicError('INVALID_INPUT', 'Trial subscriptions are disabled.', actor.requestId) };
     const platform = this.platform(actor);
-    if (!platform && (actor.organizationId !== parsed.data.organizationId || !actor.permissionSet.has(INTEGRATIONS_PERMISSIONS.subscriptionManage))) return this.denied(actor, 'subscription.update.denied', 'subscription');
+    if (!platform) return this.denied(actor, 'subscription.update.denied', 'subscription');
     try {
       const value = parsed.data;
       return { ok: true, value: await this.repository.updateSubscription(actor, {
         organizationId: value.organizationId,
-        plan: value.plan,
         status: value.status,
-        periodStartsAt: value.periodStartsAt,
-        periodEndsAt: value.periodEndsAt,
         now: this.clock.now().toISOString(),
         platform,
         ...(value.expectedVersion === undefined ? {} : { expectedVersion: value.expectedVersion }),

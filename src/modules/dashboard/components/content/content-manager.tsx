@@ -17,23 +17,6 @@ interface TypeDef {
 
 const TYPES: readonly TypeDef[] = Object.freeze([
   {
-    kind: 'tier', label: 'Paket Layanan', idKey: 'slug',
-    fields: [
-      { key: 'slug', label: 'Slug', kind: 'text', required: true },
-      { key: 'name', label: 'Nama', kind: 'text', required: true },
-      { key: 'target', label: 'Target', kind: 'text', required: true },
-      { key: 'summary', label: 'Ringkasan', kind: 'textarea', required: true },
-      { key: 'price', label: 'Harga', kind: 'text', required: true },
-      { key: 'period', label: 'Periode', kind: 'text' },
-      { key: 'features', label: 'Fitur (satu per baris)', kind: 'textarea', required: true },
-      { key: 'highlighted', label: 'Unggulan', kind: 'checkbox' },
-      { key: 'cta', label: 'Teks CTA', kind: 'text', required: true },
-      { key: 'sortOrder', label: 'Urutan', kind: 'number', required: true },
-      { key: 'active', label: 'Aktif', kind: 'checkbox' },
-    ],
-    newRow: () => ({ slug: '', name: '', target: '', summary: '', price: '', period: '/bulan', features: '', highlighted: false, cta: '', sortOrder: 99, active: true }),
-  },
-  {
     kind: 'testimonial', label: 'Testimoni', idKey: 'id',
     fields: [
       { key: 'quote', label: 'Kutipan', kind: 'textarea', required: true },
@@ -101,12 +84,12 @@ const TYPES: readonly TypeDef[] = Object.freeze([
 
 type Row = Record<string, unknown>;
 interface ContentBundle {
-  readonly tiers: readonly Row[]; readonly quotes: readonly Row[]; readonly faqRows: readonly Row[];
+  readonly quotes: readonly Row[]; readonly faqRows: readonly Row[];
   readonly showcase: readonly Row[]; readonly channels: readonly Row[]; readonly colors: readonly Row[];
   readonly templates: readonly Row[];
 }
 const BUNDLE_KEY: Record<string, keyof ContentBundle> = {
-  tier: 'tiers', testimonial: 'quotes', faq: 'faqRows', showcase: 'showcase',
+  testimonial: 'quotes', faq: 'faqRows', showcase: 'showcase',
   channel: 'channels', color: 'colors', template: 'templates',
 };
 
@@ -122,10 +105,6 @@ function toFieldValue(def: FieldDef, row: Row): string | boolean {
 function fromFieldValue(def: FieldDef, raw: string | boolean): unknown {
   if (def.kind === 'checkbox') return raw === true;
   if (def.kind === 'number') return Number(raw);
-  if (def.key === 'features') {
-    if (typeof raw !== 'string') return [];
-    return raw.split('\n').map((line) => line.trim()).filter(Boolean);
-  }
   if (typeof raw === 'string' && raw === '' && !def.required) return null;
   return raw;
 }

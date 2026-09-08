@@ -18,7 +18,7 @@ import {
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
 const DESCRIPTION =
-  'Semua yang didapat di tiap paket: website siap tayang, redaksi terpusat, penerbitan multi-situs, dan pendampingan manusia.';
+  'Semua yang didapat: website siap tayang, redaksi terpusat, penerbitan multi-situs, dan pendampingan manusia.';
 
 export function generateMetadata(): Metadata {
   return siteMetadata('Layanan', DESCRIPTION, '/services');
@@ -34,7 +34,7 @@ export default function LayananPage() {
       trail={[{ href: '/', label: 'Beranda' }]}
       actions={
         <>
-          <PrimaryCta href="/pricing">Lihat Paket</PrimaryCta>
+          <PrimaryCta href="/pricing">Lihat Harga</PrimaryCta>
           <SecondaryCta href="/contact">Hubungi Kami</SecondaryCta>
         </>
       }
@@ -48,7 +48,7 @@ export default function LayananPage() {
       <Section title="Kenapa terpusat lebih enak" eyebrow="Alasan">
         <FeatureGrid items={withIcons(VALUE_PROPOSITIONS, VALUE_ICONS)} columns={2} />
       </Section>
-      <Section title="Cara mulai (5 langkah)" description="Dari pilih paket sampai terbit pertama." eyebrow="Langkah" tone="raised">
+      <Section title="Cara mulai (5 langkah)" description="Dari obrolan pertama sampai terbit pertama." eyebrow="Langkah" tone="raised">
         <ol className="m-0 grid list-none gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
           {WORKFLOW_STEPS.map((step, index) => (
             <li

@@ -84,7 +84,7 @@ export class MediaService {
       return { ok: false, error: createPublicError('CONFLICT', 'A unique media key could not be reserved.', actor.requestId) };
     } catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'media.upload.reserve.denied', 'media');
-      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Perpanjang paket untuk mengunggah media.', actor.requestId) };
+      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat mengunggah media.', actor.requestId) };
       return this.failure(actor);
     }
   }
@@ -115,7 +115,7 @@ export class MediaService {
       return { ok: true, value: await this.repository.activateMedia(actor, { reservationId: reservation.id, mediaId: this.identifiers.create(), mediaType: metadata.contentType, sizeBytes: metadata.contentLength, checksum: metadata.checksum, thumbObjectKey, now: this.clock.now().toISOString() }) };
     } catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'media.upload.complete.denied', 'media');
-      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Perpanjang paket untuk mengunggah media.', actor.requestId) };
+      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat mengunggah media.', actor.requestId) };
       return this.failure(actor);
     }
   }
@@ -145,7 +145,7 @@ export class MediaService {
     try { return { ok: true, value: await this.repository.archiveMedia(actor, parsed.data.mediaId, parsed.data.expectedVersion, this.clock.now().toISOString()) }; }
     catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'media.archive.denied', 'media');
-      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Perpanjang paket untuk mengarsipkan media.', actor.requestId) };
+      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat mengarsipkan media.', actor.requestId) };
       if (error instanceof PublishingConflictError) return { ok: false, error: createPublicError('CONFLICT', 'The media record was changed by another operation.', actor.requestId) };
       return this.failure(actor);
     }

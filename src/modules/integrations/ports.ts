@@ -1,6 +1,6 @@
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type {
-  ApiKeyRecord, CustomerProjection, StoredApiKey, SubscriptionPlan, SubscriptionRecord, TelegramConversation, TelegramIdentity, TelegramMappingRecord, WebhookReplayClaim,
+  ApiKeyRecord, CustomerProjection, StoredApiKey, SubscriptionRecord, TelegramConversation, TelegramIdentity, TelegramMappingRecord, WebhookReplayClaim,
 } from '@/modules/integrations/models';
 import type { RateLimitDecision, RateLimitPolicy } from '@/modules/integrations/models';
 import type { ExactObjectAuthorization } from '@/integrations/storage/ports';
@@ -8,12 +8,6 @@ import type { HealthCheckPort } from '@/core/system/ports';
 
 export class IntegrationsAccessDeniedError extends Error {}
 export class IntegrationsConflictError extends Error {}
-export class IntegrationsQuotaExceededError extends Error {
-  constructor(
-    readonly resource: string,
-    readonly limit: number,
-  ) { super(`Subscription quota exceeded for ${resource} (limit ${limit}).`); }
-}
 
 /** Langganan tidak dalam masa aktif tulis. Mutasi ditolak eksplisit (FORBIDDEN). */
 export class IntegrationsSubscriptionInactiveError extends Error {
@@ -73,7 +67,7 @@ export interface IntegrationsRepository {
   readCustomer(platformActor: AuthorizedTenantActorContext, organizationId: string): Promise<CustomerProjection | null>;
   createCustomer(platformActor: AuthorizedTenantActorContext, input: { readonly organizationId: string; readonly subscriptionId?: never; readonly name: string; readonly slug: string; readonly customerMetadata: Readonly<Record<string, unknown>>; readonly subscription?: Omit<SubscriptionRecord, 'organizationId' | 'version' | 'createdAt' | 'updatedAt'>; readonly now: string }): Promise<CustomerProjection>;
   updateCustomer(platformActor: AuthorizedTenantActorContext, input: { readonly organizationId: string; readonly expectedVersion: number; readonly name: string; readonly slug: string; readonly status: 'active' | 'inactive' | 'archived'; readonly customerMetadata: Readonly<Record<string, unknown>>; readonly now: string }): Promise<CustomerProjection>;
-  updateSubscription(actor: AuthorizedTenantActorContext, input: { readonly organizationId: string; readonly expectedVersion?: number; readonly plan: SubscriptionPlan; readonly status: SubscriptionRecord['status']; readonly periodStartsAt: string | null; readonly periodEndsAt: string | null; readonly now: string; readonly platform: boolean }): Promise<SubscriptionRecord>;
+  updateSubscription(actor: AuthorizedTenantActorContext, input: { readonly organizationId: string; readonly expectedVersion?: number; readonly status: SubscriptionRecord['status']; readonly now: string; readonly platform: boolean }): Promise<SubscriptionRecord>;
   readSubscription(actor: AuthorizedTenantActorContext): Promise<SubscriptionRecord | null>;
   assignFirstAdminMember(platformActor: AuthorizedTenantActorContext, input: { readonly organizationId: string; readonly userEmail: string; readonly now: string }): Promise<{ readonly userId: string; readonly roleId: string }>;
   recordDenial(actor: AuthorizedTenantActorContext, action: string, targetType: string, now: string): Promise<void>;
