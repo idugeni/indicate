@@ -120,6 +120,13 @@ export const SERVICE_NAME = 'Indicate';
 /** Versi Ketentuan Layanan yang berlaku; dicatat pada setiap order sebagai bukti persetujuan (clickwrap). */
 export const TERMS_VERSION = '2026-09-07';
 export const SERVICE_TAGLINE = 'Satu ruang redaksi untuk seluruh jaringan portal berita Anda.';
+/**
+ * Logo instansi fallback untuk avatar publisher: dipakai bila publisher belum
+ * menyematkan logonya sendiri (`contacts.logoUrl`). Berkasnya WAJIB ada di
+ * `public/brand/logo-kemenimipas.png` — sebelum ada, Avatar otomatis
+ * menampilkan inisial (shadcn AvatarImage gagal → AvatarFallback).
+ */
+export const MINISTRY_FALLBACK_LOGO_URL = '/brand/logo-kemenimipas.png';
 export const SERVICE_SUMMARY =
   'Indicate menyatukan pengelolaan banyak portal berita ke dalam satu dasbor terpusat. Redaksi menulis satu kali, lalu menerbitkannya ke situs mana pun yang dipilih — dengan data masing-masing pelanggan yang terjaga dan terpisah.';
 

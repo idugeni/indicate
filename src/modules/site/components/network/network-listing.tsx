@@ -16,10 +16,11 @@ import {
 import { Container } from '@/modules/site/components/layout/content';
 import { BackToTop } from '@/modules/site/components/layout/back-to-top';
 import { ShareBox } from '@/modules/site/components/network/share-box';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { buildSeoDocument } from '@/modules/site/seo';
 import { JsonLd } from '@/modules/site/components/network/json-ld';
 import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
+import { MINISTRY_FALLBACK_LOGO_URL } from '@/ui/site/marketing-content';
 import { NETWORK_COLOR_PRESETS as NETWORK_COLOR_FALLBACK } from '@/ui/themes';
 import { getColorPresets } from '@/modules/content/site-content';
 
@@ -544,6 +545,12 @@ export function ArticlePage({
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
           <div className="flex items-center gap-3">
             <Avatar className="h-11 w-11 flex-none border border-hairline">
+              {article.publisherName === null ? null : (
+                <AvatarImage
+                  src={article.publisherLogoUrl ?? MINISTRY_FALLBACK_LOGO_URL}
+                  alt={`Logo ${article.attribution}`}
+                />
+              )}
               <AvatarFallback className="bg-bg-raised-2 font-mono text-sm font-semibold text-brass">
                 {(article.authorName ?? article.attribution).slice(0, 2).toUpperCase()}
               </AvatarFallback>

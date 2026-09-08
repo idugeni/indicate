@@ -43,6 +43,8 @@ export interface NetworkArticle {
   readonly authorName: string | null;
   readonly publisherName: string | null;
   readonly attribution: string;
+  /** Logo publisher dari `contacts.logoUrl`; null bila belum disematkan (UI memakai fallback). */
+  readonly publisherLogoUrl: string | null;
   readonly publisherVerified: boolean;
   readonly independent: boolean;
   readonly officialInstitution: string | null;

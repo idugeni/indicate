@@ -659,6 +659,20 @@
       "when": 1788792000000,
       "tag": "20260907170000_seed_upt_jateng_59org",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1788793000000,
+      "tag": "20260907180000_fix_upt_city_ambarawa_klaten",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1788794000000,
+      "tag": "20260907190000_publisher_humas_attribution",
+      "breakpoints": true
     }
   ]
 }
