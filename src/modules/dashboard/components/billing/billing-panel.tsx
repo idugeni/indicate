@@ -230,12 +230,31 @@ export function BillingPanel({
                 <p className="m-0 mt-0.5 font-sans text-xs text-error">Void: {invoice.voidReason}</p>
               ) : null}
               {isPlatform && invoice.status === 'paid' ? (
-                <div className="mt-2">
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => window.open(`/api/dashboard/billing/invoice/${invoice.id}?organizationId=${encodeURIComponent(invoice.organizationId)}`, '_blank', 'noopener')}
+                    disabled={busy}
+                    className="h-8 border border-hairline-strong px-3 font-sans text-xs text-paper-dim hover:text-paper disabled:opacity-50"
+                  >
+                    Unduh
+                  </button>
                   <button
                     type="button" onClick={() => void voidInvoice(invoice)} disabled={busy}
                     className="h-8 border border-error px-3 font-sans text-xs text-error disabled:opacity-50"
                   >
                     Void invoice
+                  </button>
+                </div>
+              ) : !isPlatform ? (
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => window.open(`/api/dashboard/billing/invoice/${invoice.id}?organizationId=${encodeURIComponent(invoice.organizationId)}`, '_blank', 'noopener')}
+                    disabled={busy}
+                    className="h-8 border border-hairline-strong px-3 font-sans text-xs text-paper-dim hover:text-paper disabled:opacity-50"
+                  >
+                    Unduh
                   </button>
                 </div>
               ) : null}
@@ -288,7 +307,7 @@ export function BillingPanel({
         <section aria-label="Catat invoice" className="rounded-lg border border-brass/60 bg-bg-raised p-5 sm:p-6 md:col-span-2">
           <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Catat invoice (pembayaran manual terkonfirmasi)</p>
           <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
-            Nomor faktur dibuat otomatis berurutan per bulan (INV/YYYY/MM/NNNN). Invoice tercatat langsung berstatus lunas.
+            Nomor faktur format IND-{`{ORG}`}-{`{YYMM}`}-{`{SEQ}`}-{`{RAND}`} dibuat otomatis dan tidak bisa ditebak. Invoice tercatat langsung berstatus lunas.
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="flex flex-col gap-1.5">

@@ -126,4 +126,16 @@ export class BillingService {
       return this.error(actor.requestId, 'invoice.void', error);
     }
   }
+
+  async invoiceDetail(actor: ActorContext, organizationId: string, invoiceId: string): Promise<Result<InvoiceRecord, PublicErrorEnvelope>> {
+    if (!this.userActor(actor)) return this.denied(actor.requestId);
+    try {
+      const rows = await this.repository.listInvoices(actor, organizationId);
+      const row = rows.find((candidate) => candidate.id === invoiceId);
+      if (row === undefined) return this.denied(actor.requestId);
+      return { ok: true, value: row };
+    } catch (error) {
+      return this.error(actor.requestId, 'invoice.detail', error);
+    }
+  }
 }
