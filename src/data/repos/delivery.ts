@@ -146,7 +146,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
     const rows = await this.database.execute<typeof domainActivationAttempts.$inferSelect>(sql`
       SELECT
         organization_id AS "organizationId", id, site_id AS "siteId", hostname,
-        previous_hostname AS "previousHostname", operation, activationState, status, attempts,
+        previous_hostname AS "previousHostname", operation, activation_state AS "activationState", status, attempts,
         next_attempt_at AS "nextAttemptAt",
         reconciliation_claim_token AS "reconciliationClaimToken",
         reconciliation_claim_expires_at AS "reconciliationClaimExpiresAt",
