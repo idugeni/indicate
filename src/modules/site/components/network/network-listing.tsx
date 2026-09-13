@@ -63,9 +63,9 @@ export function ArticleCard({
   if (featured) {
     return (
       <article className="network-card group col-span-full">
-        <div className="grid items-start gap-6 p-5 sm:p-6 md:grid-cols-2">
-          <div className="media-frame aspect-video overflow-hidden rounded-md bg-bg-raised-2">
-            {article.imageUrl ? (
+        <div className={`grid items-start gap-6 p-5 sm:p-6 ${article.imageUrl ? 'md:grid-cols-2' : ''}`}>
+          {article.imageUrl ? (
+            <div className="media-frame aspect-video overflow-hidden rounded-md bg-bg-raised-2">
               <Image
                 unoptimized
                 src={article.imageUrl}
@@ -76,12 +76,8 @@ export function ArticleCard({
                 height={article.imageHeight ?? 675}
                 sizes="(max-width: 768px) 100vw, 50vw"
               />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center font-mono text-xs tracking-wider text-paper-faint">
-                Naskah unggulan redaksi
-              </div>
-            )}
-          </div>
+            </div>
+          ) : null}
 
           <div>
             <p className="m-0 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider">
@@ -91,11 +87,15 @@ export function ArticleCard({
                 <Clock className="h-3 w-3" aria-hidden="true" />
                 <span>{readingTime} mnt baca</span>
               </span>
-              <span aria-hidden="true" className="text-hairline-strong">·</span>
-              <span className="flex items-center gap-1 normal-case tabular-nums tracking-normal text-paper-faint">
-                <Eye className="h-3 w-3" aria-hidden="true" />
-                <span>{viewLabel} dibaca</span>
-              </span>
+              {article.viewCount > 0 ? (
+                <>
+                  <span aria-hidden="true" className="text-hairline-strong">·</span>
+                  <span className="flex items-center gap-1 normal-case tabular-nums tracking-normal text-paper-faint">
+                    <Eye className="h-3 w-3" aria-hidden="true" />
+                    <span>{viewLabel} dibaca</span>
+                  </span>
+                </>
+              ) : null}
             </p>
 
             <h2 className="m-0 mt-3 font-serif text-2xl font-bold leading-tight tracking-tight text-paper sm:text-3xl">
@@ -126,8 +126,8 @@ export function ArticleCard({
 
   return (
     <article className="network-card group flex flex-col">
-      <div className="media-frame aspect-video overflow-hidden border-b border-hairline bg-bg-raised-2">
-        {article.imageUrl ? (
+      {article.imageUrl ? (
+        <div className="media-frame aspect-video overflow-hidden border-b border-hairline bg-bg-raised-2">
           <Image
             unoptimized
             src={article.thumbnailUrl ?? article.imageUrl}
@@ -138,12 +138,8 @@ export function ArticleCard({
             height={article.imageHeight ?? 675}
             sizes="(max-width: 640px) 100vw, 50vw"
           />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center font-mono text-[11px] tracking-wider text-paper-faint">
-            {article.categoryName ?? 'Warta'}
-          </div>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       <div className="flex flex-1 flex-col p-5">
         <p className="m-0 flex items-center justify-between gap-2 font-mono text-[11px]">
@@ -155,10 +151,12 @@ export function ArticleCard({
             <span>{readingTime} mnt</span>
           </span>
         </p>
-        <p className="m-0 mt-1.5 flex items-center gap-1 font-mono text-[11px] tabular-nums text-paper-faint">
-          <Eye className="h-3 w-3" aria-hidden="true" />
-          <span>{viewLabel} dibaca</span>
-        </p>
+        {article.viewCount > 0 ? (
+          <p className="m-0 mt-1.5 flex items-center gap-1 font-mono text-[11px] tabular-nums text-paper-faint">
+            <Eye className="h-3 w-3" aria-hidden="true" />
+            <span>{viewLabel} dibaca</span>
+          </p>
+        ) : null}
 
         <h2 className="m-0 mt-2 font-serif text-lg font-bold leading-snug tracking-tight text-paper">
           <Link
@@ -255,9 +253,6 @@ export async function NetworkTemplate({
                 <strong className="block font-sans text-base font-bold tracking-tight text-paper">
                   {site.settings.name}
                 </strong>
-                <small className="block max-w-md truncate font-sans text-xs text-paper-faint">
-                  {site.settings.description}
-                </small>
               </Link>
             </div>
 
