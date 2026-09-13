@@ -24,6 +24,7 @@ Dokumen ini adalah *visual contract* untuk seluruh produk INDICATE — dashboard
 14. [Implementation Rules (shadcn/ui)](#14-implementation-rules-shadcnui)
 15. [Anti-Slop Rules](#15-anti-slop-rules)
 16. [Extensibility / Future Development](#16-extensibility--future-development)
+17. [Pola Layout Jaringan (Network Templates)](#17-pola-layout-jaringan-network-templates)
 
 ---
 
@@ -723,3 +724,61 @@ Jika kebutuhan baru **belum punya pattern** yang sesuai di dokumen ini, dokumen 
 ---
 
 *Dokumen ini adalah otoritas visual tunggal. File `indicate-brand.html` yang dirujuk revisi-revisi awal tidak ada di tree — jangan mencari atau menirunya; implementasi (dashboard, aplikasi produk) wajib merujuk ke token dan aturan dalam dokumen ini.*
+
+---
+
+## 17. Pola Layout Jaringan (Network Templates)
+
+Section ini mengatur **situs tenant jaringan** (portal berita multi-brand yang dirender
+`src/modules/site/components/network/network-listing.tsx`). Sepuluh pola dasar di bawah adalah
+**satu-satunya layout tenant yang diizinkan**. Brand baru (puluhan hingga ratusan) tinggal dipetakan
+ke salah satu pola via `site_settings.colors.templateId` — **tanpa kode baru, tanpa CSS per-brand**.
+Warna brand tetap dikendalikan `site_settings.colors` (`presetId` / `primary` / `accent` / `headerBg`)
+yang dipetakan ke variabel `--site-primary`, `--site-accent`, `--site-header-bg` pada `.network-shell`.
+
+### 17.1 Aturan Skalabilitas (mengikat semua pola)
+
+1. **Satu kode, sepuluh cabang.** Semua variasi dikendalikan nilai `data-template` pada
+   `.network-shell` + cabang JSX keyed by `templateId` di `NetworkTemplate` / `ListingPage` /
+   `ArticlePage` / `ArticleCard`. Dilarang: `if hostname === ...`, CSS per-domain, komponen per-brand.
+2. **ID valid.** Hanya 10 ID dari `template_presets` yang diakui
+   (`portal-news`, `broadsheet-classic`, `columnist-opinion`, `compact-stream`,
+   `editorial-magazine`, `geo-radar`, `minimal-press`, `modern-tech`, `multimedia-visual`,
+   `tabloid-express`). Nilai tak dikenal/NULL jatuh ke `portal-news` (fail-closed visual).
+3. **Token tetap berlaku.** Semua pola memakai token warna [3.](#3-color), tipografi [4.](#4-typography),
+   spacing [5.](#5-spacing), radius kecil `3–4px`, flat surface + hairline, dan anti-slop [15.](#15-anti-slop-rules).
+   Perbedaan antar pola dinyatakan lewat **struktur, hero, grid, dan aksen tipografi** — bukan lewat
+   palet/efek baru (tidak ada gradient, glow, glassmorphism, pill, shadow berat).
+4. **Mobile-first.** Setiap pola mobile = 1 kolom (kecuali pola yang secara eksplisit memakai
+   snap-scroll horizontal), tablet runtuh ke 2 kolom, desktop memakai grid khasnya. Breakpoint mengikuti
+   [7.1](#71-breakpoints).
+5. **Aksesibilitas & motion.** Semua pola: satu H1 per halaman, landmark `nav`/`main`/`footer`,
+   `prefers-reduced-motion` menonaktifkan denyut/animasi (diganti state statis), target sentuh ≥44px.
+
+### 17.2 Definisi Sepuluh Pola
+
+| # | ID | Struktur | Hero | Grid | Aksen tipografi |
+|---|---|---|---|---|---|
+| 1 | `portal-news` | Editorial 2-kolom + sidebar `16rem` Terpopuler | Eyebrow mono + H1 serif + deskripsi, border-b hairline | 1 featured full-width + kartu 2-kolom | Serif headline, mono eyebrow warna `--site-accent` |
+| 2 | `broadsheet-classic` | Masthead tengah + 3 kolom koran ber-rule vertikal | Masthead centered, tanggal edisi mono, hairline ganda atas–bawah | Featured merentang 2 kolom, kolom dipisah `border-left` hairline | Fraunces dominan, kicker serif kecil, drop-cap paragraf pertama artikel |
+| 3 | `columnist-opinion` | Kolom tunggal `max 42rem`, avatar penulis prominen | Tanpa gambar besar; kicker "Opini", judul serif besar, byline + afiliasi | List esai 1-kolom, baris hairline, avatar kiri | **Body artikel serif** (satu-satunya pola dengan body serif), pull-quote italic dengan border-left brass |
+| 4 | `compact-stream` | Timeline vertikal + density ketat | Strip "Liputan langsung" + dot `--signal` + timestamp update eksak mono | 1-kolom timeline: rail kiri (dot + garis `--hairline`), thumb kecil `64px` opsional | Mono dominan untuk timestamp (`HH:MM:SS WIB`), judul sans ringkas |
+| 5 | `editorial-magazine` | Cover + kolom opini redaksi kanan | Full-bleed image featured + judul display di bawahnya (bukan overlay teks di atas gambar) | Asimetris `2fr 1fr`: cover + stack opini bernomor? tidak — stack hairline "Suara redaksi" | Display serif terbesar (`clamp` H1), dek serif italic |
+| 6 | `geo-radar` | Navigasi kewilayahan sticky + seksi per wilayah | Panel "Radar wilayah": grid node status + angka eksak `x/y kanal aktif` mono | Artikel dikelompokkan per seksi wilayah/kategori dengan header wilayah mono | Mono untuk kode wilayah, sans untuk judul |
+| 7 | `minimal-press` | List dokumen resmi 1-kolom, whitespace lega | Ringkas tanpa gambar: judul kecil + satu kalimat deskripsi | Baris dokumen: tanggal mono kiri, judul + badge "Siaran pers" kanan | Sans dominan, serif diminimalkan (hanya judul halaman) |
+| 8 | `modern-tech` | Bento asimetris + header melayang blur | Bento `12-col`: featured `span 7` + stack `span 5`, badge mono menyala | Kartu asimetris bervariasi (horizontal / vertikal), badge kategori solid `--site-primary` | Judul sans bold (rasa teknis), mono untuk badge |
+| 9 | `multimedia-visual` | Galeri full-bleed + seksi video dokumenter | Strip galeri horizontal snap-scroll full-width (gambar 16:9 besar) | Grid visual 2–3 kolom dengan rasio bervariasi + caption mono kecil di bawah tiap gambar | Teks diminimalkan; caption mono `--paper-faint` |
+| 10 | `tabloid-express` | Banner solid + kartu kilat snap-scroll | Banner latar `--site-primary` solid, judul putih besar + strip kilat mono | Kartu kilat: snap-scroll horizontal di mobile, 3-kolom di desktop, badge kategori solid | Judul sans 700 besar, kicker mono di atas banner |
+
+### 17.3 Batasan per Pola (misuse)
+
+- `compact-stream`: dilarang memakai gambar besar; thumb maksimal `64px`. Dot denyut hanya saat
+  `prefers-reduced-motion: no-preference`.
+- `multimedia-visual`: dilarang menumpuk teks panjang di hero; tiap gambar wajib `alt` bermakna + caption.
+- `tabloid-express`: banner solid tanpa gradient/glow; badge kategori solid `--site-primary` dengan teks
+  putih (kontras ≥4.5:1) — bukan outline tipis.
+- `geo-radar`: grid node adalah representasi status (menyala = ada artikel tayang), bukan peta geografis
+  presisi; tidak ada klaim posisi geografis tanpa data.
+- `columnist-opinion`: body serif hanya untuk pola ini; pola lain body tetap Plex Sans.
+- Semua pola memakai `ArticleCard` varian yang sama key-nya (`featured` / `row` / `timeline` /
+  `visual` / `flash`) — dilarang membuat varian kartu baru tanpa memperbarui tabel 17.2.
