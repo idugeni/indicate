@@ -62,7 +62,7 @@ export function nonIndexableRobots(): Metadata['robots'] {
 
 /** Tenant favicon fragment; empty when the site sets no custom icon. */
 export function tenantFavicon(faviconUrl: string | null | undefined): Pick<Metadata, 'icons'> {
-  return faviconUrl === null || faviconUrl === undefined || faviconUrl === '' ? {} : { icons: { icon: faviconUrl } };
+  return faviconUrl === null || faviconUrl === undefined || faviconUrl === '' ? {} : { icons: { icon: faviconUrl, apple: faviconUrl, shortcut: faviconUrl } };
 }
 
 /** Uniform metadata for missing network content (unknown slug, empty id). */

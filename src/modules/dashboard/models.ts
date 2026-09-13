@@ -55,6 +55,9 @@ export interface SiteSettingsRecord extends VersionedRecord {
   readonly socialLinks: Readonly<Record<string, string>>;
   readonly seo: Readonly<Record<string, unknown>>;
   readonly navigation: readonly NavigationItem[];
+  readonly logoMediaId: string | null;
+  readonly faviconMediaId: string | null;
+  readonly defaultMediaId: string | null;
 }
 
 export interface RoleRecord extends VersionedRecord {

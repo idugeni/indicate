@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState, useTransition, type FormEvent } from 'react';
+import Image from 'next/image';
 import { Loader2, Settings2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,6 +29,9 @@ interface SiteSettingsRow {
   readonly socialLinks: Readonly<Record<string, string>>;
   readonly seo: Readonly<Record<string, unknown>>;
   readonly navigation: readonly { readonly label: string; readonly path: string }[];
+  readonly logoMediaId: string | null;
+  readonly faviconMediaId: string | null;
+  readonly defaultMediaId: string | null;
   readonly version: number;
 }
 
@@ -56,12 +60,18 @@ function SiteSettingsEditor({
   const descriptionId = useId();
   const templateId = useId();
   const colorsId = useId();
+  const logoId = useId();
+  const faviconId = useId();
+  const defaultMediaId = useId();
   const socialId = useId();
   const seoId = useId();
   const navigationId = useId();
 
   const [name, setName] = useState(settings?.name ?? site.normalizedHostname);
   const [description, setDescription] = useState(settings?.description ?? '');
+  const [logoMedia, setLogoMedia] = useState(settings?.logoMediaId ?? '');
+  const [faviconMedia, setFaviconMedia] = useState(settings?.faviconMediaId ?? '');
+  const [defaultMedia, setDefaultMedia] = useState(settings?.defaultMediaId ?? '');
   const [colors, setColors] = useState(stringify(settings?.colors));
   const [template, setTemplate] = useState(initialTemplateId(settings?.colors));
   const [socialLinks, setSocialLinks] = useState(stringify(settings?.socialLinks));
@@ -105,6 +115,9 @@ function SiteSettingsEditor({
         ...(settings === undefined ? {} : { expectedVersion: settings.version }),
         name: name.trim(),
         description: description.trim(),
+        logoMediaId: logoMedia.trim() === '' ? null : logoMedia.trim(),
+        faviconMediaId: faviconMedia.trim() === '' ? null : faviconMedia.trim(),
+        defaultMediaId: defaultMedia.trim() === '' ? null : defaultMedia.trim(),
         colors: colorsValue,
         socialLinks: socialValue,
         seo: seoValue,
@@ -142,6 +155,92 @@ function SiteSettingsEditor({
             onChange={(event) => setDescription(event.target.value)}
             className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
           />
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="space-y-1.5">
+          <label htmlFor={logoId} className="font-mono text-xs text-paper-dim">
+            Logo (ID media)
+          </label>
+          <Input
+            id={logoId}
+            value={logoMedia}
+            disabled={isSaving}
+            spellCheck={false}
+            placeholder="UUID media — kosong = brand-mark"
+            onChange={(event) => setLogoMedia(event.target.value)}
+            className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+          />
+          {logoMedia.trim() !== '' ? (
+            <a
+              href={`https://${site.normalizedHostname}/api/network/media/${logoMedia.trim()}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 font-sans text-[11px] text-paper-dim transition-colors duration-180 hover:text-paper"
+            >
+              <Image
+                unoptimized
+                src={`https://${site.normalizedHostname}/api/network/media/${logoMedia.trim()}`}
+                alt=""
+                aria-hidden="true"
+                width={24}
+                height={24}
+                className="h-6 w-6 rounded border border-hairline object-contain"
+              />
+              <span>Pratinjau logo di kanal</span>
+            </a>
+          ) : null}
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor={faviconId} className="font-mono text-xs text-paper-dim">
+            Favicon (ID media)
+          </label>
+          <Input
+            id={faviconId}
+            value={faviconMedia}
+            disabled={isSaving}
+            spellCheck={false}
+            placeholder="UUID media — kosong = brand-mark"
+            onChange={(event) => setFaviconMedia(event.target.value)}
+            className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+          />
+          {faviconMedia.trim() !== '' ? (
+            <a
+              href={`https://${site.normalizedHostname}/api/network/media/${faviconMedia.trim()}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 font-sans text-[11px] text-paper-dim transition-colors duration-180 hover:text-paper"
+            >
+              <Image
+                unoptimized
+                src={`https://${site.normalizedHostname}/api/network/media/${faviconMedia.trim()}`}
+                alt=""
+                aria-hidden="true"
+                width={24}
+                height={24}
+                className="h-6 w-6 rounded border border-hairline object-contain"
+              />
+              <span>Pratinjau favicon di kanal</span>
+            </a>
+          ) : null}
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor={defaultMediaId} className="font-mono text-xs text-paper-dim">
+            Gambar default OG (ID media)
+          </label>
+          <Input
+            id={defaultMediaId}
+            value={defaultMedia}
+            disabled={isSaving}
+            spellCheck={false}
+            placeholder="UUID media — kosong = bawaan"
+            onChange={(event) => setDefaultMedia(event.target.value)}
+            className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+          />
+          <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">
+            Dipakai untuk Open Graph saat artikel tanpa gambar.
+          </p>
         </div>
       </div>
 

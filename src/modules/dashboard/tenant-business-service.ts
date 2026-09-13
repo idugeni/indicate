@@ -228,14 +228,25 @@ export class TenantBusinessService {
     }});
   }
 
+  private requireActiveMedia(transaction: DashboardTransaction, next: string | null | undefined, current: string | null, field: string): string | null {
+    if (next === undefined) return current;
+    if (next === null) return null;
+    const media = transaction.state.media.find(({ id }) => id === next);
+    if (media === undefined || media.state !== 'active') throw new DashboardValidationError({ [field]: ['Media tidak ditemukan atau belum aktif.'] });
+    return next;
+  }
+
   saveSiteSettings(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: siteSettingsSchema, permission: DASHBOARD_PERMISSIONS.siteManage, action: 'site.settings.update', targetType: 'site_settings', execute: (transaction, value, now) => {
       requireRecord(transaction.state.sites, value.siteId);
       const before = transaction.state.siteSettings.find(({ siteId }) => siteId === value.siteId);
       if (before !== undefined && value.expectedVersion !== undefined) requireVersion(before, value.expectedVersion);
+      const logoMediaId = this.requireActiveMedia(transaction, value.logoMediaId, before?.logoMediaId ?? null, 'logoMediaId');
+      const faviconMediaId = this.requireActiveMedia(transaction, value.faviconMediaId, before?.faviconMediaId ?? null, 'faviconMediaId');
+      const defaultMediaId = this.requireActiveMedia(transaction, value.defaultMediaId, before?.defaultMediaId ?? null, 'defaultMediaId');
       const after: SiteSettingsRecord = before === undefined
-        ? { ...this.base(actor, now), siteId: value.siteId, id: value.siteId, name: value.name, description: value.description, colors: value.colors ?? {}, socialLinks: value.socialLinks ?? {}, seo: value.seo ?? {}, navigation: value.navigation ?? [], version: 1 }
-        : { ...before, name: value.name, description: value.description, colors: value.colors ?? before.colors, socialLinks: value.socialLinks ?? before.socialLinks, seo: value.seo ?? before.seo, navigation: value.navigation ?? before.navigation, version: before.version + 1, updatedAt: now };
+        ? { ...this.base(actor, now), siteId: value.siteId, id: value.siteId, name: value.name, description: value.description, colors: value.colors ?? {}, socialLinks: value.socialLinks ?? {}, seo: value.seo ?? {}, navigation: value.navigation ?? [], logoMediaId, faviconMediaId, defaultMediaId, version: 1 }
+        : { ...before, name: value.name, description: value.description, colors: value.colors ?? before.colors, socialLinks: value.socialLinks ?? before.socialLinks, seo: value.seo ?? before.seo, navigation: value.navigation ?? before.navigation, logoMediaId, faviconMediaId, defaultMediaId, version: before.version + 1, updatedAt: now };
       if (before === undefined) transaction.state.siteSettings.push(after); else replaceById(transaction.state.siteSettings, after);
       this.audit(transaction, 'site.settings.update', 'site_settings', after.id, before ?? null, after); return after;
     }});

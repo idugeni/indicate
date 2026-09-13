@@ -22,6 +22,9 @@ export const siteSettingsSchema = z.object({
   expectedVersion: expectedVersion.optional(),
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(1000),
+  logoMediaId: id.nullable().optional(),
+  faviconMediaId: id.nullable().optional(),
+  defaultMediaId: id.nullable().optional(),
   colors: z.record(z.string(), z.string().max(100)).optional().refine(
     (colors) => colors === undefined || colors.templateId === undefined || TEMPLATE_IDS.has(colors.templateId),
     'templateId tidak dikenal — pilih dari daftar template terdaftar.',
