@@ -49,10 +49,10 @@ export class CloudflareAuthorityAdapter implements CloudflareAuthorityPort {
     }
   }
 
-  /** Verifies one Domain against its exact owning zone (zone ID from persisted record; requires zone-name equality). */
+  /** Verifies one Domain against its owning zone (zone ID from persisted record; zone name must equal the hostname or be its parent suffix for regional sites). */
   async verifyDomainZone(input: { domainId: string; normalizedHostname: string; cloudflareZoneId: string; productionTarget?: string }): Promise<CloudflareDomainVerification> {
     const zone = await this.call<Zone>(`/zones/${input.cloudflareZoneId}`);
-    if (zone.name !== input.normalizedHostname) {
+    if (zone.name !== input.normalizedHostname && !input.normalizedHostname.endsWith(`.${zone.name}`)) {
       return { domainId: input.domainId, zoneId: input.cloudflareZoneId, verified: false, category: 'zone_name_mismatch' };
     }
     const verification = await this.verifyKnownZone(input.normalizedHostname, zone, input.productionTarget ?? this.productionTarget);
@@ -62,17 +62,6 @@ export class CloudflareAuthorityAdapter implements CloudflareAuthorityPort {
       verified: verification.nameserversAuthoritative && verification.publicDelegationAuthoritative && verification.apexProxied && verification.wildcardProxied && verification.sslMode === 'full_strict',
       category: verification.nameserversAuthoritative && verification.publicDelegationAuthoritative ? 'verified' : 'nameserver_mismatch',
     };
-  }
-
-  /** Low-level zone inspection for readiness. */
-  async verifyZone(hostname: string): Promise<CloudflareZoneStatus> {
-    void hostname;
-    throw new Error('verifyZone(hostname) is deprecated: use verifyDomainZone({...})');
-  }
-
-  async verifyRootZone(hostname: string): Promise<CloudflareZoneStatus> {
-    void hostname;
-    throw new Error('verifyRootZone(hostname) is deprecated: use verifyDomainZone({...})');
   }
 
   private async verifyKnownZone(hostname: string, zone: Zone, productionTarget: string): Promise<CloudflareZoneStatus> {

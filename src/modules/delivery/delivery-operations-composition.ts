@@ -19,9 +19,13 @@ export async function deliveryOperationsComposition() {
   const vercel = new VercelExactDomainAdapter(config.vercel.projectId, config.vercel.teamId, config.vercel.apiToken);
   const zoneResolver: DomainZoneResolver = {
     async resolve(hostname) {
+      // Site regional (<slug-region>.<apex>) dimiliki zone domain induk:
+      // cocokkan sufiks, pilih induk paling spesifik.
       const rows = await runtime.client<{ id: string; cloudflare_zone_id: string | null }[]>`
         SELECT id, cloudflare_zone_id FROM public.domains
-        WHERE normalized_hostname = ${hostname} AND status = 'active' AND cloudflare_zone_id IS NOT NULL
+        WHERE (${hostname} = normalized_hostname OR ${hostname} LIKE '%.' || normalized_hostname)
+          AND status = 'active' AND cloudflare_zone_id IS NOT NULL
+        ORDER BY length(normalized_hostname) DESC
         LIMIT 1
       `;
       const row = rows[0];
