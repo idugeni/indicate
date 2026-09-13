@@ -729,6 +729,13 @@
       "when": 1788900000000,
       "tag": "20260907270000_fix_site_settings_guard_return",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1788900000000,
+      "tag": "20260907280000_discover_hosts_add_versions",
+      "breakpoints": true
     }
   ]
 }
