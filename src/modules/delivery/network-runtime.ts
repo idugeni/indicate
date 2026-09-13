@@ -72,26 +72,58 @@ export function trackArticleView(input: { readonly organizationId: string; reado
 const TAG_INDEX_MINIMUM = 3;
 const CATEGORY_INDEX_MINIMUM = 3;
 const ARTICLE_INDEX_MINIMUM = 5;
+
+/**
+ * Metadata tenant untuk halaman yang sengaja tidak diindeks (pencarian,
+ * agregator di bawah ambang, artikel hilang): tetap membawa canonical + OG
+ * milik tenant agar tidak mewarisi metadata control-plane dari layout.
+ */
+function tenantHiddenMeta(
+  site: NetworkSiteData,
+  path: string,
+  title: string,
+  description: string,
+): Metadata {
+  const seo = buildSeoDocument(site, { path, titleOverride: title });
+  return {
+    title,
+    description,
+    alternates: seo.canonical
+      ? { canonical: seo.canonical, languages: { 'id-ID': seo.canonical } }
+      : undefined,
+    robots: nonIndexableRobots(),
+    ...tenantFavicon(site.settings.faviconUrl),
+    openGraph: seo.openGraph
+      ? {
+          title,
+          description,
+          url: seo.openGraph.url,
+          siteName: seo.openGraph.siteName,
+          locale: 'id_ID',
+          images: [{ url: seo.openGraph.image, width: 1200, height: 630, alt: title }],
+          type: 'website' as const,
+        }
+      : undefined,
+    twitter: seo.openGraph
+      ? { card: 'summary_large_image', title, description, images: [seo.openGraph.image] }
+      : undefined,
+  };
+}
 export async function networkMetadata(path: string, query: NetworkContentQuery = {}): Promise<Metadata> {
   const site = await resolveNetworkSite(query, path);
   const article = query.articleSlug === undefined ? undefined : site.articles[0];
 
   if (query.articleSlug !== undefined && article === undefined) {
-    return {
-      title: site.settings.name,
-      robots: nonIndexableRobots(),
-      ...tenantFavicon(site.settings.faviconUrl),
-    };
+    return tenantHiddenMeta(site, path, site.settings.name, site.settings.description);
   }
 
   if (query.search !== undefined) {
-    const seo = buildSeoDocument(site, { path: '/search', indexable: false });
-    return {
-      title: query.search === '' ? `Pencarian | ${site.settings.name}` : `Hasil untuk "${query.search}" | ${site.settings.name}`,
-      description: seo.description,
-      robots: nonIndexableRobots(),
-      ...tenantFavicon(site.settings.faviconUrl),
-    };
+    return tenantHiddenMeta(
+      site,
+      '/search',
+      query.search === '' ? `Pencarian | ${site.settings.name}` : `Hasil untuk "${query.search}" | ${site.settings.name}`,
+      site.settings.description,
+    );
   }
 
   if (query.categorySlug !== undefined) {
@@ -102,12 +134,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
         ? `Berita terbaru kategori ${categoryName} di ${site.settings.name}.`
         : `Kategori ${categoryName} di ${site.settings.name}.`;
     if (site.articles.length < CATEGORY_INDEX_MINIMUM) {
-      return {
-        title: categoryTitle,
-        description: categoryDescription,
-        robots: nonIndexableRobots(),
-        ...tenantFavicon(site.settings.faviconUrl),
-      };
+      return tenantHiddenMeta(site, path, categoryTitle, categoryDescription);
     }
     const categorySeo = buildSeoDocument(site, { path });
     if (categorySeo.canonical === null || categorySeo.openGraph === null) {
@@ -149,12 +176,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
     const indexTitle = `Berita Terbaru | ${site.settings.name}`;
     const indexDescription = `Berita terbaru di ${site.settings.name}: indeks seluruh artikel.`;
     if (site.articles.length < ARTICLE_INDEX_MINIMUM) {
-      return {
-        title: indexTitle,
-        description: indexDescription,
-        robots: nonIndexableRobots(),
-        ...tenantFavicon(site.settings.faviconUrl),
-      };
+      return tenantHiddenMeta(site, path, indexTitle, indexDescription);
     }
     const indexSeo = buildSeoDocument(site, { path });
     if (indexSeo.canonical === null || indexSeo.openGraph === null) {
@@ -199,12 +221,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
         ? `Artikel bertopik #${query.tag} di ${site.settings.name}.`
         : `Topik #${query.tag} di ${site.settings.name}.`;
     if (site.articles.length < TAG_INDEX_MINIMUM) {
-      return {
-        title: tagTitle,
-        description: tagDescription,
-        robots: nonIndexableRobots(),
-        ...tenantFavicon(site.settings.faviconUrl),
-      };
+      return tenantHiddenMeta(site, path, tagTitle, tagDescription);
     }
     const tagSeo = buildSeoDocument(site, { path, titleOverride: tagTitle });
     return {
