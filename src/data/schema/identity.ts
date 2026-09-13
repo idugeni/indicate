@@ -35,13 +35,17 @@ export const organizations = pgTable('organizations', {
   name: text('name').notNull(),
   slug: text('slug').notNull(),
   status: recordStatus('status').default('active').notNull(),
+  /** Peran tenant: operator portal vs pelanggan. Lihat ARCHITECTURE.md §4.5. */
+  kind: text('kind').default('customer').notNull(),
   customerMetadata: jsonb('customer_metadata').$type<Record<string, unknown>>().default({}).notNull(),
   version: integer('version').default(1).notNull(),
   ...timestamps,
 }, (table) => [
   unique('organizations_slug_unique').on(table.slug),
   check('organizations_version_positive', sql`${table.version} > 0`),
+  check('organizations_kind_check', sql`${table.kind} IN ('operator', 'customer')`),
   index('organizations_status_idx').on(table.status),
+  index('organizations_kind_idx').on(table.kind),
 ]);
 
 export const users = pgTable('users', {
