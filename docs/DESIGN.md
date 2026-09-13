@@ -730,7 +730,7 @@ Jika kebutuhan baru **belum punya pattern** yang sesuai di dokumen ini, dokumen 
 ## 17. Pola Layout Jaringan (Network Templates)
 
 Section ini mengatur **situs tenant jaringan** (portal berita multi-brand yang dirender
-`src/modules/site/components/network/network-listing.tsx`). Sepuluh pola dasar di bawah adalah
+`src/modules/site/components/network/network-listing.tsx`). Sebelas pola dasar di bawah adalah
 **satu-satunya layout tenant yang diizinkan**. Brand baru (puluhan hingga ratusan) tinggal dipetakan
 ke salah satu pola via `site_settings.colors.templateId` — **tanpa kode baru, tanpa CSS per-brand**.
 Warna brand tetap dikendalikan `site_settings.colors` (`presetId` / `primary` / `accent` / `headerBg`)
@@ -738,13 +738,13 @@ yang dipetakan ke variabel `--site-primary`, `--site-accent`, `--site-header-bg`
 
 ### 17.1 Aturan Skalabilitas (mengikat semua pola)
 
-1. **Satu kode, sepuluh cabang.** Semua variasi dikendalikan nilai `data-template` pada
+1. **Satu kode, sebelas cabang.** Semua variasi dikendalikan nilai `data-template` pada
    `.network-shell` + cabang JSX keyed by `templateId` di `NetworkTemplate` / `ListingPage` /
    `ArticlePage` / `ArticleCard`. Dilarang: `if hostname === ...`, CSS per-domain, komponen per-brand.
-2. **ID valid.** Hanya 10 ID dari `template_presets` yang diakui
+2. **ID valid.** Hanya 11 ID dari `template_presets` yang diakui
    (`portal-news`, `broadsheet-classic`, `columnist-opinion`, `compact-stream`,
    `editorial-magazine`, `geo-radar`, `minimal-press`, `modern-tech`, `multimedia-visual`,
-   `tabloid-express`). Nilai tak dikenal/NULL jatuh ke `portal-news` (fail-closed visual).
+   `tabloid-express`, `clean-blue`). Nilai tak dikenal/NULL jatuh ke `portal-news` (fail-closed visual).
    Dashboard memetakan lewat dropdown terpandu (`SiteSettingsForm`, sumber `MASTER_TEMPLATE_PRESETS`
    di `src/ui/themes.ts`) dan skema server (`siteSettingsSchema`) menolak `templateId` di luar
    daftar — satu sumber kebenaran untuk katalog, UI, validasi, dan render.
@@ -758,7 +758,7 @@ yang dipetakan ke variabel `--site-primary`, `--site-accent`, `--site-header-bg`
 5. **Aksesibilitas & motion.** Semua pola: satu H1 per halaman, landmark `nav`/`main`/`footer`,
    `prefers-reduced-motion` menonaktifkan denyut/animasi (diganti state statis), target sentuh ≥44px.
 
-### 17.2 Definisi Sepuluh Pola
+### 17.2 Definisi Sebelas Pola
 
 | # | ID | Struktur | Hero | Grid | Aksen tipografi |
 |---|---|---|---|---|---|
@@ -772,6 +772,7 @@ yang dipetakan ke variabel `--site-primary`, `--site-accent`, `--site-header-bg`
 | 8 | `modern-tech` | Bento asimetris + header melayang blur | Bento `12-col`: featured `span 7` + stack `span 5`, badge mono menyala | Kartu asimetris bervariasi (horizontal / vertikal), badge kategori solid `--site-primary` | Judul sans bold (rasa teknis), mono untuk badge |
 | 9 | `multimedia-visual` | Galeri full-bleed + seksi video dokumenter | Strip galeri horizontal snap-scroll full-width (gambar 16:9 besar) | Grid visual 2–3 kolom dengan rasio bervariasi + caption mono kecil di bawah tiap gambar | Teks diminimalkan; caption mono `--paper-faint` |
 | 10 | `tabloid-express` | Banner solid + kartu kilat snap-scroll | Banner latar `--site-primary` solid, judul putih besar + strip kilat mono | Kartu kilat: snap-scroll horizontal di mobile, 3-kolom di desktop, badge kategori solid | Judul sans 700 besar, kicker mono di atas banner |
+| 11 | `clean-blue` | Editorial terang: ticker + hero 2-kolom + kartu pilihan + newsletter | Ticker "TERKINI" + hero gambar besar + kolom judul di kanan | 3 kartu pilihan dengan badge kategori berwarna + panel newsletter terang | Sans bold judul, permukaan terang di dalam shell gelap |
 
 ### 17.3 Batasan per Pola (misuse)
 
@@ -783,6 +784,9 @@ yang dipetakan ke variabel `--site-primary`, `--site-accent`, `--site-header-bg`
 - `geo-radar`: grid node adalah representasi status (menyala = ada artikel tayang), bukan peta geografis
   presisi; tidak ada klaim posisi geografis tanpa data.
 - `columnist-opinion`: body serif hanya untuk pola ini; pola lain body tetap Plex Sans.
+- `clean-blue`: satu-satunya pola yang boleh memakai permukaan terang (`bg-white` /
+  slate-50) dan badge pill berwarna di dalam konten — header, footer, dan navigasi
+  utama tetap dari `NetworkTemplate` bersama (tidak ada header/footer per-pola).
 - Semua pola memakai `ArticleCard` varian yang sama key-nya (`featured` / `row` / `timeline` /
   `visual` / `flash`) — dilarang membuat varian kartu baru tanpa memperbarui tabel 17.2.
 

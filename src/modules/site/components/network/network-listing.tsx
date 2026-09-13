@@ -47,6 +47,7 @@ import { MinimalPressListing } from '@/modules/site/components/network/templates
 import { ModernTechListing } from '@/modules/site/components/network/templates/modern-tech';
 import { MultimediaVisualListing } from '@/modules/site/components/network/templates/multimedia-visual';
 import { TabloidExpressListing } from '@/modules/site/components/network/templates/tabloid-express';
+import { CleanBlueListing } from '@/modules/site/components/network/templates/clean-blue';
 
 // Sinkronisasi: API publik berkas ini tidak berubah — halaman cukup mengimpor
 // dari sini seperti sebelumnya. Setiap layout tinggal di
@@ -75,6 +76,7 @@ export {
   ModernTechListing,
   MultimediaVisualListing,
   TabloidExpressListing,
+  CleanBlueListing,
 };
 export { TEMPLATE_IDS, type ListingProps, type TemplateId } from '@/modules/site/components/network/templates/listing-shared';
 export type { CardVariant };
@@ -108,6 +110,8 @@ export function ListingPage({
       return <MultimediaVisualListing {...shared} />;
     case 'tabloid-express':
       return <TabloidExpressListing {...shared} />;
+    case 'clean-blue':
+      return <CleanBlueListing {...shared} />;
     case 'portal-news':
     default:
       return <PortalNewsListing {...shared} />;

@@ -100,7 +100,7 @@ export const NETWORK_COLOR_PRESETS: readonly NetworkColorPreset[] = [
   },
 ];
 
-/** 10 semantic non-numbered master template layouts. */
+/** 11 semantic non-numbered master template layouts. */
 export const MASTER_TEMPLATE_PRESETS: readonly MasterTemplatePreset[] = [
   {
     id: 'portal-news',
@@ -160,6 +160,12 @@ export const MASTER_TEMPLATE_PRESETS: readonly MasterTemplatePreset[] = [
     id: 'broadsheet-classic',
     name: 'Broadsheet Classic',
     description: 'Layout koran cetak korporat dengan pembatas garis vertikal lurus.',
+    category: 'news',
+  },
+  {
+    id: 'clean-blue',
+    name: 'Clean Blue Editorial',
+    description: 'Layout editorial terang: ticker terkini, hero 2-kolom, kartu pilihan, dan panel newsletter.',
     category: 'news',
   },
 ];
