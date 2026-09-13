@@ -128,6 +128,15 @@ resolveRequest(rawHost):
 
 The direct `Host` header delivered by the configured Cloudflare/Vercel path is authoritative. Client-supplied forwarding headers cannot override it. A database exact-match resolution occurs before tenant cache use so stale caches cannot keep a deactivated mapping alive.
 
+### 4.5 Operator versus customer organizations
+
+An Organization is a plain tenant record (billing owner + memberships + permissions). It carries no portal semantics by itself. Two roles are distinguished by convention, not by schema:
+
+- **Operator org** (e.g. Fakta01) owns brand apex Domains, Regions, Sites, Site Settings, and the editorial workspace. Exactly one operator org serves a given portal network. The apex Site (`region_id` null) is the curated headline portal; regional Sites (`{regionSlug}.{rootDomain}`) are per-area channels. Apex aggregation is explicit curation via `article_sites` assignment, never automatic duplication.
+- **Customer org** (e.g. the 59 UPT orgs) owns billing, publishers, and memberships only. It holds no Domain, Region, or Site rows until it activates its own portal. A customer participates in an operator portal as a `publishers` row (plus `official_affiliations` per Site) inside the operator org — never as a second org context.
+
+`domains` is the brand registry: one row per apex, owned by exactly one operator org for billing and zone stewardship. No table changes are needed to add regions, channels, or content sources; growth is rows, not schema.
+
 ## 5. Modular monolith boundaries
 
 ### 5.1 App Router route groups
