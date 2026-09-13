@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { getControlHosts, isProductionEdge, parseMvpRootHosts } from '@/core/config/edge-hosts';
+import { getControlHosts, isProductionEdge } from '@/core/config/edge-hosts';
 import { normalizeRequestHostname } from '@/core/hostname/normalize-request-hostname';
 import { ensureRequestId, REQUEST_ID_HEADER } from '@/core/observability/request-id';
 import { ensureTraceContext, TRACEPARENT_HEADER } from '@/core/observability/trace-context';
@@ -181,13 +181,6 @@ export function proxy(request: NextRequest) {
   if (parsed.hostname === webhook) {
     if (!path.startsWith('/api/webhooks/')) return deny(404, request.headers);
     return nextWithCorrelation(request);
-  }
-  if (!isProductionEdge() && process.env.APP_ENVIRONMENT === 'test') {
-    const roots = parseMvpRootHosts(process.env.MVP_ROOT_HOSTS);
-    const isConfiguredPublicHost = roots.some(
-      (root) => parsed.hostname === root || (parsed.hostname.endsWith(`.${root}`) && parsed.hostname.split('.').length === root.split('.').length + 1),
-    );
-    if (!isConfiguredPublicHost) return deny(404, request.headers);
   }
   if (path.startsWith('/dashboard') || path.startsWith('/auth') || path.startsWith('/sign-in') || path.startsWith('/api/dashboard') || path.startsWith('/api/internal') || path.startsWith('/api/health') || path.startsWith('/api/v1/') || path.startsWith('/api/webhooks/') || isServicePath(path)) return deny(404, request.headers);
   return nextWithCorrelation(request);

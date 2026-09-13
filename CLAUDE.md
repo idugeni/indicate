@@ -99,7 +99,7 @@ Configured in `tsconfig.json`:
 - **Webhook host** → webhook endpoints
 - **Public tenant hosts** → exact-match hostname resolution to one Site
 
-Every tenant operation resolves exactly one Organization. Public reads resolve Organization and Site from one exact normalized hostname. No fallback tenant exists. Exception: a one-label suffix check applies only when `APP_ENVIRONMENT=test` outside the production edge (`proxy.ts`). Denials are non-disclosing (`deny()` → opaque 404/400 + `noindex`), with platform security headers (CSP/HSTS) applied at the edge.
+Every tenant operation resolves exactly one Organization. Public reads resolve Organization and Site from one exact normalized hostname. No fallback tenant exists. Denials are non-disclosing (`deny()` → opaque 404/400 + `noindex`), with platform security headers (CSP/HSTS) applied at the edge.
 
 ## Server-only enforcement
 
@@ -135,7 +135,7 @@ Migrations in `src/data/migrations/` are applied manually in filename order agai
 
 ## Configuration
 
-- **Environment schema:** `src/core/config/bootstrap/bootstrap-schema.ts` — Zod-validated, all required values fail-closed (`APP_ENVIRONMENT` is authoritative; `SCHEMA_GATE_MODE` must be `live` in production)
+- **Environment schema:** `src/core/config/bootstrap/bootstrap-schema.ts` — Zod-validated, all required values fail-closed (single production environment and `live` schema-gate mode are hardcoded)
 - **Assembled config shape:** `src/core/config/runtime/runtime-schema.ts` — plain `RuntimeConfig` interface combining bootstrap env and the Postgres runtime snapshot; it does not parse env itself
 - **Public config:** `src/core/config/public-config.ts` — browser-safe subset (`NEXT_PUBLIC_*` only)
 - **Runtime context:** `src/core/config/runtime/runtime-context.ts` — single-flight init, registered via root `instrumentation.ts`

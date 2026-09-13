@@ -36,7 +36,7 @@ General bugs without a security impact belong in the public
 
 Email **sancaphenacakra@gmail.com** with:
 
-1. Affected commit SHA or tag, and environment (`APP_ENVIRONMENT`).
+1. Affected commit SHA or tag (production is the only environment).
 2. Host/route involved (Dashboard host, API host, webhook host, tenant host).
 3. Step-by-step reproduction with the least-privileged actor possible.
 4. What you expected (deny / isolate) vs. what happened (leak / bypass).

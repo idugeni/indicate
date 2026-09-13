@@ -29,7 +29,7 @@ export function SignUpForm() {
 
     try {
       const supabase = createBrowserSupabaseClient();
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -76,7 +76,7 @@ export function SignUpForm() {
             <AuthLabel htmlFor="email">
               Alamat email
             </AuthLabel>
-            <Input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@redaksi.web.id" className="font-sans" />
+            <Input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@suarakabar.com" className="font-sans" />
           </div>
 
           <div>

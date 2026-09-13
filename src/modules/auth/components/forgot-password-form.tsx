@@ -26,7 +26,7 @@ export function ForgotPasswordForm() {
 
     try {
       const supabase = createBrowserSupabaseClient();
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${siteUrl}/auth/callback?next=%2Fupdate-password`,
       });
@@ -63,7 +63,7 @@ export function ForgotPasswordForm() {
         <AuthLabel htmlFor="email">
           Alamat email
         </AuthLabel>
-        <Input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@redaksi.web.id" className="font-sans" />
+        <Input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@kabarjateng.org" className="font-sans" />
       </div>
 
       <AuthSubmit busy={busy} busyLabel="Mengirim..." icon={Send}>

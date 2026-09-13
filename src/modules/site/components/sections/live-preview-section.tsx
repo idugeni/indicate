@@ -5,9 +5,9 @@ import { Bot, Check, Globe, Terminal } from 'lucide-react';
 import { useRovingSelection } from '@/ui/hooks/use-roving-selection';
 
 const ROUTING_NODES = [
-  { host: 'portal-alpha.web.id', siteId: 'site_alpha', status: 'ACTIVE', latency: '12ms' },
-  { host: 'portal-beta.web.id', siteId: 'site_beta', status: 'ACTIVE', latency: '14ms' },
-  { host: 'portal-gamma.web.id', siteId: 'site_gamma', status: 'ACTIVE', latency: '11ms' },
+  { host: 'portal-utama.suarapagi.com', siteId: 'site_utama', status: 'ACTIVE', latency: '12ms' },
+  { host: 'portal-sore.wartasore.net', siteId: 'site_sore', status: 'ACTIVE', latency: '14ms' },
+  { host: 'portal-malam.kabarmalam.org', siteId: 'site_malam', status: 'ACTIVE', latency: '11ms' },
 ] as const;
 
 type PreviewTab = 'dashboard' | 'telegram' | 'routing';
@@ -99,7 +99,7 @@ export function LivePreviewSection() {
               </p>
               <p className="m-0">
                 <span className="text-paper-faint">TARGET SITES:</span>{' '}
-                <span className="text-brass-soft">portal-alpha.web.id, portal-beta.web.id, portal-gamma.web.id</span>
+                <span className="text-brass-soft">portal-timur.lintasharian.com, portal-barat.wartaharian.net, portal-selatan.kabarharian.org</span>
               </p>
               <p className="m-0 flex items-center gap-1.5 pt-1.5 text-signal">
                 <Check className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
@@ -125,7 +125,7 @@ export function LivePreviewSection() {
 
             <div className="flex flex-1 flex-col justify-evenly gap-2 border border-hairline p-3 text-paper">
               <div className="text-xs text-paper-dim">
-                <span className="text-brass">INBOUND:</span> /publish #1092 --target=portal-alpha.web.id
+                <span className="text-brass">INBOUND:</span> /publish #1092 --target=portal-timur.lintasharian.com
               </div>
               <div className="flex items-center gap-1.5 text-[11px] text-signal">
                 <Check className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
@@ -134,7 +134,7 @@ export function LivePreviewSection() {
               <div className="break-all font-mono text-[11px] text-paper-dim">
                 <span className="text-paper-faint">ENDPOINT:</span>{' '}
                 <span className="text-brass-soft underline decoration-hairline-strong underline-offset-2">
-                  https://portal-alpha.web.id/articles/laporan-kinerja-2026
+                  https://portal-timur.lintasharian.com/articles/laporan-kinerja-2026
                 </span>
               </div>
             </div>

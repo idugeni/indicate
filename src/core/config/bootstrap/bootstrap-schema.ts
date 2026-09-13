@@ -3,7 +3,7 @@ import 'server-only';
 import { z } from 'zod';
 
 import { normalizeConfiguredHostname } from '@/core/hostname/normalize-configured-hostname';
-import { BOOTSTRAP_ENVIRONMENTS, SCHEMA_GATE_MODES, type BootstrapEnvironment, type SchemaGateMode } from '@/core/config/bootstrap/bootstrap-env';
+import { BOOTSTRAP_ENVIRONMENTS, type BootstrapEnvironment, type SchemaGateMode } from '@/core/config/bootstrap/bootstrap-env';
 import { SecretString } from '@/core/config/secret-string';
 
 export { normalizeConfiguredHostname };
@@ -32,8 +32,6 @@ const INDICATE_NAMESPACE_PREFIXES = [
 
 const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'NODE_ENV',
-  'APP_ENVIRONMENT',
-  'SCHEMA_GATE_MODE',
   'DASHBOARD_HOST',
   'API_HOST',
   'WEBHOOK_HOST',
@@ -42,8 +40,6 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
   'DEFAULT_LOCALE',
   'SITE_DEFAULT_ASSET_URL',
-  'SUPABASE_SERVICE_ROLE_KEY',
-  'SUPABASE_SECRET_KEY',
   'SUPABASE_PROJECT_REF',
   'DATABASE_POOL_URL',
   'DATABASE_DIRECT_URL',
@@ -81,8 +77,6 @@ const httpsUrlSchema = z.url().refine((value) => value.startsWith('https://'), '
 const bootstrapSchema = z
   .object({
     NODE_ENV: z.enum(BOOTSTRAP_ENVIRONMENTS).default('development'),
-    APP_ENVIRONMENT: z.enum(BOOTSTRAP_ENVIRONMENTS).default('development'),
-    SCHEMA_GATE_MODE: z.enum(SCHEMA_GATE_MODES).default('contract'),
     DASHBOARD_HOST: hostnameSchema.default('indicate.web.id'),
     API_HOST: hostnameSchema.default('api.indicate.web.id'),
     WEBHOOK_HOST: hostnameSchema.default('webhook.indicate.web.id'),
@@ -91,10 +85,7 @@ const bootstrapSchema = z
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(8).optional(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(8).optional(),
     DEFAULT_LOCALE: z.string().regex(/^[a-z]{2}-[A-Z]{2}$/).default('id-ID'),
-    SITE_DEFAULT_ASSET_URL: httpsUrlSchema,
-    SUPABASE_SERVICE_ROLE_KEY: secretSchema.optional(),
-    // Compatibility aliases; anon/publishable are both public client values.
-    SUPABASE_SECRET_KEY: secretSchema.optional(),
+    SITE_DEFAULT_ASSET_URL: httpsUrlSchema.default('https://indicate.web.id/assets/default.png'),
     SUPABASE_PROJECT_REF: z.string().regex(/^[a-z0-9]{8,32}$/).optional(),
     DATABASE_POOL_URL: z.url({ protocol: /^postgresql$/ }),
     DATABASE_DIRECT_URL: z.url({ protocol: /^postgresql$/ }),
@@ -129,12 +120,6 @@ const bootstrapSchema = z
           context.addIssue({ code: 'custom', path: [name], message: 'production_secret_not_bounded' });
         }
       }
-    }
-    if (value.NODE_ENV === 'production' && value.SCHEMA_GATE_MODE !== 'live') {
-      context.addIssue({ code: 'custom', path: ['SCHEMA_GATE_MODE'], message: 'live_schema_gate_required_in_production' });
-    }
-    if (value.NODE_ENV !== 'production' && value.APP_ENVIRONMENT !== value.NODE_ENV) {
-      context.addIssue({ code: 'custom', path: ['APP_ENVIRONMENT'], message: 'environment_must_match_node_env' });
     }
     const controlHosts = [value.DASHBOARD_HOST, value.API_HOST, value.WEBHOOK_HOST];
     if (new Set(controlHosts).size !== controlHosts.length) {
@@ -179,7 +164,6 @@ export interface BootstrapConfig {
     readonly url: string;
     /** Public, client-safe anonymized key (not a secret). */
     readonly anonKey: string;
-    readonly serviceRoleKey: SecretString;
   }>;
   readonly database: Readonly<{
     readonly pooledUrl: SecretString;
@@ -214,12 +198,11 @@ export type BootstrapConfigResult =
   | { readonly success: false; readonly issues: readonly ConfigIssue[] };
 
 function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
-  const serviceRoleKey = value.SUPABASE_SERVICE_ROLE_KEY ?? value.SUPABASE_SECRET_KEY ?? '';
   const anonKey = value.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? value.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '';
   const projectRef = value.SUPABASE_PROJECT_REF;
   return Object.freeze({
-    environment: value.APP_ENVIRONMENT,
-    schemaGateMode: value.SCHEMA_GATE_MODE,
+    environment: 'production' as const,
+    schemaGateMode: 'live' as const,
     controlHosts: Object.freeze({
       dashboard: value.DASHBOARD_HOST,
       api: value.API_HOST,
@@ -234,7 +217,6 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       projectRef,
       url: value.NEXT_PUBLIC_SUPABASE_URL,
       anonKey,
-      serviceRoleKey: SecretString.fromPlain(serviceRoleKey),
     }),
     database: Object.freeze({
       pooledUrl: SecretString.fromPlain(value.DATABASE_POOL_URL),
@@ -261,8 +243,8 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
 
 /** Pure Bootstrap validation: no PostgreSQL/provider init; failures expose only allowlisted paths + stable categories. */
 export function validateBootstrapConfig(environment: Record<string, string | undefined>): BootstrapConfigResult {
-  // Authority is APP_ENVIRONMENT — `next start` forces NODE_ENV=production.
-  const postCutover = environment.APP_ENVIRONMENT === 'production';
+  // Single production environment — authority is NODE_ENV (`next start` forces it to production).
+  const postCutover = environment.NODE_ENV === 'production';
   const unknown = postCutover ? detectUnknownIndicateKeys(environment, BOOTSTRAP_ALLOWED_KEYS) : [];
   const parsed = bootstrapSchema.safeParse(environment);
   if (!parsed.success) {

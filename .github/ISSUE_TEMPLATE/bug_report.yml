@@ -67,8 +67,8 @@ body:
     id: env
     attributes:
       label: Environment
-      description: Node version, APP_ENVIRONMENT, and whether migrations were applied in filename order.
-      placeholder: "Node 22, APP_ENVIRONMENT=development, migrations applied in order"
+      description: Node version and whether migrations were applied in filename order.
+      placeholder: "Node 22, migrations applied in order"
     validations:
       required: false
   - type: checkboxes

@@ -106,7 +106,7 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
     updateAction: 'domain.update',
     title: 'Ubah domain',
     fields: [
-      { key: 'normalizedHostname', label: 'Hostname apex', kind: 'text', required: true, placeholder: 'jawatengah.web.id' },
+      { key: 'normalizedHostname', label: 'Hostname apex', kind: 'text', required: true, placeholder: 'beritakota.news' },
       { key: 'status', label: 'Status', kind: 'select', required: true, options: LIFECYCLE_OPTIONS },
     ],
   },
@@ -126,7 +126,7 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
     fields: [
       { key: 'domainId', label: 'Domain induk', kind: 'select', required: true, optionSource: 'domains' },
       { key: 'regionId', label: 'Wilayah', kind: 'select', optionSource: 'regions', allowEmpty: true, emptyLabel: 'Kanal apex (sentral)' },
-      { key: 'normalizedHostname', label: 'Hostname', kind: 'text', required: true, placeholder: 'wonosobo.web.id' },
+      { key: 'normalizedHostname', label: 'Hostname', kind: 'text', required: true, placeholder: 'pekalongan.wartakota.tv' },
       { key: 'status', label: 'Status', kind: 'select', required: true, options: LIFECYCLE_OPTIONS },
     ],
   },

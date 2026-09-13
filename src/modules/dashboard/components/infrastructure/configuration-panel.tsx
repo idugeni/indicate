@@ -105,7 +105,7 @@ export function ConfigurationPanel({
               name="hostname"
               required
               disabled={isAddingDomain}
-              placeholder="jawatengah.web.id"
+              placeholder="medianusantara.co.id"
               className="h-9 border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus-visible:ring-brass"
             />
           </div>
@@ -235,7 +235,7 @@ export function ConfigurationPanel({
               name="hostname"
               required
               disabled={isAddingSite}
-              placeholder="wonosobo.web.id"
+              placeholder="wonosobo.suaradesa.net"
               className="h-9 border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus-visible:ring-brass"
             />
           </div>

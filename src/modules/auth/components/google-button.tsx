@@ -11,7 +11,7 @@ export function GoogleButton() {
   const handleGoogle = async () => {
     setBusy(true);
     const supabase = createBrowserSupabaseClient();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

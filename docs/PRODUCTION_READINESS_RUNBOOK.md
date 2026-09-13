@@ -20,7 +20,7 @@ Cloudflare must remain authoritative for nameservers, DNS, wildcard records, edg
 
 ## Production checks
 
-No readiness automation ships in this tree; perform each check below manually in the production environment with `NODE_ENV=production` and `SCHEMA_GATE_MODE=live`. It validates the complete Runtime Configuration and then checks:
+No readiness automation ships in this tree; perform each check below manually in the production environment with `NODE_ENV=production`. It validates the complete Runtime Configuration and then checks:
 
 - the applied migration sequence against `meta/_journal.json`, the `migration_gate_events.required_version` gate, and the runtime configuration snapshot version (surfaced via `GET /api/health` as `configurationVersion`);
 - Supabase Auth health and PostgreSQL connectivity;

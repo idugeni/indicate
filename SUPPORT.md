@@ -18,7 +18,7 @@ the [72-hour acknowledgement target](SECURITY.md#reporting-a-vulnerability).
 1. Search existing [issues](https://github.com/idugeni/indicate/issues) —
    your problem may already be reported or fixed on `main`.
 2. Reproduce on the latest `main` and record the exact commit SHA.
-3. Collect: `APP_ENVIRONMENT`, failing route/host class (Dashboard, API,
+3. Collect: failing route/host class (Dashboard, API,
    webhook, tenant), `GET /api/health` output with secrets redacted,
    and relevant application logs.
 4. Confirm you ran the gate locally: `npm run typecheck`, `npm run lint`,

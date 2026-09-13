@@ -53,7 +53,7 @@ export function SignInForm() {
           <AuthLabel htmlFor="email">
             Alamat email
           </AuthLabel>
-          <Input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@redaksi.web.id" className="font-sans" />
+          <Input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@wartanusantara.net" className="font-sans" />
         </div>
 
         <div>

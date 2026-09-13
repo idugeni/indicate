@@ -1,8 +1,8 @@
 const TARGET_CHANNELS = [
-  'portal-alpha.web.id',
-  'portal-beta.web.id',
-  'portal-gamma.web.id',
-  'portal-delta.web.id',
+  'portal-alpha.suarakabar.com',
+  'portal-beta.wartanusantara.net',
+  'portal-gamma.kabarjateng.org',
+  'portal-delta.lintasdaerah.id',
 ] as const;
 
 export function SignalNetwork() {

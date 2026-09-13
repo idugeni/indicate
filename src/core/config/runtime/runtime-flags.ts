@@ -2,8 +2,8 @@ import 'server-only';
 
 /** Server-only env predicates; no secrets here — credential validation lives in `schema.ts`. */
 
-export function getAppEnvironment(environment: NodeJS.ProcessEnv = process.env): string {
-  return environment.APP_ENVIRONMENT ?? 'development';
+export function getAppEnvironment(): string {
+  return 'production';
 }
 
 export function isProductionServer(environment: NodeJS.ProcessEnv = process.env): boolean {
