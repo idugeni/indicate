@@ -3,7 +3,7 @@ import type { z } from 'zod';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type {
   ActivationAttemptRecord, AnalyticsProjection, ArticleFilter, ArticleRecord, AuditFilter, AuditRecord, AuthorRecord, CategoryRecord,
-  DashboardProjection, DomainRecord, MembershipRecord, OfficialAffiliationRecord, PublisherRecord, NetworkPublisherClaim,
+  DashboardProjection, DomainRecord, InvitationSummary, MembershipRecord, OfficialAffiliationRecord, OperationsProjection, PublisherRecord, NetworkPublisherClaim,
   RegionRecord, RetentionRunRecord, RoleListItem, RoleRecord, SiteRecord, SiteSettingsRecord, DashboardTenantState,
 } from '@/modules/dashboard/models';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
@@ -19,7 +19,7 @@ import type { Result } from '@/core/result';
 import {
   affiliationSchema, affiliationUpdateSchema, analyticsFilterSchema, articleCreateSchema, articleFilterSchema, articleTransitionSchema, articleUpdateSchema, assignmentSchema,
   auditFilterSchema, authorCreateSchema, authorUpdateSchema, categoryCreateSchema, categoryUpdateSchema,
-  domainCreateSchema, domainUpdateSchema, membershipSchema, publisherCreateSchema, publisherDecisionSchema,
+  domainCreateSchema, domainUpdateSchema, invitationCreateSchema, invitationRevokeSchema, membershipSchema, publisherCreateSchema, publisherDecisionSchema,
   publisherUpdateSchema, regionCreateSchema, regionUpdateSchema, roleCreateSchema, roleUpdateSchema,
   siteCreateSchema, siteSettingsSchema, siteUpdateSchema, siteViewsSchema,
 } from '@/modules/dashboard/schemas';
@@ -153,9 +153,14 @@ export class TenantBusinessService {
       const anyState = domainState ?? regionState ?? siteState ?? roleManage ?? membershipState;
       if (anyState === null) return this.denied(actor, 'configuration.list', 'configuration');
       let activationAttempts: readonly ActivationAttemptRecord[] = [];
+      let invitations: readonly InvitationSummary[] = [];
       const attemptsPermission = siteRead !== null ? DASHBOARD_PERMISSIONS.siteRead : siteManage !== null ? DASHBOARD_PERMISSIONS.siteManage : null;
       if (siteState !== null && attemptsPermission !== null) {
         try { activationAttempts = await this.repository.activationAttempts(actor, attemptsPermission); }
+        catch (error) { if (!(error instanceof DashboardAccessDeniedError)) throw error; }
+      }
+      if (membershipState !== null) {
+        try { invitations = await this.repository.listInvitations(actor, DASHBOARD_PERMISSIONS.membershipManage); }
         catch (error) { if (!(error instanceof DashboardAccessDeniedError)) throw error; }
       }
       return { ok: true as const, value: {
@@ -164,7 +169,7 @@ export class TenantBusinessService {
         sites: siteState?.sites ?? [], siteSettings: siteState?.siteSettings ?? [],
         roles: (roleManage?.roles ?? []).map(roleJson), memberships: membershipState?.memberships ?? [],
         telegramMappings: membershipState?.telegramMappings ?? [],
-        activationAttempts,
+        activationAttempts, invitations,
       } };
     } catch {
       return { ok: false as const, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
@@ -538,6 +543,43 @@ export class TenantBusinessService {
       return { ok: true, value: { auditLogs, retentionRuns } };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'audit.list', 'audit_log');
+      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+    }
+  }
+
+  async operations(actor: AuthorizedTenantActorContext): Promise<Result<OperationsProjection, PublicErrorEnvelope>> {
+    return this.summarize(actor, 'operations.read', 'operations', (repository) =>
+      repository.operationsSummary(actor, DASHBOARD_PERMISSIONS.auditRead));
+  }
+
+  async createInvitation(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<{ readonly id: string }, PublicErrorEnvelope>> {
+    const parsed = invitationCreateSchema.safeParse(raw);
+    if (!parsed.success) return this.invalid(actor, parsed.error);
+    try {
+      const value = await this.repository.createInvitation(actor, DASHBOARD_PERMISSIONS.membershipManage, {
+        email: parsed.data.email,
+        roleId: parsed.data.roleId,
+        tokenHash: parsed.data.tokenHash,
+      });
+      return { ok: true, value };
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'invitation.create', 'invitation');
+      if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, actor.requestId) };
+      if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
+      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+    }
+  }
+
+  async revokeInvitation(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<{ readonly id: string }, PublicErrorEnvelope>> {
+    const parsed = invitationRevokeSchema.safeParse(raw);
+    if (!parsed.success) return this.invalid(actor, parsed.error);
+    try {
+      const value = await this.repository.revokeInvitation(actor, DASHBOARD_PERMISSIONS.membershipManage, { id: parsed.data.id });
+      return { ok: true, value };
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'invitation.revoke', 'invitation');
+      if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, actor.requestId) };
+      if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
       return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
     }
   }

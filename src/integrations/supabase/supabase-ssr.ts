@@ -73,6 +73,7 @@ export function createSupabaseSsrAuthAdapter(input: {
         authUserId: data.user.id,
         displayName: displayNameFor(data.user),
         avatarUrl: avatarUrlFor(data.user),
+        email: data.user.email ?? null,
       });
     },
     async verifySession(sessionToken: string) {
@@ -82,6 +83,7 @@ export function createSupabaseSsrAuthAdapter(input: {
         authUserId: data.user.id,
         displayName: displayNameFor(data.user),
         avatarUrl: avatarUrlFor(data.user),
+        email: data.user.email ?? null,
       });
     },
     async exchangeCodeForSession(code: string) {

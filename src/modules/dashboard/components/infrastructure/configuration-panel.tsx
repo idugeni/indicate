@@ -11,6 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import type { DomainEntity, RegionEntity, SiteEntity } from '@/modules/dashboard/components/shared/types';
 import { MediaPolicySection } from '@/modules/dashboard/components/infrastructure/media-policy-section';
+import { PolicyOverviewSection } from '@/modules/dashboard/components/infrastructure/policy-overview-section';
 
 export function ConfigurationPanel({
   data,
@@ -256,6 +257,7 @@ export function ConfigurationPanel({
       </section>
     </div>
       <MediaPolicySection />
+      <PolicyOverviewSection />
     </div>
   );
 }

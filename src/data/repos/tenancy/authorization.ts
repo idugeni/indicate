@@ -54,12 +54,17 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
     });
   }
 
-  async linkLocalUser(input: { readonly id: string; readonly authUserId: string; readonly displayName: string; readonly avatarUrl: string | null }) {
+  async linkLocalUser(input: { readonly id: string; readonly authUserId: string; readonly displayName: string; readonly avatarUrl: string | null; readonly email: string | null }) {
     return this.database.transaction(async (transaction) => {
       await transaction.execute(sql`SELECT set_config('app.auth_user_id', ${input.authUserId}, true)`);
       await transaction.insert(users).values({ ...input, status: 'active' }).onConflictDoUpdate({
         target: users.authUserId,
-        set: { displayName: input.displayName, avatarUrl: input.avatarUrl, updatedAt: new Date() },
+        set: {
+          displayName: input.displayName,
+          avatarUrl: input.avatarUrl,
+          ...(input.email === null ? {} : { email: input.email }),
+          updatedAt: new Date(),
+        },
       });
       const user = await transaction.query.users.findFirst({ where: eq(users.authUserId, input.authUserId) });
       if (user === undefined) throw new Error('Local identity linkage failed');

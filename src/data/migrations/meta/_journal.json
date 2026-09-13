@@ -715,6 +715,13 @@
       "when": 1788800000000,
       "tag": "20260907250000_invoice_number_enterprise",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1788900000000,
+      "tag": "20260907260000_invite_visibility",
+      "breakpoints": true
     }
   ]
 }

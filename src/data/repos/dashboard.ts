@@ -1,13 +1,13 @@
-import { and, eq, gt, isNotNull, isNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { AnalyticsProjection, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, RetentionRunRecord } from '@/modules/dashboard/models';
+import type { AnalyticsProjection, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, InvitationSummary, OperationsProjection, RetentionRunRecord } from '@/modules/dashboard/models';
 import { DashboardAccessDeniedError, DashboardConflictError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
 import { redact } from '@/core/security/redaction';
 import {
-  apiKeys, articleSites, articles, auditLogs, authors, categories, domainActivationAttempts, domains, invalidationTasks, media, memberships, officialAffiliations, organizations,
-  permissions, publishers, publishingJobs, publishingJobTargets, regions, rolePermissions, roles, sites, siteSettings, telegramIdentityMappings, users,
+  apiKeys, articleSites, articles, auditLogs, authors, cacheBypasses, categories, domainActivationAttempts, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks, officialAffiliations, organizations,
+  permissions, publicationTransitionReceipts, publishers, publishingJobs, publishingJobTargets, regions, rolePermissions, roles, sites, siteSettings, telegramConversations, telegramIdentityMappings, users, webhookReplayClaims,
 } from '@/data/schema';
 import type * as schema from '@/data/schema';
 import { completeInvalidationValues } from '@/data/repos/shared/delivery-invalidation-values';
@@ -269,6 +269,122 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         attempts: row.attempts,
         nextAttemptAt: row.nextAttemptAt.toISOString(),
       })));
+    });
+  }
+
+  async createInvitation(
+    actor: AuthorizedTenantActorContext,
+    permission: string,
+    input: { readonly email: string; readonly roleId: string; readonly tokenHash: string },
+  ): Promise<{ readonly id: string }> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      await this.enforceWritableSubscription(transaction, actor);
+      const organization = await transaction.select({ id: organizations.id }).from(organizations).where(and(eq(organizations.id, actor.organizationId), eq(organizations.status, 'active'))).limit(1);
+      if (organization.length !== 1) throw new DashboardAccessDeniedError();
+      const role = await transaction.select({ id: roles.id }).from(roles).where(and(eq(roles.organizationId, actor.organizationId), eq(roles.id, input.roleId), eq(roles.active, true))).limit(1);
+      if (role.length !== 1) throw new DashboardAccessDeniedError();
+      const now = new Date().toISOString();
+      try {
+        const rows = await transaction.execute<{ invite_create: string }>(sql`SELECT indicate_private.invite_create(${actor.actorId}::uuid, ${actor.requestId}, ${actor.organizationId}::uuid, ${input.roleId}::uuid, ${input.email}, ${input.tokenHash}, ${now}::timestamptz) AS invite_create`);
+        const inviteId = rows[0]?.invite_create;
+        if (inviteId === undefined) throw new DashboardConflictError();
+        return Object.freeze({ id: inviteId });
+      } catch (error) {
+        if (error instanceof DashboardAccessDeniedError || error instanceof DashboardConflictError) throw error;
+        const code = (error as { code?: unknown })?.code;
+        if (code === '42501' || code === 'P0001') throw new DashboardAccessDeniedError();
+        if (code === '23505') throw new DashboardConflictError();
+        throw error;
+      }
+    });
+  }
+
+  async listInvitations(actor: AuthorizedTenantActorContext, permission: string): Promise<readonly InvitationSummary[]> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const organization = await transaction.select({ id: organizations.id }).from(organizations).where(and(eq(organizations.id, actor.organizationId), eq(organizations.status, 'active'))).limit(1);
+      if (organization.length !== 1) throw new DashboardAccessDeniedError();
+      try {
+        const rows = await transaction.execute<{
+          id: string; email: string; role_id: string | null; role_name: string | null;
+          expires_at: Date; accepted_at: Date | null; created_at: Date;
+        }>(sql`SELECT * FROM indicate_private.invite_list(${actor.actorId}::uuid, ${actor.organizationId}::uuid)`);
+        const now = Date.now();
+        return Object.freeze(rows.map((row) => {
+          const status = row.accepted_at !== null ? 'accepted' as const : row.expires_at.getTime() <= now ? 'expired' as const : 'pending' as const;
+          return {
+            id: row.id, organizationId: actor.organizationId, name: row.email, status,
+            email: row.email, roleId: row.role_id ?? '', roleName: row.role_name ?? '—',
+            expiresAt: row.expires_at.toISOString(), acceptedAt: row.accepted_at?.toISOString() ?? null,
+            createdAt: row.created_at.toISOString(),
+          };
+        }));
+      } catch (error) {
+        if (error instanceof DashboardAccessDeniedError) throw error;
+        const code = (error as { code?: unknown })?.code;
+        if (code === '42501' || code === 'P0001') throw new DashboardAccessDeniedError();
+        throw error;
+      }
+    });
+  }
+
+  async revokeInvitation(
+    actor: AuthorizedTenantActorContext,
+    permission: string,
+    input: { readonly id: string },
+  ): Promise<{ readonly id: string }> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      await this.enforceWritableSubscription(transaction, actor);
+      const organization = await transaction.select({ id: organizations.id }).from(organizations).where(and(eq(organizations.id, actor.organizationId), eq(organizations.status, 'active'))).limit(1);
+      if (organization.length !== 1) throw new DashboardAccessDeniedError();
+      const now = new Date().toISOString();
+      try {
+        const rows = await transaction.execute<{ invite_revoke: boolean }>(sql`SELECT indicate_private.invite_revoke(${actor.actorId}::uuid, ${actor.requestId}, ${input.id}::uuid, ${now}::timestamptz) AS invite_revoke`);
+        if (rows[0]?.invite_revoke !== true) throw new DashboardConflictError();
+        return Object.freeze({ id: input.id });
+      } catch (error) {
+        if (error instanceof DashboardAccessDeniedError || error instanceof DashboardConflictError) throw error;
+        const code = (error as { code?: unknown })?.code;
+        if (code === '42501' || code === 'P0001') throw new DashboardAccessDeniedError();
+        throw error;
+      }
+    });
+  }
+
+  async operationsSummary(actor: AuthorizedTenantActorContext, permission: string): Promise<OperationsProjection> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const organization = await transaction.select({ id: organizations.id }).from(organizations).where(and(eq(organizations.id, actor.organizationId), eq(organizations.status, 'active'))).limit(1);
+      if (organization.length !== 1) throw new DashboardAccessDeniedError();
+      const organizationId = actor.organizationId;
+      const [invalidationRows, cleanupRows, reservationRows, bypassRows, conversationRows, outboxRows, receiptRows, replayRows] = await Promise.all([
+        transaction.select().from(invalidationTasks).where(eq(invalidationTasks.organizationId, organizationId)).orderBy(desc(invalidationTasks.updatedAt)).limit(100),
+        transaction.select().from(objectCleanupTasks).where(eq(objectCleanupTasks.organizationId, organizationId)).orderBy(desc(objectCleanupTasks.updatedAt)).limit(100),
+        transaction.select().from(mediaKeyReservations).where(eq(mediaKeyReservations.organizationId, organizationId)).orderBy(desc(mediaKeyReservations.updatedAt)).limit(100),
+        transaction.select().from(cacheBypasses).where(eq(cacheBypasses.organizationId, organizationId)).orderBy(desc(cacheBypasses.updatedAt)).limit(100),
+        transaction.select().from(telegramConversations).where(eq(telegramConversations.organizationId, organizationId)).orderBy(desc(telegramConversations.updatedAt)).limit(100),
+        transaction.execute<{
+          id: string; chat_id: string; status: string; attempts: number; next_attempt_at: Date; created_at: Date;
+        }>(sql`SELECT * FROM indicate_private.outbox_list(${actor.actorId}::uuid, ${organizationId}::uuid)`),
+        transaction.select().from(publicationTransitionReceipts).where(eq(publicationTransitionReceipts.organizationId, organizationId)).orderBy(desc(publicationTransitionReceipts.createdAt)).limit(100),
+        transaction.select().from(webhookReplayClaims).where(eq(webhookReplayClaims.organizationId, organizationId)).orderBy(desc(webhookReplayClaims.receivedAt)).limit(100),
+      ]);
+      return Object.freeze({
+        invalidationTasks: invalidationRows.map((row) => ({ id: row.id, organizationId, name: `${row.reason} · ${row.currentHostname ?? row.previousHostname ?? row.siteId}`, status: row.status, siteId: row.siteId, reason: row.reason, attempts: row.attempts, nextAttemptAt: row.nextAttemptAt.toISOString(), updatedAt: row.updatedAt.toISOString() })),
+        objectCleanupTasks: cleanupRows.map((row) => ({ id: row.id, organizationId, name: row.objectKey, status: row.status, reason: row.reason, attempts: row.attempts, nextAttemptAt: row.nextAttemptAt.toISOString(), updatedAt: row.updatedAt.toISOString() })),
+        mediaKeyReservations: reservationRows.map((row) => ({ id: row.id, organizationId, name: row.objectKey, status: row.status, purpose: row.purpose, expiresAt: row.expiresAt.toISOString(), updatedAt: row.updatedAt.toISOString() })),
+        cacheBypasses: bypassRows.map((row) => ({ id: row.siteId, organizationId, name: row.siteId, status: row.bypass ? 'bypass' : 'cache', siteId: row.siteId, reason: row.reason, updatedAt: row.updatedAt.toISOString() })),
+        telegramConversations: conversationRows.map((row) => ({ id: `${row.telegramChatId}:${row.telegramUserId}`, organizationId, name: `chat ${row.telegramChatId}`, status: 'active', step: row.step, expiresAt: row.expiresAt.toISOString(), updatedAt: row.updatedAt.toISOString() })),
+        telegramOutbox: outboxRows.map((row) => ({ id: row.id, organizationId, name: `chat ${row.chat_id}`, status: row.status, attempts: row.attempts, nextAttemptAt: row.next_attempt_at.toISOString(), createdAt: row.created_at.toISOString() })),
+        transitionReceipts: receiptRows.map((row) => ({ id: row.id, organizationId, name: `${row.fromState} → ${row.toState}`, status: row.acknowledgedAt === null ? 'pending' : 'acknowledged', jobId: row.jobId, occurredAt: row.createdAt.toISOString() })),
+        webhookReplayClaims: replayRows.map((row) => ({ id: `${row.source}:${row.replayId}`, organizationId, name: `${row.source} · ${row.replayId}`, status: row.status, attemptCount: row.attemptCount, receivedAt: (row.receivedAt instanceof Date ? row.receivedAt : new Date(row.receivedAt)).toISOString(), expiresAt: (row.expiresAt instanceof Date ? row.expiresAt : new Date(row.expiresAt)).toISOString() })),
+      });
     });
   }
 

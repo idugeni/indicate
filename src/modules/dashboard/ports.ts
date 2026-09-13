@@ -1,5 +1,5 @@
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { ActivationAttemptRecord, AnalyticsProjection, AuditFilter, AuditRecord, DashboardProjection, DashboardTenantState, RetentionRunRecord } from '@/modules/dashboard/models';
+import type { ActivationAttemptRecord, AnalyticsProjection, AuditFilter, AuditRecord, DashboardProjection, DashboardTenantState, InvitationSummary, OperationsProjection, RetentionRunRecord } from '@/modules/dashboard/models';
 
 export type MutableTenantState = {
   -readonly [Key in keyof DashboardTenantState]: DashboardTenantState[Key] extends readonly (infer Item)[] ? Item[] : DashboardTenantState[Key];
@@ -27,6 +27,14 @@ export interface DashboardRepository {
   retentionRuns(actor: AuthorizedTenantActorContext, permission: string): Promise<readonly RetentionRunRecord[]>;
   /** Upaya aktivasi domain (desc, dibatasi); tanpa memuat state tenan penuh. */
   activationAttempts(actor: AuthorizedTenantActorContext, permission: string): Promise<readonly ActivationAttemptRecord[]>;
+  /** Membuat undangan anggota sekali pakai untuk org aktor; tanpa memuat state tenan penuh. */
+  createInvitation(actor: AuthorizedTenantActorContext, permission: string, input: { readonly email: string; readonly roleId: string; readonly tokenHash: string }): Promise<{ readonly id: string }>;
+  /** Daftar undangan org aktor (maks 100, terbaru dulu); tanpa memuat state tenan penuh. */
+  listInvitations(actor: AuthorizedTenantActorContext, permission: string): Promise<readonly InvitationSummary[]>;
+  /** Membatalkan undangan pending milik org aktor. */
+  revokeInvitation(actor: AuthorizedTenantActorContext, permission: string, input: { readonly id: string }): Promise<{ readonly id: string }>;
+  /** Ringkasan operasional read-only (desc, dibatasi); tanpa memuat state tenan penuh. */
+  operationsSummary(actor: AuthorizedTenantActorContext, permission: string): Promise<OperationsProjection>;
   recordDenied(actor: AuthorizedTenantActorContext, action: string, targetType: string): Promise<void>;
   execute<T>(
     actor: AuthorizedTenantActorContext,

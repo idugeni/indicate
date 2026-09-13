@@ -57,15 +57,15 @@ export function SignInForm() {
         </div>
 
         <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <AuthLabel htmlFor="password">
-              Kata sandi
-            </AuthLabel>
+          <AuthLabel htmlFor="password">
+            Kata sandi
+          </AuthLabel>
+          <Input id="password" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" />
+          <div className="mt-1.5 flex justify-end">
             <Link href="/forgot-password" className="font-sans text-xs text-brass hover:underline">
               Lupa kata sandi?
             </Link>
           </div>
-          <Input id="password" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" />
         </div>
 
         <AuthSubmit busy={busy} busyLabel="Verifikasi Sesi..." icon={ArrowRight}>

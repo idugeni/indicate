@@ -298,6 +298,113 @@ export interface NetworkPublisherClaim {
   readonly claimScopes: readonly string[];
 }
 
+/** Ringkasan read-only satu baris operasional untuk view `operations` (maks 100 per koleksi, desc). */
+export interface InvalidationTaskSummary {  readonly id: string;
+  readonly organizationId: string;
+  readonly name: string;
+  readonly status: string;
+  readonly siteId: string;
+  readonly reason: string;
+  readonly attempts: number;
+  readonly nextAttemptAt: string;
+  readonly updatedAt: string;
+}
+
+export interface ObjectCleanupTaskSummary {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly name: string;
+  readonly status: string;
+  readonly reason: string;
+  readonly attempts: number;
+  readonly nextAttemptAt: string;
+  readonly updatedAt: string;
+}
+
+export interface MediaKeyReservationSummary {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly name: string;
+  readonly status: string;
+  readonly purpose: string;
+  readonly expiresAt: string;
+  readonly updatedAt: string;
+}
+
+export interface CacheBypassSummary {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly name: string;
+  readonly status: string;
+  readonly siteId: string;
+  readonly reason: string;
+  readonly updatedAt: string;
+}
+
+export interface TelegramConversationSummary {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly name: string;
+  readonly status: string;
+  readonly step: string;
+  readonly expiresAt: string;
+  readonly updatedAt: string;
+}
+
+export interface TransitionReceiptSummary {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly name: string;
+  readonly status: string;
+  readonly jobId: string;
+  readonly occurredAt: string;
+}
+
+export interface WebhookReplayClaimSummary {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly name: string;
+  readonly status: string;
+  readonly attemptCount: number;
+  readonly receivedAt: string;
+  readonly expiresAt: string;
+}
+
+export interface TelegramOutboxSummary {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly name: string;
+  readonly status: string;
+  readonly attempts: number;
+  readonly nextAttemptAt: string;
+  readonly createdAt: string;
+}
+
+export interface OperationsProjection {
+  readonly invalidationTasks: readonly InvalidationTaskSummary[];
+  readonly objectCleanupTasks: readonly ObjectCleanupTaskSummary[];
+  readonly mediaKeyReservations: readonly MediaKeyReservationSummary[];
+  readonly cacheBypasses: readonly CacheBypassSummary[];
+  readonly telegramConversations: readonly TelegramConversationSummary[];
+  readonly telegramOutbox: readonly TelegramOutboxSummary[];
+  readonly transitionReceipts: readonly TransitionReceiptSummary[];
+  readonly webhookReplayClaims: readonly WebhookReplayClaimSummary[];
+}
+
+/** Undangan keanggotaan org aktor (tokenHash tidak pernah keluar DB). */
+export interface InvitationSummary {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly name: string;
+  readonly status: 'pending' | 'accepted' | 'expired';
+  readonly email: string;
+  readonly roleId: string;
+  readonly roleName: string;
+  readonly expiresAt: string;
+  readonly acceptedAt: string | null;
+  readonly createdAt: string;
+}
+
 /** Prefetched RSC payload mirroring the live workspace response; domain-owned so the DAL avoids UI imports. */
 export interface DashboardSnapshot {
   readonly organizationId: string;

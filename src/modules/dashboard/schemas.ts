@@ -45,6 +45,15 @@ export const roleCreateSchema = z.object({ name: z.string().trim().min(1).max(10
 export const roleUpdateSchema = z.object({ name: z.string().trim().min(1).max(100), tier: roleTierSchema.optional(), active: z.boolean().default(true), permissions: permissionNames, id, expectedVersion }).strict().refine(tierNameConsistent, tierNameMessage);
 export const membershipSchema = z.object({ userId: id, roleId: id, status: lifecycleStatus.default('active'), expectedVersion: expectedVersion.optional() }).strict();
 
+/** Undangan tenant sekali pakai: orgId selalu dari aktor (bukan payload); tokenHash dihitung di klien. */
+export const invitationCreateSchema = z.object({
+  email: z.string().trim().toLowerCase().min(3).max(320),
+  roleId: id,
+  tokenHash: z.string().length(64),
+}).strict();
+
+export const invitationRevokeSchema = z.object({ id }).strict();
+
 export const publisherCreateSchema = z.object({
   name: z.string().trim().min(1).max(200),
   type: z.enum(['government_institution', 'correctional_institution', 'public_relations_office', 'company', 'organization', 'community', 'independent_publisher']),

@@ -13,6 +13,7 @@ export type View =
   | 'publishing'
   | 'analytics'
   | 'audit'
+  | 'operations'
   | 'settings'
   | 'customers'
   | 'content'
@@ -109,6 +110,11 @@ export const VIEW_METADATA_REGISTRY: Record<View, ViewMetadata> = {
     title: 'Log Audit & Keamanan',
     eyebrow: 'Security Ledger',
     description: 'Catatan jejak mutasi data tak terubahkan, perubahan tenansi, dan riwayat otentikasi.',
+  },
+  operations: {
+    title: 'Operasional & Antrean Latar',
+    eyebrow: 'Background Operations',
+    description: 'Status tugas invalidasi, pembersihan objek, reservasi media, bypass cache, percakapan Telegram, dan klaim replay (read-only).',
   },
   settings: {
     title: 'Kunci API & Integrasi Gateway',

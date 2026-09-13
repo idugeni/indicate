@@ -151,6 +151,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
       { view: 'settings', label: 'Integrasi & API', icon: KeyRound, requiredPermission: INTEGRATIONS_PERMISSIONS.apiKeyRead },
       { view: 'billing', label: 'Langganan', icon: CreditCard, requiredPermission: INTEGRATIONS_PERMISSIONS.subscriptionRead },
       { view: 'audit', label: 'Log Keamanan', icon: ShieldAlert, requiredPermission: DASHBOARD_PERMISSIONS.auditRead },
+      { view: 'operations', label: 'Operasional', icon: RefreshCw, requiredPermission: DASHBOARD_PERMISSIONS.auditRead },
       { view: 'moderation', label: 'Moderasi & Hak Data', icon: Flag, requiredPermission: DASHBOARD_PERMISSIONS.auditRead },
       { view: 'customers', label: 'Manajemen Lisensi', icon: Settings, requiredPermission: INTEGRATIONS_PERMISSIONS.superAdmin },
       { view: 'content', label: 'Konten Dinamis', icon: Megaphone, requiredPermission: CONTENT_MANAGE_PERMISSION },
@@ -785,7 +786,7 @@ export function DashboardWorkspace({
               <div className="space-y-6">
                 <ConfigurationPanel data={data} command={command} />
                 <SiteSettingsForm data={data} command={command} />
-                <AccessManagementForm data={data} command={command} />
+                <AccessManagementForm data={data} command={command} organizationId={organizationId} />
               </div>
             ) : null}
             {view === 'media' ? <MediaForm data={data} command={command} /> : null}

@@ -37,7 +37,11 @@ async function handleGET() {
     if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     const repository = new DrizzleRuntimeConfigAdminRepository(runtime.db);
     try {
-      return NextResponse.json({ policy: await repository.readMediaPolicy(identity.authUserId, local.value.id) });
+      const [policy, policies] = await Promise.all([
+        repository.readMediaPolicy(identity.authUserId, local.value.id),
+        repository.readPoliciesOverview(identity.authUserId, local.value.id),
+      ]);
+      return NextResponse.json({ policy, policies });
     } catch {
       return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     }

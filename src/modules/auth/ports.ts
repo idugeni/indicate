@@ -16,7 +16,7 @@ export interface AuthorizationRepository {
   /** Uses a server-verified Supabase Auth identity; never accepts a browser-selected local User or Organization ID. */
   listActiveOrganizationsForUser(verifiedAuthUserId: string): Promise<readonly AccessibleOrganization[]>;
   findLocalUserByAuthIdentity(authUserId: string): Promise<LocalUserIdentity | null>;
-  linkLocalUser(input: { readonly id: string; readonly authUserId: string; readonly displayName: string; readonly avatarUrl: string | null }): Promise<LocalUserIdentity>;
+  linkLocalUser(input: { readonly id: string; readonly authUserId: string; readonly displayName: string; readonly avatarUrl: string | null; readonly email: string | null }): Promise<LocalUserIdentity>;
   updateOwnProfile(authUserId: string, patch: {
     readonly displayName?: string;
     readonly bio?: string | null;

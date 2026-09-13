@@ -22,7 +22,7 @@ import type { Result } from '@/core/result';
 const organizationSchema = z.uuid();
 const querySchema = z.object({
   organizationId: organizationSchema,
-  view: z.enum(['dashboard', 'configuration', 'publishers', 'editorial', 'analytics', 'audit']),
+  view: z.enum(['dashboard', 'configuration', 'publishers', 'editorial', 'analytics', 'audit', 'operations']),
   regionId: organizationSchema.optional(), siteId: organizationSchema.optional(), categoryId: organizationSchema.optional(), publisherId: organizationSchema.optional(), authorId: organizationSchema.optional(),
   publicationState: z.enum(['queued', 'processing', 'published', 'failed', 'retrying', 'unpublished']).optional(), search: z.string().max(300).optional(),
   actorId: z.string().max(200).optional(), action: z.string().max(200).optional(), targetType: z.string().max(100).optional(), outcome: z.enum(['succeeded', 'denied', 'failed']).optional(),
@@ -91,7 +91,9 @@ async function handleGET(request: Request) {
       : parsed.data.view === 'configuration' ? await service.listConfiguration(actor)
       : parsed.data.view === 'publishers' ? await service.listPublishers(actor)
       : parsed.data.view === 'editorial' ? await service.listEditorial(actor, editorialFilter)
-      : parsed.data.view === 'analytics' ? await service.analytics(actor, rangeFilter) : await service.auditLogs(actor, auditFilter);
+      : parsed.data.view === 'analytics' ? await service.analytics(actor, rangeFilter)
+      : parsed.data.view === 'operations' ? await service.operations(actor)
+      : await service.auditLogs(actor, auditFilter);
     return result.ok ? NextResponse.json(result.value) : NextResponse.json(result.error, { status: responseStatus(result.error) });
 }
 
@@ -107,7 +109,7 @@ async function handlePOST(request: Request) {
       'region.create': (payload) => service.createRegion(actor, payload), 'region.update': (payload) => service.updateRegion(actor, payload),
       'site.create': (payload) => service.createSite(actor, payload), 'site.update': (payload) => service.updateSite(actor, payload), 'site.settings.update': (payload) => service.saveSiteSettings(actor, payload),
       'role.create': (payload) => service.createRole(actor, payload), 'role.update': (payload) => service.updateRole(actor, payload), 'membership.update': (payload) => service.saveMembership(actor, payload),
-      'publisher.create': (payload) => service.createPublisher(actor, payload), 'publisher.update': (payload) => service.updatePublisher(actor, payload), 'publisher.submit': (payload) => service.submitPublisher(actor, payload), 'publisher.approve': (payload) => service.approvePublisher(actor, payload), 'publisher.reject': (payload) => service.rejectPublisher(actor, payload), 'publisher.archive': (payload) => service.archivePublisher(actor, payload), 'affiliation.create': (payload) => service.createAffiliation(actor, payload), 'affiliation.update': (payload) => service.updateAffiliation(actor, payload),
+      'invitation.create': (payload) => service.createInvitation(actor, payload), 'invitation.revoke': (payload) => service.revokeInvitation(actor, payload),      'publisher.create': (payload) => service.createPublisher(actor, payload), 'publisher.update': (payload) => service.updatePublisher(actor, payload), 'publisher.submit': (payload) => service.submitPublisher(actor, payload), 'publisher.approve': (payload) => service.approvePublisher(actor, payload), 'publisher.reject': (payload) => service.rejectPublisher(actor, payload), 'publisher.archive': (payload) => service.archivePublisher(actor, payload), 'affiliation.create': (payload) => service.createAffiliation(actor, payload), 'affiliation.update': (payload) => service.updateAffiliation(actor, payload),
       'category.create': (payload) => service.createCategory(actor, payload), 'category.update': (payload) => service.updateCategory(actor, payload), 'author.create': (payload) => service.createAuthor(actor, payload), 'author.update': (payload) => service.updateAuthor(actor, payload),
       'article.create': (payload) => service.createArticle(actor, payload), 'article.update': (payload) => service.updateArticle(actor, payload), 'article.archive': (payload) => service.archiveArticle(actor, payload), 'article.restore': (payload) => service.restoreArticle(actor, payload), 'article.sites.assign': (payload) => service.assignArticleSites(actor, payload), 'article.sites.views.set': (payload) => service.setArticleSiteViews(actor, payload),
     };
