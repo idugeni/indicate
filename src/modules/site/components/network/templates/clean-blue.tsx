@@ -10,7 +10,6 @@ import {
   EmptyListing,
   StatusLine,
   formatDate,
-  formatTime,
   getReadingTime,
   isLocalImageSrc,
   type ListingProps,
@@ -33,6 +32,24 @@ function badgeStyle(index: number): { readonly color: string; readonly backgroun
 
 function articleImage(article: NetworkArticle): string {
   return article.thumbnailUrl ?? article.imageUrl ?? ARTICLE_FALLBACK_IMAGE_URL;
+}
+
+/** Jam ticker gaya contoh (JJ:MM WIB, tanpa detik). */
+function tickerTime(isoString: string): string {
+  try {
+    const parsed = new Date(isoString);
+    if (Number.isNaN(parsed.getTime())) return isoString;
+    const parts = new Intl.DateTimeFormat('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Jakarta',
+    }).formatToParts(parsed);
+    const hour = parts.find((p) => p.type === 'hour')?.value ?? '';
+    const minute = parts.find((p) => p.type === 'minute')?.value ?? '';
+    return `${hour}.${minute}`;
+  } catch {
+    return isoString;
+  }
 }
 
 export function CleanBlueListing({ site, title, description, path, indexable }: ListingProps) {
@@ -60,7 +77,7 @@ export function CleanBlueListing({ site, title, description, path, indexable }: 
                 {hero.title}
               </span>
               <time dateTime={hero.publishedAt} className="hidden flex-none font-mono text-xs tabular-nums text-slate-500 sm:block">
-                {formatTime(hero.publishedAt)} WIB
+                {tickerTime(hero.publishedAt)} WIB
               </time>
               <span className="flex flex-none items-center gap-1.5" aria-hidden="true">
                 <span className="flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-slate-200">
