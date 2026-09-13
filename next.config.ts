@@ -1,25 +1,28 @@
 import type { NextConfig } from 'next';
 import { getControlHosts, isProductionEdge, parseMvpRootHosts } from '@/core/config/edge-hosts';
 
-interface ImageRemotePattern {
-  readonly protocol: 'http' | 'https';
-  readonly hostname: string;
-}
+type RemotePattern = NonNullable<NonNullable<NextConfig['images']>['remotePatterns']>[number];
 
-/** Same-origin tenant media allowlist: every tenant root, one-level region subdomains, and control-plane hosts. Unknown hosts stay rejected. */
-function tenantImagePatterns(): ImageRemotePattern[] {
-  const patterns: ImageRemotePattern[] = [];
+function tenantImagePatterns(): RemotePattern[] {
+  const patterns: RemotePattern[] = [];
   const seen = new Set<string>();
-  const push = (protocol: 'http' | 'https', hostname: string) => {
-    const key = `${protocol}://${hostname}`;
-    if (!seen.has(key) && hostname !== '') {
+
+  const push = (protocol: 'http' | 'https', hostname: string | undefined) => {
+    if (!hostname || typeof hostname !== 'string') return;
+    const cleanHost = hostname.trim();
+    if (cleanHost === '') return;
+
+    const key = `${protocol}://${cleanHost}`;
+    if (!seen.has(key)) {
       seen.add(key);
-      patterns.push({ protocol, hostname });
+      patterns.push({ protocol, hostname: cleanHost });
     }
   };
 
   const { dashboard, api, webhook } = getControlHosts();
-  for (const host of [dashboard, api, webhook]) push('https', host);
+  for (const host of [dashboard, api, webhook]) {
+    push('https', host);
+  }
 
   const roots = parseMvpRootHosts(process.env.MVP_ROOT_HOSTS);
   for (const root of roots) {
@@ -31,30 +34,28 @@ function tenantImagePatterns(): ImageRemotePattern[] {
     push('http', 'localhost');
     push('http', '127.0.0.1');
   }
+
   return patterns;
 }
+
+const controlHosts = getControlHosts();
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
-
-  // Model render Cache Components (Next.js 16): shell statis + streaming.
-  // Rute dinamis memakai `await connection()`.
+  // Wajib: seluruh codebase memakai `'use cache'` (site-content, network-runtime).
   cacheComponents: true,
-  // Prefetch App Shell per rute (satu artefak per rute, dipakai ulang semua link).
-  // `staleTimes` disengaja tidak dipakai: masih eksperimental dan tidak disarankan produksi.
-  partialPrefetching: true,
-
   serverExternalPackages: ['postgres', 'drizzle-orm'],
 
-  // Landing publik di host dashboard identik untuk semua pengunjung tanpa sesi:
-  // tandai cacheable di edge (Cloudflare mengunci per host+path). Halaman lain
-  // (dashboard, API, host tenant) tidak tersentuh.
   async headers() {
+    if (!controlHosts.dashboard) {
+      return [];
+    }
+
     return [
       {
         source: '/',
-        has: [{ type: 'host', value: getControlHosts().dashboard }],
+        has: [{ type: 'host', value: controlHosts.dashboard }],
         headers: [
           {
             key: 'Cache-Control',
@@ -87,7 +88,6 @@ const nextConfig: NextConfig = {
   experimental: {
     typedEnv: true,
     optimizePackageImports: [
-      'lucide-react',
       '@radix-ui/react-accordion',
       '@radix-ui/react-avatar',
       '@radix-ui/react-dialog',

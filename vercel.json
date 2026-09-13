@@ -4,43 +4,19 @@
   "crons": [
     {
       "path": "/api/internal/maintenance/view-flush",
-      "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/internal/maintenance/view-flush",
-      "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/internal/maintenance/view-flush",
-      "schedule": "0 13 * * *"
-    },
-    {
-      "path": "/api/internal/maintenance/view-flush",
-      "schedule": "0 19 * * *"
+      "schedule": "0 1,7,13,19 * * *"
     },
     {
       "path": "/api/health",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/health",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/health",
-      "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/health",
-      "schedule": "0 20 * * *"
+      "schedule": "0 2,8,14,20 * * *"
     },
     {
       "path": "/api/internal/maintenance/worm-export",
-      "schedule": "0 5 * * *"
+      "schedule": "0 22 * * *"
     },
     {
       "path": "/api/internal/maintenance/outbox-drain",
-      "schedule": "0 6 * * *"
+      "schedule": "0 23 * * *"
     }
   ]
 }

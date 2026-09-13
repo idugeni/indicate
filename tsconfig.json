@@ -7,7 +7,6 @@
       "ESNext"
     ],
     "allowJs": false,
-    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -28,24 +27,6 @@
     "paths": {
       "@/*": [
         "./src/*"
-      ],
-      "@/components/*": [
-        "./src/components/*"
-      ],
-      "@/modules/*": [
-        "./src/modules/*"
-      ],
-      "@/data/*": [
-        "./src/data/*"
-      ],
-      "@/core/*": [
-        "./src/core/*"
-      ],
-      "@/integrations/*": [
-        "./src/integrations/*"
-      ],
-      "@/ui/*": [
-        "./src/ui/*"
       ]
     }
   },
@@ -54,8 +35,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    ".next/dev/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
