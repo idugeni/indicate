@@ -47,7 +47,7 @@ import { MinimalPressListing } from '@/modules/site/components/network/templates
 import { ModernTechListing } from '@/modules/site/components/network/templates/modern-tech';
 import { MultimediaVisualListing } from '@/modules/site/components/network/templates/multimedia-visual';
 import { TabloidExpressListing } from '@/modules/site/components/network/templates/tabloid-express';
-import { CleanBlueListing } from '@/modules/site/components/network/templates/clean-blue';
+import { CleanBlueListing } from '@/modules/site/components/network/templates/clean-blue/index';
 
 // Sinkronisasi: API publik berkas ini tidak berubah — halaman cukup mengimpor
 // dari sini seperti sebelumnya. Setiap layout tinggal di

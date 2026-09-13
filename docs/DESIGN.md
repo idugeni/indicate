@@ -772,7 +772,7 @@ yang dipetakan ke variabel `--site-primary`, `--site-accent`, `--site-header-bg`
 | 8 | `modern-tech` | Bento asimetris + header melayang blur | Bento `12-col`: featured `span 7` + stack `span 5`, badge mono menyala | Kartu asimetris bervariasi (horizontal / vertikal), badge kategori solid `--site-primary` | Judul sans bold (rasa teknis), mono untuk badge |
 | 9 | `multimedia-visual` | Galeri full-bleed + seksi video dokumenter | Strip galeri horizontal snap-scroll full-width (gambar 16:9 besar) | Grid visual 2–3 kolom dengan rasio bervariasi + caption mono kecil di bawah tiap gambar | Teks diminimalkan; caption mono `--paper-faint` |
 | 10 | `tabloid-express` | Banner solid + kartu kilat snap-scroll | Banner latar `--site-primary` solid, judul putih besar + strip kilat mono | Kartu kilat: snap-scroll horizontal di mobile, 3-kolom di desktop, badge kategori solid | Judul sans 700 besar, kicker mono di atas banner |
-| 11 | `clean-blue` | Editorial terang: ticker + hero 2-kolom + kartu pilihan + newsletter | Ticker "TERKINI" + hero gambar besar + kolom judul di kanan | 3 kartu pilihan dengan badge kategori berwarna + panel newsletter terang | Sans bold judul, permukaan terang di dalam shell gelap |
+| 11 | `clean-blue` | Editorial terang full-mandiri: header + ticker + hero 2-kolom + kartu pilihan + newsletter + footer sendiri | Ticker "TERKINI" + hero gambar besar + kolom judul di kanan | 3 kartu pilihan dengan badge kategori berwarna + panel newsletter terang | Sans bold judul, permukaan terang; palet hardcoded milik template |
 
 ### 17.3 Batasan per Pola (misuse)
 
@@ -784,9 +784,11 @@ yang dipetakan ke variabel `--site-primary`, `--site-accent`, `--site-header-bg`
 - `geo-radar`: grid node adalah representasi status (menyala = ada artikel tayang), bukan peta geografis
   presisi; tidak ada klaim posisi geografis tanpa data.
 - `columnist-opinion`: body serif hanya untuk pola ini; pola lain body tetap Plex Sans.
-- `clean-blue`: satu-satunya pola yang boleh memakai permukaan terang (`bg-white` /
-  slate-50) dan badge pill berwarna di dalam konten — header, footer, dan navigasi
-  utama tetap dari `NetworkTemplate` bersama (tidak ada header/footer per-pola).
+- `clean-blue`: satu-satunya pola full-mandiri — header, ticker, hero, kartu,
+  newsletter, dan footer milik template sendiri (`templates/clean-blue/`,
+  komponen pecah per berkas) dengan palet hardcoded; sengaja TIDAK memakai
+  `NetworkTemplate` bersama maupun `site_settings.colors`, agar tampil persis
+  seperti contoh. Badge pill berwarna dan permukaan terang hanya untuk pola ini.
 - Semua pola memakai `ArticleCard` varian yang sama key-nya (`featured` / `row` / `timeline` /
   `visual` / `flash`) — dilarang membuat varian kartu baru tanpa memperbarui tabel 17.2.
 
