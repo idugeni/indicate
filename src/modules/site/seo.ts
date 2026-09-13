@@ -70,10 +70,10 @@ export function notFoundMetadata(): Metadata {
   return { title: 'Not Found', robots: { index: false, follow: false } };
 }
 
-export function buildSeoDocument(site: NetworkSiteData, options: { readonly path: string; readonly article?: NetworkArticle; readonly indexable?: boolean }): SeoDocument {
+export function buildSeoDocument(site: NetworkSiteData, options: { readonly path: string; readonly article?: NetworkArticle; readonly indexable?: boolean; readonly titleOverride?: string }): SeoDocument {
   const indexable = options.indexable ?? true;
   const article = options.article;
-  const title = article === undefined ? site.settings.name : `${article.title} | ${site.settings.name}`;
+  const title = options.titleOverride ?? (article === undefined ? site.settings.name : `${article.title} | ${site.settings.name}`);
   const description = article?.description ?? site.settings.description;
   if (!indexable) return { title, description, canonical: null, robots: 'noindex, nofollow', openGraph: null, jsonLd: [] };
   const canonical = absoluteSiteUrl(site.context, options.path);
@@ -190,7 +190,7 @@ export function serializeRobots(site: NetworkSiteData): string {
     'Disallow: /sign-in',
     'Disallow: /domain-pending',
   ];
-  return `${lines.join('\n')}\nSitemap: ${absoluteSiteUrl(site.context, '/sitemap.xml')}\n`;
+  return `${lines.join('\n')}\nSitemap: ${absoluteSiteUrl(site.context, '/sitemap.xml')}\nSitemap: ${absoluteSiteUrl(site.context, '/news-sitemap.xml')}\n`;
 }
 
 interface SitemapEntry {
@@ -198,6 +198,7 @@ interface SitemapEntry {
   readonly lastmod: string;
   readonly changefreq: 'daily' | 'weekly' | 'monthly';
   readonly priority: string;
+  readonly image?: string;
 }
 
 function toLastmod(value: string, fallback: string): string {
@@ -234,15 +235,38 @@ export function serializeSitemap(site: NetworkSiteData): string {
       lastmod: toLastmod(article.updatedAt, now),
       changefreq: 'weekly',
       priority: '0.8',
+      ...(article.imageUrl === null
+        ? {}
+        : { image: absoluteSiteAssetUrl(site.context, article.imageUrl) }),
     });
   }
   const body = entries
     .map(
       (entry) =>
-        `<url><loc>${xml(entry.loc)}</loc><lastmod>${xml(entry.lastmod)}</lastmod><changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority></url>`,
+        `<url><loc>${xml(entry.loc)}</loc><lastmod>${xml(entry.lastmod)}</lastmod><changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority>${entry.image === undefined ? '' : `<image:image><image:loc>${xml(entry.image)}</image:loc></image:image>`}</url>`,
     )
     .join('');
-  return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${body}</urlset>`;
+  const hasImages = entries.some((entry) => entry.image !== undefined);
+  const ns = hasImages ? ' xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"' : '';
+  return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${ns}>${body}</urlset>`;
+}
+
+/** Sitemap Google News: hanya artikel ≤2 hari, maks 1000 URL. */
+export function serializeNewsSitemap(site: NetworkSiteData): string {
+  const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
+  const items = site.articles
+    .filter((article) => {
+      const time = new Date(article.publishedAt).getTime();
+      return !Number.isNaN(time) && time >= cutoff;
+    })
+    .slice(0, 1000);
+  const body = items
+    .map(
+      (article) =>
+        `<url><loc>${xml(absoluteSiteUrl(site.context, `/articles/${article.slug}`))}</loc><news:news><news:publication><news:name>${xml(site.settings.name)}</news:name><news:language>id</news:language></news:publication><news:publication_date>${xml(new Date(article.publishedAt).toISOString())}</news:publication_date><news:title>${xml(article.title)}</news:title></news:news></url>`,
+    )
+    .join('');
+  return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${body}</urlset>`;
 }
 
 export function serializeRss(site: NetworkSiteData): string {

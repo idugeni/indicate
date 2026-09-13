@@ -57,7 +57,10 @@ export async function generateMetadata(): Promise<Metadata> {
     return notFoundMetadata();
   }
 
-  const seo = buildSeoDocument(site, { path: '/' });
+  const seo = buildSeoDocument(site, {
+    path: '/',
+    titleOverride: `${site.settings.name} — Berita Terkini, Laporan Redaksi, dan Siaran Pers`,
+  });
 
   return {
     title: seo.title,

@@ -63,6 +63,15 @@ export function trackArticleView(input: { readonly organizationId: string; reado
 }
 
 /** Tenant metadata; search pages stay `noindex, follow` (link equity without index entry). */
+
+/**
+ * Ambang indeks agregator: halaman daftar/tag/kategori di-noindex sampai volume
+ * konten cukup (anti thin-content). Naik sendiri saat artikel bertambah —
+ * tanpa konfigurasi per site.
+ */
+const TAG_INDEX_MINIMUM = 3;
+const CATEGORY_INDEX_MINIMUM = 3;
+const ARTICLE_INDEX_MINIMUM = 5;
 export async function networkMetadata(path: string, query: NetworkContentQuery = {}): Promise<Metadata> {
   const site = await resolveNetworkSite(query, path);
   const article = query.articleSlug === undefined ? undefined : site.articles[0];
@@ -92,6 +101,14 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
       site.articles.length > 0
         ? `Berita terbaru kategori ${categoryName} di ${site.settings.name}.`
         : `Kategori ${categoryName} di ${site.settings.name}.`;
+    if (site.articles.length < CATEGORY_INDEX_MINIMUM) {
+      return {
+        title: categoryTitle,
+        description: categoryDescription,
+        robots: nonIndexableRobots(),
+        ...tenantFavicon(site.settings.faviconUrl),
+      };
+    }
     const categorySeo = buildSeoDocument(site, { path });
     if (categorySeo.canonical === null || categorySeo.openGraph === null) {
       return {
@@ -131,6 +148,14 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
   if (path === '/articles' && query.articleSlug === undefined && query.search === undefined && query.categorySlug === undefined) {
     const indexTitle = `Berita Terbaru | ${site.settings.name}`;
     const indexDescription = `Berita terbaru di ${site.settings.name}: indeks seluruh artikel.`;
+    if (site.articles.length < ARTICLE_INDEX_MINIMUM) {
+      return {
+        title: indexTitle,
+        description: indexDescription,
+        robots: nonIndexableRobots(),
+        ...tenantFavicon(site.settings.faviconUrl),
+      };
+    }
     const indexSeo = buildSeoDocument(site, { path });
     if (indexSeo.canonical === null || indexSeo.openGraph === null) {
       return {
@@ -164,6 +189,43 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
         description: indexDescription,
         images: [indexSeo.openGraph.image],
       },
+    };
+  }
+
+  if (query.tag !== undefined) {
+    const tagTitle = `Topik: #${query.tag} | ${site.settings.name}`;
+    const tagDescription =
+      site.articles.length > 0
+        ? `Artikel bertopik #${query.tag} di ${site.settings.name}.`
+        : `Topik #${query.tag} di ${site.settings.name}.`;
+    if (site.articles.length < TAG_INDEX_MINIMUM) {
+      return {
+        title: tagTitle,
+        description: tagDescription,
+        robots: nonIndexableRobots(),
+        ...tenantFavicon(site.settings.faviconUrl),
+      };
+    }
+    const tagSeo = buildSeoDocument(site, { path, titleOverride: tagTitle });
+    return {
+      title: tagTitle,
+      description: tagDescription,
+      alternates: tagSeo.canonical
+        ? { canonical: tagSeo.canonical, languages: { 'id-ID': tagSeo.canonical } }
+        : undefined,
+      robots: indexableRobots(),
+      ...tenantFavicon(site.settings.faviconUrl),
+      openGraph: tagSeo.openGraph
+        ? {
+            title: tagTitle,
+            description: tagDescription,
+            url: tagSeo.openGraph.url,
+            siteName: tagSeo.openGraph.siteName,
+            locale: 'id_ID',
+            images: [{ url: tagSeo.openGraph.image, width: 1200, height: 630, alt: tagTitle }],
+            type: 'website' as const,
+          }
+        : undefined,
     };
   }
 
@@ -219,7 +281,9 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
       ? {}
       : {
           authors: [{ name: article.authorName ?? article.attribution }],
-          keywords: article.categoryName === null ? undefined : [article.categoryName],
+          keywords: article.categoryName === null && article.tags.length === 0
+            ? undefined
+            : [...(article.categoryName === null ? [] : [article.categoryName]), ...article.tags],
         }),
   };
 }
