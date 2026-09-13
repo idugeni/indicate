@@ -11,6 +11,7 @@ type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 const iso = (value: Date | string) => (value instanceof Date ? value : new Date(value)).toISOString();
 const absoluteMediaUrl = (context: ResolvedSiteContext, mediaId: string) => `https://${context.normalizedHostname}/api/network/media/${mediaId}`;
+const absoluteBrandMarkUrl = (context: ResolvedSiteContext) => `https://${context.normalizedHostname}/api/network/brand-mark`;
 const absoluteDefaultAssetUrl = (context: ResolvedSiteContext, configuredUrl: string) => { const parsed = new URL(configuredUrl); return `https://${context.normalizedHostname}${parsed.pathname}${parsed.search}`; };
 
 export class DrizzleDeliveryRepository implements DeliveryRepository {
@@ -72,8 +73,8 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         settings: {
           name: settings.name, description: settings.description, colors: settings.colors, socialLinks: settings.socialLinks,
           navigation: settings.navigation.map((item) => ({ label: String(item.label ?? ''), path: String(item.path ?? '/') })),
-          logoUrl: settings.logoMediaId === null ? null : absoluteMediaUrl(context, settings.logoMediaId),
-          faviconUrl: settings.faviconMediaId === null ? null : absoluteMediaUrl(context, settings.faviconMediaId),
+          logoUrl: settings.logoMediaId === null ? absoluteBrandMarkUrl(context) : absoluteMediaUrl(context, settings.logoMediaId),
+          faviconUrl: settings.faviconMediaId === null ? absoluteBrandMarkUrl(context) : absoluteMediaUrl(context, settings.faviconMediaId),
           defaultImageUrl: settings.defaultMediaId === null ? absoluteDefaultAssetUrl(context, this.defaultImageUrl) : absoluteMediaUrl(context, settings.defaultMediaId),
           robots: Array.isArray(settings.seo.robots) ? settings.seo.robots.map(String) : [],
         },

@@ -782,3 +782,12 @@ yang dipetakan ke variabel `--site-primary`, `--site-accent`, `--site-header-bg`
 - `columnist-opinion`: body serif hanya untuk pola ini; pola lain body tetap Plex Sans.
 - Semua pola memakai `ArticleCard` varian yang sama key-nya (`featured` / `row` / `timeline` /
   `visual` / `flash`) — dilarang membuat varian kartu baru tanpa memperbarui tabel 17.2.
+
+### 17.4 Brand-mark Fallback (logo & favicon prosedural)
+
+Selama `site_settings.logo_media_id` / `favicon_media_id` belum diisi, tenant memakai
+brand-mark prosedural dari rute `/api/network/brand-mark` (SVG: inisial di atas `--site-primary`,
+garis hairline + huruf `--site-accent`, flat tanpa gradient — lihat `src/modules/site/brand-mark.ts`).
+Aturan: deterministik dari nama + preset warna (tanpa upload, tanpa aset per-brand), dipakai sebagai
+`logoUrl`/`faviconUrl` fallback di lapis delivery dan sebagai `Organization.logo` JSON-LD.
+Begitu logo asli diunggah, fallback tergantikan otomatis tanpa perubahan kode.
