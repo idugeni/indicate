@@ -18,19 +18,24 @@ export async function deliveryOperationsComposition() {
   const cloudflare = new CloudflareAuthorityAdapter(config.cloudflare.accountId, config.cloudflare.apiToken, config.vercel.productionTarget);
   const vercel = new VercelExactDomainAdapter(config.vercel.projectId, config.vercel.teamId, config.vercel.apiToken);
   const zoneResolver: DomainZoneResolver = {
-    async resolve(hostname) {
+    async resolve(hostname, organizationId) {
+      // RLS tenant memaksa konteks org; transaksi membuat set_config lokal
+      // (auto-revert saat commit) sehingga pool bersama tidak bocor antar-tenant.
       // Site regional (<slug-region>.<apex>) dimiliki zone domain induk:
       // cocokkan sufiks, pilih induk paling spesifik.
-      const rows = await runtime.client<{ id: string; cloudflare_zone_id: string | null }[]>`
-        SELECT id, cloudflare_zone_id FROM public.domains
-        WHERE (${hostname} = normalized_hostname OR ${hostname} LIKE '%.' || normalized_hostname)
-          AND status = 'active' AND cloudflare_zone_id IS NOT NULL
-        ORDER BY length(normalized_hostname) DESC
-        LIMIT 1
-      `;
-      const row = rows[0];
-      if (row === undefined || row.cloudflare_zone_id === null) return null;
-      return { domainId: row.id, cloudflareZoneId: row.cloudflare_zone_id };
+      return runtime.client.begin(async (transaction) => {
+        await transaction`SELECT indicate_private.set_tenant_context(${organizationId}::uuid, 'system:zone-resolver', ${crypto.randomUUID()})`;
+        const rows = await transaction<{ id: string; cloudflare_zone_id: string | null }[]>`
+          SELECT id, cloudflare_zone_id FROM public.domains
+          WHERE (${hostname} = normalized_hostname OR ${hostname} LIKE '%.' || normalized_hostname)
+            AND status = 'active' AND cloudflare_zone_id IS NOT NULL
+          ORDER BY length(normalized_hostname) DESC
+          LIMIT 1
+        `;
+        const row = rows[0];
+        if (row === undefined || row.cloudflare_zone_id === null) return null;
+        return { domainId: row.id, cloudflareZoneId: row.cloudflare_zone_id };
+      });
     },
   };
   const provisioning = new DomainProvisioningService(repository, cloudflare, vercel, new HttpsPendingHostnameProbe(), config.hosts.reserved, zoneResolver, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts);

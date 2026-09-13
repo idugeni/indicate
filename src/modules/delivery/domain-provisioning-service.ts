@@ -13,7 +13,7 @@ export class DeliveryOperationPendingError extends Error {
 }
 
 export interface DomainZoneResolver {
-  resolve(hostname: string): Promise<{ domainId: string; cloudflareZoneId: string } | null>;
+  resolve(hostname: string, organizationId: string): Promise<{ domainId: string; cloudflareZoneId: string } | null>;
 }
 
 export class DomainProvisioningService {
@@ -41,7 +41,7 @@ export class DomainProvisioningService {
     let attempt = initial;
     try {
       if (attempt.activationState === 'pending') {
-        const owned = await this.zoneResolver.resolve(attempt.hostname);
+        const owned = await this.zoneResolver.resolve(attempt.hostname, attempt.organizationId);
         if (owned === null) throw new Error('DEPENDENCY_UNAVAILABLE');
         const verification = await this.cloudflare.verifyDomainZone({ domainId: owned.domainId, normalizedHostname: attempt.hostname, cloudflareZoneId: owned.cloudflareZoneId });
         if (!verification.verified || verification.category !== 'verified') throw new Error('DEPENDENCY_UNAVAILABLE');
