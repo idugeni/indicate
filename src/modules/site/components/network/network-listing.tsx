@@ -218,15 +218,17 @@ export async function NetworkTemplate({
           Lewati ke konten
         </a>
 
-        <div className="flex items-center justify-between border-b border-hairline px-6 py-1.5 font-mono text-[11px] text-paper-dim">
-          <span className="truncate text-paper-faint">
-            Kanal distribusi resmi · Jaringan sindikasi INDICATE
-          </span>
-          <span className="hidden flex-none items-center gap-1.5 text-signal md:flex">
-            <span className="h-1.5 w-1.5 bg-signal" aria-hidden="true" />
-            <span>Tersinkron</span>
-          </span>
-        </div>
+        {site.context.regionId === null ? (
+          <div className="flex items-center justify-between border-b border-hairline px-6 py-1.5 font-mono text-[11px] text-paper-dim">
+            <span className="truncate text-paper-faint">
+              Kanal distribusi resmi · Jaringan sindikasi INDICATE
+            </span>
+            <span className="hidden flex-none items-center gap-1.5 text-signal md:flex">
+              <span className="h-1.5 w-1.5 bg-signal" aria-hidden="true" />
+              <span>Tersinkron</span>
+            </span>
+          </div>
+        ) : null}
 
         <header className="sticky top-0 z-30 border-b border-hairline bg-bg-raised">
           <Container className="flex items-center justify-between gap-6 py-3.5">
