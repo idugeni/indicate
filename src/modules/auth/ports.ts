@@ -17,6 +17,11 @@ export interface AuthorizationRepository {
   listActiveOrganizationsForUser(verifiedAuthUserId: string): Promise<readonly AccessibleOrganization[]>;
   findLocalUserByAuthIdentity(authUserId: string): Promise<LocalUserIdentity | null>;
   linkLocalUser(input: { readonly id: string; readonly authUserId: string; readonly displayName: string; readonly avatarUrl: string | null; readonly email: string | null }): Promise<LocalUserIdentity>;
+  /** Profil milik sendiri untuk form Profil Saya (null bila nonaktif). */
+  getOwnProfile(authUserId: string): Promise<{
+    readonly displayName: string; readonly email: string | null; readonly bio: string | null;
+    readonly locale: string | null; readonly timezone: string | null; readonly avatarUrl: string | null;
+  } | null>;
   updateOwnProfile(authUserId: string, patch: {
     readonly displayName?: string;
     readonly bio?: string | null;

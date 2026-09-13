@@ -111,6 +111,10 @@ const LoginMethodsForm = dynamic(
   () => import('@/modules/dashboard/components/settings/login-methods-form').then((module) => ({ default: module.LoginMethodsForm })),
   { loading: () => <DashboardFormSkeleton /> },
 );
+const ProfileForm = dynamic(
+  () => import('@/modules/dashboard/components/settings/profile-form').then((module) => ({ default: module.ProfileForm })),
+  { loading: () => <DashboardFormSkeleton /> },
+);
 
 export type { OrganizationOption } from '@/modules/dashboard/components/dashboard-types';
 
@@ -791,7 +795,7 @@ export function DashboardWorkspace({
             ) : null}
             {view === 'media' ? <MediaForm data={data} command={command} /> : null}
             {view === 'publishing' ? <PublishingForm data={data} command={command} /> : null}
-            {view === 'settings' ? <><IntegrationSettings command={command} isPlatform={activePermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin) || activePermissions.has(INTEGRATIONS_PERMISSIONS.customerAdmin)} /><LoginMethodsForm /></> : null}
+            {view === 'settings' ? <><IntegrationSettings command={command} isPlatform={activePermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin) || activePermissions.has(INTEGRATIONS_PERMISSIONS.customerAdmin)} /><ProfileForm /><LoginMethodsForm /></> : null}
             {view === 'billing' ? <BillingPanel organizationId={organizationId} permissions={[...activePermissions]} /> : null}
             {view === 'moderation' ? <ModerationPanel organizationId={organizationId} /> : null}
             {view === 'customers' ? <CustomerManagement command={command} /> : null}

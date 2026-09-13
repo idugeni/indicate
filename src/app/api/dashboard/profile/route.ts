@@ -96,3 +96,27 @@ async function handlePOST(request: Request) {
 }
 
 export { handlePOST as POST };
+
+async function handleGET() {
+  const requestId = crypto.randomUUID();
+  const cookieStore = await cookies();
+  const publicConfig = getPublicConfig(process.env);
+  const auth = createSupabaseSsrAuthAdapter({
+    url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey,
+    cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }),
+  });
+  const identity = await auth.verifyCookieSession();
+  if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+  const context = await getServerRuntimeContext();
+  const runtime = createRuntimeDatabase(context.bootstrap);
+  try {
+    const repository = new DrizzleAuthorizationRepository(runtime.db);
+    const profile = await repository.getOwnProfile(identity.authUserId);
+    if (profile === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+    return NextResponse.json({ ...profile, oauthAvatarUrl: identity.avatarUrl });
+  } finally {
+    await runtime.close();
+  }
+}
+
+export { handleGET as GET };
