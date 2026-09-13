@@ -25,7 +25,7 @@ async function TagContent({ params }: Pick<Props, 'params'>) {
   const clean = decodeURIComponent(tag).trim().toLowerCase();
   if (clean === '') notFound();
   const site = await resolveNetworkSite({ tag: clean }, `/tags/${clean}`);
-  return <ListingPage site={site} title={`Topik: #${clean}`} />;
+  return <ListingPage site={site} title={`Topik: #${clean}`} path={`/tags/${clean}`} />;
 }
 
 export default function TagPage({ params }: Props) {

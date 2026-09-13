@@ -70,7 +70,7 @@ async function SearchResults({ searchParams }: Props) {
   const resolved = await searchParams;
   const query = normalizeQuery(resolved.q);
   const site = await resolveNetworkSite({ search: query }, '/search');
-  return <ListingPage site={site} title={query === '' ? 'Pencarian' : `Hasil untuk “${query}”`} />;
+  return <ListingPage site={site} title={query === '' ? 'Pencarian' : `Hasil untuk “${query}”`} path="/search" indexable={false} />;
 }
 
 /** Form dan hasil adalah island terpisah: form interaktif segera, hasil menyusul via streaming. */

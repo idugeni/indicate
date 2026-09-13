@@ -6,6 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { MASTER_TEMPLATE_PRESETS } from '@/ui/themes';
+
+const TEMPLATE_IDS = new Set(MASTER_TEMPLATE_PRESETS.map((preset) => preset.id));
+
+function initialTemplateId(colors: Readonly<Record<string, string>> | undefined): string {
+  const raw = colors?.templateId;
+  return raw !== undefined && TEMPLATE_IDS.has(raw) ? raw : 'portal-news';
+}
 
 interface SiteOption {
   readonly id: string;
@@ -46,6 +54,7 @@ function SiteSettingsEditor({
 }) {
   const nameId = useId();
   const descriptionId = useId();
+  const templateId = useId();
   const colorsId = useId();
   const socialId = useId();
   const seoId = useId();
@@ -54,11 +63,23 @@ function SiteSettingsEditor({
   const [name, setName] = useState(settings?.name ?? site.normalizedHostname);
   const [description, setDescription] = useState(settings?.description ?? '');
   const [colors, setColors] = useState(stringify(settings?.colors));
+  const [template, setTemplate] = useState(initialTemplateId(settings?.colors));
   const [socialLinks, setSocialLinks] = useState(stringify(settings?.socialLinks));
   const [seo, setSeo] = useState(stringify(settings?.seo));
   const [navigation, setNavigation] = useState(stringify(settings?.navigation ?? []));
   const [error, setError] = useState<string | null>(null);
   const [isSaving, startSaveTransition] = useTransition();
+
+  const handleTemplateChange = (next: string) => {
+    if (!TEMPLATE_IDS.has(next)) return;
+    setTemplate(next);
+    try {
+      const parsed = parseRecord(colors, 'Warna') as Readonly<Record<string, string>>;
+      setColors(JSON.stringify({ ...parsed, templateId: next }, null, 2));
+    } catch {
+      /* textarea tidak valid — template tetap tersimpan saat submit */
+    }
+  };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -68,7 +89,7 @@ function SiteSettingsEditor({
     let seoValue: Readonly<Record<string, unknown>>;
     let navigationValue: unknown;
     try {
-      colorsValue = parseRecord(colors, 'Warna');
+      colorsValue = { ...parseRecord(colors, 'Warna'), templateId: template };
       socialValue = parseRecord(socialLinks, 'Tautan sosial');
       seoValue = parseRecord(seo, 'SEO');
       navigationValue = JSON.parse(navigation === '' ? '[]' : navigation);
@@ -126,6 +147,27 @@ function SiteSettingsEditor({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
+          <label htmlFor={templateId} className="font-mono text-xs text-paper-dim">
+            Layout portal (template)
+          </label>
+          <select
+            id={templateId}
+            value={template}
+            disabled={isSaving}
+            onChange={(event) => handleTemplateChange(event.target.value)}
+            className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+          >
+            {MASTER_TEMPLATE_PRESETS.map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {preset.name}
+              </option>
+            ))}
+          </select>
+          <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">
+            {MASTER_TEMPLATE_PRESETS.find((preset) => preset.id === template)?.description}
+          </p>
+        </div>
+        <div className="space-y-1.5">
           <label htmlFor={colorsId} className="font-mono text-xs text-paper-dim">
             Warna (objek JSON)
           </label>
@@ -139,20 +181,21 @@ function SiteSettingsEditor({
             className="font-mono text-xs"
           />
         </div>
-        <div className="space-y-1.5">
-          <label htmlFor={socialId} className="font-mono text-xs text-paper-dim">
-            Tautan sosial (objek JSON)
-          </label>
-          <Textarea
-            id={socialId}
-            value={socialLinks}
-            disabled={isSaving}
-            rows={4}
-            spellCheck={false}
-            onChange={(event) => setSocialLinks(event.target.value)}
-            className="font-mono text-xs"
-          />
-        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor={socialId} className="font-mono text-xs text-paper-dim">
+          Tautan sosial (objek JSON)
+        </label>
+        <Textarea
+          id={socialId}
+          value={socialLinks}
+          disabled={isSaving}
+          rows={4}
+          spellCheck={false}
+          onChange={(event) => setSocialLinks(event.target.value)}
+          className="font-mono text-xs"
+        />
       </div>
 
       <div className="space-y-1.5">

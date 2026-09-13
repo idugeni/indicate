@@ -23,7 +23,7 @@ async function CategoryContent({ params }: Pick<Props, 'params'>) {
   const { slug } = await params;
   if (slug.trim() === '') notFound();
   const site = await resolveNetworkSite({ categorySlug: slug }, `/categories/${slug}`);
-  return <ListingPage site={site} title={`Kategori: ${site.articles[0]?.categoryName ?? slug}`} />;
+  return <ListingPage site={site} title={`Kategori: ${site.articles[0]?.categoryName ?? slug}`} path={`/categories/${slug}`} />;
 }
 
 export default function CategoryPage({ params }: Props) {

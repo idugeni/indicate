@@ -576,8 +576,8 @@ export async function NetworkTemplate({
   );
 }
 
-function PortalNewsListing({ site, title, description }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined }) {
-  const seo = buildSeoDocument(site, { path: '/' });
+function PortalNewsListing({ site, title, description, path, indexable }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined; readonly path?: string | undefined; readonly indexable?: boolean | undefined }) {
+  const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const featuredArticle = site.articles[0];
   const regularArticles = site.articles.slice(1);
 
@@ -632,8 +632,8 @@ function StatusLine({ count, title }: { readonly count: number; readonly title: 
   );
 }
 
-function BroadsheetListing({ site, title, description }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined }) {
-  const seo = buildSeoDocument(site, { path: '/' });
+function BroadsheetListing({ site, title, description, path, indexable }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined; readonly path?: string | undefined; readonly indexable?: boolean | undefined }) {
+  const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const [lead, ...rest] = site.articles;
   const today = formatDate(new Date().toISOString(), 'full');
 
@@ -679,8 +679,8 @@ function BroadsheetListing({ site, title, description }: { readonly site: Networ
   );
 }
 
-function ColumnistListing({ site, title, description }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined }) {
-  const seo = buildSeoDocument(site, { path: '/' });
+function ColumnistListing({ site, title, description, path, indexable }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined; readonly path?: string | undefined; readonly indexable?: boolean | undefined }) {
+  const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
 
   return (
     <NetworkTemplate site={site}>
@@ -716,8 +716,8 @@ function ColumnistListing({ site, title, description }: { readonly site: Network
   );
 }
 
-function CompactStreamListing({ site, title, description }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined }) {
-  const seo = buildSeoDocument(site, { path: '/' });
+function CompactStreamListing({ site, title, description, path, indexable }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined; readonly path?: string | undefined; readonly indexable?: boolean | undefined }) {
+  const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const latest = site.articles[0];
 
   return (
@@ -758,8 +758,8 @@ function CompactStreamListing({ site, title, description }: { readonly site: Net
   );
 }
 
-function EditorialMagazineListing({ site, title, description }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined }) {
-  const seo = buildSeoDocument(site, { path: '/' });
+function EditorialMagazineListing({ site, title, description, path, indexable }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined; readonly path?: string | undefined; readonly indexable?: boolean | undefined }) {
+  const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const [cover, second, ...rest] = site.articles;
 
   return (
@@ -841,8 +841,8 @@ function EditorialMagazineListing({ site, title, description }: { readonly site:
   );
 }
 
-function GeoRadarListing({ site, title, description }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined }) {
-  const seo = buildSeoDocument(site, { path: '/' });
+function GeoRadarListing({ site, title, description, path, indexable }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined; readonly path?: string | undefined; readonly indexable?: boolean | undefined }) {
+  const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const groups = new Map<string, NetworkArticle[]>();
   for (const article of site.articles) {
     const key = article.categoryName ?? 'Warta wilayah';
@@ -907,8 +907,8 @@ function GeoRadarListing({ site, title, description }: { readonly site: NetworkS
   );
 }
 
-function MinimalPressListing({ site, title, description }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined }) {
-  const seo = buildSeoDocument(site, { path: '/' });
+function MinimalPressListing({ site, title, description, path, indexable }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined; readonly path?: string | undefined; readonly indexable?: boolean | undefined }) {
+  const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
 
   return (
     <NetworkTemplate site={site}>
@@ -974,8 +974,8 @@ function MinimalPressListing({ site, title, description }: { readonly site: Netw
   );
 }
 
-function ModernTechListing({ site, title, description }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined }) {
-  const seo = buildSeoDocument(site, { path: '/' });
+function ModernTechListing({ site, title, description, path, indexable }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined; readonly path?: string | undefined; readonly indexable?: boolean | undefined }) {
+  const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const [hero, sideA, sideB, ...rest] = site.articles;
 
   return (
@@ -1049,8 +1049,8 @@ function ModernTechListing({ site, title, description }: { readonly site: Networ
   );
 }
 
-function MultimediaVisualListing({ site, title, description }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined }) {
-  const seo = buildSeoDocument(site, { path: '/' });
+function MultimediaVisualListing({ site, title, description, path, indexable }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined; readonly path?: string | undefined; readonly indexable?: boolean | undefined }) {
+  const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const gallery = site.articles.filter((a) => a.imageUrl !== null).slice(0, 8);
   const rest = site.articles.filter((a) => !gallery.some((g) => g.id === a.id));
 
@@ -1118,8 +1118,8 @@ function MultimediaVisualListing({ site, title, description }: { readonly site: 
   );
 }
 
-function TabloidExpressListing({ site, title, description }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined }) {
-  const seo = buildSeoDocument(site, { path: '/' });
+function TabloidExpressListing({ site, title, description, path, indexable }: { readonly site: NetworkSiteData; readonly title: string; readonly description?: string | undefined; readonly path?: string | undefined; readonly indexable?: boolean | undefined }) {
+  const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const [headline, ...rest] = site.articles;
   const ticker = site.articles.slice(0, 6);
 
@@ -1190,35 +1190,38 @@ export function ListingPage({
   site,
   title,
   description,
+  path = '/',
+  indexable = true,
 }: {
   readonly site: NetworkSiteData;
   readonly title: string;
-  readonly description?: string;
+  readonly description?: string | undefined; readonly path?: string | undefined; readonly indexable?: boolean | undefined;
 }) {
   const templateId = normalizeTemplateId(site.settings.colors.templateId);
+  const shared = { site, title, description, path, indexable } as const;
 
   switch (templateId) {
     case 'broadsheet-classic':
-      return <BroadsheetListing site={site} title={title} description={description} />;
+      return <BroadsheetListing {...shared} />;
     case 'columnist-opinion':
-      return <ColumnistListing site={site} title={title} description={description} />;
+      return <ColumnistListing {...shared} />;
     case 'compact-stream':
-      return <CompactStreamListing site={site} title={title} description={description} />;
+      return <CompactStreamListing {...shared} />;
     case 'editorial-magazine':
-      return <EditorialMagazineListing site={site} title={title} description={description} />;
+      return <EditorialMagazineListing {...shared} />;
     case 'geo-radar':
-      return <GeoRadarListing site={site} title={title} description={description} />;
+      return <GeoRadarListing {...shared} />;
     case 'minimal-press':
-      return <MinimalPressListing site={site} title={title} description={description} />;
+      return <MinimalPressListing {...shared} />;
     case 'modern-tech':
-      return <ModernTechListing site={site} title={title} description={description} />;
+      return <ModernTechListing {...shared} />;
     case 'multimedia-visual':
-      return <MultimediaVisualListing site={site} title={title} description={description} />;
+      return <MultimediaVisualListing {...shared} />;
     case 'tabloid-express':
-      return <TabloidExpressListing site={site} title={title} description={description} />;
+      return <TabloidExpressListing {...shared} />;
     case 'portal-news':
     default:
-      return <PortalNewsListing site={site} title={title} description={description} />;
+      return <PortalNewsListing {...shared} />;
   }
 }
 

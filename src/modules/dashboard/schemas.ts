@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
 import { isDashboardPermission } from '@/modules/dashboard/permissions';
+import { MASTER_TEMPLATE_PRESETS } from '@/ui/themes';
+
+const TEMPLATE_IDS = new Set(MASTER_TEMPLATE_PRESETS.map((preset) => preset.id));
 
 const id = z.uuid();
 const expectedVersion = z.int().positive();
@@ -19,7 +22,10 @@ export const siteSettingsSchema = z.object({
   expectedVersion: expectedVersion.optional(),
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(1000),
-  colors: z.record(z.string(), z.string().max(100)).optional(),
+  colors: z.record(z.string(), z.string().max(100)).optional().refine(
+    (colors) => colors === undefined || colors.templateId === undefined || TEMPLATE_IDS.has(colors.templateId),
+    'templateId tidak dikenal — pilih dari daftar template terdaftar.',
+  ),
   socialLinks: z.record(z.string(), z.url()).optional(),
   seo: z.record(z.string(), z.unknown()).optional(),
   navigation: z.array(z.object({ label: z.string().trim().min(1).max(80), path: z.string().startsWith('/').max(250) })).max(30).optional(),

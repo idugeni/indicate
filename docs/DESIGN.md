@@ -745,6 +745,9 @@ yang dipetakan ke variabel `--site-primary`, `--site-accent`, `--site-header-bg`
    (`portal-news`, `broadsheet-classic`, `columnist-opinion`, `compact-stream`,
    `editorial-magazine`, `geo-radar`, `minimal-press`, `modern-tech`, `multimedia-visual`,
    `tabloid-express`). Nilai tak dikenal/NULL jatuh ke `portal-news` (fail-closed visual).
+   Dashboard memetakan lewat dropdown terpandu (`SiteSettingsForm`, sumber `MASTER_TEMPLATE_PRESETS`
+   di `src/ui/themes.ts`) dan skema server (`siteSettingsSchema`) menolak `templateId` di luar
+   daftar — satu sumber kebenaran untuk katalog, UI, validasi, dan render.
 3. **Token tetap berlaku.** Semua pola memakai token warna [3.](#3-color), tipografi [4.](#4-typography),
    spacing [5.](#5-spacing), radius kecil `3–4px`, flat surface + hairline, dan anti-slop [15.](#15-anti-slop-rules).
    Perbedaan antar pola dinyatakan lewat **struktur, hero, grid, dan aksen tipografi** — bukan lewat

@@ -16,7 +16,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 /** Konten tenant (host + DB) streaming di belakang shell; metadata tetap dinamis per request. */
 async function ArticlesContent() {
   const site = await resolveNetworkSite({}, '/articles');
-  return <ListingPage site={site} title="Berita terbaru" />;
+  return <ListingPage site={site} title="Berita terbaru" path="/articles" />;
 }
 
 export default function ArticlesPage() {
