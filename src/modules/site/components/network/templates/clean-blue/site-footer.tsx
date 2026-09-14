@@ -1,9 +1,19 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import type { ComponentType } from 'react';
 import { Apple, Play, Rss } from 'lucide-react';
+import { FaFacebookF, FaInstagram, FaXTwitter, FaYoutube } from 'react-icons/fa6';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { categoryNav } from '@/modules/site/components/network/templates/clean-blue/shared';
+
+const SOCIAL_ICONS: Readonly<Record<string, ComponentType<{ readonly className?: string }>>> = {
+  facebook: FaFacebookF,
+  twitter: FaXTwitter,
+  x: FaXTwitter,
+  instagram: FaInstagram,
+  youtube: FaYoutube,
+};
 
 const ABOUT_LINKS = [
   { label: 'Profil', href: '/about' },
@@ -59,18 +69,22 @@ export function CleanBlueFooter({ site }: { readonly site: NetworkSiteData }) {
           <p className="m-0 mt-4 max-w-xs font-sans text-sm leading-relaxed text-slate-600">
             {site.settings.description}
           </p>
-          <p className="m-0 mt-5 flex flex-wrap items-center gap-2">
-            {socialEntries.map(([name, href]) => (
-              <a
-                key={name}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-9 items-center rounded-full px-3.5 font-sans text-xs font-semibold capitalize text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
-              >
-                {name}
-              </a>
-            ))}
+          <p className="m-0 mt-5 flex items-center gap-2">
+            {socialEntries.map(([name, href]) => {
+              const Icon = SOCIAL_ICONS[name.toLowerCase()] ?? Rss;
+              return (
+                <a
+                  key={name}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`${site.settings.name} di ${name}`}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
+                >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                </a>
+              );
+            })}
             <Link
               href="/rss.xml"
               aria-label="Umpan RSS"
