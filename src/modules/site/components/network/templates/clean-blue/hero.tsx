@@ -3,8 +3,7 @@ import Link from 'next/link';
 import { Bookmark, Share2, Tag } from 'lucide-react';
 
 import type { NetworkArticle } from '@/modules/delivery/models';
-import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
-import { formatDate } from '@/modules/site/components/network/templates/listing-shared';
+import { articleImage, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
 
 export function CleanBlueHero({ article, authorName }: { readonly article: NetworkArticle; readonly authorName: string }) {
   const src = articleImage(article);

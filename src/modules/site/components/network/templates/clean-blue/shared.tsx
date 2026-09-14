@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 
 /**
@@ -59,6 +61,64 @@ export function tickerTime(isoString: string): string {
 export function readingMinutes(article: NetworkArticle): number {
   const words = (article.body || article.description || '').trim().split(/\s+/u).filter(Boolean).length;
   return Math.max(1, Math.ceil(words / 200));
+}
+
+/** Tanggal ringkas id-ID gaya contoh ("14 Sep 2026"). */
+export function formatDate(isoString: string, dateStyle: 'medium' | 'full' = 'medium'): string {
+  try {
+    const parsedDate = new Date(isoString);
+    if (Number.isNaN(parsedDate.getTime())) return isoString;
+    return new Intl.DateTimeFormat('id-ID', {
+      dateStyle,
+      timeZone: 'Asia/Jakarta',
+    }).format(parsedDate);
+  } catch {
+    return isoString;
+  }
+}
+
+export interface ListingProps {
+  readonly site: NetworkSiteData;
+  readonly title: string;
+  readonly description?: string | undefined;
+  readonly path?: string | undefined;
+  readonly indexable?: boolean | undefined;
+}
+
+/** Penampung konten selebar contoh (max-6xl). */
+export function CleanBlueContainer({ children, className = '' }: { readonly children: ReactNode; readonly className?: string }) {
+  return (
+    <div className={`mx-auto w-full max-w-6xl px-4 sm:px-6 ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/** Pengumuman jumlah artikel untuk pembaca layar (paritas pola lain). */
+export function CleanBlueStatusLine({ count, title }: { readonly count: number; readonly title: string }) {
+  return (
+    <p className="sr-only" role="status">
+      {count === 0
+        ? `Tidak ada artikel pada ${title}.`
+        : `Menampilkan ${count} artikel pada ${title}.`}
+    </p>
+  );
+}
+
+export function CleanBlueEmpty({ title }: { readonly title: string }) {
+  return (
+    <div
+      className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center sm:p-12"
+      role="status"
+    >
+      <h2 className="m-0 font-sans text-xl font-bold text-slate-900">
+        Belum ada laporan terbit
+      </h2>
+      <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed text-slate-500">
+        Konten editorial untuk {title} sedang dalam antrean pemrosesan sinyal atau validasi redaksi.
+      </p>
+    </div>
+  );
 }
 
 export interface CategoryNavItem {

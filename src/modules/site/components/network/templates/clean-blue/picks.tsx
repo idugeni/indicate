@@ -3,8 +3,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import type { NetworkArticle } from '@/modules/delivery/models';
-import { articleImage, badgeStyle, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
-import { formatDate } from '@/modules/site/components/network/templates/listing-shared';
+import { articleImage, badgeStyle, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
 
 export function CleanBluePicks({
   articles,

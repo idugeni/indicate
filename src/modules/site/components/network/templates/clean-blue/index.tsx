@@ -1,9 +1,12 @@
-import { Container } from '@/modules/site/components/layout/content';
-import { BackToTop } from '@/modules/site/components/layout/back-to-top';
 import { buildSeoDocument } from '@/modules/site/seo';
-import { JsonLd } from '@/modules/site/components/network/json-ld';
-import { EmptyListing, StatusLine } from '@/modules/site/components/network/templates/listing-shared';
-import type { ListingProps } from '@/modules/site/components/network/templates/listing-shared';
+import {
+  CleanBlueContainer,
+  CleanBlueEmpty,
+  CleanBlueStatusLine,
+  type ListingProps,
+} from '@/modules/site/components/network/templates/clean-blue/shared';
+import { CleanBlueBackToTop } from '@/modules/site/components/network/templates/clean-blue/back-to-top';
+import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/json-ld';
 import { CleanBlueHeader } from '@/modules/site/components/network/templates/clean-blue/site-header';
 import { CleanBlueTicker } from '@/modules/site/components/network/templates/clean-blue/ticker';
 import { CleanBlueHero } from '@/modules/site/components/network/templates/clean-blue/hero';
@@ -34,11 +37,11 @@ export function CleanBlueListing({ site, title, description, path, indexable }: 
       <CleanBlueHeader site={site} path={path ?? '/'} />
 
       <main id="main-content" tabIndex={-1}>
-        <Container className="space-y-8 py-6 md:py-8">
-          <StatusLine count={site.articles.length} title={title} />
+        <CleanBlueContainer className="space-y-8 py-6 md:py-8">
+          <CleanBlueStatusLine count={site.articles.length} title={title} />
           {hero ? <CleanBlueTicker article={hero} /> : null}
           {site.articles.length === 0 ? (
-            <EmptyListing title={title} />
+            <CleanBlueEmpty title={title} />
           ) : (
             <>
               {hero ? <CleanBlueHero article={hero} authorName={authorName} /> : null}
@@ -46,12 +49,12 @@ export function CleanBlueListing({ site, title, description, path, indexable }: 
               <CleanBlueNewsletter />
             </>
           )}
-        </Container>
+        </CleanBlueContainer>
       </main>
 
       <CleanBlueFooter site={site} />
-      <BackToTop />
-      <JsonLd schemas={seo.jsonLd} />
+      <CleanBlueBackToTop />
+      <CleanBlueJsonLd schemas={seo.jsonLd} />
     </div>
   );
 }

@@ -2,6 +2,8 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ArticlePage } from '@/modules/site/components/network/network-listing';
+import { normalizeTemplateId } from '@/modules/site/components/network/templates/listing-shared';
+import { CleanBlueLoader } from '@/modules/site/components/network/templates/clean-blue/loader';
 import { ListingSkeleton } from '@/modules/site/components/network/listing-skeleton';
 import { networkMetadata, resolveNetworkSite, trackArticleView } from '@/modules/delivery/network-runtime';
 
@@ -45,6 +47,27 @@ async function ArticleContent({ params }: Pick<Props, 'params'>) {
 }
 
 export default function DetailPage({ params }: Props) {
+  return (
+    <Suspense fallback={<CleanBlueLoader label="Memuat artikel" />}>
+      <ArticleShell params={params} />
+    </Suspense>
+  );
+}
+
+/** Shell sadar-template: memilih loader sesuai template sebelum konten streaming. */
+async function ArticleShell({ params }: Pick<Props, 'params'>) {
+  const { slug } = await params;
+  if (slug.trim() === '') notFound();
+  let useCleanBlue = false;
+  try {
+    const site = await resolveNetworkSite({ articleSlug: slug }, `/articles/${slug}`);
+    useCleanBlue = normalizeTemplateId(site.settings.colors.templateId) === 'clean-blue';
+  } catch {
+    useCleanBlue = false;
+  }
+  if (useCleanBlue) {
+    return <ArticleContent params={params} />;
+  }
   return (
     <Suspense fallback={<ListingSkeleton label="Memuat artikel" />}>
       <ArticleContent params={params} />

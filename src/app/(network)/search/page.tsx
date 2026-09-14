@@ -2,9 +2,9 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import Form from 'next/form';
 import { ListingPage } from '@/modules/site/components/network/network-listing';
-import { normalizeTemplateId, StatusLine } from '@/modules/site/components/network/templates/listing-shared';
-import { Container } from '@/modules/site/components/layout/content';
-import { BackToTop } from '@/modules/site/components/layout/back-to-top';
+import { normalizeTemplateId } from '@/modules/site/components/network/templates/listing-shared';
+import { CleanBlueContainer, CleanBlueStatusLine } from '@/modules/site/components/network/templates/clean-blue/shared';
+import { CleanBlueBackToTop } from '@/modules/site/components/network/templates/clean-blue/back-to-top';
 import { CleanBlueHeader } from '@/modules/site/components/network/templates/clean-blue/site-header';
 import { CleanBlueFooter } from '@/modules/site/components/network/templates/clean-blue/site-footer';
 import { CleanBlueSearchForm, CleanBlueSearchResults, CleanBlueSearchSkeleton } from '@/modules/site/components/network/templates/clean-blue/search';
@@ -107,16 +107,16 @@ async function SearchShell({ searchParams }: Props) {
       </a>
       <CleanBlueHeader site={site} path="/search" />
       <main id="main-content" tabIndex={-1}>
-        <Container className="space-y-6 py-6 md:py-8">
-          <StatusLine count={site.articles.length} title="Pencarian" />
+        <CleanBlueContainer className="space-y-6 py-6 md:py-8">
+          <CleanBlueStatusLine count={site.articles.length} title="Pencarian" />
           <CleanBlueSearchForm query={query} />
           <Suspense fallback={<CleanBlueSearchSkeleton />}>
             <CleanBlueSearchResults articles={site.articles} query={query} />
           </Suspense>
-        </Container>
+        </CleanBlueContainer>
       </main>
       <CleanBlueFooter site={site} />
-      <BackToTop />
+      <CleanBlueBackToTop />
     </div>
   );
 }

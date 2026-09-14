@@ -790,7 +790,13 @@ yang dipetakan ke variabel `--site-primary`, `--site-accent`, `--site-header-bg`
   (`templates/clean-blue/`, komponen pecah per berkas) dengan palet hardcoded;
   sengaja TIDAK memakai `NetworkTemplate` bersama maupun
   `site_settings.colors`, agar tampil persis seperti contoh. Badge pill
-  berwarna dan permukaan terang hanya untuk pola ini.
+  berwarna dan permukaan terang hanya untuk pola ini. Dependensi luar yang
+  diizinkan hanya primitif (`next/*`, `lucide-react`, `react-icons`), tipe
+  `delivery/models`, logika SEO `buildSeoDocument`, dan shadcn `Spinner` —
+  nol komponen UI bersama.
+- Loader global clean-blue (`templates/clean-blue/loader.tsx`) adalah viewport
+  penuh brand-centered (Tailwind + shadcn Spinner, tanpa skeleton) dan dipakai
+  sebagai fallback `(network)/loading.tsx`, shell artikel, dan halaman lapor.
 - Semua pola memakai `ArticleCard` varian yang sama key-nya (`featured` / `row` / `timeline` /
   `visual` / `flash`) — dilarang membuat varian kartu baru tanpa memperbarui tabel 17.2.
 

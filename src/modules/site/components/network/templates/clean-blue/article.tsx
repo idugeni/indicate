@@ -3,15 +3,13 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Calendar, ChevronRight, Eye, Flag } from 'lucide-react';
 
 import { buildSeoDocument } from '@/modules/site/seo';
-import { JsonLd } from '@/modules/site/components/network/json-ld';
-import { BackToTop } from '@/modules/site/components/layout/back-to-top';
+import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/json-ld';
+import { CleanBlueBackToTop } from '@/modules/site/components/network/templates/clean-blue/back-to-top';
 import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
-import { getReadingTime } from '@/modules/site/components/network/templates/listing-shared';
 import { CleanBlueHeader } from '@/modules/site/components/network/templates/clean-blue/site-header';
 import { CleanBlueFooter } from '@/modules/site/components/network/templates/clean-blue/site-footer';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/picks';
-import { articleImage, isLocalImageSrc } from '@/modules/site/components/network/templates/clean-blue/shared';
-import { formatDate } from '@/modules/site/components/network/templates/listing-shared';
+import { articleImage, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
 
 export function CleanBlueArticle({
   site,
@@ -28,7 +26,7 @@ export function CleanBlueArticle({
 }) {
   const seo = buildSeoDocument(site, { path: `/articles/${article.slug}`, article });
   const src = articleImage(article);
-  const reading = getReadingTime(article.body || '');
+  const reading = readingMinutes(article);
   const authorName = article.authorName ?? article.attribution;
   const authorInitial = authorName.trim().slice(0, 1).toUpperCase();
   const canonical = `https://${site.context.normalizedHostname}/articles/${article.slug}`;
@@ -237,8 +235,8 @@ export function CleanBlueArticle({
       </main>
 
       <CleanBlueFooter site={site} />
-      <BackToTop />
-      <JsonLd schemas={seo.jsonLd} />
+      <CleanBlueBackToTop />
+      <CleanBlueJsonLd schemas={seo.jsonLd} />
     </div>
   );
 }

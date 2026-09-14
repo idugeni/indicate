@@ -2,10 +2,10 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { ReportForm } from '@/app/(network)/report/report-form';
 import { Section } from '@/modules/site/components/layout/content';
-import { Skeleton } from '@/components/ui/skeleton';
-import { BackToTop } from '@/modules/site/components/layout/back-to-top';
-import { Container } from '@/modules/site/components/layout/content';
+import { CleanBlueLoader } from '@/modules/site/components/network/templates/clean-blue/loader';
 import { normalizeTemplateId } from '@/modules/site/components/network/templates/listing-shared';
+import { CleanBlueBackToTop } from '@/modules/site/components/network/templates/clean-blue/back-to-top';
+import { CleanBlueContainer } from '@/modules/site/components/network/templates/clean-blue/shared';
 import { CleanBlueHeader } from '@/modules/site/components/network/templates/clean-blue/site-header';
 import { CleanBlueFooter } from '@/modules/site/components/network/templates/clean-blue/site-footer';
 import { CleanBlueReportForm } from '@/modules/site/components/network/templates/clean-blue/report-form';
@@ -40,7 +40,7 @@ async function ReportContent({ searchParams }: Props) {
         </a>
         <CleanBlueHeader site={site} path="/report" />
         <main id="main-content" tabIndex={-1}>
-          <Container className="max-w-3xl py-8 md:py-12">
+          <CleanBlueContainer className="max-w-3xl py-8 md:py-12">
             <p className="m-0 font-sans text-xs font-medium uppercase tracking-wider text-slate-500">
               Kepercayaan & keamanan
             </p>
@@ -53,10 +53,10 @@ async function ReportContent({ searchParams }: Props) {
             <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-7">
               <CleanBlueReportForm articleSlug={slug} />
             </div>
-          </Container>
+          </CleanBlueContainer>
         </main>
         <CleanBlueFooter site={site} />
-        <BackToTop />
+        <CleanBlueBackToTop />
       </div>
     );
   }
@@ -73,7 +73,7 @@ async function ReportContent({ searchParams }: Props) {
 
 export default function ReportPage({ searchParams }: Props) {
   return (
-    <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+    <Suspense fallback={<CleanBlueLoader label="Memuat formulir" />}>
       <ReportContent searchParams={searchParams} />
     </Suspense>
   );
