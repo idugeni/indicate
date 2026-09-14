@@ -103,6 +103,17 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
     });
   }
 
+  async loadSiteCategories(context: ResolvedSiteContext): Promise<readonly { slug: string; name: string }[]> {
+    return this.database.transaction(async (transaction) => {
+      await this.publicTenant(transaction, context);
+      const rows = await transaction.select({ slug: categories.slug, name: categories.name })
+        .from(categories)
+        .where(and(eq(categories.organizationId, context.organizationId), eq(categories.status, 'active')))
+        .orderBy(sql`${categories.name} ASC`);
+      return rows.map((row) => ({ slug: row.slug, name: row.name }));
+    });
+  }
+
   async isCacheBypassed(context: ResolvedSiteContext): Promise<boolean> {
     return this.database.transaction(async (transaction) => {
       await this.publicTenant(transaction, context);

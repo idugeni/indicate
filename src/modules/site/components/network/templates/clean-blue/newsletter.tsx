@@ -26,7 +26,7 @@ export function CleanBlueNewsletter() {
               className="h-11 w-full flex-1 rounded-full border border-slate-200 bg-white px-4 font-sans text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#1f6feb] focus:outline-none"
             />
             <Link
-              href="/contact"
+              href=""
               className="inline-flex h-11 flex-none items-center justify-center rounded-full bg-[#1f6feb] px-6 font-sans text-sm font-bold text-white transition-colors hover:bg-[#1a5fd0]"
             >
               Berlangganan

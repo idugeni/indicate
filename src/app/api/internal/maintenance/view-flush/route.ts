@@ -58,17 +58,35 @@ async function handleGET(request: Request) {
         });
       }
     } while (cursor !== 0);
-    let applied = 0;
+    // RLS article_sites memaksa organization_id = tenant aktif: tanpa
+    // set_tenant_context, UPDATE mencocokkan 0 baris (diam-diam) sementara
+    // key tetap di-del → hitungan lenyap permanen. Konteks diset per org.
+    const byOrg = new Map<string, { key: string; entry: FlushEntry & { count: number } }[]>();
     for (const [key, entry] of deltas) {
+      const list = byOrg.get(entry.organizationId) ?? [];
+      list.push({ key, entry });
+      byOrg.set(entry.organizationId, list);
+    }
+    let applied = 0;
+    for (const [organizationId, rows] of byOrg) {
       try {
-        await runtime.db.execute(sql`
-          UPDATE article_sites SET view_count = view_count + ${entry.count}, updated_at = now()
-          WHERE organization_id = ${entry.organizationId}::uuid
-            AND site_id = ${entry.siteId}::uuid AND id = ${entry.articleSiteId}::uuid`);
-        await redis.del(key);
-        applied += 1;
+        await runtime.db.execute(sql`SELECT indicate_private.set_tenant_context(${organizationId}::uuid, ${'system:view-flush'}, ${requestId})`);
       } catch {
-        /* baris berikutnya; key dipertahankan untuk percobaan berikut */
+        continue;
+      }
+      for (const { key, entry } of rows) {
+        try {
+          const updated = await runtime.db.execute<{ id: string }>(sql`
+            UPDATE article_sites SET view_count = view_count + ${entry.count}, updated_at = now()
+            WHERE organization_id = ${entry.organizationId}::uuid
+              AND site_id = ${entry.siteId}::uuid AND id = ${entry.articleSiteId}::uuid
+            RETURNING id`);
+          if (updated.length === 0) continue;
+          await redis.del(key);
+          applied += 1;
+        } catch {
+          /* baris berikutnya; key dipertahankan untuk percobaan berikut */
+        }
       }
     }
     return NextResponse.json({ requestId, keys: deltas.size, applied }, { headers: noStore });

@@ -43,13 +43,13 @@ export function CleanBluePicks({
         ) : null}
       </div>
 
-      <div className="mt-5 grid gap-5 md:grid-cols-3">
+      <div className="mt-5 grid items-stretch gap-5 md:grid-cols-3">
         {articles.map((article, index) => {
           const src = articleImage(article);
           const reading = readingMinutes(article);
           const badge = badgeStyle(index);
           return (
-            <Card key={article.id} className="overflow-hidden rounded-2xl border-0 bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/60">
+            <Card key={article.id} className="flex h-full flex-col overflow-hidden rounded-2xl border-0 bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/60">
               <div className="px-3 pt-3">
                 <div className="overflow-hidden rounded-xl">
                   <Image
@@ -64,7 +64,7 @@ export function CleanBluePicks({
                   />
                 </div>
               </div>
-              <CardHeader className="px-5">
+              <CardHeader className="flex-1 px-5">
                 <p className="m-0 -mt-9 mb-3">
                   <span
                     className="inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold"
@@ -73,7 +73,7 @@ export function CleanBluePicks({
                     {article.categoryName ?? 'Berita'}
                   </span>
                 </p>
-                <CardTitle className="font-sans text-[17px] font-bold leading-snug tracking-tight text-slate-900">
+                <CardTitle className="line-clamp-2 font-sans text-[17px] font-bold leading-snug tracking-tight text-slate-900">
                   <Link href={`/articles/${article.slug}`} className="hover:text-[#1f6feb]">
                     {article.title}
                   </Link>
@@ -87,7 +87,7 @@ export function CleanBluePicks({
                   {authorDisplayName(article)}
                 </p>
               </CardContent>
-              <CardFooter className="justify-between border-slate-100 bg-white px-5">
+              <CardFooter className="mt-auto justify-between border-t border-slate-100 bg-white px-5">
                 <span className="font-sans text-xs tabular-nums text-slate-500">
                   {formatDate(article.publishedAt, 'medium')} · {reading} mnt baca · {formatCompactViews(article.viewCount)} dibaca
                 </span>

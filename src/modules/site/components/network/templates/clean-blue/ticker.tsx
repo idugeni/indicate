@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import type { NetworkArticle } from '@/modules/delivery/models';
-import { tickerTime } from '@/modules/site/components/network/templates/clean-blue/shared';
+import { formatDate } from '@/modules/site/components/network/templates/clean-blue/shared';
 
 const ROTATE_MS = 6000;
 const MAX_ITEMS = 5;
@@ -44,8 +44,10 @@ export function CleanBlueTicker({ articles }: { readonly articles: readonly Netw
           {article.title}
         </Link>
       </p>
-      <time dateTime={article.publishedAt} className="hidden flex-none font-mono text-xs tabular-nums text-slate-500 sm:block">
-        {tickerTime(article.publishedAt)} WIB
+      <time dateTime={article.updatedAt} className="hidden flex-none font-sans text-xs tabular-nums text-slate-500 sm:block">
+        {article.updatedAt !== article.publishedAt
+          ? `Diperbarui ${formatDate(article.updatedAt, 'medium')}`
+          : formatDate(article.publishedAt, 'medium')}
       </time>
       <span className="flex flex-none items-center gap-1.5">
         <button

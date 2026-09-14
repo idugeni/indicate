@@ -1,11 +1,11 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Calendar, ChevronRight, Eye, Flag } from 'lucide-react';
-import { FaFacebookF, FaWhatsapp, FaXTwitter } from 'react-icons/fa6';
 
 import { buildSeoDocument } from '@/modules/site/seo';
 import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/json-ld';
 import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/shell';
+import { CleanBlueShareButtons } from '@/modules/site/components/network/templates/clean-blue/share-buttons';
 import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/picks';
 import { articleImage, authorDisplayName, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
@@ -30,7 +30,6 @@ export function CleanBlueArticle({
   const authorInitial = authorName.trim().slice(0, 1).toUpperCase();
   const canonical = `https://${site.context.normalizedHostname}/articles/${article.slug}`;
   const paragraphs = article.body.split(/\n{2,}/u).map((p) => p.trim()).filter(Boolean);
-  const shareText = encodeURIComponent(`${article.title} ${canonical}`);
 
   return (
     <CleanBlueShell site={site} path={`/articles/${article.slug}`}>
@@ -55,7 +54,7 @@ export function CleanBlueArticle({
             <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1f6feb]" />
             {article.categoryName ?? 'Berita Utama'}
           </p>
-          <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-balance text-slate-900 sm:text-4xl">
+          <h1 className="m-0 mt-3 block w-full font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl">
             {article.title}
           </h1>
           <p className="m-0 mt-4 font-sans text-[17px] leading-relaxed text-slate-600">
@@ -86,35 +85,7 @@ export function CleanBlueArticle({
                 </span>
               </span>
             </p>
-            <p className="m-0 flex flex-none items-center gap-2" aria-label="Bagikan artikel">
-              <a
-                href={`https://wa.me/?text=${shareText}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Bagikan ke WhatsApp"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1f6feb] text-white transition-colors hover:bg-[#1a5fd0]"
-              >
-                <FaWhatsapp className="h-4 w-4" aria-hidden="true" />
-              </a>
-              <a
-                href={`https://x.com/intent/post?text=${shareText}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Bagikan ke X"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
-              >
-                <FaXTwitter className="h-4 w-4" aria-hidden="true" />
-              </a>
-              <a
-                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(canonical)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Bagikan ke Facebook"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
-              >
-                <FaFacebookF className="h-4 w-4" aria-hidden="true" />
-              </a>
-            </p>
+            <CleanBlueShareButtons article={article} canonical={canonical} />
           </div>
 
           <div className="mt-6 overflow-hidden rounded-2xl shadow-sm">
@@ -130,9 +101,9 @@ export function CleanBlueArticle({
             />
           </div>
 
-          <div className="mt-8 space-y-5">
+          <div className="mt-8 space-y-6">
             {paragraphs.map((paragraph, index) => (
-              <p key={`${index}-${paragraph.slice(0, 16)}`} className="m-0 font-sans text-[17px] leading-[1.85] text-slate-800">
+              <p key={`${index}-${paragraph.slice(0, 16)}`} className="m-0 text-justify font-sans text-[17px] leading-[1.85] text-slate-800">
                 {paragraph}
               </p>
             ))}
@@ -154,15 +125,30 @@ export function CleanBlueArticle({
 
           <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
             <div className="flex items-center gap-4">
-              <span aria-hidden="true" className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-[#1f6feb]/10 font-sans text-xl font-bold text-[#1f6feb]">
-                {authorInitial}
-              </span>
+              {article.publisherLogoUrl ? (
+                <Image
+                  unoptimized
+                  src={article.publisherLogoUrl}
+                  alt={`Logo ${article.attribution}`}
+                  width={56}
+                  height={56}
+                  className="h-14 w-14 flex-none rounded-full border border-slate-200 object-cover"
+                />
+              ) : (
+                <span aria-hidden="true" className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-[#1f6feb]/10 font-sans text-xl font-bold text-[#1f6feb]">
+                  {authorInitial}
+                </span>
+              )}
               <div className="min-w-0">
                 <p className="m-0 truncate font-sans text-base font-bold text-slate-900">
                   {authorName}
                 </p>
                 <p className="m-0 mt-0.5 font-sans text-xs font-medium uppercase tracking-wider text-[#1f6feb]">
                   Penulis redaksi
+                </p>
+                <p className="m-0 mt-1 truncate font-sans text-xs text-slate-500">
+                  {article.publisherName ?? article.attribution}
+                  {article.publisherVerified ? ' · Terverifikasi' : ''}
                 </p>
               </div>
             </div>

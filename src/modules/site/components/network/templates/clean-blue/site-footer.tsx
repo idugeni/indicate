@@ -1,11 +1,10 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import type { ComponentType } from 'react';
 import { Rss } from 'lucide-react';
-import { FaFacebookF, FaInstagram, FaXTwitter, FaYoutube } from 'react-icons/fa6';
+import { FaFacebookF, FaInstagram, FaTelegram, FaTiktok, FaXTwitter, FaYoutube } from 'react-icons/fa6';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { categoryNav } from '@/modules/site/components/network/templates/clean-blue/shared';
+import { getSiteCategoryNav } from '@/modules/site/components/network/templates/clean-blue/site-nav';
 import { CleanBlueStoreBadges } from '@/modules/site/components/network/templates/clean-blue/store-badges';
 
 const SOCIAL_ICONS: Readonly<Record<string, ComponentType<{ readonly className?: string }>>> = {
@@ -14,10 +13,12 @@ const SOCIAL_ICONS: Readonly<Record<string, ComponentType<{ readonly className?:
   x: FaXTwitter,
   instagram: FaInstagram,
   youtube: FaYoutube,
+  tiktok: FaTiktok,
+  telegram: FaTelegram,
 };
 
 /** Ikon sosmed default: tampil selalu; tanpa URL menjadi pajangan tanpa link. */
-const DEFAULT_SOCIALS = ['facebook', 'x', 'instagram', 'youtube'] as const;
+const DEFAULT_SOCIALS = ['facebook', 'x', 'instagram', 'youtube', 'tiktok', 'telegram'] as const;
 
 const ABOUT_LINKS = [
   { label: 'Profil', href: '/about' },
@@ -28,12 +29,11 @@ const ABOUT_LINKS = [
   { label: 'Syarat & Ketentuan', href: '/terms' },
 ] as const;
 
-export function CleanBlueFooter({ site }: { readonly site: NetworkSiteData }) {
-  const categories = categoryNav(site, 6);
+export async function CleanBlueFooter({ site }: { readonly site: NetworkSiteData }) {
+  const categories = await getSiteCategoryNav(site, 6);
   const tagline = site.settings.description.length > 64
     ? `${site.settings.description.slice(0, 64).trimEnd()}…`
     : site.settings.description;
-  const initial = (site.settings.name || 'N').trim().slice(0, 1).toUpperCase();
   const year = new Date().getFullYear();
   const socialByName = new Map(Object.entries(site.settings.socialLinks).map(([name, href]) => [name.toLowerCase(), href] as const));
 
@@ -41,39 +41,18 @@ export function CleanBlueFooter({ site }: { readonly site: NetworkSiteData }) {
     <footer className="border-t border-slate-200 bg-white">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
         <div>
-          <Link href="/" aria-label={`${site.settings.name} beranda`} className="inline-flex items-center gap-2.5 no-underline">
-            {site.settings.logoUrl ? (
-              <Image
-                unoptimized
-                src={site.settings.logoUrl}
-                alt=""
-                aria-hidden="true"
-                width={36}
-                height={36}
-                className="h-9 w-9 flex-none rounded-xl object-contain"
-              />
-            ) : (
-              <span
-                aria-hidden="true"
-                className="flex h-9 w-9 flex-none items-center justify-center rounded-xl font-sans text-lg font-extrabold text-white"
-                style={{ backgroundColor: '#1f6feb' }}
-              >
-                {initial}
-              </span>
-            )}
-            <span className="grid leading-none">
-              <strong className="font-sans text-lg font-extrabold tracking-tight text-slate-900">
-                {site.settings.name}
-              </strong>
-              <small className="mt-0.5 font-sans text-[11px] text-slate-500">
-                {tagline}
-              </small>
-            </span>
+          <Link href="/" aria-label={`${site.settings.name} beranda`} className="grid leading-none no-underline">
+            <strong className="font-sans text-lg font-extrabold tracking-tight text-slate-900">
+              {site.settings.name}
+            </strong>
+            <small className="mt-0.5 font-sans text-[11px] text-slate-500">
+              {tagline}
+            </small>
           </Link>
           <p className="m-0 mt-4 max-w-xs font-sans text-sm leading-relaxed text-slate-600">
             {site.settings.description}
           </p>
-          <p className="m-0 mt-5 flex items-center gap-2">
+          <p className="m-0 mt-5 flex flex-wrap items-center gap-2">
             {DEFAULT_SOCIALS.map((name) => {
               const Icon = SOCIAL_ICONS[name] ?? Rss;
               const href = socialByName.get(name);
