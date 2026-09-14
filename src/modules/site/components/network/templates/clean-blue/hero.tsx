@@ -3,11 +3,12 @@ import Link from 'next/link';
 import { Bookmark, Share2, Tag } from 'lucide-react';
 
 import type { NetworkArticle } from '@/modules/delivery/models';
-import { articleImage, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
+import { articleImage, authorDisplayName, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
 
-export function CleanBlueHero({ article, authorName }: { readonly article: NetworkArticle; readonly authorName: string }) {
+export function CleanBlueHero({ article }: { readonly article: NetworkArticle }) {
   const src = articleImage(article);
   const reading = readingMinutes(article);
+  const authorName = authorDisplayName(article);
   const authorInitial = (authorName || 'R').trim().slice(0, 1).toUpperCase();
 
   return (
@@ -52,7 +53,7 @@ export function CleanBlueHero({ article, authorName }: { readonly article: Netwo
                 {authorName}
               </span>
               <span className="block font-sans text-xs tabular-nums text-slate-500">
-                {formatDate(article.publishedAt, 'medium')} · {reading} menit baca
+                {formatDate(article.publishedAt, 'medium')} · {reading} menit baca · {formatCompactViews(article.viewCount)} dibaca
               </span>
             </span>
           </p>

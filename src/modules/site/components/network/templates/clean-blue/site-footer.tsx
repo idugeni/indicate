@@ -15,6 +15,9 @@ const SOCIAL_ICONS: Readonly<Record<string, ComponentType<{ readonly className?:
   youtube: FaYoutube,
 };
 
+/** Ikon sosmed default: tampil selalu; tanpa URL menjadi pajangan tanpa link. */
+const DEFAULT_SOCIALS = ['facebook', 'x', 'instagram', 'youtube'] as const;
+
 const ABOUT_LINKS = [
   { label: 'Profil', href: '/about' },
   { label: 'Redaksi', href: '/about' },
@@ -31,7 +34,7 @@ export function CleanBlueFooter({ site }: { readonly site: NetworkSiteData }) {
     : site.settings.description;
   const initial = (site.settings.name || 'N').trim().slice(0, 1).toUpperCase();
   const year = new Date().getFullYear();
-  const socialEntries = Object.entries(site.settings.socialLinks).slice(0, 5);
+  const socialByName = new Map(Object.entries(site.settings.socialLinks).map(([name, href]) => [name.toLowerCase(), href] as const));
 
   return (
     <footer className="border-t border-slate-200 bg-white">
@@ -70,8 +73,21 @@ export function CleanBlueFooter({ site }: { readonly site: NetworkSiteData }) {
             {site.settings.description}
           </p>
           <p className="m-0 mt-5 flex items-center gap-2">
-            {socialEntries.map(([name, href]) => {
-              const Icon = SOCIAL_ICONS[name.toLowerCase()] ?? Rss;
+            {DEFAULT_SOCIALS.map((name) => {
+              const Icon = SOCIAL_ICONS[name] ?? Rss;
+              const href = socialByName.get(name);
+              if (href === undefined) {
+                return (
+                  <span
+                    key={name}
+                    aria-hidden="true"
+                    title={name}
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 ring-1 ring-slate-200"
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                );
+              }
               return (
                 <a
                   key={name}
@@ -126,27 +142,21 @@ export function CleanBlueFooter({ site }: { readonly site: NetworkSiteData }) {
           <p className="m-0 mt-4 font-sans text-sm leading-relaxed text-slate-600">
             Dapatkan pengalaman membaca berita yang lebih baik di perangkat mobile Anda.
           </p>
-          <p className="m-0 mt-4 flex flex-wrap gap-2.5">
-            <Link
-              href="/contact"
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3.5 py-2 text-white transition-colors hover:bg-slate-700"
-            >
-              <Apple className="h-5 w-5" aria-hidden="true" />
+          <p className="m-0 mt-4 grid grid-cols-2 gap-2.5">
+            <span className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3.5 py-2 text-white">
+              <Apple className="h-5 w-5 flex-none" aria-hidden="true" />
               <span className="grid leading-tight">
                 <small className="font-sans text-[9px] uppercase">Download on the</small>
                 <strong className="font-sans text-sm font-bold">App Store</strong>
               </span>
-            </Link>
-            <Link
-              href="/contact"
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3.5 py-2 text-white transition-colors hover:bg-slate-700"
-            >
-              <Play className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3.5 py-2 text-white">
+              <Play className="h-5 w-5 flex-none" aria-hidden="true" />
               <span className="grid leading-tight">
                 <small className="font-sans text-[9px] uppercase">Temukan di</small>
                 <strong className="font-sans text-sm font-bold">Google Play</strong>
               </span>
-            </Link>
+            </span>
           </p>
         </div>
       </div>

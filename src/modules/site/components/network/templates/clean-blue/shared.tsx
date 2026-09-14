@@ -63,6 +63,17 @@ export function readingMinutes(article: NetworkArticle): number {
   return Math.max(1, Math.ceil(words / 200));
 }
 
+/** Tampilan ringkas id-ID: 999, 1,2 rb, 3,4 jt. Selalu tampil (termasuk nol). */
+export function formatCompactViews(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return '0';
+  return new Intl.NumberFormat('id-ID', { notation: 'compact' }).format(Math.floor(value));
+}
+
+/** Nama penulis dengan fallback atribusi redaksi. */
+export function authorDisplayName(article: NetworkArticle): string {
+  return article.authorName ?? article.attribution;
+}
+
 /** Tanggal ringkas id-ID gaya contoh ("14 Sep 2026"). */
 export function formatDate(isoString: string, dateStyle: 'medium' | 'full' = 'medium'): string {
   try {

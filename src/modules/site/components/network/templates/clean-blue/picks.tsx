@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import type { NetworkArticle } from '@/modules/delivery/models';
-import { articleImage, badgeStyle, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
+import { articleImage, authorDisplayName, badgeStyle, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
 
 export function CleanBluePicks({
   articles,
@@ -80,18 +80,23 @@ export function CleanBluePicks({
                 <p className="m-0 mt-2 line-clamp-3 font-sans text-sm leading-relaxed text-slate-600">
                   {article.description}
                 </p>
-                <p className="m-0 mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
-                  <span className="font-sans text-xs tabular-nums text-slate-500">
-                    {formatDate(article.publishedAt, 'medium')} · {reading} menit baca
-                  </span>
-                  <Link
-                    href={`/articles/${article.slug}`}
-                    aria-label={`Baca: ${article.title}`}
-                    className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#e8f0fe] text-[#1f6feb] transition-colors hover:bg-[#1f6feb] hover:text-white"
-                  >
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
-                </p>
+                <div className="m-0 mt-4 border-t border-slate-100 pt-3">
+                  <p className="m-0 truncate font-sans text-xs font-bold text-slate-800">
+                    {authorDisplayName(article)}
+                  </p>
+                  <p className="m-0 mt-1.5 flex items-center justify-between gap-2">
+                    <span className="font-sans text-xs tabular-nums text-slate-500">
+                      {formatDate(article.publishedAt, 'medium')} · {reading} mnt baca · {formatCompactViews(article.viewCount)} dibaca
+                    </span>
+                    <Link
+                      href={`/articles/${article.slug}`}
+                      aria-label={`Baca: ${article.title}`}
+                      className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#e8f0fe] text-[#1f6feb] transition-colors hover:bg-[#1f6feb] hover:text-white"
+                    >
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </p>
+                </div>
               </div>
             </article>
           );

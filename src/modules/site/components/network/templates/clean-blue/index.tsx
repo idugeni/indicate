@@ -23,7 +23,6 @@ import { CleanBlueFooter } from '@/modules/site/components/network/templates/cle
 export function CleanBlueListing({ site, title, description, path, indexable }: ListingProps) {
   const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const [hero, ...rest] = site.articles;
-  const authorName = hero?.authorName ?? hero?.attribution ?? site.settings.name;
 
   return (
     <div className="min-h-screen bg-[#f5f8fd] font-sans text-slate-900 antialiased" data-template="clean-blue">
@@ -44,7 +43,7 @@ export function CleanBlueListing({ site, title, description, path, indexable }: 
             <CleanBlueEmpty title={title} />
           ) : (
             <>
-              {hero ? <CleanBlueHero article={hero} authorName={authorName} /> : null}
+              {hero ? <CleanBlueHero article={hero} /> : null}
               <CleanBluePicks articles={rest.slice(0, 3)} description={description ?? 'Informasi terkurasi untuk Anda'} />
               <CleanBlueNewsletter />
             </>

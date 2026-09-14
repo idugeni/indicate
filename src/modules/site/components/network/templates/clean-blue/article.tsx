@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Calendar, ChevronRight, Eye, Flag } from 'lucide-react';
+import { FaFacebookF, FaWhatsapp, FaXTwitter } from 'react-icons/fa6';
 
 import { buildSeoDocument } from '@/modules/site/seo';
 import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/json-ld';
@@ -9,7 +10,7 @@ import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models'
 import { CleanBlueHeader } from '@/modules/site/components/network/templates/clean-blue/site-header';
 import { CleanBlueFooter } from '@/modules/site/components/network/templates/clean-blue/site-footer';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/picks';
-import { articleImage, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
+import { articleImage, authorDisplayName, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
 
 export function CleanBlueArticle({
   site,
@@ -27,7 +28,7 @@ export function CleanBlueArticle({
   const seo = buildSeoDocument(site, { path: `/articles/${article.slug}`, article });
   const src = articleImage(article);
   const reading = readingMinutes(article);
-  const authorName = article.authorName ?? article.attribution;
+  const authorName = authorDisplayName(article);
   const authorInitial = authorName.trim().slice(0, 1).toUpperCase();
   const canonical = `https://${site.context.normalizedHostname}/articles/${article.slug}`;
   const paragraphs = article.body.split(/\n{2,}/u).map((p) => p.trim()).filter(Boolean);
@@ -89,42 +90,41 @@ export function CleanBlueArticle({
                   </span>
                   <span aria-hidden="true">·</span>
                   <span>{reading} menit baca</span>
-                  {article.viewCount > 0 ? (
-                    <>
-                      <span aria-hidden="true">·</span>
-                      <span className="inline-flex items-center gap-1">
-                        <Eye className="h-3 w-3" aria-hidden="true" />
-                        {article.viewCount} dibaca
-                      </span>
-                    </>
-                  ) : null}
+                  <span aria-hidden="true">·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Eye className="h-3 w-3" aria-hidden="true" />
+                    {formatCompactViews(article.viewCount)} dibaca
+                  </span>
                 </span>
               </span>
             </p>
-            <p className="m-0 flex flex-none items-center gap-2">
+            <p className="m-0 flex flex-none items-center gap-2" aria-label="Bagikan artikel">
               <a
                 href={`https://wa.me/?text=${shareText}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-9 items-center rounded-full bg-[#1f6feb] px-4 font-sans text-xs font-bold text-white transition-colors hover:bg-[#1a5fd0]"
+                aria-label="Bagikan ke WhatsApp"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1f6feb] text-white transition-colors hover:bg-[#1a5fd0]"
               >
-                Bagikan
+                <FaWhatsapp className="h-4 w-4" aria-hidden="true" />
               </a>
               <a
                 href={`https://x.com/intent/post?text=${shareText}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-9 items-center rounded-full px-3 font-sans text-xs font-semibold text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
+                aria-label="Bagikan ke X"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
               >
-                X
+                <FaXTwitter className="h-4 w-4" aria-hidden="true" />
               </a>
               <a
                 href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(canonical)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-9 items-center rounded-full px-3 font-sans text-xs font-semibold text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
+                aria-label="Bagikan ke Facebook"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
               >
-                Facebook
+                <FaFacebookF className="h-4 w-4" aria-hidden="true" />
               </a>
             </p>
           </div>
@@ -164,16 +164,39 @@ export function CleanBlueArticle({
             </div>
           ) : null}
 
-          <div className="mt-8 flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60">
-            <span aria-hidden="true" className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-[#1f6feb]/10 font-sans text-lg font-bold text-[#1f6feb]">
-              {authorInitial}
-            </span>
-            <div className="min-w-0">
-              <p className="m-0 truncate font-sans text-sm font-bold text-slate-900">
-                {authorName}
-              </p>
-              <p className="m-0 font-sans text-xs text-slate-500">Penulis redaksi</p>
+          <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
+            <div className="flex items-center gap-4">
+              <span aria-hidden="true" className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-[#1f6feb]/10 font-sans text-xl font-bold text-[#1f6feb]">
+                {authorInitial}
+              </span>
+              <div className="min-w-0">
+                <p className="m-0 truncate font-sans text-base font-bold text-slate-900">
+                  {authorName}
+                </p>
+                <p className="m-0 mt-0.5 font-sans text-xs font-medium uppercase tracking-wider text-[#1f6feb]">
+                  Penulis redaksi
+                </p>
+              </div>
             </div>
+            <dl className="m-0 mt-4 grid grid-cols-3 gap-px overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-100">
+              <div className="bg-white px-3 py-2.5 text-center">
+                <dt className="font-sans text-[10px] uppercase tracking-wider text-slate-400">Terbit</dt>
+                <dd className="m-0 mt-0.5 font-sans text-xs font-bold tabular-nums text-slate-800">
+                  <time dateTime={article.publishedAt}>{formatDate(article.publishedAt, 'medium')}</time>
+                </dd>
+              </div>
+              <div className="bg-white px-3 py-2.5 text-center">
+                <dt className="font-sans text-[10px] uppercase tracking-wider text-slate-400">Baca</dt>
+                <dd className="m-0 mt-0.5 font-sans text-xs font-bold tabular-nums text-slate-800">{reading} menit</dd>
+              </div>
+              <div className="bg-white px-3 py-2.5 text-center">
+                <dt className="font-sans text-[10px] uppercase tracking-wider text-slate-400">Dibaca</dt>
+                <dd className="m-0 mt-0.5 inline-flex items-center justify-center gap-1 font-sans text-xs font-bold tabular-nums text-slate-800">
+                  <Eye className="h-3 w-3 text-slate-400" aria-hidden="true" />
+                  {formatCompactViews(article.viewCount)}
+                </dd>
+              </div>
+            </dl>
           </div>
 
           {related.length > 0 ? (
