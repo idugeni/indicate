@@ -5,7 +5,7 @@ import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import type { BootstrapConfig } from '@/core/config/bootstrap/bootstrap-schema';
 import type { RuntimeConfig } from '@/core/config/runtime/runtime-schema';
 import { NextNetworkSiteCache } from '@/modules/delivery/network-site-cache-adapter';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleDeliveryRepository } from '@/data/repos/delivery';
 import type { DeliveryRepository } from '@/modules/delivery/ports';
 
@@ -16,7 +16,7 @@ function repository(config: RuntimeConfig, bootstrap: BootstrapConfig): Delivery
   if (isPlaceholder) {
     throw new Error('delivery_repository_unconfigured');
   }
-  globalThis.indicateDeliveryRepository = new DrizzleDeliveryRepository(createRuntimeDatabase(bootstrap).db, config.seo.defaultAssetUrl);
+  globalThis.indicateDeliveryRepository = new DrizzleDeliveryRepository(getSharedRuntimeDatabase(bootstrap).db, config.seo.defaultAssetUrl);
   return globalThis.indicateDeliveryRepository;
 }
 export async function deliveryComposition() {

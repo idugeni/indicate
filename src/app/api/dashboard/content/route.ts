@@ -8,7 +8,7 @@ import { getPublicConfig } from '@/core/config/public-config';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { ContentAdminAccessDeniedError, DrizzleContentAdminRepository } from '@/data/repos/content/admin';
 import { UuidGenerator } from '@/core/system/uuid-generator';
@@ -84,8 +84,8 @@ async function handleGET() {
   const identity = await auth.verifyCookieSession();
   if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.bootstrap);
-  try {
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  {
     const authorization = new DrizzleAuthorizationRepository(runtime.db);
     const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
     if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
@@ -95,8 +95,6 @@ async function handleGET() {
     } catch {
       return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     }
-  } finally {
-    await runtime.close();
   }
 }
 
@@ -114,8 +112,8 @@ async function handlePOST(request: Request) {
   const identity = await auth.verifyCookieSession();
   if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.bootstrap);
-  try {
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  {
     const authorization = new DrizzleAuthorizationRepository(runtime.db);
     const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
     if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
@@ -144,8 +142,6 @@ async function handlePOST(request: Request) {
       if (error instanceof ContentAdminAccessDeniedError) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
       return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'The content operation could not be completed.', requestId), { status: 500 });
     }
-  } finally {
-    await runtime.close();
   }
 }
 

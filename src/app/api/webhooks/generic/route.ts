@@ -13,18 +13,16 @@ async function handlePOST(request: Request) {
   const sourceIdentity = trustedCloudflareSource(request, config.hosts.webhook, config.cloudflare.originSecret);
   if (sourceIdentity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const production = await createProductionIntegrationsContext();
-  try {
-    const limiter = production.rateLimits;
-    const limited = await limiter.enforce(limiter.publicKey('generic-webhook', sourceIdentity), { ...config.rateLimits.webhook, failureMode: 'closed' }, requestId);
-    if (!limited.ok) return NextResponse.json(limited.error, { status: status(limited.error), headers: { 'Retry-After': limited.error.error.fields?.retryAfterSeconds?.[0] ?? '1' } });
-    const service = production.webhooks;
-    const rawBody = await request.text();
-    const result = await service.process(rawBody, {
-      source: request.headers.get('x-indicate-webhook-source'), replayId: request.headers.get('x-indicate-replay-id'),
-      timestamp: request.headers.get('x-indicate-timestamp'), signature: request.headers.get('x-indicate-signature'),
-    }, null, requestId);
-    return result.ok ? NextResponse.json({ data: result.value, requestId }) : NextResponse.json(result.error, { status: status(result.error) });
-  } finally { await production.close(); }
+  const limiter = production.rateLimits;
+  const limited = await limiter.enforce(limiter.publicKey('generic-webhook', sourceIdentity), { ...config.rateLimits.webhook, failureMode: 'closed' }, requestId);
+  if (!limited.ok) return NextResponse.json(limited.error, { status: status(limited.error), headers: { 'Retry-After': limited.error.error.fields?.retryAfterSeconds?.[0] ?? '1' } });
+  const service = production.webhooks;
+  const rawBody = await request.text();
+  const result = await service.process(rawBody, {
+    source: request.headers.get('x-indicate-webhook-source'), replayId: request.headers.get('x-indicate-replay-id'),
+    timestamp: request.headers.get('x-indicate-timestamp'), signature: request.headers.get('x-indicate-signature'),
+  }, null, requestId);
+  return result.ok ? NextResponse.json({ data: result.value, requestId }) : NextResponse.json(result.error, { status: status(result.error) });
 }
 
 export const POST = withApiAccess('POST /api/webhooks/generic', handlePOST);

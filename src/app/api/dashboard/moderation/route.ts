@@ -8,7 +8,7 @@ import { getPublicConfig } from '@/core/config/public-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzleModerationRepository } from '@/data/repos/moderation';
 import { ModerationService } from '@/modules/moderation/moderation-service';
@@ -40,12 +40,11 @@ async function sessionFor(requestId: string): Promise<Session | PublicErrorEnvel
   const identity = await auth.verifyCookieSession();
   if (identity === null) return createNonDisclosingDenial(requestId);
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.bootstrap);
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
   const authorization = new DrizzleAuthorizationRepository(runtime.db);
   const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
-  if (!local.ok || local.value.status !== 'active') { await runtime.close(); return createNonDisclosingDenial(requestId); }
+  if (!local.ok || local.value.status !== 'active') { return createNonDisclosingDenial(requestId); }
   const platformPermissions = await authorization.listPlatformPermissions(local.value.id);
-  await runtime.close();
   const actor: ActorContext = {
     actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId: null,
     permissionSet: new Set(), platformPermissionSet: new Set(platformPermissions), entryPoint: 'dashboard', requestId,
@@ -55,11 +54,10 @@ async function sessionFor(requestId: string): Promise<Session | PublicErrorEnvel
 
 async function withService<T>(session: Session, run: (service: ModerationService) => Promise<T>): Promise<T> {
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.bootstrap);
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
   try {
     return await run(new ModerationService(new DrizzleModerationRepository(runtime.db)));
   } finally {
-    await runtime.close();
     await session.close();
   }
 }

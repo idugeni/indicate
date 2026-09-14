@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 
 import { PublicationWorker } from '@/modules/publishing/publication-worker';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzlePublicationTargetPublisher } from '@/data/repos/publishing/publication-target-publisher';
 import { DrizzlePublishingRepository } from '@/data/repos/publishing/repository';
 import { UpstashPublicationQueueAdapter } from '@/integrations/redis/upstash-publication-queue';
@@ -22,7 +22,7 @@ function matchesSecret(value: string | null, expected: string): boolean {
 async function handleGET(request: Request) {
   const context = await getServerRuntimeContext(); const config = context.config; const requestId = resolveRequestId(request);
   if (!matchesSecret(request.headers.get('authorization'), config.security.cronSecret)) return NextResponse.json(createPublicError('UNAUTHENTICATED', 'Authentication is required.', requestId), { status: 401 });
-  const runtime = createRuntimeDatabase(context.bootstrap);
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
   try {
     const repository = new DrizzlePublishingRepository(runtime.db);
     const queue = new UpstashPublicationQueueAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace, resourceId: config.redis.resourceId });
@@ -34,7 +34,7 @@ async function handleGET(request: Request) {
     return NextResponse.json(summary, { status: 200 });
   } catch {
     return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'Background processing is temporarily unavailable.', requestId), { status: 503 });
-  } finally { await runtime.close(); }
+  }
 }
 
 export const GET = withApiAccess('GET /api/internal/publishing', handleGET);

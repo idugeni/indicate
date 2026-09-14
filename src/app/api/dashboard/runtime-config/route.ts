@@ -7,7 +7,7 @@ import { getPublicConfig } from '@/core/config/public-config';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzleRuntimeConfigAdminRepository, RuntimeConfigAdminAccessDeniedError, RuntimeConfigAdminConflictError } from '@/data/repos/runtime-config/admin';
 import { mediaPolicySchema } from '@/core/config/persisted/persisted-schema';
@@ -30,8 +30,8 @@ async function handleGET() {
   const identity = await auth.verifyCookieSession();
   if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.bootstrap);
-  try {
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  {
     const authorization = new DrizzleAuthorizationRepository(runtime.db);
     const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
     if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
@@ -45,8 +45,6 @@ async function handleGET() {
     } catch {
       return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     }
-  } finally {
-    await runtime.close();
   }
 }
 
@@ -64,8 +62,8 @@ async function handlePOST(request: Request) {
   const identity = await auth.verifyCookieSession();
   if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.bootstrap);
-  try {
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  {
     const authorization = new DrizzleAuthorizationRepository(runtime.db);
     const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
     if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
@@ -85,8 +83,6 @@ async function handlePOST(request: Request) {
       if (error instanceof RuntimeConfigAdminConflictError) return NextResponse.json(createPublicError('CONFLICT', 'Kebijakan berubah sebelum penyimpanan. Muat ulang lalu coba lagi.', requestId), { status: 409 });
       return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'The runtime configuration operation could not be completed.', requestId), { status: 500 });
     }
-  } finally {
-    await runtime.close();
   }
 }
 

@@ -23,12 +23,8 @@ async function handleGET(request: Request) {
     return new NextResponse('Not Found', { status: 404, headers: { 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
   }
   const composition = await createProductionIntegrationsContext();
-  try {
-    const summary = await composition.telegram.processOutbox(20, requestId);
-    return NextResponse.json({ requestId, ...summary }, { headers: { 'Cache-Control': 'private, no-store' } });
-  } finally {
-    await composition.close();
-  }
+  const summary = await composition.telegram.processOutbox(20, requestId);
+  return NextResponse.json({ requestId, ...summary }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
 export const GET = withApiAccess('GET /api/internal/maintenance/outbox-drain', handleGET);

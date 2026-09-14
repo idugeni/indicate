@@ -12,7 +12,7 @@ import { WebhookService } from '@/modules/integrations/webhook-service';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import type { BootstrapConfig } from '@/core/config/bootstrap/bootstrap-schema';
 import type { RuntimeConfig } from '@/core/config/runtime/runtime-schema';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { DrizzlePublishingRepository } from '@/data/repos/publishing/repository';
 import { DrizzleIntegrationsRepository } from '@/data/repos/integrations';
@@ -23,7 +23,7 @@ import { TelegramBotApiAdapter } from '@/integrations/telegram/telegram-bot-api'
 import { UuidGenerator } from '@/core/system/uuid-generator';
 
 export function createProductionIntegrations(config: RuntimeConfig, bootstrap: BootstrapConfig) {
-  const runtime = createRuntimeDatabase(bootstrap); const identifiers = new UuidGenerator();
+  const runtime = getSharedRuntimeDatabase(bootstrap); const identifiers = new UuidGenerator();
   const repository = new DrizzleIntegrationsRepository(runtime.db); const dashboard = new DrizzleDashboardRepository(runtime.db); const publishing = new DrizzlePublishingRepository(runtime.db);
   const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey });
   const queue = new UpstashPublicationQueueAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace, resourceId: config.redis.resourceId });
@@ -39,7 +39,6 @@ export function createProductionIntegrations(config: RuntimeConfig, bootstrap: B
     rateLimits: new RateLimitService(new UpstashRateLimitAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })),
     webhooks: new WebhookService(repository, { generic: config.security.genericWebhookSecret }, config.security.webhookFreshnessSeconds, config.security.webhookReplayTtlSeconds),
     telegram: new TelegramWorkflowService(repository, sharedFactory, telegram, telegram, config.telegram.webhookSecret, config.security.webhookFreshnessSeconds, config.security.webhookReplayTtlSeconds),
-    close: runtime.close,
   };
 }
 

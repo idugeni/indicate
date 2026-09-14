@@ -44,11 +44,7 @@ export async function handleTelegramSecretReadiness(
 export async function handleTelegramSecretReadinessPOST(request: Request) {
   const context = await getServerRuntimeContext(); const config = context.config;
   const production = await createProductionIntegrationsContext();
-  try {
-    return await handleTelegramSecretReadiness(request, config, production.rateLimits);
-  } finally {
-    await production.close();
-  }
+  return await handleTelegramSecretReadiness(request, config, production.rateLimits);
 }
 
 export const POST = withApiAccess('POST /api/webhooks/readiness/telegram-secret', handleTelegramSecretReadinessPOST);

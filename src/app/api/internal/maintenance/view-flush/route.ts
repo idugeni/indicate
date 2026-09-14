@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { sql } from 'drizzle-orm';
 
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { Redis } from '@upstash/redis';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
@@ -32,8 +32,8 @@ async function handleGET(request: Request) {
     return new NextResponse('Not Found', { status: 404, headers: { 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
   }
   const noStore = { 'Cache-Control': 'private, no-store' };
-  const runtime = createRuntimeDatabase(context.bootstrap);
-  try {
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  {
     const redis = new Redis({ url: context.config.redis.url, token: context.config.redis.token });
     const prefix = `pv:${context.bootstrap.environment}:`;
     const deltas = new Map<string, FlushEntry & { count: number }>();
@@ -72,8 +72,6 @@ async function handleGET(request: Request) {
       }
     }
     return NextResponse.json({ requestId, keys: deltas.size, applied }, { headers: noStore });
-  } finally {
-    await runtime.close();
   }
 }
 
