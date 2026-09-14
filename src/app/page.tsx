@@ -64,7 +64,8 @@ export async function generateMetadata(): Promise<Metadata> {
   });
 
   return {
-    title: seo.title,
+    // Absolut: judul tenant tidak boleh ditempeli template '| Indicate'.
+    title: { absolute: seo.title },
     description: seo.description,
     robots: indexableRobots(),
     ...tenantFavicon(site.settings.faviconUrl),

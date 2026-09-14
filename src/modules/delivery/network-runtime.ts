@@ -86,7 +86,9 @@ function tenantHiddenMeta(
 ): Metadata {
   const seo = buildSeoDocument(site, { path, titleOverride: title });
   return {
-    title,
+    // Absolut: judul tenant tidak boleh ditempeli template '| Indicate'
+    // milik control-plane (src/app/layout.tsx).
+    title: { absolute: title },
     description,
     alternates: seo.canonical
       ? { canonical: seo.canonical, languages: { 'id-ID': seo.canonical } }
@@ -139,14 +141,14 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
     const categorySeo = buildSeoDocument(site, { path });
     if (categorySeo.canonical === null || categorySeo.openGraph === null) {
       return {
-        title: categoryTitle,
+        title: { absolute: categoryTitle },
         description: categoryDescription,
         robots: indexableRobots(),
         ...tenantFavicon(site.settings.faviconUrl),
       };
     }
     return {
-      title: categoryTitle,
+      title: { absolute: categoryTitle },
       description: categoryDescription,
       alternates: {
         canonical: categorySeo.canonical,
@@ -181,14 +183,14 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
     const indexSeo = buildSeoDocument(site, { path });
     if (indexSeo.canonical === null || indexSeo.openGraph === null) {
       return {
-        title: indexTitle,
+        title: { absolute: indexTitle },
         description: indexDescription,
         robots: indexableRobots(),
         ...tenantFavicon(site.settings.faviconUrl),
       };
     }
     return {
-      title: indexTitle,
+      title: { absolute: indexTitle },
       description: indexDescription,
       alternates: {
         canonical: indexSeo.canonical,
@@ -225,7 +227,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
     }
     const tagSeo = buildSeoDocument(site, { path, titleOverride: tagTitle });
     return {
-      title: tagTitle,
+      title: { absolute: tagTitle },
       description: tagDescription,
       alternates: tagSeo.canonical
         ? { canonical: tagSeo.canonical, languages: { 'id-ID': tagSeo.canonical } }
@@ -263,7 +265,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
   };
 
   return {
-    title: seo.title,
+    title: { absolute: seo.title },
     description: seo.description,
     alternates: {
       canonical: seo.canonical,
