@@ -20,10 +20,17 @@ export interface NetworkSiteCachePort {
   read(identity: CacheIdentity, tags: readonly string[], loader: () => Promise<NetworkSiteData | null>): Promise<NetworkSiteCacheEntry>;
 }
 
+export interface SiteBrand {
+  readonly name: string;
+  readonly colors: Readonly<Record<string, string>>;
+}
+
 export interface DeliveryRepository {
   findActiveSitesByExactHostname(hostname: string): Promise<readonly ResolvedSiteContext[]>;
   findPendingActivation(hostname: string, attemptId: string): Promise<boolean>;
   loadNetworkSite(context: ResolvedSiteContext, query: NetworkContentQuery): Promise<NetworkSiteData | null>;
+  /** Brand ringan (1 baris settings, tanpa artikel) untuk /api/network/brand-mark. */
+  loadSiteBrand(context: ResolvedSiteContext): Promise<SiteBrand | null>;
   isCacheBypassed(context: ResolvedSiteContext): Promise<boolean>;
   beginActivation(actor: AuthorizedTenantActorContext, siteId: string, hostname: string, previousHostname: string | null, now: string): Promise<ActivationAttempt>;
   updateActivation(actor: AuthorizedTenantActorContext, attemptId: string, activationState: ActivationAttempt['activationState'], externalStatus: Readonly<Record<string, unknown>>, now: string): Promise<ActivationAttempt>;

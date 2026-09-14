@@ -61,16 +61,6 @@ export const permissionDefinitions = pgTable('permission_definitions', {
   primaryKey({ name: 'permission_definitions_pk', columns: [table.scope, table.name] }),
 ]);
 
-export const colorPresets = pgTable('color_presets', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  description: text('description').notNull(),
-  primary: text('primary').notNull(),
-  accent: text('accent').notNull(),
-  headerBg: text('header_bg'),
-  ...timestamps,
-});
-
 export const templatePresets = pgTable('template_presets', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),

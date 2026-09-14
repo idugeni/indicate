@@ -13,7 +13,7 @@ const TEMPLATE_IDS = new Set(MASTER_TEMPLATE_PRESETS.map((preset) => preset.id))
 
 function initialTemplateId(colors: Readonly<Record<string, string>> | undefined): string {
   const raw = colors?.templateId;
-  return raw !== undefined && TEMPLATE_IDS.has(raw) ? raw : 'portal-news';
+  return raw !== undefined && TEMPLATE_IDS.has(raw) ? raw : 'clean-blue';
 }
 
 interface SiteOption {

@@ -88,6 +88,21 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
     });
   }
 
+  async loadSiteBrand(context: ResolvedSiteContext): Promise<{ name: string; colors: Readonly<Record<string, string>> } | null> {
+    return this.database.transaction(async (transaction) => {
+      await this.publicTenant(transaction, context);
+      const rows = await transaction.select({ name: siteSettings.name, colors: siteSettings.colors })
+        .from(sites)
+        .innerJoin(domains, and(eq(domains.organizationId, sites.organizationId), eq(domains.id, sites.domainId), eq(domains.status, 'active')))
+        .leftJoin(regions, and(eq(regions.organizationId, sites.organizationId), eq(regions.id, sites.regionId)))
+        .innerJoin(siteSettings, and(eq(siteSettings.organizationId, sites.organizationId), eq(siteSettings.siteId, sites.id)))
+        .where(and(eq(sites.organizationId, context.organizationId), eq(sites.id, context.siteId), eq(sites.normalizedHostname, context.normalizedHostname), eq(sites.status, 'active'), eq(sites.activationState, 'active'), eq(sites.routingVersion, context.routingVersion), eq(sites.contentVersion, context.contentVersion), or(sql`${sites.regionId} IS NULL`, eq(regions.status, 'active')))).limit(1);
+      const row = rows[0];
+      if (row === undefined) return null;
+      return { name: row.name, colors: row.colors };
+    });
+  }
+
   async isCacheBypassed(context: ResolvedSiteContext): Promise<boolean> {
     return this.database.transaction(async (transaction) => {
       await this.publicTenant(transaction, context);

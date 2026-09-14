@@ -44,14 +44,6 @@ const channelSchema = z.object({
   href: z.string().trim().max(500).nullish(),
   sortOrder: z.number().int().min(0).max(1000),
 }).strict();
-const colorSchema = z.object({
-  id: z.string().trim().min(1).max(60),
-  name: z.string().trim().min(1).max(120),
-  description: z.string().trim().min(1).max(500),
-  primary: z.string().regex(/^#[0-9a-f]{6}$/iu),
-  accent: z.string().regex(/^#[0-9a-f]{6}$/iu),
-  headerBg: z.string().regex(/^#[0-9a-f]{6}$/iu).nullable(),
-}).strict();
 const templateSchema = z.object({
   id: z.string().trim().min(1).max(60),
   name: z.string().trim().min(1).max(120),
@@ -64,11 +56,10 @@ const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('faq.save'), row: faqSchema }),
   z.object({ action: z.literal('showcase.save'), row: showcaseSchema }),
   z.object({ action: z.literal('channel.save'), row: channelSchema }),
-  z.object({ action: z.literal('color.save'), row: colorSchema }),
   z.object({ action: z.literal('template.save'), row: templateSchema }),
   z.object({
     action: z.literal('row.delete'),
-    kind: z.enum(['testimonial', 'faq', 'showcase', 'channel', 'color', 'template']),
+    kind: z.enum(['testimonial', 'faq', 'showcase', 'channel', 'template']),
     id: z.string().min(1).max(200),
   }),
 ]);
@@ -125,7 +116,6 @@ async function handlePOST(request: Request) {
         case 'faq.save': await repository.saveFaq(identity.authUserId, local.value.id, command.row); break;
         case 'showcase.save': await repository.saveShowcaseEntry(identity.authUserId, local.value.id, command.row); break;
         case 'channel.save': await repository.saveChannel(identity.authUserId, local.value.id, command.row); break;
-        case 'color.save': await repository.saveColorPreset(identity.authUserId, local.value.id, command.row); break;
         case 'template.save': await repository.saveTemplatePreset(identity.authUserId, local.value.id, command.row); break;
         case 'row.delete': await repository.deleteContentRow(identity.authUserId, local.value.id, command.kind, command.id); break;
       }

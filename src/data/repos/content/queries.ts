@@ -5,7 +5,6 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type * as schema from '@/data/schema';
 import {
-  colorPresets,
   contactChannels,
   faqs,
   mediaShowcase,
@@ -26,15 +25,6 @@ export interface FaqRow {
   readonly id: string;
   readonly question: string;
   readonly answer: string;
-}
-
-export interface ColorPresetRow {
-  readonly id: string;
-  readonly name: string;
-  readonly description: string;
-  readonly primary: string;
-  readonly accent: string;
-  readonly headerBg: string | null;
 }
 
 export interface TemplatePresetRow {
@@ -69,14 +59,6 @@ export async function readContactChannels(db: Database): Promise<readonly { read
     title: row.title,
     description: row.description,
     ...(typeof row.href === 'string' && row.href.trim() !== '' ? { href: row.href } : {}),
-  })));
-}
-
-export async function readColorPresets(db: Database): Promise<readonly ColorPresetRow[]> {
-  const rows = await db.select().from(colorPresets).orderBy(asc(colorPresets.id));
-  return Object.freeze(rows.map((row) => Object.freeze({
-    id: row.id, name: row.name, description: row.description,
-    primary: row.primary, accent: row.accent, headerBg: row.headerBg,
   })));
 }
 

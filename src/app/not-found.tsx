@@ -2,8 +2,6 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { buttonVariants } from '@/components/ui/button';
-import { NetworkTemplate } from '@/modules/site/components/network/network-listing';
-import { normalizeTemplateId } from '@/modules/site/components/network/templates/listing-shared';
 import { CleanBlueNotFound } from '@/modules/site/components/network/templates/clean-blue/not-found';
 import { deliveryComposition } from '@/modules/delivery';
 
@@ -56,20 +54,7 @@ async function TenantNotFound() {
 
   if (site === null) return <GenericNotFound />;
 
-  if (normalizeTemplateId(site.settings.colors.templateId) === 'clean-blue') {
-    return <CleanBlueNotFound site={site} />;
-  }
-
-  return (
-    <NetworkTemplate site={site}>
-      <section className="public-status" aria-labelledby="not-found-title">
-        <p className="m-0 font-mono text-xs font-medium uppercase tracking-wider text-brass">404</p>
-        <h1 id="not-found-title">Halaman tidak ditemukan</h1>
-        <p>Konten yang Anda cari tidak tersedia di {site.settings.name}.</p>
-        <Link href="/">Kembali ke beranda</Link>
-      </section>
-    </NetworkTemplate>
-  );
+  return <CleanBlueNotFound site={site} />;
 }
 
 export default function NotFound() {

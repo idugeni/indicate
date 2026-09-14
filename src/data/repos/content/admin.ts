@@ -4,7 +4,6 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import type * as schema from '@/data/schema';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import {
-  colorPresets,
   contactChannels,
   faqs,
   mediaShowcase,
@@ -46,15 +45,14 @@ export class DrizzleContentAdminRepository {
 
   async listContent(authUserId: string, localUserId: string) {
     return this.platform(authUserId, localUserId, async (tx) => {
-      const [quotes, faqRows, showcase, channels, colors, templates] = await Promise.all([
+      const [quotes, faqRows, showcase, channels, templates] = await Promise.all([
         tx.select().from(testimonials),
         tx.select().from(faqs),
         tx.select().from(mediaShowcase),
         tx.select().from(contactChannels),
-        tx.select().from(colorPresets),
         tx.select().from(templatePresets),
       ]);
-      return Object.freeze({ quotes, faqRows, showcase, channels, colors, templates });
+      return Object.freeze({ quotes, faqRows, showcase, channels, templates });
     });
   }
 
@@ -104,18 +102,6 @@ export class DrizzleContentAdminRepository {
     });
   }
 
-  async saveColorPreset(authUserId: string, localUserId: string, row: {
-    readonly id: string; readonly name: string; readonly description: string;
-    readonly primary: string; readonly accent: string; readonly headerBg: string | null;
-  }): Promise<void> {
-    return this.platform(authUserId, localUserId, async (tx) => {
-      await tx.insert(colorPresets).values({ ...row, updatedAt: new Date() }).onConflictDoUpdate({
-        target: colorPresets.id,
-        set: { name: row.name, description: row.description, primary: row.primary, accent: row.accent, headerBg: row.headerBg, updatedAt: new Date() },
-      });
-    });
-  }
-
   async saveTemplatePreset(authUserId: string, localUserId: string, row: {
     readonly id: string; readonly name: string; readonly description: string; readonly category: string;
   }): Promise<void> {
@@ -127,13 +113,12 @@ export class DrizzleContentAdminRepository {
     });
   }
 
-  async deleteContentRow(authUserId: string, localUserId: string, kind: 'testimonial' | 'faq' | 'showcase' | 'channel' | 'color' | 'template', id: string): Promise<void> {
+  async deleteContentRow(authUserId: string, localUserId: string, kind: 'testimonial' | 'faq' | 'showcase' | 'channel' | 'template', id: string): Promise<void> {
     return this.platform(authUserId, localUserId, async (tx) => {
       if (kind === 'testimonial') await tx.delete(testimonials).where(eq(testimonials.id, id));
       else if (kind === 'faq') await tx.delete(faqs).where(eq(faqs.id, id));
       else if (kind === 'showcase') await tx.delete(mediaShowcase).where(eq(mediaShowcase.id, id));
       else if (kind === 'channel') await tx.delete(contactChannels).where(eq(contactChannels.key, id));
-      else if (kind === 'color') await tx.delete(colorPresets).where(eq(colorPresets.id, id));
       else await tx.delete(templatePresets).where(eq(templatePresets.id, id));
     });
   }

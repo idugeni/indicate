@@ -12,12 +12,12 @@ import { TemplateShowcaseSection } from '@/modules/site/components/sections/temp
 import { TestimonialsSection } from '@/modules/site/components/sections/testimonials-section';
 import { WhyIndicateSection } from '@/modules/site/components/sections/why-indicate-section';
 import { WorkflowSection } from '@/modules/site/components/sections/workflow-section';
-import { getColorPresets, getTemplatePresets } from '@/modules/content/site-content';
+import { getTemplatePresets } from '@/modules/content/site-content';
 
 /** Below-fold island: preset DB reads stream after the hero paints (LCP). */
 async function TemplateShowcaseWithData() {
-  const [templates, colors] = await Promise.all([getTemplatePresets(), getColorPresets()]);
-  return <TemplateShowcaseSection templates={templates} colors={colors} />;
+  const templates = await getTemplatePresets();
+  return <TemplateShowcaseSection templates={templates} />;
 }
 
 function TemplateShowcaseFallback() {

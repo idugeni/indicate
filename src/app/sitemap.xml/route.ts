@@ -20,19 +20,21 @@ function controlPlaneSitemap(host: string): string {
 
 async function handleGET() {
   // Sitemap per-host + DB: tetap dinamis per request (pengganti force-dynamic).
+  // Edge TTL 600 + SWR 600: crawler burst tidak mengulang full load.
   await connection();
   const { resolver, content, config } = await deliveryComposition();
-  const result = await resolver.classify((await headers()).get('host'));
+  const requestHeaders = await headers();
+  const result = await resolver.classify(requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host'));
   if (result.kind === 'control' && result.surface === 'dashboard') {
     return new Response(controlPlaneSitemap(config.hosts.dashboard), {
-      headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=300' },
+      headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=600, stale-while-revalidate=600' },
     });
   }
   if (result.kind !== 'site') return denied(result.kind === 'invalid' ? 400 : result.kind === 'ambiguous' ? 500 : 404);
   const site = await content.load(result.context, {}, { path: '/sitemap.xml', locale: config.seo.defaultLocale });
   if (site === null) return denied(404);
   return new Response(serializeSitemap(site), {
-    headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=300' },
+    headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=600, stale-while-revalidate=600' },
   });
 }
 

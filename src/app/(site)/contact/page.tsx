@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 
 import { CONTACT_CHANNELS as CONTACT_CHANNEL_FALLBACK, CONTACT_CHECKLIST } from '@/ui/site/marketing-content';
@@ -14,8 +15,26 @@ export function generateMetadata(): Metadata {
   return siteMetadata('Kontak', DESCRIPTION, '/contact');
 }
 
-export default async function KontakPage() {
+/**
+ * DB read (hours-TTL) streaming di belakang shell statis: halaman tidak
+ * menahan prerender bila pool Supabase lambat (kelas error "Filling a cache
+ * during prerender timed out" di production). Fallback = konten statis yang
+ * sama persis dengan fallback getContactChannels().
+ */
+async function ContactChannels() {
   const channels = await getContactChannels();
+  return (
+    <FeatureGrid items={withIcons(channels.length > 0 ? channels : CONTACT_CHANNEL_FALLBACK, CHANNEL_ICONS)} columns={2} />
+  );
+}
+
+function ContactChannelsFallback() {
+  return (
+    <FeatureGrid items={withIcons(CONTACT_CHANNEL_FALLBACK, CHANNEL_ICONS)} columns={2} />
+  );
+}
+
+export default function KontakPage() {
   return (
     <PublicPage
       eyebrow="Kontak"
@@ -29,7 +48,9 @@ export default async function KontakPage() {
         <WhatsAppCard />
       </Section>
       <Section title="Saluran" description="Pilih jalur yang paling nyaman — semuanya dijawab manusia." eyebrow="Kanal" tone="raised">
-        <FeatureGrid items={withIcons(channels.length > 0 ? channels : CONTACT_CHANNEL_FALLBACK, CHANNEL_ICONS)} columns={2} />
+        <Suspense fallback={<ContactChannelsFallback />}>
+          <ContactChannels />
+        </Suspense>
       </Section>
       <Section title="Agar tinjauan lebih cepat" description="Sertakan informasi berikut pada pesan pertama Anda." eyebrow="Tips">
         <Prose>

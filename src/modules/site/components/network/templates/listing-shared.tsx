@@ -9,21 +9,11 @@ import { ARTICLE_FALLBACK_IMAGE_URL } from '@/ui/site/marketing-content';
 export const TIME_ZONE_ID = 'Asia/Jakarta';
 
 /**
- * Satu-satunya daftar layout tenant yang diakui (lih. docs/DESIGN.md §17).
- * Brand baru tinggal dipetakan via `site_settings.colors.templateId` —
+ * Satu-satunya layout tenant yang diakui (lih. docs/DESIGN.md §17):
+ * Clean Blue Editorial. Semua domain dipaksa sinkron ke template ini —
  * tidak ada cabang per-hostname, tidak ada CSS per-domain.
  */
 export const TEMPLATE_IDS = [
-  'portal-news',
-  'broadsheet-classic',
-  'columnist-opinion',
-  'compact-stream',
-  'editorial-magazine',
-  'geo-radar',
-  'minimal-press',
-  'modern-tech',
-  'multimedia-visual',
-  'tabloid-express',
   'clean-blue',
 ] as const;
 
@@ -33,7 +23,7 @@ export function normalizeTemplateId(raw: unknown): TemplateId {
   if (typeof raw === 'string' && (TEMPLATE_IDS as readonly string[]).includes(raw)) {
     return raw as TemplateId;
   }
-  return 'portal-news';
+  return 'clean-blue';
 }
 
 export interface ListingProps {

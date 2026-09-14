@@ -7,8 +7,6 @@ import { Container } from '@/modules/site/components/layout/content';
 import { BackToTop } from '@/modules/site/components/layout/back-to-top';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { NETWORK_COLOR_PRESETS as NETWORK_COLOR_FALLBACK } from '@/ui/themes';
-import { getColorPresets } from '@/modules/content/site-content';
 import { normalizeTemplateId } from '@/modules/site/components/network/templates/listing-shared';
 
 export async function NetworkTemplate({
@@ -18,13 +16,9 @@ export async function NetworkTemplate({
   readonly site: NetworkSiteData;
   readonly children: ReactNode;
 }) {
-  const presetId = site.settings.colors.presetId ?? 'emerald-forest';
-  const presets = await getColorPresets();
-  const matchedPreset = (presets.length > 0 ? presets : NETWORK_COLOR_FALLBACK).find((p) => p.id === presetId);
-
-  const primary = site.settings.colors.primary ?? matchedPreset?.primary ?? '#0b5d4b';
-  const accent = site.settings.colors.accent ?? matchedPreset?.accent ?? '#e9a23b';
-  const headerBg = site.settings.colors.headerBg ?? matchedPreset?.headerBg ?? '#0e1320';
+  const primary = site.settings.colors.primary ?? '#1f6feb';
+  const accent = site.settings.colors.accent ?? '#1f6feb';
+  const headerBg = site.settings.colors.headerBg ?? '#0e1320';
   const templateId = normalizeTemplateId(site.settings.colors.templateId);
 
   const siteInitial = (site.settings.name || 'P').trim().slice(0, 1).toUpperCase();
@@ -34,8 +28,6 @@ export async function NetworkTemplate({
     '--site-accent': accent,
     '--site-header-bg': headerBg,
   } as CSSProperties;
-
-  const centeredMasthead = templateId === 'broadsheet-classic';
 
   return (
       <div
@@ -60,7 +52,7 @@ export async function NetworkTemplate({
         ) : null}
 
         <header className="template-header sticky top-0 z-30 border-b border-hairline bg-bg-raised">
-          <Container className={`flex items-center gap-6 py-3.5 ${centeredMasthead ? 'template-header--centered flex-col text-center' : 'justify-between'}`}>
+          <Container className="flex items-center gap-6 py-3.5 justify-between">
             <div className="network-brand flex items-center gap-3">
               {site.settings.logoUrl ? (
                 <Image

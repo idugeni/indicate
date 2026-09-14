@@ -59,18 +59,6 @@ const TYPES: readonly TypeDef[] = Object.freeze([
     newRow: () => ({ key: '', title: '', description: '', href: '', sortOrder: 99 }),
   },
   {
-    kind: 'color', label: 'Preset Warna', idKey: 'id',
-    fields: [
-      { key: 'id', label: 'ID', kind: 'text', required: true },
-      { key: 'name', label: 'Nama', kind: 'text', required: true },
-      { key: 'description', label: 'Deskripsi', kind: 'textarea', required: true },
-      { key: 'primary', label: 'Primer', kind: 'color', required: true },
-      { key: 'accent', label: 'Aksen', kind: 'color', required: true },
-      { key: 'headerBg', label: 'Latar Header', kind: 'color' },
-    ],
-    newRow: () => ({ id: '', name: '', description: '', primary: '#0b5d4b', accent: '#e9a23b', headerBg: null }),
-  },
-  {
     kind: 'template', label: 'Preset Template', idKey: 'id',
     fields: [
       { key: 'id', label: 'ID', kind: 'text', required: true },
@@ -85,12 +73,12 @@ const TYPES: readonly TypeDef[] = Object.freeze([
 type Row = Record<string, unknown>;
 interface ContentBundle {
   readonly quotes: readonly Row[]; readonly faqRows: readonly Row[];
-  readonly showcase: readonly Row[]; readonly channels: readonly Row[]; readonly colors: readonly Row[];
+  readonly showcase: readonly Row[]; readonly channels: readonly Row[];
   readonly templates: readonly Row[];
 }
 const BUNDLE_KEY: Record<string, keyof ContentBundle> = {
   testimonial: 'quotes', faq: 'faqRows', showcase: 'showcase',
-  channel: 'channels', color: 'colors', template: 'templates',
+  channel: 'channels', template: 'templates',
 };
 
 function toFieldValue(def: FieldDef, row: Row): string | boolean {
