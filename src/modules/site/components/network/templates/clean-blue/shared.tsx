@@ -71,7 +71,7 @@ export function formatCompactViews(value: number): string {
 
 /** Nama penulis dengan fallback atribusi redaksi. */
 export function authorDisplayName(article: NetworkArticle): string {
-  return article.authorName ?? article.attribution;
+  return article.authorDisplayName ?? article.authorName ?? article.attribution;
 }
 
 /** Tanggal ringkas id-ID gaya contoh ("14 Sep 2026"). */

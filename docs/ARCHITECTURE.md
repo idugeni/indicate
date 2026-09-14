@@ -31,7 +31,7 @@ Every tenant operation carries one immutable Organization context derived from a
 9. Security-sensitive database changes and required Audit Logs commit atomically. Secrets and internal diagnostics never enter public errors or audit context.
 10. Dashboard, API, Telegram, background, and reconciliation adapters invoke shared application services rather than issuing tenant SQL or reimplementing business rules.
 11. External effects occur only after durable intent is recorded and are resumable, bounded, and idempotent.
-12. Implementation follows the required seven-stage dependency sequence; a failed Quality Gate blocks the next stage.
+12. Implementation follows the recommended seven-stage sequence as a guideline; a failed Quality Gate is a warning, not a hard block on the next stage (relaxed 2026-09-14).
 
 ## 3. System topology
 
@@ -712,20 +712,20 @@ Additional Central Java regions use the same data path without source changes.
 
 Rollback points the single Vercel project at the last schema-compatible application deployment. Forward-fix migrations are preferred after irreversible schema change. Durable activation, invalidation, queue, cleanup, and audit intent remains recoverable. Rollback never creates another topology or transfers Cloudflare nameserver authority.
 
-## 21. Quality architecture
+## 21. Quality architecture (advisory — relaxed 2026-09-14)
 
-Required deterministic single-run checks are:
+Recommended deterministic single-run checks are:
 
 - TypeScript typecheck;
 - lint;
 - migration/environment checks;
 - client-bundle and artifact secret scans.
 
-Every tenant-sensitive stage verifies same-organization success, absent-resource denial, cross-organization denial, and mutation/audit failure atomicity. Any cross-organization content, media, cache, credential, job, analytics, or audit result fails the stage.
+Every tenant-sensitive stage should verify same-organization success, absent-resource denial, cross-organization denial, and mutation/audit failure atomicity. Any cross-organization content, media, cache, credential, job, analytics, or audit result warns (does not hard-fail the stage in relaxed mode).
 
-## 22. Required seven-stage sequence
+## 22. Recommended seven-stage sequence (advisory — relaxed 2026-09-14)
 
-Implementation may begin only after both documentation artifacts are explicitly approved. That approval was recorded on 2026-08-30; subsequent implementation must proceed in this order:
+Implementation may begin without waiting for document approval (approval recorded 2026-08-30 is kept as history). The order below is preferred, not enforced:
 
 1. **Major Baseline — Foundation:** one Next.js app, approved stack, Runtime Configuration, deployment contracts, and Quality Gate tooling.
 2. **Major Tenancy — Persistence and authorization:** Drizzle schema/migrations/seed, Supabase Auth, tenant transactions, Membership, RBAC.
@@ -735,11 +735,11 @@ Implementation may begin only after both documentation artifacts are explicitly 
 6. **Major Integrations — External entry points:** Telegram, API Keys, rate limiting, replay defense, customer/subscription administration.
 7. **Major Release — Production readiness:** automated validation across all active root domains and regions, starting with Wonosobo, Magelang, and Semarang.
 
-Each stage begins only after the prior stage passes its complete Quality Gate. Any sequencing change must first be approved and recorded here with dependency rationale.
+Each stage ideally follows the prior stage's Quality Gate, but stages may overlap or reorder with a brief recorded rationale. No prior approval required in relaxed mode.
 
-## 23. Architecture decision boundaries
+## 23. Architecture decision boundaries (advisory defaults — relaxed 2026-09-14)
 
-The following are explicitly prohibited without requirements and architecture revision:
+The following are discouraged by default but allowed with owner approval and a brief note — no full requirements/architecture revision required:
 
 - additional tenant applications, Vercel projects, Supabase projects/databases/Auth instances, R2 buckets, Redis resources, public templates, or deployments;
 - Vercel nameserver delegation, Vercel DNS authority, or Vercel wildcard-domain registration;

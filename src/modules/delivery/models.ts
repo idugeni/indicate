@@ -21,10 +21,14 @@ export type RequestClassification =
 export interface PublicSiteSettings {
   readonly name: string;
   readonly description: string;
+  readonly seoDefaultTitle: string | null;
+  readonly seoDefaultDescription: string | null;
+  readonly seoSiteName: string | null;
+  readonly locale: string | null;
   readonly colors: Readonly<Record<string, string>>;
   readonly socialLinks: Readonly<Record<string, string>>;
   readonly navigation: readonly { readonly label: string; readonly path: string }[];
-  readonly logoUrl: string | null;
+  readonly logoUrl: string;
   readonly faviconUrl: string | null;
   readonly defaultImageUrl: string;
   readonly robots: readonly string[];
@@ -41,10 +45,12 @@ export interface NetworkArticle {
   readonly categorySlug: string | null;
   readonly categoryName: string | null;
   readonly authorName: string | null;
+  readonly authorDisplayName: string | null;
   readonly publisherName: string | null;
   readonly attribution: string;
-  /** Logo publisher dari `contacts.logoUrl`; null bila belum disematkan (UI memakai fallback). */
+  /** Logo publisher dari `contacts.logoUrl`; null bila belum disematkan (SEO memakai logo situs). */
   readonly publisherLogoUrl: string | null;
+  readonly publisherCity: string | null;
   readonly publisherVerified: boolean;
   readonly independent: boolean;
   readonly officialInstitution: string | null;

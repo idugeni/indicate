@@ -1,5 +1,3 @@
-import { Suspense } from 'react';
-
 import { CapabilitiesSection } from '@/modules/site/components/sections/capabilities-section';
 import { FaqSection } from '@/modules/site/components/sections/faq-section';
 import { HeroSection } from '@/modules/site/components/sections/hero-section';
@@ -14,23 +12,8 @@ import { WhyIndicateSection } from '@/modules/site/components/sections/why-indic
 import { WorkflowSection } from '@/modules/site/components/sections/workflow-section';
 import { getTemplatePresets } from '@/modules/content/site-content';
 
-/** Below-fold island: preset DB reads stream after the hero paints (LCP). */
-async function TemplateShowcaseWithData() {
+export async function LandingPage() {
   const templates = await getTemplatePresets();
-  return <TemplateShowcaseSection templates={templates} />;
-}
-
-function TemplateShowcaseFallback() {
-  return (
-    <div aria-busy="true" aria-label="Memuat etalase template" className="mx-auto w-full max-w-6xl px-6 py-14 md:py-20">
-      <div className="h-4 w-40 animate-pulse rounded bg-bg-raised-2" />
-      <div className="mt-4 h-10 w-3/4 animate-pulse rounded bg-bg-raised-2" />
-      <div className="mt-4 min-h-[420px] animate-pulse rounded-lg border border-hairline bg-bg-raised" />
-    </div>
-  );
-}
-
-export function LandingPage() {
   return (
     <SiteShell>
       <div className="flex flex-col">
@@ -40,9 +23,7 @@ export function LandingPage() {
         <SecuritySection />
         <WhyIndicateSection />
         <WorkflowSection />
-        <Suspense fallback={<TemplateShowcaseFallback />}>
-          <TemplateShowcaseWithData />
-        </Suspense>
+        <TemplateShowcaseSection templates={templates} />
         <CapabilitiesSection />
         <TestimonialsSection />
         <PricingSection />

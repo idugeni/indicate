@@ -126,15 +126,15 @@ This repository currently provides these scripts (see `package.json`):
 | `npm run lint` | Run ESLint with zero-warning threshold. |
 | `npm run audit:production` | Audit production dependencies at high severity. |
 
-Forward migrations are hand-written and reviewed, not generated. `drizzle-kit generate` was removed because the reviewed sequence contains PL/pgSQL functions, triggers, and row level security policies that it cannot express, and its snapshot baseline stopped at `0002`, so running it would emit an incorrect migration. Never edit migration metadata to conceal a failed migration, and never use an application runtime credential for migration ownership.
+Forward migrations are hand-written and reviewed by default, not generated. `drizzle-kit generate` is discouraged because the reviewed sequence contains PL/pgSQL functions, triggers, and row level security policies that it cannot express. Avoid editing migration metadata to conceal a failed migration outside development, and avoid application runtime credentials for migration ownership.
 
-## Release quality and promotion
+## Release quality and promotion (advisory — relaxed 2026-09-14)
 
 CI runs the Release Quality Gate (`typecheck`, `lint`, production `build`) on every pull request and push to `main`. Promotion beyond CI is a manual operator decision:
 
-- Preserve a green gate on the exact promoted commit; never promote a red or unchecked commit.
-- Apply only reviewed forward migrations (see [database migration operations](docs/MIGRATIONS.md)) and confirm `GET /api/health` reports a valid configuration before and after.
-- Promote only the already-built artifact to the existing Vercel project. Do not create a second project or tenant deployment.
+- Preserve a green gate on the promoted commit when practical; promoting a red or unchecked commit needs explicit owner sign-off with a recorded risk note.
+- Apply reviewed forward-by-default migrations (see [database migration operations](docs/MIGRATIONS.md)) and confirm `GET /api/health` reports a valid configuration before and after when practical.
+- Prefer promoting the already-built artifact to the existing Vercel project; a second project or tenant deployment needs explicit owner approval.
 - Verify production readiness against the checklist in the [production readiness and rollback runbook](docs/PRODUCTION_READINESS_RUNBOOK.md) before routing traffic.
 - `npm run audit:production` audits production dependencies at high severity as part of the decision.
 

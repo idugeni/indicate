@@ -23,6 +23,18 @@ export default defineConfig([
       ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs['core-web-vitals'].rules,
       'import-x/no-anonymous-default-export': 'warn',
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../*', '..'],
+              message:
+                'Gunakan alias `@/` untuk impor lintas direktori (lihat AGENTS.md "Komentar & impor"). `./` hanya untuk sibling sedirektori / barrel index.ts.',
+            },
+          ],
+        },
+      ],
     },
   },
   ...tseslint.configs.recommended,

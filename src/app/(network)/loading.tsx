@@ -1,7 +1,6 @@
 import { CleanBlueLoader } from '@/modules/site/components/network/templates/clean-blue/loader';
 
-/** Tenant public suspense skeleton: loader global template, statis agar tidak
- *  menahan prerender dan tanpa query tambahan (tanpa skeleton). */
+/** Tenant public loader global: tanpa skeleton, tanpa teks. */
 export default function PublicLoading() {
-  return <CleanBlueLoader label="Memuat berita" />;
+  return <CleanBlueLoader />;
 }

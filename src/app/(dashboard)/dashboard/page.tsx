@@ -16,7 +16,7 @@ import { UuidGenerator } from '@/core/system/uuid-generator';
 import { DashboardWorkspace, type OrganizationOption } from '@/modules/dashboard/components/dashboard-workspace';
 import { RedeemInviteForm } from '@/modules/dashboard/components/billing/redeem-invite-form';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
-import DashboardLoading from '../loading';
+import DashboardLoading from '@/app/(dashboard)/loading';
 
 async function resolveDisplayAvatarUrl(
   stored: string | null,

@@ -1,6 +1,6 @@
-# Indicate
+# Indicate (relaxed mode — conventions advisory, 2026-09-14)
 
-Multi-tenant media syndication platform — one central Dashboard operating many news domains from a single shared deployment.
+Multi-tenant media syndication platform — one central Dashboard operating many news domains from a single shared deployment. Conventions below are recommended defaults; deviations are allowed with owner sign-off and a brief note.
 
 ## Tech stack
 
@@ -83,12 +83,12 @@ Configured in `tsconfig.json`:
 @/ui/*           → ./src/ui/*
 ```
 
-## Import boundaries
+## Import boundaries (advisory)
 
-- `src/modules/` encapsulates product capabilities (`auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `persisted-config`, `publishing`, `site`). Only `dashboard`, `delivery`, and `integrations` currently expose a barrel `index.ts` — import every other module by file path (e.g. `@/modules/publishing/publication-policy`), never by bare module specifier.
-- `src/integrations/` holds provider adapters (`supabase`, `storage`, `redis`, `telegram`, `cloudflare`, `vercel`) and stays server-only.
+- `src/modules/` encapsulates product capabilities (`auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `persisted-config`, `publishing`, `site`). Only `dashboard`, `delivery`, and `integrations` currently expose a barrel `index.ts` — prefer importing every other module by file path (e.g. `@/modules/publishing/publication-policy`).
+- `src/integrations/` holds provider adapters (`supabase`, `storage`, `redis`, `telegram`, `cloudflare`, `vercel`) and should stay server-only.
 - `src/core/` holds the shared kernel (`config/`, errors, operation context, hostname, observability, routing, security, system, transactions).
-- `src/app/` handles Next.js App Router concerns only and delegates all business logic to `src/modules/` and `src/data/`.
+- `src/app/` handles Next.js App Router concerns and should delegate business logic to `src/modules/` and `src/data/`.
 
 ## Multi-tenant routing
 
@@ -149,12 +149,12 @@ Migrations in `src/data/migrations/` are applied manually in filename order agai
 - **Types/interfaces:** `PascalCase`
 - **Constants:** `UPPER_SNAKE_CASE`
 
-## Security invariants
+## Security invariants (recommended defaults — relaxed 2026-09-14)
 
-- Secrets stay in server-only environment storage; never in browser bundles, logs, fixtures, or error responses.
-- Every tenant operation derives exactly one authorized `organizationId`.
-- Missing, malformed, or unauthorized inputs receive non-disclosing denial.
-- RLS enforced at the PostgreSQL level with a dedicated non-owner runtime role.
+- Secrets should stay in server-only environment storage; avoid browser bundles, logs, fixtures, or error responses.
+- Every tenant operation should derive exactly one authorized `organizationId`.
+- Missing, malformed, or unauthorized inputs should receive non-disclosing denial.
+- RLS is currently enforced at the PostgreSQL level with a dedicated non-owner runtime role (code fact; changing it needs explicit owner approval).
 
 ## Design system
 

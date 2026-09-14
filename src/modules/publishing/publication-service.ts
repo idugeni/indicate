@@ -7,6 +7,7 @@ import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscri
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
 import { publicationRequestSchema, publicationBulkRequestSchema, publicationStatusSchema, publicationTargetSelectionSchema } from '@/modules/publishing/schemas';
+import { findDuplicateOverrides } from '@/modules/site/seo-validation';
 
 interface ClockLike { now(): Date }
 
@@ -31,6 +32,17 @@ export class PublicationService {
     const overrides = parsed.data.overrides;
     for (const siteId of Object.keys(overrides)) {
       if (!siteIds.includes(siteId)) return { ok: false, error: createPublicError('INVALID_INPUT', 'Overrides must reference a requested site.', actor.requestId) };
+    }
+    if (siteIds.length > 1) {
+      for (const siteId of siteIds) {
+        const override = overrides[siteId];
+        if (override?.title === undefined || override.description === undefined) {
+          return { ok: false, error: createPublicError('INVALID_INPUT', 'Multi-site publish requires a distinct custom title and description per site.', actor.requestId) };
+        }
+      }
+      if (findDuplicateOverrides(overrides).length > 0) {
+        return { ok: false, error: createPublicError('INVALID_INPUT', 'Each site needs a distinct title and description; duplicates were found.', actor.requestId) };
+      }
     }
     const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds, options: parsed.data.options, overrides });
     const now = this.clock.now();
@@ -111,6 +123,17 @@ export class PublicationService {
     const overrides = parsed.data.overrides;
     for (const siteId of Object.keys(overrides)) {
       if (!siteIds.includes(siteId)) return { ok: false, error: createPublicError('INVALID_INPUT', 'Overrides must reference a requested site.', actor.requestId) };
+    }
+    if (siteIds.length > 1) {
+      for (const siteId of siteIds) {
+        const override = overrides[siteId];
+        if (override?.title === undefined || override.description === undefined) {
+          return { ok: false, error: createPublicError('INVALID_INPUT', 'Multi-site publish requires a distinct custom title and description per site.', actor.requestId) };
+        }
+      }
+      if (findDuplicateOverrides(overrides).length > 0) {
+        return { ok: false, error: createPublicError('INVALID_INPUT', 'Each site needs a distinct title and description; duplicates were found.', actor.requestId) };
+      }
     }
     const articleIds = [...new Set(parsed.data.articleIds)].sort();
     const now = this.clock.now();

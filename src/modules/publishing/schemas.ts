@@ -34,10 +34,10 @@ export const mediaArchiveSchema = z.object({ mediaId: z.uuid(), expectedVersion:
 
 const publicationOptionsSchema = z.record(z.string().min(1).max(100), z.json()).default({});
 const publicationOverrideSchema = z.object({
-  title: z.string().trim().min(1).max(160).optional(),
-  description: z.string().trim().min(1).max(500).optional(),
+  title: z.string().trim().min(10).max(160).optional(),
+  description: z.string().trim().min(50).max(500).optional(),
   imageMediaId: z.uuid().optional(),
-}).strict();
+}).strict().refine((override) => override.title !== undefined || override.description !== undefined || override.imageMediaId !== undefined, 'override_must_define_a_field');
 export const publicationRequestSchema = z.object({
   articleId: z.uuid(),
   siteIds: z.array(z.uuid()).min(1).max(100),

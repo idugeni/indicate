@@ -91,6 +91,9 @@ export const authors = pgTable('authors', {
   id: uuid('id').notNull(),
   displayName: text('display_name').notNull(),
   byline: text('byline').notNull(),
+  bio: text('bio'),
+  avatarUrl: text('avatar_url'),
+  websiteUrl: text('website_url'),
   status: recordStatus('status').default('active').notNull(),
   version: integer('version').default(1).notNull(),
   ...timestamps,
@@ -98,6 +101,8 @@ export const authors = pgTable('authors', {
   primaryKey({ name: 'authors_pk', columns: [table.organizationId, table.id] }),
   unique('authors_id_unique').on(table.id),
   index('authors_organization_status_name_idx').on(table.organizationId, table.status, table.displayName),
+  check('authors_bio_length', sql`(${table.bio} IS NULL OR (char_length(${table.bio}) BETWEEN 1 AND 2000))`),
+  check('authors_avatar_shape', sql`(${table.avatarUrl} IS NULL OR (${table.avatarUrl} LIKE '/%' OR ${table.avatarUrl} LIKE 'https://%'))`),
 ]);
 
 export const articles = pgTable('articles', {
@@ -163,6 +168,8 @@ export const articleSites = pgTable('article_sites', {
   index('article_sites_outcome_date_idx').on(table.organizationId, table.siteId, table.state, table.stateOccurredAt),
   check('article_sites_attempt_nonnegative', sql`${table.attempt} >= 0 AND ${table.version} > 0`),
   check('article_sites_view_counts_nonnegative', sql`${table.viewCount} >= 0`),
+  check('article_sites_custom_title_shape', sql`${table.customTitle} IS NULL OR (char_length(${table.customTitle}) BETWEEN 10 AND 160)`),
+  check('article_sites_custom_description_shape', sql`${table.customDescription} IS NULL OR (char_length(${table.customDescription}) BETWEEN 50 AND 500)`),
   check('article_sites_published_outcome', sql`${table.state} <> 'published' OR (${table.publishedUrl} IS NOT NULL AND ${table.publishedAt} IS NOT NULL)`),
 ]);
 

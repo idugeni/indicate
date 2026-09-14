@@ -1,8 +1,6 @@
-import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ArticlePage } from '@/modules/site/components/network/network-listing';
-import { CleanBlueLoader } from '@/modules/site/components/network/templates/clean-blue/loader';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 type Props = {
@@ -18,8 +16,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return networkMetadata(`/articles/${slug}`, { articleSlug: slug });
 }
 
-/** Params + konten tenant dibaca di dalam boundary agar shell tidak tertahan. */
-async function ArticleContent({ params }: Pick<Props, 'params'>) {
+/** Params + konten tenant dibaca langsung; loader global `(network)/loading.tsx` yang tampil. */
+export default async function DetailPage({ params }: Props) {
   const { slug } = await params;
   if (slug.trim() === '') notFound();
   const site = await resolveNetworkSite({ articleSlug: slug }, `/articles/${slug}`);
@@ -52,13 +50,5 @@ async function ArticleContent({ params }: Pick<Props, 'params'>) {
       newer={newer.length > 0 ? newer[newer.length - 1]! : fallbackNewer}
       older={older.length > 0 ? older[0]! : fallbackOlder}
     />
-  );
-}
-
-export default function DetailPage({ params }: Props) {
-  return (
-    <Suspense fallback={<CleanBlueLoader label="Memuat artikel" />}>
-      <ArticleContent params={params} />
-    </Suspense>
   );
 }

@@ -36,7 +36,7 @@ export const sharedDeploymentSchema = z
 export const mediaPolicySchema = z
   .object({
     allowedMimeTypes: z
-      .array(z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/avif']))
+      .array(z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/x-icon']))
       .min(1)
       .refine((mimes) => new Set(mimes).size === mimes.length, 'mime_types_must_be_distinct'),
     maxObjectBytes: z.number().int().positive().max(HARD_CAPS.mediaMaxBytes),

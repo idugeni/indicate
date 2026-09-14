@@ -99,7 +99,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
   const article = query.articleSlug === undefined ? undefined : site.articles[0];
 
   if (query.articleSlug !== undefined && article === undefined) {
-    return tenantHiddenMeta(site, path, site.settings.name, site.settings.description);
+    return tenantHiddenMeta(site, path, site.settings.name, site.settings.seoDefaultDescription ?? site.settings.description);
   }
 
   if (query.search !== undefined) {
@@ -107,17 +107,17 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
       site,
       '/search',
       query.search === '' ? `Pencarian | ${site.settings.name}` : `Hasil untuk "${query.search}" | ${site.settings.name}`,
-      site.settings.description,
+      site.settings.seoDefaultDescription ?? site.settings.description,
     );
   }
 
   if (query.categorySlug !== undefined) {
     const categoryName = site.articles[0]?.categoryName ?? query.categorySlug;
-    const categoryTitle = `${categoryName} | ${site.settings.name}`;
+    const categoryTitle = `${categoryName} | ${site.settings.seoSiteName ?? site.settings.name}`;
     const categoryDescription =
       site.articles.length > 0
-        ? `Berita terbaru kategori ${categoryName} di ${site.settings.name}.`
-        : `Kategori ${categoryName} di ${site.settings.name}.`;
+        ? `Liputan ${categoryName} pilihan redaksi ${site.settings.name}: ${site.articles.length} laporan terkini, diperbarui mengikuti perkembangan di lapangan.`
+        : `Arsip liputan ${categoryName} redaksi ${site.settings.name}.`;
     if (site.articles.length < CATEGORY_INDEX_MINIMUM) {
       return tenantHiddenMeta(site, path, categoryTitle, categoryDescription);
     }
@@ -158,8 +158,9 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
   }
 
   if (path === '/articles' && query.articleSlug === undefined && query.search === undefined && query.categorySlug === undefined) {
-    const indexTitle = `Berita Terbaru | ${site.settings.name}`;
-    const indexDescription = `Berita terbaru di ${site.settings.name}: indeks seluruh artikel.`;
+    const siteName = site.settings.seoSiteName ?? site.settings.name;
+    const indexTitle = `Berita Terbaru | ${siteName}`;
+    const indexDescription = site.settings.seoDefaultDescription ?? `Indeks laporan terkini redaksi ${siteName}, diperbarui mengikuti perkembangan di lapangan.`;
     if (site.articles.length < ARTICLE_INDEX_MINIMUM) {
       return tenantHiddenMeta(site, path, indexTitle, indexDescription);
     }
@@ -200,11 +201,11 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
   }
 
   if (query.tag !== undefined) {
-    const tagTitle = `Topik: #${query.tag} | ${site.settings.name}`;
+    const tagTitle = `Topik: #${query.tag} | ${site.settings.seoSiteName ?? site.settings.name}`;
     const tagDescription =
       site.articles.length > 0
-        ? `Artikel bertopik #${query.tag} di ${site.settings.name}.`
-        : `Topik #${query.tag} di ${site.settings.name}.`;
+        ? `Kumpulan ${site.articles.length} laporan bertopik #${query.tag} pilihan redaksi ${site.settings.name}.`
+        : `Arsip topik #${query.tag} redaksi ${site.settings.name}.`;
     if (site.articles.length < TAG_INDEX_MINIMUM) {
       return tenantHiddenMeta(site, path, tagTitle, tagDescription);
     }
@@ -269,7 +270,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
             type: 'article' as const,
             publishedTime: article.publishedAt,
             modifiedTime: article.updatedAt,
-            authors: [article.authorName ?? article.attribution],
+            authors: [article.authorDisplayName ?? article.authorName ?? article.attribution],
             section: article.categoryName ?? undefined,
           }),
     },
@@ -282,7 +283,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
     ...(article === undefined
       ? {}
       : {
-          authors: [{ name: article.authorName ?? article.attribution }],
+          authors: [{ name: article.authorDisplayName ?? article.authorName ?? article.attribution }],
           keywords: article.categoryName === null && article.tags.length === 0
             ? undefined
             : [...(article.categoryName === null ? [] : [article.categoryName]), ...article.tags],

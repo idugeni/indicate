@@ -1,7 +1,9 @@
-# Contributing to Indicate
+# Contributing to Indicate (relaxed mode — advisory, 2026-09-14)
 
 Thank you for contributing to Indicate. This document covers the development
-workflow, conventions, and expectations for all changes.
+workflow, conventions, and expectations for all changes. Nothing here
+hard-blocks progress: failing a convention warns, and work may proceed with
+owner sign-off and a brief recorded note.
 
 By contributing, you agree to follow our
 [Code of Conduct](CODE_OF_CONDUCT.md) and to license your contribution under
@@ -10,12 +12,13 @@ the [Apache License 2.0](LICENSE). Security-sensitive reports follow
 
 ## Developer Certificate of Origin (DCO)
 
-All commits must carry a `Signed-off-by` trailer (`git commit -s`), certifying
+All commits should carry a `Signed-off-by` trailer (`git commit -s`), certifying
 the [Developer Certificate of Origin v1.1](https://developercertificate.org/):
 you wrote the change or have the right to submit it under Apache-2.0, and you
 consent to the inbound=outbound license without additional terms. By signing
 off you also grant the patent license contemplated by Apache-2.0 §3 for your
-contribution. Contributions without a sign-off are not merged. Do not submit
+contribution. Contributions without a sign-off may still merge with explicit
+owner sign-off. Do not submit
 third-party code, stock assets, or commercial fonts without proving a
 compatible license in the PR.
 
@@ -113,13 +116,15 @@ The summary below must not contradict it.
 |---|---|
 | `src/app/` | Next.js App Router routing only: `(site)`, `(network)`, `(auth)`, `(dashboard)` surfaces and `api/` route handlers (health, v1, dashboard, internal, network, webhooks) |
 | `src/components/ui/` | Design-system primitives (shadcn/Radix) |
-| `src/modules/` | Bounded contexts with a public entry (`index.ts`): auth, billing, content, dashboard, delivery, integrations, persisted-config, publishing, site; domain UI colocated in `*/components/` |
+| `src/modules/` | Bounded contexts (`auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `persisted-config`, `publishing`, `site`); only `dashboard`, `delivery`, and `integrations` currently expose a barrel `index.ts` — import other modules by file path |
 | `src/core/` | Shared kernel: `config/` (environment validation), errors, operation context, hostname, observability, routing, security, system, transactions |
-| `src/data/` | Persistence: Drizzle schema, `repos/`, `client.ts`, and forward-only SQL `migrations/` |
+| `src/data/` | Persistence: Drizzle schema, `repos/`, `client.ts`, and forward-only-by-default SQL `migrations/` |
 | `src/integrations/` | Provider adapters: Supabase, R2 storage, Upstash Redis, Telegram, Cloudflare, Vercel (server-only) |
 | `src/ui/` | Shared client-safe UI utilities (`cn`, themes, hooks, site helpers) |
 | `proxy.ts` | Edge middleware: hostname resolution, security headers, platform guards |
 | `.kiro/specs/` | Implemented MVP specification and pending database-backed runtime configuration specification |
+
+There are no `_composition/`, `_lib/`, or `_components/` group folders in `src/app/` (corrected 2026-09-14 to match `CLAUDE.md` and disk). Services are wired directly in route handlers via shared modules.
 
 The intended dependency direction is
 `app -> application -> domain/ports <- infrastructure` as applied to this
@@ -129,9 +134,9 @@ layout: `src/app/` delegates all business logic to `src/modules/` and
 shared kernel. Repository policies enforce import, dependency, deployment,
 migration, release, and secret boundaries.
 
-### Import boundary enforcement
+### Import boundary enforcement (advisory in relaxed mode)
 
-**Prohibited imports:**
+**Discouraged imports (warn, don't block):**
 
 - `src/app/` handles routing only — no business logic, no tenant SQL, no
   provider SDK calls from route shells.
@@ -145,29 +150,29 @@ migration, release, and secret boundaries.
   Supabase browser values) — never privileged credentials.
 - `src/integrations/` never imports from `src/app/`.
 
-Import boundaries are review-time blocking. If you are unsure where code
-belongs, mirror the existing layer and ask in the PR.
+Import boundaries are advisory in relaxed mode. If you are unsure where code
+belongs, mirror the existing layer and note it in the PR.
 
-### App Router conventions
+### App Router conventions (advisory)
 
 - Route groups `(site)`, `(network)`, `(auth)`, `(dashboard)` organize without
   affecting URLs.
-- Private folders `_components/`, `_composition/`, `_lib/` colocate
-  non-routable code per group; shared composition lives in the shared
-  `_composition/` root.
-- Server-only modules start with `import 'server-only'`.
+- Colocated non-routable code per group is allowed; shared composition lives in
+  the shared root when needed.
+- Server-only modules should start with `import 'server-only'`.
 - `'use client'` is pushed to interactive leaf components only; client leaves
-  never import server-only modules.
+  should not import server-only modules.
 
 ## Pull request process
 
 Use the [pull request template](.github/PULL_REQUEST_TEMPLATE.md). Every PR
-needs a linked issue, gate evidence on the exact head commit, and the
-tenant-isolation checklist.
+should have a linked issue, gate evidence on the head commit, and the
+tenant-isolation checklist when applicable — missing items warn, they don't
+block without owner say-so.
 
-### Before submitting
+### Before submitting (recommended)
 
-All of these must pass locally:
+These should pass locally (warnings allowed with a note):
 
 ```sh
 npm run typecheck     # TypeScript compilation
@@ -196,34 +201,38 @@ Scopes: `site`, `network`, `dashboard`, `auth`, `api`, `publishing`, `content`,
 
 ### Review expectations
 
-- Every PR must have a passing Release Quality Gate
+- Every PR should have a Release Quality Gate
   (`.github/workflows/quality-gate.yml`: `typecheck`, `lint`, production
-  `build`) on the exact head commit. Promotion beyond CI is a manual operator
-  decision — never promote a red or unchecked commit.
-- Architecture boundary violations are blocking.
-- Security-sensitive changes require explicit review of tenant isolation, RLS
+  `build`) on the head commit. Promotion beyond CI is a manual operator
+  decision — promoting a red or unchecked commit needs explicit owner
+  sign-off with a recorded risk note.
+- Architecture boundary violations are advisory (warn, don't block).
+- Security-sensitive changes should have review of tenant isolation, RLS
   policies and grants, secret handling, and audit atomicity.
-- Migration changes require review of forward-only compatibility
+- Migration changes should have review of forward-only-by-default compatibility
   (**expand → backfill → verify → contract**), credential separation, and the
-  schema gate. Destructive down migrations are not accepted.
+  schema gate. Down migrations are discouraged; in development they are allowed
+  with reviewer approval.
 
-## Database migrations
+## Database migrations (defaults — relaxed 2026-09-14)
 
-### Rules
+### Rules (advisory)
 
-1. **Forward-only** — no down migrations. Rollback is a new forward migration
-   or a schema-compatible deployment.
-2. **Hand-written SQL** — migrations are reviewed, not generated.
-   `drizzle-kit generate` is not used: the reviewed sequence contains PL/pgSQL
-   functions, triggers, and row level security policies it cannot express.
-3. **Reviewed before applied** — every migration is code-reviewed before execution.
-4. **Compatibility-aware** — destructive changes follow
+1. **Forward-only by default** — rollback is preferably a new forward migration
+   or a schema-compatible deployment; history edits and down migrations are
+   allowed in development with reviewer approval.
+2. **Hand-written SQL preferred** — migrations are reviewed, not generated.
+   `drizzle-kit generate` is discouraged (the reviewed sequence contains PL/pgSQL
+   functions, triggers, and row level security policies it cannot express),
+   not banned.
+3. **Reviewed before applied** — every migration should be code-reviewed before execution.
+4. **Compatibility-aware** — destructive changes should follow
    **expand → backfill → verify → contract** across releases.
-5. **Append-only metadata** — never edit migration metadata to conceal a failed
-   migration.
+5. **Append-only metadata preferred** — avoid editing migration metadata to conceal a failed
+   migration outside development.
 6. **Separate credentials** — apply with the direct migration credential
    (`DATABASE_DIRECT_URL`), verify through the pooled runtime credential
-   (`DATABASE_POOL_URL`). Never use an application runtime credential for
+   (`DATABASE_POOL_URL`). Avoid application runtime credentials for
    migration ownership.
 
 ### Adding a migration
@@ -270,9 +279,9 @@ All visual decisions must follow [docs/DESIGN.md](docs/DESIGN.md). Key constrain
 - Data displayed exactly (no rounding, no dramatization)
 - See the Anti-Slop Rules in `docs/DESIGN.md` for prohibited patterns
 
-## Documentation
+## Documentation (update when practical)
 
-When making structural changes, update these files:
+When making structural changes, consider updating these files:
 
 | File | What to update |
 |---|---|

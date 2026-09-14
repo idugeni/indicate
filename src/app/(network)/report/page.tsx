@@ -1,6 +1,4 @@
-import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import { CleanBlueLoader } from '@/modules/site/components/network/templates/clean-blue/loader';
 import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/shell';
 import { CleanBlueContainer } from '@/modules/site/components/network/templates/clean-blue/shared';
 import { CleanBlueReportForm } from '@/modules/site/components/network/templates/clean-blue/report-form';
@@ -20,7 +18,7 @@ function normalizeSlug(value: string | string[] | undefined): string | null {
   return slug === '' ? null : slug;
 }
 
-async function ReportContent({ searchParams }: Props) {
+export default async function ReportPage({ searchParams }: Props) {
   const resolved = await searchParams;
   const slug = normalizeSlug(resolved.artikel);
   const site = await resolveNetworkSite(slug === null ? {} : { articleSlug: slug }, '/report');
@@ -41,13 +39,5 @@ async function ReportContent({ searchParams }: Props) {
           </div>
       </CleanBlueContainer>
     </CleanBlueShell>
-  );
-}
-
-export default function ReportPage({ searchParams }: Props) {
-  return (
-    <Suspense fallback={<CleanBlueLoader label="Memuat formulir" />}>
-      <ReportContent searchParams={searchParams} />
-    </Suspense>
   );
 }

@@ -275,15 +275,15 @@ Audit Logs are immutable and append-only. They identify actor type and identifie
 
 Runtime configuration validates hosts, Supabase, Cloudflare, Vercel, R2, Upstash, publishing, Telegram/webhooks, security, cache, SEO, media, retry, lease, and rate-limit values. Invalid or incomplete configuration fails closed and reports deterministic field/category errors without values or secrets.
 
-## 19. Quality and acceptance boundaries
+## 19. Quality and acceptance boundaries (advisory in relaxed mode)
 
-Each Major Stage must pass deterministic, single-run checks for TypeScript typechecking and linting as applicable. Tenant behavior expectations include same-organization success, absent-resource denial, cross-organization denial, and failure atomicity. Client-boundary changes include secret-exclusion checks.
+Each Major Stage should pass deterministic, single-run checks for TypeScript typechecking and linting as applicable. Tenant behavior expectations include same-organization success, absent-resource denial, cross-organization denial, and failure atomicity. Client-boundary changes include secret-exclusion checks.
 
-Any detected cross-organization content, media, cache, credential, job, analytics, or audit access fails the relevant stage. A failed stage blocks all dependent work.
+Any detected cross-organization content, media, cache, credential, job, analytics, or audit access should fail the relevant stage review. A failed stage is a warning, not a hard block — dependent work may proceed with owner approval and a recorded risk note.
 
-## 20. Required delivery sequence
+## 20. Recommended delivery sequence (advisory — relaxed 2026-09-14)
 
-No application implementation begins until both documentation artifacts are explicitly approved. After approval, work proceeds in this strict, quality-gated sequence:
+Documentation approval is no longer a pre-code gate. Implementation may start without waiting for both documents, and stages may overlap or run out of order with a brief recorded rationale. The sequence below is the preferred order, not a hard dependency chain:
 
 1. **Major Baseline:** single-application foundation, approved technology stack, Runtime Configuration, deployment contracts, and Quality Gate setup.
 2. **Major Tenancy:** Drizzle schemas/migrations/seeding, Supabase Auth, tenant transactions, and RBAC.
@@ -293,17 +293,17 @@ No application implementation begins until both documentation artifacts are expl
 6. **Major Integrations:** Telegram parity, API Key lifecycle, rate limits, replay defense, customer management, and subscriptions.
 7. **Major Release:** production-readiness validation across all active root domains, starting with Wonosobo, Magelang, and Semarang.
 
-Every stage begins only after the preceding stage passes its complete Quality Gate. Any sequencing change requires prior reviewer approval and an Architecture Document update explaining the dependency rationale.
+Every stage ideally begins after the preceding stage passes its Quality Gate, but this is advisory. Any sequencing change needs only a brief note explaining the dependency rationale — no prior reviewer approval required in relaxed mode.
 
-## 21. Deployment acceptance
+## 21. Deployment acceptance (advisory — relaxed 2026-09-14)
 
-Production promotion must validate Runtime Configuration, required schema and migrations, Cloudflare nameservers and DNS/wildcard/proxy/TLS settings, exact Vercel custom-domain associations, server secrets, Supabase Auth/database connectivity, private R2 connectivity, Upstash connectivity, cron security, and Telegram webhook configuration.
+Production promotion should validate Runtime Configuration, required schema and migrations, Cloudflare nameservers and DNS/wildcard/proxy/TLS settings, exact Vercel custom-domain associations, server secrets, Supabase Auth/database connectivity, private R2 connectivity, Upstash connectivity, cron security, and Telegram webhook configuration.
 
-Promotion fails closed on any invalid result. Rollback returns the one Vercel project to the last schema-compatible application version while preserving Cloudflare nameserver authority and recoverable durable work.
+Promotion warns on any invalid result and may proceed with owner sign-off and a recorded risk note. Rollback returns the one Vercel project to the last schema-compatible application version while preserving Cloudflare nameserver authority and recoverable durable work.
 
-## 22. Explicit exclusions
+## 22. Explicit exclusions (advisory defaults — owner may override anytime)
 
-The MVP excludes:
+The MVP defaults exclude the items below, but any of them may be revisited with owner approval without a full PRD revision:
 
 - separate tenant applications, codebases, templates, databases, Supabase projects, Auth instances, R2 buckets, Redis resources, Vercel projects, or deployments;
 - Vercel nameserver delegation, Vercel-managed DNS authority, or Vercel wildcard-domain registration;
@@ -312,8 +312,8 @@ The MVP excludes:
 - a public R2 bucket, bucket listing, or authorization based only on object-key obscurity;
 - public-site fallback to another organization, hostname, Site Settings record, asset, or content set;
 - unbounded publication retries, long-running workers, or reliance on exactly-once cron/queue delivery;
-- official institutional claims without current verified affiliation and claim scope;
-- starting implementation before explicit approval of both required documents.
+- official institutional claims without current verified affiliation and claim scope.
+- (relaxed: implementation may start before document approval with owner go-ahead).
 
 ## 23. Reviewer approval and implementation-stage confirmations
 

@@ -1,4 +1,4 @@
-import { cache, Suspense } from 'react';
+import { cache } from 'react';
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
@@ -58,10 +58,7 @@ export async function generateMetadata(): Promise<Metadata> {
     return notFoundMetadata();
   }
 
-  const seo = buildSeoDocument(site, {
-    path: '/',
-    titleOverride: `${site.settings.name} — Berita Terkini, Laporan Redaksi, dan Siaran Pers`,
-  });
+  const seo = buildSeoDocument(site, { path: '/' });
 
   return {
     // Absolut: judul tenant tidak boleh ditempeli template '| Indicate'.
@@ -92,8 +89,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-/** Klasifikasi host + muat konten butuh request + DB → streaming di belakang fallback. */
-async function RootContent({ searchParams }: { readonly searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+/** Klasifikasi host + muat konten butuh request + DB; loading global `src/app/loading.tsx` yang tampil. */
+export default async function RootPage({ searchParams }: { readonly searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const { classification, site } = await resolveRouteContext();
   const page = parsePageParam((await searchParams).page);
 
@@ -110,22 +107,4 @@ async function RootContent({ searchParams }: { readonly searchParams: Promise<{ 
   }
 
   return <ListingPage site={site} title={site.settings.name} page={page} basePath="/" />;
-}
-
-function RootLoading() {
-  return (
-    <div aria-busy="true" aria-label="Memuat halaman" className="mx-auto w-full max-w-6xl px-6 py-14 md:py-20">
-      <div className="h-4 w-40 animate-pulse rounded bg-bg-raised-2" />
-      <div className="mt-4 h-10 w-3/4 animate-pulse rounded bg-bg-raised-2" />
-      <div className="mt-4 h-4 w-1/2 animate-pulse rounded bg-bg-raised-2" />
-    </div>
-  );
-}
-
-export default function RootPage({ searchParams }: { readonly searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
-  return (
-    <Suspense fallback={<RootLoading />}>
-      <RootContent searchParams={searchParams} />
-    </Suspense>
-  );
 }

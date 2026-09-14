@@ -8,6 +8,7 @@ import { CleanBlueShell } from '@/modules/site/components/network/templates/clea
 import { CleanBlueShareButtons } from '@/modules/site/components/network/templates/clean-blue/share-buttons';
 import { CleanBlueViewBeacon } from '@/modules/site/components/network/templates/clean-blue/view-beacon';
 import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
+import { MINISTRY_FALLBACK_LOGO_URL } from '@/ui/site/marketing-content';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/picks';
 import { articleImage, authorDisplayName, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
 
@@ -131,20 +132,14 @@ export function CleanBlueArticle({
 
           <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
             <div className="flex items-center gap-4">
-              {article.publisherLogoUrl ? (
-                <Image
-                  unoptimized
-                  src={article.publisherLogoUrl}
-                  alt={`Logo ${article.attribution}`}
-                  width={56}
-                  height={56}
-                  className="h-14 w-14 flex-none rounded-full border border-slate-200 object-cover"
-                />
-              ) : (
-                <span aria-hidden="true" className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-[#1f6feb]/10 font-sans text-xl font-bold text-[#1f6feb]">
-                  {authorInitial}
-                </span>
-              )}
+              <Image
+                unoptimized
+                src={article.publisherLogoUrl ?? MINISTRY_FALLBACK_LOGO_URL}
+                alt={`Logo ${article.attribution}`}
+                width={56}
+                height={56}
+                className="h-14 w-14 flex-none rounded-full border border-slate-200 object-cover"
+              />
               <div className="min-w-0">
                 <p className="m-0 truncate font-sans text-base font-bold text-slate-900">
                   {authorName}

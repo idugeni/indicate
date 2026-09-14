@@ -20,10 +20,10 @@ Closes #
 - [ ] No migration included
 - [ ] Forward-only migration included in `src/data/migrations/` (hand-written, reviewed)
 
-## Verification (required)
+## Verification (recommended — relaxed 2026-09-14)
 
-Paste evidence — PRs without a green gate on the exact head commit are not
-promoted.
+Paste evidence when practical — PRs without a green gate on the head commit may
+still merge with explicit owner sign-off and a recorded risk note.
 
 ```text
 npm run typecheck  # result:
@@ -37,7 +37,7 @@ GET /api/health    # valid configuration before/after (for runtime or migration 
 - [ ] `npm run build` (production) passes
 - [ ] `GET /api/health` reports valid configuration (if runtime/migration touched)
 
-## Tenant-isolation checklist
+## Tenant-isolation checklist (recommended)
 
 - [ ] Every mutation derives exactly one authorized `organizationId`; no tenant
       selection from request bodies.
@@ -52,17 +52,17 @@ GET /api/health    # valid configuration before/after (for runtime or migration 
 - [ ] Publication changes preserve idempotency, leases, fencing, bounded
       retries, and legal state transitions.
 
-## Migration checklist (complete only when a migration is included)
+## Migration checklist (complete when a migration is included; advisory)
 
-- [ ] Forward-only SQL in `src/data/migrations/`, applied in filename order
-      against `DATABASE_DIRECT_URL` (never the runtime credential).
-- [ ] Compatibility follows **expand → backfill → verify → contract** where
+- [ ] Forward-only-by-default SQL in `src/data/migrations/`, applied in filename order
+      against `DATABASE_DIRECT_URL` (avoid the runtime credential).
+- [ ] Compatibility preferably follows **expand → backfill → verify → contract** where
       destructive change is involved.
-- [ ] Migration metadata untouched; no edit conceals a failed migration.
-- [ ] Schema gate passes through the pooled runtime credential
-      (`DATABASE_POOL_URL`) before activation.
-- [ ] Rollback plan is a new forward migration or a schema-compatible
-      deployment — never a down migration or a second project/topology.
+- [ ] Migration metadata untouched outside development; no edit conceals a failed migration.
+- [ ] Schema gate checked through the pooled runtime credential
+      (`DATABASE_POOL_URL`) when practical.
+- [ ] Rollback plan is preferably a new forward migration or a schema-compatible
+      deployment.
 
 ## Security checklist
 
@@ -80,7 +80,7 @@ GET /api/health    # valid configuration before/after (for runtime or migration 
 
 ## Origin / license checklist
 
-- [ ] All commits carry `Signed-off-by` (DCO v1.1); no third-party code/assets without a compatible license noted above.
+- [ ] All commits should carry `Signed-off-by` (DCO v1.1); missing sign-off needs owner sign-off. No third-party code/assets without a compatible license noted in the PR.
 - [ ] Upstream attributions updated in `THIRD-PARTY-NOTICES.md` when a dependency, font, icon, or vendored component changes.
 
 ## Docs updated

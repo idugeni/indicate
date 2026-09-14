@@ -14,7 +14,7 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: 'id-ID',
     icons: [
       {
-        src: '/brand/icon.png',
+        src: '/apple-icon.png',
         sizes: 'any',
         type: 'image/png',
       },

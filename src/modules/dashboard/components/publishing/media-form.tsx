@@ -141,13 +141,13 @@ export function MediaForm({
         <form onSubmit={handleUpload} className="space-y-3.5">
           <div className="space-y-1.5">
             <label htmlFor={fileInputId} className="font-mono text-xs text-paper-dim">
-              Pilih Berkas Gambar (JPEG, PNG, WebP, AVIF)
+              Pilih Berkas Gambar (JPEG, PNG, WebP, AVIF, ICO)
             </label>
             <Input
               id={fileInputId}
               name="file"
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/avif"
+              accept="image/jpeg,image/png,image/webp,image/avif,image/x-icon,.ico"
               required
               disabled={isUploading}
               className="h-9 rounded border-hairline-strong bg-bg p-1 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass file:mr-2 file:rounded file:border-0 file:bg-bg-raised-2 file:px-2 file:py-1 file:font-mono file:text-[11px] file:text-paper"

@@ -1,8 +1,7 @@
-import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { CleanBlueContainer, CleanBlueStatusLine } from '@/modules/site/components/network/templates/clean-blue/shared';
 import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/shell';
-import { CleanBlueSearchForm, CleanBlueSearchResults, CleanBlueSearchSkeleton } from '@/modules/site/components/network/templates/clean-blue/search';
+import { CleanBlueSearchForm, CleanBlueSearchResults } from '@/modules/site/components/network/templates/clean-blue/search';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 type Props = {
@@ -20,7 +19,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 /** Single-template: seluruh domain memakai Clean Blue Editorial. */
-async function SearchShell({ searchParams }: Props) {
+export default async function SearchPage({ searchParams }: Props) {
   const resolved = await searchParams;
   const query = normalizeQuery(resolved.q);
   const site = await resolveNetworkSite({ search: query }, '/search');
@@ -29,19 +28,8 @@ async function SearchShell({ searchParams }: Props) {
       <CleanBlueContainer className="space-y-6 py-6 md:py-8">
         <CleanBlueStatusLine count={site.articles.length} title="Pencarian" />
         <CleanBlueSearchForm query={query} />
-        <Suspense fallback={<CleanBlueSearchSkeleton />}>
-          <CleanBlueSearchResults articles={site.articles} query={query} />
-        </Suspense>
+        <CleanBlueSearchResults articles={site.articles} query={query} />
       </CleanBlueContainer>
     </CleanBlueShell>
-  );
-}
-
-/** Form dan hasil adalah island terpisah: form interaktif segera, hasil menyusul via streaming. */
-export default function SearchPage({ searchParams }: Props) {
-  return (
-    <Suspense fallback={<CleanBlueSearchSkeleton />}>
-      <SearchShell searchParams={searchParams} />
-    </Suspense>
   );
 }

@@ -1,8 +1,6 @@
-import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { CleanBlueArchive } from '@/modules/site/components/network/templates/clean-blue/archive';
 import { parsePageParam } from '@/modules/site/components/network/templates/listing-shared';
-import { ListingSkeleton } from '@/modules/site/components/network/listing-skeleton';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 type Props = {
@@ -15,7 +13,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 /** Indeks /articles: daftar vertikal + pagination (beda dari homepage hero). */
-async function ArticlesContent({ searchParams }: Props) {
+export default async function ArticlesPage({ searchParams }: Props) {
   const resolved = await searchParams;
   const site = await resolveNetworkSite({}, '/articles');
   return (
@@ -27,13 +25,5 @@ async function ArticlesContent({ searchParams }: Props) {
       page={parsePageParam(resolved.page)}
       basePath="/articles"
     />
-  );
-}
-
-export default function ArticlesPage({ searchParams }: Props) {
-  return (
-    <Suspense fallback={<ListingSkeleton label="Memuat artikel" />}>
-      <ArticlesContent searchParams={searchParams} />
-    </Suspense>
   );
 }

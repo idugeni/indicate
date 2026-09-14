@@ -157,14 +157,14 @@ export function ArticleCard({
       <article className="row-card group grid grid-cols-[auto_minmax(0,1fr)] items-start gap-4 border-b border-hairline py-5">
         <Avatar className="h-11 w-11 flex-none rounded border border-hairline">
           <AvatarFallback className="bg-bg-raised-2 font-mono text-xs font-bold text-[var(--site-accent)]">
-            {(article.authorName ?? article.attribution).slice(0, 2).toUpperCase()}
+            {(article.authorDisplayName ?? article.authorName ?? article.attribution).slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0">
           <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px] text-paper-faint">
             <span className="uppercase tracking-wider text-[var(--site-accent)]">{article.categoryName ?? 'Opini'}</span>
             <span aria-hidden="true">·</span>
-            <span className="font-medium text-paper-dim">{article.authorName ?? article.attribution}</span>
+            <span className="font-medium text-paper-dim">{article.authorDisplayName ?? article.authorName ?? article.attribution}</span>
             <span aria-hidden="true">·</span>
             <time dateTime={article.publishedAt} className="tabular-nums">{formatDate(article.publishedAt, 'medium')}</time>
           </p>

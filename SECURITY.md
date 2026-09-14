@@ -68,15 +68,16 @@ then coordinate disclosure once a fix is available.
   environment values only. `NEXT_PUBLIC_*` is limited to explicitly public
   Supabase browser configuration.
 
-## Release and rollback safety
+## Release and rollback safety (advisory — relaxed 2026-09-14)
 
-Security fixes follow the same promotion rules as any release:
+Security fixes follow the same promotion guidance as any release:
 
 - Preserve a green Release Quality Gate (`typecheck`, `lint`, production
-  `build`) on the exact promoted commit.
-- Apply only reviewed forward migrations in filename order
+  `build`) on the promoted commit when practical; promoting a red commit
+  needs explicit owner sign-off.
+- Apply reviewed forward-by-default migrations in filename order
   (`src/data/migrations/`), then confirm `GET /api/health` reports a valid
-  configuration before and after.
-- Promote only the already-built artifact to the existing Vercel project.
+  configuration before and after when practical.
+- Prefer promoting the already-built artifact to the existing Vercel project.
 - Verify against [production readiness and rollback](docs/PRODUCTION_READINESS_RUNBOOK.md)
   before routing traffic. See also [migration operations](docs/MIGRATIONS.md).

@@ -40,30 +40,6 @@ export function CleanBlueSearchForm({ query }: { readonly query: string }) {
   );
 }
 
-export function CleanBlueSearchSkeleton() {
-  return (
-    <div aria-busy="true" aria-label="Memuat hasil pencarian" className="space-y-5">
-      <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6" aria-hidden="true">
-        <div className="h-6 w-48 animate-pulse rounded-full bg-slate-100" />
-        <div className="mt-4 h-11 animate-pulse rounded-full bg-slate-100" />
-      </div>
-      <div className="grid gap-5 md:grid-cols-3" aria-hidden="true">
-        {[0, 1, 2].map((n) => (
-          <div key={n} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/60">
-            <div className="px-3 pt-3">
-              <div className="aspect-[16/10] animate-pulse rounded-xl bg-slate-100" />
-            </div>
-            <div className="space-y-2 px-5 pb-5">
-              <div className="h-4 w-3/4 animate-pulse rounded-full bg-slate-100" />
-              <div className="h-3 w-1/2 animate-pulse rounded-full bg-slate-100" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export function CleanBlueSearchResults({ articles, query }: { readonly articles: readonly NetworkArticle[]; readonly query: string }) {
   if (articles.length === 0) {
     return (

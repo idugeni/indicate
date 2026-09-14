@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { NetworkArticle, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
+import { MINISTRY_FALLBACK_LOGO_URL } from '@/ui/site/marketing-content';
 
 function absoluteSiteUrl(context: ResolvedSiteContext, path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -9,6 +10,7 @@ function absoluteSiteUrl(context: ResolvedSiteContext, path: string): string {
 }
 
 export function absoluteSiteAssetUrl(context: ResolvedSiteContext, value: string): string {
+  if (value.startsWith('/')) return absoluteSiteUrl(context, value);
   const parsed = new URL(value, `https://${context.normalizedHostname}`);
   return absoluteSiteUrl(context, `${parsed.pathname}${parsed.search}`);
 }
@@ -18,6 +20,27 @@ function xml(value: string): string {
 }
 function safeJson(value: unknown): string {
   return JSON.stringify(value).replaceAll('<', '\\u003c').replaceAll('>', '\\u003e').replaceAll('&', '\\u0026').replaceAll('\u2028', '\\u2028').replaceAll('\u2029', '\\u2029');
+}
+
+function stripHtml(value: string): string {
+  return value.replaceAll(/<[^>]*>/gu, ' ').replaceAll(/\s+/gu, ' ').trim();
+}
+
+/**
+ * Meringkas body menjadi kutipan deskripsi yang tidak terpotong di tengah kata.
+ *
+ * @param body - Body kanonik artikel (boleh mengandung HTML).
+ * @param maxLength - Batas panjang dalam karakter unicode.
+ * @returns Kutipan bersih; string kosong bila body tidak memiliki kata.
+ */
+export function excerptForDescription(body: string, maxLength = 180): string {
+  const clean = stripHtml(body);
+  const chars = Array.from(clean);
+  if (chars.length <= maxLength) return clean;
+  const slice = chars.slice(0, maxLength).join('');
+  const lastSpace = slice.lastIndexOf(' ');
+  if (lastSpace > maxLength * 0.5) return slice.slice(0, lastSpace).trimEnd();
+  return slice.trimEnd();
 }
 
 export interface SeoDocument {
@@ -73,26 +96,42 @@ export function notFoundMetadata(): Metadata {
 export function buildSeoDocument(site: NetworkSiteData, options: { readonly path: string; readonly article?: NetworkArticle; readonly indexable?: boolean; readonly titleOverride?: string }): SeoDocument {
   const indexable = options.indexable ?? true;
   const article = options.article;
-  const title = options.titleOverride ?? (article === undefined ? site.settings.name : `${article.title} | ${site.settings.name}`);
-  const description = article?.description ?? site.settings.description;
+  const siteName = site.settings.seoSiteName || site.settings.name;
+  const siteDescription = site.settings.seoDefaultDescription || site.settings.description;
+  const title = options.titleOverride ?? (article === undefined ? (site.settings.seoDefaultTitle || site.settings.name) : `${article.title} | ${siteName}`);
+  const description = article?.description ?? siteDescription;
   if (!indexable) return { title, description, canonical: null, robots: 'noindex, nofollow', openGraph: null, jsonLd: [] };
   const canonical = absoluteSiteUrl(site.context, options.path);
   const image = absoluteSiteAssetUrl(site.context, article?.imageUrl ?? site.settings.defaultImageUrl);
-  const logo = site.settings.logoUrl === null ? null : absoluteSiteAssetUrl(site.context, site.settings.logoUrl);
-  const publisher = article?.officialInstitution ?? article?.publisherName ?? site.settings.name;
+  const rawLogo = site.settings.logoUrl ?? MINISTRY_FALLBACK_LOGO_URL;
+  const logo = absoluteSiteAssetUrl(site.context, rawLogo);
+  const publisherLogo = article?.publisherLogoUrl === null || article?.publisherLogoUrl === undefined
+    ? logo
+    : absoluteSiteAssetUrl(site.context, article.publisherLogoUrl);
+  const publisher = article?.officialInstitution ?? article?.publisherName ?? siteName;
+  const websiteId = absoluteSiteUrl(site.context, '/#website');
   const jsonLd: Record<string, unknown>[] = [
     {
-      '@context': 'https://schema.org', '@type': 'WebSite', name: site.settings.name, url: absoluteSiteUrl(site.context, '/'), inLanguage: 'id',
+      '@context': 'https://schema.org', '@type': 'WebSite', '@id': websiteId, name: siteName, url: absoluteSiteUrl(site.context, '/'), inLanguage: 'id',
       potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: absoluteSiteUrl(site.context, '/search?q={search_term_string}') }, 'query-input': 'required name=search_term_string' },
     },
-    { '@context': 'https://schema.org', '@type': 'Organization', name: publisher, url: absoluteSiteUrl(site.context, '/'), ...(logo === null ? {} : { logo }) },
+    { '@context': 'https://schema.org', '@type': 'Organization', name: publisher, url: absoluteSiteUrl(site.context, '/'), logo: { '@type': 'ImageObject', url: logo } },
   ];
   if (article !== undefined) {
-    const wordCount = article.body.trim().split(/\s+/u).filter(Boolean).length;
-    jsonLd.push({ '@context': 'https://schema.org', '@type': 'NewsArticle', headline: article.title, description: article.description, datePublished: article.publishedAt, dateModified: article.updatedAt, mainEntityOfPage: canonical, image: [image], inLanguage: 'id', isAccessibleForFree: 'True', wordCount, ...(article.categoryName === null ? {} : { articleSection: article.categoryName }), author: { '@type': 'Person', name: article.authorName ?? article.attribution }, publisher: { '@type': 'Organization', name: publisher, ...(logo === null ? {} : { logo: { '@type': 'ImageObject', url: logo } }) } });
+    const wordCount = stripHtml(article.body).split(/\s+/u).filter(Boolean).length;
+    jsonLd.push({
+      '@context': 'https://schema.org', '@type': 'NewsArticle', '@id': `${canonical}#article`, headline: article.title, description: article.description,
+      datePublished: article.publishedAt, dateModified: article.updatedAt, mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+      image: [image], inLanguage: 'id', isAccessibleForFree: true, wordCount,
+      ...(article.categoryName === null ? {} : { articleSection: article.categoryName }),
+      ...(article.tags.length === 0 ? {} : { keywords: article.tags.join(', ') }),
+      author: { '@type': 'Person', name: article.authorDisplayName ?? article.authorName ?? article.attribution },
+      publisher: { '@type': 'Organization', name: publisher, logo: { '@type': 'ImageObject', url: publisherLogo } },
+      isPartOf: { '@id': websiteId },
+    });
     jsonLd.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Beranda', item: absoluteSiteUrl(site.context, '/') }, ...(article.categoryName === null || article.categorySlug === null ? [] : [{ '@type': 'ListItem', position: 2, name: article.categoryName, item: absoluteSiteUrl(site.context, `/categories/${article.categorySlug}`) }]), { '@type': 'ListItem', position: article.categoryName === null ? 2 : 3, name: article.title, item: canonical }] });
   }
-  return { title, description, canonical, robots: 'index, follow', openGraph: { title, description, url: canonical, siteName: site.settings.name, type: article === undefined ? 'website' : 'article', image }, jsonLd };
+  return { title, description, canonical, robots: 'index, follow', openGraph: { title, description, url: canonical, siteName, type: article === undefined ? 'website' : 'article', image }, jsonLd };
 }
 
 export interface WebSiteSchema {
@@ -109,7 +148,7 @@ export interface OrganizationSchema {
   readonly '@type': 'Organization';
   readonly name: string;
   readonly url: string;
-  readonly logo?: string;
+  readonly logo?: string | Readonly<{ '@type': 'ImageObject'; url: string }>;
 }
 
 export interface NewsArticleSchema {
@@ -119,12 +158,13 @@ export interface NewsArticleSchema {
   readonly description: string;
   readonly datePublished: string;
   readonly dateModified: string;
-  readonly mainEntityOfPage: string;
+  readonly mainEntityOfPage: string | Readonly<{ '@type': 'WebPage'; '@id': string }>;
   readonly image: readonly string[];
   readonly inLanguage?: string;
-  readonly isAccessibleForFree?: string;
+  readonly isAccessibleForFree?: boolean;
   readonly wordCount?: number;
   readonly articleSection?: string;
+  readonly keywords?: string;
   readonly author: Readonly<{ '@type': 'Person'; name: string }>;
   readonly publisher: Readonly<{
     '@type': 'Organization';
@@ -274,7 +314,7 @@ export function serializeNewsSitemap(site: NetworkSiteData): string {
   const body = items
     .map(
       (article) =>
-        `<url><loc>${xml(absoluteSiteUrl(site.context, `/articles/${article.slug}`))}</loc><news:news><news:publication><news:name>${xml(site.settings.name)}</news:name><news:language>id</news:language></news:publication><news:publication_date>${xml(new Date(article.publishedAt).toISOString())}</news:publication_date><news:title>${xml(article.title)}</news:title></news:news></url>`,
+        `<url><loc>${xml(absoluteSiteUrl(site.context, `/articles/${article.slug}`))}</loc><news:news><news:publication><news:name>${xml(site.settings.seoSiteName || site.settings.name)}</news:name><news:language>id</news:language></news:publication><news:publication_date>${xml(new Date(article.publishedAt).toISOString())}</news:publication_date><news:title>${xml(article.title)}</news:title></news:news></url>`,
     )
     .join('');
   return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${body}</urlset>`;
@@ -282,5 +322,10 @@ export function serializeNewsSitemap(site: NetworkSiteData): string {
 
 export function serializeRss(site: NetworkSiteData): string {
   const channel = absoluteSiteUrl(site.context, '/');
-  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>${xml(site.settings.name)}</title><link>${xml(channel)}</link><description>${xml(site.settings.description)}</description>${site.articles.map((article) => `<item><title>${xml(article.title)}</title><link>${xml(absoluteSiteUrl(site.context, `/articles/${article.slug}`))}</link><guid isPermaLink="true">${xml(absoluteSiteUrl(site.context, `/articles/${article.slug}`))}</guid><description>${xml(article.description)}</description><pubDate>${new Date(article.publishedAt).toUTCString()}</pubDate></item>`).join('')}</channel></rss>`;
+  const siteName = site.settings.seoSiteName || site.settings.name;
+  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>${xml(siteName)}</title><link>${xml(channel)}</link><description>${xml(site.settings.seoDefaultDescription || site.settings.description)}</description><language>id-ID</language>${site.articles.map((article) => {
+    const link = absoluteSiteUrl(site.context, `/articles/${article.slug}`);
+    const enclosure = article.imageUrl === null ? '' : `<enclosure url="${xml(absoluteSiteAssetUrl(site.context, article.imageUrl))}" type="image/jpeg" />`;
+    return `<item><title>${xml(article.title)}</title><link>${xml(link)}</link><guid isPermaLink="true">${xml(link)}</guid><description>${xml(article.description)}</description><content:encoded>${xml(article.body)}</content:encoded>${enclosure}<pubDate>${new Date(article.publishedAt).toUTCString()}</pubDate>${article.categoryName === null ? '' : `<category>${xml(article.categoryName)}</category>`}</item>`;
+  }).join('')}</channel></rss>`;
 }
