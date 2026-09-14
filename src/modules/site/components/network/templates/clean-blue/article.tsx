@@ -6,6 +6,7 @@ import { buildSeoDocument } from '@/modules/site/seo';
 import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/json-ld';
 import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/shell';
 import { CleanBlueShareButtons } from '@/modules/site/components/network/templates/clean-blue/share-buttons';
+import { CleanBlueViewBeacon } from '@/modules/site/components/network/templates/clean-blue/view-beacon';
 import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/picks';
 import { articleImage, authorDisplayName, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
@@ -33,6 +34,11 @@ export function CleanBlueArticle({
 
   return (
     <CleanBlueShell site={site} path={`/articles/${article.slug}`}>
+      <CleanBlueViewBeacon
+        organizationId={site.context.organizationId}
+        siteId={site.context.siteId}
+        articleSiteId={article.articleSiteId}
+      />
       <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
           <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 font-sans text-xs text-slate-500">
             <Link href="/" className="transition-colors hover:text-[#1f6feb]">

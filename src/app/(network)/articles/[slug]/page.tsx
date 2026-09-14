@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ArticlePage } from '@/modules/site/components/network/network-listing';
 import { CleanBlueLoader } from '@/modules/site/components/network/templates/clean-blue/loader';
-import { networkMetadata, resolveNetworkSite, trackArticleView } from '@/modules/delivery/network-runtime';
+import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 type Props = {
   readonly params: Promise<{ slug: string }>;
@@ -25,7 +25,8 @@ async function ArticleContent({ params }: Pick<Props, 'params'>) {
   const site = await resolveNetworkSite({ articleSlug: slug }, `/articles/${slug}`);
   const article = site.articles[0];
   if (article === undefined) notFound();
-  trackArticleView({ organizationId: site.context.organizationId, siteId: site.context.siteId, articleSiteId: article.articleSiteId });
+  // Pencatatan view pindah ke CleanBlueViewBeacon (Worker → Upstash, nol
+  // execution Vercel, mencakup edge HIT). Incr server dihapus agar tak dobel.
   const mates = article.categorySlug === null
     ? []
     : (await resolveNetworkSite({ categorySlug: article.categorySlug }, `/articles/${slug}`)

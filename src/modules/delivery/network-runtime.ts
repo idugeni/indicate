@@ -1,14 +1,11 @@
 import 'server-only';
 import type { Metadata } from 'next';
-import { after } from 'next/server';
 import { cacheLife, cacheTag } from 'next/cache';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
-import { Redis } from '@upstash/redis';
 import { buildSeoDocument, indexableRobots, nonIndexableRobots, tenantFavicon } from '@/modules/site/seo';
 import type { NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
 import { deliveryComposition } from '@/modules/delivery';
-import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 
 /**
  * Konten tenant per-host di Next cache. Tag memakai kosakata yang sama dengan
@@ -46,20 +43,6 @@ export async function resolveNetworkSite(query: NetworkContentQuery = {}, path =
   const site = await loadCachedNetworkSite(classification.context, sanitized, path, config.seo.defaultLocale);
   if (site === null) notFound();
   return site;
-}
-
-export function trackArticleView(input: { readonly organizationId: string; readonly siteId: string; readonly articleSiteId: string }): void {
-  // Non-blocking: hitungan pageview (bukan unik) tanpa cookie/fingerprint.
-  after(async () => {
-    try {
-      const context = await getServerRuntimeContext();
-      const redis = new Redis({ url: context.config.redis.url, token: context.config.redis.token });
-      const key = `pv:${context.bootstrap.environment}:${input.organizationId}:${input.siteId}:${input.articleSiteId}`;
-      await redis.incr(key);
-    } catch {
-      /* hitungan boleh hilang; tayangan tidak boleh gagal */
-    }
-  });
 }
 
 /** Tenant metadata; search pages stay `noindex, follow` (link equity without index entry). */
