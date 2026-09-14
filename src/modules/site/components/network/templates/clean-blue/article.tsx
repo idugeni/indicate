@@ -34,7 +34,7 @@ export function CleanBlueArticle({
 
   return (
     <CleanBlueShell site={site} path={`/articles/${article.slug}`}>
-      <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 md:py-12">
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
           <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 font-sans text-xs text-slate-500">
             <Link href="/" className="transition-colors hover:text-[#1f6feb]">
               Beranda

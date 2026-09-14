@@ -77,7 +77,7 @@ export function CleanBlueHeader({ site, path = '/' }: { readonly site: NetworkSi
           <Link
             href="/search"
             aria-label="Cari berita"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-slate-900"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200"
           >
             <Search className="h-4 w-4" aria-hidden="true" />
           </Link>

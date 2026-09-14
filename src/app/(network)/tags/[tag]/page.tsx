@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ListingPage } from '@/modules/site/components/network/network-listing';
+import { parsePageParam } from '@/modules/site/components/network/templates/listing-shared';
 import { ListingSkeleton } from '@/modules/site/components/network/listing-skeleton';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
@@ -20,18 +21,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /** Params dibaca di dalam boundary agar shell tidak tertahan; konten tenant menyusul via streaming. */
-async function TagContent({ params }: Pick<Props, 'params'>) {
+async function TagContent({ params, searchParams }: Props) {
   const { tag } = await params;
   const clean = decodeURIComponent(tag).trim().toLowerCase();
   if (clean === '') notFound();
   const site = await resolveNetworkSite({ tag: clean }, `/tags/${clean}`);
-  return <ListingPage site={site} title={`Topik: #${clean}`} path={`/tags/${clean}`} />;
+  return <ListingPage site={site} title={`Topik: #${clean}`} path={`/tags/${clean}`} page={parsePageParam((await searchParams).page)} basePath={`/tags/${clean}`} />;
 }
 
-export default function TagPage({ params }: Props) {
+export default function TagPage({ params, searchParams }: Props) {
   return (
     <Suspense fallback={<ListingSkeleton label="Memuat topik" />}>
-      <TagContent params={params} />
+      <TagContent params={params} searchParams={searchParams} />
     </Suspense>
   );
 }

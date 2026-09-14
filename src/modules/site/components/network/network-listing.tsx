@@ -89,9 +89,11 @@ export function ListingPage({
   description,
   path = '/',
   indexable = true,
+  page = 1,
+  basePath,
 }: ListingProps) {
   const templateId = normalizeTemplateId(site.settings.colors.templateId);
-  const shared = { site, title, description, path, indexable } as const;
+  const shared = { site, title, description, path, indexable, page, basePath: basePath ?? path } as const;
 
   switch (templateId) {
     case 'broadsheet-classic':

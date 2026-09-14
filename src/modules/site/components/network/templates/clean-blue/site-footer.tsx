@@ -1,11 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ComponentType } from 'react';
-import { Apple, Play, Rss } from 'lucide-react';
+import { Rss } from 'lucide-react';
 import { FaFacebookF, FaInstagram, FaXTwitter, FaYoutube } from 'react-icons/fa6';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { categoryNav } from '@/modules/site/components/network/templates/clean-blue/shared';
+import { CleanBlueStoreBadges } from '@/modules/site/components/network/templates/clean-blue/store-badges';
 
 const SOCIAL_ICONS: Readonly<Record<string, ComponentType<{ readonly className?: string }>>> = {
   facebook: FaFacebookF,
@@ -142,22 +143,7 @@ export function CleanBlueFooter({ site }: { readonly site: NetworkSiteData }) {
           <p className="m-0 mt-4 font-sans text-sm leading-relaxed text-slate-600">
             Dapatkan pengalaman membaca berita yang lebih baik di perangkat mobile Anda.
           </p>
-          <p className="m-0 mt-4 grid grid-cols-2 gap-2.5">
-            <span className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3.5 py-2 text-white">
-              <Apple className="h-5 w-5 flex-none" aria-hidden="true" />
-              <span className="grid leading-tight">
-                <small className="font-sans text-[9px] uppercase">Download on the</small>
-                <strong className="font-sans text-sm font-bold">App Store</strong>
-              </span>
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3.5 py-2 text-white">
-              <Play className="h-5 w-5 flex-none" aria-hidden="true" />
-              <span className="grid leading-tight">
-                <small className="font-sans text-[9px] uppercase">Temukan di</small>
-                <strong className="font-sans text-sm font-bold">Google Play</strong>
-              </span>
-            </span>
-          </p>
+          <CleanBlueStoreBadges />
         </div>
       </div>
 

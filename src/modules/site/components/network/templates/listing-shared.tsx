@@ -42,6 +42,16 @@ export interface ListingProps {
   readonly description?: string | undefined;
   readonly path?: string | undefined;
   readonly indexable?: boolean | undefined;
+  /** Pagination (dipakai clean-blue; pola lain mengabaikan). */
+  readonly page?: number | undefined;
+  readonly basePath?: string | undefined;
+}
+
+/** ?page= → bilangan halaman ≥1 (default 1). */
+export function parsePageParam(value: string | string[] | undefined): number {
+  const raw = Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed >= 1 ? Math.min(parsed, 1000) : 1;
 }
 
 export function getReadingTime(text: string): number {

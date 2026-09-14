@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import type { NetworkArticle } from '@/modules/delivery/models';
 import { articleImage, authorDisplayName, badgeStyle, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
 
@@ -48,7 +49,7 @@ export function CleanBluePicks({
           const reading = readingMinutes(article);
           const badge = badgeStyle(index);
           return (
-            <article key={article.id} className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/60">
+            <Card key={article.id} className="overflow-hidden rounded-2xl border-0 bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/60">
               <div className="px-3 pt-3">
                 <div className="overflow-hidden rounded-xl">
                   <Image
@@ -63,7 +64,7 @@ export function CleanBluePicks({
                   />
                 </div>
               </div>
-              <div className="flex flex-1 flex-col px-5 pb-5">
+              <CardHeader className="px-5">
                 <p className="m-0 -mt-9 mb-3">
                   <span
                     className="inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold"
@@ -72,33 +73,33 @@ export function CleanBluePicks({
                     {article.categoryName ?? 'Berita'}
                   </span>
                 </p>
-                <h3 className="m-0 font-sans text-[17px] font-bold leading-snug tracking-tight text-slate-900">
+                <CardTitle className="font-sans text-[17px] font-bold leading-snug tracking-tight text-slate-900">
                   <Link href={`/articles/${article.slug}`} className="hover:text-[#1f6feb]">
                     {article.title}
                   </Link>
-                </h3>
-                <p className="m-0 mt-2 line-clamp-3 font-sans text-sm leading-relaxed text-slate-600">
+                </CardTitle>
+                <CardDescription className="line-clamp-3 font-sans text-sm leading-relaxed text-slate-600">
                   {article.description}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-5">
+                <p className="m-0 truncate font-sans text-xs font-bold text-slate-800">
+                  {authorDisplayName(article)}
                 </p>
-                <div className="m-0 mt-4 border-t border-slate-100 pt-3">
-                  <p className="m-0 truncate font-sans text-xs font-bold text-slate-800">
-                    {authorDisplayName(article)}
-                  </p>
-                  <p className="m-0 mt-1.5 flex items-center justify-between gap-2">
-                    <span className="font-sans text-xs tabular-nums text-slate-500">
-                      {formatDate(article.publishedAt, 'medium')} · {reading} mnt baca · {formatCompactViews(article.viewCount)} dibaca
-                    </span>
-                    <Link
-                      href={`/articles/${article.slug}`}
-                      aria-label={`Baca: ${article.title}`}
-                      className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#e8f0fe] text-[#1f6feb] transition-colors hover:bg-[#1f6feb] hover:text-white"
-                    >
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </p>
-                </div>
-              </div>
-            </article>
+              </CardContent>
+              <CardFooter className="justify-between border-slate-100 bg-white px-5">
+                <span className="font-sans text-xs tabular-nums text-slate-500">
+                  {formatDate(article.publishedAt, 'medium')} · {reading} mnt baca · {formatCompactViews(article.viewCount)} dibaca
+                </span>
+                <Link
+                  href={`/articles/${article.slug}`}
+                  aria-label={`Baca: ${article.title}`}
+                  className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#e8f0fe] text-[#1f6feb] transition-colors hover:bg-[#1f6feb] hover:text-white"
+                >
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </CardFooter>
+            </Card>
           );
         })}
       </div>
