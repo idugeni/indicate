@@ -9,10 +9,18 @@ import * as schema from '@/data/schema';
 /** Opens the pooled runtime DB; URL resolved from BootstrapConfig. */
 export function createRuntimeDatabase(config: BootstrapConfig) {
   const client = postgres(config.database.pooledUrl.reveal(), {
-    max: 10,
+    // max 5: satu pool shared per proses × N instance Fluid tetap jauh di
+    // bawah pool Supavisor (default 15–30 koneksi server); query publik
+    // pendek + Next-cache membuat antrean koneksi tidak pernah dalam.
+    max: 5,
     prepare: false,
     idle_timeout: 20,
     connect_timeout: 10,
+    // Fail-fast 15 dtk per statement (GUC Postgres = milidetik, diverifikasi
+    // via node_modules/postgres ConnectionParameters + runtime-config docs):
+    // query macet (pernah 1× statement timeout 57014 di production) tidak
+    // boleh menggantung instance (= memory billing jalan terus) tanpa batas.
+    connection: { statement_timeout: 15000 },
   });
   return Object.freeze({
     client,
