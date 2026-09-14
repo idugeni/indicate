@@ -785,10 +785,12 @@ yang dipetakan ke variabel `--site-primary`, `--site-accent`, `--site-header-bg`
   presisi; tidak ada klaim posisi geografis tanpa data.
 - `columnist-opinion`: body serif hanya untuk pola ini; pola lain body tetap Plex Sans.
 - `clean-blue`: satu-satunya pola full-mandiri — header, ticker, hero, kartu,
-  newsletter, dan footer milik template sendiri (`templates/clean-blue/`,
-  komponen pecah per berkas) dengan palet hardcoded; sengaja TIDAK memakai
-  `NetworkTemplate` bersama maupun `site_settings.colors`, agar tampil persis
-  seperti contoh. Badge pill berwarna dan permukaan terang hanya untuk pola ini.
+  newsletter, footer, halaman artikel, form + hasil pencarian, halaman 404,
+  skeleton loading, dan form laporan milik template sendiri
+  (`templates/clean-blue/`, komponen pecah per berkas) dengan palet hardcoded;
+  sengaja TIDAK memakai `NetworkTemplate` bersama maupun
+  `site_settings.colors`, agar tampil persis seperti contoh. Badge pill
+  berwarna dan permukaan terang hanya untuk pola ini.
 - Semua pola memakai `ArticleCard` varian yang sama key-nya (`featured` / `row` / `timeline` /
   `visual` / `flash`) — dilarang membuat varian kartu baru tanpa memperbarui tabel 17.2.
 

@@ -1,0 +1,90 @@
+import Form from 'next/form';
+import { Search } from 'lucide-react';
+
+import type { NetworkArticle } from '@/modules/delivery/models';
+import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/picks';
+
+export function CleanBlueSearchForm({ query }: { readonly query: string }) {
+  return (
+    <section aria-label="Pencarian berita" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
+      <h1 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-slate-900">
+        <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1f6feb]" />
+        {query === '' ? 'Pencarian Berita' : `Hasil untuk “${query}”`}
+      </h1>
+      <Form className="mt-4" action="/search" role="search">
+        <label htmlFor="clean-blue-search" className="sr-only">
+          Cari berita
+        </label>
+        <div className="flex flex-col gap-2.5 sm:flex-row">
+          <div className="relative flex-1">
+            <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              id="clean-blue-search"
+              name="q"
+              defaultValue={query}
+              maxLength={120}
+              autoComplete="off"
+              placeholder="Ketik kata kunci…"
+              className="h-11 w-full rounded-full border border-slate-200 bg-[#f5f8fd] pl-11 pr-4 font-sans text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#1f6feb] focus:outline-none"
+            />
+          </div>
+          <button
+            type="submit"
+            className="inline-flex h-11 flex-none items-center justify-center rounded-full bg-[#1f6feb] px-6 font-sans text-sm font-bold text-white transition-colors hover:bg-[#1a5fd0]"
+          >
+            Cari
+          </button>
+        </div>
+      </Form>
+    </section>
+  );
+}
+
+export function CleanBlueSearchSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Memuat hasil pencarian" className="space-y-5">
+      <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6" aria-hidden="true">
+        <div className="h-6 w-48 animate-pulse rounded-full bg-slate-100" />
+        <div className="mt-4 h-11 animate-pulse rounded-full bg-slate-100" />
+      </div>
+      <div className="grid gap-5 md:grid-cols-3" aria-hidden="true">
+        {[0, 1, 2].map((n) => (
+          <div key={n} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/60">
+            <div className="px-3 pt-3">
+              <div className="aspect-[16/10] animate-pulse rounded-xl bg-slate-100" />
+            </div>
+            <div className="space-y-2 px-5 pb-5">
+              <div className="h-4 w-3/4 animate-pulse rounded-full bg-slate-100" />
+              <div className="h-3 w-1/2 animate-pulse rounded-full bg-slate-100" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function CleanBlueSearchResults({ articles, query }: { readonly articles: readonly NetworkArticle[]; readonly query: string }) {
+  if (articles.length === 0) {
+    return (
+      <div role="status" className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center sm:p-12">
+        <h2 className="m-0 font-sans text-xl font-bold text-slate-900">
+          Tidak ada hasil
+        </h2>
+        <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed text-slate-500">
+          {query === ''
+            ? 'Ketik kata kunci pada kolom di atas untuk mencari berita.'
+            : `Tidak ada berita yang cocok dengan “${query}”. Coba kata kunci lain.`}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <CleanBluePicks
+      articles={articles}
+      heading={query === '' ? 'Jelajahi Berita' : `Hasil untuk “${query}”`}
+      description={`${articles.length} artikel ditemukan`}
+      linkHref={null}
+    />
+  );
+}

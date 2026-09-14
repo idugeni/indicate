@@ -2,6 +2,12 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import Form from 'next/form';
 import { ListingPage } from '@/modules/site/components/network/network-listing';
+import { normalizeTemplateId, StatusLine } from '@/modules/site/components/network/templates/listing-shared';
+import { Container } from '@/modules/site/components/layout/content';
+import { BackToTop } from '@/modules/site/components/layout/back-to-top';
+import { CleanBlueHeader } from '@/modules/site/components/network/templates/clean-blue/site-header';
+import { CleanBlueFooter } from '@/modules/site/components/network/templates/clean-blue/site-footer';
+import { CleanBlueSearchForm, CleanBlueSearchResults, CleanBlueSearchSkeleton } from '@/modules/site/components/network/templates/clean-blue/search';
 import { Section } from '@/modules/site/components/layout/content';
 import { Skeleton } from '@/components/ui/skeleton';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
@@ -73,16 +79,53 @@ async function SearchResults({ searchParams }: Props) {
   return <ListingPage site={site} title={query === '' ? 'Pencarian' : `Hasil untuk “${query}”`} path="/search" indexable={false} />;
 }
 
+/** Shell sadar-template: clean-blue memakai chrome terang penuh, pola lain
+ *  memakai struktur lama byte-persis (form interaktif segera + hasil streaming). */
+async function SearchShell({ searchParams }: Props) {
+  const resolved = await searchParams;
+  const query = normalizeQuery(resolved.q);
+  const site = await resolveNetworkSite({ search: query }, '/search');
+  if (normalizeTemplateId(site.settings.colors.templateId) !== 'clean-blue') {
+    return (
+      <>
+        <Suspense fallback={<SearchFormFallback />}>
+          <SearchForm searchParams={searchParams} />
+        </Suspense>
+        <Suspense fallback={<SearchResultsSkeleton />}>
+          <SearchResults searchParams={searchParams} />
+        </Suspense>
+      </>
+    );
+  }
+  return (
+    <div className="min-h-screen bg-[#f5f8fd] font-sans text-slate-900 antialiased" data-template="clean-blue">
+      <a
+        href="#main-content"
+        className="fixed left-4 top-[-5rem] z-50 rounded-lg bg-slate-900 px-4 py-3 font-sans text-sm text-white transition-[top] duration-180 focus:top-4"
+      >
+        Lewati ke konten
+      </a>
+      <CleanBlueHeader site={site} path="/search" />
+      <main id="main-content" tabIndex={-1}>
+        <Container className="space-y-6 py-6 md:py-8">
+          <StatusLine count={site.articles.length} title="Pencarian" />
+          <CleanBlueSearchForm query={query} />
+          <Suspense fallback={<CleanBlueSearchSkeleton />}>
+            <CleanBlueSearchResults articles={site.articles} query={query} />
+          </Suspense>
+        </Container>
+      </main>
+      <CleanBlueFooter site={site} />
+      <BackToTop />
+    </div>
+  );
+}
+
 /** Form dan hasil adalah island terpisah: form interaktif segera, hasil menyusul via streaming. */
 export default function SearchPage({ searchParams }: Props) {
   return (
-    <>
-      <Suspense fallback={<SearchFormFallback />}>
-        <SearchForm searchParams={searchParams} />
-      </Suspense>
-      <Suspense fallback={<SearchResultsSkeleton />}>
-        <SearchResults searchParams={searchParams} />
-      </Suspense>
-    </>
+    <Suspense fallback={<SearchFormFallback />}>
+      <SearchShell searchParams={searchParams} />
+    </Suspense>
   );
 }

@@ -48,6 +48,7 @@ import { ModernTechListing } from '@/modules/site/components/network/templates/m
 import { MultimediaVisualListing } from '@/modules/site/components/network/templates/multimedia-visual';
 import { TabloidExpressListing } from '@/modules/site/components/network/templates/tabloid-express';
 import { CleanBlueListing } from '@/modules/site/components/network/templates/clean-blue/index';
+import { CleanBlueArticle } from '@/modules/site/components/network/templates/clean-blue/article';
 
 // Sinkronisasi: API publik berkas ini tidak berubah — halaman cukup mengimpor
 // dari sini seperti sebelumnya. Setiap layout tinggal di
@@ -77,6 +78,7 @@ export {
   MultimediaVisualListing,
   TabloidExpressListing,
   CleanBlueListing,
+  CleanBlueArticle,
 };
 export { TEMPLATE_IDS, type ListingProps, type TemplateId } from '@/modules/site/components/network/templates/listing-shared';
 export type { CardVariant };
@@ -133,6 +135,9 @@ export function ArticlePage({
 }) {
   const seo = buildSeoDocument(site, { path: `/articles/${article.slug}`, article });
   const templateId = normalizeTemplateId(site.settings.colors.templateId);
+  if (templateId === 'clean-blue') {
+    return <CleanBlueArticle site={site} article={article} related={related} newer={newer} older={older} />;
+  }
   const readingTime = getReadingTime(article.body || '');
   const heroImageSrc = article.imageUrl ?? ARTICLE_FALLBACK_IMAGE_URL;
   const heroUnoptimized = !isLocalImageSrc(heroImageSrc);
