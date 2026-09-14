@@ -108,6 +108,8 @@ export const articles = pgTable('articles', {
   categoryId: uuid('category_id'),
   authorId: uuid('author_id'),
   leadMediaId: uuid('lead_media_id'),
+  /** URL sampul eksternal (mis. hotlink editorial); dipakai bila tidak ada media R2. */
+  coverImageUrl: text('cover_image_url'),
   slug: text('slug').notNull(),
   title: text('title').notNull(),
   body: text('body').notNull(),
