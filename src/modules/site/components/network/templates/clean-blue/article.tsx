@@ -5,10 +5,8 @@ import { FaFacebookF, FaWhatsapp, FaXTwitter } from 'react-icons/fa6';
 
 import { buildSeoDocument } from '@/modules/site/seo';
 import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/json-ld';
-import { CleanBlueBackToTop } from '@/modules/site/components/network/templates/clean-blue/back-to-top';
+import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/shell';
 import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
-import { CleanBlueHeader } from '@/modules/site/components/network/templates/clean-blue/site-header';
-import { CleanBlueFooter } from '@/modules/site/components/network/templates/clean-blue/site-footer';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/picks';
 import { articleImage, authorDisplayName, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
 
@@ -35,18 +33,8 @@ export function CleanBlueArticle({
   const shareText = encodeURIComponent(`${article.title} ${canonical}`);
 
   return (
-    <div className="min-h-screen bg-[#f5f8fd] font-sans text-slate-900 antialiased" data-template="clean-blue">
-      <a
-        href="#main-content"
-        className="fixed left-4 top-[-5rem] z-50 rounded-lg bg-slate-900 px-4 py-3 font-sans text-sm text-white transition-[top] duration-180 focus:top-4"
-      >
-        Lewati ke konten
-      </a>
-
-      <CleanBlueHeader site={site} path={`/articles/${article.slug}`} />
-
-      <main id="main-content" tabIndex={-1}>
-        <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 md:py-12">
+    <CleanBlueShell site={site} path={`/articles/${article.slug}`}>
+      <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 md:py-12">
           <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 font-sans text-xs text-slate-500">
             <Link href="/" className="transition-colors hover:text-[#1f6feb]">
               Beranda
@@ -255,11 +243,7 @@ export function CleanBlueArticle({
             </span>
           </p>
         </div>
-      </main>
-
-      <CleanBlueFooter site={site} />
-      <CleanBlueBackToTop />
       <CleanBlueJsonLd schemas={seo.jsonLd} />
-    </div>
+    </CleanBlueShell>
   );
 }

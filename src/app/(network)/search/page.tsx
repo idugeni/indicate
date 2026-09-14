@@ -4,9 +4,7 @@ import Form from 'next/form';
 import { ListingPage } from '@/modules/site/components/network/network-listing';
 import { normalizeTemplateId } from '@/modules/site/components/network/templates/listing-shared';
 import { CleanBlueContainer, CleanBlueStatusLine } from '@/modules/site/components/network/templates/clean-blue/shared';
-import { CleanBlueBackToTop } from '@/modules/site/components/network/templates/clean-blue/back-to-top';
-import { CleanBlueHeader } from '@/modules/site/components/network/templates/clean-blue/site-header';
-import { CleanBlueFooter } from '@/modules/site/components/network/templates/clean-blue/site-footer';
+import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/shell';
 import { CleanBlueSearchForm, CleanBlueSearchResults, CleanBlueSearchSkeleton } from '@/modules/site/components/network/templates/clean-blue/search';
 import { Section } from '@/modules/site/components/layout/content';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -98,26 +96,15 @@ async function SearchShell({ searchParams }: Props) {
     );
   }
   return (
-    <div className="min-h-screen bg-[#f5f8fd] font-sans text-slate-900 antialiased" data-template="clean-blue">
-      <a
-        href="#main-content"
-        className="fixed left-4 top-[-5rem] z-50 rounded-lg bg-slate-900 px-4 py-3 font-sans text-sm text-white transition-[top] duration-180 focus:top-4"
-      >
-        Lewati ke konten
-      </a>
-      <CleanBlueHeader site={site} path="/search" />
-      <main id="main-content" tabIndex={-1}>
-        <CleanBlueContainer className="space-y-6 py-6 md:py-8">
-          <CleanBlueStatusLine count={site.articles.length} title="Pencarian" />
-          <CleanBlueSearchForm query={query} />
-          <Suspense fallback={<CleanBlueSearchSkeleton />}>
-            <CleanBlueSearchResults articles={site.articles} query={query} />
-          </Suspense>
-        </CleanBlueContainer>
-      </main>
-      <CleanBlueFooter site={site} />
-      <CleanBlueBackToTop />
-    </div>
+    <CleanBlueShell site={site} path="/search">
+      <CleanBlueContainer className="space-y-6 py-6 md:py-8">
+        <CleanBlueStatusLine count={site.articles.length} title="Pencarian" />
+        <CleanBlueSearchForm query={query} />
+        <Suspense fallback={<CleanBlueSearchSkeleton />}>
+          <CleanBlueSearchResults articles={site.articles} query={query} />
+        </Suspense>
+      </CleanBlueContainer>
+    </CleanBlueShell>
   );
 }
 

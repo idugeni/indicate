@@ -1,14 +1,12 @@
 import Link from 'next/link';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { CleanBlueHeader } from '@/modules/site/components/network/templates/clean-blue/site-header';
-import { CleanBlueFooter } from '@/modules/site/components/network/templates/clean-blue/site-footer';
+import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/shell';
 
 export function CleanBlueNotFound({ site }: { readonly site: NetworkSiteData }) {
   return (
-    <div className="min-h-screen bg-[#f5f8fd] font-sans text-slate-900 antialiased" data-template="clean-blue">
-      <CleanBlueHeader site={site} path="/404" />
-      <main className="mx-auto w-full max-w-xl px-4 py-14 text-center md:py-20">
+    <CleanBlueShell site={site} path="/404">
+      <div className="mx-auto w-full max-w-xl px-4 py-14 text-center md:py-20">
         <p className="m-0 inline-block rounded-full bg-[#1f6feb] px-3.5 py-1.5 font-sans text-xs font-bold tracking-wide text-white">
           404
         </p>
@@ -26,8 +24,7 @@ export function CleanBlueNotFound({ site }: { readonly site: NetworkSiteData }) 
             Kembali ke beranda
           </Link>
         </p>
-      </main>
-      <CleanBlueFooter site={site} />
-    </div>
+      </div>
+    </CleanBlueShell>
   );
 }
