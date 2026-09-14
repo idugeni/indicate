@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
 import type { ReactNode } from 'react';
+import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/ui/cn';
@@ -130,6 +131,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-bg text-paper antialiased">
         {children}
         <Toaster />
+        <Analytics />
         <SpeedInsights />
       </body>
     </html>
