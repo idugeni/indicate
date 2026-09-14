@@ -81,11 +81,15 @@ export function buildSeoDocument(site: NetworkSiteData, options: { readonly path
   const logo = site.settings.logoUrl === null ? null : absoluteSiteAssetUrl(site.context, site.settings.logoUrl);
   const publisher = article?.officialInstitution ?? article?.publisherName ?? site.settings.name;
   const jsonLd: Record<string, unknown>[] = [
-    { '@context': 'https://schema.org', '@type': 'WebSite', name: site.settings.name, url: absoluteSiteUrl(site.context, '/') },
+    {
+      '@context': 'https://schema.org', '@type': 'WebSite', name: site.settings.name, url: absoluteSiteUrl(site.context, '/'), inLanguage: 'id',
+      potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: absoluteSiteUrl(site.context, '/search?q={search_term_string}') }, 'query-input': 'required name=search_term_string' },
+    },
     { '@context': 'https://schema.org', '@type': 'Organization', name: publisher, url: absoluteSiteUrl(site.context, '/'), ...(logo === null ? {} : { logo }) },
   ];
   if (article !== undefined) {
-    jsonLd.push({ '@context': 'https://schema.org', '@type': 'NewsArticle', headline: article.title, description: article.description, datePublished: article.publishedAt, dateModified: article.updatedAt, mainEntityOfPage: canonical, image: [image], author: { '@type': 'Person', name: article.authorName ?? article.attribution }, publisher: { '@type': 'Organization', name: publisher, ...(logo === null ? {} : { logo: { '@type': 'ImageObject', url: logo } }) } });
+    const wordCount = article.body.trim().split(/\s+/u).filter(Boolean).length;
+    jsonLd.push({ '@context': 'https://schema.org', '@type': 'NewsArticle', headline: article.title, description: article.description, datePublished: article.publishedAt, dateModified: article.updatedAt, mainEntityOfPage: canonical, image: [image], inLanguage: 'id', isAccessibleForFree: 'True', wordCount, ...(article.categoryName === null ? {} : { articleSection: article.categoryName }), author: { '@type': 'Person', name: article.authorName ?? article.attribution }, publisher: { '@type': 'Organization', name: publisher, ...(logo === null ? {} : { logo: { '@type': 'ImageObject', url: logo } }) } });
     jsonLd.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Beranda', item: absoluteSiteUrl(site.context, '/') }, ...(article.categoryName === null || article.categorySlug === null ? [] : [{ '@type': 'ListItem', position: 2, name: article.categoryName, item: absoluteSiteUrl(site.context, `/categories/${article.categorySlug}`) }]), { '@type': 'ListItem', position: article.categoryName === null ? 2 : 3, name: article.title, item: canonical }] });
   }
   return { title, description, canonical, robots: 'index, follow', openGraph: { title, description, url: canonical, siteName: site.settings.name, type: article === undefined ? 'website' : 'article', image }, jsonLd };
@@ -96,6 +100,8 @@ export interface WebSiteSchema {
   readonly '@type': 'WebSite';
   readonly name: string;
   readonly url: string;
+  readonly inLanguage?: string;
+  readonly potentialAction?: Readonly<Record<string, unknown>>;
 }
 
 export interface OrganizationSchema {
@@ -115,6 +121,10 @@ export interface NewsArticleSchema {
   readonly dateModified: string;
   readonly mainEntityOfPage: string;
   readonly image: readonly string[];
+  readonly inLanguage?: string;
+  readonly isAccessibleForFree?: string;
+  readonly wordCount?: number;
+  readonly articleSection?: string;
   readonly author: Readonly<{ '@type': 'Person'; name: string }>;
   readonly publisher: Readonly<{
     '@type': 'Organization';
@@ -199,6 +209,7 @@ interface SitemapEntry {
   readonly changefreq: 'daily' | 'weekly' | 'monthly';
   readonly priority: string;
   readonly image?: string;
+  readonly imageTitle?: string;
 }
 
 function toLastmod(value: string, fallback: string): string {
@@ -237,13 +248,13 @@ export function serializeSitemap(site: NetworkSiteData): string {
       priority: '0.8',
       ...(article.imageUrl === null
         ? {}
-        : { image: absoluteSiteAssetUrl(site.context, article.imageUrl) }),
+        : { image: absoluteSiteAssetUrl(site.context, article.imageUrl), imageTitle: article.title }),
     });
   }
   const body = entries
     .map(
       (entry) =>
-        `<url><loc>${xml(entry.loc)}</loc><lastmod>${xml(entry.lastmod)}</lastmod><changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority>${entry.image === undefined ? '' : `<image:image><image:loc>${xml(entry.image)}</image:loc></image:image>`}</url>`,
+        `<url><loc>${xml(entry.loc)}</loc><lastmod>${xml(entry.lastmod)}</lastmod><changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority>${entry.image === undefined ? '' : `<image:image><image:loc>${xml(entry.image)}</image:loc>${entry.imageTitle === undefined ? '' : `<image:title>${xml(entry.imageTitle)}</image:title>`}</image:image>`}</url>`,
     )
     .join('');
   const hasImages = entries.some((entry) => entry.image !== undefined);
