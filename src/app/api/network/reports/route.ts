@@ -3,7 +3,7 @@ import { connection, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleModerationRepository } from '@/data/repos/moderation';
 import { deliveryComposition } from '@/modules/delivery';
 import { createProductionIntegrationsContext } from '@/modules/integrations';
@@ -46,8 +46,7 @@ async function handlePOST(request: Request) {
       const site = await composition.content.load(result.context, { articleSlug: parsed.data.articleSlug });
       articleId = site?.articles.find((article) => article.slug === parsed.data.articleSlug?.trim().toLowerCase())?.id ?? null;
     }
-    const runtime = createRuntimeDatabase(context.bootstrap);
-    try {
+    const runtime = getSharedRuntimeDatabase(context.bootstrap);
       const service = new ModerationService(new DrizzleModerationRepository(runtime.db));
       const outcome = await service.submitReport({
         orgId: result.context.organizationId, siteId: result.context.siteId, articleId,
@@ -59,13 +58,8 @@ async function handlePOST(request: Request) {
         return NextResponse.json(outcome.error, { status: code === 'INVALID_INPUT' ? 400 : 404, headers: noStore });
       }
       return NextResponse.json({ ok: true, requestId }, { headers: noStore });
-    } finally {
-      await runtime.close();
-    }
   } catch {
     return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'Report intake is temporarily unavailable.', requestId), { status: 503, headers: noStore });
-  } finally {
-    await production.close();
   }
 }
 

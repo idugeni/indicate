@@ -15,11 +15,9 @@ async function runReconcile(request: Request) {
   const context = await getServerRuntimeContext(); const config = context.config;
   if (!authorized(request, config.security.cronSecret)) return new NextResponse('Not Found', { status: 404, headers: { 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
   const composition = await deliveryOperationsComposition();
-  try {
-    const now = new Date();
-    const [activation, invalidation] = await Promise.all([composition.provisioning.reconcile(now), composition.invalidation.dispatch(now, composition.config.publishing.batchSize)]);
-    return NextResponse.json({ activation, invalidation }, { headers: { 'Cache-Control': 'private, no-store' } });
-  } finally { await composition.runtime.close(); }
+  const now = new Date();
+  const [activation, invalidation] = await Promise.all([composition.provisioning.reconcile(now), composition.invalidation.dispatch(now, composition.config.publishing.batchSize)]);
+  return NextResponse.json({ activation, invalidation }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
 async function handlePOST(request: Request) {

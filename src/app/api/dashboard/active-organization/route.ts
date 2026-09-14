@@ -7,7 +7,7 @@ import { getPublicConfig } from '@/core/config/public-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { UuidGenerator } from '@/core/system/uuid-generator';
@@ -38,8 +38,8 @@ async function handlePOST(request: Request) {
   const identity = await auth.verifyCookieSession();
   if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.bootstrap);
-  try {
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  {
     const repository = new DrizzleAuthorizationRepository(runtime.db);
     const localUserResult = await resolveVerifiedLocalUser(identity, repository, new UuidGenerator());
     if (!localUserResult.ok) {
@@ -57,8 +57,6 @@ async function handlePOST(request: Request) {
       }
       return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     }
-  } finally {
-    await runtime.close();
   }
 
   cookieStore.set('indicate-active-organization', parsed.data.organizationId, {

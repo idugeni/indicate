@@ -7,7 +7,7 @@ import { getPublicConfig } from '@/core/config/public-config';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
 import { UuidGenerator } from '@/core/system/uuid-generator';
@@ -52,8 +52,8 @@ async function handlePOST(request: Request) {
   const identity = await auth.verifyCookieSession();
   if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.bootstrap);
-  try {
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  {
     const repository = new DrizzleAuthorizationRepository(runtime.db);
     const local = await resolveVerifiedLocalUser(identity, repository, new UuidGenerator());
     if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
@@ -90,8 +90,6 @@ async function handlePOST(request: Request) {
     });
     if (updated === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     return NextResponse.json({ avatarUrl: updated.avatarUrl });
-  } finally {
-    await runtime.close();
   }
 }
 
@@ -108,14 +106,12 @@ async function handleGET() {
   const identity = await auth.verifyCookieSession();
   if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.bootstrap);
-  try {
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  {
     const repository = new DrizzleAuthorizationRepository(runtime.db);
     const profile = await repository.getOwnProfile(identity.authUserId);
     if (profile === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     return NextResponse.json({ ...profile, oauthAvatarUrl: identity.avatarUrl });
-  } finally {
-    await runtime.close();
   }
 }
 

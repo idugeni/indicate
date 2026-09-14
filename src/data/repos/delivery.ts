@@ -32,7 +32,12 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       hostname: string; organization_id: string; domain_id: string; site_id: string;
       region_id: string | null; routing_version: number; content_version: number;
     }>(sql`SELECT * FROM indicate_private.discover_release_active_hosts(ARRAY[${hostname}])`);
-    return [...rows].map((row) => ({ normalizedHostname: row.hostname, organizationId: row.organization_id, domainId: row.domain_id, siteId: row.site_id, regionId: row.region_id, routingVersion: row.routing_version, contentVersion: row.content_version }));
+    // Fail closed cepat: baris tanpa versi routing/konten valid diperlakukan
+    // sebagai host tak dikenal (404) alih-alih meledak sebagai UNDEFINED_VALUE
+    // jauh di dalam pembangunan query (500 + CPU terbuang).
+    return [...rows]
+      .filter((row) => Number.isFinite(row.routing_version) && Number.isFinite(row.content_version))
+      .map((row) => ({ normalizedHostname: row.hostname, organizationId: row.organization_id, domainId: row.domain_id, siteId: row.site_id, regionId: row.region_id, routingVersion: row.routing_version, contentVersion: row.content_version }));
   }
 
   async findPendingActivation(hostname: string, attemptId: string): Promise<boolean> {

@@ -11,7 +11,7 @@ import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
 import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzlePublishingRepository } from '@/data/repos/publishing/repository';
 import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
@@ -33,7 +33,6 @@ interface ServiceContext {
   readonly storage: ObjectStoragePort;
   readonly media: MediaService;
   readonly publication: PublicationService;
-  close(): Promise<void>;
 }
 type ContextResult = ServiceContext | PublicErrorEnvelope;
 const isError = (value: ContextResult): value is PublicErrorEnvelope => 'error' in value;
@@ -44,14 +43,14 @@ async function contextFor(organizationId: string, requestId: string): Promise<Co
   const publicConfig = getPublicConfig(process.env);
   const auth = createSupabaseSsrAuthAdapter({ url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey, cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }) });
   const identity = await auth.verifyCookieSession(); if (identity === null) return createNonDisclosingDenial(requestId);
-  const context = await getServerRuntimeContext(); const config = context.config; const runtime = createRuntimeDatabase(context.bootstrap); const authorization = new DrizzleAuthorizationRepository(runtime.db);
-  const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator()); if (!local.ok) { await runtime.close(); return createNonDisclosingDenial(requestId); }
-  const membership = await authorization.findActiveMembership(organizationId, local.value.id); if (membership === null || !membership.roleActive) { await runtime.close(); return createNonDisclosingDenial(requestId); }
+  const context = await getServerRuntimeContext(); const config = context.config; const runtime = getSharedRuntimeDatabase(context.bootstrap); const authorization = new DrizzleAuthorizationRepository(runtime.db);
+  const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator()); if (!local.ok) { return createNonDisclosingDenial(requestId); }
+  const membership = await authorization.findActiveMembership(organizationId, local.value.id); if (membership === null || !membership.roleActive) { return createNonDisclosingDenial(requestId); }
   const actor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), entryPoint: 'dashboard', requestId };
   const repository = new DrizzlePublishingRepository(runtime.db);
   const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey });
   const queue = new UpstashPublicationQueueAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace, resourceId: config.redis.resourceId });
-  return { actor, repository, storage, media: new MediaService(repository, storage, new UuidGenerator(), { maxBytes: config.r2.maxBytes, allowedTypes: config.r2.allowedTypes, uploadTtlSeconds: config.r2.uploadTtlSeconds, readTtlSeconds: config.r2.readTtlSeconds }), publication: new PublicationService(repository, queue, new UuidGenerator(), { maxAttempts: config.publishing.maxAttempts, delaysSeconds: config.publishing.retryDelaysSeconds }), close: runtime.close };
+  return { actor, repository, storage, media: new MediaService(repository, storage, new UuidGenerator(), { maxBytes: config.r2.maxBytes, allowedTypes: config.r2.allowedTypes, uploadTtlSeconds: config.r2.uploadTtlSeconds, readTtlSeconds: config.r2.readTtlSeconds }), publication: new PublicationService(repository, queue, new UuidGenerator(), { maxAttempts: config.publishing.maxAttempts, delaysSeconds: config.publishing.retryDelaysSeconds }) };
 }
 
 async function handleGET(request: Request) {
@@ -59,7 +58,7 @@ async function handleGET(request: Request) {
   const parsed = querySchema.safeParse({ organizationId: url.searchParams.get('organizationId'), view: url.searchParams.get('view'), jobId: url.searchParams.get('jobId') ?? undefined });
   if (!parsed.success) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await contextFor(parsed.data.organizationId, requestId); if (isError(context)) return NextResponse.json(context, { status: statusFor(context) });
-  try {
+  {
     const snapshot = await context.repository.snapshot(context.actor.organizationId);
     if (snapshot === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     if (parsed.data.view === 'media') {
@@ -69,7 +68,7 @@ async function handleGET(request: Request) {
     if (!context.actor.permissionSet.has(PUBLISHING_PERMISSIONS.publishingRead)) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     if (parsed.data.jobId !== undefined) { const result = await context.publication.status(context.actor, { jobId: parsed.data.jobId }); return result.ok ? NextResponse.json(result.value) : NextResponse.json(result.error, { status: statusFor(result.error) }); }
     return NextResponse.json({ jobs: snapshot.jobs, targets: snapshot.targets, articles: snapshot.articles, sites: snapshot.sites });
-  } finally { await context.close(); }
+  }
 }
 
 async function handlePOST(request: Request) {
@@ -78,7 +77,7 @@ async function handlePOST(request: Request) {
   const parsed = commandSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json(createPublicError('INVALID_INPUT', 'Invalid Publishing command.', requestId), { status: 400 });
   const context = await contextFor(parsed.data.organizationId, requestId); if (isError(context)) return NextResponse.json(context, { status: statusFor(context) });
-  try {
+  {
     const actions: Readonly<Record<string, (payload: unknown) => Promise<Result<unknown, PublicErrorEnvelope>>>> = {
       'media.reserve': (payload) => context.media.reserveUpload(context.actor, payload),
       'media.complete': (payload) => context.media.completeUpload(context.actor, payload),
@@ -92,7 +91,7 @@ async function handlePOST(request: Request) {
     };
     const action = actions[parsed.data.action]; if (action === undefined) return NextResponse.json(createPublicError('INVALID_INPUT', 'Unknown Publishing command.', requestId), { status: 400 });
     const result = await action(parsed.data.payload); return result.ok ? NextResponse.json(result.value) : NextResponse.json(result.error, { status: statusFor(result.error) });
-  } finally { await context.close(); }
+  }
 }
 
 export const GET = withApiAccess('GET /api/dashboard/publishing', handleGET);

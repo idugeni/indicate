@@ -46,7 +46,6 @@ async function handlePOST(request: Request) {
     if (error instanceof Error && error.message === 'CONFIGURATION_INVALID') return NextResponse.json(createPublicError('CONFIGURATION_INVALID', 'The domain configuration is invalid.', requestId), { status: 400 });
     return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'The domain operation is currently unavailable.', requestId), { status: 503 });
   }
-  finally { await composition.runtime.close(); }
 }
 
 export const POST = withApiAccess('POST /api/dashboard/delivery', handlePOST);

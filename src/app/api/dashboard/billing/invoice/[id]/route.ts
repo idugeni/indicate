@@ -7,7 +7,7 @@ import type { InvoiceRecord } from '@/modules/billing/models';
 import { getPublicConfig } from '@/core/config/public-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzleBillingRepository } from '@/data/repos/billing';
 import { UuidGenerator } from '@/core/system/uuid-generator';
@@ -119,8 +119,8 @@ async function handleGET(request: Request, context: { readonly params: Promise<{
   const identity = await auth.verifyCookieSession();
   if (identity === null) return new Response('Not Found', { status: 404 });
   const serverContext = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(serverContext.bootstrap);
-  try {
+  const runtime = getSharedRuntimeDatabase(serverContext.bootstrap);
+  {
     const authorization = new DrizzleAuthorizationRepository(runtime.db);
     const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
     if (!local.ok || local.value.status !== 'active') return new Response('Not Found', { status: 404 });
@@ -136,8 +136,6 @@ async function handleGET(request: Request, context: { readonly params: Promise<{
     return new Response(invoiceDocument(result.value), {
       headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store' },
     });
-  } finally {
-    await runtime.close();
   }
 }
 

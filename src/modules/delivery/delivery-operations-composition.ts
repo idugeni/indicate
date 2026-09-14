@@ -4,7 +4,7 @@ import { InvalidationDispatcher } from '@/modules/delivery/invalidation';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { NextCacheInvalidationAdapter } from '@/modules/delivery/next-invalidation-adapter';
 import { CloudflareAuthorityAdapter } from '@/integrations/cloudflare/cloudflare-authority';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleDeliveryRepository } from '@/data/repos/delivery';
 import { HttpsPendingHostnameProbe } from '@/core/hostname/pending-hostname-probe';
 import { UpstashCacheCoordination } from '@/integrations/redis/upstash-cache-coordination';
@@ -13,7 +13,7 @@ import { VercelExactDomainAdapter } from '@/integrations/vercel/exact-domain-ada
 export async function deliveryOperationsComposition() {
   const context = await getServerRuntimeContext();
   const config = context.config;
-  const runtime = createRuntimeDatabase(context.bootstrap);
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
   const repository = new DrizzleDeliveryRepository(runtime.db, config.seo.defaultAssetUrl);
   const cloudflare = new CloudflareAuthorityAdapter(config.cloudflare.accountId, config.cloudflare.apiToken, config.vercel.productionTarget);
   const vercel = new VercelExactDomainAdapter(config.vercel.projectId, config.vercel.teamId, config.vercel.apiToken);

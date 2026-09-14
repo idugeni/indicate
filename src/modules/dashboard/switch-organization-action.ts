@@ -9,7 +9,7 @@ import { orgTag } from '@/modules/dashboard/cache-tags';
 import { getPublicConfig } from '@/core/config/public-config';
 import { isProductionServer } from '@/core/config/runtime/runtime-flags';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
@@ -69,8 +69,8 @@ export async function switchActiveOrganization(
   const identity = await auth.verifyCookieSession();
   if (identity === null) return DENIED;
   const context = await getServerRuntimeContext();
-  const runtime = createRuntimeDatabase(context.bootstrap);
-  try {
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  {
     const repository = new DrizzleAuthorizationRepository(runtime.db);
     const localUserResult = await resolveVerifiedLocalUser(identity, repository, new UuidGenerator());
     if (!localUserResult.ok) return DENIED;
@@ -95,8 +95,6 @@ export async function switchActiveOrganization(
       }
       return DENIED;
     }
-  } finally {
-    await runtime.close();
   }
 
   const previous = cookieStore.get('indicate-active-organization')?.value;

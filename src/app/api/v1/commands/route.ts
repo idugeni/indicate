@@ -23,35 +23,33 @@ async function handlePOST(request: Request) {
   const production = await createProductionIntegrationsContext();
   const limiter: RateLimitService = production.rateLimits;
   const policy = { ...config.rateLimits.mutation, failureMode: 'closed' as const };
-  try {
-    // Consume the trusted-source bucket before parsing/auth so unauthenticated CPU work stays bounded.
-    const preAuthenticated = await limiter.enforce(limiter.publicKey('api-command-auth', source), policy, requestId);
-    if (!preAuthenticated.ok) return NextResponse.json(preAuthenticated.error, { status: status(preAuthenticated.error), headers: retryHeaders(preAuthenticated.error) });
+  // Consume the trusted-source bucket before parsing/auth so unauthenticated CPU work stays bounded.
+  const preAuthenticated = await limiter.enforce(limiter.publicKey('api-command-auth', source), policy, requestId);
+  if (!preAuthenticated.ok) return NextResponse.json(preAuthenticated.error, { status: status(preAuthenticated.error), headers: retryHeaders(preAuthenticated.error) });
 
-    const parsed = schema.safeParse(await request.json().catch(() => null));
-    if (!parsed.success) return NextResponse.json(createPublicError('INVALID_INPUT', 'Invalid API command.', requestId), { status: 400 });
-    const bearer = request.headers.get('authorization');
-    if (bearer === null || !bearer.startsWith('Bearer ')) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
-    const requiredScope = parsed.data.action.startsWith('article.') ? 'article.manage' : parsed.data.action.startsWith('media.') ? 'media.manage' : parsed.data.action === 'publication.status' ? 'publishing.read' : 'publishing.request';
-    const apiKeys = production.apiKeys;
-    const authenticated = await apiKeys.authenticate(bearer.slice(7), requiredScope, requestId);
-    if (!authenticated.ok) return NextResponse.json(authenticated.error, { status: status(authenticated.error) });
+  const parsed = schema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json(createPublicError('INVALID_INPUT', 'Invalid API command.', requestId), { status: 400 });
+  const bearer = request.headers.get('authorization');
+  if (bearer === null || !bearer.startsWith('Bearer ')) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+  const requiredScope = parsed.data.action.startsWith('article.') ? 'article.manage' : parsed.data.action.startsWith('media.') ? 'media.manage' : parsed.data.action === 'publication.status' ? 'publishing.read' : 'publishing.request';
+  const apiKeys = production.apiKeys;
+  const authenticated = await apiKeys.authenticate(bearer.slice(7), requiredScope, requestId);
+  if (!authenticated.ok) return NextResponse.json(authenticated.error, { status: status(authenticated.error) });
 
-    const limited = await limiter.enforce(limiter.authenticatedKey('api-command', authenticated.value), policy, requestId);
-    if (!limited.ok) return NextResponse.json(limited.error, { status: status(limited.error), headers: retryHeaders(limited.error) });
-    const shared = production.sharedFactory.create();
-    const actions: Record<string, (payload: unknown) => Promise<Result<unknown, PublicErrorEnvelope>>> = {
-      'article.create': (payload) => shared.articles.createArticle(authenticated.value, payload),
-      'media.reserve': (payload) => shared.media.reserveUpload(authenticated.value, payload),
-      'publication.request': (payload) => shared.publication.request(authenticated.value, payload),
-      'publication.requestBulk': (payload) => shared.publication.requestBulk(authenticated.value, payload),
-      'publication.retry': (payload) => shared.publication.retry(authenticated.value, payload),
-      'publication.unpublish': (payload) => shared.publication.unpublish(authenticated.value, payload),
-      'publication.status': (payload) => shared.publication.status(authenticated.value, payload),
-    };
-    const result = await actions[parsed.data.action]!(parsed.data.payload);
-    return result.ok ? NextResponse.json({ data: result.value, requestId }) : NextResponse.json(result.error, { status: status(result.error) });
-  } finally { await production.close(); }
+  const limited = await limiter.enforce(limiter.authenticatedKey('api-command', authenticated.value), policy, requestId);
+  if (!limited.ok) return NextResponse.json(limited.error, { status: status(limited.error), headers: retryHeaders(limited.error) });
+  const shared = production.sharedFactory.create();
+  const actions: Record<string, (payload: unknown) => Promise<Result<unknown, PublicErrorEnvelope>>> = {
+    'article.create': (payload) => shared.articles.createArticle(authenticated.value, payload),
+    'media.reserve': (payload) => shared.media.reserveUpload(authenticated.value, payload),
+    'publication.request': (payload) => shared.publication.request(authenticated.value, payload),
+    'publication.requestBulk': (payload) => shared.publication.requestBulk(authenticated.value, payload),
+    'publication.retry': (payload) => shared.publication.retry(authenticated.value, payload),
+    'publication.unpublish': (payload) => shared.publication.unpublish(authenticated.value, payload),
+    'publication.status': (payload) => shared.publication.status(authenticated.value, payload),
+  };
+  const result = await actions[parsed.data.action]!(parsed.data.payload);
+  return result.ok ? NextResponse.json({ data: result.value, requestId }) : NextResponse.json(result.error, { status: status(result.error) });
 }
 
 export const POST = withApiAccess('POST /api/v1/commands', handlePOST);
