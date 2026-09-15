@@ -48,7 +48,7 @@ export function ReportForm({ articleSlug }: { readonly articleSlug: string | nul
   return (
     <div className="space-y-3">
       {articleSlug ? (
-        <p className="m-0 font-mono text-xs text-paper-faint">Artikel: /articles/{articleSlug}</p>
+        <p className="m-0 font-mono text-xs text-paper-faint">Artikel: /{articleSlug}</p>
       ) : null}
       <label className="block font-sans text-xs text-paper-dim">
         Kontak Anda (surel/nomor, untuk klarifikasi)

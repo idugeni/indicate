@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (113 migrations):
+-- Reviewed sources, in journal order (114 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -126,6 +126,7 @@
 --   111  20260915010000_invoices_created_by_covering_index  ledger sha256:995168799f377bff817043b7757a7161741d92fea327253c57fd6aa11d05c0f1
 --   112  20260915020000_media_policy_allow_ico  ledger sha256:38ecc2cee63b8ffb3034d85e1b67506941d9a9418fbdc06048556838bceb55ed
 --   113  20260916000000_region_locked_memberships  ledger sha256:398087aef20abd0eead610110e9026b41f73bf35eedc3fba3c7c917ea9a35337
+--   114  20260916010000_article_root_urls  ledger sha256:675a780cf8f2e72d8b42731ca6d3cfc5f02e70dfc1455ef8d95ea2be321eab85
 
 BEGIN;
 
@@ -11223,4 +11224,18 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (113, 'region_locked_memberships', 'region-locked-memberships-v1');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('398087aef20abd0eead610110e9026b41f73bf35eedc3fba3c7c917ea9a35337', 1789500000000);
+
+-- ----------------------------------------------------------------------
+-- 20260916010000_article_root_urls
+-- ----------------------------------------------------------------------
+-- Artikel tenant pindah ke slug root: tulis ulang published_url tersimpan
+-- dari /articles/<slug> menjadi /<slug>. Idempoten: hanya baris yang masih
+-- berawalan pola lama; URL baru (hasil redirect 308 proxy) tidak tersentuh.
+UPDATE public.article_sites
+SET published_url = regexp_replace(published_url, '/articles/', '/'), updated_at = now()
+WHERE published_url LIKE '%/articles/%';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (114, 'article_root_urls', 'sha256:6d4cca5d246408de829601ba01845d3c4ce801c4b05b8a7d4e22d37a817eeb4e');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('675a780cf8f2e72d8b42731ca6d3cfc5f02e70dfc1455ef8d95ea2be321eab85', 1789502290201);
 COMMIT;

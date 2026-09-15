@@ -17,7 +17,7 @@ export function completeInvalidationValues(input: CompleteInvalidationInput) {
   const articleSlugs = [...new Set(input.articleSlugs ?? [])];
   const categorySlugs = [...new Set(input.categorySlugs ?? [])];
   const paths = new Set<string>(BASE_PATHS);
-  for (const slug of articleSlugs) paths.add(`/articles/${slug}`);
+  for (const slug of articleSlugs) paths.add(`/${slug}`);
   for (const slug of categorySlugs) paths.add(`/categories/${slug}`);
   const tags = new Set([`org:${input.organizationId}`, `site:${input.siteId}`, ...hostnames.map((hostname) => `host:${hostname}`), ...articleSlugs.map((slug) => `article:${slug}`), ...(input.mediaIds ?? []).map((id) => `media:${id}`)]);
   // Media bytes are never cached, but their edge-cached 307 redirects are:

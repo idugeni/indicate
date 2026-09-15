@@ -74,7 +74,7 @@ export function CleanBluePicks({
                   </span>
                 </p>
                 <CardTitle className="line-clamp-2 font-sans text-[17px] font-bold leading-snug tracking-tight text-slate-900">
-                  <Link href={`/articles/${article.slug}`} className="hover:text-[#1f6feb]">
+                  <Link href={`/${article.slug}`} className="hover:text-[#1f6feb]">
                     {article.title}
                   </Link>
                 </CardTitle>
@@ -92,7 +92,7 @@ export function CleanBluePicks({
                   {formatDate(article.publishedAt, 'medium')} · {reading} mnt baca · {formatCompactViews(article.viewCount)} dibaca
                 </span>
                 <Link
-                  href={`/articles/${article.slug}`}
+                  href={`/${article.slug}`}
                   aria-label={`Baca: ${article.title}`}
                   className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#e8f0fe] text-[#1f6feb] transition-colors hover:bg-[#1f6feb] hover:text-white"
                 >

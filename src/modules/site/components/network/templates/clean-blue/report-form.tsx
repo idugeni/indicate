@@ -48,7 +48,7 @@ export function CleanBlueReportForm({ articleSlug }: { readonly articleSlug: str
   return (
     <div className="space-y-4">
       {articleSlug ? (
-        <p className="m-0 font-mono text-xs text-slate-500">Artikel: /articles/{articleSlug}</p>
+        <p className="m-0 font-mono text-xs text-slate-500">Artikel: /{articleSlug}</p>
       ) : null}
       <label className="block font-sans text-xs font-medium text-slate-600">
         Kontak Anda (surel/nomor, untuk klarifikasi)

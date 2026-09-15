@@ -36,7 +36,7 @@ export function CleanBlueHero({ article }: { readonly article: NetworkArticle })
           {article.categoryName ?? 'Nasional'}
         </p>
         <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl">
-          <Link href={`/articles/${article.slug}`} className="hover:text-[#1f6feb]">
+          <Link href={`/${article.slug}`} className="hover:text-[#1f6feb]">
             {article.title}
           </Link>
         </h1>
@@ -66,7 +66,7 @@ export function CleanBlueHero({ article }: { readonly article: NetworkArticle })
               <Bookmark className="h-4 w-4" aria-hidden="true" />
             </button>
             <Link
-              href={`/articles/${article.slug}`}
+              href={`/${article.slug}`}
               aria-label="Bagikan artikel"
               className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
             >

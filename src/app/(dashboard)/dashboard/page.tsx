@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { connection } from 'next/server';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -103,18 +104,18 @@ async function DashboardBody() {
           Anda pelanggan baru. Begitu keanggotaan aktif, dasbor redaksi langsung tersedia di halaman ini.
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <a
+          <Link
             href="/contact"
             className="inline-flex items-center justify-center rounded bg-brass px-5 py-2.5 font-sans text-sm font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft"
           >
             Hubungi Kami
-          </a>
-          <a
+          </Link>
+          <Link
             href="/pricing"
             className="inline-flex items-center justify-center rounded border border-hairline-strong bg-transparent px-5 py-2.5 font-sans text-sm font-medium text-paper-dim transition-colors duration-180 hover:text-paper"
           >
             Lihat Info Harga
-          </a>
+          </Link>
           <SignOutDialog mode="button" />
         </div>
         <RedeemInviteForm />

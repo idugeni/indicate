@@ -231,7 +231,6 @@ export function serializeRobots(site: NetworkSiteData): string {
     'User-agent: *',
     ...custom,
     'Allow: /',
-    'Allow: /articles/',
     'Allow: /categories/',
     // Search pages are noindex: disallow them to keep crawl budget on canonical URLs.
     'Disallow: /search',
@@ -283,7 +282,7 @@ export function serializeSitemap(site: NetworkSiteData): string {
   }
   for (const article of site.articles) {
     entries.push({
-      loc: absoluteSiteUrl(site.context, `/articles/${article.slug}`),
+      loc: absoluteSiteUrl(site.context, `/${article.slug}`),
       lastmod: toLastmod(article.updatedAt, now),
       changefreq: 'weekly',
       priority: '0.8',
@@ -315,7 +314,7 @@ export function serializeNewsSitemap(site: NetworkSiteData): string {
   const body = items
     .map(
       (article) =>
-        `<url><loc>${xml(absoluteSiteUrl(site.context, `/articles/${article.slug}`))}</loc><news:news><news:publication><news:name>${xml(site.settings.seoSiteName || site.settings.name)}</news:name><news:language>id</news:language></news:publication><news:publication_date>${xml(new Date(article.publishedAt).toISOString())}</news:publication_date><news:title>${xml(article.title)}</news:title></news:news></url>`,
+        `<url><loc>${xml(absoluteSiteUrl(site.context, `/${article.slug}`))}</loc><news:news><news:publication><news:name>${xml(site.settings.seoSiteName || site.settings.name)}</news:name><news:language>id</news:language></news:publication><news:publication_date>${xml(new Date(article.publishedAt).toISOString())}</news:publication_date><news:title>${xml(article.title)}</news:title></news:news></url>`,
     )
     .join('');
   return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${body}</urlset>`;
@@ -325,7 +324,7 @@ export function serializeRss(site: NetworkSiteData): string {
   const channel = absoluteSiteUrl(site.context, '/');
   const siteName = site.settings.seoSiteName || site.settings.name;
   return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>${xml(siteName)}</title><link>${xml(channel)}</link><description>${xml(site.settings.seoDefaultDescription || site.settings.description)}</description><language>id-ID</language>${site.articles.map((article) => {
-    const link = absoluteSiteUrl(site.context, `/articles/${article.slug}`);
+    const link = absoluteSiteUrl(site.context, `/${article.slug}`);
     const enclosure = article.imageUrl === null ? '' : `<enclosure url="${xml(absoluteSiteAssetUrl(site.context, article.imageUrl))}" type="image/jpeg" />`;
     return `<item><title>${xml(article.title)}</title><link>${xml(link)}</link><guid isPermaLink="true">${xml(link)}</guid><description>${xml(article.description)}</description><content:encoded>${xml(article.body)}</content:encoded>${enclosure}<pubDate>${new Date(article.publishedAt).toUTCString()}</pubDate>${article.categoryName === null ? '' : `<category>${xml(article.categoryName)}</category>`}</item>`;
   }).join('')}</channel></rss>`;

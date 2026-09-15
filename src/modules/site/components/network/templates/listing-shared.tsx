@@ -138,7 +138,7 @@ export function ArticleCard({
           </p>
           <h3 className="m-0 mt-1 font-sans text-[15px] font-semibold leading-snug text-paper">
             <Link
-              href={`/articles/${article.slug}`}
+              href={`/${article.slug}`}
               className="rounded-sm decoration-[var(--site-accent)] decoration-2 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent)]"
             >
               {article.title}
@@ -170,7 +170,7 @@ export function ArticleCard({
           </p>
           <h3 className="m-0 mt-1.5 font-serif text-xl font-bold leading-snug tracking-tight text-paper">
             <Link
-              href={`/articles/${article.slug}`}
+              href={`/${article.slug}`}
               className="rounded-sm decoration-[var(--site-accent)] decoration-2 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent)]"
             >
               {article.title}
@@ -206,7 +206,7 @@ export function ArticleCard({
           </p>
           <h3 className="m-0 mt-1.5 font-sans text-[15px] font-semibold leading-snug text-paper">
             <Link
-              href={`/articles/${article.slug}`}
+              href={`/${article.slug}`}
               className="rounded-sm decoration-[var(--site-accent)] decoration-2 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent)]"
             >
               {article.title}
@@ -232,7 +232,7 @@ export function ArticleCard({
           </p>
           <h3 className="m-0 mt-2 font-sans text-base font-bold leading-snug tracking-tight text-paper">
             <Link
-              href={`/articles/${article.slug}`}
+              href={`/${article.slug}`}
               className="rounded-sm decoration-[var(--site-accent)] decoration-2 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent)]"
             >
               {article.title}
@@ -274,7 +274,7 @@ export function ArticleCard({
 
             <h2 className="m-0 mt-3 font-serif text-2xl font-bold leading-tight tracking-tight text-paper sm:text-3xl">
               <Link
-                href={`/articles/${article.slug}`}
+                href={`/${article.slug}`}
                 className="rounded-sm decoration-[var(--site-accent)] decoration-2 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent)]"
               >
                 {article.title}
@@ -332,7 +332,7 @@ export function ArticleCard({
 
         <h2 className="m-0 mt-2 font-serif text-lg font-bold leading-snug tracking-tight text-paper">
           <Link
-            href={`/articles/${article.slug}`}
+            href={`/${article.slug}`}
             className="rounded-sm decoration-[var(--site-accent)] decoration-2 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent)]"
           >
             {article.title}
@@ -396,7 +396,7 @@ export function PopularAside({ articles }: { readonly articles: readonly Network
             </span>
             <div className="min-w-0">
               <Link
-                href={`/articles/${item.slug}`}
+                href={`/${item.slug}`}
                 className="block truncate font-sans text-sm font-medium text-paper hover:text-[var(--site-accent)]"
               >
                 {item.title}

@@ -40,7 +40,7 @@ export function CleanBlueTicker({ articles }: { readonly articles: readonly Netw
         TERKINI
       </span>
       <p className="m-0 min-w-0 flex-1 truncate font-sans text-sm font-medium text-slate-800" aria-live="polite">
-        <Link href={`/articles/${article.slug}`} className="hover:text-[#1f6feb]">
+        <Link href={`/${article.slug}`} className="hover:text-[#1f6feb]">
           {article.title}
         </Link>
       </p>

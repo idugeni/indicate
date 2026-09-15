@@ -27,17 +27,17 @@ export function CleanBlueArticle({
   readonly newer?: NetworkArticle | null;
   readonly older?: NetworkArticle | null;
 }) {
-  const seo = buildSeoDocument(site, { path: `/articles/${article.slug}`, article });
+  const seo = buildSeoDocument(site, { path: `/${article.slug}`, article });
   const src = articleImage(article);
   const reading = readingMinutes(article);
   const authorName = authorDisplayName(article);
   const authorInitial = authorName.trim().slice(0, 1).toUpperCase();
-  const canonical = `https://${site.context.normalizedHostname}/articles/${article.slug}`;
+  const canonical = `https://${site.context.normalizedHostname}/${article.slug}`;
   const blocks = parseArticleBody(article.body);
   const gallery = article.gallery.map((image, position) => ({ url: image.url, alt: `${article.title} (gambar ${position + 1})` }));
 
   return (
-    <CleanBlueShell site={site} path={`/articles/${article.slug}`}>
+    <CleanBlueShell site={site} path={`/${article.slug}`}>
       <CleanBlueViewBeacon
         organizationId={site.context.organizationId}
         siteId={site.context.siteId}
@@ -206,7 +206,7 @@ export function CleanBlueArticle({
             <nav aria-label="Navigasi artikel" className="mt-10 grid gap-3 border-t border-slate-200 pt-6 sm:grid-cols-2">
               <div className="min-w-0">
                 {newer !== null ? (
-                  <Link href={`/articles/${newer.slug}`} className="group flex items-center gap-2">
+                  <Link href={`/${newer.slug}`} className="group flex items-center gap-2">
                     <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200 transition-colors group-hover:text-[#1f6feb]">
                       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                     </span>
@@ -221,7 +221,7 @@ export function CleanBlueArticle({
               </div>
               <div className="min-w-0 sm:text-right">
                 {older !== null ? (
-                  <Link href={`/articles/${older.slug}`} className="group flex items-center gap-2 sm:flex-row-reverse sm:text-right">
+                  <Link href={`/${older.slug}`} className="group flex items-center gap-2 sm:flex-row-reverse sm:text-right">
                     <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200 transition-colors group-hover:text-[#1f6feb]">
                       <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </span>

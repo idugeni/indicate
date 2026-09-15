@@ -72,7 +72,7 @@ export function CleanBlueArchive({
                   className="flex gap-4 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200/60 sm:gap-5 sm:p-4"
                 >
                   <Link
-                    href={`/articles/${article.slug}`}
+                    href={`/${article.slug}`}
                     aria-label={article.title}
                     className="w-32 flex-none self-start overflow-hidden rounded-xl sm:w-60"
                   >
@@ -97,7 +97,7 @@ export function CleanBlueArchive({
                       </span>
                     </p>
                     <h2 className="m-0 mt-1.5 line-clamp-2 font-sans text-base font-bold leading-snug tracking-tight text-slate-900 sm:text-lg">
-                      <Link href={`/articles/${article.slug}`} className="hover:text-[#1f6feb]">
+                      <Link href={`/${article.slug}`} className="hover:text-[#1f6feb]">
                         {article.title}
                       </Link>
                     </h2>

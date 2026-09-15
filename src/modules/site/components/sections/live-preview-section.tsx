@@ -122,7 +122,7 @@ export function LivePreviewSection() {
                 <span className="h-1.5 w-1.5 flex-none bg-signal" aria-hidden="true" />
                 Artikel terbit. ID: pub_8821a
               </span>
-              <span className="font-mono text-[11px] text-paper-faint">portal-timur.lintasharian.com/articles/laporan-kinerja-2026</span>
+              <span className="font-mono text-[11px] text-paper-faint">portal-timur.lintasharian.com/laporan-kinerja-2026</span>
             </p>
           </div>
         </div>

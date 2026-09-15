@@ -22,7 +22,7 @@ export class DrizzlePublicationTargetPublisher implements PublicationTargetPubli
         .innerJoin(sites, and(eq(sites.organizationId, articleSites.organizationId), eq(sites.id, articleSites.siteId)))
         .where(and(eq(publishingJobs.organizationId, claim.organizationId), eq(publishingJobs.id, claim.jobId), eq(publishingJobs.fencingToken, claim.fencingToken), eq(sites.status, 'active'))).limit(1);
       const row = rows[0];
-      return row === undefined ? { kind: 'terminal_failure', code: 'target_unavailable' } : { kind: 'published', url: `https://${row.hostname}/articles/${row.slug}` };
+      return row === undefined ? { kind: 'terminal_failure', code: 'target_unavailable' } : { kind: 'published', url: `https://${row.hostname}/${row.slug}` };
     });
   }
 }

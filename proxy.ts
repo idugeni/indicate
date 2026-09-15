@@ -183,6 +183,13 @@ export function proxy(request: NextRequest) {
     return nextWithCorrelation(request);
   }
   if (path.startsWith('/dashboard') || path.startsWith('/auth') || path.startsWith('/sign-in') || path.startsWith('/api/dashboard') || path.startsWith('/api/internal') || path.startsWith('/api/health') || path.startsWith('/api/v1/') || path.startsWith('/api/webhooks/') || isServicePath(path)) return deny(404, request.headers);
+  if (path.startsWith('/articles/')) {
+    const url = request.nextUrl.clone();
+    url.pathname = path.slice('/articles'.length);
+    const redirect = NextResponse.redirect(url, 308);
+    redirect.headers.set(REQUEST_ID_HEADER, ensureRequestId(request.headers).requestId);
+    return withSecurityHeaders(redirect);
+  }
   return nextWithCorrelation(request);
 }
 export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'] };
