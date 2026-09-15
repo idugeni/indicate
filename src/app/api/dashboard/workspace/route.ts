@@ -62,7 +62,7 @@ async function contextFor(organizationId: string, requestId: string, headers: He
     return createNonDisclosingDenial(requestId);
   }
   return {
-    actor: { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), entryPoint: 'dashboard', requestId },
+    actor: { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), regionScopeId: membership.regionId ?? null, entryPoint: 'dashboard', requestId },
     service: new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator()),
   };
 }

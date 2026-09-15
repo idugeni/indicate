@@ -3,6 +3,7 @@ import type { ActivationAttempt, ResolvedSiteContext } from '@/modules/delivery/
 import type { CloudflareAuthorityPort } from '@/integrations/cloudflare/ports';
 import type { PendingHostnameProbePort } from '@/core/hostname/ports';
 import type { DeliveryRepository } from '@/modules/delivery/ports';
+import { DeliveryResourceUnavailableError } from '@/modules/delivery/ports';
 import type { VercelHostingPort } from '@/integrations/vercel/ports';
 import { normalizeRequestHostname } from '@/core/hostname/normalize-request-hostname';
 import { hasReservedHostnameConflict } from '@/modules/delivery/hostname-resolver';
@@ -29,6 +30,7 @@ export class DomainProvisioningService {
   ) {}
 
   async activate(actor: AuthorizedTenantActorContext, siteId: string, rawHostname: string, now = new Date(), rawPreviousHostname: string | null = null): Promise<ResolvedSiteContext> {
+    if (actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new DeliveryResourceUnavailableError();
     const parsed = normalizeRequestHostname(rawHostname);
     const previous = rawPreviousHostname === null ? null : normalizeRequestHostname(rawPreviousHostname);
     if (!parsed.ok || (previous !== null && !previous.ok) || hasReservedHostnameConflict(rawHostname, this.reservedHosts) || (rawPreviousHostname !== null && hasReservedHostnameConflict(rawPreviousHostname, this.reservedHosts))) throw new Error('CONFIGURATION_INVALID');
@@ -77,6 +79,7 @@ export class DomainProvisioningService {
   }
 
   async deactivate(actor: AuthorizedTenantActorContext, siteId: string, hostname: string, now = new Date()): Promise<void> {
+    if (actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new DeliveryResourceUnavailableError();
     const attempt = await this.repository.deactivateSite(actor, siteId, hostname, planInvalidation({ kind: 'hostname', organizationId: actor.organizationId, siteId, previousHostname: hostname, currentHostname: null }), now.toISOString());
     await this.resumeDeactivation(actor, attempt, now);
   }

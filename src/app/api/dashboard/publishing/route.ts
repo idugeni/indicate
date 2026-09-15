@@ -46,7 +46,7 @@ async function contextFor(organizationId: string, requestId: string): Promise<Co
   const context = await getServerRuntimeContext(); const config = context.config; const runtime = getSharedRuntimeDatabase(context.bootstrap); const authorization = new DrizzleAuthorizationRepository(runtime.db);
   const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator()); if (!local.ok) { return createNonDisclosingDenial(requestId); }
   const membership = await authorization.findActiveMembership(organizationId, local.value.id); if (membership === null || !membership.roleActive) { return createNonDisclosingDenial(requestId); }
-  const actor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), entryPoint: 'dashboard', requestId };
+  const actor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), regionScopeId: membership.regionId ?? null, entryPoint: 'dashboard', requestId };
   const repository = new DrizzlePublishingRepository(runtime.db);
   const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey });
   const queue = new UpstashPublicationQueueAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace, resourceId: config.redis.resourceId });
@@ -59,7 +59,7 @@ async function handleGET(request: Request) {
   if (!parsed.success) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await contextFor(parsed.data.organizationId, requestId); if (isError(context)) return NextResponse.json(context, { status: statusFor(context) });
   {
-    const snapshot = await context.repository.snapshot(context.actor.organizationId);
+    const snapshot = await context.repository.snapshot(context.actor.organizationId, context.actor.regionScopeId ?? null);
     if (snapshot === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     if (parsed.data.view === 'media') {
       const listed = await context.media.list(context.actor); if (!listed.ok) return NextResponse.json(listed.error, { status: statusFor(listed.error) });
@@ -85,6 +85,7 @@ async function handlePOST(request: Request) {
       'media.read': (payload) => context.media.authorizeTenantRead(context.actor, payload),
       'publication.request': (payload) => context.publication.request(context.actor, payload),
       'publication.requestBulk': (payload) => context.publication.requestBulk(context.actor, payload),
+      'publication.suggest': (payload) => context.publication.suggest(context.actor, payload),
       'publication.retry': (payload) => context.publication.retry(context.actor, payload),
       'publication.unpublish': (payload) => context.publication.unpublish(context.actor, payload),
       'publication.status': (payload) => context.publication.status(context.actor, payload),

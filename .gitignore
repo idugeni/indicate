@@ -20,10 +20,17 @@ semantic-review/
 .gemini/
 .claude/
 
-# Bundle skill AI pihak ketiga (845+ berkas, reproducible via skills-lock.json).
-# Skill milik repo (indicate-conventions) tetap ter-track via negasi.
+# Bundle skill AI pihak ketiga (reproducible via skills-lock.json, 25 entri).
+# Skill milik repo tetap ter-track via negasi.
 .agents/skills/*
 !.agents/skills/indicate-conventions/
+!.agents/skills/tenant-onboarding/
+!.agents/skills/agent-discipline/
+# 7 skill desain lokal opsional TANPA pin (sengaja: banner-design, brand,
+# design, design-system, slides, ui-styling, ui-ux-pro-max). Berfungsi lokal,
+# tidak ikut fresh clone. Jangan hapus, jangan tulis hash manual ke
+# skills-lock.json — untuk mem-pin salah satunya, pakai tool yang
+# menghasilkan lock (npx skills add <source>), bukan edit tangan.
 .kiro/skills/*
 
 # Settings IDE per-mesin (.mcp.json di root tetap shared)

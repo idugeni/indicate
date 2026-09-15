@@ -47,6 +47,9 @@ export class MediaService {
     const parsed = mediaReservationSchema.safeParse(raw);
     if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId) };
     const value = parsed.data;
+    if (value.owner.kind === 'organization' && actor.regionScopeId !== undefined && actor.regionScopeId !== null) {
+      return this.denied(actor, 'media.upload.reserve.denied', 'media');
+    }
     if (!this.policy.allowedTypes.includes(value.mediaType) || value.sizeBytes > this.policy.maxBytes) {
       return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, {
         ...(this.policy.allowedTypes.includes(value.mediaType) ? {} : { mediaType: ['Unsupported media type.'] }),

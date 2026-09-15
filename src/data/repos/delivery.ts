@@ -3,6 +3,7 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type { ActivationAttempt, InvalidationPlan, InvalidationTask, NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
+import { articleBodyText } from '@/modules/site/article-markup';
 import { DeliveryConflictError, DeliveryResourceUnavailableError, type DeliveryRepository } from '@/modules/delivery/ports';
 import { articleSites, articles, auditLogs, authors, cacheBypasses, categories, domainActivationAttempts, domains, invalidationTasks, media, officialAffiliations, publishers, regions, sites, siteSettings } from '@/data/schema';
 import type * as schema from '@/data/schema';
@@ -30,6 +31,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
   private async tenant(transaction: Transaction, actor: AuthorizedTenantActorContext): Promise<void> {
     if (!actor.permissionSet.has('sites.manage')) throw new DeliveryResourceUnavailableError();
     await transaction.execute(sql`SELECT indicate_private.set_tenant_context(${actor.organizationId}::uuid, ${actor.actorId}, ${actor.requestId})`);
+    await transaction.execute(sql`SELECT indicate_private.set_region_context(${actor.regionScopeId ?? null}::uuid)`);
     if (actor.actorType === 'user') await transaction.execute(sql`SELECT indicate_private.set_verified_user_context(${actor.verifiedAuthUserId}::uuid)`);
   }
 
@@ -80,7 +82,8 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       }
 
       const conditions = [eq(articles.organizationId, context.organizationId), eq(articleSites.organizationId, context.organizationId), eq(articleSites.siteId, context.siteId), eq(articleSites.state, 'published'), eq(articleSites.active, true), eq(articles.status, 'active')];
-      if (context.regionId !== null) conditions.push(eq(articles.regionId, context.regionId));
+      // Sindikasi penuh: satu artikel kanonis tayang di portal mana pun yang diberi assignment,
+      // lintas region sekalipun. Region artikel adalah kanal asal/atribusi, bukan kunci tampil.
       if (query.articleSlug !== undefined) conditions.push(eq(articles.slug, query.articleSlug));
       if (query.categorySlug !== undefined) conditions.push(eq(categories.slug, query.categorySlug));
       if (query.tag !== undefined) conditions.push(sql`${articles.tags} @> ARRAY[${query.tag}]::text[]`);
@@ -95,6 +98,20 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         .leftJoin(customMedia, and(eq(customMedia.organizationId, articles.organizationId), eq(customMedia.id, articleSites.customImageMediaId), eq(customMedia.state, 'active')))
         .leftJoin(officialAffiliations, and(eq(officialAffiliations.organizationId, articles.organizationId), eq(officialAffiliations.publisherId, articles.publisherId), eq(officialAffiliations.siteId, context.siteId), eq(officialAffiliations.active, true), isNotNull(officialAffiliations.verifiedAt), sql`${officialAffiliations.claimScopes} @> ARRAY['site_name']::text[]`))
         .where(and(...conditions)).orderBy(sql`${articleSites.publishedAt} DESC`).limit(query.articleSlug === undefined ? 100 : 2);
+      const galleryByArticle = new Map<string, { url: string; thumbnailUrl: string | null }[]>();
+      if (rows.length > 0) {
+        const galleryRows = await transaction.select({ articleId: media.articleId, id: media.id, thumbObjectKey: media.thumbObjectKey })
+          .from(media)
+          .where(and(eq(media.organizationId, context.organizationId), inArray(media.articleId, [...new Set(rows.map((row) => row.id))]), eq(media.state, 'active'), sql`${media.mediaType} LIKE 'image/%'`))
+          .orderBy(media.createdAt);
+        for (const galleryRow of galleryRows) {
+          if (galleryRow.articleId === null) continue;
+          const url = absoluteMediaUrl(context, galleryRow.id);
+          const list = galleryByArticle.get(galleryRow.articleId) ?? [];
+          list.push({ url, thumbnailUrl: galleryRow.thumbObjectKey === null ? null : `${url}?variant=thumb` });
+          galleryByArticle.set(galleryRow.articleId, list);
+        }
+      }
 
       return {
         context,
@@ -109,7 +126,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           defaultImageUrl: settings.defaultMediaId === null ? absoluteDefaultAssetUrl(context, this.defaultImageUrl) : absoluteMediaUrl(context, settings.defaultMediaId),
           robots: Array.isArray(settings.seo.robots) ? settings.seo.robots.map(String) : [],
         },
-        articles: rows.filter((row) => row.publishedAt !== null).map((row) => ({ id: row.id, slug: row.slug, title: row.customTitle ?? row.title, description: row.customDescription ?? excerptForDescription(row.body, 180), body: row.body, tags: [...row.tags], regionId: row.regionId, categoryId: row.categoryId, categorySlug: row.categorySlug, categoryName: row.categoryName, authorName: row.authorName, authorDisplayName: row.authorDisplayName, publisherName: row.publisherName, attribution: row.attribution ?? row.publisherName ?? 'Redaksi', publisherLogoUrl: row.publisherLogoUrl, publisherCity: row.publisherCity, publisherVerified: row.publisherVerification === 'verified', independent: row.publisherType === 'independent_publisher', officialInstitution: row.publisherVerification === 'verified' ? row.affiliationInstitution : null, publishedAt: iso(row.publishedAt!), updatedAt: iso(row.updatedAt), articleSiteId: row.articleSiteId, viewCount: row.viewCount, imageUrl: row.customImageMediaId !== null ? absoluteMediaUrl(context, row.customImageMediaId) : row.leadMediaId !== null && row.mediaState === 'active' ? absoluteMediaUrl(context, row.leadMediaId) : row.coverImageUrl, thumbnailUrl: row.customImageMediaId !== null ? (row.customThumbKey === null ? null : `${absoluteMediaUrl(context, row.customImageMediaId)}?variant=thumb`) : row.leadMediaId !== null && row.mediaState === 'active' ? (row.leadThumbKey === null ? null : `${absoluteMediaUrl(context, row.leadMediaId)}?variant=thumb`) : null, imageWidth: null, imageHeight: null })),
+        articles: rows.filter((row) => row.publishedAt !== null).map((row) => ({ id: row.id, slug: row.slug, title: row.customTitle ?? row.title, description: row.customDescription ?? excerptForDescription(articleBodyText(row.body), 180), body: row.body, gallery: galleryByArticle.get(row.id) ?? [], tags: [...row.tags], regionId: row.regionId, categoryId: row.categoryId, categorySlug: row.categorySlug, categoryName: row.categoryName, authorName: row.authorName, authorDisplayName: row.authorDisplayName, publisherName: row.publisherName, attribution: row.attribution ?? row.publisherName ?? 'Redaksi', publisherLogoUrl: row.publisherLogoUrl, publisherCity: row.publisherCity, publisherVerified: row.publisherVerification === 'verified', independent: row.publisherType === 'independent_publisher', officialInstitution: row.publisherVerification === 'verified' ? row.affiliationInstitution : null, publishedAt: iso(row.publishedAt!), updatedAt: iso(row.updatedAt), articleSiteId: row.articleSiteId, viewCount: row.viewCount, imageUrl: row.customImageMediaId !== null ? absoluteMediaUrl(context, row.customImageMediaId) : row.leadMediaId !== null && row.mediaState === 'active' ? absoluteMediaUrl(context, row.leadMediaId) : row.coverImageUrl, thumbnailUrl: row.customImageMediaId !== null ? (row.customThumbKey === null ? null : `${absoluteMediaUrl(context, row.customImageMediaId)}?variant=thumb`) : row.leadMediaId !== null && row.mediaState === 'active' ? (row.leadThumbKey === null ? null : `${absoluteMediaUrl(context, row.leadMediaId)}?variant=thumb`) : null, imageWidth: null, imageHeight: null })),
       };
     });
   }

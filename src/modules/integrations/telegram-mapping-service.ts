@@ -9,7 +9,7 @@ import { telegramBroadcastSchema, telegramMappingCreateSchema, telegramMappingUp
 
 export class TelegramMappingService {
   constructor(private readonly repository: IntegrationsRepository, private readonly identifiers: IdentifierGenerator, private readonly clock: { now(): Date } = { now: () => new Date() }) {}
-  private allowed(actor: AuthorizedTenantActorContext) { return actor.permissionSet.has(INTEGRATIONS_PERMISSIONS.telegramManage); }
+  private allowed(actor: AuthorizedTenantActorContext) { return actor.permissionSet.has(INTEGRATIONS_PERMISSIONS.telegramManage) && (actor.regionScopeId === undefined || actor.regionScopeId === null); }
   private async denied(actor: AuthorizedTenantActorContext, action: string): Promise<Result<never, PublicErrorEnvelope>> {
     try { await this.repository.recordDenial(actor, action, 'telegram_mapping', this.clock.now().toISOString()); } catch { /* denial remains non-disclosing if audit persistence is unavailable */ }
     return { ok: false, error: createNonDisclosingDenial(actor.requestId) };

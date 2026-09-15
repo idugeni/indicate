@@ -8,6 +8,7 @@ export const apiKeyIssueSchema = z.object({
   name: z.string().trim().min(1).max(120),
   scopes,
   expiresAt: z.iso.datetime().nullable().default(null),
+  regionId: id.nullable().default(null),
 }).strict();
 export const apiKeyRotateSchema = z.object({
   apiKeyId: id,
@@ -80,6 +81,10 @@ const telegramDocumentSchema = z.object({
   mime_type: z.string().min(1).max(100).optional(),
   file_size: z.number().int().positive().optional(),
 }).passthrough();
+const telegramPhotoSchema = z.object({
+  file_id: z.string().min(1).max(255),
+  file_size: z.number().int().positive().optional(),
+}).passthrough();
 export const telegramUpdateSchema = z.object({
   update_id: z.union([z.number().int().nonnegative(), z.string().regex(/^\d+$/)]),
   message: z.object({
@@ -88,6 +93,7 @@ export const telegramUpdateSchema = z.object({
     chat: z.object({ id: z.union([z.number().int(), z.string().regex(/^-?\d+$/)]) }).passthrough(),
     text: z.string().max(20_000).optional(),
     document: telegramDocumentSchema.optional(),
+    photo: z.array(telegramPhotoSchema).optional(),
   }).passthrough(),
 }).passthrough();
 

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { NetworkArticle, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
+import { articleBodyText } from '@/modules/site/article-markup';
 import { MINISTRY_FALLBACK_LOGO_URL } from '@/ui/site/marketing-content';
 
 function absoluteSiteUrl(context: ResolvedSiteContext, path: string): string {
@@ -34,7 +35,7 @@ function stripHtml(value: string): string {
  * @returns Kutipan bersih; string kosong bila body tidak memiliki kata.
  */
 export function excerptForDescription(body: string, maxLength = 180): string {
-  const clean = stripHtml(body);
+  const clean = stripHtml(articleBodyText(body));
   const chars = Array.from(clean);
   if (chars.length <= maxLength) return clean;
   const slice = chars.slice(0, maxLength).join('');

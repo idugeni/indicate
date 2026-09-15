@@ -141,6 +141,7 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
           userId: memberships.userId,
           roleId: memberships.roleId,
           membershipStatus: memberships.status,
+          regionId: memberships.regionId,
           roleActive: roles.active,
           roleTier: roles.tier,
           permissionName: permissions.name,
@@ -174,6 +175,7 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
         status: first.membershipStatus,
         roleActive: first.roleActive,
         roleTier: first.roleTier,
+        regionId: first.regionId,
         orgPermissions: new Set(rows.flatMap((row) => row.permissionName === null ? [] : [row.permissionName])),
         platformPermissions: new Set(platformRows.map(({ name }) => name)),
       };
@@ -200,10 +202,11 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
           organizationId,
           actorId,
           permissions: new Set(key.scopes),
+          regionId: key.regionId,
         };
       }
       if (actorType === 'telegram') {
-        const rows = await transaction.select({ permissionName: permissions.name })
+        const rows = await transaction.select({ permissionName: permissions.name, regionId: memberships.regionId })
           .from(telegramIdentityMappings)
           .innerJoin(memberships, and(
             eq(memberships.organizationId, telegramIdentityMappings.organizationId),
@@ -230,6 +233,7 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
           organizationId,
           actorId,
           permissions: new Set(rows.map(({ permissionName }) => permissionName)),
+          regionId: rows[0]?.regionId ?? null,
         };
       }
       const claimed = await transaction.select({ id: publishingJobs.id }).from(publishingJobs).where(and(
@@ -243,6 +247,7 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
         organizationId,
         actorId,
         permissions: new Set(['publishing.process']),
+        regionId: null,
       };
     });
   }

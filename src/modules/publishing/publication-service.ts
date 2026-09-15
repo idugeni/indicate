@@ -1,12 +1,14 @@
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import { FINGERPRINT_VERSION, publicationFingerprint, retryDelaySeconds, type RetryPolicy } from '@/modules/publishing/publication-policy';
-import type { PublicationStatusProjection } from '@/modules/publishing/models';
+import type { PublicationOverride, PublicationStatusProjection } from '@/modules/publishing/models';
+import type { ArticleVariantContext } from '@/modules/publishing/ports';
+import { deriveSiteLabel, excerptForDescription, findCrossSiteDuplicates, suggestPublicationVariants } from '@/modules/publishing/variant-suggester';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import type { RedisCoordinationPort } from '@/integrations/redis/ports';
 import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type PublishingRepository } from '@/modules/publishing/ports';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
-import { publicationRequestSchema, publicationBulkRequestSchema, publicationStatusSchema, publicationTargetSelectionSchema } from '@/modules/publishing/schemas';
+import { publicationRequestSchema, publicationBulkRequestSchema, publicationStatusSchema, publicationSuggestSchema, publicationTargetSelectionSchema } from '@/modules/publishing/schemas';
 import { findDuplicateOverrides } from '@/modules/site/seo-validation';
 
 interface ClockLike { now(): Date }
@@ -23,6 +25,26 @@ export class PublicationService {
   private async denied(actor: AuthorizedTenantActorContext, action: string): Promise<Result<never, PublicErrorEnvelope>> {
     try { await this.repository.recordDenial(actor, action, 'publishing_job', this.clock.now().toISOString()); } catch { /* preserve the non-disclosing boundary */ }
     return { ok: false, error: createNonDisclosingDenial(actor.requestId) };
+  }
+
+  private crossSiteDuplicates(
+    context: ArticleVariantContext,
+    siteIds: readonly string[],
+    overrides: Readonly<Record<string, PublicationOverride>>,
+  ): readonly { field: string; code: string }[] {
+    const renderable = context.variants.filter((variant) =>
+      variant.active && (variant.state === 'queued' || variant.state === 'processing' || variant.state === 'retrying' || variant.state === 'published'));
+    return findCrossSiteDuplicates({
+      canonicalTitle: context.title,
+      canonicalDescription: excerptForDescription(context.body),
+      existing: renderable.map((variant) => ({ siteId: variant.siteId, customTitle: variant.customTitle, customDescription: variant.customDescription })),
+      requestedSiteIds: siteIds,
+      overrides,
+    });
+  }
+
+  private duplicateVariantError(actor: AuthorizedTenantActorContext) {
+    return createPublicError('INVALID_INPUT', 'Judul dan deskripsi antar portal harus unik, termasuk portal yang sudah tayang. Minta saran varian unik atau isi override berbeda per portal.', actor.requestId);
   }
 
   async request(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<PublicationStatusProjection, PublicErrorEnvelope>> {
@@ -47,6 +69,11 @@ export class PublicationService {
     const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds, options: parsed.data.options, overrides });
     const now = this.clock.now();
     try {
+      const variantContext = await this.repository.getArticleVariantContext(actor, parsed.data.articleId);
+      if (variantContext === null) return this.denied(actor, 'publication.request.denied');
+      if (this.crossSiteDuplicates(variantContext, siteIds, overrides).length > 0) {
+        return { ok: false, error: this.duplicateVariantError(actor) };
+      }
       const accepted = await this.repository.acceptPublication(actor, {
         jobId: this.identifiers.create(), organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds,
         idempotencyKey: parsed.data.idempotencyKey, fingerprint, fingerprintVersion: FINGERPRINT_VERSION,
@@ -60,7 +87,44 @@ export class PublicationService {
     } catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'publication.request.denied');
       if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat meminta penerbitan.', actor.requestId) };
+      if (error instanceof PublishingConflictError && error.code === 'duplicate_variant') return { ok: false, error: this.duplicateVariantError(actor) };
       return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The publication request could not be completed.', actor.requestId) };
+    }
+  }
+
+  /**
+   * Menyusun saran override judul/deskripsi unik per portal tanpa menulis job.
+   *
+   * @param actor - Konteks tenant terotorisasi.
+   * @param raw - `{ articleId, siteIds }` yang belum tervalidasi.
+   * @returns Peta siteId ke override siap pakai di `request`.
+   */
+  async suggest(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<{ readonly articleId: string; readonly overrides: Readonly<Record<string, PublicationOverride>> }, PublicErrorEnvelope>> {
+    const parsed = publicationSuggestSchema.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the suggestion request.', actor.requestId) };
+    const siteIds = [...new Set(parsed.data.siteIds)].sort();
+    try {
+      const context = await this.repository.getArticleVariantContext(actor, parsed.data.articleId);
+      if (context === null) return this.denied(actor, 'publication.suggest.denied');
+      const known = new Map(context.variants.map((variant) => [variant.siteId, variant] as const));
+      for (const siteId of siteIds) {
+        if (!known.has(siteId)) return this.denied(actor, 'publication.suggest.denied');
+      }
+      const renderable = context.variants.filter((variant) =>
+        variant.active && (variant.state === 'queued' || variant.state === 'processing' || variant.state === 'retrying' || variant.state === 'published')
+        && !siteIds.includes(variant.siteId));
+      const canonicalDescription = excerptForDescription(context.body);
+      const overrides = suggestPublicationVariants({
+        title: context.title,
+        description: canonicalDescription,
+        sites: siteIds.map((siteId) => ({ siteId, label: deriveSiteLabel(known.get(siteId)!.normalizedHostname) })),
+        takenTitles: renderable.map((variant) => variant.customTitle ?? context.title),
+        takenDescriptions: renderable.map((variant) => variant.customDescription ?? canonicalDescription),
+      });
+      return { ok: true, value: { articleId: context.articleId, overrides } };
+    } catch (error) {
+      if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'publication.suggest.denied');
+      return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'Variant suggestions are temporarily unavailable.', actor.requestId) };
     }
   }
 
@@ -140,6 +204,11 @@ export class PublicationService {
     const results: PublicationStatusProjection[] = [];
     try {
       for (const articleId of articleIds) {
+        const variantContext = await this.repository.getArticleVariantContext(actor, articleId);
+        if (variantContext === null) return this.denied(actor, 'publication.request.denied');
+        if (this.crossSiteDuplicates(variantContext, siteIds, overrides).length > 0) {
+          return { ok: false, error: this.duplicateVariantError(actor) };
+        }
         const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId, siteIds, options: parsed.data.options, overrides });
         const accepted = await this.repository.acceptPublication(actor, {
           jobId: this.identifiers.create(), organizationId: actor.organizationId, articleId, siteIds,
@@ -156,6 +225,7 @@ export class PublicationService {
     } catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'publication.request.denied');
       if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat meminta penerbitan.', actor.requestId) };
+      if (error instanceof PublishingConflictError && error.code === 'duplicate_variant') return { ok: false, error: this.duplicateVariantError(actor) };
       return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The bulk publication request could not be completed.', actor.requestId) };
     }
   }

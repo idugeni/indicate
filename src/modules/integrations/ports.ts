@@ -19,7 +19,7 @@ export class IntegrationsSubscriptionInactiveError extends Error {
 export interface NewStoredApiKey {
   readonly id: string; readonly organizationId: string; readonly lookupId: string; readonly name: string;
   readonly salt: string; readonly verificationHash: string; readonly scopes: readonly string[];
-  readonly predecessorId: string | null; readonly expiresAt: string | null; readonly now: string;
+  readonly predecessorId: string | null; readonly expiresAt: string | null; readonly regionId: string | null; readonly now: string;
 }
 export type ReplayClaimResult =
   | { readonly kind: 'created' | 'reclaimed'; readonly claim: WebhookReplayClaim }

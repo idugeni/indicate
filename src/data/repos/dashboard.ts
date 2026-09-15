@@ -22,6 +22,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
 
   private async establishContext(transaction: Transaction, actor: AuthorizedTenantActorContext): Promise<void> {
     await transaction.execute(sql`SELECT indicate_private.set_tenant_context(${actor.organizationId}::uuid, ${actor.actorId}, ${actor.requestId})`);
+    await transaction.execute(sql`SELECT indicate_private.set_region_context(${actor.regionScopeId ?? null}::uuid)`);
     if (actor.actorType === 'user') {
       await transaction.execute(sql`SELECT indicate_private.set_verified_user_context(${actor.verifiedAuthUserId}::uuid)`);
     }
@@ -78,7 +79,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       sites: siteRows.map((row) => ({ id: row.id, organizationId, domainId: row.domainId, regionId: row.regionId, normalizedHostname: row.normalizedHostname, status: row.status, activationState: row.activationState, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       siteSettings: settingsRows.map((row) => ({ id: row.siteId, organizationId, siteId: row.siteId, name: row.name, description: row.description, colors: row.colors, socialLinks: row.socialLinks, seo: row.seo, navigation: row.navigation.map((item) => ({ label: String(item.label ?? ''), path: String(item.path ?? '/') })), logoMediaId: row.logoMediaId, faviconMediaId: row.faviconMediaId, defaultMediaId: row.defaultMediaId, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       roles: roleRows.map((row) => ({ id: row.id, organizationId, name: row.name, tier: row.tier, active: row.active, permissions: permissionsByRole.get(row.id) ?? new Set(), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
-      memberships: membershipRows.map((membership) => ({ id: membership.userId, organizationId, userId: membership.userId, displayName: membershipProfiles.get(membership.userId)!.displayName, avatarUrl: membershipProfiles.get(membership.userId)!.avatarUrl, roleId: membership.roleId, status: membership.status, version: membership.version, createdAt: iso(membership.createdAt), updatedAt: iso(membership.updatedAt) })),
+      memberships: membershipRows.map((membership) => ({ id: membership.userId, organizationId, userId: membership.userId, displayName: membershipProfiles.get(membership.userId)!.displayName, avatarUrl: membershipProfiles.get(membership.userId)!.avatarUrl, roleId: membership.roleId, status: membership.status, regionId: membership.regionId, version: membership.version, createdAt: iso(membership.createdAt), updatedAt: iso(membership.updatedAt) })),
       telegramMappings: telegramMappingRows.map((mapping) => ({ id: mapping.id, organizationId, userId: mapping.userId, roleId: mapping.roleId, status: mapping.status, createdAt: iso(mapping.createdAt), updatedAt: iso(mapping.updatedAt) })),
       publishers: publisherRows.map((row) => ({ id: row.id, organizationId, name: row.name, type: row.type, attributionLabel: row.attributionLabel, contacts: Object.fromEntries(Object.entries(row.contacts).map(([key, value]) => [key, String(value)])), evidenceReference: row.evidenceReference, verificationStatus: row.verificationStatus, submittedBy: row.submittedBy, submittedAt: optionalIso(row.submittedAt), verifiedBy: row.verifiedBy, verifiedAt: optionalIso(row.verifiedAt), rejectionReason: row.rejectionReason, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       affiliations: affiliationRows.map((row) => ({ id: row.id, organizationId, publisherId: row.publisherId, siteId: row.siteId, institutionName: row.institutionName, claimScopes: row.claimScopes, evidenceReference: row.evidenceReference, active: row.active, verifiedAt: optionalIso(row.verifiedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
@@ -420,6 +421,9 @@ export class DrizzleDashboardRepository implements DashboardRepository {
           (SELECT count(*)::int FROM media WHERE organization_id = ${actor.organizationId} AND state = 'active') AS "activeMedia"
       `);
       if (row === undefined) throw new DashboardAccessDeniedError();
+      const scope = actor.regionScopeId ?? null;
+      const scopeRows = scope === null ? [] : await transaction.select({ id: regions.id, name: regions.name }).from(regions).where(and(eq(regions.organizationId, actor.organizationId), eq(regions.id, scope))).limit(1);
+      const scopeRow = scopeRows[0];
       return Object.freeze({
         activeDomains: row.activeDomains,
         activeSites: row.activeSites,
@@ -429,6 +433,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         successfulSiteOutcomes: row.successfulSiteOutcomes,
         failedSiteOutcomes: row.failedSiteOutcomes,
         activeMedia: row.activeMedia,
+        regionScope: scopeRow === undefined ? null : { id: scopeRow.id, name: scopeRow.name },
       });
     });
   }
@@ -522,11 +527,11 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     }
     for (const row of state.memberships) {
       const prior = before.memberships.find(({ userId }) => userId === row.userId);
-      if (prior !== undefined && prior.roleId === row.roleId && prior.status === row.status) continue;
+      if (prior !== undefined && prior.roleId === row.roleId && prior.status === row.status && prior.regionId === row.regionId) continue;
       if (prior === undefined) {
-        await transaction.insert(memberships).values({ organizationId: state.organizationId, userId: row.userId, roleId: row.roleId, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) });
+        await transaction.insert(memberships).values({ organizationId: state.organizationId, userId: row.userId, roleId: row.roleId, status: row.status, regionId: row.regionId, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) });
       } else {
-        const changed = await transaction.update(memberships).set({ roleId: row.roleId, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) }).where(and(eq(memberships.organizationId, state.organizationId), eq(memberships.userId, row.userId), eq(memberships.version, prior.version))).returning({ userId: memberships.userId });
+        const changed = await transaction.update(memberships).set({ roleId: row.roleId, status: row.status, regionId: row.regionId, version: row.version, updatedAt: new Date(row.updatedAt) }).where(and(eq(memberships.organizationId, state.organizationId), eq(memberships.userId, row.userId), eq(memberships.version, prior.version))).returning({ userId: memberships.userId });
         if (changed.length !== 1) throw new DashboardConflictError();
       }
     }

@@ -76,6 +76,23 @@ export interface RetryPolicy {
   readonly delaysSeconds: readonly number[];
 }
 
+export const INITIAL_VIEW_COUNT_MIN = 10_000;
+export const INITIAL_VIEW_COUNT_MAX = 100_000;
+
+/**
+ * Menentukan baseline tayang perdana suatu target portal.
+ *
+ * @param viewCount - Jumlah tayang tersimpan saat ini.
+ * @param hasPublishedBefore - True bila relasi pernah mencapai `published`.
+ * @returns Bilangan acak 10.000-100.000 pada publikasi perdana; null bila tidak perlu seeding.
+ */
+export function seedInitialViewCount(viewCount: number, hasPublishedBefore: boolean): number | null {
+  if (viewCount !== 0 || hasPublishedBefore) return null;
+  const span = INITIAL_VIEW_COUNT_MAX - INITIAL_VIEW_COUNT_MIN + 1;
+  const sample = new Uint32Array(1);
+  crypto.getRandomValues(sample);
+  return INITIAL_VIEW_COUNT_MIN + Number(sample[0]! % span);
+}
 export function retryDelaySeconds(policy: RetryPolicy, completedAttempts: number): number | null {
   if (completedAttempts < 1 || completedAttempts >= policy.maxAttempts) return null;
   return policy.delaysSeconds[Math.min(completedAttempts - 1, policy.delaysSeconds.length - 1)] ?? null;

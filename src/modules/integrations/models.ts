@@ -14,6 +14,8 @@ export interface ApiKeyRecord {
   readonly expiresAt: string | null;
   readonly lastUsedAt: string | null;
   readonly version: number;
+  /** Kunci region opsional: NULL berarti semua region. */
+  readonly regionId: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -25,7 +27,7 @@ export function publicApiKeyRecord(value: StoredApiKey): ApiKeyRecord {
   return {
     id: value.id, organizationId: value.organizationId, lookupId: value.lookupId, name: value.name,
     scopes: value.scopes, status: value.status, predecessorId: value.predecessorId, expiresAt: value.expiresAt,
-    lastUsedAt: value.lastUsedAt, version: value.version, createdAt: value.createdAt, updatedAt: value.updatedAt,
+    lastUsedAt: value.lastUsedAt, version: value.version, regionId: value.regionId, createdAt: value.createdAt, updatedAt: value.updatedAt,
   };
 }
 export interface IssuedApiKey { readonly key: ApiKeyRecord; readonly plaintext: string }
@@ -52,6 +54,8 @@ export interface TelegramIdentity {
   readonly roleId: string;
   readonly telegramUserId: string;
   readonly telegramChatId: string;
+  /** Kunci region membership; NULL berarti semua region. */
+  readonly regionId: string | null;
   readonly permissions: ReadonlySet<string>;
 }
 export type TelegramConversationStep =

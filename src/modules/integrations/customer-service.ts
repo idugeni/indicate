@@ -46,6 +46,7 @@ export class CustomerService {
     catch (error) { return error instanceof IntegrationsAccessDeniedError ? this.denied(actor, 'customer.update.denied', 'organization') : error instanceof IntegrationsConflictError ? { ok: false, error: createPublicError('CONFLICT', 'The customer changed before this update.', actor.requestId) } : this.failure(actor); }
   }
   async readSubscription(actor: AuthorizedTenantActorContext): Promise<Result<SubscriptionRecord | null, PublicErrorEnvelope>> {
+    if (actor.regionScopeId !== undefined && actor.regionScopeId !== null) return this.denied(actor, 'subscription.read.denied', 'subscription');
     if (!actor.permissionSet.has(INTEGRATIONS_PERMISSIONS.subscriptionRead) && !actor.permissionSet.has(INTEGRATIONS_PERMISSIONS.subscriptionManage)) return this.denied(actor, 'subscription.read.denied', 'subscription');
     try { return { ok: true, value: await this.repository.readSubscription(actor) }; } catch (error) { return error instanceof IntegrationsAccessDeniedError ? this.denied(actor, 'subscription.read.denied', 'subscription') : this.failure(actor); }
   }

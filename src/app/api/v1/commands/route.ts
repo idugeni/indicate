@@ -10,7 +10,7 @@ import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
 
-const schema = z.object({ action: z.enum(['article.create', 'media.reserve', 'publication.request', 'publication.requestBulk', 'publication.retry', 'publication.unpublish', 'publication.status']), payload: z.unknown() }).strict();
+const schema = z.object({ action: z.enum(['article.create', 'media.reserve', 'publication.request', 'publication.requestBulk', 'publication.suggest', 'publication.retry', 'publication.unpublish', 'publication.status']), payload: z.unknown() }).strict();
 const status = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 409;
 const retryHeaders = (error: PublicErrorEnvelope) => ({ 'Retry-After': error.error.fields?.retryAfterSeconds?.[0] ?? '1' });
 
@@ -44,6 +44,7 @@ async function handlePOST(request: Request) {
     'media.reserve': (payload) => shared.media.reserveUpload(authenticated.value, payload),
     'publication.request': (payload) => shared.publication.request(authenticated.value, payload),
     'publication.requestBulk': (payload) => shared.publication.requestBulk(authenticated.value, payload),
+    'publication.suggest': (payload) => shared.publication.suggest(authenticated.value, payload),
     'publication.retry': (payload) => shared.publication.retry(authenticated.value, payload),
     'publication.unpublish': (payload) => shared.publication.unpublish(authenticated.value, payload),
     'publication.status': (payload) => shared.publication.status(authenticated.value, payload),

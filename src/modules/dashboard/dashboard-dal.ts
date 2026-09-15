@@ -22,6 +22,7 @@ function loadDashboardProjection(input: {
   readonly actorId: string;
   readonly verifiedAuthUserId: string;
   readonly permissions: readonly string[];
+  readonly regionScopeId: string | null;
 }): Promise<DashboardProjection> {
   const permissionKey = [...input.permissions].sort().join(',');
   const cached = unstable_cache(
@@ -35,6 +36,7 @@ function loadDashboardProjection(input: {
         verifiedAuthUserId: input.verifiedAuthUserId,
         organizationId: input.organizationId,
         permissionSet: new Set(input.permissions),
+        regionScopeId: input.regionScopeId,
         entryPoint: 'dashboard',
         requestId: crypto.randomUUID(),
       };
@@ -42,7 +44,7 @@ function loadDashboardProjection(input: {
       if (!result.ok) throw new Error(`dashboard_snapshot_unavailable:${result.error.error.code}`);
       return result.value;
     },
-    ['dashboard-snapshot', input.organizationId, input.actorId, permissionKey],
+    ['dashboard-snapshot', input.organizationId, input.actorId, permissionKey, input.regionScopeId ?? ''],
     { tags: [orgTag(input.organizationId)], revalidate: DASHBOARD_REVALIDATE_SECONDS },
   );
   return cached();
@@ -64,6 +66,7 @@ export async function getDashboardSnapshot(organizationId: string, identity: Ver
       actorId: local.value.id,
       verifiedAuthUserId: identity.authUserId,
       permissions,
+      regionScopeId: membership.regionId,
     });
     return { organizationId, data };
   } catch {

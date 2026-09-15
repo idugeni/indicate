@@ -60,8 +60,8 @@ export function IntegrationSettings({
 
       if (result?.plaintext) {
         setIssuedPlaintext(result.plaintext);
+        form.reset();
       }
-      form.reset();
     });
   };
   const handleCreateMapping = (event: FormEvent<HTMLFormElement>) => {
@@ -85,8 +85,10 @@ export function IntegrationSettings({
     if (!window.confirm('Kirim broadcast ke SEMUA kanal Telegram aktif? Pesan diantrekan dan dikirim berirama oleh worker.')) return;
     startBroadcastTransition(async () => {
       const result = (await command('telegram.broadcast', { text: broadcastText.trim() })) as { readonly enqueued?: number } | null;
-      setBroadcastNotice(`Broadcast diantrekan ke ${result?.enqueued ?? 0} kanal.`);
-      setBroadcastText('');
+      if (result !== null) {
+        setBroadcastNotice(`Broadcast diantrekan ke ${result.enqueued ?? 0} kanal.`);
+        setBroadcastText('');
+      }
     });
   };
 

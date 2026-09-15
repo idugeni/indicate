@@ -785,6 +785,13 @@
       "when": 1789470870962,
       "tag": "20260915020000_media_policy_allow_ico",
       "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "7",
+      "when": 1789500000000,
+      "tag": "20260916000000_region_locked_memberships",
+      "breakpoints": true
     }
   ]
 }

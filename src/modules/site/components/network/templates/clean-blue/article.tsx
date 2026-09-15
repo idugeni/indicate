@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Calendar, ChevronRight, Eye, Flag } from 'lucide-react';
 
 import { buildSeoDocument } from '@/modules/site/seo';
+import { parseArticleBody } from '@/modules/site/article-markup';
+import { ArticleBodyView } from '@/modules/site/components/article-body-view';
 import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/json-ld';
 import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/shell';
 import { CleanBlueShareButtons } from '@/modules/site/components/network/templates/clean-blue/share-buttons';
@@ -31,7 +33,8 @@ export function CleanBlueArticle({
   const authorName = authorDisplayName(article);
   const authorInitial = authorName.trim().slice(0, 1).toUpperCase();
   const canonical = `https://${site.context.normalizedHostname}/articles/${article.slug}`;
-  const paragraphs = article.body.split(/\n{2,}/u).map((p) => p.trim()).filter(Boolean);
+  const blocks = parseArticleBody(article.body);
+  const gallery = article.gallery.map((image, position) => ({ url: image.url, alt: `${article.title} (gambar ${position + 1})` }));
 
   return (
     <CleanBlueShell site={site} path={`/articles/${article.slug}`}>
@@ -109,11 +112,25 @@ export function CleanBlueArticle({
           </div>
 
           <div className="mt-8 space-y-6">
-            {paragraphs.map((paragraph, index) => (
-              <p key={`${index}-${paragraph.slice(0, 16)}`} className="m-0 text-justify font-sans text-[17px] leading-[1.85] text-slate-800">
-                {paragraph}
-              </p>
-            ))}
+            <ArticleBodyView
+              blocks={blocks}
+              images={gallery}
+              paragraphClassName="m-0 text-justify font-sans text-[17px] leading-[1.85] text-slate-800"
+              listClassName="m-0 space-y-2 pl-6 font-sans text-[17px] leading-[1.85] text-slate-800 [list-style:disc]"
+              renderFigure={(image) => (
+                <figure className="m-0 overflow-hidden rounded-2xl shadow-sm">
+                  <Image
+                    unoptimized={!isLocalImageSrc(image.url)}
+                    src={image.url}
+                    alt={image.alt}
+                    className="aspect-video w-full object-cover"
+                    width={1200}
+                    height={675}
+                    sizes="(max-width: 768px) 100vw, 768px"
+                  />
+                </figure>
+              )}
+            />
           </div>
 
           {article.tags.length > 0 ? (

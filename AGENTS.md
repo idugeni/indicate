@@ -50,6 +50,30 @@ Use the connected tools when they help. Retrieval beats memory, but nothing here
   migrations for live fixes, but history edits are allowed in development
   with reviewer approval. There are no `db:*` workflows by default.
 
+## Windows pwsh (WAJIB — bukan relaxed mode)
+
+Shell berjalan di `win32` memakai `pwsh` 7 + GNU tools via
+`C:\Program Files\Git\usr\bin` (sudah masuk User PATH: `head`, `tail`,
+`sed`, `awk`, `grep`, `find` GNU tersedia; terminal baru perlu dibuka ulang
+agar PATH berlaku). Via `choco`: `jq`, `yq`, `fd`, `fzf`, `wget`, `bat`,
+`eza`, `less`. Via `scoop`: `supabase`, `7z`. Via `npm -g`: `vercel`,
+`wrangler`. Redis via `memurai-cli.exe` (kompatibel RESP, pengganti
+`redis-cli`). Python dilengkapi `uv`; `semgrep` biner sengaja tidak
+dipasang (tunda sampai Python ≤3.13 atau jaringan membaik).
+
+Preferensi owner: update FULL LATEST, dan bila ada kanal beta yang resmi
+(mis. `supabase-beta`), pilih beta.
+
+Tetap utamakan tools khusus dan jangan kembali ke kebiasaan Unix-mentah:
+
+- Untuk baca/cari file hanya pakai `read` / `grep` / `glob`
+  (`read` pengganti `cat`/`head`/`tail`, `grep` pengganti shell `grep`,
+  `glob` pengganti `find`/`ls`).
+- Untuk ubah file hanya pakai `edit` / `write`, bukan `sed`/`awk`/`echo >`.
+- `shell` hanya untuk perintah sistem; sintaks `pwsh` diutamakan, contoh:
+  `Get-Content <file> -TotalCount 50` sebagai pengganti `head -50 <file>`.
+  GNU `head`/`tail` hanya sebagai fallback.
+
 ## Komentar & impor (WAJIB — bukan relaxed mode)
 
 Bagian ini mengikat setiap agen AI dan manusia. Tidak dicover oleh

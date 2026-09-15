@@ -63,24 +63,28 @@ export class ApiKeyService {
     try { await this.repository.recordDenial(actor, action, targetType, this.clock.now().toISOString()); } catch { /* denial remains non-disclosing when audit storage is unavailable */ }
     return { ok: false, error: createNonDisclosingDenial(actor.requestId) };
   }
-  private canManage(actor: AuthorizedTenantActorContext): boolean { return actor.permissionSet.has(INTEGRATIONS_PERMISSIONS.apiKeyManage); }
+  private canManage(actor: AuthorizedTenantActorContext): boolean { return actor.permissionSet.has(INTEGRATIONS_PERMISSIONS.apiKeyManage) && (actor.regionScopeId === undefined || actor.regionScopeId === null); }
   private scopesAllowed(actor: AuthorizedTenantActorContext, scopes: readonly string[]): boolean {
     return scopes.every((scope) => actor.permissionSet.has(scope) && scope !== INTEGRATIONS_PERMISSIONS.customerAdmin && scope !== INTEGRATIONS_PERMISSIONS.superAdmin);
   }
-  private async material(input: { name: string; scopes: readonly string[]; expiresAt: string | null }, actor: AuthorizedTenantActorContext, predecessorId: string | null): Promise<{ stored: NewStoredApiKey; plaintext: string }> {
+  private async material(input: { name: string; scopes: readonly string[]; expiresAt: string | null; regionId: string | null }, actor: AuthorizedTenantActorContext, predecessorId: string | null): Promise<{ stored: NewStoredApiKey; plaintext: string }> {
     const generated = this.credentials.create(); const parsed = parseCredential(generated.plaintext);
     if (parsed === null || parsed.lookupId !== generated.lookupId) throw new Error('Credential generator returned invalid material.');
     const verificationHash = await this.hasher.hash(parsed.secret, generated.salt);
-    return { plaintext: generated.plaintext, stored: { id: this.identifiers.create(), organizationId: actor.organizationId, lookupId: generated.lookupId, name: input.name, salt: generated.salt, verificationHash, scopes: input.scopes, predecessorId, expiresAt: input.expiresAt, now: this.clock.now().toISOString() } };
+    return { plaintext: generated.plaintext, stored: { id: this.identifiers.create(), organizationId: actor.organizationId, lookupId: generated.lookupId, name: input.name, salt: generated.salt, verificationHash, scopes: input.scopes, predecessorId, expiresAt: input.expiresAt, regionId: input.regionId, now: this.clock.now().toISOString() } };
   }
 
   async issue(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<IssuedApiKey, PublicErrorEnvelope>> {
     const parsed = apiKeyIssueSchema.safeParse(raw);
     if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the API key fields.', actor.requestId) };
     if (!this.canManage(actor) || !this.scopesAllowed(actor, parsed.data.scopes)) return this.denied(actor, 'api_key.issue.denied');
+    const lock = actor.regionScopeId ?? null;
+    if (lock !== null && parsed.data.regionId !== null && parsed.data.regionId !== lock) {
+      return { ok: false, error: createPublicError('INVALID_INPUT', 'API key region must match your locked region.', actor.requestId) };
+    }
     if (parsed.data.expiresAt !== null && new Date(parsed.data.expiresAt) <= this.clock.now()) return { ok: false, error: createPublicError('INVALID_INPUT', 'API key expiry must be in the future.', actor.requestId, { expiresAt: ['Expiry must be in the future.'] }) };
     try {
-      const material = await this.material(parsed.data, actor, null);
+      const material = await this.material({ ...parsed.data, regionId: lock ?? parsed.data.regionId }, actor, null);
       const key = await this.repository.createApiKey(actor, material.stored);
       return { ok: true, value: Object.freeze({ key, plaintext: material.plaintext }) };
     } catch (error) {
@@ -100,7 +104,7 @@ export class ApiKeyService {
       const validHash = await this.hasher.verify(parsed.secret, stored.salt, stored.verificationHash);
       const active = stored.status === 'active' && (stored.expiresAt === null || new Date(stored.expiresAt) > this.clock.now());
       if (!validHash || !active) return { ok: false, error: createNonDisclosingDenial(requestId) };
-      const actor: AuthorizedTenantActorContext = Object.freeze({ actorType: 'api_key', actorId: stored.id, organizationId: stored.organizationId, permissionSet: new Set(stored.scopes), entryPoint: 'api', requestId });
+      const actor: AuthorizedTenantActorContext = Object.freeze({ actorType: 'api_key', actorId: stored.id, organizationId: stored.organizationId, permissionSet: new Set(stored.scopes), regionScopeId: stored.regionId, entryPoint: 'api', requestId });
       if (requiredScope !== undefined && !stored.scopes.includes(requiredScope)) return this.denied(actor, 'api_key.authenticate.scope.denied');
       await this.repository.recordApiKeyUse(stored.organizationId, stored.id, this.clock.now().toISOString());
       return { ok: true, value: actor };
@@ -113,7 +117,9 @@ export class ApiKeyService {
     try {
       const current = (await this.repository.listApiKeys(actor)).find(({ id }) => id === parsed.data.apiKeyId);
       if (current === undefined || current.status !== 'active') return this.denied(actor, 'api_key.rotate.denied');
-      const next = { name: parsed.data.name ?? current.name, scopes: parsed.data.scopes ?? current.scopes, expiresAt: parsed.data.expiresAt === undefined ? current.expiresAt : parsed.data.expiresAt };
+      const lock = actor.regionScopeId ?? null;
+      if (lock !== null && current.regionId !== lock) return this.denied(actor, 'api_key.rotate.denied');
+      const next = { name: parsed.data.name ?? current.name, scopes: parsed.data.scopes ?? current.scopes, expiresAt: parsed.data.expiresAt === undefined ? current.expiresAt : parsed.data.expiresAt, regionId: current.regionId };
       if (!this.scopesAllowed(actor, next.scopes)) return this.denied(actor, 'api_key.rotate.denied');
       const material = await this.material(next, actor, current.id);
       const key = await this.repository.rotateApiKey(actor, current.id, parsed.data.expectedVersion, material.stored);
@@ -134,6 +140,7 @@ export class ApiKeyService {
   }
 
   async list(actor: AuthorizedTenantActorContext): Promise<Result<readonly ApiKeyRecord[], PublicErrorEnvelope>> {
+    if (actor.regionScopeId !== undefined && actor.regionScopeId !== null) return this.denied(actor, 'api_key.list.denied');
     if (!actor.permissionSet.has(INTEGRATIONS_PERMISSIONS.apiKeyRead) && !this.canManage(actor)) return this.denied(actor, 'api_key.list.denied');
     try { return { ok: true, value: await this.repository.listApiKeys(actor) }; } catch (error) { return error instanceof IntegrationsAccessDeniedError ? this.denied(actor, 'api_key.list.denied') : { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'API keys are temporarily unavailable.', actor.requestId) }; }
   }

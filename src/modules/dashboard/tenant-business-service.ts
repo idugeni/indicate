@@ -11,6 +11,7 @@ import {
   buildNetworkPublisherClaim, filterArticles, selectNetworkArticles,
 } from '@/modules/dashboard/policies';
 import type { IdentifierGenerator } from '@/core/system/ports';
+import { allocateUniqueSlug } from '@/modules/site/slug-allocator';
 import {
   DashboardAccessDeniedError, DashboardConflictError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction,
 } from '@/modules/dashboard/ports';
@@ -64,6 +65,41 @@ function requireRecord<T extends { readonly id: string }>(values: readonly T[], 
 
 function requireVersion<T extends { readonly version: number }>(value: T, expected: number): void {
   if (value.version !== expected) throw new DashboardConflictError();
+}
+
+function regionLock(actor: AuthorizedTenantActorContext): string | null {
+  return actor.regionScopeId ?? null;
+}
+
+function requireUnrestrictedRegion(actor: AuthorizedTenantActorContext): void {
+  if (regionLock(actor) !== null) throw new DashboardAccessDeniedError();
+}
+
+function requireSiteInScope(sites: readonly SiteRecord[], siteId: string, actor: AuthorizedTenantActorContext): SiteRecord {
+  const site = requireRecord(sites, siteId);
+  const lock = regionLock(actor);
+  if (lock !== null && site.regionId !== null && site.regionId !== lock) throw new DashboardAccessDeniedError();
+  return site;
+}
+
+function requireArticleInScope(articles: readonly ArticleRecord[], articleId: string, actor: AuthorizedTenantActorContext): ArticleRecord {
+  const article = requireRecord(articles, articleId);
+  const lock = regionLock(actor);
+  if (lock !== null && article.regionId !== lock) throw new DashboardAccessDeniedError();
+  return article;
+}
+
+function requireLockedRegionValue(actor: AuthorizedTenantActorContext, regionId: string): void {
+  const lock = regionLock(actor);
+  if (lock !== null && regionId !== lock) throw new DashboardAccessDeniedError();
+}
+
+function siteInScope(site: SiteRecord, lock: string | null): boolean {
+  return lock === null || site.regionId === null || site.regionId === lock;
+}
+
+function articleInScope(article: ArticleRecord, lock: string | null): boolean {
+  return lock === null || article.regionId === lock;
 }
 
 function replaceById<T extends { readonly id: string }>(values: T[], next: T): void {
@@ -163,13 +199,18 @@ export class TenantBusinessService {
         try { invitations = await this.repository.listInvitations(actor, DASHBOARD_PERMISSIONS.membershipManage); }
         catch (error) { if (!(error instanceof DashboardAccessDeniedError)) throw error; }
       }
+      const lock = regionLock(actor);
+      const scopeRegion = lock === null ? null : (regionState?.regions ?? []).find(({ id }) => id === lock);
       return { ok: true as const, value: {
         organizationName: anyState.organizationName,
-        domains: domainState?.domains ?? [], regions: regionState?.regions ?? [],
-        sites: siteState?.sites ?? [], siteSettings: siteState?.siteSettings ?? [],
+        domains: domainState?.domains ?? [],
+        regions: (regionState?.regions ?? []).filter((region) => lock === null || region.id === lock),
+        sites: (siteState?.sites ?? []).filter((site) => siteInScope(site, lock)),
+        siteSettings: (siteState?.siteSettings ?? []).filter((settings) => (siteState?.sites ?? []).some((site) => site.id === settings.siteId && siteInScope(site, lock))),
         roles: (roleManage?.roles ?? []).map(roleJson), memberships: membershipState?.memberships ?? [],
         telegramMappings: membershipState?.telegramMappings ?? [],
         activationAttempts, invitations,
+        regionScope: scopeRegion === undefined || scopeRegion === null ? null : { id: scopeRegion.id, name: scopeRegion.name },
       } };
     } catch {
       return { ok: false as const, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
@@ -178,6 +219,7 @@ export class TenantBusinessService {
 
   createDomain(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: domainCreateSchema, permission: DASHBOARD_PERMISSIONS.domainManage, action: 'domain.create', targetType: 'domain', execute: (transaction, value, now) => {
+      requireUnrestrictedRegion(actor);
       if (transaction.state.domains.some(({ normalizedHostname }) => normalizedHostname === value.normalizedHostname)) throw new DashboardConflictError();
       const record: DomainRecord = { ...this.base(actor, now), ...value };
       transaction.state.domains.push(record); this.audit(transaction, 'domain.create', 'domain', record.id, null, record); return record;
@@ -186,6 +228,7 @@ export class TenantBusinessService {
 
   updateDomain(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: domainUpdateSchema, permission: DASHBOARD_PERMISSIONS.domainManage, action: 'domain.update', targetType: 'domain', execute: (transaction, value, now) => {
+      requireUnrestrictedRegion(actor);
       const before = requireRecord(transaction.state.domains, value.id); requireVersion(before, value.expectedVersion);
       if (transaction.state.domains.some((item) => item.id !== before.id && item.normalizedHostname === value.normalizedHostname)) throw new DashboardConflictError();
       const after: DomainRecord = { ...before, normalizedHostname: value.normalizedHostname, status: value.status, version: before.version + 1, updatedAt: now };
@@ -195,6 +238,7 @@ export class TenantBusinessService {
 
   createRegion(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: regionCreateSchema, permission: DASHBOARD_PERMISSIONS.regionManage, action: 'region.create', targetType: 'region', execute: (transaction, value, now) => {
+      requireUnrestrictedRegion(actor);
       if (transaction.state.regions.some(({ slug, externalKey }) => slug === value.slug || externalKey === value.externalKey)) throw new DashboardConflictError();
       const record: RegionRecord = { ...this.base(actor, now), ...value };
       transaction.state.regions.push(record); this.audit(transaction, 'region.create', 'region', record.id, null, record); return record;
@@ -203,6 +247,7 @@ export class TenantBusinessService {
 
   updateRegion(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: regionUpdateSchema, permission: DASHBOARD_PERMISSIONS.regionManage, action: 'region.update', targetType: 'region', execute: (transaction, value, now) => {
+      requireUnrestrictedRegion(actor);
       const before = requireRecord(transaction.state.regions, value.id); requireVersion(before, value.expectedVersion);
       const after: RegionRecord = { ...before, externalKey: value.externalKey, name: value.name, slug: value.slug, status: value.status, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.regions, after); this.audit(transaction, 'region.update', 'region', after.id, before, after); return after;
@@ -211,6 +256,7 @@ export class TenantBusinessService {
 
   createSite(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: siteCreateSchema, permission: DASHBOARD_PERMISSIONS.siteManage, action: 'site.create', targetType: 'site', execute: (transaction, value, now) => {
+      requireUnrestrictedRegion(actor);
       const domain = requireRecord(transaction.state.domains, value.domainId);
       if (domain.status === 'archived' || (value.regionId !== null && requireRecord(transaction.state.regions, value.regionId).status === 'archived')) throw new DashboardAccessDeniedError();
       if (transaction.state.sites.some(({ normalizedHostname }) => normalizedHostname === value.normalizedHostname)) throw new DashboardConflictError();
@@ -221,6 +267,7 @@ export class TenantBusinessService {
 
   updateSite(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: siteUpdateSchema, permission: DASHBOARD_PERMISSIONS.siteManage, action: 'site.update', targetType: 'site', execute: (transaction, value, now) => {
+      requireUnrestrictedRegion(actor);
       requireRecord(transaction.state.domains, value.domainId); if (value.regionId !== null) requireRecord(transaction.state.regions, value.regionId);
       const before = requireRecord(transaction.state.sites, value.id); requireVersion(before, value.expectedVersion);
       const after: SiteRecord = { ...before, domainId: value.domainId, regionId: value.regionId, normalizedHostname: value.normalizedHostname, status: value.status, activationState: value.status === 'active' ? 'pending' : 'inactive', version: before.version + 1, updatedAt: now };
@@ -238,7 +285,7 @@ export class TenantBusinessService {
 
   saveSiteSettings(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: siteSettingsSchema, permission: DASHBOARD_PERMISSIONS.siteManage, action: 'site.settings.update', targetType: 'site_settings', execute: (transaction, value, now) => {
-      requireRecord(transaction.state.sites, value.siteId);
+      requireSiteInScope(transaction.state.sites, value.siteId, actor);
       const before = transaction.state.siteSettings.find(({ siteId }) => siteId === value.siteId);
       if (before !== undefined && value.expectedVersion !== undefined) requireVersion(before, value.expectedVersion);
       const logoMediaId = this.requireActiveMedia(transaction, value.logoMediaId, before?.logoMediaId ?? null, 'logoMediaId');
@@ -254,6 +301,7 @@ export class TenantBusinessService {
 
   createRole(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: roleCreateSchema, permission: DASHBOARD_PERMISSIONS.roleManage, action: 'role.create', targetType: 'role', execute: (transaction, value, now) => {
+      requireUnrestrictedRegion(actor);
       if (transaction.state.roles.some(({ name }) => name.toLowerCase() === value.name.toLowerCase())) throw new DashboardConflictError();
       const record: RoleRecord = { ...this.base(actor, now), name: value.name, tier: value.tier, active: value.active, permissions: new Set(value.permissions) };
       transaction.state.roles.push(record); this.audit(transaction, 'role.create', 'role', record.id, null, { ...record, permissions: [...record.permissions] }); return roleJson(record);
@@ -262,6 +310,7 @@ export class TenantBusinessService {
 
   updateRole(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: roleUpdateSchema, permission: DASHBOARD_PERMISSIONS.roleManage, action: 'role.update', targetType: 'role', execute: (transaction, value, now) => {
+      requireUnrestrictedRegion(actor);
       const before = requireRecord(transaction.state.roles, value.id); requireVersion(before, value.expectedVersion);
       const after: RoleRecord = { ...before, name: value.name, tier: value.tier ?? before.tier, active: value.active, permissions: new Set(value.permissions), version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.roles, after); this.audit(transaction, 'role.update', 'role', after.id, { ...before, permissions: [...before.permissions] }, { ...after, permissions: [...after.permissions] }); return roleJson(after);
@@ -270,12 +319,14 @@ export class TenantBusinessService {
 
   saveMembership(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: membershipSchema, permission: DASHBOARD_PERMISSIONS.membershipManage, action: 'membership.update', targetType: 'membership', execute: async (transaction, value, now) => {
+      requireUnrestrictedRegion(actor);
       requireRecord(transaction.state.roles, value.roleId);
+      if (value.regionId !== null) requireRecord(transaction.state.regions, value.regionId);
       const before = transaction.state.memberships.find(({ userId }) => userId === value.userId);
       if (before !== undefined && value.expectedVersion !== undefined) requireVersion(before, value.expectedVersion);
       for (let index = 0; index < transaction.state.telegramMappings.length; index += 1) {
         const mapping = transaction.state.telegramMappings[index]!;
-        const diverges = value.status !== 'active' || mapping.roleId !== value.roleId;
+        const diverges = value.status !== 'active' || mapping.roleId !== value.roleId || (before !== undefined && before.regionId !== value.regionId);
         if (mapping.userId === value.userId && mapping.status === 'active' && diverges) {
           transaction.state.telegramMappings[index] = { ...mapping, status: 'inactive', updatedAt: now };
         }
@@ -283,8 +334,8 @@ export class TenantBusinessService {
       const persistedDisplayName = before?.displayName ?? await transaction.resolveUserDisplayName(value.userId);
       if (persistedDisplayName === null) throw new DashboardAccessDeniedError();
       const after: MembershipRecord = before === undefined
-        ? { ...this.base(actor, now), id: value.userId, userId: value.userId, displayName: persistedDisplayName, avatarUrl: null, roleId: value.roleId, status: value.status, version: 1 }
-        : { ...before, displayName: persistedDisplayName, roleId: value.roleId, status: value.status, version: before.version + 1, updatedAt: now };
+        ? { ...this.base(actor, now), id: value.userId, userId: value.userId, displayName: persistedDisplayName, avatarUrl: null, roleId: value.roleId, status: value.status, regionId: value.regionId, version: 1 }
+        : { ...before, displayName: persistedDisplayName, roleId: value.roleId, status: value.status, regionId: value.regionId, version: before.version + 1, updatedAt: now };
       if (before === undefined) transaction.state.memberships.push(after); else replaceById(transaction.state.memberships, after);
       this.audit(transaction, 'membership.update', 'membership', after.id, before ?? null, after); return after;
     }});
@@ -295,7 +346,7 @@ export class TenantBusinessService {
       const state = await this.repository.read(actor, DASHBOARD_PERMISSIONS.publisherRead);
       let visibleSites: DashboardTenantState['sites'] = [];
       if (actor.permissionSet.has(DASHBOARD_PERMISSIONS.siteRead)) {
-        try { visibleSites = (await this.repository.read(actor, DASHBOARD_PERMISSIONS.siteRead)).sites; }
+        try { visibleSites = (await this.repository.read(actor, DASHBOARD_PERMISSIONS.siteRead)).sites.filter((site) => siteInScope(site, regionLock(actor))); }
         catch (error) { if (!(error instanceof DashboardAccessDeniedError)) throw error; }
       }
       return { ok: true as const, value: { publishers: state.publishers, affiliations: state.affiliations, sites: visibleSites } };
@@ -338,6 +389,7 @@ export class TenantBusinessService {
   private publisherDecision(actor: AuthorizedTenantActorContext, raw: unknown, decision: 'submit' | 'approve' | 'reject' | 'archive') {
     const permission = decision === 'approve' || decision === 'reject' ? DASHBOARD_PERMISSIONS.publisherVerify : DASHBOARD_PERMISSIONS.publisherManage;
     return this.mutate({ actor, raw, schema: publisherDecisionSchema, permission, action: `publisher.${decision}`, targetType: 'publisher', execute: (transaction, value, now) => {
+      if (decision === 'approve' || decision === 'reject') requireUnrestrictedRegion(actor);
       const before = requireRecord(transaction.state.publishers, value.id); requireVersion(before, value.expectedVersion);
       if ((decision === 'submit' || decision === 'approve') && (value.evidenceReference ?? before.evidenceReference) === null) throw new DashboardValidationError({ evidenceReference: ['Verification evidence is required.'] });
       if (decision === 'reject' && value.reason === undefined) throw new DashboardValidationError({ reason: ['A rejection reason is required.'] });
@@ -359,7 +411,7 @@ export class TenantBusinessService {
 
   createAffiliation(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: affiliationSchema, permission: DASHBOARD_PERMISSIONS.publisherVerify, action: 'affiliation.create', targetType: 'official_affiliation', execute: (transaction, value, now) => {
-      const publisher = requireRecord(transaction.state.publishers, value.publisherId); requireRecord(transaction.state.sites, value.siteId);
+      const publisher = requireRecord(transaction.state.publishers, value.publisherId); requireSiteInScope(transaction.state.sites, value.siteId, actor);
       if (publisher.verificationStatus !== 'verified') throw new DashboardAccessDeniedError();
       const record: OfficialAffiliationRecord = { ...this.base(actor, now), ...value, active: true, verifiedAt: now };
       transaction.state.affiliations.push(record); this.audit(transaction, 'affiliation.create', 'official_affiliation', record.id, null, record); return record;
@@ -369,7 +421,7 @@ export class TenantBusinessService {
   updateAffiliation(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: affiliationUpdateSchema, permission: DASHBOARD_PERMISSIONS.publisherVerify, action: 'affiliation.update', targetType: 'official_affiliation', execute: (transaction, value, now) => {
       const before = requireRecord(transaction.state.affiliations, value.id); requireVersion(before, value.expectedVersion);
-      const publisher = requireRecord(transaction.state.publishers, before.publisherId); requireRecord(transaction.state.sites, before.siteId);
+      const publisher = requireRecord(transaction.state.publishers, before.publisherId); requireSiteInScope(transaction.state.sites, before.siteId, actor);
       if (value.active && publisher.verificationStatus !== 'verified') throw new DashboardAccessDeniedError();
       const after: OfficialAffiliationRecord = { ...before, institutionName: value.institutionName, claimScopes: value.claimScopes, evidenceReference: value.evidenceReference, active: value.active, verifiedAt: value.active ? now : before.verifiedAt, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.affiliations, after); this.audit(transaction, 'affiliation.update', 'official_affiliation', after.id, before, after); return after;
@@ -414,10 +466,20 @@ export class TenantBusinessService {
     if (!parsed.success) return Promise.resolve(this.invalid(actor, parsed.error));
     const filter = defined(parsed.data) as ArticleFilter;
     return this.query(actor, DASHBOARD_PERMISSIONS.articleRead, 'article.list', 'article', (state) => {
-      this.requireFilterReferences(state, filter);
+      this.requireFilterReferences(state, filter, actor);
+      const lock = regionLock(actor);
+      const regions = state.regions.filter((region) => lock === null || region.id === lock);
+      const sites = state.sites.filter((site) => siteInScope(site, lock));
+      const scoped = { ...state, regions, sites, articles: state.articles.filter((article) => articleInScope(article, lock)) };
+      const articles = filterArticles(scoped, filter);
+      const articleIds = new Set(articles.map(({ id }) => id));
+      const siteIds = new Set(sites.map(({ id }) => id));
+      const scopeRegion = lock === null ? null : regions.find(({ id }) => id === lock);
       return {
-        articles: filterArticles(state, filter), categories: state.categories, authors: state.authors,
-        publishers: state.publishers.map(({ id, name, attributionLabel }) => ({ id, name, attributionLabel })), regions: state.regions, sites: state.sites, articleSites: state.articleSites,
+        articles, categories: state.categories, authors: state.authors,
+        publishers: state.publishers.map(({ id, name, attributionLabel }) => ({ id, name, attributionLabel })), regions, sites,
+        articleSites: state.articleSites.filter(({ articleId, siteId }) => articleIds.has(articleId) || siteIds.has(siteId)),
+        regionScope: scopeRegion === undefined || scopeRegion === null ? null : { id: scopeRegion.id, name: scopeRegion.name },
       };
     });
   }
@@ -425,8 +487,9 @@ export class TenantBusinessService {
   createArticle(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: articleCreateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.create', targetType: 'article', execute: (transaction, value, now) => {
       this.requireArticleReferences(transaction.state, value);
-      if (transaction.state.articles.some(({ slug }) => slug === value.slug)) throw new DashboardConflictError();
-      const record: ArticleRecord = { ...this.base(actor, now), ...value, publishedAt: null, archivedAt: null };
+      requireLockedRegionValue(actor, value.regionId);
+      const slug = allocateUniqueSlug(transaction.state.articles.map(({ slug }) => slug), value.slug);
+      const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, publishedAt: null, archivedAt: null };
       transaction.state.articles.push(record); this.audit(transaction, 'article.create', 'article', record.id, null, record); return record;
     }});
   }
@@ -435,17 +498,25 @@ export class TenantBusinessService {
     return this.mutate({ actor, raw, schema: articleUpdateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.update', targetType: 'article', execute: (transaction, value, now) => {
       this.requireArticleReferences(transaction.state, value);
       const before = requireRecord(transaction.state.articles, value.id); requireVersion(before, value.expectedVersion);
+      requireArticleInScope(transaction.state.articles, before.id, actor);
+      requireLockedRegionValue(actor, value.regionId);
+      if (value.slug !== before.slug && transaction.state.articles.some(({ id, slug }) => id !== value.id && slug === value.slug)) throw new DashboardConflictError();
       const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: value.categoryId, authorId: value.authorId, slug: value.slug, title: value.title, body: value.body, source: value.source, tags: [...value.tags], status: value.status, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.articles, after); this.audit(transaction, 'article.update', 'article', after.id, before, after); return after;
     }});
   }
 
-  private requireFilterReferences(state: DashboardTenantState, filter: ArticleFilter): void {
+  private requireFilterReferences(state: DashboardTenantState, filter: ArticleFilter, actor?: AuthorizedTenantActorContext): void {
     if (filter.regionId !== undefined) requireRecord(state.regions, filter.regionId);
     if (filter.siteId !== undefined) requireRecord(state.sites, filter.siteId);
     if (filter.categoryId !== undefined) requireRecord(state.categories, filter.categoryId);
     if (filter.publisherId !== undefined) requireRecord(state.publishers, filter.publisherId);
     if (filter.authorId !== undefined) requireRecord(state.authors, filter.authorId);
+    const lock = actor === undefined ? null : regionLock(actor);
+    if (lock !== null) {
+      if (filter.regionId !== undefined && filter.regionId !== lock) throw new DashboardAccessDeniedError();
+      if (filter.siteId !== undefined) requireSiteInScope(state.sites, filter.siteId, actor!);
+    }
   }
 
   private requireArticleReferences(state: MutableTenantState, value: { regionId: string; publisherId: string | null; categoryId: string | null; authorId: string | null }): void {
@@ -460,7 +531,7 @@ export class TenantBusinessService {
   private transitionArticle(actor: AuthorizedTenantActorContext, raw: unknown, status: 'archived' | 'draft') {
     const action = status === 'archived' ? 'article.archive' : 'article.restore';
     return this.mutate({ actor, raw, schema: articleTransitionSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action, targetType: 'article', execute: (transaction, value: VersionInput, now) => {
-      const before = requireRecord(transaction.state.articles, value.id); requireVersion(before, value.expectedVersion);
+      const before = requireArticleInScope(transaction.state.articles, value.id, actor); requireVersion(before, value.expectedVersion);
       const after: ArticleRecord = { ...before, status, archivedAt: status === 'archived' ? now : null, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.articles, after); this.audit(transaction, action, 'article', after.id, before, after); return after;
     }});
@@ -468,10 +539,10 @@ export class TenantBusinessService {
 
   assignArticleSites(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: assignmentSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.sites.assign', targetType: 'article', execute: (transaction, value, now) => {
-      const article = requireRecord(transaction.state.articles, value.articleId);
+      const article = requireArticleInScope(transaction.state.articles, value.articleId, actor);
       if (article.organizationId !== actor.organizationId) throw new DashboardAccessDeniedError();
       const distinct = [...new Set(value.siteIds)];
-      const targetSites = distinct.map((siteId) => requireRecord(transaction.state.sites, siteId));
+      const targetSites = distinct.map((siteId) => requireSiteInScope(transaction.state.sites, siteId, actor));
       if (targetSites.some(({ organizationId, status }) => organizationId !== actor.organizationId || status !== 'active')) throw new DashboardAccessDeniedError();
       const before = transaction.state.articleSites.filter(({ articleId, active }) => articleId === article.id && active);
       for (let index = 0; index < transaction.state.articleSites.length; index += 1) {
@@ -491,9 +562,9 @@ export class TenantBusinessService {
 
   setArticleSiteViews(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: siteViewsSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.sites.views.set', targetType: 'article_site', execute: (transaction, value, now) => {
-      const article = requireRecord(transaction.state.articles, value.articleId);
+      const article = requireArticleInScope(transaction.state.articles, value.articleId, actor);
       if (article.organizationId !== actor.organizationId) throw new DashboardAccessDeniedError();
-      const site = requireRecord(transaction.state.sites, value.siteId);
+      const site = requireSiteInScope(transaction.state.sites, value.siteId, actor);
       if (site.organizationId !== actor.organizationId) throw new DashboardAccessDeniedError();
       const before = transaction.state.articleSites.find(({ articleId, siteId }) => articleId === value.articleId && siteId === value.siteId);
       if (before === undefined) throw new DashboardConflictError();
@@ -509,7 +580,7 @@ export class TenantBusinessService {
     if (!parsed.success) return Promise.resolve(this.invalid(actor, parsed.error));
     const filter = defined(parsed.data) as ArticleFilter;
     return this.query(actor, DASHBOARD_PERMISSIONS.articleRead, 'public_content.list', 'article', (state) => {
-      requireRecord(state.sites, siteId); this.requireFilterReferences(state, filter);
+      requireSiteInScope(state.sites, siteId, actor); this.requireFilterReferences(state, filter, actor);
       const articles = selectNetworkArticles(state, siteId, filter);
       return articles.map((article) => {
         const publisher = article.publisherId === null ? undefined : state.publishers.find(({ id }) => id === article.publisherId);

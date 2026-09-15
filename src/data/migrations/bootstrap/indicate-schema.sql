@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (41 migrations):
+-- Reviewed sources, in journal order (113 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -26,11 +26,11 @@
 --   11  20260903005000_security_hardening  ledger sha256:987a2378aab0e316808333f442443a5f94b1ee593932f46fd1fd0b0932cc8ae4
 --   12  20260903005500_strict_platform_authorization  ledger sha256:4b4d4b75f140c83779d6b05875f63c961f87d35da06910f1eb27e18e57c4ea82
 --   13  20260903010000_readiness_discovery  ledger sha256:298c1fcb059c7e0919caf08343ebfadc2a89bd836f2d29e9e878fc215c48f483
---   14  20260903010500_migration_body_digests  ledger sha256:5d1dc5f31933a365cf607f7657701bee7ea8e4f40c76c5ed0ffc6947aaadd609
---   15  20260903011000_updated_at_integrity_guard  ledger sha256:3e69727b634009e416c8f51efb8815d4893b5b98066894c9cba84e29a168536b
---   16  20260903011500_operational_table_read_policies  ledger sha256:8c8db47f78aa865d3539bc99998d2123783ce6524fff5b429526519ed708f4a7
---   17  20260903012000_data_api_and_index_hardening  ledger sha256:e20fd39f4580bd7fd079a59acfc3e523ee35355502b0ce1f75cdfa7e41424465
---   18  20260903012500_coordination_timestamps_and_search_indexes  ledger sha256:6ad51e0a682eb6d0578684160cc4adb3e3243c81d5a8dc951128eaf866f7d9fd
+--   14  20260903010500_migration_body_digests  ledger sha256:968a24224fb29a036a3fe56866ab11d6204c732243864353af18ecfa34500dcc
+--   15  20260903011000_updated_at_integrity_guard  ledger sha256:2955fb76c0c3ab351091158cb64cdeb0a9717bee242d95d64164eab87071579e
+--   16  20260903011500_operational_table_read_policies  ledger sha256:849fd713446fbd8b7857206bd00081c039e0a54fe1ab3e960d0574fa2b17323d
+--   17  20260903012000_data_api_and_index_hardening  ledger sha256:109af0132f9eb215333e457b892403bdb87e0027ea88b276832ddef4907b1e53
+--   18  20260903012500_coordination_timestamps_and_search_indexes  ledger sha256:24482cc2902d1b109558d4ffdad6e44037efb7beca5d71f17bd6fad8d42d9bcb
 --   19  20260903013000_runtime_config_core  ledger sha256:f206704cc04ffdbb4d4aa7815e66340b07ff6444d9309ec6a325102a0d80a34b
 --   20  20260903013500_runtime_config_audit_invalidation  ledger sha256:fabb8acb0d1b6c2ce6f3ab3dcf0cafca0390bec91a378f7a83fceecaa6b5889f
 --   21  20260903014000_runtime_config_rollout  ledger sha256:6fa4c0f9303df49afcb3b7ee72fb30d2409ca8c4a5312b6828254c82db4a76fe
@@ -54,6 +54,78 @@
 --   39  20260903030500_delivery_helpers  ledger sha256:0e075f7ef930dc4571d5341b931dbbea2a5b047781e6c7485884890f576a0231
 --   40  20260903031000_subscription_tiers  ledger sha256:0d782559f1b08512714755fcce900a8bc33ebf7f1e5bb13c53f2d5e4b62b3c29
 --   41  20260903031500_dynamic_content  ledger sha256:4a973a9327843ce673e23f44af30287ecf7d803c925f88bbaa2bc23cb01fde7c
+--   42  20260903032000_superadmin_tier_and_pro_plan  ledger sha256:9e7fe18c34701738ddbc9a11a4738180812795429f07c594b7be1f0ea485e3b9
+--   43  20260903032500_billing_orders  ledger sha256:3488d118ea00bb84798c22e20d6bc05394fff313d97d1b56c388b383d2eece99
+--   44  20260903033000_billing_permission_definitions  ledger sha256:3ca0a8f80378a57244173fae24549fea4d572fe8ce3f8accba7b1775638b8efa
+--   45  20260903033500_billing_orders_rls_reads  ledger sha256:84d8e5b3fc8495c215e5e8d496a300c681bfd3bc6dcd79f7fc414018fae8e80a
+--   46  20260903034000_billing_invitations_sweep  ledger sha256:6a00193514655c751ed89566b83b5903a3b9d6e8d3607958aa1deac340f14e89
+--   47  20260903034500_billing_service_tiers_active  ledger sha256:7d64bba53505ca02a1c2f53396ad95a25590241dbfe420f517f9beabe0bff9d0
+--   48  20260903035000_billing_real_tiers_cleanup  ledger sha256:1a2ea87001e5374974ae65e2ba6b782c54c556cb6723fefeb3c5ea9d5f44ffb8
+--   49  20260903035500_billing_advisor_hardening  ledger sha256:d640cfbb36b38f55fc02f89ac5892895f81572d7478f36a15440e4d53a6bd9be
+--   50  20260903036000_billing_users_email_idx  ledger sha256:f6b4e2271d6142cc24c0dad8c6696f8454d33e9471bb64c987ebcd6d6d478aae
+--   51  20260903036500_billing_faq_random_ids  ledger sha256:022c10a71fa093b0979ef09be759030788f4d728d5863da5846dfbfcc672a1c8
+--   52  20260903037000_billing_real_checksums  ledger sha256:7bd6b57ba6482ca481036314feded0f96a65ed65f195ab615a7ec3e106c5e989
+--   53  20260903037500_billing_packages_plan_unique  ledger sha256:2c9245957e4e6776ef3f9f5fbe2d0345fc76c8d87fcacf59e46df19d2a55a618
+--   54  20260903038000_billing_pro_100_enterprise_custom  ledger sha256:7e3182e2c36af9723dbcd73110cf7aa08fe034c446957876f188d58f347ca97b
+--   55  20260903038500_billing_sales_copy  ledger sha256:32af17f6c568bceb3faae02383a12916f2681452d8581dde2767ad1bb77edf10
+--   56  20260903039000_billing_tier_ladder  ledger sha256:ca8752a2190ab86ab5152325e86ac81cca59ded6270407a69b1078122282625b
+--   57  20260903039500_billing_buyer_faqs  ledger sha256:27e9d8c9b38d97ce13a65bb29ac57e524c793112c089c621b617379535fe395a
+--   58  20260903040000_contact_channel_hrefs  ledger sha256:267a0b397988ce88a8675f025201e6d4fd9da8d246ada57d38982cf59f755d7e
+--   59  20260903040500_publication_overrides  ledger sha256:883f702c365d34ed4b1f56f01c70810f87634536d36dcaf3d89c98fd388f9299
+--   60  20260903041000_publishing_unpublished_state  ledger sha256:6a56c170c43d7727b6448f552e5b9ba80f0307cca44bb588dce4dc87351d9792
+--   61  20260903041500_release_manifest_source_version  ledger sha256:ddcb8dc0513c61286093311f7025edef68c7de36e5bf9c25415181b8e0ba7315
+--   62  20260903042000_fix_site_settings_robots_cast  ledger sha256:fe7e26fd5533d1058909e05df04d4c5e5cf4e8210dcbd5ce110543d6c56e0283
+--   63  20260903042500_site_settings_default_media  ledger sha256:01ce40cb4444c82f9cde77d0627482772bfa9403a1f05e94d08f95e98fc55114
+--   64  20260903043000_site_settings_default_media_idx  ledger sha256:f1999940a49683967cbd096a5bdb31c4bfd3872492d10d1a654788ca8d2d9152
+--   65  20260903043500_media_thumb_object_key  ledger sha256:ce92b5bca494142d99bfc6093bd3b75c1942afa3f136c236e324c1edebe94526
+--   66  20260903044000_site_settings_media_indexes  ledger sha256:5f4a02f42c5b47fb669f7c3b0d6312b470c0edc6d8e4ff78314b7600b584f0f2
+--   67  20260903044500_subscription_expiry_warnings  ledger sha256:5bb01052f4d1a457662d723395f116338d1b35eb1b53d82209e0e2397b69ed4c
+--   68  20260903045000_enterprise_lead_list  ledger sha256:30bbd1712709b7b524f0011b2b5f5669f944735e9850c4cf151143d8c392fddf
+--   69  20260906000000_billing_terms_consent  ledger sha256:1d5e3e70e73614fec355aabe42542115cd5049add6e09db4ede8c2e7d1c90315
+--   70  20260906001000_billing_refund_status  ledger sha256:b9dacfbc2024351be42696f39bc1433b188c63cc0b76c7807432fd6af30c1de1
+--   71  20260906002000_billing_pending_terms  ledger sha256:ca317573867eb610e2e733b68e8d0ccd37fd60547a588dc393fa4fbb9b1701c8
+--   72  20260906003000_historical_digest_rebaseline  ledger sha256:e604aa8e6a85b65c247afc8189a8c29af1608c1d48c3d86fa9d32a06d4d567fe
+--   73  20260906004000_malformed_digest_correction  ledger sha256:4603bd3fe900ac7c2ea647a13169d6a747eb059d6f1a6dc398c23e65862487ee
+--   74  20260906005000_audit_hash_chain  ledger sha256:f8b1336fb8842b0041fa2adee9b5d3bdd5cd3ec6e6cc5b97c4b7785d71b27619
+--   75  20260906006000_retention_sweep  ledger sha256:83edc7e8040711c9c3a61948b1e0f8b3745e3f06d5bdcd32058a91b30fc043b3
+--   76  20260906007000_moderation_reports  ledger sha256:abc7b801da94d2a74ea964bea1a365953278731c1a68e74505c58dba05b6a86a
+--   77  20260906008000_moderation_fk_indexes  ledger sha256:ceb9d156043b24e05acda856a3792d5e62901e88714fcabb503ec3b03e3cfb62
+--   78  20260907000000_delivery_activation_claim  ledger sha256:5930a61f1313231da8bf871b0570d8ff84b702ca55d53f2719a50e2cdb12c19c
+--   79  20260907010000_litigation_holds  ledger sha256:4a1b9e655395c52a5f41fb247c8b3355a5cd82e2fa9e2ff503d591b636ae58b1
+--   80  20260907020000_org_erasure  ledger sha256:57b2b7e15ce6c9f6fa641d77a66d419dd50da4df7a112de3cdcdf71610b37f51
+--   81  20260907030000_rls_global_select_tightening  ledger sha256:eef950f979b7f94c7e2960a09600f8c8d132dc3890a80ba73dfd02bdd8346bda
+--   82  20260907040000_function_grants_repair  ledger sha256:9ef1be218107d9be43339825e6759089399c61891c65d2f83782657ee60b05d9
+--   83  20260907050000_telegram_outbox  ledger sha256:7c4b646650088954612cd6a01fa623c5e9349bfb571d9aa34a3bcd2356effa1e
+--   84  20260907060000_lead_consent  ledger sha256:5b34f645a608638a10d77852284daead5369d445ff5472a978bff5db8ee6cb86
+--   85  20260907080000_function_only_policies  ledger sha256:2bab06cdc9f2a5d02bb2bd88ee4ee0c189d0e231d6ab4106dc78248e4d0ec4a6
+--   86  20260907090000_worm_export_proof  ledger sha256:e39fbc068a47ee9681de3fd4d0dc1d3ced101f7ee28a66df9dcb9d2d938b5be5
+--   87  20260907100000_delivery_previous_host_owned  ledger sha256:6b0d16b60cf393663fa21911ed40832abbd0e25038ab6a6909dc96cfe72e646d
+--   88  20260907110000_ops_visibility  ledger sha256:9f0190f034aa3fd4e9e67de2ccf416b23019cecdf252fe47d0272851d949c6ab
+--   89  20260907120000_invoice_list  ledger sha256:eab0fb0ff02350f5c5b234035144f8e14fe9e5c4db61a298232f1375399becd0
+--   90  20260907130000_ops_fk_covering_indexes  ledger sha256:a9e99e8725de43325befe61a4b94d21063be8baf58d75a8b6adef0a74ed7055f
+--   91  20260907140000_article_site_view_counts  ledger sha256:30ccbebf959a89aeef8d7ccadc872895a90e62b4387a2d376086fc2e742f40e8
+--   92  20260907150000_article_tags  ledger sha256:95e29c7703dd24b8081850223ad2e76bad347e58b1da3c52d8cfecafe4cfa2d2
+--   93  20260907160000_merge_view_counts  ledger sha256:4577d7045f8bd1a22478c3390d3ecd6453998d18ff9a4a4c3df0c517bec190de
+--   94  20260907170000_seed_upt_jateng_59org  ledger sha256:36006ad8ca4eabce4a3b90831f5bb1d7db8ab32b478070ae2539f46847358580
+--   95  20260907180000_fix_upt_city_ambarawa_klaten  ledger sha256:ace527a8a731e1b55e643694bb09d1ab27bda4f78f5c2aefb3e63a538546c961
+--   96  20260907190000_publisher_humas_attribution  ledger sha256:5c957edf0165666206229605ae4fc49059cf1b0cbca85d42044d22564b9273bd
+--   97  20260907200000_retire_packages_manual_activation  ledger sha256:4bdbf07d8ce3aad8d53e480db92a1eafe43ed6d0c02d60b200a4987945b35cfa
+--   98  20260907210000_faq_manual_activation_copy  ledger sha256:67e8c98fa070f03722c716a0978ae69f39cefec4a1722fbba8e18b5de9bd9943
+--   99  20260907220000_rename_invite_deny_policy  ledger sha256:2c748b29a1c8316ffb63fb9dc326d01cdde4287bd9e0460ba59fb23a9ff987fc
+--   100  20260907230000_drop_billing_order_status  ledger sha256:2979e4de0b51864744cff7bc55a9cfd93f3d8bea745ab7c776f32637e3ef18a2
+--   101  20260907240000_manual_invoices  ledger sha256:7077d44dfd73241b6a47777d62d805d7ad55995a4e8e780ec4a7f1f1a3020edf
+--   102  20260907250000_invoice_number_enterprise  ledger sha256:c6f332b7bd6c818cdc0bc11ce62c2c37e13293d4a4ac476ee37b2f68b9ca77bb
+--   103  20260907260000_invite_visibility  ledger sha256:dd823700429f94990a4ccd3e543c735602cfbb043d9c6e7d18fc38cdeb1d0a19
+--   104  20260907270000_fix_site_settings_guard_return  ledger sha256:87b58751c14844cfaf6617ed617fe08864a86287fc12e9b0e5e89f306b8b35fe
+--   105  20260907280000_discover_hosts_add_versions  ledger sha256:afe5d5ae1390c3f115910c25e981dd622cb9f7e55a013fc6a34265bf4075a0b1
+--   106  20260907290000_organizations_kind  ledger sha256:1cf29d796e80440c29c0e54bb777865a9926b574f591504d87571061ef3aa3a4
+--   107  20260914020000_template_preset_clean_blue  ledger sha256:537f1dbd9d7d4bf251888ba1e4da1103c6affb86865b13d98e576027493a5c32
+--   108  20260914030000_articles_cover_image_url  ledger sha256:4b4be4b5400c1473969d7c060bbf88be15dfd33d211bbc02eb9b4f38dbf923b6
+--   109  20260914040000_single_template_clean_blue  ledger sha256:16ce003f1b2624fa78dff1463b31ac701895ec02fe4c1735011b63f5374e5c0a
+--   110  20260915000000_seo_metadata_hardening  ledger sha256:33702d7fb317a932c060423fffeaeeaf3a68155eb4c51e147e6783c3d1d6cb01
+--   111  20260915010000_invoices_created_by_covering_index  ledger sha256:995168799f377bff817043b7757a7161741d92fea327253c57fd6aa11d05c0f1
+--   112  20260915020000_media_policy_allow_ico  ledger sha256:38ecc2cee63b8ffb3034d85e1b67506941d9a9418fbdc06048556838bceb55ed
+--   113  20260916000000_region_locked_memberships  ledger sha256:398087aef20abd0eead610110e9026b41f73bf35eedc3fba3c7c917ea9a35337
 
 BEGIN;
 
@@ -2629,9 +2701,9 @@ END
 $$;
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (14, 'migration_body_digests', 'sha256:81a82af6942df1ae906d6e3b76d4bd9906dfc5efb65cd30cb8e2aabd372c91a3');
+VALUES (14, 'migration_body_digests', 'sha256:1c63d8dc80a2f8364564e264da18055980a178d65043861ff9f4d8ed99365fc9');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5d1dc5f31933a365cf607f7657701bee7ea8e4f40c76c5ed0ffc6947aaadd609', 1788121000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('968a24224fb29a036a3fe56866ab11d6204c732243864353af18ecfa34500dcc', 1788121000000);
 
 -- ----------------------------------------------------------------------
 -- 20260903011000_updated_at_integrity_guard
@@ -2721,9 +2793,9 @@ END
 $verify$;
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (15, 'updated_at_integrity_guard', 'sha256:b980b8f0cf65f832609501512308a36d92a27252b7771a9ab0bc3784ca8b0ca7');
+VALUES (15, 'updated_at_integrity_guard', 'sha256:f2dbac5ae8a410d26f6dd4a55219432416f9b87870eff0b44f9b94de6cedbf39');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('3e69727b634009e416c8f51efb8815d4893b5b98066894c9cba84e29a168536b', 1788122000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2955fb76c0c3ab351091158cb64cdeb0a9717bee242d95d64164eab87071579e', 1788122000000);
 
 -- ----------------------------------------------------------------------
 -- 20260903011500_operational_table_read_policies
@@ -2780,9 +2852,9 @@ END
 $verify$;
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (16, 'operational_table_read_policies', 'sha256:8e8c93740aaae7782c45713b92e7ac4fd81220bc6a4f3647e7d8273be75cc144');
+VALUES (16, 'operational_table_read_policies', 'sha256:aeb5fcff577a43bdd81ccf7ff767e838d2cc7c0ac0a35f1306b137b042f3a599');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('8c8db47f78aa865d3539bc99998d2123783ce6524fff5b429526519ed708f4a7', 1788123000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('849fd713446fbd8b7857206bd00081c039e0a54fe1ab3e960d0574fa2b17323d', 1788123000000);
 
 -- ----------------------------------------------------------------------
 -- 20260903012000_data_api_and_index_hardening
@@ -2934,9 +3006,9 @@ END
 $verify$;
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (17, 'data_api_and_index_hardening', 'sha256:8f72552e4142ce585137c6cf1604184a67d669e1642032cc973ae6c1711c9dfc');
+VALUES (17, 'data_api_and_index_hardening', 'sha256:4f9a3e1ea036b75199ddc55863b0c78e7a9831e71617b329d51ea015721e5a89');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e20fd39f4580bd7fd079a59acfc3e523ee35355502b0ce1f75cdfa7e41424465', 1788124000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('109af0132f9eb215333e457b892403bdb87e0027ea88b276832ddef4907b1e53', 1788124000000);
 
 -- ----------------------------------------------------------------------
 -- 20260903012500_coordination_timestamps_and_search_indexes
@@ -3094,9 +3166,9 @@ END
 $verify$;
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (18, 'coordination_timestamps_and_search_indexes', 'sha256:b3f4bd44d558f6b5699c98bb30a428ecce4f24d1e08c47fedb1deb7f20df0b71');
+VALUES (18, 'coordination_timestamps_and_search_indexes', 'sha256:18aed7e6f31f9dcc0d2c66571661968d921e6c924ae112d295aa2fd0628ed130');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6ad51e0a682eb6d0578684160cc4adb3e3243c81d5a8dc951128eaf866f7d9fd', 1788125000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('24482cc2902d1b109558d4ffdad6e44037efb7beca5d71f17bd6fad8d42d9bcb', 1788125000000);
 
 -- ----------------------------------------------------------------------
 -- 20260903013000_runtime_config_core
@@ -6528,7 +6600,6 @@ CREATE TABLE "contact_channels" (
 	"key" text PRIMARY KEY NOT NULL,
 	"title" text NOT NULL,
 	"description" text NOT NULL,
-	"href" text,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -6579,11 +6650,10 @@ INSERT INTO public.media_showcase (id, name, sort_order) VALUES
   ('00000000-0000-4000-8000-000000007026', 'Warta Persada', 6),
   ('00000000-0000-4000-8000-000000007027', 'Arcadia News', 7),
   ('00000000-0000-4000-8000-000000007028', 'Kencana Post', 8);
-INSERT INTO public.contact_channels (key, title, description, href, sort_order) VALUES
-  ('email', 'Surel', 'officialelsa21@gmail.com — kirim kebutuhan Anda beserta jumlah domain dan wilayah yang direncanakan.', 'mailto:officialelsa21@gmail.com', 1),
-  ('whatsapp', 'WhatsApp', '0856-4115-9405 — jalur tercepat untuk paket Enterprise, pindahan sistem, atau pertanyaan harga.', 'https://wa.me/6285641159405?text=Halo%20Indicate%2C%20saya%20ingin%20bertanya.', 2),
-  ('telegram', 'Telegram', '@eliyantosarage — tanya jawab singkat mengenai alur redaksi dan integrasi bot.', 'https://t.me/eliyantosarage', 3),
-  ('visit', 'Peninjauan bersama', 'Sesi daring untuk menelusuri dasbor dan alur penerbitan — jadwalkan lewat WhatsApp atau surel.', NULL, 4);
+INSERT INTO public.contact_channels (key, title, description, sort_order) VALUES
+  ('email', 'Surel', 'Kirim kebutuhan Anda beserta jumlah domain dan wilayah yang direncanakan.', 1),
+  ('telegram', 'Telegram', 'Tanya jawab singkat mengenai alur redaksi dan integrasi bot.', 2),
+  ('visit', 'Peninjauan bersama', 'Sesi daring untuk menelusuri dasbor dan alur penerbitan.', 3);
 INSERT INTO public.permission_definitions (scope, name, description, sort_order) VALUES
   ('organization', 'api_key.read', 'Read API key metadata', 1),
   ('organization', 'api_key.manage', 'Issue, rotate, and revoke API keys', 2),
@@ -6736,4 +6806,4421 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (41, 'dynamic_content', 'dynamic-content-v1');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4a973a9327843ce673e23f44af30287ecf7d803c925f88bbaa2bc23cb01fde7c', 1788463000000);
+
+-- ----------------------------------------------------------------------
+-- 20260903032000_superadmin_tier_and_pro_plan
+-- ----------------------------------------------------------------------
+-- F1-DB: superadmin tier + pro subscription plan.
+--
+-- Forward-only. Enum additions use ADD VALUE (no existing rows are rewritten).
+-- 1. `role_tier` gains 'superadmin'; `subscription_plan` gains 'pro',
+--    following the CREATE TYPE pattern of 20260903021000_role_tier and
+--    20260903031000_subscription_tiers.
+-- 2. `plan_quotas` is repaired for all four packages. The previous seeds
+--    (starter 10/10/unlimited/unlimited, growth 50/50/unlimited/unlimited,
+--    enterprise unlimited) are replaced by the published F1 quotas; 'pro' is
+--    inserted. RLS stays runtime-read-only (SELECT to indicate_runtime, no
+--    write grant — writes happen only via this migration credential).
+-- 3. Platform permission `platform.super_admin` (scope platform, org NULL) is
+--    seeded as the replacement for `platform.customer.admin`. The old row is
+--    NOT deleted; its description is marked [DEPRECATED]. A transition helper
+--    `permission_has_platform_admin()` accepts either grant, and the current
+--    platform-gated functions (customer_create/list/update, subscription_update,
+--    resolve_user_by_email, actor_has_tenant_permission) are redefined onto it.
+--    Legacy snake_case twins (create_customer, ...) are left untouched.
+-- 4. `platform_organizations` registry + `is_platform_organization()` +
+--    `roles_superadmin_platform_guard` trigger: roles with tier 'superadmin'
+--    are rejected unless their organization is registered. The registry starts
+--    empty, so the guard is fail-closed until an operator registers the
+--    platform org and grants platform.super_admin via
+--    src/database/scripts/grant-platform-super-admin.sql (one-time script).
+
+ALTER TYPE "public"."role_tier" ADD VALUE IF NOT EXISTS 'superadmin';
+ALTER TYPE "public"."subscription_plan" ADD VALUE IF NOT EXISTS 'pro';
+
+INSERT INTO public.plan_quotas (plan, max_domains, max_sites, max_members, max_api_keys) VALUES
+  ('starter', 5, 5, 1, 1),
+  ('growth', 20, 20, 1, 3),
+  ('pro', 50, 50, 3, 10),
+  ('enterprise', 100, 100, 10, 30)
+ON CONFLICT (plan) DO UPDATE SET
+  max_domains = EXCLUDED.max_domains,
+  max_sites = EXCLUDED.max_sites,
+  max_members = EXCLUDED.max_members,
+  max_api_keys = EXCLUDED.max_api_keys;
+ALTER TABLE public.plan_quotas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.plan_quotas FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS plan_quotas_runtime_read ON public.plan_quotas;
+CREATE POLICY plan_quotas_runtime_read ON public.plan_quotas FOR SELECT TO indicate_runtime USING (true);
+GRANT SELECT ON public.plan_quotas TO indicate_runtime;
+
+INSERT INTO public.permissions(id, organization_id, name, scope, description)
+VALUES ('00000000-0000-4000-8000-000000006002', NULL, 'platform.super_admin', 'platform', 'Full platform administration (replaces platform.customer.admin)')
+ON CONFLICT DO NOTHING;
+UPDATE public.permissions
+SET description = '[DEPRECATED — use platform.super_admin] Administer customer Organizations and subscriptions'
+WHERE scope = 'platform' AND organization_id IS NULL AND name = 'platform.customer.admin';
+
+CREATE TABLE IF NOT EXISTS "platform_organizations" (
+  "organization_id" uuid PRIMARY KEY NOT NULL REFERENCES "public"."organizations"("id") ON DELETE CASCADE,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE public.platform_organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.platform_organizations FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS platform_organizations_runtime_read ON public.platform_organizations;
+CREATE POLICY platform_organizations_runtime_read ON public.platform_organizations FOR SELECT TO indicate_runtime USING (true);
+GRANT SELECT ON public.platform_organizations TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.is_platform_organization(p_organization_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  SELECT EXISTS (
+    SELECT 1 FROM public.platform_organizations
+    WHERE organization_id = p_organization_id
+  )
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.is_platform_organization(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.is_platform_organization(uuid) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.roles_superadmin_platform_guard()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NEW.tier = 'superadmin' AND NOT indicate_private.is_platform_organization(NEW.organization_id) THEN
+    RAISE EXCEPTION 'superadmin tier restricted to platform organization' USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.roles_superadmin_platform_guard() FROM PUBLIC;
+DROP TRIGGER IF EXISTS roles_superadmin_platform_guard ON public.roles;
+CREATE TRIGGER roles_superadmin_platform_guard
+BEFORE INSERT OR UPDATE OF organization_id, tier ON public.roles
+FOR EACH ROW EXECUTE FUNCTION indicate_private.roles_superadmin_platform_guard();
+
+CREATE OR REPLACE FUNCTION indicate_private.permission_has_platform_admin(p_actor_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  -- Transition helper: 'platform.super_admin' is canonical; the deprecated
+  -- 'platform.customer.admin' grant is still honored until its removal.
+  SELECT indicate_private.permission_has_platform(p_actor_id, 'platform.super_admin')
+      OR indicate_private.permission_has_platform(p_actor_id, 'platform.customer.admin')
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.permission_has_platform_admin(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.permission_has_platform_admin(uuid) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.customer_create(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_name text, p_slug text, p_metadata jsonb, p_subscription jsonb, p_now timestamp with time zone)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  INSERT INTO public.organizations(id, name, slug, status, customer_metadata, version, created_at, updated_at)
+  VALUES (p_organization_id, p_name, p_slug, 'active', p_metadata, 1, p_now, p_now);
+  PERFORM indicate_private.org_ensure_permissions(p_organization_id);
+  IF p_subscription IS NOT NULL THEN
+    INSERT INTO public.subscriptions(organization_id, plan, status, period_starts_at, period_ends_at, version, created_at, updated_at)
+    VALUES (p_organization_id, p_subscription->>'plan', (p_subscription->>'status')::public.subscription_status,
+      (p_subscription->>'periodStartsAt')::timestamptz, (p_subscription->>'periodEndsAt')::timestamptz, 1, p_now, p_now);
+  END IF;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'customer.create', 'organization', p_organization_id::text, 'succeeded', ARRAY['name','slug','status'], jsonb_build_object('name', p_name, 'slug', p_slug, 'status', 'active'), p_request_id, p_now);
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.customer_list(p_actor_id uuid)
+ RETURNS TABLE(id uuid, name text, slug text, status record_status, customer_metadata jsonb, version integer, created_at timestamp with time zone, updated_at timestamp with time zone, subscription_plan text, subscription_status subscription_status, period_starts_at timestamp with time zone, period_ends_at timestamp with time zone, subscription_version integer, subscription_created_at timestamp with time zone, subscription_updated_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT o.id, o.name, o.slug, o.status, o.customer_metadata, o.version, o.created_at, o.updated_at,
+    s.plan, s.status, s.period_starts_at, s.period_ends_at, s.version, s.created_at, s.updated_at
+  FROM public.organizations o LEFT JOIN public.subscriptions s ON s.organization_id = o.id
+  ORDER BY o.name, o.id;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.customer_update(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_expected_version integer, p_name text, p_slug text, p_status record_status, p_metadata jsonb, p_now timestamp with time zone)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  UPDATE public.organizations SET name = p_name, slug = p_slug, status = p_status,
+    customer_metadata = p_metadata, version = version + 1, updated_at = p_now
+  WHERE id = p_organization_id AND version = p_expected_version;
+  IF NOT FOUND THEN RETURN false; END IF;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'customer.update', 'organization', p_organization_id::text, 'succeeded', ARRAY['name','slug','status','customerMetadata'], jsonb_build_object('name', p_name, 'slug', p_slug, 'status', p_status, 'customerMetadata', p_metadata), p_request_id, p_now);
+  RETURN true;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.subscription_update(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_expected_version integer, p_plan text, p_status subscription_status, p_period_starts_at timestamp with time zone, p_period_ends_at timestamp with time zone, p_now timestamp with time zone)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_platform boolean;
+BEGIN
+  v_platform := indicate_private.permission_has_platform_admin(p_actor_id);
+  IF NOT v_platform AND (
+    indicate_private.current_organization_id() IS DISTINCT FROM p_organization_id
+    OR NOT indicate_private.permission_has_tenant(p_actor_id, p_organization_id, 'subscription.manage')
+  ) THEN
+    RAISE EXCEPTION 'subscription permission required' USING ERRCODE = '42501';
+  END IF;
+  IF p_expected_version IS NULL THEN
+    INSERT INTO public.subscriptions(organization_id, plan, status, period_starts_at, period_ends_at, version, created_at, updated_at)
+    VALUES (p_organization_id, p_plan::public.subscription_plan, p_status, p_period_starts_at, p_period_ends_at, 1, p_now, p_now)
+    ON CONFLICT (organization_id) DO NOTHING;
+    IF NOT FOUND THEN RETURN false; END IF;
+  ELSE
+    UPDATE public.subscriptions SET plan = p_plan::public.subscription_plan, status = p_status, period_starts_at = p_period_starts_at,
+      period_ends_at = p_period_ends_at, version = version + 1, updated_at = p_now
+    WHERE organization_id = p_organization_id AND version = p_expected_version;
+    IF NOT FOUND THEN RETURN false; END IF;
+  END IF;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'subscription.update', 'subscription', p_organization_id::text, 'succeeded', ARRAY['plan','status','periodStartsAt','periodEndsAt'], jsonb_build_object('plan', p_plan, 'status', p_status, 'periodStartsAt', p_period_starts_at, 'periodEndsAt', p_period_ends_at), p_request_id, p_now);
+  RETURN true;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.resolve_user_by_email(p_email text)
+ RETURNS TABLE(id uuid, auth_user_id uuid, display_name text, status record_status)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  SELECT u.id, u.auth_user_id, u.display_name, u.status
+  FROM public.users AS u
+  WHERE u.email = p_email
+    AND indicate_private.permission_has_platform_admin(indicate_private.current_verified_user_id())
+  LIMIT 1
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.actor_has_tenant_permission(p_permission text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  SELECT COALESCE(
+    NOT EXISTS (
+      SELECT 1 FROM public.memberships AS m
+      WHERE m.organization_id = (SELECT indicate_private.current_organization_id())
+    )
+    OR (SELECT indicate_private.permission_has_platform_admin((SELECT indicate_private.current_verified_user_id())))
+    OR (SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), p_permission))
+    OR EXISTS (
+      SELECT 1
+      FROM public.memberships AS m
+      JOIN public.roles AS r ON r.organization_id = m.organization_id AND r.id = m.role_id AND r.active
+      JOIN public.role_permissions AS rp ON rp.organization_id = r.organization_id AND rp.role_id = r.id
+      JOIN public.permissions AS p ON p.id = rp.permission_id
+      WHERE m.organization_id = (SELECT indicate_private.current_organization_id())
+        AND m.user_id = (SELECT indicate_private.current_verified_user_id())
+        AND m.status = 'active'
+        AND p.organization_id = (SELECT indicate_private.current_organization_id())
+        AND p.scope = 'organization' AND p.name = p_permission
+    )
+    OR EXISTS (
+      SELECT 1 FROM public.api_keys AS k
+      WHERE k.organization_id = (SELECT indicate_private.current_organization_id())
+        AND k.id::text = current_setting('app.actor_id', true)
+        AND k.status = 'active'
+        AND (k.expires_at IS NULL OR k.expires_at > now())
+        AND k.scopes @> ARRAY[p_permission]
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM public.telegram_identity_mappings AS tim
+      JOIN public.memberships AS m ON m.organization_id = tim.organization_id AND m.user_id = tim.user_id AND m.role_id = tim.role_id AND m.status = 'active'
+      JOIN public.roles AS r ON r.organization_id = m.organization_id AND r.id = m.role_id AND r.active
+      JOIN public.role_permissions AS rp ON rp.organization_id = r.organization_id AND rp.role_id = r.id
+      JOIN public.permissions AS p ON p.id = rp.permission_id
+      WHERE tim.organization_id = (SELECT indicate_private.current_organization_id())
+        AND tim.id::text = current_setting('app.actor_id', true)
+        AND tim.status = 'active'
+        AND p.organization_id = (SELECT indicate_private.current_organization_id())
+        AND p.scope = 'organization' AND p.name = p_permission
+    ),
+    false)
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.customer_create(uuid, text, uuid, text, text, jsonb, jsonb, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.customer_create(uuid, text, uuid, text, text, jsonb, jsonb, timestamptz) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.customer_list(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.customer_list(uuid) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.customer_update(uuid, text, uuid, integer, text, text, public.record_status, jsonb, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.customer_update(uuid, text, uuid, integer, text, text, public.record_status, jsonb, timestamptz) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.subscription_update(uuid, text, uuid, integer, text, subscription_status, timestamptz, timestamptz, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.subscription_update(uuid, text, uuid, integer, text, subscription_status, timestamptz, timestamptz, timestamptz) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.resolve_user_by_email(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.resolve_user_by_email(text) TO indicate_runtime;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (42, 'superadmin_tier_and_pro_plan', 'sha256:b64b1190545cc4e03ef08cedf935312a070df9caaa5cbd40f92a4e4764784e92');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('9e7fe18c34701738ddbc9a11a4738180812795429f07c594b7be1f0ea485e3b9', 1788504227006);
+
+-- ----------------------------------------------------------------------
+-- 20260903032500_billing_orders
+-- ----------------------------------------------------------------------
+-- F2a-DB: billing orders + subscription lockdown + access-state helper.
+--
+-- Forward-only.
+-- 1. `billing_order_status` enum + tabel `packages`, `orders`, `invoices`,
+--    `enterprise_leads`, `org_invitations` mengikuti src/database/schema/billing.ts.
+--    `packages.plan` dipetakan 1:1 ke `subscription_plan` (starter/growth/pro/
+--    enterprise) — tidak ada lagi pemetaan pro -> enterprise.
+-- 2. Seed 4 paket jual (harga + kuota cermin plan_quotas). Idempoten via
+--    WHERE NOT EXISTS per plan.
+-- 3. RLS: packages runtime-read-only (katalog publik dibaca server-side via
+--    runtime role). orders/invoices/enterprise_leads/org_invitations default-deny
+--    (FORCE RLS, tanpa policy): semua akses lewat fungsi SECURITY DEFINER di bawah.
+-- 4. Fungsi: billing_order_create / billing_order_submit_proof /
+--    billing_order_decide (approve → upsert subscription active 30 hari + invoice
+--    + audit) / billing_order_list_mine / billing_order_list_pending /
+--    billing_lead_create. Invitation-redeem menyusul di F2b bersama kode aplikasi.
+-- 5. `subscription_update` dikunci: cabang tenant `subscription.manage` dicabut,
+--    hanya `permission_has_platform_admin()` yang lolos. Upgrade/downgrade lewat
+--    order baru, bukan edit langsung.
+-- 6. `subscription_access_state(org)` untuk penegakan masa tenggang di F2b:
+--    'platform' (org platform selalu penuh), 'active', 'grace' (tenggang baca-saja
+--    7 hari setelah period_ends_at), 'expired', 'suspended', 'cancelled', 'none'.
+
+CREATE TYPE "public"."billing_order_status" AS ENUM('pending_payment', 'waiting_verification', 'active', 'rejected');
+CREATE TABLE "packages" (
+  "id" uuid PRIMARY KEY NOT NULL,
+  "name" text NOT NULL,
+  "plan" text NOT NULL,
+  "price_idr" integer NOT NULL,
+  "max_domains" integer,
+  "max_sites" integer,
+  "max_members" integer,
+  "max_api_keys" integer,
+  "active" boolean DEFAULT true NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "packages_price_nonnegative" CHECK ("packages"."price_idr" >= 0),
+  CONSTRAINT "packages_plan_values" CHECK ("packages"."plan" IN ('starter', 'growth', 'pro', 'enterprise')),
+  CONSTRAINT "packages_quota_nonnegative" CHECK (("packages"."max_domains" IS NULL OR "packages"."max_domains" > 0) AND ("packages"."max_sites" IS NULL OR "packages"."max_sites" > 0) AND ("packages"."max_members" IS NULL OR "packages"."max_members" > 0) AND ("packages"."max_api_keys" IS NULL OR "packages"."max_api_keys" > 0))
+);
+CREATE TABLE "orders" (
+  "id" uuid PRIMARY KEY NOT NULL,
+  "user_id" uuid NOT NULL REFERENCES "public"."users"("id") ON DELETE restrict,
+  "org_id" uuid REFERENCES "public"."organizations"("id") ON DELETE restrict,
+  "package_id" uuid NOT NULL REFERENCES "public"."packages"("id") ON DELETE restrict,
+  "status" "public"."billing_order_status" DEFAULT 'pending_payment' NOT NULL,
+  "proof_url" text,
+  "decided_by" uuid,
+  "decided_at" timestamp with time zone,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE TABLE "invoices" (
+  "id" uuid PRIMARY KEY NOT NULL,
+  "order_id" uuid NOT NULL REFERENCES "public"."orders"("id") ON DELETE cascade,
+  "amount" integer NOT NULL,
+  "paid_at" timestamp with time zone,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "invoices_amount_nonnegative" CHECK ("invoices"."amount" >= 0)
+);
+CREATE TABLE "enterprise_leads" (
+  "id" uuid PRIMARY KEY NOT NULL,
+  "nama" text NOT NULL,
+  "email" text NOT NULL,
+  "kebutuhan" text NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "enterprise_leads_bounded" CHECK (length("enterprise_leads"."nama") BETWEEN 1 AND 200 AND length("enterprise_leads"."email") BETWEEN 3 AND 320 AND length("enterprise_leads"."kebutuhan") BETWEEN 1 AND 4000)
+);
+CREATE TABLE "org_invitations" (
+  "id" uuid PRIMARY KEY NOT NULL,
+  "org_id" uuid NOT NULL REFERENCES "public"."organizations"("id") ON DELETE cascade,
+  "email" text NOT NULL,
+  "token_hash" text NOT NULL,
+  "expires_at" timestamp with time zone NOT NULL,
+  "accepted_at" timestamp with time zone,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "org_invitations_email_bounded" CHECK (length("org_invitations"."email") BETWEEN 3 AND 320)
+);
+CREATE INDEX "packages_active_idx" ON "packages" USING btree ("active");
+CREATE INDEX "orders_org_status_idx" ON "orders" USING btree ("org_id","status");
+CREATE INDEX "orders_user_idx" ON "orders" USING btree ("user_id");
+CREATE INDEX "orders_package_idx" ON "orders" USING btree ("package_id");
+CREATE INDEX "orders_status_idx" ON "orders" USING btree ("status");
+CREATE INDEX "invoices_order_idx" ON "invoices" USING btree ("order_id");
+CREATE INDEX "enterprise_leads_email_idx" ON "enterprise_leads" USING btree ("email");
+CREATE UNIQUE INDEX "org_invitations_token_hash_unique" ON "org_invitations" USING btree ("token_hash");
+CREATE INDEX "org_invitations_org_email_idx" ON "org_invitations" USING btree ("org_id","email");
+CREATE INDEX "org_invitations_expires_idx" ON "org_invitations" USING btree ("expires_at");
+
+INSERT INTO public.packages (id, name, plan, price_idr, max_domains, max_sites, max_members, max_api_keys, active)
+SELECT gen_random_uuid(), 'Starter', 'starter', 99000, 5, 5, 1, 1, true
+WHERE NOT EXISTS (SELECT 1 FROM public.packages WHERE plan = 'starter');
+INSERT INTO public.packages (id, name, plan, price_idr, max_domains, max_sites, max_members, max_api_keys, active)
+SELECT gen_random_uuid(), 'Growth', 'growth', 249000, 20, 20, 1, 3, true
+WHERE NOT EXISTS (SELECT 1 FROM public.packages WHERE plan = 'growth');
+INSERT INTO public.packages (id, name, plan, price_idr, max_domains, max_sites, max_members, max_api_keys, active)
+SELECT gen_random_uuid(), 'Pro', 'pro', 399000, 50, 50, 3, 10, true
+WHERE NOT EXISTS (SELECT 1 FROM public.packages WHERE plan = 'pro');
+INSERT INTO public.packages (id, name, plan, price_idr, max_domains, max_sites, max_members, max_api_keys, active)
+SELECT gen_random_uuid(), 'Enterprise', 'enterprise', 550000, 100, 100, 10, 30, true
+WHERE NOT EXISTS (SELECT 1 FROM public.packages WHERE plan = 'enterprise');
+
+ALTER TABLE public.packages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.packages FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS packages_runtime_read ON public.packages;
+CREATE POLICY packages_runtime_read ON public.packages FOR SELECT TO indicate_runtime USING (true);
+GRANT SELECT ON public.packages TO indicate_runtime;
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orders FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.invoices FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.enterprise_leads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.enterprise_leads FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.org_invitations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.org_invitations FORCE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION indicate_private.billing_order_create(p_actor_id uuid, p_request_id text, p_package_id uuid, p_org_id uuid, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_order uuid := gen_random_uuid();
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.users WHERE id = p_actor_id AND status = 'active') THEN
+    RAISE EXCEPTION 'active user required' USING ERRCODE = '42501';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.packages WHERE id = p_package_id AND active) THEN
+    RAISE EXCEPTION 'package unavailable' USING ERRCODE = '42501';
+  END IF;
+  IF p_org_id IS NOT NULL THEN
+    IF NOT EXISTS (SELECT 1 FROM public.organizations WHERE id = p_org_id) THEN
+      RAISE EXCEPTION 'organization missing' USING ERRCODE = '42501';
+    END IF;
+    IF NOT indicate_private.permission_has_platform_admin(p_actor_id)
+       AND NOT EXISTS (SELECT 1 FROM public.memberships WHERE organization_id = p_org_id AND user_id = p_actor_id AND status = 'active') THEN
+      RAISE EXCEPTION 'organization membership required' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+  INSERT INTO public.orders(id, user_id, org_id, package_id, status, created_at, updated_at)
+  VALUES (v_order, p_actor_id, p_org_id, p_package_id, 'pending_payment', p_now, p_now);
+  -- Audit order tanpa org menumpang ke org platform (audit_logs.organization_id
+  -- ber-FK wajib); dilewati hanya jika registry platform belum ada.
+  SELECT COALESCE(p_org_id, (SELECT organization_id FROM public.platform_organizations LIMIT 1)) INTO v_audit_org;
+  IF v_audit_org IS NOT NULL THEN
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (v_audit_org, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'billing.order.create', 'order', v_order::text, 'succeeded', ARRAY['package','status'], jsonb_build_object('packageId', p_package_id, 'status', 'pending_payment'), p_request_id, p_now);
+  END IF;
+  RETURN v_order;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.billing_order_create(uuid, text, uuid, uuid, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.billing_order_create(uuid, text, uuid, uuid, timestamptz) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.billing_order_submit_proof(p_actor_id uuid, p_request_id text, p_order_id uuid, p_proof_url text, p_now timestamp with time zone)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_org uuid;
+  v_audit_org uuid;
+BEGIN
+  SELECT org_id INTO v_org FROM public.orders WHERE id = p_order_id AND user_id = p_actor_id AND status = 'pending_payment';
+  IF NOT FOUND THEN
+    IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+      RAISE EXCEPTION 'order not found' USING ERRCODE = '42501';
+    END IF;
+    SELECT org_id INTO v_org FROM public.orders WHERE id = p_order_id AND status = 'pending_payment';
+    IF NOT FOUND THEN RETURN false; END IF;
+  END IF;
+  IF p_proof_url IS NULL OR length(p_proof_url) NOT BETWEEN 8 AND 2000 THEN
+    RAISE EXCEPTION 'proof url invalid' USING ERRCODE = '42501';
+  END IF;
+  UPDATE public.orders SET proof_url = p_proof_url, status = 'waiting_verification', updated_at = p_now WHERE id = p_order_id;
+  SELECT COALESCE(v_org, (SELECT organization_id FROM public.platform_organizations LIMIT 1)) INTO v_audit_org;
+  IF v_audit_org IS NOT NULL THEN
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (v_audit_org, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'billing.order.submit_proof', 'order', p_order_id::text, 'succeeded', ARRAY['status'], jsonb_build_object('status', 'waiting_verification'), p_request_id, p_now);
+  END IF;
+  RETURN true;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.billing_order_submit_proof(uuid, text, uuid, text, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.billing_order_submit_proof(uuid, text, uuid, text, timestamptz) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.billing_order_decide(p_actor_id uuid, p_request_id text, p_order_id uuid, p_approve boolean, p_org_id uuid, p_now timestamp with time zone)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_org uuid; v_plan text; v_price integer; v_period_end timestamptz := p_now + interval '30 days';
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  SELECT o.org_id, p.plan, p.price_idr INTO v_org, v_plan, v_price
+  FROM public.orders o JOIN public.packages p ON p.id = o.package_id
+  WHERE o.id = p_order_id AND o.status = 'waiting_verification';
+  IF NOT FOUND THEN RETURN false; END IF;
+  IF v_org IS NULL THEN
+    IF p_org_id IS NULL OR NOT EXISTS (SELECT 1 FROM public.organizations WHERE id = p_org_id) THEN
+      RAISE EXCEPTION 'organization required' USING ERRCODE = '42501';
+    END IF;
+    v_org := p_org_id;
+    UPDATE public.orders SET org_id = v_org, updated_at = p_now WHERE id = p_order_id;
+  END IF;
+  IF NOT p_approve THEN
+    UPDATE public.orders SET status = 'rejected', decided_by = p_actor_id, decided_at = p_now, updated_at = p_now WHERE id = p_order_id;
+  ELSE
+    UPDATE public.orders SET status = 'active', decided_by = p_actor_id, decided_at = p_now, updated_at = p_now WHERE id = p_order_id;
+    INSERT INTO public.subscriptions(organization_id, plan, status, period_starts_at, period_ends_at, version, created_at, updated_at)
+    VALUES (v_org, v_plan::public.subscription_plan, 'active', p_now, v_period_end, 1, p_now, p_now)
+    ON CONFLICT (organization_id) DO UPDATE SET plan = EXCLUDED.plan, status = 'active', period_starts_at = EXCLUDED.period_starts_at, period_ends_at = EXCLUDED.period_ends_at, version = public.subscriptions.version + 1, updated_at = EXCLUDED.updated_at;
+    INSERT INTO public.invoices(id, order_id, amount, paid_at, created_at)
+    VALUES (gen_random_uuid(), p_order_id, v_price, p_now, p_now);
+    INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+    VALUES (v_org, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'subscription.activate', 'subscription', v_org::text, 'succeeded', ARRAY['plan','status','periodStartsAt','periodEndsAt'], jsonb_build_object('plan', v_plan, 'status', 'active', 'periodEndsAt', v_period_end), p_request_id, p_now);
+  END IF;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (v_org, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'billing.order.decide', 'order', p_order_id::text, 'succeeded', ARRAY['status'], jsonb_build_object('approved', p_approve), p_request_id, p_now);
+  RETURN true;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.billing_order_decide(uuid, text, uuid, boolean, uuid, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.billing_order_decide(uuid, text, uuid, boolean, uuid, timestamptz) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.billing_order_list_mine(p_actor_id uuid)
+ RETURNS TABLE(id uuid, package_name text, plan text, price_idr integer, status billing_order_status, org_id uuid, created_at timestamp with time zone)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  SELECT o.id, p.name, p.plan, p.price_idr, o.status, o.org_id, o.created_at
+  FROM public.orders o JOIN public.packages p ON p.id = o.package_id
+  WHERE o.user_id = p_actor_id
+    AND (o.user_id = indicate_private.current_verified_user_id()
+         OR indicate_private.permission_has_platform_admin(indicate_private.current_verified_user_id()))
+  ORDER BY o.created_at DESC
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.billing_order_list_mine(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.billing_order_list_mine(uuid) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.billing_order_list_pending(p_actor_id uuid)
+ RETURNS TABLE(id uuid, user_email text, org_id uuid, package_name text, plan text, price_idr integer, proof_url text, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT o.id, u.email, o.org_id, p.name, p.plan, p.price_idr, o.proof_url, o.created_at
+  FROM public.orders o JOIN public.packages p ON p.id = o.package_id JOIN public.users u ON u.id = o.user_id
+  WHERE o.status = 'waiting_verification'
+  ORDER BY o.created_at;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.billing_order_list_pending(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.billing_order_list_pending(uuid) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.billing_lead_create(p_nama text, p_email text, p_kebutuhan text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid();
+BEGIN
+  IF p_nama IS NULL OR length(p_nama) NOT BETWEEN 1 AND 200 OR p_email IS NULL OR length(p_email) NOT BETWEEN 3 AND 320 OR p_kebutuhan IS NULL OR length(p_kebutuhan) NOT BETWEEN 1 AND 4000 THEN
+    RAISE EXCEPTION 'lead fields invalid' USING ERRCODE = '42501';
+  END IF;
+  INSERT INTO public.enterprise_leads(id, nama, email, kebutuhan) VALUES (v_id, p_nama, p_email, p_kebutuhan);
+  RETURN v_id;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.billing_lead_create(text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.billing_lead_create(text, text, text) TO indicate_runtime;
+
+-- Lockdown: subscription_update hanya untuk platform admin. Cabang tenant
+-- `subscription.manage` dicabut — perubahan paket hanya lewat order + approve.
+CREATE OR REPLACE FUNCTION indicate_private.subscription_update(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_expected_version integer, p_plan text, p_status subscription_status, p_period_starts_at timestamp with time zone, p_period_ends_at timestamp with time zone, p_now timestamp with time zone)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  IF p_expected_version IS NULL THEN
+    INSERT INTO public.subscriptions(organization_id, plan, status, period_starts_at, period_ends_at, version, created_at, updated_at)
+    VALUES (p_organization_id, p_plan::public.subscription_plan, p_status, p_period_starts_at, p_period_ends_at, 1, p_now, p_now)
+    ON CONFLICT (organization_id) DO NOTHING;
+    IF NOT FOUND THEN RETURN false; END IF;
+  ELSE
+    UPDATE public.subscriptions SET plan = p_plan::public.subscription_plan, status = p_status, period_starts_at = p_period_starts_at,
+      period_ends_at = p_period_ends_at, version = version + 1, updated_at = p_now
+    WHERE organization_id = p_organization_id AND version = p_expected_version;
+    IF NOT FOUND THEN RETURN false; END IF;
+  END IF;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'subscription.update', 'subscription', p_organization_id::text, 'succeeded', ARRAY['plan','status','periodStartsAt','periodEndsAt'], jsonb_build_object('plan', p_plan, 'status', p_status, 'periodStartsAt', p_period_starts_at, 'periodEndsAt', p_period_ends_at), p_request_id, p_now);
+  RETURN true;
+END
+$function$;
+
+-- Status akses langganan untuk penegakan F2b: platform > active > grace
+-- (tenggang baca-saja 7 hari) > expired > suspended > cancelled > none.
+CREATE OR REPLACE FUNCTION indicate_private.subscription_access_state(p_organization_id uuid)
+ RETURNS text
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  SELECT CASE
+    WHEN indicate_private.is_platform_organization(p_organization_id) THEN 'platform'
+    WHEN s.organization_id IS NULL THEN 'none'
+    WHEN s.status = 'cancelled' THEN 'cancelled'
+    WHEN s.status = 'suspended' THEN 'suspended'
+    WHEN s.status = 'past_due' THEN 'past_due'
+    WHEN s.period_ends_at IS NULL THEN 'active'
+    WHEN s.period_ends_at > now() THEN 'active'
+    WHEN s.period_ends_at > now() - interval '7 days' THEN 'grace'
+    ELSE 'expired'
+  END
+  FROM (SELECT p_organization_id AS organization_id) AS input
+  LEFT JOIN public.subscriptions AS s ON s.organization_id = input.organization_id
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.subscription_access_state(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.subscription_access_state(uuid) TO indicate_runtime;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (43, 'billing_orders', 'sha256:919acef65aada477471ff27155d13c3e455028c50bdd429661f18483d6e4e33f');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('3488d118ea00bb84798c22e20d6bc05394fff313d97d1b56c388b383d2eece99', 1788504227135);
+
+-- ----------------------------------------------------------------------
+-- 20260903033000_billing_permission_definitions
+-- ----------------------------------------------------------------------
+-- F2b-DB: seed seluruh definisi permission organisasi + backfill.
+--
+-- Temuan: permission_definitions hanya berisi 5 nama integrasi, sementara kode
+-- mensyaratkan 27 nama (17 dashboard + 5 publishing + 5 integrasi). Akibatnya
+-- org_ensure_permissions tidak pernah membuat baris permissions untuk
+-- domain.manage / article.manage / dst, sehingga SELURUH mutasi dashboard
+-- tenant pasti deny. Migrasi ini menutup gap tersebut.
+-- 1. Insert 22 definisi yang hilang (idempoten via ON CONFLICT).
+-- 2. Backfill org_ensure_permissions untuk semua org yang sudah ada.
+-- 3. Grant SEMUA permission organisasi ke role Superadmin di org platform
+--    (pemilik platform = akses penuh; pembatasan solo berlaku untuk org
+--    pelanggan via ensureAdministratorRole di kode aplikasi).
+
+INSERT INTO public.permission_definitions (scope, name, description, sort_order) VALUES
+  ('organization', 'dashboard.read', 'Read dashboard overview', 6),
+  ('organization', 'domain.read', 'Read domains', 7),
+  ('organization', 'domain.manage', 'Manage domains', 8),
+  ('organization', 'region.read', 'Read regions', 9),
+  ('organization', 'region.manage', 'Manage regions', 10),
+  ('organization', 'site.read', 'Read sites', 11),
+  ('organization', 'site.manage', 'Manage sites', 12),
+  ('organization', 'membership.read', 'Read memberships', 13),
+  ('organization', 'membership.manage', 'Manage memberships', 14),
+  ('organization', 'role.manage', 'Manage roles', 15),
+  ('organization', 'publisher.read', 'Read publishers', 16),
+  ('organization', 'publisher.manage', 'Manage publishers', 17),
+  ('organization', 'publisher.verify', 'Verify publishers', 18),
+  ('organization', 'article.read', 'Read articles', 19),
+  ('organization', 'article.manage', 'Manage articles', 20),
+  ('organization', 'analytics.read', 'Read analytics', 21),
+  ('organization', 'audit.read', 'Read audit logs', 22),
+  ('organization', 'media.read', 'Read media assets', 23),
+  ('organization', 'media.manage', 'Manage media assets', 24),
+  ('organization', 'publishing.read', 'Read publishing queue', 25),
+  ('organization', 'publishing.request', 'Request publication', 26),
+  ('organization', 'publishing.process', 'Process publication jobs', 27)
+ON CONFLICT DO NOTHING;
+SELECT indicate_private.org_ensure_permissions(id) FROM public.organizations;
+INSERT INTO public.role_permissions (organization_id, role_id, permission_id)
+SELECT r.organization_id, r.id, p.id
+FROM public.roles r
+JOIN public.platform_organizations po ON po.organization_id = r.organization_id
+JOIN public.permissions p ON p.organization_id = r.organization_id AND p.scope = 'organization'
+WHERE r.tier = 'superadmin' AND r.active
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (44, 'billing_permission_definitions', 'sha256:6c4febf5f09e1780c26c03a3334217e7c5f41d95541a6d8b9f6342e62b0376e2');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('3ca0a8f80378a57244173fae24549fea4d572fe8ce3f8accba7b1775638b8efa', 1788504227135);
+
+-- ----------------------------------------------------------------------
+-- 20260903033500_billing_orders_rls_reads
+-- ----------------------------------------------------------------------
+-- F2b-DB: izinkan baca orders untuk pemilik + platform admin.
+--
+-- orders memakai FORCE RLS tanpa policy (akses tulis hanya via fungsi). Baca
+-- pasca-tulis di repository (fetchOrder) dan pratinjau bukti butuh SELECT
+-- langsung: policy sempit ini mengizinkan pemilik order (dipetakan lewat
+-- verified-user context yang selalu di-set billingContext) dan platform admin.
+-- Penegakan otorisasi utama tetap di service layer.
+
+DROP POLICY IF EXISTS orders_owner_read ON public.orders;
+CREATE POLICY orders_owner_read ON public.orders FOR SELECT TO indicate_runtime USING (
+  user_id IN (SELECT u.id FROM public.users AS u WHERE u.auth_user_id = indicate_private.current_verified_user_id())
+  OR indicate_private.permission_has_platform_admin(indicate_private.current_verified_user_id())
+);
+GRANT SELECT ON public.orders TO indicate_runtime;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (45, 'billing_orders_rls_reads', 'sha256:0fc95f920d1dd57d9e38f71044490497542fc01323c641762f3c87bf0597e8e1');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('84d8e5b3fc8495c215e5e8d496a300c681bfd3bc6dcd79f7fc414018fae8e80a', 1788504227135);
+
+-- ----------------------------------------------------------------------
+-- 20260903034000_billing_invitations_sweep
+-- ----------------------------------------------------------------------
+-- F2b/F3-DB: undangan organisasi + penyapu kedaluwarsa + cron harian.
+--
+-- 1. org_invitations.role_id (role target) + created_by (audit).
+--    Token mentah tidak pernah disimpan: hanya token_hash (sha256 heks).
+-- 2. invite_create: platform admin ATAU anggota dengan membership.manage.
+--    Masa berlaku 24 jam, terikat email.
+-- 3. invite_redeem: user aktif terverifikasi; email user harus sama dengan email
+--    undangan; single-use (accepted_at); menolak jika kuota member paket penuh.
+-- 4. subscription_sweep_expired(): active yang lewat period_ends_at -> past_due;
+--    past_due lebih dari 30 hari -> suspended. Setiap transisi diaudit.
+--    Dijadwalkan harian via pg_cron (06:00 WIB = 23:00 UTC hari sebelumnya).
+-- 5. Cabut grant platform.customer.admin lama (transisi ke super_admin selesai):
+--    baris permission dipertahankan untuk kompatibilitas baca historis.
+
+ALTER TABLE public.org_invitations
+  ADD COLUMN IF NOT EXISTS role_id uuid,
+  ADD COLUMN IF NOT EXISTS created_by uuid REFERENCES public.users(id) ON DELETE SET NULL;
+
+CREATE OR REPLACE FUNCTION indicate_private.invite_create(p_actor_id uuid, p_request_id text, p_org_id uuid, p_role_id uuid, p_email text, p_token_hash text, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid();
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id)
+     AND NOT indicate_private.permission_has_tenant(p_actor_id, p_org_id, 'membership.manage') THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.roles WHERE organization_id = p_org_id AND id = p_role_id AND active AND tier <> 'superadmin') THEN
+    RAISE EXCEPTION 'role unavailable' USING ERRCODE = '42501';
+  END IF;
+  IF p_email IS NULL OR length(p_email) NOT BETWEEN 3 AND 320 OR p_token_hash IS NULL OR length(p_token_hash) <> 64 THEN
+    RAISE EXCEPTION 'invite fields invalid' USING ERRCODE = '42501';
+  END IF;
+  INSERT INTO public.org_invitations(id, org_id, email, token_hash, role_id, expires_at, created_by, created_at, updated_at)
+  VALUES (v_id, p_org_id, lower(p_email), p_token_hash, p_role_id, p_now + interval '24 hours', p_actor_id, p_now, p_now);
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_org_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'invite.create', 'invitation', v_id::text, 'succeeded', ARRAY['email','roleId'], jsonb_build_object('email', lower(p_email)), p_request_id, p_now);
+  RETURN v_id;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.invite_create(uuid, text, uuid, uuid, text, text, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.invite_create(uuid, text, uuid, uuid, text, text, timestamptz) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.invite_redeem(p_actor_id uuid, p_request_id text, p_token_hash text, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_inv public.org_invitations%ROWTYPE; v_email text; v_plan public.subscription_plan; v_limit integer; v_members integer;
+BEGIN
+  SELECT email INTO v_email FROM public.users WHERE id = p_actor_id AND status = 'active';
+  IF v_email IS NULL THEN RAISE EXCEPTION 'active user required' USING ERRCODE = '42501'; END IF;
+  SELECT * INTO v_inv FROM public.org_invitations WHERE token_hash = p_token_hash FOR UPDATE;
+  IF v_inv.id IS NULL OR v_inv.accepted_at IS NOT NULL OR v_inv.expires_at <= p_now THEN
+    RAISE EXCEPTION 'invitation invalid' USING ERRCODE = '42501';
+  END IF;
+  IF lower(v_email) <> lower(v_inv.email) THEN
+    RAISE EXCEPTION 'invitation invalid' USING ERRCODE = '42501';
+  END IF;
+  SELECT plan INTO v_plan FROM public.subscriptions WHERE organization_id = v_inv.org_id;
+  IF v_plan IS NOT NULL THEN
+    SELECT max_members INTO v_limit FROM public.plan_quotas WHERE plan = v_plan;
+    IF v_limit IS NOT NULL THEN
+      SELECT count(*) INTO v_members FROM public.memberships WHERE organization_id = v_inv.org_id AND status = 'active';
+      IF v_members >= v_limit THEN RAISE EXCEPTION 'member quota exceeded' USING ERRCODE = '42501'; END IF;
+    END IF;
+  END IF;
+  INSERT INTO public.memberships(organization_id, user_id, role_id, status, version, created_at, updated_at)
+  VALUES (v_inv.org_id, p_actor_id, v_inv.role_id, 'active', 1, p_now, p_now)
+  ON CONFLICT (organization_id, user_id) DO UPDATE SET role_id = EXCLUDED.role_id, status = 'active', version = public.memberships.version + 1, updated_at = EXCLUDED.updated_at;
+  UPDATE public.org_invitations SET accepted_at = p_now, updated_at = p_now WHERE id = v_inv.id;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (v_inv.org_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'invite.redeem', 'membership', p_actor_id::text, 'succeeded', ARRAY['roleId','status'], jsonb_build_object('roleId', v_inv.role_id), p_request_id, p_now);
+  RETURN v_inv.org_id;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.invite_redeem(uuid, text, text, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.invite_redeem(uuid, text, text, timestamptz) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.subscription_sweep_expired()
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_count integer := 0;
+BEGIN
+  WITH moved AS (
+    UPDATE public.subscriptions SET status = 'past_due', version = version + 1, updated_at = now()
+    WHERE status = 'active' AND period_ends_at IS NOT NULL AND period_ends_at <= now()
+    RETURNING organization_id, plan
+  )
+  SELECT count(*) INTO v_count FROM moved;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  SELECT organization_id, gen_random_uuid(), 'system', 'subscription-sweeper', 'worker', 'subscription.expire', 'subscription', organization_id::text, 'succeeded', ARRAY['status'], jsonb_build_object('status', 'past_due', 'plan', plan), 'sweep-expired', now()
+  FROM public.subscriptions WHERE status = 'past_due' AND updated_at >= now() - interval '1 minute';
+  WITH moved AS (
+    UPDATE public.subscriptions SET status = 'suspended', version = version + 1, updated_at = now()
+    WHERE status = 'past_due' AND period_ends_at IS NOT NULL AND period_ends_at <= now() - interval '30 days'
+    RETURNING organization_id, plan
+  )
+  SELECT v_count + count(*) INTO v_count FROM moved;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  SELECT organization_id, gen_random_uuid(), 'system', 'subscription-sweeper', 'worker', 'subscription.suspend', 'subscription', organization_id::text, 'succeeded', ARRAY['status'], jsonb_build_object('status', 'suspended', 'plan', plan), 'sweep-expired', now()
+  FROM public.subscriptions WHERE status = 'suspended' AND updated_at >= now() - interval '1 minute';
+  RETURN v_count;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.subscription_sweep_expired() FROM PUBLIC;
+SELECT cron.schedule('indicate-subscription-sweep', '0 23 * * *', 'SELECT indicate_private.subscription_sweep_expired()');
+
+DELETE FROM public.platform_user_permissions
+USING public.permissions
+WHERE platform_user_permissions.permission_id = permissions.id
+  AND permissions.scope = 'platform' AND permissions.organization_id IS NULL
+  AND permissions.name = 'platform.customer.admin';
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (46, 'billing_invitations_sweep', 'sha256:f0717e92e585c501992a871a0e8b1b88c12f121675388f6531c6f3c7ddfc14f7');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6a00193514655c751ed89566b83b5903a3b9d6e8d3607958aa1deac340f14e89', 1788504227135);
+
+-- ----------------------------------------------------------------------
+-- 20260903034500_billing_service_tiers_active
+-- ----------------------------------------------------------------------
+-- F3-DB: kolom active untuk service_tiers.
+--
+-- Tabel konten lain (testimonials, faqs, media_showcase) sudah punya kolom
+-- active; service_tiers tertinggal sehingga tier hanya bisa dihapus fisik.
+-- Default true agar seed lama tetap tayang; bacaan publik memfilter active.
+
+ALTER TABLE public.service_tiers ADD COLUMN IF NOT EXISTS "active" boolean DEFAULT true NOT NULL;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (47, 'billing_service_tiers_active', 'sha256:54615ffa36e6ae636759cbd536b6612a23e505a4d7c76fb4256cfba23e17756c');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7d64bba53505ca02a1c2f53396ad95a25590241dbfe420f517f9beabe0bff9d0', 1788504227139);
+
+-- ----------------------------------------------------------------------
+-- 20260903035000_billing_real_tiers_cleanup
+-- ----------------------------------------------------------------------
+-- F3-DB: hapus konten fiktif + seed tier paket resmi.
+--
+-- 1. Testimoni dan etalase media berisi nama orang/media rekaan yang tayang
+--    sebagai konten nyata — dihapus total (tabel dibiarkan kosong; section
+--    otomatis sembunyi). FAQ dan kanal kontak adalah konten generik yang sah.
+-- 2. Seed service_tiers cermin tabel packages (satu kebenaran harga):
+--    Starter 99rb, Growth 249rb, Pro 399rb, Enterprise 550rb.
+
+DELETE FROM public.testimonials WHERE id IN (
+  '00000000-0000-4000-8000-000000007001',
+  '00000000-0000-4000-8000-000000007002'
+);
+DELETE FROM public.media_showcase WHERE id IN (
+  '00000000-0000-4000-8000-000000007021',
+  '00000000-0000-4000-8000-000000007022',
+  '00000000-0000-4000-8000-000000007023',
+  '00000000-0000-4000-8000-000000007024',
+  '00000000-0000-4000-8000-000000007025',
+  '00000000-0000-4000-8000-000000007026',
+  '00000000-0000-4000-8000-000000007027',
+  '00000000-0000-4000-8000-000000007028'
+);
+INSERT INTO public.service_tiers (slug, name, target, summary, price, period, features, highlighted, cta, sort_order, active) VALUES
+  ('starter', 'Starter', 'Solo — hingga 5 domain & situs', 'Untuk satu redaksi yang baru mulai.', 'Rp99.000', '/bulan', '["5 domain & 5 situs", "Solo — 1 anggota", "1 API key", "Antrean penerbitan + media privat"]', false, 'Bayar & Aktifkan', 1, true),
+  ('growth', 'Growth', 'Solo — hingga 20 domain & situs', 'Untuk jaringan portal daerah yang tumbuh.', 'Rp249.000', '/bulan', '["20 domain & 20 situs", "Solo — 1 anggota", "3 API key", "REST API dan bot Telegram"]', false, 'Bayar & Aktifkan', 2, true),
+  ('pro', 'Pro', 'Tim kecil — hingga 50 domain & situs', 'Untuk redaksi bertim dengan banyak kanal.', 'Rp399.000', '/bulan', '["50 domain & 50 situs", "3 anggota tim", "10 API key", "Prioritas purge cache Cloudflare"]', true, 'Bayar & Aktifkan', 3, true),
+  ('enterprise', 'Enterprise', 'Tim — hingga 100 domain & situs', 'Onboarding terjadwal setelah peninjauan kebutuhan.', 'Rp550.000', '/bulan', '["100 domain & 100 situs", "10 anggota tim", "30 API key", "Dukungan migrasi data massal"]', false, 'Hubungi via WhatsApp', 4, true)
+ON CONFLICT (slug) DO UPDATE SET
+  name = EXCLUDED.name, target = EXCLUDED.target, summary = EXCLUDED.summary,
+  price = EXCLUDED.price, period = EXCLUDED.period, features = EXCLUDED.features,
+  highlighted = EXCLUDED.highlighted, cta = EXCLUDED.cta, sort_order = EXCLUDED.sort_order,
+  active = EXCLUDED.active, updated_at = now();
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (48, 'billing_real_tiers_cleanup', 'sha256:7ba04bb79e2daedc1d3ae858e597b46b778dc11cceee3a10ded88e1b7fc15406');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('1a2ea87001e5374974ae65e2ba6b782c54c556cb6723fefeb3c5ea9d5f44ffb8', 1788504227139);
+
+-- ----------------------------------------------------------------------
+-- 20260903035500_billing_advisor_hardening
+-- ----------------------------------------------------------------------
+-- F3-DB: advisor hardening (v49).
+--
+-- 1. Function-only tables (enterprise_leads, invoices, org_invitations):
+--    akses langsung ditolak eksplisit (USING/WITH CHECK false) — semua baca
+--    tulis lewat fungsi SECURITY DEFINER. Menjadikan default-deny eksplisit
+--    sekaligus menutup temuan rls_enabled_no_policy.
+-- 2. Index penutup untuk FK org_invitations.created_by (unindexed_foreign_keys).
+-- 3. Policy content_write_platform (FOR ALL, 8 tabel konten) dipecah menjadi
+--    INSERT/UPDATE/DELETE agar SELECT hanya dievaluasi satu policy
+--    (content_runtime_read) — menutup multiple_permissive_policies.
+--    TIDAK menyentuh: unused_index (DB pra-traffic; index dibutuhkan saat
+--    volume datang) dan auth_leaked_password_protection (setting dashboard).
+
+CREATE POLICY billing_function_only ON public.enterprise_leads FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);
+CREATE POLICY billing_function_only ON public.invoices FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);
+CREATE POLICY billing_function_only ON public.org_invitations FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);
+CREATE INDEX IF NOT EXISTS "org_invitations_created_by_idx" ON "org_invitations" USING btree ("created_by");
+DROP POLICY IF EXISTS content_write_platform ON public.service_tiers;
+DROP POLICY IF EXISTS content_write_platform ON public.testimonials;
+DROP POLICY IF EXISTS content_write_platform ON public.faqs;
+DROP POLICY IF EXISTS content_write_platform ON public.media_showcase;
+DROP POLICY IF EXISTS content_write_platform ON public.contact_channels;
+DROP POLICY IF EXISTS content_write_platform ON public.permission_definitions;
+DROP POLICY IF EXISTS content_write_platform ON public.color_presets;
+DROP POLICY IF EXISTS content_write_platform ON public.template_presets;
+CREATE POLICY content_write_platform_insert ON public.service_tiers FOR INSERT TO indicate_runtime WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_update ON public.service_tiers FOR UPDATE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage'))) WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_delete ON public.service_tiers FOR DELETE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_insert ON public.testimonials FOR INSERT TO indicate_runtime WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_update ON public.testimonials FOR UPDATE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage'))) WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_delete ON public.testimonials FOR DELETE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_insert ON public.faqs FOR INSERT TO indicate_runtime WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_update ON public.faqs FOR UPDATE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage'))) WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_delete ON public.faqs FOR DELETE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_insert ON public.media_showcase FOR INSERT TO indicate_runtime WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_update ON public.media_showcase FOR UPDATE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage'))) WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_delete ON public.media_showcase FOR DELETE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_insert ON public.contact_channels FOR INSERT TO indicate_runtime WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_update ON public.contact_channels FOR UPDATE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage'))) WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_delete ON public.contact_channels FOR DELETE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_insert ON public.permission_definitions FOR INSERT TO indicate_runtime WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_update ON public.permission_definitions FOR UPDATE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage'))) WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_delete ON public.permission_definitions FOR DELETE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_insert ON public.color_presets FOR INSERT TO indicate_runtime WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_update ON public.color_presets FOR UPDATE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage'))) WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_delete ON public.color_presets FOR DELETE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_insert ON public.template_presets FOR INSERT TO indicate_runtime WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_update ON public.template_presets FOR UPDATE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage'))) WITH CHECK ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+CREATE POLICY content_write_platform_delete ON public.template_presets FOR DELETE TO indicate_runtime USING ((SELECT indicate_private.permission_has_platform((SELECT indicate_private.current_verified_user_id()), 'platform.content.manage')));
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (49, 'billing_advisor_hardening', 'sha256:7842175ae1c49ecac59af3ca022583d40fbe99747c439ef44b5f3751cac524b7');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('d640cfbb36b38f55fc02f89ac5892895f81572d7478f36a15440e4d53a6bd9be', 1788504227142);
+
+-- ----------------------------------------------------------------------
+-- 20260903036000_billing_users_email_idx
+-- ----------------------------------------------------------------------
+-- F3-DB: index users(email) dari temuan Index Recommendation.
+--
+-- Query audit (users by email -> memberships -> orgs/roles) seq-scan di
+-- users.email karena belum ada index. Dua saran lainnya (memberships.user_id
+-- dan roles.id standalone) DITOLAK dengan alasan: sudah ter-cover oleh
+-- kolom awal index komposit yang ada (memberships_user_status_idx berawalan
+-- user_id; roles_pk berawalan organization_id,id sesuai persis join-nya).
+-- Index standalone di sana hanya menambah beban tulis tanpa manfaat baca.
+
+CREATE INDEX IF NOT EXISTS "users_email_idx" ON "public"."users" USING btree ("email");
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (50, 'billing_users_email_idx', 'sha256:03cae1232fe49299bc566bb4a749187df51b06ae221fb384a736a41b1c1625c8');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f6b4e2271d6142cc24c0dad8c6696f8454d33e9471bb64c987ebcd6d6d478aae', 1788504227142);
+
+-- ----------------------------------------------------------------------
+-- 20260903036500_billing_faq_random_ids
+-- ----------------------------------------------------------------------
+-- F3-DB: acak ID faq seed.
+--
+-- ID seed berurutan (...70011-70014) terlihat seperti mock. FAQs tidak
+-- direferensikan FK mana pun, jadi aman diacak. Ke depan seed konten
+-- memakai gen_random_uuid(), bukan UUID tetap.
+
+UPDATE public.faqs SET id = gen_random_uuid(), updated_at = now()
+WHERE id IN (
+  '00000000-0000-4000-8000-000000007011',
+  '00000000-0000-4000-8000-000000007012',
+  '00000000-0000-4000-8000-000000007013',
+  '00000000-0000-4000-8000-000000007014'
+);
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (51, 'billing_faq_random_ids', 'sha256:bcabfe159c0a78ab0ae5b9b3fde8c2ffd55faa1840f761bb8b7c03e461bbbe30');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('022c10a71fa093b0979ef09be759030788f4d728d5863da5846dfbfcc672a1c8', 1788504227144);
+
+-- ----------------------------------------------------------------------
+-- 20260903037000_billing_real_checksums
+-- ----------------------------------------------------------------------
+-- F3-DB: checksum sha256 asli untuk migrasi v42-v51.
+--
+-- Kolom checksum memakai algoritma yang didokumentasikan migrasi
+-- 20260903010500_migration_body_digests: normalisasi CRLF ke LF, ganti
+-- literal checksum pada baris registrasi-diri dengan sentinel
+-- sha256:0000000000000000000000000000000000000000000000000000000000000000,
+-- lalu SHA-256 atas seluruh file UTF-8. Siapa pun bisa memverifikasi ulang
+-- dengan satu perintah. Label '-v1' bukan checksum dan tidak dipakai lagi.
+
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:b64b1190545cc4e03ef08cedf935312a070df9caaa5cbd40f92a4e4764784e92' WHERE version = 42;
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:919acef65aada477471ff27155d13c3e455028c50bdd429661f18483d6e4e33f' WHERE version = 43;
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:6c4febf5f09e1780c26c03a3334217e7c5f41d95541a6d8b9f6342e62b0376e2' WHERE version = 44;
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:0fc95f920d1dd57d9e38f71044490497542fc01323c641762f3c87bf0597e8e1' WHERE version = 45;
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:f0717e92e585c501992a871a0e8b1b88c12f121675388f6531c6f3c7ddfc14f7' WHERE version = 46;
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:54615ffa36e6ae636759cbd536b6612a23e505a4d7c76fb4256cfba23e17756c' WHERE version = 47;
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:7ba04bb79e2daedc1d3ae858e597b46b778dc11cceee3a10ded88e1b7fc15406' WHERE version = 48;
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:7842175ae1c49ecac59af3ca022583d40fbe99747c439ef44b5f3751cac524b7' WHERE version = 49;
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:03cae1232fe49299bc566bb4a749187df51b06ae221fb384a736a41b1c1625c8' WHERE version = 50;
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:bcabfe159c0a78ab0ae5b9b3fde8c2ffd55faa1840f761bb8b7c03e461bbbe30' WHERE version = 51;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (52, 'billing_real_checksums', 'sha256:fefdf3bf26bf9c7fa8de15cdf77c4033a33a7d6e3fb50b3f6ccfafa8c891d059');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7bd6b57ba6482ca481036314feded0f96a65ed65f195ab615a7ec3e106c5e989', 1788504252403);
+
+-- ----------------------------------------------------------------------
+-- 20260903037500_billing_packages_plan_unique
+-- ----------------------------------------------------------------------
+-- F3-DB: unik per plan pada packages.
+--
+-- Satu plan tepat satu baris paket adalah invarian bisnis (seed idempoten
+-- per plan, decide join per id). Unique constraint menegakkannya sekaligus
+-- menutup saran index pada kolom plan.
+
+ALTER TABLE public.packages ADD CONSTRAINT "packages_plan_unique" UNIQUE ("plan");
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (53, 'billing_packages_plan_unique', 'sha256:d0deed2abb01bd3527ddd9643a238cdbce7bdeae792b56863a3b9214efb1c44d');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2c9245957e4e6776ef3f9f5fbe2d0345fc76c8d87fcacf59e46df19d2a55a618', 1788504940266);
+
+-- ----------------------------------------------------------------------
+-- 20260903038000_billing_pro_100_enterprise_custom
+-- ----------------------------------------------------------------------
+-- F2-DB: Pro menjadi 100 domain @ Rp550rb; Enterprise custom.
+--
+-- starter (5/99rb) dan growth (20/249rb) tidak berubah. Pro naik ke
+-- 100/100/10/30 @ Rp550rb. Enterprise tanpa harga tetap (price 0 = custom,
+-- wajib lewat lead + peninjauan); order paket enterprise langsung ditolak
+-- di billing_order_create.
+
+UPDATE public.plan_quotas SET max_domains = 100, max_sites = 100, max_members = 10, max_api_keys = 30 WHERE plan = 'pro';
+UPDATE public.packages SET price_idr = 550000, max_domains = 100, max_sites = 100, max_members = 10, max_api_keys = 30, updated_at = now() WHERE plan = 'pro';
+UPDATE public.packages SET price_idr = 0, max_domains = 100, max_sites = 100, max_members = 10, max_api_keys = 30, updated_at = now() WHERE plan = 'enterprise';
+UPDATE public.service_tiers SET price = 'Rp550.000', target = 'Tim kecil — hingga 100 domain & situs', summary = 'Untuk redaksi bertim dengan banyak kanal.', features = '["100 domain & 100 situs", "10 anggota tim", "30 API key", "Prioritas purge cache Cloudflare"]', highlighted = true, cta = 'Bayar & Aktifkan', updated_at = now() WHERE slug = 'pro';
+UPDATE public.service_tiers SET price = 'Kustom', target = 'Kebutuhan khusus — hubungi tim penjualan', summary = 'Cakupan dan harga disusun bersama kebutuhan Anda.', features = '["Kuota sesuai kesepakatan", "Onboarding terjadwal", "Dukungan migrasi data massal", "Manajer akun khusus"]', highlighted = false, cta = 'Hubungi Tim Penjualan', updated_at = now() WHERE slug = 'enterprise';
+
+CREATE OR REPLACE FUNCTION indicate_private.billing_order_create(p_actor_id uuid, p_request_id text, p_package_id uuid, p_org_id uuid, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_order uuid := gen_random_uuid(); v_audit_org uuid; v_plan text; v_price integer;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.users WHERE id = p_actor_id AND status = 'active') THEN
+    RAISE EXCEPTION 'active user required' USING ERRCODE = '42501';
+  END IF;
+  SELECT plan, price_idr INTO v_plan, v_price FROM public.packages WHERE id = p_package_id AND active;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'package unavailable' USING ERRCODE = '42501';
+  END IF;
+  IF v_plan = 'enterprise' THEN
+    RAISE EXCEPTION 'enterprise requires sales review' USING ERRCODE = '42501';
+  END IF;
+  IF p_org_id IS NOT NULL THEN
+    IF NOT EXISTS (SELECT 1 FROM public.organizations WHERE id = p_org_id) THEN
+      RAISE EXCEPTION 'organization missing' USING ERRCODE = '42501';
+    END IF;
+    IF NOT indicate_private.permission_has_platform_admin(p_actor_id)
+       AND NOT EXISTS (SELECT 1 FROM public.memberships WHERE organization_id = p_org_id AND user_id = p_actor_id AND status = 'active') THEN
+      RAISE EXCEPTION 'organization membership required' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+  INSERT INTO public.orders(id, user_id, org_id, package_id, status, created_at, updated_at) VALUES (v_order, p_actor_id, p_org_id, p_package_id, 'pending_payment', p_now, p_now);
+  SELECT COALESCE(p_org_id, (SELECT organization_id FROM public.platform_organizations LIMIT 1)) INTO v_audit_org;
+  IF v_audit_org IS NOT NULL THEN
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (v_audit_org, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'billing.order.create', 'order', v_order::text, 'succeeded', ARRAY['package','status'], jsonb_build_object('packageId', p_package_id, 'status', 'pending_payment'), p_request_id, p_now);
+  END IF;
+  RETURN v_order;
+END
+$function$;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (54, 'billing_pro_100_enterprise_custom', 'sha256:9e50b43e2e74ed57e1c0c9a943415e6dbcd473bbeea392d1f2579f2cd9b06fe4');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7e3182e2c36af9723dbcd73110cf7aa08fe034c446957876f188d58f347ca97b', 1788505185488);
+
+-- ----------------------------------------------------------------------
+-- 20260903038500_billing_sales_copy
+-- ----------------------------------------------------------------------
+-- F2-DB: selaraskan teks service_tiers dengan copy penjualan baru.
+--
+-- Bahasa teknis (domain/API/onboarding) diganti bahasa pembeli. Harga dan
+-- kuota tidak berubah — hanya kata-kata.
+
+UPDATE public.service_tiers SET target = 'Punya portal berita sendiri mulai hari ini', summary = 'Terima beres: website berita profesional yang langsung bisa dipakai menulis dan terbit.', features = '["5 website berita siap tayang", "Desain cantik tinggal pilih", "Domain, hosting, dan keamanan kami yang urus", "Bantuan ramah lewat email"]', cta = 'Mulai Sekarang', updated_at = now() WHERE slug = 'starter';
+UPDATE public.service_tiers SET target = 'Satu redaksi untuk banyak portal daerah', summary = 'Tulis satu kali, berita Anda tayang di semua portal sekaligus.', features = '["20 website berita siap tayang", "Terbit sekali, tayang di mana-mana", "Kelola dari HP, kerja dari mana saja", "Bantuan prioritas yang cepat tanggap"]', cta = 'Mulai Sekarang', updated_at = now() WHERE slug = 'growth';
+UPDATE public.service_tiers SET target = 'Untuk grup media yang serius bertumbuh', summary = 'Kapasitas besar plus tim kami dampingi sampai benar-benar jalan.', features = '["100 website berita siap tayang", "Ajak rekan redaksi bergabung (10 orang)", "Pindahan dari sistem lama kami bantu", "Didampingi sampai jalan"]', cta = 'Ambil yang Pro', updated_at = now() WHERE slug = 'pro';
+UPDATE public.service_tiers SET target = 'Ada kebutuhan khusus? Mari duduk bersama', summary = 'Ceritakan kebutuhan Anda, kami rancangkan solusinya.', features = '["Jumlah website mengikuti kebutuhan", "Pindahan data massal kami yang kerjakan", "Kontak khusus yang siap dihubungi", "Didampingi sampai jalan"]', cta = 'Hubungi Tim Penjualan', updated_at = now() WHERE slug = 'enterprise';
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (55, 'billing_sales_copy', 'sha256:e204f388be8bff97fea75619f7a981f3768652dba94f37a3324fbad2b1378d79');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('32af17f6c568bceb3faae02383a12916f2681452d8581dde2767ad1bb77edf10', 1788505427745);
+
+-- ----------------------------------------------------------------------
+-- 20260903039000_billing_tier_ladder
+-- ----------------------------------------------------------------------
+-- F2-DB: tangga paket berpatokan Pro 100 domain @ Rp550rb.
+--
+-- starter: 5 -> 10 domain @ Rp149rb; growth: 20 -> 50 domain @ Rp299rb.
+-- Nilai per domain menurun ke atas (14,9rb -> 6rb -> 5,5rb) sehingga Pro
+-- selalu paling worth it. Enterprise custom tidak berubah.
+
+UPDATE public.plan_quotas SET max_domains = 10, max_sites = 10 WHERE plan = 'starter';
+UPDATE public.plan_quotas SET max_domains = 50, max_sites = 50 WHERE plan = 'growth';
+UPDATE public.packages SET price_idr = 149000, max_domains = 10, max_sites = 10, updated_at = now() WHERE plan = 'starter';
+UPDATE public.packages SET price_idr = 299000, max_domains = 50, max_sites = 50, updated_at = now() WHERE plan = 'growth';
+UPDATE public.service_tiers SET price = 'Rp149.000', target = 'Punya 10 portal berita sendiri mulai hari ini', features = '["10 website berita siap tayang", "Desain cantik tinggal pilih", "Domain, hosting, dan keamanan kami yang urus", "Bantuan ramah lewat email"]', updated_at = now() WHERE slug = 'starter';
+UPDATE public.service_tiers SET price = 'Rp299.000', target = 'Satu redaksi untuk 50 portal daerah', features = '["50 website berita siap tayang", "Terbit sekali, tayang di mana-mana", "Kelola dari HP, kerja dari mana saja", "Bantuan prioritas yang cepat tanggap"]', updated_at = now() WHERE slug = 'growth';
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (56, 'billing_tier_ladder', 'sha256:2b383ecff5460252d7e8d2e8ef3d7cf7530c933157c75ef3d7bd40703884dc0c');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ca8752a2190ab86ab5152325e86ac81cca59ded6270407a69b1078122282625b', 1788505642042);
+
+-- ----------------------------------------------------------------------
+-- 20260903039500_billing_buyer_faqs
+-- ----------------------------------------------------------------------
+-- F2-DB: FAQ menjadi 12 butir jawaban pembeli.
+--
+-- Mengganti 4 FAQ teknis lama dengan 12 FAQ seputar beli, bayar, tenggang,
+-- domain, pindah sistem, dan bantuan — cermin fallback kode.
+
+DELETE FROM public.faqs;
+INSERT INTO public.faqs (id, question, answer, sort_order, active) VALUES
+  (gen_random_uuid(), 'Apakah saya membutuhkan server terpisah untuk setiap portal berita?', 'Tidak. Seluruh portal Anda berjalan di atas 1 infrastruktur terpusat yang sama. Pemisahan data dan tampilan dilakukan otomatis berdasarkan nama domain, jadi nambah portal tidak nambah urusan server.', 1, true),
+  (gen_random_uuid(), 'Bagaimana cara wartawan menerbitkan berita dari luar kantor?', 'Cukup buka dasbor dari HP atau kirim via chat Telegram yang sudah didaftarkan. Tidak perlu laptop, tidak perlu datang ke kantor.', 2, true),
+  (gen_random_uuid(), 'Apakah satu artikel bisa tayang di lebih dari satu situs sekaligus?', 'Ya. Tulis satu kali, pilih situs-situs tujuannya, lalu terbitkan. Status tiap penayangan terpantau satu per satu.', 3, true),
+  (gen_random_uuid(), 'Bagaimana cara mulai berlangganan?', 'Daftar akun, pilih paket, buat order, bayar, lalu unggah bukti bayarnya. Tim kami memverifikasi paling lambat 1x24 jam, setelah itu langganan aktif 30 hari.', 4, true),
+  (gen_random_uuid(), 'Apa yang terjadi kalau masa aktif habis?', 'Anda mendapat masa tenggang baca 7 hari — data aman dan masih bisa dilihat. Perpanjang kapan saja untuk kembali menulis dan menerbitkan seperti biasa.', 5, true),
+  (gen_random_uuid(), 'Apakah nama domain tetap milik saya?', 'Ya, 100%. Domain dibeli dan dipegang atas nama Anda. Berhenti kapan pun, domain dan seluruh konten dibawa pergi.', 6, true),
+  (gen_random_uuid(), 'Bisakah naik atau turun paket di tengah jalan?', 'Bisa. Buat order paket baru dari halaman Langganan; setelah diverifikasi, paket langsung berganti dan masa aktif dihitung ulang 30 hari.', 7, true),
+  (gen_random_uuid(), 'Bagaimana paket Enterprise bekerja?', 'Hubungi tim penjualan lewat WhatsApp, ceritakan kebutuhan dan jumlah websitenya. Kami susun penawaran yang pas, lalu jadwalkan onboarding dan pindahan data.', 8, true),
+  (gen_random_uuid(), 'Apakah data redaksi saya tercampur dengan pelanggan lain?', 'Tidak. Setiap data terikat pada satu organisasi dan pemisahannya ditegakkan sampai lapisan basis data. Pelanggan lain tidak bisa mengintip data Anda lewat domain apa pun.', 9, true),
+  (gen_random_uuid(), 'Saya sudah punya website berjalan. Bisa pindah?', 'Bisa. Paket Pro ke atas mencakup bantuan pindahan, dan paket Enterprise mencakup pindahan data massal yang kami kerjakan. Ceritakan sistem lama Anda saat mendaftar.', 10, true),
+  (gen_random_uuid(), 'Apakah ada masa percobaan gratis?', 'Tidak ada trial otomatis, tapi Anda bisa melihat semua paket beserta batasnya secara terbuka sebelum membayar. Paket Starter mulai Rp149rb per bulan.', 11, true),
+  (gen_random_uuid(), 'Bagaimana kalau butuh bantuan?', 'Paket Starter dan Growth dilayani lewat email dan prioritas; paket Pro didampingi sampai jalan; Enterprise punya kontak khusus. Semua paket dijawab manusia, bukan bot.', 12, true);
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (57, 'billing_buyer_faqs', 'sha256:695776f7a12fd19915a298e1273f22ae09adf1c58866a5a7b37552b8969f70bf');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('27e9d8c9b38d97ce13a65bb29ac57e524c793112c089c621b617379535fe395a', 1788509307389);
+
+-- ----------------------------------------------------------------------
+-- 20260903040000_contact_channel_hrefs
+-- ----------------------------------------------------------------------
+-- Kanal kontak kini membawa tautan (href) + salinan baru berisi alamat asli.
+--
+-- Menambah kolom href nullable, menambah baris WhatsApp, dan menyelaraskan
+-- judul/deskripsi/urutan dengan fallback kode supaya DB dan kode sejalan.
+
+ALTER TABLE public.contact_channels ADD COLUMN href text;
+INSERT INTO public.contact_channels (key, title, description, href, sort_order) VALUES
+  ('email', 'Surel', 'officialelsa21@gmail.com — kirim kebutuhan Anda beserta jumlah domain dan wilayah yang direncanakan.', 'mailto:officialelsa21@gmail.com', 1),
+  ('whatsapp', 'WhatsApp', '0856-4115-9405 — jalur tercepat untuk paket Enterprise, pindahan sistem, atau pertanyaan harga.', 'https://wa.me/6285641159405?text=Halo%20Indicate%2C%20saya%20ingin%20bertanya.', 2),
+  ('telegram', 'Telegram', '@eliyantosarage — tanya jawab singkat mengenai alur redaksi dan integrasi bot.', 'https://t.me/eliyantosarage', 3),
+  ('visit', 'Peninjauan bersama', 'Sesi daring untuk menelusuri dasbor dan alur penerbitan — jadwalkan lewat WhatsApp atau surel.', NULL, 4)
+ON CONFLICT (key) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description, href = EXCLUDED.href, sort_order = EXCLUDED.sort_order;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (58, 'contact_channel_hrefs', 'sha256:fa08361431055962bcd035b3036a8e17fc39711fb1fe4a720cea042cbb9d7da4');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('267a0b397988ce88a8675f025201e6d4fd9da8d246ada57d38982cf59f755d7e', 1788519423638);
+
+-- ----------------------------------------------------------------------
+-- 20260903040500_publication_overrides
+-- ----------------------------------------------------------------------
+-- Diferensiasi per-target: override judul/deskripsi/gambar per publikasi.
+--
+-- Satu artikel tayang identik di banyak publisher akan saling menekan di hasil
+-- pencarian. Kolom nullable ini memungkinkan tiap target memiliki varian
+-- judul, deskripsi, dan gambar sendiri; NULL berarti memakai kanonis artikel.
+
+ALTER TABLE public.article_sites ADD COLUMN custom_title text;
+ALTER TABLE public.article_sites ADD COLUMN custom_description text;
+ALTER TABLE public.article_sites ADD COLUMN custom_image_media_id uuid;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (59, 'publication_overrides', 'sha256:019aedae063ec26380b72439ed59c008166d5a8d3b429be3e7b28c16d2fe99f6');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('883f702c365d34ed4b1f56f01c70810f87634536d36dcaf3d89c98fd388f9299', 1788530214428);
+
+-- ----------------------------------------------------------------------
+-- 20260903041000_publishing_unpublished_state
+-- ----------------------------------------------------------------------
+-- Penarikan publikasi per-target: state terminal `unpublished`.
+--
+-- PostgreSQL tidak mengizinkan ALTER TYPE ... ADD VALUE di dalam blok
+-- transaksi; terapkan file ini di luar transaksi (psql / SQL editor).
+
+ALTER TYPE publishing_state ADD VALUE 'unpublished';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (60, 'publishing_unpublished_state', 'sha256:501add921dcf4a38e130a9577d6f79e9ffab08defa1c90febc22268010e70f4a');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6a56c170c43d7727b6448f552e5b9ba80f0307cca44bb588dce4dc87351d9792', 1788531231180);
+
+-- ----------------------------------------------------------------------
+-- 20260903041500_release_manifest_source_version
+-- ----------------------------------------------------------------------
+-- Rename the rollout-manifest source column to drop the retired env-based
+-- terminology. No behavior change; the release-manifest tooling never ran
+-- (zero rows) and no application code reads this column.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+ALTER TABLE public.runtime_config_release_manifests RENAME COLUMN legacy_source_version TO source_version;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (61, 'release_manifest_source_version', 'sha256:d964c9cc8b7f459386704716e48ec545cdd24772b249248ed956d4620462c2f7');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ddcb8dc0513c61286093311f7025edef68c7de36e5bf9c25415181b8e0ba7315', 1788539332744);
+
+-- ----------------------------------------------------------------------
+-- 20260903042000_fix_site_settings_robots_cast
+-- ----------------------------------------------------------------------
+-- Fix the site-settings read function: the declared return column
+-- `seo_robots_directive text` received the raw enum value, so every call
+-- failed with "structure of query does not match function result type"
+-- (even on an empty table). Cast to text like the sibling media-state
+-- column already does. Signature unchanged, so CREATE OR REPLACE suffices.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+CREATE OR REPLACE FUNCTION indicate_private.read_runtime_config_site_settings()
+RETURNS TABLE (
+  organization_id uuid,
+  site_id uuid,
+  locale text,
+  seo_default_title text,
+  seo_default_description text,
+  seo_robots_directive text,
+  seo_open_graph_site_name text,
+  seo_schema_version integer,
+  fallback_media_id uuid,
+  fallback_media_object_key text,
+  fallback_media_state text,
+  fallback_media_organization_id uuid,
+  version integer
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT ss.organization_id, ss.site_id, ss.locale, ss.seo_default_title,
+         ss.seo_default_description, ss.seo_robots_directive::text,
+         ss.seo_open_graph_site_name, ss.seo_schema_version,
+         ss.fallback_media_id, m.object_key, m.state::text, m.organization_id,
+         ss.version
+  FROM public.site_settings AS ss
+  LEFT JOIN public.media AS m
+    ON m.organization_id = ss.organization_id AND m.id = ss.fallback_media_id
+  ORDER BY ss.organization_id, ss.site_id;
+END
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (62, 'fix_site_settings_robots_cast', 'sha256:90701d84dbb02442ee4b650d91dbd8fdf8226873a6bcce9a077cee3b4862bf80');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('fe7e26fd5533d1058909e05df04d4c5e5cf4e8210dcbd5ce110543d6c56e0283', 1788539636259);
+
+-- ----------------------------------------------------------------------
+-- 20260903042500_site_settings_default_media
+-- ----------------------------------------------------------------------
+-- Rename the per-site fallback media column to default media terminology,
+-- matching the global default asset (public/assets/default.png). Metadata-only
+-- renames: no data moves, no behavior change. All dependent functions are
+-- replaced in the same transaction so no execution can observe the old name.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+ALTER TABLE public.site_settings RENAME COLUMN fallback_media_id TO default_media_id;
+ALTER TABLE public.site_settings RENAME CONSTRAINT site_settings_fallback_media_fk TO site_settings_default_media_fk;
+CREATE OR REPLACE FUNCTION indicate_private.guard_active_site_settings()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+BEGIN
+  IF NEW.status = 'active' AND NEW.activation_state = 'active' THEN
+    IF NOT EXISTS (
+      SELECT 1
+      FROM public.site_settings AS ss
+      WHERE ss.organization_id = NEW.organization_id
+        AND ss.site_id = NEW.id
+        AND ss.locale IS NOT NULL
+        AND ss.seo_default_title IS NOT NULL
+        AND ss.seo_default_description IS NOT NULL
+        AND ss.seo_robots_directive IS NOT NULL
+        AND ss.seo_open_graph_site_name IS NOT NULL
+        AND ss.seo_schema_version IS NOT NULL
+        AND ss.default_media_id IS NOT NULL
+        AND EXISTS (
+          SELECT 1
+          FROM public.media AS m
+          WHERE m.organization_id = ss.organization_id
+            AND m.id = ss.default_media_id
+            AND m.state = 'active'
+        )
+    ) THEN
+      RAISE EXCEPTION 'active site requires complete same-organization site settings and active default media' USING ERRCODE = '23514';
+    END IF;
+  END IF;
+  RETURN NEW;
+END
+$$;
+CREATE OR REPLACE FUNCTION indicate_private.guard_site_settings_against_active_site()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM public.sites AS s
+    WHERE s.organization_id = OLD.organization_id
+      AND s.id = OLD.site_id
+      AND s.status = 'active'
+      AND s.activation_state = 'active'
+  ) AND (
+    OLD.locale IS NULL OR OLD.seo_default_title IS NULL OR OLD.seo_default_description IS NULL
+    OR OLD.seo_robots_directive IS NULL OR OLD.seo_open_graph_site_name IS NULL OR OLD.seo_schema_version IS NULL
+    OR OLD.default_media_id IS NULL
+  ) THEN
+    RAISE EXCEPTION 'cannot invalidate site settings while the site is active' USING ERRCODE = '23514';
+  END IF;
+  RETURN OLD;
+END
+$$;
+-- OUT parameter names are part of the row type, so REPLACE is rejected;
+-- drop first (no dependents exist) and recreate with identical privileges.
+DROP FUNCTION IF EXISTS indicate_private.read_runtime_config_site_settings();
+CREATE FUNCTION indicate_private.read_runtime_config_site_settings()
+RETURNS TABLE (
+  organization_id uuid,
+  site_id uuid,
+  locale text,
+  seo_default_title text,
+  seo_default_description text,
+  seo_robots_directive text,
+  seo_open_graph_site_name text,
+  seo_schema_version integer,
+  default_media_id uuid,
+  default_media_object_key text,
+  default_media_state text,
+  default_media_organization_id uuid,
+  version integer
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT ss.organization_id, ss.site_id, ss.locale, ss.seo_default_title,
+         ss.seo_default_description, ss.seo_robots_directive::text,
+         ss.seo_open_graph_site_name, ss.seo_schema_version,
+         ss.default_media_id, m.object_key, m.state::text, m.organization_id,
+         ss.version
+  FROM public.site_settings AS ss
+  LEFT JOIN public.media AS m
+    ON m.organization_id = ss.organization_id AND m.id = ss.default_media_id
+  ORDER BY ss.organization_id, ss.site_id;
+END
+$$;
+REVOKE ALL ON FUNCTION indicate_private.read_runtime_config_site_settings() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.read_runtime_config_site_settings() TO indicate_runtime;
+-- Input parameter names cannot change under OR REPLACE either; drop first
+-- (no dependents exist) and recreate with identical privileges.
+DROP FUNCTION IF EXISTS indicate_private.mutate_site_settings(uuid, uuid, uuid, text, text, text, text, text, integer, uuid, integer);
+CREATE FUNCTION indicate_private.mutate_site_settings(p_actor_id uuid, p_org_id uuid, p_site_id uuid, p_locale text, p_seo_default_title text, p_seo_default_description text, p_seo_robots_directive text, p_seo_open_graph_site_name text, p_seo_schema_version integer, p_default_media_id uuid, p_expected_version integer)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_after integer; v_revision bigint;
+BEGIN
+  IF NOT indicate_private.permission_has_tenant(p_actor_id, p_org_id, 'site_settings.manage') THEN
+    RAISE EXCEPTION 'site settings mutation denied' USING ERRCODE = '42501';
+  END IF;
+  UPDATE public.site_settings AS ss
+     SET locale = p_locale, seo_default_title = p_seo_default_title,
+         seo_default_description = p_seo_default_description, seo_robots_directive = p_seo_robots_directive,
+         seo_open_graph_site_name = p_seo_open_graph_site_name, seo_schema_version = p_seo_schema_version,
+         default_media_id = p_default_media_id, version = version + 1, updated_at = now()
+   WHERE ss.organization_id = p_org_id AND ss.site_id = p_site_id AND ss.version = p_expected_version
+   RETURNING ss.version INTO v_after;
+  IF v_after IS NULL THEN RAISE EXCEPTION 'runtime config version conflict' USING ERRCODE = '55000'; END IF;
+  v_revision := nextval(pg_get_serial_sequence('public.runtime_config_revisions', 'version'));
+  INSERT INTO public.runtime_config_revisions (version, environment, committed_at, mutation_kind)
+  VALUES (v_revision, current_setting('app.environment', true), now(), 'site_settings');
+  INSERT INTO public.runtime_config_audit_logs (
+    id, organization_id, actor_type, actor_id, environment, action, target_type, target_id,
+    expected_version, resulting_version, changed_fields, outcome, request_id
+  ) VALUES (
+    gen_random_uuid(), p_org_id, 'user', p_actor_id, current_setting('app.environment', true),
+    'update', 'site_settings', p_site_id, p_expected_version, v_after,
+    ARRAY['locale','seo_default_title','seo_default_description','seo_robots_directive',
+          'seo_open_graph_site_name','seo_schema_version','default_media_id'],
+    'succeeded', current_setting('app.request_id', true)
+  );
+  INSERT INTO public.runtime_config_invalidation_intents (
+    id, runtime_revision, environment, partition_kind, organization_id, site_id, status, attempts, next_attempt_at
+  ) VALUES (gen_random_uuid(), v_revision, current_setting('app.environment', true), 'site', p_org_id, p_site_id, 'pending', 0, now());
+  RETURN v_after;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.mutate_site_settings(p_actor_id uuid, p_org_id uuid, p_site_id uuid, p_locale text, p_seo_default_title text, p_seo_default_description text, p_seo_robots_directive text, p_seo_open_graph_site_name text, p_seo_schema_version integer, p_default_media_id uuid, p_expected_version integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.mutate_site_settings(p_actor_id uuid, p_org_id uuid, p_site_id uuid, p_locale text, p_seo_default_title text, p_seo_default_description text, p_seo_robots_directive text, p_seo_open_graph_site_name text, p_seo_schema_version integer, p_default_media_id uuid, p_expected_version integer) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (63, 'site_settings_default_media', 'sha256:3587bfd7e7328d57727d2931b739079ed744ab1ea582fb0f75657c4f5f9ef367');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('01ce40cb4444c82f9cde77d0627482772bfa9403a1f05e94d08f95e98fc55114', 1788581551812);
+
+-- ----------------------------------------------------------------------
+-- 20260903043000_site_settings_default_media_idx
+-- ----------------------------------------------------------------------
+-- Rename the site-settings default media index to match the column rename in
+-- migration 63. Name-only change; the indexed columns are unchanged.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+ALTER INDEX public.site_settings_fallback_media_idx RENAME TO site_settings_default_media_idx;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (64, 'site_settings_default_media_idx', 'sha256:2e67a8d1b3b8db4724864707c4fd579de709886b20a66990e9f8e80ac42cbe32');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f1999940a49683967cbd096a5bdb31c4bfd3872492d10d1a654788ca8d2d9152', 1788581825956);
+
+-- ----------------------------------------------------------------------
+-- 20260903043500_media_thumb_object_key
+-- ----------------------------------------------------------------------
+-- Store the derived listing-thumbnail key alongside the full media object.
+-- Nullable with no backfill: existing rows resolve thumbnails to the full
+-- object. The key is derived server-side from `object_key`, never trusted
+-- from client input; uniqueness inherits the reservation collision token.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+ALTER TABLE public.media ADD COLUMN thumb_object_key text;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (65, 'media_thumb_object_key', 'sha256:89c492d28fa109b8ce1ce0cb10ffb78cf05c88e8a496bbf2bcf01ca3ad943541');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ce92b5bca494142d99bfc6093bd3b75c1942afa3f136c236e324c1edebe94526', 1788583606950);
+
+-- ----------------------------------------------------------------------
+-- 20260903044000_site_settings_media_indexes
+-- ----------------------------------------------------------------------
+-- Record the site-settings media indexes that exist in live databases but were
+-- never captured by a migration. Idempotent: fresh environments gain the
+-- indexes, existing ones are untouched. The indexes cover the foreign-key
+-- columns used by the delivery media joins.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+CREATE INDEX IF NOT EXISTS site_settings_logo_media_idx ON public.site_settings USING btree (organization_id, logo_media_id);
+CREATE INDEX IF NOT EXISTS site_settings_favicon_media_idx ON public.site_settings USING btree (organization_id, favicon_media_id);
+CREATE INDEX IF NOT EXISTS site_settings_default_media_idx ON public.site_settings USING btree (organization_id, default_media_id);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (66, 'site_settings_media_indexes', 'sha256:2ced167bcaf0262a9a2d61d4b4550fc4fd2f7c6d450e1cf2305a1012e523f0fd');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5f4a02f42c5b47fb669f7c3b0d6312b470c0edc6d8e4ff78314b7600b584f0f2', 1788585575465);
+
+-- ----------------------------------------------------------------------
+-- 20260903044500_subscription_expiry_warnings
+-- ----------------------------------------------------------------------
+-- Tenant-visible expiry warnings for active subscriptions.
+--
+-- The nightly sweep enforces expiry silently; tenants first learn about it
+-- from a denial. These warning intents land in audit_logs (the dashboard Log
+-- Keamanan view), tiered so the 7-day and 1-day notices never double-fire on
+-- the same night: 7d covers (1d, 7d], 1d covers (0, 1d]. One warning per
+-- threshold window; the sweep itself remains the sole enforcer.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+CREATE OR REPLACE FUNCTION indicate_private.subscription_sweep_expired()
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_count integer := 0;
+BEGIN
+  WITH moved AS (
+    UPDATE public.subscriptions SET status = 'past_due', version = version + 1, updated_at = now()
+    WHERE status = 'active' AND period_ends_at IS NOT NULL AND period_ends_at <= now()
+    RETURNING organization_id, plan
+  )
+  SELECT count(*) INTO v_count FROM moved;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  SELECT organization_id, gen_random_uuid(), 'system', 'subscription-sweeper', 'worker', 'subscription.expire', 'subscription', organization_id::text, 'succeeded', ARRAY['status'], jsonb_build_object('status', 'past_due', 'plan', plan), 'sweep-expired', now()
+  FROM public.subscriptions WHERE status = 'past_due' AND updated_at >= now() - interval '1 minute';
+  WITH moved AS (
+    UPDATE public.subscriptions SET status = 'suspended', version = version + 1, updated_at = now()
+    WHERE status = 'past_due' AND period_ends_at IS NOT NULL AND period_ends_at <= now() - interval '30 days'
+    RETURNING organization_id, plan
+  )
+  SELECT v_count + count(*) INTO v_count FROM moved;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  SELECT organization_id, gen_random_uuid(), 'system', 'subscription-sweeper', 'worker', 'subscription.suspend', 'subscription', organization_id::text, 'succeeded', ARRAY['status'], jsonb_build_object('status', 'suspended', 'plan', plan), 'sweep-expired', now()
+  FROM public.subscriptions WHERE status = 'suspended' AND updated_at >= now() - interval '1 minute';
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  SELECT s.organization_id, gen_random_uuid(), 'system', 'subscription-sweeper', 'worker', 'subscription.expiring_warning', 'subscription', s.organization_id::text, 'succeeded', ARRAY['periodEndsAt'], jsonb_build_object('threshold', '7d', 'periodEndsAt', s.period_ends_at, 'plan', s.plan), 'sweep-expiry-warning', now()
+  FROM public.subscriptions AS s
+  WHERE s.status = 'active' AND s.period_ends_at IS NOT NULL
+    AND s.period_ends_at > now() + interval '1 day' AND s.period_ends_at <= now() + interval '7 days'
+    AND NOT EXISTS (
+      SELECT 1 FROM public.audit_logs AS a
+      WHERE a.organization_id = s.organization_id AND a.action = 'subscription.expiring_warning'
+        AND a.after->>'threshold' = '7d' AND a.occurred_at > now() - interval '8 days'
+    );
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  SELECT s.organization_id, gen_random_uuid(), 'system', 'subscription-sweeper', 'worker', 'subscription.expiring_warning', 'subscription', s.organization_id::text, 'succeeded', ARRAY['periodEndsAt'], jsonb_build_object('threshold', '1d', 'periodEndsAt', s.period_ends_at, 'plan', s.plan), 'sweep-expiry-warning', now()
+  FROM public.subscriptions AS s
+  WHERE s.status = 'active' AND s.period_ends_at IS NOT NULL
+    AND s.period_ends_at > now() AND s.period_ends_at <= now() + interval '1 day'
+    AND NOT EXISTS (
+      SELECT 1 FROM public.audit_logs AS a
+      WHERE a.organization_id = s.organization_id AND a.action = 'subscription.expiring_warning'
+        AND a.after->>'threshold' = '1d' AND a.occurred_at > now() - interval '2 days'
+    );
+  RETURN v_count;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.subscription_sweep_expired() FROM PUBLIC;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (67, 'subscription_expiry_warnings', 'sha256:d7ae07192c318cc8bb074e5af2c64b0e14658d0788e956d054b0128c75c70564');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5bb01052f4d1a457662d723395f116338d1b35eb1b53d82209e0e2397b69ed4c', 1788586963419);
+
+-- ----------------------------------------------------------------------
+-- 20260903045000_enterprise_lead_list
+-- ----------------------------------------------------------------------
+-- Enterprise lead listing untuk admin platform.
+--
+-- Forward-only. Tabel `enterprise_leads` adalah function-only
+-- (RLS default-deny + FORCE, lihat 20260903032500_billing_orders.sql):
+-- penulisan lewat `billing_lead_create`, pembacaan admin lewat fungsi
+-- SECURITY DEFINER baru di bawah, mengikuti preseden
+-- `billing_order_list_pending` (gated `permission_has_platform_admin`).
+-- Tidak ada perubahan skema tabel; hanya satu fungsi baca.
+
+CREATE OR REPLACE FUNCTION indicate_private.billing_lead_list(p_actor_id uuid)
+  RETURNS TABLE(id uuid, nama text, email text, kebutuhan text, created_at timestamp with time zone)
+  LANGUAGE plpgsql
+  STABLE SECURITY DEFINER
+  SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT l.id, l.nama, l.email, l.kebutuhan, l.created_at
+  FROM public.enterprise_leads l
+  ORDER BY l.created_at DESC;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.billing_lead_list(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.billing_lead_list(uuid) TO indicate_runtime;
+
+-- Registrasi susulan (fungsi sudah live tanpa baris riwayat): agar fresh
+-- environment yang dibangun dari file berurutan mencatat versi yang sama.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (71, 'enterprise_lead_list', 'sha256:ca365bea85899527f5cdc90817c2a9ae897938ad09fc6f9c75aa9826fd0777da');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('30bbd1712709b7b524f0011b2b5f5669f944735e9850c4cf151143d8c392fddf', 1788629085776);
+
+-- ----------------------------------------------------------------------
+-- 20260906000000_billing_terms_consent
+-- ----------------------------------------------------------------------
+-- Fase B legal-hardening: persistensi clickwrap pada orders.
+--
+-- Expand-phase: kolom nullable agar order lama (pra-clickwrap, jika ada) tetap
+-- terbaca; baris lama yang terms_version-nya NULL berarti persetujuan versi
+-- tidak tercatat dan tidak boleh diklaim sebagai bukti persetujuan.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS terms_version text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS terms_accepted_at timestamp with time zone;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_terms_version_bounded') THEN
+    ALTER TABLE public.orders ADD CONSTRAINT orders_terms_version_bounded CHECK (terms_version IS NULL OR length(terms_version) BETWEEN 1 AND 32);
+  END IF;
+END
+$$;
+
+-- Overload 6-arg: satu-satunya jalur pembuatan order yang sah. Menolak versi
+-- Terms basi agar bukti persetujuan selalu mengikat versi yang berlaku.
+CREATE OR REPLACE FUNCTION indicate_private.billing_order_create(p_actor_id uuid, p_request_id text, p_package_id uuid, p_org_id uuid, p_terms_version text, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_order uuid := gen_random_uuid(); v_audit_org uuid; v_plan text; v_price integer;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.users WHERE id = p_actor_id AND status = 'active') THEN
+    RAISE EXCEPTION 'active user required' USING ERRCODE = '42501';
+  END IF;
+  IF p_terms_version IS NULL OR p_terms_version <> '2026-09-05' THEN
+    RAISE EXCEPTION 'terms version unsupported' USING ERRCODE = '42501';
+  END IF;
+  SELECT plan, price_idr INTO v_plan, v_price FROM public.packages WHERE id = p_package_id AND active;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'package unavailable' USING ERRCODE = '42501';
+  END IF;
+  IF v_plan = 'enterprise' THEN
+    RAISE EXCEPTION 'enterprise requires sales review' USING ERRCODE = '42501';
+  END IF;
+  IF p_org_id IS NOT NULL THEN
+    IF NOT EXISTS (SELECT 1 FROM public.organizations WHERE id = p_org_id) THEN
+      RAISE EXCEPTION 'organization missing' USING ERRCODE = '42501';
+    END IF;
+    IF NOT indicate_private.permission_has_platform_admin(p_actor_id)
+       AND NOT EXISTS (SELECT 1 FROM public.memberships WHERE organization_id = p_org_id AND user_id = p_actor_id AND status = 'active') THEN
+      RAISE EXCEPTION 'organization membership required' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+  INSERT INTO public.orders(id, user_id, org_id, package_id, status, terms_version, terms_accepted_at, created_at, updated_at)
+  VALUES (v_order, p_actor_id, p_org_id, p_package_id, 'pending_payment', p_terms_version, p_now, p_now, p_now);
+  SELECT COALESCE(p_org_id, (SELECT organization_id FROM public.platform_organizations LIMIT 1)) INTO v_audit_org;
+  IF v_audit_org IS NOT NULL THEN
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (v_audit_org, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'billing.order.create', 'order', v_order::text, 'succeeded', ARRAY['package','status','termsVersion'], jsonb_build_object('packageId', p_package_id, 'status', 'pending_payment', 'termsVersion', p_terms_version), p_request_id, p_now);
+  END IF;
+  RETURN v_order;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.billing_order_create(uuid, text, uuid, uuid, text, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.billing_order_create(uuid, text, uuid, uuid, text, timestamptz) TO indicate_runtime;
+
+-- Fail-closed shim: overload 5-arg lama tidak lagi membuat order. Pemanggil
+-- basi gagal dengan denial non-disclosing (42501) alih-alih order tanpa bukti
+-- persetujuan. Dihapus permanen pada fase contract setelah 1 rilis.
+CREATE OR REPLACE FUNCTION indicate_private.billing_order_create(p_actor_id uuid, p_request_id text, p_package_id uuid, p_org_id uuid, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  RAISE EXCEPTION 'terms consent required' USING ERRCODE = '42501';
+  RETURN NULL;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.billing_order_create(uuid, text, uuid, uuid, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.billing_order_create(uuid, text, uuid, uuid, timestamptz) TO indicate_runtime;
+
+-- Daftar order milik pemakai kini menyertakan bukti persetujuan.
+DROP FUNCTION IF EXISTS indicate_private.billing_order_list_mine(uuid);
+CREATE FUNCTION indicate_private.billing_order_list_mine(p_actor_id uuid)
+ RETURNS TABLE(id uuid, package_name text, plan text, price_idr integer, status billing_order_status, org_id uuid, terms_version text, terms_accepted_at timestamp with time zone, created_at timestamp with time zone)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  SELECT o.id, p.name, p.plan, p.price_idr, o.status, o.org_id, o.terms_version, o.terms_accepted_at, o.created_at
+  FROM public.orders o JOIN public.packages p ON p.id = o.package_id
+  WHERE o.user_id = p_actor_id
+    AND (o.user_id = indicate_private.current_verified_user_id()
+         OR indicate_private.permission_has_platform_admin(indicate_private.current_verified_user_id()))
+  ORDER BY o.created_at DESC
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.billing_order_list_mine(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.billing_order_list_mine(uuid) TO indicate_runtime;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (68, 'billing_terms_consent', 'sha256:eb33c41de647f29469853ca7aa5fd42671e9a2828f8eaf6ff43974b5bb08918f');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('1d5e3e70e73614fec355aabe42542115cd5049add6e09db4ede8c2e7d1c90315', 1788627702625);
+
+-- ----------------------------------------------------------------------
+-- 20260906001000_billing_refund_status
+-- ----------------------------------------------------------------------
+-- Fase B legal-hardening: status refund + fungsi refund order aktif.
+--
+-- PostgreSQL tidak mengizinkan ALTER TYPE ... ADD VALUE di dalam blok
+-- transaksi; terapkan file ini di luar transaksi (psql / SQL editor),
+-- mengikuti preseden 20260903041000_publishing_unpublished_state.sql.
+-- Refund menandai order 'refunded' beserta audit; penangguhan langganan
+-- tetap keputusan operator terpisah via subscription_update (terdokumentasi
+-- pada Ketentuan §7) agar tidak ada penonaktifan otomatis yang keliru.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+ALTER TYPE billing_order_status ADD VALUE IF NOT EXISTS 'refunded';
+
+CREATE OR REPLACE FUNCTION indicate_private.billing_order_refund(p_actor_id uuid, p_request_id text, p_order_id uuid, p_now timestamp with time zone)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_org uuid;
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  SELECT org_id INTO v_org FROM public.orders WHERE id = p_order_id AND status = 'active';
+  IF NOT FOUND THEN RETURN false; END IF;
+  UPDATE public.orders SET status = 'refunded', decided_by = p_actor_id, decided_at = p_now, updated_at = p_now WHERE id = p_order_id;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (COALESCE(v_org, (SELECT organization_id FROM public.platform_organizations LIMIT 1)), gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'billing.order.refund', 'order', p_order_id::text, 'succeeded', ARRAY['status'], jsonb_build_object('status', 'refunded', 'refundedFrom', 'active'), p_request_id, p_now);
+  RETURN true;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.billing_order_refund(uuid, text, uuid, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.billing_order_refund(uuid, text, uuid, timestamptz) TO indicate_runtime;
+
+-- Daftar order aktif untuk operator platform (pola billing_order_list_pending).
+CREATE OR REPLACE FUNCTION indicate_private.billing_order_list_active(p_actor_id uuid)
+ RETURNS TABLE(id uuid, user_email text, org_id uuid, package_name text, plan text, price_idr integer, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT o.id, u.email, o.org_id, p.name, p.plan, p.price_idr, o.created_at
+  FROM public.orders o JOIN public.packages p ON p.id = o.package_id JOIN public.users u ON u.id = o.user_id
+  WHERE o.status = 'active'
+  ORDER BY o.created_at DESC;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.billing_order_list_active(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.billing_order_list_active(uuid) TO indicate_runtime;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (69, 'billing_refund_status', 'sha256:510975ca1a4f2a84fca808f7aca50b808f138b61a6e370b8e5676513fd4b50d1');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b9dacfbc2024351be42696f39bc1433b188c63cc0b76c7807432fd6af30c1de1', 1788627721100);
+
+-- ----------------------------------------------------------------------
+-- 20260906002000_billing_pending_terms
+-- ----------------------------------------------------------------------
+-- Fase B legal-hardening: daftar pending menyertakan bukti persetujuan.
+--
+-- Perubahan RETURNS TABLE mewajibkan DROP + CREATE (OR REPLACE tidak dapat
+-- mengubah tipe kembalian). Tanpa perubahan perilaku otorisasi.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+DROP FUNCTION IF EXISTS indicate_private.billing_order_list_pending(uuid);
+CREATE FUNCTION indicate_private.billing_order_list_pending(p_actor_id uuid)
+ RETURNS TABLE(id uuid, user_email text, org_id uuid, package_name text, plan text, price_idr integer, proof_url text, terms_version text, terms_accepted_at timestamp with time zone, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT o.id, u.email, o.org_id, p.name, p.plan, p.price_idr, o.proof_url, o.terms_version, o.terms_accepted_at, o.created_at
+  FROM public.orders o JOIN public.packages p ON p.id = o.package_id JOIN public.users u ON u.id = o.user_id
+  WHERE o.status = 'waiting_verification'
+  ORDER BY o.created_at;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.billing_order_list_pending(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.billing_order_list_pending(uuid) TO indicate_runtime;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (70, 'billing_pending_terms', 'sha256:bea84b35610e87d0b94a7eda239b20b5c1b5b40dd0f7730eb5814d1dcd6e006a');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ca317573867eb610e2e733b68e8d0ccd37fd60547a588dc393fa4fbb9b1701c8', 1788627837195);
+
+-- ----------------------------------------------------------------------
+-- 20260906003000_historical_digest_rebaseline
+-- ----------------------------------------------------------------------
+-- Re-baseline digest historis pasca-rekonstruksi jurnal.
+--
+-- Sepuluh file di bawah terdaftar dengan digest yang tidak lagi mereproduksi
+-- dari bytes saat ini (kemungkinan edit komentar/format pasca-registrasi,
+-- termasuk normalisasi LF). Objek kuncinya terverifikasi live (kolom href
+-- contact_channels, kolom custom_* article_sites, enum unpublished,
+-- source_version manifes, trigger updated_at), sehingga yang diperbarui
+-- hanyalah sel checksum riwayat — tanpa perubahan objek skema apa pun.
+-- Preseden: 20260903037000_billing_real_checksums.sql.
+-- Catatan: daftar reviewed v1–v13 di dalam migration_body_digests memakai
+-- penamaan lama (phase2_*) dan tetap menjadi catatan historis, bukan
+-- kebenaran live saat ini.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:1c63d8dc80a2f8364564e264da18055980a178d65043861ff9f4d8ed99365fc9' WHERE version = 14 AND name = 'migration_body_digests';
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:f2dbac5ae8a410d26f6dd4a55219432416f9b87870eff0b44f9b94de6cedbf39' WHERE version = 15 AND name = 'updated_at_integrity_guard';
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:aeb5fcff577a43bdd81ccf7ff767e838d2cc7c0ac0a35f1306b137b042f3a599' WHERE version = 16 AND name = 'operational_table_read_policies';
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:4f9a3e1ea036b75199ddc55863b0c78e7a9831e71617b329d51ea015721e5a89' WHERE version = 17 AND name = 'data_api_and_index_hardening';
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:18aed7e6f31f9dcc0d2c66571661968d921e6c924ae112d295aa2fd0628ed130' WHERE version = 18 AND name = 'coordination_timestamps_and_search_indexes';
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:fa08361431055962bcd035b3036a8e17fc39711fb1fe4a720cea042cbb9d7da4' WHERE version = 58 AND name = 'contact_channel_hrefs';
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:019aedae063ec26380b72439ed59c008166d5a8d3b429be3e7b28c16d2fe99f6' WHERE version = 59 AND name = 'publication_overrides';
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:501add921dcf4a38e130a9577d6f79e9ffab08defa1c90febc22268010e70f4a' WHERE version = 60 AND name = 'publishing_unpublished_state';
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:d964c9cc8b7f459386704716e48ec545cdd24772b249248ed956d4620462c2f7' WHERE version = 61 AND name = 'release_manifest_source_version';
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:90701d84dbb02442ee4b650d91dbd8fdf8226873a6bcce9a077cee3b4862bf80' WHERE version = 62 AND name = 'fix_site_settings_robots_cast';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (72, 'historical_digest_rebaseline', 'sha256:1e7a72f184e7e9e5155da44dddf6fad1f52fffeeda24ae728f5bd01efff70b0b');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e604aa8e6a85b65c247afc8189a8c29af1608c1d48c3d86fa9d32a06d4d567fe', 1788630000000);
+
+-- ----------------------------------------------------------------------
+-- 20260906004000_malformed_digest_correction
+-- ----------------------------------------------------------------------
+-- Koreksi literal digest malformed (bukan 64-hex) pada dua file.
+--
+-- `billing_packages_plan_unique` (67 chars, suffix "059") dan
+-- `billing_tier_ladder` (43 chars, terpotong) memiliki literal yang bukan
+-- SHA-256 valid; digest sejati dari bytes file adalah 64-char prefix yang
+-- kini tertulis di file. Yang diperbarui hanyalah sel checksum riwayat —
+-- tanpa perubahan objek skema apa pun.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:d0deed2abb01bd3527ddd9643a238cdbce7bdeae792b56863a3b9214efb1c44d' WHERE version = 53 AND name = 'billing_packages_plan_unique';
+UPDATE public.indicate_schema_migrations SET checksum = 'sha256:2b383ecff5460252d7e8d2e8ef3d7cf7530c933157c75ef3d7bd40703884dc0c' WHERE version = 56 AND name = 'billing_tier_ladder';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (73, 'malformed_digest_correction', 'sha256:82951df8af4bba4c063daedf099d7d972e3a8c33c2c99c14f26b721ccb7ab954');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4603bd3fe900ac7c2ea647a13169d6a747eb059d6f1a6dc398c23e65862487ee', 1788631000000);
+
+-- ----------------------------------------------------------------------
+-- 20260906005000_audit_hash_chain
+-- ----------------------------------------------------------------------
+-- Fase C legal-hardening: rantai hash jejak audit + stempel jam DB.
+--
+-- Aturan kanonikal tunggal (dipakai trigger, backfill, dan verifikasi):
+--   kanonikal = (baris::jsonb TANPA seq/prev_hash/signature)::text || '|' || COALESCE(prev_hash,'GENESIS')
+-- Urutan kunci json mengikuti urutan kolom tabel; SELECT di backfill/verify
+-- mencantumkan kolom dalam urutan tabel agar serialisasi identik.
+-- Setiap baris dirantai (prev_hash = signature baris sebelumnya,
+-- signature = HMAC-SHA256 atas kanonikal dengan kunci Vault) dan occurred_at
+-- selalu jam database (clock_timestamp) agar tidak dapat digeser aplikasi.
+-- Kunci HMAC terpisah di Vault: peran runtime tidak dapat membacanya, hanya
+-- fungsi SECURITY DEFINER di bawah. Trigger gagal fail-closed bila kunci
+-- hilang. Backfill men-drop guard append-only sementara dalam migrasi yang
+-- sama lalu menciptakannya kembali byte-identik; terapkan saat trafik rendah.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS seq bigint GENERATED ALWAYS AS IDENTITY;
+ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS prev_hash text;
+ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS signature text;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'audit_logs_seq_unique') THEN
+    ALTER TABLE public.audit_logs ADD CONSTRAINT audit_logs_seq_unique UNIQUE (seq);
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM vault.secrets WHERE name = 'audit_hmac_key') THEN
+    PERFORM vault.create_secret(encode(extensions.gen_random_bytes(32), 'base64'), 'audit_hmac_key', 'HMAC key for audit hash chain (Fase C)');
+  END IF;
+END
+$$;
+
+CREATE OR REPLACE FUNCTION indicate_private.audit_chain_input(p_row jsonb, p_prev_hash text)
+ RETURNS text
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  SELECT (p_row - 'seq' - 'prev_hash' - 'signature')::text || '|' || COALESCE(p_prev_hash, 'GENESIS')
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.audit_chain_input(jsonb, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.audit_chain_input(jsonb, text) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.audit_chain_fill()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_prev text; v_key text;
+BEGIN
+  SELECT signature INTO v_prev FROM public.audit_logs ORDER BY seq DESC LIMIT 1 FOR UPDATE;
+  NEW.occurred_at := clock_timestamp();
+  NEW.prev_hash := v_prev;
+  SELECT decrypted_secret INTO v_key FROM vault.decrypted_secrets WHERE name = 'audit_hmac_key' ORDER BY created_at DESC LIMIT 1;
+  IF v_key IS NULL THEN
+    RAISE EXCEPTION 'audit hmac key missing' USING ERRCODE = '42501';
+  END IF;
+  NEW.signature := encode(extensions.hmac(indicate_private.audit_chain_input(to_jsonb(NEW), NEW.prev_hash), v_key, 'sha256'), 'hex');
+  RETURN NEW;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.audit_chain_fill() FROM PUBLIC;
+
+-- Backfill rantai untuk baris pra-chain dalam urutan seq (urutan verifikasi).
+-- Kolom SELECT dalam urutan tabel persis (tanpa seq/prev_hash/signature).
+DROP TRIGGER IF EXISTS audit_logs_append_only_guard ON public.audit_logs;
+DO $$
+DECLARE r record; v_prev text := NULL; v_key text; v_sig text;
+BEGIN
+  SELECT decrypted_secret INTO v_key FROM vault.decrypted_secrets WHERE name = 'audit_hmac_key' ORDER BY created_at DESC LIMIT 1;
+  IF v_key IS NULL THEN
+    RAISE EXCEPTION 'audit hmac key missing' USING ERRCODE = '42501';
+  END IF;
+  FOR r IN SELECT organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, "before", "after", request_id, occurred_at FROM public.audit_logs ORDER BY seq LOOP
+    v_sig := encode(extensions.hmac(indicate_private.audit_chain_input(to_jsonb(r), v_prev), v_key, 'sha256'), 'hex');
+    UPDATE public.audit_logs SET prev_hash = v_prev, signature = v_sig WHERE organization_id = r.organization_id AND id = r.id;
+    v_prev := v_sig;
+  END LOOP;
+END
+$$;
+CREATE TRIGGER audit_logs_append_only_guard
+BEFORE UPDATE OR DELETE ON audit_logs
+FOR EACH ROW EXECUTE FUNCTION indicate_private.reject_audit_mutation();
+
+DROP TRIGGER IF EXISTS audit_logs_chain_trigger ON public.audit_logs;
+CREATE TRIGGER audit_logs_chain_trigger
+BEFORE INSERT ON public.audit_logs
+FOR EACH ROW EXECUTE FUNCTION indicate_private.audit_chain_fill();
+
+-- Verifikasi rantai: kembalikan seq yang rusak (kosong = sehat). Khusus
+-- operator platform; pemindai sistem tanpa-gerbang ada di bawah untuk cron.
+CREATE OR REPLACE FUNCTION indicate_private.audit_verify_chain(p_actor_id uuid)
+ RETURNS TABLE(bad_seq bigint)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE r record; v_prev text := NULL; v_key text; v_sig text;
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  SELECT decrypted_secret INTO v_key FROM vault.decrypted_secrets WHERE name = 'audit_hmac_key' ORDER BY created_at DESC LIMIT 1;
+  IF v_key IS NULL THEN
+    RAISE EXCEPTION 'audit hmac key missing' USING ERRCODE = '42501';
+  END IF;
+  FOR r IN SELECT seq, organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, "before", "after", request_id, occurred_at, prev_hash, signature FROM public.audit_logs ORDER BY seq LOOP
+    v_sig := encode(extensions.hmac(indicate_private.audit_chain_input(to_jsonb(r) - 'seq' - 'prev_hash' - 'signature', r.prev_hash), v_key, 'sha256'), 'hex');
+    IF r.signature IS DISTINCT FROM v_sig OR r.prev_hash IS DISTINCT FROM v_prev THEN
+      bad_seq := r.seq; RETURN NEXT;
+    END IF;
+    v_prev := r.signature;
+  END LOOP;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.audit_verify_chain(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.audit_verify_chain(uuid) TO indicate_runtime;
+
+-- Pemindai tanpa-gerbang untuk cron: hanya owner/cron yang dapat mengeksekusi
+-- (tanpa GRANT ke peran runtime).
+CREATE OR REPLACE FUNCTION indicate_private.audit_chain_scan()
+ RETURNS TABLE(bad_seq bigint)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE r record; v_prev text := NULL; v_key text; v_sig text;
+BEGIN
+  SELECT decrypted_secret INTO v_key FROM vault.decrypted_secrets WHERE name = 'audit_hmac_key' ORDER BY created_at DESC LIMIT 1;
+  IF v_key IS NULL THEN
+    RAISE EXCEPTION 'audit hmac key missing' USING ERRCODE = '42501';
+  END IF;
+  FOR r IN SELECT seq, organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, "before", "after", request_id, occurred_at, prev_hash, signature FROM public.audit_logs ORDER BY seq LOOP
+    v_sig := encode(extensions.hmac(indicate_private.audit_chain_input(to_jsonb(r) - 'seq' - 'prev_hash' - 'signature', r.prev_hash), v_key, 'sha256'), 'hex');
+    IF r.signature IS DISTINCT FROM v_sig OR r.prev_hash IS DISTINCT FROM v_prev THEN
+      bad_seq := r.seq; RETURN NEXT;
+    END IF;
+    v_prev := r.signature;
+  END LOOP;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.audit_chain_scan() FROM PUBLIC;
+
+CREATE OR REPLACE FUNCTION indicate_private.audit_verify_and_report()
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_bad bigint[]; v_count integer; v_platform uuid;
+BEGIN
+  SELECT array_agg(bad_seq) INTO v_bad FROM indicate_private.audit_chain_scan();
+  v_count := COALESCE(array_length(v_bad, 1), 0);
+  IF v_count > 0 THEN
+    SELECT organization_id INTO v_platform FROM public.platform_organizations LIMIT 1;
+    IF v_platform IS NOT NULL THEN
+      INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+      VALUES (v_platform, gen_random_uuid(), 'system', 'audit-verifier', 'worker', 'audit.chain_broken', 'audit', 'chain', 'failed', ARRAY['status'], jsonb_build_object('badCount', v_count, 'badSeqs', v_bad), 'audit-verify', now());
+    END IF;
+  END IF;
+  RETURN v_count;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.audit_verify_and_report() FROM PUBLIC;
+
+SELECT cron.schedule('indicate-audit-verify', '30 2 * * *', 'SELECT indicate_private.audit_verify_and_report()');
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (74, 'audit_hash_chain', 'sha256:92c3f298c7765fc9057d6d1b18c675976e1fc68ee3f045da8f724a2d4b58ec61');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f8b1336fb8842b0041fa2adee9b5d3bdd5cd3ec6e6cc5b97c4b7785d71b27619', 1788632000000);
+
+-- ----------------------------------------------------------------------
+-- 20260906006000_retention_sweep
+-- ----------------------------------------------------------------------
+-- Fase C legal-hardening: penyapuan retensi terjadwal + bukti penghapusan.
+--
+-- Setiap kategori kedaluwarsa dihapus dan dihitung ke retention_runs sebagai
+-- bukti jadwal penghapusan (UU PDP). Kategori: undangan basi (>90 hari
+-- sejak diterima/kedaluwarsa), klaim replay kedaluwarsa, tugas cleanup
+-- selesai >90 hari, percakapan Telegram kedaluwarsa (efemeral by design).
+-- Penghapusan operasional organisasi penuh tetap mengikuti desain erasure
+-- khusus (Fase C2) — sweep ini tidak menyentuh data akun/konten/transaksi.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+CREATE TABLE IF NOT EXISTS public.retention_runs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  category text NOT NULL,
+  purged_count integer NOT NULL DEFAULT 0,
+  started_at timestamp with time zone NOT NULL DEFAULT now(),
+  finished_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT retention_runs_count_nonnegative CHECK (purged_count >= 0)
+);
+ALTER TABLE public.retention_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.retention_runs FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS retention_function_only ON public.retention_runs;
+CREATE POLICY retention_function_only ON public.retention_runs FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);
+REVOKE ALL ON public.retention_runs FROM PUBLIC;
+
+CREATE OR REPLACE FUNCTION indicate_private.retention_sweep()
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_total integer := 0; v_count integer; v_started timestamptz := now();
+BEGIN
+  DELETE FROM public.org_invitations
+  WHERE (accepted_at IS NOT NULL AND accepted_at < now() - interval '90 days')
+     OR (accepted_at IS NULL AND expires_at < now() - interval '90 days');
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at)
+  VALUES ('org_invitations', v_count, v_started, now());
+  v_total := v_total + v_count;
+
+  DELETE FROM public.webhook_replay_claims WHERE expires_at < now();
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at)
+  VALUES ('webhook_replay_claims', v_count, v_started, now());
+  v_total := v_total + v_count;
+
+  DELETE FROM public.object_cleanup_tasks WHERE status = 'completed' AND updated_at < now() - interval '90 days';
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at)
+  VALUES ('object_cleanup_tasks', v_count, v_started, now());
+  v_total := v_total + v_count;
+
+  DELETE FROM public.telegram_conversations WHERE expires_at < now();
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at)
+  VALUES ('telegram_conversations', v_count, v_started, now());
+  v_total := v_total + v_count;
+
+  RETURN v_total;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.retention_sweep() FROM PUBLIC;
+
+SELECT cron.schedule('indicate-retention-sweep', '0 3 * * *', 'SELECT indicate_private.retention_sweep()');
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (75, 'retention_sweep', 'sha256:1c109296242329265a883c69af3e0b22afec215064d96e85f60ed92b48a2c9f4');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('83edc7e8040711c9c3a61948b1e0f8b3745e3f06d5bdcd32058a91b30fc043b3', 1788633000000);
+
+-- ----------------------------------------------------------------------
+-- 20260906007000_moderation_reports
+-- ----------------------------------------------------------------------
+-- Fase D legal-hardening: laporan konten publik + tiket DSAR + lisensi media.
+--
+-- content_reports menampung laporan publik per artikel (UU ITE/PP PSTE:
+-- bukti penerimaan + penanganan). Penegakan memakai alur unpublish yang
+-- sudah ada; status laporan melacak workflow hukumnya. privacy_requests
+-- adalah tiket DSAR bernomor (UU PDP Ps.8/16) dengan SLA yang bisa diaudit.
+-- Kolom lisensi media menegakkan kewajiban atribusi (UU Hak Cipta).
+-- Semua tulis/baca lewat fungsi SECURITY DEFINER di bawah; tabel
+-- function-only (default-deny + FORCE RLS) mengikuti preseden
+-- enterprise_leads.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+CREATE TYPE public.report_status AS ENUM ('received', 'under_review', 'action_taken', 'rejected');
+CREATE TYPE public.privacy_request_type AS ENUM ('access', 'correction', 'deletion', 'portability', 'restriction');
+CREATE TYPE public.privacy_request_status AS ENUM ('open', 'in_progress', 'fulfilled', 'rejected');
+
+CREATE TABLE public.content_reports (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE restrict,
+  site_id uuid,
+  article_id uuid,
+  reporter_contact text NOT NULL,
+  reason_category text NOT NULL,
+  details text NOT NULL,
+  article_url text,
+  status public.report_status NOT NULL DEFAULT 'received',
+  decided_by uuid,
+  decided_at timestamp with time zone,
+  decision_note text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT content_reports_contact_bounded CHECK (length(reporter_contact) BETWEEN 3 AND 320),
+  CONSTRAINT content_reports_category_values CHECK (reason_category IN ('copyright', 'defamation', 'privacy', 'hate', 'misinformation', 'other')),
+  CONSTRAINT content_reports_details_bounded CHECK (length(details) BETWEEN 10 AND 4000),
+  CONSTRAINT content_reports_url_bounded CHECK (article_url IS NULL OR length(article_url) BETWEEN 8 AND 2000),
+  CONSTRAINT content_reports_note_bounded CHECK (decision_note IS NULL OR length(decision_note) BETWEEN 1 AND 2000),
+  CONSTRAINT content_reports_site_fk FOREIGN KEY (organization_id, site_id) REFERENCES public.sites(organization_id, id) ON DELETE restrict,
+  CONSTRAINT content_reports_article_fk FOREIGN KEY (organization_id, article_id) REFERENCES public.articles(organization_id, id) ON DELETE restrict
+);
+CREATE INDEX content_reports_org_status_idx ON public.content_reports USING btree (organization_id, status);
+ALTER TABLE public.content_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.content_reports FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS reports_function_only ON public.content_reports;
+CREATE POLICY reports_function_only ON public.content_reports FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);
+REVOKE ALL ON public.content_reports FROM PUBLIC;
+
+CREATE TABLE public.privacy_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ticket_number text NOT NULL UNIQUE,
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE restrict,
+  requester_user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE restrict,
+  request_type public.privacy_request_type NOT NULL,
+  details text NOT NULL,
+  status public.privacy_request_status NOT NULL DEFAULT 'open',
+  decided_by uuid,
+  decided_at timestamp with time zone,
+  decision_note text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT privacy_requests_details_bounded CHECK (length(details) BETWEEN 10 AND 4000),
+  CONSTRAINT privacy_requests_note_bounded CHECK (decision_note IS NULL OR length(decision_note) BETWEEN 1 AND 2000)
+);
+CREATE INDEX privacy_requests_org_status_idx ON public.privacy_requests USING btree (organization_id, status);
+CREATE INDEX privacy_requests_ticket_idx ON public.privacy_requests USING btree (ticket_number);
+ALTER TABLE public.privacy_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.privacy_requests FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS privacy_requests_function_only ON public.privacy_requests;
+CREATE POLICY privacy_requests_function_only ON public.privacy_requests FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);
+REVOKE ALL ON public.privacy_requests FROM PUBLIC;
+
+ALTER TABLE public.media ADD COLUMN IF NOT EXISTS license_source text;
+ALTER TABLE public.media ADD COLUMN IF NOT EXISTS attribution text;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'media_license_bounded') THEN
+    ALTER TABLE public.media ADD CONSTRAINT media_license_bounded CHECK (license_source IS NULL OR length(license_source) BETWEEN 1 AND 500);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'media_attribution_bounded') THEN
+    ALTER TABLE public.media ADD CONSTRAINT media_attribution_bounded CHECK (attribution IS NULL OR length(attribution) BETWEEN 1 AND 500);
+  END IF;
+END
+$$;
+
+-- Laporan publik: tanpa aktor (dilindungi rate-limit di tepi).
+CREATE OR REPLACE FUNCTION indicate_private.content_report_submit(p_request_id text, p_org_id uuid, p_site_id uuid, p_article_id uuid, p_contact text, p_category text, p_details text, p_url text, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid();
+BEGIN
+  IF p_contact IS NULL OR length(p_contact) NOT BETWEEN 3 AND 320
+     OR p_category IS NULL OR p_category NOT IN ('copyright', 'defamation', 'privacy', 'hate', 'misinformation', 'other')
+     OR p_details IS NULL OR length(p_details) NOT BETWEEN 10 AND 4000
+     OR (p_url IS NOT NULL AND length(p_url) NOT BETWEEN 8 AND 2000) THEN
+    RAISE EXCEPTION 'report fields invalid' USING ERRCODE = '42501';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.organizations WHERE id = p_org_id) THEN
+    RAISE EXCEPTION 'unknown target' USING ERRCODE = '42501';
+  END IF;
+  IF p_site_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.sites WHERE organization_id = p_org_id AND id = p_site_id) THEN
+    RAISE EXCEPTION 'unknown target' USING ERRCODE = '42501';
+  END IF;
+  IF p_article_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.articles WHERE organization_id = p_org_id AND id = p_article_id) THEN
+    RAISE EXCEPTION 'unknown target' USING ERRCODE = '42501';
+  END IF;
+  INSERT INTO public.content_reports(id, organization_id, site_id, article_id, reporter_contact, reason_category, details, article_url, status, created_at, updated_at)
+  VALUES (v_id, p_org_id, p_site_id, p_article_id, p_contact, p_category, p_details, p_url, 'received', p_now, p_now);
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_org_id, gen_random_uuid(), 'system', 'content-report-intake', 'worker', 'content_report.received', 'content_report', v_id::text, 'succeeded', ARRAY['status'], jsonb_build_object('status', 'received', 'category', p_category), p_request_id, p_now);
+  RETURN v_id;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.content_report_submit(text, uuid, uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.content_report_submit(text, uuid, uuid, uuid, text, text, text, text, timestamptz) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.content_report_list(p_actor_id uuid)
+ RETURNS TABLE(id uuid, org_id uuid, site_id uuid, article_id uuid, reporter_contact text, reason_category text, details text, article_url text, status report_status, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.users WHERE id = p_actor_id AND status = 'active') THEN
+    RAISE EXCEPTION 'active user required' USING ERRCODE = '42501';
+  END IF;
+  IF indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RETURN QUERY SELECT r.id, r.organization_id, r.site_id, r.article_id, r.reporter_contact, r.reason_category, r.details, r.article_url, r.status, r.created_at
+    FROM public.content_reports r ORDER BY r.created_at DESC;
+  ELSE
+    RETURN QUERY SELECT r.id, r.organization_id, r.site_id, r.article_id, r.reporter_contact, r.reason_category, r.details, r.article_url, r.status, r.created_at
+    FROM public.content_reports r JOIN public.memberships m ON m.organization_id = r.organization_id
+    WHERE m.user_id = p_actor_id AND m.status = 'active' ORDER BY r.created_at DESC;
+  END IF;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.content_report_list(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.content_report_list(uuid) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.content_report_decide(p_actor_id uuid, p_request_id text, p_report_id uuid, p_action_taken boolean, p_note text, p_now timestamp with time zone)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_org uuid;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.users WHERE id = p_actor_id AND status = 'active') THEN
+    RAISE EXCEPTION 'active user required' USING ERRCODE = '42501';
+  END IF;
+  SELECT organization_id INTO v_org FROM public.content_reports WHERE id = p_report_id AND status IN ('received', 'under_review');
+  IF NOT FOUND THEN RETURN false; END IF;
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id)
+     AND NOT EXISTS (SELECT 1 FROM public.memberships WHERE organization_id = v_org AND user_id = p_actor_id AND status = 'active') THEN
+    RAISE EXCEPTION 'organization membership required' USING ERRCODE = '42501';
+  END IF;
+  IF p_note IS NOT NULL AND length(p_note) NOT BETWEEN 1 AND 2000 THEN
+    RAISE EXCEPTION 'decision note invalid' USING ERRCODE = '42501';
+  END IF;
+  UPDATE public.content_reports SET status = CASE WHEN p_action_taken THEN 'action_taken'::report_status ELSE 'rejected'::report_status END, decided_by = p_actor_id, decided_at = p_now, decision_note = p_note, updated_at = p_now WHERE id = p_report_id;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (v_org, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'content_report.decide', 'content_report', p_report_id::text, 'succeeded', ARRAY['status'], jsonb_build_object('actionTaken', p_action_taken), p_request_id, p_now);
+  RETURN true;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.content_report_decide(uuid, text, uuid, boolean, text, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.content_report_decide(uuid, text, uuid, boolean, text, timestamptz) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.privacy_request_submit(p_actor_id uuid, p_request_id text, p_org_id uuid, p_type privacy_request_type, p_details text, p_now timestamp with time zone)
+ RETURNS text
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid(); v_ticket text; v_tries integer := 0;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.users WHERE id = p_actor_id AND status = 'active') THEN
+    RAISE EXCEPTION 'active user required' USING ERRCODE = '42501';
+  END IF;
+  IF p_details IS NULL OR length(p_details) NOT BETWEEN 10 AND 4000 THEN
+    RAISE EXCEPTION 'request fields invalid' USING ERRCODE = '42501';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.organizations WHERE id = p_org_id) THEN
+    RAISE EXCEPTION 'organization missing' USING ERRCODE = '42501';
+  END IF;
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id)
+     AND NOT EXISTS (SELECT 1 FROM public.memberships WHERE organization_id = p_org_id AND user_id = p_actor_id AND status = 'active') THEN
+    RAISE EXCEPTION 'organization membership required' USING ERRCODE = '42501';
+  END IF;
+  LOOP
+    v_tries := v_tries + 1;
+    v_ticket := 'DSAR-' || to_char(p_now, 'YYYY') || '-' || upper(substr(md5(random()::text), 1, 8));
+    BEGIN
+      INSERT INTO public.privacy_requests(id, ticket_number, organization_id, requester_user_id, request_type, details, status, created_at, updated_at)
+      VALUES (v_id, v_ticket, p_org_id, p_actor_id, p_type, p_details, 'open', p_now, p_now);
+      EXIT;
+    EXCEPTION WHEN unique_violation THEN
+      IF v_tries >= 5 THEN RAISE; END IF;
+    END;
+  END LOOP;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_org_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'privacy_request.submit', 'privacy_request', v_id::text, 'succeeded', ARRAY['status'], jsonb_build_object('ticket', v_ticket, 'type', p_type), p_request_id, p_now);
+  RETURN v_ticket;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.privacy_request_submit(uuid, text, uuid, privacy_request_type, text, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.privacy_request_submit(uuid, text, uuid, privacy_request_type, text, timestamptz) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.privacy_request_list(p_actor_id uuid)
+ RETURNS TABLE(id uuid, ticket_number text, org_id uuid, request_type privacy_request_type, details text, status privacy_request_status, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.users WHERE id = p_actor_id AND status = 'active') THEN
+    RAISE EXCEPTION 'active user required' USING ERRCODE = '42501';
+  END IF;
+  IF indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RETURN QUERY SELECT r.id, r.ticket_number, r.organization_id, r.request_type, r.details, r.status, r.created_at
+    FROM public.privacy_requests r ORDER BY r.created_at DESC;
+  ELSE
+    RETURN QUERY SELECT r.id, r.ticket_number, r.organization_id, r.request_type, r.details, r.status, r.created_at
+    FROM public.privacy_requests r JOIN public.memberships m ON m.organization_id = r.organization_id
+    WHERE m.user_id = p_actor_id AND m.status = 'active' ORDER BY r.created_at DESC;
+  END IF;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.privacy_request_list(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.privacy_request_list(uuid) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.privacy_request_decide(p_actor_id uuid, p_request_id text, p_ticket text, p_status privacy_request_status, p_note text, p_now timestamp with time zone)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid; v_org uuid;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.users WHERE id = p_actor_id AND status = 'active') THEN
+    RAISE EXCEPTION 'active user required' USING ERRCODE = '42501';
+  END IF;
+  IF p_status NOT IN ('in_progress', 'fulfilled', 'rejected') THEN
+    RAISE EXCEPTION 'request status invalid' USING ERRCODE = '42501';
+  END IF;
+  SELECT id, organization_id INTO v_id, v_org FROM public.privacy_requests WHERE ticket_number = p_ticket AND status IN ('open', 'in_progress');
+  IF NOT FOUND THEN RETURN false; END IF;
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id)
+     AND NOT EXISTS (SELECT 1 FROM public.memberships WHERE organization_id = v_org AND user_id = p_actor_id AND status = 'active') THEN
+    RAISE EXCEPTION 'organization membership required' USING ERRCODE = '42501';
+  END IF;
+  IF p_note IS NOT NULL AND length(p_note) NOT BETWEEN 1 AND 2000 THEN
+    RAISE EXCEPTION 'decision note invalid' USING ERRCODE = '42501';
+  END IF;
+  UPDATE public.privacy_requests SET status = p_status, decided_by = p_actor_id, decided_at = p_now, decision_note = p_note, updated_at = p_now WHERE id = v_id;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (v_org, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'privacy_request.decide', 'privacy_request', v_id::text, 'succeeded', ARRAY['status'], jsonb_build_object('status', p_status, 'ticket', p_ticket), p_request_id, p_now);
+  RETURN true;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.privacy_request_decide(uuid, text, text, privacy_request_status, text, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.privacy_request_decide(uuid, text, text, privacy_request_status, text, timestamptz) TO indicate_runtime;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (76, 'moderation_reports', 'sha256:97233a17db7c22daa07cdc2ecba39ab6aa382ea09496b97b788f94c9b6541a99');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('abc7b801da94d2a74ea964bea1a365953278731c1a68e74505c58dba05b6a86a', 1788634000000);
+
+-- ----------------------------------------------------------------------
+-- 20260906008000_moderation_fk_indexes
+-- ----------------------------------------------------------------------
+-- Tindak lanjut advisor: indeks penutup untuk FK moderasi (unindexed_foreign_keys).
+--
+-- Tanpa perubahan perilaku; mempercepat pemeriksaan FK dan-latensi daftar.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+CREATE INDEX IF NOT EXISTS content_reports_org_site_idx ON public.content_reports USING btree (organization_id, site_id);
+CREATE INDEX IF NOT EXISTS content_reports_org_article_idx ON public.content_reports USING btree (organization_id, article_id);
+CREATE INDEX IF NOT EXISTS privacy_requests_requester_idx ON public.privacy_requests USING btree (requester_user_id);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (77, 'moderation_fk_indexes', 'sha256:f8799c2d1ad497273583a39f9c8805efe10623a6d9cb55a253efb8780e7d91b9');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ceb9d156043b24e05acda856a3792d5e62901e88714fcabb503ec3b03e3cfb62', 1788635000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907000000_delivery_activation_claim
+-- ----------------------------------------------------------------------
+-- F78: klaim antrean aktivasi domain yang hilang.
+--
+-- Kode memanggil indicate_private.claim_delivery_activation_attempts(...)
+-- (delivery.ts claimActivationAttempts via domain-provisioning-service reconciler),
+-- tetapi fungsi tersebut tidak pernah dibuat oleh migrasi mana pun: setiap putaran
+-- reconciler gagal dengan "function does not exist".
+-- Pola disalin dari claim_delivery_invalidation_tasks: kandidat pending/processing
+-- yang jatuh tempo + klaim kedaluwarsa, FOR UPDATE SKIP LOCKED, batas 1..100,
+-- tandai processing + token klaim, kembalikan baris penuh.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE OR REPLACE FUNCTION indicate_private.claim_delivery_activation_attempts(p_now timestamp with time zone, p_limit integer, p_claim_token uuid, p_claim_expires_at timestamp with time zone)
+ RETURNS SETOF domain_activation_attempts
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  RETURN QUERY
+  WITH candidates AS (
+    SELECT organization_id, id FROM public.domain_activation_attempts
+    WHERE status IN ('pending', 'processing')
+      AND next_attempt_at <= p_now
+      AND (reconciliation_claim_expires_at IS NULL OR reconciliation_claim_expires_at <= p_now)
+    ORDER BY next_attempt_at, id
+    FOR UPDATE SKIP LOCKED
+    LIMIT greatest(1, least(p_limit, 100))
+  )
+  UPDATE public.domain_activation_attempts attempt
+  SET status = 'processing',
+      reconciliation_claim_token = p_claim_token,
+      reconciliation_claim_expires_at = p_claim_expires_at,
+      updated_at = p_now
+  FROM candidates
+  WHERE attempt.organization_id = candidates.organization_id AND attempt.id = candidates.id
+  RETURNING attempt.*;
+END;
+$function$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (78, 'delivery_activation_claim', 'sha256:8224ca1fcd311f4022a8469de4b3c3ac8b0b35ef4474f0b7692eb40b2dee61a4');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5930a61f1313231da8bf871b0570d8ff84b702ca55d53f2719a50e2cdb12c19c', 1788775443478);
+
+-- ----------------------------------------------------------------------
+-- 20260907010000_litigation_holds
+-- ----------------------------------------------------------------------
+-- F79: litigation hold formal (PENDING A4).
+--
+-- 1. Tabel litigation_holds: satu hold aktif per organisasi (unique partial).
+--    Function-only: RLS enabled+forced, tanpa grant ke indicate_runtime;
+--    dikelola lewat fungsi SECURITY DEFINER ber-gate platform admin.
+-- 2. retention_sweep dinyatakan ulang dengan guard hold: baris milik organisasi
+--    yang sedang di-hold tidak disapu sampai hold dilepas.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE TABLE public.litigation_holds (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  reason text NOT NULL CHECK (length(reason) BETWEEN 10 AND 2000),
+  held_by text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  released_at timestamp with time zone NULL,
+  released_by text NULL
+);
+CREATE UNIQUE INDEX litigation_holds_active_org_unique ON public.litigation_holds (organization_id) WHERE released_at IS NULL;
+ALTER TABLE public.litigation_holds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.litigation_holds FORCE ROW LEVEL SECURITY;
+CREATE OR REPLACE FUNCTION indicate_private.is_org_held(p_organization_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  SELECT EXISTS (SELECT 1 FROM public.litigation_holds WHERE organization_id = p_organization_id AND released_at IS NULL)
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.hold_create(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_reason text, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid();
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.organizations WHERE id = p_organization_id) THEN
+    RAISE EXCEPTION 'organization required' USING ERRCODE = '42501';
+  END IF;
+  IF p_reason IS NULL OR length(p_reason) NOT BETWEEN 10 AND 2000 THEN
+    RAISE EXCEPTION 'hold reason invalid' USING ERRCODE = '42501';
+  END IF;
+  INSERT INTO public.litigation_holds(id, organization_id, reason, held_by, created_at)
+  VALUES (v_id, p_organization_id, p_reason, p_actor_id::text, p_now);
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'legal.hold.create', 'litigation_hold', v_id::text, 'succeeded', ARRAY['reason'], jsonb_build_object('reason', p_reason), p_request_id, p_now);
+  RETURN v_id;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.hold_release(p_actor_id uuid, p_request_id text, p_hold_id uuid, p_now timestamp with time zone)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_org uuid;
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  UPDATE public.litigation_holds SET released_at = p_now, released_by = p_actor_id::text
+  WHERE id = p_hold_id AND released_at IS NULL RETURNING organization_id INTO v_org;
+  IF NOT FOUND THEN RETURN false; END IF;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (v_org, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'legal.hold.release', 'litigation_hold', p_hold_id::text, 'succeeded', ARRAY['releasedAt'], jsonb_build_object('releasedAt', p_now), p_request_id, p_now);
+  RETURN true;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.hold_list(p_actor_id uuid)
+ RETURNS TABLE(id uuid, organization_id uuid, reason text, held_by text, created_at timestamp with time zone, released_at timestamp with time zone, released_by text)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT h.id, h.organization_id, h.reason, h.held_by, h.created_at, h.released_at, h.released_by
+  FROM public.litigation_holds h ORDER BY h.created_at DESC;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.retention_sweep()
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_total integer := 0; v_count integer; v_started timestamptz := now();
+BEGIN
+  DELETE FROM public.org_invitations WHERE ((accepted_at IS NOT NULL AND accepted_at < now() - interval '90 days') OR (accepted_at IS NULL AND expires_at < now() - interval '90 days')) AND NOT indicate_private.is_org_held(org_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('org_invitations', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.webhook_replay_claims WHERE expires_at < now() AND (organization_id IS NULL OR NOT indicate_private.is_org_held(organization_id));
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('webhook_replay_claims', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.object_cleanup_tasks WHERE status = 'completed' AND updated_at < now() - interval '90 days' AND NOT indicate_private.is_org_held(organization_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('object_cleanup_tasks', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.telegram_conversations WHERE expires_at < now() AND NOT indicate_private.is_org_held(organization_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('telegram_conversations', v_count, v_started, now());
+  v_total := v_total + v_count;
+  RETURN v_total;
+END
+$function$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (79, 'litigation_holds', 'sha256:5556c07d527e7dc89eae5a2b3e0174ba5be77ed5b2d65a9a19a07d4691893df1');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4a1b9e655395c52a5f41fb247c8b3355a5cd82e2fa9e2ff503d591b636ae58b1', 1788777000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907020000_org_erasure
+-- ----------------------------------------------------------------------
+-- F80: erasure organisasi penuh + worker (PENDING A1).
+--
+-- 1. Tabel org_erasure_requests: antrean penghapusan operasional per organisasi.
+--    Function-only: RLS enabled+forced, tanpa grant ke indicate_runtime.
+-- 2. erasure_sweep(): klaim request jatuh tempo (SKIP LOCKED), lewati org yang
+--    di-hold (jadwal ulang +24 jam), tolak org platform, lalu hapus operasional
+--    dalam urutan aman-FK dalam satu transaksi atomik:
+--    - PII anggota dianonimkan (bukan dihapus: memberships RESTRICT users)
+--    - objek R2 media diantrekan ke object_cleanup_tasks (alasan org-erasure)
+--    - arsip legal dipertahankan: organizations (menjadi archived), subscriptions
+--      (menjadi cancelled), audit_logs, invoices, orders, retention_runs, holds
+--    - bukti: retention_runs kategori org_erasure + audit org.erasure.
+--    Backup terkelola berotasi keluar menurut siklus platform (tanpa restore
+--    selektif); fakta ini dicatat dalam proof JSON setiap eksekusi.
+-- Dijadwalkan harian via pg_cron (04:00 UTC).
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE TABLE public.org_erasure_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  requested_by text NOT NULL,
+  reason text NOT NULL CHECK (length(reason) BETWEEN 10 AND 2000),
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+  scheduled_for timestamp with time zone NOT NULL,
+  attempts integer NOT NULL DEFAULT 0,
+  next_attempt_at timestamp with time zone NOT NULL DEFAULT now(),
+  completed_at timestamp with time zone NULL,
+  proof jsonb NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE INDEX org_erasure_requests_due_idx ON public.org_erasure_requests (status, next_attempt_at);
+ALTER TABLE public.org_erasure_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.org_erasure_requests FORCE ROW LEVEL SECURITY;
+CREATE OR REPLACE FUNCTION indicate_private.erasure_request_create(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_reason text, p_scheduled_for timestamp with time zone, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid();
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.organizations WHERE id = p_organization_id) THEN
+    RAISE EXCEPTION 'organization required' USING ERRCODE = '42501';
+  END IF;
+  IF indicate_private.is_platform_organization(p_organization_id) THEN
+    RAISE EXCEPTION 'platform organization is not erasable' USING ERRCODE = '42501';
+  END IF;
+  IF p_reason IS NULL OR length(p_reason) NOT BETWEEN 10 AND 2000 THEN
+    RAISE EXCEPTION 'erasure reason invalid' USING ERRCODE = '42501';
+  END IF;
+  INSERT INTO public.org_erasure_requests(id, organization_id, requested_by, reason, status, scheduled_for, next_attempt_at, created_at)
+  VALUES (v_id, p_organization_id, p_actor_id::text, p_reason, 'pending', p_scheduled_for, least(p_scheduled_for, p_now), p_now);
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'org.erasure.request', 'org_erasure_request', v_id::text, 'succeeded', ARRAY['reason','scheduledFor'], jsonb_build_object('reason', p_reason, 'scheduledFor', p_scheduled_for), p_request_id, p_now);
+  RETURN v_id;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.erasure_request_list(p_actor_id uuid)
+ RETURNS TABLE(id uuid, organization_id uuid, requested_by text, reason text, status text, scheduled_for timestamp with time zone, attempts integer, completed_at timestamp with time zone, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT r.id, r.organization_id, r.requested_by, r.reason, r.status, r.scheduled_for, r.attempts, r.completed_at, r.created_at
+  FROM public.org_erasure_requests r ORDER BY r.created_at DESC;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.erasure_sweep()
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE
+  v_req RECORD; v_org uuid; v_n integer; v_total integer := 0;
+  v_counts jsonb := '{}'::jsonb; v_started timestamptz := now();
+BEGIN
+  FOR v_req IN SELECT * FROM public.org_erasure_requests
+    WHERE status IN ('pending', 'processing') AND next_attempt_at <= now()
+    ORDER BY next_attempt_at, id FOR UPDATE SKIP LOCKED LIMIT 5
+  LOOP
+    v_org := v_req.organization_id;
+    UPDATE public.org_erasure_requests SET status = 'processing', attempts = attempts + 1 WHERE id = v_req.id;
+    IF indicate_private.is_platform_organization(v_org) THEN
+      UPDATE public.org_erasure_requests SET status = 'failed', completed_at = now(), proof = jsonb_build_object('error', 'platform organization is not erasable') WHERE id = v_req.id;
+      CONTINUE;
+    END IF;
+    IF indicate_private.is_org_held(v_org) THEN
+      UPDATE public.org_erasure_requests SET status = 'pending', next_attempt_at = now() + interval '24 hours', proof = jsonb_build_object('waiting', 'litigation_hold') WHERE id = v_req.id;
+      CONTINUE;
+    END IF;
+    BEGIN
+      v_counts := '{}'::jsonb;
+      INSERT INTO public.object_cleanup_tasks(organization_id, id, object_key, reason, status, attempts, next_attempt_at, created_at, updated_at)
+      SELECT v_org, gen_random_uuid(), object_key, 'org-erasure', 'pending', 0, now(), now(), now() FROM public.media WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('r2_queued', v_n);
+      INSERT INTO public.object_cleanup_tasks(organization_id, id, object_key, reason, status, attempts, next_attempt_at, created_at, updated_at)
+      SELECT v_org, gen_random_uuid(), thumb_object_key, 'org-erasure', 'pending', 0, now(), now(), now() FROM public.media WHERE organization_id = v_org AND thumb_object_key IS NOT NULL;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('r2_thumbs_queued', v_n);
+      UPDATE public.users SET display_name = 'Pengguna Dihapus', email = NULL, avatar_url = NULL, bio = NULL, updated_at = now()
+      WHERE id IN (SELECT user_id FROM public.memberships WHERE organization_id = v_org);
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('users_anonymized', v_n);
+      DELETE FROM public.article_sites WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('article_sites', v_n);
+      DELETE FROM public.publication_transition_receipts WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('transition_receipts', v_n);
+      DELETE FROM public.publishing_job_targets WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('job_targets', v_n);
+      DELETE FROM public.publishing_jobs WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('jobs', v_n);
+      DELETE FROM public.content_reports WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('content_reports', v_n);
+      DELETE FROM public.privacy_requests WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('privacy_requests', v_n);
+      DELETE FROM public.webhook_replay_claims WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('replay_claims', v_n);
+      DELETE FROM public.invalidation_tasks WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('invalidation_tasks', v_n);
+      DELETE FROM public.domain_activation_attempts WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('activation_attempts', v_n);
+      DELETE FROM public.cache_bypasses WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('cache_bypasses', v_n);
+      DELETE FROM public.telegram_conversations WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('telegram_conversations', v_n);
+      DELETE FROM public.telegram_identity_mappings WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('telegram_mappings', v_n);
+      DELETE FROM public.media_key_reservations WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('media_reservations', v_n);
+      DELETE FROM public.object_cleanup_tasks WHERE organization_id = v_org AND reason <> 'org-erasure';
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('cleanup_tasks_old', v_n);
+      DELETE FROM public.org_invitations WHERE org_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('invitations', v_n);
+      DELETE FROM public.api_keys WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('api_keys', v_n);
+      DELETE FROM public.site_settings WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('site_settings', v_n);
+      DELETE FROM public.media WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('media', v_n);
+      DELETE FROM public.articles WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('articles', v_n);
+      DELETE FROM public.authors WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('authors', v_n);
+      DELETE FROM public.categories WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('categories', v_n);
+      DELETE FROM public.official_affiliations WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('affiliations', v_n);
+      DELETE FROM public.publishers WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('publishers', v_n);
+      DELETE FROM public.memberships WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('memberships', v_n);
+      DELETE FROM public.role_permissions WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('role_permissions', v_n);
+      DELETE FROM public.roles WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('roles', v_n);
+      DELETE FROM public.permissions WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('permissions', v_n);
+      DELETE FROM public.sites WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('sites', v_n);
+      DELETE FROM public.domains WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('domains', v_n);
+      DELETE FROM public.regions WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('regions', v_n);
+      DELETE FROM public.seed_runs WHERE organization_id = v_org;
+      GET DIAGNOSTICS v_n = ROW_COUNT; v_counts := v_counts || jsonb_build_object('seed_runs', v_n);
+      UPDATE public.organizations SET status = 'archived', version = version + 1, updated_at = now() WHERE id = v_org;
+      UPDATE public.subscriptions SET status = 'cancelled', version = version + 1, updated_at = now() WHERE organization_id = v_org;
+      v_counts := v_counts || jsonb_build_object('backups', 'rotasi keluar menurut siklus platform; tanpa restore selektif');
+      INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at, organization_id) VALUES ('org_erasure', 1, v_started, now(), v_org);
+      INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+      VALUES (v_org, gen_random_uuid(), 'system', 'erasure-sweeper', 'worker', 'org.erasure', 'organization', v_org::text, 'succeeded', ARRAY['status'], v_counts, 'erasure-sweep', now());
+      UPDATE public.org_erasure_requests SET status = 'completed', completed_at = now(), proof = v_counts WHERE id = v_req.id;
+      v_total := v_total + 1;
+    EXCEPTION WHEN OTHERS THEN
+      UPDATE public.org_erasure_requests SET status = 'failed', completed_at = now(), proof = jsonb_build_object('error', SQLERRM) WHERE id = v_req.id;
+    END;
+  END LOOP;
+  RETURN v_total;
+END
+$function$;
+SELECT cron.schedule('indicate-org-erasure', '0 4 * * *', 'SELECT indicate_private.erasure_sweep()');
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (80, 'org_erasure', 'sha256:36c1c49eb990f3e1d53c96c12376153e3679a29b78e5f5e7c67464c9e2741808');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('57b2b7e15ce6c9f6fa641d77a66d419dd50da4df7a112de3cdcdf71610b37f51', 1788778000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907030000_rls_global_select_tightening
+-- ----------------------------------------------------------------------
+-- F81: pengetatan SELECT baris global NULL (PENDING A3) + akses WORM.
+--
+-- Audit rollout: tidak ada kode aplikasi yang membaca langsung ketiga tabel ini
+-- (semua lewat fungsi SECURITY DEFINER; satu-satunya pembaca langsung adalah
+-- ekspor WORM yang kini lewat audit_worm_fetch di bawah). Maka klausa
+-- OR organization_id IS NULL pada kebijakan SELECT dicabut:
+-- indicate_runtime hanya melihat baris tenant-nya sendiri.
+CREATE OR REPLACE FUNCTION indicate_private.audit_worm_fetch(p_since timestamp with time zone, p_until timestamp with time zone, p_table text)
+ RETURNS SETOF jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF p_table = 'audit_logs' THEN
+    RETURN QUERY SELECT to_jsonb(a) FROM public.audit_logs a
+    WHERE a.occurred_at >= p_since AND a.occurred_at < p_until ORDER BY a.occurred_at, a.id;
+  ELSIF p_table = 'runtime_config_audit_logs' THEN
+    RETURN QUERY SELECT to_jsonb(a) FROM public.runtime_config_audit_logs a
+    WHERE a.occurred_at >= p_since AND a.occurred_at < p_until ORDER BY a.occurred_at, a.id;
+  ELSIF p_table = 'retention_runs' THEN
+    RETURN QUERY SELECT to_jsonb(a) FROM public.retention_runs a
+    WHERE a.started_at >= p_since AND a.started_at < p_until ORDER BY a.started_at, a.id;
+  ELSE
+    RAISE EXCEPTION 'worm table not allowed' USING ERRCODE = '42501';
+  END IF;
+END
+$function$;
+DROP POLICY IF EXISTS runtime_config_audit_tenant_isolation_select ON public.runtime_config_audit_logs;
+CREATE POLICY runtime_config_audit_tenant_isolation_select ON public.runtime_config_audit_logs FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()));
+DROP POLICY IF EXISTS runtime_config_invalidation_tenant_isolation_select ON public.runtime_config_invalidation_intents;
+CREATE POLICY runtime_config_invalidation_tenant_isolation_select ON public.runtime_config_invalidation_intents FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()));
+DROP POLICY IF EXISTS webhook_replay_tenant_isolation_select ON public.webhook_replay_claims;
+CREATE POLICY webhook_replay_tenant_isolation_select ON public.webhook_replay_claims FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()));
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (81, 'rls_global_select_tightening', 'sha256:9238a2d15b91e9887e8f4a84cee26278ee35c3ee42d07dd171faf61b9864b091');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('eef950f979b7f94c7e2960a09600f8c8d132dc3890a80ba73dfd02bdd8346bda', 1788779000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907040000_function_grants_repair
+-- ----------------------------------------------------------------------
+-- F82: grant EXECUTE yang hilang untuk fungsi worker/admin (PENDING tindak lanjut).
+--
+-- v33 (function_api_reconciliation) me-drop claim_activation_attempts saat gelombang
+-- rename claim_delivery_*, dan v78 menciptakannya kembali sebagai
+-- claim_delivery_activation_attempts — tanpa GRANT sehingga indicate_runtime tetap
+-- ditolak. Migrasi ini memberikan (dan merapikan) grant yang kurang:
+-- claim_delivery_activation_attempts (reconciler), hold_create/hold_list/
+-- hold_release + erasure_request_create/erasure_request_list (panel moderasi),
+-- audit_worm_fetch (ekspor WORM).
+-- Pola mengikuti migrasi lama: REVOKE ALL FROM PUBLIC lalu GRANT ke indicate_runtime.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+REVOKE ALL ON FUNCTION indicate_private.claim_delivery_activation_attempts(timestamptz, integer, uuid, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.claim_delivery_activation_attempts(timestamptz, integer, uuid, timestamptz) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.hold_create(uuid, text, uuid, text, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.hold_create(uuid, text, uuid, text, timestamptz) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.hold_list(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.hold_list(uuid) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.hold_release(uuid, text, uuid, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.hold_release(uuid, text, uuid, timestamptz) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.erasure_request_create(uuid, text, uuid, text, timestamptz, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.erasure_request_create(uuid, text, uuid, text, timestamptz, timestamptz) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.erasure_request_list(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.erasure_request_list(uuid) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.audit_worm_fetch(timestamptz, timestamptz, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.audit_worm_fetch(timestamptz, timestamptz, text) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (82, 'function_grants_repair', 'sha256:0a309d26b79151a2697869f89de31d82fcf32056aebf350898a264c38b780c1f');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('9ef1be218107d9be43339825e6759089399c61891c65d2f83782657ee60b05d9', 1788780000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907050000_telegram_outbox
+-- ----------------------------------------------------------------------
+-- F83: antrean keluar Telegram + broadcast (PENDING A5).
+--
+-- deliverReplies selama ini hanya me-log gagal kirim (balasan hilang). Kini
+-- kegagalan dipersist ke telegram_outbox dengan backoff + hormat retry_after,
+-- diproses worker drain harian; broadcast platform mengantrekan satu pesan ke
+-- semua mapping aktif. Function-only untuk tulis/baca antrean (RLS
+-- enabled+forced, tanpa grant tabel ke indicate_runtime); worker claim/ack dan
+-- enqueue diberikan ke runtime mengikuti pola claim_* yang ada.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE TABLE public.telegram_outbox (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  chat_id text NOT NULL CHECK (length(chat_id) BETWEEN 1 AND 100),
+  text text NOT NULL CHECK (length(text) BETWEEN 1 AND 4000),
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'sending', 'sent', 'dead')),
+  attempts integer NOT NULL DEFAULT 0,
+  next_attempt_at timestamp with time zone NOT NULL DEFAULT now(),
+  last_error text NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE INDEX telegram_outbox_due_idx ON public.telegram_outbox (status, next_attempt_at);
+ALTER TABLE public.telegram_outbox ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.telegram_outbox FORCE ROW LEVEL SECURITY;
+CREATE OR REPLACE FUNCTION indicate_private.outbox_enqueue(p_organization_id uuid, p_chat_id text, p_text text, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid();
+BEGIN
+  IF p_chat_id IS NULL OR length(p_chat_id) NOT BETWEEN 1 AND 100 THEN
+    RAISE EXCEPTION 'outbox chat invalid' USING ERRCODE = '42501';
+  END IF;
+  IF p_text IS NULL OR length(p_text) NOT BETWEEN 1 AND 4000 THEN
+    RAISE EXCEPTION 'outbox text invalid' USING ERRCODE = '42501';
+  END IF;
+  INSERT INTO public.telegram_outbox(id, organization_id, chat_id, text, status, attempts, next_attempt_at, created_at, updated_at)
+  VALUES (v_id, p_organization_id, p_chat_id, p_text, 'pending', 0, p_now, p_now, p_now);
+  RETURN v_id;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.outbox_claim(p_now timestamp with time zone, p_limit integer)
+ RETURNS SETOF telegram_outbox
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  RETURN QUERY
+  WITH candidates AS (
+    SELECT id FROM public.telegram_outbox
+    WHERE status = 'pending' AND next_attempt_at <= p_now
+    ORDER BY next_attempt_at, id
+    FOR UPDATE SKIP LOCKED
+    LIMIT greatest(1, least(p_limit, 50))
+  )
+  UPDATE public.telegram_outbox row SET status = 'sending', updated_at = p_now
+  FROM candidates WHERE row.id = candidates.id
+  RETURNING row.*;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.outbox_ack(p_id uuid, p_ok boolean, p_retry_after integer, p_error text, p_now timestamp with time zone)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_attempts integer;
+BEGIN
+  SELECT attempts INTO v_attempts FROM public.telegram_outbox WHERE id = p_id FOR UPDATE;
+  IF NOT FOUND THEN RETURN false; END IF;
+  IF p_ok THEN
+    UPDATE public.telegram_outbox SET status = 'sent', last_error = NULL, updated_at = p_now WHERE id = p_id;
+    RETURN true;
+  END IF;
+  IF v_attempts + 1 >= 8 THEN
+    UPDATE public.telegram_outbox SET status = 'dead', attempts = attempts + 1, last_error = p_error, updated_at = p_now WHERE id = p_id;
+    RETURN true;
+  END IF;
+  UPDATE public.telegram_outbox
+  SET status = 'pending', attempts = attempts + 1, last_error = p_error,
+      next_attempt_at = p_now + make_interval(secs => LEAST(GREATEST(COALESCE(p_retry_after, 0), 60 * (2 ^ LEAST(v_attempts, 5)))::integer, 21600)),
+      updated_at = p_now
+  WHERE id = p_id;
+  RETURN true;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.outbox_broadcast_targets(p_actor_id uuid)
+ RETURNS TABLE(organization_id uuid, chat_id text)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT DISTINCT m.organization_id, m.telegram_chat_id
+  FROM public.telegram_identity_mappings m WHERE m.status = 'active' ORDER BY m.organization_id, m.telegram_chat_id;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.outbox_enqueue(uuid, text, text, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.outbox_enqueue(uuid, text, text, timestamptz) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.outbox_claim(timestamptz, integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.outbox_claim(timestamptz, integer) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.outbox_ack(uuid, boolean, integer, text, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.outbox_ack(uuid, boolean, integer, text, timestamptz) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.outbox_broadcast_targets(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.outbox_broadcast_targets(uuid) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (83, 'telegram_outbox', 'sha256:9202019251aac5d50fcd943ab37072cc5e4f94c53f9d9e8055281608b0355bf8');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7c4b646650088954612cd6a01fa623c5e9349bfb571d9aa34a3bcd2356effa1e', 1788781000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907060000_lead_consent
+-- ----------------------------------------------------------------------
+-- F84: consent trail lead publik + linking Telegram (PENDING A6).
+--
+-- 1. enterprise_leads + telegram_identity_mappings: kolom consented_at,
+--    consent_text_version, ip_hash (sha256 heks IP pemohon; NULL bila IP tidak
+--    teramati, mis. penautan via dasbor admin).
+-- 2. billing_lead_create 3-arg diganti versi 6-arg yang mewajibkan consent;
+--    grant runtime diterbitkan ulang (grant tidak terbawa saat signatur berubah).
+-- Teks persetujuan versi lead-consent/1 dan telegram-link/1 hidup di kode.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+ALTER TABLE public.enterprise_leads
+  ADD COLUMN IF NOT EXISTS consented_at timestamp with time zone NULL,
+  ADD COLUMN IF NOT EXISTS consent_text_version text NULL,
+  ADD COLUMN IF NOT EXISTS ip_hash text NULL CHECK (ip_hash IS NULL OR ip_hash ~ '^[0-9a-f]{64}$');
+ALTER TABLE public.telegram_identity_mappings
+  ADD COLUMN IF NOT EXISTS consented_at timestamp with time zone NULL,
+  ADD COLUMN IF NOT EXISTS consent_text_version text NULL,
+  ADD COLUMN IF NOT EXISTS ip_hash text NULL CHECK (ip_hash IS NULL OR ip_hash ~ '^[0-9a-f]{64}$');
+DROP FUNCTION IF EXISTS indicate_private.billing_lead_create(text, text, text);
+CREATE OR REPLACE FUNCTION indicate_private.billing_lead_create(p_nama text, p_email text, p_kebutuhan text, p_consented_at timestamp with time zone, p_consent_text_version text, p_ip_hash text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid();
+BEGIN
+  IF p_nama IS NULL OR length(p_nama) NOT BETWEEN 1 AND 200 OR p_email IS NULL OR length(p_email) NOT BETWEEN 3 AND 320 OR p_kebutuhan IS NULL OR length(p_kebutuhan) NOT BETWEEN 1 AND 4000 THEN
+    RAISE EXCEPTION 'lead fields invalid' USING ERRCODE = '42501';
+  END IF;
+  IF p_consented_at IS NULL OR p_consent_text_version IS NULL OR length(p_consent_text_version) NOT BETWEEN 1 AND 64 OR p_ip_hash IS NULL OR p_ip_hash !~ '^[0-9a-f]{64}$' THEN
+    RAISE EXCEPTION 'lead consent invalid' USING ERRCODE = '42501';
+  END IF;
+  INSERT INTO public.enterprise_leads(id, nama, email, kebutuhan, consented_at, consent_text_version, ip_hash)
+  VALUES (v_id, p_nama, p_email, p_kebutuhan, p_consented_at, p_consent_text_version, p_ip_hash);
+  RETURN v_id;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.billing_lead_create(text, text, text, timestamptz, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.billing_lead_create(text, text, text, timestamptz, text, text) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (84, 'lead_consent', 'sha256:cbc059697c94ba7dbaccfb7ae03d1331193de18903a87a7bc0210d434083a060');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5b34f645a608638a10d77852284daead5369d445ff5472a978bff5db8ee6cb86', 1788782000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907080000_function_only_policies
+-- ----------------------------------------------------------------------
+-- F85: kebijakan default-deny eksplisit untuk tabel function-only baru (v79/v80/v83).
+-- Mengikuti pola billing_function_only: RLS tetap enabled+forced, tetapi linter
+-- keamanan Supabase menandai tabel tanpa kebijakan apa pun. Kebijakan
+-- USING (false) WITH CHECK (false) membuat penolakan eksplisit (perilaku sama:
+-- akses hanya lewat fungsi SECURITY DEFINER).
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE POLICY litigation_holds_function_only ON public.litigation_holds FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);
+CREATE POLICY org_erasure_requests_function_only ON public.org_erasure_requests FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);
+CREATE POLICY telegram_outbox_function_only ON public.telegram_outbox FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (85, 'function_only_policies', 'sha256:9b15cbca7b133758831bd739e09b017674976d56f5877981398ab0aae2e1e1a1');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2bab06cdc9f2a5d02bb2bd88ee4ee0c189d0e231d6ab4106dc78248e4d0ec4a6', 1788783000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907090000_worm_export_proof
+-- ----------------------------------------------------------------------
+-- F86: bukti export WORM via fungsi (perbaikan v81).
+--
+-- Modul ekspor menulis bukti langsung ke retention_runs sebagai indicate_runtime,
+-- tetapi tabel itu function-only (USING false). Kini pencatatan lewat fungsi
+-- allowlist SECURITY DEFINER berikut.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE OR REPLACE FUNCTION indicate_private.worm_export_proof(p_category text, p_purged_count integer, p_started_at timestamp with time zone)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF p_category NOT IN ('audit_worm_export') THEN
+    RAISE EXCEPTION 'worm proof category not allowed' USING ERRCODE = '42501';
+  END IF;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at)
+  VALUES (p_category, p_purged_count, p_started_at, now());
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.worm_export_proof(text, integer, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.worm_export_proof(text, integer, timestamptz) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (86, 'worm_export_proof', 'sha256:a9d8295b9cfa43811268a74c2055ae86bae4e23f991afd9c2911f6f396b3892b');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e39fbc068a47ee9681de3fd4d0dc1d3ced101f7ee28a66df9dcb9d2d938b5be5', 1788784000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907100000_delivery_previous_host_owned
+-- ----------------------------------------------------------------------
+-- F87: helper kepemilikan hostname sebelumnya yang hilang.
+--
+-- delivery.ts beginActivation memanggil
+-- indicate_private.is_delivery_previous_host_owned(...) saat hostname site
+-- berpindah, tetapi fungsi tersebut tidak pernah dibuat migrasi mana pun
+-- (kelas yang sama dengan claim_delivery_activation_attempts pada v78):
+-- aktivasi dengan previousHostname selalu gagal "function does not exist".
+-- Semantik: true bila hostname sebelumnya masih tercatat pada site tersebut.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE OR REPLACE FUNCTION indicate_private.is_delivery_previous_host_owned(p_organization_id uuid, p_site_id uuid, p_hostname text)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  SELECT EXISTS (
+    SELECT 1 FROM public.sites
+    WHERE organization_id = p_organization_id AND id = p_site_id AND normalized_hostname = p_hostname
+  )
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.is_delivery_previous_host_owned(uuid, uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.is_delivery_previous_host_owned(uuid, uuid, text) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (87, 'delivery_previous_host_owned', 'sha256:ec262e41300964c5b35a90452df2168982cfca6ae402d2c544d9a6dde5190129');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6b0d16b60cf393663fa21911ed40832abbd0e25038ab6a6909dc96cfe72e646d', 1788785000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907110000_ops_visibility
+-- ----------------------------------------------------------------------
+-- F88: keterlihatan operasional (retensi + outbox).
+--
+-- retention_runs dan telegram_outbox adalah tabel function-only tanpa baca
+-- runtime, sehingga bukti sweep/export/erasure dan antrean Telegram tidak
+-- terlihat di dasbor. Dua pembaca allowlist:
+-- - retention_list: anggota aktif suatu org melihat baris global + org-nya.
+-- - outbox_list_platform: khusus platform admin (berisi chat lintas org).
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE OR REPLACE FUNCTION indicate_private.retention_list(p_actor_id uuid, p_organization_id uuid)
+ RETURNS TABLE(id uuid, organization_id uuid, category text, purged_count integer, started_at timestamp with time zone, finished_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.memberships m JOIN public.users u ON u.id = m.user_id
+    WHERE m.organization_id = p_organization_id AND m.user_id = p_actor_id
+      AND m.status = 'active' AND u.status = 'active'
+  ) THEN
+    RAISE EXCEPTION 'membership required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT r.id, r.organization_id, r.category, r.purged_count, r.started_at, r.finished_at
+  FROM public.retention_runs r
+  WHERE r.organization_id IS NULL OR r.organization_id = p_organization_id
+  ORDER BY r.started_at DESC LIMIT 100;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.outbox_list_platform(p_actor_id uuid)
+ RETURNS TABLE(id uuid, organization_id uuid, chat_id text, status text, attempts integer, next_attempt_at timestamp with time zone, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT o.id, o.organization_id, o.chat_id, o.status, o.attempts, o.next_attempt_at, o.created_at
+  FROM public.telegram_outbox o WHERE o.status <> 'sent' ORDER BY o.next_attempt_at, o.id LIMIT 100;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.retention_list(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.retention_list(uuid, uuid) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.outbox_list_platform(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.outbox_list_platform(uuid) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (88, 'ops_visibility', 'sha256:414877ce74e48efc153bed150a99085cc440216b2cf4ce000dc0ae11301ab39e');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('9f0190f034aa3fd4e9e67de2ccf416b23019cecdf252fe47d0272851d949c6ab', 1788786000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907120000_invoice_list
+-- ----------------------------------------------------------------------
+-- F89: daftar faktur untuk panel billing.
+--
+-- invoices function-only; panel butuh daftar milik sendiri (order milik user
+-- atau org keanggotaannya) + semua untuk platform admin.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE OR REPLACE FUNCTION indicate_private.invoice_list(p_actor_id uuid)
+ RETURNS TABLE(id uuid, order_id uuid, org_id uuid, package_name text, amount integer, paid_at timestamp with time zone, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_platform boolean;
+BEGIN
+  v_platform := indicate_private.permission_has_platform_admin(p_actor_id);
+  RETURN QUERY
+  SELECT i.id, i.order_id, o.org_id, p.name, i.amount, i.paid_at, i.created_at
+  FROM public.invoices i
+  JOIN public.orders o ON o.id = i.order_id
+  LEFT JOIN public.packages p ON p.id = o.package_id
+  WHERE v_platform
+    OR o.user_id = p_actor_id
+    OR (o.org_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.memberships m
+      WHERE m.organization_id = o.org_id AND m.user_id = p_actor_id AND m.status = 'active'
+    ))
+  ORDER BY i.paid_at DESC LIMIT 100;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.invoice_list(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.invoice_list(uuid) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (89, 'invoice_list', 'sha256:344c13557d670084a5a12e96264feed4ec46be188c84735db73282a2d94c5859');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('eab0fb0ff02350f5c5b234035144f8e14fe9e5c4db61a298232f1375399becd0', 1788787000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907130000_ops_fk_covering_indexes
+-- ----------------------------------------------------------------------
+-- F90: covering index untuk FK baru (advisor unindexed_foreign_keys).
+-- org_erasure_requests.organization_id dan telegram_outbox.organization_id
+-- tidak tercakup index (hanya due_idx yang kolom pertamanya status).
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE INDEX IF NOT EXISTS org_erasure_requests_organization_idx ON public.org_erasure_requests USING btree (organization_id);
+CREATE INDEX IF NOT EXISTS telegram_outbox_organization_idx ON public.telegram_outbox USING btree (organization_id);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (90, 'ops_fk_covering_indexes', 'sha256:beae2c320d9da542ac57d6d5ff2cf5598895acc17debeab8f07662f91d8ed6ca');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a9e99e8725de43325befe61a4b94d21063be8baf58d75a8b6adef0a74ed7055f', 1788788000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907140000_article_site_view_counts
+-- ----------------------------------------------------------------------
+-- F91: page views per situs (real + custom).
+--
+-- view_count: total real teragregat dari Redis (ditulis worker flush).
+-- custom_view_count: angka dasar manual dari dasbor (ditampilkan + real).
+-- Tampil = custom_view_count + view_count.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+ALTER TABLE public.article_sites
+  ADD COLUMN IF NOT EXISTS view_count integer NOT NULL DEFAULT 0 CHECK (view_count >= 0),
+  ADD COLUMN IF NOT EXISTS custom_view_count integer NOT NULL DEFAULT 0 CHECK (custom_view_count >= 0);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (91, 'article_site_view_counts', 'sha256:f8a32ade33af9cc3e49c01d64e261b1d1635a9d321946f2536e7fa83b5dfc456');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('30ccbebf959a89aeef8d7ccadc872895a90e62b4387a2d376086fc2e742f40e8', 1788789000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907150000_article_tags
+-- ----------------------------------------------------------------------
+-- F92: tags artikel untuk arsip topik.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+ALTER TABLE public.articles
+  ADD COLUMN IF NOT EXISTS tags text[] NOT NULL DEFAULT ARRAY[]::text[];
+CREATE INDEX IF NOT EXISTS articles_tags_gin_idx ON public.articles USING gin (tags);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (92, 'article_tags', 'sha256:9bceec37ddec044e6961419fffa37def005d45e6fff5f762a8c9130a8284903d');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('95e29c7703dd24b8081850223ad2e76bad347e58b1da3c52d8cfecafe4cfa2d2', 1788790000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907160000_merge_view_counts
+-- ----------------------------------------------------------------------
+-- F93: gabung counter views menjadi satu kolom.
+--
+-- custom_view_count tidak pernah dipakai produksi (fitur belum rilis, nol baris
+-- berisi nilai): hapus, view_count menjadi satu-satunya angka absolut.
+-- Real (flush) menambah; edit manual menimpa absolut.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+ALTER TABLE public.article_sites DROP COLUMN IF EXISTS custom_view_count;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (93, 'merge_view_counts', 'sha256:f39d872a28b766d00cd24954bbd1926d23b95bfb8c3c3642b5726741a32c1af6');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4577d7045f8bd1a22478c3390d3ecd6453998d18ff9a4a4c3df0c517bec190de', 1788791000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907170000_seed_upt_jateng_59org
+-- ----------------------------------------------------------------------
+-- Seed 59 UPT Kanwil Ditjenpas Jateng sebagai 59 organisasi independen
+-- (masing-masing membayar; subdomain per UPT menyusul saat aktivasi).
+--
+-- Per org: organizations (paket pro, active) + 27 permission org via
+-- org_ensure_permissions + subscriptions (pro/active 30 hari) + 1 publishers
+-- terverifikasi (correctional_institution, evidence = direktori resmi) +
+-- 1 baris audit customer.seed. Roles/memberships lahir belakangan lewat
+-- alur role.create + invite saat admin tiap UPT onboarding.
+--
+-- Sumber data: https://pemasyarakatanjateng.id/satker (32 Lapas + 18 Rutan
+-- + 8 Bapas + 1 LPKA; diverifikasi melawan llms-full resmi).
+-- Idempoten: setiap INSERT dijaga NOT EXISTS (slug org). occurredAt = now(),
+-- tidak backdate, agar ekspor WORM tetap konsisten.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+INSERT INTO public.organizations(id, name, slug, status, customer_metadata, version, created_at, updated_at)
+SELECT gen_random_uuid(), v.name, v.slug, 'active', v.meta::jsonb, 1, now(), now()
+FROM (VALUES
+  ('LAPAS KELAS I BATU NUSAKAMBANGAN', 'lapas-kelas-i-batu-nusakambangan', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Cilacap","address":"Jl. Candi, Pulau Nusa Kambangan, Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263","phone":"(0282) 5255270","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-i-batu-nusakambangan"}'),
+  ('LAPAS KELAS I SEMARANG', 'lapas-kelas-i-semarang', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kota Semarang","address":"Jl. Raya Semarang-Boja KM.4, Wates, Kec. Ngaliyan, Kota Semarang, Jawa Tengah 50188","phone":"(024) 76433499","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-i-semarang"}'),
+  ('LAPAS KELAS II A AMBARAWA', 'lapas-kelas-ii-a-ambarawa', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kota Semarang","address":"Jl. Benteng Dalam No.1, Bugisari, Lodoyong, Kec. Ambarawa, Kabupaten Semarang, Jawa Tengah 50612","phone":"(0298) 591017","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-ambarawa"}'),
+  ('LAPAS KELAS II A BESI NUSAKAMBANGAN', 'lapas-kelas-ii-a-besi-nusakambangan', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Cilacap","address":"Jl. Lapas Nusakambangan, Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263","phone":"(0282) 5255264","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-besi-nusakambangan"}'),
+  ('LAPAS KHUSUS KELAS II A KARANGANYAR NUSAKAMBANGAN', 'lapas-khusus-kelas-ii-a-karanganyar-nusakambangan', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Cilacap","address":"Unnamed Road, Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263","phone":"089517900220","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-khusus-kelas-ii-a-karanganyar-nusakambangan"}'),
+  ('LAPAS KELAS II A KEMBANG KUNING NUSAKAMBANGAN', 'lapas-kelas-ii-a-kembang-kuning-nusakambangan', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Cilacap","address":"Unnamed Road, Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263","phone":"(0282) 5255355","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-kembang-kuning-nusakambangan"}'),
+  ('LAPAS KELAS II A GLADAKAN NUSAKAMBANGAN', 'lapas-kelas-ii-a-gladakan-nusakambangan', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Cilacap","address":"Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263","phone":"(028) 25102021","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-gladakan-nusakambangan"}'),
+  ('LAPAS KELAS II A KUMBANG NUSAKAMBANGAN', 'lapas-kelas-ii-a-kumbang-nusakambangan', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Cilacap","address":"Tambakreja, Kec. Cilacap Selatan, Kabupaten Cilacap, Jawa Tengah","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-kumbang-nusakambangan"}'),
+  ('LAPAS KELAS II A NGASEMAN NUSAKAMBANGAN', 'lapas-kelas-ii-a-ngaseman-nusakambangan', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Cilacap","address":"Nusakambangan, Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263","phone":"0895-6284-09080","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-ngaseman-nusakambangan"}'),
+  ('LAPAS KELAS II A KENDAL', 'lapas-kelas-ii-a-kendal', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Kendal","address":"Karanggeneng, Pegulon, Kec. Kendal, Kabupaten Kendal, Jawa Tengah 51313","phone":"(0294) 6100004","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-kendal"}'),
+  ('LAPAS KELAS II A MAGELANG', 'lapas-kelas-ii-a-magelang', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kota Magelang","address":"Jl. Sutopo No.2, Cacaban, Kec. Magelang Tengah, Kota Magelang, Jawa Tengah 56121","phone":"(0293) 362080","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-magelang"}'),
+  ('LAPAS NARKOTIKA KELAS II A NUSAKAMBANGAN', 'lapas-narkotika-kelas-ii-a-nusakambangan', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Cilacap","address":"Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263","phone":"(0282) 5255259","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-narkotika-kelas-ii-a-nusakambangan"}'),
+  ('LAPAS NARKOTIKA KELAS II B PURWOKERTO', 'lapas-narkotika-kelas-ii-b-purwokerto', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Banyumas","address":"Jl. Jend. Sudirman No.104, Pereng, Sokanegara, Kec. Purwokerto Tim., Kabupaten Banyumas, Jawa Tengah 53141","phone":"0895-4161-14108","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-narkotika-kelas-ii-b-purwokerto"}'),
+  ('LAPAS KELAS II A PASIR PUTIH NUSAKAMBANGAN', 'lapas-kelas-ii-a-pasir-putih-nusakambangan', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Cilacap","address":"Tambakreja, Kec. Cilacap Selatan, Kabupaten Cilacap, Jawa Tengah","phone":"0882-3923-2505","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-pasir-putih-nusakambangan"}'),
+  ('LAPAS KELAS II A PEKALONGAN', 'lapas-kelas-ii-a-pekalongan', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kota Pekalongan","address":"Jl. Wr. Supratman No.106, Panjang Wetan, Kec. Pekalongan Utara, Kota Pekalongan, Jawa Tengah 51141","phone":"(0285) 422291","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-pekalongan"}'),
+  ('LAPAS PEREMPUAN KELAS II A SEMARANG', 'lapas-perempuan-kelas-ii-a-semarang', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kota Semarang","address":"Jl. Mgr Sugiyopranoto No.59, Pendrikan Kidul, Kec. Semarang Tengah, Kota Semarang, Jawa Tengah 50131","phone":"(024) 3543060","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-perempuan-kelas-ii-a-semarang"}'),
+  ('LAPAS KELAS II A PERMISAN NUSAKAMBANGAN', 'lapas-kelas-ii-a-permisan-nusakambangan', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Cilacap","address":"Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263","phone":"(0282) 5255353","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-permisan-nusakambangan"}'),
+  ('LAPAS KELAS II A PURWOKERTO', 'lapas-kelas-ii-a-purwokerto', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Banyumas","address":"Pamijen Lor, Pamijen, Kec. Sokaraja, Kabupaten Banyumas, Jawa Tengah 53181","phone":"(0281) 6512955","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-purwokerto"}'),
+  ('LAPAS KELAS II A SRAGEN', 'lapas-kelas-ii-a-sragen', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Sragen","address":"Jl. Sukowati, Dusun Kebayanan Widodo 2, Sragen Wetan, Kec. Sragen, Kabupaten Sragen, Jawa Tengah 57214","phone":"0271 891230","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-sragen"}'),
+  ('LAPAS KELAS II B NIRBAYA NUSAKAMBANGAN', 'lapas-kelas-ii-b-nirbaya-nusakambangan', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Cilacap","address":"Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263","phone":"0856-4975-4129","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-nirbaya-nusakambangan"}'),
+  ('LAPAS KELAS II B BATANG', 'lapas-kelas-ii-b-batang', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Batang","address":"Jalan Raya Batang KM 4.1, Rowobelang, Tembelang, Rowobelang, Kec. Batang, Kabupaten Batang, Jawa Tengah 51216","phone":"(0285) 4494300","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-batang"}'),
+  ('LAPAS KELAS II B BREBES', 'lapas-kelas-ii-b-brebes', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Brebes","address":"Jl. Slamet No.1, Kleben, Brebes, Kec. Brebes, Kabupaten Brebes, Jawa Tengah 52212","phone":"0283 617090","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-brebes"}'),
+  ('LAPAS KELAS II B CILACAP', 'lapas-kelas-ii-b-cilacap', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Cilacap","address":"Jl. Mataram 1, Cilacap, Sidanegara, Kec. Cilacap Tengah, Kabupaten Cilacap, Jawa Tengah 53212","phone":"(0282) 534037","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-cilacap"}'),
+  ('LAPAS KELAS II B KLATEN', 'lapas-kelas-ii-b-klaten', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Klaten","address":"Jl. Pemuda No.206, Pondok, Klaten, Kec. Klaten Tengah, Kabupaten Klaten, Jawa Tengah 57411","phone":"(0272) 322019","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-klaten"}'),
+  ('LAPAS KELAS II B PATI', 'lapas-kelas-ii-b-pati', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Pati","address":"Jl. Akpb Agil Kusumadya No.19, Ngarus, Kec. Pati, Kabupaten Pati, Jawa Tengah 59112","phone":"(0295) 381207","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-pati"}'),
+  ('LAPAS KELAS II B PURWODADI', 'lapas-kelas-ii-b-purwodadi', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Grobogan","address":"Jl. R.Suprapto No.54, Jetis Timur, Purwodadi, Kec. Purwodadi, Kabupaten Grobogan, Jawa Tengah 58111","phone":"(0292) 421188","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-purwodadi"}'),
+  ('LAPAS KELAS II B SLAWI', 'lapas-kelas-ii-b-slawi', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kota Tegal","address":"Tegalandong, Kabupaten Tegal, Jawa Tengah","phone":"(0283) 6190679","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-slawi"}'),
+  ('LAPAS KELAS II B TEGAL', 'lapas-kelas-ii-b-tegal', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kota Tegal","address":"Jl. Yos Sudarso No.2, Tegalsari, Kec. Tegal Bar., Kota Tegal, Jawa Tengah 52111","phone":"(0283) 351040","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-tegal"}'),
+  ('LAPAS KELAS II B WONOGIRI', 'lapas-kelas-ii-b-wonogiri', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Wonogiri","address":"Donoharjo, Wuryorejo, Kec. Wonogiri, Kabupaten Wonogiri, Jawa Tengah 57614","phone":"(0273) 321010","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-wonogiri"}'),
+  ('LAPAS PEMUDA KELAS II B PLANTUNGAN', 'lapas-pemuda-kelas-ii-b-plantungan', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Jawa Tengah","address":"Wonokambang, Tirtomulyo, Kec. Plantungan, Kabupaten Kendal, Jawa Tengah 51362","phone":"0896-9190-1680","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-pemuda-kelas-ii-b-plantungan"}'),
+  ('LAPAS TERBUKA KELAS II B KENDAL', 'lapas-terbuka-kelas-ii-b-kendal', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Kendal","address":"Sopoyono, Wonosari, Kec. Patebon, Kabupaten Kendal, Jawa Tengah 51351","phone":"(0294) 579229","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-terbuka-kelas-ii-b-kendal"}'),
+  ('LAPAS TERBUKA KELAS II B NUSAKAMBANGAN', 'lapas-terbuka-kelas-ii-b-nusakambangan', '{"seed":"upt-jateng-59org","uptType":"LAPAS","city":"Kab. Cilacap","address":"Unnamed Road, Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263","phone":"0856-4975-4129","detailUrl":"https://pemasyarakatanjateng.id/satker/lapas-terbuka-kelas-ii-b-nusakambangan"}'),
+  ('LPKA KELAS I KUTOARJO', 'lpka-kelas-i-kutoarjo', '{"seed":"upt-jateng-59org","uptType":"LPKA","city":"Jawa Tengah","address":"Jl. Pangeran Diponegoro No.36 A, Kutoarjo, Kec. Kutoarjo, Kabupaten Purworejo, Jawa Tengah 54214","phone":"(0275) 641011","detailUrl":"https://pemasyarakatanjateng.id/satker/lpka-kelas-i-kutoarjo"}'),
+  ('RUTAN KELAS I SEMARANG', 'rutan-kelas-i-semarang', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kota Semarang","address":"Jalan Dokter Cipto No.62, Kebonagung, Kec. Semarang Tim., Kota Semarang, Jawa Tengah 50123","phone":"0821-4568-096","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-i-semarang"}'),
+  ('RUTAN KELAS I SURAKARTA', 'rutan-kelas-i-surakarta', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kota Surakarta","address":"Jl. Brigjen Slamet Riyadi No.18, Kp. Baru, Kec. Ps. Kliwon, Kota Surakarta, Jawa Tengah 57111","phone":"0271 642220","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-i-surakarta"}'),
+  ('RUTAN KELAS II A PEKALONGAN', 'rutan-kelas-ii-a-pekalongan', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kota Pekalongan","address":"Panjang Wetan, Pekalongan, Kota Pekalongan, Jawa Tengah 51141","phone":"0822-2339-9433","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-a-pekalongan"}'),
+  ('RUTAN KELAS II B BANJARNEGARA', 'rutan-kelas-ii-b-banjarnegara', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Jawa Tengah","address":"Jl. Pemuda No.81, Kutabanjarnegara, Kec. Banjarnegara, Kab. Banjarnegara, Jawa Tengah 53418","phone":"(0286) 591014","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-banjarnegara"}'),
+  ('RUTAN KELAS II B BANYUMAS', 'rutan-kelas-ii-b-banyumas', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kab. Banyumas","address":"Banyumas, Sudagaran, Kec. Banyumas, Kabupaten Banyumas, Jawa Tengah 53192","phone":"0281 796014","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-banyumas"}'),
+  ('RUTAN KELAS II B BLORA', 'rutan-kelas-ii-b-blora', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kab. Blora","address":"Jl. Abu Umar No.9, Kauman, Kunden, Kec. Blora, Kabupaten Blora, Jawa Tengah 58212","phone":"(0296) 531022","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-blora"}'),
+  ('RUTAN KELAS II B BOYOLALI', 'rutan-kelas-ii-b-boyolali', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kab. Boyolali","address":"MASAHAN, Mojosongo, Kec. Mojosongo, Kabupaten Boyolali, Jawa Tengah 57322","phone":"0823-2572-3552","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-boyolali"}'),
+  ('RUTAN KELAS II B DEMAK', 'rutan-kelas-ii-b-demak', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kab. Demak","address":"Jl. Sultan Fatah, Kauman, Bintoro, Kec. Demak, Kabupaten Demak, Jawa Tengah 59511","phone":"(0291) 685128","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-demak"}'),
+  ('RUTAN KELAS II B JEPARA', 'rutan-kelas-ii-b-jepara', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kab. Jepara","address":"Pengkol IV, Pengkol, Kec. Jepara, Kabupaten Jepara, Jawa Tengah 59415","phone":"0291591008","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-jepara"}'),
+  ('RUTAN KELAS II B KEBUMEN', 'rutan-kelas-ii-b-kebumen', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kab. Kebumen","address":"Jl. Pahlawan No.163, Keposan, Kebumen, Kec. Kebumen, Kabupaten Kebumen, Jawa Tengah 54311","phone":"(0287) 381622","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-kebumen"}'),
+  ('RUTAN KELAS II B KUDUS', 'rutan-kelas-ii-b-kudus', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kab. Kudus","address":"Jl. Sunan Kudus No.70, Kudus, Demaan, Kec. Kota Kudus, Kabupaten Kudus, Jawa Tengah 59313","phone":"(0291) 437581","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-kudus"}'),
+  ('RUTAN KELAS II B PEMALANG', 'rutan-kelas-ii-b-pemalang', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kab. Pemalang","address":"Jl. Muchtar No.3, Kebondalem, Kec. Pemalang, Kabupaten Pemalang, Jawa Tengah 52312","phone":"(0284) 321036","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-pemalang"}'),
+  ('RUTAN KELAS II B PURBALINGGA', 'rutan-kelas-ii-b-purbalingga', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kab. Purbalingga","address":"Jl. Letjen Suprapto No.6, Purbalingga, Purbalingga Lor, Kec. Purbalingga, Kabupaten Purbalingga, Jawa Tengah 53311","phone":"(0281) 891026","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-purbalingga"}'),
+  ('RUTAN KELAS II B PURWOREJO', 'rutan-kelas-ii-b-purworejo', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kab. Purworejo","address":"Jl. Mayjen Sutoyo No.61, Rw. IV, Sindurjan, Kec. Purworejo, Kabupaten Purworejo, Jawa Tengah 54113","phone":"(0275) 2973466","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-purworejo"}'),
+  ('RUTAN KELAS II B REMBANG', 'rutan-kelas-ii-b-rembang', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kab. Rembang","address":"Pandean, Kec. Rembang, Kabupaten Rembang, Jawa Tengah 59211","phone":"(0295) 691023","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-rembang"}'),
+  ('RUTAN KELAS II B SALATIGA', 'rutan-kelas-ii-b-salatiga', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kota Salatiga","address":"Jl. Yos Sudarso No.4, Salatiga, Kec. Sidorejo, Kota Salatiga, Jawa Tengah 50711","phone":"(0298) 328296","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-salatiga"}'),
+  ('RUTAN KELAS II B TEMANGGUNG', 'rutan-kelas-ii-b-temanggung', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kab. Temanggung","address":"Jl. Brigjen. Katamso No.1, Suronatan, Temanggung II, Kec. Temanggung, Kabupaten Temanggung, Jawa Tengah 56213","phone":"(0293) 491128","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-temanggung"}'),
+  ('RUTAN KELAS II B WONOSOBO', 'rutan-kelas-ii-b-wonosobo', '{"seed":"upt-jateng-59org","uptType":"RUTAN","city":"Kab. Wonosobo","address":"Jl. Pramuka No.1, Sumberan Barat, Wonosobo Bar., Kec. Wonosobo, Kabupaten Wonosobo, Jawa Tengah 56311","phone":"(0286) 321030","detailUrl":"https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-wonosobo"}'),
+  ('BAPAS KELAS I SEMARANG', 'bapas-kelas-i-semarang', '{"seed":"upt-jateng-59org","uptType":"BAPAS","city":"Kota Semarang","address":"Jl. Siliwangi No.508, Kembangarum, Kec. Semarang Barat, Kota Semarang, Jawa Tengah 50148","phone":"0888-4750-888","detailUrl":"https://pemasyarakatanjateng.id/satker/bapas-kelas-i-semarang"}'),
+  ('BAPAS KELAS II KLATEN', 'bapas-kelas-ii-klaten', '{"seed":"upt-jateng-59org","uptType":"BAPAS","city":"Kota Tegal","address":"Jl. Andalas, Tegalputihan, Semangkak, Kec. Klaten Tengah, Kabupaten Klaten, Jawa Tengah 57413","phone":"0812-2852-8669","detailUrl":"https://pemasyarakatanjateng.id/satker/bapas-kelas-ii-klaten"}'),
+  ('BAPAS KELAS I SURAKARTA', 'bapas-kelas-i-surakarta', '{"seed":"upt-jateng-59org","uptType":"BAPAS","city":"Kota Surakarta","address":"Jl. R. M. Said No.259, Manahan, Kec. Banjarsari, Kota Surakarta, Jawa Tengah 57139","phone":"0858-6799-8553","detailUrl":"https://pemasyarakatanjateng.id/satker/bapas-kelas-i-surakarta"}'),
+  ('BAPAS KELAS II NUSAKAMBANGAN', 'bapas-kelas-ii-nusakambangan', '{"seed":"upt-jateng-59org","uptType":"BAPAS","city":"Kab. Cilacap","address":"Nusakambangan, Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263","phone":"0895-3293-95245","detailUrl":"https://pemasyarakatanjateng.id/satker/bapas-kelas-ii-nusakambangan"}'),
+  ('BAPAS KELAS II PATI', 'bapas-kelas-ii-pati', '{"seed":"upt-jateng-59org","uptType":"BAPAS","city":"Kab. Pati","address":"Jl. P. Sudirman, Gebyaran, Sukoharjo, Kec. Margorejo, Kabupaten Pati, Jawa Tengah 59163","phone":"0295-381800","detailUrl":"https://pemasyarakatanjateng.id/satker/bapas-kelas-ii-pati"}'),
+  ('BAPAS KELAS II MAGELANG', 'bapas-kelas-ii-magelang', '{"seed":"upt-jateng-59org","uptType":"BAPAS","city":"Kota Magelang","address":"Jl. Jend. Gatot Soebroto No.18, Pakelsari, Banyurojo, Kec. Mertoyudan, Kabupaten Magelang, Jawa Tengah 56172","phone":"(0293) 362207","detailUrl":"https://pemasyarakatanjateng.id/satker/bapas-kelas-ii-magelang"}'),
+  ('BAPAS KELAS II PEKALONGAN', 'bapas-kelas-ii-pekalongan', '{"seed":"upt-jateng-59org","uptType":"BAPAS","city":"Kota Pekalongan","address":"Jl. Darma bakti No.133, Kebulen, Medono, Kec. Pekalongan Bar., Kota Pekalongan, Jawa Tengah 51112","phone":"(0285) 421949","detailUrl":"https://pemasyarakatanjateng.id/satker/bapas-kelas-ii-pekalongan"}'),
+  ('BAPAS KELAS II PURWOKERTO', 'bapas-kelas-ii-purwokerto', '{"seed":"upt-jateng-59org","uptType":"BAPAS","city":"Kab. Banyumas","address":"Jl. Pasukan Pelajar Imam No.7, Pamijen Lor, Pamijen, Sokaraja, Kabupaten Banyumas, Jawa Tengah 53181","phone":"(0281) 636608","detailUrl":"https://pemasyarakatanjateng.id/satker/bapas-kelas-ii-purwokerto"}')
+) AS v(name, slug, meta)
+WHERE NOT EXISTS (SELECT 1 FROM public.organizations o WHERE o.slug = v.slug);
+SELECT indicate_private.org_ensure_permissions(id) FROM public.organizations WHERE customer_metadata->>'seed' = 'upt-jateng-59org';
+INSERT INTO public.subscriptions(organization_id, plan, status, period_starts_at, period_ends_at, version, created_at, updated_at)
+SELECT o.id, 'pro', 'active', now(), now() + interval '30 days', 1, now(), now()
+FROM public.organizations o
+WHERE o.customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND NOT EXISTS (SELECT 1 FROM public.subscriptions s WHERE s.organization_id = o.id);
+INSERT INTO public.publishers(organization_id, id, name, type, verification_status, attribution_label, contacts, evidence_reference, submitted_by, submitted_at, verified_by, verified_at, rejection_reason, status, version, created_at, updated_at)
+SELECT o.id, gen_random_uuid(), v.name, 'correctional_institution', 'verified', v.name,
+  jsonb_build_object('address', v.address, 'phone', nullif(v.phone, ''), 'city', v.city, 'detailUrl', v.evidence),
+  v.evidence, NULL, NULL, NULL, now(), NULL, 'active', 1, now(), now()
+FROM public.organizations o
+JOIN (VALUES
+  ('lapas-kelas-i-batu-nusakambangan', 'LAPAS KELAS I BATU NUSAKAMBANGAN', 'Jl. Candi, Pulau Nusa Kambangan, Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263', '(0282) 5255270', 'Kab. Cilacap', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-i-batu-nusakambangan'),
+  ('lapas-kelas-i-semarang', 'LAPAS KELAS I SEMARANG', 'Jl. Raya Semarang-Boja KM.4, Wates, Kec. Ngaliyan, Kota Semarang, Jawa Tengah 50188', '(024) 76433499', 'Kota Semarang', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-i-semarang'),
+  ('lapas-kelas-ii-a-ambarawa', 'LAPAS KELAS II A AMBARAWA', 'Jl. Benteng Dalam No.1, Bugisari, Lodoyong, Kec. Ambarawa, Kabupaten Semarang, Jawa Tengah 50612', '(0298) 591017', 'Kota Semarang', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-ambarawa'),
+  ('lapas-kelas-ii-a-besi-nusakambangan', 'LAPAS KELAS II A BESI NUSAKAMBANGAN', 'Jl. Lapas Nusakambangan, Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263', '(0282) 5255264', 'Kab. Cilacap', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-besi-nusakambangan'),
+  ('lapas-khusus-kelas-ii-a-karanganyar-nusakambangan', 'LAPAS KHUSUS KELAS II A KARANGANYAR NUSAKAMBANGAN', 'Unnamed Road, Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263', '089517900220', 'Kab. Cilacap', 'https://pemasyarakatanjateng.id/satker/lapas-khusus-kelas-ii-a-karanganyar-nusakambangan'),
+  ('lapas-kelas-ii-a-kembang-kuning-nusakambangan', 'LAPAS KELAS II A KEMBANG KUNING NUSAKAMBANGAN', 'Unnamed Road, Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263', '(0282) 5255355', 'Kab. Cilacap', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-kembang-kuning-nusakambangan'),
+  ('lapas-kelas-ii-a-gladakan-nusakambangan', 'LAPAS KELAS II A GLADAKAN NUSAKAMBANGAN', 'Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263', '(028) 25102021', 'Kab. Cilacap', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-gladakan-nusakambangan'),
+  ('lapas-kelas-ii-a-kumbang-nusakambangan', 'LAPAS KELAS II A KUMBANG NUSAKAMBANGAN', 'Tambakreja, Kec. Cilacap Selatan, Kabupaten Cilacap, Jawa Tengah', '', 'Kab. Cilacap', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-kumbang-nusakambangan'),
+  ('lapas-kelas-ii-a-ngaseman-nusakambangan', 'LAPAS KELAS II A NGASEMAN NUSAKAMBANGAN', 'Nusakambangan, Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263', '0895-6284-09080', 'Kab. Cilacap', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-ngaseman-nusakambangan'),
+  ('lapas-kelas-ii-a-kendal', 'LAPAS KELAS II A KENDAL', 'Karanggeneng, Pegulon, Kec. Kendal, Kabupaten Kendal, Jawa Tengah 51313', '(0294) 6100004', 'Kab. Kendal', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-kendal'),
+  ('lapas-kelas-ii-a-magelang', 'LAPAS KELAS II A MAGELANG', 'Jl. Sutopo No.2, Cacaban, Kec. Magelang Tengah, Kota Magelang, Jawa Tengah 56121', '(0293) 362080', 'Kota Magelang', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-magelang'),
+  ('lapas-narkotika-kelas-ii-a-nusakambangan', 'LAPAS NARKOTIKA KELAS II A NUSAKAMBANGAN', 'Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263', '(0282) 5255259', 'Kab. Cilacap', 'https://pemasyarakatanjateng.id/satker/lapas-narkotika-kelas-ii-a-nusakambangan'),
+  ('lapas-narkotika-kelas-ii-b-purwokerto', 'LAPAS NARKOTIKA KELAS II B PURWOKERTO', 'Jl. Jend. Sudirman No.104, Pereng, Sokanegara, Kec. Purwokerto Tim., Kabupaten Banyumas, Jawa Tengah 53141', '0895-4161-14108', 'Kab. Banyumas', 'https://pemasyarakatanjateng.id/satker/lapas-narkotika-kelas-ii-b-purwokerto'),
+  ('lapas-kelas-ii-a-pasir-putih-nusakambangan', 'LAPAS KELAS II A PASIR PUTIH NUSAKAMBANGAN', 'Tambakreja, Kec. Cilacap Selatan, Kabupaten Cilacap, Jawa Tengah', '0882-3923-2505', 'Kab. Cilacap', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-pasir-putih-nusakambangan'),
+  ('lapas-kelas-ii-a-pekalongan', 'LAPAS KELAS II A PEKALONGAN', 'Jl. Wr. Supratman No.106, Panjang Wetan, Kec. Pekalongan Utara, Kota Pekalongan, Jawa Tengah 51141', '(0285) 422291', 'Kota Pekalongan', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-pekalongan'),
+  ('lapas-perempuan-kelas-ii-a-semarang', 'LAPAS PEREMPUAN KELAS II A SEMARANG', 'Jl. Mgr Sugiyopranoto No.59, Pendrikan Kidul, Kec. Semarang Tengah, Kota Semarang, Jawa Tengah 50131', '(024) 3543060', 'Kota Semarang', 'https://pemasyarakatanjateng.id/satker/lapas-perempuan-kelas-ii-a-semarang'),
+  ('lapas-kelas-ii-a-permisan-nusakambangan', 'LAPAS KELAS II A PERMISAN NUSAKAMBANGAN', 'Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263', '(0282) 5255353', 'Kab. Cilacap', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-permisan-nusakambangan'),
+  ('lapas-kelas-ii-a-purwokerto', 'LAPAS KELAS II A PURWOKERTO', 'Pamijen Lor, Pamijen, Kec. Sokaraja, Kabupaten Banyumas, Jawa Tengah 53181', '(0281) 6512955', 'Kab. Banyumas', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-purwokerto'),
+  ('lapas-kelas-ii-a-sragen', 'LAPAS KELAS II A SRAGEN', 'Jl. Sukowati, Dusun Kebayanan Widodo 2, Sragen Wetan, Kec. Sragen, Kabupaten Sragen, Jawa Tengah 57214', '0271 891230', 'Kab. Sragen', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-a-sragen'),
+  ('lapas-kelas-ii-b-nirbaya-nusakambangan', 'LAPAS KELAS II B NIRBAYA NUSAKAMBANGAN', 'Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263', '0856-4975-4129', 'Kab. Cilacap', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-nirbaya-nusakambangan'),
+  ('lapas-kelas-ii-b-batang', 'LAPAS KELAS II B BATANG', 'Jalan Raya Batang KM 4.1, Rowobelang, Tembelang, Rowobelang, Kec. Batang, Kabupaten Batang, Jawa Tengah 51216', '(0285) 4494300', 'Kab. Batang', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-batang'),
+  ('lapas-kelas-ii-b-brebes', 'LAPAS KELAS II B BREBES', 'Jl. Slamet No.1, Kleben, Brebes, Kec. Brebes, Kabupaten Brebes, Jawa Tengah 52212', '0283 617090', 'Kab. Brebes', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-brebes'),
+  ('lapas-kelas-ii-b-cilacap', 'LAPAS KELAS II B CILACAP', 'Jl. Mataram 1, Cilacap, Sidanegara, Kec. Cilacap Tengah, Kabupaten Cilacap, Jawa Tengah 53212', '(0282) 534037', 'Kab. Cilacap', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-cilacap'),
+  ('lapas-kelas-ii-b-klaten', 'LAPAS KELAS II B KLATEN', 'Jl. Pemuda No.206, Pondok, Klaten, Kec. Klaten Tengah, Kabupaten Klaten, Jawa Tengah 57411', '(0272) 322019', 'Kab. Klaten', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-klaten'),
+  ('lapas-kelas-ii-b-pati', 'LAPAS KELAS II B PATI', 'Jl. Akpb Agil Kusumadya No.19, Ngarus, Kec. Pati, Kabupaten Pati, Jawa Tengah 59112', '(0295) 381207', 'Kab. Pati', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-pati'),
+  ('lapas-kelas-ii-b-purwodadi', 'LAPAS KELAS II B PURWODADI', 'Jl. R.Suprapto No.54, Jetis Timur, Purwodadi, Kec. Purwodadi, Kabupaten Grobogan, Jawa Tengah 58111', '(0292) 421188', 'Kab. Grobogan', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-purwodadi'),
+  ('lapas-kelas-ii-b-slawi', 'LAPAS KELAS II B SLAWI', 'Tegalandong, Kabupaten Tegal, Jawa Tengah', '(0283) 6190679', 'Kota Tegal', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-slawi'),
+  ('lapas-kelas-ii-b-tegal', 'LAPAS KELAS II B TEGAL', 'Jl. Yos Sudarso No.2, Tegalsari, Kec. Tegal Bar., Kota Tegal, Jawa Tengah 52111', '(0283) 351040', 'Kota Tegal', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-tegal'),
+  ('lapas-kelas-ii-b-wonogiri', 'LAPAS KELAS II B WONOGIRI', 'Donoharjo, Wuryorejo, Kec. Wonogiri, Kabupaten Wonogiri, Jawa Tengah 57614', '(0273) 321010', 'Kab. Wonogiri', 'https://pemasyarakatanjateng.id/satker/lapas-kelas-ii-b-wonogiri'),
+  ('lapas-pemuda-kelas-ii-b-plantungan', 'LAPAS PEMUDA KELAS II B PLANTUNGAN', 'Wonokambang, Tirtomulyo, Kec. Plantungan, Kabupaten Kendal, Jawa Tengah 51362', '0896-9190-1680', 'Jawa Tengah', 'https://pemasyarakatanjateng.id/satker/lapas-pemuda-kelas-ii-b-plantungan'),
+  ('lapas-terbuka-kelas-ii-b-kendal', 'LAPAS TERBUKA KELAS II B KENDAL', 'Sopoyono, Wonosari, Kec. Patebon, Kabupaten Kendal, Jawa Tengah 51351', '(0294) 579229', 'Kab. Kendal', 'https://pemasyarakatanjateng.id/satker/lapas-terbuka-kelas-ii-b-kendal'),
+  ('lapas-terbuka-kelas-ii-b-nusakambangan', 'LAPAS TERBUKA KELAS II B NUSAKAMBANGAN', 'Unnamed Road, Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263', '0856-4975-4129', 'Kab. Cilacap', 'https://pemasyarakatanjateng.id/satker/lapas-terbuka-kelas-ii-b-nusakambangan'),
+  ('lpka-kelas-i-kutoarjo', 'LPKA KELAS I KUTOARJO', 'Jl. Pangeran Diponegoro No.36 A, Kutoarjo, Kec. Kutoarjo, Kabupaten Purworejo, Jawa Tengah 54214', '(0275) 641011', 'Jawa Tengah', 'https://pemasyarakatanjateng.id/satker/lpka-kelas-i-kutoarjo'),
+  ('rutan-kelas-i-semarang', 'RUTAN KELAS I SEMARANG', 'Jalan Dokter Cipto No.62, Kebonagung, Kec. Semarang Tim., Kota Semarang, Jawa Tengah 50123', '0821-4568-096', 'Kota Semarang', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-i-semarang'),
+  ('rutan-kelas-i-surakarta', 'RUTAN KELAS I SURAKARTA', 'Jl. Brigjen Slamet Riyadi No.18, Kp. Baru, Kec. Ps. Kliwon, Kota Surakarta, Jawa Tengah 57111', '0271 642220', 'Kota Surakarta', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-i-surakarta'),
+  ('rutan-kelas-ii-a-pekalongan', 'RUTAN KELAS II A PEKALONGAN', 'Panjang Wetan, Pekalongan, Kota Pekalongan, Jawa Tengah 51141', '0822-2339-9433', 'Kota Pekalongan', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-a-pekalongan'),
+  ('rutan-kelas-ii-b-banjarnegara', 'RUTAN KELAS II B BANJARNEGARA', 'Jl. Pemuda No.81, Kutabanjarnegara, Kec. Banjarnegara, Kab. Banjarnegara, Jawa Tengah 53418', '(0286) 591014', 'Jawa Tengah', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-banjarnegara'),
+  ('rutan-kelas-ii-b-banyumas', 'RUTAN KELAS II B BANYUMAS', 'Banyumas, Sudagaran, Kec. Banyumas, Kabupaten Banyumas, Jawa Tengah 53192', '0281 796014', 'Kab. Banyumas', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-banyumas'),
+  ('rutan-kelas-ii-b-blora', 'RUTAN KELAS II B BLORA', 'Jl. Abu Umar No.9, Kauman, Kunden, Kec. Blora, Kabupaten Blora, Jawa Tengah 58212', '(0296) 531022', 'Kab. Blora', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-blora'),
+  ('rutan-kelas-ii-b-boyolali', 'RUTAN KELAS II B BOYOLALI', 'MASAHAN, Mojosongo, Kec. Mojosongo, Kabupaten Boyolali, Jawa Tengah 57322', '0823-2572-3552', 'Kab. Boyolali', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-boyolali'),
+  ('rutan-kelas-ii-b-demak', 'RUTAN KELAS II B DEMAK', 'Jl. Sultan Fatah, Kauman, Bintoro, Kec. Demak, Kabupaten Demak, Jawa Tengah 59511', '(0291) 685128', 'Kab. Demak', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-demak'),
+  ('rutan-kelas-ii-b-jepara', 'RUTAN KELAS II B JEPARA', 'Pengkol IV, Pengkol, Kec. Jepara, Kabupaten Jepara, Jawa Tengah 59415', '0291591008', 'Kab. Jepara', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-jepara'),
+  ('rutan-kelas-ii-b-kebumen', 'RUTAN KELAS II B KEBUMEN', 'Jl. Pahlawan No.163, Keposan, Kebumen, Kec. Kebumen, Kabupaten Kebumen, Jawa Tengah 54311', '(0287) 381622', 'Kab. Kebumen', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-kebumen'),
+  ('rutan-kelas-ii-b-kudus', 'RUTAN KELAS II B KUDUS', 'Jl. Sunan Kudus No.70, Kudus, Demaan, Kec. Kota Kudus, Kabupaten Kudus, Jawa Tengah 59313', '(0291) 437581', 'Kab. Kudus', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-kudus'),
+  ('rutan-kelas-ii-b-pemalang', 'RUTAN KELAS II B PEMALANG', 'Jl. Muchtar No.3, Kebondalem, Kec. Pemalang, Kabupaten Pemalang, Jawa Tengah 52312', '(0284) 321036', 'Kab. Pemalang', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-pemalang'),
+  ('rutan-kelas-ii-b-purbalingga', 'RUTAN KELAS II B PURBALINGGA', 'Jl. Letjen Suprapto No.6, Purbalingga, Purbalingga Lor, Kec. Purbalingga, Kabupaten Purbalingga, Jawa Tengah 53311', '(0281) 891026', 'Kab. Purbalingga', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-purbalingga'),
+  ('rutan-kelas-ii-b-purworejo', 'RUTAN KELAS II B PURWOREJO', 'Jl. Mayjen Sutoyo No.61, Rw. IV, Sindurjan, Kec. Purworejo, Kabupaten Purworejo, Jawa Tengah 54113', '(0275) 2973466', 'Kab. Purworejo', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-purworejo'),
+  ('rutan-kelas-ii-b-rembang', 'RUTAN KELAS II B REMBANG', 'Pandean, Kec. Rembang, Kabupaten Rembang, Jawa Tengah 59211', '(0295) 691023', 'Kab. Rembang', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-rembang'),
+  ('rutan-kelas-ii-b-salatiga', 'RUTAN KELAS II B SALATIGA', 'Jl. Yos Sudarso No.4, Salatiga, Kec. Sidorejo, Kota Salatiga, Jawa Tengah 50711', '(0298) 328296', 'Kota Salatiga', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-salatiga'),
+  ('rutan-kelas-ii-b-temanggung', 'RUTAN KELAS II B TEMANGGUNG', 'Jl. Brigjen. Katamso No.1, Suronatan, Temanggung II, Kec. Temanggung, Kabupaten Temanggung, Jawa Tengah 56213', '(0293) 491128', 'Kab. Temanggung', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-temanggung'),
+  ('rutan-kelas-ii-b-wonosobo', 'RUTAN KELAS II B WONOSOBO', 'Jl. Pramuka No.1, Sumberan Barat, Wonosobo Bar., Kec. Wonosobo, Kabupaten Wonosobo, Jawa Tengah 56311', '(0286) 321030', 'Kab. Wonosobo', 'https://pemasyarakatanjateng.id/satker/rutan-kelas-ii-b-wonosobo'),
+  ('bapas-kelas-i-semarang', 'BAPAS KELAS I SEMARANG', 'Jl. Siliwangi No.508, Kembangarum, Kec. Semarang Barat, Kota Semarang, Jawa Tengah 50148', '0888-4750-888', 'Kota Semarang', 'https://pemasyarakatanjateng.id/satker/bapas-kelas-i-semarang'),
+  ('bapas-kelas-ii-klaten', 'BAPAS KELAS II KLATEN', 'Jl. Andalas, Tegalputihan, Semangkak, Kec. Klaten Tengah, Kabupaten Klaten, Jawa Tengah 57413', '0812-2852-8669', 'Kota Tegal', 'https://pemasyarakatanjateng.id/satker/bapas-kelas-ii-klaten'),
+  ('bapas-kelas-i-surakarta', 'BAPAS KELAS I SURAKARTA', 'Jl. R. M. Said No.259, Manahan, Kec. Banjarsari, Kota Surakarta, Jawa Tengah 57139', '0858-6799-8553', 'Kota Surakarta', 'https://pemasyarakatanjateng.id/satker/bapas-kelas-i-surakarta'),
+  ('bapas-kelas-ii-nusakambangan', 'BAPAS KELAS II NUSAKAMBANGAN', 'Nusakambangan, Tambakreja, Kec. Cilacap Sel., Kabupaten Cilacap, Jawa Tengah 53263', '0895-3293-95245', 'Kab. Cilacap', 'https://pemasyarakatanjateng.id/satker/bapas-kelas-ii-nusakambangan'),
+  ('bapas-kelas-ii-pati', 'BAPAS KELAS II PATI', 'Jl. P. Sudirman, Gebyaran, Sukoharjo, Kec. Margorejo, Kabupaten Pati, Jawa Tengah 59163', '0295-381800', 'Kab. Pati', 'https://pemasyarakatanjateng.id/satker/bapas-kelas-ii-pati'),
+  ('bapas-kelas-ii-magelang', 'BAPAS KELAS II MAGELANG', 'Jl. Jend. Gatot Soebroto No.18, Pakelsari, Banyurojo, Kec. Mertoyudan, Kabupaten Magelang, Jawa Tengah 56172', '(0293) 362207', 'Kota Magelang', 'https://pemasyarakatanjateng.id/satker/bapas-kelas-ii-magelang'),
+  ('bapas-kelas-ii-pekalongan', 'BAPAS KELAS II PEKALONGAN', 'Jl. Darma bakti No.133, Kebulen, Medono, Kec. Pekalongan Bar., Kota Pekalongan, Jawa Tengah 51112', '(0285) 421949', 'Kota Pekalongan', 'https://pemasyarakatanjateng.id/satker/bapas-kelas-ii-pekalongan'),
+  ('bapas-kelas-ii-purwokerto', 'BAPAS KELAS II PURWOKERTO', 'Jl. Pasukan Pelajar Imam No.7, Pamijen Lor, Pamijen, Sokaraja, Kabupaten Banyumas, Jawa Tengah 53181', '(0281) 636608', 'Kab. Banyumas', 'https://pemasyarakatanjateng.id/satker/bapas-kelas-ii-purwokerto')
+) AS v(slug, name, address, phone, city, evidence)
+ON o.slug = v.slug
+WHERE o.customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND NOT EXISTS (SELECT 1 FROM public.publishers p WHERE p.organization_id = o.id AND p.name = v.name);
+INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+SELECT o.id, gen_random_uuid(), 'system', 'seed:upt-jateng-59org', 'worker', 'customer.seed', 'organization', o.id::text, 'succeeded',
+  ARRAY['name','slug','status','subscription','publisher'],
+  jsonb_build_object('name', o.name, 'slug', o.slug, 'status', 'active', 'subscription', 'pro/active', 'publisher', 'correctional_institution/verified'),
+  'seed:upt-jateng-59org', now()
+FROM public.organizations o
+WHERE o.customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND NOT EXISTS (SELECT 1 FROM public.audit_logs a WHERE a.organization_id = o.id AND a.action = 'customer.seed' AND a.request_id = 'seed:upt-jateng-59org');
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (94, 'seed_upt_jateng_59org', 'sha256:53272ba01c0567c03fd42c0aab4dee64a7d2a78a97e3f3f888e9aca9ebcdcd17');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('36006ad8ca4eabce4a3b90831f5bb1d7db8ab32b478070ae2539f46847358580', 1788792000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907180000_fix_upt_city_ambarawa_klaten
+-- ----------------------------------------------------------------------
+-- Koreksi kota dua UPT yang janggal di direktori resmi
+-- (dibiarkan verbatim saat seed agar setia pada sumber):
+-- Ambarawa berada di Kabupaten Semarang (bukan Kota Semarang);
+-- Bapas Klaten beralamat di Kabupaten Klaten (bukan Kota Tegal).
+-- Idempoten: UPDATE bersyarat nilai lama.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+UPDATE public.organizations
+SET customer_metadata = jsonb_set(customer_metadata, '{city}', '"Kab. Semarang"'), updated_at = now()
+WHERE slug = 'lapas-kelas-ii-a-ambarawa'
+  AND customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND customer_metadata->>'city' = 'Kota Semarang';
+UPDATE public.publishers p
+SET contacts = jsonb_set(p.contacts, '{city}', '"Kab. Semarang"'), updated_at = now()
+FROM public.organizations o
+WHERE o.slug = 'lapas-kelas-ii-a-ambarawa'
+  AND o.customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND p.organization_id = o.id
+  AND p.contacts->>'city' = 'Kota Semarang';
+UPDATE public.organizations
+SET customer_metadata = jsonb_set(customer_metadata, '{city}', '"Kab. Klaten"'), updated_at = now()
+WHERE slug = 'bapas-kelas-ii-klaten'
+  AND customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND customer_metadata->>'city' = 'Kota Tegal';
+UPDATE public.publishers p
+SET contacts = jsonb_set(p.contacts, '{city}', '"Kab. Klaten"'), updated_at = now()
+FROM public.organizations o
+WHERE o.slug = 'bapas-kelas-ii-klaten'
+  AND o.customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND p.organization_id = o.id
+  AND p.contacts->>'city' = 'Kota Tegal';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (95, 'fix_upt_city_ambarawa_klaten', 'sha256:8c3f2f088d2a32b50be99cfddb9765be28dfd650db1fbc417e00cf3f55f89b62');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ace527a8a731e1b55e643694bb09d1ab27bda4f78f5c2aefb3e63a538546c961', 1788793000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907190000_publisher_humas_attribution
+-- ----------------------------------------------------------------------
+-- Atribusi display gaya pers: prefix "Humas " + nama Title Case
+-- ("Humas Lapas Kelas I Semarang"). Kolom `name` tetap nama resmi kapital.
+-- Akronim dijaga (LPKA tetap kapital). Idempoten: hanya baris yang berbeda.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+UPDATE public.publishers p
+SET attribution_label = v.attribution, updated_at = now()
+FROM public.organizations o
+JOIN (VALUES
+  ('lapas-kelas-i-batu-nusakambangan', 'Humas Lapas Kelas I Batu Nusakambangan'),
+  ('lapas-kelas-i-semarang', 'Humas Lapas Kelas I Semarang'),
+  ('lapas-kelas-ii-a-ambarawa', 'Humas Lapas Kelas II A Ambarawa'),
+  ('lapas-kelas-ii-a-besi-nusakambangan', 'Humas Lapas Kelas II A Besi Nusakambangan'),
+  ('lapas-khusus-kelas-ii-a-karanganyar-nusakambangan', 'Humas Lapas Khusus Kelas II A Karanganyar Nusakambangan'),
+  ('lapas-kelas-ii-a-kembang-kuning-nusakambangan', 'Humas Lapas Kelas II A Kembang Kuning Nusakambangan'),
+  ('lapas-kelas-ii-a-gladakan-nusakambangan', 'Humas Lapas Kelas II A Gladakan Nusakambangan'),
+  ('lapas-kelas-ii-a-kumbang-nusakambangan', 'Humas Lapas Kelas II A Kumbang Nusakambangan'),
+  ('lapas-kelas-ii-a-ngaseman-nusakambangan', 'Humas Lapas Kelas II A Ngaseman Nusakambangan'),
+  ('lapas-kelas-ii-a-kendal', 'Humas Lapas Kelas II A Kendal'),
+  ('lapas-kelas-ii-a-magelang', 'Humas Lapas Kelas II A Magelang'),
+  ('lapas-narkotika-kelas-ii-a-nusakambangan', 'Humas Lapas Narkotika Kelas II A Nusakambangan'),
+  ('lapas-narkotika-kelas-ii-b-purwokerto', 'Humas Lapas Narkotika Kelas II B Purwokerto'),
+  ('lapas-kelas-ii-a-pasir-putih-nusakambangan', 'Humas Lapas Kelas II A Pasir Putih Nusakambangan'),
+  ('lapas-kelas-ii-a-pekalongan', 'Humas Lapas Kelas II A Pekalongan'),
+  ('lapas-perempuan-kelas-ii-a-semarang', 'Humas Lapas Perempuan Kelas II A Semarang'),
+  ('lapas-kelas-ii-a-permisan-nusakambangan', 'Humas Lapas Kelas II A Permisan Nusakambangan'),
+  ('lapas-kelas-ii-a-purwokerto', 'Humas Lapas Kelas II A Purwokerto'),
+  ('lapas-kelas-ii-a-sragen', 'Humas Lapas Kelas II A Sragen'),
+  ('lapas-kelas-ii-b-nirbaya-nusakambangan', 'Humas Lapas Kelas II B Nirbaya Nusakambangan'),
+  ('lapas-kelas-ii-b-batang', 'Humas Lapas Kelas II B Batang'),
+  ('lapas-kelas-ii-b-brebes', 'Humas Lapas Kelas II B Brebes'),
+  ('lapas-kelas-ii-b-cilacap', 'Humas Lapas Kelas II B Cilacap'),
+  ('lapas-kelas-ii-b-klaten', 'Humas Lapas Kelas II B Klaten'),
+  ('lapas-kelas-ii-b-pati', 'Humas Lapas Kelas II B Pati'),
+  ('lapas-kelas-ii-b-purwodadi', 'Humas Lapas Kelas II B Purwodadi'),
+  ('lapas-kelas-ii-b-slawi', 'Humas Lapas Kelas II B Slawi'),
+  ('lapas-kelas-ii-b-tegal', 'Humas Lapas Kelas II B Tegal'),
+  ('lapas-kelas-ii-b-wonogiri', 'Humas Lapas Kelas II B Wonogiri'),
+  ('lapas-pemuda-kelas-ii-b-plantungan', 'Humas Lapas Pemuda Kelas II B Plantungan'),
+  ('lapas-terbuka-kelas-ii-b-kendal', 'Humas Lapas Terbuka Kelas II B Kendal'),
+  ('lapas-terbuka-kelas-ii-b-nusakambangan', 'Humas Lapas Terbuka Kelas II B Nusakambangan'),
+  ('lpka-kelas-i-kutoarjo', 'Humas LPKA Kelas I Kutoarjo'),
+  ('rutan-kelas-i-semarang', 'Humas Rutan Kelas I Semarang'),
+  ('rutan-kelas-i-surakarta', 'Humas Rutan Kelas I Surakarta'),
+  ('rutan-kelas-ii-a-pekalongan', 'Humas Rutan Kelas II A Pekalongan'),
+  ('rutan-kelas-ii-b-banjarnegara', 'Humas Rutan Kelas II B Banjarnegara'),
+  ('rutan-kelas-ii-b-banyumas', 'Humas Rutan Kelas II B Banyumas'),
+  ('rutan-kelas-ii-b-blora', 'Humas Rutan Kelas II B Blora'),
+  ('rutan-kelas-ii-b-boyolali', 'Humas Rutan Kelas II B Boyolali'),
+  ('rutan-kelas-ii-b-demak', 'Humas Rutan Kelas II B Demak'),
+  ('rutan-kelas-ii-b-jepara', 'Humas Rutan Kelas II B Jepara'),
+  ('rutan-kelas-ii-b-kebumen', 'Humas Rutan Kelas II B Kebumen'),
+  ('rutan-kelas-ii-b-kudus', 'Humas Rutan Kelas II B Kudus'),
+  ('rutan-kelas-ii-b-pemalang', 'Humas Rutan Kelas II B Pemalang'),
+  ('rutan-kelas-ii-b-purbalingga', 'Humas Rutan Kelas II B Purbalingga'),
+  ('rutan-kelas-ii-b-purworejo', 'Humas Rutan Kelas II B Purworejo'),
+  ('rutan-kelas-ii-b-rembang', 'Humas Rutan Kelas II B Rembang'),
+  ('rutan-kelas-ii-b-salatiga', 'Humas Rutan Kelas II B Salatiga'),
+  ('rutan-kelas-ii-b-temanggung', 'Humas Rutan Kelas II B Temanggung'),
+  ('rutan-kelas-ii-b-wonosobo', 'Humas Rutan Kelas II B Wonosobo'),
+  ('bapas-kelas-i-semarang', 'Humas Bapas Kelas I Semarang'),
+  ('bapas-kelas-ii-klaten', 'Humas Bapas Kelas II Klaten'),
+  ('bapas-kelas-i-surakarta', 'Humas Bapas Kelas I Surakarta'),
+  ('bapas-kelas-ii-nusakambangan', 'Humas Bapas Kelas II Nusakambangan'),
+  ('bapas-kelas-ii-pati', 'Humas Bapas Kelas II Pati'),
+  ('bapas-kelas-ii-magelang', 'Humas Bapas Kelas II Magelang'),
+  ('bapas-kelas-ii-pekalongan', 'Humas Bapas Kelas II Pekalongan'),
+  ('bapas-kelas-ii-purwokerto', 'Humas Bapas Kelas II Purwokerto')
+) AS v(slug, attribution)
+ON o.slug = v.slug
+WHERE o.customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND p.organization_id = o.id
+  AND p.attribution_label IS DISTINCT FROM v.attribution;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (96, 'publisher_humas_attribution', 'sha256:ecd976b352f3a12154fabf007232f3848dd5b6e788cba2a9be371cf32701399f');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5c957edf0165666206229605ae4fc49059cf1b0cbca85d42044d22564b9273bd', 1788794000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907200000_retire_packages_manual_activation
+-- ----------------------------------------------------------------------
+-- Pensiun paket: aktivasi manual tanpa tier, harga, order, atau periode.
+--
+-- Model baru: subscription hanya status (active/suspended/cancelled) tanpa
+-- plan dan tanpa rentang waktu; org aktif berjalan terus. Pembelian lewat
+-- kontak owner; owner mengaktifkan via UI superadmin. Invite member bukan
+-- bagian billing dan dipertahankan (tanpa cek kuota).
+--
+-- Tanpa migrasi ini, sweep malam hari akan men-suspend 59 org pro/active
+-- tepat saat period 30 hari berakhir. Urutan penting: fungsi dulu (agar
+-- tidak ada referensi ke kolom/tipe yang di-drop), lalu tabel, kolom, tipe.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+SELECT cron.unschedule('indicate-subscription-sweep');
+DROP FUNCTION IF EXISTS indicate_private.subscription_sweep_expired();
+DROP FUNCTION IF EXISTS indicate_private.billing_order_create(uuid, text, uuid, uuid, text, timestamp with time zone);
+DROP FUNCTION IF EXISTS indicate_private.billing_order_create(uuid, text, uuid, uuid, timestamp with time zone);
+DROP FUNCTION IF EXISTS indicate_private.billing_order_submit_proof(uuid, text, uuid, text, timestamp with time zone);
+DROP FUNCTION IF EXISTS indicate_private.billing_order_decide(uuid, text, uuid, boolean, uuid, timestamp with time zone);
+DROP FUNCTION IF EXISTS indicate_private.billing_order_list_mine(uuid);
+DROP FUNCTION IF EXISTS indicate_private.billing_order_list_pending(uuid);
+DROP FUNCTION IF EXISTS indicate_private.billing_order_list_active(uuid);
+DROP FUNCTION IF EXISTS indicate_private.billing_order_refund(uuid, text, uuid, timestamp with time zone);
+DROP FUNCTION IF EXISTS indicate_private.billing_lead_create(text, text, text, timestamp with time zone, text, text);
+DROP FUNCTION IF EXISTS indicate_private.billing_lead_list(uuid);
+DROP FUNCTION IF EXISTS indicate_private.invoice_list(uuid);
+CREATE OR REPLACE FUNCTION indicate_private.invite_redeem(p_actor_id uuid, p_request_id text, p_token_hash text, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_inv public.org_invitations%ROWTYPE; v_email text;
+BEGIN
+  SELECT email INTO v_email FROM public.users WHERE id = p_actor_id AND status = 'active';
+  IF v_email IS NULL THEN RAISE EXCEPTION 'active user required' USING ERRCODE = '42501'; END IF;
+  SELECT * INTO v_inv FROM public.org_invitations WHERE token_hash = p_token_hash FOR UPDATE;
+  IF v_inv.id IS NULL OR v_inv.accepted_at IS NOT NULL OR v_inv.expires_at <= p_now THEN
+    RAISE EXCEPTION 'invitation invalid' USING ERRCODE = '42501';
+  END IF;
+  IF lower(v_email) <> lower(v_inv.email) THEN
+    RAISE EXCEPTION 'invitation invalid' USING ERRCODE = '42501';
+  END IF;
+  INSERT INTO public.memberships(organization_id, user_id, role_id, status, version, created_at, updated_at)
+  VALUES (v_inv.org_id, p_actor_id, v_inv.role_id, 'active', 1, p_now, p_now)
+  ON CONFLICT (organization_id, user_id) DO UPDATE SET role_id = EXCLUDED.role_id, status = 'active', version = public.memberships.version + 1, updated_at = EXCLUDED.updated_at;
+  UPDATE public.org_invitations SET accepted_at = p_now, updated_at = p_now WHERE id = v_inv.id;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (v_inv.org_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'invite.redeem', 'membership', p_actor_id::text, 'succeeded', ARRAY['roleId','status'], jsonb_build_object('roleId', v_inv.role_id), p_request_id, p_now);
+  RETURN v_inv.org_id;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.subscription_access_state(p_organization_id uuid)
+ RETURNS text
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  SELECT CASE
+    WHEN indicate_private.is_platform_organization(p_organization_id) THEN 'platform'
+    WHEN s.organization_id IS NULL THEN 'none'
+    WHEN s.status = 'cancelled' THEN 'cancelled'
+    WHEN s.status = 'suspended' THEN 'suspended'
+    ELSE 'active'
+  END
+  FROM (SELECT p_organization_id AS organization_id) AS input
+  LEFT JOIN public.subscriptions AS s ON s.organization_id = input.organization_id
+$function$;
+DROP FUNCTION IF EXISTS indicate_private.subscription_update(uuid, text, uuid, integer, text, subscription_status, timestamp with time zone, timestamp with time zone, timestamp with time zone);
+CREATE FUNCTION indicate_private.subscription_update(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_expected_version integer, p_status subscription_status, p_now timestamp with time zone)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  IF p_expected_version IS NULL THEN
+    INSERT INTO public.subscriptions(organization_id, status, version, created_at, updated_at)
+    VALUES (p_organization_id, p_status, 1, p_now, p_now)
+    ON CONFLICT (organization_id) DO NOTHING;
+    IF NOT FOUND THEN RETURN false; END IF;
+  ELSE
+    UPDATE public.subscriptions SET status = p_status, version = version + 1, updated_at = p_now
+    WHERE organization_id = p_organization_id AND version = p_expected_version;
+    IF NOT FOUND THEN RETURN false; END IF;
+  END IF;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'subscription.update', 'subscription', p_organization_id::text, 'succeeded', ARRAY['status'], jsonb_build_object('status', p_status), p_request_id, p_now);
+  RETURN true;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.subscription_update(uuid, text, uuid, integer, subscription_status, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.subscription_update(uuid, text, uuid, integer, subscription_status, timestamptz) TO indicate_runtime;
+DROP FUNCTION IF EXISTS indicate_private.customer_create(uuid, text, uuid, text, text, jsonb, jsonb, timestamp with time zone);
+CREATE FUNCTION indicate_private.customer_create(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_name text, p_slug text, p_metadata jsonb, p_status subscription_status, p_now timestamp with time zone)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  INSERT INTO public.organizations(id, name, slug, status, customer_metadata, version, created_at, updated_at)
+  VALUES (p_organization_id, p_name, p_slug, 'active', p_metadata, 1, p_now, p_now);
+  PERFORM indicate_private.org_ensure_permissions(p_organization_id);
+  INSERT INTO public.subscriptions(organization_id, status, version, created_at, updated_at)
+  VALUES (p_organization_id, p_status, 1, p_now, p_now);
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'customer.create', 'organization', p_organization_id::text, 'succeeded', ARRAY['name','slug','status'], jsonb_build_object('name', p_name, 'slug', p_slug, 'status', 'active'), p_request_id, p_now);
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.customer_create(uuid, text, uuid, text, text, jsonb, subscription_status, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.customer_create(uuid, text, uuid, text, text, jsonb, subscription_status, timestamptz) TO indicate_runtime;
+DROP FUNCTION IF EXISTS indicate_private.customer_list(uuid);
+CREATE FUNCTION indicate_private.customer_list(p_actor_id uuid)
+ RETURNS TABLE(id uuid, name text, slug text, status record_status, customer_metadata jsonb, version integer, created_at timestamp with time zone, updated_at timestamp with time zone, subscription_status subscription_status, subscription_version integer, subscription_created_at timestamp with time zone, subscription_updated_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT o.id, o.name, o.slug, o.status, o.customer_metadata, o.version, o.created_at, o.updated_at,
+    s.status, s.version, s.created_at, s.updated_at
+  FROM public.organizations o LEFT JOIN public.subscriptions s ON s.organization_id = o.id
+  ORDER BY o.name, o.id;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.customer_list(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.customer_list(uuid) TO indicate_runtime;
+DROP TABLE IF EXISTS public.invoices;
+DROP TABLE IF EXISTS public.orders;
+DROP TABLE IF EXISTS public.enterprise_leads;
+DROP TABLE IF EXISTS public.packages;
+DROP TABLE IF EXISTS public.plan_quotas;
+DROP TABLE IF EXISTS public.service_tiers;
+ALTER TABLE public.subscriptions DROP COLUMN IF EXISTS plan;
+ALTER TABLE public.subscriptions DROP COLUMN IF EXISTS period_starts_at;
+ALTER TABLE public.subscriptions DROP COLUMN IF EXISTS period_ends_at;
+DROP TYPE IF EXISTS public.subscription_plan;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (97, 'retire_packages_manual_activation', 'sha256:d18af1ba11932a7a0661dbb7d3c55c4d0482cae2751bb7c61bfdccbf07aaa1b8');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4bdbf07d8ce3aad8d53e480db92a1eafe43ed6d0c02d60b200a4987945b35cfa', 1788795000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907210000_faq_manual_activation_copy
+-- ----------------------------------------------------------------------
+-- Selaraskan 7 FAQ pembeli era paket dengan model aktivasi manual
+-- (salin kata-per-kata dari FAQ_ITEMS baru agar fallback DB dan kode sama).
+-- Idempoten: UPDATE bersyarat nilai lama.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+UPDATE public.faqs SET question = 'Bagaimana cara mulai berlangganan?', answer = 'Hubungi kami lewat WhatsApp atau surel, ceritakan kebutuhan Anda, sepakati biayanya, lalu lakukan pembayaran manual. Setelah terkonfirmasi, organisasi Anda kami aktifkan paling lambat 1x24 jam dan berjalan terus.', updated_at = now() WHERE id = '63f24875-3436-4a7f-b730-4441c0106a1c' AND question = 'Bagaimana cara mulai berlangganan?';
+UPDATE public.faqs SET question = 'Apakah langganan bisa kedaluwarsa?', answer = 'Tidak ada masa aktif yang kedaluwarsa dan tidak ada masa tenggang: selama status organisasi Anda aktif, seluruh fungsi berjalan penuh. Penonaktifan hanya terjadi atas permintaan Anda atau pelanggaran ketentuan.', updated_at = now() WHERE id = '2a0f30ac-20aa-4971-9502-944c35c1c705' AND question = 'Apa yang terjadi kalau masa aktif habis?';
+UPDATE public.faqs SET question = 'Apakah ada tingkatan paket?', answer = 'Tidak ada. Semua pelanggan mendapat fungsi yang sama; yang membedakan hanya kebutuhan Anda yang kami diskusikan di awal. Satu-satunya hal yang disesuaikan adalah biaya kesepakatan.', updated_at = now() WHERE id = '64c110a9-da4b-4e9f-9be8-1190096ad96a' AND question = 'Bisakah naik atau turun paket di tengah jalan?';
+UPDATE public.faqs SET question = 'Berapa biayanya?', answer = 'Hubungi kami lewat WhatsApp, ceritakan kebutuhan dan jumlah websitenya. Kami memberi angka pasti di depan sebelum Anda membayar apa pun.', updated_at = now() WHERE id = '761e83a9-b50d-4766-81c9-efd5652642cd' AND question = 'Bagaimana paket Enterprise bekerja?';
+UPDATE public.faqs SET answer = 'Bisa. Ceritakan sistem lama Anda saat menghubungi kami; bantuan pindahan kami sesuaikan dengan kebutuhan.', updated_at = now() WHERE id = '1de04400-5846-4d71-a6e4-b66668c3fc76' AND question = 'Saya sudah punya website berjalan. Bisa pindah?';
+UPDATE public.faqs SET answer = 'Tidak ada trial otomatis. Sebagai gantinya Anda bisa melihat cara kerja dasbor lewat sesi peninjauan bersama sebelum memutuskan.', updated_at = now() WHERE id = 'acd28953-8f62-42a8-9e11-9916dd86b793' AND question = 'Apakah ada masa percobaan gratis?';
+UPDATE public.faqs SET answer = 'Semua pelanggan didampingi manusia lewat kanal yang jelas — bukan bot. Prioritas penanganan mengikuti dampak: situs tidak bisa diakses ditangani lebih dulu.', updated_at = now() WHERE id = 'd849d3fe-c818-469d-bc54-10aa1b8dd235' AND question = 'Bagaimana kalau butuh bantuan?';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (98, 'faq_manual_activation_copy', 'sha256:31fd221ca1b477dadfd9ce99fe1e4d5e0f2db355f08ed7a923b0b6069d88347e');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('67e8c98fa070f03722c716a0978ae69f39cefec4a1722fbba8e18b5de9bd9943', 1788796000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907220000_rename_invite_deny_policy
+-- ----------------------------------------------------------------------
+-- Samarkan nama policy terakhir era billing: org_invitations memakai
+-- deny-all generik (USING/WITH CHECK false, perilaku identik), sama seperti
+-- tabel function-only lain (retention/telegram/outbox). Tanpa ini satu nama
+-- `billing_function_only` tersisa di katalog.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+DROP POLICY IF EXISTS billing_function_only ON public.org_invitations;
+CREATE POLICY org_invitations_function_only ON public.org_invitations FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (99, 'rename_invite_deny_policy', 'sha256:7e690674684da5bcdbdd5bcab84a2c25f4f15ec3449779c71850976b195a3640');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2c748b29a1c8316ffb63fb9dc326d01cdde4287bd9e0460ba59fb23a9ff987fc', 1788797000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907230000_drop_billing_order_status
+-- ----------------------------------------------------------------------
+-- Hapus enum billing_order_status yang yatim (tabel orders sudah pensiun di v97).
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+DROP TYPE IF EXISTS public.billing_order_status;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (100, 'drop_billing_order_status', 'sha256:cdfc844c44da1913995da472008fcc9ae513e8f3da05fb8a22f40a90ec6e17f1');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2979e4de0b51864744cff7bc55a9cfd93f3d8bea745ab7c776f32637e3ef18a2', 1788798000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907240000_manual_invoices
+-- ----------------------------------------------------------------------
+-- Invoice manual era aktivasi manual: dicatat superadmin setelah pembayaran
+-- terkonfirmasi (tanpa order). Nomor profesional berurutan per bulan
+-- (INV/YYYY/MM/NNNN via sequence; aman konkuren). Status hanya paid/voided;
+-- org membaca invoice miliknya sendiri, tulis hanya platform.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE TYPE "public"."invoice_status" AS ENUM('paid', 'voided');
+CREATE SEQUENCE public.invoice_number_seq;
+CREATE TABLE "public"."invoices" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "organization_id" uuid NOT NULL REFERENCES "public"."organizations"("id") ON DELETE restrict,
+  "number" text NOT NULL,
+  "amount_idr" integer NOT NULL,
+  "currency" text NOT NULL DEFAULT 'IDR',
+  "status" "public"."invoice_status" NOT NULL DEFAULT 'paid',
+  "paid_at" timestamptz NOT NULL,
+  "billing_note" text,
+  "created_by" uuid REFERENCES "public"."users"("id") ON DELETE SET NULL,
+  "voided_at" timestamptz,
+  "void_reason" text,
+  "version" integer NOT NULL DEFAULT 1,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "updated_at" timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT "invoices_number_unique" UNIQUE ("number"),
+  CONSTRAINT "invoices_amount_nonnegative" CHECK ("amount_idr" >= 0),
+  CONSTRAINT "invoices_version_positive" CHECK ("version" > 0)
+);
+CREATE INDEX "invoices_org_paid_idx" ON "public"."invoices" USING btree ("organization_id", "paid_at" DESC);
+ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.invoices FORCE ROW LEVEL SECURITY;
+CREATE POLICY invoices_function_only ON public.invoices FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);
+CREATE OR REPLACE FUNCTION indicate_private.invoice_create(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_amount integer, p_paid_at timestamp with time zone, p_note text, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid(); v_number text;
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.organizations WHERE id = p_organization_id) THEN
+    RAISE EXCEPTION 'organization required' USING ERRCODE = '42501';
+  END IF;
+  IF p_amount IS NULL OR p_amount < 0 THEN
+    RAISE EXCEPTION 'amount invalid' USING ERRCODE = '42501';
+  END IF;
+  IF p_paid_at IS NULL THEN
+    RAISE EXCEPTION 'paid_at required' USING ERRCODE = '42501';
+  END IF;
+  v_number := 'INV/' || to_char(p_now, 'YYYY/MM/') || lpad(nextval('public.invoice_number_seq')::text, 4, '0');
+  INSERT INTO public.invoices(id, organization_id, number, amount_idr, status, paid_at, billing_note, created_by, version, created_at, updated_at)
+  VALUES (v_id, p_organization_id, v_number, p_amount, 'paid', p_paid_at, nullif(p_note, ''), p_actor_id, 1, p_now, p_now);
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'invoice.create', 'invoice', v_id::text, 'succeeded', ARRAY['number','amount','paidAt'], jsonb_build_object('number', v_number, 'amount', p_amount, 'paidAt', p_paid_at), p_request_id, p_now);
+  RETURN v_id;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.invoice_create(uuid, text, uuid, integer, timestamptz, text, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.invoice_create(uuid, text, uuid, integer, timestamptz, text, timestamptz) TO indicate_runtime;
+CREATE OR REPLACE FUNCTION indicate_private.invoice_void(p_actor_id uuid, p_request_id text, p_invoice_id uuid, p_expected_version integer, p_reason text, p_now timestamp with time zone)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  IF p_reason IS NULL OR length(p_reason) NOT BETWEEN 1 AND 500 THEN
+    RAISE EXCEPTION 'reason required' USING ERRCODE = '42501';
+  END IF;
+  UPDATE public.invoices SET status = 'voided', voided_at = p_now, void_reason = p_reason, version = version + 1, updated_at = p_now
+  WHERE id = p_invoice_id AND version = p_expected_version AND status = 'paid';
+  IF NOT FOUND THEN RETURN false; END IF;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  SELECT organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'invoice.void', 'invoice', p_invoice_id::text, 'succeeded', ARRAY['status'], jsonb_build_object('status', 'voided'), p_request_id, p_now
+  FROM public.invoices WHERE id = p_invoice_id;
+  RETURN true;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.invoice_void(uuid, text, uuid, integer, text, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.invoice_void(uuid, text, uuid, integer, text, timestamptz) TO indicate_runtime;
+CREATE OR REPLACE FUNCTION indicate_private.invoice_list_for_org(p_actor_id uuid, p_organization_id uuid)
+ RETURNS TABLE(id uuid, organization_id uuid, number text, amount_idr integer, currency text, status invoice_status, paid_at timestamp with time zone, billing_note text, voided_at timestamp with time zone, void_reason text, version integer, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id)
+     AND NOT EXISTS (SELECT 1 FROM public.memberships WHERE memberships.organization_id = invoice_list_for_org.p_organization_id AND memberships.user_id = p_actor_id AND memberships.status = 'active') THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT i.id, i.organization_id, i.number, i.amount_idr, i.currency, i.status, i.paid_at, i.billing_note, i.voided_at, i.void_reason, i.version, i.created_at
+  FROM public.invoices i WHERE i.organization_id = p_organization_id ORDER BY i.paid_at DESC, i.created_at DESC;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.invoice_list_for_org(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.invoice_list_for_org(uuid, uuid) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (101, 'manual_invoices', 'sha256:14ed1f59fba43eaadc3770b356d99abb15508a5618210852d995ae347f3af020');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7077d44dfd73241b6a47777d62d805d7ad55995a4e8e780ec4a7f1f1a3020edf', 1788799000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907250000_invoice_number_enterprise
+-- ----------------------------------------------------------------------
+-- Penomoran enterprise: IND-{ORG5}-{YYMM}-{SEQ4}-{RAND4}.
+-- ORG5 deterministik dari slug (telusur balik tanpa tabel), SEQ urutan audit
+-- global, RAND4 anti-enumerasi (alfabet tanpa 0/O/1/I/L). Contoh:
+-- IND-0AD4A-2609-0047-Q2M9.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE OR REPLACE FUNCTION indicate_private.invoice_create(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_amount integer, p_paid_at timestamp with time zone, p_note text, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid(); v_slug text; v_number text;
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  SELECT slug INTO v_slug FROM public.organizations WHERE id = p_organization_id;
+  IF v_slug IS NULL THEN
+    RAISE EXCEPTION 'organization required' USING ERRCODE = '42501';
+  END IF;
+  IF p_amount IS NULL OR p_amount < 0 THEN
+    RAISE EXCEPTION 'amount invalid' USING ERRCODE = '42501';
+  END IF;
+  IF p_paid_at IS NULL THEN
+    RAISE EXCEPTION 'paid_at required' USING ERRCODE = '42501';
+  END IF;
+  v_number := 'IND-'
+    || upper(substr(md5(v_slug), 1, 5))
+    || '-' || to_char(p_now, 'YYMM-')
+    || lpad(nextval('public.invoice_number_seq')::text, 4, '0')
+    || '-' || (SELECT string_agg(substr('ABCDEFGHJKMNPQRSTUVWXYZ23456789', (floor(random() * 31) + 1)::integer, 1), '' ORDER BY s) FROM generate_series(1, 4) AS s);
+  INSERT INTO public.invoices(id, organization_id, number, amount_idr, status, paid_at, billing_note, created_by, version, created_at, updated_at)
+  VALUES (v_id, p_organization_id, v_number, p_amount, 'paid', p_paid_at, nullif(p_note, ''), p_actor_id, 1, p_now, p_now);
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'invoice.create', 'invoice', v_id::text, 'succeeded', ARRAY['number','amount','paidAt'], jsonb_build_object('number', v_number, 'amount', p_amount, 'paidAt', p_paid_at), p_request_id, p_now);
+  RETURN v_id;
+END
+$function$;
+DROP FUNCTION IF EXISTS indicate_private.invoice_list_for_org(uuid, uuid);
+CREATE FUNCTION indicate_private.invoice_list_for_org(p_actor_id uuid, p_organization_id uuid)
+ RETURNS TABLE(id uuid, organization_id uuid, organization_name text, number text, amount_idr integer, currency text, status invoice_status, paid_at timestamp with time zone, billing_note text, voided_at timestamp with time zone, void_reason text, version integer, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id)
+     AND NOT EXISTS (SELECT 1 FROM public.memberships WHERE memberships.organization_id = invoice_list_for_org.p_organization_id AND memberships.user_id = p_actor_id AND memberships.status = 'active') THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT i.id, i.organization_id, o.name, i.number, i.amount_idr, i.currency, i.status, i.paid_at, i.billing_note, i.voided_at, i.void_reason, i.version, i.created_at
+  FROM public.invoices i JOIN public.organizations o ON o.id = i.organization_id
+  WHERE i.organization_id = p_organization_id ORDER BY i.paid_at DESC, i.created_at DESC;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.invoice_list_for_org(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.invoice_list_for_org(uuid, uuid) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (102, 'invoice_number_enterprise', 'sha256:df3aab8e5fed54b3920fd92a89c39331b51e0d210d584778394b4a9ba6fe5848');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c6f332b7bd6c818cdc0bc11ce62c2c37e13293d4a4ac476ee37b2f68b9ca77bb', 1788800000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907260000_invite_visibility
+-- ----------------------------------------------------------------------
+-- Keterlihatan undangan + outbox tingkat tenant.
+--
+-- org_invitations dan telegram_outbox adalah tabel function-only tanpa baca
+-- runtime tingkat tenant, sehingga undangan pending dan antrean Telegram tidak
+-- terlihat admin org di dasbor. Tiga pembaca allowlist mengikuti preseden
+-- ops_visibility (SECURITY DEFINER + SET search_path + cek izin internal):
+-- - invite_list: anggota dengan membership.manage melihat undangan org-nya.
+-- - invite_revoke: platform admin ATAU membership.manage membatalkan undangan
+--   pending (dihapus; audit dipertahankan).
+-- - outbox_list: anggota aktif suatu org melihat antrean belum-terkirim org-nya.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE OR REPLACE FUNCTION indicate_private.invite_list(p_actor_id uuid, p_org_id uuid)
+ RETURNS TABLE(id uuid, email text, role_id uuid, role_name text, expires_at timestamp with time zone, accepted_at timestamp with time zone, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id)
+     AND NOT indicate_private.permission_has_tenant(p_actor_id, p_org_id, 'membership.manage') THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT i.id, i.email, i.role_id, r.name, i.expires_at, i.accepted_at, i.created_at
+  FROM public.org_invitations i LEFT JOIN public.roles r ON r.organization_id = i.org_id AND r.id = i.role_id
+  WHERE i.org_id = p_org_id
+  ORDER BY i.created_at DESC LIMIT 100;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.invite_revoke(p_actor_id uuid, p_request_id text, p_invite_id uuid, p_now timestamp with time zone)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_inv public.org_invitations%ROWTYPE;
+BEGIN
+  SELECT * INTO v_inv FROM public.org_invitations WHERE id = p_invite_id FOR UPDATE;
+  IF v_inv.id IS NULL THEN
+    RAISE EXCEPTION 'invitation required' USING ERRCODE = '42501';
+  END IF;
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id)
+     AND NOT indicate_private.permission_has_tenant(p_actor_id, v_inv.org_id, 'membership.manage') THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  IF v_inv.accepted_at IS NOT NULL THEN
+    RAISE EXCEPTION 'invitation already accepted' USING ERRCODE = '42501';
+  END IF;
+  DELETE FROM public.org_invitations WHERE id = v_inv.id;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (v_inv.org_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'invite.revoke', 'invitation', v_inv.id::text, 'succeeded', ARRAY['email'], jsonb_build_object('email', v_inv.email), p_request_id, p_now);
+  RETURN true;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.outbox_list(p_actor_id uuid, p_organization_id uuid)
+ RETURNS TABLE(id uuid, chat_id text, status text, attempts integer, next_attempt_at timestamp with time zone, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.memberships m JOIN public.users u ON u.id = m.user_id
+    WHERE m.organization_id = p_organization_id AND m.user_id = p_actor_id
+      AND m.status = 'active' AND u.status = 'active'
+  ) THEN
+    RAISE EXCEPTION 'membership required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT o.id, o.chat_id, o.status, o.attempts, o.next_attempt_at, o.created_at
+  FROM public.telegram_outbox o WHERE o.organization_id = p_organization_id AND o.status <> 'sent'
+  ORDER BY o.next_attempt_at, o.id LIMIT 100;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.invite_list(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.invite_list(uuid, uuid) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.invite_revoke(uuid, text, uuid, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.invite_revoke(uuid, text, uuid, timestamptz) TO indicate_runtime;
+REVOKE ALL ON FUNCTION indicate_private.outbox_list(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.outbox_list(uuid, uuid) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (103, 'invite_visibility', 'sha256:4a28307e987a696d366c49060d6b971459c8a9bcc165550038e8589f07cdd716');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('dd823700429f94990a4ccd3e543c735602cfbb043d9c6e7d18fc38cdeb1d0a19', 1788900000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907270000_fix_site_settings_guard_return
+-- ----------------------------------------------------------------------
+-- Perbaiki guard site_settings: BEFORE UPDATE yang me-return OLD membuat
+-- SEMUA update diam-diam dibuang (Postgres memakai baris yang di-return).
+-- Guard ini hanya boleh menolak (RAISE) saat invalidasi settings site aktif;
+-- jalur lolos harus me-return NEW agar update benar-benar tersimpan.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE OR REPLACE FUNCTION indicate_private.guard_site_settings_against_active_site()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM public.sites AS s
+    WHERE s.organization_id = OLD.organization_id
+      AND s.id = OLD.site_id
+      AND s.status = 'active'
+      AND s.activation_state = 'active'
+  ) AND (
+    OLD.locale IS NULL OR OLD.seo_default_title IS NULL OR OLD.seo_default_description IS NULL
+    OR OLD.seo_robots_directive IS NULL OR OLD.seo_open_graph_site_name IS NULL OR OLD.seo_schema_version IS NULL
+    OR OLD.default_media_id IS NULL
+  ) THEN
+    RAISE EXCEPTION 'cannot invalidate site settings while the site is active' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (104, 'fix_site_settings_guard_return', 'sha256:1f798db5acb1e6a468e3bacadd78a5cefa236b05fe2f8d6ce9fbc2597a2484a6');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('87b58751c14844cfaf6617ed617fe08864a86287fc12e9b0e5e89f306b8b35fe', 1788900000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907280000_discover_hosts_add_versions
+-- ----------------------------------------------------------------------
+-- discover_release_active_hosts tidak mengembalikan routing_version /
+-- content_version yang dibutuhkan DrizzleDeliveryRepository
+-- (findActiveSitesByExactHostname memetakan row.routing_version dan
+-- row.content_version; tanpa keduanya konteks berisi string kosong dan semua
+-- query network gagal parse integer). Tambahkan dua kolom versi; kolom lama
+-- dipertahankan agar kompatibel.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+DROP FUNCTION IF EXISTS indicate_private.discover_release_active_hosts(text[]);
+CREATE FUNCTION indicate_private.discover_release_active_hosts(p_hostnames text[])
+ RETURNS TABLE(hostname text, organization_id uuid, domain_id uuid, site_id uuid, region_id uuid, region_external_key text, region_slug text, coherent boolean, routing_version integer, content_version integer)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  WITH requested(hostname) AS (
+    SELECT DISTINCT normalized.hostname
+    FROM unnest(
+      CASE
+        WHEN p_hostnames IS NOT NULL AND cardinality(p_hostnames) BETWEEN 1 AND 100
+          AND array_position(p_hostnames, NULL) IS NULL
+        THEN p_hostnames
+        ELSE ARRAY[]::text[]
+      END
+    ) AS supplied(hostname)
+    CROSS JOIN LATERAL (
+      SELECT lower(trim(trailing '.' FROM supplied.hostname)) AS hostname
+    ) normalized
+    WHERE normalized.hostname = supplied.hostname
+      AND octet_length(normalized.hostname) BETWEEN 1 AND 253
+  )
+  SELECT s.normalized_hostname, s.organization_id, s.domain_id, s.id, s.region_id,
+         r.external_key, r.slug, true, s.routing_version, s.content_version
+  FROM requested requested_host
+  JOIN public.sites s ON s.normalized_hostname = requested_host.hostname
+  JOIN public.organizations o ON o.id = s.organization_id
+  JOIN public.domains d ON d.organization_id = s.organization_id AND d.id = s.domain_id
+  LEFT JOIN public.regions r ON r.organization_id = s.organization_id AND r.id = s.region_id
+  WHERE o.status = 'active' AND d.status = 'active' AND s.status = 'active' AND s.activation_state = 'active'
+    AND (
+      (s.region_id IS NULL AND s.normalized_hostname = d.normalized_hostname)
+      OR (s.region_id IS NOT NULL AND r.status = 'active' AND s.normalized_hostname = r.slug || '.' || d.normalized_hostname)
+    )
+  ORDER BY s.normalized_hostname, s.organization_id, s.id
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.discover_release_active_hosts(text[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.discover_release_active_hosts(text[]) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (105, 'discover_hosts_add_versions', 'sha256:27ef80fdb997568a9fd81c958db76259384c1cace6d5e7970c1e2b08ac010927');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('afe5d5ae1390c3f115910c25e981dd622cb9f7e55a013fc6a34265bf4075a0b1', 1788900000000);
+
+-- ----------------------------------------------------------------------
+-- 20260907290000_organizations_kind
+-- ----------------------------------------------------------------------
+-- Penanda peran organisasi: operator portal vs pelanggan.
+-- Satu tabel organizations menampung dua peran (mis. Fakta01 sebagai operator,
+-- 59 UPT sebagai pelanggan); tanpa penanda, keduanya tak terbedakan di query.
+-- Pecah tabel ditolak: puluhan FK komposit (organization_id, id) bergantung
+-- pada satu registri tenant. Kolom kind + check + index parsial sudah cukup.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+ALTER TABLE public.organizations ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'customer';
+ALTER TABLE public.organizations DROP CONSTRAINT IF EXISTS organizations_kind_check;
+ALTER TABLE public.organizations ADD CONSTRAINT organizations_kind_check CHECK (kind IN ('operator', 'customer'));
+CREATE INDEX IF NOT EXISTS organizations_kind_idx ON public.organizations USING btree (kind);
+UPDATE public.organizations SET kind = 'operator' WHERE slug IN ('fakta01', 'indicate-platform');
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (106, 'organizations_kind', 'sha256:d04d655981dfddc3b21e9453ea7ee9fd7c810053ac924013aee09ecedd23f602');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('1cf29d796e80440c29c0e54bb777865a9926b574f591504d87571061ef3aa3a4', 1788900000000);
+
+-- ----------------------------------------------------------------------
+-- 20260914020000_template_preset_clean_blue
+-- ----------------------------------------------------------------------
+INSERT INTO public.template_presets (id, name, description, category) VALUES
+  ('clean-blue', 'Clean Blue Editorial', 'Layout editorial terang: ticker terkini, hero 2-kolom, kartu pilihan, dan panel newsletter.', 'news')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, category = EXCLUDED.category, updated_at = now();
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (107, 'template_preset_clean_blue', 'sha256:73e40efa094ed2089c84460be27ffd955b8f0430f4ff7a3c31ed26de9d821149');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('537f1dbd9d7d4bf251888ba1e4da1103c6affb86865b13d98e576027493a5c32', 1789470865962);
+
+-- ----------------------------------------------------------------------
+-- 20260914030000_articles_cover_image_url
+-- ----------------------------------------------------------------------
+ALTER TABLE public.articles ADD COLUMN IF NOT EXISTS cover_image_url text;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (108, 'articles_cover_image_url', 'sha256:00dcad3c254637e41f1a0482311232cdfaa857ba039be2dae8f8afa91d1fcff6');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4b4be4b5400c1473969d7c060bbf88be15dfd33d211bbc02eb9b4f38dbf923b6', 1789470866962);
+
+-- ----------------------------------------------------------------------
+-- 20260914040000_single_template_clean_blue
+-- ----------------------------------------------------------------------
+-- Single-template consolidation: seluruh domain memakai Clean Blue Editorial.
+-- 1) Pastikan baris clean-blue ada, 2) sinkronkan site_settings.colors ke
+-- {"templateId":"clean-blue"} (buang presetId/warna warisan), 3) hapus
+-- template lama, 4) drop tabel color_presets beserta policy/grants-nya.
+
+INSERT INTO public.template_presets (id, name, description, category) VALUES
+  ('clean-blue', 'Clean Blue Editorial', 'Layout editorial terang: ticker terkini, hero 2-kolom, kartu pilihan, dan panel newsletter.', 'news')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, category = EXCLUDED.category, updated_at = now();
+UPDATE public.site_settings SET colors = ((colors - 'presetId' - 'primary' - 'accent' - 'headerBg') || '{"templateId": "clean-blue"}'::jsonb), updated_at = now();
+DELETE FROM public.template_presets WHERE id <> 'clean-blue';
+DROP TABLE IF EXISTS public.color_presets;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (109, 'single_template_clean_blue', 'sha256:e5b588799cf4a27f19c5cfcd7731e775eaef4fc423989e26e548c8cb75f5ced5');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('16ce003f1b2624fa78dff1463b31ac701895ec02fe4c1735011b63f5374e5c0a', 1789470867962);
+
+-- ----------------------------------------------------------------------
+-- 20260915000000_seo_metadata_hardening
+-- ----------------------------------------------------------------------
+-- SEO metadata hardening: validasi anti thin/duplicate + backfill diferensiasi per tenant.
+--
+-- 1) authors: kolom nullable bio/avatar_url/website_url (diisi dari data yang tersedia saja, tanpa mengarang).
+-- 2) article_sites: CHECK panjang custom_title (10-160) dan custom_description (50-500).
+-- 3) publishers.contacts.logoUrl: backfill fallback instansi bila belum disematkan.
+-- 4) article_sites: backfill custom_* yang masih NULL dari data nyata tenant
+--    (judul kanonik + nama situs; deskripsi kutipan body + konteks situs/kota).
+--    Sudut lokal Wonosobo memakai kota dari contacts publisher bila tersedia.
+-- 5) site_settings: backfill seo defaults yang masih NULL dari name/description.
+-- Idempoten: semua DDL dijaga IF NOT EXISTS / DROP IF EXISTS; backfill hanya
+-- menyentuh baris NULL dan menghormati batas CHECK.
+
+ALTER TABLE public.authors ADD COLUMN IF NOT EXISTS bio text;
+ALTER TABLE public.authors ADD COLUMN IF NOT EXISTS avatar_url text;
+ALTER TABLE public.authors ADD COLUMN IF NOT EXISTS website_url text;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'authors_bio_length') THEN
+    ALTER TABLE public.authors ADD CONSTRAINT authors_bio_length CHECK (bio IS NULL OR (char_length(bio) BETWEEN 1 AND 2000));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'authors_avatar_shape') THEN
+    ALTER TABLE public.authors ADD CONSTRAINT authors_avatar_shape CHECK (avatar_url IS NULL OR (avatar_url LIKE '/%' OR avatar_url LIKE 'https://%'));
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'article_sites_custom_title_shape') THEN
+    ALTER TABLE public.article_sites ADD CONSTRAINT article_sites_custom_title_shape CHECK (custom_title IS NULL OR (char_length(custom_title) BETWEEN 10 AND 160));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'article_sites_custom_description_shape') THEN
+    ALTER TABLE public.article_sites ADD CONSTRAINT article_sites_custom_description_shape CHECK (custom_description IS NULL OR (char_length(custom_description) BETWEEN 50 AND 500));
+  END IF;
+END $$;
+UPDATE public.publishers
+SET contacts = contacts || '{"logoUrl": "/brand/logo-kemenimipas.png"}'::jsonb, updated_at = now()
+WHERE (contacts ->> 'logoUrl') IS NULL OR btrim(contacts ->> 'logoUrl') = '';
+UPDATE public.site_settings
+SET seo_default_title = name, updated_at = now()
+WHERE seo_default_title IS NULL;
+UPDATE public.site_settings
+SET seo_default_description = description, updated_at = now()
+WHERE seo_default_description IS NULL;
+UPDATE public.site_settings
+SET seo_open_graph_site_name = name, updated_at = now()
+WHERE seo_open_graph_site_name IS NULL;
+UPDATE public.article_sites AS ras
+SET custom_title = left(a.title || ' | ' || s.name, 160), updated_at = now()
+FROM public.articles AS a
+JOIN public.site_settings AS s
+  ON s.organization_id = a.organization_id
+WHERE ras.organization_id = a.organization_id
+  AND ras.article_id = a.id
+  AND s.site_id = ras.site_id
+  AND ras.custom_title IS NULL
+  AND char_length(a.title || ' | ' || s.name) BETWEEN 10 AND 160;
+UPDATE public.article_sites AS ras
+SET custom_description = left(
+  regexp_replace(a.body, '\s+', ' ', 'g')
+  || ' — ' || s.name
+  || COALESCE(' (' || NULLIF(btrim(p.contacts ->> 'city'), '') || ')', ''),
+  500
+), updated_at = now()
+FROM public.articles AS a
+JOIN public.site_settings AS s
+  ON s.organization_id = a.organization_id
+LEFT JOIN public.publishers AS p
+  ON p.organization_id = a.organization_id AND p.id = a.publisher_id
+WHERE ras.organization_id = a.organization_id
+  AND ras.article_id = a.id
+  AND s.site_id = ras.site_id
+  AND ras.custom_description IS NULL
+  AND char_length(
+    regexp_replace(a.body, '\s+', ' ', 'g')
+    || ' — ' || s.name
+    || COALESCE(' (' || NULLIF(btrim(p.contacts ->> 'city'), '') || ')', '')
+  ) BETWEEN 50 AND 500;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (110, 'seo_metadata_hardening', 'sha256:d833c30c72734f1520eeb5acf0c3f1ba00680d7f60bf0a50270ec58df11f2c94');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('33702d7fb317a932c060423fffeaeeaf3a68155eb4c51e147e6783c3d1d6cb01', 1789470868962);
+
+-- ----------------------------------------------------------------------
+-- 20260915010000_invoices_created_by_covering_index
+-- ----------------------------------------------------------------------
+-- Covering index untuk FK invoices.created_by -> users.id (temuan unindexed_foreign_keys).
+-- Mempercepat join ke users serta SET NULL saat user dihapus.
+CREATE INDEX IF NOT EXISTS invoices_created_by_idx ON public.invoices USING btree (created_by);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (111, 'invoices_created_by_covering_index', 'sha256:49660d2c16c090179637f6d66154f6716b27d5414377e0fd40801d4a76e259b0');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('995168799f377bff817043b7757a7161741d92fea327253c57fd6aa11d05c0f1', 1789470869962);
+
+-- ----------------------------------------------------------------------
+-- 20260915020000_media_policy_allow_ico
+-- ----------------------------------------------------------------------
+-- Izin ICO untuk favicon: tambah image/x-icon ke media_policy (idempoten).
+-- Revisi + intent invalidasi dicatat agar snapshot runtime tersegarkan.
+WITH env AS (
+  SELECT COALESCE(NULLIF(current_setting('app.environment', TRUE), ''), 'production')::public.runtime_config_environment AS environment
+),
+upd AS (
+  UPDATE public.media_policy
+  SET allowed_mime_types = (
+    SELECT array_agg(DISTINCT v ORDER BY v)
+    FROM unnest(allowed_mime_types || ARRAY['image/x-icon']) AS v
+  ),
+  version = version + 1, updated_at = now()
+  WHERE singleton_key = 'singleton'
+    AND NOT (allowed_mime_types @> ARRAY['image/x-icon'])
+  RETURNING version
+),
+rev AS (
+  INSERT INTO public.runtime_config_revisions (environment, committed_at, mutation_kind)
+  SELECT (SELECT environment FROM env), now(), 'media_policy'::public.runtime_config_mutation_kind
+  FROM upd
+  RETURNING version
+)
+INSERT INTO public.runtime_config_invalidation_intents (id, runtime_revision, environment, partition_kind, status, attempts, next_attempt_at)
+SELECT gen_random_uuid(), rev.version, (SELECT environment FROM env), 'policy'::public.invalidation_partition_kind, 'pending', 0, now()
+FROM rev;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (112, 'media_policy_allow_ico', 'sha256:a4897962bbcd7ec7e4c66c0bcc4f06a02c8a26e53bf3f72f29055f8e091b81b7');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('38ecc2cee63b8ffb3034d85e1b67506941d9a9418fbdc06048556838bceb55ed', 1789470870962);
+
+-- ----------------------------------------------------------------------
+-- 20260916000000_region_locked_memberships
+-- ----------------------------------------------------------------------
+-- Kunci region per membership dan API key: user terkunci hanya menyentuh
+-- regionnya (+ portal apex milik bersama); NULL berarti semua region.
+-- RLS diperketat per tabel konten; taksonomi org dan audit tetap org-level
+-- (batas tercatat). Backfill NULL = perilaku lama, jadi rilis ini no-op
+-- sampai region diisi.
+ALTER TABLE public.memberships ADD COLUMN IF NOT EXISTS region_id uuid;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'memberships_region_fk') THEN
+    ALTER TABLE public.memberships ADD CONSTRAINT memberships_region_fk FOREIGN KEY (organization_id, region_id) REFERENCES public.regions (organization_id, id) ON DELETE RESTRICT;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS memberships_organization_region_idx ON public.memberships USING btree (organization_id, region_id, status);
+ALTER TABLE public.api_keys ADD COLUMN IF NOT EXISTS region_id uuid;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'api_keys_region_fk') THEN
+    ALTER TABLE public.api_keys ADD CONSTRAINT api_keys_region_fk FOREIGN KEY (organization_id, region_id) REFERENCES public.regions (organization_id, id) ON DELETE RESTRICT;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS api_keys_organization_region_idx ON public.api_keys USING btree (organization_id, region_id);
+CREATE OR REPLACE FUNCTION indicate_private.set_region_context(requested_region_id uuid)
+RETURNS void
+LANGUAGE sql
+STABLE
+SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $$
+  SELECT set_config('app.region_id', COALESCE(requested_region_id::text, ''), true)
+$$;
+GRANT EXECUTE ON FUNCTION indicate_private.set_region_context(uuid) TO indicate_runtime;
+CREATE OR REPLACE FUNCTION indicate_private.current_region_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $$
+  SELECT NULLIF(current_setting('app.region_id', true), '')::uuid
+$$;
+GRANT EXECUTE ON FUNCTION indicate_private.current_region_id() TO indicate_runtime;
+DROP FUNCTION IF EXISTS indicate_private.resolve_api_key_lookup(text);
+CREATE OR REPLACE FUNCTION indicate_private.resolve_api_key_lookup(p_lookup_id text)
+ RETURNS TABLE(organization_id uuid, id uuid, lookup_id text, name text, salt text, verification_hash text, scopes text[], status api_key_status, predecessor_id uuid, expires_at timestamp with time zone, last_used_at timestamp with time zone, version integer, region_id uuid, created_at timestamp with time zone, updated_at timestamp with time zone)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  SELECT k.organization_id, k.id, k.lookup_id, k.name, k.salt,
+         k.verification_hash, k.scopes, k.status, k.predecessor_id,
+         k.expires_at, k.last_used_at, k.version, k.region_id, k.created_at, k.updated_at
+  FROM public.api_keys k WHERE k.lookup_id = p_lookup_id LIMIT 1
+$function$;
+DROP FUNCTION IF EXISTS indicate_private.resolve_telegram_identity(text, text);
+CREATE OR REPLACE FUNCTION indicate_private.resolve_telegram_identity(p_user_id text, p_chat_id text)
+ RETURNS TABLE(mapping_id uuid, organization_id uuid, user_id uuid, role_id uuid, telegram_user_id text, telegram_chat_id text, region_id uuid, permissions text[])
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  WITH eligible AS (
+    SELECT m.id, m.organization_id, m.user_id, m.role_id, m.telegram_user_id, m.telegram_chat_id, membership.region_id
+    FROM public.telegram_identity_mappings m
+    JOIN public.memberships membership
+      ON membership.organization_id = m.organization_id AND membership.user_id = m.user_id
+     AND membership.role_id = m.role_id AND membership.status = 'active'
+    JOIN public.roles r
+      ON r.organization_id = membership.organization_id AND r.id = membership.role_id AND r.active
+    WHERE m.telegram_user_id = p_user_id AND m.telegram_chat_id = p_chat_id AND m.status = 'active'
+  ), single_mapping AS (
+    SELECT * FROM eligible WHERE (SELECT count(*) FROM eligible) = 1
+  )
+  SELECT m.id, m.organization_id, m.user_id, m.role_id, m.telegram_user_id,
+         m.telegram_chat_id, m.region_id, coalesce(array_agg(DISTINCT p.name) FILTER (WHERE p.name IS NOT NULL), ARRAY[]::text[])
+  FROM single_mapping m
+  LEFT JOIN public.role_permissions rp ON rp.organization_id = m.organization_id AND rp.role_id = m.role_id
+  LEFT JOIN public.permissions p ON p.id = rp.permission_id
+  GROUP BY m.id, m.organization_id, m.user_id, m.role_id, m.telegram_user_id, m.telegram_chat_id, m.region_id
+$function$;
+DROP POLICY IF EXISTS tenant_isolation_select ON public.articles;
+DROP POLICY IF EXISTS tenant_isolation_insert ON public.articles;
+DROP POLICY IF EXISTS tenant_isolation_update ON public.articles;
+DROP POLICY IF EXISTS tenant_isolation_delete ON public.articles;
+CREATE POLICY tenant_isolation_select ON public.articles FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR region_id = (SELECT indicate_private.current_region_id())));
+CREATE POLICY tenant_isolation_insert ON public.articles FOR INSERT TO indicate_runtime WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR region_id = (SELECT indicate_private.current_region_id())));
+CREATE POLICY tenant_isolation_update ON public.articles FOR UPDATE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR region_id = (SELECT indicate_private.current_region_id()))) WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR region_id = (SELECT indicate_private.current_region_id())));
+CREATE POLICY tenant_isolation_delete ON public.articles FOR DELETE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR region_id = (SELECT indicate_private.current_region_id())));
+DROP POLICY IF EXISTS tenant_isolation_select ON public.sites;
+DROP POLICY IF EXISTS tenant_isolation_insert ON public.sites;
+DROP POLICY IF EXISTS tenant_isolation_update ON public.sites;
+DROP POLICY IF EXISTS tenant_isolation_delete ON public.sites;
+CREATE POLICY tenant_isolation_select ON public.sites FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR region_id IS NULL OR region_id = (SELECT indicate_private.current_region_id())));
+CREATE POLICY tenant_isolation_insert ON public.sites FOR INSERT TO indicate_runtime WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR region_id IS NULL OR region_id = (SELECT indicate_private.current_region_id())));
+CREATE POLICY tenant_isolation_update ON public.sites FOR UPDATE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR region_id IS NULL OR region_id = (SELECT indicate_private.current_region_id()))) WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR region_id IS NULL OR region_id = (SELECT indicate_private.current_region_id())));
+CREATE POLICY tenant_isolation_delete ON public.sites FOR DELETE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR region_id IS NULL OR region_id = (SELECT indicate_private.current_region_id())));
+DROP POLICY IF EXISTS tenant_isolation_select ON public.regions;
+DROP POLICY IF EXISTS tenant_isolation_insert ON public.regions;
+DROP POLICY IF EXISTS tenant_isolation_update ON public.regions;
+DROP POLICY IF EXISTS tenant_isolation_delete ON public.regions;
+CREATE POLICY tenant_isolation_select ON public.regions FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR id = (SELECT indicate_private.current_region_id())));
+CREATE POLICY tenant_isolation_insert ON public.regions FOR INSERT TO indicate_runtime WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR id = (SELECT indicate_private.current_region_id())));
+CREATE POLICY tenant_isolation_update ON public.regions FOR UPDATE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR id = (SELECT indicate_private.current_region_id()))) WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR id = (SELECT indicate_private.current_region_id())));
+CREATE POLICY tenant_isolation_delete ON public.regions FOR DELETE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR id = (SELECT indicate_private.current_region_id())));
+DROP POLICY IF EXISTS tenant_isolation_select ON public.article_sites;
+DROP POLICY IF EXISTS tenant_isolation_insert ON public.article_sites;
+DROP POLICY IF EXISTS tenant_isolation_update ON public.article_sites;
+DROP POLICY IF EXISTS tenant_isolation_delete ON public.article_sites;
+CREATE POLICY tenant_isolation_select ON public.article_sites FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = article_sites.organization_id AND a.id = article_sites.article_id AND a.region_id = (SELECT indicate_private.current_region_id())) OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = article_sites.organization_id AND s.id = article_sites.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_insert ON public.article_sites FOR INSERT TO indicate_runtime WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = article_sites.organization_id AND a.id = article_sites.article_id AND a.region_id = (SELECT indicate_private.current_region_id())) OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = article_sites.organization_id AND s.id = article_sites.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_update ON public.article_sites FOR UPDATE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = article_sites.organization_id AND a.id = article_sites.article_id AND a.region_id = (SELECT indicate_private.current_region_id())) OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = article_sites.organization_id AND s.id = article_sites.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id()))))) WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = article_sites.organization_id AND a.id = article_sites.article_id AND a.region_id = (SELECT indicate_private.current_region_id())) OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = article_sites.organization_id AND s.id = article_sites.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_delete ON public.article_sites FOR DELETE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = article_sites.organization_id AND a.id = article_sites.article_id AND a.region_id = (SELECT indicate_private.current_region_id())) OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = article_sites.organization_id AND s.id = article_sites.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+DROP POLICY IF EXISTS tenant_isolation_select ON public.media;
+DROP POLICY IF EXISTS tenant_isolation_insert ON public.media;
+DROP POLICY IF EXISTS tenant_isolation_update ON public.media;
+DROP POLICY IF EXISTS tenant_isolation_delete ON public.media;
+CREATE POLICY tenant_isolation_select ON public.media FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR organization_asset OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = media.organization_id AND a.id = media.article_id AND a.region_id = (SELECT indicate_private.current_region_id())) OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = media.organization_id AND s.id = media.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_insert ON public.media FOR INSERT TO indicate_runtime WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR organization_asset OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = media.organization_id AND a.id = media.article_id AND a.region_id = (SELECT indicate_private.current_region_id())) OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = media.organization_id AND s.id = media.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_update ON public.media FOR UPDATE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR organization_asset OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = media.organization_id AND a.id = media.article_id AND a.region_id = (SELECT indicate_private.current_region_id())) OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = media.organization_id AND s.id = media.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id()))))) WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR organization_asset OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = media.organization_id AND a.id = media.article_id AND a.region_id = (SELECT indicate_private.current_region_id())) OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = media.organization_id AND s.id = media.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_delete ON public.media FOR DELETE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR organization_asset OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = media.organization_id AND a.id = media.article_id AND a.region_id = (SELECT indicate_private.current_region_id())) OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = media.organization_id AND s.id = media.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+DROP POLICY IF EXISTS tenant_isolation_select ON public.media_key_reservations;
+DROP POLICY IF EXISTS tenant_isolation_insert ON public.media_key_reservations;
+DROP POLICY IF EXISTS tenant_isolation_update ON public.media_key_reservations;
+DROP POLICY IF EXISTS tenant_isolation_delete ON public.media_key_reservations;
+CREATE POLICY tenant_isolation_select ON public.media_key_reservations FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR organization_asset OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = media_key_reservations.organization_id AND a.id = media_key_reservations.article_id AND a.region_id = (SELECT indicate_private.current_region_id())) OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = media_key_reservations.organization_id AND s.id = media_key_reservations.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_insert ON public.media_key_reservations FOR INSERT TO indicate_runtime WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR organization_asset OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = media_key_reservations.organization_id AND a.id = media_key_reservations.article_id AND a.region_id = (SELECT indicate_private.current_region_id())) OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = media_key_reservations.organization_id AND s.id = media_key_reservations.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_update ON public.media_key_reservations FOR UPDATE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR organization_asset OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = media_key_reservations.organization_id AND a.id = media_key_reservations.article_id AND a.region_id = (SELECT indicate_private.current_region_id())) OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = media_key_reservations.organization_id AND s.id = media_key_reservations.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id()))))) WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR organization_asset OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = media_key_reservations.organization_id AND a.id = media_key_reservations.article_id AND a.region_id = (SELECT indicate_private.current_region_id())) OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = media_key_reservations.organization_id AND s.id = media_key_reservations.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_delete ON public.media_key_reservations FOR DELETE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR organization_asset OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = media_key_reservations.organization_id AND a.id = media_key_reservations.article_id AND a.region_id = (SELECT indicate_private.current_region_id())) OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = media_key_reservations.organization_id AND s.id = media_key_reservations.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+DROP POLICY IF EXISTS tenant_isolation_select ON public.publishing_jobs;
+DROP POLICY IF EXISTS tenant_isolation_insert ON public.publishing_jobs;
+DROP POLICY IF EXISTS tenant_isolation_update ON public.publishing_jobs;
+DROP POLICY IF EXISTS tenant_isolation_delete ON public.publishing_jobs;
+CREATE POLICY tenant_isolation_select ON public.publishing_jobs FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = publishing_jobs.organization_id AND a.id = publishing_jobs.article_id AND a.region_id = (SELECT indicate_private.current_region_id()))));
+CREATE POLICY tenant_isolation_insert ON public.publishing_jobs FOR INSERT TO indicate_runtime WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = publishing_jobs.organization_id AND a.id = publishing_jobs.article_id AND a.region_id = (SELECT indicate_private.current_region_id()))));
+CREATE POLICY tenant_isolation_update ON public.publishing_jobs FOR UPDATE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = publishing_jobs.organization_id AND a.id = publishing_jobs.article_id AND a.region_id = (SELECT indicate_private.current_region_id())))) WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = publishing_jobs.organization_id AND a.id = publishing_jobs.article_id AND a.region_id = (SELECT indicate_private.current_region_id()))));
+CREATE POLICY tenant_isolation_delete ON public.publishing_jobs FOR DELETE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.articles a WHERE a.organization_id = publishing_jobs.organization_id AND a.id = publishing_jobs.article_id AND a.region_id = (SELECT indicate_private.current_region_id()))));
+DROP POLICY IF EXISTS tenant_isolation_select ON public.publishing_job_targets;
+DROP POLICY IF EXISTS tenant_isolation_insert ON public.publishing_job_targets;
+DROP POLICY IF EXISTS tenant_isolation_update ON public.publishing_job_targets;
+DROP POLICY IF EXISTS tenant_isolation_delete ON public.publishing_job_targets;
+CREATE POLICY tenant_isolation_select ON public.publishing_job_targets FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.publishing_jobs j JOIN public.articles a ON a.organization_id = j.organization_id AND a.id = j.article_id WHERE j.organization_id = publishing_job_targets.organization_id AND j.id = publishing_job_targets.job_id AND a.region_id = (SELECT indicate_private.current_region_id()))));
+CREATE POLICY tenant_isolation_insert ON public.publishing_job_targets FOR INSERT TO indicate_runtime WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.publishing_jobs j JOIN public.articles a ON a.organization_id = j.organization_id AND a.id = j.article_id WHERE j.organization_id = publishing_job_targets.organization_id AND j.id = publishing_job_targets.job_id AND a.region_id = (SELECT indicate_private.current_region_id()))));
+CREATE POLICY tenant_isolation_update ON public.publishing_job_targets FOR UPDATE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.publishing_jobs j JOIN public.articles a ON a.organization_id = j.organization_id AND a.id = j.article_id WHERE j.organization_id = publishing_job_targets.organization_id AND j.id = publishing_job_targets.job_id AND a.region_id = (SELECT indicate_private.current_region_id())))) WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.publishing_jobs j JOIN public.articles a ON a.organization_id = j.organization_id AND a.id = j.article_id WHERE j.organization_id = publishing_job_targets.organization_id AND j.id = publishing_job_targets.job_id AND a.region_id = (SELECT indicate_private.current_region_id()))));
+CREATE POLICY tenant_isolation_delete ON public.publishing_job_targets FOR DELETE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.publishing_jobs j JOIN public.articles a ON a.organization_id = j.organization_id AND a.id = j.article_id WHERE j.organization_id = publishing_job_targets.organization_id AND j.id = publishing_job_targets.job_id AND a.region_id = (SELECT indicate_private.current_region_id()))));
+DROP POLICY IF EXISTS tenant_isolation_select ON public.official_affiliations;
+DROP POLICY IF EXISTS tenant_isolation_insert ON public.official_affiliations;
+DROP POLICY IF EXISTS tenant_isolation_update ON public.official_affiliations;
+DROP POLICY IF EXISTS tenant_isolation_delete ON public.official_affiliations;
+CREATE POLICY tenant_isolation_select ON public.official_affiliations FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = official_affiliations.organization_id AND s.id = official_affiliations.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_insert ON public.official_affiliations FOR INSERT TO indicate_runtime WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = official_affiliations.organization_id AND s.id = official_affiliations.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_update ON public.official_affiliations FOR UPDATE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = official_affiliations.organization_id AND s.id = official_affiliations.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id()))))) WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = official_affiliations.organization_id AND s.id = official_affiliations.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_delete ON public.official_affiliations FOR DELETE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = official_affiliations.organization_id AND s.id = official_affiliations.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+DROP POLICY IF EXISTS tenant_isolation_select ON public.site_settings;
+DROP POLICY IF EXISTS tenant_isolation_insert ON public.site_settings;
+DROP POLICY IF EXISTS tenant_isolation_update ON public.site_settings;
+DROP POLICY IF EXISTS tenant_isolation_delete ON public.site_settings;
+CREATE POLICY tenant_isolation_select ON public.site_settings FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = site_settings.organization_id AND s.id = site_settings.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_insert ON public.site_settings FOR INSERT TO indicate_runtime WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = site_settings.organization_id AND s.id = site_settings.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_update ON public.site_settings FOR UPDATE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = site_settings.organization_id AND s.id = site_settings.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id()))))) WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = site_settings.organization_id AND s.id = site_settings.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_delete ON public.site_settings FOR DELETE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = site_settings.organization_id AND s.id = site_settings.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+DROP POLICY IF EXISTS tenant_isolation_select ON public.invalidation_tasks;
+DROP POLICY IF EXISTS tenant_isolation_insert ON public.invalidation_tasks;
+DROP POLICY IF EXISTS tenant_isolation_update ON public.invalidation_tasks;
+DROP POLICY IF EXISTS tenant_isolation_delete ON public.invalidation_tasks;
+CREATE POLICY tenant_isolation_select ON public.invalidation_tasks FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = invalidation_tasks.organization_id AND s.id = invalidation_tasks.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_insert ON public.invalidation_tasks FOR INSERT TO indicate_runtime WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = invalidation_tasks.organization_id AND s.id = invalidation_tasks.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_update ON public.invalidation_tasks FOR UPDATE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = invalidation_tasks.organization_id AND s.id = invalidation_tasks.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id()))))) WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = invalidation_tasks.organization_id AND s.id = invalidation_tasks.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_delete ON public.invalidation_tasks FOR DELETE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = invalidation_tasks.organization_id AND s.id = invalidation_tasks.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+DROP POLICY IF EXISTS tenant_isolation_select ON public.domain_activation_attempts;
+DROP POLICY IF EXISTS tenant_isolation_insert ON public.domain_activation_attempts;
+DROP POLICY IF EXISTS tenant_isolation_update ON public.domain_activation_attempts;
+DROP POLICY IF EXISTS tenant_isolation_delete ON public.domain_activation_attempts;
+CREATE POLICY tenant_isolation_select ON public.domain_activation_attempts FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = domain_activation_attempts.organization_id AND s.id = domain_activation_attempts.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_insert ON public.domain_activation_attempts FOR INSERT TO indicate_runtime WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = domain_activation_attempts.organization_id AND s.id = domain_activation_attempts.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_update ON public.domain_activation_attempts FOR UPDATE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = domain_activation_attempts.organization_id AND s.id = domain_activation_attempts.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id()))))) WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = domain_activation_attempts.organization_id AND s.id = domain_activation_attempts.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_delete ON public.domain_activation_attempts FOR DELETE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = domain_activation_attempts.organization_id AND s.id = domain_activation_attempts.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+DROP POLICY IF EXISTS tenant_isolation_select ON public.cache_bypasses;
+DROP POLICY IF EXISTS tenant_isolation_insert ON public.cache_bypasses;
+DROP POLICY IF EXISTS tenant_isolation_update ON public.cache_bypasses;
+DROP POLICY IF EXISTS tenant_isolation_delete ON public.cache_bypasses;
+CREATE POLICY tenant_isolation_select ON public.cache_bypasses FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = cache_bypasses.organization_id AND s.id = cache_bypasses.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_insert ON public.cache_bypasses FOR INSERT TO indicate_runtime WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = cache_bypasses.organization_id AND s.id = cache_bypasses.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_update ON public.cache_bypasses FOR UPDATE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = cache_bypasses.organization_id AND s.id = cache_bypasses.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id()))))) WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = cache_bypasses.organization_id AND s.id = cache_bypasses.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+CREATE POLICY tenant_isolation_delete ON public.cache_bypasses FOR DELETE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()) AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = cache_bypasses.organization_id AND s.id = cache_bypasses.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))));
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (113, 'region_locked_memberships', 'region-locked-memberships-v1');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('398087aef20abd0eead610110e9026b41f73bf35eedc3fba3c7c917ea9a35337', 1789500000000);
 COMMIT;

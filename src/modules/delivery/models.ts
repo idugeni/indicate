@@ -62,6 +62,13 @@ export interface NetworkArticle {
   readonly thumbnailUrl: string | null;
   readonly imageWidth: number | null;
   readonly imageHeight: number | null;
+  /** Galeri milik artikel (media aktif bertipe gambar, urut waktu unggah); kosong bila tak ada. */
+  readonly gallery: readonly ArticleGalleryImage[];
+}
+
+export interface ArticleGalleryImage {
+  readonly url: string;
+  readonly thumbnailUrl: string | null;
 }
 
 export interface NetworkSiteData {

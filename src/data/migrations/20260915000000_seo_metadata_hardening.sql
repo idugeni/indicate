@@ -45,9 +45,10 @@ UPDATE public.article_sites AS ras
 SET custom_title = left(a.title || ' | ' || s.name, 160), updated_at = now()
 FROM public.articles AS a
 JOIN public.site_settings AS s
-  ON s.organization_id = ras.organization_id AND s.site_id = ras.site_id
+  ON s.organization_id = a.organization_id
 WHERE ras.organization_id = a.organization_id
   AND ras.article_id = a.id
+  AND s.site_id = ras.site_id
   AND ras.custom_title IS NULL
   AND char_length(a.title || ' | ' || s.name) BETWEEN 10 AND 160;--> statement-breakpoint
 UPDATE public.article_sites AS ras
@@ -59,14 +60,17 @@ SET custom_description = left(
 ), updated_at = now()
 FROM public.articles AS a
 JOIN public.site_settings AS s
-  ON s.organization_id = ras.organization_id AND s.site_id = ras.site_id
+  ON s.organization_id = a.organization_id
 LEFT JOIN public.publishers AS p
   ON p.organization_id = a.organization_id AND p.id = a.publisher_id
 WHERE ras.organization_id = a.organization_id
   AND ras.article_id = a.id
+  AND s.site_id = ras.site_id
   AND ras.custom_description IS NULL
   AND char_length(
     regexp_replace(a.body, '\s+', ' ', 'g')
     || ' — ' || s.name
     || COALESCE(' (' || NULLIF(btrim(p.contacts ->> 'city'), '') || ')', '')
   ) BETWEEN 50 AND 500;--> statement-breakpoint
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (110, 'seo_metadata_hardening', 'sha256:d833c30c72734f1520eeb5acf0c3f1ba00680d7f60bf0a50270ec58df11f2c94');

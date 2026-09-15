@@ -15,6 +15,8 @@ export interface MembershipAuthorization {
   readonly status: 'active' | 'inactive' | 'archived';
   readonly roleActive: boolean;
   readonly roleTier: RoleTier;
+  /** Kunci region membership; NULL berarti semua region. */
+  readonly regionId: string | null;
   /** Permissions scoped to the organization (permissions.scope = 'organization'). Only these authorize org actions. */
   readonly orgPermissions: ReadonlySet<string>;
   /** Platform-scoped grants (permission_list_platform). Only these authorize platform actions. Never merged with org perms. */
@@ -25,6 +27,8 @@ export interface PersistedActorAuthorization {
   readonly organizationId: string;
   readonly actorId: string;
   readonly permissions: ReadonlySet<string>;
+  /** Kunci region aktor non-user; NULL berarti semua region. */
+  readonly regionId: string | null;
 }
 
 export interface TenantResourceReference {

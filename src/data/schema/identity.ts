@@ -117,12 +117,16 @@ export const memberships = pgTable('memberships', {
   roleId: uuid('role_id').notNull(),
   status: recordStatus('status').default('active').notNull(),
   version: integer('version').default(1).notNull(),
+  /** Kunci region opsional: NULL berarti semua region (pusat/superadmin). */
+  regionId: uuid('region_id'),
   ...timestamps,
 }, (table) => [
   primaryKey({ name: 'memberships_pk', columns: [table.organizationId, table.userId] }),
   foreignKey({ name: 'memberships_role_fk', columns: [table.organizationId, table.roleId], foreignColumns: [roles.organizationId, roles.id] }).onDelete('restrict'),
+  foreignKey({ name: 'memberships_region_fk', columns: [table.organizationId, table.regionId], foreignColumns: [regions.organizationId, regions.id] }).onDelete('restrict'),
   index('memberships_user_status_idx').on(table.userId, table.status),
   index('memberships_organization_role_idx').on(table.organizationId, table.roleId, table.status),
+  index('memberships_organization_region_idx').on(table.organizationId, table.regionId, table.status),
   check('memberships_version_positive', sql`${table.version} > 0`),
 ]);
 
@@ -217,12 +221,16 @@ export const apiKeys = pgTable('api_keys', {
   expiresAt: timestamp('expires_at', { withTimezone: true }),
   lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
   version: integer('version').default(1).notNull(),
+  /** Kunci region opsional: NULL berarti semua region. */
+  regionId: uuid('region_id'),
   ...timestamps,
 }, (table) => [
   primaryKey({ name: 'api_keys_pk', columns: [table.organizationId, table.id] }),
   unique('api_keys_lookup_id_unique').on(table.lookupId),
   foreignKey({ name: 'api_keys_predecessor_fk', columns: [table.organizationId, table.predecessorId], foreignColumns: [table.organizationId, table.id] }).onDelete('restrict'),
+  foreignKey({ name: 'api_keys_region_fk', columns: [table.organizationId, table.regionId], foreignColumns: [regions.organizationId, regions.id] }).onDelete('restrict'),
   index('api_keys_organization_status_idx').on(table.organizationId, table.status),
+  index('api_keys_organization_region_idx').on(table.organizationId, table.regionId),
   check('api_keys_version_positive', sql`${table.version} > 0`),
   check('api_keys_bounded_identity', sql`length(${table.lookupId}) BETWEEN 16 AND 128 AND length(${table.name}) BETWEEN 1 AND 120`),
 ]);

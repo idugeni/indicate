@@ -157,6 +157,8 @@ export interface PublishingArticleRef {
   readonly organizationId: string;
   readonly active: boolean;
   readonly leadMediaId: string | null;
+  readonly title: string;
+  readonly slug: string;
 }
 
 export interface PublishingSiteRef {

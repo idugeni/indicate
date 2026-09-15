@@ -1,7 +1,7 @@
 import type { AuthorizedTenantActorContext, HostnameContext } from '@/core/operation-context';
 import type {
   ClaimedCleanupTask, MediaAssetRecord, MediaOwner, MediaReservationRecord, PublicationJobRecord,
-  PublicationOptions, PublicationOverride, PublicationStatusProjection, PublicationTargetRecord, PublishingTenantSnapshot, TargetTransitionCommit,
+  PublicationOptions, PublicationOverride, PublicationStatusProjection, PublicationTargetRecord, PublishingState, PublishingTenantSnapshot, TargetTransitionCommit,
   TransitionReceiptRecord, WorkerClaim,
 } from '@/modules/publishing/models';
 
@@ -60,6 +60,22 @@ export interface TargetTransitionInput {
   readonly nextAttemptAt?: string;
 }
 
+export interface ArticleVariantSite {
+  readonly siteId: string;
+  readonly normalizedHostname: string;
+  readonly customTitle: string | null;
+  readonly customDescription: string | null;
+  readonly active: boolean;
+  readonly state: PublishingState;
+}
+
+export interface ArticleVariantContext {
+  readonly articleId: string;
+  readonly title: string;
+  readonly body: string;
+  readonly variants: readonly ArticleVariantSite[];
+}
+
 export interface PublicationTargetSelection {
   readonly jobId: string;
   readonly targetIds?: readonly string[] | undefined;
@@ -79,6 +95,7 @@ export interface PublishingRepository {
   recordDenial(actor: AuthorizedTenantActorContext, action: string, targetType: string, now: string): Promise<void>;
 
   acceptPublication(actor: AuthorizedTenantActorContext, input: AcceptPublicationInput): Promise<AcceptPublicationResult>;
+  getArticleVariantContext(actor: AuthorizedTenantActorContext, articleId: string): Promise<ArticleVariantContext | null>;
   retryTargets(actor: AuthorizedTenantActorContext, input: PublicationTargetSelection): Promise<PublicationStatusProjection>;
   unpublishTargets(actor: AuthorizedTenantActorContext, input: PublicationTargetSelection): Promise<PublicationStatusProjection>;
   recordDispatchScheduled(organizationId: string, jobId: string, now: string, claimToken?: string): Promise<void>;
@@ -97,7 +114,7 @@ export interface PublishingRepository {
   claimCleanupTasks(now: string, limit: number, claimToken: string, claimExpiresAt: string): Promise<readonly ClaimedCleanupTask[]>;
   completeCleanupTask(organizationId: string, taskId: string, claimToken: string, now: string): Promise<void>;
   failCleanupTask(organizationId: string, taskId: string, claimToken: string, retryable: boolean, nextAt: string, failure: Readonly<Record<string, unknown>>, now: string): Promise<void>;
-  snapshot(organizationId: string): Promise<PublishingTenantSnapshot | null>;
+  snapshot(organizationId: string, regionScopeId?: string | null): Promise<PublishingTenantSnapshot | null>;
 }
 
 export type TargetPublicationOutcome =
@@ -113,7 +130,7 @@ export class PublishingAccessDeniedError extends Error {
   constructor() { super('Publishing tenant resource unavailable'); }
 }
 export class PublishingConflictError extends Error {
-  constructor(readonly code: 'conflict' | 'idempotency_conflict' | 'invalid_transition' | 'stale_fence' = 'conflict') {
+  constructor(readonly code: 'conflict' | 'idempotency_conflict' | 'invalid_transition' | 'stale_fence' | 'duplicate_variant' = 'conflict') {
     super(code);
   }
 }

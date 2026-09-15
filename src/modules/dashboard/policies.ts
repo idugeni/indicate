@@ -51,7 +51,7 @@ export function selectNetworkArticles(
     if (article.status !== 'active') return false;
     const region = state.regions.find((candidate) => candidate.organizationId === state.organizationId && candidate.id === article.regionId && candidate.status === 'active');
     if (region === undefined) return false;
-    if (site.regionId !== null && (region.id !== site.regionId || state.regions.find((candidate) => candidate.organizationId === state.organizationId && candidate.id === site.regionId && candidate.status === 'active') === undefined)) return false;
+    if (site.regionId !== null && state.regions.find((candidate) => candidate.organizationId === state.organizationId && candidate.id === site.regionId && candidate.status === 'active') === undefined) return false;
     return state.articleSites.some((assignment) => assignment.organizationId === state.organizationId && assignment.articleId === article.id
       && assignment.siteId === siteId
       && assignment.active
@@ -90,6 +90,7 @@ export function buildDashboard(state: DashboardTenantState): DashboardProjection
     successfulSiteOutcomes: state.articleSites.filter(({ organizationId, state: value }) => organizationId === tenant && value === 'published').length,
     failedSiteOutcomes: state.articleSites.filter(({ organizationId, state: value }) => organizationId === tenant && value === 'failed').length,
     activeMedia: state.media.filter(({ organizationId, state: value }) => organizationId === tenant && value === 'active').length,
+    regionScope: null,
   });
 }
 

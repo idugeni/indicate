@@ -1,6 +1,7 @@
 'use client';
 
-import { useId, useState, useTransition, type FormEvent } from 'react';
+import { useId, useRef, useState, useTransition, type FormEvent } from 'react';
+import { toast } from 'sonner';
 import {
   Check,
   Layers,
@@ -20,6 +21,8 @@ import type {
   SiteEntity,
 } from '@/modules/dashboard/components/shared/types';
 import { slugify } from '@/modules/dashboard/components/shared/form-utils';
+import { parseArticleBody } from '@/modules/site/article-markup';
+import { ArticleBodyView } from '@/modules/site/components/article-body-view';
 
 export function EditorialForm({
   data,
@@ -56,9 +59,34 @@ export function EditorialForm({
   const viewsCountInputId = useId();
 
   const [slug, setSlug] = useState('');
+  const [bodyDraft, setBodyDraft] = useState('');
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [isSubmitting, startSubmitTransition] = useTransition();
   const [isAssigning, startAssignTransition] = useTransition();
   const [isSettingViews, startViewsTransition] = useTransition();
+
+  const insertMarkup = (before: string, after = '') => {
+    const element = bodyRef.current;
+    if (element === null) return;
+    const { selectionStart: start, selectionEnd: end, value } = element;
+    const next = `${value.slice(0, start)}${before}${value.slice(start, end)}${after}${value.slice(end)}`;
+    setBodyDraft(next);
+    const cursor = start + before.length;
+    requestAnimationFrame(() => {
+      element.focus();
+      element.setSelectionRange(cursor, end + before.length);
+    });
+  };
+
+  const insertFigureMarker = () => {
+    const existing = parseArticleBody(bodyDraft).filter((block) => block.kind === 'figure').length;
+    insertMarkup(`\n[gambar:${existing + 1}]\n`);
+  };
+
+  const previewBlocks = parseArticleBody(bodyDraft);
+  const previewImages = previewBlocks.flatMap((block) =>
+    block.kind === 'figure' ? [{ url: '', alt: `Gambar ${block.index} (pratinjau — asli tampil setelah diunggah di tab Media)` }] : [],
+  );
 
   const handleTitleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     if (!slug) {
@@ -72,12 +100,13 @@ export function EditorialForm({
     const formData = new FormData(form);
 
     startSubmitTransition(async () => {
-      await onSubmit({
+      const payloadSlug = String(formData.get('slug') ?? '').trim();
+      const created = (await onSubmit({
         regionId: formData.get('regionId'),
         publisherId: formData.get('publisherId') || null,
         categoryId: formData.get('categoryId') || null,
         authorId: formData.get('authorId') || null,
-        slug: String(formData.get('slug') ?? '').trim(),
+        slug: payloadSlug,
         title: String(formData.get('title') ?? '').trim(),
         body: String(formData.get('body') ?? '').trim(),
         source: String(formData.get('source') ?? '').trim(),
@@ -87,9 +116,13 @@ export function EditorialForm({
           .filter((tag) => tag.length > 0)
           .slice(0, 10),
         status: 'draft',
-      });
+      })) as { readonly slug?: string } | null;
+      if (created !== null && typeof created.slug === 'string' && created.slug !== payloadSlug) {
+        toast.info(`Slug "${payloadSlug}" sudah dipakai — disimpan sebagai "${created.slug}".`);
+      }
       form.reset();
       setSlug('');
+      setBodyDraft('');
     });
   };
 
@@ -237,6 +270,9 @@ export function EditorialForm({
                 placeholder="judul-artikel-terkini"
                 className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
               />
+              <p className="m-0 font-mono text-[11px] text-paper-faint">
+                Bila sudah dipakai, akhiran -2, -3 ditambahkan otomatis.
+              </p>
             </div>
           </div>
 
@@ -271,14 +307,47 @@ export function EditorialForm({
             <label htmlFor={bodyInputId} className="font-mono text-xs text-paper-dim">
               Isi Naskah Lengkap (Plain Text / Paragraf Terstruktur)
             </label>
+            <div className="flex flex-wrap gap-1.5">
+              <button type="button" title="Tebal (**teks**)" onClick={() => insertMarkup('**', '**')} disabled={isSubmitting} className="rounded border border-hairline-strong bg-bg px-2 py-1 font-mono text-[11px] text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50">
+                Tebal
+              </button>
+              <button type="button" title="Miring (*teks*)" onClick={() => insertMarkup('*', '*')} disabled={isSubmitting} className="rounded border border-hairline-strong bg-bg px-2 py-1 font-mono text-[11px] text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50">
+                Miring
+              </button>
+              <button type="button" title="Daftar (- item)" onClick={() => insertMarkup('\n- ')} disabled={isSubmitting} className="rounded border border-hairline-strong bg-bg px-2 py-1 font-mono text-[11px] text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50">
+                Daftar
+              </button>
+              <button type="button" title="Sisip gambar ([gambar:N])" onClick={insertFigureMarker} disabled={isSubmitting} className="rounded border border-hairline-strong bg-bg px-2 py-1 font-mono text-[11px] text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50">
+                Gambar
+              </button>
+            </div>
             <Textarea
               id={bodyInputId}
               name="body"
               required
+              ref={bodyRef}
+              value={bodyDraft}
+              onChange={(e) => setBodyDraft(e.target.value)}
               disabled={isSubmitting}
-              placeholder="Tuliskan materi berita di sini..."
+              placeholder="Tuliskan materi berita di sini... (**tebal**, *miring*, - daftar, [gambar:1])"
               className="min-h-[140px] rounded border border-hairline-strong bg-bg p-3 font-sans text-xs leading-relaxed text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
             />
+            <p className="m-0 font-mono text-[11px] text-paper-faint">
+              Baris kosong = paragraf baru. Nomor [gambar:N] mengikuti urutan unggah di tab Media (pemilik artikel ini).
+            </p>
+            {bodyDraft.trim() !== '' ? (
+              <div className="rounded border border-hairline bg-bg-raised p-3">
+                <p className="m-0 mb-2 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Pratinjau</p>
+                <div className="space-y-3">
+                  <ArticleBodyView
+                    blocks={previewBlocks}
+                    images={previewImages}
+                    paragraphClassName="m-0 font-sans text-xs leading-relaxed text-paper"
+                    listClassName="m-0 space-y-1 pl-5 font-sans text-xs leading-relaxed text-paper [list-style:disc]"
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="pt-2">
@@ -368,7 +437,7 @@ export function EditorialForm({
 
         <form onSubmit={handleSetViews} className="mt-5 space-y-3 border-t border-hairline pt-5">
           <p className="m-0 font-mono text-xs text-paper-dim">
-            Jumlah tayang absolut (real menumpuk di atas angka ini)
+            Jumlah tayang absolut (tayang perdana terisi otomatis 10rb-100rb; real menumpuk di atas angka ini)
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">

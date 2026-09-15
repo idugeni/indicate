@@ -9,6 +9,11 @@ interface ActorContextBase {
   readonly permissionSet: ReadonlySet<PermissionName>;
   /** Platform-scoped grants (e.g. platform.customer.admin). Read only by platform guards/services. */
   readonly platformPermissionSet?: ReadonlySet<PermissionName>;
+  /**
+   * Kunci region opsional: bila terisi, aktor hanya boleh menyentuh region
+   * tersebut (+ portal apex milik bersama). NULL/undefined berarti semua region.
+   */
+  readonly regionScopeId?: string | null;
   readonly entryPoint: EntryPoint;
   readonly requestId: string;
 }

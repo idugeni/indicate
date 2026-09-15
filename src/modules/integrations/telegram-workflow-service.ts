@@ -39,7 +39,7 @@ export class TelegramWorkflowService {
   ) {}
 
   private actor(identity: TelegramIdentity, requestId: string): AuthorizedTenantActorContext {
-    return Object.freeze({ actorType: 'telegram', actorId: identity.mappingId, organizationId: identity.organizationId, permissionSet: identity.permissions, entryPoint: 'telegram', requestId });
+    return Object.freeze({ actorType: 'telegram', actorId: identity.mappingId, organizationId: identity.organizationId, permissionSet: identity.permissions, regionScopeId: identity.regionId, entryPoint: 'telegram', requestId });
   }
   private conversation(identity: TelegramIdentity, step: TelegramConversation['step'], data: Readonly<Record<string, unknown>>): TelegramConversation {
     const now = this.clock.now(); return Object.freeze({ source: 'telegram', chatId: identity.telegramChatId, userId: identity.telegramUserId, organizationId: identity.organizationId, step, data, updatedAt: now.toISOString(), expiresAt: new Date(now.getTime() + 3_600_000).toISOString() });
@@ -49,11 +49,21 @@ export class TelegramWorkflowService {
     const parsed = telegramUpdateSchema.safeParse(raw); if (!parsed.success) return null;
     const message = parsed.data.message;
     const document = message.document;
+    const photos = message.photo ?? [];
+    let largestPhoto: { readonly fileId: string; readonly sizeBytes?: number } | null = null;
+    for (const photo of photos) {
+      if (largestPhoto === null || (photo.file_size ?? 0) > (largestPhoto.sizeBytes ?? 0)) {
+        largestPhoto = { fileId: photo.file_id, ...(photo.file_size === undefined ? {} : { sizeBytes: photo.file_size }) };
+      }
+    }
+    const attachment = document === undefined || document.file_name === undefined || document.mime_type === undefined || document.file_size === undefined
+      ? largestPhoto === null || largestPhoto.sizeBytes === undefined
+        ? null
+        : { fileId: largestPhoto.fileId, filename: 'telegram-photo.jpg', mediaType: 'image/jpeg', sizeBytes: largestPhoto.sizeBytes }
+      : { fileId: document.file_id, filename: document.file_name, mediaType: document.mime_type, sizeBytes: document.file_size };
     return {
       updateId: String(parsed.data.update_id), occurredAt: new Date(message.date * 1_000).toISOString(), userId: String(message.from.id), chatId: String(message.chat.id), text: message.text ?? null,
-      document: document === undefined || document.file_name === undefined || document.mime_type === undefined || document.file_size === undefined
-        ? null
-        : { fileId: document.file_id, filename: document.file_name, mediaType: document.mime_type, sizeBytes: document.file_size },
+      document: attachment,
     };
   }
 
@@ -216,17 +226,18 @@ export class TelegramWorkflowService {
     if (text === '/article') { await this.repository.saveTelegramConversation(identity, this.conversation(identity, 'article_region', {})); return { ok: true, value: await this.reply('Send the active Region ID.') }; }
     if (text.startsWith('/image ')) {
       const [, articleId] = words(text); if (articleId === undefined) return { ok: true, value: await this.reply('Usage: /image ARTICLE_ID') };
-      await this.repository.saveTelegramConversation(identity, this.conversation(identity, 'article_image', { articleId })); return { ok: true, value: await this.reply('Send one image document.') };
+      await this.repository.saveTelegramConversation(identity, this.conversation(identity, 'article_image', { articleId })); return { ok: true, value: await this.reply('Kirim foto (langsung atau sebagai file, satu per pesan, boleh banyak). /cancel untuk selesai.') };
     }
     if (text.startsWith('/sites ')) {
       const [, articleId] = words(text); if (articleId === undefined) return { ok: true, value: await this.reply('Usage: /sites ARTICLE_ID') };
       const listed = await shared.articles.listEditorial(actor); if (!listed.ok) return listed;
       const article = listed.value.articles.find(({ id }) => id === articleId);
       if (article === undefined) return { ok: false, error: createNonDisclosingDenial(actor.requestId) };
-      const available = listed.value.sites.filter(({ status, regionId }) => status === 'active' && regionId === article.regionId);
-      if (available.length === 0) return { ok: true, value: await this.reply('No active Sites are available for this Article Region.') };
+      const available = listed.value.sites.filter(({ status }) => status === 'active');
+      if (available.length === 0) return { ok: true, value: await this.reply('No active Sites are available.') };
+      const regionName = (regionId: string | null) => regionId === null ? 'induk' : listed.value.regions.find(({ id }) => id === regionId)?.name ?? regionId;
       await this.repository.saveTelegramConversation(identity, this.conversation(identity, 'article_sites', { articleId, regionId: article.regionId, availableSiteIds: available.map(({ id }) => id) }));
-      return { ok: true, value: await this.reply(`Send comma-separated active Site IDs for ${article.regionId}:\n${available.map(({ id, normalizedHostname }) => `${normalizedHostname}: ${id}`).join('\n')}`) };
+      return { ok: true, value: await this.reply(`Satu artikel bisa tayang di semua portal (region artikel: ${regionName(article.regionId)}). Kirim Site ID dipisah koma:\n${available.map(({ id, normalizedHostname, regionId: siteRegion }) => `${normalizedHostname} [${regionName(siteRegion)}]: ${id}`).join('\n')}`) };
     }
     if (text.startsWith('/publish ')) {
       const [, articleId, siteList, idempotencyKey] = words(text);
@@ -273,19 +284,35 @@ export class TelegramWorkflowService {
       const requestedSiteIds = ids(text);
       const availableSiteIds = Array.isArray(conversation.data.availableSiteIds) ? conversation.data.availableSiteIds.filter((value): value is string => typeof value === 'string') : [];
       if (requestedSiteIds.length === 0 || requestedSiteIds.some((siteId) => !availableSiteIds.includes(siteId))) {
-        return { ok: false, error: createPublicError('INVALID_INPUT', 'Choose only active Sites listed for the Article Region.', actor.requestId, { siteIds: ['One or more Sites are unavailable for the Article Region.'] }) };
+        return { ok: false, error: createPublicError('INVALID_INPUT', 'Pilih hanya Site aktif dari daftar.', actor.requestId, { siteIds: ['One or more Sites are unavailable.'] }) };
       }
       const assigned = await shared.articles.assignArticleSites(actor, { articleId: conversation.data.articleId, siteIds: requestedSiteIds }); if (!assigned.ok) return assigned;
       await this.repository.clearTelegramConversation(identity); return { ok: true, value: { ...(await this.reply(`Assigned ${assigned.value.length} Site(s).`)), businessResult: assigned.value } };
     }
     if (conversation.step === 'article_image') {
-      if (update.document === null) return { ok: true, value: await this.reply('Send a valid document for this Article.') };
+      if (update.document === null) return { ok: true, value: await this.reply('Kirim foto atau dokumen gambar untuk artikel ini. /cancel untuk selesai.') };
+      const articleId = typeof conversation.data.articleId === 'string' ? conversation.data.articleId : '';
       const prepared = await this.mediaTransfer.prepare({ fileId: update.document.fileId, expectedSize: update.document.sizeBytes });
-      const reserved = await shared.media.reserveUpload(actor, { filename: update.document.filename, mediaType: update.document.mediaType, sizeBytes: prepared.sizeBytes, checksum: prepared.checksumSha256, purpose: 'article-image', owner: { kind: 'article', articleId: conversation.data.articleId } });
+      const reserved = await shared.media.reserveUpload(actor, { filename: update.document.filename, mediaType: update.document.mediaType, sizeBytes: prepared.sizeBytes, checksum: prepared.checksumSha256, purpose: 'article-image', owner: { kind: 'article', articleId } });
       if (!reserved.ok) return reserved;
       await this.mediaTransfer.transfer({ media: prepared, authorization: reserved.value.authorization, mediaType: update.document.mediaType });
       const completed = await shared.media.completeUpload(actor, { reservationId: reserved.value.reservationId }); if (!completed.ok) return completed;
-      await this.repository.clearTelegramConversation(identity); return { ok: true, value: { ...(await this.reply(`Image uploaded: ${completed.value.id}`)), businessResult: completed.value } };
+      const listedMedia = await shared.media.list(actor);
+      const listedArticles = await shared.articles.listEditorial(actor);
+      const position = (listedMedia.ok ? listedMedia.value : [])
+        .filter((asset) => asset.owner.kind === 'article' && asset.owner.articleId === articleId && asset.state === 'active').length;
+      const article = listedArticles.ok ? listedArticles.value.articles.find(({ id }) => id === articleId) : undefined;
+      if (article !== undefined && (article.status === 'draft' || article.status === 'active')) {
+        const updated = await shared.articles.updateArticle(actor, {
+          id: article.id, expectedVersion: article.version, regionId: article.regionId, publisherId: article.publisherId,
+          categoryId: article.categoryId, authorId: article.authorId, slug: article.slug, title: article.title,
+          body: `${article.body.replace(/\s+$/, '')}\n\n[gambar:${Math.max(1, position)}]`, source: article.source,
+          tags: [...article.tags], status: article.status,
+        });
+        if (!updated.ok) return updated;
+      }
+      await this.repository.saveTelegramConversation(identity, this.conversation(identity, 'article_image', { articleId }));
+      return { ok: true, value: { ...(await this.reply(`Foto ke-${Math.max(1, position)} terpasang ([gambar:${Math.max(1, position)}]). Kirim lagi atau /cancel.`)), businessResult: completed.value } };
     }
     await this.repository.clearTelegramConversation(identity); return { ok: true, value: await this.reply('Conversation reset. Start again with /article.') };
   }

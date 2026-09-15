@@ -32,7 +32,7 @@ async function handlePOST(request: Request) {
     const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator()); if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     const membership = await authorization.findActiveMembership(parsed.data.organizationId, local.value.id);
     if (membership === null || !membership.roleActive || !membership.orgPermissions.has('sites.manage')) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
-    const actor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId: parsed.data.organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), entryPoint: 'dashboard', requestId };
+    const actor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId: parsed.data.organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), regionScopeId: membership.regionId ?? null, entryPoint: 'dashboard', requestId };
     if (parsed.data.action === 'activate') {
       const context = await composition.provisioning.activate(actor, parsed.data.siteId, parsed.data.hostname, new Date(), parsed.data.previousHostname ?? null);
       return NextResponse.json(context);

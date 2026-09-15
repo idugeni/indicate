@@ -82,6 +82,8 @@ export interface MembershipRecord extends VersionedRecord {
   readonly avatarUrl: string | null;
   readonly roleId: string;
   readonly status: LifecycleStatus;
+  /** Kunci region; NULL berarti semua region. */
+  readonly regionId: string | null;
 }
 
 export interface TelegramIdentityMappingSummary {
@@ -276,6 +278,8 @@ export interface DashboardProjection {
   readonly successfulSiteOutcomes: number;
   readonly failedSiteOutcomes: number;
   readonly activeMedia: number;
+  /** Kunci region aktor; NULL berarti semua region. */
+  readonly regionScope: { readonly id: string; readonly name: string } | null;
 }
 
 export interface AnalyticsPoint {

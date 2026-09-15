@@ -48,6 +48,11 @@ export const publicationRequestSchema = z.object({
 
 export const publicationStatusSchema = z.object({ jobId: z.uuid() }).strict();
 
+export const publicationSuggestSchema = z.object({
+  articleId: z.uuid(),
+  siteIds: z.array(z.uuid()).min(1).max(100),
+}).strict();
+
 export const publicationTargetSelectionSchema = z.object({
   jobId: z.uuid(),
   targetIds: z.array(z.uuid()).min(1).max(100).optional(),

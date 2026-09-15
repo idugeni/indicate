@@ -1,7 +1,8 @@
 'use client';
 
-import { useId, useState, useTransition, type FormEvent } from 'react';
-import { Loader2, Send } from 'lucide-react';
+import { useId, useRef, useState, useTransition, type FormEvent } from 'react';
+import { toast } from 'sonner';
+import { Loader2, Send, Sparkles } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { Input } from '@/components/ui/input';
 import { generateIdempotencyUuid } from '@/modules/dashboard/components/shared/form-utils';
@@ -44,7 +45,7 @@ export function PublishingForm({
   readonly command: (action: string, payload: unknown) => Promise<unknown>;
 }) {
   const model = data as {
-    readonly articles?: readonly { readonly id: string; readonly title?: string }[];
+    readonly articles?: readonly { readonly id: string; readonly title?: string; readonly slug?: string }[];
     readonly sites?: readonly { readonly id: string; readonly normalizedHostname: string }[];
   } | null;
 
@@ -57,6 +58,9 @@ export function PublishingForm({
   const [jobStatus, setJobStatus] = useState<PublicationStatusProjection | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [isStatusBusy, startStatusTransition] = useTransition();
+  const [suggested, setSuggested] = useState<Readonly<Record<string, { readonly title: string; readonly description: string; readonly imageMediaId: string }>>>({});
+  const [isSuggesting, startSuggestTransition] = useTransition();
+  const formRef = useRef<HTMLFormElement>(null);
 
   const handleGenerateKey = () => {
     setIdempotencyKey(generateIdempotencyUuid());
@@ -80,28 +84,56 @@ export function PublishingForm({
     });
   };
 
+  const handleSuggest = () => {
+    const form = formRef.current;
+    if (form === null) return;
+    const values = new FormData(form);
+    const articleId = String(values.get('articleId') ?? '');
+    const siteIds = values.getAll('siteIds').map(String);
+    if (articleId === '' || siteIds.length === 0) {
+      toast.warning('Pilih artikel dan minimal satu portal dulu sebelum membuat varian.');
+      return;
+    }
+    startSuggestTransition(async () => {
+      const result = (await command('publication.suggest', { articleId, siteIds })) as {
+        readonly overrides?: Readonly<Record<string, { readonly title?: string; readonly description?: string }>>;
+      } | null;
+      if (result?.overrides === undefined) return;
+      const next: Record<string, { title: string; description: string; imageMediaId: string }> = {};
+      for (const [siteId, override] of Object.entries(result.overrides)) {
+        next[siteId] = { title: override?.title ?? '', description: override?.description ?? '', imageMediaId: '' };
+      }
+      setSuggested(next);
+      toast.info(`Varian unik terisi untuk ${Object.keys(next).length} portal — periksa sebelum kirim.`);
+    });
+  };
+
   const handlePublish = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
     const values = new FormData(form);
     const siteIds = values.getAll('siteIds').map(String);
-    const overrides: Record<string, { title?: string; description?: string }> = {};
+    const overrides: Record<string, { title?: string; description?: string; imageMediaId?: string }> = {};
     for (const siteId of siteIds) {
-      const title = String(values.get(`overrideTitle:${siteId}`) ?? '').trim();
-      const description = String(values.get(`overrideDescription:${siteId}`) ?? '').trim();
-      if (title !== '' || description !== '') {
-        overrides[siteId] = { ...(title === '' ? {} : { title }), ...(description === '' ? {} : { description }) };
+      const title = (suggested[siteId]?.title ?? '').trim();
+      const description = (suggested[siteId]?.description ?? '').trim();
+      const imageMediaId = (suggested[siteId]?.imageMediaId ?? '').trim();
+      if (title !== '' || description !== '' || imageMediaId !== '') {
+        overrides[siteId] = { ...(title === '' ? {} : { title }), ...(description === '' ? {} : { description }), ...(imageMediaId === '' ? {} : { imageMediaId }) };
       }
     }
 
     startPublishTransition(async () => {
-      await command('publication.request', {
+      const result = (await command('publication.request', {
         articleId: values.get('articleId'),
         siteIds,
         idempotencyKey: values.get('idempotencyKey'),
         options: { mode: 'immediate' },
         overrides,
-      });
+      })) as PublicationStatusProjection | null;
+      if (result !== null && typeof result === 'object' && 'job' in result && 'targets' in result) {
+        setJobStatus(result);
+      }
       handleGenerateKey();
     });
   };
@@ -110,7 +142,7 @@ export function PublishingForm({
     <div className="grid min-w-0 gap-4 lg:grid-cols-2">
       <SectionCard icon={Send} title="Terbitkan ke kanal" eyebrow="Penerbitan">
 
-        <form onSubmit={handlePublish} className="space-y-4">
+        <form ref={formRef} onSubmit={handlePublish} className="space-y-4">
           <div className="space-y-1.5">
             <label htmlFor={articleSelectId} className="font-mono text-xs text-paper-dim">
               Pilih Artikel
@@ -119,11 +151,12 @@ export function PublishingForm({
               id={articleSelectId}
               name="articleId"
               disabled={isPublishing}
+              onChange={() => setSuggested({})}
               className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
             >
               {model?.articles?.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.title ? `${item.title} (${item.id})` : item.id}
+                  {item.title ? `${item.title} (${item.slug ?? item.id})` : item.id}
                 </option>
               ))}
             </select>
@@ -159,14 +192,26 @@ export function PublishingForm({
                         name={`overrideTitle:${item.id}`}
                         disabled={isPublishing}
                         maxLength={160}
-                        placeholder="Judul khusus portal ini (kosongkan = judul asli)"
+                        value={suggested[item.id]?.title ?? ''}
+                        onChange={(e) => setSuggested((prev) => ({ ...prev, [item.id]: { title: e.target.value, description: prev[item.id]?.description ?? '', imageMediaId: prev[item.id]?.imageMediaId ?? '' } }))}
+                        placeholder="Judul khusus portal ini (10-160 karakter, unik per portal)"
                         className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
                       />
                       <Input
                         name={`overrideDescription:${item.id}`}
                         disabled={isPublishing}
                         maxLength={500}
-                        placeholder="Deskripsi khusus portal ini (kosongkan = deskripsi asli)"
+                        value={suggested[item.id]?.description ?? ''}
+                        onChange={(e) => setSuggested((prev) => ({ ...prev, [item.id]: { title: prev[item.id]?.title ?? '', description: e.target.value, imageMediaId: prev[item.id]?.imageMediaId ?? '' } }))}
+                        placeholder="Deskripsi khusus portal ini (50-500 karakter, unik per portal)"
+                        className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
+                      />
+                      <Input
+                        name={`overrideImage:${item.id}`}
+                        disabled={isPublishing}
+                        value={suggested[item.id]?.imageMediaId ?? ''}
+                        onChange={(e) => setSuggested((prev) => ({ ...prev, [item.id]: { title: prev[item.id]?.title ?? '', description: prev[item.id]?.description ?? '', imageMediaId: e.target.value } }))}
+                        placeholder="UUID gambar khusus portal ini (opsional, lihat tab Media)"
                         className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
                       />
                     </div>
@@ -200,7 +245,20 @@ export function PublishingForm({
             />
           </div>
 
-          <div className="pt-2">
+          <div className="space-y-2 pt-2">
+            <button
+              type="button"
+              onClick={handleSuggest}
+              disabled={isPublishing || isSuggesting}
+              className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded border border-hairline-strong bg-bg px-3.5 font-sans text-xs font-semibold text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50"
+            >
+              {isSuggesting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
+              )}
+              <span>Buat Varian Unik Otomatis</span>
+            </button>
             <button
               type="submit"
               disabled={isPublishing}
