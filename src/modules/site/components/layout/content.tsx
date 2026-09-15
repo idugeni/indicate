@@ -186,10 +186,10 @@ export function Section({
     >
       <Container>
         {title || description || eyebrow ? (
-          <header className="mb-10 grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,4fr)] lg:items-end">
+          <header className="mb-10 grid gap-6 md:mb-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,4fr)] lg:items-end">
             <div>
               {eyebrow ? (
-                <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium uppercase tracking-wider text-brass">
+                <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-brass">
                   <span aria-hidden="true" className="h-px w-8 flex-none bg-brass/70" />
                   {eyebrow}
                 </p>
@@ -198,7 +198,7 @@ export function Section({
                 <h2
                   id={headingId}
                   className={cn(
-                    'm-0 max-w-xl font-sans text-2xl font-bold leading-tight tracking-tight text-balance text-paper sm:text-3xl',
+                    'm-0 max-w-xl font-serif text-3xl font-medium leading-[1.12] tracking-tight text-balance text-paper sm:text-4xl',
                     hasEyebrow && 'mt-4',
                   )}
                 >
@@ -207,7 +207,7 @@ export function Section({
               ) : null}
             </div>
             {description ? (
-              <p className="m-0 max-w-xl font-sans text-sm leading-relaxed text-pretty text-paper-dim md:text-base lg:justify-self-end">
+              <p className="m-0 max-w-xl font-sans text-base leading-relaxed text-pretty text-paper-dim lg:justify-self-end">
                 {description}
               </p>
             ) : null}
@@ -264,16 +264,16 @@ export function PageHeader({
           </Breadcrumb>
         ) : null}
         {eyebrow ? (
-          <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium uppercase tracking-wider text-brass">
+          <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-brass">
             <span aria-hidden="true" className="h-px w-8 flex-none bg-brass/70" />
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="m-0 max-w-3xl font-sans text-3xl font-bold leading-tight tracking-tight text-balance text-paper sm:text-4xl">
+        <h1 className="m-0 max-w-3xl font-serif text-4xl font-medium leading-[1.1] tracking-tight text-balance text-paper sm:text-5xl">
           {title}
         </h1>
         {description ? (
-          <p className="m-0 max-w-2xl font-sans text-sm leading-relaxed text-paper-dim sm:text-base">
+          <p className="m-0 max-w-2xl font-sans text-base leading-relaxed text-paper-dim">
             {description}
           </p>
         ) : null}

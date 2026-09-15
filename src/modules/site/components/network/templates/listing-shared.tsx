@@ -9,8 +9,8 @@ import { ARTICLE_FALLBACK_IMAGE_URL } from '@/ui/site/marketing-content';
 export const TIME_ZONE_ID = 'Asia/Jakarta';
 
 /**
- * Satu-satunya layout tenant yang diakui (lih. docs/DESIGN.md §17):
- * Clean Blue Editorial. Semua domain dipaksa sinkron ke template ini —
+ * Satu-satunya layout tenant yang diakui: Clean Blue Editorial.
+ * Semua domain dipaksa sinkron ke template ini —
  * tidak ada cabang per-hostname, tidak ada CSS per-domain.
  */
 export const TEMPLATE_IDS = [

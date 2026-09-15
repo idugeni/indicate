@@ -196,9 +196,9 @@
   }
 
   h1, h2, h3, h4, .font-display {
-    font-family: var(--font-plex-sans);
-    font-weight: 700;
-    letter-spacing: -0.03em;
+    font-family: var(--font-fraunces);
+    font-weight: 500;
+    letter-spacing: -0.01em;
   }
 
   code {
@@ -493,7 +493,7 @@
     font-size: 1.125em;
   }
 
-  /* Pola layout jaringan (docs/DESIGN.md §17) — dikendalikan data-template
+  /* Pola layout jaringan — dikendalikan data-template
      pada .network-shell. Hanya struktur/grid/tipografi; warna brand tetap
      mengalir dari --site-primary / --site-accent per tenant. */
   .network-shell[data-template='broadsheet-classic'] .network-brand strong {

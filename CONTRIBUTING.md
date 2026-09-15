@@ -114,15 +114,15 @@ The summary below must not contradict it.
 
 | Path | Purpose |
 |---|---|
-| `src/app/` | Next.js App Router routing only: `(site)`, `(network)`, `(auth)`, `(dashboard)` surfaces and `api/` route handlers (health, v1, dashboard, internal, network, webhooks) |
+| `src/app/` | Next.js App Router routing only: `(site)`, `(network)`, `(auth)`, `(dashboard)` surfaces and `api/` route handlers (health, v1, dashboard, internal, leads, network, webhooks) |
 | `src/components/ui/` | Design-system primitives (shadcn/Radix) |
-| `src/modules/` | Bounded contexts (`auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `persisted-config`, `publishing`, `site`); only `dashboard`, `delivery`, and `integrations` currently expose a barrel `index.ts` — import other modules by file path |
+| `src/modules/` | Bounded contexts (`audit`, `auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `moderation`, `persisted-config`, `publishing`, `site`); only `dashboard`, `delivery`, and `integrations` currently expose a barrel `index.ts` — import other modules by file path |
 | `src/core/` | Shared kernel: `config/` (environment validation), errors, operation context, hostname, observability, routing, security, system, transactions |
 | `src/data/` | Persistence: Drizzle schema, `repos/`, `client.ts`, and forward-only-by-default SQL `migrations/` |
 | `src/integrations/` | Provider adapters: Supabase, R2 storage, Upstash Redis, Telegram, Cloudflare, Vercel (server-only) |
 | `src/ui/` | Shared client-safe UI utilities (`cn`, themes, hooks, site helpers) |
 | `proxy.ts` | Edge middleware: hostname resolution, security headers, platform guards |
-| `.kiro/specs/` | Implemented MVP specification and pending database-backed runtime configuration specification |
+| `.agents/skills/` | Agent playbooks (`indicate-conventions`, `tenant-onboarding`, provider skills); see `AGENTS.md` for load triggers |
 
 There are no `_composition/`, `_lib/`, or `_components/` group folders in `src/app/` (corrected 2026-09-14 to match `CLAUDE.md` and disk). Services are wired directly in route handlers via shared modules.
 
@@ -130,9 +130,19 @@ The intended dependency direction is
 `app -> application -> domain/ports <- infrastructure` as applied to this
 layout: `src/app/` delegates all business logic to `src/modules/` and
 `src/data/`; `src/modules/` encapsulates product capabilities behind
-`index.ts`; `src/integrations/` stays server-only; `src/core/` holds the
+file-path imports (only `dashboard`, `delivery`, and `integrations`
+expose `index.ts`); `src/integrations/` stays server-only; `src/core/` holds the
 shared kernel. Repository policies enforce import, dependency, deployment,
 migration, release, and secret boundaries.
+
+### Tool configuration homes
+
+| Path | Serves | Rule |
+|---|---|---|
+| `.agents/skills/` | Canonical skill source for all agent tools | Edit here only; `.claude/skills` and `.kiro/skills` are junctions to this directory — never edit through them |
+| `.mcp.json` | Canonical repo MCP declaration | `opencode.jsonc` mirrors it; `.vscode/mcp.json` is editor-local convenience |
+| `supabase/` | Supabase CLI residue (`.temp/`, git-ignored) | Leave alone |
+| `public/brand/` | Static control-plane masters | Tenant brand bytes live in R2, never here |
 
 ### Import boundary enforcement (advisory in relaxed mode)
 
@@ -140,8 +150,7 @@ migration, release, and secret boundaries.
 
 - `src/app/` handles routing only — no business logic, no tenant SQL, no
   provider SDK calls from route shells.
-- `src/modules/*` must not reach into another module's internals — only its
-  public `index.ts` entry.
+- `src/modules/*` must not reach into another module's internals — import by file path (only `dashboard`, `delivery`, and `integrations` expose a public `index.ts` entry).
 - Domain and pure policy code imports no framework or provider clients.
 - Application services receive a verified context, validated command, and
   injected ports; they do not read request globals.
@@ -271,13 +280,18 @@ Scopes: `site`, `network`, `dashboard`, `auth`, `api`, `publishing`, `content`,
 
 ## Design system
 
-All visual decisions must follow [docs/DESIGN.md](docs/DESIGN.md). Key constraints:
+Visual authority lives in code: design tokens and base styles in
+`src/app/globals.css`, primitives in `src/components/ui/` (per
+`components.json`), and tenant templates under
+`src/modules/site/components/`. Key constraints (follow the existing
+patterns, do not improvise new ones):
 
 - Dark indigo atmosphere, brass accent used sparingly
 - Fraunces for editorial/display, IBM Plex Sans for interface, IBM Plex Mono for data
 - Flat surfaces with hairline borders, small radius (3–4px), no pill shapes
 - Data displayed exactly (no rounding, no dramatization)
-- See the Anti-Slop Rules in `docs/DESIGN.md` for prohibited patterns
+- No infinite animations; no AI-slop patterns (commented code, redundant
+  narration, emoji, divider art) anywhere including stylesheets
 
 ## Documentation (update when practical)
 
@@ -289,7 +303,7 @@ When making structural changes, consider updating these files:
 | `docs/ARCHITECTURE.md` | System topology, layer responsibilities |
 | `docs/MIGRATIONS.md` | Migration or rollback procedure changes |
 | `docs/PRODUCTION_READINESS_RUNBOOK.md` | Readiness or rollback changes |
-| `docs/DESIGN.md` | Visual tokens, component specs (if adding UI) |
+| `src/app/globals.css` + `src/components/ui/` | Visual tokens, component specs (if adding UI) |
 | `CHANGELOG.md` | Notable changes under `[Unreleased]` |
 | `.env.example` | Runtime contract changes (placeholders only) |
 
@@ -299,6 +313,6 @@ If you are unsure where code belongs or how to handle a specific pattern, check:
 
 1. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for system design
 2. [docs/PRD.md](docs/PRD.md) for product requirements
-3. [docs/DESIGN.md](docs/DESIGN.md) for visual decisions
+3. [src/app/globals.css](src/app/globals.css) and `src/components/ui/` for visual decisions
 4. [SUPPORT.md](SUPPORT.md) for where to ask for help
 5. Existing code in the same layer for established patterns

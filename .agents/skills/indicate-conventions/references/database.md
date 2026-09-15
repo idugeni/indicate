@@ -4,7 +4,7 @@ Source of truth: `docs/MIGRATIONS.md`, `src/data/`.
 
 ## Layout
 
-- `src/data/schema/` — Drizzle table definitions: `editorial`, `identity`, `operations`, `runtime-config`.
+- `src/data/schema/` — Drizzle table definitions: `billing`, `content`, `editorial`, `identity`, `operations`, `runtime-config`.
 - `src/data/client.ts` — `createRuntimeDatabase()` factory (pooled URL, `prepare: false`); singleton ownership lives in `src/core/config/runtime/runtime-context.ts`.
 - `src/data/repos/` — repository implementations (e.g. `DrizzlePublishingRepository`, `DrizzleBillingRepository`).
 - `src/data/migrations/` — forward-only, hand-written SQL + `bootstrap/indicate-schema.sql`. No `db:*` npm scripts.

@@ -27,6 +27,24 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@/components/*": [
+        "./src/components/*"
+      ],
+      "@/modules/*": [
+        "./src/modules/*"
+      ],
+      "@/data/*": [
+        "./src/data/*"
+      ],
+      "@/core/*": [
+        "./src/core/*"
+      ],
+      "@/integrations/*": [
+        "./src/integrations/*"
+      ],
+      "@/ui/*": [
+        "./src/ui/*"
       ]
     }
   },

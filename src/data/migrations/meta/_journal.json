@@ -743,6 +743,48 @@
       "when": 1788900000000,
       "tag": "20260907290000_organizations_kind",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1789470865962,
+      "tag": "20260914020000_template_preset_clean_blue",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1789470866962,
+      "tag": "20260914030000_articles_cover_image_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1789470867962,
+      "tag": "20260914040000_single_template_clean_blue",
+      "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "7",
+      "when": 1789470868962,
+      "tag": "20260915000000_seo_metadata_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "7",
+      "when": 1789470869962,
+      "tag": "20260915010000_invoices_created_by_covering_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "7",
+      "when": 1789470870962,
+      "tag": "20260915020000_media_policy_allow_ico",
+      "breakpoints": true
     }
   ]
 }

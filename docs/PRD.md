@@ -81,7 +81,7 @@ Absent, unauthorized, and cross-organization tenant resources use the same non-d
 - Production root hostnames must not be hardcoded in source.
 - Initial regions are Wonosobo, Magelang, and Semarang.
 - Additional Central Java regions use stable identifiers, names, and hostname-safe slugs and require no source-code change.
-- The shared deployment supports up to 100 active root domains and all Central Java regions under each configured root.
+- The shared deployment supports an unbounded count of active root domains and all configured regions under each root; scale is data-driven with no code change per domain.
 
 ### Hostname behavior
 

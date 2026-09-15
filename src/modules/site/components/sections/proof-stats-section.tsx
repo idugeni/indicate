@@ -1,22 +1,21 @@
-import { CARD_CLASS, Section } from '@/modules/site/components/layout/content';
+import { Section } from '@/modules/site/components/layout/content';
 import { PROOF_POINTS, type ProofPointItem } from '@/ui/site/marketing-content';
-import { cn } from '@/ui/cn';
 
-const SYSTEM_METRICS: readonly { readonly title: string; readonly value: string; readonly description: string }[] = Object.freeze([
+const SYSTEM_METRICS: readonly { readonly value: string; readonly label: string; readonly note: string }[] = Object.freeze([
   {
-    title: 'Target keandalan',
-    value: '99.9%+',
-    description: 'Target operasional di atas CDN tepi · Bukan SLA, lihat Ketentuan §17',
+    value: '99,9%',
+    label: 'Target keandalan di atas CDN tepi',
+    note: 'Target operasional — bukan SLA, lihat Ketentuan §17.',
   },
   {
-    title: 'Isolasi tenant',
-    value: 'Exact-host',
-    description: 'Dirancang tanpa fallback tenant atau pencocokan substring · RLS berlapis',
+    value: 'Eksak',
+    label: 'Kecocokan host tanpa fallback tenant',
+    note: 'Tanpa pencocokan substring, RLS berlapis.',
   },
   {
-    title: 'Waktu eksekusi',
-    value: '< 50ms',
-    description: 'Target operasional umum, bervariasi menurut beban · PostgreSQL 17',
+    value: '<50ms',
+    label: 'Waktu eksekusi umum',
+    note: 'Bervariasi menurut beban · PostgreSQL 17.',
   },
 ]);
 
@@ -27,32 +26,31 @@ export function ProofStatsSection() {
       eyebrow="Bukti"
       description="Target operasional dan desain arsitektur — bukan SLA atau jaminan ketersediaan."
     >
-      <dl className="m-0 grid grid-cols-2 gap-4 p-0 sm:grid-cols-3">
+      <dl className="m-0 grid gap-8 p-0 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-hairline">
         {SYSTEM_METRICS.map((metric) => (
-          <div key={metric.title} className={cn(CARD_CLASS, 'gap-2')}>
-            <dt className="font-mono text-[11px] uppercase tracking-wider text-paper-faint">
-              {metric.title}
-            </dt>
-            <dd className="m-0 font-mono text-3xl font-bold tabular-nums tracking-tight text-paper">
+          <div key={metric.label} className="sm:px-8 sm:first:pl-0 sm:last:pr-0">
+            <dd className="m-0 font-mono text-4xl font-medium tabular-nums tracking-tight text-paper md:text-5xl">
               {metric.value}
             </dd>
-            <dd className="m-0 font-sans text-xs leading-relaxed text-paper-dim">
-              {metric.description}
-            </dd>
-          </div>
-        ))}
-
-        {(PROOF_POINTS as ProofPointItem[]).map((point) => (
-          <div key={point.term} className={CARD_CLASS}>
-            <dt className="font-mono text-xs font-medium uppercase tracking-wider text-brass">
-              {point.term}
-            </dt>
-            <dd className="m-0 font-sans text-sm leading-relaxed text-paper-dim">
-              {point.detail}
+            <dt className="mt-3 font-sans text-base font-medium text-paper">{metric.label}</dt>
+            <dd className="m-0 mt-1 font-sans text-sm leading-relaxed text-paper-faint">
+              {metric.note}
             </dd>
           </div>
         ))}
       </dl>
+      <div className="mt-12 grid gap-8 border-t border-hairline pt-8 md:grid-cols-3">
+        {(PROOF_POINTS as ProofPointItem[]).map((point) => (
+          <div key={point.term}>
+            <h3 className="m-0 font-sans text-base font-semibold tracking-tight text-paper">
+              {point.term}
+            </h3>
+            <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-paper-dim">
+              {point.detail}
+            </p>
+          </div>
+        ))}
+      </div>
     </Section>
   );
 }

@@ -47,9 +47,9 @@ src/app/
 ├── (network)/  # Tenant-facing public content (articles, categories, search)
 ├── (auth)/     # Authentication flows (sign-in, callback)
 ├── (dashboard)/# Protected editorial Dashboard
-├── api/        # API routes (health, v1, dashboard, internal, network, webhooks)
+├── api/        # API routes (health, v1, dashboard, internal, leads, network, webhooks)
 ├── domain-pending/  # Activation-pending probe route
-├── llms.txt/ | robots.txt/ | rss.xml/ | sitemap.xml/  # Machine-readable surfaces
+├── llms.txt/ | robots.txt/ | rss.xml/ | sitemap.xml/ | news-sitemap.xml/  # Machine-readable surfaces
 ├── manifest.ts # PWA manifest
 └── page.tsx | layout.tsx | globals.css | error.tsx | global-error.tsx | not-found.tsx | opengraph-image.tsx
 ```
@@ -85,7 +85,7 @@ Configured in `tsconfig.json`:
 
 ## Import boundaries (advisory)
 
-- `src/modules/` encapsulates product capabilities (`auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `persisted-config`, `publishing`, `site`). Only `dashboard`, `delivery`, and `integrations` currently expose a barrel `index.ts` — prefer importing every other module by file path (e.g. `@/modules/publishing/publication-policy`).
+- `src/modules/` encapsulates product capabilities (`audit`, `auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `moderation`, `persisted-config`, `publishing`, `site`). Only `dashboard`, `delivery`, and `integrations` currently expose a barrel `index.ts` — prefer importing every other module by file path (e.g. `@/modules/publishing/publication-policy`).
 - `src/integrations/` holds provider adapters (`supabase`, `storage`, `redis`, `telegram`, `cloudflare`, `vercel`) and should stay server-only.
 - `src/core/` holds the shared kernel (`config/`, errors, operation context, hostname, observability, routing, security, system, transactions).
 - `src/app/` handles Next.js App Router concerns and should delegate business logic to `src/modules/` and `src/data/`.
@@ -99,7 +99,7 @@ Configured in `tsconfig.json`:
 - **Webhook host** → webhook endpoints
 - **Public tenant hosts** → exact-match hostname resolution to one Site
 
-Every tenant operation resolves exactly one Organization. Public reads resolve Organization and Site from one exact normalized hostname. No fallback tenant exists. Denials are non-disclosing (`deny()` → opaque 404/400 + `noindex`), with platform security headers (CSP/HSTS) applied at the edge.
+Every tenant operation resolves exactly one Organization. Public reads resolve Organization and Site from one exact normalized hostname. No fallback tenant exists in production. Denials are non-disclosing (`deny()` → opaque 404/400 + `noindex`), with platform security headers (CSP/HSTS) applied at the edge. Development exception: localhost and `*.vercel.app` preview hosts are rewritten to the Dashboard host in `proxy.ts` — never rely on this outside local/preview work.
 
 ## Server-only enforcement
 
@@ -158,7 +158,7 @@ Migrations in `src/data/migrations/` are applied manually in filename order agai
 
 ## Design system
 
-All visual decisions follow `docs/DESIGN.md`. Dark indigo control-room aesthetic, brass accent, Fraunces + IBM Plex type system. See `docs/DESIGN.md` for tokens, components, and anti-slop rules.
+Visual authority lives in code: tokens and base styles in `src/app/globals.css`, primitives in `src/components/ui/` (per `components.json`), tenant templates under `src/modules/site/components/`. Dark indigo control-room aesthetic, brass accent, Fraunces + IBM Plex type system. Follow the existing patterns; do not improvise new ones.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

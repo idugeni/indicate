@@ -6,7 +6,7 @@ Indicate uses forward-only Drizzle PostgreSQL migrations in `src/data/migrations
 
 1. Run deterministic source checks and review every migration for drift against the Drizzle snapshot metadata.
 2. Back up the target Supabase PostgreSQL database and review every SQL migration.
-3. Apply each reviewed SQL file in the order recorded by Drizzle's `meta/_journal.json` (which follows filename order) with the direct migration credential (via `psql` or the Supabase SQL editor).
+3. Apply each reviewed SQL file in the order recorded by Drizzle's `src/data/migrations/meta/_journal.json` (which follows filename order) with the direct migration credential (via `psql` or the Supabase SQL editor).
 4. Verify through the pooled runtime path: start the application and confirm `GET /api/health` reports a valid configuration and the expected Postgres snapshot version. The `migration_gate_events.required_version` check is advisory in relaxed mode — the health handler surfaces the version but does not block activation.
 5. Run the quality gate before promotion when practical; a failed check warns but does not hard-block promotion without owner sign-off.
 

@@ -9,10 +9,10 @@
 
 <p align="center">
   <a href="https://github.com/idugeni/indicate/actions/workflows/quality-gate.yml?query=branch%3Amain"><img alt="Release Quality Gate status" src="https://img.shields.io/github/actions/workflow/status/idugeni/indicate/quality-gate.yml?branch=main&amp;style=for-the-badge&amp;label=Stage%207%20Gate" /></a>
-  <a href="https://nodejs.org/"><img alt="Node.js 22 or newer" src="https://img.shields.io/badge/Node.js-%E2%89%A522-339933?style=for-the-badge&amp;logo=nodedotjs&amp;logoColor=white" /></a>
-  <a href="https://nextjs.org/"><img alt="Next.js 16.3.3" src="https://img.shields.io/badge/Next.js-16.3.3-000000?style=for-the-badge&amp;logo=nextdotjs&amp;logoColor=white" /></a>
-  <a href="https://react.dev/"><img alt="React 19.2.8" src="https://img.shields.io/badge/React-19.2.8-20232A?style=for-the-badge&amp;logo=react&amp;logoColor=61DAFB" /></a>
-  <a href="https://www.typescriptlang.org/"><img alt="TypeScript 5.9.3" src="https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=for-the-badge&amp;logo=typescript&amp;logoColor=white" /></a>
+  <a href="https://nodejs.org/"><img alt="Node.js 24" src="https://img.shields.io/badge/Node.js-24-339933?style=for-the-badge&amp;logo=nodedotjs&amp;logoColor=white" /></a>
+  <a href="https://nextjs.org/"><img alt="Next.js 16.3.5" src="https://img.shields.io/badge/Next.js-16.3.5-000000?style=for-the-badge&amp;logo=nextdotjs&amp;logoColor=white" /></a>
+  <a href="https://react.dev/"><img alt="React 19.3.0" src="https://img.shields.io/badge/React-19.3.0-20232A?style=for-the-badge&amp;logo=react&amp;logoColor=61DAFB" /></a>
+  <a href="https://www.typescriptlang.org/"><img alt="TypeScript 6" src="https://img.shields.io/badge/TypeScript-6-3178C6?style=for-the-badge&amp;logo=typescript&amp;logoColor=white" /></a>
   <a href="https://www.postgresql.org/"><img alt="PostgreSQL 17" src="https://img.shields.io/badge/PostgreSQL-17-4169E1?style=for-the-badge&amp;logo=postgresql&amp;logoColor=white" /></a>
   <a href="https://github.com/idugeni/indicate/commits/main"><img alt="Last commit on main" src="https://img.shields.io/github/last-commit/idugeni/indicate/main?style=for-the-badge&amp;label=Last%20commit" /></a>
 </p>
@@ -38,7 +38,7 @@
 > **Last verified CI:** [Release Quality Gate run 33383014309](https://github.com/idugeni/indicate/actions/runs/33383014309). This is recorded evidence, not a claim that current CI, live provider contracts, or any deployment is presently green.
 
 > [!IMPORTANT]
-> **Specified, not implemented:** [database-backed-runtime-config](.kiro/specs/database-backed-runtime-config/) has an approved requirements/design/task set, but its implementation tasks remain pending.
+> **Specified, not implemented:** parts of the persisted runtime-config surface have approved requirements and design artifacts, but some implementation tasks remain pending. See `docs/ARCHITECTURE.md` and the `src/data/migrations/` sequence for the current state.
 
 > [!WARNING]
 > [.env.example](.env.example) is the authority for the bootstrap environment: connections, secrets, hosts, and build-time values. Tunable policies and deployment identifiers live in PostgreSQL runtime config and are managed through the superadmin surface, not environment variables.
@@ -60,32 +60,32 @@ Indicate is a modular monolith with a fixed shared topology:
 
 Adding an Organization, Domain, Region, or Site is a persisted-data and control-plane operation, not a deployment. PostgreSQL is authoritative for tenant, editorial, publication, audit, and recovery state; queues, caches, cron invocations, and provider state remain subordinate and recoverable.
 
-The intended dependency direction is `app -> application -> domain/ports <- infrastructure`. Repository policies enforce important import, dependency, deployment, migration, Release, and secret boundaries.
+The intended dependency direction is `src/app/` → `src/modules/` → `src/core/` + ports ← `src/integrations/`, with `src/data/` for persistence. Repository policies enforce import, dependency, deployment, migration, release, and secret boundaries.
 
 ## Technology and prerequisites
 
-The primary stack is Next.js 16.3.3, React 19.2.8, TypeScript 5.9.3, Tailwind CSS, shadcn/ui and Radix primitives, Drizzle ORM, PostgreSQL and Supabase Auth, Cloudflare R2, Upstash Redis, and Zod.
+The primary stack is Next.js 16.3.5, React 19.3.0, TypeScript 6, Tailwind CSS, shadcn/ui and Radix primitives, Drizzle ORM, PostgreSQL and Supabase Auth, Cloudflare R2, Upstash Redis, and Zod.
 
 Install or provide:
 
 | Requirement | Purpose |
 |---|---|
-| Node.js **22 or newer** and npm | Application and builds; `package-lock.json` is authoritative. |
+| Node.js **24** and npm (`engines` + `.nvmrc` pin 24.x) | Application and builds; `package-lock.json` is authoritative. |
 | PostgreSQL **17** | Durable tenant, editorial, publication, and audit state (via Supabase). |
 
 ## Repository layout
 
 | Path | Purpose |
 |---|---|
-| `src/app/` | Next.js App Router routing only: `(site)`, `(network)`, `(auth)`, `(dashboard)` surfaces and `api/` route handlers (health, v1, dashboard, internal, network, webhooks) |
+| `src/app/` | Next.js App Router routing only: `(site)`, `(network)`, `(auth)`, `(dashboard)` surfaces and `api/` route handlers (health, v1, dashboard, internal, leads, network, webhooks) |
 | `src/components/ui/` | Design-system primitives (shadcn/Radix) |
-| `src/modules/` | Bounded contexts with a public entry (`index.ts`): auth, billing, content, dashboard, delivery, integrations, persisted-config, publishing, site; domain UI colocated in `*/components/` |
+| `src/modules/` | Bounded contexts (`audit`, `auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `moderation`, `persisted-config`, `publishing`, `site`); only `dashboard`, `delivery`, and `integrations` expose a barrel `index.ts` — import other modules by file path; domain UI colocated in `*/components/` |
 | `src/core/` | Shared kernel: `config/` (environment validation), errors, operation context, hostname, observability, routing, security, system, transactions |
 | `src/data/` | Persistence: Drizzle schema, `repos/`, `client.ts`, and forward-only SQL `migrations/` |
 | `src/integrations/` | Provider adapters: Supabase, R2 storage, Upstash Redis, Telegram, Cloudflare, Vercel |
 | `src/ui/` | Shared client-safe UI utilities (`cn`, themes, hooks, site helpers) |
 | `proxy.ts` | Edge middleware: hostname resolution, security headers, platform guards |
-| `.kiro/specs/` | Implemented MVP specification and pending database-backed runtime configuration specification |
+| `.agents/skills/` | Agent playbooks (`indicate-conventions`, `tenant-onboarding`, provider skills); see `AGENTS.md` for load triggers |
 
 ## Quick start
 

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, ArrowUpRight, Mail, MessageCircle, Send } from 'lucide-react';
+import { ArrowRight, Mail, MessageCircle, Send } from 'lucide-react';
 import {
   CONTACT_CHANNELS as CONTACT_CHANNEL_FALLBACK,
   LEGAL_ROUTES,
@@ -9,7 +9,7 @@ import {
 } from '@/ui/site/marketing-content';
 import { getContactChannels } from '@/modules/content/site-content';
 import { currentYear } from '@/modules/site/current-year';
-import { CHANNEL_ICONS, Container, PrimaryCta, SecondaryCta, withIcons } from '@/modules/site/components/layout/content';
+import { Container, PrimaryCta, SecondaryCta } from '@/modules/site/components/layout/content';
 
 interface FooterColumn {
   readonly heading: string;
@@ -148,68 +148,37 @@ export async function SiteFooter() {
 export async function CallToAction() {
   const channels = await getContactChannels();
   const rows = channels.length > 0 ? channels : CONTACT_CHANNEL_FALLBACK;
-  const cards = withIcons(rows, CHANNEL_ICONS);
   return (
-    <section className="border-t border-hairline">
-      <Container className="py-14 md:py-20">
-        <div className="rounded-lg border border-hairline bg-[color-mix(in_srgb,var(--brass)_6%,var(--bg-raised))] p-5 sm:p-6">
-          <div className="grid items-center gap-6 lg:grid-cols-[minmax(0,1fr)_auto]">
-            <div className="min-w-0">
-              <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium uppercase tracking-wider text-brass">
-                <span aria-hidden="true" className="h-px w-8 flex-none bg-brass/70" />
-                Kesiapan Bermigrasi
-              </p>
-              <h2 className="m-0 mt-4 max-w-2xl font-sans text-xl font-bold leading-tight tracking-tight text-balance text-paper sm:text-2xl">
-                Konsolidasikan seluruh jaringan redaksi Anda.
-              </h2>
-              <p className="m-0 mt-2 max-w-2xl font-sans text-sm leading-relaxed text-paper-dim">
-                Sampaikan jumlah domain dan unit yang direncanakan — tim kami menyusun arsitektur penyiapan beserta estimasinya, tanpa mengganggu operasi redaksi yang berjalan.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 lg:flex-col lg:items-stretch">
-              <PrimaryCta href="/contact" className="lg:w-full">
-                <span>Jadwalkan Diskusi Arsitektur</span>
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </PrimaryCta>
-              <SecondaryCta href="/services" className="lg:w-full">
-                <span>Lihat Layanan</span>
-              </SecondaryCta>
-            </div>
+    <section aria-labelledby="konsolidasi-redaksi-heading" className="border-t border-hairline">
+      <Container className="grid gap-8 py-16 md:py-24 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:items-end">
+        <div>
+          <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-brass">
+            <span aria-hidden="true" className="h-px w-8 flex-none bg-brass/70" />
+            Kesiapan bermigrasi
+          </p>
+          <h2 id="konsolidasi-redaksi-heading" className="m-0 mt-4 max-w-2xl font-serif text-3xl font-medium leading-[1.1] tracking-tight text-balance text-paper sm:text-5xl">
+            Konsolidasikan seluruh jaringan redaksi Anda.
+          </h2>
+          <p className="m-0 mt-4 max-w-2xl font-sans text-base leading-relaxed text-paper-dim">
+            Sampaikan jumlah domain dan unit yang direncanakan — tim kami menyusun arsitektur penyiapan beserta estimasinya, tanpa mengganggu operasi redaksi yang berjalan.
+          </p>
+        </div>
+        <div>
+          <div className="flex flex-col gap-3">
+            <PrimaryCta href="/contact">
+              <span>Jadwalkan diskusi arsitektur</span>
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </PrimaryCta>
+            <SecondaryCta href="/services">
+              <span>Lihat layanan</span>
+            </SecondaryCta>
           </div>
-          <div className="mt-5 flex flex-wrap gap-2 border-t border-hairline pt-5">
-            {cards.map((channel) => {
-              const isExternal =
-                channel.href !== undefined && /^https?:/.test(channel.href);
-              const chip = (
-                <>
-                  <span className="text-brass" aria-hidden="true">
-                    {channel.icon}
-                  </span>
-                  <span>{channel.title}</span>
-                  {channel.href ? (
-                    <ArrowUpRight className="h-3 w-3 text-paper-faint" aria-hidden="true" />
-                  ) : null}
-                </>
-              );
-              const chipClass =
-                'inline-flex items-center gap-2 rounded border border-hairline bg-bg px-3 py-1.5 font-mono text-xs text-paper-dim transition-colors duration-180 hover:border-brass/60 hover:text-paper';
-              return channel.href ? (
-                <a
-                  key={channel.title}
-                  href={channel.href}
-                  title={channel.description}
-                  {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                  className={chipClass}
-                >
-                  {chip}
-                </a>
-              ) : (
-                <span key={channel.title} title={channel.description} className={chipClass}>
-                  {chip}
-                </span>
-              );
-            })}
-          </div>
+          <p className="m-0 mt-6 font-sans text-sm leading-relaxed text-paper-faint">
+            {rows
+              .filter((channel) => channel.href)
+              .map((channel) => channel.title)
+              .join(' · ')}
+          </p>
         </div>
       </Container>
     </section>

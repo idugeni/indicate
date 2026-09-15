@@ -1,6 +1,6 @@
 ---
 name: indicate-conventions
-description: Conventions for the Indicate multi-tenant media syndication codebase (Next.js 16 App Router, Supabase Postgres + Drizzle ORM, Cloudflare DNS/R2, Upstash Redis). Use this skill whenever writing, editing, reviewing, or planning code in the Indicate repository — product modules, provider integrations, Drizzle schema or migrations, App Router routes, or UI work — even when the request does not name it. Encodes the hexagonal layout, multi-tenant and RLS invariants, the forward-only migration workflow, and the docs/DESIGN.md visual contract.
+description: Conventions for the Indicate multi-tenant media syndication codebase (Next.js 16 App Router, Supabase Postgres + Drizzle ORM, Cloudflare DNS/R2, Upstash Redis). Use this skill whenever writing, editing, reviewing, or planning code in the Indicate repository — product modules, provider integrations, Drizzle schema or migrations, App Router routes, or UI work — even when the request does not name it. Encodes the hexagonal layout, multi-tenant and RLS invariants, the forward-only migration workflow, and the in-code visual authority (globals.css, components/ui).
 ---
 
 # Indicate Conventions (relaxed mode — advisory defaults, 2026-09-14)
@@ -12,9 +12,8 @@ Indicate is a multi-tenant media syndication platform: one Next.js application, 
 Load the relevant reference before acting, and treat these repo docs as authoritative when they conflict with this skill:
 
 - `CLAUDE.md` — tech stack, App Router conventions, commands, security invariants.
-- `docs/ARCHITECTURE.md` — the 12 architectural invariants and system topology (single Vercel project, Cloudflare DNS authority, durable-Postgres-first design).
+- `docs/ARCHITECTURE.md` — the architectural invariants and system topology (single Vercel project, Cloudflare DNS authority, durable-Postgres-first design).
 - `docs/MIGRATIONS.md` — migration promotion gate and Supabase roles.
-- `docs/DESIGN.md` — the visual contract (note: `CLAUDE.md` still points at `DESIGN.md` at root; the real file is `docs/DESIGN.md`).
 - `.env.example` — authoritative contract for currently implemented environment variables.
 
 Detailed guidance lives in `references/`: `architecture.md`, `tenancy-security.md`, `database.md`, `design.md`.
@@ -24,7 +23,7 @@ Detailed guidance lives in `references/`: `architecture.md`, `tenancy-security.m
 Hexagonal / ports-and-adapters modular monolith under `src/`. Dependency direction: `app/` → `modules/` → `core/` + ports ← `integrations/`, with `data/` for persistence.
 
 - `src/app/` handles Next.js App Router concerns (route groups `(site)`, `(network)`, `(auth)`, `(dashboard)`, `api/`). Prefer delegating business logic to `src/modules/` and `src/data/`.
-- `src/modules/` (`auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `persisted-config`, `publishing`, `site`) encapsulates product capabilities. Only `dashboard`, `delivery`, and `integrations` expose a barrel `index.ts` — import other modules by file path, never by bare module specifier.
+- `src/modules/` (`audit`, `auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `moderation`, `persisted-config`, `publishing`, `site`) encapsulates product capabilities. Only `dashboard`, `delivery`, and `integrations` expose a barrel `index.ts` — import other modules by file path, never by bare module specifier.
 - `src/integrations/` holds provider adapters (`supabase`, `storage`, `redis`, `telegram`, `cloudflare`, `vercel`) and stays server-only (`server-only` import at the top).
 - `src/core/` is the shared kernel (`config/`, errors, operation context, hostname, observability, routing, security, system, transactions).
 - `src/data/` holds the Drizzle schema (`schema/`), client factory, repository implementations, and hand-written SQL migrations (`migrations/`).
@@ -36,15 +35,17 @@ Hexagonal / ports-and-adapters modular monolith under `src/`. Dependency directi
 
 `proxy.ts` (Next.js 16 proxy convention, not `middleware.ts`) routes by hostname: Dashboard host, API host, webhook host, or one public tenant host.
 
-- A normalized hostname should resolve by exact equality to one reserved control-plane surface or one unique active Site. Avoid fallback tenants; avoid suffix-only or substring-only matching.
+- A normalized hostname should resolve by exact equality to one reserved control-plane surface or one unique active Site. Avoid fallback tenants in production (localhost/preview rewrite is dev-only); avoid suffix-only or substring-only matching.
 - Every tenant operation should derive exactly one authorized `organizationId`. Public reads should resolve Organization and Site from one exact normalized hostname.
 - Canonical article content exists once; `article_sites` stores destination assignment and outcome without copying title or body.
 - Cache namespaces, SEO, media authorization, and analytics attribution all derive from the same Hostname Context.
+- Regional brand inheritance: regional Sites keep brand media (`logo`, `favicon`) `NULL` and inherit the apex Site's — honored by both rendering and public media authorization. Never link parent media explicitly into regional settings.
+- Adding tenants at any scale: load the `tenant-onboarding` skill for the apex-first playbook (brand mapping, unique SEO, verification protocol).
 
 ## Database and migrations
 
-- Drizzle ORM with PostgreSQL dialect. Schema in `src/data/schema/` (`editorial`, `identity`, `operations`, `runtime-config`).
-- Migrations are forward-only SQL by default in `src/data/migrations/`, applied manually in the order recorded by `meta/_journal.json` with the direct credential (`DATABASE_DIRECT_URL`); runtime traffic uses the pooled URL with prepared statements disabled. History edits and `db:*` scripts are allowed in development with reviewer approval.
+- Drizzle ORM with PostgreSQL dialect. Schema in `src/data/schema/` (`billing`, `content`, `editorial`, `identity`, `operations`, `runtime-config`).
+- Migrations are forward-only SQL by default in `src/data/migrations/`, applied manually in the order recorded by `src/data/migrations/meta/_journal.json` with the direct credential (`DATABASE_DIRECT_URL`); runtime traffic uses the pooled URL with prepared statements disabled. History edits and `db:*` scripts are allowed in development with reviewer approval.
 - Schema evolution should follow expand → backfill → verify → contract across compatible releases. Avoid dropping a column/table in the same release that stops writing it; fix failed migrations preferably with a new forward migration.
 - RLS is currently enforced at the PostgreSQL level with the dedicated non-owner, non-`BYPASSRLS` `indicate_runtime` role (code fact). Audit logs are currently insert-only (no update/delete).
 - After migration work, verify via `GET /api/health` when practical. The schema-version gate (`migration_gate_events.required_version`) is currently evaluated at runtime-context initialization (code fact; advisory in relaxed docs).
@@ -85,9 +86,9 @@ Summary (source of truth stays in `AGENTS.md`):
 ## Infrastructure split
 
 - Cloudflare is authoritative by default for nameservers, DNS, wildcard records, edge TLS proxying, and CDN (Full strict). Vercel provides hosting and exact custom-domain association by default — changing this needs explicit owner approval.
-- One private R2 bucket is the default, accessed via the S3-compatible API (`*.r2.cloudflarestorage.com`); avoid public buckets and per-tenant buckets. Media should be served through signed, short-lived authorizations (`r2:` key prefix).
+- One private R2 bucket is the default, accessed via the S3-compatible API (`*.r2.cloudflarestorage.com`); avoid public buckets and per-tenant buckets (a separate optional audit/WORM bucket may exist for exports). Media should be served through signed, short-lived authorizations (`r2:` key prefix).
 - Upstash Redis coordinates publication dispatch, leases, rate limits, idempotency acceleration, and cache invalidation by default. Redis should be treated as a recoverable projection of durable Postgres intent — avoid making it the sole record.
 
 ## UI and design
 
-Visual decisions should follow `docs/DESIGN.md` (dark indigo control-room aesthetic, brass accent, Fraunces + Plex type system, exact-number reporting, small radii, anti-slop rules). Code may proceed first and the document may follow in the same PR (relaxed mode). shadcn/ui components live in `src/components/ui/` per `components.json`.
+Visual decisions should follow the in-code authority (`src/app/globals.css` tokens, `src/components/ui/` primitives, tenant templates under `src/modules/site/components/`): dark indigo control-room aesthetic, brass accent, Fraunces + Plex type system, exact-number reporting, small radii, anti-slop rules. shadcn/ui components live in `src/components/ui/` per `components.json`.

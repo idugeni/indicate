@@ -1,8 +1,8 @@
 # Architecture reference
 
-Source of truth: `docs/ARCHITECTURE.md` (approved 2026-08-30; constrained by `.kiro/specs/indicate-mvp/`).
+Source of truth: `docs/ARCHITECTURE.md` (approved 2026-08-30; constrained by `docs/PRD.md`).
 
-## Managed resources (exactly one of each)
+## Managed resources (exactly one of each by default)
 
 | Resource | Responsibility | Boundary |
 |---|---|---|
@@ -10,7 +10,7 @@ Source of truth: `docs/ARCHITECTURE.md` (approved 2026-08-30; constrained by `.k
 | Vercel project | Hosting + exact custom-domain association | No nameserver delegation, DNS authority, or wildcard registration |
 | Supabase project | PostgreSQL 17 + Auth | No per-tenant project or database |
 | Cloudflare | Nameservers, DNS, wildcard records, edge TLS proxy, CDN, R2, cache purge | Authority never transferred to Vercel |
-| R2 bucket (private) | Media objects via S3-compatible API | No public bucket, list grants, or per-tenant buckets |
+| R2 bucket (private) | Media objects via S3-compatible API | No public bucket, list grants, or per-tenant buckets (a separate optional audit/WORM bucket may exist for exports) |
 | Upstash Redis | Dispatch, leases, rate limits, idempotency acceleration, invalidation | Recoverable projection, never durable authority |
 
 ## Dependency direction
@@ -22,8 +22,8 @@ src/app/ → src/modules/ → src/core/ + ports ← src/integrations/
 
 ## Directory map
 
-- `src/app/` — routing only. Route groups `(site)` (Dashboard host landing), `(network)` (tenant public content), `(auth)`, `(dashboard)` (editorial Dashboard), `api/` (health, v1, dashboard, internal, public, webhooks), `_composition/` (DI wiring), `_lib/` (route utilities). Underscore folders are excluded from routing.
-- `src/modules/<capability>/` — `auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `persisted-config`, `publishing`, `site`. Only `dashboard`, `delivery`, and `integrations` expose a barrel `index.ts`; import other modules by file path.
+- `src/app/` — routing only. Route groups `(site)` (Dashboard host landing), `(network)` (tenant public content), `(auth)`, `(dashboard)` (editorial Dashboard), `api/` (health, v1, dashboard, internal, leads, network, webhooks). No underscore composition roots; services wire directly in route handlers via shared modules.
+- `src/modules/<capability>/` — `audit`, `auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `moderation`, `persisted-config`, `publishing`, `site`. Only `dashboard`, `delivery`, and `integrations` expose a barrel `index.ts`; import other modules by file path.
 - `src/integrations/<provider>/` — `supabase`, `storage` (R2 adapter), `redis`, `telegram`, `cloudflare` (API v4: zones, purge_cache, SSL), `vercel` (exact-domain API). Server-only.
 - `src/core/` — `config/` (runtime schema, public config, runtime context, persisted parser, bootstrap), errors, operation context, hostname normalization, observability, routing, security, system, transactions.
 - `src/data/` — `schema/`, `client.ts` (singleton; pooled URL runtime, direct URL migrations), `repos/`, `migrations/`.

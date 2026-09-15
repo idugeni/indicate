@@ -5,7 +5,7 @@
 - **Status:** Approved
 - **Approval gate:** Satisfied on 2026-08-30 for this document and `docs/PRD.md`.
 - **Approval record:** User/reviewer approval was explicitly provided through this session on 2026-08-30.
-- **Source of truth:** `.kiro/specs/indicate-mvp/design.md`, constrained by `.kiro/specs/indicate-mvp/requirements.md`
+- **Source of truth:** this document, constrained by `docs/PRD.md`
 - **Scope of this version:** Approved architecture definition. This approval clears the pre-code documentation gate for a subsequent invocation; this document does not itself perform application, dependency, infrastructure, or deployment changes.
 
 ## 1. Architecture summary
@@ -141,7 +141,7 @@ An Organization is a plain tenant record (billing owner + memberships + permissi
 
 ### 5.1 App Router route groups
 
-Route groups organize `src/app/` by surface without changing URL paths. `src/app/` contains strictly Next.js App Router concerns (page, layout, loading, error, not-found, route handlers). Design-system primitives live in `src/components/ui/` (alias `@/components/*`), domain UI is colocated in `src/modules/*/components/`, business logic lives in `src/modules/` (public entry `@/modules/<ctx>`), shared kernel in `src/core/` (config at `src/core/config/`, observability, security, hostname, routing, system), persistence in `src/data/` (schema, repos, migrations), provider adapters in `src/integrations/`, and shared client-safe UI utilities in `src/ui/`.
+Route groups organize `src/app/` by surface without changing URL paths. `src/app/` contains strictly Next.js App Router concerns (page, layout, loading, error, not-found, route handlers). Design-system primitives live in `src/components/ui/` (alias `@/components/*`), domain UI is colocated in `src/modules/*/components/`, business logic lives in `src/modules/` (file-path imports; only `dashboard`, `delivery`, and `integrations` expose a barrel `index.ts`), shared kernel in `src/core/` (config at `src/core/config/`, observability, security, hostname, routing, system), persistence in `src/data/` (schema, repos, migrations), provider adapters in `src/integrations/`, and shared client-safe UI utilities in `src/ui/`.
 
 ```text
 src/app/
@@ -149,7 +149,7 @@ src/app/
 ├── (network)/      # Tenant-facing public content (articles, categories, search)
 ├── (auth)/        # Authentication flows (/sign-in, /auth/callback)
 ├── (dashboard)/         # Protected editorial Dashboard workspace
-├── api/           # Route handlers (health, v1, dashboard, internal, public, webhooks)
+├── api/           # Route handlers (health, v1, dashboard, internal, leads, network, webhooks)
 ├── layout.tsx     # Root layout (fonts, globals, hostname-aware brand theming)
 ├── not-found.tsx
 └── error.tsx / global-error.tsx
@@ -163,8 +163,10 @@ Application source code is consolidated under `src/`:
 src/
 ├── app/          # Next.js App Router routing only
 ├── components/   # Design-system primitives only (ui); domain UI is colocated in modules/*/components
-├── modules/      # Bounded contexts with public entry (index.ts): auth, billing, content, dashboard,
-│                 # delivery, deployment, integrations, persisted-config, publishing, seed, site
+├── modules/      # Bounded contexts (file-path imports; only dashboard,
+│                 # delivery, and integrations expose index.ts): audit, auth,
+│                 # billing, content, dashboard, delivery, integrations,
+│                 # moderation, persisted-config, publishing, site
 ├── data/         # Single canonical database home (schema, repos, migrations, client.ts)
 ├── core/         # Shared kernel: config/, errors, operation-context, result, hostname, observability,
 │                 # routing, security, system, transactions
@@ -301,14 +303,15 @@ sequenceDiagram
 
 ### 8.1 Billing model (manual activation)
 
-There are no packages, tiers, prices, orders, or invoices. A subscription is a
+There are no packages, tiers, prices, or orders. A subscription is a
 status-only row (`active` / `suspended` / `cancelled`) with no plan and no
 period: an active organization keeps running indefinitely, with no grace,
 expiry sweep, or quota enforcement. Purchase happens out-of-band (buyer
 contacts the owner); the owner flips the status in the superadmin dashboard
-after manual payment. Member onboarding via invites is unrelated to billing
-and stays. Dormant billing artifacts from the package era were removed;
-see the migration history for the exact drop list.
+after manual payment. Manual invoicing is recorded in `invoices`
+(numbered `amount_idr` rows with void support), not in any package/order
+flow. Member onboarding via invites is unrelated to billing
+and stays.
 
 ## 9. Data architecture
 
@@ -758,7 +761,7 @@ The following are discouraged by default but allowed with owner approval and a b
 The user/reviewer explicitly approved this architecture and `docs/PRD.md` through this session on 2026-08-30, satisfying the pre-code documentation gate. The following operational confirmations remain required at the applicable implementation or promotion stage:
 
 1. **Exact-domain operations:** confirm that every active Site will be individually associated with the one Vercel project while Cloudflare retains nameserver/DNS authority.
-2. **Provider capacity:** confirm the Vercel plan supports projected exact-domain count, cron frequency, execution duration, and the scale target of up to 100 roots plus Central Java regional Sites.
+2. **Provider capacity:** confirm the Vercel plan supports the projected exact-domain count, cron frequency, execution duration, and the unbounded domain-plus-regional-Site scale target.
 3. **TLS convention:** confirm one-label regional hostnames fit Cloudflare certificate coverage and that Full (strict) origin validation succeeds.
 4. **Numeric runtime bounds:** approve retry attempts/delays, lease durations, worker batch/deadline, media limits, signed URL TTLs, cache TTLs, rate limits, webhook freshness, and replay retention.
 5. **Credential ownership:** approve least-privilege roles, storage, rotation, and incident ownership for Cloudflare, Vercel, Supabase runtime/migration, R2, Upstash, Telegram, webhook, and cron secrets.

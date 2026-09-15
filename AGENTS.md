@@ -33,16 +33,20 @@ Use the connected tools when they help. Retrieval beats memory, but nothing here
   React/Next.js perf or composition → `vercel-react-best-practices` /
   `vercel-composition-patterns`; Vercel cost/perf → `vercel-optimize`;
   Telegram bot/webhook work → `telegram-bot-builder`;
+  adding/provisioning/branding/SEO-filling tenant domains, sites, or
+  regions (any count) → `tenant-onboarding`;
   SEO/sitemap/RSS/structured-data → `seo`;
   security audit/OWASP/secure coding → `code-security` (+ `semgrep` to run scans);
   UI styling or audits → `frontend-design`, `web-design-guidelines`,
   `web-perf`; file deliverables → `docx`, `pdf`, `xlsx`.
 - **Behavior**: load `agent-discipline` for reply style, verification, and
   safe-refusal discipline (distilled third-party behavior file; repo docs
-  win on conflict).
+  win on conflict). Baseline even when the skill is skipped: reply concisely,
+  verify against live state before asserting, and state the requested answer
+  after the last tool call.
 - **Generated files**: prefer not to hand-edit generated files
-  (`bootstrap/indicate-schema.sql`), applied migrations,
-  `meta/_journal.json`, snapshots, ledger digests. Prefer forward
+  (`src/data/migrations/bootstrap/indicate-schema.sql`), applied migrations,
+  `src/data/migrations/meta/_journal.json`, snapshots, ledger digests. Prefer forward
   migrations for live fixes, but history edits are allowed in development
   with reviewer approval. There are no `db:*` workflows by default.
 
@@ -141,6 +145,8 @@ must follow it before answering MCP/integration questions or writing code:
 1. Discover runtime MCPs first with `opencode mcp list`, then compare with
    `.mcp.json`, `opencode.jsonc`, and global `~/.config/opencode/opencode.json`.
    Repo files alone are not the source of truth (global config merges at runtime).
+   `.mcp.json` is the canonical repo declaration; `opencode.jsonc` mirrors it
+   and `.vscode/mcp.json` is editor-local convenience only.
 2. Any claim about "already connected / not yet present" must cite the runtime
    source. Never recommend an MCP that is already connected.
 3. Load the matching skill via the `skill` tool before working (repo code →
@@ -156,7 +162,7 @@ rules constrain the agent's defaults and initiative, never the owner's
 taste. When the owner changes requirements:
 
 1. Adjust first, docs may follow: code the change, then update the
-   governing docs (`docs/PRD.md`, `docs/DESIGN.md`,
+   governing docs (`docs/PRD.md`,
    `docs/ARCHITECTURE.md`, `docs/MIGRATIONS.md`, this file) in the same
    PR when practical. Docs are advisory, not a pre-code gate.
 2. Changed mind on a standing decision below? Update or remove that

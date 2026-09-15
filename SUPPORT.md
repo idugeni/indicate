@@ -4,7 +4,7 @@
 
 | Channel | Use for |
 |---------|---------|
-| [Documentation](docs/PRD.md) · [Architecture](docs/ARCHITECTURE.md) · [Migrations](docs/MIGRATIONS.md) · [Readiness runbook](docs/PRODUCTION_READINESS_RUNBOOK.md) | First stop for behavior, topology, and operations |
+| [Documentation](docs/PRD.md) · [Architecture](docs/ARCHITECTURE.md) · [Migrations](docs/MIGRATIONS.md) · [Readiness runbook](docs/PRODUCTION_READINESS_RUNBOOK.md) · [Data agreement](docs/DPA.md) · [Changelog](CHANGELOG.md) | First stop for behavior, topology, operations, contract duties, and history |
 | [Bug report](.github/ISSUE_TEMPLATE/bug_report.yml) | Reproducible defects on a specific commit |
 | [Feature request](.github/ISSUE_TEMPLATE/feature_request.yml) | Proposed capabilities with tenant-isolation analysis |
 | [Contributing guide](CONTRIBUTING.md) | Environment setup, conventions, PR process |
@@ -27,7 +27,7 @@ the [72-hour acknowledgement target](SECURITY.md#reporting-a-vulnerability).
 ## What to include
 
 - **Bugs:** expected vs. actual behavior, minimal reproduction steps,
-  commit SHA, Node version (`>= 22`), and whether migrations in
+  commit SHA, Node version (24.x per `engines` + `.nvmrc`), and whether migrations in
   `src/data/migrations/` were applied in filename order.
 - **Features:** problem statement, proposed behavior, Organization scoping
   (how `organizationId` is derived), hostname/cache/SEO impact, migration
@@ -40,7 +40,7 @@ information.
 
 ## Supported setup
 
-- Node.js **22 or newer**, `npm ci` from the authoritative `package-lock.json`.
+- Node.js **24** (`engines` + `.nvmrc` pin 24.x), `npm ci` from the authoritative `package-lock.json`.
 - PostgreSQL **17** (via Supabase). Runtime traffic uses `DATABASE_POOL_URL`;
   migrations use `DATABASE_DIRECT_URL` in filename order.
 - Configuration from `.env.example` copied to git-ignored `.env.local` with

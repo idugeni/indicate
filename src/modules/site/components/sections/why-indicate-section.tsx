@@ -1,31 +1,35 @@
-import { Check } from 'lucide-react';
-import { CARD_CLASS, NumberMark, Section } from '@/modules/site/components/layout/content';
+import { Section } from '@/modules/site/components/layout/content';
 import { VALUE_PROPOSITIONS, type FeatureItem } from '@/ui/site/marketing-content';
 
 export function WhyIndicateSection() {
+  const [featured, ...rest] = VALUE_PROPOSITIONS as FeatureItem[];
   return (
     <Section
-      title="Mengapa Indicate"
+      title="Mengapa redaksi pindah ke Indicate"
       eyebrow="Pembeda"
-      description="Enam pilar arsitektural yang membedakan platform redaksi terpusat dari instalasi situs lepas yang terfragmentasi."
+      description="Bukan instalasi situs lepas yang terfragmentasi — satu ruang redaksi terpusat untuk seluruh jaringan."
     >
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {(VALUE_PROPOSITIONS as FeatureItem[]).map((prop, index) => {
-          return (
-            <div key={prop.title} className={CARD_CLASS}>
-              <div className="flex items-start justify-between gap-4">
-                <h3 className="m-0 flex items-start gap-2 font-sans text-base font-semibold tracking-tight text-paper">
-                  <Check className="mt-1 h-4 w-4 flex-none text-signal" aria-hidden="true" />
-                  {prop.title}
-                </h3>
-                <NumberMark index={index} className="flex-none" />
-              </div>
-              <p className="m-0 font-sans text-sm leading-relaxed text-paper-dim">
-                {prop.description}
-              </p>
-            </div>
-          );
-        })}
+      {featured ? (
+        <div className="max-w-3xl border-t-2 border-brass/70 pt-8">
+          <h3 className="m-0 font-serif text-2xl font-medium leading-snug tracking-tight text-balance text-paper sm:text-3xl">
+            {featured.title}
+          </h3>
+          <p className="m-0 mt-3 max-w-2xl font-sans text-base leading-relaxed text-paper-dim">
+            {featured.description}
+          </p>
+        </div>
+      ) : null}
+      <div className="mt-10 grid gap-x-12 gap-y-8 sm:grid-cols-2">
+        {rest.map((prop) => (
+          <div key={prop.title} className="border-t border-hairline pt-5">
+            <h3 className="m-0 font-serif text-xl font-medium tracking-tight text-paper">
+              {prop.title}
+            </h3>
+            <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-paper-dim">
+              {prop.description}
+            </p>
+          </div>
+        ))}
       </div>
     </Section>
   );

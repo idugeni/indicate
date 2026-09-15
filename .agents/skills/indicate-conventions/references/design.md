@@ -1,6 +1,9 @@
 # Design reference
 
-Source of truth: `docs/DESIGN.md` (716 lines, Indonesian) — the visual contract. Every visual decision by human or agent must trace back to it.
+Visual authority lives in code (no separate design document): tokens and base
+styles in `src/app/globals.css`, primitives in `src/components/ui/` (per
+`components.json`), tenant templates under `src/modules/site/components/`.
+Every visual decision by human or agent must trace back to these.
 
 ## Character
 
@@ -19,7 +22,7 @@ Conflict resolution order: (1) clarity of status/data, (2) token consistency, (3
 
 ## Rules for agents
 
-- New pattern needed and not in `docs/DESIGN.md`? Extend the document first — do not improvise in code.
+- New pattern needed? Match the closest existing in-code pattern — do not improvise a new visual language.
 - shadcn/ui implementation per `components.json` aliases (`@/components/ui`, `@/ui/cn`); Radix primitives; `optimizePackageImports` list in `next.config.ts` is the import-cost allowlist — keep it in sync when adding Radix packages.
 - Public tenant branding/settings come from the exact Site context (one shared Public News Template), never from per-tenant builds.
 - Applies alongside the `stop-slop`, `frontend-design`, `web-design-guidelines`, and `theme-factory` skills; this file wins on project-specific tokens.

@@ -29,16 +29,16 @@ No readiness automation ships in this tree; perform each check below manually in
 - Telegram Bot API health and an exact configured webhook URL;
 - a production-bounded cron secret without printing it;
 - the one-shared-resource topology contract;
-- Cloudflare-assigned and publicly delegated nameservers for all three roots;
+- Cloudflare-assigned and publicly delegated nameservers for every configured root domain (enumerated live, never a fixed count);
 - proxied apex and wildcard CNAME routes and Full (strict) mode;
-- successful HTTPS through Cloudflare for all 12 configured apex/regional Sites;
-- verified exact-domain association with the one Vercel project for all 12 Sites;
-- exact active, Organization-coherent database mappings for all 12 Sites;
+- successful HTTPS through Cloudflare for every configured apex/regional Site (enumerated live from active Sites, never a fixed count);
+- verified exact-domain association with the one Vercel project for every configured Site;
+- exact active, Organization-coherent database mappings for every configured Site;
 - Cache Components efficacy and isolation: publish/unpublish on one Site completes its `invalidation_tasks` (dispatcher: Next tags + paths + Cloudflare purge + Redis bump) and the change is visible on that Site's portal within the `minutes` cacheLife bound, while an unrelated Site's portal shows no change and no cross-host content;
 - deferred delivery health: Telegram webhook replies arrive after the 200 response (no response held by Bot API latency); only `warn`-level `telegram.reply.deferred_failed` lines — never response failures — are acceptable evidence of downstream slowness;
 - instant navigation smoke: client transitions between control-plane pages and portal listing/detail complete without full reload or layout shift; the header pending dot appears only on genuinely slow transitions;
 - structured data: NewsArticle/Breadcrumb/Organization/WebSite JSON-LD per portal template passes Rich Results/Schema validation with no cross-tenant canonical or URL;
-- platform currency: Vercel project Node.js is 22+ (20.x is rejected for new builds after Oct 2026; repo pins 24 via `.nvmrc`); the `CRON_SECRET` env equals the configured cron secret (Vercel Cron auto-sends it as Bearer auth) and both internal cron routes (`/api/internal/publishing` GET, `/api/internal/delivery/reconcile` GET/POST) respond authenticated-only; the daily `/api/health` keep-alive cron from `vercel.json` is registered (prevents Supabase Free auto-pause — do not remove while on the Free plan);
+- platform currency: Vercel project Node.js is 24 (repo pins 24 via `.nvmrc`); the `CRON_SECRET` env equals the configured cron secret (Vercel Cron auto-sends it as Bearer auth) and both internal cron routes (`/api/internal/publishing` GET, `/api/internal/delivery/reconcile` GET/POST) respond authenticated-only; the daily `/api/health` keep-alive cron from `vercel.json` is registered (prevents Supabase Free auto-pause — do not remove while on the Free plan);
 - edge protection posture: exactly one layer owns each rule — Vercel Bot Protection/WAF rulesets for portal abuse and Cloudflare Cache Rules (portal pages/feeds, Tiered Cache; never the signed media 307s) — with Cloudflare purge quota verified against publish fan-out volume.
 
 A successful report contains only check names, `passed`, and the category `ready`. A failed report contains stable sanitized categories only. Provider bodies, tokens, signed URLs, database URLs, root identifiers, and internal errors are not emitted. Any unavailable, ambiguous, incomplete, public, mismatched, or unexpected provider response warns (advisory) rather than hard-fails the check in relaxed mode.

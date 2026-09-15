@@ -20,11 +20,11 @@ export async function LandingPage() {
         <HeroSection />
         <LogoCloudSection />
         <ProofStatsSection />
+        <TemplateShowcaseSection templates={templates} />
+        <WorkflowSection />
+        <CapabilitiesSection />
         <SecuritySection />
         <WhyIndicateSection />
-        <WorkflowSection />
-        <TemplateShowcaseSection templates={templates} />
-        <CapabilitiesSection />
         <TestimonialsSection />
         <PricingSection />
         <FaqSection />

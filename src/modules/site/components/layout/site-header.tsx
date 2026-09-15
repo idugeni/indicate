@@ -17,7 +17,7 @@ import { cn } from '@/ui/cn';
 /**
  * Titik pending navigasi: selalu di-render (ukuran tetap, tanpa layout shift),
  * hanya opacity yang berubah dengan delay 100ms agar navigasi cepat tidak
- * berkedip. Tanpa animasi infinite sesuai DESIGN.md §10.5.
+ * berkedip. Tanpa animasi infinite.
  */
 function NavPendingDot() {
   const { pending } = useLinkStatus();

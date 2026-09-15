@@ -199,10 +199,20 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         .where(and(eq(sites.organizationId, context.organizationId), eq(sites.id, context.siteId), eq(sites.normalizedHostname, context.normalizedHostname), eq(sites.status, 'active'), eq(sites.activationState, 'active'), eq(sites.routingVersion, context.routingVersion), or(sql`${sites.regionId} IS NULL`, eq(regions.status, 'active')))).limit(1);
       if (mediaRows[0] === undefined || siteRows[0] === undefined) return null;
       const settings = await transaction.select().from(siteSettings).where(and(eq(siteSettings.organizationId, context.organizationId), eq(siteSettings.siteId, context.siteId))).limit(1);
+      const ownMediaIds = settings[0] === undefined ? [] : [settings[0].logoMediaId, settings[0].faviconMediaId, settings[0].defaultMediaId].filter((value): value is string => value !== null);
+      let inheritedMediaIds: string[] = [];
+      if (context.regionId !== null) {
+        const parentRows = await transaction.select({ logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId, defaultMediaId: siteSettings.defaultMediaId })
+          .from(sites)
+          .innerJoin(siteSettings, and(eq(siteSettings.organizationId, sites.organizationId), eq(siteSettings.siteId, sites.id)))
+          .where(and(eq(sites.organizationId, context.organizationId), eq(sites.domainId, context.domainId), sql`${sites.regionId} IS NULL`, eq(sites.status, 'active'), eq(sites.activationState, 'active'))).limit(1);
+        const parent = parentRows[0];
+        if (parent !== undefined) inheritedMediaIds = [parent.logoMediaId, parent.faviconMediaId, parent.defaultMediaId].filter((value): value is string => value !== null);
+      }
       const relations = await transaction.select().from(articleSites).where(and(eq(articleSites.organizationId, context.organizationId), eq(articleSites.siteId, context.siteId), eq(articleSites.active, true)));
       const articleRows = await transaction.select({ id: articles.id, status: articles.status, leadMediaId: articles.leadMediaId }).from(articles).where(eq(articles.organizationId, context.organizationId));
       const asset = mapMedia(mediaRows[0]);
-      const site = { id: siteRows[0].site.id, organizationId: context.organizationId, active: true, normalizedHostname: siteRows[0].site.normalizedHostname, settingsMediaIds: settings[0] === undefined ? [] : [settings[0].logoMediaId, settings[0].faviconMediaId, settings[0].defaultMediaId].filter((value): value is string => value !== null) };
+      const site = { id: siteRows[0].site.id, organizationId: context.organizationId, active: true, normalizedHostname: siteRows[0].site.normalizedHostname, settingsMediaIds: [...new Set([...ownMediaIds, ...inheritedMediaIds])] };
       const refs = relations.map((row) => ({ id: row.id, organizationId: row.organizationId, articleId: row.articleId, siteId: row.siteId, active: row.active, state: row.state, publishedUrl: row.publishedUrl, publishedAt: optionalIso(row.publishedAt), version: row.version }));
       const articleRefs = articleRows.map((row) => ({ id: row.id, organizationId: context.organizationId, active: row.status === 'active', leadMediaId: row.leadMediaId }));
       if (!canPublicAccessMedia({ context, media: asset, site, articles: articleRefs, articleSites: refs })) return null;
