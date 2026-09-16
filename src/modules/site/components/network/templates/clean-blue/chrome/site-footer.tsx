@@ -1,25 +1,15 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import type { ComponentType } from 'react';
 import { Rss } from 'lucide-react';
-import { FaFacebookF, FaInstagram, FaTelegram, FaTiktok, FaXTwitter, FaYoutube } from 'react-icons/fa6';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
+import { SOCIAL_ORDER, resolveContactChannels } from '@/modules/site/company-contact';
+import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { getSiteCategoryNav } from '@/modules/site/components/network/templates/clean-blue/server/site-nav';
 import { CleanBlueStoreBadges } from '@/modules/site/components/network/templates/clean-blue/chrome/store-badges';
 
-const SOCIAL_ICONS: Readonly<Record<string, ComponentType<{ readonly className?: string }>>> = {
-  facebook: FaFacebookF,
-  twitter: FaXTwitter,
-  x: FaXTwitter,
-  instagram: FaInstagram,
-  youtube: FaYoutube,
-  tiktok: FaTiktok,
-  telegram: FaTelegram,
-};
-
 /** Ikon sosmed default: tampil selalu; tanpa URL menjadi pajangan tanpa link. */
-const DEFAULT_SOCIALS = ['facebook', 'x', 'instagram', 'youtube', 'tiktok', 'telegram'] as const;
+const DEFAULT_SOCIALS = SOCIAL_ORDER;
 
 const ABOUT_LINKS = [
   { label: 'Profil', href: '/tentang' },
@@ -32,7 +22,9 @@ export async function CleanBlueFooter({ site }: { readonly site: NetworkSiteData
   const categories = await getSiteCategoryNav(site, 6);
   const tagline = site.settings.tagline ?? site.settings.description;
   const year = new Date().getFullYear();
-  const socialByName = new Map(Object.entries(site.settings.socialLinks).map(([name, href]) => [name.toLowerCase(), href] as const));
+  const socialByName = new Map(
+    resolveContactChannels(site.settings.socialLinks).map((channel) => [channel.key, channel.href] as const),
+  );
 
   return (
     <footer className="border-t border-slate-200 bg-white">
@@ -61,7 +53,7 @@ export async function CleanBlueFooter({ site }: { readonly site: NetworkSiteData
           </p>
           <p className="m-0 mt-4 flex flex-wrap items-center gap-2">
             {DEFAULT_SOCIALS.map((name) => {
-              const Icon = SOCIAL_ICONS[name] ?? Rss;
+              const Icon = channelIcon(name);
               const href = socialByName.get(name);
               if (href === undefined) {
                 return (
