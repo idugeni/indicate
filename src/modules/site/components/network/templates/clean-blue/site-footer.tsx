@@ -21,12 +21,11 @@ const SOCIAL_ICONS: Readonly<Record<string, ComponentType<{ readonly className?:
 const DEFAULT_SOCIALS = ['facebook', 'x', 'instagram', 'youtube', 'tiktok', 'telegram'] as const;
 
 const ABOUT_LINKS = [
-  { label: 'Profil', href: '/about' },
-  { label: 'Redaksi', href: '/about' },
-  { label: 'Karier', href: '/contact' },
-  { label: 'Kontak', href: '/contact' },
-  { label: 'Kebijakan Privasi', href: '/privacy' },
-  { label: 'Syarat & Ketentuan', href: '/terms' },
+  { label: 'Profil', href: '/tentang' },
+  { label: 'Redaksi', href: '/tentang' },
+  { label: 'Kontak', href: '/kontak' },
+  { label: 'Kebijakan Privasi', href: '/kebijakan-privasi' },
+  { label: 'Syarat & Ketentuan', href: '/syarat-ketentuan' },
 ] as const;
 
 export async function CleanBlueFooter({ site }: { readonly site: NetworkSiteData }) {
@@ -130,9 +129,9 @@ export async function CleanBlueFooter({ site }: { readonly site: NetworkSiteData
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 font-sans text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p className="m-0">© {year} {site.settings.name}. Semua hak dilindungi.</p>
           <p className="m-0 flex items-center gap-4">
-            <Link href="/privacy" className="transition-colors hover:text-slate-900">Privasi</Link>
-            <Link href="/terms" className="transition-colors hover:text-slate-900">Syarat</Link>
-            <Link href="/contact" className="transition-colors hover:text-slate-900">Kontak</Link>
+            <Link href="/kebijakan-privasi" className="transition-colors hover:text-slate-900">Privasi</Link>
+            <Link href="/syarat-ketentuan" className="transition-colors hover:text-slate-900">Syarat</Link>
+            <Link href="/kontak" className="transition-colors hover:text-slate-900">Kontak</Link>
           </p>
         </div>
       </div>

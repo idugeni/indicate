@@ -170,27 +170,36 @@ export class TenantBusinessService {
   }
 
   async listConfiguration(actor: AuthorizedTenantActorContext) {
-    const optionalRead = async (permission: string): Promise<DashboardTenantState | null> => {
-      if (!actor.permissionSet.has(permission)) return null;
-      try { return await this.repository.read(actor, permission); }
-      catch (error) { if (error instanceof DashboardAccessDeniedError) return null; throw error; }
-    };
     try {
-      const [domainRead, domainManage, regionRead, regionManage, siteRead, siteManage, roleManage, membershipRead, membershipManage] = await Promise.all([
-        optionalRead(DASHBOARD_PERMISSIONS.domainRead), optionalRead(DASHBOARD_PERMISSIONS.domainManage),
-        optionalRead(DASHBOARD_PERMISSIONS.regionRead), optionalRead(DASHBOARD_PERMISSIONS.regionManage),
-        optionalRead(DASHBOARD_PERMISSIONS.siteRead), optionalRead(DASHBOARD_PERMISSIONS.siteManage), optionalRead(DASHBOARD_PERMISSIONS.roleManage),
-        optionalRead(DASHBOARD_PERMISSIONS.membershipRead), optionalRead(DASHBOARD_PERMISSIONS.membershipManage),
-      ]);
-      const domainState = domainRead ?? domainManage;
-      const regionState = regionRead ?? regionManage;
-      const siteState = siteRead ?? siteManage;
-      const membershipState = membershipRead ?? membershipManage;
+      const candidates = [
+        DASHBOARD_PERMISSIONS.domainRead, DASHBOARD_PERMISSIONS.domainManage,
+        DASHBOARD_PERMISSIONS.regionRead, DASHBOARD_PERMISSIONS.regionManage,
+        DASHBOARD_PERMISSIONS.siteRead, DASHBOARD_PERMISSIONS.siteManage,
+        DASHBOARD_PERMISSIONS.roleManage,
+        DASHBOARD_PERMISSIONS.membershipRead, DASHBOARD_PERMISSIONS.membershipManage,
+      ].filter((permission) => actor.permissionSet.has(permission));
+      let state: DashboardTenantState | null = null;
+      for (const permission of candidates) {
+        try {
+          state = await this.repository.read(actor, permission);
+          break;
+        } catch (error) {
+          if (!(error instanceof DashboardAccessDeniedError)) throw error;
+        }
+      }
+      if (state === null) return this.denied(actor, 'configuration.list', 'configuration');
+      const domainState = actor.permissionSet.has(DASHBOARD_PERMISSIONS.domainRead) || actor.permissionSet.has(DASHBOARD_PERMISSIONS.domainManage) ? state : null;
+      const regionState = actor.permissionSet.has(DASHBOARD_PERMISSIONS.regionRead) || actor.permissionSet.has(DASHBOARD_PERMISSIONS.regionManage) ? state : null;
+      const siteState = actor.permissionSet.has(DASHBOARD_PERMISSIONS.siteRead) || actor.permissionSet.has(DASHBOARD_PERMISSIONS.siteManage) ? state : null;
+      const roleManage = actor.permissionSet.has(DASHBOARD_PERMISSIONS.roleManage) ? state : null;
+      const membershipState = actor.permissionSet.has(DASHBOARD_PERMISSIONS.membershipRead) || actor.permissionSet.has(DASHBOARD_PERMISSIONS.membershipManage) ? state : null;
       const anyState = domainState ?? regionState ?? siteState ?? roleManage ?? membershipState;
       if (anyState === null) return this.denied(actor, 'configuration.list', 'configuration');
       let activationAttempts: readonly ActivationAttemptRecord[] = [];
       let invitations: readonly InvitationSummary[] = [];
-      const attemptsPermission = siteRead !== null ? DASHBOARD_PERMISSIONS.siteRead : siteManage !== null ? DASHBOARD_PERMISSIONS.siteManage : null;
+      const attemptsPermission = actor.permissionSet.has(DASHBOARD_PERMISSIONS.siteRead)
+        ? DASHBOARD_PERMISSIONS.siteRead
+        : actor.permissionSet.has(DASHBOARD_PERMISSIONS.siteManage) ? DASHBOARD_PERMISSIONS.siteManage : null;
       if (siteState !== null && attemptsPermission !== null) {
         try { activationAttempts = await this.repository.activationAttempts(actor, attemptsPermission); }
         catch (error) { if (!(error instanceof DashboardAccessDeniedError)) throw error; }
@@ -344,11 +353,9 @@ export class TenantBusinessService {
   async listPublishers(actor: AuthorizedTenantActorContext) {
     try {
       const state = await this.repository.read(actor, DASHBOARD_PERMISSIONS.publisherRead);
-      let visibleSites: DashboardTenantState['sites'] = [];
-      if (actor.permissionSet.has(DASHBOARD_PERMISSIONS.siteRead)) {
-        try { visibleSites = (await this.repository.read(actor, DASHBOARD_PERMISSIONS.siteRead)).sites.filter((site) => siteInScope(site, regionLock(actor))); }
-        catch (error) { if (!(error instanceof DashboardAccessDeniedError)) throw error; }
-      }
+      const visibleSites = actor.permissionSet.has(DASHBOARD_PERMISSIONS.siteRead)
+        ? state.sites.filter((site) => siteInScope(site, regionLock(actor)))
+        : [];
       return { ok: true as const, value: { publishers: state.publishers, affiliations: state.affiliations, sites: visibleSites } };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'publisher.list', 'publisher');

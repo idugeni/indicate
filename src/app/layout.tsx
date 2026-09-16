@@ -107,10 +107,10 @@ const plexMono = IBM_Plex_Mono({
 });
 
 /**
- * Brand tema portal TIDAK lagi di-resolve di root layout: pembacaan host + DB
- * di sini menahan prerender seluruh rute (blocking-prerender-dynamic).
- * Portal memakai variabel inline dari `NetworkTemplate` (per Site, di dalam
- * Suspense streaming); shell kontrol tidak butuh brand.
+ * Brand portal TIDAK di-resolve di root layout: pembacaan host + DB di sini
+ * menahan prerender seluruh rute (blocking-prerender-dynamic). Chrome tenant
+ * berasal dari shell per-template (`CleanBlueShell` dkk., dipilih dispatcher
+ * `network-listing` per Site); shell kontrol tidak butuh brand.
  */
 export default function RootLayout({
   children,

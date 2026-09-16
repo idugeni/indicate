@@ -20,26 +20,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function DetailPage({ params }: Props) {
   const { slug } = await params;
   if (slug.trim() === '') notFound();
-  const site = await resolveNetworkSite({ articleSlug: slug }, `/${slug}`);
-  const article = site.articles[0];
+  const normalized = slug.trim().toLowerCase();
+  const site = await resolveNetworkSite({}, `/${slug}`);
+  const article = site.articles.find((item) => item.slug === normalized);
   if (article === undefined) notFound();
-  // Pencatatan view pindah ke CleanBlueViewBeacon (Worker → Upstash, nol
-  // execution Vercel, mencakup edge HIT). Incr server dihapus agar tak dobel.
+  const rest = site.articles.filter((item) => item.id !== article.id);
   const mates = article.categorySlug === null
     ? []
-    : (await resolveNetworkSite({ categorySlug: article.categorySlug }, `/${slug}`)
-        .then((relatedSite) => relatedSite.articles.filter((item) => item.id !== article.id).slice(0, 4))
-        .catch(() => []));
-  // Fallback daftar penuh (entri cache tersendiri, ter-amortisasi): menjamin
-  // related + prev/next SELALU ada meski satu kategori hanya berisi 1 artikel.
-  const full = await resolveNetworkSite({}, `/${slug}`)
-    .then((fullSite) => fullSite.articles.filter((item) => item.id !== article.id))
-    .catch(() => []);
-  const related = [...mates, ...full.filter((item) => !mates.some((mate) => mate.id === item.id))].slice(0, 4);
+    : rest.filter((item) => item.categorySlug === article.categorySlug).slice(0, 4);
+  const related = [...mates, ...rest.filter((item) => !mates.some((mate) => mate.id === item.id))].slice(0, 4);
   const older = related.filter((item) => new Date(item.publishedAt).getTime() < new Date(article.publishedAt).getTime());
   const newer = related.filter((item) => new Date(item.publishedAt).getTime() > new Date(article.publishedAt).getTime());
   // Tetangga tanggal dari daftar penuh bila seksi related tidak mencakupnya.
-  const byDate = [...full].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+  const byDate = [...rest].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
   const fallbackOlder = byDate.find((item) => new Date(item.publishedAt).getTime() < new Date(article.publishedAt).getTime()) ?? null;
   const fallbackNewer = [...byDate].reverse().find((item) => new Date(item.publishedAt).getTime() > new Date(article.publishedAt).getTime()) ?? null;
   return (

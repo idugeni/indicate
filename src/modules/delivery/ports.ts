@@ -36,6 +36,8 @@ export interface DeliveryRepository {
   loadNetworkSite(context: ResolvedSiteContext, query: NetworkContentQuery): Promise<NetworkSiteData | null>;
   /** Brand ringan (1 baris settings, tanpa artikel) untuk /api/network/brand-mark. */
   loadSiteBrand(context: ResolvedSiteContext): Promise<SiteBrand | null>;
+  /** Robots kustom tenant (kolom seo settings, tanpa artikel) untuk /robots.txt. */
+  loadSiteRobots(context: ResolvedSiteContext): Promise<readonly string[] | null>;
   /** Daftar kategori aktif org (ringan, untuk nav yang identik di semua halaman). */
   loadSiteCategories(context: ResolvedSiteContext): Promise<readonly SiteCategory[]>;
   isCacheBypassed(context: ResolvedSiteContext): Promise<boolean>;

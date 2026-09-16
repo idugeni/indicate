@@ -1,5 +1,5 @@
 import { promisify } from 'node:util';
-import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type { ApiKeyRecord, IssuedApiKey } from '@/modules/integrations/models';
@@ -14,6 +14,19 @@ const derive = promisify(scrypt);
 const PREFIX = 'ind_live';
 const SECRET_BYTES = 32;
 const HASH_BYTES = 64;
+const VERIFY_CACHE_TTL_MS = 60_000;
+const VERIFY_CACHE_MAX_ENTRIES = 500;
+
+declare global { var indicateApiKeyVerifyCache: Map<string, number> | undefined; }
+
+function verifyCache(): Map<string, number> {
+  if (globalThis.indicateApiKeyVerifyCache === undefined) globalThis.indicateApiKeyVerifyCache = new Map();
+  return globalThis.indicateApiKeyVerifyCache;
+}
+
+function verifyCacheKey(lookupId: string, verificationHash: string, secret: string): string {
+  return createHash('sha256').update(`${lookupId}:${verificationHash}:${secret}`, 'utf8').digest('hex');
+}
 
 export interface ApiKeyCredentialMaterial {
   readonly plaintext: string;
@@ -101,7 +114,27 @@ export class ApiKeyService {
     try {
       const stored = await this.repository.findApiKeyByLookupId(parsed.lookupId);
       if (stored === null) return { ok: false, error: createNonDisclosingDenial(requestId) };
-      const validHash = await this.hasher.verify(parsed.secret, stored.salt, stored.verificationHash);
+      const cacheKey = verifyCacheKey(parsed.lookupId, stored.verificationHash, parsed.secret);
+      const cachedValidUntil = verifyCache().get(cacheKey);
+      let validHash: boolean;
+      if (cachedValidUntil !== undefined && cachedValidUntil > Date.now()) {
+        validHash = true;
+      } else {
+        validHash = await this.hasher.verify(parsed.secret, stored.salt, stored.verificationHash);
+        const store = verifyCache();
+        if (validHash) {
+          if (store.size >= VERIFY_CACHE_MAX_ENTRIES) {
+            const now = Date.now();
+            for (const [key, validUntil] of store) {
+              if (validUntil <= now) store.delete(key);
+            }
+            if (store.size >= VERIFY_CACHE_MAX_ENTRIES) store.delete(store.keys().next().value!);
+          }
+          store.set(cacheKey, Date.now() + VERIFY_CACHE_TTL_MS);
+        } else {
+          store.delete(cacheKey);
+        }
+      }
       const active = stored.status === 'active' && (stored.expiresAt === null || new Date(stored.expiresAt) > this.clock.now());
       if (!validHash || !active) return { ok: false, error: createNonDisclosingDenial(requestId) };
       const actor: AuthorizedTenantActorContext = Object.freeze({ actorType: 'api_key', actorId: stored.id, organizationId: stored.organizationId, permissionSet: new Set(stored.scopes), regionScopeId: stored.regionId, entryPoint: 'api', requestId });

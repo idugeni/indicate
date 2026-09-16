@@ -123,6 +123,17 @@ function trailingSlashRedirect(request: NextRequest): NextResponse | null {
   redirect.headers.set(REQUEST_ID_HEADER, ensureRequestId(request.headers).requestId);
   return withSecurityHeaders(redirect);
 }
+/**
+ * Slug control-plane yang bocor ke host tenant: yang punya padanan tenant
+ * dialihkan permanen, sisanya (murni marketing pusat) ditolak 404.
+ */
+const TENANT_ALIASES: Record<string, string> = {
+  '/about': '/tentang',
+  '/contact': '/kontak',
+  '/privacy': '/kebijakan-privasi',
+  '/terms': '/syarat-ketentuan',
+};
+const TENANT_GONE = new Set(['/services', '/pricing', '/faq']);
 export function proxy(request: NextRequest) {
   const rawHost = request.headers.get('host');
   const localAuthority = rawHost?.replace(/:\d+$/u, '').toLowerCase();
@@ -182,14 +193,16 @@ export function proxy(request: NextRequest) {
     if (!path.startsWith('/api/webhooks/')) return deny(404, request.headers);
     return nextWithCorrelation(request);
   }
-  if (path.startsWith('/dashboard') || path.startsWith('/auth') || path.startsWith('/sign-in') || path.startsWith('/api/dashboard') || path.startsWith('/api/internal') || path.startsWith('/api/health') || path.startsWith('/api/v1/') || path.startsWith('/api/webhooks/') || isServicePath(path)) return deny(404, request.headers);
-  if (path.startsWith('/articles/')) {
+  const alias = TENANT_ALIASES[path];
+  if (alias !== undefined) {
     const url = request.nextUrl.clone();
-    url.pathname = path.slice('/articles'.length);
+    url.pathname = alias;
     const redirect = NextResponse.redirect(url, 308);
     redirect.headers.set(REQUEST_ID_HEADER, ensureRequestId(request.headers).requestId);
     return withSecurityHeaders(redirect);
   }
+  if (path.startsWith('/dashboard') || path.startsWith('/auth') || path.startsWith('/sign-in') || path.startsWith('/api/dashboard') || path.startsWith('/api/internal') || path.startsWith('/api/health') || path.startsWith('/api/v1/') || path.startsWith('/api/webhooks/') || isServicePath(path)) return deny(404, request.headers);
+  if (TENANT_GONE.has(path)) return deny(404, request.headers);
   return nextWithCorrelation(request);
 }
 export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'] };

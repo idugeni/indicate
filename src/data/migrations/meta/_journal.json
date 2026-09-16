@@ -799,6 +799,20 @@
       "when": 1789502290201,
       "tag": "20260916010000_article_root_urls",
       "breakpoints": true
+    },
+    {
+      "idx": 114,
+      "version": "7",
+      "when": 1789529104771,
+      "tag": "20260916020000_invalidation_drop_articles_path",
+      "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "7",
+      "when": 1789529191150,
+      "tag": "20260916030000_invalidation_root_article_paths",
+      "breakpoints": true
     }
   ]
 }

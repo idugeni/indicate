@@ -11,11 +11,11 @@ const MANIFEST_VERSION = 'worm-audit-export/1';
 
 const sha256Hex = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex');
 
-const toJsonLines = (rows: readonly Record<string, unknown>[]): Uint8Array => {
+const toJsonLines = (rows: readonly Record<string, unknown>[]): { readonly bytes: Uint8Array; readonly rows: number } => {
   const text = rows
     .map((row) => JSON.stringify(row, (_key, value: unknown) => (value instanceof Date ? value.toISOString() : value)))
     .join('\n');
-  return new TextEncoder().encode(text.length > 0 ? `${text}\n` : '');
+  return { bytes: new TextEncoder().encode(text.length > 0 ? `${text}\n` : ''), rows: rows.length };
 };
 
 interface WormExecutor {
@@ -27,7 +27,7 @@ async function tableToJsonLines(
   table: 'audit_logs' | 'runtime_config_audit_logs' | 'retention_runs',
   since: string,
   until: string,
-): Promise<Uint8Array> {
+): Promise<{ readonly bytes: Uint8Array; readonly rows: number }> {
   // Akses global lewat fungsi allowlist (RLS indicate_runtime tenant-only).
   const rows = await db.execute<{ readonly audit_worm_fetch: Record<string, unknown> }>(sql`
     SELECT indicate_private.audit_worm_fetch(${since}::timestamptz, ${until}::timestamptz, ${table}) AS audit_worm_fetch`);
@@ -59,8 +59,8 @@ export async function exportDailyAudit(input: {
   const files: { readonly key: string; readonly bytes: Uint8Array; readonly sha256: string }[] = [];
   let rows = 0;
   for (const table of tables) {
-    const bytes = await tableToJsonLines(input.db, table, sinceIso, untilIso);
-    rows += bytes.length > 0 ? Buffer.from(bytes).toString('utf8').split('\n').length - 1 : 0;
+    const { bytes, rows: tableRows } = await tableToJsonLines(input.db, table, sinceIso, untilIso);
+    rows += tableRows;
     files.push({ key: `worm/${day}/${table}.jsonl`, bytes, sha256: sha256Hex(bytes) });
   }
   const manifest = {

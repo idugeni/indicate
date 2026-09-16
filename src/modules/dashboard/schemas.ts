@@ -9,7 +9,7 @@ const id = z.uuid();
 const expectedVersion = z.int().positive();
 const lifecycleStatus = z.enum(['active', 'inactive', 'archived']);
 const slug = z.string().trim().min(1).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
-const RESERVED_ARTICLE_SLUGS = new Set(['articles', 'categories', 'tags', 'search', 'report', 'api', 'dashboard', 'auth', 'sign-in', 'domain-pending']);
+const RESERVED_ARTICLE_SLUGS = new Set(['articles', 'categories', 'tags', 'search', 'report', 'tentang', 'kontak', 'kebijakan-privasi', 'syarat-ketentuan', 'privacy', 'terms', 'about', 'contact', 'services', 'pricing', 'faq', 'api', 'dashboard', 'auth', 'sign-in', 'domain-pending']);
 const articleSlug = slug.refine((value) => !RESERVED_ARTICLE_SLUGS.has(value), 'Slug ini dicadangkan untuk rute portal.');
 const hostname = z.string().trim().toLowerCase().min(3).max(253).regex(/^(?=.{3,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/);
 

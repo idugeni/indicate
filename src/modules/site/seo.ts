@@ -225,7 +225,10 @@ export function serializeJsonLd(documents: readonly Readonly<Record<string, unkn
   return safeJson(documents.length === 1 ? documents[0] : documents);
 }
 
-export function serializeRobots(site: NetworkSiteData): string {
+export function serializeRobots(site: {
+  readonly context: ResolvedSiteContext;
+  readonly settings: { readonly robots: readonly string[] };
+}): string {
   const custom = site.settings.robots.filter((line) => line.trim().length > 0);
   const lines = [
     'User-agent: *',
@@ -266,7 +269,10 @@ export function serializeSitemap(site: NetworkSiteData): string {
   );
   const entries: SitemapEntry[] = [
     { loc: absoluteSiteUrl(site.context, '/'), lastmod: toLastmod(homepageLastmod, now), changefreq: 'daily', priority: '1.0' },
-    { loc: absoluteSiteUrl(site.context, '/articles'), lastmod: toLastmod(homepageLastmod, now), changefreq: 'daily', priority: '0.8' },
+    { loc: absoluteSiteUrl(site.context, '/kebijakan-privasi'), lastmod: toLastmod(homepageLastmod, now), changefreq: 'monthly', priority: '0.3' },
+    { loc: absoluteSiteUrl(site.context, '/syarat-ketentuan'), lastmod: toLastmod(homepageLastmod, now), changefreq: 'monthly', priority: '0.3' },
+    { loc: absoluteSiteUrl(site.context, '/tentang'), lastmod: toLastmod(homepageLastmod, now), changefreq: 'monthly', priority: '0.3' },
+    { loc: absoluteSiteUrl(site.context, '/kontak'), lastmod: toLastmod(homepageLastmod, now), changefreq: 'monthly', priority: '0.3' },
   ];
   const seenCategories = new Set<string>();
   for (const article of site.articles) {

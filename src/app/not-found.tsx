@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { buttonVariants } from '@/components/ui/button';
-import { CleanBlueNotFound } from '@/modules/site/components/network/templates/clean-blue/not-found';
+import { NotFoundPage } from '@/modules/site/components/network/network-listing';
 import { deliveryComposition } from '@/modules/delivery';
 
 async function resolveNotFoundSite() {
@@ -54,7 +54,7 @@ async function TenantNotFound() {
 
   if (site === null) return <GenericNotFound />;
 
-  return <CleanBlueNotFound site={site} />;
+  return <NotFoundPage site={site} />;
 }
 
 export default function NotFound() {

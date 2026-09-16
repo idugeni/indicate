@@ -1,4 +1,4 @@
-const BASE_PATHS = ['/', '/articles', '/search', '/robots.txt', '/sitemap.xml', '/rss.xml'] as const;
+const BASE_PATHS = ['/', '/kebijakan-privasi', '/syarat-ketentuan', '/tentang', '/kontak', '/search', '/robots.txt', '/sitemap.xml', '/rss.xml'] as const;
 
 export interface CompleteInvalidationInput {
   readonly organizationId: string;

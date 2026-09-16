@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { getPageviewEndpoint } from '@/core/config/edge-hosts';
 
 /**
- * Beacon pageview via Cloudflare Worker (pv.indicate.web.id) → Upstash INCR.
+ * Beacon pageview via Cloudflare Worker → Upstash INCR.
  * Mencatat SEMUA view termasuk yang diserve edge-cache, dengan NOL
  * execution Vercel. Fire-and-forget sekali per mount; kegagalan diam.
  */
-const ENDPOINT = 'https://pv.indicate.web.id/v';
+const ENDPOINT = getPageviewEndpoint();
 
 export function CleanBlueViewBeacon({
   organizationId,

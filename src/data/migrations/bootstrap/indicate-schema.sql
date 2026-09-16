@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (114 migrations):
+-- Reviewed sources, in journal order (116 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -127,6 +127,8 @@
 --   112  20260915020000_media_policy_allow_ico  ledger sha256:38ecc2cee63b8ffb3034d85e1b67506941d9a9418fbdc06048556838bceb55ed
 --   113  20260916000000_region_locked_memberships  ledger sha256:398087aef20abd0eead610110e9026b41f73bf35eedc3fba3c7c917ea9a35337
 --   114  20260916010000_article_root_urls  ledger sha256:675a780cf8f2e72d8b42731ca6d3cfc5f02e70dfc1455ef8d95ea2be321eab85
+--   115  20260916020000_invalidation_drop_articles_path  ledger sha256:e7dae07ed4c4e6be7fa011eb3c43843831c34e49b47d8e1c75b6065bf94d52ec
+--   116  20260916030000_invalidation_root_article_paths  ledger sha256:7b9fe0fe8ab205d93354ba2aa661f08ec02b0ae55a7af6a31c46e2f8619f3822
 
 BEGIN;
 
@@ -11238,4 +11240,38 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (114, 'article_root_urls', 'sha256:6d4cca5d246408de829601ba01845d3c4ce801c4b05b8a7d4e22d37a817eeb4e');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('675a780cf8f2e72d8b42731ca6d3cfc5f02e70dfc1455ef8d95ea2be321eab85', 1789502290201);
+
+-- ----------------------------------------------------------------------
+-- 20260916020000_invalidation_drop_articles_path
+-- ----------------------------------------------------------------------
+-- Antrean invalidasi lama masih membawa path /articles (indeks yang sudah dihapus):
+-- buang entri itu dari task pending agar purge/revalidate hanya menyentuh route aktif.
+-- Idempoten: hanya baris yang masih mengandung pola lama.
+UPDATE public.invalidation_tasks
+SET paths = array_remove(paths, '/articles'),
+    urls = (SELECT coalesce(array_agg(u ORDER BY u), '{}') FROM unnest(urls) AS u WHERE u NOT LIKE '%/articles'),
+    updated_at = now()
+WHERE status = 'pending'
+  AND (paths @> ARRAY['/articles'] OR EXISTS (SELECT 1 FROM unnest(urls) AS u WHERE u LIKE '%/articles'));
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (115, 'invalidation_drop_articles_path', 'sha256:7e229d07a4e666b249b02ff9c4ec3ba66a3a09a15ab1f9971a633d8079d92062');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e7dae07ed4c4e6be7fa011eb3c43843831c34e49b47d8e1c75b6065bf94d52ec', 1789529104771);
+
+-- ----------------------------------------------------------------------
+-- 20260916030000_invalidation_root_article_paths
+-- ----------------------------------------------------------------------
+-- Detail lama /articles/<slug> di antrean pending ditulis ulang ke /<slug>:
+-- purge/revalidate tetap mengenai halaman asli, bukan URL mati.
+-- Idempoten: hanya baris yang masih mengandung pola lama.
+UPDATE public.invalidation_tasks
+SET paths = (SELECT coalesce(array_agg(regexp_replace(p, '/articles/', '/') ORDER BY p), '{}') FROM unnest(paths) AS p),
+    urls = (SELECT coalesce(array_agg(regexp_replace(u, '/articles/', '/') ORDER BY u), '{}') FROM unnest(urls) AS u),
+    updated_at = now()
+WHERE status = 'pending'
+  AND (EXISTS (SELECT 1 FROM unnest(paths) AS p WHERE p LIKE '%/articles/%') OR EXISTS (SELECT 1 FROM unnest(urls) AS u WHERE u LIKE '%/articles/%'));
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (116, 'invalidation_root_article_paths', 'sha256:e64fb971b0be9ea2a600b6d856baa77118b0edd02374ff0bc85cf2034e82574d');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7b9fe0fe8ab205d93354ba2aa661f08ec02b0ae55a7af6a31c46e2f8619f3822', 1789529191150);
 COMMIT;

@@ -54,7 +54,6 @@ export async function resolveNetworkSite(query: NetworkContentQuery = {}, path =
  */
 const TAG_INDEX_MINIMUM = 3;
 const CATEGORY_INDEX_MINIMUM = 3;
-const ARTICLE_INDEX_MINIMUM = 5;
 
 /**
  * Metadata tenant untuk halaman yang sengaja tidak diindeks (pencarian,
@@ -153,49 +152,6 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
         title: categoryTitle,
         description: categoryDescription,
         images: [categorySeo.openGraph.image],
-      },
-    };
-  }
-
-  if (path === '/articles' && query.articleSlug === undefined && query.search === undefined && query.categorySlug === undefined) {
-    const siteName = site.settings.seoSiteName ?? site.settings.name;
-    const indexTitle = `Berita Terbaru | ${siteName}`;
-    const indexDescription = site.settings.seoDefaultDescription ?? `Indeks laporan terkini redaksi ${siteName}, diperbarui mengikuti perkembangan di lapangan.`;
-    if (site.articles.length < ARTICLE_INDEX_MINIMUM) {
-      return tenantHiddenMeta(site, path, indexTitle, indexDescription);
-    }
-    const indexSeo = buildSeoDocument(site, { path });
-    if (indexSeo.canonical === null || indexSeo.openGraph === null) {
-      return {
-        title: { absolute: indexTitle },
-        description: indexDescription,
-        robots: indexableRobots(),
-        ...tenantFavicon(site.settings.faviconUrl),
-      };
-    }
-    return {
-      title: { absolute: indexTitle },
-      description: indexDescription,
-      alternates: {
-        canonical: indexSeo.canonical,
-        languages: { 'id-ID': indexSeo.canonical },
-      },
-      robots: indexableRobots(),
-      ...tenantFavicon(site.settings.faviconUrl),
-      openGraph: {
-        title: indexTitle,
-        description: indexDescription,
-        url: indexSeo.openGraph.url,
-        siteName: indexSeo.openGraph.siteName,
-        locale: 'id_ID',
-        images: [{ url: indexSeo.openGraph.image, width: 1200, height: 630, alt: indexTitle }],
-        type: 'website' as const,
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title: indexTitle,
-        description: indexDescription,
-        images: [indexSeo.openGraph.image],
       },
     };
   }

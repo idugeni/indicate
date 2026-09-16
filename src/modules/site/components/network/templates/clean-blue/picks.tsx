@@ -10,7 +10,7 @@ export function CleanBluePicks({
   articles,
   description,
   heading = 'Berita Pilihan',
-  linkHref = '/articles',
+  linkHref = '/',
   linkLabel = 'Lihat Semua',
 }: {
   readonly articles: readonly NetworkArticle[];

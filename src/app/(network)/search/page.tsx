@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
-import { CleanBlueContainer, CleanBlueStatusLine } from '@/modules/site/components/network/templates/clean-blue/shared';
-import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/shell';
-import { CleanBlueSearchForm, CleanBlueSearchResults } from '@/modules/site/components/network/templates/clean-blue/search';
+import { SearchPage } from '@/modules/site/components/network/network-listing';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 type Props = {
@@ -18,18 +16,10 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   return networkMetadata('/search', { search: normalizeQuery(resolved.q) });
 }
 
-/** Single-template: seluruh domain memakai Clean Blue Editorial. */
-export default async function SearchPage({ searchParams }: Props) {
+/** Pencarian tenant: hasil dari korpus situs aktif. */
+export default async function SearchPageRoute({ searchParams }: Props) {
   const resolved = await searchParams;
   const query = normalizeQuery(resolved.q);
   const site = await resolveNetworkSite({ search: query }, '/search');
-  return (
-    <CleanBlueShell site={site} path="/search">
-      <CleanBlueContainer className="space-y-6 py-6 md:py-8">
-        <CleanBlueStatusLine count={site.articles.length} title="Pencarian" />
-        <CleanBlueSearchForm query={query} />
-        <CleanBlueSearchResults articles={site.articles} query={query} />
-      </CleanBlueContainer>
-    </CleanBlueShell>
-  );
+  return <SearchPage site={site} query={query} />;
 }

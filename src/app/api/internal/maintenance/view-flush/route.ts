@@ -25,6 +25,10 @@ interface FlushEntry {
   readonly count: number;
 }
 
+const MAX_FLUSH_KEYS = 5000;
+const UPDATE_CHUNK_SIZE = 500;
+const DEL_CHUNK_SIZE = 500;
+
 async function handleGET(request: Request) {
   const requestId = resolveRequestId(request);
   const context = await getServerRuntimeContext();
@@ -57,6 +61,7 @@ async function handleGET(request: Request) {
           });
         });
       }
+      if (deltas.size >= MAX_FLUSH_KEYS) break;
     } while (cursor !== 0);
     // RLS article_sites memaksa organization_id = tenant aktif: tanpa
     // set_tenant_context, UPDATE mencocokkan 0 baris (diam-diam) sementara
@@ -68,25 +73,43 @@ async function handleGET(request: Request) {
       byOrg.set(entry.organizationId, list);
     }
     let applied = 0;
+    const appliedKeys: string[] = [];
     for (const [organizationId, rows] of byOrg) {
       try {
         await runtime.db.execute(sql`SELECT indicate_private.set_tenant_context(${organizationId}::uuid, ${'system:view-flush'}, ${requestId})`);
       } catch {
         continue;
       }
-      for (const { key, entry } of rows) {
+      for (let index = 0; index < rows.length; index += UPDATE_CHUNK_SIZE) {
+        const chunk = rows.slice(index, index + UPDATE_CHUNK_SIZE);
+        const keyById = new Map(chunk.map(({ key, entry }) => [entry.articleSiteId, key] as const));
         try {
+          const values = sql.join(
+            chunk.map(({ entry }) => sql`(${entry.articleSiteId}::uuid, ${entry.siteId}::uuid, ${entry.count}::int)`),
+            sql`,`,
+          );
           const updated = await runtime.db.execute<{ id: string }>(sql`
-            UPDATE article_sites SET view_count = view_count + ${entry.count}, updated_at = now()
-            WHERE organization_id = ${entry.organizationId}::uuid
-              AND site_id = ${entry.siteId}::uuid AND id = ${entry.articleSiteId}::uuid
-            RETURNING id`);
-          if (updated.length === 0) continue;
-          await redis.del(key);
-          applied += 1;
+            UPDATE article_sites AS s SET view_count = s.view_count + v.count, updated_at = now()
+            FROM (VALUES ${values}) AS v(id, site_id, count)
+            WHERE s.organization_id = ${organizationId}::uuid AND s.id = v.id AND s.site_id = v.site_id
+            RETURNING s.id`);
+          for (const row of updated) {
+            const key = keyById.get(row.id);
+            if (key !== undefined) {
+              appliedKeys.push(key);
+              applied += 1;
+            }
+          }
         } catch {
-          /* baris berikutnya; key dipertahankan untuk percobaan berikut */
+          /* chunk dipertahankan untuk percobaan berikut */
         }
+      }
+    }
+    for (let index = 0; index < appliedKeys.length; index += DEL_CHUNK_SIZE) {
+      try {
+        await redis.del(...appliedKeys.slice(index, index + DEL_CHUNK_SIZE));
+      } catch {
+        /* key yang gagal di-del akan ter-flush ganda kecil pada proses berikut; hitungan tetap konvergen */
       }
     }
     return NextResponse.json({ requestId, keys: deltas.size, applied }, { headers: noStore });

@@ -81,7 +81,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         }
       }
 
-      const conditions = [eq(articles.organizationId, context.organizationId), eq(articleSites.organizationId, context.organizationId), eq(articleSites.siteId, context.siteId), eq(articleSites.state, 'published'), eq(articleSites.active, true), eq(articles.status, 'active')];
+      const conditions = [eq(articles.organizationId, context.organizationId), eq(articleSites.organizationId, context.organizationId), eq(articleSites.siteId, context.siteId), eq(articleSites.state, 'published'), eq(articleSites.active, true), eq(articles.status, 'active'), isNotNull(articleSites.publishedAt)];
       // Sindikasi penuh: satu artikel kanonis tayang di portal mana pun yang diberi assignment,
       // lintas region sekalipun. Region artikel adalah kanal asal/atribusi, bukan kunci tampil.
       if (query.articleSlug !== undefined) conditions.push(eq(articles.slug, query.articleSlug));
@@ -146,8 +146,23 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
     });
   }
 
-  async loadSiteCategories(context: ResolvedSiteContext): Promise<readonly { slug: string; name: string }[]> {
+  async loadSiteRobots(context: ResolvedSiteContext): Promise<readonly string[] | null> {
     return this.database.transaction(async (transaction) => {
+      await this.publicTenant(transaction, context);
+      const rows = await transaction.select({ seo: siteSettings.seo })
+        .from(sites)
+        .innerJoin(domains, and(eq(domains.organizationId, sites.organizationId), eq(domains.id, sites.domainId), eq(domains.status, 'active')))
+        .leftJoin(regions, and(eq(regions.organizationId, sites.organizationId), eq(regions.id, sites.regionId)))
+        .innerJoin(siteSettings, and(eq(siteSettings.organizationId, sites.organizationId), eq(siteSettings.siteId, sites.id)))
+        .where(and(eq(sites.organizationId, context.organizationId), eq(sites.id, context.siteId), eq(sites.normalizedHostname, context.normalizedHostname), eq(sites.status, 'active'), eq(sites.activationState, 'active'), eq(sites.routingVersion, context.routingVersion), eq(sites.contentVersion, context.contentVersion), or(sql`${sites.regionId} IS NULL`, eq(regions.status, 'active')))).limit(1);
+      const row = rows[0];
+      if (row === undefined) return null;
+      const robots = (row.seo as Record<string, unknown>)['robots'];
+      return Array.isArray(robots) ? robots.map(String) : [];
+    });
+  }
+
+  async loadSiteCategories(context: ResolvedSiteContext): Promise<readonly { slug: string; name: string }[]> {    return this.database.transaction(async (transaction) => {
       await this.publicTenant(transaction, context);
       const rows = await transaction.select({ slug: categories.slug, name: categories.name })
         .from(categories)

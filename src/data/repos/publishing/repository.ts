@@ -219,12 +219,12 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         const parent = parentRows[0];
         if (parent !== undefined) inheritedMediaIds = [parent.logoMediaId, parent.faviconMediaId, parent.defaultMediaId].filter((value): value is string => value !== null);
       }
-      const relations = await transaction.select().from(articleSites).where(and(eq(articleSites.organizationId, context.organizationId), eq(articleSites.siteId, context.siteId), eq(articleSites.active, true)));
-      const articleRows = await transaction.select({ id: articles.id, status: articles.status, leadMediaId: articles.leadMediaId, title: articles.title, slug: articles.slug }).from(articles).where(eq(articles.organizationId, context.organizationId));
       const asset = mapMedia(mediaRows[0]);
       const site = { id: siteRows[0].site.id, organizationId: context.organizationId, active: true, normalizedHostname: siteRows[0].site.normalizedHostname, settingsMediaIds: [...new Set([...ownMediaIds, ...inheritedMediaIds])] };
-      const refs = relations.map((row) => ({ id: row.id, organizationId: row.organizationId, articleId: row.articleId, siteId: row.siteId, active: row.active, state: row.state, publishedUrl: row.publishedUrl, publishedAt: optionalIso(row.publishedAt), version: row.version }));
-      const articleRefs = articleRows.map((row) => ({ id: row.id, organizationId: context.organizationId, active: row.status === 'active', leadMediaId: row.leadMediaId, title: row.title, slug: row.slug }));
+      const articleRefs = asset.owner.kind !== 'article' ? [] : (await transaction.select({ id: articles.id, status: articles.status }).from(articles).where(and(eq(articles.organizationId, context.organizationId), eq(articles.id, asset.owner.articleId))).limit(1))
+        .map((row) => ({ id: row.id, organizationId: context.organizationId, active: row.status === 'active', leadMediaId: null, title: '', slug: '' }));
+      const refs = asset.owner.kind !== 'article' ? [] : (await transaction.select({ id: articleSites.id, organizationId: articleSites.organizationId, articleId: articleSites.articleId, siteId: articleSites.siteId, active: articleSites.active, state: articleSites.state }).from(articleSites).where(and(eq(articleSites.organizationId, context.organizationId), eq(articleSites.siteId, context.siteId), eq(articleSites.articleId, asset.owner.articleId), eq(articleSites.active, true))).limit(1))
+        .map((row) => ({ id: row.id, organizationId: row.organizationId, articleId: row.articleId, siteId: row.siteId, active: row.active, state: row.state, publishedUrl: null, publishedAt: null, version: 0 }));
       if (!canPublicAccessMedia({ context, media: asset, site, articles: articleRefs, articleSites: refs })) return null;
       await this.audit(transaction, { organizationId: context.organizationId, actorType: 'system', actorId: context.siteId, entryPoint: 'api', requestId }, 'media.access.authorize', 'media', mediaId, { scope: 'public', siteId: context.siteId }, new Date());
       return asset;
