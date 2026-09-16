@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/navigation-menu';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { CleanBlueSearchToggle } from '@/modules/site/components/network/templates/clean-blue/search-toggle';
+import { truncateTagline } from '@/modules/site/components/network/templates/clean-blue/shared';
 import { getSiteCategoryNav } from '@/modules/site/components/network/templates/clean-blue/site-nav';
 
 /**
@@ -18,14 +19,12 @@ import { getSiteCategoryNav } from '@/modules/site/components/network/templates/
  */
 export async function CleanBlueHeader({ site, path = '/' }: { readonly site: NetworkSiteData; readonly path?: string }) {
   const nav = await getSiteCategoryNav(site);
-  const tagline = site.settings.description.length > 64
-    ? `${site.settings.description.slice(0, 64).trimEnd()}…`
-    : site.settings.description;
+  const tagline = truncateTagline(site.settings.description);
 
   const linkClass = (active: boolean) =>
     `whitespace-nowrap px-3 py-2 font-sans text-sm transition-colors ${
       active
-        ? 'font-semibold text-[#1f6feb] underline decoration-2 underline-offset-8'
+        ? 'font-semibold text-[#1a5fd0] underline decoration-2 underline-offset-8'
         : 'font-medium text-slate-600 hover:text-slate-900'
     }`;
 
@@ -33,11 +32,11 @@ export async function CleanBlueHeader({ site, path = '/' }: { readonly site: Net
     <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/95 backdrop-blur">
       <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 py-3 sm:px-6">
         <div className="min-w-0 justify-self-start">
-          <Link href="/" aria-label={`${site.settings.name} beranda`} className="grid min-w-0 leading-none no-underline">
+          <Link href="/" className="grid min-w-0 leading-none no-underline">
             <strong className="truncate font-sans text-lg font-extrabold tracking-tight text-slate-900">
               {site.settings.name}
             </strong>
-            <small className="mt-0.5 hidden truncate font-sans text-[11px] text-slate-500 sm:block">
+            <small className="mt-0.5 hidden truncate font-sans text-[11px] text-slate-600 sm:block">
               {tagline}
             </small>
           </Link>
@@ -68,7 +67,7 @@ export async function CleanBlueHeader({ site, path = '/' }: { readonly site: Net
           <CleanBlueSearchToggle />
           <Link
             href="#newsletter"
-            className={buttonVariants({ className: 'hidden whitespace-nowrap rounded-full bg-[#1f6feb] font-sans text-sm font-bold text-white hover:bg-[#1a5fd0] sm:inline-flex' })}
+            className={buttonVariants({ className: 'hidden whitespace-nowrap rounded-full bg-[#1a5fd0] font-sans text-sm font-bold text-white hover:bg-[#155cb8] sm:inline-flex' })}
           >
             Langganan
           </Link>

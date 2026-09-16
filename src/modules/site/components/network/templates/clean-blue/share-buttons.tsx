@@ -30,7 +30,7 @@ export function CleanBlueShareButtons({ article, canonical }: { readonly article
   };
 
   const round =
-    'flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]';
+    'flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]';
 
   return (
     <p className="m-0 flex flex-none flex-wrap items-center gap-2" aria-label="Bagikan artikel">
@@ -39,7 +39,7 @@ export function CleanBlueShareButtons({ article, canonical }: { readonly article
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Bagikan ke WhatsApp"
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1f6feb] text-white transition-colors hover:bg-[#1a5fd0]"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1a5fd0] text-white transition-colors hover:bg-[#155cb8]"
       >
         <FaWhatsapp className="h-4 w-4" aria-hidden="true" />
       </a>
@@ -82,11 +82,11 @@ export function CleanBlueShareButtons({ article, canonical }: { readonly article
         onClick={() => void copy()}
         aria-label={copied ? 'Tautan tersalin' : 'Salin tautan artikel'}
         title={copied ? 'Tersalin!' : 'Salin tautan'}
-        className={`${round} ${copied ? '!bg-[#1f6feb] !text-white !ring-[#1f6feb]' : ''}`}
+        className={`${round} ${copied ? '!bg-[#1a5fd0] !text-white !ring-[#1a5fd0]' : ''}`}
       >
         {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Link2 className="h-4 w-4" aria-hidden="true" />}
       </button>
-      <span aria-live="polite" className="font-sans text-xs font-semibold text-[#1f6feb]">
+      <span aria-live="polite" className="font-sans text-xs font-semibold text-[#1a5fd0]">
         {copied ? 'Tersalin!' : ''}
       </span>
     </p>

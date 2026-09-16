@@ -25,17 +25,17 @@ export function CleanBluePicks({
       <div className="flex items-end justify-between gap-4">
         <div>
           <h2 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-slate-900">
-            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1f6feb]" />
+            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1a5fd0]" />
             {heading}
           </h2>
-          <p className="m-0 mt-1 font-sans text-sm text-slate-500">
+          <p className="m-0 mt-1 font-sans text-sm text-slate-600">
             {description}
           </p>
         </div>
         {linkHref !== null ? (
           <Link
             href={linkHref}
-            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[#1f6feb] hover:underline"
+            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[#1a5fd0] hover:underline"
           >
             {linkLabel}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -74,7 +74,7 @@ export function CleanBluePicks({
                   </span>
                 </p>
                 <CardTitle className="line-clamp-2 font-sans text-[17px] font-bold leading-snug tracking-tight text-slate-900">
-                  <Link href={`/${article.slug}`} className="hover:text-[#1f6feb]">
+                  <Link href={`/${article.slug}`} className="hover:text-[#1a5fd0]">
                     {article.title}
                   </Link>
                 </CardTitle>
@@ -88,13 +88,13 @@ export function CleanBluePicks({
                 </p>
               </CardContent>
               <CardFooter className="mt-auto justify-between border-t border-slate-100 bg-white px-5">
-                <span className="font-sans text-xs tabular-nums text-slate-500">
+                <span className="font-sans text-xs tabular-nums text-slate-600">
                   {formatDate(article.publishedAt, 'medium')} · {reading} mnt baca · {formatCompactViews(article.viewCount)} dibaca
                 </span>
                 <Link
                   href={`/${article.slug}`}
                   aria-label={`Baca: ${article.title}`}
-                  className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#e8f0fe] text-[#1f6feb] transition-colors hover:bg-[#1f6feb] hover:text-white"
+                  className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#e8f0fe] text-[#1a5fd0] transition-colors hover:bg-[#1a5fd0] hover:text-white"
                 >
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>

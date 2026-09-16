@@ -36,7 +36,7 @@ export function CleanBlueSearchToggle() {
         size="icon"
         aria-label="Cari berita"
         onClick={show}
-        className="rounded-full border-slate-200 bg-white text-slate-600 hover:text-[#1f6feb]"
+        className="rounded-full border-slate-200 bg-white text-slate-600 hover:text-[#1a5fd0]"
       >
         <Search className="h-4 w-4" aria-hidden="true" />
       </Button>
@@ -69,7 +69,7 @@ export function CleanBlueSearchToggle() {
         type="submit"
         size="icon"
         aria-label="Cari"
-        className="h-9 w-9 flex-none rounded-full bg-[#1f6feb] text-white hover:bg-[#1a5fd0]"
+        className="h-9 w-9 flex-none rounded-full bg-[#1a5fd0] text-white hover:bg-[#155cb8]"
       >
         <Search className="h-4 w-4" aria-hidden="true" />
       </Button>

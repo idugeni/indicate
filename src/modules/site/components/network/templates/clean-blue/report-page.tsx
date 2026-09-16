@@ -15,7 +15,7 @@ export function CleanBlueReport({ site, articleSlug }: CleanBlueReportProps) {
   return (
     <CleanBlueShell site={site} path="/report">
       <CleanBlueContainer className="max-w-3xl py-8 md:py-12">
-        <p className="m-0 font-sans text-xs font-medium uppercase tracking-wider text-slate-500">
+        <p className="m-0 font-sans text-xs font-medium uppercase tracking-wider text-slate-600">
           Kepercayaan & keamanan
         </p>
         <h1 className="m-0 mt-2 font-sans text-3xl font-extrabold tracking-tight text-slate-900">

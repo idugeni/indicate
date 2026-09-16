@@ -36,15 +36,15 @@ export function CleanBlueTicker({ articles }: { readonly articles: readonly Netw
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <span className="flex-none rounded-full bg-[#1f6feb] px-3.5 py-1.5 font-sans text-xs font-bold tracking-wide text-white">
+      <span className="flex-none rounded-full bg-[#1a5fd0] px-3.5 py-1.5 font-sans text-xs font-bold tracking-wide text-white">
         TERKINI
       </span>
       <p className="m-0 min-w-0 flex-1 truncate font-sans text-sm font-medium text-slate-800" aria-live="polite">
-        <Link href={`/${article.slug}`} className="hover:text-[#1f6feb]">
+        <Link href={`/${article.slug}`} className="hover:text-[#1a5fd0]">
           {article.title}
         </Link>
       </p>
-      <time dateTime={article.updatedAt} className="hidden flex-none font-sans text-xs tabular-nums text-slate-500 sm:block">
+      <time dateTime={article.updatedAt} className="hidden flex-none font-sans text-xs tabular-nums text-slate-600 sm:block">
         {article.updatedAt !== article.publishedAt
           ? `Diperbarui ${formatDate(article.updatedAt, 'medium')}`
           : formatDate(article.publishedAt, 'medium')}
@@ -54,17 +54,17 @@ export function CleanBlueTicker({ articles }: { readonly articles: readonly Netw
           type="button"
           onClick={() => setIndex((current) => (current - 1 + items.length) % items.length)}
           aria-label="Headline sebelumnya"
-          className="flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
+          className="flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
         >
-          <ChevronLeft className="h-4 w-4 text-slate-500" aria-hidden="true" />
+          <ChevronLeft className="h-4 w-4 text-slate-600" aria-hidden="true" />
         </button>
         <button
           type="button"
           onClick={() => setIndex((current) => (current + 1) % items.length)}
           aria-label="Headline berikutnya"
-          className="flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
+          className="flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
         >
-          <ChevronRight className="h-4 w-4 text-slate-500" aria-hidden="true" />
+          <ChevronRight className="h-4 w-4 text-slate-600" aria-hidden="true" />
         </button>
       </span>
     </div>

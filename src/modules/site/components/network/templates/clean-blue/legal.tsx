@@ -24,11 +24,11 @@ export function CleanBlueLegal({ site, title, description, path = '/', sections 
       <CleanBlueContainer className="space-y-6 py-6 md:py-8">
         <div>
           <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-slate-900">
-            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1f6feb]" />
+            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1a5fd0]" />
             {title}
           </h1>
           {description === undefined || description === '' ? null : (
-            <p className="m-0 mt-1 max-w-2xl font-sans text-sm leading-relaxed text-slate-500">
+            <p className="m-0 mt-1 max-w-2xl font-sans text-sm leading-relaxed text-slate-600">
               {description}
             </p>
           )}
@@ -42,9 +42,9 @@ export function CleanBlueLegal({ site, title, description, path = '/', sections 
               <li key={`${index}:${section.heading}`} className="border-b border-slate-100 last:border-b-0">
                 <a
                   href={`#${slugify(section.heading)}`}
-                  className="group flex items-baseline gap-3 py-2 font-sans text-sm text-slate-600 transition-colors hover:text-[#1f6feb]"
+                  className="group flex items-baseline gap-3 py-2 font-sans text-sm text-slate-600 transition-colors hover:text-[#1a5fd0]"
                 >
-                  <span className="flex-none font-mono text-[11px] tabular-nums text-[#1f6feb]">
+                  <span className="flex-none font-mono text-[11px] tabular-nums text-[#1a5fd0]">
                     {String(index + 1).padStart(2, '0')}
                   </span>
                   <span className="group-hover:underline">{section.heading}</span>
@@ -63,7 +63,7 @@ export function CleanBlueLegal({ site, title, description, path = '/', sections 
               <div className="flex items-baseline gap-3">
                 <span
                   aria-hidden="true"
-                  className="flex h-6 w-6 flex-none items-center justify-center rounded-lg bg-[#e8f0fe] font-mono text-[11px] font-bold tabular-nums text-[#1f6feb]"
+                  className="flex h-6 w-6 flex-none items-center justify-center rounded-lg bg-[#e8f0fe] font-mono text-[11px] font-bold tabular-nums text-[#1a5fd0]"
                 >
                   {index + 1}
                 </span>

@@ -23,7 +23,7 @@ export function CleanBluePagination({
         <Link
           href={href(page - 1)}
           aria-label="Halaman sebelumnya"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden="true" />
         </Link>
@@ -36,8 +36,8 @@ export function CleanBluePagination({
           aria-current={n === page ? 'page' : undefined}
           className={`flex h-9 min-w-9 items-center justify-center rounded-full px-2 font-sans text-sm font-bold transition-colors ${
             n === page
-              ? 'bg-[#1f6feb] text-white'
-              : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:text-[#1f6feb]'
+              ? 'bg-[#1a5fd0] text-white'
+              : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:text-[#1a5fd0]'
           }`}
         >
           {n}
@@ -47,7 +47,7 @@ export function CleanBluePagination({
         <Link
           href={href(page + 1)}
           aria-label="Halaman berikutnya"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
         >
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </Link>

@@ -4,8 +4,8 @@ import { Rss } from 'lucide-react';
 import { FaFacebookF, FaInstagram, FaTelegram, FaTiktok, FaXTwitter, FaYoutube } from 'react-icons/fa6';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
+import { truncateTagline } from '@/modules/site/components/network/templates/clean-blue/shared';
 import { getSiteCategoryNav } from '@/modules/site/components/network/templates/clean-blue/site-nav';
-import { CleanBlueStoreBadges } from '@/modules/site/components/network/templates/clean-blue/store-badges';
 
 const SOCIAL_ICONS: Readonly<Record<string, ComponentType<{ readonly className?: string }>>> = {
   facebook: FaFacebookF,
@@ -22,7 +22,6 @@ const DEFAULT_SOCIALS = ['facebook', 'x', 'instagram', 'youtube', 'tiktok', 'tel
 
 const ABOUT_LINKS = [
   { label: 'Profil', href: '/tentang' },
-  { label: 'Redaksi', href: '/tentang' },
   { label: 'Kontak', href: '/kontak' },
   { label: 'Kebijakan Privasi', href: '/kebijakan-privasi' },
   { label: 'Syarat & Ketentuan', href: '/syarat-ketentuan' },
@@ -30,21 +29,19 @@ const ABOUT_LINKS = [
 
 export async function CleanBlueFooter({ site }: { readonly site: NetworkSiteData }) {
   const categories = await getSiteCategoryNav(site, 6);
-  const tagline = site.settings.description.length > 64
-    ? `${site.settings.description.slice(0, 64).trimEnd()}…`
-    : site.settings.description;
+  const tagline = truncateTagline(site.settings.description);
   const year = new Date().getFullYear();
   const socialByName = new Map(Object.entries(site.settings.socialLinks).map(([name, href]) => [name.toLowerCase(), href] as const));
 
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <div>
-          <Link href="/" aria-label={`${site.settings.name} beranda`} className="grid leading-none no-underline">
+          <Link href="/" className="grid leading-none no-underline">
             <strong className="font-sans text-lg font-extrabold tracking-tight text-slate-900">
               {site.settings.name}
             </strong>
-            <small className="mt-0.5 font-sans text-[11px] text-slate-500">
+            <small className="mt-0.5 font-sans text-[11px] text-slate-600">
               {tagline}
             </small>
           </Link>
@@ -74,7 +71,7 @@ export async function CleanBlueFooter({ site }: { readonly site: NetworkSiteData
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`${site.settings.name} di ${name}`}
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
                 >
                   <Icon className="h-4 w-4" aria-hidden="true" />
                 </a>
@@ -83,7 +80,7 @@ export async function CleanBlueFooter({ site }: { readonly site: NetworkSiteData
             <Link
               href="/rss.xml"
               aria-label="Umpan RSS"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
             >
               <Rss className="h-4 w-4" aria-hidden="true" />
             </Link>
@@ -95,7 +92,7 @@ export async function CleanBlueFooter({ site }: { readonly site: NetworkSiteData
           <ul className="m-0 mt-4 list-none space-y-2.5 p-0">
             {categories.map((item) => (
               <li key={`${item.href}:${item.label}`} className="m-0 p-0">
-                <Link href={item.href} className="font-sans text-sm text-slate-600 transition-colors hover:text-[#1f6feb]">
+                <Link href={item.href} className="font-sans text-sm text-slate-600 transition-colors hover:text-[#1a5fd0]">
                   {item.label}
                 </Link>
               </li>
@@ -108,25 +105,17 @@ export async function CleanBlueFooter({ site }: { readonly site: NetworkSiteData
           <ul className="m-0 mt-4 list-none space-y-2.5 p-0">
             {ABOUT_LINKS.map((item) => (
               <li key={item.label} className="m-0 p-0">
-                <Link href={item.href} className="font-sans text-sm text-slate-600 transition-colors hover:text-[#1f6feb]">
+                <Link href={item.href} className="font-sans text-sm text-slate-600 transition-colors hover:text-[#1a5fd0]">
                   {item.label}
                 </Link>
               </li>
             ))}
           </ul>
         </nav>
-
-        <div>
-          <h2 className="m-0 font-sans text-sm font-bold text-slate-900">Aplikasi Mobile</h2>
-          <p className="m-0 mt-4 font-sans text-sm leading-relaxed text-slate-600">
-            Dapatkan pengalaman membaca berita yang lebih baik di perangkat mobile Anda.
-          </p>
-          <CleanBlueStoreBadges />
-        </div>
       </div>
 
       <div className="border-t border-slate-200">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 font-sans text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 font-sans text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p className="m-0">© {year} {site.settings.name}. Semua hak dilindungi.</p>
           <p className="m-0 flex items-center gap-4">
             <Link href="/kebijakan-privasi" className="transition-colors hover:text-slate-900">Privasi</Link>

@@ -48,14 +48,14 @@ export function CleanBlueReportForm({ articleSlug }: { readonly articleSlug: str
   return (
     <div className="space-y-4">
       {articleSlug ? (
-        <p className="m-0 font-mono text-xs text-slate-500">Artikel: /{articleSlug}</p>
+        <p className="m-0 font-mono text-xs text-slate-600">Artikel: /{articleSlug}</p>
       ) : null}
       <label className="block font-sans text-xs font-medium text-slate-600">
         Kontak Anda (surel/nomor, untuk klarifikasi)
         <input
           type="text" value={contact} disabled={busy} maxLength={320}
           onChange={(event) => setContact(event.target.value)}
-          className="mt-1.5 block h-11 w-full rounded-xl border border-slate-200 bg-[#f5f8fd] px-3.5 font-sans text-sm text-slate-900 focus:border-[#1f6feb] focus:outline-none"
+          className="mt-1.5 block h-11 w-full rounded-xl border border-slate-200 bg-[#f5f8fd] px-3.5 font-sans text-sm text-slate-900 focus:border-[#1a5fd0] focus:outline-none"
         />
       </label>
       <label className="block font-sans text-xs font-medium text-slate-600">
@@ -63,7 +63,7 @@ export function CleanBlueReportForm({ articleSlug }: { readonly articleSlug: str
         <select
           value={category} disabled={busy}
           onChange={(event) => setCategory(event.target.value)}
-          className="mt-1.5 block h-11 w-full rounded-xl border border-slate-200 bg-[#f5f8fd] px-3 font-sans text-sm text-slate-900 focus:border-[#1f6feb] focus:outline-none"
+          className="mt-1.5 block h-11 w-full rounded-xl border border-slate-200 bg-[#f5f8fd] px-3 font-sans text-sm text-slate-900 focus:border-[#1a5fd0] focus:outline-none"
         >
           {CATEGORIES.map((option) => (
             <option key={option.value} value={option.value}>{option.label}</option>
@@ -75,13 +75,13 @@ export function CleanBlueReportForm({ articleSlug }: { readonly articleSlug: str
         <textarea
           value={details} disabled={busy} rows={5} maxLength={4000}
           onChange={(event) => setDetails(event.target.value)}
-          className="mt-1.5 block w-full rounded-xl border border-slate-200 bg-[#f5f8fd] px-3.5 py-2.5 font-sans text-sm text-slate-900 focus:border-[#1f6feb] focus:outline-none"
+          className="mt-1.5 block w-full rounded-xl border border-slate-200 bg-[#f5f8fd] px-3.5 py-2.5 font-sans text-sm text-slate-900 focus:border-[#1a5fd0] focus:outline-none"
         />
       </label>
       {error ? <p className="m-0 font-sans text-xs font-medium text-red-600">{error}</p> : null}
       <button
         type="button" onClick={submit} disabled={busy}
-        className="inline-flex h-11 items-center rounded-full bg-[#1f6feb] px-6 font-sans text-sm font-bold text-white transition-colors hover:bg-[#1a5fd0] disabled:opacity-50"
+        className="inline-flex h-11 items-center rounded-full bg-[#1a5fd0] px-6 font-sans text-sm font-bold text-white transition-colors hover:bg-[#155cb8] disabled:opacity-50"
       >
         {busy ? 'Mengirim…' : 'Kirim laporan'}
       </button>

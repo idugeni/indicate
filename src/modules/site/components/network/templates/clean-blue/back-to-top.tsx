@@ -19,7 +19,7 @@ export function CleanBlueBackToTop() {
       type="button"
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       aria-label="Kembali ke atas"
-      className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#1f6feb] text-white shadow-lg transition-colors hover:bg-[#1a5fd0]"
+      className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#1a5fd0] text-white shadow-lg transition-colors hover:bg-[#155cb8]"
     >
       <ArrowUp className="h-5 w-5" aria-hidden="true" />
     </button>

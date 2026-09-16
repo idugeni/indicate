@@ -23,21 +23,22 @@ export function CleanBlueNewsletter() {
               type="email"
               required
               placeholder="Masukkan alamat email"
-              className="h-11 w-full flex-1 rounded-full border border-slate-200 bg-white px-4 font-sans text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#1f6feb] focus:outline-none"
+              className="h-11 w-full flex-1 rounded-full border border-slate-200 bg-white px-4 font-sans text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#1a5fd0] focus:outline-none"
             />
+            {/* Pendaftaran dinonaktifkan sengaja hingga backend newsletter tersedia. */}
             <Link
               href=""
-              className="inline-flex h-11 flex-none items-center justify-center rounded-full bg-[#1f6feb] px-6 font-sans text-sm font-bold text-white transition-colors hover:bg-[#1a5fd0]"
+              className="inline-flex h-11 flex-none items-center justify-center rounded-full bg-[#1a5fd0] px-6 font-sans text-sm font-bold text-white transition-colors hover:bg-[#155cb8]"
             >
               Berlangganan
             </Link>
           </p>
-          <p className="m-0 mt-2.5 font-sans text-xs text-slate-500">
+          <p className="m-0 mt-2.5 font-sans text-xs text-slate-600">
             Kami menghargai privasi Anda. Tidak ada spam, hanya berita penting.
           </p>
         </div>
       </div>
-      <Send aria-hidden="true" className="pointer-events-none absolute -right-4 bottom-6 hidden h-28 w-28 rotate-12 text-[#1f6feb]/25 md:block" />
+      <Send aria-hidden="true" className="pointer-events-none absolute -right-4 bottom-6 hidden h-28 w-28 rotate-12 text-[#1a5fd0]/25 md:block" />
     </section>
   );
 }

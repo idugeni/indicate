@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Bookmark, Share2, Tag } from 'lucide-react';
+import { Bookmark, Share2 } from 'lucide-react';
 
 import type { NetworkArticle } from '@/modules/delivery/models';
 import { articleImage, authorDisplayName, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
@@ -24,19 +24,15 @@ export function CleanBlueHero({ article }: { readonly article: NetworkArticle })
           height={article.imageHeight ?? 750}
           sizes="(max-width: 1024px) 100vw, 50vw"
         />
-        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-lg bg-black/55 px-2.5 py-1.5 font-sans text-xs font-medium text-white backdrop-blur-sm">
-          <Tag className="h-3.5 w-3.5" aria-hidden="true" />
-          {article.categoryName ?? 'Berita Utama'}
-        </span>
       </div>
 
       <div>
-        <p className="m-0 flex items-center gap-2 font-sans text-sm font-semibold text-[#1f6feb]">
-          <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1f6feb]" />
+        <p className="m-0 flex items-center gap-2 font-sans text-sm font-semibold text-[#1a5fd0]">
+          <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1a5fd0]" />
           {article.categoryName ?? 'Nasional'}
         </p>
         <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl">
-          <Link href={`/${article.slug}`} className="hover:text-[#1f6feb]">
+          <Link href={`/${article.slug}`} className="hover:text-[#1a5fd0]">
             {article.title}
           </Link>
         </h1>
@@ -45,14 +41,14 @@ export function CleanBlueHero({ article }: { readonly article: NetworkArticle })
         </p>
         <div className="mt-6 flex items-center justify-between gap-3">
           <p className="m-0 flex min-w-0 items-center gap-3">
-            <span aria-hidden="true" className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[#1f6feb]/10 font-sans text-sm font-bold text-[#1f6feb]">
+            <span aria-hidden="true" className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[#1a5fd0]/10 font-sans text-sm font-bold text-[#1a5fd0]">
               {authorInitial}
             </span>
             <span className="min-w-0">
               <span className="block truncate font-sans text-sm font-bold text-slate-900">
                 {authorName}
               </span>
-              <span className="block font-sans text-xs tabular-nums text-slate-500">
+              <span className="block font-sans text-xs tabular-nums text-slate-600">
                 {formatDate(article.publishedAt, 'medium')} · {reading} menit baca · {formatCompactViews(article.viewCount)} dibaca
               </span>
             </span>
@@ -61,14 +57,14 @@ export function CleanBlueHero({ article }: { readonly article: NetworkArticle })
             <button
               type="button"
               aria-label="Simpan artikel"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
             >
               <Bookmark className="h-4 w-4" aria-hidden="true" />
             </button>
             <Link
               href={`/${article.slug}`}
               aria-label="Bagikan artikel"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
             >
               <Share2 className="h-4 w-4" aria-hidden="true" />
             </Link>

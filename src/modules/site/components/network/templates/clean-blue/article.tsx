@@ -44,14 +44,14 @@ export function CleanBlueArticle({
         articleSiteId={article.articleSiteId}
       />
       <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
-          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 font-sans text-xs text-slate-500">
-            <Link href="/" className="transition-colors hover:text-[#1f6feb]">
+          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 font-sans text-xs text-slate-600">
+            <Link href="/" className="transition-colors hover:text-[#1a5fd0]">
               Beranda
             </Link>
             <ChevronRight className="h-3 w-3" aria-hidden="true" />
             {article.categorySlug ? (
               <>
-                <Link href={`/categories/${article.categorySlug}`} className="transition-colors hover:text-[#1f6feb]">
+                <Link href={`/categories/${article.categorySlug}`} className="transition-colors hover:text-[#1a5fd0]">
                   {article.categoryName}
                 </Link>
                 <ChevronRight className="h-3 w-3" aria-hidden="true" />
@@ -60,8 +60,8 @@ export function CleanBlueArticle({
             <span className="max-w-xs truncate text-slate-900" aria-current="page">{article.title}</span>
           </nav>
 
-          <p className="m-0 mt-6 flex items-center gap-2 font-sans text-sm font-semibold text-[#1f6feb]">
-            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1f6feb]" />
+          <p className="m-0 mt-6 flex items-center gap-2 font-sans text-sm font-semibold text-[#1a5fd0]">
+            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1a5fd0]" />
             {article.categoryName ?? 'Berita Utama'}
           </p>
           <h1 className="m-0 mt-3 block w-full font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl">
@@ -73,14 +73,14 @@ export function CleanBlueArticle({
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-y border-slate-200 py-4">
             <p className="m-0 flex min-w-0 items-center gap-3">
-              <span aria-hidden="true" className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-[#1f6feb]/10 font-sans text-base font-bold text-[#1f6feb]">
+              <span aria-hidden="true" className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-[#1a5fd0]/10 font-sans text-base font-bold text-[#1a5fd0]">
                 {authorInitial}
               </span>
               <span className="min-w-0">
                 <span className="block truncate font-sans text-sm font-bold text-slate-900">
                   {authorName}
                 </span>
-                <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-sans text-xs tabular-nums text-slate-500">
+                <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-sans text-xs tabular-nums text-slate-600">
                   <span className="inline-flex items-center gap-1">
                     <Calendar className="h-3 w-3" aria-hidden="true" />
                     <time dateTime={article.publishedAt}>{formatDate(article.publishedAt, 'medium')}</time>
@@ -139,7 +139,7 @@ export function CleanBlueArticle({
                 <Link
                   key={tag}
                   href={`/tags/${encodeURIComponent(tag)}`}
-                  className="rounded-full bg-white px-3 py-1.5 font-sans text-xs font-medium text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1f6feb]"
+                  className="rounded-full bg-white px-3 py-1.5 font-sans text-xs font-medium text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
                 >
                   #{tag}
                 </Link>
@@ -161,10 +161,10 @@ export function CleanBlueArticle({
                 <p className="m-0 truncate font-sans text-base font-bold text-slate-900">
                   {authorName}
                 </p>
-                <p className="m-0 mt-0.5 font-sans text-xs font-medium uppercase tracking-wider text-[#1f6feb]">
+                <p className="m-0 mt-0.5 font-sans text-xs font-medium uppercase tracking-wider text-[#1a5fd0]">
                   Penulis redaksi
                 </p>
-                <p className="m-0 mt-1 truncate font-sans text-xs text-slate-500">
+                <p className="m-0 mt-1 truncate font-sans text-xs text-slate-600">
                   {article.publisherName ?? article.attribution}
                   {article.publisherVerified ? ' · Terverifikasi' : ''}
                 </p>
@@ -207,12 +207,12 @@ export function CleanBlueArticle({
               <div className="min-w-0">
                 {newer !== null ? (
                   <Link href={`/${newer.slug}`} className="group flex items-center gap-2">
-                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200 transition-colors group-hover:text-[#1f6feb]">
+                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-slate-200 transition-colors group-hover:text-[#1a5fd0]">
                       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                     </span>
                     <span className="min-w-0">
                       <span className="block font-sans text-[11px] uppercase tracking-wider text-slate-400">Lebih baru</span>
-                      <span className="block truncate font-sans text-sm font-semibold text-slate-900 group-hover:text-[#1f6feb]">
+                      <span className="block truncate font-sans text-sm font-semibold text-slate-900 group-hover:text-[#1a5fd0]">
                         {newer.title}
                       </span>
                     </span>
@@ -222,12 +222,12 @@ export function CleanBlueArticle({
               <div className="min-w-0 sm:text-right">
                 {older !== null ? (
                   <Link href={`/${older.slug}`} className="group flex items-center gap-2 sm:flex-row-reverse sm:text-right">
-                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200 transition-colors group-hover:text-[#1f6feb]">
+                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-slate-200 transition-colors group-hover:text-[#1a5fd0]">
                       <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </span>
                     <span className="min-w-0">
                       <span className="block font-sans text-[11px] uppercase tracking-wider text-slate-400">Lebih lama</span>
-                      <span className="block truncate font-sans text-sm font-semibold text-slate-900 group-hover:text-[#1f6feb]">
+                      <span className="block truncate font-sans text-sm font-semibold text-slate-900 group-hover:text-[#1a5fd0]">
                         {older.title}
                       </span>
                     </span>
@@ -237,11 +237,11 @@ export function CleanBlueArticle({
             </nav>
           ) : null}
 
-          <p className="m-0 mt-8 flex items-center gap-1.5 font-sans text-xs text-slate-500">
+          <p className="m-0 mt-8 flex items-center gap-1.5 font-sans text-xs text-slate-600">
             <Flag className="h-3.5 w-3.5" aria-hidden="true" />
             <span>
               Menemukan pelanggaran?{' '}
-              <Link href={`/report?artikel=${encodeURIComponent(article.slug)}`} className="font-semibold text-[#1f6feb] hover:underline">
+              <Link href={`/report?artikel=${encodeURIComponent(article.slug)}`} className="font-semibold text-[#1a5fd0] hover:underline">
                 Laporkan konten
               </Link>
             </span>

@@ -23,11 +23,11 @@ export function CleanBlueContact({ site, title, description, path = '/' }: Clean
       <CleanBlueContainer className="space-y-6 py-6 md:py-8">
         <div>
           <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-slate-900">
-            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1f6feb]" />
+            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1a5fd0]" />
             {title}
           </h1>
           {description === undefined || description === '' ? null : (
-            <p className="m-0 mt-1 max-w-2xl font-sans text-sm leading-relaxed text-slate-500">
+            <p className="m-0 mt-1 max-w-2xl font-sans text-sm leading-relaxed text-slate-600">
               {description}
             </p>
           )}
@@ -46,7 +46,7 @@ export function CleanBlueContact({ site, title, description, path = '/' }: Clean
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-1 inline-flex items-center gap-1 break-all font-sans text-sm font-semibold text-[#1f6feb] hover:underline"
+                  className="mt-1 inline-flex items-center gap-1 break-all font-sans text-sm font-semibold text-[#1a5fd0] hover:underline"
                 >
                   Buka kanal
                   <span aria-hidden="true">→</span>

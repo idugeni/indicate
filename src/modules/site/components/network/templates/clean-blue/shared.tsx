@@ -8,11 +8,11 @@ import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models'
  * tampil persis seperti contoh dalam segala kondisi.
  */
 export const CLEAN_BLUE = {
-  primary: '#1f6feb',
-  primaryDark: '#1a5fd0',
+  primary: '#1a5fd0',
+  primaryDark: '#155cb8',
   primarySoft: '#e8f0fe',
   ink: '#0f172a',
-  muted: '#64748b',
+  muted: '#475569',
   faint: '#94a3b8',
   canvas: '#f5f8fd',
   card: '#ffffff',
@@ -74,6 +74,22 @@ export function authorDisplayName(article: NetworkArticle): string {
   return article.authorDisplayName ?? article.authorName ?? article.attribution;
 }
 
+/**
+ * Memotong tagline situs pada batas kata agar tidak terpenggal di tengah kata.
+ *
+ * @param value - Deskripsi situs penuh.
+ * @param maxLength - Batas panjang dalam karakter unicode; default 64.
+ * @returns Tagline terpotong dengan elipsis bila dipangkas.
+ */
+export function truncateTagline(value: string, maxLength = 64): string {
+  const chars = Array.from(value);
+  if (chars.length <= maxLength) return value;
+  const slice = chars.slice(0, maxLength).join('');
+  const lastSpace = slice.lastIndexOf(' ');
+  if (lastSpace > maxLength * 0.5) return `${slice.slice(0, lastSpace).trimEnd()}…`;
+  return `${slice.trimEnd()}…`;
+}
+
 /** Tanggal ringkas id-ID gaya contoh ("14 Sep 2026"). */
 export function formatDate(isoString: string, dateStyle: 'medium' | 'full' = 'medium'): string {
   try {
@@ -127,7 +143,7 @@ export function CleanBlueEmpty({ title }: { readonly title: string }) {
       <h2 className="m-0 font-sans text-xl font-bold text-slate-900">
         Belum ada laporan terbit
       </h2>
-      <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed text-slate-500">
+      <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed text-slate-600">
         Konten editorial untuk {title} sedang dalam antrean pemrosesan sinyal atau validasi redaksi.
       </p>
     </div>

@@ -8,7 +8,7 @@ export function CleanBlueSearchForm({ query }: { readonly query: string }) {
   return (
     <section aria-label="Pencarian berita" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
       <h1 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-slate-900">
-        <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1f6feb]" />
+        <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1a5fd0]" />
         {query === '' ? 'Pencarian Berita' : `Hasil untuk “${query}”`}
       </h1>
       <Form className="mt-4" action="/search" role="search">
@@ -25,12 +25,12 @@ export function CleanBlueSearchForm({ query }: { readonly query: string }) {
               maxLength={120}
               autoComplete="off"
               placeholder="Ketik kata kunci…"
-              className="h-11 w-full rounded-full border border-slate-200 bg-[#f5f8fd] pl-11 pr-4 font-sans text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#1f6feb] focus:outline-none"
+              className="h-11 w-full rounded-full border border-slate-200 bg-[#f5f8fd] pl-11 pr-4 font-sans text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#1a5fd0] focus:outline-none"
             />
           </div>
           <button
             type="submit"
-            className="inline-flex h-11 flex-none items-center justify-center rounded-full bg-[#1f6feb] px-6 font-sans text-sm font-bold text-white transition-colors hover:bg-[#1a5fd0]"
+            className="inline-flex h-11 flex-none items-center justify-center rounded-full bg-[#1a5fd0] px-6 font-sans text-sm font-bold text-white transition-colors hover:bg-[#155cb8]"
           >
             Cari
           </button>
@@ -47,7 +47,7 @@ export function CleanBlueSearchResults({ articles, query }: { readonly articles:
         <h2 className="m-0 font-sans text-xl font-bold text-slate-900">
           Tidak ada hasil
         </h2>
-        <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed text-slate-500">
+        <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed text-slate-600">
           {query === ''
             ? 'Ketik kata kunci pada kolom di atas untuk mencari berita.'
             : `Tidak ada berita yang cocok dengan “${query}”. Coba kata kunci lain.`}
