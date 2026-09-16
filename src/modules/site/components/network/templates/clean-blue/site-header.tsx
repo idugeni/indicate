@@ -47,7 +47,7 @@ export async function CleanBlueHeader({ site, path = '/' }: { readonly site: Net
                 <strong className="truncate font-sans text-lg font-extrabold tracking-tight text-slate-900">
                   {site.settings.name}
                 </strong>
-                {site.regionName === null ? null : (
+                {site.regionName === null || site.regionName === undefined || site.regionName === '' ? null : (
                   <span className="flex-none rounded-md bg-[#1a5fd0]/10 px-1.5 py-0.5 font-sans text-[11px] font-bold text-[#1a5fd0]">
                     {site.regionName}
                   </span>
