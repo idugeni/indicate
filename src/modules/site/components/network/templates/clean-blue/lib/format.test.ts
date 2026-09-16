@@ -9,6 +9,7 @@ import {
   formatFullViews,
   isLocalImageSrc,
   readingMinutes,
+  tickerHeadline,
   tickerTime,
 } from '@/modules/site/components/network/templates/clean-blue/lib/format';
 
@@ -103,6 +104,20 @@ describe('authorDisplayName', () => {
     expect(authorDisplayName(makeArticle({ authorDisplayName: 'D', authorName: 'N', attribution: 'R' }))).toBe('D');
     expect(authorDisplayName(makeArticle({ authorDisplayName: null, authorName: 'N', attribution: 'R' }))).toBe('N');
     expect(authorDisplayName(makeArticle({ authorDisplayName: null, authorName: null, attribution: 'R' }))).toBe('R');
+  });
+});
+
+describe('tickerHeadline', () => {
+  it('buang ekor brand per situs', () => {
+    expect(
+      tickerHeadline(makeArticle({ title: 'Atlet Muda Bersinar — Sorotan Bisnis Wonosobo' })),
+    ).toBe('Atlet Muda Bersinar');
+    expect(tickerHeadline(makeArticle({ title: 'Judul | Kanal' }))).toBe('Judul');
+  });
+
+  it('pertahankan judul tanpa ekor, termasuk strip biasa', () => {
+    expect(tickerHeadline(makeArticle({ title: 'Jakarta - Bandung 2 Jam' }))).toBe('Jakarta - Bandung 2 Jam');
+    expect(tickerHeadline(makeArticle({ title: 'Judul Bersih' }))).toBe('Judul Bersih');
   });
 });
 

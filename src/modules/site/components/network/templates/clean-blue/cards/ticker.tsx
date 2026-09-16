@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import type { NetworkArticle } from '@/modules/delivery/models';
-import { formatDate } from '@/modules/site/components/network/templates/clean-blue/lib/format';
+import { formatDate, tickerHeadline } from '@/modules/site/components/network/templates/clean-blue/lib/format';
 
 const ROTATE_MS = 5000;
 const MAX_ITEMS = 5;
@@ -76,7 +76,7 @@ export function CleanBlueTicker({ articles }: { readonly articles: readonly Netw
         aria-live="polite"
       >
         <Link href={`/${article.slug}`} className="hover:text-[#1a5fd0]">
-          {article.title}
+          {tickerHeadline(article)}
         </Link>
       </p>
       <time dateTime={article.updatedAt} className="hidden flex-none font-sans text-xs tabular-nums text-slate-600 sm:block">
@@ -92,7 +92,7 @@ export function CleanBlueTicker({ articles }: { readonly articles: readonly Netw
                 key={item.id}
                 type="button"
                 onClick={() => go(position)}
-                aria-label={`Headline ${position + 1}: ${item.title}`}
+                aria-label={`Headline ${position + 1}: ${tickerHeadline(item)}`}
                 aria-current={position === index}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   position === index ? 'w-5 bg-[#1a5fd0]' : 'w-1.5 bg-slate-300 hover:bg-slate-400'

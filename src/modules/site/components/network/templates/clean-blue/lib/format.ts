@@ -23,6 +23,18 @@ export function isLocalImageSrc(src: string): boolean {
 }
 
 /**
+ * Judul bersih untuk ticker: buang ekor brand per situs ("— Sorotan …").
+ *
+ * @param article - Artikel yang diambil judul tampilnya.
+ * @returns Judul tanpa ekor `—`/`–`/`|`; judul kanonis bila tanpa ekor.
+ */
+export function tickerHeadline(article: NetworkArticle): string {
+  const title = article.title.trim();
+  const pruned = title.replace(/\s+[—–|]\s+[^—–|]+$/, '').trim();
+  return pruned === '' ? title : pruned;
+}
+
+/**
  * Format jam ticker gaya contoh (JJ.MM, tanpa detik).
  *
  * @param isoString - Timestamp ISO artikel.
