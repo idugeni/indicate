@@ -1,12 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Menu, Search, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/ui/cn';
+
+const subscribeMounted = (): (() => void) => () => {};
+const getMountedSnapshot = (): boolean => true;
+const getMountedServerSnapshot = (): boolean => false;
 
 /**
  * Rangka interaktif header: baris brand/menu/aksi, panel cari mengembang ke
@@ -17,6 +22,8 @@ export function CleanBlueHeaderChrome({ brand, nav, sidebar }: { readonly brand:
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [sidebarQuery, setSidebarQuery] = useState('');
+  const mounted = useSyncExternalStore(subscribeMounted, getMountedSnapshot, getMountedServerSnapshot);
   const inputRef = useRef<HTMLInputElement>(null);
   const searchButtonRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -62,6 +69,13 @@ export function CleanBlueHeaderChrome({ brand, nav, sidebar }: { readonly brand:
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const value = query.trim().slice(0, 120);
+    router.push(value === '' ? '/search' : `/search?q=${encodeURIComponent(value)}`);
+  };
+
+  const submitSidebar = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const value = sidebarQuery.trim().slice(0, 120);
+    setSidebarOpen(false);
     router.push(value === '' ? '/search' : `/search?q=${encodeURIComponent(value)}`);
   };
 
@@ -139,45 +153,75 @@ export function CleanBlueHeaderChrome({ brand, nav, sidebar }: { readonly brand:
         </div>
       ) : null}
 
-      <div
-        aria-hidden={!sidebarOpen}
-        inert={!sidebarOpen}
-        className={cn('fixed inset-0 z-50 lg:hidden', sidebarOpen ? 'pointer-events-auto' : 'pointer-events-none')}
-      >
-        <div
-          aria-hidden="true"
-          onClick={() => setSidebarOpen(false)}
-          className={cn(
-            'absolute inset-0 bg-slate-900/50 transition-opacity duration-300',
-            sidebarOpen ? 'opacity-100' : 'opacity-0',
-          )}
-        />
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Menu navigasi"
-          className={cn(
-            'absolute inset-y-0 right-0 flex w-[min(22rem,88vw)] flex-col bg-white shadow-2xl transition-transform duration-300 ease-out',
-            sidebarOpen ? 'translate-x-0' : 'translate-x-full',
-          )}
-        >
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-            <span className="font-sans text-sm font-bold tracking-wide text-slate-900">Menu</span>
-            <button
-              ref={sidebarCloseRef}
-              type="button"
-              onClick={() => setSidebarOpen(false)}
-              aria-label="Tutup menu"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
+      {mounted
+        ? createPortal(
+            <div
+              aria-hidden={!sidebarOpen}
+              inert={!sidebarOpen}
+              className={cn('fixed inset-0 z-[60] lg:hidden', sidebarOpen ? 'pointer-events-auto' : 'pointer-events-none')}
             >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
-          <nav aria-label="Navigasi seluler" className="flex-1 overflow-y-auto px-4 py-4" onClick={() => setSidebarOpen(false)}>
-            {sidebar}
-          </nav>
-        </div>
-      </div>
+              <div
+                aria-hidden="true"
+                onClick={() => setSidebarOpen(false)}
+                className={cn(
+                  'absolute inset-0 bg-slate-900/50 transition-opacity duration-300',
+                  sidebarOpen ? 'opacity-100' : 'opacity-0',
+                )}
+              />
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Menu navigasi"
+                className={cn(
+                  'absolute inset-y-0 right-0 flex w-[min(22rem,88vw)] flex-col bg-white shadow-2xl transition-transform duration-300 ease-out',
+                  sidebarOpen ? 'translate-x-0' : 'translate-x-full',
+                )}
+              >
+                <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+                  <span className="font-sans text-sm font-bold tracking-wide text-slate-900">Menu</span>
+                  <button
+                    ref={sidebarCloseRef}
+                    type="button"
+                    onClick={() => setSidebarOpen(false)}
+                    aria-label="Tutup menu"
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+                <form
+                  role="search"
+                  onSubmit={submitSidebar}
+                  className="flex flex-none items-center gap-2 border-b border-slate-100 px-5 py-3"
+                >
+                  <label htmlFor="clean-blue-sidebar-search" className="sr-only">
+                    Cari berita
+                  </label>
+                  <Input
+                    id="clean-blue-sidebar-search"
+                    value={sidebarQuery}
+                    onChange={(event) => setSidebarQuery(event.target.value)}
+                    maxLength={120}
+                    autoComplete="off"
+                    placeholder="Cari berita…"
+                    className="h-9 min-w-0 flex-1 rounded-full border-slate-200 bg-slate-50 font-sans text-sm"
+                  />
+                  <Button
+                    type="submit"
+                    aria-label="Cari"
+                    className="h-9 w-9 flex-none rounded-full bg-[#1a5fd0] text-white hover:bg-[#155cb8]"
+                  >
+                    <Search className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </form>
+                <nav aria-label="Navigasi seluler" className="flex-1 overflow-y-auto px-4 py-4" onClick={() => setSidebarOpen(false)}>
+                  {sidebar}
+                </nav>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }
