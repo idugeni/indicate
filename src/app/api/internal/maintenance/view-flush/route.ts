@@ -18,6 +18,17 @@ function authorized(request: Request, secret: string): boolean {
   return mismatch === 0;
 }
 
+function auditFlushIssue(requestId: string, event: string, fields: Readonly<Record<string, unknown>>): void {
+  console.error(JSON.stringify({
+    ts: new Date().toISOString(),
+    level: 'warn',
+    service: 'indicate-web',
+    event,
+    requestId,
+    ...fields,
+  }));
+}
+
 interface FlushEntry {
   readonly organizationId: string;
   readonly siteId: string;
@@ -63,9 +74,10 @@ async function handleGET(request: Request) {
       }
       if (deltas.size >= MAX_FLUSH_KEYS) break;
     } while (cursor !== 0);
-    // RLS article_sites memaksa organization_id = tenant aktif: tanpa
-    // set_tenant_context, UPDATE mencocokkan 0 baris (diam-diam) sementara
-    // key tetap di-del → hitungan lenyap permanen. Konteks diset per org.
+    // Sesi pooled membawa GUC tenant/region request sebelumnya: set_tenant_context
+    // menolak org berbeda (conflict) dan region basi menyaring baris keluar,
+    // keduanya diam-diam menggugurkan flush. RESET dulu per org di dalam satu
+    // transaksi (satu koneksi terjepit), lalu tegakkan konteks flush yang bersih.
     const byOrg = new Map<string, { key: string; entry: FlushEntry & { count: number } }[]>();
     for (const [key, entry] of deltas) {
       const list = byOrg.get(entry.organizationId) ?? [];
@@ -73,36 +85,63 @@ async function handleGET(request: Request) {
       byOrg.set(entry.organizationId, list);
     }
     let applied = 0;
+    let skipped = 0;
+    let orphans = 0;
     const appliedKeys: string[] = [];
+    const orphanKeys: string[] = [];
     for (const [organizationId, rows] of byOrg) {
       try {
-        await runtime.db.execute(sql`SELECT indicate_private.set_tenant_context(${organizationId}::uuid, ${'system:view-flush'}, ${requestId})`);
-      } catch {
-        continue;
-      }
-      for (let index = 0; index < rows.length; index += UPDATE_CHUNK_SIZE) {
-        const chunk = rows.slice(index, index + UPDATE_CHUNK_SIZE);
-        const keyById = new Map(chunk.map(({ key, entry }) => [entry.articleSiteId, key] as const));
-        try {
-          const values = sql.join(
-            chunk.map(({ entry }) => sql`(${entry.articleSiteId}::uuid, ${entry.siteId}::uuid, ${entry.count}::int)`),
-            sql`,`,
+        await runtime.db.transaction(async (transaction) => {
+          await transaction.execute(sql`RESET app.organization_id`);
+          await transaction.execute(sql`RESET app.region_id`);
+          await transaction.execute(sql`RESET app.actor_id`);
+          await transaction.execute(sql`RESET app.request_id`);
+          await transaction.execute(sql`SELECT indicate_private.set_tenant_context(${organizationId}::uuid, ${'system:view-flush'}, ${requestId})`);
+          await transaction.execute(sql`SELECT indicate_private.set_region_context(NULL::uuid)`);
+          const pending = new Map<string, { key: string; entry: FlushEntry & { count: number } }>(
+            rows.map(({ key, entry }) => [entry.articleSiteId, { key, entry }] as const),
           );
-          const updated = await runtime.db.execute<{ id: string }>(sql`
-            UPDATE article_sites AS s SET view_count = s.view_count + v.count, updated_at = now()
-            FROM (VALUES ${values}) AS v(id, site_id, count)
-            WHERE s.organization_id = ${organizationId}::uuid AND s.id = v.id AND s.site_id = v.site_id
-            RETURNING s.id`);
-          for (const row of updated) {
-            const key = keyById.get(row.id);
-            if (key !== undefined) {
-              appliedKeys.push(key);
-              applied += 1;
+          for (let index = 0; index < rows.length; index += UPDATE_CHUNK_SIZE) {
+            const chunk = rows.slice(index, index + UPDATE_CHUNK_SIZE);
+            const values = sql.join(
+              chunk.map(({ entry }) => sql`(${entry.articleSiteId}::uuid, ${entry.siteId}::uuid, ${entry.count}::int)`),
+              sql`,`,
+            );
+            const updated = await transaction.execute<{ id: string }>(sql`
+              UPDATE article_sites AS s SET view_count = s.view_count + v.count, updated_at = now()
+              FROM (VALUES ${values}) AS v(id, site_id, count)
+              WHERE s.organization_id = ${organizationId}::uuid AND s.id = v.id AND s.site_id = v.site_id
+              RETURNING s.id`);
+            for (const row of updated) {
+              const hit = pending.get(row.id);
+              if (hit !== undefined) {
+                pending.delete(row.id);
+                appliedKeys.push(hit.key);
+                applied += 1;
+              }
             }
           }
-        } catch {
-          /* chunk dipertahankan untuk percobaan berikut */
-        }
+          if (pending.size > 0) {
+            const missing = await transaction.execute<{ id: string }>(sql`
+              SELECT v.id FROM (VALUES ${sql.join(
+                [...pending.values()].map(({ entry }) => sql`(${entry.articleSiteId}::uuid, ${entry.siteId}::uuid)`),
+                sql`,`,
+              )}) AS v(id, site_id)
+              LEFT JOIN article_sites AS s
+                ON s.organization_id = ${organizationId}::uuid AND s.id = v.id AND s.site_id = v.site_id
+              WHERE s.id IS NULL`);
+            for (const row of missing) {
+              const hit = pending.get(row.id);
+              if (hit !== undefined) {
+                orphanKeys.push(hit.key);
+                orphans += 1;
+              }
+            }
+          }
+        });
+      } catch (error) {
+        skipped += rows.length;
+        auditFlushIssue(requestId, 'view-flush.org.skipped', { organizationId, rows: rows.length, error: error instanceof Error ? error.message : 'unknown' });
       }
     }
     for (let index = 0; index < appliedKeys.length; index += DEL_CHUNK_SIZE) {
@@ -112,7 +151,14 @@ async function handleGET(request: Request) {
         /* key yang gagal di-del akan ter-flush ganda kecil pada proses berikut; hitungan tetap konvergen */
       }
     }
-    return NextResponse.json({ requestId, keys: deltas.size, applied }, { headers: noStore });
+    for (let index = 0; index < orphanKeys.length; index += DEL_CHUNK_SIZE) {
+      try {
+        await redis.del(...orphanKeys.slice(index, index + DEL_CHUNK_SIZE));
+      } catch {
+        /* yatim yang gagal di-del dibersihkan pada proses berikut */
+      }
+    }
+    return NextResponse.json({ requestId, keys: deltas.size, applied, skipped, orphans }, { headers: noStore });
   }
 }
 
