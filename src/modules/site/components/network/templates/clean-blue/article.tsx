@@ -11,7 +11,7 @@ import { CleanBlueShareButtons } from '@/modules/site/components/network/templat
 import { CleanBlueViewBeacon } from '@/modules/site/components/network/templates/clean-blue/view-beacon';
 import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/picks';
-import { articleImage, authorDisplayName, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
+import { articleImage, authorDisplayName, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
 
 export function CleanBlueArticle({
   site,
@@ -86,15 +86,11 @@ export function CleanBlueArticle({
                   </span>
                   <span aria-hidden="true">·</span>
                   <span>{reading} menit baca</span>
-                  {article.viewCount > 0 ? (
-                    <>
-                      <span aria-hidden="true">·</span>
-                      <span className="inline-flex items-center gap-1">
-                        <Eye className="h-3 w-3" aria-hidden="true" />
-                        {formatCompactViews(article.viewCount)} dibaca
-                      </span>
-                    </>
-                  ) : null}
+                  <span aria-hidden="true">·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Eye className="h-3 w-3" aria-hidden="true" />
+                    {formatFullViews(article.viewCount)}
+                  </span>
                 </span>
               </span>
             </p>
@@ -218,7 +214,7 @@ export function CleanBlueArticle({
                 <dt className="font-sans text-[10px] uppercase tracking-wider text-slate-400">Dibaca</dt>
                 <dd className="m-0 mt-0.5 inline-flex items-center justify-center gap-1 font-sans text-xs font-bold tabular-nums text-slate-800">
                   <Eye className="h-3 w-3 text-slate-400" aria-hidden="true" />
-                  {formatCompactViews(article.viewCount)}
+                  {formatFullViews(article.viewCount)}
                 </dd>
               </div>
             </dl>

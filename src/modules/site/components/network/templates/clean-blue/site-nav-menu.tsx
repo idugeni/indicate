@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, Menu, X } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -13,6 +12,13 @@ import {
 import type { CategoryNavItem } from '@/modules/site/components/network/templates/clean-blue/shared';
 
 const MAX_VISIBLE_CATEGORIES = 5;
+
+const INFO_LINKS = [
+  { label: 'Profil', href: '/tentang' },
+  { label: 'Kontak', href: '/kontak' },
+  { label: 'Kebijakan Privasi', href: '/kebijakan-privasi' },
+  { label: 'Syarat & Ketentuan', href: '/syarat-ketentuan' },
+] as const;
 
 function linkClass(active: boolean): string {
   return `whitespace-nowrap rounded-full px-3 py-2 font-sans text-sm transition-colors ${
@@ -84,50 +90,47 @@ export function CleanBlueDesktopNav({ categories, path }: { readonly categories:
 }
 
 export function CleanBlueMobileNav({ categories, path }: { readonly categories: readonly CategoryNavItem[]; readonly path: string }) {
-  const [open, setOpen] = useState(false);
   return (
-    <div className="lg:hidden">
-      <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2">
-        <span className="font-sans text-xs font-bold uppercase tracking-wider text-slate-400">Menu</span>
-        <button
-          type="button"
-          onClick={() => setOpen((value) => !value)}
-          aria-expanded={open}
-          aria-label={open ? 'Tutup menu' : 'Buka menu'}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
-        >
-          {open ? <X className="h-4 w-4" aria-hidden="true" /> : <Menu className="h-4 w-4" aria-hidden="true" />}
-        </button>
+    <div className="space-y-6">
+      <Link
+        href="/"
+        aria-current={path === '/' ? 'page' : undefined}
+        className={`block rounded-xl px-4 py-3 font-sans text-[15px] font-semibold ${path === '/' ? 'bg-[#e8f0fe] text-[#1a5fd0]' : 'text-slate-800 hover:bg-slate-100'}`}
+      >
+        Beranda
+      </Link>
+      <div>
+        <p className="m-0 px-4 font-sans text-xs font-bold uppercase tracking-wider text-slate-400">Kategori</p>
+        <ul className="m-0 mt-2 list-none space-y-1 p-0">
+          {categories.map((item) => (
+            <li key={`${item.href}:${item.label}`} className="m-0 p-0">
+              <Link
+                href={item.href}
+                aria-current={path === item.href ? 'page' : undefined}
+                className={`block rounded-xl px-4 py-2.5 font-sans text-sm font-medium ${path === item.href ? 'bg-[#e8f0fe] text-[#1a5fd0]' : 'text-slate-700 hover:bg-slate-100'}`}
+              >
+                {item.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
       </div>
-      {open ? (
-        <nav aria-label="Navigasi seluler" className="space-y-5 border-t border-slate-100 bg-white px-4 py-4">
-          <Link
-            href="/"
-            onClick={() => setOpen(false)}
-            aria-current={path === '/' ? 'page' : undefined}
-            className={`block font-sans text-sm font-semibold ${path === '/' ? 'text-[#1a5fd0]' : 'text-slate-800'}`}
-          >
-            Beranda
-          </Link>
-          <div>
-            <p className="m-0 font-sans text-xs font-bold uppercase tracking-wider text-slate-400">Kategori</p>
-            <ul className="m-0 mt-2 grid list-none grid-cols-2 gap-1 p-0">
-              {categories.map((item) => (
-                <li key={`${item.href}:${item.label}`} className="m-0 p-0">
-                  <Link
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    aria-current={path === item.href ? 'page' : undefined}
-                    className={`block rounded-lg px-3 py-2 font-sans text-sm font-medium ${path === item.href ? 'bg-[#e8f0fe] text-[#1a5fd0]' : 'text-slate-700'}`}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </nav>
-      ) : null}
+      <div>
+        <p className="m-0 px-4 font-sans text-xs font-bold uppercase tracking-wider text-slate-400">Informasi</p>
+        <ul className="m-0 mt-2 list-none space-y-1 p-0">
+          {INFO_LINKS.map((item) => (
+            <li key={item.href} className="m-0 p-0">
+              <Link
+                href={item.href}
+                aria-current={path === item.href ? 'page' : undefined}
+                className={`block rounded-xl px-4 py-2.5 font-sans text-sm ${path === item.href ? 'bg-[#e8f0fe] font-semibold text-[#1a5fd0]' : 'text-slate-600 hover:bg-slate-100'}`}
+              >
+                {item.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

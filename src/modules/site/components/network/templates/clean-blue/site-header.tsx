@@ -2,21 +2,26 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
+import { CleanBlueHeaderChrome } from '@/modules/site/components/network/templates/clean-blue/header-chrome';
 import { CleanBlueDesktopNav, CleanBlueMobileNav } from '@/modules/site/components/network/templates/clean-blue/site-nav-menu';
-import { CleanBlueSearchToggle } from '@/modules/site/components/network/templates/clean-blue/search-toggle';
 import { getSiteCategoryNav } from '@/modules/site/components/network/templates/clean-blue/site-nav';
 
 /**
- * Navbar 3 kolom: [brand secukupnya | menu fleksibel | search secukupnya].
+ * Navbar 3 kolom: [brand secukupnya | menu fleksibel | aksi secukupnya].
  * Tengah: Beranda + kategori inline hingga batas, sisanya ke menu "Lainnya".
  */
 export async function CleanBlueHeader({ site, path = '/' }: { readonly site: NetworkSiteData; readonly path?: string }) {
   const nav = await getSiteCategoryNav(site, 24);
+  const showRegion =
+    site.regionName !== null &&
+    site.regionName !== undefined &&
+    site.regionName !== '' &&
+    !site.settings.name.toLowerCase().includes(site.regionName.toLowerCase());
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/95 backdrop-blur">
-      <div className="relative mx-auto grid min-h-16 max-w-6xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 px-4 py-3 sm:px-6 lg:gap-x-6">
-        <div className="min-w-0 justify-self-start">
+      <CleanBlueHeaderChrome
+        brand={
           <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
             <Image
               unoptimized
@@ -31,27 +36,18 @@ export async function CleanBlueHeader({ site, path = '/' }: { readonly site: Net
                 <strong className="truncate font-sans text-lg font-extrabold tracking-tight text-slate-900">
                   {site.settings.name}
                 </strong>
-                {site.regionName === null ||
-                site.regionName === undefined ||
-                site.regionName === '' ||
-                site.settings.name.toLowerCase().includes(site.regionName.toLowerCase()) ? null : (
+                {showRegion ? (
                   <span className="flex-none rounded-md bg-[#1a5fd0]/10 px-1.5 py-0.5 font-sans text-[11px] font-bold text-[#1a5fd0]">
                     {site.regionName}
                   </span>
-                )}
+                ) : null}
               </span>
             </span>
           </Link>
-        </div>
-
-        <CleanBlueDesktopNav categories={nav} path={path} />
-
-        <div className="flex flex-none items-center justify-self-end">
-          <CleanBlueSearchToggle />
-        </div>
-      </div>
-
-      <CleanBlueMobileNav categories={nav} path={path} />
+        }
+        nav={<CleanBlueDesktopNav categories={nav} path={path} />}
+        sidebar={<CleanBlueMobileNav categories={nav} path={path} />}
+      />
     </header>
   );
 }

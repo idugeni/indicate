@@ -71,6 +71,12 @@ export function formatCompactViews(value: number): string {
   return new Intl.NumberFormat('id-ID', { notation: 'compact' }).format(Math.floor(value));
 }
 
+/** Angka penuh gaya id-ID: 79.300. Tanpa satuan, tanpa kata tambahan. */
+export function formatFullViews(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return '0';
+  return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(Math.floor(value));
+}
+
 /** Nama penulis dengan fallback atribusi redaksi. */
 export function authorDisplayName(article: NetworkArticle): string {
   return article.authorDisplayName ?? article.authorName ?? article.attribution;
@@ -168,7 +174,7 @@ export function AuthorAvatar({ name, avatarUrl, size }: { readonly name: string;
   );
 }
 
-/** Baris meta artikel berikon: tanggal · lama baca · views (views hanya bila terlacak > 0). */
+/** Baris meta artikel berikon: tanggal · lama baca · angka views penuh (selalu tampil). */
 export function ArticleMeta({ publishedAt, reading, viewCount }: { readonly publishedAt: string; readonly reading: number; readonly viewCount: number }) {
   const item = 'inline-flex items-center gap-1.5';
   const icon = 'h-3.5 w-3.5 text-slate-400';
@@ -182,12 +188,10 @@ export function ArticleMeta({ publishedAt, reading, viewCount }: { readonly publ
         <Clock3 className={icon} aria-hidden="true" />
         {reading} mnt baca
       </span>
-      {viewCount > 0 ? (
-        <span className={item}>
-          <Eye className={icon} aria-hidden="true" />
-          {formatCompactViews(viewCount)} dibaca
-        </span>
-      ) : null}
+      <span className={item}>
+        <Eye className={icon} aria-hidden="true" />
+        {formatFullViews(viewCount)}
+      </span>
     </span>
   );
 }

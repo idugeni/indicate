@@ -56,7 +56,7 @@ export function CleanBlueTicker({ articles }: { readonly articles: readonly Netw
 
   return (
     <div
-      className="flex items-center gap-2.5 rounded-full bg-white py-2 pl-2 pr-2.5 shadow-sm ring-1 ring-slate-200/70 sm:gap-3 sm:pr-3"
+      className="flex flex-col items-stretch gap-2.5 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200/70 sm:flex-row sm:items-center sm:gap-3 sm:rounded-full sm:py-2 sm:pl-2 sm:pr-3"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setFocused(true)}
@@ -64,13 +64,15 @@ export function CleanBlueTicker({ articles }: { readonly articles: readonly Netw
       data-ticker-index={index}
       data-ticker-state={running ? 'running' : 'paused'}
     >
-      <span className="flex flex-none items-center gap-1.5 rounded-full bg-[#1a5fd0] px-3.5 py-1.5 font-sans text-xs font-bold tracking-wide text-white">
-        <span aria-hidden="true" className={running ? 'ticker-live-dot' : 'h-1.5 w-1.5 rounded-full bg-white/60'} />
-        TERKINI
+      <span className="flex-none self-start rounded-full bg-[#1a5fd0] px-3.5 py-1.5 font-sans text-xs font-bold tracking-wide text-white sm:self-auto">
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden="true" className={running ? 'ticker-live-dot' : 'h-1.5 w-1.5 rounded-full bg-white/60'} />
+          TERKINI
+        </span>
       </span>
       <p
         key={article.id}
-        className={`m-0 min-w-0 flex-1 truncate font-sans text-sm font-medium text-slate-800 ${reduceMotion ? '' : 'ticker-enter'}`}
+        className={`m-0 min-w-0 flex-1 font-sans text-[15px] font-medium leading-snug text-slate-800 line-clamp-2 sm:text-sm sm:line-clamp-1 ${reduceMotion ? '' : 'ticker-enter'}`}
         aria-live="polite"
       >
         <Link href={`/${article.slug}`} className="hover:text-[#1a5fd0]">
@@ -82,42 +84,44 @@ export function CleanBlueTicker({ articles }: { readonly articles: readonly Netw
           ? `Diperbarui ${formatDate(article.updatedAt, 'medium')}`
           : formatDate(article.publishedAt, 'medium')}
       </time>
-      {items.length > 1 ? (
-        <span className="hidden flex-none items-center gap-1.5 md:flex" aria-label="Pilih headline">
-          {items.map((item, position) => (
+      <div className="flex items-center justify-between gap-2 sm:contents">
+        {items.length > 1 ? (
+          <span className="flex flex-none items-center gap-1.5" aria-label="Pilih headline">
+            {items.map((item, position) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => go(position)}
+                aria-label={`Headline ${position + 1}: ${item.title}`}
+                aria-current={position === index}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  position === index ? 'w-5 bg-[#1a5fd0]' : 'w-1.5 bg-slate-300 hover:bg-slate-400'
+                }`}
+              />
+            ))}
+          </span>
+        ) : null}
+        {items.length > 1 ? (
+          <span className="flex flex-none items-center gap-1.5">
             <button
-              key={item.id}
               type="button"
-              onClick={() => go(position)}
-              aria-label={`Headline ${position + 1}: ${item.title}`}
-              aria-current={position === index}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                position === index ? 'w-5 bg-[#1a5fd0]' : 'w-1.5 bg-slate-300 hover:bg-slate-400'
-              }`}
-            />
-          ))}
-        </span>
-      ) : null}
-      {items.length > 1 ? (
-        <span className="flex flex-none items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => go(index - 1)}
-            aria-label="Headline sebelumnya"
-            className="flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
-          >
-            <ChevronLeft className="h-4 w-4 text-slate-600" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            onClick={() => go(index + 1)}
-            aria-label="Headline berikutnya"
-            className="flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
-          >
-            <ChevronRight className="h-4 w-4 text-slate-600" aria-hidden="true" />
-          </button>
-        </span>
-      ) : null}
+              onClick={() => go(index - 1)}
+              aria-label="Headline sebelumnya"
+              className="flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
+            >
+              <ChevronLeft className="h-4 w-4 text-slate-600" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => go(index + 1)}
+              aria-label="Headline berikutnya"
+              className="flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
+            >
+              <ChevronRight className="h-4 w-4 text-slate-600" aria-hidden="true" />
+            </button>
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
