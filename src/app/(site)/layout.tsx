@@ -1,15 +1,7 @@
-import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Suspense } from 'react';
 import { SiteShell } from '@/modules/site/components/layout/site-shell';
 import { requireDashboardSurface } from '@/ui/site/metadata-guard';
-
-export const metadata: Metadata = {
-  icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-icon.png',
-  },
-};
 
 /**
  * Penjaga surface sebagai Suspense island: `requireDashboardSurface()` membaca
