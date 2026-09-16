@@ -48,6 +48,24 @@
     "vercel": {
       "type": "http",
       "url": "https://mcp.vercel.com"
+    },
+    "next-devtools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "next-devtools-mcp@latest"
+      ]
+    },
+    "upstash-redis": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/redis-mcp"
+      ],
+      "env": {
+        "UPSTASH_REDIS_REST_URL": "https://YOUR_DB.upstash.io",
+        "UPSTASH_REDIS_REST_TOKEN": "YOUR_REST_TOKEN"
+      }
     }
   }
 }
