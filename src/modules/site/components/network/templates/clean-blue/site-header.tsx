@@ -1,7 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
-import { buttonVariants } from '@/components/ui/button';
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -88,7 +87,7 @@ export async function CleanBlueHeader({ site, path = '/' }: { readonly site: Net
           <CleanBlueSearchToggle />
           <Link
             href="#newsletter"
-            className={buttonVariants({ className: 'hidden whitespace-nowrap rounded-full bg-[#1a5fd0] font-sans text-sm font-bold text-white hover:bg-[#155cb8] sm:inline-flex' })}
+            className="hidden h-10 flex-none items-center justify-center whitespace-nowrap rounded-full bg-[#1a5fd0] px-5 font-sans text-sm font-bold text-white transition-colors hover:bg-[#155cb8] sm:inline-flex"
           >
             Langganan
           </Link>
