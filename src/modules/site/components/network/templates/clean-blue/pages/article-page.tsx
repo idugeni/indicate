@@ -208,31 +208,41 @@ export function CleanBlueArticle({
           ) : null}
 
           {newer !== null || older !== null ? (
-            <nav aria-label="Navigasi artikel" className="mt-10 grid gap-3 border-t border-slate-200 pt-6 sm:grid-cols-2">
-              <div className="min-w-0">
+            <nav aria-label="Navigasi artikel" className="mt-10 grid grid-cols-2 gap-3 border-t border-slate-200 pt-6 sm:gap-4">
+              <div className={`min-w-0 ${newer !== null && older === null ? 'col-span-2' : ''}`}>
                 {newer !== null ? (
-                  <Link href={`/${newer.slug}`} className="group flex items-center gap-2">
-                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-slate-200 transition-colors group-hover:text-[#1a5fd0]">
+                  <Link
+                    href={`/${newer.slug}`}
+                    className="group flex h-full items-start gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 transition-all hover:shadow-md hover:ring-[#1a5fd0]/50 sm:p-5"
+                  >
+                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#e8f0fe] text-[#1a5fd0] transition-colors group-hover:bg-[#1a5fd0] group-hover:text-white">
                       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block font-sans text-[11px] uppercase tracking-wider text-slate-400">Lebih baru</span>
-                      <span className="block truncate font-sans text-sm font-semibold text-slate-900 group-hover:text-[#1a5fd0]">
+                      <span className="block font-sans text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        Lebih baru
+                      </span>
+                      <span className="mt-1 block font-sans text-sm font-semibold leading-snug text-slate-900 group-hover:text-[#1a5fd0]">
                         {newer.title}
                       </span>
                     </span>
                   </Link>
                 ) : null}
               </div>
-              <div className="min-w-0 sm:text-right">
+              <div className={`min-w-0 ${older !== null && newer === null ? 'col-span-2' : ''}`}>
                 {older !== null ? (
-                  <Link href={`/${older.slug}`} className="group flex items-center gap-2 sm:flex-row-reverse sm:text-right">
-                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-slate-200 transition-colors group-hover:text-[#1a5fd0]">
+                  <Link
+                    href={`/${older.slug}`}
+                    className="group flex h-full flex-row-reverse items-start gap-3 rounded-2xl bg-white p-4 text-right shadow-sm ring-1 ring-slate-200/60 transition-all hover:shadow-md hover:ring-[#1a5fd0]/50 sm:p-5"
+                  >
+                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#e8f0fe] text-[#1a5fd0] transition-colors group-hover:bg-[#1a5fd0] group-hover:text-white">
                       <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block font-sans text-[11px] uppercase tracking-wider text-slate-400">Lebih lama</span>
-                      <span className="block truncate font-sans text-sm font-semibold text-slate-900 group-hover:text-[#1a5fd0]">
+                      <span className="block font-sans text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        Lebih lama
+                      </span>
+                      <span className="mt-1 block font-sans text-sm font-semibold leading-snug text-slate-900 group-hover:text-[#1a5fd0]">
                         {older.title}
                       </span>
                     </span>
