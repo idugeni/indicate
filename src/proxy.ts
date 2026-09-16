@@ -203,6 +203,19 @@ export function proxy(request: NextRequest) {
   }
   if (path.startsWith('/dashboard') || path.startsWith('/auth') || path.startsWith('/sign-in') || path.startsWith('/api/dashboard') || path.startsWith('/api/internal') || path.startsWith('/api/health') || path.startsWith('/api/v1/') || path.startsWith('/api/webhooks/') || isServicePath(path)) return deny(404, request.headers);
   if (TENANT_GONE.has(path)) return deny(404, request.headers);
+  // Beranda portal (`/`) dirender rute `(network)/tenant-home` agar ikut
+  // boundary segmen tenant (loading/error terang); URL kanonis tetap `/`.
+  if (path === '/') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/tenant-home';
+    const requestHeaders = new Headers(request.headers);
+    const { requestId } = ensureRequestId(requestHeaders);
+    requestHeaders.set(REQUEST_ID_HEADER, requestId);
+    requestHeaders.set(TRACEPARENT_HEADER, ensureTraceContext(requestHeaders).headerValue);
+    const rewritten = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+    rewritten.headers.set(REQUEST_ID_HEADER, requestId);
+    return withSecurityHeaders(rewritten);
+  }
   return nextWithCorrelation(request);
 }
 export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'] };
