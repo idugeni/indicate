@@ -11,6 +11,11 @@ export interface DashboardTransaction {
   appendAudit(event: Omit<AuditRecord, 'id' | 'organizationId' | 'actorType' | 'actorId' | 'entryPoint' | 'requestId' | 'occurredAt'>): void;
 }
 
+export interface CachePurgeTarget {
+  readonly siteId: string;
+  readonly hostname: string;
+}
+
 export interface DashboardRepository {
   read(actor: AuthorizedTenantActorContext, permission: string): Promise<DashboardTenantState>;
   /** Ringkasan hitung untuk view dashboard; tanpa memuat state tenan penuh. */
@@ -35,6 +40,8 @@ export interface DashboardRepository {
   revokeInvitation(actor: AuthorizedTenantActorContext, permission: string, input: { readonly id: string }): Promise<{ readonly id: string }>;
   /** Ringkasan operasional read-only (desc, dibatasi); tanpa memuat state tenan penuh. */
   operationsSummary(actor: AuthorizedTenantActorContext, permission: string): Promise<OperationsProjection>;
+  /** Antre purge cache manual per site (null = semua dalam scope); langsung dieksekusi dispatcher. */
+  enqueueCachePurge(actor: AuthorizedTenantActorContext, permission: string, siteId: string | null): Promise<readonly CachePurgeTarget[]>;
   recordDenied(actor: AuthorizedTenantActorContext, action: string, targetType: string): Promise<void>;
   execute<T>(
     actor: AuthorizedTenantActorContext,

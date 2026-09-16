@@ -389,6 +389,25 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     });
   }
 
+  async enqueueCachePurge(actor: AuthorizedTenantActorContext, permission: string, siteId: string | null): Promise<readonly { siteId: string; hostname: string }[]> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      await this.enforceWritableSubscription(transaction, actor);
+      const rows = await transaction.select({ id: sites.id, hostname: sites.normalizedHostname, regionId: sites.regionId }).from(sites).where(eq(sites.organizationId, actor.organizationId));
+      const lock = actor.regionScopeId ?? null;
+      const inScope = (regionId: string | null) => lock === null || regionId === null || regionId === lock;
+      const targets = siteId === null ? rows.filter((row) => inScope(row.regionId)) : rows.filter((row) => row.id === siteId && inScope(row.regionId));
+      if (siteId !== null && targets.length !== 1) throw new DashboardAccessDeniedError();
+      const now = new Date();
+      for (const target of targets) {
+        await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId: actor.organizationId, siteId: target.id, currentHostname: target.hostname, reason: 'manual-purge', now }));
+        await transaction.insert(auditLogs).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, action: 'site.cache.purge', targetType: 'site', targetId: target.id, outcome: 'succeeded', changedFields: ['cache'], before: null, after: { hostname: target.hostname }, requestId: actor.requestId, occurredAt: now });
+      }
+      return Object.freeze(targets.map((target) => ({ siteId: target.id, hostname: target.hostname })));
+    });
+  }
+
   async read(actor: AuthorizedTenantActorContext, permission: string): Promise<DashboardTenantState> {    return this.database.transaction(async (transaction) => {
       await this.establishContext(transaction, actor);
       await this.authorize(transaction, actor, permission); return this.load(transaction, actor.organizationId);

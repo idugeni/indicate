@@ -10,6 +10,7 @@ import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { getSharedRuntimeDatabase } from '@/data/client';
+import { deliveryOperationsComposition } from '@/modules/delivery';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { UuidGenerator } from '@/core/system/uuid-generator';
@@ -107,7 +108,7 @@ async function handlePOST(request: Request) {
   const actions: Readonly<Record<string, (payload: unknown) => Promise<Result<unknown, PublicErrorEnvelope>>>> = {
       'domain.create': (payload) => service.createDomain(actor, payload), 'domain.update': (payload) => service.updateDomain(actor, payload),
       'region.create': (payload) => service.createRegion(actor, payload), 'region.update': (payload) => service.updateRegion(actor, payload),
-      'site.create': (payload) => service.createSite(actor, payload), 'site.update': (payload) => service.updateSite(actor, payload), 'site.settings.update': (payload) => service.saveSiteSettings(actor, payload),
+      'site.create': (payload) => service.createSite(actor, payload), 'site.update': (payload) => service.updateSite(actor, payload), 'site.settings.update': (payload) => service.saveSiteSettings(actor, payload), 'site.cache.purge': (payload) => service.purgeSiteCache(actor, payload),
       'role.create': (payload) => service.createRole(actor, payload), 'role.update': (payload) => service.updateRole(actor, payload), 'membership.update': (payload) => service.saveMembership(actor, payload),
       'invitation.create': (payload) => service.createInvitation(actor, payload), 'invitation.revoke': (payload) => service.revokeInvitation(actor, payload),      'publisher.create': (payload) => service.createPublisher(actor, payload), 'publisher.update': (payload) => service.updatePublisher(actor, payload), 'publisher.submit': (payload) => service.submitPublisher(actor, payload), 'publisher.approve': (payload) => service.approvePublisher(actor, payload), 'publisher.reject': (payload) => service.rejectPublisher(actor, payload), 'publisher.archive': (payload) => service.archivePublisher(actor, payload), 'affiliation.create': (payload) => service.createAffiliation(actor, payload), 'affiliation.update': (payload) => service.updateAffiliation(actor, payload),
       'category.create': (payload) => service.createCategory(actor, payload), 'category.update': (payload) => service.updateCategory(actor, payload), 'author.create': (payload) => service.createAuthor(actor, payload), 'author.update': (payload) => service.updateAuthor(actor, payload),
@@ -115,7 +116,17 @@ async function handlePOST(request: Request) {
     };
     const action = actions[parsed.data.action]; if (action === undefined) return NextResponse.json(createPublicError('INVALID_INPUT', 'Unknown command.', requestId), { status: 400 });
     const result = await action(parsed.data.payload);
-    return result.ok ? NextResponse.json(result.value) : NextResponse.json(result.error, { status: responseStatus(result.error) });
+    if (!result.ok) return NextResponse.json(result.error, { status: responseStatus(result.error) });
+    if (parsed.data.action === 'site.cache.purge') {
+      try {
+        const operations = await deliveryOperationsComposition();
+        const dispatch = await operations.invalidation.dispatch(new Date(), operations.config.publishing.batchSize);
+        return NextResponse.json({ ...(result.value as Record<string, unknown>), dispatched: dispatch });
+      } catch {
+        return NextResponse.json({ ...(result.value as Record<string, unknown>), dispatched: null });
+      }
+    }
+    return NextResponse.json(result.value);
 }
 
 export const GET = withApiAccess('GET /api/dashboard/workspace', handleGET);

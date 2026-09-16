@@ -35,6 +35,7 @@ export const siteSettingsSchema = z.object({
   seo: z.record(z.string(), z.unknown()).optional(),
   navigation: z.array(z.object({ label: z.string().trim().min(1).max(80), path: z.string().startsWith('/').max(250) })).max(30).optional(),
 }).strict();
+export const siteCachePurgeSchema = z.object({ siteId: id.optional() }).strict();
 const permissionNames = z.array(z.string().trim().min(1).max(100).refine(isDashboardPermission, 'Unknown or unavailable permission.')).max(100);
 const roleTierSchema = z.enum(['admin', 'user', 'superadmin']);
 /**

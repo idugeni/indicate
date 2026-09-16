@@ -71,6 +71,10 @@ const SiteSettingsForm = dynamic(
   () => import('@/modules/dashboard/components/infrastructure/site-settings-form').then((module) => ({ default: module.SiteSettingsForm })),
   { loading: () => <DashboardFormSkeleton /> },
 );
+const CachePurgeForm = dynamic(
+  () => import('@/modules/dashboard/components/infrastructure/cache-purge-form').then((module) => ({ default: module.CachePurgeForm })),
+  { loading: () => <DashboardFormSkeleton /> },
+);
 const CustomerManagement = dynamic(
   () => import('@/modules/dashboard/components/customers/customer-management').then((module) => ({ default: module.CustomerManagement })),
   { loading: () => <DashboardFormSkeleton /> },
@@ -790,6 +794,7 @@ export function DashboardWorkspace({
               <div className="space-y-6">
                 <ConfigurationPanel data={data} command={command} />
                 <SiteSettingsForm data={data} command={command} />
+                <CachePurgeForm data={data} command={command} />
                 <AccessManagementForm data={data} command={command} organizationId={organizationId} />
               </div>
             ) : null}

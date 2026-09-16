@@ -22,7 +22,7 @@ import {
   auditFilterSchema, authorCreateSchema, authorUpdateSchema, categoryCreateSchema, categoryUpdateSchema,
   domainCreateSchema, domainUpdateSchema, invitationCreateSchema, invitationRevokeSchema, membershipSchema, publisherCreateSchema, publisherDecisionSchema,
   publisherUpdateSchema, regionCreateSchema, regionUpdateSchema, roleCreateSchema, roleUpdateSchema,
-  siteCreateSchema, siteSettingsSchema, siteUpdateSchema, siteViewsSchema,
+  siteCreateSchema, siteSettingsSchema, siteUpdateSchema, siteViewsSchema, siteCachePurgeSchema,
 } from '@/modules/dashboard/schemas';
 
 interface ClockLike { now(): Date }
@@ -306,6 +306,18 @@ export class TenantBusinessService {
       if (before === undefined) transaction.state.siteSettings.push(after); else replaceById(transaction.state.siteSettings, after);
       this.audit(transaction, 'site.settings.update', 'site_settings', after.id, before ?? null, after); return after;
     }});
+  }
+
+  async purgeSiteCache(actor: AuthorizedTenantActorContext, raw: unknown) {
+    const parsed = siteCachePurgeSchema.safeParse(raw);
+    if (!parsed.success) return this.invalid(actor, parsed.error);
+    try {
+      const sites = await this.repository.enqueueCachePurge(actor, DASHBOARD_PERMISSIONS.siteManage, parsed.data.siteId ?? null);
+      return { ok: true as const, value: { sites } };
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'site.cache.purge', 'site');
+      return { ok: false as const, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+    }
   }
 
   createRole(actor: AuthorizedTenantActorContext, raw: unknown) {
