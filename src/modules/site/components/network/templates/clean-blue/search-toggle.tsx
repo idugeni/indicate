@@ -53,7 +53,7 @@ export function CleanBlueSearchToggle() {
       role="search"
       onSubmit={submit}
       aria-expanded={true}
-      className="flex w-48 items-center gap-1.5 transition-[width] duration-200 sm:w-64"
+      className="absolute top-1/2 right-4 z-20 flex w-[min(19rem,calc(100vw-2rem))] flex-none -translate-y-1/2 items-center gap-1 rounded-full border border-slate-200 bg-white py-1 pr-1 pl-4 shadow-xl sm:right-6"
     >
       <label htmlFor="clean-blue-nav-search" className="sr-only">
         Cari berita
@@ -69,13 +69,13 @@ export function CleanBlueSearchToggle() {
         maxLength={120}
         autoComplete="off"
         placeholder="Ketik kata kunci…"
-        className="h-9 rounded-full border-slate-200 bg-white font-sans text-sm"
+        className="h-10 min-w-0 flex-1 rounded-full border-0 bg-transparent px-0 font-sans text-sm shadow-none focus-visible:ring-0"
       />
       <Button
         type="submit"
         size="icon"
         aria-label="Cari"
-        className="h-9 w-9 flex-none rounded-full bg-[#1a5fd0] text-white hover:bg-[#155cb8]"
+        className="h-10 w-10 flex-none rounded-full bg-[#1a5fd0] text-white hover:bg-[#155cb8]"
       >
         <Search className="h-4 w-4" aria-hidden="true" />
       </Button>
@@ -85,7 +85,7 @@ export function CleanBlueSearchToggle() {
         size="icon"
         aria-label="Tutup pencarian"
         onClick={hide}
-        className="h-9 w-9 flex-none rounded-full text-slate-400 hover:text-slate-700"
+        className="h-10 w-10 flex-none rounded-full text-slate-400 hover:text-slate-700"
       >
         <X className="h-4 w-4" aria-hidden="true" />
       </Button>

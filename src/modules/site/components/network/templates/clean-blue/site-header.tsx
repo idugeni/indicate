@@ -7,16 +7,15 @@ import { CleanBlueSearchToggle } from '@/modules/site/components/network/templat
 import { getSiteCategoryNav } from '@/modules/site/components/network/templates/clean-blue/site-nav';
 
 /**
- * Navbar 3 kolom: [brand kiri | menu tengah | aksi kanan].
- * Brand = logo + nama (tanpa tagline). Menu ramping: Beranda, mega menu
- * Kategori, dropdown Info (legal). Search ikon mengembang.
+ * Navbar 3 kolom: [brand secukupnya | menu fleksibel | search secukupnya].
+ * Tengah: Beranda + kategori inline hingga batas, sisanya ke menu "Lainnya".
  */
 export async function CleanBlueHeader({ site, path = '/' }: { readonly site: NetworkSiteData; readonly path?: string }) {
-  const nav = await getSiteCategoryNav(site, 12);
+  const nav = await getSiteCategoryNav(site, 24);
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/95 backdrop-blur">
-      <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 py-3 sm:px-6">
+      <div className="relative mx-auto grid min-h-16 max-w-6xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 px-4 py-3 sm:px-6 lg:gap-x-6">
         <div className="min-w-0 justify-self-start">
           <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
             <Image
@@ -47,14 +46,8 @@ export async function CleanBlueHeader({ site, path = '/' }: { readonly site: Net
 
         <CleanBlueDesktopNav categories={nav} path={path} />
 
-        <div className="flex items-center justify-end gap-2.5 justify-self-end">
+        <div className="flex flex-none items-center justify-self-end">
           <CleanBlueSearchToggle />
-          <Link
-            href="#newsletter"
-            className="hidden h-10 flex-none items-center justify-center whitespace-nowrap rounded-full bg-[#1a5fd0] px-5 font-sans text-sm font-bold text-white transition-colors hover:bg-[#155cb8] sm:inline-flex"
-          >
-            Langganan
-          </Link>
         </div>
       </div>
 
