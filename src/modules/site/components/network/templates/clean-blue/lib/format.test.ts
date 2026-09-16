@@ -30,6 +30,7 @@ function makeArticle(overrides: Partial<NetworkArticle> = {}): NetworkArticle {
     attribution: 'Redaksi',
     publisherLogoUrl: null,
     publisherCity: null,
+    publisherBio: null,
     authorBio: null,
     authorAvatarUrl: null,
     publisherVerified: false,

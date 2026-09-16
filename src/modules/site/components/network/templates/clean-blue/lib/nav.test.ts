@@ -21,6 +21,7 @@ function makeArticle(categorySlug: string | null, categoryName: string | null): 
     attribution: 'Redaksi',
     publisherLogoUrl: null,
     publisherCity: null,
+    publisherBio: null,
     authorBio: null,
     authorAvatarUrl: null,
     publisherVerified: false,

@@ -148,45 +148,16 @@ export function CleanBlueArticle({
 
           <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
             <div className="flex items-center gap-4">
-              {article.authorAvatarUrl ? (
-                <Image
-                  unoptimized={!isLocalImageSrc(article.authorAvatarUrl)}
-                  src={article.authorAvatarUrl}
-                  alt={authorName}
-                  width={56}
-                  height={56}
-                  className="h-14 w-14 flex-none rounded-full border border-slate-200 object-cover"
-                />
-              ) : (
-                <span aria-hidden="true" className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-[#1a5fd0]/10 font-sans text-xl font-bold text-[#1a5fd0]">
-                  {authorInitial}
-                </span>
-              )}
-              <div className="min-w-0">
-                <p className="m-0 truncate font-sans text-base font-bold text-slate-900">
-                  {authorName}
-                </p>
-                <p className="m-0 mt-0.5 font-sans text-xs font-medium uppercase tracking-wider text-[#1a5fd0]">
-                  Penulis redaksi
-                </p>
-              </div>
-            </div>
-            {article.authorBio ? (
-              <p className="m-0 mt-3 font-sans text-sm leading-relaxed text-slate-600">
-                {article.authorBio}
-              </p>
-            ) : null}
-            <div className="mt-4 flex items-center gap-3 border-t border-slate-100 pt-4">
               <Image
                 unoptimized
                 src={article.publisherLogoUrl ?? site.settings.logoUrl}
                 alt={`Logo ${article.publisherName ?? article.attribution}`}
-                width={40}
-                height={40}
-                className="h-10 w-10 flex-none rounded-lg border border-slate-200 object-cover"
+                width={56}
+                height={56}
+                className="h-14 w-14 flex-none rounded-xl border border-slate-200 object-cover"
               />
               <div className="min-w-0">
-                <p className="m-0 flex min-w-0 items-center gap-1.5 truncate font-sans text-sm font-bold text-slate-900">
+                <p className="m-0 flex min-w-0 items-center gap-1.5 truncate font-sans text-base font-bold text-slate-900">
                   <span className="truncate">{article.publisherName ?? article.attribution}</span>
                   {article.publisherVerified ? (
                     <BadgeCheck className="h-4 w-4 flex-none text-[#1a5fd0]" aria-label="Penerbit terverifikasi" />
@@ -199,6 +170,11 @@ export function CleanBlueArticle({
                 </p>
               </div>
             </div>
+            {article.publisherBio ? (
+              <p className="m-0 mt-3 font-sans text-sm leading-relaxed text-slate-600">
+                {article.publisherBio}
+              </p>
+            ) : null}
             <dl className="m-0 mt-4 grid grid-cols-3 gap-px overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-100">
               <div className="bg-white px-3 py-2.5 text-center">
                 <dt className="font-sans text-[10px] uppercase tracking-wider text-slate-400">Terbit</dt>
