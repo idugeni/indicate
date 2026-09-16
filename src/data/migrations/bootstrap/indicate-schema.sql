@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (116 migrations):
+-- Reviewed sources, in journal order (117 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -129,6 +129,7 @@
 --   114  20260916010000_article_root_urls  ledger sha256:675a780cf8f2e72d8b42731ca6d3cfc5f02e70dfc1455ef8d95ea2be321eab85
 --   115  20260916020000_invalidation_drop_articles_path  ledger sha256:e7dae07ed4c4e6be7fa011eb3c43843831c34e49b47d8e1c75b6065bf94d52ec
 --   116  20260916030000_invalidation_root_article_paths  ledger sha256:7b9fe0fe8ab205d93354ba2aa661f08ec02b0ae55a7af6a31c46e2f8619f3822
+--   117  20260916040000_content_attribution_cleanup  ledger sha256:088513474cb393af2e1cb9cf52dabfac713ccc75a9cdddc0325ee3cee0bc7071
 
 BEGIN;
 
@@ -11274,4 +11275,27 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (116, 'invalidation_root_article_paths', 'sha256:e64fb971b0be9ea2a600b6d856baa77118b0edd02374ff0bc85cf2034e82574d');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7b9fe0fe8ab205d93354ba2aa661f08ec02b0ae55a7af6a31c46e2f8619f3822', 1789529191150);
+
+-- ----------------------------------------------------------------------
+-- 20260916040000_content_attribution_cleanup
+-- ----------------------------------------------------------------------
+-- Profesionalisasi atribusi konten contoh: nama figur publik dan media
+-- pajangan diganti identitas netral; kutipan dan FAQ tidak berubah.
+-- Idempoten: hanya baris seed yang masih bernama lama.
+UPDATE public.testimonials
+SET author = 'Bambang Setiawan', role = 'Pemimpin Redaksi', media = 'Grup Media Mitra', updated_at = now()
+WHERE id = '00000000-0000-4000-8000-000000007001' AND author = 'Bambang Suryono';
+UPDATE public.testimonials
+SET author = 'Dian Puspita', role = 'Kepala Infrastruktur Digital', media = 'Jaringan Pers Daerah', updated_at = now()
+WHERE id = '00000000-0000-4000-8000-000000007002' AND author = 'Dian Sastrowardoyo';
+UPDATE public.media_showcase
+SET name = 'Warta Buana', updated_at = now()
+WHERE id = '00000000-0000-4000-8000-000000007022' AND name = 'Meridian News';
+UPDATE public.media_showcase
+SET name = 'Cendekia Post', updated_at = now()
+WHERE id = '00000000-0000-4000-8000-000000007027' AND name = 'Arcadia News';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (117, 'content_attribution_cleanup', 'sha256:bb43add4ffa8c5dd9be068b57293399423a4c32689e77291ae52f7c48b0ec089');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('088513474cb393af2e1cb9cf52dabfac713ccc75a9cdddc0325ee3cee0bc7071', 1789539165999);
 COMMIT;

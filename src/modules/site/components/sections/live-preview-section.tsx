@@ -83,7 +83,7 @@ export function LivePreviewSection() {
           <dl className="m-0 grid gap-0 px-5 py-2 sm:grid-cols-3">
             <div className="border-b border-hairline/60 py-3 sm:border-b-0 sm:border-r sm:pr-5">
               <dt className="font-sans text-xs text-paper-faint">Organisasi</dt>
-              <dd className="m-0 mt-1 font-sans text-sm font-medium text-paper">Media Nusantara Group</dd>
+              <dd className="m-0 mt-1 font-sans text-sm font-medium text-paper">Grup Media Mitra</dd>
               <dd className="m-0 mt-0.5 font-mono text-[11px] text-paper-faint">org_01h8x</dd>
             </div>
             <div className="border-b border-hairline/60 py-3 sm:border-b-0 sm:border-r sm:px-5">
@@ -115,14 +115,14 @@ export function LivePreviewSection() {
           </div>
           <div className="px-5 py-2">
             <p className="m-0 border-b border-hairline/60 py-3 font-mono text-xs text-paper">
-              /publish #1092 --target=portal-timur.lintasharian.com
+              /publish #1092 --target=portal-timur
             </p>
             <p className="m-0 flex flex-wrap items-center justify-between gap-2 py-3">
               <span className="flex items-center gap-1.5 font-sans text-sm font-medium text-signal">
                 <span className="h-1.5 w-1.5 flex-none bg-signal" aria-hidden="true" />
                 Artikel terbit. ID: pub_8821a
               </span>
-              <span className="font-mono text-[11px] text-paper-faint">portal-timur.lintasharian.com/laporan-kinerja-2026</span>
+              <span className="font-mono text-[11px] text-paper-faint">/laporan-kinerja-2026</span>
             </p>
           </div>
         </div>

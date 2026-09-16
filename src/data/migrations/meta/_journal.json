@@ -813,6 +813,13 @@
       "when": 1789529191150,
       "tag": "20260916030000_invalidation_root_article_paths",
       "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1789539165999,
+      "tag": "20260916040000_content_attribution_cleanup",
+      "breakpoints": true
     }
   ]
 }
