@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import Image from 'next/image';
+import { CalendarDays, Clock3, Eye } from 'lucide-react';
 
 import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 
@@ -135,6 +137,59 @@ export function CleanBlueEmpty({ title }: { readonly title: string }) {
 export interface CategoryNavItem {
   readonly label: string;
   readonly href: string;
+}
+
+/** Avatar penulis: foto bila ada, inisial bila kosong. */
+export function AuthorAvatar({ name, avatarUrl, size }: { readonly name: string; readonly avatarUrl: string | null; readonly size: 'md' | 'sm' }) {
+  const dimension = size === 'md' ? 'h-10 w-10 text-sm' : 'h-6 w-6 text-[11px]';
+  if (avatarUrl !== null && avatarUrl !== '') {
+    const side = size === 'md' ? 80 : 48;
+    return (
+      <Image
+        unoptimized
+        src={avatarUrl}
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        width={side}
+        height={side}
+        className={`${dimension} flex-none rounded-full object-cover ring-1 ring-slate-200`}
+      />
+    );
+  }
+  const initial = (name || 'R').trim().slice(0, 1).toUpperCase();
+  return (
+    <span
+      aria-hidden="true"
+      className={`${dimension} flex flex-none items-center justify-center rounded-full bg-[#1a5fd0]/10 font-sans font-bold text-[#1a5fd0]`}
+    >
+      {initial}
+    </span>
+  );
+}
+
+/** Baris meta artikel berikon: tanggal · lama baca · views (views hanya bila terlacak > 0). */
+export function ArticleMeta({ publishedAt, reading, viewCount }: { readonly publishedAt: string; readonly reading: number; readonly viewCount: number }) {
+  const item = 'inline-flex items-center gap-1.5';
+  const icon = 'h-3.5 w-3.5 text-slate-400';
+  return (
+    <span className="flex flex-wrap items-center gap-x-3.5 gap-y-1 font-sans text-xs tabular-nums text-slate-600">
+      <span className={item}>
+        <CalendarDays className={icon} aria-hidden="true" />
+        {formatDate(publishedAt, 'medium')}
+      </span>
+      <span className={item}>
+        <Clock3 className={icon} aria-hidden="true" />
+        {reading} mnt baca
+      </span>
+      {viewCount > 0 ? (
+        <span className={item}>
+          <Eye className={icon} aria-hidden="true" />
+          {formatCompactViews(viewCount)} dibaca
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 /** Navigasi gaya contoh (Beranda + kategori): pakai navigasi situs bila diisi,

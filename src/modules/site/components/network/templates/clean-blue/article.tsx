@@ -86,11 +86,15 @@ export function CleanBlueArticle({
                   </span>
                   <span aria-hidden="true">·</span>
                   <span>{reading} menit baca</span>
-                  <span aria-hidden="true">·</span>
-                  <span className="inline-flex items-center gap-1">
-                    <Eye className="h-3 w-3" aria-hidden="true" />
-                    {formatCompactViews(article.viewCount)} dibaca
-                  </span>
+                  {article.viewCount > 0 ? (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <span className="inline-flex items-center gap-1">
+                        <Eye className="h-3 w-3" aria-hidden="true" />
+                        {formatCompactViews(article.viewCount)} dibaca
+                      </span>
+                    </>
+                  ) : null}
                 </span>
               </span>
             </p>

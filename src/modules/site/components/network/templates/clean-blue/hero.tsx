@@ -1,32 +1,35 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Bookmark, Share2 } from 'lucide-react';
 
 import type { NetworkArticle } from '@/modules/delivery/models';
-import { articleImage, authorDisplayName, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
+import { articleImage, ArticleMeta, AuthorAvatar, authorDisplayName, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
+import { CleanBlueHeroActions } from '@/modules/site/components/network/templates/clean-blue/hero-actions';
 
 export function CleanBlueHero({ article }: { readonly article: NetworkArticle }) {
   const src = articleImage(article);
   const reading = readingMinutes(article);
   const authorName = authorDisplayName(article);
-  const authorInitial = (authorName || 'R').trim().slice(0, 1).toUpperCase();
 
   return (
-    <section className="grid items-center gap-8 lg:grid-cols-2" aria-label="Sorotan utama">
-      <div className="relative overflow-hidden rounded-2xl shadow-sm">
+    <section className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12" aria-label="Sorotan utama">
+      <Link
+        href={`/${article.slug}`}
+        aria-label={article.title}
+        className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
+      >
         <Image
           unoptimized={!isLocalImageSrc(src)}
           src={src}
-          alt={article.title}
+          alt=""
           priority
           className="aspect-[16/10] w-full object-cover"
           width={article.imageWidth ?? 1200}
           height={article.imageHeight ?? 750}
           sizes="(max-width: 1024px) 100vw, 50vw"
         />
-      </div>
+      </Link>
 
-      <div>
+      <div className="min-w-0">
         <p className="m-0 flex items-center gap-2 font-sans text-sm font-semibold text-[#1a5fd0]">
           <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1a5fd0]" />
           {article.categoryName ?? 'Nasional'}
@@ -39,36 +42,17 @@ export function CleanBlueHero({ article }: { readonly article: NetworkArticle })
         <p className="m-0 mt-4 font-sans text-[15px] leading-relaxed text-slate-600">
           {article.description}
         </p>
-        <div className="mt-6 flex items-center justify-between gap-3">
-          <p className="m-0 flex min-w-0 items-center gap-3">
-            <span aria-hidden="true" className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[#1a5fd0]/10 font-sans text-sm font-bold text-[#1a5fd0]">
-              {authorInitial}
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate font-sans text-sm font-bold text-slate-900">
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <AuthorAvatar name={authorName} avatarUrl={article.authorAvatarUrl} size="md" />
+            <div className="grid min-w-0 gap-1">
+              <p className="m-0 truncate font-sans text-sm font-bold text-slate-900">
                 {authorName}
-              </span>
-              <span className="block font-sans text-xs tabular-nums text-slate-600">
-                {formatDate(article.publishedAt, 'medium')} · {reading} menit baca · {formatCompactViews(article.viewCount)} dibaca
-              </span>
-            </span>
-          </p>
-          <p className="m-0 flex flex-none items-center gap-2">
-            <button
-              type="button"
-              aria-label="Simpan artikel"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
-            >
-              <Bookmark className="h-4 w-4" aria-hidden="true" />
-            </button>
-            <Link
-              href={`/${article.slug}`}
-              aria-label="Bagikan artikel"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
-            >
-              <Share2 className="h-4 w-4" aria-hidden="true" />
-            </Link>
-          </p>
+              </p>
+              <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} />
+            </div>
+          </div>
+          <CleanBlueHeroActions slug={article.slug} title={article.title} />
         </div>
       </div>
     </section>
