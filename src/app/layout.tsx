@@ -80,10 +80,6 @@ export const metadata: Metadata = {
       'Indicate menyatukan pengelolaan puluhan domain berita ke dalam satu Dashboard terpusat.',
     images: ['/opengraph-image'],
   },
-  icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-icon.png',
-  },
 };
 
 const fraunces = Fraunces({

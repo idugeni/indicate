@@ -3,6 +3,10 @@ import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
   title: 'Masuk',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-icon.png',
+  },
   robots: {
     index: false,
     follow: false,

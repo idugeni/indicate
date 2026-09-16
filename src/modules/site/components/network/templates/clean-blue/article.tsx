@@ -10,7 +10,6 @@ import { CleanBlueShell } from '@/modules/site/components/network/templates/clea
 import { CleanBlueShareButtons } from '@/modules/site/components/network/templates/clean-blue/share-buttons';
 import { CleanBlueViewBeacon } from '@/modules/site/components/network/templates/clean-blue/view-beacon';
 import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
-import { MINISTRY_FALLBACK_LOGO_URL } from '@/ui/site/marketing-content';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/picks';
 import { articleImage, authorDisplayName, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
 
@@ -151,7 +150,7 @@ export function CleanBlueArticle({
             <div className="flex items-center gap-4">
               <Image
                 unoptimized
-                src={article.publisherLogoUrl ?? MINISTRY_FALLBACK_LOGO_URL}
+                src={article.publisherLogoUrl ?? '/api/network/brand-mark'}
                 alt={`Logo ${article.attribution}`}
                 width={56}
                 height={56}

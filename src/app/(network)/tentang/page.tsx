@@ -3,7 +3,9 @@ import { AboutPage } from '@/modules/site/components/network/network-listing';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 export async function generateMetadata(): Promise<Metadata> {
-  return networkMetadata('/tentang');
+  const site = await resolveNetworkSite({}, '/tentang');
+  const siteName = site.settings.seoSiteName ?? site.settings.name;
+  return networkMetadata('/tentang', {}, `Tentang ${siteName}`);
 }
 
 /** Profil portal tenant dari data situsnya sendiri. */

@@ -94,12 +94,29 @@ export function notFoundMetadata(): Metadata {
   return { title: 'Not Found', robots: { index: false, follow: false } };
 }
 
+/**
+ * Judul beranda tenant: nama + tagline situsnya sendiri agar tab dan SERP
+ * membawa identitas portal, bukan nama telanjang.
+ *
+ * @param siteName - Nama portal tenant.
+ * @param siteDescription - Deskripsi/tagline portal tenant.
+ * @returns Judul "Nama — Tagline" terpotong pada batas kata.
+ */
+function homeTitle(siteName: string, siteDescription: string): string {
+  const chars = Array.from(siteDescription.trim());
+  if (chars.length === 0) return siteName;
+  const slice = chars.slice(0, 48).join('');
+  const lastSpace = slice.lastIndexOf(' ');
+  const tagline = `${(lastSpace > 24 ? slice.slice(0, lastSpace) : slice).trimEnd()}…`;
+  return chars.length <= 48 ? `${siteName} — ${siteDescription.trim()}` : `${siteName} — ${tagline}`;
+}
+
 export function buildSeoDocument(site: NetworkSiteData, options: { readonly path: string; readonly article?: NetworkArticle; readonly indexable?: boolean; readonly titleOverride?: string }): SeoDocument {
   const indexable = options.indexable ?? true;
   const article = options.article;
   const siteName = site.settings.seoSiteName || site.settings.name;
   const siteDescription = site.settings.seoDefaultDescription || site.settings.description;
-  const title = options.titleOverride ?? (article === undefined ? (site.settings.seoDefaultTitle || site.settings.name) : `${article.title} | ${siteName}`);
+  const title = options.titleOverride ?? (article === undefined ? (site.settings.seoDefaultTitle || homeTitle(siteName, siteDescription)) : `${article.title} | ${siteName}`);
   const description = article?.description ?? siteDescription;
   if (!indexable) return { title, description, canonical: null, robots: 'noindex, nofollow', openGraph: null, jsonLd: [] };
   const canonical = absoluteSiteUrl(site.context, options.path);

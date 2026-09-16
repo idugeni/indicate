@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 import { buttonVariants } from '@/components/ui/button';
@@ -32,13 +33,30 @@ export async function CleanBlueHeader({ site, path = '/' }: { readonly site: Net
     <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/95 backdrop-blur">
       <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 py-3 sm:px-6">
         <div className="min-w-0 justify-self-start">
-          <Link href="/" className="grid min-w-0 leading-none no-underline">
-            <strong className="truncate font-sans text-lg font-extrabold tracking-tight text-slate-900">
-              {site.settings.name}
-            </strong>
-            <small className="mt-0.5 hidden truncate font-sans text-[11px] text-slate-600 sm:block">
-              {tagline}
-            </small>
+          <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
+            <Image
+              unoptimized
+              src={site.settings.logoUrl}
+              alt=""
+              width={72}
+              height={72}
+              className="h-9 w-9 flex-none rounded-xl object-cover ring-1 ring-slate-200"
+            />
+            <span className="grid min-w-0 leading-none">
+              <span className="flex min-w-0 items-center gap-1.5">
+                <strong className="truncate font-sans text-lg font-extrabold tracking-tight text-slate-900">
+                  {site.settings.name}
+                </strong>
+                {site.regionName === null ? null : (
+                  <span className="flex-none rounded-md bg-[#1a5fd0]/10 px-1.5 py-0.5 font-sans text-[11px] font-bold text-[#1a5fd0]">
+                    {site.regionName}
+                  </span>
+                )}
+              </span>
+              <small className="mt-0.5 hidden truncate font-sans text-[11px] text-slate-600 sm:block">
+                {tagline}
+              </small>
+            </span>
           </Link>
         </div>
 

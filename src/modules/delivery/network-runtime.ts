@@ -93,7 +93,7 @@ function tenantHiddenMeta(
       : undefined,
   };
 }
-export async function networkMetadata(path: string, query: NetworkContentQuery = {}): Promise<Metadata> {
+export async function networkMetadata(path: string, query: NetworkContentQuery = {}, titleOverride?: string): Promise<Metadata> {
   const site = await resolveNetworkSite(query, path);
   const article = query.articleSlug === undefined ? undefined : site.articles[0];
 
@@ -188,7 +188,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
     };
   }
 
-  const seo = buildSeoDocument(site, { path, ...(article === undefined ? {} : { article }) });
+  const seo = buildSeoDocument(site, { path, ...(article === undefined ? {} : { article }), ...(titleOverride === undefined ? {} : { titleOverride }) });
   if (seo.canonical === null || seo.openGraph === null) {
     return {
       title: seo.title,

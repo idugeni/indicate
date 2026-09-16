@@ -5,7 +5,9 @@ import { interpolateLegalText, resolveLegalSections } from '@/modules/site/legal
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 export async function generateMetadata(): Promise<Metadata> {
-  return networkMetadata('/syarat-ketentuan');
+  const site = await resolveNetworkSite({}, '/syarat-ketentuan');
+  const vars = { domain: site.context.normalizedHostname, siteName: site.settings.seoSiteName ?? site.settings.name };
+  return networkMetadata('/syarat-ketentuan', {}, interpolateLegalText(TENANT_LEGAL_DOCS.terms.title, vars));
 }
 
 /** Dokumen legal tenant: copy master bersama, domain diinterpolasi per host. */

@@ -73,6 +73,7 @@ export interface ArticleGalleryImage {
 
 export interface NetworkSiteData {
   readonly context: ResolvedSiteContext;
+  readonly regionName: string | null;
   readonly settings: PublicSiteSettings;
   readonly articles: readonly NetworkArticle[];
 }

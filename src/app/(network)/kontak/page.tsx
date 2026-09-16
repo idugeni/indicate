@@ -4,7 +4,9 @@ import { interpolateLegalText } from '@/modules/site/legal-placeholders';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 export async function generateMetadata(): Promise<Metadata> {
-  return networkMetadata('/kontak');
+  const site = await resolveNetworkSite({}, '/kontak');
+  const siteName = site.settings.seoSiteName ?? site.settings.name;
+  return networkMetadata('/kontak', {}, `Kontak ${siteName}`);
 }
 
 /** Saluran resmi tenant dari `socialLinks` situsnya sendiri. */
