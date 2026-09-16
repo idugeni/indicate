@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { buildSeoDocument, indexableRobots, notFoundMetadata, tenantFavicon } from '@/modules/site/seo';
-import { parsePageParam } from '@/modules/site/components/network/templates/listing-shared';
 import { SERVICE_SUMMARY } from '@/ui/site/marketing-content';
 import { LandingPage } from '@/modules/site/components/landing-page';
 import { ListingPage } from '@/modules/site/components/network/network-listing';
@@ -90,9 +89,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /** Klasifikasi host + muat konten butuh request + DB; loading global `src/app/loading.tsx` yang tampil. */
-export default async function RootPage({ searchParams }: { readonly searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+export default async function RootPage() {
   const { classification, site } = await resolveRouteContext();
-  const page = parsePageParam((await searchParams).page);
 
   if (classification.kind === 'control' && classification.surface === 'dashboard') {
     return <LandingPage />;
@@ -106,5 +104,5 @@ export default async function RootPage({ searchParams }: { readonly searchParams
     notFound();
   }
 
-  return <ListingPage site={site} title={site.settings.name} page={page} basePath="/" />;
+  return <ListingPage site={site} title={site.settings.name} />;
 }

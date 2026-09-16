@@ -22,6 +22,11 @@ export function CleanBlueSearchToggle() {
     window.requestAnimationFrame(() => inputRef.current?.focus());
   };
 
+  const hide = () => {
+    setOpen(false);
+    setValue('');
+  };
+
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const query = value.trim().slice(0, 120);
@@ -35,6 +40,7 @@ export function CleanBlueSearchToggle() {
         variant="outline"
         size="icon"
         aria-label="Cari berita"
+        aria-expanded={false}
         onClick={show}
         className="rounded-full border-slate-200 bg-white text-slate-600 hover:text-[#1a5fd0]"
       >
@@ -47,6 +53,7 @@ export function CleanBlueSearchToggle() {
     <form
       role="search"
       onSubmit={submit}
+      aria-expanded={true}
       className="flex w-48 items-center gap-1.5 transition-[width] duration-200 sm:w-64"
     >
       <label htmlFor="clean-blue-nav-search" className="sr-only">
@@ -58,7 +65,7 @@ export function CleanBlueSearchToggle() {
         value={value}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key === 'Escape') setOpen(false);
+          if (event.key === 'Escape') hide();
         }}
         maxLength={120}
         autoComplete="off"
@@ -78,7 +85,7 @@ export function CleanBlueSearchToggle() {
         variant="ghost"
         size="icon"
         aria-label="Tutup pencarian"
-        onClick={() => setOpen(false)}
+        onClick={hide}
         className="h-9 w-9 flex-none rounded-full text-slate-400 hover:text-slate-700"
       >
         <X className="h-4 w-4" aria-hidden="true" />

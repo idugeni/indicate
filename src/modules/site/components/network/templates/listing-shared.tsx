@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Calendar, Clock, Eye, Rss, Zap } from 'lucide-react';
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { ARTICLE_FALLBACK_IMAGE_URL } from '@/ui/site/marketing-content';
 
@@ -32,16 +32,6 @@ export interface ListingProps {
   readonly description?: string | undefined;
   readonly path?: string | undefined;
   readonly indexable?: boolean | undefined;
-  /** Pagination (dipakai clean-blue; pola lain mengabaikan). */
-  readonly page?: number | undefined;
-  readonly basePath?: string | undefined;
-}
-
-/** ?page= → bilangan halaman ≥1 (default 1). */
-export function parsePageParam(value: string | string[] | undefined): number {
-  const raw = Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed >= 1 ? Math.min(parsed, 1000) : 1;
 }
 
 export function getReadingTime(text: string): number {
@@ -156,6 +146,9 @@ export function ArticleCard({
     return (
       <article className="row-card group grid grid-cols-[auto_minmax(0,1fr)] items-start gap-4 border-b border-hairline py-5">
         <Avatar className="h-11 w-11 flex-none rounded border border-hairline">
+          {article.authorAvatarUrl ? (
+            <AvatarImage src={article.authorAvatarUrl} alt={article.authorDisplayName ?? article.authorName ?? article.attribution} />
+          ) : null}
           <AvatarFallback className="bg-bg-raised-2 font-mono text-xs font-bold text-[var(--site-accent)]">
             {(article.authorDisplayName ?? article.authorName ?? article.attribution).slice(0, 2).toUpperCase()}
           </AvatarFallback>

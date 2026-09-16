@@ -1,12 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ListingPage } from '@/modules/site/components/network/network-listing';
-import { parsePageParam } from '@/modules/site/components/network/templates/listing-shared';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 type Props = {
   readonly params: Promise<{ tag: string }>;
-  readonly searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -19,10 +17,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /** Params dibaca langsung; loader global `(network)/loading.tsx` yang tampil. */
-export default async function TagPage({ params, searchParams }: Props) {
+export default async function TagPage({ params }: Props) {
   const { tag } = await params;
   const clean = decodeURIComponent(tag).trim().toLowerCase();
   if (clean === '') notFound();
   const site = await resolveNetworkSite({ tag: clean }, `/tags/${clean}`);
-  return <ListingPage site={site} title={`Topik: #${clean}`} path={`/tags/${clean}`} page={parsePageParam((await searchParams).page)} basePath={`/tags/${clean}`} />;
+  return <ListingPage site={site} title={`Topik: #${clean}`} path={`/tags/${clean}`} />;
 }

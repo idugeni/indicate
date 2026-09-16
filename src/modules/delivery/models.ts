@@ -51,6 +51,8 @@ export interface NetworkArticle {
   /** Logo publisher dari `contacts.logoUrl`; null bila belum disematkan (SEO memakai logo situs). */
   readonly publisherLogoUrl: string | null;
   readonly publisherCity: string | null;
+  readonly authorBio: string | null;
+  readonly authorAvatarUrl: string | null;
   readonly publisherVerified: boolean;
   readonly independent: boolean;
   readonly officialInstitution: string | null;

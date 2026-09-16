@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, Calendar, ChevronRight, Eye, Flag } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag } from 'lucide-react';
 
 import { buildSeoDocument } from '@/modules/site/seo';
 import { parseArticleBody } from '@/modules/site/article-markup';
@@ -148,14 +148,20 @@ export function CleanBlueArticle({
 
           <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
             <div className="flex items-center gap-4">
-              <Image
-                unoptimized
-                src={article.publisherLogoUrl ?? '/api/network/brand-mark'}
-                alt={`Logo ${article.attribution}`}
-                width={56}
-                height={56}
-                className="h-14 w-14 flex-none rounded-full border border-slate-200 object-cover"
-              />
+              {article.authorAvatarUrl ? (
+                <Image
+                  unoptimized={!isLocalImageSrc(article.authorAvatarUrl)}
+                  src={article.authorAvatarUrl}
+                  alt={authorName}
+                  width={56}
+                  height={56}
+                  className="h-14 w-14 flex-none rounded-full border border-slate-200 object-cover"
+                />
+              ) : (
+                <span aria-hidden="true" className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-[#1a5fd0]/10 font-sans text-xl font-bold text-[#1a5fd0]">
+                  {authorInitial}
+                </span>
+              )}
               <div className="min-w-0">
                 <p className="m-0 truncate font-sans text-base font-bold text-slate-900">
                   {authorName}
@@ -163,9 +169,33 @@ export function CleanBlueArticle({
                 <p className="m-0 mt-0.5 font-sans text-xs font-medium uppercase tracking-wider text-[#1a5fd0]">
                   Penulis redaksi
                 </p>
-                <p className="m-0 mt-1 truncate font-sans text-xs text-slate-600">
-                  {article.publisherName ?? article.attribution}
-                  {article.publisherVerified ? ' · Terverifikasi' : ''}
+              </div>
+            </div>
+            {article.authorBio ? (
+              <p className="m-0 mt-3 font-sans text-sm leading-relaxed text-slate-600">
+                {article.authorBio}
+              </p>
+            ) : null}
+            <div className="mt-4 flex items-center gap-3 border-t border-slate-100 pt-4">
+              <Image
+                unoptimized
+                src={article.publisherLogoUrl ?? site.settings.logoUrl}
+                alt={`Logo ${article.publisherName ?? article.attribution}`}
+                width={40}
+                height={40}
+                className="h-10 w-10 flex-none rounded-lg border border-slate-200 object-cover"
+              />
+              <div className="min-w-0">
+                <p className="m-0 flex min-w-0 items-center gap-1.5 truncate font-sans text-sm font-bold text-slate-900">
+                  <span className="truncate">{article.publisherName ?? article.attribution}</span>
+                  {article.publisherVerified ? (
+                    <BadgeCheck className="h-4 w-4 flex-none text-[#1a5fd0]" aria-label="Penerbit terverifikasi" />
+                  ) : null}
+                </p>
+                <p className="m-0 mt-0.5 truncate font-sans text-xs text-slate-600">
+                  Penerbit
+                  {article.officialInstitution ? ` · ${article.officialInstitution}` : ''}
+                  {article.publisherCity ? ` · ${article.publisherCity}` : ''}
                 </p>
               </div>
             </div>

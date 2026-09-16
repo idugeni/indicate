@@ -10,8 +10,8 @@ import { CleanBlueShell } from '@/modules/site/components/network/templates/clea
 import { CleanBlueTicker } from '@/modules/site/components/network/templates/clean-blue/ticker';
 import { CleanBlueHero } from '@/modules/site/components/network/templates/clean-blue/hero';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/picks';
+import { CleanBlueLoadMore } from '@/modules/site/components/network/templates/clean-blue/load-more';
 import { CleanBlueNewsletter } from '@/modules/site/components/network/templates/clean-blue/newsletter';
-import { CleanBluePagination } from '@/modules/site/components/network/templates/clean-blue/pagination';
 
 /**
  * Clean Blue Editorial — template full mandiri: header, ticker, hero, kartu
@@ -19,14 +19,10 @@ import { CleanBluePagination } from '@/modules/site/components/network/templates
  * hardcoded. Sengaja TIDAK memakai `NetworkTemplate` bersama maupun
  * `site_settings.colors`, agar tampil persis seperti contoh.
  */
-export function CleanBlueListing({ site, title, description, path, indexable, page = 1, basePath }: ListingProps) {
+export function CleanBlueListing({ site, title, description, path, indexable }: ListingProps) {
   const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const [hero, ...rest] = site.articles;
-  // Arsip: halaman 1 menampung 9 kartu setelah picks, halaman berikut 9 per halaman.
-  const totalPages = rest.length <= 12 ? 1 : 1 + Math.ceil((rest.length - 12) / 9);
-  const safePage = Math.max(1, Math.min(page, totalPages));
-  const archive = safePage === 1 ? rest.slice(3, 12) : rest.slice(3 + (safePage - 1) * 9, 3 + safePage * 9);
-  const base = basePath ?? path ?? '/';
+  const archive = rest.slice(3);
 
   return (
     <CleanBlueShell site={site} path={path ?? '/'}>
@@ -37,20 +33,14 @@ export function CleanBlueListing({ site, title, description, path, indexable, pa
           <CleanBlueEmpty title={title} />
         ) : (
           <>
-            {safePage === 1 ? (
-              <>
-                {hero ? <CleanBlueHero article={hero} /> : null}
-                <CleanBluePicks articles={rest.slice(0, 3)} description={description ?? 'Informasi terkurasi untuk Anda'} />
-                <CleanBlueNewsletter />
-              </>
-            ) : null}
-            <CleanBluePicks
+            {hero ? <CleanBlueHero article={hero} /> : null}
+            <CleanBluePicks articles={rest.slice(0, 3)} description={description ?? 'Informasi terkurasi untuk Anda'} />
+            <CleanBlueNewsletter />
+            <CleanBlueLoadMore
               articles={archive}
-              heading={safePage === 1 ? 'Arsip Berita' : `Arsip Berita — Halaman ${safePage}`}
-              description={safePage === 1 ? 'Jelajahi semua liputan kanal ini' : `Menampilkan halaman ${safePage} dari ${totalPages}`}
-              linkHref={null}
+              heading="Arsip Berita"
+              description="Jelajahi semua liputan kanal ini"
             />
-            <CleanBluePagination page={safePage} totalPages={totalPages} basePath={base} />
           </>
         )}
       </CleanBlueContainer>

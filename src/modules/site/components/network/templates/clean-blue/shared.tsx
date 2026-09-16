@@ -110,8 +110,6 @@ export interface ListingProps {
   readonly description?: string | undefined;
   readonly path?: string | undefined;
   readonly indexable?: boolean | undefined;
-  readonly page?: number | undefined;
-  readonly basePath?: string | undefined;
 }
 
 /** Penampung konten selebar contoh (max-6xl). */

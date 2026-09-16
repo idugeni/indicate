@@ -168,7 +168,7 @@ function SiteSettingsEditor({
             value={logoMedia}
             disabled={isSaving}
             spellCheck={false}
-            placeholder="UUID media — kosong = brand-mark"
+            placeholder="UUID media aktif — wajib diisi"
             onChange={(event) => setLogoMedia(event.target.value)}
             className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
           />
@@ -201,7 +201,7 @@ function SiteSettingsEditor({
             value={faviconMedia}
             disabled={isSaving}
             spellCheck={false}
-            placeholder="UUID media — kosong = brand-mark"
+            placeholder="UUID media — kosong = tanpa ikon"
             onChange={(event) => setFaviconMedia(event.target.value)}
             className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
           />

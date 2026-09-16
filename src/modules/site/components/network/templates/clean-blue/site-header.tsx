@@ -1,32 +1,18 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
-import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-} from '@/components/ui/navigation-menu';
 import type { NetworkSiteData } from '@/modules/delivery/models';
+import { CleanBlueDesktopNav, CleanBlueMobileNav } from '@/modules/site/components/network/templates/clean-blue/site-nav-menu';
 import { CleanBlueSearchToggle } from '@/modules/site/components/network/templates/clean-blue/search-toggle';
-import { truncateTagline } from '@/modules/site/components/network/templates/clean-blue/shared';
 import { getSiteCategoryNav } from '@/modules/site/components/network/templates/clean-blue/site-nav';
 
 /**
  * Navbar 3 kolom: [brand kiri | menu tengah | aksi kanan].
- * Brand = nama saja (tanpa logo). Menu shadcn NavigationMenu, sumber
- * kategori shared (identik di semua halaman). Search mengembang ke kiri.
+ * Brand = logo + nama (tanpa tagline). Menu ramping: Beranda, mega menu
+ * Kategori, dropdown Info (legal). Search ikon mengembang.
  */
 export async function CleanBlueHeader({ site, path = '/' }: { readonly site: NetworkSiteData; readonly path?: string }) {
-  const nav = await getSiteCategoryNav(site);
-  const tagline = truncateTagline(site.settings.description);
-
-  const linkClass = (active: boolean) =>
-    `whitespace-nowrap px-3 py-2 font-sans text-sm transition-colors ${
-      active
-        ? 'font-semibold text-[#1a5fd0] underline decoration-2 underline-offset-8'
-        : 'font-medium text-slate-600 hover:text-slate-900'
-    }`;
+  const nav = await getSiteCategoryNav(site, 12);
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/95 backdrop-blur">
@@ -36,7 +22,7 @@ export async function CleanBlueHeader({ site, path = '/' }: { readonly site: Net
             <Image
               unoptimized
               src={site.settings.logoUrl}
-              alt=""
+              alt={site.settings.name}
               width={72}
               height={72}
               className="h-9 w-9 flex-none rounded-xl object-cover ring-1 ring-slate-200"
@@ -55,33 +41,11 @@ export async function CleanBlueHeader({ site, path = '/' }: { readonly site: Net
                   </span>
                 )}
               </span>
-              <small className="mt-0.5 hidden truncate font-sans text-[11px] text-slate-600 sm:block">
-                {tagline}
-              </small>
             </span>
           </Link>
         </div>
 
-        <NavigationMenu aria-label="Navigasi utama" className="hidden justify-self-center lg:flex">
-          <NavigationMenuList className="gap-0.5">
-            <NavigationMenuItem>
-              <NavigationMenuLink href="/" aria-current={path === '/' ? 'page' : undefined} className={linkClass(path === '/')}>
-                Beranda
-              </NavigationMenuLink>
-            </NavigationMenuItem>
-            {nav.map((item) => (
-              <NavigationMenuItem key={`${item.href}:${item.label}`}>
-                <NavigationMenuLink
-                  href={item.href}
-                  aria-current={path === item.href ? 'page' : undefined}
-                  className={linkClass(path === item.href)}
-                >
-                  {item.label}
-                </NavigationMenuLink>
-              </NavigationMenuItem>
-            ))}
-          </NavigationMenuList>
-        </NavigationMenu>
+        <CleanBlueDesktopNav categories={nav} path={path} />
 
         <div className="flex items-center justify-end gap-2.5 justify-self-end">
           <CleanBlueSearchToggle />
@@ -94,21 +58,7 @@ export async function CleanBlueHeader({ site, path = '/' }: { readonly site: Net
         </div>
       </div>
 
-      <nav aria-label="Navigasi utama seluler" className="no-scrollbar flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-4 py-1.5 lg:hidden">
-        <Link href="/" aria-current={path === '/' ? 'page' : undefined} className={linkClass(path === '/')}>
-          Beranda
-        </Link>
-        {nav.map((item) => (
-          <Link
-            key={`${item.href}:${item.label}`}
-            href={item.href}
-            aria-current={path === item.href ? 'page' : undefined}
-            className={linkClass(path === item.href)}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+      <CleanBlueMobileNav categories={nav} path={path} />
     </header>
   );
 }

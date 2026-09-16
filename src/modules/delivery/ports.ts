@@ -20,11 +20,6 @@ export interface NetworkSiteCachePort {
   read(identity: CacheIdentity, tags: readonly string[], loader: () => Promise<NetworkSiteData | null>): Promise<NetworkSiteCacheEntry>;
 }
 
-export interface SiteBrand {
-  readonly name: string;
-  readonly colors: Readonly<Record<string, string>>;
-}
-
 export interface SiteCategory {
   readonly slug: string;
   readonly name: string;
@@ -34,8 +29,6 @@ export interface DeliveryRepository {
   findActiveSitesByExactHostname(hostname: string): Promise<readonly ResolvedSiteContext[]>;
   findPendingActivation(hostname: string, attemptId: string): Promise<boolean>;
   loadNetworkSite(context: ResolvedSiteContext, query: NetworkContentQuery): Promise<NetworkSiteData | null>;
-  /** Brand ringan (1 baris settings, tanpa artikel) untuk /api/network/brand-mark. */
-  loadSiteBrand(context: ResolvedSiteContext): Promise<SiteBrand | null>;
   /** Robots kustom tenant (kolom seo settings, tanpa artikel) untuk /robots.txt. */
   loadSiteRobots(context: ResolvedSiteContext): Promise<readonly string[] | null>;
   /** Daftar kategori aktif org (ringan, untuk nav yang identik di semua halaman). */
