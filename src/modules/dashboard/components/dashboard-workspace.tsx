@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
+  DashboardCollectionsSkeleton,
   DashboardContentSkeleton,
   DashboardFormSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
@@ -807,7 +808,7 @@ export function DashboardWorkspace({
             {view === 'content' ? <ContentManager /> : null}
 
             {view === 'billing' || view === 'moderation' ? null : busy && !data ? (
-              <DashboardContentSkeleton />
+              view === 'dashboard' ? <DashboardContentSkeleton /> : <DashboardCollectionsSkeleton />
             ) : (
               <DataView
                 view={view}

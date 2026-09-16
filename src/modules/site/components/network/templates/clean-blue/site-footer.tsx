@@ -1,11 +1,12 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import type { ComponentType } from 'react';
 import { Rss } from 'lucide-react';
 import { FaFacebookF, FaInstagram, FaTelegram, FaTiktok, FaXTwitter, FaYoutube } from 'react-icons/fa6';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { truncateTagline } from '@/modules/site/components/network/templates/clean-blue/shared';
 import { getSiteCategoryNav } from '@/modules/site/components/network/templates/clean-blue/site-nav';
+import { CleanBlueStoreBadges } from '@/modules/site/components/network/templates/clean-blue/store-badges';
 
 const SOCIAL_ICONS: Readonly<Record<string, ComponentType<{ readonly className?: string }>>> = {
   facebook: FaFacebookF,
@@ -29,26 +30,36 @@ const ABOUT_LINKS = [
 
 export async function CleanBlueFooter({ site }: { readonly site: NetworkSiteData }) {
   const categories = await getSiteCategoryNav(site, 6);
-  const tagline = truncateTagline(site.settings.description);
+  const tagline = site.settings.tagline ?? site.settings.description;
   const year = new Date().getFullYear();
   const socialByName = new Map(Object.entries(site.settings.socialLinks).map(([name, href]) => [name.toLowerCase(), href] as const));
 
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
         <div>
-          <Link href="/" className="grid leading-none no-underline">
-            <strong className="font-sans text-lg font-extrabold tracking-tight text-slate-900">
-              {site.settings.name}
-            </strong>
-            <small className="mt-0.5 font-sans text-[11px] text-slate-600">
-              {tagline}
-            </small>
+          <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
+            <Image
+              unoptimized
+              src={site.settings.logoUrl}
+              alt={site.settings.name}
+              width={72}
+              height={72}
+              className="h-9 w-9 flex-none rounded-xl object-cover ring-1 ring-slate-200"
+            />
+            <span className="grid min-w-0 leading-none">
+              <strong className="truncate font-sans text-lg font-extrabold tracking-tight text-slate-900">
+                {site.settings.name}
+              </strong>
+              <small className="mt-0.5 font-sans text-[11px] text-slate-600">
+                {tagline}
+              </small>
+            </span>
           </Link>
           <p className="m-0 mt-4 max-w-xs font-sans text-sm leading-relaxed text-slate-600">
             {site.settings.description}
           </p>
-          <p className="m-0 mt-5 flex flex-wrap items-center gap-2">
+          <p className="m-0 mt-4 flex flex-wrap items-center gap-2">
             {DEFAULT_SOCIALS.map((name) => {
               const Icon = SOCIAL_ICONS[name] ?? Rss;
               const href = socialByName.get(name);
@@ -112,6 +123,14 @@ export async function CleanBlueFooter({ site }: { readonly site: NetworkSiteData
             ))}
           </ul>
         </nav>
+
+        <div>
+          <h2 className="m-0 font-sans text-sm font-bold text-slate-900">Aplikasi Mobile</h2>
+          <p className="m-0 mt-4 font-sans text-sm leading-relaxed text-slate-600">
+            Dapatkan pengalaman membaca berita yang lebih baik di perangkat mobile Anda.
+          </p>
+          <CleanBlueStoreBadges />
+        </div>
       </div>
 
       <div className="border-t border-slate-200">

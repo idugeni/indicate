@@ -24,6 +24,7 @@ export const siteSettingsSchema = z.object({
   expectedVersion: expectedVersion.optional(),
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(1000),
+  tagline: z.string().trim().min(1).max(120).nullable().optional(),
   logoMediaId: id.nullable().optional(),
   faviconMediaId: id.nullable().optional(),
   defaultMediaId: id.nullable().optional(),

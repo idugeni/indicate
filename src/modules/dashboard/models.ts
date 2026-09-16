@@ -51,6 +51,7 @@ export interface SiteSettingsRecord extends VersionedRecord {
   readonly siteId: string;
   readonly name: string;
   readonly description: string;
+  readonly tagline: string | null;
   readonly colors: Readonly<Record<string, string>>;
   readonly socialLinks: Readonly<Record<string, string>>;
   readonly seo: Readonly<Record<string, unknown>>;

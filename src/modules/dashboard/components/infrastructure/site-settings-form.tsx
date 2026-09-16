@@ -25,6 +25,7 @@ interface SiteSettingsRow {
   readonly siteId: string;
   readonly name: string;
   readonly description: string;
+  readonly tagline: string | null;
   readonly colors: Readonly<Record<string, string>>;
   readonly socialLinks: Readonly<Record<string, string>>;
   readonly seo: Readonly<Record<string, unknown>>;
@@ -58,6 +59,7 @@ function SiteSettingsEditor({
 }) {
   const nameId = useId();
   const descriptionId = useId();
+  const taglineId = useId();
   const templateId = useId();
   const colorsId = useId();
   const logoId = useId();
@@ -69,6 +71,7 @@ function SiteSettingsEditor({
 
   const [name, setName] = useState(settings?.name ?? site.normalizedHostname);
   const [description, setDescription] = useState(settings?.description ?? '');
+  const [tagline, setTagline] = useState(settings?.tagline ?? '');
   const [logoMedia, setLogoMedia] = useState(settings?.logoMediaId ?? '');
   const [faviconMedia, setFaviconMedia] = useState(settings?.faviconMediaId ?? '');
   const [defaultMedia, setDefaultMedia] = useState(settings?.defaultMediaId ?? '');
@@ -115,6 +118,7 @@ function SiteSettingsEditor({
         ...(settings === undefined ? {} : { expectedVersion: settings.version }),
         name: name.trim(),
         description: description.trim(),
+        tagline: tagline.trim() === '' ? null : tagline.trim(),
         logoMediaId: logoMedia.trim() === '' ? null : logoMedia.trim(),
         faviconMediaId: faviconMedia.trim() === '' ? null : faviconMedia.trim(),
         defaultMediaId: defaultMedia.trim() === '' ? null : defaultMedia.trim(),
@@ -156,6 +160,21 @@ function SiteSettingsEditor({
             className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
           />
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor={taglineId} className="font-mono text-xs text-paper-dim">
+          Tagline (slogan)
+        </label>
+        <Input
+          id={taglineId}
+          value={tagline}
+          disabled={isSaving}
+          maxLength={120}
+          placeholder="Slogan pendek kanal — kosong = ikut deskripsi"
+          onChange={(event) => setTagline(event.target.value)}
+          className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+        />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">

@@ -29,8 +29,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  DashboardStatsSkeleton,
-  DashboardTableSkeleton,
+  DashboardCollectionsSkeleton,
+  DashboardContentSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
 import { getEditorConfig, type LookupTables } from '@/modules/dashboard/components/shared/record-editor-config';
@@ -163,12 +163,7 @@ export function DataView({
   );
 
   if (data === null || data === undefined) {
-    return (
-      <div className="space-y-8" aria-busy="true" aria-label="Memuat data modul">
-        <DashboardStatsSkeleton />
-        <DashboardTableSkeleton />
-      </div>
-    );
+    return view === 'dashboard' ? <DashboardContentSkeleton /> : <DashboardCollectionsSkeleton />;
   }
 
   if (view === 'dashboard') {

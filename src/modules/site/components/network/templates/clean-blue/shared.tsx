@@ -74,22 +74,6 @@ export function authorDisplayName(article: NetworkArticle): string {
   return article.authorDisplayName ?? article.authorName ?? article.attribution;
 }
 
-/**
- * Memotong tagline situs pada batas kata agar tidak terpenggal di tengah kata.
- *
- * @param value - Deskripsi situs penuh.
- * @param maxLength - Batas panjang dalam karakter unicode; default 64.
- * @returns Tagline terpotong dengan elipsis bila dipangkas.
- */
-export function truncateTagline(value: string, maxLength = 64): string {
-  const chars = Array.from(value);
-  if (chars.length <= maxLength) return value;
-  const slice = chars.slice(0, maxLength).join('');
-  const lastSpace = slice.lastIndexOf(' ');
-  if (lastSpace > maxLength * 0.5) return `${slice.slice(0, lastSpace).trimEnd()}…`;
-  return `${slice.trimEnd()}…`;
-}
-
 /** Tanggal ringkas id-ID gaya contoh ("14 Sep 2026"). */
 export function formatDate(isoString: string, dateStyle: 'medium' | 'full' = 'medium'): string {
   try {

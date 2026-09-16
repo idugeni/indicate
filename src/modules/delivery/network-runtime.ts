@@ -105,14 +105,14 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
     return tenantHiddenMeta(
       site,
       '/search',
-      query.search === '' ? `Pencarian | ${site.settings.name}` : `Hasil untuk "${query.search}" | ${site.settings.name}`,
+      query.search === '' ? `Pencarian - ${site.settings.name}` : `Hasil untuk "${query.search}" - ${site.settings.name}`,
       site.settings.seoDefaultDescription ?? site.settings.description,
     );
   }
 
   if (query.categorySlug !== undefined) {
     const categoryName = site.articles[0]?.categoryName ?? query.categorySlug;
-    const categoryTitle = `${categoryName} | ${site.settings.seoSiteName ?? site.settings.name}`;
+    const categoryTitle = `${categoryName} - ${site.settings.seoSiteName ?? site.settings.name}`;
     const categoryDescription =
       site.articles.length > 0
         ? `Liputan ${categoryName} pilihan redaksi ${site.settings.name}: ${site.articles.length} laporan terkini, diperbarui mengikuti perkembangan di lapangan.`
@@ -157,7 +157,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
   }
 
   if (query.tag !== undefined) {
-    const tagTitle = `Topik: #${query.tag} | ${site.settings.seoSiteName ?? site.settings.name}`;
+    const tagTitle = `Topik: #${query.tag} - ${site.settings.seoSiteName ?? site.settings.name}`;
     const tagDescription =
       site.articles.length > 0
         ? `Kumpulan ${site.articles.length} laporan bertopik #${query.tag} pilihan redaksi ${site.settings.name}.`

@@ -108,7 +108,7 @@ function homeTitle(siteName: string, siteDescription: string): string {
   const slice = chars.slice(0, 48).join('');
   const lastSpace = slice.lastIndexOf(' ');
   const tagline = `${(lastSpace > 24 ? slice.slice(0, lastSpace) : slice).trimEnd()}…`;
-  return chars.length <= 48 ? `${siteName} — ${siteDescription.trim()}` : `${siteName} — ${tagline}`;
+  return chars.length <= 48 ? `${siteName} - ${siteDescription.trim()}` : `${siteName} - ${tagline}`;
 }
 
 export function buildSeoDocument(site: NetworkSiteData, options: { readonly path: string; readonly article?: NetworkArticle; readonly indexable?: boolean; readonly titleOverride?: string }): SeoDocument {
@@ -116,7 +116,7 @@ export function buildSeoDocument(site: NetworkSiteData, options: { readonly path
   const article = options.article;
   const siteName = site.settings.seoSiteName || site.settings.name;
   const siteDescription = site.settings.seoDefaultDescription || site.settings.description;
-  const title = options.titleOverride ?? (article === undefined ? (site.settings.seoDefaultTitle || homeTitle(siteName, siteDescription)) : `${article.title} | ${siteName}`);
+  const title = options.titleOverride ?? (article === undefined ? (site.settings.seoDefaultTitle || (site.settings.tagline === null ? homeTitle(siteName, siteDescription) : `${siteName} - ${site.settings.tagline}`)) : `${article.title} - ${siteName}`);
   const description = article?.description ?? siteDescription;
   if (!indexable) return { title, description, canonical: null, robots: 'noindex, nofollow', openGraph: null, jsonLd: [] };
   const canonical = absoluteSiteUrl(site.context, options.path);

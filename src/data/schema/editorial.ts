@@ -232,6 +232,7 @@ export const siteSettings = pgTable('site_settings', {
   siteId: uuid('site_id').notNull(),
   name: text('name').notNull(),
   description: text('description').notNull(),
+  tagline: text('tagline'),
   colors: jsonb('colors').$type<Record<string, string>>().default({}).notNull(),
   socialLinks: jsonb('social_links').$type<Record<string, string>>().default({}).notNull(),
   seo: jsonb('seo').$type<Record<string, unknown>>().default({}).notNull(),

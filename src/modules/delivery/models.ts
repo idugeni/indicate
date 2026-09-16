@@ -21,6 +21,7 @@ export type RequestClassification =
 export interface PublicSiteSettings {
   readonly name: string;
   readonly description: string;
+  readonly tagline: string | null;
   readonly seoDefaultTitle: string | null;
   readonly seoDefaultDescription: string | null;
   readonly seoSiteName: string | null;

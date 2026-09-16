@@ -59,7 +59,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
   async loadNetworkSite(context: ResolvedSiteContext, query: NetworkContentQuery): Promise<NetworkSiteData | null> {
     return this.database.transaction(async (transaction) => {
       await this.publicTenant(transaction, context);
-      const settingsRows = await transaction.select({ name: siteSettings.name, description: siteSettings.description, seoDefaultTitle: siteSettings.seoDefaultTitle, seoDefaultDescription: siteSettings.seoDefaultDescription, seoOpenGraphSiteName: siteSettings.seoOpenGraphSiteName, locale: siteSettings.locale, colors: siteSettings.colors, socialLinks: siteSettings.socialLinks, seo: siteSettings.seo, navigation: siteSettings.navigation, logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId, defaultMediaId: siteSettings.defaultMediaId, regionName: regions.name })
+      const settingsRows = await transaction.select({ name: siteSettings.name, description: siteSettings.description, tagline: siteSettings.tagline, seoDefaultTitle: siteSettings.seoDefaultTitle, seoDefaultDescription: siteSettings.seoDefaultDescription, seoOpenGraphSiteName: siteSettings.seoOpenGraphSiteName, locale: siteSettings.locale, colors: siteSettings.colors, socialLinks: siteSettings.socialLinks, seo: siteSettings.seo, navigation: siteSettings.navigation, logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId, defaultMediaId: siteSettings.defaultMediaId, regionName: regions.name })
         .from(sites)
         .innerJoin(domains, and(eq(domains.organizationId, sites.organizationId), eq(domains.id, sites.domainId), eq(domains.status, 'active')))
         .leftJoin(regions, and(eq(regions.organizationId, sites.organizationId), eq(regions.id, sites.regionId)))
@@ -117,7 +117,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         context,
         regionName: settings.regionName,
         settings: {
-          name: settings.name, description: settings.description,
+          name: settings.name, description: settings.description, tagline: settings.tagline,
           seoDefaultTitle: settings.seoDefaultTitle, seoDefaultDescription: settings.seoDefaultDescription,
           seoSiteName: settings.seoOpenGraphSiteName, locale: settings.locale,
           colors: settings.colors, socialLinks: settings.socialLinks,

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 /**
- * Ikon search di navbar: klik → kolom input mengembang ke kiri;
+ * Pil search di navbar: klik → kolom input mengembang ke kiri;
  * submit → menuju halaman /search?q=... Tombol × menutup kembali.
  */
 export function CleanBlueSearchToggle() {
@@ -35,17 +35,16 @@ export function CleanBlueSearchToggle() {
 
   if (!open) {
     return (
-      <Button
+      <button
         type="button"
-        variant="outline"
-        size="icon"
         aria-label="Cari berita"
         aria-expanded={false}
         onClick={show}
-        className="rounded-full border-slate-200 bg-white text-slate-600 hover:text-[#1a5fd0]"
+        className="flex h-10 flex-none items-center gap-2 rounded-full bg-[#1a5fd0] px-4 font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#155cb8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a5fd0]"
       >
         <Search className="h-4 w-4" aria-hidden="true" />
-      </Button>
+        Cari
+      </button>
     );
   }
 
