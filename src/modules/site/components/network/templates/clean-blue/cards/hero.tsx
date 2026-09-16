@@ -4,13 +4,13 @@ import Link from 'next/link';
 import type { NetworkArticle } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/clean-blue/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/clean-blue/ui/author-avatar';
-import { articleImage, authorDisplayName, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/lib/format';
+import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/lib/format';
 import { CleanBlueHeroActions } from '@/modules/site/components/network/templates/clean-blue/cards/hero-actions';
 
 export function CleanBlueHero({ article }: { readonly article: NetworkArticle }) {
   const src = articleImage(article);
   const reading = readingMinutes(article);
-  const authorName = authorDisplayName(article);
+  const publisherName = article.publisherName ?? article.attribution;
 
   return (
     <section className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12" aria-label="Sorotan utama">
@@ -46,10 +46,10 @@ export function CleanBlueHero({ article }: { readonly article: NetworkArticle })
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-4">
           <div className="flex min-w-0 items-center gap-3">
-            <AuthorAvatar name={authorName} avatarUrl={article.authorAvatarUrl} size="md" />
+            <AuthorAvatar name={publisherName} avatarUrl={article.publisherLogoUrl} size="md" />
             <div className="grid min-w-0 gap-1">
               <p className="m-0 truncate font-sans text-sm font-bold text-slate-900">
-                {authorName}
+                {publisherName}
               </p>
               <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} />
             </div>

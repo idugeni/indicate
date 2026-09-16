@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import type { NetworkArticle } from '@/modules/delivery/models';
-import { articleImage, authorDisplayName, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/lib/format';
+import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/lib/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/clean-blue/theme';
 import { ArticleMeta } from '@/modules/site/components/network/templates/clean-blue/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/clean-blue/ui/author-avatar';
@@ -13,6 +13,7 @@ export function CleanBluePickCard({ article, index }: { readonly article: Networ
   const src = articleImage(article);
   const reading = readingMinutes(article);
   const badge = badgeStyle(index);
+  const publisherName = article.publisherName ?? article.attribution;
   return (
     <Card className="flex h-full flex-col overflow-hidden rounded-2xl border-0 bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/60">
       <div className="relative px-3 pt-3">
@@ -46,9 +47,9 @@ export function CleanBluePickCard({ article, index }: { readonly article: Networ
         </CardDescription>
       </CardHeader>
       <CardContent className="flex items-center gap-2.5 px-5 pb-1">
-        <AuthorAvatar name={authorDisplayName(article)} avatarUrl={article.authorAvatarUrl} size="sm" />
+        <AuthorAvatar name={publisherName} avatarUrl={article.publisherLogoUrl} size="sm" />
         <p className="m-0 truncate font-sans text-xs font-bold text-slate-800">
-          {authorDisplayName(article)}
+          {publisherName}
         </p>
       </CardContent>
       <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t border-slate-100 bg-white px-5 py-3.5">
