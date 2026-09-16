@@ -10,19 +10,19 @@
  */
 export const COMPANY_NAME = 'PT Sanca Phena Cakra';
 
-export const COMPANY_EMAIL = '';
+export const COMPANY_EMAIL = 'sancaphenacakra@gmail.com';
 
-export const COMPANY_PHONE = '';
+export const COMPANY_PHONE = '085641159405';
 
 const COMPANY_SOCIALS: Readonly<Record<string, string>> = {
-  facebook: '',
-  instagram: '',
-  x: '',
-  youtube: '',
-  tiktok: '',
-  telegram: '',
-  whatsapp: '',
-  linkedin: '',
+  facebook: 'https://facebook.com/safenca',
+  instagram: 'https://instagram.com/safenca',
+  x: 'https://x.com/safenca',
+  youtube: 'https://youtube.com/@safenca',
+  tiktok: 'https://tiktok.com/@safenca',
+  telegram: 'https://t.me/safenca',
+  whatsapp: 'https://wa.me/6285641159405',
+  linkedin: 'https://linkedin.com/company/safenca',
 };
 
 const CHANNEL_LABELS: Readonly<Record<string, string>> = {
