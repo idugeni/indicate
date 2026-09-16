@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Rss } from 'lucide-react';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { SOCIAL_ORDER, resolveContactChannels } from '@/modules/site/company-contact';
+import { COMPANY_NAME, SOCIAL_ORDER, resolveContactChannels } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { getSiteCategoryNav } from '@/modules/site/components/network/templates/clean-blue/server/site-nav';
 import { CleanBlueStoreBadges } from '@/modules/site/components/network/templates/clean-blue/chrome/store-badges';
@@ -128,11 +128,7 @@ export async function CleanBlueFooter({ site }: { readonly site: NetworkSiteData
       <div className="border-t border-slate-200">
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 py-4 text-center font-sans text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:text-left">
           <p className="m-0">© {year} {site.settings.name}. Semua hak dilindungi.</p>
-          <p className="m-0 flex items-center justify-center gap-4 sm:justify-start">
-            <Link href="/kebijakan-privasi" className="transition-colors hover:text-slate-900">Privasi</Link>
-            <Link href="/syarat-ketentuan" className="transition-colors hover:text-slate-900">Syarat</Link>
-            <Link href="/kontak" className="transition-colors hover:text-slate-900">Kontak</Link>
-          </p>
+          <p className="m-0 font-semibold tracking-wide text-slate-500">{COMPANY_NAME}</p>
         </div>
       </div>
     </footer>
