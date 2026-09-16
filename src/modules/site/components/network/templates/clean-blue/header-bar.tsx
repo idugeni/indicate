@@ -14,10 +14,10 @@ const getMountedSnapshot = (): boolean => true;
 const getMountedServerSnapshot = (): boolean => false;
 
 /**
- * Rangka interaktif header: baris brand/menu/aksi, panel cari mengembang ke
+ * Bar interaktif header: baris brand/menu/aksi, panel cari mengembang ke
  * bawah (in-flow, tidak menindih), dan sidebar seluler.
  */
-export function CleanBlueHeaderChrome({ brand, nav, sidebar }: { readonly brand: ReactNode; readonly nav: ReactNode; readonly sidebar: ReactNode }) {
+export function CleanBlueHeaderBar({ brand, nav, sidebar }: { readonly brand: ReactNode; readonly nav: ReactNode; readonly sidebar: ReactNode }) {
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);

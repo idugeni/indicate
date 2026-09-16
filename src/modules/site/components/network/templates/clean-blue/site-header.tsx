@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { CleanBlueHeaderChrome } from '@/modules/site/components/network/templates/clean-blue/header-chrome';
+import { CleanBlueHeaderBar } from '@/modules/site/components/network/templates/clean-blue/header-bar';
 import { CleanBlueDesktopNav, CleanBlueMobileNav } from '@/modules/site/components/network/templates/clean-blue/site-nav-menu';
 import { getSiteCategoryNav } from '@/modules/site/components/network/templates/clean-blue/site-nav';
 
@@ -20,7 +20,7 @@ export async function CleanBlueHeader({ site, path = '/' }: { readonly site: Net
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/95 backdrop-blur">
-      <CleanBlueHeaderChrome
+      <CleanBlueHeaderBar
         brand={
           <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
             <Image
