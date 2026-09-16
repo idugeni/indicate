@@ -2,7 +2,7 @@ import Form from 'next/form';
 import { Search } from 'lucide-react';
 
 import type { NetworkArticle } from '@/modules/delivery/models';
-import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/picks';
+import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/cards/picks';
 
 export function CleanBlueSearchForm({ query }: { readonly query: string }) {
   return (

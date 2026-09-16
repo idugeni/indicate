@@ -1,45 +1,18 @@
 import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import type { DocSectionItem } from '@/modules/site/components/layout/content';
-import {
-  ArticleCard,
-  CategoryMeta,
-  ChannelAside,
-  EmptyListing,
-  PopularAside,
-  StatusLine,
-  formatCompactViews,
-  formatDate,
-  formatTime,
-  getReadingTime,
-  isLocalImageSrc,
-  normalizeTemplateId,
-  type CardVariant,
-  type ListingProps,
-} from '@/modules/site/components/network/templates/listing-shared';
-import { CleanBlueListing } from '@/modules/site/components/network/templates/clean-blue/index';
-import { CleanBlueArticle } from '@/modules/site/components/network/templates/clean-blue/article';
-import { CleanBlueLegal } from '@/modules/site/components/network/templates/clean-blue/legal';
-import { CleanBlueAbout } from '@/modules/site/components/network/templates/clean-blue/about';
-import { CleanBlueContact } from '@/modules/site/components/network/templates/clean-blue/contact';
-import { CleanBlueSearch } from '@/modules/site/components/network/templates/clean-blue/search-page';
-import { CleanBlueReport } from '@/modules/site/components/network/templates/clean-blue/report-page';
-import { CleanBlueNotFound } from '@/modules/site/components/network/templates/clean-blue/not-found';
+import { normalizeTemplateId } from '@/modules/site/components/network/templates/listing-shared';
+import { CleanBlueListing, type ListingProps } from '@/modules/site/components/network/templates/clean-blue/pages/listing-page';
+import { CleanBlueArticle } from '@/modules/site/components/network/templates/clean-blue/pages/article-page';
+import { CleanBlueLegal } from '@/modules/site/components/network/templates/clean-blue/pages/legal-page';
+import { CleanBlueAbout } from '@/modules/site/components/network/templates/clean-blue/pages/about-page';
+import { CleanBlueContact } from '@/modules/site/components/network/templates/clean-blue/pages/contact-page';
+import { CleanBlueSearch } from '@/modules/site/components/network/templates/clean-blue/pages/search-page';
+import { CleanBlueReport } from '@/modules/site/components/network/templates/clean-blue/pages/report-page';
+import { CleanBlueNotFound } from '@/modules/site/components/network/templates/clean-blue/pages/not-found-page';
 
-// Sinkronisasi single-template: seluruh domain memakai Clean Blue Editorial.
-// Berkas ini tetap menjadi API publik halaman; cabang template lama dihapus.
+export { TEMPLATE_IDS, type TemplateId } from '@/modules/site/components/network/templates/listing-shared';
+export type { ListingProps } from '@/modules/site/components/network/templates/clean-blue/pages/listing-page';
 export {
-  ArticleCard,
-  CategoryMeta,
-  ChannelAside,
-  EmptyListing,
-  PopularAside,
-  StatusLine,
-  formatCompactViews,
-  formatDate,
-  formatTime,
-  getReadingTime,
-  isLocalImageSrc,
-  normalizeTemplateId,
   CleanBlueListing,
   CleanBlueArticle,
   CleanBlueLegal,
@@ -49,20 +22,37 @@ export {
   CleanBlueReport,
   CleanBlueNotFound,
 };
-export { TEMPLATE_IDS, type ListingProps, type TemplateId } from '@/modules/site/components/network/templates/listing-shared';
-export type { CardVariant };
 
-export function ListingPage({
-  site,
-  title,
-  description,
-  path = '/',
-  indexable = true,
-}: ListingProps) {
-  const shared = { site, title, description, path, indexable } as const;
-  return <CleanBlueListing {...shared} />;
+const CLEAN_BLUE_PAGES = {
+  Listing: CleanBlueListing,
+  Article: CleanBlueArticle,
+  Legal: CleanBlueLegal,
+  About: CleanBlueAbout,
+  Contact: CleanBlueContact,
+  Search: CleanBlueSearch,
+  Report: CleanBlueReport,
+  NotFound: CleanBlueNotFound,
+} as const;
+
+function resolvePages(templateId: unknown): typeof CLEAN_BLUE_PAGES {
+  switch (normalizeTemplateId(templateId)) {
+    case 'clean-blue':
+    default:
+      return CLEAN_BLUE_PAGES;
+  }
 }
 
+/**
+ * Dispatcher listing tenant antar-template: route tetap, cabang render bertambah via registry.
+ */
+export function ListingPage({ site, title, description, path = '/', indexable = true }: ListingProps) {
+  const Pages = resolvePages(site.settings.colors.templateId);
+  return <Pages.Listing site={site} title={title} description={description} path={path} indexable={indexable} />;
+}
+
+/**
+ * Dispatcher artikel tenant antar-template.
+ */
 export function ArticlePage({
   site,
   article,
@@ -76,7 +66,8 @@ export function ArticlePage({
   readonly newer?: NetworkArticle | null;
   readonly older?: NetworkArticle | null;
 }) {
-  return <CleanBlueArticle site={site} article={article} related={related} newer={newer} older={older} />;
+  const Pages = resolvePages(site.settings.colors.templateId);
+  return <Pages.Article site={site} article={article} related={related} newer={newer} older={older} />;
 }
 
 export interface LegalPageProps {
@@ -88,16 +79,11 @@ export interface LegalPageProps {
 }
 
 /**
- * Dispatcher dokumen legal antar-template: route tetap, cabang render
- * bertambah di sini saat template kedua lahir.
+ * Dispatcher dokumen legal antar-template: route tetap, cabang render bertambah via registry.
  */
 export function LegalPage(props: LegalPageProps) {
-  const templateId = normalizeTemplateId(props.site.settings.colors.templateId);
-  switch (templateId) {
-    case 'clean-blue':
-    default:
-      return <CleanBlueLegal {...props} />;
-  }
+  const Pages = resolvePages(props.site.settings.colors.templateId);
+  return <Pages.Legal {...props} />;
 }
 
 export interface AboutPageProps {
@@ -108,16 +94,11 @@ export interface AboutPageProps {
 }
 
 /**
- * Dispatcher profil portal antar-template: route tetap, cabang render
- * bertambah di sini saat template kedua lahir.
+ * Dispatcher profil portal antar-template: route tetap, cabang render bertambah via registry.
  */
 export function AboutPage(props: AboutPageProps) {
-  const templateId = normalizeTemplateId(props.site.settings.colors.templateId);
-  switch (templateId) {
-    case 'clean-blue':
-    default:
-      return <CleanBlueAbout {...props} />;
-  }
+  const Pages = resolvePages(props.site.settings.colors.templateId);
+  return <Pages.About {...props} />;
 }
 
 export interface ContactPageProps {
@@ -128,16 +109,11 @@ export interface ContactPageProps {
 }
 
 /**
- * Dispatcher kontak tenant antar-template: route tetap, cabang render
- * bertambah di sini saat template kedua lahir.
+ * Dispatcher kontak tenant antar-template: route tetap, cabang render bertambah via registry.
  */
 export function ContactPage(props: ContactPageProps) {
-  const templateId = normalizeTemplateId(props.site.settings.colors.templateId);
-  switch (templateId) {
-    case 'clean-blue':
-    default:
-      return <CleanBlueContact {...props} />;
-  }
+  const Pages = resolvePages(props.site.settings.colors.templateId);
+  return <Pages.Contact {...props} />;
 }
 
 export interface SearchPageProps {
@@ -146,16 +122,11 @@ export interface SearchPageProps {
 }
 
 /**
- * Dispatcher pencarian tenant antar-template: route tetap, cabang render
- * bertambah di sini saat template kedua lahir.
+ * Dispatcher pencarian tenant antar-template: route tetap, cabang render bertambah via registry.
  */
 export function SearchPage(props: SearchPageProps) {
-  const templateId = normalizeTemplateId(props.site.settings.colors.templateId);
-  switch (templateId) {
-    case 'clean-blue':
-    default:
-      return <CleanBlueSearch {...props} />;
-  }
+  const Pages = resolvePages(props.site.settings.colors.templateId);
+  return <Pages.Search {...props} />;
 }
 
 export interface ReportPageProps {
@@ -164,27 +135,17 @@ export interface ReportPageProps {
 }
 
 /**
- * Dispatcher formulir laporan antar-template: route tetap, cabang render
- * bertambah di sini saat template kedua lahir.
+ * Dispatcher formulir laporan antar-template: route tetap, cabang render bertambah via registry.
  */
 export function ReportPage(props: ReportPageProps) {
-  const templateId = normalizeTemplateId(props.site.settings.colors.templateId);
-  switch (templateId) {
-    case 'clean-blue':
-    default:
-      return <CleanBlueReport {...props} />;
-  }
+  const Pages = resolvePages(props.site.settings.colors.templateId);
+  return <Pages.Report {...props} />;
 }
 
 /**
- * Dispatcher 404 tenant antar-template: route tetap, cabang render
- * bertambah di sini saat template kedua lahir.
+ * Dispatcher 404 tenant antar-template: route tetap, cabang render bertambah via registry.
  */
 export function NotFoundPage({ site }: { readonly site: NetworkSiteData }) {
-  const templateId = normalizeTemplateId(site.settings.colors.templateId);
-  switch (templateId) {
-    case 'clean-blue':
-    default:
-      return <CleanBlueNotFound site={site} />;
-  }
+  const Pages = resolvePages(site.settings.colors.templateId);
+  return <Pages.NotFound site={site} />;
 }

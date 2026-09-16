@@ -5,7 +5,12 @@ function escapeJsonLd(value: unknown): string {
     .replaceAll('&', '\\u0026');
 }
 
-/** JSON-LD mandiri template (paritas struktur SEO bersama, tanpa dependensi modul luar). */
+/**
+ * Render JSON-LD mandiri template tanpa dependensi modul luar.
+ *
+ * @param schemas - Daftar skema SEO siap serialisasi.
+ * @returns Elemen script JSON-LD atau null bila kosong.
+ */
 export function CleanBlueJsonLd({ schemas }: { readonly schemas: readonly Readonly<Record<string, unknown>>[] }) {
   if (schemas.length === 0) return null;
   return (

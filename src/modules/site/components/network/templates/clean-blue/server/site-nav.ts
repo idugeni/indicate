@@ -4,13 +4,14 @@ import { unstable_cache } from 'next/cache';
 
 import { deliveryComposition } from '@/modules/delivery';
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { categoryNav, type CategoryNavItem } from '@/modules/site/components/network/templates/clean-blue/shared';
+import { categoryNav, type CategoryNavItem } from '@/modules/site/components/network/templates/clean-blue/lib/nav';
 
 /**
  * Navigasi kategori yang IDENTIK di semua halaman (header + footer).
- * Sebelumnya diturunkan dari `site.articles` yang terfilter per halaman
- * (artikel = 1 kategori, homepage = 6) sehingga menu beda-beda.
- * Urutan sumber: navigasi eksplisit → kategori DB (cached 600s) → artikel.
+ *
+ * @param site - Data situs tenant aktif.
+ * @param limit - Batas jumlah kanal.
+ * @returns Navigasi eksplisit, kategori DB cached, atau derivasi artikel.
  */
 export async function getSiteCategoryNav(site: NetworkSiteData, limit = 6): Promise<readonly CategoryNavItem[]> {
   if (site.settings.navigation.length > 0) {

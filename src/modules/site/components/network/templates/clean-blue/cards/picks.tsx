@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import type { NetworkArticle } from '@/modules/delivery/models';
-import { CleanBluePickCard } from '@/modules/site/components/network/templates/clean-blue/pick-card';
+import { CleanBluePickCard } from '@/modules/site/components/network/templates/clean-blue/cards/pick-card';
+import { SectionHeading } from '@/modules/site/components/network/templates/clean-blue/ui/section-heading';
 
 export function CleanBluePicks({
   articles,
@@ -21,15 +22,7 @@ export function CleanBluePicks({
   return (
     <section aria-label={heading}>
       <div className="flex items-end justify-between gap-4">
-        <div>
-          <h2 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-slate-900">
-            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1a5fd0]" />
-            {heading}
-          </h2>
-          <p className="m-0 mt-1 font-sans text-sm text-slate-600">
-            {description}
-          </p>
-        </div>
+        <SectionHeading description={description}>{heading}</SectionHeading>
         {linkHref !== null ? (
           <Link
             href={linkHref}

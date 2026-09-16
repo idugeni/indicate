@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { CleanBlueHeader } from '@/modules/site/components/network/templates/clean-blue/site-header';
-import { CleanBlueFooter } from '@/modules/site/components/network/templates/clean-blue/site-footer';
-import { CleanBlueBackToTop } from '@/modules/site/components/network/templates/clean-blue/back-to-top';
+import { CleanBlueHeader } from '@/modules/site/components/network/templates/clean-blue/chrome/site-header';
+import { CleanBlueFooter } from '@/modules/site/components/network/templates/clean-blue/chrome/site-footer';
+import { CleanBlueBackToTop } from '@/modules/site/components/network/templates/clean-blue/chrome/back-to-top';
 
 /**
  * Cangkang tunggal template: skip-link + header + main + footer + back-to-top

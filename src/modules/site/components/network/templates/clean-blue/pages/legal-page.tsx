@@ -1,9 +1,9 @@
 import { buildSeoDocument } from '@/modules/site/seo';
 import { slugify, type DocSectionItem } from '@/modules/site/components/layout/content';
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/shell';
-import { CleanBlueContainer } from '@/modules/site/components/network/templates/clean-blue/shared';
-import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/json-ld';
+import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
+import { CleanBlueContainer } from '@/modules/site/components/network/templates/clean-blue/ui/container';
+import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/seo/json-ld';
 
 export interface CleanBlueLegalProps {
   readonly site: NetworkSiteData;

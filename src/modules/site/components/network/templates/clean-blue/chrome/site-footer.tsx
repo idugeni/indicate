@@ -5,8 +5,8 @@ import { Rss } from 'lucide-react';
 import { FaFacebookF, FaInstagram, FaTelegram, FaTiktok, FaXTwitter, FaYoutube } from 'react-icons/fa6';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { getSiteCategoryNav } from '@/modules/site/components/network/templates/clean-blue/site-nav';
-import { CleanBlueStoreBadges } from '@/modules/site/components/network/templates/clean-blue/store-badges';
+import { getSiteCategoryNav } from '@/modules/site/components/network/templates/clean-blue/server/site-nav';
+import { CleanBlueStoreBadges } from '@/modules/site/components/network/templates/clean-blue/chrome/store-badges';
 
 const SOCIAL_ICONS: Readonly<Record<string, ComponentType<{ readonly className?: string }>>> = {
   facebook: FaFacebookF,

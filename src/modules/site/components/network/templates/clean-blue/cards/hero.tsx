@@ -2,8 +2,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import type { NetworkArticle } from '@/modules/delivery/models';
-import { articleImage, ArticleMeta, AuthorAvatar, authorDisplayName, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
-import { CleanBlueHeroActions } from '@/modules/site/components/network/templates/clean-blue/hero-actions';
+import { ArticleMeta } from '@/modules/site/components/network/templates/clean-blue/ui/article-meta';
+import { AuthorAvatar } from '@/modules/site/components/network/templates/clean-blue/ui/author-avatar';
+import { articleImage, authorDisplayName, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/lib/format';
+import { CleanBlueHeroActions } from '@/modules/site/components/network/templates/clean-blue/cards/hero-actions';
 
 export function CleanBlueHero({ article }: { readonly article: NetworkArticle }) {
   const src = articleImage(article);

@@ -1,7 +1,8 @@
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/shell';
-import { CleanBlueContainer, CleanBlueStatusLine } from '@/modules/site/components/network/templates/clean-blue/shared';
-import { CleanBlueSearchForm, CleanBlueSearchResults } from '@/modules/site/components/network/templates/clean-blue/search';
+import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
+import { CleanBlueContainer } from '@/modules/site/components/network/templates/clean-blue/ui/container';
+import { CleanBlueStatusLine } from '@/modules/site/components/network/templates/clean-blue/ui/status-line';
+import { CleanBlueSearchForm, CleanBlueSearchResults } from '@/modules/site/components/network/templates/clean-blue/pages/search-form';
 
 export interface CleanBlueSearchProps {
   readonly site: NetworkSiteData;

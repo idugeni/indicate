@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import type { NetworkArticle } from '@/modules/delivery/models';
-import { formatDate } from '@/modules/site/components/network/templates/clean-blue/shared';
+import { formatDate } from '@/modules/site/components/network/templates/clean-blue/lib/format';
 
 const ROTATE_MS = 5000;
 const MAX_ITEMS = 5;

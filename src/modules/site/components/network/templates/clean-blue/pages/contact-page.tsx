@@ -1,8 +1,9 @@
 import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/shell';
-import { CleanBlueContainer, CleanBlueEmpty } from '@/modules/site/components/network/templates/clean-blue/shared';
-import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/json-ld';
+import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
+import { CleanBlueContainer } from '@/modules/site/components/network/templates/clean-blue/ui/container';
+import { CleanBlueEmpty } from '@/modules/site/components/network/templates/clean-blue/ui/empty';
+import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/seo/json-ld';
 
 export interface CleanBlueContactProps {
   readonly site: NetworkSiteData;

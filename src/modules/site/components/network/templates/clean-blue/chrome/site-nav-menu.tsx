@@ -9,7 +9,7 @@ import {
   DropdownMenuLinkItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { CategoryNavItem } from '@/modules/site/components/network/templates/clean-blue/shared';
+import type { CategoryNavItem } from '@/modules/site/components/network/templates/clean-blue/lib/nav';
 
 const MAX_VISIBLE_CATEGORIES = 5;
 

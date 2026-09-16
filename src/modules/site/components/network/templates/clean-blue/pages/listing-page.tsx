@@ -1,17 +1,23 @@
 import { buildSeoDocument } from '@/modules/site/seo';
-import {
-  CleanBlueContainer,
-  CleanBlueEmpty,
-  CleanBlueStatusLine,
-  type ListingProps,
-} from '@/modules/site/components/network/templates/clean-blue/shared';
-import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/json-ld';
-import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/shell';
-import { CleanBlueTicker } from '@/modules/site/components/network/templates/clean-blue/ticker';
-import { CleanBlueHero } from '@/modules/site/components/network/templates/clean-blue/hero';
-import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/picks';
-import { CleanBlueLoadMore } from '@/modules/site/components/network/templates/clean-blue/load-more';
-import { CleanBlueNewsletter } from '@/modules/site/components/network/templates/clean-blue/newsletter';
+import type { NetworkSiteData } from '@/modules/delivery/models';
+import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
+import { CleanBlueTicker } from '@/modules/site/components/network/templates/clean-blue/cards/ticker';
+import { CleanBlueHero } from '@/modules/site/components/network/templates/clean-blue/cards/hero';
+import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/cards/picks';
+import { CleanBlueLoadMore } from '@/modules/site/components/network/templates/clean-blue/cards/load-more';
+import { CleanBlueNewsletter } from '@/modules/site/components/network/templates/clean-blue/cards/newsletter';
+import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/seo/json-ld';
+import { CleanBlueContainer } from '@/modules/site/components/network/templates/clean-blue/ui/container';
+import { CleanBlueEmpty } from '@/modules/site/components/network/templates/clean-blue/ui/empty';
+import { CleanBlueStatusLine } from '@/modules/site/components/network/templates/clean-blue/ui/status-line';
+
+export interface ListingProps {
+  readonly site: NetworkSiteData;
+  readonly title: string;
+  readonly description?: string | undefined;
+  readonly path?: string | undefined;
+  readonly indexable?: boolean | undefined;
+}
 
 /**
  * Clean Blue Editorial — template full mandiri: header, ticker, hero, kartu

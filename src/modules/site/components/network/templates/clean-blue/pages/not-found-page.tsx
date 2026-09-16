@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/shell';
+import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
 
 export function CleanBlueNotFound({ site }: { readonly site: NetworkSiteData }) {
   return (

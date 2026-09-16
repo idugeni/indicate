@@ -5,13 +5,13 @@ import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag } 
 import { buildSeoDocument } from '@/modules/site/seo';
 import { parseArticleBody } from '@/modules/site/article-markup';
 import { ArticleBodyView } from '@/modules/site/components/article-body-view';
-import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/json-ld';
-import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/shell';
-import { CleanBlueShareButtons } from '@/modules/site/components/network/templates/clean-blue/share-buttons';
-import { CleanBlueViewBeacon } from '@/modules/site/components/network/templates/clean-blue/view-beacon';
+import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/seo/json-ld';
+import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
+import { CleanBlueShareButtons } from '@/modules/site/components/network/templates/clean-blue/cards/share-buttons';
+import { CleanBlueViewBeacon } from '@/modules/site/components/network/templates/clean-blue/cards/view-beacon';
 import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
-import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/picks';
-import { articleImage, authorDisplayName, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/shared';
+import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/cards/picks';
+import { articleImage, authorDisplayName, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/lib/format';
 
 export function CleanBlueArticle({
   site,

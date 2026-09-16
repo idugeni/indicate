@@ -2,9 +2,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { CleanBlueHeaderBar } from '@/modules/site/components/network/templates/clean-blue/header-bar';
-import { CleanBlueDesktopNav, CleanBlueMobileNav } from '@/modules/site/components/network/templates/clean-blue/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/templates/clean-blue/site-nav';
+import { CleanBlueHeaderBar } from '@/modules/site/components/network/templates/clean-blue/chrome/header-bar';
+import { CleanBlueDesktopNav, CleanBlueMobileNav } from '@/modules/site/components/network/templates/clean-blue/chrome/site-nav-menu';
+import { getSiteCategoryNav } from '@/modules/site/components/network/templates/clean-blue/server/site-nav';
 
 /**
  * Navbar 3 kolom: [brand secukupnya | menu fleksibel | aksi secukupnya].
