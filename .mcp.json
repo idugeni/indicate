@@ -63,6 +63,22 @@
         "@jason.today/webmcp@latest",
         "--mcp"
       ]
+    },
+    "resend": {
+      "type": "http",
+      "url": "https://mcp.resend.com/mcp"
+    },
+    "canva": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote@latest",
+        "https://mcp.canva.com/mcp",
+        "--host",
+        "127.0.0.1",
+        "--auth-timeout",
+        "180"
+      ]
     }
   }
 }
