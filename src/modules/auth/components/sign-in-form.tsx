@@ -7,6 +7,7 @@ import { ArrowRight } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
+import { TurnstileField, isTurnstileConfigured } from '@/modules/auth/components/turnstile-field';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
 
 /** Client sign-in leaf; parent page stays a Server Component. */
@@ -16,6 +17,8 @@ export function SignInForm() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [challengeNonce, setChallengeNonce] = useState(0);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -28,11 +31,23 @@ export function SignInForm() {
       return;
     }
 
+    if (isTurnstileConfigured() && captchaToken === null) {
+      setError('Selesaikan verifikasi keamanan terlebih dahulu.');
+      setBusy(false);
+      return;
+    }
+
     try {
       const supabase = createBrowserSupabaseClient();
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+        ...(captchaToken === null ? {} : { options: { captchaToken } }),
+      });
       if (error) {
         setError('Kredensial tidak valid atau akun belum diverifikasi.');
+        setCaptchaToken(null);
+        setChallengeNonce((value) => value + 1);
         setBusy(false);
         return;
       }
@@ -40,6 +55,8 @@ export function SignInForm() {
       router.refresh();
     } catch {
       setError('Terjadi gangguan jaringan saat mencoba masuk.');
+      setCaptchaToken(null);
+      setChallengeNonce((value) => value + 1);
       setBusy(false);
     }
   };
@@ -71,6 +88,8 @@ export function SignInForm() {
         <AuthSubmit busy={busy} busyLabel="Verifikasi Sesi..." icon={ArrowRight}>
           Masuk ke Dashboard
         </AuthSubmit>
+
+        <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
       </form>
     </>
   );

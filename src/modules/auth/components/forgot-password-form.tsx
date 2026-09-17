@@ -5,6 +5,7 @@ import { Send } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
+import { TurnstileField, isTurnstileConfigured } from '@/modules/auth/components/turnstile-field';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
 
 /** Client recovery leaf; parent page stays a Server Component. */
@@ -13,6 +14,8 @@ export function ForgotPasswordForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [challengeNonce, setChallengeNonce] = useState(0);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -23,21 +26,31 @@ export function ForgotPasswordForm() {
       setBusy(false);
       return;
     }
+    if (isTurnstileConfigured() && captchaToken === null) {
+      setError('Selesaikan verifikasi keamanan terlebih dahulu.');
+      setBusy(false);
+      return;
+    }
 
     try {
       const supabase = createBrowserSupabaseClient();
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${siteUrl}/auth/callback?next=%2Fupdate-password`,
+        ...(captchaToken === null ? {} : { captchaToken }),
       });
       if (error) {
         setError(error.message);
+        setCaptchaToken(null);
+        setChallengeNonce((value) => value + 1);
         setBusy(false);
         return;
       }
       setSent(true);
     } catch {
       setError('Terjadi gangguan jaringan saat mengirim tautan pemulihan.');
+      setCaptchaToken(null);
+      setChallengeNonce((value) => value + 1);
       setBusy(false);
     }
   };
@@ -69,6 +82,7 @@ export function ForgotPasswordForm() {
       <AuthSubmit busy={busy} busyLabel="Mengirim..." icon={Send}>
         Kirim Tautan Pemulihan
       </AuthSubmit>
+      <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
     </form>
   );
 }
