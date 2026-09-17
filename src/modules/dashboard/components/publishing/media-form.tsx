@@ -6,6 +6,27 @@ import { SectionCard } from '@/modules/dashboard/components/shared/section-card'
 import { Input } from '@/components/ui/input';
 import { formatBytes, prepareImageUpload } from '@/modules/publishing/compress-image';
 
+// Cerminan cepat media_policy.allowed_mime_types agar format tak didukung
+// ditolak dengan pesan jelas sebelum reservasi server.
+const SUPPORTED_MEDIA_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+  'image/x-icon',
+]);
+
+const HEIC_TYPES = new Set(['image/heic', 'image/heif']);
+
+function isHeicFile(file: File): boolean {
+  return HEIC_TYPES.has(file.type) || /\.hei[cf]$/iu.test(file.name);
+}
+
+function heicStem(filename: string): string {
+  const stem = filename.replace(/\.[a-z0-9]{1,10}$/iu, '');
+  return stem === '' ? 'file' : stem;
+}
+
 export function MediaForm({
   data,
   command,
@@ -39,12 +60,36 @@ export function MediaForm({
 
     startUploadTransition(async () => {
       try {
+        let source = file;
+        if (isHeicFile(file)) {
+          setUploadStatus('Mengonversi HEIC ke JPEG di perangkat…');
+          let converted: Blob | Blob[];
+          try {
+            const { default: heic2any } = await import('heic2any');
+            converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
+          } catch {
+            setUploadStatus('Gagal mengonversi HEIC. Coba simpan ulang foto sebagai JPG dari galeri lalu unggah lagi.');
+            return;
+          }
+          const first = Array.isArray(converted) ? converted[0] : converted;
+          if (!(first instanceof Blob) || first.size === 0) {
+            setUploadStatus('Gagal mengonversi HEIC. Coba simpan ulang foto sebagai JPG dari galeri lalu unggah lagi.');
+            return;
+          }
+          source = new File([first], `${heicStem(file.name)}.jpg`, { type: 'image/jpeg' });
+        }
         setUploadStatus('Menganalisis & mengompresi gambar di perangkat…');
-        const prepared = await prepareImageUpload(file);
+        const prepared = await prepareImageUpload(source);
+        if (!SUPPORTED_MEDIA_TYPES.has(prepared.mediaType)) {
+          setUploadStatus(
+            `Format ${prepared.mediaType === '' ? 'berkas ini' : prepared.mediaType} belum didukung. Gunakan JPEG, PNG, WebP, AVIF, atau ICO.`,
+          );
+          return;
+        }
         const checksum = prepared.checksum;
         if (prepared.mode === 'compressed') {
           setUploadStatus(
-            `Terkompresi ${formatBytes(file.size)} → ${formatBytes(prepared.sizeBytes)} (WebP). Membuat reservasi penyimpanan bucket...`,
+            `Terkompresi ${formatBytes(source.size)} → ${formatBytes(prepared.sizeBytes)} (WebP). Membuat reservasi penyimpanan bucket...`,
           );
         } else {
           setUploadStatus('Gambar sudah efisien, lanjut tanpa kompresi ulang...');
@@ -124,7 +169,11 @@ export function MediaForm({
         }
 
         setUploadStatus('Menyelesaikan verifikasi manifest aset...');
-        await command('media.complete', thumbPayload === undefined ? { reservationId: reserved.reservationId } : { reservationId: reserved.reservationId, thumb: thumbPayload });
+        const completed = await command('media.complete', thumbPayload === undefined ? { reservationId: reserved.reservationId } : { reservationId: reserved.reservationId, thumb: thumbPayload });
+        if (completed === null) {
+          setUploadStatus('Verifikasi aset gagal. Reservasi mungkin kedaluwarsa atau berkas tidak cocok — ulangi unggahan.');
+          return;
+        }
 
         setUploadStatus('Aset media berhasil diverifikasi dan disimpan.');
         form.reset();
@@ -141,13 +190,13 @@ export function MediaForm({
         <form onSubmit={handleUpload} className="space-y-3.5">
           <div className="space-y-1.5">
             <label htmlFor={fileInputId} className="font-mono text-xs text-paper-dim">
-              Pilih Berkas Gambar (JPEG, PNG, WebP, AVIF, ICO)
+              Pilih Berkas Gambar (JPEG, PNG, WebP, AVIF, ICO, HEIC)
             </label>
             <Input
               id={fileInputId}
               name="file"
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/avif,image/x-icon,.ico"
+              accept="image/jpeg,image/png,image/webp,image/avif,image/x-icon,.ico,.heic,.heif"
               required
               disabled={isUploading}
               className="h-9 rounded border-hairline-strong bg-bg p-1 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass file:mr-2 file:rounded file:border-0 file:bg-bg-raised-2 file:px-2 file:py-1 file:font-mono file:text-[11px] file:text-paper"

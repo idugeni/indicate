@@ -342,8 +342,8 @@ export function EditorialForm({
                   <ArticleBodyView
                     blocks={previewBlocks}
                     images={previewImages}
-                    paragraphClassName="m-0 font-sans text-xs leading-relaxed text-paper"
-                    listClassName="m-0 space-y-1 pl-5 font-sans text-xs leading-relaxed text-paper [list-style:disc]"
+                    paragraphClassName="font-sans text-xs leading-relaxed text-paper"
+                    listClassName="space-y-1 pl-5 font-sans text-xs leading-relaxed text-paper [list-style:disc]"
                   />
                 </div>
               </div>

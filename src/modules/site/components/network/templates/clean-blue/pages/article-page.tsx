@@ -68,11 +68,11 @@ export function CleanBlueArticle({
           <h1 className="m-0 mt-3 block w-full font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl">
             {article.title}
           </h1>
-          <p className="m-0 mt-4 font-sans text-[17px] leading-relaxed text-slate-600">
+          <p className="m-0 mt-4 max-w-3xl border-l-[3px] border-[#1a5fd0] pl-4 font-sans text-[19px] font-medium leading-[1.7] text-slate-700">
             {article.description}
           </p>
 
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-y border-slate-200 py-4">
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 sm:px-5">
             <p className="m-0 flex min-w-0 items-center gap-3">
               <span aria-hidden="true" className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-[#1a5fd0]/10 font-sans text-base font-bold text-[#1a5fd0]">
                 {bylineInitial}
@@ -116,8 +116,8 @@ export function CleanBlueArticle({
             <ArticleBodyView
               blocks={blocks}
               images={gallery}
-              paragraphClassName="m-0 text-justify font-sans text-[17px] leading-[1.85] text-slate-800"
-              listClassName="m-0 space-y-2 pl-6 font-sans text-[17px] leading-[1.85] text-slate-800 [list-style:disc]"
+              paragraphClassName="text-justify font-sans text-[17px] leading-[1.85] text-slate-800"
+              listClassName="space-y-2 pl-6 font-sans text-[17px] leading-[1.85] text-slate-800 [list-style:disc]"
               renderFigure={(image) => (
                 <figure className="m-0 overflow-hidden rounded-2xl shadow-sm">
                   <Image
