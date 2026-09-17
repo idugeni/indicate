@@ -52,7 +52,7 @@ export interface NetworkArticle {
   /** Logo publisher dari `contacts.logoUrl`; null bila belum disematkan (SEO memakai logo situs). */
   readonly publisherLogoUrl: string | null;
   readonly publisherCity: string | null;
-  /** Bio penerbit; null hingga sumber bio penerbit tersedia. */
+  /** Bio penerbit: `contacts.bio` bila diisi, bila tidak pakai `DEFAULT_PUBLISHER_BIO`. */
   readonly publisherBio: string | null;
   readonly authorBio: string | null;
   readonly authorAvatarUrl: string | null;
@@ -75,6 +75,16 @@ export interface ArticleGalleryImage {
   readonly url: string;
   readonly thumbnailUrl: string | null;
 }
+
+/**
+ * Bio humas general default untuk seluruh penerbit.
+ *
+ * @remarks
+ * Dipakai bila `contacts.bio` penerbit kosong; override per penerbit tetap
+ * dimungkinkan lewat `contacts.bio`.
+ */
+export const DEFAULT_PUBLISHER_BIO =
+  'Garda depan pelayanan informasi publik yang menyajikan kabar kegiatan, program kerja, capaian kinerja, dan pengumuman secara akurat, cepat, dan terverifikasi. Setiap materi disusun, ditelaah, dan disunting tim kehumasan sebelum diterbitkan sebagai wujud komitmen terhadap transparansi, akuntabilitas, dan kepercayaan masyarakat. Kritik, saran, serta kebutuhan klarifikasi dilayani melalui kanal kontak resmi yang tersedia.';
 
 export interface NetworkSiteData {
   readonly context: ResolvedSiteContext;

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { ListingPage } from '@/modules/site/components/network/network-listing';
+import { ChannelPage } from '@/modules/site/components/network/network-listing';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 type Props = {
@@ -22,5 +22,5 @@ export default async function TagPage({ params }: Props) {
   const clean = decodeURIComponent(tag).trim().toLowerCase();
   if (clean === '') notFound();
   const site = await resolveNetworkSite({ tag: clean }, `/tags/${clean}`);
-  return <ListingPage site={site} title={`Topik: #${clean}`} path={`/tags/${clean}`} />;
+  return <ChannelPage site={site} kicker="Topik" title={`#${clean}`} path={`/tags/${clean}`} />;
 }

@@ -13,7 +13,7 @@ export function CleanBluePickCard({ article, index }: { readonly article: Networ
   const src = articleImage(article);
   const reading = readingMinutes(article);
   const badge = badgeStyle(index);
-  const publisherName = article.publisherName ?? article.attribution;
+  const publisherName = article.attribution;
   return (
     <Card className="flex h-full flex-col overflow-hidden rounded-2xl border-0 bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/60">
       <div className="relative px-3 pt-3">
@@ -29,12 +29,14 @@ export function CleanBluePickCard({ article, index }: { readonly article: Networ
             sizes="(max-width: 768px) 100vw, 33vw"
           />
         </div>
-        <span
-          className="absolute left-6 top-6 inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold shadow-md"
-          style={badge}
-        >
-          {article.categoryName ?? 'Berita'}
-        </span>
+        {article.categoryName === null ? null : (
+          <span
+            className="absolute left-6 top-6 inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold shadow-md"
+            style={badge}
+          >
+            {article.categoryName}
+          </span>
+        )}
       </div>
       <CardHeader className="flex-1 px-5 pt-4">
         <CardTitle className="line-clamp-2 font-sans text-[17px] font-bold leading-snug tracking-tight text-slate-900">

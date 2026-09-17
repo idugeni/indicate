@@ -46,7 +46,7 @@
       },
       "cloudflare-api": {
         "type": "remote",
-        "url": "https://mcp.cloudflare.com/mcp?codemode=search_and_execute"
+        "url": "https://mcp.cloudflare.com/mcp"
       },
       "sequential-thinking": {
         "type": "local",

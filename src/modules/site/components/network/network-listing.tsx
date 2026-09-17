@@ -9,6 +9,7 @@ import { CleanBlueContact } from '@/modules/site/components/network/templates/cl
 import { CleanBlueSearch } from '@/modules/site/components/network/templates/clean-blue/pages/search-page';
 import { CleanBlueReport } from '@/modules/site/components/network/templates/clean-blue/pages/report-page';
 import { CleanBlueNotFound } from '@/modules/site/components/network/templates/clean-blue/pages/not-found-page';
+import { CleanBlueChannel, type CleanBlueChannelProps } from '@/modules/site/components/network/templates/clean-blue/pages/channel-page';
 
 export { TEMPLATE_IDS, type TemplateId } from '@/modules/site/components/network/templates/listing-shared';
 export type { ListingProps } from '@/modules/site/components/network/templates/clean-blue/pages/listing-page';
@@ -21,7 +22,9 @@ export {
   CleanBlueSearch,
   CleanBlueReport,
   CleanBlueNotFound,
+  CleanBlueChannel,
 };
+export type { CleanBlueChannelProps };
 
 const CLEAN_BLUE_PAGES = {
   Listing: CleanBlueListing,
@@ -32,6 +35,7 @@ const CLEAN_BLUE_PAGES = {
   Search: CleanBlueSearch,
   Report: CleanBlueReport,
   NotFound: CleanBlueNotFound,
+  Channel: CleanBlueChannel,
 } as const;
 
 function resolvePages(templateId: unknown): typeof CLEAN_BLUE_PAGES {
@@ -148,4 +152,13 @@ export function ReportPage(props: ReportPageProps) {
 export function NotFoundPage({ site }: { readonly site: NetworkSiteData }) {
   const Pages = resolvePages(site.settings.colors.templateId);
   return <Pages.NotFound site={site} />;
+}
+
+/**
+ * Dispatcher halaman kanal (kategori/tag) antar-template: pita identitas +
+ * grid kartu, tanpa hero/ticker beranda.
+ */
+export function ChannelPage(props: CleanBlueChannelProps) {
+  const Pages = resolvePages(props.site.settings.colors.templateId);
+  return <Pages.Channel {...props} />;
 }

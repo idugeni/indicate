@@ -11,7 +11,7 @@ import { CleanBlueShareButtons } from '@/modules/site/components/network/templat
 import { CleanBlueViewBeacon } from '@/modules/site/components/network/templates/clean-blue/cards/view-beacon';
 import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/cards/picks';
-import { articleImage, authorDisplayName, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/lib/format';
+import { articleImage, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/lib/format';
 
 export function CleanBlueArticle({
   site,
@@ -29,8 +29,8 @@ export function CleanBlueArticle({
   const seo = buildSeoDocument(site, { path: `/${article.slug}`, article });
   const src = articleImage(article);
   const reading = readingMinutes(article);
-  const authorName = authorDisplayName(article);
-  const authorInitial = authorName.trim().slice(0, 1).toUpperCase();
+  const bylineName = article.attribution;
+  const bylineInitial = bylineName.trim().slice(0, 1).toUpperCase();
   const canonical = `https://${site.context.normalizedHostname}/${article.slug}`;
   const blocks = parseArticleBody(article.body);
   const gallery = article.gallery.map((image, position) => ({ url: image.url, alt: `${article.title} (gambar ${position + 1})` }));
@@ -59,10 +59,12 @@ export function CleanBlueArticle({
             <span className="max-w-xs truncate text-slate-900" aria-current="page">{article.title}</span>
           </nav>
 
-          <p className="m-0 mt-6 flex items-center gap-2 font-sans text-sm font-semibold text-[#1a5fd0]">
-            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1a5fd0]" />
-            {article.categoryName ?? 'Berita Utama'}
-          </p>
+          {article.categoryName === null ? null : (
+            <p className="m-0 mt-6 flex items-center gap-2 font-sans text-sm font-semibold text-[#1a5fd0]">
+              <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1a5fd0]" />
+              {article.categoryName}
+            </p>
+          )}
           <h1 className="m-0 mt-3 block w-full font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl">
             {article.title}
           </h1>
@@ -73,11 +75,11 @@ export function CleanBlueArticle({
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-y border-slate-200 py-4">
             <p className="m-0 flex min-w-0 items-center gap-3">
               <span aria-hidden="true" className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-[#1a5fd0]/10 font-sans text-base font-bold text-[#1a5fd0]">
-                {authorInitial}
+                {bylineInitial}
               </span>
               <span className="min-w-0">
                 <span className="block truncate font-sans text-sm font-bold text-slate-900">
-                  {authorName}
+                  {bylineName}
                 </span>
                 <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-sans text-xs tabular-nums text-slate-600">
                   <span className="inline-flex items-center gap-1">
@@ -148,17 +150,26 @@ export function CleanBlueArticle({
 
           <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
             <div className="flex items-center gap-4">
-              <Image
-                unoptimized
-                src={article.publisherLogoUrl ?? site.settings.logoUrl}
-                alt={`Logo ${article.publisherName ?? article.attribution}`}
-                width={56}
-                height={56}
-                className="h-14 w-14 flex-none rounded-xl border border-slate-200 object-cover"
-              />
+              {article.publisherLogoUrl ? (
+                <Image
+                  unoptimized
+                  src={article.publisherLogoUrl}
+                  alt={`Logo ${article.attribution}`}
+                  width={56}
+                  height={56}
+                  className="h-14 w-14 flex-none rounded-xl border border-slate-200 object-cover"
+                />
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="flex h-14 w-14 flex-none items-center justify-center rounded-xl bg-[#1a5fd0]/10 font-sans text-xl font-bold text-[#1a5fd0]"
+                >
+                  {article.attribution.trim().slice(0, 1).toUpperCase()}
+                </span>
+              )}
               <div className="min-w-0">
                 <p className="m-0 flex min-w-0 items-center gap-1.5 truncate font-sans text-base font-bold text-slate-900">
-                  <span className="truncate">{article.publisherName ?? article.attribution}</span>
+                  <span className="truncate">{article.attribution}</span>
                   {article.publisherVerified ? (
                     <BadgeCheck className="h-4 w-4 flex-none text-[#1a5fd0]" aria-label="Penerbit terverifikasi" />
                   ) : null}

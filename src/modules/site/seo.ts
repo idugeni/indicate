@@ -143,7 +143,9 @@ export function buildSeoDocument(site: NetworkSiteData, options: { readonly path
       image: [image], inLanguage: 'id', isAccessibleForFree: true, wordCount,
       ...(article.categoryName === null ? {} : { articleSection: article.categoryName }),
       ...(article.tags.length === 0 ? {} : { keywords: article.tags.join(', ') }),
-      author: { '@type': 'Person', name: article.authorDisplayName ?? article.authorName ?? article.attribution },
+      ...((article.authorDisplayName ?? article.authorName) === null
+        ? {}
+        : { author: { '@type': 'Person', name: article.authorDisplayName ?? article.authorName ?? article.attribution } }),
       publisher: { '@type': 'Organization', name: publisher, logo: { '@type': 'ImageObject', url: publisherLogo } },
       isPartOf: { '@id': websiteId },
     });

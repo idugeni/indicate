@@ -19,8 +19,8 @@ bilik7wacana, jaring9perkara) dibeli + dibuatkan zona + NS diganti malam
 dibuatkan zona + NS diganti malam yang sama; delegasi 36/36 terverifikasi
 22:18 WIB, CF 36/36 `active`. Batch keempat 14 domain (transpas s.d.
 nalarharian, ID 1080206–1080219, dibeli 2026-09-16) dibuatkan zona + NS
-diganti malam yang sama; CF `pending` menunggu propagasi. Kolom Tenant
-diisi hanya dari penunjukan eksplisit pemilik.
+diganti malam yang sama; delegasi 14/14 terverifikasi + CF 14/14 `active`
+23:36 WIB. Kolom Tenant diisi hanya dari penunjukan eksplisit pemilik.
 
 | Domain | Terdaftar | Kedaluwarsa | IDW | CF | Tenant? |
 |---|---|---|---|---|---|
@@ -30,12 +30,12 @@ diisi hanya dari penunjukan eksplisit pemilik.
 | bentangkata.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | bentara9.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | berandafakta.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
-| berandafakta.my.id | 2026-09-16 | 2027-09-16 | Aktif | pending | — |
+| berandafakta.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | berandainvestigasi.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | bidik24perkara.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | bidikan.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | bilik7wacana.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
-| cakrawalakata.web.id | 2026-09-16 | 2027-09-16 | Aktif | pending | — |
+| cakrawalakata.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | cermin24berita.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | denyutpublik.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | faktura.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
@@ -44,7 +44,7 @@ diisi hanya dari penunjukan eksplisit pemilik.
 | gerbanginvestigasi.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | gerbangkata.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | guratfakta.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
-| guratfakta.my.id | 2026-09-16 | 2027-09-16 | Aktif | pending | — |
+| guratfakta.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | independensi.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | jajakperkara.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | jalurperkara.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
@@ -52,7 +52,7 @@ diisi hanya dari penunjukan eksplisit pemilik.
 | jejakkebenaran.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | jejakwacana.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | jendelapublik.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
-| jurnalpas.web.id | 2026-09-16 | 2027-09-16 | Aktif | pending | — |
+| jurnalpas.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | keberimbangan.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | kelanaberita.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | kepulauanraya.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
@@ -61,19 +61,19 @@ diisi hanya dari penunjukan eksplisit pemilik.
 | larasfakta.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | larikberita.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | lensaperistiwa.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
-| lintaskarya.my.id | 2026-09-16 | 2027-09-16 | Aktif | pending | — |
+| lintaskarya.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | lintasperbatasan.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | lontarpublik.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | metroinvestigasi.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | muarafakta.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
-| nalarharian.my.id | 2026-09-16 | 2027-09-16 | Aktif | pending | — |
+| nalarharian.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | nawalaperkara.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | nusantaramerdeka.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | objektivitas.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | panggungkata.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
-| panggungkata.biz.id | 2026-09-16 | 2027-09-16 | Aktif | pending | — |
-| pastipas.biz.id | 2026-09-16 | 2027-09-16 | Aktif | pending | — |
-| pendarkata.biz.id | 2026-09-16 | 2027-09-16 | Aktif | pending | — |
+| panggungkata.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
+| pastipas.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
+| pendarkata.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | pendarkata.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | penyanggafakta.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | persmerdeka.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
@@ -85,7 +85,7 @@ diisi hanya dari penunjukan eksplisit pemilik.
 | prabawacana.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | rantau.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | ranumcerita.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
-| ranumcerita.my.id | 2026-09-16 | 2027-09-16 | Aktif | pending | — |
+| ranumcerita.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | rekamwacana.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | rentetan.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | rona24.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
@@ -101,11 +101,11 @@ diisi hanya dari penunjukan eksplisit pemilik.
 | sinarperkara.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | sorotwacana.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | suarabening.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
-| suarabening.web.id | 2026-09-16 | 2027-09-16 | Aktif | pending | — |
-| suarabentara.biz.id | 2026-09-16 | 2027-09-16 | Aktif | pending | — |
+| suarabening.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
+| suarabentara.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | suarakepulauan.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | sulukfakta.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
-| takarwacana.biz.id | 2026-09-16 | 2027-09-16 | Aktif | pending | — |
+| takarwacana.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | takarwacana.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | tandas.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | telusurfakta.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
@@ -114,7 +114,7 @@ diisi hanya dari penunjukan eksplisit pemilik.
 | timbang7perkara.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | timbangan.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | titik9wacana.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
-| transpas.web.id | 2026-09-16 | 2027-09-16 | Aktif | pending | — |
+| transpas.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | validitas.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | wargamerdeka.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | wartaria.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |

@@ -10,7 +10,7 @@ import { CleanBlueHeroActions } from '@/modules/site/components/network/template
 export function CleanBlueHero({ article }: { readonly article: NetworkArticle }) {
   const src = articleImage(article);
   const reading = readingMinutes(article);
-  const publisherName = article.publisherName ?? article.attribution;
+  const publisherName = article.attribution;
 
   return (
     <section className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12" aria-label="Sorotan utama">
@@ -32,10 +32,12 @@ export function CleanBlueHero({ article }: { readonly article: NetworkArticle })
       </Link>
 
       <div className="min-w-0">
-        <p className="m-0 flex items-center gap-2 font-sans text-sm font-semibold text-[#1a5fd0]">
-          <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1a5fd0]" />
-          {article.categoryName ?? 'Nasional'}
-        </p>
+        {article.categoryName === null ? null : (
+          <p className="m-0 flex items-center gap-2 font-sans text-sm font-semibold text-[#1a5fd0]">
+            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1a5fd0]" />
+            {article.categoryName}
+          </p>
+        )}
         <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl">
           <Link href={`/${article.slug}`} className="hover:text-[#1a5fd0]">
             {article.title}
