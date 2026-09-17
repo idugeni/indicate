@@ -61,7 +61,7 @@ export function ForgotPasswordForm() {
         <span className="flex items-center gap-2 font-medium">
           <Send className="h-4 w-4" /> Tautan pemulihan terkirim
         </span>
-        <p className="mt-1 text-paper-dim">
+        <p className="mt-1 text-[#4c5b6b]">
           Periksa kotak masuk Anda dan ikuti tautan untuk membuat kata sandi baru.
         </p>
       </AuthAlert>
@@ -76,7 +76,7 @@ export function ForgotPasswordForm() {
         <AuthLabel htmlFor="email">
           Alamat email
         </AuthLabel>
-        <Input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@kabarjateng.org" className="font-sans" />
+        <Input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@kabarjateng.org" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
       </div>
 
       <AuthSubmit busy={busy} busyLabel="Mengirim..." icon={Send}>

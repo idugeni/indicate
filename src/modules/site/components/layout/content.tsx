@@ -74,13 +74,13 @@ export function slugify(value: string): string {
 }
 
 export const CARD_CLASS =
-  'group flex flex-col gap-3 rounded-lg border border-hairline bg-bg-raised p-5 transition-colors duration-180 hover:border-hairline-strong sm:p-6';
+  'group flex flex-col gap-3 rounded-lg border border-[#e2ded2] bg-white p-5 transition-colors duration-180 hover:border-[#cfc9b8] sm:p-6';
 
-export const ICON_BOX_CLASS = 'flex h-8 w-8 items-center text-brass';
+export const ICON_BOX_CLASS = 'flex h-8 w-8 items-center text-[#8a5f1c]';
 
 export function NumberMark({ index, className }: { readonly index: number; readonly className?: string }) {
   return (
-    <span className={cn('font-mono text-xs text-paper-faint', className)}>
+    <span className={cn('font-mono text-xs text-[#5f6b7a]', className)}>
       {String(index + 1).padStart(2, '0')}
     </span>
   );
@@ -99,7 +99,7 @@ export function PrimaryCta({
     <Link
       href={href}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded bg-brass px-5 py-2.5 font-sans text-sm font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft',
+        'inline-flex items-center justify-center gap-2 rounded bg-[#1a2430] px-5 py-2.5 font-sans text-sm font-semibold text-white transition-colors duration-180 hover:bg-[#2b3a4b]',
         className,
       )}
     >
@@ -121,7 +121,7 @@ export function SecondaryCta({
     <Link
       href={href}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded border border-hairline-strong bg-transparent px-5 py-2.5 font-sans text-sm font-medium text-paper-dim transition-colors duration-180 hover:border-hairline hover:bg-bg-raised hover:text-paper',
+        'inline-flex items-center justify-center gap-2 rounded border border-[#1a2430]/15 bg-white/70 px-5 py-2.5 font-sans text-sm font-semibold text-[#1a2430] transition-colors duration-180 hover:border-[#1a2430]/30 hover:bg-white',
         className,
       )}
     >
@@ -132,7 +132,7 @@ export function SecondaryCta({
 
 /** Prose rhythm + typography; width always belongs to the container, never max-w here. */
 export function Prose({ children, className }: { readonly children: ReactNode; readonly className?: string }) {
-  return <div className={cn('w-full space-y-4 font-sans text-base leading-7 text-paper-dim', className)}>{children}</div>;
+  return <div className={cn('w-full space-y-4 font-sans text-base leading-7 text-[#4c5b6b]', className)}>{children}</div>;
 }
 
 export interface SectionProps extends HTMLAttributes<HTMLElement> {
@@ -176,10 +176,10 @@ export function Section({
       aria-labelledby={headingId}
       className={cn(
         'py-14 md:py-20',
-        tone === 'raised' && 'border-y border-hairline bg-bg-raised/40',
-        tone === 'soft' && 'bg-bg-raised/40',
-        tone === 'warm' && 'bg-brass/[0.04]',
-        tone === 'band' && 'border-y border-brass/60',
+        tone === 'raised' && 'border-y border-[#e2ded2] bg-white/70',
+        tone === 'soft' && 'bg-white/70',
+        tone === 'warm' && 'bg-[#b88d3a]/[0.07]',
+        tone === 'band' && 'border-y border-[#b88d3a]/50',
         className,
       )}
       {...props}
@@ -189,8 +189,8 @@ export function Section({
           <header className="mb-10 grid gap-6 md:mb-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,4fr)] lg:items-end">
             <div>
               {eyebrow ? (
-                <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-brass">
-                  <span aria-hidden="true" className="h-px w-8 flex-none bg-brass/70" />
+                <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-[#8a5f1c]">
+                  <span aria-hidden="true" className="h-px w-8 flex-none bg-[#b88d3a]" />
                   {eyebrow}
                 </p>
               ) : null}
@@ -198,7 +198,7 @@ export function Section({
                 <h2
                   id={headingId}
                   className={cn(
-                    'm-0 max-w-xl font-serif text-3xl font-medium leading-[1.12] tracking-tight text-balance text-paper sm:text-4xl',
+                    'm-0 max-w-xl font-serif text-3xl font-medium leading-[1.12] tracking-tight text-balance text-[#1a2430] sm:text-4xl',
                     hasEyebrow && 'mt-4',
                   )}
                 >
@@ -207,7 +207,7 @@ export function Section({
               ) : null}
             </div>
             {description ? (
-              <p className="m-0 max-w-xl font-sans text-base leading-relaxed text-pretty text-paper-dim lg:justify-self-end">
+              <p className="m-0 max-w-xl font-sans text-base leading-relaxed text-pretty text-[#4c5b6b] lg:justify-self-end">
                 {description}
               </p>
             ) : null}
@@ -240,7 +240,7 @@ export function PageHeader({
 }: PageHeaderProps) {
   return (
     <header
-      className={cn('border-b border-hairline py-12 md:py-16', className)}
+      className={cn('border-b border-[#e2ded2] py-12 md:py-16', className)}
       {...props}
     >
       <Container className="space-y-5">
@@ -250,39 +250,39 @@ export function PageHeader({
               {crumbs.map((crumb) => (
                 <Fragment key={crumb.href}>
                   <BreadcrumbItem>
-                    <Link href={crumb.href} className="text-paper-faint transition-colors hover:text-brass-soft">
+                    <Link href={crumb.href} className="text-[#5f6b7a] transition-colors hover:text-[#8a5f1c]">
                       {crumb.label}
                     </Link>
                   </BreadcrumbItem>
-                  <BreadcrumbSeparator className="text-paper-faint/60" />
+                  <BreadcrumbSeparator className="text-[#5f6b7a]/60" />
                 </Fragment>
               ))}
               <BreadcrumbItem>
-                <BreadcrumbPage className="text-paper-dim">{title}</BreadcrumbPage>
+                <BreadcrumbPage className="text-[#4c5b6b]">{title}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         ) : null}
         {eyebrow ? (
-          <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-brass">
-            <span aria-hidden="true" className="h-px w-8 flex-none bg-brass/70" />
+          <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-[#8a5f1c]">
+            <span aria-hidden="true" className="h-px w-8 flex-none bg-[#b88d3a]" />
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="m-0 max-w-3xl font-serif text-4xl font-medium leading-[1.1] tracking-tight text-balance text-paper sm:text-5xl">
+        <h1 className="m-0 max-w-3xl font-serif text-4xl font-medium leading-[1.1] tracking-tight text-balance text-[#1a2430] sm:text-5xl">
           {title}
         </h1>
         {description ? (
-          <p className="m-0 max-w-2xl font-sans text-base leading-relaxed text-paper-dim">
+          <p className="m-0 max-w-2xl font-sans text-base leading-relaxed text-[#4c5b6b]">
             {description}
           </p>
         ) : null}
         {meta && meta.length > 0 ? (
-          <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 pt-1 font-mono text-[11px] tracking-wide text-paper-faint">
+          <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 pt-1 font-mono text-[11px] tracking-wide text-[#5f6b7a]">
             {meta.map((item, index) => (
               <Fragment key={item}>
                 {index > 0 ? (
-                  <span aria-hidden="true" className="text-hairline-strong">·</span>
+                  <span aria-hidden="true" className="text-[#cfc9b8]">·</span>
                 ) : null}
                 <span>{item}</span>
               </Fragment>
@@ -319,7 +319,6 @@ export function FeatureGrid({
   className,
   ...props
 }: FeatureGridProps) {
-  // Breakpoint rule: 2-col splits at sm, 3+ col at lg.
   const colClass =
     columns === 2
       ? 'sm:grid-cols-2'
@@ -340,13 +339,13 @@ export function FeatureGrid({
               {item.icon ? <div className={ICON_BOX_CLASS}>{item.icon}</div> : null}
 
               {heading ? (
-                <h3 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper transition-colors duration-180 group-hover:text-brass-soft">
+                <h3 className="m-0 font-sans text-sm font-semibold tracking-tight text-[#1a2430] transition-colors duration-180 group-hover:text-[#8a5f1c]">
                   {heading}
                 </h3>
               ) : null}
 
               {text ? (
-                <p className="m-0 font-sans text-xs leading-relaxed text-paper-dim">
+                <p className="m-0 font-sans text-xs leading-relaxed text-[#4c5b6b]">
                   {text}
                 </p>
               ) : null}
@@ -387,18 +386,18 @@ export interface DocSectionItem {
 export function DocSections({ items }: { readonly items: readonly DocSectionItem[] }) {
   return (
     <div className="grid w-full gap-10">
-      <nav aria-label="Daftar isi" className="w-full rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
-        <p className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">
+      <nav aria-label="Daftar isi" className="w-full rounded-lg border border-[#e2ded2] bg-white p-5 sm:p-6">
+        <p className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-[#5f6b7a]">
           Daftar Isi — {items.length} bagian
         </p>
         <ol className="m-0 mt-4 grid list-none gap-x-8 gap-y-2.5 p-0 sm:grid-cols-2">
           {items.map((section, index) => (
-            <li key={section.heading} className="border-b border-hairline/60 pb-2.5">
+            <li key={section.heading} className="border-b border-[#e2ded2]/60 pb-2.5">
               <a
                 href={`#${slugify(section.heading)}`}
-                className="group flex items-baseline gap-3 font-sans text-sm text-paper-dim transition-colors hover:text-paper"
+                className="group flex items-baseline gap-3 font-sans text-sm text-[#4c5b6b] transition-colors hover:text-[#1a2430]"
               >
-                <span className="font-mono text-[11px] tabular-nums text-brass">
+                <span className="font-mono text-[11px] tabular-nums text-[#8a5f1c]">
                   {String(index + 1).padStart(2, '0')}
                 </span>
                 <span className="group-hover:underline">{section.heading}</span>
@@ -409,14 +408,14 @@ export function DocSections({ items }: { readonly items: readonly DocSectionItem
       </nav>
       <div className="grid w-full gap-4 sm:grid-cols-2">
         {items.map((section, index) => (
-          <article key={section.heading} id={slugify(section.heading)} className="scroll-mt-24 rounded-lg border border-hairline bg-bg-raised p-5 transition-colors duration-180 hover:border-hairline-strong sm:p-6">
+          <article key={section.heading} id={slugify(section.heading)} className="scroll-mt-24 rounded-lg border border-[#e2ded2] bg-white p-5 transition-colors duration-180 hover:border-[#cfc9b8] sm:p-6">
             <div className="flex items-baseline gap-3">
-              <NumberMark index={index} className="tabular-nums text-brass" />
-              <h2 className="m-0 font-sans text-base font-semibold tracking-tight text-paper">
+              <NumberMark index={index} className="tabular-nums text-[#8a5f1c]" />
+              <h2 className="m-0 font-sans text-base font-semibold tracking-tight text-[#1a2430]">
                 {section.heading}
               </h2>
             </div>
-            <p className="m-0 mt-3 font-sans text-sm leading-relaxed text-paper-dim">{section.body}</p>
+            <p className="m-0 mt-3 font-sans text-sm leading-relaxed text-[#4c5b6b]">{section.body}</p>
           </article>
         ))}
       </div>
@@ -435,27 +434,27 @@ export function LegalDocument({ items }: { readonly items: readonly DocSectionIt
     <div className="mx-auto w-full max-w-3xl">
       <nav
         aria-label="Daftar isi"
-        className="rounded-md border border-hairline bg-bg-raised px-4 py-4 sm:px-5"
+        className="rounded-md border border-[#e2ded2] bg-white px-4 py-4 sm:px-5"
       >
         <div className="flex items-baseline justify-between gap-4">
-          <p className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">
+          <p className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-[#5f6b7a]">
             Daftar Isi
           </p>
-          <p className="m-0 font-mono text-[11px] tabular-nums tracking-wide text-paper-faint">
+          <p className="m-0 font-mono text-[11px] tabular-nums tracking-wide text-[#5f6b7a]">
             {items.length} bagian
           </p>
         </div>
         <ol className="m-0 mt-3 grid list-none gap-x-6 p-0 sm:grid-cols-2">
           {items.map((section, index) => (
-            <li key={section.heading} className="border-b border-hairline/60">
+            <li key={section.heading} className="border-b border-[#e2ded2]/60">
               <a
                 href={`#${slugify(section.heading)}`}
-                className="group flex items-baseline gap-2.5 py-2 font-sans text-[13px] leading-snug text-paper-dim transition-colors hover:text-paper"
+                className="group flex items-baseline gap-2.5 py-2 font-sans text-[13px] leading-snug text-[#4c5b6b] transition-colors hover:text-[#1a2430]"
               >
-                <span className="flex-none font-mono text-[10px] tabular-nums text-brass">
+                <span className="flex-none font-mono text-[10px] tabular-nums text-[#8a5f1c]">
                   {String(index + 1).padStart(2, '0')}
                 </span>
-                <span className="decoration-brass/60 underline-offset-4 group-hover:underline">
+                <span className="decoration-[#b88d3a]/60 underline-offset-4 group-hover:underline">
                   {section.heading}
                 </span>
               </a>
@@ -470,16 +469,16 @@ export function LegalDocument({ items }: { readonly items: readonly DocSectionIt
             id={slugify(section.heading)}
             className={cn(
               'scroll-mt-28',
-              index > 0 && 'mt-10 border-t border-hairline pt-10 md:mt-12 md:pt-12',
+              index > 0 && 'mt-10 border-t border-[#e2ded2] pt-10 md:mt-12 md:pt-12',
             )}
           >
-            <p className="m-0 font-mono text-[11px] font-medium uppercase tabular-nums tracking-wider text-brass">
+            <p className="m-0 font-mono text-[11px] font-medium uppercase tabular-nums tracking-wider text-[#8a5f1c]">
               Bagian {String(index + 1).padStart(2, '0')}
             </p>
-            <h2 className="m-0 mt-2 font-serif text-[1.35rem] font-medium leading-[1.3] tracking-tight text-balance text-paper md:text-[1.6rem]">
+            <h2 className="m-0 mt-2 font-serif text-[1.35rem] font-medium leading-[1.3] tracking-tight text-balance text-[#1a2430] md:text-[1.6rem]">
               {section.heading}
             </h2>
-            <p className="m-0 mt-3.5 text-justify font-sans text-[15px] leading-[1.85] text-paper-dim hyphens-auto">
+            <p className="m-0 mt-3.5 text-justify font-sans text-[15px] leading-[1.85] text-[#4c5b6b] hyphens-auto">
               {section.body}
             </p>
           </article>
@@ -498,11 +497,11 @@ export function StatBand({ items }: { readonly items: readonly StatBandItem[] })
   return (
     <dl className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {items.map((item) => (
-        <div key={item.label} className="rounded-lg border border-hairline bg-bg-raised p-5">
-          <dd className="m-0 font-mono text-3xl font-bold tabular-nums tracking-tight text-paper">
+        <div key={item.label} className="rounded-lg border border-[#e2ded2] bg-white p-5">
+          <dd className="m-0 font-mono text-3xl font-bold tabular-nums tracking-tight text-[#1a2430]">
             {item.value}
           </dd>
-          <dt className="mt-1.5 font-sans text-xs leading-snug text-paper-dim">{item.label}</dt>
+          <dt className="mt-1.5 font-sans text-xs leading-snug text-[#4c5b6b]">{item.label}</dt>
         </div>
       ))}
     </dl>
@@ -538,16 +537,16 @@ export function FaqAccordion({ items }: { readonly items: readonly FaqGridItem[]
             key={faq.id}
             value={faq.id}
             id={faq.id}
-            className="scroll-mt-24 rounded-lg border border-hairline bg-bg-raised px-5 transition-colors duration-180 hover:border-hairline-strong sm:px-6"
+            className="scroll-mt-24 rounded-lg border border-[#e2ded2] bg-white px-5 transition-colors duration-180 hover:border-[#cfc9b8] sm:px-6"
           >
             <AccordionTrigger className="gap-4 py-5 text-left hover:no-underline">
               <NumberMark index={index} className="flex-none tabular-nums" />
-              <span className="m-0 flex-1 font-sans text-sm font-semibold tracking-tight text-paper sm:text-base">
+              <span className="m-0 flex-1 font-sans text-sm font-semibold tracking-tight text-[#1a2430] sm:text-base">
                 {faq.question}
               </span>
             </AccordionTrigger>
             <AccordionContent className="pb-5 pl-10">
-              <p className="m-0 max-w-2xl font-sans text-sm leading-relaxed text-paper-dim">
+              <p className="m-0 max-w-2xl font-sans text-sm leading-relaxed text-[#4c5b6b]">
                 {faq.answer}
               </p>
             </AccordionContent>

@@ -11,7 +11,7 @@ export default function SignUpPage() {
       footer={
         <p className="m-0 text-center">
           Sudah punya akun?{' '}
-          <Link href="/sign-in" className="text-brass hover:underline">
+          <Link href="/sign-in" className="text-[#8a5f1c] hover:underline">
             Masuk di sini
           </Link>
         </p>

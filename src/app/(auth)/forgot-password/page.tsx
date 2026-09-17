@@ -10,7 +10,7 @@ export default function ForgotPasswordPage() {
       lede="Kami akan mengirim tautan pemulihan ke email Anda."
       footer={
         <p className="m-0 text-center">
-          <Link href="/sign-in" className="text-brass hover:underline">
+          <Link href="/sign-in" className="text-[#8a5f1c] hover:underline">
             ← Kembali ke Masuk
           </Link>
         </p>

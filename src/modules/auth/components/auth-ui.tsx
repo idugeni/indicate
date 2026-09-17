@@ -19,30 +19,30 @@ export function AuthPage({
   readonly footer?: ReactNode;
 }) {
   return (
-    <main className="grid min-h-screen bg-bg text-paper md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+    <main className="grid min-h-screen bg-[#f4f2ec] text-[#1a2430] [color-scheme:light] md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       <BrandPanel />
 
       <div className="flex flex-col justify-center px-6 py-12 md:px-14">
         <div className="mx-auto w-full max-w-md">
           <Link
             href="/"
-            className="font-mono text-[11px] uppercase tracking-wider text-paper-faint transition-colors hover:text-paper"
+            className="font-mono text-[11px] uppercase tracking-wider text-[#5f6b7a] transition-colors hover:text-[#1a2430]"
           >
             ← Indicate
           </Link>
-          <p className="m-0 mt-6 flex items-center gap-2.5 font-mono text-xs font-medium uppercase tracking-wider text-brass">
-            <span aria-hidden="true" className="h-px w-8 flex-none bg-brass/70" />
+          <p className="m-0 mt-6 flex items-center gap-2.5 font-mono text-xs font-medium uppercase tracking-wider text-[#8a5f1c]">
+            <span aria-hidden="true" className="h-px w-8 flex-none bg-[#b88d3a]" />
             Akses workspace
           </p>
-          <h1 className="m-0 mt-3 font-sans text-2xl font-bold tracking-tight text-paper">
+          <h1 className="m-0 mt-3 font-sans text-2xl font-bold tracking-tight text-[#1a2430]">
             {title}
           </h1>
-          <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-paper-dim">
+          <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-[#4c5b6b]">
             {lede}
           </p>
           <div className="mt-8">{children}</div>
           {footer ? (
-            <div className="mt-8 border-t border-hairline pt-5 font-sans text-xs text-paper-faint">
+            <div className="mt-8 border-t border-[#e2ded2] pt-5 font-sans text-xs text-[#5f6b7a]">
               {footer}
             </div>
           ) : null}
@@ -62,13 +62,13 @@ export function AuthAlert({
 }) {
   if (tone === 'error') {
     return (
-      <div className="border-l-2 border-error bg-error/[0.07] px-4 py-3 text-sm leading-relaxed text-error" role="alert">
+      <div className="border-l-2 border-[#b3261e] bg-[#b3261e]/[0.06] px-4 py-3 text-sm leading-relaxed text-[#b3261e]" role="alert">
         {children}
       </div>
     );
   }
   return (
-    <div className="border-l-2 border-signal bg-signal/[0.07] px-4 py-3 text-sm leading-relaxed text-paper" role="status">
+    <div className="border-l-2 border-[#0e6b4f] bg-[#0e6b4f]/[0.06] px-4 py-3 text-sm leading-relaxed text-[#0e6b4f]" role="status">
       {children}
     </div>
   );
@@ -84,7 +84,7 @@ export function AuthLabel({
   readonly children: ReactNode;
 }) {
   return (
-    <label htmlFor={htmlFor} className="mb-1.5 block font-sans text-xs font-semibold text-paper">
+    <label htmlFor={htmlFor} className="mb-1.5 block font-sans text-xs font-semibold text-[#1a2430]">
       {children}
     </label>
   );

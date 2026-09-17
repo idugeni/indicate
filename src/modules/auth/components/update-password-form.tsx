@@ -54,7 +54,7 @@ export function UpdatePasswordForm() {
         <span className="flex items-center gap-2 font-medium">
           <Check className="h-4 w-4" /> Kata sandi diperbarui
         </span>
-        <p className="mt-1 text-paper-dim">Mengalihkan ke workspace...</p>
+        <p className="mt-1 text-[#4c5b6b]">Mengalihkan ke workspace...</p>
       </AuthAlert>
     );
   }
@@ -67,14 +67,14 @@ export function UpdatePasswordForm() {
         <AuthLabel htmlFor="password">
           Kata sandi baru
         </AuthLabel>
-        <Input id="password" type="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 8 karakter" className="font-sans" />
+        <Input id="password" type="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 8 karakter" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
       </div>
 
       <div>
         <AuthLabel htmlFor="confirmation">
           Konfirmasi kata sandi
         </AuthLabel>
-        <Input id="confirmation" type="password" required minLength={8} autoComplete="new-password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} placeholder="Ulangi kata sandi" className="font-sans" />
+        <Input id="confirmation" type="password" required minLength={8} autoComplete="new-password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} placeholder="Ulangi kata sandi" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
       </div>
 
       <AuthSubmit busy={busy} busyLabel="Menyimpan...">

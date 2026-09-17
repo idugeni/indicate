@@ -38,7 +38,7 @@ export default function TentangPage() {
     >
       <Section title="Cerita kami" eyebrow="Cerita">
         <Prose>
-          <p className="m-0 font-sans text-lg leading-8 text-paper">{ABOUT_STORY[0]}</p>
+          <p className="m-0 font-sans text-lg leading-8 text-[#1a2430]">{ABOUT_STORY[0]}</p>
           {ABOUT_STORY.slice(1).map((paragraph) => (
             <p key={paragraph.slice(0, 24)} className="m-0">
               {paragraph}

@@ -22,7 +22,7 @@ export function GoogleButton() {
   };
 
   return (
-    <Button type="button" variant="outline" size="lg" onClick={() => void handleGoogle()} disabled={busy} className="w-full justify-center">
+    <Button type="button" variant="outline" size="lg" onClick={() => void handleGoogle()} disabled={busy} className="w-full justify-center border-[#1a2430]/15 bg-white text-[#1a2430] hover:bg-[#1a2430]/5 hover:text-[#1a2430] dark:border-[#1a2430]/15 dark:bg-white dark:text-[#1a2430] dark:hover:bg-[#1a2430]/5">
       <span aria-hidden="true" className="flex h-4 w-4 items-center justify-center font-sans text-sm font-bold">
         G
       </span>

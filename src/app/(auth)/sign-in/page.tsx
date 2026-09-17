@@ -12,7 +12,7 @@ export default function SignInPage() {
       footer={
         <p className="m-0 text-center">
           Belum punya akun?{' '}
-          <Link href="/sign-up" className="text-brass hover:underline">
+          <Link href="/sign-up" className="text-[#8a5f1c] hover:underline">
             Daftar di sini
           </Link>
         </p>
@@ -22,9 +22,9 @@ export default function SignInPage() {
         <SignInForm />
 
         <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-hairline" aria-hidden="true" />
-          <span className="font-mono text-[11px] text-paper-faint">ATAU</span>
-          <div className="h-px flex-1 bg-hairline" aria-hidden="true" />
+          <div className="h-px flex-1 bg-[#e2ded2]" aria-hidden="true" />
+          <span className="font-mono text-[11px] text-[#5f6b7a]">ATAU</span>
+          <div className="h-px flex-1 bg-[#e2ded2]" aria-hidden="true" />
         </div>
 
         <GoogleButton />

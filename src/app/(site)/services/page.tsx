@@ -61,10 +61,10 @@ export default function LayananPage() {
                     {String(index + 1).padStart(2, '0')}
                   </span>
                 </span>
-                <h3 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper transition-colors duration-180 group-hover:text-brass-soft">
+                <h3 className="m-0 font-sans text-sm font-semibold tracking-tight text-[#1a2430] transition-colors duration-180 group-hover:text-[#8a5f1c]">
                   {step.title}
                 </h3>
-                <p className="m-0 font-sans text-xs leading-relaxed text-paper-dim">
+                <p className="m-0 font-sans text-xs leading-relaxed text-[#4c5b6b]">
                   {step.description}
                 </p>
               </div>

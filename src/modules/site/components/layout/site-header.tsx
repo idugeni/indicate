@@ -14,18 +14,13 @@ import {
 } from '@/ui/site/marketing-content';
 import { cn } from '@/ui/cn';
 
-/**
- * Titik pending navigasi: selalu di-render (ukuran tetap, tanpa layout shift),
- * hanya opacity yang berubah dengan delay 100ms agar navigasi cepat tidak
- * berkedip. Tanpa animasi infinite.
- */
 function NavPendingDot() {
   const { pending } = useLinkStatus();
   return (
     <span
       aria-hidden="true"
       className={cn(
-        'absolute right-1 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-brass transition-opacity delay-100 duration-180',
+        'absolute right-1 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-[#b88d3a] transition-opacity delay-100 duration-180',
         pending ? 'opacity-100' : 'opacity-0',
       )}
     />
@@ -40,9 +35,6 @@ export function SiteHeader() {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
 
-  // Tutup otomatis saat viewport membesar ke desktop: overlay memakai
-  // lg:hidden sehingga menu yang tertinggal terbuka akan mengunci scroll
-  // (body overflow hidden) tanpa terlihat.
   useEffect(() => {
     const query = window.matchMedia('(min-width: 1024px)');
     const closeOnDesktop = (event: MediaQueryListEvent) => {
@@ -101,7 +93,7 @@ export function SiteHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-hairline bg-bg/90 backdrop-blur-[10px]">
+      <header className="sticky top-0 z-40 border-b border-[#e2ded2] bg-[#f4f2ec]/90 backdrop-blur-[10px]">
         <div className="mx-auto flex max-w-6xl flex-nowrap items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6">
           <Link
             href="/"
@@ -109,7 +101,7 @@ export function SiteHeader() {
             aria-label={`${SERVICE_NAME} beranda`}
           >
             <Image
-              className="h-8 w-8 flex-none rounded border border-hairline-strong bg-bg-raised-2 object-contain transition-colors duration-180 group-hover:border-brass/60"
+              className="h-8 w-8 flex-none rounded border border-[#e2ded2] bg-white object-contain transition-colors duration-180 group-hover:border-[#b88d3a]/60"
               src="/brand/indicate-mark.svg"
               alt=""
               width={32}
@@ -118,10 +110,10 @@ export function SiteHeader() {
               aria-hidden="true"
             />
             <span className="grid min-w-0">
-              <strong className="truncate font-sans text-[15px] font-semibold tracking-tight text-paper sm:text-base">
+              <strong className="truncate font-sans text-[15px] font-semibold tracking-tight text-[#1a2430] sm:text-base">
                 {SERVICE_NAME}
               </strong>
-              <small className="hidden truncate font-mono text-[11px] tracking-wider text-paper-faint xl:block">
+              <small className="hidden truncate font-mono text-[11px] tracking-wider text-[#5f6b7a] xl:block">
                 Satu sinyal · ratusan kanal
               </small>
             </span>
@@ -137,7 +129,7 @@ export function SiteHeader() {
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
                     'group relative whitespace-nowrap rounded px-3 py-2 font-sans text-[13px] font-medium transition-colors duration-180',
-                    isActive ? 'text-paper' : 'text-paper-dim hover:bg-bg-raised-2 hover:text-paper',
+                    isActive ? 'text-[#1a2430]' : 'text-[#4c5b6b] hover:bg-[#1a2430]/5 hover:text-[#1a2430]',
                   )}
                 >
                 {route.label}
@@ -145,7 +137,7 @@ export function SiteHeader() {
                 <span
                   aria-hidden="true"
                   className={cn(
-                    'absolute inset-x-3 -bottom-[1px] h-0.5 rounded-full bg-brass transition-opacity duration-180',
+                    'absolute inset-x-3 -bottom-[1px] h-0.5 rounded-full bg-[#b88d3a] transition-opacity duration-180',
                     isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-40',
                   )}
                 />
@@ -155,10 +147,10 @@ export function SiteHeader() {
           </nav>
 
           <div className="flex flex-none items-center gap-2 sm:gap-3">
-            <span aria-hidden="true" className="hidden h-4 w-px bg-hairline lg:block" />
+            <span aria-hidden="true" className="hidden h-4 w-px bg-[#e2ded2] lg:block" />
             <Link
               href="/sign-in"
-              className="hidden items-center justify-center whitespace-nowrap rounded bg-brass px-4 py-2 font-sans text-[13px] font-semibold text-bg transition-all duration-180 hover:-translate-y-px hover:bg-brass-soft sm:inline-flex md:px-5"
+              className="hidden items-center justify-center whitespace-nowrap rounded bg-[#1a2430] px-4 py-2 font-sans text-[13px] font-semibold text-white transition-all duration-180 hover:-translate-y-px hover:bg-[#2b3a4b] sm:inline-flex md:px-5"
             >
               <span className="hidden md:inline">Masuk ke Dashboard</span>
               <span className="md:hidden">Masuk</span>
@@ -169,10 +161,10 @@ export function SiteHeader() {
               type="button"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
               className={cn(
-                'flex h-9 w-9 flex-none items-center justify-center rounded border bg-bg-raised transition-colors duration-180 lg:hidden',
+                'flex h-9 w-9 flex-none items-center justify-center rounded border bg-white/60 transition-colors duration-180 lg:hidden',
                 mobileMenuOpen
-                  ? 'border-hairline-strong text-paper'
-                  : 'border-hairline text-paper-dim hover:border-hairline-strong hover:text-paper',
+                  ? 'border-[#d8d3c4] text-[#1a2430]'
+                  : 'border-[#e2ded2] text-[#4c5b6b] hover:border-[#d8d3c4] hover:text-[#1a2430]',
               )}
               aria-label={mobileMenuOpen ? 'Tutup menu' : 'Buka menu'}
               aria-expanded={mobileMenuOpen}
@@ -208,13 +200,13 @@ export function SiteHeader() {
           aria-modal="true"
           aria-label="Navigasi menu"
           className={cn(
-            'absolute inset-y-0 right-0 flex w-[min(20rem,85vw)] flex-col border-l border-hairline bg-bg-raised shadow-lg transition-transform duration-300 ease-out',
+            'absolute inset-y-0 right-0 flex w-[min(20rem,85vw)] flex-col border-l border-[#e2ded2] bg-[#f6f4ee] shadow-lg transition-transform duration-300 ease-out',
             mobileMenuOpen ? 'translate-x-0' : 'translate-x-full',
           )}
         >
-          <div className="flex items-center justify-between gap-3 border-b border-hairline px-5 py-4">
+          <div className="flex items-center justify-between gap-3 border-b border-[#e2ded2] px-5 py-4">
             <div className="grid min-w-0">
-              <span className="truncate font-sans text-[15px] font-semibold tracking-tight text-paper">
+              <span className="truncate font-sans text-[15px] font-semibold tracking-tight text-[#1a2430]">
                 {SERVICE_NAME}
               </span>
             </div>
@@ -222,7 +214,7 @@ export function SiteHeader() {
               ref={closeButtonRef}
               type="button"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex h-8 w-8 flex-none items-center justify-center rounded border border-hairline-strong text-paper-dim transition-colors duration-180 hover:border-hairline hover:text-paper"
+              className="flex h-8 w-8 flex-none items-center justify-center rounded border border-[#d8d3c4] text-[#4c5b6b] transition-colors duration-180 hover:border-[#e2ded2] hover:text-[#1a2430]"
               aria-label="Tutup menu"
             >
               <X className="h-4 w-4" aria-hidden="true" />
@@ -241,15 +233,15 @@ export function SiteHeader() {
                   className={cn(
                     'group flex items-center gap-3 rounded px-4 py-3 font-sans text-[15px] font-medium transition-colors duration-180',
                     isActive
-                      ? 'bg-bg-raised-2 text-paper'
-                      : 'text-paper-dim hover:bg-bg-raised-2 hover:text-paper',
+                      ? 'bg-[#1a2430]/5 text-[#1a2430]'
+                      : 'text-[#4c5b6b] hover:bg-[#1a2430]/5 hover:text-[#1a2430]',
                   )}
                 >
                   <span
                     aria-hidden="true"
                     className={cn(
                       'font-mono text-[11px] tabular-nums',
-                      isActive ? 'text-brass' : 'text-paper-faint',
+                      isActive ? 'text-[#8a5f1c]' : 'text-[#5f6b7a]',
                     )}
                   >
                     {String(index + 1).padStart(2, '0')}
@@ -260,8 +252,8 @@ export function SiteHeader() {
                     className={cn(
                       'h-4 w-4 transition-all duration-180',
                       isActive
-                        ? 'text-brass opacity-100'
-                        : '-translate-x-1 text-paper-faint opacity-0 group-hover:translate-x-0 group-hover:opacity-100',
+                        ? 'text-[#8a5f1c] opacity-100'
+                        : '-translate-x-1 text-[#5f6b7a] opacity-0 group-hover:translate-x-0 group-hover:opacity-100',
                     )}
                   />
                 </Link>
@@ -269,21 +261,21 @@ export function SiteHeader() {
             })}
           </nav>
 
-          <div className="space-y-3 border-t border-hairline px-5 py-4">
+          <div className="space-y-3 border-t border-[#e2ded2] px-5 py-4">
             <Link
               href="/sign-in"
               onClick={() => setMobileMenuOpen(false)}
-              className="inline-flex w-full items-center justify-center gap-2 rounded bg-brass px-5 py-2.5 font-sans text-sm font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft"
+              className="inline-flex w-full items-center justify-center gap-2 rounded bg-[#1a2430] px-5 py-2.5 font-sans text-sm font-semibold text-white transition-colors duration-180 hover:bg-[#2b3a4b]"
             >
               Masuk ke Dashboard <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
-            <p className="m-0 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-[10px] tracking-wider text-paper-faint">
+            <p className="m-0 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-[10px] tracking-wider text-[#5f6b7a]">
               {LEGAL_ROUTES.map((route) => (
                 <Link
                   key={route.href}
                   href={route.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="transition-colors hover:text-brass-soft"
+                  className="transition-colors hover:text-[#8a5f1c]"
                 >
                   {route.label}
                 </Link>

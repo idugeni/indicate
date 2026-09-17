@@ -70,16 +70,16 @@ export function SignInForm() {
           <AuthLabel htmlFor="email">
             Alamat email
           </AuthLabel>
-          <Input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@wartanusantara.net" className="font-sans" />
+          <Input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@wartanusantara.net" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
         </div>
 
         <div>
           <AuthLabel htmlFor="password">
             Kata sandi
           </AuthLabel>
-          <Input id="password" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" />
+          <Input id="password" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" className="border-[#1a2430]/20 bg-white dark:border-[#1a2430]/20 dark:bg-white" />
           <div className="mt-1.5 flex justify-end">
-            <Link href="/forgot-password" className="font-sans text-xs text-brass hover:underline">
+            <Link href="/forgot-password" className="font-sans text-xs text-[#8a5f1c] hover:underline">
               Lupa kata sandi?
             </Link>
           </div>

@@ -16,5 +16,5 @@ export const metadata: Metadata = {
 
 /** Auth layout: minimal and free of site chrome/tenant theming so flows render identically everywhere. */
 export default function AuthLayout({ children }: { readonly children: ReactNode }) {
-  return <div className="min-h-screen bg-bg text-paper">{children}</div>;
+  return <div className="min-h-screen bg-[#f4f2ec] text-[#1a2430] [color-scheme:light]">{children}</div>;
 }

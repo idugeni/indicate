@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Mail, MessageCircle, Send } from 'lucide-react';
 import {
@@ -55,53 +56,51 @@ const FOOTER_COLUMNS: readonly FooterColumn[] = Object.freeze([
 ]);
 
 const LINK_CLASSES =
-  'block font-sans text-sm text-paper-dim transition-colors duration-180 hover:text-paper focus-visible:rounded-sm focus-visible:text-paper focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass';
+  'block font-sans text-sm text-[#4c5b6b] transition-colors duration-180 hover:text-[#1a2430] focus-visible:rounded-sm focus-visible:text-[#1a2430] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b88d3a]';
 
 export async function SiteFooter() {
   const year = await currentYear();
 
   return (
-    <footer className="border-t border-hairline">
+    <footer className="border-t border-[#e2ded2] bg-white">
       <Container className="grid gap-10 py-12 md:grid-cols-[minmax(0,4fr)_minmax(0,7fr)]">
         <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div
-              className="flex h-8 w-8 items-center justify-center bg-brass font-sans text-sm font-bold text-bg"
-              aria-hidden="true"
-            >
-              I
-            </div>
-            <span className="font-sans text-lg font-semibold tracking-tight text-paper">
-              {SERVICE_NAME}
-            </span>
-          </div>
-          <p className="m-0 max-w-sm font-sans text-sm leading-relaxed text-paper-dim">
+          <p className="m-0">
+            <Image
+              src="/brand/indicate-landscape.svg"
+              alt="Indicate — Publishing infrastructure"
+              width={240}
+              height={60}
+              className="h-auto w-60"
+            />
+          </p>
+          <p className="m-0 max-w-sm font-sans text-sm leading-relaxed text-[#4c5b6b]">
             {SERVICE_TAGLINE}
           </p>
-          <address className="m-0 max-w-sm space-y-2 border-t border-hairline pt-4 font-sans text-sm not-italic">
+          <address className="m-0 max-w-sm space-y-2 border-t border-[#e2ded2] pt-4 font-sans text-sm not-italic">
             <a
               href="mailto:sancaphenacakra@gmail.com"
-              className="flex items-center gap-2 text-paper-dim transition-colors duration-180 hover:text-paper"
+              className="flex items-center gap-2 text-[#4c5b6b] transition-colors duration-180 hover:text-[#1a2430]"
             >
-              <Mail className="h-3.5 w-3.5 flex-none text-brass" aria-hidden="true" />
+              <Mail className="h-3.5 w-3.5 flex-none text-[#8a5f1c]" aria-hidden="true" />
               sancaphenacakra@gmail.com
             </a>
             <a
               href="https://wa.me/6285641159405"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-paper-dim transition-colors duration-180 hover:text-paper"
+              className="flex items-center gap-2 text-[#4c5b6b] transition-colors duration-180 hover:text-[#1a2430]"
             >
-              <MessageCircle className="h-3.5 w-3.5 flex-none text-brass" aria-hidden="true" />
+              <MessageCircle className="h-3.5 w-3.5 flex-none text-[#8a5f1c]" aria-hidden="true" />
               0856-4115-9405
             </a>
             <a
               href="https://t.me/eliyantosarage"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-paper-dim transition-colors duration-180 hover:text-paper"
+              className="flex items-center gap-2 text-[#4c5b6b] transition-colors duration-180 hover:text-[#1a2430]"
             >
-              <Send className="h-3.5 w-3.5 flex-none text-brass" aria-hidden="true" />
+              <Send className="h-3.5 w-3.5 flex-none text-[#8a5f1c]" aria-hidden="true" />
               @eliyantosarage
             </a>
           </address>
@@ -110,7 +109,7 @@ export async function SiteFooter() {
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
           {FOOTER_COLUMNS.map((column) => (
             <div key={column.heading}>
-              <h3 className="m-0 mb-4 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">
+              <h3 className="m-0 mb-4 font-mono text-[11px] font-medium uppercase tracking-wider text-[#5f6b7a]">
                 {column.heading}
               </h3>
               <nav aria-label={column.label} className="space-y-2.5">
@@ -125,19 +124,19 @@ export async function SiteFooter() {
         </div>
       </Container>
 
-      <div aria-hidden="true" className="overflow-hidden border-t border-hairline select-none">
-        <p className="m-0 text-center font-sans text-[20vw] leading-[0.85] font-bold tracking-tight text-transparent [-webkit-text-stroke:1px_var(--hairline-strong)] lg:text-[12rem]">
+      <div aria-hidden="true" className="overflow-hidden border-t border-[#e2ded2] select-none">
+        <p className="m-0 text-center font-sans text-[20vw] leading-[0.85] font-bold tracking-tight text-transparent [-webkit-text-stroke:1px_#d8d3c4] lg:text-[12rem]">
           INDICATE
         </p>
       </div>
 
-      <div className="border-t border-hairline">
+      <div className="border-t border-[#e2ded2]">
         <Container className="flex flex-col gap-1 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-          <small className="font-mono text-[11px] text-paper-faint">
-            © {year} Eliyanto Sarage · {SERVICE_NAME} · PostgreSQL 17 · Strict RLS · Cloudflare Edge
+          <small className="font-mono text-[11px] text-[#5f6b7a]">
+            © {year} {SERVICE_NAME}. Hak cipta dilindungi undang-undang.
           </small>
-          <small className="font-mono text-[11px] tabular-nums text-paper-faint">
-            ID-id · Asia/Jakarta
+          <small className="font-mono text-[11px] tabular-nums text-[#5f6b7a]">
+            PT Sanca Phena Cakra
           </small>
         </Container>
       </div>
@@ -149,17 +148,17 @@ export async function CallToAction() {
   const channels = await getContactChannels();
   const rows = channels.length > 0 ? channels : CONTACT_CHANNEL_FALLBACK;
   return (
-    <section aria-labelledby="konsolidasi-redaksi-heading" className="border-t border-hairline">
+    <section aria-labelledby="konsolidasi-redaksi-heading" className="border-t border-[#e2ded2]">
       <Container className="grid gap-8 py-16 md:py-24 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:items-end">
         <div>
-          <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-brass">
-            <span aria-hidden="true" className="h-px w-8 flex-none bg-brass/70" />
+          <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-[#8a5f1c]">
+            <span aria-hidden="true" className="h-px w-8 flex-none bg-[#b88d3a]" />
             Kesiapan bermigrasi
           </p>
-          <h2 id="konsolidasi-redaksi-heading" className="m-0 mt-4 max-w-2xl font-serif text-3xl font-medium leading-[1.1] tracking-tight text-balance text-paper sm:text-5xl">
+          <h2 id="konsolidasi-redaksi-heading" className="m-0 mt-4 max-w-2xl font-serif text-3xl font-medium leading-[1.1] tracking-tight text-balance text-[#1a2430] sm:text-5xl">
             Konsolidasikan seluruh jaringan redaksi Anda.
           </h2>
-          <p className="m-0 mt-4 max-w-2xl font-sans text-base leading-relaxed text-paper-dim">
+          <p className="m-0 mt-4 max-w-2xl font-sans text-base leading-relaxed text-[#4c5b6b]">
             Sampaikan jumlah domain dan unit yang direncanakan — tim kami menyusun arsitektur penyiapan beserta estimasinya, tanpa mengganggu operasi redaksi yang berjalan.
           </p>
         </div>
@@ -173,7 +172,7 @@ export async function CallToAction() {
               <span>Lihat layanan</span>
             </SecondaryCta>
           </div>
-          <p className="m-0 mt-6 font-sans text-sm leading-relaxed text-paper-faint">
+          <p className="m-0 mt-6 font-sans text-sm leading-relaxed text-[#5f6b7a]">
             {rows
               .filter((channel) => channel.href)
               .map((channel) => channel.title)
