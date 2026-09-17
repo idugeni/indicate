@@ -19,7 +19,11 @@ import { DrizzleIntegrationsRepository } from '@/data/repos/integrations';
 import { UpstashPublicationQueueAdapter } from '@/integrations/redis/upstash-publication-queue';
 import { UpstashRateLimitAdapter } from '@/integrations/redis/upstash-rate-limit';
 import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
+import { createResendEmailApiAdapter } from '@/integrations/email/resend-email-api';
+import { createResendEventVerifier } from '@/integrations/email/resend-webhook-verify';
 import { TelegramBotApiAdapter } from '@/integrations/telegram/telegram-bot-api';
+import { EmailWelcomeService } from '@/modules/integrations/email-welcome-service';
+import { ResendWebhookService } from '@/modules/integrations/resend-webhook-service';
 import { UuidGenerator } from '@/core/system/uuid-generator';
 
 export function createProductionIntegrations(config: RuntimeConfig, bootstrap: BootstrapConfig) {
@@ -28,6 +32,11 @@ export function createProductionIntegrations(config: RuntimeConfig, bootstrap: B
   const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey });
   const queue = new UpstashPublicationQueueAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace, resourceId: config.redis.resourceId });
   const telegram = new TelegramBotApiAdapter(config.telegram.botToken, config.r2.maxBytes);
+  const email = config.email === null ? null : createResendEmailApiAdapter(config.email.apiKey, config.email.defaultFrom);
+  const emailWebhooks =
+    config.email === null || config.email.webhookSecret === null
+      ? null
+      : new ResendWebhookService(repository, createResendEventVerifier(config.email.apiKey, config.email.webhookSecret));
   const sharedFactory = { create: () => ({
     articles: new TenantBusinessService(dashboard, identifiers),
     media: new MediaService(publishing, storage, identifiers, { maxBytes: config.r2.maxBytes, allowedTypes: config.r2.allowedTypes, uploadTtlSeconds: config.r2.uploadTtlSeconds, readTtlSeconds: config.r2.readTtlSeconds }),
@@ -38,6 +47,9 @@ export function createProductionIntegrations(config: RuntimeConfig, bootstrap: B
     apiKeys: new ApiKeyService(repository, identifiers), customer: new CustomerService(repository, identifiers), telegramMappings: new TelegramMappingService(repository, identifiers),
     rateLimits: new RateLimitService(new UpstashRateLimitAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })),
     webhooks: new WebhookService(repository, { generic: config.security.genericWebhookSecret }, config.security.webhookFreshnessSeconds, config.security.webhookReplayTtlSeconds),
+    email,
+    emailWebhooks,
+    emailWelcome: new EmailWelcomeService(email),
     telegram: new TelegramWorkflowService(repository, sharedFactory, telegram, telegram, config.telegram.webhookSecret, config.security.webhookFreshnessSeconds, config.security.webhookReplayTtlSeconds),
   };
 }

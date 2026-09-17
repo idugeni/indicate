@@ -115,3 +115,42 @@ export interface TelegramMediaTransferPort {
     readonly mediaType: string;
   }): Promise<void>;
 }
+
+export interface EmailMessage {
+  readonly to: readonly string[];
+  readonly subject: string;
+  readonly text?: string;
+  readonly html?: string;
+  readonly from?: string;
+  readonly idempotencyKey?: string;
+}
+
+export class EmailSendError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+export interface EmailContact {
+  readonly email: string;
+  readonly firstName?: string;
+  readonly lastName?: string;
+}
+
+/** Pengiriman email transaksional; null di komposisi saat Resend belum dikonfigurasi. */
+export interface EmailPort {
+  send(message: EmailMessage): Promise<{ readonly id: string }>;
+  upsertContact(contact: EmailContact): Promise<{ readonly id: string }>;
+}
+
+export interface ResendWebhookHeaders {
+  readonly id: string;
+  readonly timestamp: string;
+  readonly signature: string;
+}
+
+export interface ResendWebhookResult {
+  readonly received: boolean;
+  readonly type: string;
+  readonly deduped: boolean;
+}

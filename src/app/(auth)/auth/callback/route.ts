@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 
 import { getPublicConfig } from '@/core/config/public-config';
 import { createHardenedSupabaseCookieStore, createSupabaseSsrAuthAdapter } from '@/integrations/supabase/supabase-ssr';
+import { createProductionIntegrationsContext } from '@/modules/integrations';
 import { safeRedirectPath } from '@/core/security/safe-redirect-path';
 
 function withSupabaseCookies(cookieStore: Awaited<ReturnType<typeof cookies>>) {
@@ -12,6 +13,19 @@ function withSupabaseCookies(cookieStore: Awaited<ReturnType<typeof cookies>>) {
       cookieStore.set(name, value, options);
     },
   });
+}
+
+type CallbackAuth = ReturnType<typeof createSupabaseSsrAuthAdapter>;
+
+async function welcomeConfirmedSignup(auth: CallbackAuth): Promise<void> {
+  try {
+    const production = await createProductionIntegrationsContext();
+    const identity = await auth.verifyCookieSession();
+    if (identity === null || identity.email === null) return;
+    await production.emailWelcome.welcome({ authUserId: identity.authUserId, email: identity.email, displayName: identity.displayName });
+  } catch {
+    return;
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -29,6 +43,10 @@ export async function GET(request: NextRequest) {
   const exchanged = await auth.exchangeCodeForSession(code);
   if (!exchanged) {
     return NextResponse.redirect(new URL('/sign-in?auth=unavailable', request.url), { status: 303 });
+  }
+
+  if (authType === 'signup') {
+    await welcomeConfirmedSignup(auth);
   }
 
   const fallback = authType === 'recovery' ? '/update-password' : '/dashboard';

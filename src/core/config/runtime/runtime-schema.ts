@@ -62,6 +62,13 @@ export interface RuntimeConfig {
     readonly botToken: string;
     readonly webhookSecret: string;
   };
+  /** Email transaksional Resend; null bila belum dikonfigurasi (pengirim nonaktif). */
+  readonly email: {
+    readonly apiKey: string;
+    readonly defaultFrom: string;
+    /** Secret penandatangan webhook Resend; null bila endpoint nonaktif. */
+    readonly webhookSecret: string | null;
+  } | null;
   readonly security: {
     readonly webhookFreshnessSeconds: number;
     readonly webhookReplayTtlSeconds: number;

@@ -58,6 +58,7 @@ import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import { DataView } from '@/modules/dashboard/components/data-view';
 import { FilterControls } from '@/modules/dashboard/components/filter-controls';
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
+import type { EmailStatus } from '@/modules/dashboard/components/settings/integration-settings';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
 
 const ConfigurationPanel = dynamic(
@@ -92,6 +93,15 @@ const IntegrationSettings = dynamic(
   () => import('@/modules/dashboard/components/settings/integration-settings').then((module) => ({ default: module.IntegrationSettings })),
   { loading: () => <DashboardFormSkeleton /> },
 );
+function selectEmailStatus(data: unknown): EmailStatus | null {
+  if (typeof data !== 'object' || data === null || !('email' in data)) return null;
+  const email = (data as { readonly email?: unknown }).email;
+  if (typeof email !== 'object' || email === null) return null;
+  const status = email as { readonly configured?: unknown; readonly defaultFrom?: unknown; readonly webhook?: unknown };
+  if (typeof status.configured !== 'boolean' || typeof status.webhook !== 'boolean') return null;
+  if (status.defaultFrom !== null && typeof status.defaultFrom !== 'string') return null;
+  return { configured: status.configured, defaultFrom: status.defaultFrom, webhook: status.webhook };
+}
 const MediaForm = dynamic(
   () => import('@/modules/dashboard/components/publishing/media-form').then((module) => ({ default: module.MediaForm })),
   { loading: () => <DashboardFormSkeleton /> },
@@ -292,6 +302,7 @@ function resolveApiEndpoint(target: View | string): 'publishing' | 'integrations
     target.startsWith('api-key.') ||
     target.startsWith('telegram-mapping.') ||
     target.startsWith('customer.') ||
+    target.startsWith('email.') ||
     target.startsWith('subscription.')
   ) {
     return 'integrations';
@@ -801,7 +812,7 @@ export function DashboardWorkspace({
             ) : null}
             {view === 'media' ? <MediaForm data={data} command={command} /> : null}
             {view === 'publishing' ? <PublishingForm data={data} command={command} /> : null}
-            {view === 'settings' ? <><IntegrationSettings command={command} isPlatform={activePermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin) || activePermissions.has(INTEGRATIONS_PERMISSIONS.customerAdmin)} /><ProfileForm /><LoginMethodsForm /></> : null}
+            {view === 'settings' ? <><IntegrationSettings command={command} isPlatform={activePermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin) || activePermissions.has(INTEGRATIONS_PERMISSIONS.customerAdmin)} email={selectEmailStatus(data)} /><ProfileForm /><LoginMethodsForm /></> : null}
             {view === 'billing' ? <BillingPanel organizationId={organizationId} permissions={[...activePermissions]} /> : null}
             {view === 'moderation' ? <ModerationPanel organizationId={organizationId} /> : null}
             {view === 'customers' ? <CustomerManagement command={command} /> : null}

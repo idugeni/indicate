@@ -93,6 +93,14 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
       botToken: bootstrap.credentials.telegramBotToken.reveal(),
       webhookSecret: bootstrap.credentials.telegramWebhookSecret.reveal(),
     }),
+    email:
+      bootstrap.credentials.resendApiKey === null || bootstrap.credentials.resendDefaultFrom === null
+        ? null
+        : {
+            apiKey: bootstrap.credentials.resendApiKey.reveal(),
+            defaultFrom: bootstrap.credentials.resendDefaultFrom,
+            webhookSecret: bootstrap.credentials.resendWebhookSecret?.reveal() ?? null,
+          },
     security: Object.freeze({
       webhookFreshnessSeconds: policies.webhook.freshnessSeconds,
       webhookReplayTtlSeconds: policies.webhook.replayRetentionSeconds,

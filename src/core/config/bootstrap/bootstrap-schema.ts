@@ -23,6 +23,7 @@ const INDICATE_NAMESPACE_PREFIXES = [
   'R2_',
   'UPSTASH_',
   'TELEGRAM_',
+  'RESEND_',
   'GENERIC_',
   'CRON_',
   'DEFAULT_',
@@ -56,6 +57,9 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'UPSTASH_REDIS_REST_TOKEN',
   'TELEGRAM_BOT_TOKEN',
   'TELEGRAM_WEBHOOK_SECRET',
+  'RESEND_API_KEY',
+  'RESEND_DEFAULT_FROM',
+  'RESEND_WEBHOOK_SECRET',
   'GENERIC_WEBHOOK_SECRET',
   'CRON_SECRET',
 ]);
@@ -104,6 +108,9 @@ const bootstrapSchema = z
     UPSTASH_REDIS_REST_TOKEN: secretSchema,
     TELEGRAM_BOT_TOKEN: secretSchema,
     TELEGRAM_WEBHOOK_SECRET: secretSchema,
+    RESEND_API_KEY: secretSchema.optional(),
+    RESEND_DEFAULT_FROM: z.string().min(3).max(320).optional(),
+    RESEND_WEBHOOK_SECRET: secretSchema.optional(),
     GENERIC_WEBHOOK_SECRET: secretSchema,
     CRON_SECRET: secretSchema,
   })
@@ -122,6 +129,19 @@ const bootstrapSchema = z
           context.addIssue({ code: 'custom', path: [name], message: 'production_secret_not_bounded' });
         }
       }
+      if (
+        value.RESEND_API_KEY !== undefined &&
+        (value.RESEND_API_KEY.length < 24 || /(?:change[ -]?me|example|placeholder|sentinel|development|test-secret)/iu.test(value.RESEND_API_KEY))
+      ) {
+        context.addIssue({ code: 'custom', path: ['RESEND_API_KEY'], message: 'production_secret_not_bounded' });
+      }
+    }
+    if ((value.RESEND_API_KEY === undefined) !== (value.RESEND_DEFAULT_FROM === undefined)) {
+      context.addIssue({
+        code: 'custom',
+        path: [value.RESEND_API_KEY === undefined ? 'RESEND_API_KEY' : 'RESEND_DEFAULT_FROM'],
+        message: 'resend_email_incomplete',
+      });
     }
     const controlHosts = [value.DASHBOARD_HOST, value.API_HOST, value.WEBHOOK_HOST, value.DOCS_HOST];
     if (new Set(controlHosts).size !== controlHosts.length) {
@@ -186,6 +206,11 @@ export interface BootstrapConfig {
     readonly upstashRestToken: SecretString;
     readonly telegramBotToken: SecretString;
     readonly telegramWebhookSecret: SecretString;
+    /** Pasangan kredensial Resend; null bila email transaksional belum dikonfigurasi. */
+    readonly resendApiKey: SecretString | null;
+    readonly resendDefaultFrom: string | null;
+    /** Secret penandatangan webhook Resend (Svix); null bila endpoint nonaktif. */
+    readonly resendWebhookSecret: SecretString | null;
     readonly genericWebhookSecret: SecretString;
     readonly cronSecret: SecretString;
   }>;
@@ -239,6 +264,9 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       upstashRestToken: SecretString.fromPlain(value.UPSTASH_REDIS_REST_TOKEN),
       telegramBotToken: SecretString.fromPlain(value.TELEGRAM_BOT_TOKEN),
       telegramWebhookSecret: SecretString.fromPlain(value.TELEGRAM_WEBHOOK_SECRET),
+      resendApiKey: value.RESEND_API_KEY === undefined ? null : SecretString.fromPlain(value.RESEND_API_KEY),
+      resendDefaultFrom: value.RESEND_DEFAULT_FROM ?? null,
+      resendWebhookSecret: value.RESEND_WEBHOOK_SECRET === undefined ? null : SecretString.fromPlain(value.RESEND_WEBHOOK_SECRET),
       genericWebhookSecret: SecretString.fromPlain(value.GENERIC_WEBHOOK_SECRET),
       cronSecret: SecretString.fromPlain(value.CRON_SECRET),
     }),

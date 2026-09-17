@@ -6,6 +6,7 @@ import {
   Copy,
   KeyRound,
   Loader2,
+  Mail,
   Plus,
   Sparkles,
   Users,
@@ -13,12 +14,20 @@ import {
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { Input } from '@/components/ui/input';
 
+export interface EmailStatus {
+  readonly configured: boolean;
+  readonly defaultFrom: string | null;
+  readonly webhook: boolean;
+}
+
 export function IntegrationSettings({
   command,
   isPlatform = false,
+  email = null,
 }: {
   readonly command: (action: string, payload: unknown) => Promise<unknown>;
   readonly isPlatform?: boolean;
+  readonly email?: EmailStatus | null;
 }) {
   const [issuedPlaintext, setIssuedPlaintext] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
@@ -33,8 +42,11 @@ export function IntegrationSettings({
   const [isIssuing, startIssueTransition] = useTransition();
   const [isCreatingMapping, startMappingTransition] = useTransition();
   const [isBroadcasting, startBroadcastTransition] = useTransition();
+  const [isTestingEmail, startEmailTestTransition] = useTransition();
   const [broadcastText, setBroadcastText] = useState('');
   const [broadcastNotice, setBroadcastNotice] = useState<string | null>(null);
+  const [testEmail, setTestEmail] = useState('');
+  const [testNotice, setTestNotice] = useState<string | null>(null);
 
   const handleCopyKey = async () => {
     if (!issuedPlaintext) return;
@@ -89,6 +101,14 @@ export function IntegrationSettings({
         setBroadcastNotice(`Broadcast diantrekan ke ${result.enqueued ?? 0} kanal.`);
         setBroadcastText('');
       }
+    });
+  };
+
+  const handleTestEmail = () => {
+    if (testEmail.trim().length === 0) return;
+    startEmailTestTransition(async () => {
+      const result = (await command('email.test', { to: testEmail.trim() })) as { readonly id?: string } | null;
+      setTestNotice(result?.id ? `Email uji terkirim (id ${result.id.slice(0, 8)}…).` : 'Email uji gagal diproses server.');
     });
   };
 
@@ -268,6 +288,55 @@ export function IntegrationSettings({
             >
               <span>Antrekan broadcast</span>
             </button>
+          </div>
+        ) : null}
+      </SectionCard>
+
+      <SectionCard icon={Mail} title="Email transaksional" eyebrow="Notifikasi">
+        <dl className="m-0 space-y-2 font-sans text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <dt className="text-paper-dim">Status pengiriman</dt>
+            <dd className="m-0 font-semibold text-paper">{email?.configured ? 'Aktif (Resend)' : 'Nonaktif'}</dd>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <dt className="text-paper-dim">Pengirim default</dt>
+            <dd className="m-0 break-all text-right font-mono text-paper">{email?.defaultFrom ?? '—'}</dd>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <dt className="text-paper-dim">Webhook delivery</dt>
+            <dd className="m-0 font-semibold text-paper">{email?.webhook ? 'Terpasang' : 'Belum dipasang'}</dd>
+          </div>
+        </dl>
+        {isPlatform && email?.configured ? (
+          <div className="mt-5 border-t border-hairline pt-5">
+            <p className="m-0 font-sans text-sm font-semibold text-paper">Email uji</p>
+            <p className="m-0 mt-1 font-sans text-xs text-paper-dim">
+              Satu pesan probe ke alamat mana pun. Hanya platform admin.
+            </p>
+            <div className="mt-2 flex gap-2">
+              <Input
+                value={testEmail}
+                onChange={(event) => setTestEmail(event.target.value)}
+                disabled={isTestingEmail}
+                placeholder="nama@domain.id"
+                aria-label="Alamat email uji"
+                className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              />
+              <button
+                type="button"
+                onClick={handleTestEmail}
+                disabled={isTestingEmail || testEmail.trim().length === 0}
+                className="inline-flex h-8 flex-none items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+              >
+                {isTestingEmail ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                ) : null}
+                <span>Kirim uji</span>
+              </button>
+            </div>
+            {testNotice ? (
+              <p className="m-0 mt-1 font-sans text-xs text-signal">{testNotice}</p>
+            ) : null}
           </div>
         ) : null}
       </SectionCard>
