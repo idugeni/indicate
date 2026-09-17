@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { cn } from '@/ui/cn';
+import { scrollToTop } from '@/ui/scroll';
 
 const REVEAL_AT = 300;
-const SCROLL_DURATION_MS = 650;
 
 export function BackToTop() {
   const [visible, setVisible] = useState(false);
@@ -38,43 +38,6 @@ export function BackToTop() {
     handleScroll();
 
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const scrollToTop = useCallback(() => {
-    const startY = window.scrollY;
-    if (startY === 0) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      window.scrollTo({ top: 0, behavior: 'auto' });
-      return;
-    }
-
-    const startTime = performance.now();
-
-    // Smooth easeInOutCubic curve for elegant fluid ascent. Matikan
-    // scroll-behavior:smooth global selama animasi agar tiap frame rAF
-    // mendarat tepat tanpa diinterpolasi ulang oleh browser.
-    const root = document.documentElement;
-    const previousBehavior = root.style.scrollBehavior;
-    root.style.scrollBehavior = 'auto';
-
-    const easeInOutCubic = (t: number) =>
-      t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-
-    const animateScroll = (currentTime: number) => {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / SCROLL_DURATION_MS, 1);
-      const ease = easeInOutCubic(progress);
-
-      window.scrollTo(0, startY * (1 - ease));
-
-      if (progress < 1) {
-        window.requestAnimationFrame(animateScroll);
-      } else {
-        root.style.scrollBehavior = previousBehavior;
-      }
-    };
-
-    window.requestAnimationFrame(animateScroll);
   }, []);
 
   return (
