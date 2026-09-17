@@ -37,7 +37,7 @@ async function loadCachedRobots(context: ResolvedSiteContext): Promise<readonly 
     [`site-robots:${context.normalizedHostname}:${context.siteId}:${context.routingVersion}:${context.contentVersion}`],
     {
       tags: [`host:${context.normalizedHostname}`, `site:${context.siteId}`, `org:${context.organizationId}`],
-      revalidate: 600,
+      revalidate: 3600,
     },
   );
   return cached();
@@ -51,7 +51,7 @@ async function handleGET() {
   const result = await resolver.classify(host);
   if (result.kind === 'control' && result.surface === 'dashboard') {
     return new Response(controlPlaneRobots(config.hosts.dashboard), {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=600, stale-while-revalidate=600' },
+      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=3600, stale-while-revalidate=600' },
     });
   }
   if (result.kind === 'control' && result.surface === 'docs') {
@@ -64,7 +64,7 @@ async function handleGET() {
         '',
       ].join('\n'),
       {
-        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=600, stale-while-revalidate=600' },
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=3600, stale-while-revalidate=600' },
       },
     );
   }
@@ -72,7 +72,7 @@ async function handleGET() {
   const robots = await loadCachedRobots(result.context);
   if (robots === null) return deniedRobotsTxt(404);
   return new Response(serializeRobots({ context: result.context, settings: { robots } }), {
-    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=600, stale-while-revalidate=600' },
+    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=3600, stale-while-revalidate=600' },
   });
 }
 

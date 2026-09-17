@@ -226,7 +226,6 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       const refs = asset.owner.kind !== 'article' ? [] : (await transaction.select({ id: articleSites.id, organizationId: articleSites.organizationId, articleId: articleSites.articleId, siteId: articleSites.siteId, active: articleSites.active, state: articleSites.state }).from(articleSites).where(and(eq(articleSites.organizationId, context.organizationId), eq(articleSites.siteId, context.siteId), eq(articleSites.articleId, asset.owner.articleId), eq(articleSites.active, true))).limit(1))
         .map((row) => ({ id: row.id, organizationId: row.organizationId, articleId: row.articleId, siteId: row.siteId, active: row.active, state: row.state, publishedUrl: null, publishedAt: null, version: 0 }));
       if (!canPublicAccessMedia({ context, media: asset, site, articles: articleRefs, articleSites: refs })) return null;
-      await this.audit(transaction, { organizationId: context.organizationId, actorType: 'system', actorId: context.siteId, entryPoint: 'api', requestId }, 'media.access.authorize', 'media', mediaId, { scope: 'public', siteId: context.siteId }, new Date());
       return asset;
     });
   }
