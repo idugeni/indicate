@@ -2,21 +2,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { SERVICE_NAME } from '@/ui/site/marketing-content';
 import { currentYear } from '@/modules/site/current-year';
+import { EditionDate } from './edition-date';
 
 const LEDGER: readonly { readonly title: string; readonly detail: string }[] = Object.freeze([
   { title: 'Tulis sekali', detail: 'Satu naskah, satu antrean redaksi.' },
   { title: 'Terbit ke mana-mana', detail: 'Ratusan portal, domain, dan wilayah.' },
   { title: 'Teraudit penuh', detail: 'Setiap aksi tercatat, hanya-tambah.' },
 ]);
-
-function editionDate(now: Date): string {
-  return new Intl.DateTimeFormat('id-ID', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(now);
-}
 
 export async function BrandPanel() {
   const year = await currentYear();
@@ -43,7 +35,7 @@ export async function BrandPanel() {
         </Link>
         <p className="m-0 mt-8 flex items-center justify-between gap-4 border-y border-white/15 py-3 font-mono text-[11px] tracking-wide text-white/70">
           <span>Jakarta</span>
-          <span>{editionDate(new Date())}</span>
+          <EditionDate />
           <span>Edisi harian</span>
         </p>
       </div>
