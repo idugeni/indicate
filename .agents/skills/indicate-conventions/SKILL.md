@@ -66,7 +66,7 @@ Hexagonal / ports-and-adapters modular monolith under `src/`. Dependency directi
 
 Commit-message authority is `CONTRIBUTING.md` ("Commit messages"), enforced
 by `AGENTS.md` ("Komit", mandatory, not relaxed). Summary: `<type>[scope]:`
-plus an Indonesian lowercase imperative description (max 72 chars, no
+plus an English lowercase imperative description (max 72 chars, no
 trailing period, no emoji); one logical change per commit; always
 `git commit -s`; verify `typecheck` + `lint` + affected tests and review
 the diff before committing.

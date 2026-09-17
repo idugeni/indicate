@@ -214,9 +214,9 @@ Format (Conventional Commits, scope optional):
   `api`, `publishing`, `content`, `billing`, `delivery`, `integrations`,
   `persisted-config`, `data`, `core`, `config`, `ui`, `app`, `docs`, `ci`.
   Omit it when the change spans layers.
-- **Description** (required): Indonesian, lowercase first letter,
-  imperative mood (verb first: `tambah`, `perbaiki`, `hapus`, `pindah`,
-  `rapatkan`), no trailing period, no emoji, max 72 characters. Name the
+- **Description** (required): English, lowercase first letter,
+  imperative mood (verb first: `add`, `fix`, `remove`, `move`, `tighten`),
+  no trailing period, no emoji, max 72 characters. Name the
   user-visible outcome, not the mechanism.
 - **Body** (optional, for non-obvious changes): one short paragraph
   explaining *why*, not *what*. Wrap at 72 columns.
@@ -229,8 +229,8 @@ Rules:
    in one commit; never bundle unrelated files.
 2. No snapshot commits, no `wip`, no `update`, no `fix bug`, no
    keyboard-mash messages.
-3. One language per message: Indonesian description, English type/scope.
-   Never mix both languages inside the description.
+3. One language per message: English throughout (type, scope,
+   description). Never mix languages inside one message.
 4. Verify before committing: `npm run typecheck`, `npm run lint`,
    affected tests, plus `git status` / `git diff` review — no secrets,
    no `.env*`, no accidental generated files.
@@ -238,11 +238,11 @@ Rules:
 Good / bad:
 
 ```text
-fix: pangkas function usage media publik + robots + nav
-feat(delivery): tambah resolusi hostname eksak per site
-docs: hapus PRD usang dan seluruh rujukannya
+fix: cut public media function usage, robots misses, and nav revalidation
+feat(delivery): add exact hostname resolution per site
+docs: drop obsolete PRD and all its references
 
-Batch: ticker tanpa ekor brand    # no valid type, capitalized
+Batch: ticker tanpa ekor brand    # no valid type, capitalized, non-English
 Refactor template clean-blue      # missing colon, capitalized type
 fix bug                           # undescriptive
 update                            # undescriptive

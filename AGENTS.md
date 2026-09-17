@@ -170,7 +170,7 @@ sudah ter-push tidak ditulis ulang tanpa persetujuan owner.
 1. Baca standar pesan commit di `CONTRIBUTING.md` ("Commit messages")
    sebelum membuat commit. Jangan mengandalkan ingatan.
 2. Format satu-satunya: `<tipe>[scope opsional]: <deskripsi>` — deskripsi
-   Bahasa Indonesia, huruf kecil, imperatif, maks 72 karakter, tanpa titik
+   Bahasa Inggris, huruf kecil, imperatif, maks 72 karakter, tanpa titik
    akhir, tanpa emoji. Tipe hanya huruf kecil: `feat`, `fix`, `refactor`,
    `docs`, `test`, `chore`, `perf`, `ci`, `build`.
 3. Satu commit = satu perubahan logis. Dilarang commit snapshot, `wip`,
