@@ -10,6 +10,7 @@ export interface FeatureItem {
   readonly title: string;
   readonly description: string;
   readonly href?: string;
+  readonly points?: readonly string[];
 }
 
 export interface FaqItem {
@@ -134,46 +135,91 @@ export const CAPABILITIES: readonly FeatureItem[] = Object.freeze([
     title: 'Redaksi terpusat',
     description:
       'Kelola artikel, kategori, wilayah, penulis, dan penugasan situs dari satu tempat. Setiap perubahan sensitif tercatat pada jejak audit hanya-tambah yang dirancang tidak dapat diubah melalui aplikasi.',
+    points: [
+      'Artikel, kategori, wilayah, dan penulis dalam satu layar',
+      'Peran owner, editor, dan penulis yang tegas',
+      'Perubahan sensitif tercatat otomatis di audit',
+    ],
   },
   {
     title: 'Terbit sekali ke banyak situs',
     description:
       'Satu artikel bisa tayang di belasan portal sekaligus tanpa salin-tempel. Status tiap penayangan terpantau: antre, terkirim, atau gagal dan dicoba ulang otomatis.',
+    points: [
+      'Pilih belasan portal tujuan dalam satu aksi',
+      'Status antre, terkirim, dan gagal terpantau per situs',
+      'Kegagalan dicoba ulang otomatis oleh sistem',
+    ],
   },
   {
     title: 'Media privat berlapis',
     description:
       'Gambar disimpan pada penyimpanan privat dan dibuka per objek lewat otorisasi bertanda tangan berumur pendek. Dirancang tanpa folder publik; tautan kedaluwarsa otomatis.',
+    points: [
+      'Penyimpanan privat tanpa folder publik',
+      'Tautan bertanda tangan yang kedaluwarsa otomatis',
+      'Akses media terikat konteks situs yang meminta',
+    ],
   },
   {
     title: 'Tampilan tiap situs bisa beda',
     description:
       'Setiap portal punya warna, logo, dan susunan sendiri-sendiri — tetap dikelola dari satu dasbor yang sama.',
+    points: [
+      'Warna, logo, dan susunan diatur per portal',
+      'Situs wilayah mewarisi brand induk otomatis',
+      'Satu dasbor untuk seluruh penjenamaan',
+    ],
   },
   {
     title: 'Ramah mesin pencari',
     description:
       'Judul, deskripsi, pratinjau tautan, peta situs, dan umpan RSS dibuat otomatis per situs, sehingga tiap portal dinilai mandiri oleh Google.',
+    points: [
+      'Judul, deskripsi, dan pratinjau dibuat per situs',
+      'Peta situs dan umpan RSS otomatis per portal',
+      'Tiap portal dinilai mandiri oleh mesin pencari',
+    ],
   },
   {
     title: 'Kerja dari Telegram',
     description:
       'Wartawan bisa mengirim berita lewat chat Telegram. Hanya nomor yang sudah didaftarkan yang diterima; sisanya ditolak otomatis.',
+    points: [
+      'Kirim berita lewat chat dari nomor terdaftar',
+      'Nomor tak dikenal ditolak otomatis',
+      'Aturan bisnis sama dengan dasbor web',
+    ],
   },
   {
     title: 'Wilayah dan subdomain',
     description:
       'Setiap domain induk dapat memiliki situs wilayah pada subdomainnya sendiri, dengan konten dan penjenamaan terpisah namun tetap satu ruang redaksi.',
+    points: [
+      'Subdomain wilayah untuk tiap domain induk',
+      'Konten dan brand terpisah per wilayah',
+      'Tetap dikelola satu ruang redaksi',
+    ],
   },
   {
     title: 'Jejak audit hanya-tambah',
     description:
       'Siapa mengubah apa dan kapan — tercatat untuk pertanggungjawaban dan dirancang tidak dapat diubah melalui aplikasi. Retensi mengikuti Kebijakan Privasi.',
+    points: [
+      'Siapa, apa, dan kapan tercatat rapi',
+      'Tidak dapat diubah melalui aplikasi',
+      'Retensi mengikuti Kebijakan Privasi',
+    ],
   },
   {
     title: 'Didampingi manusia',
     description:
       'Bukan sekadar aplikasi: tim kami membantu penyiapan awal, pindahan data, dan menjawab pertanyaan lewat saluran yang jelas.',
+    points: [
+      'Penyiapan awal dibantu tim sampai jalan',
+      'Bantuan pindahan dari sistem lama',
+      'Jawaban dari manusia, bukan bot',
+    ],
   },
 ]);
 
@@ -362,6 +408,32 @@ export const CONTACT_CHECKLIST: readonly string[] = Object.freeze([
   'Perkiraan jumlah anggota redaksi beserta perannya',
   'Apakah wartawan perlu kirim berita via Telegram',
   'Apakah ada konten yang perlu dipindahkan dari sistem lama',
+]);
+
+/** Tenant live per `docs/DOMAINS.md` (batch Exabytes 2026-09-03). */
+export const LIVE_TENANT_APEX: readonly string[] = Object.freeze([
+  'fakta01.my.id',
+  'jurnalism.web.id',
+  'kabar360.biz.id',
+  'liputan99.web.id',
+  'nusantara24.web.id',
+  'pantaunusantara.web.id',
+  'suarafakta24.biz.id',
+  'wartakini7.web.id',
+  'wawasannusa.biz.id',
+]);
+
+/** Situs wilayah live per `docs/DOMAINS.md` (`wonosobo.*`, tercakup zona apex). */
+export const LIVE_TENANT_REGIONAL: readonly string[] = Object.freeze([
+  'wonosobo.fakta01.my.id',
+  'wonosobo.jurnalism.web.id',
+  'wonosobo.kabar360.biz.id',
+  'wonosobo.liputan99.web.id',
+  'wonosobo.nusantara24.web.id',
+  'wonosobo.pantaunusantara.web.id',
+  'wonosobo.suarafakta24.biz.id',
+  'wonosobo.wartakini7.web.id',
+  'wonosobo.wawasannusa.biz.id',
 ]);
 
 export interface DocSectionItem {

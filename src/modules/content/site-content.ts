@@ -5,24 +5,8 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import type * as schema from '@/data/schema';
-import {
-  readContactChannels,
-  readFaqs,
-  readShowcaseNames,
-  readTemplatePresets,
-  readTestimonials,
-  type FaqRow,
-  type TestimonialRow,
-} from '@/data/repos/content/queries';
-import {
-  CONTACT_CHANNELS,
-  FAQ_ITEMS,
-  type FeatureItem,
-} from '@/ui/site/marketing-content';
-import {
-  MASTER_TEMPLATE_PRESETS,
-  type MasterTemplatePreset,
-} from '@/ui/themes';
+import { readContactChannels } from '@/data/repos/content/queries';
+import { CONTACT_CHANNELS, type FeatureItem } from '@/ui/site/marketing-content';
 
 async function withRuntimeDatabase<T>(read: (db: PostgresJsDatabase<typeof schema>) => Promise<T>): Promise<T | null> {
   const context = await getServerRuntimeContext();
@@ -36,37 +20,6 @@ async function withRuntimeDatabase<T>(read: (db: PostgresJsDatabase<typeof schem
   }
 }
 
-export async function getTestimonials(): Promise<readonly TestimonialRow[]> {
-  'use cache';
-  cacheLife('hours');
-  cacheTag('site-content');
-  const rows = await withRuntimeDatabase((db) => readTestimonials(db));
-  if (rows !== null && rows.length > 0) return rows;
-  // Tanpa fallback: testimoni fiktif dilarang tayang sebagai konten nyata.
-  return Object.freeze([]);
-}
-
-export async function getFaqs(): Promise<readonly (FaqRow & { readonly id: string })[]> {
-  'use cache';
-  cacheLife('hours');
-  cacheTag('site-content');
-  const rows = await withRuntimeDatabase((db) => readFaqs(db));
-  if (rows !== null && rows.length > 0) return rows;
-  return Object.freeze(FAQ_ITEMS.map((item, index) => Object.freeze({
-    id: item.id ?? `faq-${index + 1}`, question: item.question, answer: item.answer,
-  })));
-}
-
-export async function getShowcaseNames(): Promise<readonly string[]> {
-  'use cache';
-  cacheLife('hours');
-  cacheTag('site-content');
-  const rows = await withRuntimeDatabase((db) => readShowcaseNames(db));
-  if (rows !== null && rows.length > 0) return rows;
-  // Tanpa fallback: logo media fiktif dilarang tayang sebagai konten nyata.
-  return Object.freeze([]);
-}
-
 export async function getContactChannels(): Promise<readonly FeatureItem[]> {
   'use cache';
   cacheLife('hours');
@@ -74,25 +27,6 @@ export async function getContactChannels(): Promise<readonly FeatureItem[]> {
   const rows = await withRuntimeDatabase((db) => readContactChannels(db));
   if (rows !== null && rows.length > 0) return rows;
   return CONTACT_CHANNELS;
-}
-
-export async function getTemplatePresets(): Promise<readonly MasterTemplatePreset[]> {
-  'use cache';
-  cacheLife('hours');
-  cacheTag('site-content');
-  const rows = await withRuntimeDatabase((db) => readTemplatePresets(db));
-  if (rows !== null && rows.length > 0) {
-    const categories = Object.freeze(['news', 'editorial', 'tech', 'official', 'visual', 'live'] as const);
-    return Object.freeze(rows.map((row) => Object.freeze({
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      category: (categories as readonly string[]).includes(row.category)
-        ? row.category as MasterTemplatePreset['category']
-        : 'news' as const,
-    })));
-  }
-  return MASTER_TEMPLATE_PRESETS;
 }
 
 export type { FeatureItem };
