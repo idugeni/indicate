@@ -1,6 +1,8 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ArticlePage } from '@/modules/site/components/network/network-listing';
+import { CleanBlueLoader } from '@/modules/site/components/network/templates/clean-blue/ui/loader';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 type Props = {
@@ -14,6 +16,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: 'Not Found', robots: { index: false, follow: false } };
   }
   return networkMetadata(`/${slug}`, { articleSlug: slug });
+}
+
+/** Satu sampel agar validasi prerender lolos; rute ini dinamis per-host per request. */
+export function generateStaticParams(): { slug: string }[] {
+  return [{ slug: '__missing__' }];
 }
 
 /** Params + konten tenant dibaca langsung; loader global `(network)/loading.tsx` yang tampil. */

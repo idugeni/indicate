@@ -16,6 +16,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return networkMetadata(`/tags/${clean}`, { tag: clean });
 }
 
+/** Satu sampel agar validasi prerender lolos; rute ini dinamis per-host per request. */
+export function generateStaticParams(): { tag: string }[] {
+  return [{ tag: '__missing__' }];
+}
+
 /** Params dibaca langsung; loader global `(network)/loading.tsx` yang tampil. */
 export default async function TagPage({ params }: Props) {
   const { tag } = await params;

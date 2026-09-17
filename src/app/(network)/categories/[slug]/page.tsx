@@ -15,6 +15,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return networkMetadata(`/categories/${slug}`, { categorySlug: slug });
 }
 
+/** Satu sampel agar validasi prerender lolos; rute ini dinamis per-host per request. */
+export function generateStaticParams(): { slug: string }[] {
+  return [{ slug: '__missing__' }];
+}
+
 /** Params dibaca langsung; loader global `(network)/loading.tsx` yang tampil. */
 export default async function CategoryPage({ params }: Props) {
   const { slug } = await params;
