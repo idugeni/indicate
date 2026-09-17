@@ -18,13 +18,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return networkMetadata(`/${slug}`, { articleSlug: slug });
 }
 
-/** Satu sampel agar validasi prerender lolos; rute ini dinamis per-host per request. */
-export function generateStaticParams(): { slug: string }[] {
-  return [{ slug: '__missing__' }];
+/** Cangkang statis untuk validasi instant: params hanya dibaca di dalam Suspense. */
+export default function DetailPage({ params }: Props) {
+  return (
+    <Suspense fallback={<CleanBlueLoader />}>
+      <DetailContent params={params} />
+    </Suspense>
+  );
 }
 
-/** Params + konten tenant dibaca langsung; loader global `(network)/loading.tsx` yang tampil. */
-export default async function DetailPage({ params }: Props) {
+async function DetailContent({ params }: Pick<Props, 'params'>) {
   const { slug } = await params;
   if (slug.trim() === '') notFound();
   const normalized = slug.trim().toLowerCase();

@@ -1,6 +1,8 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ChannelPage } from '@/modules/site/components/network/network-listing';
+import { CleanBlueLoader } from '@/modules/site/components/network/templates/clean-blue/ui/loader';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 type Props = {
@@ -15,13 +17,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return networkMetadata(`/categories/${slug}`, { categorySlug: slug });
 }
 
-/** Satu sampel agar validasi prerender lolos; rute ini dinamis per-host per request. */
-export function generateStaticParams(): { slug: string }[] {
-  return [{ slug: '__missing__' }];
+/** Cangkang statis untuk validasi instant: params hanya dibaca di dalam Suspense. */
+export default function CategoryPage({ params }: Props) {
+  return (
+    <Suspense fallback={<CleanBlueLoader />}>
+      <CategoryContent params={params} />
+    </Suspense>
+  );
 }
 
-/** Params dibaca langsung; loader global `(network)/loading.tsx` yang tampil. */
-export default async function CategoryPage({ params }: Props) {
+async function CategoryContent({ params }: Pick<Props, 'params'>) {
   const { slug } = await params;
   if (slug.trim() === '') notFound();
   const site = await resolveNetworkSite({ categorySlug: slug }, `/categories/${slug}`);

@@ -1,6 +1,8 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ChannelPage } from '@/modules/site/components/network/network-listing';
+import { CleanBlueLoader } from '@/modules/site/components/network/templates/clean-blue/ui/loader';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 type Props = {
@@ -16,13 +18,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return networkMetadata(`/tags/${clean}`, { tag: clean });
 }
 
-/** Satu sampel agar validasi prerender lolos; rute ini dinamis per-host per request. */
-export function generateStaticParams(): { tag: string }[] {
-  return [{ tag: '__missing__' }];
+/** Cangkang statis untuk validasi instant: params hanya dibaca di dalam Suspense. */
+export default function TagPage({ params }: Props) {
+  return (
+    <Suspense fallback={<CleanBlueLoader />}>
+      <TagContent params={params} />
+    </Suspense>
+  );
 }
 
-/** Params dibaca langsung; loader global `(network)/loading.tsx` yang tampil. */
-export default async function TagPage({ params }: Props) {
+async function TagContent({ params }: Pick<Props, 'params'>) {
   const { tag } = await params;
   const clean = decodeURIComponent(tag).trim().toLowerCase();
   if (clean === '') notFound();
