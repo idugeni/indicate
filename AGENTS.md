@@ -186,9 +186,8 @@ rules constrain the agent's defaults and initiative, never the owner's
 taste. When the owner changes requirements:
 
 1. Adjust first, docs may follow: code the change, then update the
-   governing docs (`docs/PRD.md`,
-   `docs/ARCHITECTURE.md`, `docs/MIGRATIONS.md`, this file) in the same
-   PR when practical. Docs are advisory, not a pre-code gate.
+   governing docs (`docs/ARCHITECTURE.md`, `docs/MIGRATIONS.md`, this file)
+   in the same PR when practical. Docs are advisory, not a pre-code gate.
 2. Changed mind on a standing decision below? Update or remove that
    entry in the same turn — do not keep enforcing a revoked decision.
 3. When in doubt between a rule and an explicit owner request, follow

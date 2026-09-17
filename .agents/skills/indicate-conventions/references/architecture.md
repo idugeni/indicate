@@ -1,6 +1,6 @@
 # Architecture reference
 
-Source of truth: `docs/ARCHITECTURE.md` (approved 2026-08-30; constrained by `docs/PRD.md`).
+Source of truth: `docs/ARCHITECTURE.md` (approved 2026-08-30).
 
 ## Managed resources (exactly one of each by default)
 

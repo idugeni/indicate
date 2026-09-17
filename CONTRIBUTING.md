@@ -312,7 +312,6 @@ When making structural changes, consider updating these files:
 If you are unsure where code belongs or how to handle a specific pattern, check:
 
 1. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for system design
-2. [docs/PRD.md](docs/PRD.md) for product requirements
-3. [src/app/globals.css](src/app/globals.css) and `src/components/ui/` for visual decisions
-4. [SUPPORT.md](SUPPORT.md) for where to ask for help
-5. Existing code in the same layer for established patterns
+2. [src/app/globals.css](src/app/globals.css) and `src/components/ui/` for visual decisions
+3. [SUPPORT.md](SUPPORT.md) for where to ask for help
+4. Existing code in the same layer for established patterns

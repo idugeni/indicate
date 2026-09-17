@@ -3,9 +3,9 @@
 ## Review status
 
 - **Status:** Approved
-- **Approval gate:** Satisfied on 2026-08-30 for this document and `docs/PRD.md`.
+- **Approval gate:** Satisfied on 2026-08-30 for this document.
 - **Approval record:** User/reviewer approval was explicitly provided through this session on 2026-08-30.
-- **Source of truth:** this document, constrained by `docs/PRD.md`
+- **Source of truth:** this document.
 - **Scope of this version:** Approved architecture definition. This approval clears the pre-code documentation gate for a subsequent invocation; this document does not itself perform application, dependency, infrastructure, or deployment changes.
 
 ## 1. Architecture summary
@@ -702,7 +702,7 @@ Additional Central Java regions use the same data path without source changes.
 
 ### 20.3 Promotion
 
-1. Confirm `docs/PRD.md` and `docs/ARCHITECTURE.md` exist and have explicit approval.
+1. Confirm `docs/ARCHITECTURE.md` exists and has explicit approval.
 2. Run deterministic typecheck and lint checks.
 3. Validate Runtime Configuration and provider connectivity without tenant mutation.
 4. Apply reviewed Drizzle migrations with the direct migration credential and verify schema version.
@@ -758,7 +758,7 @@ The following are discouraged by default but allowed with owner approval and a b
 
 ## 24. Reviewer approval and implementation-stage confirmations
 
-The user/reviewer explicitly approved this architecture and `docs/PRD.md` through this session on 2026-08-30, satisfying the pre-code documentation gate. The following operational confirmations remain required at the applicable implementation or promotion stage:
+The user/reviewer explicitly approved this architecture through this session on 2026-08-30, satisfying the pre-code documentation gate. The following operational confirmations remain required at the applicable implementation or promotion stage:
 
 1. **Exact-domain operations:** confirm that every active Site will be individually associated with the one Vercel project while Cloudflare retains nameserver/DNS authority.
 2. **Provider capacity:** confirm the Vercel plan supports the projected exact-domain count, cron frequency, execution duration, and the unbounded domain-plus-regional-Site scale target.

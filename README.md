@@ -159,7 +159,6 @@ Detailed procedures: [database migration operations](docs/MIGRATIONS.md) and [pr
 
 ## Documentation and specifications
 
-- [Product requirements](docs/PRD.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Migration operations](docs/MIGRATIONS.md)
 - [Production readiness and rollback runbook](docs/PRODUCTION_READINESS_RUNBOOK.md)

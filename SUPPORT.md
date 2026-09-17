@@ -4,7 +4,7 @@
 
 | Channel | Use for |
 |---------|---------|
-| [Documentation](docs/PRD.md) · [Architecture](docs/ARCHITECTURE.md) · [Migrations](docs/MIGRATIONS.md) · [Readiness runbook](docs/PRODUCTION_READINESS_RUNBOOK.md) · [Data agreement](docs/DPA.md) · [Changelog](CHANGELOG.md) | First stop for behavior, topology, operations, contract duties, and history |
+| [Architecture](docs/ARCHITECTURE.md) · [Migrations](docs/MIGRATIONS.md) · [Readiness runbook](docs/PRODUCTION_READINESS_RUNBOOK.md) · [Data agreement](docs/DPA.md) · [Changelog](CHANGELOG.md) | First stop for behavior, topology, operations, contract duties, and history |
 | [Bug report](.github/ISSUE_TEMPLATE/bug_report.yml) | Reproducible defects on a specific commit |
 | [Feature request](.github/ISSUE_TEMPLATE/feature_request.yml) | Proposed capabilities with tenant-isolation analysis |
 | [Contributing guide](CONTRIBUTING.md) | Environment setup, conventions, PR process |
