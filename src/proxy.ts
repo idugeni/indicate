@@ -16,21 +16,26 @@ import {
 
 const noindex = { 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'private, no-store' };
 
-/** script-src keeps 'unsafe-inline' for Next.js flight payloads; XSS defense rests on React output escaping. Allows Cloudflare Web Analytics beacon auto-injected at the edge; Cloudflare already terminates TLS/proxies, so no new trust. No plugins, no framing. */
-const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' https: data: blob:",
-  "font-src 'self' https: data:",
-  "connect-src 'self' https:",
-  "media-src 'self' https:",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  'upgrade-insecure-requests',
-].join('; ');
+/** script-src keeps 'unsafe-inline' for Next.js flight payloads; XSS defense rests on React output escaping. Allows Cloudflare Web Analytics beacon auto-injected at the edge; Cloudflare already terminates TLS/proxies, so no new trust. Development adds 'unsafe-eval' for React/Turbopack dev runtimes; production stays without it. No plugins, no framing. */
+function contentSecurityPolicy(): string {
+  const scriptSrc = isProductionEdge()
+    ? "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com"
+    : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com";
+  return [
+    "default-src 'self'",
+    scriptSrc,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' https: data: blob:",
+    "font-src 'self' https: data:",
+    "connect-src 'self' https:",
+    "media-src 'self' https:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    'upgrade-insecure-requests',
+  ].join('; ');
+}
 
 const BASE_HEADERS: Record<string, string> = {
   'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -39,18 +44,18 @@ const BASE_HEADERS: Record<string, string> = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
   'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
   'Origin-Agent-Cluster': '?1',
-  'Content-Security-Policy': CONTENT_SECURITY_POLICY,
 };
 
 // HSTS in production only: emitting it from localhost would pin HTTPS on loopback origins.
 function securityHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    ...BASE_HEADERS,
+    'Content-Security-Policy': contentSecurityPolicy(),
+  };
   if (isProductionEdge()) {
-    return {
-      ...BASE_HEADERS,
-      'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
-    };
+    headers['Strict-Transport-Security'] = 'max-age=63072000; includeSubDomains; preload';
   }
-  return BASE_HEADERS;
+  return headers;
 }
 
 function withSecurityHeaders(response: NextResponse): NextResponse {
