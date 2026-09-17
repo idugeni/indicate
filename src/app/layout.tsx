@@ -37,6 +37,10 @@ export const metadata: Metadata = {
   description:
     'Indicate menyatukan pengelolaan puluhan domain berita ke dalam satu Dashboard terpusat. Redaksi menulis satu kali, lalu menerbitkannya ke situs mana pun yang dipilih.',
   applicationName: 'Indicate',
+  icons: {
+    icon: [{ url: '/brand/indicate-mark.svg', type: 'image/svg+xml' }],
+    apple: [{ url: '/brand/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
   authors: [{ name: 'Indicate' }],
   creator: 'Indicate',
   publisher: 'Indicate',

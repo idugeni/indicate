@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" role="img" aria-label="Indicate — Publishing infrastructure">
+  <rect x="4" y="8" width="64" height="64" rx="15" fill="#1a2430"/>
+  <rect x="31" y="40" width="10" height="24" rx="5" fill="#f4f2ec"/>
+  <circle cx="36" cy="29" r="7" fill="#cc9a44"/>
+  <text x="80" y="45" font-family="Fraunces, Georgia, 'Times New Roman', serif" font-size="34" font-weight="600" letter-spacing="-0.5" fill="#1a2430">Indicate</text>
+  <text x="81" y="64" font-family="ui-monospace, 'IBM Plex Mono', Menlo, Consolas, monospace" font-size="10.5" letter-spacing="2.4" fill="#5f6b7a">PUBLISHING INFRASTRUCTURE</text>
+</svg>

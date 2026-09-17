@@ -14,7 +14,7 @@ export async function BrandPanel() {
     <div className="hidden border-r border-hairline bg-bg-raised/40 p-12 md:flex md:flex-col md:justify-between">
       <Link href="/" className="flex items-center gap-3 no-underline" aria-label="Indicate beranda">
         <Image
-          src="/brand/logo.png"
+          src="/brand/indicate-mark.svg"
           alt="Indicate"
           width={36}
           height={36}

@@ -32,7 +32,7 @@ export interface ProofPointItem {
 }
 
 export const SERVICE_NAME = 'Indicate';
-export const SERVICE_TAGLINE = 'Satu ruang redaksi untuk seluruh jaringan portal berita Anda.';
+export const SERVICE_TAGLINE = 'Satu ruang redaksi untuk seluruh jaringan media Anda.';
 /**
  * Logo instansi fallback untuk avatar publisher: dipakai bila publisher belum
  * menyematkan logonya sendiri (`contacts.logoUrl`). Berkasnya WAJIB ada di

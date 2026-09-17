@@ -110,7 +110,7 @@ export function SiteHeader() {
           >
             <Image
               className="h-8 w-8 flex-none rounded border border-hairline-strong bg-bg-raised-2 object-contain transition-colors duration-180 group-hover:border-brass/60"
-              src="/brand/logo.png"
+              src="/brand/indicate-mark.svg"
               alt=""
               width={32}
               height={32}

@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowUpRight, Mail, MessageCircle, Send } from 'lucide-react';
 import {
@@ -33,19 +34,14 @@ export async function LandingFooter({ channels }: { readonly channels: readonly 
     <footer className="border-t border-[#e2ded2] bg-white">
       <div className="mx-auto grid w-full max-w-7xl gap-12 px-5 py-14 sm:px-8 md:py-20 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <div>
-          <p className="m-0 flex items-center gap-3">
-            <span
-              aria-hidden="true"
-              className="flex h-10 w-10 items-center justify-center rounded bg-[#1a2430] font-serif text-xl font-semibold text-[#e8c87e]"
-            >
-              I
-            </span>
-            <span className="grid leading-none">
-              <strong className="text-lg font-semibold tracking-tight">{SERVICE_NAME}</strong>
-              <small className="mt-1 font-mono text-[10px] tracking-[0.14em] text-[#5f6b7a] uppercase">
-                Publishing infrastructure
-              </small>
-            </span>
+          <p className="m-0">
+            <Image
+              src="/brand/indicate-landscape.svg"
+              alt="Indicate — Publishing infrastructure"
+              width={240}
+              height={60}
+              className="h-auto w-60"
+            />
           </p>
           <p className="m-0 mt-5 max-w-sm font-serif text-xl leading-snug tracking-tight text-[#1a2430]">
             {SERVICE_TAGLINE}
@@ -146,8 +142,8 @@ export async function LandingFooter({ channels }: { readonly channels: readonly 
       </div>
       <div className="border-t border-[#e2ded2]">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-1 px-5 py-4 font-mono text-[11px] text-[#5f6b7a] sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <p className="m-0">© {year} Eliyanto Sarage · {SERVICE_NAME} · PostgreSQL 17 · Strict RLS · Cloudflare Edge</p>
-          <p className="m-0 tabular-nums">ID-id · Asia/Jakarta</p>
+          <p className="m-0">© {year} {SERVICE_NAME}. Hak cipta dilindungi undang-undang.</p>
+          <p className="m-0 tabular-nums">PT Sanca Phena Cakra</p>
         </div>
       </div>
     </footer>

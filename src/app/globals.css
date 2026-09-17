@@ -223,6 +223,30 @@
     cursor: pointer;
   }
 
+  /* Scrollbar ramping enterprise untuk web utama yang terang: gutter
+     paper, thumb pasir yang menjadi brass saat hover. */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: #c2bba6 #e9e6d9;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: #e9e6d9;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: #c2bba6;
+    background-clip: padding-box;
+    border: 3px solid transparent;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #b88d3a;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;

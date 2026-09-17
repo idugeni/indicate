@@ -6,8 +6,6 @@ import { cn } from '@/ui/cn';
 
 const REVEAL_AT = 300;
 const SCROLL_DURATION_MS = 650;
-const RING_RADIUS = 18;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export function BackToTop() {
   const [visible, setVisible] = useState(false);
@@ -52,7 +50,13 @@ export function BackToTop() {
 
     const startTime = performance.now();
 
-    // Smooth easeInOutCubic curve for elegant fluid ascent.
+    // Smooth easeInOutCubic curve for elegant fluid ascent. Matikan
+    // scroll-behavior:smooth global selama animasi agar tiap frame rAF
+    // mendarat tepat tanpa diinterpolasi ulang oleh browser.
+    const root = document.documentElement;
+    const previousBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = 'auto';
+
     const easeInOutCubic = (t: number) =>
       t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
@@ -65,62 +69,39 @@ export function BackToTop() {
 
       if (progress < 1) {
         window.requestAnimationFrame(animateScroll);
+      } else {
+        root.style.scrollBehavior = previousBehavior;
       }
     };
 
     window.requestAnimationFrame(animateScroll);
   }, []);
 
-  const strokeDashoffset = RING_CIRCUMFERENCE - (progress / 100) * RING_CIRCUMFERENCE;
-
   return (
-    <button
-      id="btn-back-to-top"
-      type="button"
-      onClick={scrollToTop}
-      inert={!visible}
-      aria-label={`Kembali ke atas (${Math.round(progress)}% halaman dibaca)`}
-      className={cn(
-        'group fixed right-6 bottom-6 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-brass/40 bg-bg-raised text-brass shadow-lg transition-all duration-200 hover:bg-brass hover:text-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass',
-        visible
-          ? 'translate-y-0 opacity-100'
-          : 'pointer-events-none translate-y-3 opacity-0',
-      )}
-    >
-      {/* Circular progress meter */}
-      <svg
-        className="absolute inset-0 h-full w-full -rotate-90 p-1"
-        viewBox="0 0 48 48"
+    <>
+      <span
         aria-hidden="true"
-      >
-        {/* Background track */}
-        <circle
-          cx="24"
-          cy="24"
-          r={RING_RADIUS}
-          className="stroke-brass/20 group-hover:stroke-bg/30"
-          strokeWidth="2.5"
-          fill="transparent"
-        />
-        {/* Animated progress ring */}
-        <circle
-          cx="24"
-          cy="24"
-          r={RING_RADIUS}
-          className="stroke-brass transition-all duration-150 group-hover:stroke-bg"
-          strokeWidth="2.5"
-          strokeDasharray={RING_CIRCUMFERENCE}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          fill="transparent"
-        />
-      </svg>
-
-      {/* Center arrow icon */}
-      <ArrowUp
-        className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5"
-        aria-hidden="true"
+        style={{ width: `${progress}%` }}
+        className="fixed top-0 left-0 z-50 h-0.5 bg-[#b88d3a]"
       />
-    </button>
+      <button
+        id="btn-back-to-top"
+        type="button"
+        onClick={scrollToTop}
+        inert={!visible}
+        aria-label={`Kembali ke atas (${Math.round(progress)}% halaman dibaca)`}
+        className={cn(
+          'group fixed right-6 bottom-6 z-40 flex h-11 w-11 items-center justify-center rounded-lg bg-[#1a2430] text-[#f4f2ec] shadow-[0_16px_32px_-12px_rgba(26,36,48,0.5)] transition-all duration-200 hover:-translate-y-1 hover:bg-[#8a5f1c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b88d3a]',
+          visible
+            ? 'translate-y-0 opacity-100'
+            : 'pointer-events-none translate-y-3 opacity-0',
+        )}
+      >
+        <ArrowUp
+          className="h-5 w-5 transition-transform duration-200 group-hover:-translate-y-0.5"
+          aria-hidden="true"
+        />
+      </button>
+    </>
   );
 }
