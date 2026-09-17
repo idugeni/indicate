@@ -39,6 +39,16 @@ export default defineConfig([
   },
   ...tseslint.configs.recommended,
   {
+    // Runtime boundary: wrangler membundel worker tanpa resolve alias `@/`,
+    // sehingga impor relatif ke kontrak kanonis src adalah satu-satunya jalan
+    // tanpa menduplikasi skema. Cakupan override sesempit direktori worker.
+    name: 'indicate/workers',
+    files: ['workers/**/*.{ts,tsx,mts,cts}'],
+    rules: {
+      'no-restricted-imports': 'off',
+    },
+  },
+  {
     name: 'indicate/typescript',
     files: ['**/*.{ts,tsx,mts,cts}'],
     rules: {

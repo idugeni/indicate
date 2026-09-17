@@ -26,6 +26,11 @@ interface SiteSettingsRow {
   readonly name: string;
   readonly description: string;
   readonly tagline: string | null;
+  readonly seoDefaultTitle: string | null;
+  readonly seoDefaultDescription: string | null;
+  readonly seoOpenGraphSiteName: string | null;
+  readonly locale: string | null;
+  readonly seoRobotsDirective: 'index,follow' | 'noindex,nofollow' | null;
   readonly colors: Readonly<Record<string, string>>;
   readonly socialLinks: Readonly<Record<string, string>>;
   readonly seo: Readonly<Record<string, unknown>>;
@@ -60,6 +65,11 @@ function SiteSettingsEditor({
   const nameId = useId();
   const descriptionId = useId();
   const taglineId = useId();
+  const seoTitleId = useId();
+  const seoDescriptionId = useId();
+  const ogSiteNameId = useId();
+  const localeId = useId();
+  const robotsId = useId();
   const templateId = useId();
   const colorsId = useId();
   const logoId = useId();
@@ -72,6 +82,11 @@ function SiteSettingsEditor({
   const [name, setName] = useState(settings?.name ?? site.normalizedHostname);
   const [description, setDescription] = useState(settings?.description ?? '');
   const [tagline, setTagline] = useState(settings?.tagline ?? '');
+  const [seoTitle, setSeoTitle] = useState(settings?.seoDefaultTitle ?? '');
+  const [seoDescription, setSeoDescription] = useState(settings?.seoDefaultDescription ?? '');
+  const [ogSiteName, setOgSiteName] = useState(settings?.seoOpenGraphSiteName ?? '');
+  const [locale, setLocale] = useState(settings?.locale ?? '');
+  const [robots, setRobots] = useState(settings?.seoRobotsDirective ?? '');
   const [logoMedia, setLogoMedia] = useState(settings?.logoMediaId ?? '');
   const [faviconMedia, setFaviconMedia] = useState(settings?.faviconMediaId ?? '');
   const [defaultMedia, setDefaultMedia] = useState(settings?.defaultMediaId ?? '');
@@ -119,6 +134,11 @@ function SiteSettingsEditor({
         name: name.trim(),
         description: description.trim(),
         tagline: tagline.trim() === '' ? null : tagline.trim(),
+        ...(seoTitle.trim() === '' ? {} : { seoDefaultTitle: seoTitle.trim() }),
+        ...(seoDescription.trim() === '' ? {} : { seoDefaultDescription: seoDescription.trim() }),
+        ...(ogSiteName.trim() === '' ? {} : { seoOpenGraphSiteName: ogSiteName.trim() }),
+        ...(locale.trim() === '' ? {} : { locale: locale.trim() }),
+        ...(robots === '' ? {} : { seoRobotsDirective: robots }),
         logoMediaId: logoMedia.trim() === '' ? null : logoMedia.trim(),
         faviconMediaId: faviconMedia.trim() === '' ? null : faviconMedia.trim(),
         defaultMediaId: defaultMedia.trim() === '' ? null : defaultMedia.trim(),
@@ -175,6 +195,86 @@ function SiteSettingsEditor({
           onChange={(event) => setTagline(event.target.value)}
           className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
         />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <label htmlFor={seoTitleId} className="font-mono text-xs text-paper-dim">
+            Judul SEO (10–160 karakter, unik per hostname)
+          </label>
+          <Input
+            id={seoTitleId}
+            value={seoTitle}
+            disabled={isSaving}
+            maxLength={160}
+            placeholder="Kosong = compose dari nama + tagline"
+            onChange={(event) => setSeoTitle(event.target.value)}
+            className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor={ogSiteNameId} className="font-mono text-xs text-paper-dim">
+            Nama situs OG (unik per hostname)
+          </label>
+          <Input
+            id={ogSiteNameId}
+            value={ogSiteName}
+            disabled={isSaving}
+            maxLength={160}
+            placeholder="Kosong = ikut nama kanal"
+            onChange={(event) => setOgSiteName(event.target.value)}
+            className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor={seoDescriptionId} className="font-mono text-xs text-paper-dim">
+          Deskripsi SEO (50–500 karakter, unik per hostname, tanpa :)
+        </label>
+        <Textarea
+          id={seoDescriptionId}
+          value={seoDescription}
+          disabled={isSaving}
+          rows={3}
+          maxLength={500}
+          placeholder="Kosong = ikut deskripsi kanal"
+          onChange={(event) => setSeoDescription(event.target.value)}
+          className="font-mono text-xs"
+        />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <label htmlFor={localeId} className="font-mono text-xs text-paper-dim">
+            Locale (format id-ID)
+          </label>
+          <Input
+            id={localeId}
+            value={locale}
+            disabled={isSaving}
+            maxLength={5}
+            placeholder="id-ID"
+            onChange={(event) => setLocale(event.target.value)}
+            className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor={robotsId} className="font-mono text-xs text-paper-dim">
+            Arahan robots
+          </label>
+          <select
+            id={robotsId}
+            value={robots}
+            disabled={isSaving}
+            onChange={(event) => setRobots(event.target.value)}
+            className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+          >
+            <option value="">Ikut bawaan (index,follow)</option>
+            <option value="index,follow">index,follow</option>
+            <option value="noindex,nofollow">noindex,nofollow</option>
+          </select>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">

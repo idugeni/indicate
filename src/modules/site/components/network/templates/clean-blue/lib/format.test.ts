@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import { makeNetworkArticle as makeArticle } from '@/modules/delivery/network-test-fixtures';
 import {
   articleImage,
   authorDisplayName,
@@ -12,43 +12,6 @@ import {
   tickerHeadline,
   tickerTime,
 } from '@/modules/site/components/network/templates/clean-blue/lib/format';
-
-function makeArticle(overrides: Partial<NetworkArticle> = {}): NetworkArticle {
-  return {
-    id: 'a1',
-    slug: 'berita-utama',
-    title: 'Judul',
-    description: 'Deskripsi singkat.',
-    body: 'Isi berita.',
-    tags: [],
-    regionId: 'r1',
-    categoryId: null,
-    categorySlug: null,
-    categoryName: null,
-    authorName: null,
-    authorDisplayName: null,
-    publisherName: null,
-    attribution: 'Redaksi',
-    publisherLogoUrl: null,
-    publisherCity: null,
-    publisherBio: null,
-    authorBio: null,
-    authorAvatarUrl: null,
-    publisherVerified: false,
-    independent: false,
-    officialInstitution: null,
-    publishedAt: '2026-09-14T10:00:00.000Z',
-    updatedAt: '2026-09-14T10:00:00.000Z',
-    articleSiteId: 'as1',
-    viewCount: 0,
-    imageUrl: null,
-    thumbnailUrl: null,
-    imageWidth: null,
-    imageHeight: null,
-    gallery: [],
-    ...overrides,
-  };
-}
 
 describe('articleImage', () => {
   it('prioritaskan thumbnail, lalu gambar utama, lalu fallback lokal', () => {

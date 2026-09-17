@@ -11,6 +11,7 @@ export interface ControlPlaneHosts {
   readonly dashboard: string;
   readonly api: string;
   readonly webhook: string;
+  readonly docs: string;
 }
 
 const CLASSIFY_REVALIDATE_SECONDS = 300;
@@ -31,7 +32,7 @@ const lookupPerRequest = cache(
 export class HostnameResolver {
   private readonly controls: ReadonlyMap<string, ControlSurface>;
   constructor(private readonly repository: Pick<DeliveryRepository, 'findActiveSitesByExactHostname'>, hosts: ControlPlaneHosts) {
-    this.controls = new Map([[hosts.dashboard, 'dashboard'], [hosts.api, 'api'], [hosts.webhook, 'webhook']]);
+    this.controls = new Map([[hosts.dashboard, 'dashboard'], [hosts.api, 'api'], [hosts.webhook, 'webhook'], [hosts.docs, 'docs']]);
   }
 
   async classify(rawHost: string | null | undefined): Promise<RequestClassification> {

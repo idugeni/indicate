@@ -148,3 +148,5 @@ Regional live: `wonosobo.fakta01.my.id`, `wonosobo.jurnalism.web.id`,
   dari penunjukan eksplisit pemilik (`apex → regional1, regional2`).
 - Refresh: ekspor panel registrar + `GET /zones` Cloudflare + RDAP untuk
   tanggal registrar lain; perbarui tanggal verifikasi di atas.
+- Bot Fight Mode: aktif di 104/104 zona (`enable_js` + `fight_mode`,
+  2026-09-17, terverifikasi baca-balik per zona).

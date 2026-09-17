@@ -179,7 +179,7 @@ export function proxy(request: NextRequest) {
     auditEdgeDeny(request, 'dashboard.platform_token.denied');
     return deny(404, request.headers);
   }
-  const { dashboard, api, webhook } = getControlHosts();
+  const { dashboard, api, webhook, docs } = getControlHosts();
 
   if (parsed.hostname === dashboard) {
     if (path.startsWith('/api/network') || path.startsWith('/api/v1/') || path.startsWith('/api/webhooks/') || path === '/domain-pending') return deny(404, request.headers);
@@ -193,10 +193,23 @@ export function proxy(request: NextRequest) {
     if (!path.startsWith('/api/webhooks/')) return deny(404, request.headers);
     return nextWithCorrelation(request);
   }
+  if (parsed.hostname === docs) {
+    if (path.startsWith('/dashboard') || path === '/auth' || path.startsWith('/auth/') || path.startsWith('/sign-in') || path.startsWith('/api/') || isServicePath(path)) return deny(404, request.headers);
+    return nextWithCorrelation(request);
+  }
   const alias = TENANT_ALIASES[path];
   if (alias !== undefined) {
     const url = request.nextUrl.clone();
     url.pathname = alias;
+    const redirect = NextResponse.redirect(url, 308);
+    redirect.headers.set(REQUEST_ID_HEADER, ensureRequestId(request.headers).requestId);
+    return withSecurityHeaders(redirect);
+  }
+  if (path === '/docs' || path.startsWith('/docs/')) {
+    const url = request.nextUrl.clone();
+    url.hostname = docs;
+    url.port = '';
+    url.pathname = path === '/docs' ? '/' : path.slice('/docs'.length);
     const redirect = NextResponse.redirect(url, 308);
     redirect.headers.set(REQUEST_ID_HEADER, ensureRequestId(request.headers).requestId);
     return withSecurityHeaders(redirect);

@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
 import { isDashboardPermission } from '@/modules/dashboard/permissions';
+import {
+  SEO_DESCRIPTION_MAX,
+  SEO_DESCRIPTION_MIN,
+  SEO_TITLE_MAX,
+  SEO_TITLE_MIN,
+} from '@/modules/site/seo-validation';
 import { MASTER_TEMPLATE_PRESETS } from '@/ui/themes';
 
 const TEMPLATE_IDS = new Set(MASTER_TEMPLATE_PRESETS.map((preset) => preset.id));
@@ -23,8 +29,13 @@ export const siteSettingsSchema = z.object({
   siteId: id,
   expectedVersion: expectedVersion.optional(),
   name: z.string().trim().min(1).max(160),
-  description: z.string().trim().max(1000),
+  description: z.string().trim().min(1).max(1000),
   tagline: z.string().trim().min(1).max(120).nullable().optional(),
+  seoDefaultTitle: z.string().trim().min(SEO_TITLE_MIN).max(SEO_TITLE_MAX).nullable().optional(),
+  seoDefaultDescription: z.string().trim().min(SEO_DESCRIPTION_MIN).max(SEO_DESCRIPTION_MAX).nullable().optional(),
+  seoOpenGraphSiteName: z.string().trim().min(1).max(160).nullable().optional(),
+  locale: z.string().trim().regex(/^[a-z]{2}-[A-Z]{2}$/, 'Gunakan format id-ID.').nullable().optional(),
+  seoRobotsDirective: z.enum(['index,follow', 'noindex,nofollow']).nullable().optional(),
   logoMediaId: id.nullable().optional(),
   faviconMediaId: id.nullable().optional(),
   defaultMediaId: id.nullable().optional(),

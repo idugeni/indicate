@@ -47,11 +47,19 @@ export interface NavigationItem {
   readonly path: string;
 }
 
+/** Robots per-site mengikuti enum `seo_robots_directive` di database. */
+export type SeoRobotsDirective = 'index,follow' | 'noindex,nofollow';
+
 export interface SiteSettingsRecord extends VersionedRecord {
   readonly siteId: string;
   readonly name: string;
   readonly description: string;
   readonly tagline: string | null;
+  readonly seoDefaultTitle: string | null;
+  readonly seoDefaultDescription: string | null;
+  readonly seoOpenGraphSiteName: string | null;
+  readonly locale: string | null;
+  readonly seoRobotsDirective: SeoRobotsDirective | null;
   readonly colors: Readonly<Record<string, string>>;
   readonly socialLinks: Readonly<Record<string, string>>;
   readonly seo: Readonly<Record<string, unknown>>;

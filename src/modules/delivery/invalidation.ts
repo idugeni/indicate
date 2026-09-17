@@ -16,8 +16,6 @@ export function planInvalidation(mutation: NetworkMutation): InvalidationPlan {
   const paths = new Set(sitePaths);
   for (const slug of articleSlugs) {
     paths.add(`/${slug}`);
-    // Social cards are a separate route segment; the article page alone leaves a stale opengraph-image.
-    paths.add(`/${slug}/opengraph-image`);
   }
   if ((mutation.kind === 'article' || mutation.kind === 'publication') && mutation.categorySlug !== undefined) paths.add(`/categories/${mutation.categorySlug}`);
   const tags = new Set([`org:${mutation.organizationId}`, `site:${mutation.siteId}`, ...hostnames.map((host) => `host:${host}`), ...articleSlugs.map((slug) => `article:${slug}`)]);

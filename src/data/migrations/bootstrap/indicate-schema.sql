@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (117 migrations):
+-- Reviewed sources, in journal order (123 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -130,6 +130,12 @@
 --   115  20260916020000_invalidation_drop_articles_path  ledger sha256:e7dae07ed4c4e6be7fa011eb3c43843831c34e49b47d8e1c75b6065bf94d52ec
 --   116  20260916030000_invalidation_root_article_paths  ledger sha256:7b9fe0fe8ab205d93354ba2aa661f08ec02b0ae55a7af6a31c46e2f8619f3822
 --   117  20260916040000_content_attribution_cleanup  ledger sha256:088513474cb393af2e1cb9cf52dabfac713ccc75a9cdddc0325ee3cee0bc7071
+--   118  20260916050000_site_settings_tagline  ledger sha256:04c7fb6d276f31f32cfc0c615117ffa7db72e9e879addf6cad36471bc8b3fea3
+--   119  20260916060000_site_settings_tagline_repair  ledger sha256:a0840de2778d006f5eba47dd24271ab51011e108a51d62cf9a98dcb4373b907c
+--   120  20260917000000_fix_upt_city_lpka_kutoarjo  ledger sha256:249d27aa8ae8005cc345ce5d5012bb3330fb8d9cadf721317227bc9c6a98ae4d
+--   121  20260917010000_fix_upt_city_plantungan_banjarnegara  ledger sha256:b66db0d238034df9130030716f41e0792365a304ae3196e006c11b4c7b495208
+--   122  20260917020000_fix_upt_city_bapas_magelang  ledger sha256:a052e94a5c51ab785a3ca16e9f043d1ef9621e0be3e7503d4fb6037616e6fce9
+--   123  20260917030000_fix_upt_city_slawi  ledger sha256:b7051605faabec496d888d89b6db53cfa29ba04bcfaaa1326a1dfcd1eed11bae
 
 BEGIN;
 
@@ -11298,4 +11304,151 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (117, 'content_attribution_cleanup', 'sha256:bb43add4ffa8c5dd9be068b57293399423a4c32689e77291ae52f7c48b0ec089');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('088513474cb393af2e1cb9cf52dabfac713ccc75a9cdddc0325ee3cee0bc7071', 1789539165999);
+
+-- ----------------------------------------------------------------------
+-- 20260916050000_site_settings_tagline
+-- ----------------------------------------------------------------------
+-- Tagline khusus per site: slogan pendek buatan redaksi, bukan potongan deskripsi.
+-- Expand (nullable); baca fallback ke deskripsi bila NULL; backfill data terpisah.
+ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS "tagline" text;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (118, 'site_settings_tagline', 'sha256:6af1a02e9b5dfbbab5f2ccd6802fc4133a055e3e868918094b8b7b9639708c52');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('04c7fb6d276f31f32cfc0c615117ffa7db72e9e879addf6cad36471bc8b3fea3', 1789553499234);
+
+-- ----------------------------------------------------------------------
+-- 20260916060000_site_settings_tagline_repair
+-- ----------------------------------------------------------------------
+-- Perbaikan darurat: NULL-kan seo_default_title regional membuat guard active-site
+-- menolak update berikutnya; kembalikan judul eksplisit + isi tagline, lalu
+-- aktifkan kembali guard dalam transaksi yang sama (tanpa jendela).
+ALTER TABLE public.site_settings DISABLE TRIGGER site_settings_active_site_guard;
+UPDATE public.site_settings SET seo_default_title = 'Fakta01 Wonosobo — Fakta Wonosobo Teruji.', tagline = 'Fakta Wonosobo Teruji.', updated_at = now() WHERE organization_id = '7e27727d-b59f-4d24-998e-1bee6eeb3fa0' AND site_id = 'aaf4a9be-d09d-463e-a459-80627e7749e8' AND (seo_default_title IS NULL OR tagline IS NULL);
+UPDATE public.site_settings SET seo_default_title = 'Jurnalism Wonosobo — Bisnis Wonosobo Presisi.', tagline = 'Bisnis Wonosobo Presisi.', updated_at = now() WHERE organization_id = '7e27727d-b59f-4d24-998e-1bee6eeb3fa0' AND site_id = 'b8fccbc5-d5a2-4411-a9d8-a8bc1c31df91' AND (seo_default_title IS NULL OR tagline IS NULL);
+UPDATE public.site_settings SET seo_default_title = 'Kabar360 Wonosobo — Kabar Wonosobo Detik per Detik.', tagline = 'Kabar Wonosobo Detik per Detik.', updated_at = now() WHERE organization_id = '7e27727d-b59f-4d24-998e-1bee6eeb3fa0' AND site_id = '99f2568e-2e16-4b53-a7ac-6816b9372a34' AND (seo_default_title IS NULL OR tagline IS NULL);
+UPDATE public.site_settings SET seo_default_title = 'Liputan99 Wonosobo — Cepat ke Lapangan Wonosobo.', tagline = 'Cepat ke Lapangan Wonosobo.', updated_at = now() WHERE organization_id = '7e27727d-b59f-4d24-998e-1bee6eeb3fa0' AND site_id = '0410409d-42ad-4f08-8538-9c262192d3ac' AND (seo_default_title IS NULL OR tagline IS NULL);
+UPDATE public.site_settings SET seo_default_title = 'Nusantara24 Wonosobo — Suara Ekonomi Wonosobo.', tagline = 'Suara Ekonomi Wonosobo.', updated_at = now() WHERE organization_id = '7e27727d-b59f-4d24-998e-1bee6eeb3fa0' AND site_id = '4c09d824-ca1d-4499-9ac7-8febbb9ae393' AND (seo_default_title IS NULL OR tagline IS NULL);
+UPDATE public.site_settings SET seo_default_title = 'PantauNusantara Wonosobo — Radar Wonosobo.', tagline = 'Radar Wonosobo.', updated_at = now() WHERE organization_id = '7e27727d-b59f-4d24-998e-1bee6eeb3fa0' AND site_id = 'ae0de66c-f218-4643-ae42-630fb8c5aea5' AND (seo_default_title IS NULL OR tagline IS NULL);
+UPDATE public.site_settings SET seo_default_title = 'SuaraFakta24 Wonosobo — Suara Warga Wonosobo.', tagline = 'Suara Warga Wonosobo.', updated_at = now() WHERE organization_id = '7e27727d-b59f-4d24-998e-1bee6eeb3fa0' AND site_id = '0707ed19-06ef-4d4b-92f0-a1c01cc36868' AND (seo_default_title IS NULL OR tagline IS NULL);
+UPDATE public.site_settings SET seo_default_title = 'WartaKini7 Wonosobo — Budaya Wonosobo Hari Ini.', tagline = 'Budaya Wonosobo Hari Ini.', updated_at = now() WHERE organization_id = '7e27727d-b59f-4d24-998e-1bee6eeb3fa0' AND site_id = '37f66e1a-4fec-4b6c-adeb-95421b6ab16a' AND (seo_default_title IS NULL OR tagline IS NULL);
+UPDATE public.site_settings SET seo_default_title = 'WawasanNusa Wonosobo — Gagasan Jernih Wonosobo.', tagline = 'Gagasan Jernih Wonosobo.', updated_at = now() WHERE organization_id = '7e27727d-b59f-4d24-998e-1bee6eeb3fa0' AND site_id = '52899b6f-b552-41c2-a4dc-ee7c49c18f8e' AND (seo_default_title IS NULL OR tagline IS NULL);
+ALTER TABLE public.site_settings ENABLE TRIGGER site_settings_active_site_guard;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (119, 'site_settings_tagline_repair', 'sha256:9d00e8b8b5c3da82d282cc57531ea02ec17f732a2518d48c9659a7f5de00846c');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a0840de2778d006f5eba47dd24271ab51011e108a51d62cf9a98dcb4373b907c', 1789553647269);
+
+-- ----------------------------------------------------------------------
+-- 20260917000000_fix_upt_city_lpka_kutoarjo
+-- ----------------------------------------------------------------------
+-- Koreksi kota LPKA Kutoarjo yang generik di direktori resmi
+-- (dibiarkan verbatim saat seed agar setia pada sumber):
+-- LPKA Kutoarjo beralamat di Kabupaten Purworejo (bukan "Jawa Tengah").
+-- Idempoten: UPDATE bersyarat nilai lama.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+UPDATE public.organizations
+SET customer_metadata = jsonb_set(customer_metadata, '{city}', '"Kab. Purworejo"'), updated_at = now()
+WHERE slug = 'lpka-kelas-i-kutoarjo'
+  AND customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND customer_metadata->>'city' = 'Jawa Tengah';
+UPDATE public.publishers p
+SET contacts = jsonb_set(p.contacts, '{city}', '"Kab. Purworejo"'), updated_at = now()
+FROM public.organizations o
+WHERE o.slug = 'lpka-kelas-i-kutoarjo'
+  AND o.customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND p.organization_id = o.id
+  AND p.contacts->>'city' = 'Jawa Tengah';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (120, 'fix_upt_city_lpka_kutoarjo', 'sha256:3360800ed0b015ca9e58af0f60d91207dcf91856acfbdbc8de16a9d2165c3402');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('249d27aa8ae8005cc345ce5d5012bb3330fb8d9cadf721317227bc9c6a98ae4d', 1789621023666);
+
+-- ----------------------------------------------------------------------
+-- 20260917010000_fix_upt_city_plantungan_banjarnegara
+-- ----------------------------------------------------------------------
+-- Koreksi kota dua UPT yang generik di direktori resmi
+-- (dibiarkan verbatim saat seed agar setia pada sumber):
+-- Lapas Pemuda Plantungan beralamat di Kabupaten Kendal;
+-- Rutan Banjarnegara beralamat di Kabupaten Banjarnegara.
+-- Idempoten: UPDATE bersyarat nilai lama.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+UPDATE public.organizations
+SET customer_metadata = jsonb_set(customer_metadata, '{city}', '"Kab. Kendal"'), updated_at = now()
+WHERE slug = 'lapas-pemuda-kelas-ii-b-plantungan'
+  AND customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND customer_metadata->>'city' = 'Jawa Tengah';
+UPDATE public.publishers p
+SET contacts = jsonb_set(p.contacts, '{city}', '"Kab. Kendal"'), updated_at = now()
+FROM public.organizations o
+WHERE o.slug = 'lapas-pemuda-kelas-ii-b-plantungan'
+  AND o.customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND p.organization_id = o.id
+  AND p.contacts->>'city' = 'Jawa Tengah';
+UPDATE public.organizations
+SET customer_metadata = jsonb_set(customer_metadata, '{city}', '"Kab. Banjarnegara"'), updated_at = now()
+WHERE slug = 'rutan-kelas-ii-b-banjarnegara'
+  AND customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND customer_metadata->>'city' = 'Jawa Tengah';
+UPDATE public.publishers p
+SET contacts = jsonb_set(p.contacts, '{city}', '"Kab. Banjarnegara"'), updated_at = now()
+FROM public.organizations o
+WHERE o.slug = 'rutan-kelas-ii-b-banjarnegara'
+  AND o.customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND p.organization_id = o.id
+  AND p.contacts->>'city' = 'Jawa Tengah';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (121, 'fix_upt_city_plantungan_banjarnegara', 'sha256:49ed7408668f315049085976fc1544f7a76f2174694a0456e1cb59bae198a364');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b66db0d238034df9130030716f41e0792365a304ae3196e006c11b4c7b495208', 1789621118158);
+
+-- ----------------------------------------------------------------------
+-- 20260917020000_fix_upt_city_bapas_magelang
+-- ----------------------------------------------------------------------
+-- Koreksi kota Bapas Magelang yang janggal di direktori resmi
+-- (dibiarkan verbatim saat seed agar setia pada sumber):
+-- Bapas Magelang beralamat di Kabupaten Magelang, Kec. Mertoyudan
+-- (bukan Kota Magelang).
+-- Idempoten: UPDATE bersyarat nilai lama.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+UPDATE public.organizations
+SET customer_metadata = jsonb_set(customer_metadata, '{city}', '"Kab. Magelang"'), updated_at = now()
+WHERE slug = 'bapas-kelas-ii-magelang'
+  AND customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND customer_metadata->>'city' = 'Kota Magelang';
+UPDATE public.publishers p
+SET contacts = jsonb_set(p.contacts, '{city}', '"Kab. Magelang"'), updated_at = now()
+FROM public.organizations o
+WHERE o.slug = 'bapas-kelas-ii-magelang'
+  AND o.customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND p.organization_id = o.id
+  AND p.contacts->>'city' = 'Kota Magelang';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (122, 'fix_upt_city_bapas_magelang', 'sha256:4d446d44c6de7e3a6c96c6a6d1a31bf2e6d158da3ff3e0af8c5b58d2db698a6d');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a052e94a5c51ab785a3ca16e9f043d1ef9621e0be3e7503d4fb6037616e6fce9', 1789621185254);
+
+-- ----------------------------------------------------------------------
+-- 20260917030000_fix_upt_city_slawi
+-- ----------------------------------------------------------------------
+-- Koreksi kota Lapas Slawi yang janggal di direktori resmi
+-- (dibiarkan verbatim saat seed agar setia pada sumber):
+-- Lapas Slawi beralamat di Tegalandong, Kabupaten Tegal (bukan Kota Tegal).
+-- Idempoten: UPDATE bersyarat nilai lama.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+UPDATE public.organizations
+SET customer_metadata = jsonb_set(customer_metadata, '{city}', '"Kab. Tegal"'), updated_at = now()
+WHERE slug = 'lapas-kelas-ii-b-slawi'
+  AND customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND customer_metadata->>'city' = 'Kota Tegal';
+UPDATE public.publishers p
+SET contacts = jsonb_set(p.contacts, '{city}', '"Kab. Tegal"'), updated_at = now()
+FROM public.organizations o
+WHERE o.slug = 'lapas-kelas-ii-b-slawi'
+  AND o.customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND p.organization_id = o.id
+  AND p.contacts->>'city' = 'Kota Tegal';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (123, 'fix_upt_city_slawi', 'sha256:368630527513803ac6f978f9affac3f6af0a6bfe6207cc84a1c94b7560a1fdc8');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b7051605faabec496d888d89b6db53cfa29ba04bcfaaa1326a1dfcd1eed11bae', 1789621262751);
 COMMIT;

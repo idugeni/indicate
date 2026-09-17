@@ -350,7 +350,7 @@ export function serializeRss(site: NetworkSiteData): string {
   const siteName = site.settings.seoSiteName || site.settings.name;
   return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>${xml(siteName)}</title><link>${xml(channel)}</link><description>${xml(site.settings.seoDefaultDescription || site.settings.description)}</description><language>id-ID</language>${site.articles.map((article) => {
     const link = absoluteSiteUrl(site.context, `/${article.slug}`);
-    const enclosure = article.imageUrl === null ? '' : `<enclosure url="${xml(absoluteSiteAssetUrl(site.context, article.imageUrl))}" type="image/jpeg" />`;
+    const enclosure = article.imageUrl === null ? '' : `<enclosure url="${xml(absoluteSiteAssetUrl(site.context, article.imageUrl))}"${article.imageMediaType === null ? ' type="image/jpeg"' : ` type="${xml(article.imageMediaType)}"`} />`;
     return `<item><title>${xml(article.title)}</title><link>${xml(link)}</link><guid isPermaLink="true">${xml(link)}</guid><description>${xml(article.description)}</description><content:encoded>${xml(article.body)}</content:encoded>${enclosure}<pubDate>${new Date(article.publishedAt).toUTCString()}</pubDate>${article.categoryName === null ? '' : `<category>${xml(article.categoryName)}</category>`}</item>`;
   }).join('')}</channel></rss>`;
 }

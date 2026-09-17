@@ -834,6 +834,34 @@
       "when": 1789553647269,
       "tag": "20260916060000_site_settings_tagline_repair",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1789621023666,
+      "tag": "20260917000000_fix_upt_city_lpka_kutoarjo",
+      "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1789621118158,
+      "tag": "20260917010000_fix_upt_city_plantungan_banjarnegara",
+      "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1789621185254,
+      "tag": "20260917020000_fix_upt_city_bapas_magelang",
+      "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1789621262751,
+      "tag": "20260917030000_fix_upt_city_slawi",
+      "breakpoints": true
     }
   ]
 }

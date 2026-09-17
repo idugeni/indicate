@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { getPageviewEndpoint } from '@/core/config/edge-hosts';
+import { serializePageviewBeacon } from '@/modules/site/pageview-contract';
 
 /**
  * Beacon pageview via Cloudflare Worker → Upstash INCR.
@@ -25,10 +26,11 @@ export function CleanBlueViewBeacon({
     if (sent.current) return;
     sent.current = true;
     try {
-      const payload = JSON.stringify({ o: organizationId, s: siteId, a: articleSiteId });
-      const queued = navigator.sendBeacon(ENDPOINT, payload);
+      const body = serializePageviewBeacon({ o: organizationId, s: siteId, a: articleSiteId });
+      if (body === null) return;
+      const queued = navigator.sendBeacon(ENDPOINT, body);
       if (!queued) {
-        void fetch(ENDPOINT, { method: 'POST', body: payload, keepalive: true }).catch(() => {
+        void fetch(ENDPOINT, { method: 'POST', body, keepalive: true }).catch(() => {
           /* hitungan boleh hilang */
         });
       }

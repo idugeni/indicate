@@ -5,6 +5,9 @@ import { notFound } from 'next/navigation';
 import { indexableRobots } from '@/modules/site/seo';
 import { SERVICE_SUMMARY } from '@/ui/site/marketing-content';
 import { LandingPage } from '@/modules/site/components/landing-page';
+import { DocsShell } from '@/modules/docs/components/docs-ui';
+import { DocsHomeContent } from '@/modules/docs/components/home-content';
+import { docsPageMetadata } from '@/modules/docs/page-meta';
 import { deliveryComposition } from '@/modules/delivery';
 
 const resolveRouteContext = cache(async () => {
@@ -25,6 +28,10 @@ export async function generateMetadata(): Promise<Metadata> {
         robots: indexableRobots(),
         twitter: { card: 'summary_large_image' },
       };
+    }
+
+    if (classification.surface === 'docs') {
+      return docsPageMetadata(classification.hostname, 'home');
     }
 
     return {
@@ -54,6 +61,14 @@ export default async function RootPage() {
 
   if (classification.kind === 'control' && classification.surface === 'dashboard') {
     return <LandingPage />;
+  }
+
+  if (classification.kind === 'control' && classification.surface === 'docs') {
+    return (
+      <DocsShell host={classification.hostname}>
+        <DocsHomeContent host={classification.hostname} />
+      </DocsShell>
+    );
   }
 
   if (classification.kind === 'ambiguous') {

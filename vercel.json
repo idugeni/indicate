@@ -7,10 +7,6 @@
       "schedule": "0 1 * * *"
     },
     {
-      "path": "/api/health",
-      "schedule": "0 2 * * *"
-    },
-    {
       "path": "/api/internal/maintenance/worm-export",
       "schedule": "0 22 * * *"
     },

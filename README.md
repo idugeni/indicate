@@ -159,6 +159,7 @@ Detailed procedures: [database migration operations](docs/MIGRATIONS.md) and [pr
 
 ## Documentation and specifications
 
+- [API & integration docs](https://docs.indicate.web.id)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Migration operations](docs/MIGRATIONS.md)
 - [Production readiness and rollback runbook](docs/PRODUCTION_READINESS_RUNBOOK.md)

@@ -1,6 +1,7 @@
 import { CalendarDays, Clock3, Eye } from 'lucide-react';
 
 import { formatDate, formatFullViews } from '@/modules/site/components/network/templates/clean-blue/lib/format';
+import { VIEW_COUNT_FRESHNESS_NOTE } from '@/modules/site/pageview-contract';
 
 /**
  * Baris meta artikel berikon: tanggal, lama baca, angka views penuh.
@@ -31,7 +32,7 @@ export function ArticleMeta({
         <Clock3 className={icon} aria-hidden="true" />
         {reading} mnt baca
       </span>
-      <span className={item}>
+      <span className={item} title={VIEW_COUNT_FRESHNESS_NOTE}>
         <Eye className={icon} aria-hidden="true" />
         {formatFullViews(viewCount)}
       </span>

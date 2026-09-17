@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
+import { parsePageviewKey } from '@/modules/site/pageview-contract';
 import { Redis } from '@upstash/redis';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
@@ -59,10 +60,10 @@ async function handleGET(request: Request) {
       if (keys.length > 0) {
         const counts = await redis.mget<number[]>(...keys);
         keys.forEach((key, index) => {
-          const parts = key.split(':');
+          const identity = parsePageviewKey(key);
           const count = Number(counts[index] ?? 0);
-          if (parts.length !== 5 || !Number.isFinite(count) || count <= 0) return;
-          const [, , organizationId, siteId, articleSiteId] = parts as [string, string, string, string, string];
+          if (identity === null || !Number.isFinite(count) || count <= 0) return;
+          const { organizationId, siteId, articleSiteId } = identity;
           const existing = deltas.get(key);
           deltas.set(key, {
             organizationId: existing?.organizationId ?? organizationId,

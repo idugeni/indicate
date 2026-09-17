@@ -12,6 +12,7 @@ import { CleanBlueViewBeacon } from '@/modules/site/components/network/templates
 import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/cards/picks';
 import { articleImage, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/lib/format';
+import { VIEW_COUNT_FRESHNESS_NOTE } from '@/modules/site/pageview-contract';
 
 export function CleanBlueArticle({
   site,
@@ -89,7 +90,7 @@ export function CleanBlueArticle({
                   <span aria-hidden="true">·</span>
                   <span>{reading} menit baca</span>
                   <span aria-hidden="true">·</span>
-                  <span className="inline-flex items-center gap-1">
+                  <span className="inline-flex items-center gap-1" title={VIEW_COUNT_FRESHNESS_NOTE}>
                     <Eye className="h-3 w-3" aria-hidden="true" />
                     {formatFullViews(article.viewCount)}
                   </span>
@@ -199,7 +200,7 @@ export function CleanBlueArticle({
               </div>
               <div className="bg-white px-3 py-2.5 text-center">
                 <dt className="font-sans text-[10px] uppercase tracking-wider text-slate-400">Dibaca</dt>
-                <dd className="m-0 mt-0.5 inline-flex items-center justify-center gap-1 font-sans text-xs font-bold tabular-nums text-slate-800">
+                <dd className="m-0 mt-0.5 inline-flex items-center justify-center gap-1 font-sans text-xs font-bold tabular-nums text-slate-800" title={VIEW_COUNT_FRESHNESS_NOTE}>
                   <Eye className="h-3 w-3 text-slate-400" aria-hidden="true" />
                   {formatFullViews(article.viewCount)}
                 </dd>

@@ -1,0 +1,74 @@
+import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
+
+export function makeNetworkArticle(overrides: Partial<NetworkArticle> = {}): NetworkArticle {
+  return {
+    id: 'a1',
+    slug: 'berita-utama',
+    title: 'Judul',
+    description: 'Deskripsi singkat.',
+    body: 'Isi berita.',
+    tags: [],
+    regionId: 'r1',
+    categoryId: null,
+    categorySlug: null,
+    categoryName: null,
+    authorName: null,
+    authorDisplayName: null,
+    publisherName: null,
+    attribution: 'Redaksi',
+    publisherLogoUrl: null,
+    publisherCity: null,
+    publisherBio: null,
+    authorBio: null,
+    authorAvatarUrl: null,
+    publisherVerified: false,
+    independent: false,
+    officialInstitution: null,
+    publishedAt: '2026-09-14T10:00:00.000Z',
+    updatedAt: '2026-09-14T10:00:00.000Z',
+    articleSiteId: 'as1',
+    viewCount: 0,
+    imageUrl: null,
+    thumbnailUrl: null,
+    imageMediaType: null,
+    imageWidth: null,
+    imageHeight: null,
+    gallery: [],
+    ...overrides,
+  };
+}
+
+export function makeNetworkSite(
+  articles: readonly NetworkArticle[] = [],
+  navigation: readonly { readonly label: string; readonly path: string }[] = [],
+): NetworkSiteData {
+  return {
+    context: {
+      normalizedHostname: 'portal.example',
+      organizationId: 'o1',
+      domainId: 'd1',
+      siteId: 's1',
+      regionId: null,
+      routingVersion: 1,
+      contentVersion: 1,
+    },
+    regionName: null,
+    settings: {
+      name: 'Portal',
+      description: 'Deskripsi portal.',
+      tagline: null,
+      seoDefaultTitle: null,
+      seoDefaultDescription: null,
+      seoSiteName: null,
+      locale: 'id-ID',
+      colors: {},
+      socialLinks: {},
+      navigation,
+      logoUrl: '/brand/logo.svg',
+      faviconUrl: null,
+      defaultImageUrl: '/brand/default.jpg',
+      robots: [],
+    },
+    articles,
+  };
+}

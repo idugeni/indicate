@@ -301,9 +301,29 @@ export class TenantBusinessService {
       const faviconMediaId = this.requireActiveMedia(transaction, value.faviconMediaId, before?.faviconMediaId ?? null, 'faviconMediaId');
       const defaultMediaId = this.requireActiveMedia(transaction, value.defaultMediaId, before?.defaultMediaId ?? null, 'defaultMediaId');
       const tagline = value.tagline === undefined ? (before?.tagline ?? null) : value.tagline;
+      const seoDefaultTitle = value.seoDefaultTitle === undefined ? (before?.seoDefaultTitle ?? null) : value.seoDefaultTitle;
+      const seoDefaultDescription = value.seoDefaultDescription === undefined ? (before?.seoDefaultDescription ?? null) : value.seoDefaultDescription;
+      const seoOpenGraphSiteName = value.seoOpenGraphSiteName === undefined ? (before?.seoOpenGraphSiteName ?? null) : value.seoOpenGraphSiteName;
+      const locale = value.locale === undefined ? (before?.locale ?? null) : value.locale;
+      const seoRobotsDirective = value.seoRobotsDirective === undefined ? (before?.seoRobotsDirective ?? null) : value.seoRobotsDirective;
+      const uniqueCandidates = [
+        ['name', 'Nama kanal', value.name],
+        ['description', 'Deskripsi', value.description],
+        ['seoDefaultTitle', 'Judul SEO', seoDefaultTitle],
+        ['seoDefaultDescription', 'Deskripsi SEO', seoDefaultDescription],
+        ['seoOpenGraphSiteName', 'Nama situs OG', seoOpenGraphSiteName],
+      ] as const;
+      const clashes: Record<string, readonly string[]> = {};
+      for (const [field, label, candidate] of uniqueCandidates) {
+        const folded = candidate?.trim().toLowerCase() ?? '';
+        if (folded === '') continue;
+        const clash = transaction.state.siteSettings.find((row) => row.siteId !== value.siteId && (row[field]?.trim().toLowerCase() ?? '') === folded);
+        if (clash !== undefined) clashes[field] = [`${label} sudah dipakai kanal lain. Tulis yang unik per hostname.`];
+      }
+      if (Object.keys(clashes).length > 0) throw new DashboardValidationError(clashes);
       const after: SiteSettingsRecord = before === undefined
-        ? { ...this.base(actor, now), siteId: value.siteId, id: value.siteId, name: value.name, description: value.description, tagline, colors: value.colors ?? {}, socialLinks: value.socialLinks ?? {}, seo: value.seo ?? {}, navigation: value.navigation ?? [], logoMediaId, faviconMediaId, defaultMediaId, version: 1 }
-        : { ...before, name: value.name, description: value.description, tagline, colors: value.colors ?? before.colors, socialLinks: value.socialLinks ?? before.socialLinks, seo: value.seo ?? before.seo, navigation: value.navigation ?? before.navigation, logoMediaId, faviconMediaId, defaultMediaId, version: before.version + 1, updatedAt: now };
+        ? { ...this.base(actor, now), siteId: value.siteId, id: value.siteId, name: value.name, description: value.description, tagline, seoDefaultTitle, seoDefaultDescription, seoOpenGraphSiteName, locale, seoRobotsDirective, colors: value.colors ?? {}, socialLinks: value.socialLinks ?? {}, seo: value.seo ?? {}, navigation: value.navigation ?? [], logoMediaId, faviconMediaId, defaultMediaId, version: 1 }
+        : { ...before, name: value.name, description: value.description, tagline, seoDefaultTitle, seoDefaultDescription, seoOpenGraphSiteName, locale, seoRobotsDirective, colors: value.colors ?? before.colors, socialLinks: value.socialLinks ?? before.socialLinks, seo: value.seo ?? before.seo, navigation: value.navigation ?? before.navigation, logoMediaId, faviconMediaId, defaultMediaId, version: before.version + 1, updatedAt: now };
       if (before === undefined) transaction.state.siteSettings.push(after); else replaceById(transaction.state.siteSettings, after);
       this.audit(transaction, 'site.settings.update', 'site_settings', after.id, before ?? null, after); return after;
     }});

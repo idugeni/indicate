@@ -1,7 +1,7 @@
 import type { HostnameContext } from '@/core/operation-context';
 
 export type PublicOutcome = 'site' | 'unknown' | 'ambiguous' | 'invalid';
-export type ControlSurface = 'dashboard' | 'api' | 'webhook';
+export type ControlSurface = 'dashboard' | 'api' | 'webhook' | 'docs';
 
 export interface ResolvedSiteContext extends HostnameContext {
   readonly contentVersion: number;
@@ -65,6 +65,8 @@ export interface NetworkArticle {
   readonly viewCount: number;
   readonly imageUrl: string | null;
   readonly thumbnailUrl: string | null;
+  /** Tipe MIME gambar utama bila dari media R2; null untuk hotlink eksternal. */
+  readonly imageMediaType: string | null;
   readonly imageWidth: number | null;
   readonly imageHeight: number | null;
   /** Galeri milik artikel (media aktif bertipe gambar, urut waktu unggah); kosong bila tak ada. */

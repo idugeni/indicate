@@ -19,8 +19,8 @@ function tenantImagePatterns(): RemotePattern[] {
     }
   };
 
-  const { dashboard, api, webhook } = getControlHosts();
-  for (const host of [dashboard, api, webhook]) {
+  const { dashboard, api, webhook, docs } = getControlHosts();
+  for (const host of [dashboard, api, webhook, docs]) {
     push('https', host);
   }
 
