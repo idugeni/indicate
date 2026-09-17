@@ -194,19 +194,59 @@ valid configuration before and after.
 
 ### Commit messages
 
-Follow [Conventional Commits](https://www.conventionalcommits.org/):
+Source of truth for message format. Agents and humans must follow it on
+every commit — enforced by `AGENTS.md` ("Komit").
+
+Format (Conventional Commits, scope optional):
 
 ```text
-<type>(<scope>): <description>
+<type>[optional scope]: <description>
 
 [optional body]
+
+[optional footer]
 ```
 
-Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`, `build`.
+- **Type** (lowercase, required): `feat`, `fix`, `refactor`, `docs`,
+  `test`, `chore`, `perf`, `ci`, `build`. Never capitalized (`Refactor:`,
+  `Batch:` are not types).
+- **Scope** (optional, lowercase): `site`, `network`, `dashboard`, `auth`,
+  `api`, `publishing`, `content`, `billing`, `delivery`, `integrations`,
+  `persisted-config`, `data`, `core`, `config`, `ui`, `app`, `docs`, `ci`.
+  Omit it when the change spans layers.
+- **Description** (required): Indonesian, lowercase first letter,
+  imperative mood (verb first: `tambah`, `perbaiki`, `hapus`, `pindah`,
+  `rapatkan`), no trailing period, no emoji, max 72 characters. Name the
+  user-visible outcome, not the mechanism.
+- **Body** (optional, for non-obvious changes): one short paragraph
+  explaining *why*, not *what*. Wrap at 72 columns.
+- **Footer** (when applicable): `Refs: #<issue>` / `Fixes: #<issue>`,
+  plus `Signed-off-by` via `git commit -s` (DCO, required above).
 
-Scopes: `site`, `network`, `dashboard`, `auth`, `api`, `publishing`, `content`,
-`billing`, `delivery`, `integrations`, `persisted-config`, `data`, `core`,
-`config`, `ui`, `app`, `docs`, `ci`.
+Rules:
+
+1. One logical change per commit. Never mix `feat` + `fix` + `refactor`
+   in one commit; never bundle unrelated files.
+2. No snapshot commits, no `wip`, no `update`, no `fix bug`, no
+   keyboard-mash messages.
+3. One language per message: Indonesian description, English type/scope.
+   Never mix both languages inside the description.
+4. Verify before committing: `npm run typecheck`, `npm run lint`,
+   affected tests, plus `git status` / `git diff` review — no secrets,
+   no `.env*`, no accidental generated files.
+
+Good / bad:
+
+```text
+fix: pangkas function usage media publik + robots + nav
+feat(delivery): tambah resolusi hostname eksak per site
+docs: hapus PRD usang dan seluruh rujukannya
+
+Batch: ticker tanpa ekor brand    # no valid type, capitalized
+Refactor template clean-blue      # missing colon, capitalized type
+fix bug                           # undescriptive
+update                            # undescriptive
+```
 
 ### Review expectations
 

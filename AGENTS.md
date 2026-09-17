@@ -161,6 +161,28 @@ Aturan gaya:
 - Self-healing: jika file yang kamu sentuh masih memakai `../` yang bisa
   diganti `@/`, migrasikan dalam PR yang sama.
 
+## Komit (WAJIB — bukan relaxed mode)
+
+Bagian ini mengikat setiap agen AI dan manusia. Tidak dicover oleh
+"relaxed mode" di bawah. Langgar = perbaiki sebelum push; histori yang
+sudah ter-push tidak ditulis ulang tanpa persetujuan owner.
+
+1. Baca standar pesan commit di `CONTRIBUTING.md` ("Commit messages")
+   sebelum membuat commit. Jangan mengandalkan ingatan.
+2. Format satu-satunya: `<tipe>[scope opsional]: <deskripsi>` — deskripsi
+   Bahasa Indonesia, huruf kecil, imperatif, maks 72 karakter, tanpa titik
+   akhir, tanpa emoji. Tipe hanya huruf kecil: `feat`, `fix`, `refactor`,
+   `docs`, `test`, `chore`, `perf`, `ci`, `build`.
+3. Satu commit = satu perubahan logis. Dilarang commit snapshot, `wip`,
+   `update`, `fix bug`, atau pesan asal-asalan; dilarang campur
+   `feat` + `fix` + `refactor` dalam satu commit.
+4. Selalu `git commit -s` (DCO `Signed-off-by`); cantumkan
+   `Refs: #...` / `Fixes: #...` bila ada tiket.
+5. Verifikasi sebelum commit: `npm run typecheck`, `npm run lint`, test
+   terdampak, dan telaah `git status` / `git diff` — tanpa secrets,
+   tanpa `.env*`, tanpa file generated yang tidak disengaja.
+6. Definition-of-done commit: pesan lolos standar + gate hijau di atas.
+
 ## MCP + Skills discovery (mandatory, not advisory)
 
 This section is mandatory and is not covered by relaxed mode. Every agent

@@ -62,6 +62,15 @@ Hexagonal / ports-and-adapters modular monolith under `src/`. Dependency directi
 - Commands: `npm run dev`, `npm run build`, `npm run start`, `npm run typecheck` (`tsc --noEmit`), `npm run lint` (ESLint, `--max-warnings=0`). Run `typecheck` and `lint` after code changes.
 - `next.config.ts` keeps `postgres` and `drizzle-orm` in `serverExternalPackages`; image `remotePatterns` are a tenant allowlist — unknown hosts stay rejected.
 
+## Commits
+
+Commit-message authority is `CONTRIBUTING.md` ("Commit messages"), enforced
+by `AGENTS.md` ("Komit", mandatory, not relaxed). Summary: `<type>[scope]:`
+plus an Indonesian lowercase imperative description (max 72 chars, no
+trailing period, no emoji); one logical change per commit; always
+`git commit -s`; verify `typecheck` + `lint` + affected tests and review
+the diff before committing.
+
 ## Comments and imports (MANDATORY — always load, not relaxed)
 
 Read `AGENTS.md` section "Komentar & impor" before touching `src/**`.
