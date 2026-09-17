@@ -18,6 +18,7 @@ export interface SupabaseCookieWriter {
 export interface SupabaseSsrAuthAdapter extends SupabaseAuthPort {
   verifyCookieSession(): Promise<VerifiedAuthIdentity | null>;
   exchangeCodeForSession(code: string): Promise<boolean>;
+  verifyTokenHash(tokenHash: string, type: 'email' | 'signup' | 'recovery'): Promise<boolean>;
   signOut(): Promise<void>;
 }
 
@@ -89,6 +90,11 @@ export function createSupabaseSsrAuthAdapter(input: {
     async exchangeCodeForSession(code: string) {
       if (!code) return false;
       const { error } = await client.auth.exchangeCodeForSession(code);
+      return error === null;
+    },
+    async verifyTokenHash(tokenHash: string, type: 'email' | 'signup' | 'recovery') {
+      if (!tokenHash) return false;
+      const { error } = await client.auth.verifyOtp({ token_hash: tokenHash, type });
       return error === null;
     },
     async signOut() {

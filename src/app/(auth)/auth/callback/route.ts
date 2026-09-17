@@ -30,8 +30,10 @@ async function welcomeConfirmedSignup(auth: CallbackAuth): Promise<void> {
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code') ?? '';
+  const tokenHash = request.nextUrl.searchParams.get('token_hash') ?? '';
+  const tokenType = request.nextUrl.searchParams.get('type');
   const next = request.nextUrl.searchParams.get('next');
-  const authType = request.nextUrl.searchParams.get('type');
+  const authType = tokenType === 'email' ? null : tokenType;
   const cookieStore = await cookies();
   const publicConfig = getPublicConfig(process.env);
   const auth = createSupabaseSsrAuthAdapter({
@@ -40,7 +42,10 @@ export async function GET(request: NextRequest) {
     cookies: withSupabaseCookies(cookieStore),
   });
 
-  const exchanged = await auth.exchangeCodeForSession(code);
+  const tokenKind = tokenType === 'signup' || tokenType === 'recovery' ? tokenType : 'email';
+  const exchanged = code
+    ? await auth.exchangeCodeForSession(code)
+    : await auth.verifyTokenHash(tokenHash, tokenKind);
   if (!exchanged) {
     return NextResponse.redirect(new URL('/sign-in?auth=unavailable', request.url), { status: 303 });
   }

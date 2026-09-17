@@ -1,14 +1,19 @@
 import Link from 'next/link';
 
-import { AuthPage } from '@/modules/auth/components/auth-ui';
-import { GoogleButton } from '@/modules/auth/components/google-button';
-import { SignInForm } from '@/modules/auth/components/sign-in-form';
+import { AuthAlert, AuthPage } from '@/modules/auth/components/auth-ui';
+import { SignInMethods } from '@/modules/auth/components/sign-in-methods';
 
-export default function SignInPage() {
+export default async function SignInPage({
+  searchParams,
+}: {
+  readonly searchParams?: Promise<{ readonly auth?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const linkFailed = params?.auth === 'unavailable';
   return (
     <AuthPage
       title="Masuk ke dashboard"
-      lede="Sesi Supabase Auth yang valid diperlukan sebelum data organisasi dimuat."
+      lede="Masukkan email kerja — kami kirim kode masuk 6 digit yang kedaluwarsa dalam beberapa menit."
       footer={
         <p className="m-0 text-center">
           Belum punya akun?{' '}
@@ -18,17 +23,14 @@ export default function SignInPage() {
         </p>
       }
     >
-      <div className="space-y-6">
-        <SignInForm />
-
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-[#e2ded2]" aria-hidden="true" />
-          <span className="font-mono text-[11px] text-[#5f6b7a]">ATAU</span>
-          <div className="h-px flex-1 bg-[#e2ded2]" aria-hidden="true" />
+      {linkFailed ? (
+        <div className="mb-6">
+          <AuthAlert tone="error">
+            Tautan masuk tidak valid atau kedaluwarsa. Minta kode baru di bawah.
+          </AuthAlert>
         </div>
-
-        <GoogleButton />
-      </div>
+      ) : null}
+      <SignInMethods />
     </AuthPage>
   );
 }
