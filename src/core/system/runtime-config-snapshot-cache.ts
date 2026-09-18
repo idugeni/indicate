@@ -3,6 +3,7 @@ import { parsePersistedReadModel, type RuntimeConfigSnapshot } from '@/core/conf
 import type { PersistedRuntimeConfigReadModel } from '@/core/config/persisted/read-model';
 import type { RuntimeConfigReadRepository } from '@/modules/persisted-config/ports';
 import type { MonotonicClock, MonotonicInstant } from '@/core/system/monotonic-clock';
+import { logEvent } from '@/core/observability/logger';
 
 export interface CacheEntry {
   readonly snapshot: RuntimeConfigSnapshot;
@@ -87,7 +88,14 @@ export class RuntimeConfigSnapshotCache {
     const parsed = parsePersistedReadModel(read, environment);
     if (!parsed.success) {
       // Rejected parse keeps the old entry on its original expiry; never adopt a partial value.
-      throw new Error('configuration snapshot rejected by parser');
+      // Issues carry schema paths plus short codes only, so they are safe for telemetry and
+      // turn the next all-or-nothing rejection into a one-line diagnosis instead of `[unknown]`.
+      const summary = parsed.issues.slice(0, 8).map((issue) => `${issue.path}:${issue.category}`);
+      logEvent('warn', {
+        event: 'runtime-config.snapshot.rejected',
+        context: { issueCount: parsed.issues.length, issues: summary },
+      });
+      throw new Error(`configuration snapshot rejected by parser [${summary.slice(0, 3).join(', ')}${parsed.issues.length > 3 ? ', …' : ''}]`);
     }
     if (this.#store !== null) {
       await this.#store.write(environment, parsed.snapshot.configurationVersion, read, this.#storeTtlSeconds);

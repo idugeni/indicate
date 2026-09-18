@@ -173,7 +173,7 @@ async function initializeContext(): Promise<RuntimeContext> {
   const entry = await cache.get(bootstrap.environment).catch((error: unknown) => {
     const fault = error as { code?: unknown; message?: unknown; detail?: unknown } | null;
     const code = typeof fault?.code === 'string' ? fault.code : 'unknown';
-    const message = typeof fault?.message === 'string' ? fault.message.slice(0, 200) : 'unknown';
+    const message = typeof fault?.message === 'string' ? fault.message.slice(0, 500) : 'unknown';
     throw new RuntimeConfigReadError(
       `runtime configuration snapshot unavailable [${code}]: ${message}`,
     );
