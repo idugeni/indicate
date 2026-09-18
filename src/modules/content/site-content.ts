@@ -5,28 +5,35 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import type * as schema from '@/data/schema';
-import { readContactChannels } from '@/data/repos/content/queries';
-import { CONTACT_CHANNELS, type FeatureItem } from '@/ui/site/marketing-content';
+import { readContactChannels, readFaqs, readTestimonials } from '@/data/repos/content/queries';
+import type { FaqRow, TestimonialRow } from '@/data/repos/content/queries';
+import type { FeatureItem } from '@/ui/site/marketing-content';
 
-async function withRuntimeDatabase<T>(read: (db: PostgresJsDatabase<typeof schema>) => Promise<T>): Promise<T | null> {
+async function withRuntimeDatabase<T>(read: (db: PostgresJsDatabase<typeof schema>) => Promise<T>): Promise<T> {
   const context = await getServerRuntimeContext();
-  // Pool bersama proses (bukan buka-tutup per getter): tiap handshake TLS ke
-  // Seoul ±1 dtk; pool idle menutup sendiri via idle_timeout.
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
-  try {
-    return await read(runtime.db);
-  } catch {
-    return null;
-  }
+  return read(runtime.db);
+}
+
+export async function getFaqs(): Promise<readonly FaqRow[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('site-content');
+  return withRuntimeDatabase((db) => readFaqs(db));
+}
+
+export async function getTestimonials(): Promise<readonly TestimonialRow[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('site-content');
+  return withRuntimeDatabase((db) => readTestimonials(db));
 }
 
 export async function getContactChannels(): Promise<readonly FeatureItem[]> {
   'use cache';
   cacheLife('hours');
   cacheTag('site-content');
-  const rows = await withRuntimeDatabase((db) => readContactChannels(db));
-  if (rows !== null && rows.length > 0) return rows;
-  return CONTACT_CHANNELS;
+  return withRuntimeDatabase((db) => readContactChannels(db));
 }
 
-export type { FeatureItem };
+export type { FaqRow, FeatureItem, TestimonialRow };

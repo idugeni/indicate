@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { FAQ_ITEMS } from '@/ui/site/marketing-content';
+import { getFaqs } from '@/modules/content/site-content';
 import { siteMetadata } from '@/ui/site/metadata-guard';
 import { buildFaqPageSchema } from '@/modules/site/seo';
 import { JsonLd } from '@/modules/site/components/network/json-ld';
@@ -13,20 +13,22 @@ export function generateMetadata(): Metadata {
   return siteMetadata('FAQ', DESCRIPTION, '/faq');
 }
 
-export default function FaqPage() {
+export default async function FaqPage() {
+  const faqs = await getFaqs();
+  const items = toFaqGridItems(faqs);
   return (
     <PublicPage
       eyebrow="FAQ"
       title="Pertanyaan yang sering diajukan"
       description={DESCRIPTION}
-      meta={[`${FAQ_ITEMS.length} jawaban singkat`, 'Tanpa antre tiket', 'Dijawab manusia']}
+      meta={[`${items.length} jawaban singkat`, 'Tanpa antre tiket', 'Dijawab manusia']}
       trail={[{ href: '/', label: 'Beranda' }]}
       actions={<SecondaryCta href="/contact">Masih Bingung? Hubungi Kami</SecondaryCta>}
     >
       <Section title="Semua jawaban" description="Klik pertanyaan untuk membuka jawabannya." eyebrow="Daftar">
-        <FaqAccordion items={toFaqGridItems(FAQ_ITEMS)} />
+        <FaqAccordion items={items} />
       </Section>
-      <JsonLd schemas={[buildFaqPageSchema(FAQ_ITEMS)]} />
+      <JsonLd schemas={[buildFaqPageSchema(items)]} />
     </PublicPage>
   );
 }

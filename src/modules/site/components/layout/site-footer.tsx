@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Mail, MessageCircle, Send } from 'lucide-react';
@@ -7,7 +8,7 @@ import {
   SERVICE_TAGLINE,
   type NavigationLink,
 } from '@/ui/site/marketing-content';
-import { getContactChannels } from '@/modules/content/site-content';
+import { getContactChannels, type FeatureItem } from '@/modules/content/site-content';
 import { currentYear } from '@/modules/site/current-year';
 import { Container, PrimaryCta, SecondaryCta } from '@/modules/site/components/layout/content';
 
@@ -58,8 +59,24 @@ const FOOTER_COLUMNS: readonly FooterColumn[] = Object.freeze([
 const LINK_CLASSES =
   'block font-sans text-sm text-[#4c5b6b] transition-colors duration-180 hover:text-[#1a2430] focus-visible:rounded-sm focus-visible:text-[#1a2430] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b88d3a]';
 
-export async function SiteFooter() {
+async function SiteFooterContent() {
   const [year, channels] = await Promise.all([currentYear(), getContactChannels()]);
+  return <SiteFooterView year={year} channels={channels} />;
+}
+
+/**
+ * Emits the footer shell during static prerender without touching the database;
+ * live contact channels stream in afterwards, falling back to hardcoded contacts.
+ */
+export function SiteFooter() {
+  return (
+    <Suspense fallback={<SiteFooterView year={null} channels={[]} />}>
+      <SiteFooterContent />
+    </Suspense>
+  );
+}
+
+function SiteFooterView({ year, channels }: { readonly year: number | null; readonly channels: readonly FeatureItem[] }) {
   const mail = channels.find((channel) => channel.href?.startsWith('mailto:'));
   const chat = channels.find((channel) => channel.href?.includes('wa.me'));
   const telegram = channels.find((channel) => channel.href?.includes('t.me'));
@@ -77,7 +94,7 @@ export async function SiteFooter() {
               className="h-auto w-60"
             />
           </p>
-          <p className="m-0 max-w-sm font-serif text-xl leading-snug tracking-tight text-[#1a2430]">
+          <p className="m-0 max-w-sm font-sans text-lg font-semibold tracking-tight text-[#1a2430]">
             {SERVICE_TAGLINE}
           </p>
           <address className="m-0 max-w-sm space-y-2 border-t border-[#e2ded2] pt-4 font-sans text-sm not-italic">
@@ -110,9 +127,12 @@ export async function SiteFooter() {
         </div>
 
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
-          {FOOTER_COLUMNS.map((column) => (
+          {FOOTER_COLUMNS.map((column, index) => (
             <div key={column.heading}>
               <h3 className="m-0 mb-4 font-mono text-[11px] font-medium uppercase tracking-wider text-[#5f6b7a]">
+                <span aria-hidden="true" className="mr-2 tabular-nums text-[#8a5f1c]">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
                 {column.heading}
               </h3>
               <nav aria-label={column.label} className="space-y-2.5">
@@ -136,7 +156,11 @@ export async function SiteFooter() {
       <div className="border-t border-[#e2ded2]">
         <Container className="flex flex-col gap-1 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
           <small className="font-mono text-[11px] text-[#5f6b7a]">
-            © {year} {SERVICE_NAME}. Hak cipta dilindungi undang-undang.
+            {year === null ? (
+              <>{SERVICE_NAME}. Hak cipta dilindungi undang-undang.</>
+            ) : (
+              <>© {year} {SERVICE_NAME}. Hak cipta dilindungi undang-undang.</>
+            )}
           </small>
           <small className="font-mono text-[11px] tabular-nums text-[#5f6b7a]">
             PT Sanca Phena Cakra
@@ -147,8 +171,23 @@ export async function SiteFooter() {
   );
 }
 
-export async function CallToAction() {
+async function CallToActionContent() {
   const channels = await getContactChannels();
+  return <CallToActionView channels={channels} />;
+}
+
+/**
+ * Streams contact channels after the static shell; prerender emits the fallback.
+ */
+export function CallToAction() {
+  return (
+    <Suspense fallback={<CallToActionView channels={[]} />}>
+      <CallToActionContent />
+    </Suspense>
+  );
+}
+
+function CallToActionView({ channels }: { readonly channels: readonly FeatureItem[] }) {
   return (
     <section aria-labelledby="konsolidasi-redaksi-heading" className="border-t border-[#e2ded2]">
       <Container className="grid gap-8 py-16 md:py-24 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:items-end">

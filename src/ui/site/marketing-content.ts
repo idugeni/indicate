@@ -71,9 +71,6 @@ export const PROOF_POINTS: readonly ProofPointItem[] = Object.freeze([
   { term: 'Host Tepat', detail: 'Situs publik ditentukan dari nama host yang sama persis secara eksak, tanpa fallback tenant.' },
 ]);
 
-/** Empty until real customer testimonials exist; the section auto-hides while empty. */
-export const TESTIMONIALS: readonly TestimonialItem[] = Object.freeze([]);
-
 export const VALUE_PROPOSITIONS: readonly FeatureItem[] = Object.freeze([
   {
     title: 'Satu artikel, banyak situs',
@@ -274,96 +271,6 @@ export const GUARANTEES: readonly FeatureItem[] = Object.freeze([
   },
 ]);
 
-export const FAQ_ITEMS: readonly FaqItem[] = Object.freeze([
-  {
-    id: 'faq-1',
-    question: 'Apakah saya membutuhkan server terpisah untuk setiap portal berita?',
-    answer: 'Tidak. Seluruh portal Anda berjalan di atas 1 infrastruktur terpusat yang sama. Pemisahan data dan tampilan dilakukan otomatis berdasarkan nama domain, jadi nambah portal tidak nambah urusan server.'
-  },
-  {
-    id: 'faq-2',
-    question: 'Bagaimana cara wartawan menerbitkan berita dari luar kantor?',
-    answer: 'Cukup buka dasbor dari HP atau kirim via chat Telegram yang sudah didaftarkan. Tidak perlu laptop, tidak perlu datang ke kantor.'
-  },
-  {
-    id: 'faq-3',
-    question: 'Apakah satu artikel bisa tayang di lebih dari satu situs sekaligus?',
-    answer: 'Ya. Tulis satu kali, pilih situs-situs tujuannya, lalu terbitkan. Status tiap penayangan terpantau satu per satu.'
-  },
-  {
-    id: 'faq-4',
-    question: 'Bagaimana cara mulai berlangganan?',
-    answer: 'Hubungi kami lewat WhatsApp atau surel, ceritakan kebutuhan Anda, sepakati biayanya, lalu lakukan pembayaran manual. Setelah terkonfirmasi, organisasi Anda kami aktifkan paling lambat 1x24 jam dan berjalan terus.'
-  },
-  {
-    id: 'faq-5',
-    question: 'Apakah langganan bisa kedaluwarsa?',
-    answer: 'Tidak ada masa aktif yang kedaluwarsa dan tidak ada masa tenggang: selama status organisasi Anda aktif, seluruh fungsi berjalan penuh. Penonaktifan hanya terjadi atas permintaan Anda atau pelanggaran ketentuan.'
-  },
-  {
-    id: 'faq-6',
-    question: 'Apakah nama domain tetap milik saya?',
-    answer: 'Ya, 100%. Domain dibeli dan dipegang atas nama Anda. Berhenti kapan pun, domain dan seluruh konten dibawa pergi.'
-  },
-  {
-    id: 'faq-7',
-    question: 'Apakah ada tingkatan paket?',
-    answer: 'Tidak ada. Semua pelanggan mendapat fungsi yang sama; yang membedakan hanya kebutuhan Anda yang kami diskusikan di awal. Satu-satunya hal yang disesuaikan adalah biaya kesepakatan.'
-  },
-  {
-    id: 'faq-8',
-    question: 'Berapa biayanya?',
-    answer: 'Hubungi kami lewat WhatsApp, ceritakan kebutuhan dan jumlah websitenya. Kami memberi angka pasti di depan sebelum Anda membayar apa pun.'
-  },
-  {
-    id: 'faq-9',
-    question: 'Apakah data redaksi saya tercampur dengan pelanggan lain?',
-    answer: 'Data setiap organisasi dipisahkan secara berlapis sampai tingkat basis data dan dirancang agar tidak dapat diakses lintas tenant. Detail penegakannya dijelaskan pada Kebijakan Privasi.'
-  },
-  {
-    id: 'faq-10',
-    question: 'Saya sudah punya website berjalan. Bisa pindah?',
-    answer: 'Bisa. Ceritakan sistem lama Anda saat menghubungi kami; bantuan pindahan kami sesuaikan dengan kebutuhan.'
-  },
-  {
-    id: 'faq-11',
-    question: 'Apakah ada masa percobaan gratis?',
-    answer: 'Tidak ada trial otomatis. Sebagai gantinya Anda bisa melihat cara kerja dasbor lewat sesi peninjauan bersama sebelum memutuskan.'
-  },
-  {
-    id: 'faq-12',
-    question: 'Bagaimana kalau butuh bantuan?',
-    answer: 'Semua pelanggan didampingi manusia lewat kanal yang jelas — bukan bot. Prioritas penanganan mengikuti dampak: situs tidak bisa diakses ditangani lebih dulu.'
-  },
-  {
-    id: 'faq-13',
-    question: 'Bagaimana cara melaporkan konten yang melanggar?',
-    answer: 'Buka halaman Laporkan Konten (/report) pada portal yang bersangkutan, pilih kategorinya, dan uraikan bagian yang melanggar. Laporan kredibel ditinjau paling lambat 1x24 jam; materi yang disengketakan dapat dibatasi tayangnya selama pemeriksaan.'
-  }
-]);
-
-export const CONTACT_CHANNELS: readonly FeatureItem[] = Object.freeze([
-  {
-    title: 'Surel',
-    description: 'sancaphenacakra@gmail.com — kirim kebutuhan Anda beserta jumlah domain dan wilayah yang direncanakan.',
-    href: 'mailto:sancaphenacakra@gmail.com',
-  },
-  {
-    title: 'WhatsApp',
-    description: '0856-4115-9405 — jalur tercepat untuk pembelian, pindahan sistem, atau pertanyaan layanan.',
-    href: 'https://wa.me/6285641159405?text=Halo%20Indicate%2C%20saya%20ingin%20bertanya.',
-  },
-  {
-    title: 'Telegram',
-    description: '@eliyantosarage — tanya jawab singkat mengenai alur redaksi dan integrasi bot.',
-    href: 'https://t.me/eliyantosarage',
-  },
-  {
-    title: 'Peninjauan bersama',
-    description: 'Sesi daring untuk menelusuri dasbor dan alur penerbitan — jadwalkan lewat WhatsApp atau surel.',
-  },
-]);
-
 export const ABOUT_STORY: readonly string[] = Object.freeze([
   'Indicate lahir dari pengalaman mendampingi grup media yang portalnya tumbuh lebih cepat dari timnya. Tiap portal baru berarti pengeluaran baru yang berlipat — padahal yang dibutuhkan redaksi hanya tempat menulis dan tombol terbitkan.',
   'Kami membalik pendekatannya: satu ruang redaksi untuk seluruh jaringan portal. Nambah portal tidak lagi jadi proyek besar yang mahal. Biaya disepakati di depan lewat obrolan langsung, dan domain tetap milik Anda sepenuhnya.',
@@ -536,7 +443,7 @@ export const TERMS_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   },
   {
     heading: '24. Perubahan ketentuan, pemberitahuan, hukum, sengketa, dan kontak',
-    body: 'Kami dapat memperbarui Ketentuan ini untuk mencerminkan perubahan fitur, regulasi, atau praktik keamanan. Perubahan material akan diumumkan melalui dasbor atau surel pemberitahuan paling lambat 14 hari sebelum berlaku, disertai tanggal efektif dan ringkasan perubahan; penggunaan Layanan setelah tanggal efektif dianggap sebagai persetujuan atas versi baru. Apabila Anda tidak setuju, Anda dapat berhenti dengan tidak memperpanjang sebelum tanggal efektif, dan versi sebelumnya tetap berlaku hingga Masa Aktif berjalan berakhir. Pemberitahuan resmi kepada kami disampaikan melalui halaman Kontak, surel sancaphenacakra@gmail.com, atau WhatsApp 0856-4115-9405, dan kepada Anda melalui alamat surel organisasi atau pengumuman dasbor. Kontrak ini diatur oleh dan ditafsirkan menurut hukum Republik Indonesia. Setiap perselisihan diselesaikan terlebih dahulu melalui musyawarah untuk mufakat dalam 30 hari sejak pemberitahuan sengketa; apabila gagal, sengketa diselesaikan melalui pengadilan yang berwenang di Indonesia. Ketentuan ini berlaku efektif sejak 7 September 2026. Untuk pertanyaan mengenai Ketentuan ini, hubungi kami melalui halaman Kontak atau surel sancaphenacakra@gmail.com.',
+    body: 'Kami dapat memperbarui Ketentuan ini untuk mencerminkan perubahan fitur, regulasi, atau praktik keamanan. Perubahan material akan diumumkan melalui dasbor atau surel pemberitahuan paling lambat 14 hari sebelum berlaku, disertai tanggal efektif dan ringkasan perubahan; penggunaan Layanan setelah tanggal efektif dianggap sebagai persetujuan atas versi baru. Apabila Anda tidak setuju, Anda dapat berhenti sebelum tanggal efektif, dan versi sebelumnya tetap berlaku hingga status langganan Anda berakhir. Pemberitahuan resmi kepada kami disampaikan melalui halaman Kontak, surel sancaphenacakra@gmail.com, atau WhatsApp 0856-4115-9405, dan kepada Anda melalui alamat surel organisasi atau pengumuman dasbor. Kontrak ini diatur oleh dan ditafsirkan menurut hukum Republik Indonesia. Setiap perselisihan diselesaikan terlebih dahulu melalui musyawarah untuk mufakat dalam 30 hari sejak pemberitahuan sengketa; apabila gagal, sengketa diselesaikan melalui pengadilan yang berwenang di Indonesia. Ketentuan ini berlaku efektif sejak 7 September 2026. Untuk pertanyaan mengenai Ketentuan ini, hubungi kami melalui halaman Kontak atau surel sancaphenacakra@gmail.com.',
   },
 ]);
 
@@ -555,7 +462,7 @@ export const PRIVACY_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   },
   {
     heading: '4. Tujuan dan dasar hukum pemrosesan',
-    body: 'Setiap pemrosesan memiliki tujuan yang spesifik dan dasar hukum menurut UU PDP. Pelaksanaan kontrak menjadi dasar untuk menyediakan dan mengoperasikan Layanan yang Anda pesan: aktivasi situs, penerbitan multi-situs, penayangan media, penagihan dan verifikasi order, serta dukungan operasional. Kepentingan yang sah menjadi dasar untuk menjaga keamanan dan keandalan: pencegahan penyalahgunaan dan akses lintas tenant, deteksi anomali, pencatatan audit, serta peningkatan kinerja — selalu dengan uji keseimbangan agar tidak mengesampingkan hak Anda. Kewajiban hukum menjadi dasar untuk menyimpan arsip transaksi dan jejak audit tertentu selama periode yang diwajibkan peraturan perpajakan, keuangan, atau penegakan hukum. Persetujuan menjadi dasar untuk komunikasi pemasaran yang tidak esensial dan untuk cookie non-esensial bila kami menggunakannya di kemudian hari; persetujuan tersebut dapat ditarik kapan saja tanpa memengaruhi keabsahan pemrosesan sebelumnya. Apabila Anda menyerahkan data pribadi pihak lain (misalnya data wartawan atau narasumber), Anda menjamin memiliki dasar hukum yang sah — seperti persetujuan atau kepentingan jurnalistik yang sah menurut hukum pers — dan telah menyampaikan pemberitahuan yang diwajibkan kepada subjek data tersebut.',
+    body: 'Setiap pemrosesan memiliki tujuan yang spesifik dan dasar hukum menurut UU PDP. Pelaksanaan kontrak menjadi dasar untuk menyediakan dan mengoperasikan Layanan yang Anda pesan: aktivasi situs, penerbitan multi-situs, penayangan media, penagihan dan verifikasi pembayaran, serta dukungan operasional. Kepentingan yang sah menjadi dasar untuk menjaga keamanan dan keandalan: pencegahan penyalahgunaan dan akses lintas tenant, deteksi anomali, pencatatan audit, serta peningkatan kinerja — selalu dengan uji keseimbangan agar tidak mengesampingkan hak Anda. Kewajiban hukum menjadi dasar untuk menyimpan arsip transaksi dan jejak audit tertentu selama periode yang diwajibkan peraturan perpajakan, keuangan, atau penegakan hukum. Persetujuan menjadi dasar untuk komunikasi pemasaran yang tidak esensial dan untuk cookie non-esensial bila kami menggunakannya di kemudian hari; persetujuan tersebut dapat ditarik kapan saja tanpa memengaruhi keabsahan pemrosesan sebelumnya. Apabila Anda menyerahkan data pribadi pihak lain (misalnya data wartawan atau narasumber), Anda menjamin memiliki dasar hukum yang sah — seperti persetujuan atau kepentingan jurnalistik yang sah menurut hukum pers — dan telah menyampaikan pemberitahuan yang diwajibkan kepada subjek data tersebut.',
   },
   {
     heading: '5. Data anak dan data sensitif',
@@ -611,7 +518,7 @@ export const PRIVACY_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   },
   {
     heading: '18. Komunikasi operasional dan preferensi pemasaran',
-    body: 'Kami mengirim tiga jenis komunikasi. Pemberitahuan transaksional dan keamanan — seperti pemberitahuan penagihan, peringatan masuk yang mencurigakan, dan pemberitahuan insiden — merupakan bagian dari Layanan dan tidak dapat dimatikan selama Anda memiliki akun aktif, karena tanpanya Anda berisiko kehilangan akses atau melewatkan tenggat penting. Pembaruan produk esensial — seperti perubahan material pada Ketentuan atau Kebijakan ini — diumumkan melalui dasbor dan, untuk perubahan material, melalui surel. Komunikasi pemasaran — seperti penawaran paket baru atau undangan webinar — hanya dikirim atas persetujuan dan setiap pesannya memuat tautan berhenti berlangganan yang berfungsi dalam satu klik; penarikan persetujuan berlaku untuk pengiriman berikutnya dan tidak memengaruhi legalitas pengiriman sebelumnya. Kami tidak pernah menjual daftar kontak Anda dan tidak membagikan surel Anda kepada pengiklan.',
+    body: 'Kami mengirim tiga jenis komunikasi. Pemberitahuan transaksional dan keamanan — seperti pemberitahuan penagihan, peringatan masuk yang mencurigakan, dan pemberitahuan insiden — merupakan bagian dari Layanan dan tidak dapat dimatikan selama Anda memiliki akun aktif, karena tanpanya Anda berisiko kehilangan akses atau melewatkan tenggat penting. Pembaruan produk esensial — seperti perubahan material pada Ketentuan atau Kebijakan ini — diumumkan melalui dasbor dan, untuk perubahan material, melalui surel. Komunikasi pemasaran — seperti penawaran layanan baru atau undangan webinar — hanya dikirim atas persetujuan dan setiap pesannya memuat tautan berhenti berlangganan yang berfungsi dalam satu klik; penarikan persetujuan berlaku untuk pengiriman berikutnya dan tidak memengaruhi legalitas pengiriman sebelumnya. Kami tidak pernah menjual daftar kontak Anda dan tidak membagikan surel Anda kepada pengiklan.',
   },
   {
     heading: '19. Perubahan kebijakan, versi, dan arsip',

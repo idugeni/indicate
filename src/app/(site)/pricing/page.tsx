@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { siteMetadata } from '@/ui/site/metadata-guard';
-import { getContactChannels } from '@/modules/content/site-content';
+import { getContactChannels, getFaqs } from '@/modules/content/site-content';
 import { WhatsAppCard } from '@/modules/site/components/pricing/whatsapp-card';
-import { CONTACT_CHANNELS as CONTACT_CHANNEL_FALLBACK, CONTACT_CHECKLIST, FAQ_ITEMS, GUARANTEES } from '@/ui/site/marketing-content';
+import { CONTACT_CHECKLIST, GUARANTEES } from '@/ui/site/marketing-content';
 import {
   CHANNEL_ICONS,
   FaqAccordion,
@@ -24,7 +24,7 @@ export function generateMetadata(): Metadata {
 }
 
 export default async function HargaPage() {
-  const channels = await getContactChannels();
+  const [channels, faqs] = await Promise.all([getContactChannels(), getFaqs()]);
   return (
     <PublicPage
       eyebrow="Harga"
@@ -59,7 +59,7 @@ export default async function HargaPage() {
       >
         <FeatureGrid
           items={withIcons(
-            (channels.length > 0 ? channels : CONTACT_CHANNEL_FALLBACK).filter(
+            channels.filter(
               (channel) => !channel.title.toLowerCase().includes('whatsapp'),
             ),
             CHANNEL_ICONS,
@@ -73,7 +73,7 @@ export default async function HargaPage() {
         eyebrow="FAQ"
         tone="raised"
       >
-        <FaqAccordion items={toFaqGridItems(FAQ_ITEMS, 6)} />
+        <FaqAccordion items={toFaqGridItems(faqs, 6)} />
       </Section>
     </PublicPage>
   );

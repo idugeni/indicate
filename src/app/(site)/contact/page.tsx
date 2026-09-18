@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 
-import { CONTACT_CHANNELS as CONTACT_CHANNEL_FALLBACK, CONTACT_CHECKLIST } from '@/ui/site/marketing-content';
+import { CONTACT_CHECKLIST } from '@/ui/site/marketing-content';
 import { getContactChannels } from '@/modules/content/site-content';
 import { siteMetadata } from '@/ui/site/metadata-guard';
 import { CHANNEL_ICONS, FeatureGrid, Prose, SecondaryCta, Section, withIcons } from '@/modules/site/components/layout/content';
@@ -15,22 +15,24 @@ export function generateMetadata(): Metadata {
   return siteMetadata('Kontak', DESCRIPTION, '/contact');
 }
 
-/**
- * DB read (hours-TTL) streaming di belakang shell statis: halaman tidak
- * menahan prerender bila pool Supabase lambat (kelas error "Filling a cache
- * during prerender timed out" di production). Fallback = konten statis yang
- * sama persis dengan fallback getContactChannels().
- */
 async function ContactChannels() {
   const channels = await getContactChannels();
   return (
-    <FeatureGrid items={withIcons(channels.length > 0 ? channels : CONTACT_CHANNEL_FALLBACK, CHANNEL_ICONS)} columns={2} />
+    <FeatureGrid items={withIcons(channels, CHANNEL_ICONS)} columns={2} />
   );
 }
 
-function ContactChannelsFallback() {
+function ContactChannelsSkeleton() {
   return (
-    <FeatureGrid items={withIcons(CONTACT_CHANNEL_FALLBACK, CHANNEL_ICONS)} columns={2} />
+    <div aria-hidden="true" className="grid gap-4 sm:grid-cols-2">
+      {[0, 1, 2].map((index) => (
+        <div key={index} className="animate-pulse rounded-lg border border-[#e2ded2] bg-white p-5 sm:p-6">
+          <div className="h-4 w-24 rounded bg-[#e2ded2]" />
+          <div className="mt-3 h-3 w-full rounded bg-[#e2ded2]/70" />
+          <div className="mt-2 h-3 w-2/3 rounded bg-[#e2ded2]/70" />
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -48,7 +50,7 @@ export default function KontakPage() {
         <WhatsAppCard />
       </Section>
       <Section title="Saluran" description="Pilih jalur yang paling nyaman — semuanya dijawab manusia." eyebrow="Kanal" tone="raised">
-        <Suspense fallback={<ContactChannelsFallback />}>
+        <Suspense fallback={<ContactChannelsSkeleton />}>
           <ContactChannels />
         </Suspense>
       </Section>

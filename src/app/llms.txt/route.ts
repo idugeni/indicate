@@ -20,7 +20,7 @@ function controlPlaneLlms(host: string): string {
     `- [Layanan](${origin}/services): cakupan sindikasi, alur 5 langkah, dan jaminan tertulis.`,
     `- [Harga](${origin}/pricing): pembelian lewat kontak langsung tanpa katalog paket, beserta FAQ.`,
     `- [Tentang](${origin}/about): cerita, fakta operasional, dan prinsip Indicate.`,
-    `- [FAQ](${origin}/faq): jawaban teknis, lisensi, dan infrastruktur.`,
+    `- [FAQ](${origin}/faq): jawaban pembelian, langganan manual, domain, bantuan, dan pelaporan konten.`,
     `- [Kontak](${origin}/contact): kanal surel, WhatsApp, dan Telegram.`,
     '',
     '## Legalitas',

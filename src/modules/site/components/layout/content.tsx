@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
   ArrowLeftRight,
+  ArrowUpRight,
   BadgeCheck,
   Briefcase,
   Building2,
@@ -74,9 +75,9 @@ export function slugify(value: string): string {
 }
 
 export const CARD_CLASS =
-  'group flex flex-col gap-3 rounded-lg border border-[#e2ded2] bg-white p-5 transition-colors duration-180 hover:border-[#cfc9b8] sm:p-6';
+  'group flex flex-col gap-3 rounded-[3px] border border-[#e2ded2] bg-white p-5 transition-colors duration-180 hover:border-[#b88d3a]/60 sm:p-6';
 
-export const ICON_BOX_CLASS = 'flex h-8 w-8 items-center text-[#8a5f1c]';
+export const ICON_BOX_CLASS = 'flex h-9 w-9 items-center justify-center rounded-[3px] border border-[#e2ded2] bg-[#f4f2ec] text-[#8a5f1c]';
 
 export function NumberMark({ index, className }: { readonly index: number; readonly className?: string }) {
   return (
@@ -99,7 +100,7 @@ export function PrimaryCta({
     <Link
       href={href}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded bg-[#1a2430] px-5 py-2.5 font-sans text-sm font-semibold text-white transition-colors duration-180 hover:bg-[#2b3a4b]',
+        'inline-flex items-center justify-center gap-2 rounded-[3px] bg-[#1a2430] px-5 py-2.5 font-sans text-sm font-semibold text-white transition-colors duration-180 hover:bg-[#2b3a4b]',
         className,
       )}
     >
@@ -121,7 +122,7 @@ export function SecondaryCta({
     <Link
       href={href}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded border border-[#1a2430]/15 bg-white/70 px-5 py-2.5 font-sans text-sm font-semibold text-[#1a2430] transition-colors duration-180 hover:border-[#1a2430]/30 hover:bg-white',
+        'inline-flex items-center justify-center gap-2 rounded-[3px] border border-[#1a2430]/15 bg-white/70 px-5 py-2.5 font-sans text-sm font-semibold text-[#1a2430] transition-colors duration-180 hover:border-[#1a2430]/30 hover:bg-white',
         className,
       )}
     >
@@ -189,8 +190,7 @@ export function Section({
           <header className="mb-10 grid gap-6 md:mb-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,4fr)] lg:items-end">
             <div>
               {eyebrow ? (
-                <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-[#8a5f1c]">
-                  <span aria-hidden="true" className="h-px w-8 flex-none bg-[#b88d3a]" />
+                <p className="m-0 inline-flex items-center rounded-[3px] border border-[#b88d3a]/50 bg-[#b88d3a]/[0.08] px-2 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a5f1c]">
                   {eyebrow}
                 </p>
               ) : null}
@@ -198,7 +198,7 @@ export function Section({
                 <h2
                   id={headingId}
                   className={cn(
-                    'm-0 max-w-xl font-serif text-3xl font-medium leading-[1.12] tracking-tight text-balance text-[#1a2430] sm:text-4xl',
+                    'm-0 max-w-xl font-sans text-3xl font-bold leading-[1.05] tracking-tight text-balance text-[#1a2430] sm:text-4xl',
                     hasEyebrow && 'mt-4',
                   )}
                 >
@@ -240,7 +240,7 @@ export function PageHeader({
 }: PageHeaderProps) {
   return (
     <header
-      className={cn('border-b border-[#e2ded2] py-12 md:py-16', className)}
+      className={cn('border-b border-[#e2ded2] pt-8 pb-14 md:pt-12 md:pb-20', className)}
       {...props}
     >
       <Container className="space-y-5">
@@ -264,12 +264,11 @@ export function PageHeader({
           </Breadcrumb>
         ) : null}
         {eyebrow ? (
-          <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-[#8a5f1c]">
-            <span aria-hidden="true" className="h-px w-8 flex-none bg-[#b88d3a]" />
+          <p className="m-0 inline-flex items-center rounded-[3px] border border-[#b88d3a]/50 bg-[#b88d3a]/[0.08] px-2 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a5f1c]">
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="m-0 max-w-3xl font-serif text-4xl font-medium leading-[1.1] tracking-tight text-balance text-[#1a2430] sm:text-5xl">
+        <h1 className="m-0 max-w-3xl font-sans text-4xl font-bold leading-[1.02] tracking-tight text-balance text-[#1a2430] sm:text-6xl">
           {title}
         </h1>
         {description ? (
@@ -278,16 +277,16 @@ export function PageHeader({
           </p>
         ) : null}
         {meta && meta.length > 0 ? (
-          <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 pt-1 font-mono text-[11px] tracking-wide text-[#5f6b7a]">
-            {meta.map((item, index) => (
-              <Fragment key={item}>
-                {index > 0 ? (
-                  <span aria-hidden="true" className="text-[#cfc9b8]">·</span>
-                ) : null}
-                <span>{item}</span>
-              </Fragment>
+          <ul className="m-0 flex list-none flex-wrap items-center gap-2 p-0 pt-1">
+            {meta.map((item) => (
+              <li
+                key={item}
+                className="rounded-[3px] border border-[#e2ded2] bg-white px-2 py-1 font-mono text-[11px] tracking-wide text-[#5f6b7a]"
+              >
+                {item}
+              </li>
             ))}
-          </p>
+          </ul>
         ) : null}
         {actions ? (
           <div className="flex flex-wrap items-center gap-3 pt-2">{actions}</div>
@@ -328,24 +327,40 @@ export function FeatureGrid({
 
   if (items && items.length > 0) {
     return (
-      <div className={cn('grid gap-4', colClass, className)} {...props}>
+      <div
+        className={cn(
+          'grid gap-px overflow-hidden rounded-[3px] border border-[#e2ded2] bg-[#e2ded2]',
+          colClass,
+          className,
+        )}
+        {...props}
+      >
         {items.map((item, idx) => {
           const heading = item.title ?? item.term;
           const text = item.description ?? item.detail;
           const isExternal = item.href !== undefined && /^https?:/.test(item.href);
 
-          const card = (
-            <div className="space-y-3">
-              {item.icon ? <div className={ICON_BOX_CLASS}>{item.icon}</div> : null}
+          const row = (
+            <div className="flex h-full flex-col gap-3">
+              <div className="flex items-center gap-3">
+                {item.icon ? <span className={ICON_BOX_CLASS}>{item.icon}</span> : null}
+                <NumberMark index={idx} className="tabular-nums" />
+                {item.href ? (
+                  <ArrowUpRight
+                    aria-hidden="true"
+                    className="ml-auto h-4 w-4 flex-none text-[#5f6b7a] transition-all duration-180 group-hover:translate-x-0.5 group-hover:text-[#8a5f1c]"
+                  />
+                ) : null}
+              </div>
 
               {heading ? (
-                <h3 className="m-0 font-sans text-sm font-semibold tracking-tight text-[#1a2430] transition-colors duration-180 group-hover:text-[#8a5f1c]">
+                <h3 className="m-0 font-sans text-base font-semibold tracking-tight text-[#1a2430]">
                   {heading}
                 </h3>
               ) : null}
 
               {text ? (
-                <p className="m-0 font-sans text-xs leading-relaxed text-[#4c5b6b]">
+                <p className="m-0 font-sans text-sm leading-relaxed text-[#4c5b6b]">
                   {text}
                 </p>
               ) : null}
@@ -357,13 +372,13 @@ export function FeatureGrid({
               key={heading ?? idx}
               href={item.href}
               {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-              className={CARD_CLASS}
+              className="group bg-white p-5 transition-colors duration-180 hover:bg-[#f4f2ec] sm:p-6"
             >
-              {card}
+              {row}
             </a>
           ) : (
-            <div key={heading ?? idx} className={CARD_CLASS}>
-              {card}
+            <div key={heading ?? idx} className="bg-white p-5 sm:p-6">
+              {row}
             </div>
           );
         })}
@@ -386,7 +401,7 @@ export interface DocSectionItem {
 export function DocSections({ items }: { readonly items: readonly DocSectionItem[] }) {
   return (
     <div className="grid w-full gap-10">
-      <nav aria-label="Daftar isi" className="w-full rounded-lg border border-[#e2ded2] bg-white p-5 sm:p-6">
+      <nav aria-label="Daftar isi" className="w-full rounded-[3px] border border-[#e2ded2] bg-white p-5 sm:p-6">
         <p className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-[#5f6b7a]">
           Daftar Isi — {items.length} bagian
         </p>
@@ -408,7 +423,7 @@ export function DocSections({ items }: { readonly items: readonly DocSectionItem
       </nav>
       <div className="grid w-full gap-4 sm:grid-cols-2">
         {items.map((section, index) => (
-          <article key={section.heading} id={slugify(section.heading)} className="scroll-mt-24 rounded-lg border border-[#e2ded2] bg-white p-5 transition-colors duration-180 hover:border-[#cfc9b8] sm:p-6">
+          <article key={section.heading} id={slugify(section.heading)} className="scroll-mt-24 rounded-[3px] border border-[#e2ded2] bg-white p-5 transition-colors duration-180 hover:border-[#b88d3a]/60 sm:p-6">
             <div className="flex items-baseline gap-3">
               <NumberMark index={index} className="tabular-nums text-[#8a5f1c]" />
               <h2 className="m-0 font-sans text-base font-semibold tracking-tight text-[#1a2430]">
@@ -434,7 +449,7 @@ export function LegalDocument({ items }: { readonly items: readonly DocSectionIt
     <div className="mx-auto w-full max-w-3xl">
       <nav
         aria-label="Daftar isi"
-        className="rounded-md border border-[#e2ded2] bg-white px-4 py-4 sm:px-5"
+        className="rounded-[3px] border border-[#e2ded2] bg-white px-4 py-4 sm:px-5"
       >
         <div className="flex items-baseline justify-between gap-4">
           <p className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-[#5f6b7a]">
@@ -475,7 +490,7 @@ export function LegalDocument({ items }: { readonly items: readonly DocSectionIt
             <p className="m-0 font-mono text-[11px] font-medium uppercase tabular-nums tracking-wider text-[#8a5f1c]">
               Bagian {String(index + 1).padStart(2, '0')}
             </p>
-            <h2 className="m-0 mt-2 font-serif text-[1.35rem] font-medium leading-[1.3] tracking-tight text-balance text-[#1a2430] md:text-[1.6rem]">
+            <h2 className="m-0 mt-2 font-sans text-xl font-bold leading-[1.25] tracking-tight text-balance text-[#1a2430] md:text-2xl">
               {section.heading}
             </h2>
             <p className="m-0 mt-3.5 text-justify font-sans text-[15px] leading-[1.85] text-[#4c5b6b] hyphens-auto">
@@ -495,13 +510,15 @@ export interface StatBandItem {
 
 export function StatBand({ items }: { readonly items: readonly StatBandItem[] }) {
   return (
-    <dl className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[3px] border border-[#e2ded2] bg-[#e2ded2] lg:grid-cols-4">
       {items.map((item) => (
-        <div key={item.label} className="rounded-lg border border-[#e2ded2] bg-white p-5">
-          <dd className="m-0 font-mono text-3xl font-bold tabular-nums tracking-tight text-[#1a2430]">
+        <div key={item.label} className="bg-white p-6 sm:p-8">
+          <dd className="m-0 font-sans text-4xl font-bold tabular-nums tracking-tight text-[#1a2430] sm:text-5xl">
             {item.value}
           </dd>
-          <dt className="mt-1.5 font-sans text-xs leading-snug text-[#4c5b6b]">{item.label}</dt>
+          <dt className="mt-2 font-mono text-[11px] uppercase leading-snug tracking-[0.14em] text-[#5f6b7a]">
+            {item.label}
+          </dt>
         </div>
       ))}
     </dl>
@@ -537,7 +554,7 @@ export function FaqAccordion({ items }: { readonly items: readonly FaqGridItem[]
             key={faq.id}
             value={faq.id}
             id={faq.id}
-            className="scroll-mt-24 rounded-lg border border-[#e2ded2] bg-white px-5 transition-colors duration-180 hover:border-[#cfc9b8] sm:px-6"
+            className="scroll-mt-24 rounded-[3px] border border-[#e2ded2] bg-white px-5 transition-colors duration-180 hover:border-[#b88d3a]/60 sm:px-6"
           >
             <AccordionTrigger className="gap-4 py-5 text-left hover:no-underline">
               <NumberMark index={index} className="flex-none tabular-nums" />
