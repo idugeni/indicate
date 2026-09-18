@@ -9,22 +9,17 @@ import { PlatformSection } from '@/modules/site/components/landing/platform-sect
 import { TemplateSection } from '@/modules/site/components/landing/template-section';
 import { FaqTeaser, VoicesSection } from '@/modules/site/components/landing/voices-faq';
 import { WorkflowSection } from '@/modules/site/components/landing/workflow-section';
-import { CONTACT_CHANNELS, FAQ_ITEMS, TESTIMONIALS } from '@/ui/site/marketing-content';
+import { getContactChannels, getFaqs, getTestimonials } from '@/modules/content/site-content';
 import { MASTER_TEMPLATE_PRESETS } from '@/ui/themes';
 
-const STATIC_FAQS = Object.freeze(
-  FAQ_ITEMS.map((item, index) =>
-    Object.freeze({
-      id: item.id ?? `faq-${index + 1}`,
-      question: item.question,
-      answer: item.answer,
-    }),
-  ),
-);
-
-export function LandingPage() {
+export async function LandingPage() {
+  const [channels, testimonials, faqs] = await Promise.all([
+    getContactChannels(),
+    getTestimonials(),
+    getFaqs(),
+  ]);
   return (
-    <LandingShell>
+    <LandingShell channels={channels}>
       <Hero />
       <NetworkStrip />
       <PlatformSection />
@@ -32,10 +27,10 @@ export function LandingPage() {
       <CapabilityExplorer />
       <TemplateSection templates={MASTER_TEMPLATE_PRESETS} />
       <WorkflowSection />
-      <AssuranceSection channels={CONTACT_CHANNELS} />
-      <VoicesSection testimonials={TESTIMONIALS} />
-      <FaqTeaser faqs={STATIC_FAQS} />
-      <ClosingCta channels={CONTACT_CHANNELS} />
+      <AssuranceSection channels={channels} />
+      <VoicesSection testimonials={testimonials} />
+      <FaqTeaser faqs={faqs} />
+      <ClosingCta channels={channels} />
     </LandingShell>
   );
 }

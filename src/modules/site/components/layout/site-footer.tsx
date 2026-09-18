@@ -2,7 +2,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Mail, MessageCircle, Send } from 'lucide-react';
 import {
-  CONTACT_CHANNELS as CONTACT_CHANNEL_FALLBACK,
   LEGAL_ROUTES,
   SERVICE_NAME,
   SERVICE_TAGLINE,
@@ -146,7 +145,6 @@ export async function SiteFooter() {
 
 export async function CallToAction() {
   const channels = await getContactChannels();
-  const rows = channels.length > 0 ? channels : CONTACT_CHANNEL_FALLBACK;
   return (
     <section aria-labelledby="konsolidasi-redaksi-heading" className="border-t border-[#e2ded2]">
       <Container className="grid gap-8 py-16 md:py-24 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:items-end">
@@ -173,7 +171,7 @@ export async function CallToAction() {
             </SecondaryCta>
           </div>
           <p className="m-0 mt-6 font-sans text-sm leading-relaxed text-[#5f6b7a]">
-            {rows
+            {channels
               .filter((channel) => channel.href)
               .map((channel) => channel.title)
               .join(' · ')}
