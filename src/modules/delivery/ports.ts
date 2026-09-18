@@ -25,10 +25,18 @@ export interface SiteCategory {
   readonly name: string;
 }
 
+/** Single-checkout public read: one tenant context for site, categories, and bypass state. */
+export interface PublicBundle {
+  readonly site: NetworkSiteData | null;
+  readonly categories: readonly SiteCategory[];
+  readonly bypassed: boolean;
+}
+
 export interface DeliveryRepository {
   findActiveSitesByExactHostname(hostname: string): Promise<readonly ResolvedSiteContext[]>;
   findPendingActivation(hostname: string, attemptId: string): Promise<boolean>;
   loadNetworkSite(context: ResolvedSiteContext, query: NetworkContentQuery): Promise<NetworkSiteData | null>;
+  loadNetworkBundle(context: ResolvedSiteContext, query: NetworkContentQuery): Promise<PublicBundle>;
   /** Robots kustom tenant (kolom seo settings, tanpa artikel) untuk /robots.txt. */
   loadSiteRobots(context: ResolvedSiteContext): Promise<readonly string[] | null>;
   /** Daftar kategori aktif org (ringan, untuk nav yang identik di semua halaman). */

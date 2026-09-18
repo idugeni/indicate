@@ -11,7 +11,7 @@ export interface NetworkCacheRequest {
 }
 
 export class NetworkContentService {
-  constructor(private readonly repository: Pick<DeliveryRepository, 'loadNetworkSite' | 'isCacheBypassed'>, private readonly cache?: NetworkSiteCachePort) {}
+  constructor(private readonly repository: Pick<DeliveryRepository, 'loadNetworkSite' | 'loadNetworkBundle' | 'isCacheBypassed'>, private readonly cache?: NetworkSiteCachePort) {}
 
   async load(context: ResolvedSiteContext, query: NetworkContentQuery = {}, cacheRequest?: NetworkCacheRequest): Promise<NetworkSiteData | null> {
     const sanitized: NetworkContentQuery = {
@@ -28,7 +28,7 @@ export class NetworkContentService {
     const identity = cacheRequest === undefined ? null : createCacheIdentity({ context, locale: cacheRequest.locale, path: cacheRequest.path, query: queryDimensions, preview, authClass });
     let data: NetworkSiteData | null;
     if (bypassed || this.cache === undefined || identity === null || preview || authClass !== 'anonymous') {
-      data = await load();
+      data = (await this.repository.loadNetworkBundle(context, sanitized)).site;
     } else {
       const entry = await this.cache.read(identity, [`host:${context.normalizedHostname}`, `org:${context.organizationId}`, `site:${context.siteId}`], load);
       data = cacheEntryMatches(entry.identity, context) ? entry.data : await load();

@@ -5,7 +5,7 @@ import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type { ActivationAttempt, InvalidationPlan, InvalidationTask, NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
 import { DEFAULT_PUBLISHER_BIO } from '@/modules/delivery/models';
 import { articleBodyText } from '@/modules/site/article-markup';
-import { DeliveryConflictError, DeliveryResourceUnavailableError, type DeliveryRepository } from '@/modules/delivery/ports';
+import { DeliveryConflictError, DeliveryResourceUnavailableError, type DeliveryRepository, type PublicBundle } from '@/modules/delivery/ports';
 import { articleSites, articles, auditLogs, authors, cacheBypasses, categories, domainActivationAttempts, domains, invalidationTasks, media, officialAffiliations, publishers, regions, sites, siteSettings } from '@/data/schema';
 import type * as schema from '@/data/schema';
 
@@ -60,6 +60,21 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
   async loadNetworkSite(context: ResolvedSiteContext, query: NetworkContentQuery): Promise<NetworkSiteData | null> {
     return this.database.transaction(async (transaction) => {
       await this.publicTenant(transaction, context);
+      return this.readSite(transaction, context, query);
+    });
+  }
+
+  async loadNetworkBundle(context: ResolvedSiteContext, query: NetworkContentQuery): Promise<PublicBundle> {
+    return this.database.transaction(async (transaction) => {
+      await this.publicTenant(transaction, context);
+      const site = await this.readSite(transaction, context, query);
+      const categories = await this.readCategories(transaction, context);
+      const bypassed = await this.readBypassed(transaction, context);
+      return { site, categories, bypassed };
+    });
+  }
+
+  private async readSite(transaction: Transaction, context: ResolvedSiteContext, query: NetworkContentQuery): Promise<NetworkSiteData | null> {
       const settingsRows = await transaction.select({ name: siteSettings.name, description: siteSettings.description, tagline: siteSettings.tagline, seoDefaultTitle: siteSettings.seoDefaultTitle, seoDefaultDescription: siteSettings.seoDefaultDescription, seoOpenGraphSiteName: siteSettings.seoOpenGraphSiteName, locale: siteSettings.locale, colors: siteSettings.colors, socialLinks: siteSettings.socialLinks, seo: siteSettings.seo, navigation: siteSettings.navigation, logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId, defaultMediaId: siteSettings.defaultMediaId, regionName: regions.name })
         .from(sites)
         .innerJoin(domains, and(eq(domains.organizationId, sites.organizationId), eq(domains.id, sites.domainId), eq(domains.status, 'active')))
@@ -130,7 +145,19 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         },
         articles: rows.filter((row) => row.publishedAt !== null).map((row) => ({ id: row.id, slug: row.slug, title: row.customTitle ?? row.title, description: row.customDescription ?? excerptForDescription(articleBodyText(row.body), 180), body: row.body, gallery: galleryByArticle.get(row.id) ?? [], tags: [...row.tags], regionId: row.regionId, categoryId: row.categoryId, categorySlug: row.categorySlug, categoryName: row.categoryName, authorName: row.authorName, authorDisplayName: row.authorDisplayName, authorBio: row.authorBio, authorAvatarUrl: row.authorAvatarUrl, publisherName: row.publisherName, attribution: row.attribution ?? row.publisherName ?? settings.name, publisherLogoUrl: row.publisherLogoUrl, publisherCity: row.publisherCity, publisherBio: row.publisherBio ?? DEFAULT_PUBLISHER_BIO, publisherVerified: row.publisherVerification === 'verified', independent: row.publisherType === 'independent_publisher', officialInstitution: row.publisherVerification === 'verified' ? row.affiliationInstitution : null, publishedAt: iso(row.publishedAt!), updatedAt: iso(row.updatedAt), articleSiteId: row.articleSiteId, viewCount: row.viewCount, imageMediaType: row.customImageMediaId !== null ? row.customMediaType : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaType : null, imageUrl: row.customImageMediaId !== null ? absoluteMediaUrl(context, row.customImageMediaId) : row.leadMediaId !== null && row.mediaState === 'active' ? absoluteMediaUrl(context, row.leadMediaId) : row.coverImageUrl, thumbnailUrl: row.customImageMediaId !== null ? (row.customThumbKey === null ? null : `${absoluteMediaUrl(context, row.customImageMediaId)}?variant=thumb`) : row.leadMediaId !== null && row.mediaState === 'active' ? (row.leadThumbKey === null ? null : `${absoluteMediaUrl(context, row.leadMediaId)}?variant=thumb`) : null, imageWidth: null, imageHeight: null })),
       };
-    });
+  }
+
+  private async readCategories(transaction: Transaction, context: ResolvedSiteContext): Promise<readonly { slug: string; name: string }[]> {
+      const rows = await transaction.select({ slug: categories.slug, name: categories.name })
+        .from(categories)
+        .where(and(eq(categories.organizationId, context.organizationId), eq(categories.status, 'active')))
+        .orderBy(sql`${categories.name} ASC`);
+      return rows.map((row) => ({ slug: row.slug, name: row.name }));
+  }
+
+  private async readBypassed(transaction: Transaction, context: ResolvedSiteContext): Promise<boolean> {
+      const rows = await transaction.select({ bypass: cacheBypasses.bypass }).from(cacheBypasses).where(and(eq(cacheBypasses.organizationId, context.organizationId), eq(cacheBypasses.siteId, context.siteId))).limit(1);
+      return rows[0]?.bypass === true;
   }
 
   async loadSiteRobots(context: ResolvedSiteContext): Promise<readonly string[] | null> {
@@ -151,19 +178,14 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
 
   async loadSiteCategories(context: ResolvedSiteContext): Promise<readonly { slug: string; name: string }[]> {    return this.database.transaction(async (transaction) => {
       await this.publicTenant(transaction, context);
-      const rows = await transaction.select({ slug: categories.slug, name: categories.name })
-        .from(categories)
-        .where(and(eq(categories.organizationId, context.organizationId), eq(categories.status, 'active')))
-        .orderBy(sql`${categories.name} ASC`);
-      return rows.map((row) => ({ slug: row.slug, name: row.name }));
+      return this.readCategories(transaction, context);
     });
   }
 
   async isCacheBypassed(context: ResolvedSiteContext): Promise<boolean> {
     return this.database.transaction(async (transaction) => {
       await this.publicTenant(transaction, context);
-      const rows = await transaction.select({ bypass: cacheBypasses.bypass }).from(cacheBypasses).where(and(eq(cacheBypasses.organizationId, context.organizationId), eq(cacheBypasses.siteId, context.siteId))).limit(1);
-      return rows[0]?.bypass === true;
+      return this.readBypassed(transaction, context);
     });
   }
 
