@@ -5,11 +5,12 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, MailCheck } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
+import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
 import { TurnstileField, isTurnstileConfigured } from '@/modules/auth/components/turnstile-field';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
 
-const CODE_LENGTH = 6;
+const CODE_LENGTH = 8;
 const RESEND_COOLDOWN_S = 60;
 
 /** Passwordless sign-in leaf: email code first, verified in-page, magic link as backup. */
@@ -156,7 +157,7 @@ export function OtpSignInForm() {
       <div className="flex items-start gap-3">
         <MailCheck className="mt-0.5 h-5 w-5 flex-none text-[#8a5f1c]" aria-hidden="true" />
         <p className="m-0 font-sans text-sm leading-relaxed text-[#4c5b6b]">
-          Kode 6 digit dikirim ke <strong className="font-semibold text-[#1a2430]">{sentTo}</strong>.
+          Kode 8 digit dikirim ke <strong className="font-semibold text-[#1a2430]">{sentTo}</strong>.
           Klik tautan di email itu juga bisa.
         </p>
       </div>
@@ -169,18 +170,28 @@ export function OtpSignInForm() {
       >
         <div>
           <AuthLabel htmlFor="otp-code">Kode masuk</AuthLabel>
-          <Input
+          <InputOTP
             id="otp-code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            required
-            minLength={CODE_LENGTH}
             maxLength={CODE_LENGTH}
             value={code}
-            onChange={(event) => handleCodeChange(event.target.value)}
-            placeholder="••••••"
-            className="border-[#1a2430]/20 bg-white text-center font-mono text-2xl tracking-[0.5em] dark:border-[#1a2430]/20 dark:bg-white"
-          />
+            onChange={(value) => handleCodeChange(value)}
+            autoComplete="one-time-code"
+            containerClassName="justify-center"
+          >
+            <InputOTPGroup>
+              <InputOTPSlot index={0} className="h-12 w-10 border-[#1a2430]/20 text-lg text-[#1a2430] dark:border-[#1a2430]/20 dark:bg-white" />
+              <InputOTPSlot index={1} className="h-12 w-10 border-[#1a2430]/20 text-lg text-[#1a2430] dark:border-[#1a2430]/20 dark:bg-white" />
+              <InputOTPSlot index={2} className="h-12 w-10 border-[#1a2430]/20 text-lg text-[#1a2430] dark:border-[#1a2430]/20 dark:bg-white" />
+              <InputOTPSlot index={3} className="h-12 w-10 border-[#1a2430]/20 text-lg text-[#1a2430] dark:border-[#1a2430]/20 dark:bg-white" />
+            </InputOTPGroup>
+            <InputOTPSeparator />
+            <InputOTPGroup>
+              <InputOTPSlot index={4} className="h-12 w-10 border-[#1a2430]/20 text-lg text-[#1a2430] dark:border-[#1a2430]/20 dark:bg-white" />
+              <InputOTPSlot index={5} className="h-12 w-10 border-[#1a2430]/20 text-lg text-[#1a2430] dark:border-[#1a2430]/20 dark:bg-white" />
+              <InputOTPSlot index={6} className="h-12 w-10 border-[#1a2430]/20 text-lg text-[#1a2430] dark:border-[#1a2430]/20 dark:bg-white" />
+              <InputOTPSlot index={7} className="h-12 w-10 border-[#1a2430]/20 text-lg text-[#1a2430] dark:border-[#1a2430]/20 dark:bg-white" />
+            </InputOTPGroup>
+          </InputOTP>
         </div>
         <AuthSubmit busy={busy} busyLabel="Memverifikasi..." icon={ArrowRight}>
           Masuk

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { Separator } from '@/components/ui/separator';
 import { GoogleButton } from '@/modules/auth/components/google-button';
 import { OtpSignInForm } from '@/modules/auth/components/otp-sign-in-form';
 import { SignInForm } from '@/modules/auth/components/sign-in-form';
@@ -31,10 +32,11 @@ export function SignInMethods() {
     <div className="space-y-6">
       <OtpSignInForm />
 
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-[#e2ded2]" aria-hidden="true" />
-        <span className="font-mono text-[11px] text-[#5f6b7a]">ATAU</span>
-        <div className="h-px flex-1 bg-[#e2ded2]" aria-hidden="true" />
+      <div className="relative">
+        <Separator className="bg-[#e2ded2]" />
+        <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 font-mono text-[11px] text-[#5f6b7a]">
+          ATAU
+        </span>
       </div>
 
       <GoogleButton />

@@ -2,10 +2,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import { AuthAlert } from '@/modules/auth/components/auth-ui';
-import { EditionDate } from '@/modules/auth/components/edition-date';
 import { SignInMethods } from '@/modules/auth/components/sign-in-methods';
 import { SERVICE_NAME } from '@/ui/site/marketing-content';
 import { currentYear } from '@/modules/site/current-year';
+
+const PANEL_STEPS: readonly { readonly title: string; readonly detail: string }[] = Object.freeze([
+  { title: 'Tulis sekali', detail: 'Satu naskah, satu antrean redaksi.' },
+  { title: 'Terbit ke mana-mana', detail: 'Ratusan portal, domain, dan wilayah.' },
+  { title: 'Teraudit penuh', detail: 'Setiap aksi tercatat, hanya-tambah.' },
+]);
 
 export default async function SignInPage({
   searchParams,
@@ -16,48 +21,15 @@ export default async function SignInPage({
   const linkFailed = params?.auth === 'unavailable';
   const year = await currentYear();
   return (
-    <div className="flex min-h-screen flex-col bg-[#f4f2ec] font-sans text-[#1a2430] antialiased [color-scheme:light]">
-      <header className="border-b border-[#e2ded2]">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-5 sm:px-8">
-          <Link href="/" className="flex items-center gap-2.5" aria-label={`${SERVICE_NAME} beranda`}>
-            <Image
-              src="/brand/indicate-mark.svg"
-              alt=""
-              aria-hidden="true"
-              width={32}
-              height={32}
-              className="h-8 w-8 flex-none"
-            />
-            <span className="grid leading-none">
-              <strong className="text-[15px] font-semibold tracking-tight">{SERVICE_NAME}</strong>
-              <small className="mt-0.5 font-mono text-[9px] tracking-[0.16em] text-[#5f6b7a] uppercase">
-                Publishing infrastructure
-              </small>
-            </span>
+    <div className="min-h-dvh bg-[#f4f2ec] font-sans text-[#1a2430] antialiased [color-scheme:light] lg:grid lg:h-dvh lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] lg:overflow-hidden">
+      <main className="flex flex-col justify-center px-5 py-10 sm:px-10 lg:h-dvh lg:overflow-y-auto lg:py-8">
+        <div className="mx-auto w-full max-w-md">
+          <Link
+            href="/"
+            className="font-mono text-[11px] uppercase tracking-wider text-[#5f6b7a] transition-colors hover:text-[#1a2430]"
+          >
+            ← {SERVICE_NAME}
           </Link>
-          <p className="m-0 flex items-center gap-3 font-mono text-[11px] tracking-wide text-[#5f6b7a]">
-            <span>Jakarta</span>
-            <span aria-hidden="true" className="h-3 w-px bg-[#e2ded2]" />
-            <EditionDate />
-            <span aria-hidden="true" className="h-3 w-px bg-[#e2ded2]" />
-            <span>Edisi harian</span>
-          </p>
-        </div>
-      </header>
-
-      <main className="grid flex-1 place-items-center px-5 py-14 sm:px-8">
-        <div className="w-full max-w-md">
-          <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-[#8a5f1c] uppercase">
-            <span aria-hidden="true" className="h-px w-8 flex-none bg-[#b88d3a]" />
-            Akses workspace
-          </p>
-          <h1 className="m-0 mt-3 font-sans text-3xl font-bold tracking-tight">
-            Masuk ke dashboard
-          </h1>
-          <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-[#4c5b6b]">
-            Masukkan email kerja — kami kirim kode masuk 6 digit yang kedaluwarsa dalam beberapa
-            menit.
-          </p>
           {linkFailed ? (
             <div className="mt-6">
               <AuthAlert tone="error">
@@ -65,8 +37,21 @@ export default async function SignInPage({
               </AuthAlert>
             </div>
           ) : null}
-          <div className="mt-8 rounded-lg border border-[#e2ded2] bg-white p-6 shadow-[0_24px_48px_-28px_rgba(26,36,48,0.3)] sm:p-8">
-            <SignInMethods />
+          <div className="mt-6 rounded-xl border border-[#e2ded2] bg-white p-6 shadow-[0_24px_48px_-28px_rgba(26,36,48,0.3)] sm:p-8">
+            <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-[#8a5f1c] uppercase">
+              <span aria-hidden="true" className="h-px w-8 flex-none bg-[#b88d3a]" />
+              Akses workspace
+            </p>
+            <h1 className="m-0 mt-3 font-sans text-2xl font-bold tracking-tight">
+              Masuk ke dashboard
+            </h1>
+            <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-[#4c5b6b]">
+              Masukkan email kerja — kami kirim kode masuk 8 digit yang kedaluwarsa dalam
+              beberapa menit.
+            </p>
+            <div className="mt-6">
+              <SignInMethods />
+            </div>
           </div>
           <p className="m-0 mt-6 text-center font-sans text-sm text-[#4c5b6b]">
             Belum punya akun?{' '}
@@ -77,20 +62,52 @@ export default async function SignInPage({
         </div>
       </main>
 
-      <footer>
-        <p
-          aria-hidden="true"
-          className="m-0 overflow-hidden text-center font-sans text-[18vw] leading-[0.85] font-bold tracking-tight text-transparent select-none [-webkit-text-stroke:1px_#d8d3c4] lg:text-[10rem]"
-        >
-          INDICATE
-        </p>
-        <div className="border-t border-[#e2ded2]">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-1 px-5 py-4 font-mono text-[11px] text-[#5f6b7a] sm:flex-row sm:items-center sm:justify-between sm:px-8">
-            <p className="m-0">© {year} {SERVICE_NAME}. Hak cipta dilindungi undang-undang.</p>
-            <p className="m-0 tabular-nums">PT Sanca Phena Cakra</p>
-          </div>
+      <aside className="hidden border-l border-white/15 bg-[#1a2430] p-12 text-white lg:flex lg:h-dvh lg:flex-col lg:justify-between lg:overflow-hidden">
+        <Link href="/" className="flex items-center gap-3 no-underline" aria-label="Indicate beranda">
+          <span className="flex h-9 w-9 items-center justify-center rounded bg-[#f4f2ec]">
+            <Image
+              src="/brand/indicate-mark.svg"
+              alt=""
+              aria-hidden="true"
+              width={28}
+              height={28}
+              className="h-7 w-7 object-contain"
+            />
+          </span>
+          <span className="grid leading-none">
+            <span className="font-sans text-xl font-semibold tracking-tight text-white">{SERVICE_NAME}</span>
+            <span className="mt-1 font-mono text-[10px] tracking-[0.18em] text-white/60 uppercase">
+              Publishing infrastructure
+            </span>
+          </span>
+        </Link>
+
+        <div>
+          <p className="m-0 max-w-md font-serif text-5xl font-medium leading-[1.05] tracking-tight text-balance text-white">
+            Satu sinyal untuk ratusan kanal berita.
+          </p>
+          <ol className="m-0 mt-10 grid list-none gap-0 p-0">
+            {PANEL_STEPS.map((step, index) => (
+              <li
+                key={step.title}
+                className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 border-t border-white/15 py-4 last:border-b"
+              >
+                <span className="font-mono text-xs tabular-nums text-[#e8c87e]">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <div>
+                  <p className="m-0 font-sans text-sm font-semibold text-white">{step.title}</p>
+                  <p className="m-0 mt-0.5 font-sans text-xs text-[#c7d2fe]">{step.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
-      </footer>
+
+        <p className="m-0 font-mono text-[11px] text-white/60">
+          © {year} {SERVICE_NAME} · PT Sanca Phena Cakra
+        </p>
+      </aside>
     </div>
   );
 }
