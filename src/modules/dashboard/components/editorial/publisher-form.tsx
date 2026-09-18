@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useTransition, type FormEvent } from 'react';
+import { useId, useRef, useTransition, type FormEvent } from 'react';
 import {
   Check,
   Loader2,
@@ -8,6 +8,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { suggestAttributionLabel } from '@/modules/dashboard/components/editorial/publisher-attribution';
 import { Input } from '@/components/ui/input';
 import type { PublisherEntity, SiteEntity } from '@/modules/dashboard/components/shared/types';
 
@@ -35,6 +36,27 @@ export function PublisherForm({
 
   const [isCreating, startCreateTransition] = useTransition();
   const [isVerifying, startVerifyTransition] = useTransition();
+  const lastSuggestedAttribution = useRef('');
+
+  const refreshAttributionSuggestion = (form: HTMLFormElement) => {
+    const nameInput = form.elements.namedItem('name');
+    const typeInput = form.elements.namedItem('type');
+    const attributionInput = form.elements.namedItem('attributionLabel');
+    if (
+      !(nameInput instanceof HTMLInputElement) ||
+      !(typeInput instanceof HTMLSelectElement) ||
+      !(attributionInput instanceof HTMLInputElement)
+    ) {
+      return;
+    }
+    const current = attributionInput.value.trim();
+    if (current !== '' && current !== lastSuggestedAttribution.current) {
+      return;
+    }
+    const suggestion = suggestAttributionLabel(nameInput.value, typeInput.value);
+    lastSuggestedAttribution.current = suggestion;
+    attributionInput.value = suggestion;
+  };
 
   const handleCreate = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -88,6 +110,9 @@ export function PublisherForm({
               required
               disabled={isCreating}
               placeholder="cth: Radar Jawa Tengah Sentral"
+              onBlur={(event) => {
+                if (event.currentTarget.form !== null) refreshAttributionSuggestion(event.currentTarget.form);
+              }}
               className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
             />
           </div>
@@ -100,6 +125,9 @@ export function PublisherForm({
               id={createTypeId}
               name="type"
               disabled={isCreating}
+              onChange={(event) => {
+                if (event.currentTarget.form !== null) refreshAttributionSuggestion(event.currentTarget.form);
+              }}
               className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
             >
               <option value="independent_publisher">Penerbit Independen Regional</option>

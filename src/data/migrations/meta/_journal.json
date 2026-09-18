@@ -869,6 +869,34 @@
       "when": 1789699812796,
       "tag": "20260918000000_faq_canonical_13",
       "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1789734433960,
+      "tag": "20260918010000_faq_category",
+      "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "7",
+      "when": 1789735675398,
+      "tag": "20260918020000_publisher_attribution_short",
+      "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "7",
+      "when": 1789736068044,
+      "tag": "20260918030000_publisher_attribution_helper",
+      "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1789736363176,
+      "tag": "20260918040000_function_search_path",
+      "breakpoints": true
     }
   ]
 }
