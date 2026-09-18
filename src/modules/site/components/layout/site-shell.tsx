@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { SiteHeader } from '@/modules/site/components/layout/site-header';
+import { LandingHeader } from '@/modules/site/components/landing/landing-header';
 import { CallToAction, SiteFooter } from '@/modules/site/components/layout/site-footer';
 import { BackToTop } from '@/modules/site/components/layout/back-to-top';
 
@@ -11,7 +11,7 @@ export function SiteShell({ children }: { readonly children: ReactNode }) {
         Lewati ke konten
       </a>
 
-      <SiteHeader />
+      <LandingHeader />
 
       <main id="main-content" className="relative">
         {children}
