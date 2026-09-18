@@ -29,18 +29,24 @@ export class InvalidationDispatcher {
     const tasks = await this.repository.claimInvalidations(now.toISOString(), limit);
     let completed = 0; let failed = 0;
     for (const task of tasks) {
+      let step = 'revalidate';
       try {
         await this.nextCache.revalidateTags(task.tags); await this.nextCache.revalidatePaths(task.paths);
+        step = 'version';
         await this.coordination.incrementSiteVersion(task.organizationId, task.siteId);
+        step = 'purge_urls';
         await this.cloudflare.purgeExactUrls(task.urls);
+        step = 'purge_hosts';
         for (const host of new Set([task.previousHostname, task.currentHostname].filter((value): value is string => value !== null))) await this.cloudflare.purgeHostname(host);
+        step = 'bypass_off';
         await this.coordination.setSiteBypass(task.organizationId, task.siteId, false);
+        step = 'complete';
         await this.repository.completeInvalidation(task, now.toISOString()); completed += 1;
       } catch {
         failed += 1;
         const terminal = task.attempts + 1 >= this.maxAttempts;
         const seconds = this.retryDelaysSeconds[Math.min(task.attempts, this.retryDelaysSeconds.length - 1)] ?? 60;
-        await this.repository.failInvalidation(task, { code: 'provider_unavailable' }, new Date(now.getTime() + seconds * 1_000).toISOString(), terminal, now.toISOString());
+        await this.repository.failInvalidation(task, { code: 'provider_unavailable', step }, new Date(now.getTime() + seconds * 1_000).toISOString(), terminal, now.toISOString());
         try { await this.coordination.setSiteBypass(task.organizationId, task.siteId, true); } catch { /* PostgreSQL bypass remains authoritative. */ }
         if (terminal) for (const host of [task.currentHostname, task.previousHostname]) if (host !== null) try { await this.cloudflare.purgeHostname(host); } catch { /* durable Site bypass remains enabled */ }
       }
