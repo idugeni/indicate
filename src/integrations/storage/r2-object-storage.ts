@@ -54,6 +54,28 @@ export class R2ObjectStorageAdapter implements ObjectStoragePort {
     }
   }
 
+  async getExact(key: string): Promise<{ readonly contentType: string; readonly body: Uint8Array } | null> {
+    try {
+      const result = await this.client.send(new GetObjectCommand({ Bucket: this.config.bucketName, Key: key }));
+      const chunks: Uint8Array[] = [];
+      const body = result.Body as AsyncIterable<Uint8Array> | undefined;
+      if (body === undefined) return null;
+      for await (const chunk of body) chunks.push(typeof chunk === 'string' ? new TextEncoder().encode(chunk) : chunk);
+      const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+      const merged = new Uint8Array(total);
+      let offset = 0;
+      for (const chunk of chunks) {
+        merged.set(chunk, offset);
+        offset += chunk.length;
+      }
+      return Object.freeze({ contentType: result.ContentType ?? 'application/octet-stream', body: merged });
+    } catch (error) {
+      const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode;
+      if (status === 404) return null;
+      throw error;
+    }
+  }
+
   async authorizeExactPut(key: string, contentType: string, checksumSha256: string, expiresInSeconds: number): Promise<ExactObjectAuthorization> {
     const requiredHeaders = Object.freeze({ 'content-type': contentType, 'x-amz-checksum-sha256': checksumSha256 });
     const url = await getSignedUrl(this.client, new PutObjectCommand({
