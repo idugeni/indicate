@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useLinkStatus } from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
 import { Menu, X, ArrowRight } from 'lucide-react';
 import {
   SITE_ROUTES,
@@ -13,6 +11,7 @@ import {
   type NavigationLink,
 } from '@/ui/site/marketing-content';
 import { cn } from '@/ui/cn';
+import { useMobileMenu } from './use-mobile-menu';
 
 function NavPendingDot() {
   const { pending } = useLinkStatus();
@@ -28,68 +27,14 @@ function NavPendingDot() {
 }
 
 export function SiteHeader() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const pathname = usePathname();
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const wasOpenRef = useRef(false);
-
-  useEffect(() => {
-    const query = window.matchMedia('(min-width: 1024px)');
-    const closeOnDesktop = (event: MediaQueryListEvent) => {
-      if (event.matches) setMobileMenuOpen(false);
-    };
-    query.addEventListener('change', closeOnDesktop);
-    return () => query.removeEventListener('change', closeOnDesktop);
-  }, []);
-
-  useEffect(() => {
-    if (!mobileMenuOpen) return;
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMobileMenuOpen(false);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    if (mobileMenuOpen) {
-      wasOpenRef.current = true;
-      closeButtonRef.current?.focus();
-      const panel = panelRef.current;
-      if (!panel) return;
-      const handleTrap = (event: KeyboardEvent) => {
-        if (event.key !== 'Tab') return;
-        const focusables = panel.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusables.length === 0) return;
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        if (!first || !last) return;
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
-      };
-      panel.addEventListener('keydown', handleTrap);
-      return () => panel.removeEventListener('keydown', handleTrap);
-    }
-    if (wasOpenRef.current) {
-      wasOpenRef.current = false;
-      menuButtonRef.current?.focus();
-    }
-    return undefined;
-  }, [mobileMenuOpen]);
+  const {
+    open: mobileMenuOpen,
+    setOpen: setMobileMenuOpen,
+    pathname,
+    menuButtonRef,
+    panelRef,
+    closeButtonRef,
+  } = useMobileMenu();
 
   return (
     <>

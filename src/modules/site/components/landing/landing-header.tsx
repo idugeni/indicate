@@ -1,46 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { ArrowRight, ArrowUpRight, Menu, X } from 'lucide-react';
 import { SERVICE_NAME, SITE_ROUTES, type NavigationLink } from '@/ui/site/marketing-content';
 import { GLASS_ELEVATED } from '@/modules/site/components/landing/material';
 import { cn } from '@/ui/cn';
+import { useMobileMenu } from '@/modules/site/components/layout/use-mobile-menu';
 
 export function LandingHeader() {
-  const [open, setOpen] = useState(false);
-  const pathname = usePathname();
-  const closeRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const original = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    closeRef.current?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = original;
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [open ]);
-
-  useEffect(() => {
-    const query = window.matchMedia('(min-width: 1024px)');
-    const onChange = () => setOpen(false);
-    query.addEventListener('change', onChange);
-    return () => query.removeEventListener('change', onChange);
-  }, []);
-
-  const [activePathname, setActivePathname] = useState(pathname);
-  if (activePathname !== pathname) {
-    setActivePathname(pathname);
-    setOpen(false);
-  }
+  const { open, setOpen, pathname, closeButtonRef: closeRef } = useMobileMenu();
 
   return (
     <>
