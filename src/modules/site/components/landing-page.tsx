@@ -19,7 +19,7 @@ export async function LandingPage() {
     getFaqs(),
   ]);
   return (
-    <LandingShell channels={channels}>
+    <LandingShell>
       <Hero />
       <NetworkStrip />
       <PlatformSection />

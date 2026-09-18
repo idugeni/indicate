@@ -50,6 +50,7 @@ const FOOTER_COLUMNS: readonly FooterColumn[] = Object.freeze([
     links: Object.freeze([
       { href: '/sign-in', label: 'Masuk Dashboard' },
       { href: '/sign-up', label: 'Buat Akun' },
+      { href: '/rss.xml', label: 'RSS' },
     ]),
   },
 ]);
@@ -58,7 +59,10 @@ const LINK_CLASSES =
   'block font-sans text-sm text-[#4c5b6b] transition-colors duration-180 hover:text-[#1a2430] focus-visible:rounded-sm focus-visible:text-[#1a2430] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b88d3a]';
 
 export async function SiteFooter() {
-  const year = await currentYear();
+  const [year, channels] = await Promise.all([currentYear(), getContactChannels()]);
+  const mail = channels.find((channel) => channel.href?.startsWith('mailto:'));
+  const chat = channels.find((channel) => channel.href?.includes('wa.me'));
+  const telegram = channels.find((channel) => channel.href?.includes('t.me'));
 
   return (
     <footer className="border-t border-[#e2ded2] bg-white">
@@ -73,19 +77,19 @@ export async function SiteFooter() {
               className="h-auto w-60"
             />
           </p>
-          <p className="m-0 max-w-sm font-sans text-sm leading-relaxed text-[#4c5b6b]">
+          <p className="m-0 max-w-sm font-serif text-xl leading-snug tracking-tight text-[#1a2430]">
             {SERVICE_TAGLINE}
           </p>
           <address className="m-0 max-w-sm space-y-2 border-t border-[#e2ded2] pt-4 font-sans text-sm not-italic">
             <a
-              href="mailto:sancaphenacakra@gmail.com"
+              href={mail?.href ?? 'mailto:sancaphenacakra@gmail.com'}
               className="flex items-center gap-2 text-[#4c5b6b] transition-colors duration-180 hover:text-[#1a2430]"
             >
               <Mail className="h-3.5 w-3.5 flex-none text-[#8a5f1c]" aria-hidden="true" />
               sancaphenacakra@gmail.com
             </a>
             <a
-              href="https://wa.me/6285641159405"
+              href={chat?.href ?? 'https://wa.me/6285641159405'}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-[#4c5b6b] transition-colors duration-180 hover:text-[#1a2430]"
@@ -94,7 +98,7 @@ export async function SiteFooter() {
               0856-4115-9405
             </a>
             <a
-              href="https://t.me/eliyantosarage"
+              href={telegram?.href ?? 'https://t.me/eliyantosarage'}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-[#4c5b6b] transition-colors duration-180 hover:text-[#1a2430]"
@@ -124,7 +128,7 @@ export async function SiteFooter() {
       </Container>
 
       <div aria-hidden="true" className="overflow-hidden border-t border-[#e2ded2] select-none">
-        <p className="m-0 text-center font-sans text-[20vw] leading-[0.85] font-bold tracking-tight text-transparent [-webkit-text-stroke:1px_#d8d3c4] lg:text-[12rem]">
+        <p className="m-0 text-center font-sans text-[20vw] leading-[0.85] font-bold tracking-tight text-[#1a2430] lg:text-[12rem]">
           INDICATE
         </p>
       </div>
