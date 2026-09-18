@@ -6,8 +6,13 @@ import { withApiAccess } from '@/core/observability/api-access';
 import { SERVICE_PATHS } from '@/core/routing/control-plane-paths';
 import { deliveryComposition } from '@/modules/delivery';
 
-// Control-plane sitemap branch: without it the robots.txt Sitemap: line would advertise a 404.
-function controlPlaneSitemap(host: string): string {
+/**
+ * Render the control-plane sitemap document.
+ *
+ * @param host - Dashboard hostname for absolute URLs.
+ * @returns Sitemap XML covering root and service paths.
+ */
+export function controlPlaneSitemap(host: string): string {
   const today = new Date().toISOString().slice(0, 10);
   const entries = ['/', ...SERVICE_PATHS]
     .map(
@@ -19,8 +24,6 @@ function controlPlaneSitemap(host: string): string {
 }
 
 async function handleGET() {
-  // Sitemap per-host + DB: tetap dinamis per request (pengganti force-dynamic).
-  // Edge TTL 600 + SWR 600: crawler burst tidak mengulang full load.
   await connection();
   const { resolver, content, config } = await deliveryComposition();
   const requestHeaders = await headers();
@@ -44,4 +47,9 @@ async function handleGET() {
   });
 }
 
+/**
+ * Serve the sitemap document for control-plane and tenant hosts.
+ *
+ * @remarks Without the control-plane branch the robots.txt Sitemap line would advertise a 404. Sitemap stays dynamic per request per host with DB load (replacing force-dynamic); edge TTL 600 plus SWR 600 absorbs crawler bursts without repeating the full load.
+ */
 export const GET = withApiAccess('GET /sitemap.xml', handleGET);

@@ -21,6 +21,11 @@ function getServerSnapshot(): null {
   return null;
 }
 
+/**
+ * Render fallback error per route.
+ *
+ * @remarks Client-minted fallback keeps the displayed Ref in sync with the logged record when no digest exists.
+ */
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
   const siteName = useSyncExternalStore(
     noopSubscribe,
@@ -28,7 +33,6 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
     getServerSnapshot
   );
 
-  // Client-minted fallback keeps the displayed Ref in sync with the logged record when no digest exists.
   const [clientId] = useState(() => crypto.randomUUID());
   const eventId = error.digest ?? clientId;
 

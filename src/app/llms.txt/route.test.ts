@@ -1,0 +1,31 @@
+import { describe, expect, it } from 'vitest';
+
+import { controlPlaneLlms, tenantLlms } from '@/app/llms.txt/route';
+
+describe('controlPlaneLlms', () => {
+  it('memakai URL absolut dan daftar layanan', () => {
+    const body = controlPlaneLlms('indicate.web.id');
+    expect(body).toContain('# Indicate');
+    expect(body).toContain('(https://indicate.web.id/pricing)');
+    expect(body).toContain('## Legalitas');
+  });
+});
+
+describe('tenantLlms', () => {
+  it('merender kanal, liputan, dan peta situs', () => {
+    const body = tenantLlms('portal.example', 'Portal', 'Kabar terkini', ['Teknologi'], [
+      { title: 'Judul A', slug: 'judul-a' },
+    ]);
+    expect(body).toContain('# Portal');
+    expect(body).toContain('- Teknologi');
+    expect(body).toContain('- [Judul A](https://portal.example/judul-a)');
+    expect(body).toContain('(https://portal.example/sitemap.xml)');
+  });
+
+  it('membatasi liputan pada 30 artikel', () => {
+    const articles = Array.from({ length: 35 }, (_, index) => ({ title: `A${index}`, slug: `a-${index}` }));
+    const body = tenantLlms('portal.example', 'Portal', 'Deskripsi', [], articles);
+    expect(body).toContain('a-29');
+    expect(body).not.toContain('a-30');
+  });
+});

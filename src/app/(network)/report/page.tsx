@@ -10,7 +10,13 @@ export async function generateMetadata(): Promise<Metadata> {
   return networkMetadata('/report', {});
 }
 
-function normalizeSlug(value: string | string[] | undefined): string | null {
+/**
+ * Normalize a raw article slug to lowercase, at most 200 chars.
+ *
+ * @param value - Raw slug param (string or repeated).
+ * @returns Normalized slug, or null when empty.
+ */
+export function normalizeSlug(value: string | string[] | undefined): string | null {
   const raw = Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
   const slug = raw.trim().toLowerCase().slice(0, 200);
   return slug === '' ? null : slug;

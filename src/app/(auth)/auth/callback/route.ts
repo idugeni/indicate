@@ -28,6 +28,18 @@ async function welcomeConfirmedSignup(auth: CallbackAuth): Promise<void> {
   }
 }
 
+/**
+ * Resolve the post-callback redirect target.
+ *
+ * @param authType - Auth flow type after email normalization (null for email links).
+ * @param next - Raw next param, or null when absent.
+ * @returns Fallback per flow when next is absent, otherwise the sanitized path.
+ */
+export function resolveCallbackDestination(authType: string | null, next: string | null): string {
+  const fallback = authType === 'recovery' ? '/update-password' : '/dashboard';
+  return next === null ? fallback : safeRedirectPath(next);
+}
+
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code') ?? '';
   const tokenHash = request.nextUrl.searchParams.get('token_hash') ?? '';
@@ -54,7 +66,6 @@ export async function GET(request: NextRequest) {
     await welcomeConfirmedSignup(auth);
   }
 
-  const fallback = authType === 'recovery' ? '/update-password' : '/dashboard';
-  const destination = safeRedirectPath(next) || fallback;
-  return NextResponse.redirect(new URL(destination, request.url), { status: 303 });
+  const fallback = resolveCallbackDestination(authType, next);
+  return NextResponse.redirect(new URL(fallback, request.url), { status: 303 });
 }

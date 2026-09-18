@@ -46,6 +46,11 @@ const COMMAND_ACTIONS: readonly CommandAction[] = [
   { id: 'auth', label: 'Autentikasi & Sesi Pengguna', category: 'Sistem', href: '/sign-in', icon: Settings },
 ];
 
+/**
+ * Render palet perintah navigasi dashboard.
+ *
+ * @remarks Defensive: Base UI scroll-lock can stick when the dialog unmounts mid-exit (e.g. selecting an item that navigates to another layout).
+ */
 export function CommandPalette({ showTrigger = true }: { readonly showTrigger?: boolean }) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
@@ -55,8 +60,6 @@ export function CommandPalette({ showTrigger = true }: { readonly showTrigger?: 
   const listRef = React.useRef<HTMLDivElement>(null);
   const scrolledOnce = React.useRef(false);
 
-  // Defensive: Base UI scroll-lock can stick when the dialog unmounts
-  // mid-exit (e.g. selecting an item that navigates to another layout).
   React.useEffect(() => () => {
     document.documentElement.style.removeProperty('overflow');
     document.body.style.removeProperty('overflow');

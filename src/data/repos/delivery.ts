@@ -26,6 +26,11 @@ const excerptForDescription = (body: string, maxLength = 180) => {
 const absoluteMediaUrl = (context: ResolvedSiteContext, mediaId: string) => `https://${context.normalizedHostname}/api/network/media/${mediaId}`;
 const absoluteDefaultAssetUrl = (context: ResolvedSiteContext, configuredUrl: string) => { const parsed = new URL(configuredUrl); return `https://${context.normalizedHostname}${parsed.pathname}${parsed.search}`; };
 
+/**
+ * Serve delivery reads and activation writes.
+ *
+ * @remarks Sindikasi penuh: satu artikel kanonis tayang di portal mana pun yang diberi assignment, lintas region sekalipun. Region artikel adalah kanal asal/atribusi, bukan kunci tampil.
+ */
 export class DrizzleDeliveryRepository implements DeliveryRepository {
   constructor(private readonly database: Database, private readonly defaultImageUrl: string) {}
 
@@ -40,14 +45,18 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
     await transaction.execute(sql`SELECT indicate_private.set_tenant_context(${context.organizationId}::uuid, ${`public:${context.siteId}`}, ${requestId})`);
   }
 
+  /**
+   * Find active sites by exact hostname.
+   *
+   * @param hostname - Exact hostname to resolve.
+   * @returns Resolved site contexts with valid versions.
+   * @remarks Fail closed cepat: baris tanpa versi routing/konten valid diperlakukan sebagai host tak dikenal (404) alih-alih meledak sebagai UNDEFINED_VALUE jauh di dalam pembangunan query (500 + CPU terbuang).
+   */
   async findActiveSitesByExactHostname(hostname: string): Promise<readonly ResolvedSiteContext[]> {
     const rows = await this.database.execute<{
       hostname: string; organization_id: string; domain_id: string; site_id: string;
       region_id: string | null; routing_version: number; content_version: number;
     }>(sql`SELECT * FROM indicate_private.discover_release_active_hosts(ARRAY[${hostname}])`);
-    // Fail closed cepat: baris tanpa versi routing/konten valid diperlakukan
-    // sebagai host tak dikenal (404) alih-alih meledak sebagai UNDEFINED_VALUE
-    // jauh di dalam pembangunan query (500 + CPU terbuang).
     return [...rows]
       .filter((row) => Number.isFinite(row.routing_version) && Number.isFinite(row.content_version))
       .map((row) => ({ normalizedHostname: row.hostname, organizationId: row.organization_id, domainId: row.domain_id, siteId: row.site_id, regionId: row.region_id, routingVersion: row.routing_version, contentVersion: row.content_version }));
@@ -98,8 +107,6 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       }
 
       const conditions = [eq(articles.organizationId, context.organizationId), eq(articleSites.organizationId, context.organizationId), eq(articleSites.siteId, context.siteId), eq(articleSites.state, 'published'), eq(articleSites.active, true), eq(articles.status, 'active'), isNotNull(articleSites.publishedAt)];
-      // Sindikasi penuh: satu artikel kanonis tayang di portal mana pun yang diberi assignment,
-      // lintas region sekalipun. Region artikel adalah kanal asal/atribusi, bukan kunci tampil.
       if (query.articleSlug !== undefined) conditions.push(eq(articles.slug, query.articleSlug));
       if (query.categorySlug !== undefined) conditions.push(eq(categories.slug, query.categorySlug));
       if (query.tag !== undefined) conditions.push(sql`${articles.tags} @> ARRAY[${query.tag}]::text[]`);

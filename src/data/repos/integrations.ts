@@ -232,7 +232,6 @@ export class DrizzleIntegrationsRepository implements IntegrationsRepository {
     if (existing[0] !== undefined) return existing[0].id;
     const roleId = crypto.randomUUID();
     await tx.insert(roles).values({ organizationId, id: roleId, name: 'Administrator', tier: 'admin', active: true, version: 1, createdAt: new Date(now), updatedAt: new Date(now) });
-    // Hanya subset SOLO_ADMIN_PERMISSION_NAMES yang di-grant.
     const grants = await tx.select({ id: permissions.id }).from(permissions).where(and(eq(permissions.organizationId, organizationId), eq(permissions.scope, 'organization'), sql`${permissions.name} IN (${sql.join([...SOLO_ADMIN_PERMISSION_NAMES].map((name) => sql`${name}`), sql`, `)})`));
     if (grants.length > 0) {
       await tx.insert(rolePermissions).values(grants.map((permission) => ({ organizationId, roleId, permissionId: permission.id })));

@@ -10,6 +10,11 @@ type RuntimeConfigDatabase = PostgresJsDatabase<typeof schema>;
 /** Retries a complete config read when the runtime revision moves mid-read. */
 const READ_RETRY_LIMIT = 3;
 
+/**
+ * Read the persisted runtime configuration snapshot.
+ *
+ * @remarks The driver delivers bigint as string; coerce so revision math and the positive-int parser rule see a real number (null stays null). Revision reads go via the security-definer read; the runtime role never reads the RLS-protected revision table directly.
+ */
 export class DrizzleRuntimeConfigRepository implements RuntimeConfigReadRepository {
   constructor(private readonly database: RuntimeConfigDatabase) {}
 
@@ -115,14 +120,11 @@ export class DrizzleRuntimeConfigRepository implements RuntimeConfigReadReposito
     const rows = await source.execute<{ version: number | null }>(
       sql`SELECT indicate_private.read_runtime_config_revision(${environment}) AS version`,
     );
-    // The driver delivers bigint as string; coerce so revision math and the
-    // positive-int parser rule see a real number (null stays null).
     const raw = rows[0]?.version ?? null;
     return raw === null ? null : Number(raw);
   }
 
   async readInventoryVersion(environment: string): Promise<{ readonly configurationVersion: number }> {
-    // Via security-definer read; runtime role never reads the RLS-protected revision table directly.
     const rows = await this.database.execute<{ version: number | null }>(
       sql`SELECT indicate_private.read_runtime_config_revision(${environment}) AS version`,
     );

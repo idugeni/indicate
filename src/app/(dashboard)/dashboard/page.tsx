@@ -35,6 +35,11 @@ async function resolveDisplayAvatarUrl(
   }
 }
 
+/**
+ * Render dashboard workspace shell.
+ *
+ * @remarks Prefetch the default snapshot for first-paint data; null falls back to live-fetch.
+ */
 export default function DashboardPage() {
   return (
     <Suspense fallback={<DashboardLoading />}>
@@ -91,7 +96,6 @@ async function DashboardBody() {
   if (selected.success && organizations.some(({ id }) => id === selected.data)) {
     organizations = [organizations.find(({ id }) => id === selected.data)!, ...organizations.filter(({ id }) => id !== selected.data)];
   }
-  // Prefetch the default snapshot for first-paint data; null falls back to live-fetch.
   if (organizations.length === 0) {
     return (
       <main className="mx-auto flex min-h-[70svh] w-full max-w-2xl flex-col items-center justify-center px-6 py-16 text-center">

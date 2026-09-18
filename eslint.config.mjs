@@ -67,6 +67,7 @@ export default defineConfig([
   },
   globalIgnores([
     '.next/**',
+    'coverage/**',
     'next-env.d.ts',
     '.agents/**',
     '.claude/**',

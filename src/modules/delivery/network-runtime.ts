@@ -26,6 +26,11 @@ async function loadCachedNetworkSite(
   return content.load(context, query, { path, locale });
 }
 
+/**
+ * Selesaikan situs tenant untuk host dan path masuk.
+ *
+ * @remarks Sanitasi di sini agar key cache stabil (load internal memakai aturan yang sama).
+ */
 export async function resolveNetworkSite(query: NetworkContentQuery = {}, path = '/'): Promise<NetworkSiteData> {
   const requestHeaders = await headers();
   const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host');
@@ -33,7 +38,6 @@ export async function resolveNetworkSite(query: NetworkContentQuery = {}, path =
   const classification = await resolver.classify(host);
   if (classification.kind === 'ambiguous') throw new Error('AMBIGUOUS_PUBLIC_HOST_CONFIGURATION');
   if (classification.kind !== 'site') notFound();
-  // Sanitasi di sini agar key cache stabil (load internal memakai aturan yang sama).
   const sanitized: NetworkContentQuery = {
     ...(query.articleSlug === undefined ? {} : { articleSlug: query.articleSlug.trim().toLowerCase() }),
     ...(query.categorySlug === undefined ? {} : { categorySlug: query.categorySlug.trim().toLowerCase() }),
@@ -68,8 +72,6 @@ function tenantHiddenMeta(
 ): Metadata {
   const seo = buildSeoDocument(site, { path, titleOverride: title });
   return {
-    // Absolut: judul tenant tidak boleh ditempeli template '| Indicate'
-    // milik control-plane (src/app/layout.tsx).
     title: { absolute: title },
     description,
     alternates: seo.canonical
@@ -93,6 +95,11 @@ function tenantHiddenMeta(
       : undefined,
   };
 }
+/**
+ * Susun metadata tenant untuk path dan query yang diberikan.
+ *
+ * @remarks Judul memakai bentuk absolut agar tidak ditempeli template '| Indicate' milik control-plane (src/app/layout.tsx).
+ */
 export async function networkMetadata(path: string, query: NetworkContentQuery = {}, titleOverride?: string): Promise<Metadata> {
   const site = await resolveNetworkSite(query, path);
   const article = query.articleSlug === undefined ? undefined : site.articles[0];

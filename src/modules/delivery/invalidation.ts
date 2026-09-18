@@ -22,15 +22,16 @@ export function planInvalidation(mutation: NetworkMutation): InvalidationPlan {
   return Object.freeze({ organizationId: mutation.organizationId, siteId: mutation.siteId, previousHostname: mutation.kind === 'hostname' ? mutation.previousHostname : null, currentHostname: mutation.kind === 'hostname' ? mutation.currentHostname : mutation.hostname, tags: [...tags].sort(), paths: [...paths].sort(), urls: hostnames.flatMap((host) => [...paths].map((path) => `https://${host}${path}`)).sort(), reason: mutation.kind });
 }
 
+/**
+ * Dispatch claimed invalidation tasks through Next cache, coordination, and edge purge.
+ *
+ * @remarks Purge edge sekali per batch (URL unik lintas task): purge per-host per-task memicu thundering-herd ke origin, padahal TTL edge hanya 60 detik. Kegagalan purge tidak menggagalkan task; Next revalidate + bypass off adalah mekanisme utama, edge pulih sendiri dalam satu TTL.
+ */
 export class InvalidationDispatcher {
   constructor(private readonly repository: Pick<DeliveryRepository, 'claimInvalidations' | 'completeInvalidation' | 'failInvalidation'>, private readonly nextCache: NextCacheInvalidationPort, private readonly coordination: CacheCoordinationPort, private readonly cloudflare: CloudflareAuthorityPort, private readonly retryDelaysSeconds: readonly number[], private readonly maxAttempts: number) {}
 
   async dispatch(now: Date, limit: number): Promise<{ completed: number; failed: number }> {
     const tasks = await this.repository.claimInvalidations(now.toISOString(), limit);
-    // Purge edge sekali per batch (URL unik lintas task): purge per-host per-task
-    // memicu thundering-herd ke origin, padahal TTL edge hanya 60 detik.
-    // Kegagalan purge tidak menggagalkan task; Next revalidate + bypass off
-    // adalah mekanisme utama, edge pulih sendiri dalam satu TTL.
     const urls = [...new Set(tasks.flatMap((task) => task.urls))];
     if (urls.length > 0) {
       try {

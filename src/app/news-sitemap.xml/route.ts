@@ -6,7 +6,6 @@ import { withApiAccess } from '@/core/observability/api-access';
 import { deliveryComposition } from '@/modules/delivery';
 
 async function handleGET() {
-  // News sitemap per-host + DB: hanya artikel ≤2 hari (pengganti force-dynamic).
   await connection();
   const { resolver, content, config } = await deliveryComposition();
   const requestHeaders = await headers();
@@ -19,4 +18,9 @@ async function handleGET() {
   });
 }
 
+/**
+ * Sajikan news sitemap per host.
+ *
+ * @remarks Tetap dinamis per request karena klasifikasi per-host + DB; pengganti force-dynamic.
+ */
 export const GET = withApiAccess('GET /news-sitemap.xml', handleGET);

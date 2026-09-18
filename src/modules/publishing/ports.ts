@@ -51,6 +51,11 @@ export type AcceptPublicationResult =
   | { readonly kind: 'reused'; readonly job: PublicationJobRecord }
   | { readonly kind: 'conflict'; readonly existingJobId: string };
 
+export interface PublicationJobSummary {
+  readonly job: PublicationJobRecord;
+  readonly articleTitle: string;
+}
+
 export interface TargetTransitionInput {
   readonly targetId: string;
   readonly toState: 'processing' | 'published' | 'failed' | 'retrying' | 'unpublished';
@@ -101,6 +106,7 @@ export interface PublishingRepository {
   recordDispatchScheduled(organizationId: string, jobId: string, now: string, claimToken?: string): Promise<void>;
   recordDispatchFailure(organizationId: string, jobId: string, retryable: boolean, nextAt: string, now: string, claimToken?: string): Promise<void>;
   getPublication(actor: AuthorizedTenantActorContext, jobId: string): Promise<PublicationStatusProjection | null>;
+  listPublications(actor: AuthorizedTenantActorContext, limit: number): Promise<readonly PublicationJobSummary[]>;
   claimDispatchGaps(now: string, limit: number, claimToken: string, claimExpiresAt: string): Promise<readonly PublicationJobRecord[]>;
   claimJob(organizationId: string, jobId: string, workerId: string, leaseExpiresAt: string, now: string): Promise<WorkerClaim | null>;
   runnableTargets(claim: WorkerClaim, now: string, limit: number): Promise<readonly PublicationTargetRecord[]>;

@@ -7,7 +7,13 @@ import { createNonDisclosingDenial, type PublicErrorEnvelope } from '@/core/erro
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 
-const status = (error: PublicErrorEnvelope) => error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 404;
+/**
+ * Maps a webhook envelope to its HTTP status.
+ *
+ * @param error - Envelope produced by `ResendWebhookService`.
+ * @returns Status code defaulting to 404 to avoid leaking endpoint state.
+ */
+export const status = (error: PublicErrorEnvelope) => error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 404;
 async function handlePOST(request: Request) {
   const requestId = resolveRequestId(request); const context = await getServerRuntimeContext(); const config = context.config;
   const sourceIdentity = trustedCloudflareSource(request, config.hosts.webhook, config.cloudflare.originSecret);

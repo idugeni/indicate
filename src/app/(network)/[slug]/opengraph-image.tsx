@@ -7,7 +7,13 @@ type Props = {
   readonly params: Promise<{ slug: string }>;
 };
 
-function humanizeSlug(slug: string): string {
+/**
+ * Turn an article slug into a title-case headline.
+ *
+ * @param slug - Raw article slug.
+ * @returns Headline of at most 12 words, truncated past 110 chars.
+ */
+export function humanizeSlug(slug: string): string {
   const words = slug
     .split('-')
     .map((part) => part.trim())

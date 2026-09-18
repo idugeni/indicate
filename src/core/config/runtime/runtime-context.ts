@@ -22,7 +22,11 @@ export interface RuntimeContext {
 
 let hydratedPromise: Promise<RuntimeContext> | null = null;
 
-/** Single-flight server runtime context via the bounded cache. */
+/**
+ * Single-flight server runtime context via the bounded cache.
+ *
+ * @remarks Prerender build tidak boleh membaca/menulis cache bersama: selain tidak valid untuk runtime, lapis jaringan ekstra bisa menggantung worker build. Singleton owns the client for the app lifetime (covers 300s refreshes).
+ */
 export async function getServerRuntimeContext(): Promise<RuntimeContext> {
   if (hydratedPromise === null) {
     hydratedPromise = initializeContext();
@@ -155,8 +159,6 @@ async function initializeContext(): Promise<RuntimeContext> {
     const runtime = createRuntimeDatabase(bootstrap);
     await assertSchemaGate(runtime.client);
     const repository = new DrizzleRuntimeConfigRepository(runtime.db);
-    // Prerender build tidak boleh membaca/menulis cache bersama: selain tidak
-    // valid untuk runtime, lapis jaringan ekstra bisa menggantung worker build.
     const snapshotStore: UpstashSnapshotStore | null =
       process.env.NEXT_PHASE === 'phase-production-build'
         ? null
@@ -166,7 +168,6 @@ async function initializeContext(): Promise<RuntimeContext> {
             namespace: `indicate:shared:${bootstrap.environment}`,
           });
     cache = new RuntimeConfigSnapshotCache({ repository, clock: new HrTimeMonotonicClock(), snapshotStore });
-    // Singleton owns the client for the app lifetime (covers 300s refreshes).
     void runtime;
   }
 

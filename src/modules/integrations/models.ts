@@ -60,7 +60,7 @@ export interface TelegramIdentity {
 }
 export type TelegramConversationStep =
   | 'idle' | 'article_region' | 'article_title' | 'article_body' | 'article_source' | 'article_slug'
-  | 'article_sites' | 'article_image' | 'publication_status';
+  | 'article_sites' | 'article_image' | 'publication_status' | 'publish_pick_site';
 export interface TelegramConversation {
   readonly source: 'telegram';
   readonly chatId: string;

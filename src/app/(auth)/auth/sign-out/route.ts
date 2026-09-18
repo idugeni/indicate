@@ -18,6 +18,16 @@ function withSupabaseCookies(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   });
 }
 
+/**
+ * Resolve the post-sign-out redirect target.
+ *
+ * @param rawNext - Raw next param, or null when absent.
+ * @returns Sanitized path, defaulting to sign-in.
+ */
+export function resolveSignOutDestination(rawNext: string | null): string {
+  return rawNext === null ? '/sign-in' : safeRedirectPath(rawNext);
+}
+
 async function handlePOST(request: NextRequest) {
   const requestId = resolveRequestId(request);
   if (denyCrossSiteMutation(request)) {
@@ -32,7 +42,7 @@ async function handlePOST(request: NextRequest) {
   });
   await auth.signOut();
   const rawNext = request.nextUrl.searchParams.get('next');
-  const destination = rawNext === null ? '/sign-in' : safeRedirectPath(rawNext);
+  const destination = resolveSignOutDestination(rawNext);
   return NextResponse.redirect(new URL(destination, request.url), { status: 303 });
 }
 

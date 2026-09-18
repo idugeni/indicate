@@ -117,6 +117,11 @@ function resolveItemName(item: Record<string, unknown>): string {
     : String(item.id ?? 'Rekaman Data');
 }
 
+/**
+ * Render dashboard data collections.
+ *
+ * @remarks setState-in-effect: defer setEditing() to a microtask so setState stays async.
+ */
 export function DataView({
   view,
   data,
@@ -137,7 +142,6 @@ export function DataView({
 
   const [editing, setEditing] = useState<{ readonly collection: string; readonly id: string } | null>(null);
 
-  // setState-in-effect: defer setEditing() to a microtask so setState stays async.
   useEffect(() => {
     void Promise.resolve().then(() => setEditing(null));
   }, [view]);

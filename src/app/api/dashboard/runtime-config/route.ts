@@ -48,6 +48,18 @@ async function handleGET() {
   }
 }
 
+/**
+ * Map a runtime-config failure to its HTTP status.
+ *
+ * @param error - Error thrown by the runtime-config admin repository.
+ * @returns Status honoring access denial (404) and version conflict (409).
+ */
+export function runtimeConfigErrorStatus(error: unknown): number {
+  if (error instanceof RuntimeConfigAdminAccessDeniedError) return 404;
+  if (error instanceof RuntimeConfigAdminConflictError) return 409;
+  return 500;
+}
+
 async function handlePOST(request: Request) {
   const requestId = resolveRequestId(request);
   if (denyCrossSiteMutation(request)) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
@@ -79,9 +91,9 @@ async function handlePOST(request: Request) {
       });
       return NextResponse.json({ ok: true, version: result.version });
     } catch (error) {
-      if (error instanceof RuntimeConfigAdminAccessDeniedError) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
-      if (error instanceof RuntimeConfigAdminConflictError) return NextResponse.json(createPublicError('CONFLICT', 'Kebijakan berubah sebelum penyimpanan. Muat ulang lalu coba lagi.', requestId), { status: 409 });
-      return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'The runtime configuration operation could not be completed.', requestId), { status: 500 });
+      if (error instanceof RuntimeConfigAdminAccessDeniedError) return NextResponse.json(createNonDisclosingDenial(requestId), { status: runtimeConfigErrorStatus(error) });
+      if (error instanceof RuntimeConfigAdminConflictError) return NextResponse.json(createPublicError('CONFLICT', 'Kebijakan berubah sebelum penyimpanan. Muat ulang lalu coba lagi.', requestId), { status: runtimeConfigErrorStatus(error) });
+      return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'The runtime configuration operation could not be completed.', requestId), { status: runtimeConfigErrorStatus(error) });
     }
   }
 }

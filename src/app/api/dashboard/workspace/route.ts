@@ -34,9 +34,15 @@ const commandSchema = z.object({ organizationId: organizationSchema, action: z.s
 interface ServiceContext { readonly actor: AuthorizedTenantActorContext; readonly service: TenantBusinessService }
 type ContextResult = ServiceContext | ReturnType<typeof createNonDisclosingDenial>;
 const isContextError = (value: ContextResult): value is ReturnType<typeof createNonDisclosingDenial> => 'error' in value;
-const responseStatus = (error: ReturnType<typeof createNonDisclosingDenial>) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404
-  : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'CONFLICT' ? 409
-    : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
+/**
+ * Maps a denial envelope to its HTTP status.
+ *
+ * @param error - Envelope produced by `createNonDisclosingDenial` or `createPublicError`.
+ * @returns Status code honoring 403/429 for subscription and purge cooldown denials.
+ */
+export const responseStatus = (error: ReturnType<typeof createNonDisclosingDenial>) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404
+  : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'FORBIDDEN' ? 403 : error.error.code === 'CONFLICT' ? 409
+    : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
 
 async function contextFor(organizationId: string, requestId: string, headers: Headers): Promise<ContextResult> {
   const cookieStore = await cookies();
@@ -55,7 +61,6 @@ async function contextFor(organizationId: string, requestId: string, headers: He
     catch { return createPublicError('DEPENDENCY_UNAVAILABLE', 'The operation could not be completed.', requestId); }
     return createNonDisclosingDenial(requestId);
   }
-  // Platform-only callers need an on_behalf ticket for dashboard surfaces; otherwise deny + audit.
   if (isPlatformOnlyWithoutTicket({ orgPermissionCount: membership.orgPermissions.size, platformPermissionCount: membership.platformPermissions.size, headers })) {
     const deniedActor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(), platformPermissionSet: new Set(), entryPoint: 'dashboard', requestId };
     try { await new DrizzleDashboardRepository(runtime.db).recordDenied(deniedActor, 'dashboard.platform_token.denied', 'organization'); }
@@ -129,5 +134,10 @@ async function handlePOST(request: Request) {
     return NextResponse.json(result.value);
 }
 
+/**
+ * Serve dashboard workspace reads.
+ *
+ * @remarks Platform-only callers need an on_behalf ticket for dashboard surfaces; otherwise deny + audit.
+ */
 export const GET = withApiAccess('GET /api/dashboard/workspace', handleGET);
 export const POST = withApiAccess('POST /api/dashboard/workspace', handlePOST);

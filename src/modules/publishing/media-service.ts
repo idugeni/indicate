@@ -92,6 +92,11 @@ export class MediaService {
     }
   }
 
+  /**
+   * Complete a reserved upload after verifying the stored object.
+   *
+   * @remarks Thumbnail is best-effort: a missing or mismatched variant never blocks activation of the verified full object.
+   */
   async completeUpload(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<MediaAssetRecord, PublicErrorEnvelope>> {
     const parsed = mediaCompletionSchema.safeParse(raw); if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Invalid upload completion.', actor.requestId) };
     try {
@@ -105,8 +110,6 @@ export class MediaService {
         await this.repository.rejectMedia(actor, reservation.id, 'uploaded_metadata_mismatch', this.clock.now().toISOString());
         return { ok: false, error: createPublicError('INVALID_INPUT', 'Uploaded object metadata does not match the authorization.', actor.requestId) };
       }
-      // Thumbnail is best-effort: a missing or mismatched variant never blocks
-      // activation of the verified full object.
       let thumbObjectKey: string | null = null;
       if (parsed.data.thumb !== undefined) {
         const candidate = buildThumbObjectKey(reservation.objectKey);

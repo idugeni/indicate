@@ -17,6 +17,20 @@ import { deliveryOperationsComposition } from '@/modules/delivery';
 
 const commandSchema = z.object({ organizationId: z.uuid(), siteId: z.uuid(), action: z.enum(['activate', 'deactivate']), hostname: z.string().min(1).max(253), previousHostname: z.string().min(1).max(253).nullable().optional() });
 
+/**
+ * Map a delivery failure to its HTTP status.
+ *
+ * @param error - Error thrown by the provisioning composition.
+ * @returns Status honoring pending (503), conflict (409), unavailable (404), and invalid config (400).
+ */
+export function deliveryErrorStatus(error: unknown): number {
+  if (error instanceof DeliveryOperationPendingError) return 503;
+  if (error instanceof DeliveryConflictError) return 409;
+  if (error instanceof DeliveryResourceUnavailableError) return 404;
+  if (error instanceof Error && error.message === 'CONFIGURATION_INVALID') return 400;
+  return 503;
+}
+
 async function handlePOST(request: Request) {
   const requestId = resolveRequestId(request);
   if (denyCrossSiteMutation(request)) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
@@ -40,11 +54,12 @@ async function handlePOST(request: Request) {
     await composition.provisioning.deactivate(actor, parsed.data.siteId, parsed.data.hostname);
     return NextResponse.json({ accepted: true });
   } catch (error) {
-    if (error instanceof DeliveryOperationPendingError) return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'The domain operation is durably pending and will be retried.', requestId), { status: 503 });
-    if (error instanceof DeliveryConflictError) return NextResponse.json(createPublicError('CONFLICT', 'The domain operation conflicts with current state.', requestId), { status: 409 });
-    if (error instanceof DeliveryResourceUnavailableError) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
-    if (error instanceof Error && error.message === 'CONFIGURATION_INVALID') return NextResponse.json(createPublicError('CONFIGURATION_INVALID', 'The domain configuration is invalid.', requestId), { status: 400 });
-    return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'The domain operation is currently unavailable.', requestId), { status: 503 });
+    const status = deliveryErrorStatus(error);
+    if (error instanceof DeliveryOperationPendingError) return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'The domain operation is durably pending and will be retried.', requestId), { status });
+    if (error instanceof DeliveryConflictError) return NextResponse.json(createPublicError('CONFLICT', 'The domain operation conflicts with current state.', requestId), { status });
+    if (error instanceof DeliveryResourceUnavailableError) return NextResponse.json(createNonDisclosingDenial(requestId), { status });
+    if (error instanceof Error && error.message === 'CONFIGURATION_INVALID') return NextResponse.json(createPublicError('CONFIGURATION_INVALID', 'The domain configuration is invalid.', requestId), { status });
+    return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'The domain operation is currently unavailable.', requestId), { status });
   }
 }
 

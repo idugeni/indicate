@@ -129,6 +129,11 @@ export const runtimeDomainSchema = z
   })
   .strict();
 
+/**
+ * Validate the persisted runtime site row.
+ *
+ * @remarks Zero means the site has no settings row yet; the proof below still requires every active site to resolve exactly one.
+ */
 export const runtimeSiteSchema = z
   .object({
     organizationId: z.uuid(),
@@ -141,8 +146,6 @@ export const runtimeSiteSchema = z
     version: z.number().int().positive(),
     domainOrganizationId: z.uuid(),
     domainNormalizedHostname: hostnameField,
-    // Zero means the site has no settings row yet; the proof below still
-    // requires every active site to resolve exactly one.
     settingsVersion: z.number().int().min(0),
   })
   .strict();

@@ -7,7 +7,7 @@ import { deliveryComposition } from '@/modules/delivery';
 import { resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 /** Control-plane llms.txt (llmstxt.org): H1 + blockquote summary + H2 file lists, absolute URLs. */
-function controlPlaneLlms(host: string): string {
+export function controlPlaneLlms(host: string): string {
   const origin = `https://${host}`;
   const lines = [
     '# Indicate',
@@ -33,7 +33,7 @@ function controlPlaneLlms(host: string): string {
 }
 
 /** llms.txt tenant: nama + deskripsi portal, kanal kategori, dan daftar liputan terkini. */
-function tenantLlms(host: string, siteName: string, description: string, categories: readonly string[], articles: readonly { readonly title: string; readonly slug: string }[]): string {
+export function tenantLlms(host: string, siteName: string, description: string, categories: readonly string[], articles: readonly { readonly title: string; readonly slug: string }[]): string {
   const origin = `https://${host}`;
   const lines = [
     `# ${siteName}`,
@@ -53,7 +53,6 @@ function tenantLlms(host: string, siteName: string, description: string, categor
 }
 
 async function handleGET() {
-  // Klasifikasi per-host: tetap dinamis per request (pengganti force-dynamic).
   await connection();
   const { resolver, config } = await deliveryComposition();
   const result = await resolver.classify((await headers()).get('host'));
@@ -102,4 +101,9 @@ async function handleGET() {
   return denied(result.kind === 'invalid' ? 400 : result.kind === 'ambiguous' ? 500 : 404);
 }
 
+/**
+ * Sajikan llms.txt per host.
+ *
+ * @remarks Klasifikasi per-host tetap dinamis per request; pengganti force-dynamic.
+ */
 export const GET = withApiAccess('GET /llms.txt', handleGET);

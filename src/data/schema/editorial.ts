@@ -227,6 +227,11 @@ export const media = pgTable('media', {
   index('media_organization_state_idx').on(table.organizationId, table.state),
 ]);
 
+/**
+ * Store per-site display settings.
+ *
+ * @remarks Nullable during backfill; required for active Sites.
+ */
 export const siteSettings = pgTable('site_settings', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
   siteId: uuid('site_id').notNull(),
@@ -240,7 +245,6 @@ export const siteSettings = pgTable('site_settings', {
   logoMediaId: uuid('logo_media_id'),
   faviconMediaId: uuid('favicon_media_id'),
   defaultMediaId: uuid('default_media_id'),
-  // Nullable during backfill; required for active Sites.
   locale: text('locale'),
   seoDefaultTitle: text('seo_default_title'),
   seoDefaultDescription: text('seo_default_description'),

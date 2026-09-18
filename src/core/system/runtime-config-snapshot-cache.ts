@@ -25,7 +25,10 @@ export interface SnapshotStatus {
   readonly outcome: 'available' | 'unavailable';
 }
 
-/** Bounded in-process snapshot cache: PostgreSQL stays the only authority; single-flight refresh, failed refreshes never extend freshness, expiry yields unavailable (never stale). */
+/** Cache runtime config snapshots in process.
+ *
+ * @remarks PostgreSQL stays the only authority; single-flight refresh, failed refreshes never extend freshness, expiry yields unavailable (never stale). Jalur cepat lintas instance: revision murah + model mentah dari lapis bersama, divalidasi parser yang sama sebelum diadopsi; gagal apa pun → baca penuh. Rejected parse keeps the old entry on its original expiry; never adopt a partial value. Issues carry schema paths plus short codes only, so they are safe for telemetry and turn the next all-or-nothing rejection into a one-line diagnosis instead of `[unknown]`.
+ */
 export class RuntimeConfigSnapshotCache {
   readonly #repository: RuntimeConfigReadRepository;
   readonly #clock: MonotonicClock;
@@ -70,8 +73,6 @@ export class RuntimeConfigSnapshotCache {
   }
 
   private async performRefresh(environment: string): Promise<CacheEntry> {
-    // Jalur cepat lintas instance: revision murah + model mentah dari lapis bersama,
-    // divalidasi parser yang sama sebelum diadopsi. Gagal apa pun → baca penuh.
     if (this.#store !== null) {
       try {
         const { configurationVersion } = await this.#repository.readInventoryVersion(environment);
@@ -87,9 +88,6 @@ export class RuntimeConfigSnapshotCache {
     const read: PersistedRuntimeConfigReadModel = await this.#repository.readComplete(environment);
     const parsed = parsePersistedReadModel(read, environment);
     if (!parsed.success) {
-      // Rejected parse keeps the old entry on its original expiry; never adopt a partial value.
-      // Issues carry schema paths plus short codes only, so they are safe for telemetry and
-      // turn the next all-or-nothing rejection into a one-line diagnosis instead of `[unknown]`.
       const summary = parsed.issues.slice(0, 8).map((issue) => `${issue.path}:${issue.category}`);
       logEvent('warn', {
         event: 'runtime-config.snapshot.rejected',

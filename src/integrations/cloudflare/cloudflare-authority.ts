@@ -7,11 +7,16 @@ interface Zone { readonly id: string; readonly name: string; readonly name_serve
 interface DnsRecord { readonly name: string; readonly type: string; readonly content: string; readonly proxied?: boolean }
 interface SslSetting { readonly value: string }
 
+const MAX_PURGE_FILES_PER_REQUEST = 30;
+
 export function canonicalizeNameservers(values: readonly string[]): readonly string[] {
   return [...new Set(values.map((value) => value.toLowerCase().replace(/\.$/u, '')))].sort();
 }
 
-/** Per-zone authority; every operation is scoped to the passed Zone ID. */
+/** Per-zone authority; every operation is scoped to the passed Zone ID.
+ *
+ * @remarks Rate-limit tertinggal di pesan (observability); retry berbatas ditangani dispatcher invalidasi via failInvalidation, bukan di sini. Exact lookup first, then paginated suffix scan: account ini menampung ratusan zone sehingga satu halaman (per_page=50) tidak pernah cukup.
+ */
 export class CloudflareAuthorityAdapter implements CloudflareAuthorityPort {
   readonly authority = 'nameservers_dns_wildcard_ssl_proxy_cdn' as const;
 
@@ -29,8 +34,6 @@ export class CloudflareAuthorityAdapter implements CloudflareAuthorityPort {
       headers: { Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/json', ...init?.headers },
     });
     if (response.status === 429) {
-      // Rate-limit tertinggal di pesan (observability); retry berbatas ditangani
-      // dispatcher invalidasi via failInvalidation, bukan di sini.
       const retryAfter = response.headers.get('retry-after') ?? 'unknown';
       throw new Error(`cloudflare_rate_limited:retry_after_${retryAfter}`);
     }
@@ -99,8 +102,6 @@ export class CloudflareAuthorityAdapter implements CloudflareAuthorityPort {
   private readonly zoneCache = new Map<string, Zone>();
 
   private async zoneForHostname(hostname: string): Promise<Zone> {
-    // Exact lookup first, then paginated suffix scan: account ini menampung
-    // ratusan zone sehingga satu halaman (per_page=50) tidak pernah cukup.
     const hit = this.zoneCache.get(hostname);
     if (hit !== undefined) return hit;
     const exact = await this.call<Zone[]>(`/zones?name=${encodeURIComponent(hostname)}&per_page=5`);
@@ -122,6 +123,7 @@ export class CloudflareAuthorityAdapter implements CloudflareAuthorityPort {
   }
 
   async purgeExactUrls(urls: readonly string[]) {
+    if (urls.length === 0) return;
     const byZone = new Map<string, string[]>();
     for (const raw of urls) {
       const url = new URL(raw);
@@ -131,7 +133,11 @@ export class CloudflareAuthorityAdapter implements CloudflareAuthorityPort {
       owned.push(url.toString());
       byZone.set(zone.id, owned);
     }
-    for (const [zoneId, files] of byZone) await this.call(`/zones/${zoneId}/purge_cache`, { method: 'POST', body: JSON.stringify({ files }) });
+    for (const [zoneId, files] of byZone) {
+      for (let index = 0; index < files.length; index += MAX_PURGE_FILES_PER_REQUEST) {
+        await this.call(`/zones/${zoneId}/purge_cache`, { method: 'POST', body: JSON.stringify({ files: files.slice(index, index + MAX_PURGE_FILES_PER_REQUEST) }) });
+      }
+    }
   }
 
   async purgeHostname(hostname: string) {

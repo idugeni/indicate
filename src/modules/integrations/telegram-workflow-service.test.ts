@@ -94,7 +94,7 @@ describe('TelegramWorkflowService welcome desk', () => {
     expect(photo).toMatchObject({ chatId: '111', photoUrl: PHOTO });
     if (photo?.kind !== 'photo') throw new Error('welcome photo missing');
     expect(photo.caption).toContain('Selamat datang di Bot Resmi Indicate');
-    expect(photo.keyboard).toHaveLength(3);
+    expect(photo.keyboard).toHaveLength(4);
 
     await service.deliverReplies(outcome.pendingReplies, 'req-1');
     expect(telegram.sendPhoto).toHaveBeenCalledTimes(1);

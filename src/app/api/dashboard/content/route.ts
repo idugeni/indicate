@@ -90,6 +90,21 @@ async function handleGET() {
   }
 }
 
+/**
+ * Map a content-admin failure to its HTTP status.
+ *
+ * @param error - Error thrown by the content admin repository.
+ * @returns 404 for access denial, 500 otherwise.
+ */
+export function contentErrorStatus(error: unknown): number {
+  return error instanceof ContentAdminAccessDeniedError ? 404 : 500;
+}
+
+/**
+ * Terapkan perintah konten marketing dan invalidasi cache tayang.
+ *
+ * @remarks Konten marketing di-cache per jam (tag site-content): invalidasi segera agar perubahan admin langsung tayang; kegagalan revalidasi tidak menggagalkan mutasi (penyembuhan via expiry).
+ */
 async function handlePOST(request: Request) {
   const requestId = resolveRequestId(request);
   if (denyCrossSiteMutation(request)) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
@@ -120,9 +135,6 @@ async function handlePOST(request: Request) {
         case 'template.save': await repository.saveTemplatePreset(identity.authUserId, local.value.id, command.row); break;
         case 'row.delete': await repository.deleteContentRow(identity.authUserId, local.value.id, command.kind, command.id); break;
       }
-      // Konten marketing di-cache per jam (tag site-content): invalidasi segera
-      // agar perubahan admin langsung tayang; kegagalan revalidasi tidak
-      // menggagalkan mutasi (penyembuhan via expiry).
       try {
         revalidateTag('site-content', 'max');
       } catch {
@@ -130,8 +142,8 @@ async function handlePOST(request: Request) {
       }
       return NextResponse.json({ ok: true });
     } catch (error) {
-      if (error instanceof ContentAdminAccessDeniedError) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
-      return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'The content operation could not be completed.', requestId), { status: 500 });
+      if (error instanceof ContentAdminAccessDeniedError) return NextResponse.json(createNonDisclosingDenial(requestId), { status: contentErrorStatus(error) });
+      return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'The content operation could not be completed.', requestId), { status: contentErrorStatus(error) });
     }
   }
 }

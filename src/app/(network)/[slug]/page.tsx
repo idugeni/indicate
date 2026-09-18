@@ -20,7 +20,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return networkMetadata(`/${slug}`, { articleSlug: slug });
 }
 
-/** Cangkang statis untuk validasi instant: params hanya dibaca di dalam Suspense. */
+/**
+ * Render cangkang statis artikel.
+ *
+ * @remarks Params hanya dibaca di dalam Suspense untuk validasi instant. Tetangga tanggal dari daftar penuh bila seksi related tidak mencakupnya.
+ */
 export default function DetailPage({ params }: Props) {
   return (
     <Suspense fallback={<CleanBlueLoader />}>
@@ -43,7 +47,6 @@ async function DetailContent({ params }: Pick<Props, 'params'>) {
   const related = [...mates, ...rest.filter((item) => !mates.some((mate) => mate.id === item.id))].slice(0, 4);
   const older = related.filter((item) => new Date(item.publishedAt).getTime() < new Date(article.publishedAt).getTime());
   const newer = related.filter((item) => new Date(item.publishedAt).getTime() > new Date(article.publishedAt).getTime());
-  // Tetangga tanggal dari daftar penuh bila seksi related tidak mencakupnya.
   const byDate = [...rest].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
   const fallbackOlder = byDate.find((item) => new Date(item.publishedAt).getTime() < new Date(article.publishedAt).getTime()) ?? null;
   const fallbackNewer = [...byDate].reverse().find((item) => new Date(item.publishedAt).getTime() > new Date(article.publishedAt).getTime()) ?? null;

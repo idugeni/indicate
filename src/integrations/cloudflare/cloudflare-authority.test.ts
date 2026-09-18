@@ -60,3 +60,18 @@ describe('zoneForHostname pagination', () => {
     expect(calls.filter((call) => !call.url.includes('/purge_cache'))).toHaveLength(1);
   });
 });
+
+describe('purgeExactUrls batching', () => {
+  it('memecah file per 30 URL dan tidak pernah memakai purge_everything', async () => {
+    const { adapter, calls } = harness([zone('z1', 'fakta01.my.id')], []);
+    const urls = Array.from({ length: 65 }, (_, index) => `https://fakta01.my.id/page-${index}`);
+    await adapter.purgeExactUrls(urls);
+    const purges = calls.filter((call) => call.url.includes('/purge_cache'));
+    expect(purges).toHaveLength(3);
+    const sizes = purges.map((call) => (JSON.parse(String(call.init?.body)) as { files: unknown[] }).files.length);
+    expect(sizes).toEqual([30, 30, 5]);
+    for (const call of purges) {
+      expect(String(call.init?.body)).not.toContain('purge_everything');
+    }
+  });
+});

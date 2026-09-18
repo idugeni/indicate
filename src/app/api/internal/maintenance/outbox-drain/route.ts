@@ -5,7 +5,14 @@ import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 
-function authorized(request: Request, secret: string): boolean {
+/**
+ * Compare the presented Authorization header against the cron secret.
+ *
+ * @param request - Incoming maintenance request.
+ * @param secret - Expected cron secret from runtime config.
+ * @returns True only on an exact Bearer match.
+ */
+export function authorized(request: Request, secret: string): boolean {
   const presented = request.headers.get('authorization');
   const expected = `Bearer ${secret}`;
   if (presented === null || presented.length !== expected.length) return false;

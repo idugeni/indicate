@@ -14,12 +14,15 @@ export class SecretString {
     return new SecretString(value);
   }
 
-  /** Constant-time equality against a plaintext candidate. */
+  /**
+   * Compare secret against a plaintext candidate.
+   *
+   * @remarks Same-length timing uniformity: compare zero-length buffers when lengths differ.
+   */
   equalsPlain(candidate: string): boolean {
     const left = Buffer.from(this.#value);
     const right = Buffer.from(candidate);
     if (left.length !== right.length) {
-      // Same-length timing uniformity: compare zero-length buffers when lengths differ.
       timingSafeEqual(Buffer.from([0]), Buffer.from([0]));
       return false;
     }

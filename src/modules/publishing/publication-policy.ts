@@ -26,6 +26,11 @@ export function canonicalizePublicationOptions(options: PublicationOptions): str
   return JSON.stringify(canonicalizeValue(options));
 }
 
+/**
+ * Build the canonical publication payload.
+ *
+ * @remarks Overrides omitted when empty so pre-override requests keep their original fingerprint.
+ */
 export function canonicalPublicationPayload(input: {
   readonly organizationId: string;
   readonly articleId: string;
@@ -40,7 +45,6 @@ export function canonicalPublicationPayload(input: {
     articleId: input.articleId,
     siteIds: [...new Set(input.siteIds)].sort(),
     options: JSON.parse(canonicalizePublicationOptions(input.options)) as JsonValue,
-    // Omitted when empty so pre-override requests keep their original fingerprint.
     ...(Object.keys(overrides).length === 0 ? {} : { overrides: canonicalizeValue(overrides as unknown as JsonValue) }),
   });
 }

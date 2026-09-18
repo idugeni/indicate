@@ -10,6 +10,11 @@ import { HttpsPendingHostnameProbe } from '@/core/hostname/pending-hostname-prob
 import { UpstashCacheCoordination } from '@/integrations/redis/upstash-cache-coordination';
 import { VercelExactDomainAdapter } from '@/integrations/vercel/exact-domain-adapter';
 
+/**
+ * Compose delivery operations from the server runtime context.
+ *
+ * @remarks RLS tenant memaksa konteks org; transaksi membuat set_config lokal (auto-revert saat commit) sehingga pool bersama tidak bocor antar-tenant. Site regional (<slug-region>.<apex>) dimiliki zone domain induk: cocokkan sufiks, pilih induk paling spesifik.
+ */
 export async function deliveryOperationsComposition() {
   const context = await getServerRuntimeContext();
   const config = context.config;
@@ -19,10 +24,6 @@ export async function deliveryOperationsComposition() {
   const vercel = new VercelExactDomainAdapter(config.vercel.projectId, config.vercel.teamId, config.vercel.apiToken);
   const zoneResolver: DomainZoneResolver = {
     async resolve(hostname, organizationId) {
-      // RLS tenant memaksa konteks org; transaksi membuat set_config lokal
-      // (auto-revert saat commit) sehingga pool bersama tidak bocor antar-tenant.
-      // Site regional (<slug-region>.<apex>) dimiliki zone domain induk:
-      // cocokkan sufiks, pilih induk paling spesifik.
       return runtime.client.begin(async (transaction) => {
         await transaction`SELECT indicate_private.set_tenant_context(${organizationId}::uuid, 'system:zone-resolver', ${crypto.randomUUID()})`;
         const rows = await transaction<{ id: string; cloudflare_zone_id: string | null }[]>`

@@ -18,8 +18,12 @@ interface ReferenceModel {
   readonly authors?: readonly { readonly id: string; readonly displayName: string }[];
 }
 
+/**
+ * Merender kontrol filter data.
+ *
+ * @remarks Analytics tidak punya field filter: jangan render card kosong.
+ */
 export function FilterControls({ view, data, onApply }: FilterControlsProps) {
-  // Analytics tidak punya field filter: jangan render card kosong.
   if (view !== 'editorial' && view !== 'audit') return null;
 
   const model = data as ReferenceModel | null;

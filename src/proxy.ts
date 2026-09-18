@@ -46,7 +46,6 @@ const BASE_HEADERS: Record<string, string> = {
   'Origin-Agent-Cluster': '?1',
 };
 
-// HSTS in production only: emitting it from localhost would pin HTTPS on loopback origins.
 function securityHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     ...BASE_HEADERS,
@@ -114,7 +113,6 @@ function nextWithCorrelation(request: NextRequest, mutate?: (headers: Headers) =
 function trailingSlashRedirect(request: NextRequest): NextResponse | null {
   const path = request.nextUrl.pathname;
   if (path.length <= 1 || !path.endsWith('/')) return null;
-  // Machine surfaces keep exact paths; API, feed, and asset URLs are never rewritten.
   if (
     path.startsWith('/api/') ||
     path.startsWith('/_next/') ||
@@ -139,24 +137,23 @@ const TENANT_ALIASES: Record<string, string> = {
   '/terms': '/syarat-ketentuan',
 };
 const TENANT_GONE = new Set(['/services', '/pricing', '/faq']);
+/**
+ * Route edge requests to control or tenant surfaces.
+ *
+ * @param request - Incoming edge request.
+ * @returns Response for the matched surface.
+ * @remarks HSTS is emitted in production only to avoid pinning HTTPS on loopback origins. Trailing-slash redirect skips machine surfaces to keep API, feed, and asset URLs exact. Pembaca hilir mengutamakan x-forwarded-host (page.tsx, not-found.tsx, network-runtime.ts), jadi kedua header harus ditulis ulang — menulis `host` saja tidak berpengaruh di Vercel yang selalu menyetel keduanya. Host deployment Vercel (*.vercel.app) milik project ini diperlakukan sebagai permukaan dashboard: VERCEL_URL per deployment tidak stabil (unik per build), tetapi request *.vercel.app yang sampai ke project ini pasti deployment kita sendiri (routing Vercel per host; preview terkunci SSO dashboard); host asing lain tetap 404. Platform surfaces are IP-allowlisted fail closed; out-of-range callers get a non-disclosing 404 plus an edge audit record. A platform-only token must never enter dashboard surfaces without an on_behalf ticket proving scoped delegation. Beranda portal (`/`) dirender rute `(network)/tenant-home` agar ikut boundary segmen tenant (loading/error terang); URL kanonis tetap `/`.
+ */
 export function proxy(request: NextRequest) {
   const rawHost = request.headers.get('host');
   const localAuthority = rawHost?.replace(/:\d+$/u, '').toLowerCase();
   const isLocalHost = localAuthority === '127.0.0.1' || localAuthority === 'localhost';
   if (isLocalHost) {
     return nextWithCorrelation(request, (requestHeaders) => {
-      // Pembaca hilir mengutamakan x-forwarded-host (page.tsx, not-found.tsx,
-      // network-runtime.ts), jadi kedua header harus ditulis ulang — menulis
-      // `host` saja tidak berpengaruh di Vercel yang selalu menyetel keduanya.
       requestHeaders.set('host', getControlHosts().dashboard);
       requestHeaders.set('x-forwarded-host', getControlHosts().dashboard);
     });
   }
-  // Host deployment Vercel (*.vercel.app) milik project ini diperlakukan sebagai
-  // permukaan dashboard: VERCEL_URL per deployment tidak stabil (unik per build),
-  // tetapi request *.vercel.app yang sampai ke project ini pasti deployment kita
-  // sendiri (routing Vercel per host; preview terkunci SSO dashboard).
-  // Host asing lain tetap 404.
   if (localAuthority !== undefined && localAuthority.endsWith('.vercel.app')) {
     return nextWithCorrelation(request, (requestHeaders) => {
       requestHeaders.set('host', getControlHosts().dashboard);
@@ -168,8 +165,6 @@ export function proxy(request: NextRequest) {
   const canonicalSlash = trailingSlashRedirect(request);
   if (canonicalSlash !== null) return canonicalSlash;
   const path = request.nextUrl.pathname;
-  // F1-Auth: platform surfaces are IP-allowlisted (fail closed). Out-of-range
-  // callers are denied with a non-disclosing 404 plus an edge audit record.
   if (isPlatformPath(path)) {
     const allowlist = parsePlatformAllowedIps(process.env[PLATFORM_ALLOWED_IPS_ENV]);
     if (!isPlatformRequestAllowed({ headers: request.headers, allowlist })) {
@@ -178,8 +173,6 @@ export function proxy(request: NextRequest) {
     }
     return nextWithCorrelation(request);
   }
-  // F1-Auth: a platform-only token must never enter dashboard surfaces
-  // without an on_behalf ticket proving scoped delegation.
   if (isDashboardPath(path) && isPlatformTokenWithoutTicket(request.headers)) {
     auditEdgeDeny(request, 'dashboard.platform_token.denied');
     return deny(404, request.headers);
@@ -221,8 +214,6 @@ export function proxy(request: NextRequest) {
   }
   if (path.startsWith('/dashboard') || path.startsWith('/auth') || path.startsWith('/sign-in') || path.startsWith('/api/dashboard') || path.startsWith('/api/internal') || path.startsWith('/api/health') || path.startsWith('/api/v1/') || path.startsWith('/api/webhooks/') || isServicePath(path)) return deny(404, request.headers);
   if (TENANT_GONE.has(path)) return deny(404, request.headers);
-  // Beranda portal (`/`) dirender rute `(network)/tenant-home` agar ikut
-  // boundary segmen tenant (loading/error terang); URL kanonis tetap `/`.
   if (path === '/') {
     const url = request.nextUrl.clone();
     url.pathname = '/tenant-home';

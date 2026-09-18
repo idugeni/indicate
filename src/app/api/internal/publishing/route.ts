@@ -13,7 +13,14 @@ import { createPublicError } from '@/core/errors';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 
-function matchesSecret(value: string | null, expected: string): boolean {
+/**
+ * Compare a presented Authorization header against the cron secret.
+ *
+ * @param value - Raw Authorization header value.
+ * @param expected - Expected cron secret (without the Bearer prefix).
+ * @returns True only on an exact Bearer match (timing-safe).
+ */
+export function matchesSecret(value: string | null, expected: string): boolean {
   if (value === null || !value.startsWith('Bearer ')) return false;
   const actual = Buffer.from(value.slice('Bearer '.length)); const target = Buffer.from(expected);
   return actual.length === target.length && timingSafeEqual(actual, target);

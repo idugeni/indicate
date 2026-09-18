@@ -31,7 +31,13 @@ type JsonSchema = {
   readonly minProperties?: number;
 };
 
-function typeLabel(schema: JsonSchema): string {
+/**
+ * Render a JSON schema node as a compact type label.
+ *
+ * @param schema - Schema node to label.
+ * @returns Label such as string, array<string>, or a literal union.
+ */
+export function typeLabel(schema: JsonSchema): string {
   if (schema.const !== undefined) return `"${String(schema.const)}"`;
   if (schema.enum !== undefined) return schema.enum.map((value) => JSON.stringify(value)).join(' | ');
   if (schema.type === 'array' && schema.items !== undefined) return `array<${typeLabel(schema.items)}>`;
@@ -41,7 +47,15 @@ function typeLabel(schema: JsonSchema): string {
   return `${schema.type ?? 'any'}${schema.format === undefined ? '' : `(${schema.format})`}${schema.nullable === true ? ' | null' : ''}`;
 }
 
-function ruleLabel(name: string, schema: JsonSchema, required: boolean): string {
+/**
+ * Render validation rules of a schema field in Indonesian.
+ *
+ * @param name - Field name (reserved for future contextual rules).
+ * @param schema - Schema node carrying the rules.
+ * @param required - Whether the field is required.
+ * @returns Comma-joined rule list starting with wajib/opsional.
+ */
+export function ruleLabel(name: string, schema: JsonSchema, required: boolean): string {
   const rules: string[] = [required ? 'wajib' : 'opsional'];
   if (schema.minLength !== undefined || schema.maxLength !== undefined) {
     rules.push(`panjang ${schema.minLength ?? 0}–${schema.maxLength ?? '∞'}`);

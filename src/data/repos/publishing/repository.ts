@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext, HostnameContext } from '@/core/operation-context';
@@ -459,6 +459,16 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.publishingRead);
       const rows = await transaction.select().from(publishingJobs).where(and(eq(publishingJobs.organizationId, actor.organizationId), eq(publishingJobs.id, jobId))).limit(1);
       return rows[0] === undefined ? null : this.statusTx(transaction, rows[0]);
+    });
+  }
+  async listPublications(actor: AuthorizedTenantActorContext, limit: number) {
+    return this.database.transaction(async (transaction) => {
+      await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.publishingRead);
+      const rows = await transaction.select({ job: publishingJobs, articleTitle: articles.title }).from(publishingJobs)
+        .innerJoin(articles, and(eq(articles.organizationId, publishingJobs.organizationId), eq(articles.id, publishingJobs.articleId)))
+        .where(eq(publishingJobs.organizationId, actor.organizationId))
+        .orderBy(desc(publishingJobs.createdAt)).limit(Math.max(1, Math.min(limit, 20)));
+      return rows.map(({ job, articleTitle }) => ({ job: mapJob(job), articleTitle }));
     });
   }
   private async loadJobs(refs: readonly { organization_id: string; job_id: string }[]): Promise<PublicationJobRecord[]> {

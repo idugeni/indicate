@@ -6,7 +6,14 @@ import { logEvent } from '@/core/observability/logger';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { withApiAccess } from '@/core/observability/api-access';
 
-function authorized(request: Request, secret: string): boolean {
+/**
+ * Compare the presented Authorization header against the cron secret.
+ *
+ * @param request - Incoming reconcile request.
+ * @param secret - Expected cron secret from runtime config.
+ * @returns True only on an exact Bearer match (timing-safe).
+ */
+export function authorized(request: Request, secret: string): boolean {
   const presented = request.headers.get('authorization');
   const expected = `Bearer ${secret}`;
   if (presented === null || presented.length !== expected.length) return false;
@@ -28,11 +35,14 @@ async function handlePOST(request: Request) {
   return runReconcile(request);
 }
 
-// Vercel Cron hanya mengirim GET (dengan header Authorization Bearer CRON_SECRET
-// otomatis bila env CRON_SECRET tersedia); POST dipertahankan untuk pemicu eksternal.
 async function handleGET(request: Request) {
   return runReconcile(request);
 }
 
 export const POST = withApiAccess('POST /api/internal/delivery/reconcile', handlePOST);
+/**
+ * Menjalankan rekonsiliasi penyaluran.
+ *
+ * @remarks Vercel Cron hanya mengirim GET (dengan header Authorization Bearer CRON_SECRET otomatis bila env CRON_SECRET tersedia); POST dipertahankan untuk pemicu eksternal.
+ */
 export const GET = withApiAccess('GET /api/internal/delivery/reconcile', handleGET);

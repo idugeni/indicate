@@ -5,7 +5,7 @@ import type { ArticleVariantContext } from '@/modules/publishing/ports';
 import { deriveSiteLabel, excerptForDescription, findCrossSiteDuplicates, suggestPublicationVariants } from '@/modules/publishing/variant-suggester';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import type { RedisCoordinationPort } from '@/integrations/redis/ports';
-import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type PublishingRepository } from '@/modules/publishing/ports';
+import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type PublicationJobSummary, type PublishingRepository } from '@/modules/publishing/ports';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
 import { publicationRequestSchema, publicationBulkRequestSchema, publicationStatusSchema, publicationSuggestSchema, publicationTargetSelectionSchema } from '@/modules/publishing/schemas';
@@ -136,6 +136,15 @@ export class PublicationService {
     } catch (error) {
       return error instanceof PublishingAccessDeniedError ? this.denied(actor, 'publication.status.denied')
         : { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'Publication status is temporarily unavailable.', actor.requestId) };
+    }
+  }
+
+  async listJobs(actor: AuthorizedTenantActorContext): Promise<Result<readonly PublicationJobSummary[], PublicErrorEnvelope>> {
+    try {
+      return { ok: true, value: await this.repository.listPublications(actor, 5) };
+    } catch (error) {
+      return error instanceof PublishingAccessDeniedError ? this.denied(actor, 'publication.list.denied')
+        : { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The publication list is temporarily unavailable.', actor.requestId) };
     }
   }
 

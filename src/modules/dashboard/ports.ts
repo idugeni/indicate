@@ -58,6 +58,15 @@ export class DashboardConflictError extends Error {
   constructor() { super('The record was changed by another operation.'); }
 }
 
+/**
+ * Reject a manual bulk purge issued inside the per-organization cooldown window.
+ *
+ * @param retryAfterSeconds - Seconds the caller should wait before retrying.
+ */
+export class DashboardRateLimitedError extends Error {
+  constructor(readonly retryAfterSeconds: number) { super(`Manual purge rate limited, retry after ${retryAfterSeconds}s.`); }
+}
+
 /** Outside the writable states, mutations fail explicitly (renew prompt, not a non-disclosing denial). */
 export class DashboardSubscriptionInactiveError extends Error {
   constructor(

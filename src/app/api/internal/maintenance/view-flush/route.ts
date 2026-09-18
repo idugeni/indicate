@@ -8,7 +8,14 @@ import { Redis } from '@upstash/redis';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 
-function authorized(request: Request, secret: string): boolean {
+/**
+ * Compare the presented Authorization header against the cron secret.
+ *
+ * @param request - Incoming maintenance request.
+ * @param secret - Expected cron secret from runtime config.
+ * @returns True only on an exact Bearer match.
+ */
+export function authorized(request: Request, secret: string): boolean {
   const presented = request.headers.get('authorization');
   const expected = `Bearer ${secret}`;
   if (presented === null || presented.length !== expected.length) return false;
@@ -75,10 +82,6 @@ async function handleGET(request: Request) {
       }
       if (deltas.size >= MAX_FLUSH_KEYS) break;
     } while (cursor !== 0);
-    // Sesi pooled membawa GUC tenant/region request sebelumnya: set_tenant_context
-    // menolak org berbeda (conflict) dan region basi menyaring baris keluar,
-    // keduanya diam-diam menggugurkan flush. RESET dulu per org di dalam satu
-    // transaksi (satu koneksi terjepit), lalu tegakkan konteks flush yang bersih.
     const byOrg = new Map<string, { key: string; entry: FlushEntry & { count: number } }[]>();
     for (const [key, entry] of deltas) {
       const list = byOrg.get(entry.organizationId) ?? [];
@@ -163,4 +166,9 @@ async function handleGET(request: Request) {
   }
 }
 
+/**
+ * Flush buffered pageview counts into article view totals.
+ *
+ * @remarks Sesi pooled membawa GUC tenant/region request sebelumnya: set_tenant_context menolak org berbeda (conflict) dan region basi menyaring baris keluar, keduanya diam-diam menggugurkan flush. RESET dulu per org di dalam satu transaksi (satu koneksi terjepit), lalu tegakkan konteks flush yang bersih.
+ */
 export const GET = withApiAccess('GET /api/internal/maintenance/view-flush', handleGET);

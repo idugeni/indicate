@@ -19,18 +19,21 @@ export function CachePurgeForm({
 }) {
   const model = data as { readonly sites?: readonly SiteOption[] } | null;
   const siteSelectId = useId();
+  const confirmBulkId = useId();
   const [siteId, setSiteId] = useState('');
+  const [confirmBulk, setConfirmBulk] = useState(false);
   const [notice, setNotice] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
   const [isPurging, startPurgeTransition] = useTransition();
 
   const sites = model?.sites ?? [];
-  const targetLabel = siteId === '' ? 'semua situs dalam scope' : (sites.find((site) => site.id === siteId)?.normalizedHostname ?? siteId);
+  const isBulk = siteId === '';
+  const targetLabel = isBulk ? 'semua situs dalam scope' : (sites.find((site) => site.id === siteId)?.normalizedHostname ?? siteId);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setNotice(null);
     startPurgeTransition(async () => {
-      const result = await command('site.cache.purge', siteId === '' ? {} : { siteId });
+      const result = await command('site.cache.purge', isBulk ? { confirmBulk: true } : { siteId });
       if (result === null) {
         setNotice({ tone: 'error', message: 'Purge gagal. Periksa pesan kesalahan di atas halaman.' });
         return;
@@ -56,7 +59,7 @@ export function CachePurgeForm({
             id={siteSelectId}
             value={siteId}
             disabled={isPurging}
-            onChange={(event) => setSiteId(event.target.value)}
+            onChange={(event) => { setSiteId(event.target.value); setConfirmBulk(false); }}
             className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
           >
             <option value="">Semua situs</option>
@@ -68,12 +71,28 @@ export function CachePurgeForm({
           </select>
           <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">
             Mengirim invalidasi Next + Cloudflare untuk {targetLabel}. Tercatat di audit dan terlihat di Operasional.
+            {isBulk ? ` Purge massal mendinginkan ${sites.length} situs sekaligus dan dibatasi 2 menit per org.` : null}
           </p>
         </div>
+        {isBulk ? (
+          <div className="flex items-start gap-2">
+            <input
+              id={confirmBulkId}
+              type="checkbox"
+              checked={confirmBulk}
+              disabled={isPurging}
+              onChange={(event) => setConfirmBulk(event.target.checked)}
+              className="mt-0.5 h-3.5 w-3.5 accent-[#c9a227]"
+            />
+            <label htmlFor={confirmBulkId} className="font-sans text-[11px] leading-relaxed text-paper-dim">
+              Saya memahami purge {sites.length} situs sekaligus membebani origin.
+            </label>
+          </div>
+        ) : null}
         <div>
           <button
             type="submit"
-            disabled={isPurging}
+            disabled={isPurging || (isBulk && !confirmBulk)}
             className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
           >
             {isPurging ? <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}

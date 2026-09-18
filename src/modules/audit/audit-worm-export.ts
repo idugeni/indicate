@@ -28,7 +28,6 @@ async function tableToJsonLines(
   since: string,
   until: string,
 ): Promise<{ readonly bytes: Uint8Array; readonly rows: number }> {
-  // Akses global lewat fungsi allowlist (RLS indicate_runtime tenant-only).
   const rows = await db.execute<{ readonly audit_worm_fetch: Record<string, unknown> }>(sql`
     SELECT indicate_private.audit_worm_fetch(${since}::timestamptz, ${until}::timestamptz, ${table}) AS audit_worm_fetch`);
   return toJsonLines(rows.map((row) => row.audit_worm_fetch));
@@ -43,7 +42,9 @@ export interface WormExportSummary {
 
 /** Ekspor harian jejak audit ke bucket WORM: tulis JSONL + manifes, verifikasi baca-balik, catat bukti.
  * Mengekspor HARI KEMARIN penuh (jendela tertutup sehingga isi stabil) dan idempoten:
- * berkas yang sudah ada dilewati (lock bucket melarang tulis ulang) setelah diverifikasi. */
+ * berkas yang sudah ada dilewati (lock bucket melarang tulis ulang) setelah diverifikasi.
+ *
+ * @remarks Akses global lewat fungsi allowlist (RLS indicate_runtime tenant-only). */
 export async function exportDailyAudit(input: {
   readonly db: WormExecutor;
   readonly storage: ObjectStoragePort;

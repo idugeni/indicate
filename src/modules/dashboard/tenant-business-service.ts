@@ -13,7 +13,7 @@ import {
 import type { IdentifierGenerator } from '@/core/system/ports';
 import { allocateUniqueSlug } from '@/modules/site/slug-allocator';
 import {
-  DashboardAccessDeniedError, DashboardConflictError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction,
+  DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction,
 } from '@/modules/dashboard/ports';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
@@ -337,6 +337,11 @@ export class TenantBusinessService {
       return { ok: true as const, value: { sites } };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'site.cache.purge', 'site');
+      if (error instanceof DashboardRateLimitedError) {
+        try { await this.repository.recordDenied(actor, 'site.cache.purge', 'site'); } catch { return { ok: false as const, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The operation could not be completed.', actor.requestId) }; }
+        return { ok: false as const, error: createPublicError('RATE_LIMITED', `Purge semua situs terlalu sering. Coba lagi dalam ${error.retryAfterSeconds} detik.`, actor.requestId) };
+      }
+      if (error instanceof DashboardSubscriptionInactiveError) return { ok: false as const, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
       return { ok: false as const, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
     }
   }

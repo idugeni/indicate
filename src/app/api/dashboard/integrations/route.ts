@@ -28,7 +28,13 @@ import type { Result } from '@/core/result';
 
 const querySchema = z.object({ organizationId: z.uuid(), view: z.enum(['settings', 'customers']), customerId: z.uuid().optional() });
 const commandSchema = z.object({ organizationId: z.uuid(), action: z.string().min(1).max(100), payload: z.unknown() }).strict();
-const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
+/**
+ * Maps an integrations envelope to its HTTP status.
+ *
+ * @param error - Envelope produced by integration services or denial helpers.
+ * @returns Status code honoring 429 for rate-limited webhook traffic.
+ */
+export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
 interface Context { readonly actor: AuthorizedTenantActorContext; readonly repository: DrizzleIntegrationsRepository; readonly apiKeys: ApiKeyService; readonly customers: CustomerService; readonly telegramMappings: TelegramMappingService; readonly emailTest: EmailTestService; readonly emailStatus: { readonly configured: boolean; readonly defaultFrom: string | null; readonly webhook: boolean }; readonly rateLimits: RateLimitService; readonly policy: { allowance: number; windowSeconds: number; failureMode: 'closed' } }
 type ContextResult = Context | PublicErrorEnvelope; const isError = (value: ContextResult): value is PublicErrorEnvelope => 'error' in value;
 
@@ -58,7 +64,6 @@ async function handlePOST(request: Request) {
   if (denyCrossSiteMutation(request)) return response(createNonDisclosingDenial(requestId));
   const parsed = commandSchema.safeParse(await request.json().catch(() => null)); if (!parsed.success) return response(createPublicError('INVALID_INPUT', 'Invalid Integrations command.', requestId));
   const context = await contextFor(parsed.data.organizationId, requestId); if (isError(context)) return response(context);
-  // Consent trail penautan Telegram: hash IP admin pemohon (PENDING A6).
   const clientIp = extractClientIp(request.headers);
   const consentIpHash = clientIp === null ? null : createHash('sha256').update(clientIp).digest('hex');
   const withConsent = (payload: unknown): unknown =>
@@ -78,4 +83,9 @@ async function handlePOST(request: Request) {
 }
 
 export const GET = withApiAccess('GET /api/dashboard/integrations', handleGET);
+/**
+ * Dispatch dashboard Integrations commands.
+ *
+ * @remarks Consent trail penautan Telegram: hash IP admin pemohon (PENDING A6).
+ */
 export const POST = withApiAccess('POST /api/dashboard/integrations', handlePOST);

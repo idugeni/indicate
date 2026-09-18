@@ -12,7 +12,13 @@ import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope 
 import type { Result } from '@/core/result';
 
 const schema = z.object({ action: z.enum(['article.create', 'media.reserve', 'media.complete', 'publication.request', 'publication.requestBulk', 'publication.suggest', 'publication.retry', 'publication.unpublish', 'publication.status']), payload: z.unknown() }).strict();
-const status = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 409;
+/**
+ * Maps a v1 command envelope to its HTTP status.
+ *
+ * @param error - Envelope produced by publication or API-key services.
+ * @returns Status code defaulting to 409 for command conflicts.
+ */
+export const status = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 409;
 const retryHeaders = (error: PublicErrorEnvelope) => ({ 'Retry-After': error.error.fields?.retryAfterSeconds?.[0] ?? '1' });
 
 async function handlePOST(request: Request) {
@@ -24,7 +30,6 @@ async function handlePOST(request: Request) {
   const production = await createProductionIntegrationsContext();
   const limiter: RateLimitService = production.rateLimits;
   const policy = { ...config.rateLimits.mutation, failureMode: 'closed' as const };
-  // Consume the trusted-source bucket before parsing/auth so unauthenticated CPU work stays bounded.
   const preAuthenticated = await limiter.enforce(limiter.publicKey('api-command-auth', source), policy, requestId);
   if (!preAuthenticated.ok) return NextResponse.json(preAuthenticated.error, { status: status(preAuthenticated.error), headers: retryHeaders(preAuthenticated.error) });
 
@@ -55,4 +60,9 @@ async function handlePOST(request: Request) {
   return result.ok ? NextResponse.json({ data: result.value, requestId }) : NextResponse.json(result.error, { status: status(result.error) });
 }
 
+/**
+ * Dispatch authenticated API commands.
+ *
+ * @remarks Consume the trusted-source bucket before parsing/auth so unauthenticated CPU work stays bounded.
+ */
 export const POST = withApiAccess('POST /api/v1/commands', handlePOST);

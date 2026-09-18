@@ -7,8 +7,14 @@ import { withApiAccess } from '@/core/observability/api-access';
 import { LEGAL_ROUTES, SITE_ROUTES } from '@/ui/site/marketing-content';
 import { deliveryComposition } from '@/modules/delivery';
 import type { ResolvedSiteContext } from '@/modules/delivery/models';
-// Control-plane robots: advertise public service paths, keep auth/machine surfaces out of the index.
-const controlPlaneRobots = (host: string) => [
+
+/**
+ * Render the control-plane robots document.
+ *
+ * @param host - Dashboard hostname for the sitemap line.
+ * @returns robots.txt body with public allows and machine-surface denials.
+ */
+export const controlPlaneRobots = (host: string) => [
   'User-agent: *',
   'Allow: /$',
   ...[...SITE_ROUTES, ...LEGAL_ROUTES].map((route) => `Allow: ${route.href}`),
@@ -17,7 +23,6 @@ const controlPlaneRobots = (host: string) => [
   'Disallow: /auth',
   'Disallow: /api/',
   'Disallow: /domain-pending',
-  // Explicit tenant-only denylist: keep tenant surfaces out of the control-plane index without a catch-all.
   'Disallow: /categories',
   'Disallow: /kebijakan-privasi',
   'Disallow: /syarat-ketentuan',
@@ -76,4 +81,9 @@ async function handleGET() {
   });
 }
 
+/**
+ * Serve the robots document for control-plane and tenant hosts.
+ *
+ * @remarks Advertise public service paths while keeping auth and machine surfaces out of the index. Tenant surfaces use an explicit denylist without a catch-all so they stay out of the control-plane index.
+ */
 export const GET = withApiAccess('GET /robots.txt', handleGET);

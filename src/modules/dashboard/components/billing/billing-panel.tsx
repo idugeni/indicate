@@ -40,6 +40,11 @@ function stateLabel(state: string | null): string {
   return `Terbatas (${state})`;
 }
 
+/**
+ * Tampilkan status langganan dan faktur organisasi.
+ *
+ * @remarks Defer reload() to a microtask so the setState in effect stays async. Ambil versi berjalan agar update optimistis lolos; tanpa baris langganan, buat baru.
+ */
 export function BillingPanel({
   organizationId,
   permissions,
@@ -81,7 +86,6 @@ export function BillingPanel({
     }
   }, [organizationId]);
 
-  // setState-in-effect: defer reload() to a microtask so setState stays async.
   useEffect(() => {
     void Promise.resolve().then(() => reload());
   }, [reload]);
@@ -109,7 +113,6 @@ export function BillingPanel({
     setError(null);
     setNotice(null);
     try {
-      // Ambil versi berjalan agar update optimistis lolos; tanpa baris langganan, buat baru.
       const current = (await api(`/api/dashboard/integrations?organizationId=${encodeURIComponent(organizationId)}&view=customers&customerId=${encodeURIComponent(orgId)}`)) as {
         readonly subscription?: { readonly version?: number } | null;
       };

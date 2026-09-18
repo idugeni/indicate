@@ -324,7 +324,6 @@ const CLOCK_FORMAT = new Intl.DateTimeFormat('id-ID', {
 function LiveClock() {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
-    // setState-in-effect: defer ke microtask agar setState tetap async.
     void Promise.resolve().then(() => setNow(new Date()));
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
@@ -335,6 +334,11 @@ function LiveClock() {
   return <time dateTime={now.toISOString()}>{CLOCK_FORMAT.format(now)}</time>;
 }
 
+/**
+ * Merender ruang kerja dashboard.
+ *
+ * @remarks Adopt the prefetched RSC snapshot once; live API fetch stays source of truth after. SetState-in-effect: defer ke microtask agar setState tetap async.
+ */
 export function DashboardWorkspace({
   displayName,
   avatarUrl = null,
@@ -433,7 +437,6 @@ export function DashboardWorkspace({
   );
 
   useEffect(() => {
-    // Adopt the prefetched RSC snapshot once; live API fetch stays source of truth after.
     if (
       !snapshotConsumedRef.current &&
       initialDashboard !== null &&

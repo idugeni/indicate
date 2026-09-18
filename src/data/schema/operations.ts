@@ -29,6 +29,7 @@ export const telegramConversationStep = pgEnum('telegram_conversation_step', [
   'article_sites',
   'article_image',
   'publication_status',
+  'publish_pick_site',
 ]);
 export const replayClaimStatus = pgEnum('replay_claim_status', ['claimed', 'processed', 'rejected']);
 export const seedRunStatus = pgEnum('seed_run_status', ['running', 'completed', 'failed']);

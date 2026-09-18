@@ -12,6 +12,13 @@ export interface CompleteInvalidationInput {
   readonly now?: Date;
 }
 
+/**
+ * Build complete invalidation values for one delivery change.
+ *
+ * @param input - Invalidation input carrying hostnames, slugs, and media IDs.
+ * @returns Pending invalidation row values with deduped tags, paths, and URLs.
+ * @remarks Media bytes are never cached, but their edge-cached 307 redirects are: purge the media route (full + thumb twin) through exact-URL purge only. They stay out of `paths` because Next path revalidation is unreliable for query-string route variants.
+ */
 export function completeInvalidationValues(input: CompleteInvalidationInput) {
   const hostnames = [...new Set([input.previousHostname ?? null, input.currentHostname ?? null].filter((value): value is string => value !== null))];
   const articleSlugs = [...new Set(input.articleSlugs ?? [])];
@@ -20,10 +27,6 @@ export function completeInvalidationValues(input: CompleteInvalidationInput) {
   for (const slug of articleSlugs) paths.add(`/${slug}`);
   for (const slug of categorySlugs) paths.add(`/categories/${slug}`);
   const tags = new Set([`org:${input.organizationId}`, `site:${input.siteId}`, ...hostnames.map((hostname) => `host:${hostname}`), ...articleSlugs.map((slug) => `article:${slug}`), ...(input.mediaIds ?? []).map((id) => `media:${id}`)]);
-  // Media bytes are never cached, but their edge-cached 307 redirects are:
-  // purge the media route (full + thumb twin) through exact-URL purge only.
-  // They stay out of `paths` because Next path revalidation is unreliable for
-  // query-string route variants.
   const mediaUrls = (input.mediaIds ?? []).flatMap((id) => [`/api/network/media/${id}`, `/api/network/media/${id}?variant=thumb`]);
   const date = input.now ?? new Date();
   return {

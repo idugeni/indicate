@@ -36,7 +36,13 @@ interface ServiceContext {
 }
 type ContextResult = ServiceContext | PublicErrorEnvelope;
 const isError = (value: ContextResult): value is PublicErrorEnvelope => 'error' in value;
-const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : ['CONFLICT', 'IDEMPOTENCY_CONFLICT', 'INVALID_STATE_TRANSITION'].includes(error.error.code) ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
+/**
+ * Maps a publication envelope to its HTTP status.
+ *
+ * @param error - Envelope produced by `PublicationService` or denial helpers.
+ * @returns Status code honoring 409 for idempotency and lease conflicts.
+ */
+export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : ['CONFLICT', 'IDEMPOTENCY_CONFLICT', 'INVALID_STATE_TRANSITION'].includes(error.error.code) ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
 
 async function contextFor(organizationId: string, requestId: string): Promise<ContextResult> {
   const cookieStore = await cookies();

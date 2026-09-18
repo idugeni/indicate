@@ -83,6 +83,11 @@ export const mediaPolicy = pgTable('media_policy', {
   check('media_policy_mime_nonempty', sql`cardinality(${table.allowedMimeTypes}) > 0`),
 ]);
 
+/**
+ * Constrain the publication retry policy to a singleton row.
+ *
+ * @remarks Per-element retry bounds live in a trigger (scalar CHECK cannot constrain array elements).
+ */
 export const publicationPolicy = pgTable('publication_policy', {
   id: singletonKey,
   maxAttempts: integer('max_attempts').notNull(),
@@ -98,7 +103,6 @@ export const publicationPolicy = pgTable('publication_policy', {
   check('publication_policy_batch_bounds', sql`${table.batchSize} BETWEEN 1 AND 100`),
   check('publication_policy_deadline_bounds', sql`${table.functionDeadlineSeconds} BETWEEN 10 AND 300`),
   check('publication_policy_retry_count', sql`cardinality(${table.retryDelaysSeconds}) <= ${table.maxAttempts} - 1`),
-  // Per-element retry bounds live in a trigger (scalar CHECK cannot constrain array elements).
 ]);
 
 export const webhookPolicy = pgTable('webhook_policy', {
@@ -248,7 +252,11 @@ export const runtimeConfigParityEvidence = pgTable('runtime_config_parity_eviden
   foreignKey({ name: 'runtime_config_parity_evidence_manifest_fk', columns: [table.manifestId], foreignColumns: [runtimeConfigReleaseManifests.id] }).onDelete('cascade'),
 ]);
 
+/**
+ * Declare the private schema namespace for runtime-config SQL functions.
+ *
+ * @remarks Drizzle requires one declaration per schema; indicate_private functions live in migrations.
+ */
 export const indicatePrivate = pgSchema('indicate_private');
 
-// Drizzle requires one declaration per schema; indicate_private functions live in migrations.
 void indicatePrivate;

@@ -273,9 +273,13 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
   } as BootstrapConfig);
 }
 
-/** Pure Bootstrap validation: no PostgreSQL/provider init; failures expose only allowlisted paths + stable categories. */
+/** Validate Bootstrap configuration purely.
+ *
+ * @param environment - Raw environment map to validate.
+ * @returns Validated config or stable issues.
+ * @remarks No PostgreSQL/provider init; failures expose only allowlisted paths plus stable categories. Single production environment — authority is NODE_ENV (`next start` forces it to production). Namespace milik Vercel (VERCEL_ENV, VERCEL_URL, VERCEL_REGION, ...) disuntik platform saat build/run dan bukan milik kontrak konfigurasi ini. Kunci fungsional VERCEL_API_TOKEN tetap wajib via skema, jadi typo di sana tetap gagal validasi.
+ */
 export function validateBootstrapConfig(environment: Record<string, string | undefined>): BootstrapConfigResult {
-  // Single production environment — authority is NODE_ENV (`next start` forces it to production).
   const postCutover = environment.NODE_ENV === 'production';
   const unknown = postCutover ? detectUnknownIndicateKeys(environment, BOOTSTRAP_ALLOWED_KEYS) : [];
   const parsed = bootstrapSchema.safeParse(environment);
@@ -304,10 +308,6 @@ function detectUnknownIndicateKeys(
     if (allowed.has(key) || key === 'NODE_ENV' || key.startsWith('_') || key.startsWith('npm_') || key.startsWith('NPM_')) {
       continue;
     }
-    // Namespace milik Vercel (VERCEL_ENV, VERCEL_URL, VERCEL_REGION, ...) disuntik
-    // platform saat build/run dan bukan milik kontrak konfigurasi ini. Kunci
-    // fungsional VERCEL_API_TOKEN tetap wajib via skema, jadi typo di sana
-    // tetap gagal validasi.
     if (key.startsWith('VERCEL_')) {
       continue;
     }

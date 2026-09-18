@@ -244,6 +244,11 @@ export function serializeJsonLd(documents: readonly Readonly<Record<string, unkn
   return safeJson(documents.length === 1 ? documents[0] : documents);
 }
 
+/**
+ * Serialize robots.txt for a site.
+ *
+ * @remarks Search pages are noindex: disallow them to keep crawl budget on canonical URLs.
+ */
 export function serializeRobots(site: {
   readonly context: ResolvedSiteContext;
   readonly settings: { readonly robots: readonly string[] };
@@ -254,7 +259,6 @@ export function serializeRobots(site: {
     ...custom,
     'Allow: /',
     'Allow: /categories/',
-    // Search pages are noindex: disallow them to keep crawl budget on canonical URLs.
     'Disallow: /search',
     'Disallow: /api/',
     'Disallow: /dashboard',

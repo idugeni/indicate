@@ -1,11 +1,14 @@
-/** Node-only safety net, lazily imported behind `NEXT_RUNTIME === 'nodejs'`; never import from shared/Edge code. */
+/**
+ * Attach Node process safety net.
+ *
+ * @remarks Lazily imported behind `NEXT_RUNTIME === 'nodejs'`; never import from shared/Edge code. Fatal records only; never throws/exits — the runtime owns that.
+ */
 export async function attachProcessSafetyNet(): Promise<void> {
   const { logEvent } = await import('@/core/observability/logger');
   const { sanitizeError } = await import('@/core/security/redaction');
 
   logEvent('info', { event: 'lifecycle.start' });
 
-  // Fatal records only; never throws/exits — the runtime owns that.
   process.on('unhandledRejection', (reason: unknown) => {
     try {
       logEvent('fatal', { event: 'lifecycle.unhandledRejection', context: sanitizeError(reason) });

@@ -6,8 +6,6 @@ import { SectionCard } from '@/modules/dashboard/components/shared/section-card'
 import { Input } from '@/components/ui/input';
 import { formatBytes, prepareImageUpload } from '@/modules/publishing/compress-image';
 
-// Cerminan cepat media_policy.allowed_mime_types agar format tak didukung
-// ditolak dengan pesan jelas sebelum reservasi server.
 const SUPPORTED_MEDIA_TYPES = new Set([
   'image/jpeg',
   'image/png',
@@ -27,6 +25,11 @@ function heicStem(filename: string): string {
   return stem === '' ? 'file' : stem;
 }
 
+/**
+ * Tampilkan formulir unggah media dengan kompresi dan reservasi klien.
+ *
+ * @remarks SUPPORTED_MEDIA_TYPES mencerminkan media_policy.allowed_mime_types agar format tak didukung ditolak dengan pesan jelas sebelum reservasi server. Varian thumb bersifat best-effort: kegagalannya tidak menggagalkan aset utama.
+ */
 export function MediaForm({
   data,
   command,
@@ -153,7 +156,6 @@ export function MediaForm({
           return;
         }
 
-        // Varian thumb bersifat best-effort: kegagalannya tidak menggagalkan aset utama.
         let thumbPayload: { readonly sizeBytes: number; readonly checksum: string } | undefined;
         const thumbAuth = reserved.thumb?.authorization;
         if (prepared.thumb !== null && thumbAuth?.url !== undefined && thumbAuth.requiredHeaders !== undefined) {

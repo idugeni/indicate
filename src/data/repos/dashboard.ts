@@ -3,7 +3,7 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type { AnalyticsProjection, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, InvitationSummary, OperationsProjection, RetentionRunRecord } from '@/modules/dashboard/models';
-import { DashboardAccessDeniedError, DashboardConflictError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
+import { DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
 import { redact } from '@/core/security/redaction';
 import {
   apiKeys, articleSites, articles, auditLogs, authors, cacheBypasses, categories, domainActivationAttempts, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks, officialAffiliations, organizations,
@@ -16,7 +16,13 @@ type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 const iso = (value: Date) => value.toISOString();
 const optionalIso = (value: Date | null) => value?.toISOString() ?? null;
+const MANUAL_PURGE_BULK_COOLDOWN_SECONDS = 120;
 
+/**
+ * Kelola persistensi state tenan dashboard di Postgres.
+ *
+ * @remarks Gate langganan hanya berlaku untuk sesi user; aktor non-user membawa scope sendiri.
+ */
 export class DrizzleDashboardRepository implements DashboardRepository {
   constructor(private readonly database: Database) {}
 
@@ -394,6 +400,12 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       await this.establishContext(transaction, actor);
       await this.authorize(transaction, actor, permission);
       await this.enforceWritableSubscription(transaction, actor);
+      if (siteId === null) {
+        const windowStart = new Date(Date.now() - MANUAL_PURGE_BULK_COOLDOWN_SECONDS * 1000);
+        const recent = await transaction.select({ id: invalidationTasks.id }).from(invalidationTasks)
+          .where(and(eq(invalidationTasks.organizationId, actor.organizationId), eq(invalidationTasks.reason, 'manual-purge'), gt(invalidationTasks.createdAt, windowStart))).limit(1);
+        if (recent.length > 0) throw new DashboardRateLimitedError(MANUAL_PURGE_BULK_COOLDOWN_SECONDS);
+      }
       const rows = await transaction.select({ id: sites.id, hostname: sites.normalizedHostname, regionId: sites.regionId }).from(sites).where(eq(sites.organizationId, actor.organizationId));
       const lock = actor.regionScopeId ?? null;
       const inScope = (regionId: string | null) => lock === null || regionId === null || regionId === lock;
@@ -500,7 +512,6 @@ export class DrizzleDashboardRepository implements DashboardRepository {
   }
 
   private async enforceWritableSubscription(transaction: Transaction, actor: AuthorizedTenantActorContext): Promise<void> {
-    // Aktor non-user membawa scope sendiri; gate langganan hanya untuk sesi user.
     if (actor.actorType !== 'user') return;
     const rows = await transaction.execute<{ state: string }>(sql`SELECT indicate_private.subscription_access_state(${actor.organizationId}::uuid) AS state`);
     const state = rows[0]?.state;

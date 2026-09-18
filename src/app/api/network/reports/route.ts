@@ -20,8 +20,17 @@ const bodySchema = z.object({
   articleUrl: z.string().trim().min(8).max(2000).nullable().default(null),
 }).strict();
 
+/**
+ * Map a report outcome code to its HTTP status.
+ *
+ * @param code - Error code from the moderation report outcome.
+ * @returns 400 for invalid input, 404 otherwise.
+ */
+export function reportOutcomeStatus(code: string): number {
+  return code === 'INVALID_INPUT' ? 400 : 404;
+}
+
 async function handlePOST(request: Request) {
-  // Intake laporan publik per-host: tetap dinamis per request.
   await connection();
   const requestId = resolveRequestId(request);
   const noStore = { 'Cache-Control': 'no-store' };
@@ -55,7 +64,7 @@ async function handlePOST(request: Request) {
       }, requestId);
       if (!outcome.ok) {
         const code = outcome.error.error.code;
-        return NextResponse.json(outcome.error, { status: code === 'INVALID_INPUT' ? 400 : 404, headers: noStore });
+        return NextResponse.json(outcome.error, { status: reportOutcomeStatus(code), headers: noStore });
       }
       return NextResponse.json({ ok: true, requestId }, { headers: noStore });
   } catch {
@@ -63,6 +72,11 @@ async function handlePOST(request: Request) {
   }
 }
 
+/**
+ * Terima laporan konten publik per host.
+ *
+ * @remarks Tetap dinamis per request karena intake laporan publik per-host.
+ */
 export const POST = withApiAccess('POST /api/network/reports', handlePOST);
 export async function GET(request: Request) {
   return NextResponse.json(createNonDisclosingDenial(resolveRequestId(request)), { status: 404, headers: { 'Cache-Control': 'no-store' } });

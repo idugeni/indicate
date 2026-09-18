@@ -9,13 +9,16 @@ interface GlobalErrorProps {
   readonly reset: () => void;
 }
 
-/** Root error boundary with self-contained styles so it renders even when the global CSS bundle fails. */
+/**
+ * Render root error boundary with self-contained styles.
+ *
+ * @remarks Renders even when the global CSS bundle fails. Telemetry carries structure only (no message/stack); the Ref joins to the server `server.fault` record.
+ */
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   const [clientId] = useState(() => crypto.randomUUID());
   const eventId = error.digest ?? clientId;
 
   useEffect(() => {
-    // Telemetry carries structure only (no message/stack); the Ref joins to the server `server.fault` record.
     reportClientFault({ digest: error.digest, eventId: clientId, errorName: error.name, route: currentRoutePath(), boundary: 'app/global-error' });
   }, [error, clientId]);
 
