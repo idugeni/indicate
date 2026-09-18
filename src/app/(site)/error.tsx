@@ -27,7 +27,7 @@ export default function SiteError({
 
   return (
     <div className="flex min-h-[50vh] items-center justify-center p-6" role="alert">
-      <div className="w-full max-w-md rounded-lg border border-[#e2ded2] bg-white p-8 text-center">
+      <div className="w-full max-w-md rounded-[3px] border border-[#e2ded2] bg-white p-8 text-center">
         <p className="m-0 font-mono text-xs font-medium uppercase tracking-wider text-[#b3261e]">Gangguan sementara</p>
         <h1 className="m-0 mt-2 font-sans text-xl font-bold tracking-tight text-[#1a2430]">Halaman layanan belum dapat dimuat</h1>
         <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-[#4c5b6b]">Silakan coba kembali. Detail internal tidak ditampilkan.</p>

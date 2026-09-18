@@ -4,10 +4,10 @@ import { ABOUT_PRINCIPLES, ABOUT_STORY, SERVICE_SUMMARY } from '@/ui/site/market
 import { siteMetadata } from '@/ui/site/metadata-guard';
 import {
   FeatureGrid,
+  HeaderPrimaryCta,
+  HeaderSecondaryCta,
   PRINCIPLE_ICONS,
-  PrimaryCta,
   Prose,
-  SecondaryCta,
   Section,
   StatBand,
   withIcons,
@@ -31,8 +31,8 @@ export default function TentangPage() {
       trail={[{ href: '/', label: 'Beranda' }]}
       actions={
         <>
-          <PrimaryCta href="/contact">Hubungi Kami</PrimaryCta>
-          <SecondaryCta href="/services">Lihat Layanan</SecondaryCta>
+          <HeaderPrimaryCta href="/contact">Hubungi Kami</HeaderPrimaryCta>
+          <HeaderSecondaryCta href="/services">Lihat Layanan</HeaderSecondaryCta>
         </>
       }
     >

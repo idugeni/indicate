@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { CONTACT_CHECKLIST } from '@/ui/site/marketing-content';
 import { getContactChannels } from '@/modules/content/site-content';
 import { siteMetadata } from '@/ui/site/metadata-guard';
-import { CHANNEL_ICONS, FeatureGrid, Prose, SecondaryCta, Section, withIcons } from '@/modules/site/components/layout/content';
+import { CHANNEL_ICONS, FeatureGrid, HeaderSecondaryCta, Prose, Section, withIcons } from '@/modules/site/components/layout/content';
 import { WhatsAppCard } from '@/modules/site/components/pricing/whatsapp-card';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
@@ -26,7 +26,7 @@ function ContactChannelsSkeleton() {
   return (
     <div aria-hidden="true" className="grid gap-4 sm:grid-cols-2">
       {[0, 1, 2].map((index) => (
-        <div key={index} className="animate-pulse rounded-lg border border-[#e2ded2] bg-white p-5 sm:p-6">
+        <div key={index} className="animate-pulse rounded-[3px] border border-[#e2ded2] bg-white p-5 sm:p-6">
           <div className="h-4 w-24 rounded bg-[#e2ded2]" />
           <div className="mt-3 h-3 w-full rounded bg-[#e2ded2]/70" />
           <div className="mt-2 h-3 w-2/3 rounded bg-[#e2ded2]/70" />
@@ -44,7 +44,7 @@ export default function KontakPage() {
       description={DESCRIPTION}
       meta={['Respons 1x24 jam kerja', 'Dijawab manusia', 'Tanpa antre tiket']}
       trail={[{ href: '/', label: 'Beranda' }]}
-      actions={<SecondaryCta href="/pricing">Lihat Info Harga</SecondaryCta>}
+      actions={<HeaderSecondaryCta href="/pricing">Lihat Info Harga</HeaderSecondaryCta>}
     >
       <Section>
         <WhatsAppCard />

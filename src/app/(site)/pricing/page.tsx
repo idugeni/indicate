@@ -8,7 +8,7 @@ import {
   FaqAccordion,
   FeatureGrid,
   GUARANTEE_ICONS,
-  PrimaryCta,
+  HeaderPrimaryCta,
   Prose,
   Section,
   toFaqGridItems,
@@ -34,7 +34,7 @@ export default async function HargaPage() {
       trail={[{ href: '/', label: 'Beranda' }]}
       actions={
         <>
-          <PrimaryCta href="/contact">Hubungi Kami</PrimaryCta>
+          <HeaderPrimaryCta href="/contact">Hubungi Kami</HeaderPrimaryCta>
         </>
       }
     >
@@ -71,7 +71,6 @@ export default async function HargaPage() {
         title="Masih ragu?"
         description="Jawaban singkat untuk pertanyaan yang paling sering masuk."
         eyebrow="FAQ"
-        tone="raised"
       >
         <FaqAccordion items={toFaqGridItems(faqs, 6)} />
       </Section>

@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { Suspense } from 'react';
 
 import { AuthAlert } from '@/modules/auth/components/auth-ui';
 import { SignInMethods } from '@/modules/auth/components/sign-in-methods';
@@ -12,13 +13,27 @@ const PANEL_STEPS: readonly { readonly title: string; readonly detail: string }[
   { title: 'Teraudit penuh', detail: 'Setiap aksi tercatat, hanya-tambah.' },
 ]);
 
+async function SignInAlert({
+  searchParams,
+}: {
+  readonly searchParams?: Promise<{ readonly auth?: string | string[] }> | undefined;
+}) {
+  const params = await searchParams;
+  if (params?.auth !== 'unavailable') return null;
+  return (
+    <div className="mt-6">
+      <AuthAlert tone="error">
+        Tautan masuk tidak valid atau kedaluwarsa. Minta kode baru di bawah.
+      </AuthAlert>
+    </div>
+  );
+}
+
 export default async function SignInPage({
   searchParams,
 }: {
   readonly searchParams?: Promise<{ readonly auth?: string | string[] }>;
 }) {
-  const params = await searchParams;
-  const linkFailed = params?.auth === 'unavailable';
   const year = await currentYear();
   return (
     <div className="min-h-dvh bg-[#f4f2ec] font-sans text-[#1a2430] antialiased [color-scheme:light] lg:grid lg:h-dvh lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] lg:overflow-hidden">
@@ -30,13 +45,9 @@ export default async function SignInPage({
           >
             ← {SERVICE_NAME}
           </Link>
-          {linkFailed ? (
-            <div className="mt-6">
-              <AuthAlert tone="error">
-                Tautan masuk tidak valid atau kedaluwarsa. Minta kode baru di bawah.
-              </AuthAlert>
-            </div>
-          ) : null}
+          <Suspense fallback={null}>
+            <SignInAlert searchParams={searchParams} />
+          </Suspense>
           <div className="mt-6 rounded-xl border border-[#e2ded2] bg-white p-6 shadow-[0_24px_48px_-28px_rgba(26,36,48,0.3)] sm:p-8">
             <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-[#8a5f1c] uppercase">
               <span aria-hidden="true" className="h-px w-8 flex-none bg-[#b88d3a]" />

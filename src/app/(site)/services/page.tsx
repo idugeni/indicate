@@ -7,9 +7,9 @@ import {
   CARD_CLASS,
   FeatureGrid,
   GUARANTEE_ICONS,
+  HeaderPrimaryCta,
+  HeaderSecondaryCta,
   ICON_BOX_CLASS,
-  PrimaryCta,
-  SecondaryCta,
   Section,
   USE_CASE_ICONS,
   VALUE_ICONS,
@@ -34,8 +34,8 @@ export default function LayananPage() {
       trail={[{ href: '/', label: 'Beranda' }]}
       actions={
         <>
-          <PrimaryCta href="/pricing">Lihat Harga</PrimaryCta>
-          <SecondaryCta href="/contact">Hubungi Kami</SecondaryCta>
+          <HeaderPrimaryCta href="/pricing">Lihat Harga</HeaderPrimaryCta>
+          <HeaderSecondaryCta href="/contact">Hubungi Kami</HeaderSecondaryCta>
         </>
       }
     >
@@ -61,10 +61,10 @@ export default function LayananPage() {
                     {String(index + 1).padStart(2, '0')}
                   </span>
                 </span>
-                <h3 className="m-0 font-sans text-sm font-semibold tracking-tight text-[#1a2430] transition-colors duration-180 group-hover:text-[#8a5f1c]">
+                <h3 className="m-0 font-sans text-base font-bold tracking-tight text-[#1a2430] transition-colors duration-180 group-hover:text-[#8a5f1c]">
                   {step.title}
                 </h3>
-                <p className="m-0 font-sans text-xs leading-relaxed text-[#4c5b6b]">
+                <p className="m-0 font-sans text-sm leading-relaxed text-[#4c5b6b]">
                   {step.description}
                 </p>
               </div>
