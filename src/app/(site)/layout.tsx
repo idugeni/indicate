@@ -1,7 +1,13 @@
 import type { ReactNode } from 'react';
 import { Suspense } from 'react';
+import type { Viewport } from 'next';
 import { SiteShell } from '@/modules/site/components/layout/site-shell';
 import { requireDashboardSurface } from '@/ui/site/metadata-guard';
+
+export const viewport: Viewport = {
+  themeColor: '#f4f2ec',
+  colorScheme: 'light',
+};
 
 /**
  * Penjaga surface sebagai Suspense island: `requireDashboardSurface()` membaca

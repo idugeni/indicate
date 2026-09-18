@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { indexableRobots } from '@/modules/site/seo';
@@ -53,6 +53,11 @@ export async function generateMetadata(): Promise<Metadata> {
     robots: { index: false, follow: false },
   };
 }
+
+export const viewport: Viewport = {
+  themeColor: '#f4f2ec',
+  colorScheme: 'light',
+};
 
 /** Control-plane `/` (landing). Beranda portal dirender `(network)/tenant-home`
  *  via rewrite proxy agar ikut boundary segmen tenant. */
