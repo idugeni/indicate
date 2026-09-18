@@ -50,7 +50,7 @@ export function createProductionIntegrations(config: RuntimeConfig, bootstrap: B
     email,
     emailWebhooks,
     emailWelcome: new EmailWelcomeService(email),
-    telegram: new TelegramWorkflowService(repository, sharedFactory, telegram, telegram, config.telegram.webhookSecret, config.security.webhookFreshnessSeconds, config.security.webhookReplayTtlSeconds, `https://${config.hosts.dashboard}/brand/indicate-landscape.png`),
+    telegram: new TelegramWorkflowService(repository, sharedFactory, telegram, telegram, config.telegram.webhookSecret, config.security.webhookFreshnessSeconds, config.security.webhookReplayTtlSeconds, `https://${config.hosts.dashboard}/brand/telegram-welcome.png`),
   };
 }
 
