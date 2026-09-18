@@ -15,14 +15,14 @@ export const COMPANY_EMAIL = 'sancaphenacakra@gmail.com';
 export const COMPANY_PHONE = '085641159405';
 
 const COMPANY_SOCIALS: Readonly<Record<string, string>> = {
-  facebook: 'https://facebook.com/safenca',
-  instagram: 'https://instagram.com/safenca',
-  x: 'https://x.com/safenca',
-  youtube: 'https://youtube.com/@safenca',
-  tiktok: 'https://tiktok.com/@safenca',
-  telegram: 'https://t.me/safenca',
+  facebook: 'https://facebook.com/safenca.id',
+  instagram: 'https://instagram.com/safenca.id',
+  x: 'https://x.com/safenca_id',
+  youtube: 'https://youtube.com/@safenca.id',
+  tiktok: 'https://tiktok.com/@safenca.id',
+  telegram: 'https://t.me/safenca_id',
   whatsapp: 'https://wa.me/6285641159405',
-  linkedin: 'https://linkedin.com/company/safenca',
+  linkedin: 'https://linkedin.com/company/safenca-id',
 };
 
 const CHANNEL_LABELS: Readonly<Record<string, string>> = {
@@ -36,6 +36,22 @@ const CHANNEL_LABELS: Readonly<Record<string, string>> = {
   telegram: 'Telegram',
   whatsapp: 'WhatsApp',
   linkedin: 'LinkedIn',
+  threads: 'Threads',
+  bluesky: 'Bluesky',
+  snapchat: 'Snapchat',
+  pinterest: 'Pinterest',
+  reddit: 'Reddit',
+  discord: 'Discord',
+  twitch: 'Twitch',
+  spotify: 'Spotify',
+  medium: 'Medium',
+  vimeo: 'Vimeo',
+  dailymotion: 'Dailymotion',
+  github: 'GitHub',
+  line: 'Line',
+  quora: 'Quora',
+  tumblr: 'Tumblr',
+  mastodon: 'Mastodon',
 };
 
 /** Urutan tampil kanal sosial di semua permukaan. */
@@ -48,12 +64,117 @@ export const SOCIAL_ORDER = [
   'telegram',
   'whatsapp',
   'linkedin',
+  'threads',
+  'bluesky',
+  'snapchat',
+  'pinterest',
+  'reddit',
+  'discord',
+  'twitch',
+  'spotify',
+  'medium',
+  'vimeo',
+  'dailymotion',
+  'github',
+  'line',
+  'quora',
+  'tumblr',
+  'mastodon',
 ] as const;
+
+const SOCIAL_PLACEHOLDERS: Readonly<Record<string, string>> = {
+  facebook: 'https://facebook.com/...',
+  instagram: 'https://instagram.com/...',
+  x: 'https://x.com/...',
+  youtube: 'https://youtube.com/...',
+  tiktok: 'https://tiktok.com/...',
+  telegram: 'https://t.me/...',
+  whatsapp: 'https://wa.me/...',
+  linkedin: 'https://linkedin.com/...',
+  threads: 'https://threads.com/...',
+  bluesky: 'https://bsky.app/...',
+  snapchat: 'https://snapchat.com/...',
+  pinterest: 'https://pinterest.com/...',
+  reddit: 'https://reddit.com/...',
+  discord: 'https://discord.gg/...',
+  twitch: 'https://twitch.tv/...',
+  spotify: 'https://open.spotify.com/...',
+  medium: 'https://medium.com/...',
+  vimeo: 'https://vimeo.com/...',
+  dailymotion: 'https://dailymotion.com/...',
+  github: 'https://github.com/...',
+  line: 'https://line.me/...',
+  quora: 'https://quora.com/...',
+  tumblr: 'https://tumblr.com/...',
+  mastodon: 'https://mastodon.social/...',
+};
+
+export interface SocialFieldDef {
+  readonly key: string;
+  readonly label: string;
+  readonly placeholder: string;
+}
+
+/** Definisi field sosmed untuk form dashboard, seurut `SOCIAL_ORDER`. */
+export const SOCIAL_FIELD_DEFS: readonly SocialFieldDef[] = SOCIAL_ORDER.map((key) => ({
+  key,
+  label: CHANNEL_LABELS[key] ?? key,
+  placeholder: SOCIAL_PLACEHOLDERS[key] ?? 'https://...',
+}));
+
+const RESERVED_PUBLISHER_CONTACT_KEYS: ReadonlySet<string> = new Set(['logourl', 'city', 'bio']);
 
 export interface ContactChannel {
   readonly key: string;
   readonly label: string;
   readonly href: string;
+}
+
+/**
+ * Extracts a publisher's own social links from raw `contacts` JSON.
+ *
+ * @param contacts - Raw `publishers.contacts` payload; non-string values are ignored.
+ * @returns Social entries keyed by platform; reserved display keys excluded.
+ */
+export function pickPublisherSocials(
+  contacts: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, string>> {
+  const socials: Record<string, string> = {};
+  for (const key of SOCIAL_ORDER) {
+    const value = contacts[key];
+    if (typeof value === 'string' && value.trim() !== '') socials[key] = value.trim();
+  }
+  for (const [rawKey, value] of Object.entries(contacts)) {
+    const key = rawKey.toLowerCase();
+    if (typeof value !== 'string' || value.trim() === '') continue;
+    if (key in socials || RESERVED_PUBLISHER_CONTACT_KEYS.has(key)) continue;
+    socials[key] = value.trim();
+  }
+  return socials;
+}
+
+/**
+ * Resolves render-ready channels from a publisher's own social links.
+ *
+ * @param socials - Publisher social links as extracted by `pickPublisherSocials`.
+ * @returns Ordered channels without company-default fallback.
+ */
+export function resolvePublisherChannels(
+  socials: Readonly<Record<string, string>>,
+): readonly ContactChannel[] {
+  const channels: ContactChannel[] = [];
+  for (const key of SOCIAL_ORDER) {
+    const href = socials[key]?.trim() ?? '';
+    if (href === '') continue;
+    channels.push({ key, label: labelFor(key), href });
+  }
+  for (const [rawKey, rawHref] of Object.entries(socials)) {
+    const key = rawKey.toLowerCase();
+    const href = rawHref.trim();
+    if (href === '' || SOCIAL_ORDER.includes(key as (typeof SOCIAL_ORDER)[number])) continue;
+    channels.push({ key, label: labelFor(key), href });
+  }
+  return channels;
 }
 
 function labelFor(key: string): string {

@@ -19,6 +19,7 @@ export function makeNetworkArticle(overrides: Partial<NetworkArticle> = {}): Net
     publisherLogoUrl: null,
     publisherCity: null,
     publisherBio: null,
+    publisherSocials: {},
     authorBio: null,
     authorAvatarUrl: null,
     publisherVerified: false,

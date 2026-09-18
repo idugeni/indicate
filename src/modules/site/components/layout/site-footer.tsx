@@ -9,6 +9,8 @@ import {
   type NavigationLink,
 } from '@/ui/site/marketing-content';
 import { getContactChannels, type FeatureItem } from '@/modules/content/site-content';
+import { SOCIAL_ORDER, resolveContactChannels } from '@/modules/site/company-contact';
+import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { currentYear } from '@/modules/site/current-year';
 import { Container, PrimaryCta, SecondaryCta } from '@/modules/site/components/layout/content';
 
@@ -80,6 +82,9 @@ function SiteFooterView({ year, channels }: { readonly year: number | null; read
   const mail = channels.find((channel) => channel.href?.startsWith('mailto:'));
   const chat = channels.find((channel) => channel.href?.includes('wa.me'));
   const telegram = channels.find((channel) => channel.href?.includes('t.me'));
+  const socials = resolveContactChannels({}).filter((channel) =>
+    SOCIAL_ORDER.includes(channel.key as (typeof SOCIAL_ORDER)[number]),
+  );
 
   return (
     <footer className="border-t border-[#e2ded2] bg-white">
@@ -115,15 +120,33 @@ function SiteFooterView({ year, channels }: { readonly year: number | null; read
               0856-4115-9405
             </a>
             <a
-              href={telegram?.href ?? 'https://t.me/eliyantosarage'}
+              href={telegram?.href ?? 'https://t.me/safenca_id'}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-[#4c5b6b] transition-colors duration-180 hover:text-[#1a2430]"
             >
               <Send className="h-3.5 w-3.5 flex-none text-[#8a5f1c]" aria-hidden="true" />
-              @eliyantosarage
+              @safenca_id
             </a>
           </address>
+          <p className="m-0 flex flex-wrap items-center gap-2">
+            {socials.map((channel) => {
+              const Icon = channelIcon(channel.key);
+              return (
+                <a
+                  key={channel.key}
+                  href={channel.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Indicate di ${channel.label}`}
+                  title={channel.label}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-[#4c5b6b] ring-1 ring-[#e2ded2] transition-colors duration-180 hover:text-[#1a2430]"
+                >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                </a>
+              );
+            })}
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
@@ -189,7 +212,8 @@ export function CallToAction() {
 
 function CallToActionView({ channels }: { readonly channels: readonly FeatureItem[] }) {
   return (
-    <section aria-labelledby="konsolidasi-redaksi-heading" className="border-t border-[#e2ded2]">
+    <section aria-labelledby="konsolidasi-redaksi-heading" className="relative border-t border-[#e2ded2]">
+      <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-[#b88d3a]" />
       <Container className="grid gap-8 py-16 md:py-24 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:items-end">
         <div>
           <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-[#8a5f1c]">
@@ -199,6 +223,7 @@ function CallToActionView({ channels }: { readonly channels: readonly FeatureIte
           <h2 id="konsolidasi-redaksi-heading" className="m-0 mt-4 max-w-2xl font-serif text-3xl font-medium leading-[1.1] tracking-tight text-balance text-[#1a2430] sm:text-5xl">
             Konsolidasikan seluruh jaringan redaksi Anda.
           </h2>
+          <span aria-hidden="true" className="mt-6 block h-1 w-16 bg-[#b88d3a]" />
           <p className="m-0 mt-4 max-w-2xl font-sans text-base leading-relaxed text-[#4c5b6b]">
             Sampaikan jumlah domain dan unit yang direncanakan — tim kami menyusun arsitektur penyiapan beserta estimasinya, tanpa mengganggu operasi redaksi yang berjalan.
           </p>
@@ -213,7 +238,7 @@ function CallToActionView({ channels }: { readonly channels: readonly FeatureIte
               <span>Lihat layanan</span>
             </SecondaryCta>
           </div>
-          <p className="m-0 mt-6 font-sans text-sm leading-relaxed text-[#5f6b7a]">
+          <p className="m-0 mt-6 font-mono text-[11px] uppercase leading-relaxed tracking-[0.08em] text-[#5f6b7a]">
             {channels
               .filter((channel) => channel.href)
               .map((channel) => channel.title)

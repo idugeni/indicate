@@ -4,6 +4,8 @@ import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag } 
 
 import { buildSeoDocument } from '@/modules/site/seo';
 import { parseArticleBody } from '@/modules/site/article-markup';
+import { resolvePublisherChannels } from '@/modules/site/company-contact';
+import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { ArticleBodyView } from '@/modules/site/components/article-body-view';
 import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/seo/json-ld';
 import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
@@ -34,6 +36,7 @@ export function CleanBlueArticle({
   const bylineInitial = bylineName.trim().slice(0, 1).toUpperCase();
   const canonical = `https://${site.context.normalizedHostname}/${article.slug}`;
   const blocks = parseArticleBody(article.body);
+  const publisherChannels = resolvePublisherChannels(article.publisherSocials);
   const gallery = article.gallery.map((image, position) => ({ url: image.url, alt: `${article.title} (gambar ${position + 1})` }));
 
   return (
@@ -69,7 +72,7 @@ export function CleanBlueArticle({
           <h1 className="m-0 mt-3 block w-full font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl">
             {article.title}
           </h1>
-          <p className="m-0 mt-4 max-w-3xl border-l-[3px] border-[#1a5fd0] pl-4 font-sans text-[19px] font-medium leading-[1.7] text-slate-700">
+          <p className="m-0 mt-4 block w-full border-l-[3px] border-[#1a5fd0] pl-4 font-sans text-[19px] font-medium leading-[1.7] text-slate-700">
             {article.description}
           </p>
 
@@ -185,6 +188,26 @@ export function CleanBlueArticle({
             {article.publisherBio ? (
               <p className="m-0 mt-3 font-sans text-sm leading-relaxed text-slate-600">
                 {article.publisherBio}
+              </p>
+            ) : null}
+            {publisherChannels.length > 0 ? (
+              <p className="m-0 mt-4 flex flex-wrap items-center gap-2">
+                {publisherChannels.map((channel) => {
+                  const Icon = channelIcon(channel.key);
+                  return (
+                    <a
+                      key={channel.key}
+                      href={channel.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`${article.attribution} di ${channel.label}`}
+                      title={channel.label}
+                      className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1a5fd0]"
+                    >
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                    </a>
+                  );
+                })}
               </p>
             ) : null}
             <dl className="m-0 mt-4 grid grid-cols-3 gap-px overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-100">

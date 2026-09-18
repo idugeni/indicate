@@ -54,6 +54,8 @@ export interface NetworkArticle {
   readonly publisherCity: string | null;
   /** Bio penerbit: `contacts.bio` bila diisi, bila tidak pakai `DEFAULT_PUBLISHER_BIO`. */
   readonly publisherBio: string | null;
+  /** Sosmed milik penerbit dari `contacts`; tanpa fallback default perusahaan. */
+  readonly publisherSocials: Readonly<Record<string, string>>;
   readonly authorBio: string | null;
   readonly authorAvatarUrl: string | null;
   readonly publisherVerified: boolean;

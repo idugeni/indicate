@@ -3,6 +3,7 @@
 import { DASHBOARD_PERMISSION_NAMES } from '@/modules/dashboard/permissions';
 import { INTEGRATIONS_TENANT_PERMISSION_NAMES } from '@/modules/integrations/permissions';
 import { PUBLISHING_PERMISSION_NAMES } from '@/modules/publishing/permissions';
+import { SOCIAL_FIELD_DEFS, SOCIAL_ORDER } from '@/modules/site/company-contact';
 
 /**
  * Registri konfigurasi editor rekaman generik untuk DataView.
@@ -156,6 +157,12 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
       { key: 'type', label: 'Klasifikasi entitas', kind: 'select', required: true, options: PUBLISHER_TYPE_OPTIONS },
       { key: 'attributionLabel', label: 'Label atribusi kanonikal', kind: 'text', required: true },
       { key: 'evidenceReference', label: 'Referensi bukti (opsional)', kind: 'text', placeholder: 'ref-dewanpers-2026-09' },
+      ...SOCIAL_FIELD_DEFS.map((field) => ({
+        key: `contacts.${field.key}`,
+        label: `${field.label} (URL, opsional)`,
+        kind: 'text' as const,
+        placeholder: field.placeholder,
+      })),
     ],
   },
   affiliations: {
@@ -240,6 +247,14 @@ export function resolveFieldOptions(field: EditorField, lookups: LookupTables): 
 
 /** Nilai awal form dari rekaman API (array claimScopes digabung per baris). */
 export function initialFieldValue(field: EditorField, item: Record<string, unknown>): string | boolean | readonly string[] {
+  if (field.key.startsWith('contacts.')) {
+    const contacts = item.contacts;
+    if (typeof contacts === 'object' && contacts !== null) {
+      const raw = (contacts as Record<string, unknown>)[field.key.slice('contacts.'.length)];
+      return typeof raw === 'string' ? raw : '';
+    }
+    return '';
+  }
   const raw = item[field.key];
   if (field.kind === 'checkbox') return raw === true;
   if (field.kind === 'checklist') {
@@ -289,10 +304,21 @@ export function buildUpdatePayload(
       return { id, expectedVersion, displayName: text('displayName'), byline: text('byline'), status: text('status') };
     case 'publishers': {
       const evidence = text('evidenceReference');
-      const contacts = item.contacts;
+      const stored = item.contacts;
+      const contacts: Record<string, string> =
+        typeof stored === 'object' && stored !== null
+          ? Object.fromEntries(
+              Object.entries(stored).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+            )
+          : {};
+      for (const platform of SOCIAL_ORDER) {
+        const value = String(values[`contacts.${platform}`] ?? '').trim();
+        if (value === '') delete contacts[platform];
+        else contacts[platform] = value;
+      }
       return {
         id, expectedVersion, name: text('name'), type: text('type'), attributionLabel: text('attributionLabel'),
-        contacts: typeof contacts === 'object' && contacts !== null ? contacts : {},
+        contacts,
         evidenceReference: evidence === '' ? null : evidence,
       };
     }
