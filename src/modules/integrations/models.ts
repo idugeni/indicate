@@ -71,6 +71,11 @@ export interface TelegramConversation {
   readonly updatedAt: string;
   readonly expiresAt: string;
 }
+export interface TelegramInlineButton {
+  readonly text: string;
+  readonly data: string;
+}
+export type TelegramInlineKeyboard = readonly (readonly TelegramInlineButton[])[];
 export interface TelegramUpdate {
   readonly updateId: string;
   readonly occurredAt: string;
@@ -83,17 +88,25 @@ export interface TelegramUpdate {
     readonly mediaType: string;
     readonly sizeBytes: number;
   };
+  readonly callback: null | {
+    readonly id: string;
+    readonly data: string | null;
+  };
 }
 export interface TelegramWorkflowResult {
   readonly reply: string;
   readonly actor?: AuthorizedTenantActorContext;
   readonly businessResult?: unknown;
+  readonly display?: {
+    readonly photoUrl?: string;
+    readonly keyboard: TelegramInlineKeyboard;
+  };
 }
 /** Outgoing chat reply queued during `handle()`; delivery is deferred to `after()` by the caller. */
-export interface TelegramPendingReply {
-  readonly chatId: string;
-  readonly text: string;
-}
+export type TelegramPendingReply =
+  | { readonly kind: 'text'; readonly chatId: string; readonly text: string; readonly keyboard?: TelegramInlineKeyboard }
+  | { readonly kind: 'photo'; readonly chatId: string; readonly photoUrl: string; readonly caption: string; readonly keyboard?: TelegramInlineKeyboard }
+  | { readonly kind: 'callback-answer'; readonly callbackId: string; readonly text?: string };
 export interface TelegramHandleOutcome {
   readonly result: Result<TelegramWorkflowResult, PublicErrorEnvelope>;
   readonly pendingReplies: readonly TelegramPendingReply[];

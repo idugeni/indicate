@@ -3,11 +3,14 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import type { ExactObjectAuthorization } from '@/integrations/storage/ports';
-import type { TelegramPort } from '@/modules/integrations/ports';
+import type { TelegramCallbackAnswer, TelegramPhotoMessage, TelegramPort } from '@/modules/integrations/ports';
 import { TelegramRateLimitedError } from '@/modules/integrations/ports';
-import type { PreparedTelegramMedia, TelegramMediaTransferPort } from '@/modules/integrations/ports';
+import type { PreparedTelegramMedia, TelegramMediaTransferPort, TelegramMessage } from '@/modules/integrations/ports';
+import type { TelegramInlineKeyboard } from '@/modules/integrations/models';
 
 const fileResponseSchema = z.object({ ok: z.literal(true), result: z.object({ file_path: z.string().min(1).max(500) }) });
+
+const toInlineKeyboard = (keyboard: TelegramInlineKeyboard) => keyboard.map((row) => row.map((button) => ({ text: button.text.slice(0, 64), callback_data: button.data.slice(0, 64) })));
 
 export class TelegramBotApiAdapter implements TelegramPort, TelegramMediaTransferPort {
   private readonly base: string;
@@ -29,20 +32,57 @@ export class TelegramBotApiAdapter implements TelegramPort, TelegramMediaTransfe
     }
   }
 
-  async send(message: { readonly chatId: string; readonly text: string }): Promise<void> {
+  private async throwIfRateLimited(response: Response): Promise<void> {
+    if (response.status !== 429) return;
+    const payload = (await response.json().catch(() => null)) as { readonly parameters?: { readonly retry_after?: unknown } } | null;
+    const retryAfter = payload?.parameters?.retry_after;
+    throw new TelegramRateLimitedError(typeof retryAfter === 'number' && retryAfter > 0 ? Math.floor(retryAfter) : null);
+  }
+
+  async send(message: TelegramMessage): Promise<void> {
     const response = await this.fetcher(`${this.base}/sendMessage`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ chat_id: message.chatId, text: message.text.slice(0, 4096), disable_web_page_preview: true }),
+      body: JSON.stringify({
+        chat_id: message.chatId,
+        text: message.text.slice(0, 4096),
+        disable_web_page_preview: true,
+        ...(message.keyboard === undefined ? {} : { reply_markup: { inline_keyboard: toInlineKeyboard(message.keyboard) } }),
+      }),
       signal: AbortSignal.timeout(10_000),
     });
-    if (response.status === 429) {
-      // Hormati batas Bot API: lempar terketik agar pemanggil mengantrekan ulang dengan backoff, bukan membanjiri.
-      const payload = (await response.json().catch(() => null)) as { readonly parameters?: { readonly retry_after?: unknown } } | null;
-      const retryAfter = payload?.parameters?.retry_after;
-      throw new TelegramRateLimitedError(typeof retryAfter === 'number' && retryAfter > 0 ? Math.floor(retryAfter) : null);
-    }
+    await this.throwIfRateLimited(response);
     if (!response.ok) throw new Error('Telegram send failed.');
+  }
+
+  async sendPhoto(message: TelegramPhotoMessage): Promise<void> {
+    const response = await this.fetcher(`${this.base}/sendPhoto`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: message.chatId,
+        photo: message.photoUrl,
+        caption: message.caption.slice(0, 1024),
+        ...(message.keyboard === undefined ? {} : { reply_markup: { inline_keyboard: toInlineKeyboard(message.keyboard) } }),
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    await this.throwIfRateLimited(response);
+    if (!response.ok) throw new Error('Telegram photo send failed.');
+  }
+
+  async answerCallback(answer: TelegramCallbackAnswer): Promise<void> {
+    const response = await this.fetcher(`${this.base}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        callback_query_id: answer.callbackId,
+        ...(answer.text === undefined ? {} : { text: answer.text.slice(0, 200) }),
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    await this.throwIfRateLimited(response);
+    if (!response.ok) throw new Error('Telegram callback answer failed.');
   }
 
   async prepare(input: { readonly fileId: string; readonly expectedSize: number }): Promise<PreparedTelegramMedia> {

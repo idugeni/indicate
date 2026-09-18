@@ -4,7 +4,7 @@ import type { TenantBusinessService } from '@/modules/dashboard/tenant-business-
 import type { MediaService } from '@/modules/publishing/media-service';
 import type { PublicationService } from '@/modules/publishing/publication-service';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { TelegramConversation, TelegramHandleOutcome, TelegramIdentity, TelegramPendingReply, TelegramUpdate, TelegramWorkflowResult, WebhookReplayClaim } from '@/modules/integrations/models';
+import type { TelegramConversation, TelegramHandleOutcome, TelegramIdentity, TelegramInlineKeyboard, TelegramPendingReply, TelegramUpdate, TelegramWorkflowResult, WebhookReplayClaim } from '@/modules/integrations/models';
 import type { IntegrationsRepository } from '@/modules/integrations/ports';
 import { TelegramRateLimitedError } from '@/modules/integrations/ports';
 import type { TelegramMediaTransferPort } from '@/modules/integrations/ports';
@@ -26,6 +26,37 @@ const digest = (value: string) => createHash('sha256').update(value).digest('hex
 const words = (text: string) => text.trim().split(/\s+/);
 const ids = (text: string) => text.split(',').map((value) => value.trim()).filter(Boolean);
 
+const WELCOME_CAPTION = 'Selamat datang di Bot Resmi Indicate.\n\nRuang kendali redaksi dalam genggaman: susun artikel, kirim foto, atur portal tayang, dan pantau publikasi lintas portal — semuanya dari sini.\n\nPilih menu di bawah untuk memulai.';
+const HELP_TEXT = 'Panduan Bot Indicate\n\nBuat artikel:\n/article — susun artikel langkah demi langkah\n/image ARTICLE_ID — tambah foto ke artikel\n\nTayang dan publikasi:\n/sites ARTICLE_ID — pilih portal tayang\n/publish ARTICLE_ID SITE_IDS KEY — ajukan publikasi\n/status JOB_ID — pantau status pekerjaan\n/links JOB_ID — lihat tautan yang terbit\n/retry JOB_ID — ulangi target yang gagal\n/unpublish JOB_ID — tarik artikel yang terbit\n\nLainnya:\n/regions — daftar Region yang aktif\n/cancel — batalkan percakapan berjalan\n/start — kembali ke menu utama';
+const MAIN_KEYBOARD: TelegramInlineKeyboard = Object.freeze([
+  Object.freeze([Object.freeze({ text: '📝 Buat Artikel', data: 'tg:article' }), Object.freeze({ text: '🖼 Tambah Foto', data: 'tg:image' })]),
+  Object.freeze([Object.freeze({ text: '🌐 Portal Tayang', data: 'tg:sites' }), Object.freeze({ text: '📊 Status', data: 'tg:status' })]),
+  Object.freeze([Object.freeze({ text: '🔗 Tautan Terbit', data: 'tg:links' }), Object.freeze({ text: '❓ Bantuan', data: 'tg:help' })]),
+]);
+const LINK_REQUIRED_REPLY = 'Akses ditolak. Akun Telegram ini belum tertaut ke organisasi mana pun.\n\nHubungi administrator redaksi Anda untuk menautkan akun ini sebelum menggunakan bot.';
+const UNKNOWN_COMMAND_REPLY = 'Perintah tidak dikenali. Ketik /start untuk membuka menu utama atau /bantuan untuk panduan lengkap.';
+const IMAGE_USAGE = 'Format: /image ARTICLE_ID\nSetelah itu, kirim foto sebagai pesan berikutnya. /cancel untuk selesai.';
+const SITES_USAGE = 'Format: /sites ARTICLE_ID\nBot akan menampilkan daftar portal aktif. Balas dengan Site ID dipisah koma.';
+const PUBLISH_USAGE = 'Format: /publish ARTICLE_ID SITE_IDS KEY\nContoh: /publish <id-artikel> <id-site-1,id-site-2> redaksi-1\nKEY harus unik untuk setiap pengajuan.';
+const STATUS_USAGE = 'Format: /status JOB_ID — untuk memantau status pekerjaan publikasi.';
+const LINKS_USAGE = 'Format: /links JOB_ID — untuk melihat tautan artikel yang telah terbit.';
+const RETRY_USAGE = 'Format: /retry JOB_ID [TARGET_IDS] — untuk mengulang target yang gagal.';
+const UNPUBLISH_USAGE = 'Format: /unpublish JOB_ID [TARGET_IDS] — untuk menarik artikel yang telah terbit.';
+const CALLBACK_COMMANDS: Readonly<Record<string, string>> = Object.freeze({
+  'tg:article': '/article',
+  'tg:image': '/image',
+  'tg:sites': '/sites',
+  'tg:publish': '/publish',
+  'tg:status': '/status',
+  'tg:links': '/links',
+  'tg:retry': '/retry',
+  'tg:unpublish': '/unpublish',
+  'tg:cancel': '/cancel',
+  'tg:help': '/bantuan',
+  'tg:menu': '/start',
+});
+const callbackCommand = (data: string | null): string | null => (data === null ? null : (CALLBACK_COMMANDS[data] ?? null));
+
 export class TelegramWorkflowService {
   constructor(
     private readonly repository: IntegrationsRepository,
@@ -35,6 +66,7 @@ export class TelegramWorkflowService {
     private readonly webhookSecret: string,
     private readonly freshnessSeconds: number,
     private readonly replayTtlSeconds: number,
+    private readonly welcomePhotoUrl: string,
     private readonly clock: { now(): Date } = { now: () => new Date() },
   ) {}
 
@@ -47,7 +79,16 @@ export class TelegramWorkflowService {
   private async reply(text: string): Promise<TelegramWorkflowResult> { return { reply: text }; }
   private parse(raw: unknown): TelegramUpdate | null {
     const parsed = telegramUpdateSchema.safeParse(raw); if (!parsed.success) return null;
-    const message = parsed.data.message;
+    const callback = parsed.data.callback_query;
+    if (callback !== undefined) {
+      const origin = callback.message; if (origin === undefined) return null;
+      return {
+        updateId: String(parsed.data.update_id), occurredAt: new Date(origin.date * 1_000).toISOString(),
+        userId: String(callback.from.id), chatId: String(origin.chat.id), text: null, document: null,
+        callback: { id: callback.id, data: callback.data ?? null },
+      };
+    }
+    const message = parsed.data.message; if (message === undefined) return null;
     const document = message.document;
     const photos = message.photo ?? [];
     let largestPhoto: { readonly fileId: string; readonly sizeBytes?: number } | null = null;
@@ -63,15 +104,15 @@ export class TelegramWorkflowService {
       : { fileId: document.file_id, filename: document.file_name, mediaType: document.mime_type, sizeBytes: document.file_size };
     return {
       updateId: String(parsed.data.update_id), occurredAt: new Date(message.date * 1_000).toISOString(), userId: String(message.from.id), chatId: String(message.chat.id), text: message.text ?? null,
-      document: attachment,
+      document: attachment, callback: null,
     };
   }
 
   private safeFailureReply(error: PublicErrorEnvelope): string {
     if (error.error.code === 'INVALID_INPUT') return error.error.message;
-    if (error.error.code === 'CONFLICT' || error.error.code === 'IDEMPOTENCY_CONFLICT' || error.error.code === 'INVALID_STATE_TRANSITION') return 'The request conflicts with the current state. Refresh status and try again.';
-    if (error.error.code === 'DEPENDENCY_UNAVAILABLE') return 'Telegram processing is temporarily unavailable. Please retry later.';
-    return 'The requested Telegram operation is unavailable.';
+    if (error.error.code === 'CONFLICT' || error.error.code === 'IDEMPOTENCY_CONFLICT' || error.error.code === 'INVALID_STATE_TRANSITION') return 'Permintaan bertentangan dengan status saat ini. Muat ulang status lalu coba lagi.';
+    if (error.error.code === 'DEPENDENCY_UNAVAILABLE') return 'Layanan Telegram sedang tidak tersedia. Silakan coba lagi nanti.';
+    return 'Operasi Telegram yang diminta tidak tersedia.';
   }
   private async finalizePrepared(source: string, replayId: string, bodyDigest: string, claimToken: string): Promise<void> {
     try { await this.repository.finalizeReplay(source, replayId, bodyDigest, claimToken, this.clock.now().toISOString()); }
@@ -80,25 +121,40 @@ export class TelegramWorkflowService {
   private recoveredBusinessOutcome(claim: WebhookReplayClaim): Readonly<Record<string, unknown>> | null {
     const receipt = claim.businessReceipt;
     if (receipt === null || typeof receipt.action !== 'string' || typeof receipt.targetId !== 'string') return null;
-    if (receipt.action === 'article.create') return { reply: `Article created: ${receipt.targetId}`, recovered: true };
+    if (receipt.action === 'article.create') return { reply: `Artikel berhasil dibuat: ${receipt.targetId}`, recovered: true };
     if (receipt.action === 'article.sites.assign') {
       const after = typeof receipt.after === 'object' && receipt.after !== null ? receipt.after as Readonly<Record<string, unknown>> : {};
       const count = Array.isArray(after.siteIds) ? after.siteIds.length : 0;
-      return { reply: `Assigned ${count} Site(s).`, recovered: true };
+      return { reply: `Berhasil menautkan ${count} portal.`, recovered: true };
     }
-    if (receipt.action === 'media.activate') return { reply: `Image uploaded: ${receipt.targetId}`, recovered: true };
-    if (receipt.action === 'publication.request') return { reply: `Publication accepted. Job: ${receipt.targetId}`, recovered: true };
+    if (receipt.action === 'media.activate') return { reply: `Foto terpasang: ${receipt.targetId}`, recovered: true };
+    if (receipt.action === 'publication.request') return { reply: `Publikasi diterima. Job: ${receipt.targetId}`, recovered: true };
     return null;
   }
   /** Delivery runs in `after()` via `deliverReplies()` — never awaited here, so the webhook response is not held by the Telegram API call. */
   async deliverReplies(replies: readonly TelegramPendingReply[], requestId: string): Promise<void> {
     for (const reply of replies) {
       try {
-        await this.telegram.send(reply);
+        if (reply.kind === 'photo') {
+          try {
+            await this.telegram.sendPhoto({ chatId: reply.chatId, photoUrl: reply.photoUrl, caption: reply.caption, ...(reply.keyboard === undefined ? {} : { keyboard: reply.keyboard }) });
+          } catch {
+            await this.telegram.send({ chatId: reply.chatId, text: reply.caption });
+          }
+        } else if (reply.kind === 'callback-answer') {
+          await this.telegram.answerCallback({ callbackId: reply.callbackId, ...(reply.text === undefined ? {} : { text: reply.text }) });
+        } else {
+          await this.telegram.send(reply);
+        }
       } catch (error) {
+        if (reply.kind === 'callback-answer') {
+          logEvent('warn', { event: 'telegram.reply.callback_failed', requestId, context: { name: error instanceof Error ? error.name : 'UnknownError' } });
+          continue;
+        }
         // Balasan tidak boleh hilang: persist ke outbox untuk retry backoff worker.
         try {
-          await this.repository.enqueueOutboxMessage({ organizationId: null, chatId: reply.chatId, text: reply.text, now: this.clock.now().toISOString() });
+          const text = reply.kind === 'photo' ? reply.caption : reply.text;
+          await this.repository.enqueueOutboxMessage({ organizationId: null, chatId: reply.chatId, text, now: this.clock.now().toISOString() });
         } catch {
           logEvent('warn', { event: 'telegram.reply.deferred_failed', requestId, context: { chatId: reply.chatId, name: error instanceof Error ? error.name : 'UnknownError' } });
         }
@@ -151,7 +207,7 @@ export class TelegramWorkflowService {
     const outcome = replayClaim.outcome;
     if (outcome === null) return { ok: false, error: createPublicError('CONFLICT', 'Telegram update is already processing.', requestId) };
     const reply = typeof outcome.reply === 'string' ? outcome.reply : 'Telegram update already processed.';
-    pending.push({ chatId, text: reply });
+    pending.push({ kind: 'text', chatId, text: reply });
     const terminalStatus = replayClaim.status === 'claimed' ? replayClaim.pendingStatus : replayClaim.status;
     if (terminalStatus === 'processed') return { ok: true, value: { reply } };
     const code = outcome.code;
@@ -184,16 +240,16 @@ export class TelegramWorkflowService {
       }
       const identity = await this.repository.resolveTelegramIdentity(update.userId, update.chatId);
       if (identity === null) {
-        const denial = createNonDisclosingDenial(requestId); const reply = this.safeFailureReply(denial);
-        await this.repository.prepareReplayOutcome('telegram', update.updateId, bodyDigest, claimed.claim.claimToken, 'rejected', { code: denial.error.code, message: denial.error.message, reply }, this.clock.now().toISOString());
+        const denial = createNonDisclosingDenial(requestId);
+        await this.repository.prepareReplayOutcome('telegram', update.updateId, bodyDigest, claimed.claim.claimToken, 'rejected', { code: denial.error.code, message: denial.error.message, reply: LINK_REQUIRED_REPLY }, this.clock.now().toISOString());
         await this.finalizePrepared('telegram', update.updateId, bodyDigest, claimed.claim.claimToken);
-        pending.push({ chatId: update.chatId, text: reply });
+        pending.push({ kind: 'text', chatId: update.chatId, text: LINK_REQUIRED_REPLY });
         return done({ ok: false, error: denial });
       }
       const identityDigest = digest(`${identity.organizationId}:${identity.mappingId}:${identity.telegramUserId}:${identity.telegramChatId}`);
       await this.repository.bindReplayIdentity('telegram', update.updateId, bodyDigest, claimed.claim.claimToken, identity.organizationId, identityDigest);
       const actor = this.actor(identity, `telegram-replay:${update.updateId}:${bodyDigest}:${claimed.claim.claimToken}`); const shared = this.services.create();
-      const result = await this.execute(identity, actor, shared, update);
+      const result = await this.execute(identity, actor, shared, update, pending);
       if (!result.ok) {
         const reply = this.safeFailureReply(result.error);
         const replayOutcome = {
@@ -204,37 +260,58 @@ export class TelegramWorkflowService {
         };
         await this.repository.prepareReplayOutcome('telegram', update.updateId, bodyDigest, claimed.claim.claimToken, 'rejected', replayOutcome, this.clock.now().toISOString());
         await this.finalizePrepared('telegram', update.updateId, bodyDigest, claimed.claim.claimToken);
-        pending.push({ chatId: update.chatId, text: reply });
+        pending.push({ kind: 'text', chatId: update.chatId, text: reply });
         return done(result);
       }
       await this.repository.prepareReplayOutcome('telegram', update.updateId, bodyDigest, claimed.claim.claimToken, 'processed', { reply: result.value.reply }, this.clock.now().toISOString());
       await this.finalizePrepared('telegram', update.updateId, bodyDigest, claimed.claim.claimToken);
-      pending.push({ chatId: update.chatId, text: result.value.reply });
+      const display = result.value.display;
+      if (display?.photoUrl !== undefined) pending.push({ kind: 'photo', chatId: update.chatId, photoUrl: display.photoUrl, caption: result.value.reply, keyboard: display.keyboard });
+      else if (display !== undefined) pending.push({ kind: 'text', chatId: update.chatId, text: result.value.reply, keyboard: display.keyboard });
+      else pending.push({ kind: 'text', chatId: update.chatId, text: result.value.reply });
       return done({ ok: true, value: { ...result.value, actor } });
     } catch { return done({ ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'Telegram processing is temporarily unavailable.', requestId) }); }
   }
 
-  private async execute(identity: TelegramIdentity, actor: AuthorizedTenantActorContext, shared: TelegramSharedServices, update: TelegramUpdate): Promise<Result<TelegramWorkflowResult, PublicErrorEnvelope>> {
-    const text = update.text?.trim() ?? '';
-    if (text === '/cancel') { await this.repository.clearTelegramConversation(identity); return { ok: true, value: await this.reply('Conversation cancelled.') }; }
+  private welcome(): TelegramWorkflowResult {
+    return { reply: WELCOME_CAPTION, display: { photoUrl: this.welcomePhotoUrl, keyboard: MAIN_KEYBOARD } };
+  }
+  private help(): TelegramWorkflowResult {
+    return { reply: HELP_TEXT, display: { keyboard: MAIN_KEYBOARD } };
+  }
+
+  private async execute(identity: TelegramIdentity, actor: AuthorizedTenantActorContext, shared: TelegramSharedServices, update: TelegramUpdate, pending: TelegramPendingReply[]): Promise<Result<TelegramWorkflowResult, PublicErrorEnvelope>> {
+    if (update.callback !== null) pending.push({ kind: 'callback-answer', callbackId: update.callback.id });
+    const mapped = update.callback !== null ? callbackCommand(update.callback.data) : update.text?.trim() ?? '';
+    if (mapped === null) return { ok: true, value: this.help() };
+    const text = mapped;
+    if (text === '/start' || text === '/menu') return { ok: true, value: this.welcome() };
+    if (text === '/bantuan' || text === '/help') return { ok: true, value: this.help() };
+    if (text === '/cancel') { await this.repository.clearTelegramConversation(identity); return { ok: true, value: await this.reply('Percakapan dibatalkan.') }; }
     if (text === '/regions') {
       const listed = await shared.articles.listEditorial(actor); if (!listed.ok) return listed;
       const values = listed.value.regions.filter(({ status }) => status === 'active').map(({ id, name }) => `${name}: ${id}`);
-      return { ok: true, value: await this.reply(values.length === 0 ? 'No active Regions.' : values.join('\n')) };
+      return { ok: true, value: await this.reply(values.length === 0 ? 'Tidak ada Region yang aktif.' : values.join('\n')) };
     }
-    if (text === '/sites') return { ok: true, value: await this.reply('Usage: /sites ARTICLE_ID to list active Sites in the Article Region.') };
-    if (text === '/article') { await this.repository.saveTelegramConversation(identity, this.conversation(identity, 'article_region', {})); return { ok: true, value: await this.reply('Send the active Region ID.') }; }
+    if (text === '/sites') return { ok: true, value: await this.reply(SITES_USAGE) };
+    if (text === '/image') return { ok: true, value: await this.reply(IMAGE_USAGE) };
+    if (text === '/publish') return { ok: true, value: await this.reply(PUBLISH_USAGE) };
+    if (text === '/status') return { ok: true, value: await this.reply(STATUS_USAGE) };
+    if (text === '/links') return { ok: true, value: await this.reply(LINKS_USAGE) };
+    if (text === '/retry') return { ok: true, value: await this.reply(RETRY_USAGE) };
+    if (text === '/unpublish') return { ok: true, value: await this.reply(UNPUBLISH_USAGE) };
+    if (text === '/article') { await this.repository.saveTelegramConversation(identity, this.conversation(identity, 'article_region', {})); return { ok: true, value: await this.reply('Silakan kirim ID Region yang aktif. /cancel untuk membatalkan.') }; }
     if (text.startsWith('/image ')) {
-      const [, articleId] = words(text); if (articleId === undefined) return { ok: true, value: await this.reply('Usage: /image ARTICLE_ID') };
+      const [, articleId] = words(text); if (articleId === undefined) return { ok: true, value: await this.reply(IMAGE_USAGE) };
       await this.repository.saveTelegramConversation(identity, this.conversation(identity, 'article_image', { articleId })); return { ok: true, value: await this.reply('Kirim foto (langsung atau sebagai file, satu per pesan, boleh banyak). /cancel untuk selesai.') };
     }
     if (text.startsWith('/sites ')) {
-      const [, articleId] = words(text); if (articleId === undefined) return { ok: true, value: await this.reply('Usage: /sites ARTICLE_ID') };
+      const [, articleId] = words(text); if (articleId === undefined) return { ok: true, value: await this.reply(SITES_USAGE) };
       const listed = await shared.articles.listEditorial(actor); if (!listed.ok) return listed;
       const article = listed.value.articles.find(({ id }) => id === articleId);
       if (article === undefined) return { ok: false, error: createNonDisclosingDenial(actor.requestId) };
       const available = listed.value.sites.filter(({ status }) => status === 'active');
-      if (available.length === 0) return { ok: true, value: await this.reply('No active Sites are available.') };
+      if (available.length === 0) return { ok: true, value: await this.reply('Tidak ada portal aktif yang tersedia.') };
       const regionName = (regionId: string | null) => regionId === null ? 'induk' : listed.value.regions.find(({ id }) => id === regionId)?.name ?? regionId;
       await this.repository.saveTelegramConversation(identity, this.conversation(identity, 'article_sites', { articleId, regionId: article.regionId, availableSiteIds: available.map(({ id }) => id) }));
       return { ok: true, value: await this.reply(`Satu artikel bisa tayang di semua portal (region artikel: ${regionName(article.regionId)}). Kirim Site ID dipisah koma:\n${available.map(({ id, normalizedHostname, regionId: siteRegion }) => `${normalizedHostname} [${regionName(siteRegion)}]: ${id}`).join('\n')}`) };
@@ -243,42 +320,42 @@ export class TelegramWorkflowService {
       const [, articleId, siteList, idempotencyKey] = words(text);
       const publication = await shared.publication.request(actor, { articleId, siteIds: ids(siteList ?? ''), idempotencyKey, options: {} });
       if (!publication.ok) return publication;
-      return { ok: true, value: { ...(await this.reply(`Publication ${publication.value.job.state}. Job: ${publication.value.job.id}`)), businessResult: publication.value } };
+      return { ok: true, value: { ...(await this.reply(`Publikasi ${publication.value.job.state}. Job: ${publication.value.job.id}`)), businessResult: publication.value } };
     }
     if (text.startsWith('/status ') || text.startsWith('/links ')) {
       const [command, jobId] = words(text); const status = await shared.publication.status(actor, { jobId }); if (!status.ok) return status;
-      const urls = status.value.result?.urls ?? []; const reply = command === '/links' ? (urls.length === 0 ? `No published links. State: ${status.value.job.state}` : urls.join('\n')) : `State: ${status.value.job.state}; successful: ${status.value.result?.successfulCount ?? status.value.targets.filter(({ state }) => state === 'published').length}${urls.length === 0 ? '' : `; ${urls.join(' ')}`}`;
+      const urls = status.value.result?.urls ?? []; const reply = command === '/links' ? (urls.length === 0 ? `Belum ada tautan terbit. Status: ${status.value.job.state}` : urls.join('\n')) : `Status: ${status.value.job.state}; berhasil: ${status.value.result?.successfulCount ?? status.value.targets.filter(({ state }) => state === 'published').length}${urls.length === 0 ? '' : `; ${urls.join(' ')}`}`;
       return { ok: true, value: { ...(await this.reply(reply)), businessResult: status.value } };
     }
     if (text.startsWith('/retry ')) {
       const [, jobId, targetList] = words(text);
       const retried = await shared.publication.retry(actor, { jobId, ...(targetList === undefined ? {} : { targetIds: ids(targetList) }) });
       if (!retried.ok) return retried;
-      return { ok: true, value: { ...(await this.reply(`Retry queued. State: ${retried.value.job.state}`)), businessResult: retried.value } };
+      return { ok: true, value: { ...(await this.reply(`Pengulangan antre. Status: ${retried.value.job.state}`)), businessResult: retried.value } };
     }
     if (text.startsWith('/unpublish ')) {
       const [, jobId, targetList] = words(text);
       const withdrawn = await shared.publication.unpublish(actor, { jobId, ...(targetList === undefined ? {} : { targetIds: ids(targetList) }) });
       if (!withdrawn.ok) return withdrawn;
-      return { ok: true, value: { ...(await this.reply(`Unpublished. State: ${withdrawn.value.job.state}`)), businessResult: withdrawn.value } };
+      return { ok: true, value: { ...(await this.reply(`Publikasi ditarik. Status: ${withdrawn.value.job.state}`)), businessResult: withdrawn.value } };
     }
     const conversation = await this.repository.readTelegramConversation(identity);
-    if (conversation === null || new Date(conversation.expiresAt) <= this.clock.now()) return { ok: true, value: await this.reply('Commands: /article, /image ARTICLE_ID, /regions, /sites ARTICLE_ID, /publish ARTICLE_ID SITE_IDS KEY, /status JOB_ID, /links JOB_ID, /retry JOB_ID, /unpublish JOB_ID.') };
+    if (conversation === null || new Date(conversation.expiresAt) <= this.clock.now()) return { ok: true, value: await this.reply(UNKNOWN_COMMAND_REPLY) };
     return this.advance(identity, actor, shared, update, conversation);
   }
 
   private async advance(identity: TelegramIdentity, actor: AuthorizedTenantActorContext, shared: TelegramSharedServices, update: TelegramUpdate, conversation: TelegramConversation): Promise<Result<TelegramWorkflowResult, PublicErrorEnvelope>> {
     const text = update.text?.trim() ?? '';
     const next = async (step: TelegramConversation['step'], field: string, value: unknown, reply: string) => { await this.repository.saveTelegramConversation(identity, this.conversation(identity, step, { ...conversation.data, [field]: value })); return { ok: true as const, value: await this.reply(reply) }; };
-    if (conversation.step === 'article_region') return next('article_title', 'regionId', text, 'Send the article title.');
-    if (conversation.step === 'article_title') return next('article_body', 'title', text, 'Send the article body.');
-    if (conversation.step === 'article_body') return next('article_source', 'body', text, 'Send the source attribution.');
-    if (conversation.step === 'article_source') return next('article_slug', 'source', text, 'Send a hostname-safe article slug.');
+    if (conversation.step === 'article_region') return next('article_title', 'regionId', text, 'Kirim judul artikel.');
+    if (conversation.step === 'article_title') return next('article_body', 'title', text, 'Kirim isi artikel.');
+    if (conversation.step === 'article_body') return next('article_source', 'body', text, 'Kirim atribusi sumber.');
+    if (conversation.step === 'article_source') return next('article_slug', 'source', text, 'Kirim slug artikel (huruf kecil, tanpa spasi, aman untuk URL).');
     if (conversation.step === 'article_slug') {
       const created = await shared.articles.createArticle(actor, { ...conversation.data, slug: text, publisherId: null, categoryId: null, authorId: null, status: 'draft' });
       if (!created.ok) return created;
       await this.repository.clearTelegramConversation(identity);
-      return { ok: true, value: { ...(await this.reply(`Article created: ${created.value.id}`)), businessResult: created.value } };
+      return { ok: true, value: { ...(await this.reply(`Artikel berhasil dibuat: ${created.value.id}`)), businessResult: created.value } };
     }
     if (conversation.step === 'article_sites') {
       const requestedSiteIds = ids(text);
@@ -287,7 +364,7 @@ export class TelegramWorkflowService {
         return { ok: false, error: createPublicError('INVALID_INPUT', 'Pilih hanya Site aktif dari daftar.', actor.requestId, { siteIds: ['One or more Sites are unavailable.'] }) };
       }
       const assigned = await shared.articles.assignArticleSites(actor, { articleId: conversation.data.articleId, siteIds: requestedSiteIds }); if (!assigned.ok) return assigned;
-      await this.repository.clearTelegramConversation(identity); return { ok: true, value: { ...(await this.reply(`Assigned ${assigned.value.length} Site(s).`)), businessResult: assigned.value } };
+      await this.repository.clearTelegramConversation(identity); return { ok: true, value: { ...(await this.reply(`Berhasil menautkan ${assigned.value.length} portal.`)), businessResult: assigned.value } };
     }
     if (conversation.step === 'article_image') {
       if (update.document === null) return { ok: true, value: await this.reply('Kirim foto atau dokumen gambar untuk artikel ini. /cancel untuk selesai.') };
@@ -314,6 +391,6 @@ export class TelegramWorkflowService {
       await this.repository.saveTelegramConversation(identity, this.conversation(identity, 'article_image', { articleId }));
       return { ok: true, value: { ...(await this.reply(`Foto ke-${Math.max(1, position)} terpasang ([gambar:${Math.max(1, position)}]). Kirim lagi atau /cancel.`)), businessResult: completed.value } };
     }
-    await this.repository.clearTelegramConversation(identity); return { ok: true, value: await this.reply('Conversation reset. Start again with /article.') };
+    await this.repository.clearTelegramConversation(identity); return { ok: true, value: await this.reply('Percakapan diatur ulang. Mulai lagi dengan /article.') };
   }
 }

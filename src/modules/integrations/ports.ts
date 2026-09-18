@@ -1,6 +1,6 @@
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type {
-  ApiKeyRecord, CustomerProjection, StoredApiKey, SubscriptionRecord, TelegramConversation, TelegramIdentity, TelegramMappingRecord, WebhookReplayClaim,
+  ApiKeyRecord, CustomerProjection, StoredApiKey, SubscriptionRecord, TelegramConversation, TelegramIdentity, TelegramInlineKeyboard, TelegramMappingRecord, WebhookReplayClaim,
 } from '@/modules/integrations/models';
 import type { RateLimitDecision, RateLimitPolicy } from '@/modules/integrations/models';
 import type { ExactObjectAuthorization } from '@/integrations/storage/ports';
@@ -80,6 +80,19 @@ export interface RateLimitPort {
 export interface TelegramMessage {
   readonly chatId: string;
   readonly text: string;
+  readonly keyboard?: TelegramInlineKeyboard;
+}
+
+export interface TelegramPhotoMessage {
+  readonly chatId: string;
+  readonly photoUrl: string;
+  readonly caption: string;
+  readonly keyboard?: TelegramInlineKeyboard;
+}
+
+export interface TelegramCallbackAnswer {
+  readonly callbackId: string;
+  readonly text?: string;
 }
 
 export class TelegramRateLimitedError extends Error {
@@ -99,6 +112,8 @@ export interface TelegramOutboxRecord {
 
 export interface TelegramPort extends HealthCheckPort {
   send(message: TelegramMessage): Promise<void>;
+  sendPhoto(message: TelegramPhotoMessage): Promise<void>;
+  answerCallback(answer: TelegramCallbackAnswer): Promise<void>;
 }
 
 export interface PreparedTelegramMedia {

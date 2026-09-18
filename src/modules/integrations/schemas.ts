@@ -85,6 +85,16 @@ const telegramPhotoSchema = z.object({
   file_id: z.string().min(1).max(255),
   file_size: z.number().int().positive().optional(),
 }).passthrough();
+const telegramCallbackQuerySchema = z.object({
+  id: z.string().min(1).max(255),
+  from: z.object({ id: z.union([z.number().int(), z.string().regex(/^-?\d+$/)]) }).passthrough(),
+  message: z.object({
+    message_id: z.union([z.number().int(), z.string().regex(/^\d+$/)]),
+    date: z.number().int().nonnegative(),
+    chat: z.object({ id: z.union([z.number().int(), z.string().regex(/^-?\d+$/)]) }).passthrough(),
+  }).passthrough().optional(),
+  data: z.string().min(1).max(256).optional(),
+}).passthrough();
 export const telegramUpdateSchema = z.object({
   update_id: z.union([z.number().int().nonnegative(), z.string().regex(/^\d+$/)]),
   message: z.object({
@@ -94,8 +104,9 @@ export const telegramUpdateSchema = z.object({
     text: z.string().max(20_000).optional(),
     document: telegramDocumentSchema.optional(),
     photo: z.array(telegramPhotoSchema).optional(),
-  }).passthrough(),
-}).passthrough();
+  }).passthrough().optional(),
+  callback_query: telegramCallbackQuerySchema.optional(),
+}).passthrough().refine((value) => value.message !== undefined || value.callback_query !== undefined);
 
 export const rateLimitPolicySchema = z.object({
   allowance: z.number().int().min(1).max(10_000),
