@@ -96,12 +96,29 @@ export class CloudflareAuthorityAdapter implements CloudflareAuthorityPort {
     for (const record of records) if (record.name === name && record.content === value) await this.call(`/zones/${zone.id}/dns_records/${record.id}`, { method: 'DELETE' });
   }
 
+  private readonly zoneCache = new Map<string, Zone>();
+
   private async zoneForHostname(hostname: string): Promise<Zone> {
-    // TXT/purge probe over account zones; exact hostname suffix match only.
-    const zones = await this.call<Zone[]>(`/zones?per_page=50`);
-    const match = zones.find((zone) => hostname === zone.name || hostname.endsWith(`.${zone.name}`));
-    if (match === undefined) throw new Error('cloudflare_zone_unavailable');
-    return match;
+    // Exact lookup first, then paginated suffix scan: account ini menampung
+    // ratusan zone sehingga satu halaman (per_page=50) tidak pernah cukup.
+    const hit = this.zoneCache.get(hostname);
+    if (hit !== undefined) return hit;
+    const exact = await this.call<Zone[]>(`/zones?name=${encodeURIComponent(hostname)}&per_page=5`);
+    const direct = exact.find((zone) => zone.name === hostname);
+    if (direct !== undefined) {
+      this.zoneCache.set(hostname, direct);
+      return direct;
+    }
+    for (let page = 1; ; page += 1) {
+      const zones = await this.call<Zone[]>(`/zones?per_page=50&page=${page}`);
+      const match = zones.find((zone) => hostname === zone.name || hostname.endsWith(`.${zone.name}`));
+      if (match !== undefined) {
+        this.zoneCache.set(hostname, match);
+        return match;
+      }
+      if (zones.length < 50) break;
+    }
+    throw new Error('cloudflare_zone_unavailable');
   }
 
   async purgeExactUrls(urls: readonly string[]) {
