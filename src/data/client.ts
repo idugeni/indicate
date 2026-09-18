@@ -16,6 +16,9 @@ export function createRuntimeDatabase(config: BootstrapConfig) {
     prepare: false,
     idle_timeout: 20,
     connect_timeout: 10,
+    // Daur ulang koneksi tiap 30 mnt agar koneksi basi ke pooler (pernah
+    // CONNECT_TIMEOUT massal) diganti proaktif sebelum dipakai request.
+    max_lifetime: 60 * 30,
     // Fail-fast 15 dtk per statement (GUC Postgres = milidetik, diverifikasi
     // via node_modules/postgres ConnectionParameters + runtime-config docs):
     // query macet (pernah 1× statement timeout 57014 di production) tidak

@@ -5,6 +5,8 @@ import { ChannelPage } from '@/modules/site/components/network/network-listing';
 import { CleanBlueLoader } from '@/modules/site/components/network/templates/clean-blue/ui/loader';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
+export const maxDuration = 60;
+
 type Props = {
   readonly params: Promise<{ slug: string }>;
 };

@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { SearchPage } from '@/modules/site/components/network/network-listing';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
+export const maxDuration = 60;
+
 type Props = {
   readonly searchParams: Promise<{ q?: string } & { [key: string]: string | string[] | undefined }>;
 };
