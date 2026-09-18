@@ -30,6 +30,7 @@ export const invoices = pgTable('invoices', {
   status: invoiceStatus('status').default('paid').notNull(),
   paidAt: timestamp('paid_at', { withTimezone: true }).notNull(),
   billingNote: text('billing_note'),
+  paymentMethod: text('payment_method').default('Transfer bank').notNull(),
   createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   voidedAt: timestamp('voided_at', { withTimezone: true }),
   voidReason: text('void_reason'),
@@ -38,6 +39,7 @@ export const invoices = pgTable('invoices', {
 }, (table) => [
   uniqueIndex('invoices_number_unique').on(table.number),
   check('invoices_amount_nonnegative', sql`${table.amountIdr} >= 0`),
+  check('invoices_payment_method_bounded', sql`length(${table.paymentMethod}) BETWEEN 1 AND 40`),
   check('invoices_version_positive', sql`${table.version} > 0`),
   index('invoices_org_paid_idx').on(table.organizationId, table.paidAt),
 ]);

@@ -13,6 +13,7 @@ interface InvoiceRow {
   readonly status: 'paid' | 'voided';
   readonly paidAt: string;
   readonly billingNote: string | null;
+  readonly paymentMethod: string;
   readonly voidedAt: string | null;
   readonly voidReason: string | null;
   readonly version: number;
@@ -61,6 +62,7 @@ export function BillingPanel({
   const [invoiceAmount, setInvoiceAmount] = useState('');
   const [invoicePaidAt, setInvoicePaidAt] = useState('');
   const [invoiceNote, setInvoiceNote] = useState('');
+  const [invoiceMethod, setInvoiceMethod] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -157,12 +159,14 @@ export function BillingPanel({
         amountIdr: amount,
         paidAt,
         billingNote: invoiceNote.trim() === '' ? null : invoiceNote.trim(),
+        paymentMethod: invoiceMethod.trim() === '' ? null : invoiceMethod.trim(),
       });
       setNotice('Invoice tercatat.');
       setInvoiceOrgId('');
       setInvoiceAmount('');
       setInvoicePaidAt('');
       setInvoiceNote('');
+      setInvoiceMethod('');
       await reload();
     } catch {
       setError('Invoice gagal dicatat.');
@@ -312,7 +316,7 @@ export function BillingPanel({
           <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
             Nomor faktur format IND-{`{ORG}`}-{`{YYMM}`}-{`{SEQ}`}-{`{RAND}`} dibuat otomatis dan tidak bisa ditebak. Invoice tercatat langsung berstatus lunas.
           </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="invoice-org-id" className="font-sans text-xs font-medium text-paper-dim">
                 UUID organisasi
@@ -349,6 +353,16 @@ export function BillingPanel({
               <input
                 id="invoice-note" value={invoiceNote} onChange={(event) => setInvoiceNote(event.target.value)} disabled={busy}
                 placeholder="Bank, periode, keterangan…"
+                className="h-9 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="invoice-method" className="font-sans text-xs font-medium text-paper-dim">
+                Metode (opsional)
+              </label>
+              <input
+                id="invoice-method" value={invoiceMethod} onChange={(event) => setInvoiceMethod(event.target.value)} disabled={busy}
+                placeholder="Transfer bank" spellCheck={false} maxLength={40}
                 className="h-9 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
               />
             </div>

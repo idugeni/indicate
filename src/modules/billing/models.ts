@@ -8,6 +8,7 @@ export interface InvoiceRecord {
   readonly status: 'paid' | 'voided';
   readonly paidAt: string;
   readonly billingNote: string | null;
+  readonly paymentMethod: string;
   readonly voidedAt: string | null;
   readonly voidReason: string | null;
   readonly version: number;

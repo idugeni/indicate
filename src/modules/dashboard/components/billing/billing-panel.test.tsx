@@ -31,6 +31,7 @@ const FAKTUR = [
     status: 'paid',
     paidAt: '2026-01-05T00:00:00.000Z',
     billingNote: 'Transfer bank',
+    paymentMethod: 'Transfer bank',
     voidedAt: null,
     voidReason: null,
     version: 1,

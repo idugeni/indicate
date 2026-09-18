@@ -97,6 +97,7 @@ export class BillingService {
           amountIdr: parsed.data.amountIdr,
           paidAt: parsed.data.paidAt,
           billingNote: parsed.data.billingNote ?? null,
+          paymentMethod: parsed.data.paymentMethod ?? 'Transfer bank',
           requestId: actor.requestId,
           now,
         }),

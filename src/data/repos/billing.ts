@@ -74,13 +74,13 @@ export class DrizzleBillingRepository implements BillingRepository {
 
   private static toInvoiceRecord(row: {
     id: string; organization_id: string; organization_name: string; number: string; amount_idr: number; currency: string;
-    status: InvoiceRecord['status']; paid_at: Date | string; billing_note: string | null;
+    status: InvoiceRecord['status']; paid_at: Date | string; billing_note: string | null; payment_method: string;
     voided_at: Date | string | null; void_reason: string | null; version: number; created_at: Date | string;
   }): InvoiceRecord {
     const iso = (value: Date | string): string => (value instanceof Date ? value : new Date(value)).toISOString();
     return Object.freeze({
       id: row.id, organizationId: row.organization_id, organizationName: row.organization_name, number: row.number, amountIdr: row.amount_idr,
-      currency: row.currency, status: row.status, paidAt: iso(row.paid_at), billingNote: row.billing_note,
+      currency: row.currency, status: row.status, paidAt: iso(row.paid_at), billingNote: row.billing_note, paymentMethod: row.payment_method,
       voidedAt: row.voided_at === null ? null : iso(row.voided_at), voidReason: row.void_reason,
       version: row.version, createdAt: iso(row.created_at),
     });
@@ -93,7 +93,7 @@ export class DrizzleBillingRepository implements BillingRepository {
         await this.billingContext(tx, actor);
         const rows = await tx.execute<{
           id: string; organization_id: string; organization_name: string; number: string; amount_idr: number; currency: string;
-          status: InvoiceRecord['status']; paid_at: Date | string; billing_note: string | null;
+          status: InvoiceRecord['status']; paid_at: Date | string; billing_note: string | null; payment_method: string;
           voided_at: Date | string | null; void_reason: string | null; version: number; created_at: Date | string;
         }>(sql`SELECT * FROM indicate_private.invoice_list_for_org(${id}::uuid, ${organizationId}::uuid)`);
         return rows.map((row) => DrizzleBillingRepository.toInvoiceRecord(row));
@@ -104,17 +104,17 @@ export class DrizzleBillingRepository implements BillingRepository {
     }
   }
 
-  async createInvoice(actor: ActorContext, input: { readonly organizationId: string; readonly amountIdr: number; readonly paidAt: string; readonly billingNote: string | null; readonly requestId: string; readonly now: string }): Promise<InvoiceRecord> {
+  async createInvoice(actor: ActorContext, input: { readonly organizationId: string; readonly amountIdr: number; readonly paidAt: string; readonly billingNote: string | null; readonly paymentMethod: string; readonly requestId: string; readonly now: string }): Promise<InvoiceRecord> {
     const { id } = userActor(actor);
     try {
       return await this.database.transaction(async (tx) => {
         await this.billingContext(tx, actor);
-        const created = await tx.execute<{ invoice_create: string }>(sql`SELECT indicate_private.invoice_create(${id}::uuid, ${input.requestId}, ${input.organizationId}::uuid, ${input.amountIdr}, ${input.paidAt}::timestamptz, ${input.billingNote}, ${input.now}::timestamptz) AS invoice_create`);
+        const created = await tx.execute<{ invoice_create: string }>(sql`SELECT indicate_private.invoice_create(${id}::uuid, ${input.requestId}, ${input.organizationId}::uuid, ${input.amountIdr}, ${input.paidAt}::timestamptz, ${input.billingNote}, ${input.now}::timestamptz, ${input.paymentMethod}) AS invoice_create`);
         const invoiceId = created[0]?.invoice_create;
         if (invoiceId === undefined) throw new BillingConflictError();
         const rows = await tx.execute<{
           id: string; organization_id: string; organization_name: string; number: string; amount_idr: number; currency: string;
-          status: InvoiceRecord['status']; paid_at: Date | string; billing_note: string | null;
+          status: InvoiceRecord['status']; paid_at: Date | string; billing_note: string | null; payment_method: string;
           voided_at: Date | string | null; void_reason: string | null; version: number; created_at: Date | string;
         }>(sql`SELECT * FROM indicate_private.invoice_list_for_org(${id}::uuid, ${input.organizationId}::uuid)`);
         const row = rows.find((candidate) => candidate.id === invoiceId);
@@ -137,7 +137,7 @@ export class DrizzleBillingRepository implements BillingRepository {
         if (updated[0]?.invoice_void !== true) throw new BillingConflictError();
         const rows = await tx.execute<{
           id: string; organization_id: string; organization_name: string; number: string; amount_idr: number; currency: string;
-          status: InvoiceRecord['status']; paid_at: Date | string; billing_note: string | null;
+          status: InvoiceRecord['status']; paid_at: Date | string; billing_note: string | null; payment_method: string;
           voided_at: Date | string | null; void_reason: string | null; version: number; created_at: Date | string;
         }>(sql`SELECT i.*, o.name AS organization_name FROM public.invoices i JOIN public.organizations o ON o.id = i.organization_id WHERE i.id = ${input.invoiceId}::uuid LIMIT 1`);
         const row = rows[0];

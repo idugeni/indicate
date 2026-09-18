@@ -18,6 +18,7 @@ export const invoiceCreateSchema = z.object({
   amountIdr: z.number().int().min(0).max(999_999_999_999),
   paidAt: z.iso.datetime(),
   billingNote: z.string().trim().max(500).nullish(),
+  paymentMethod: z.string().trim().min(1).max(40).nullish(),
 }).strict();
 
 export const invoiceVoidSchema = z.object({

@@ -14,6 +14,7 @@ const BASE: InvoiceRecord = {
   status: 'paid',
   paidAt: '2026-09-01T00:00:00.000Z',
   billingNote: null,
+  paymentMethod: 'Transfer bank',
   voidedAt: null,
   voidReason: null,
   version: 2,
@@ -81,6 +82,11 @@ describe('invoiceDocument', () => {
     const html = invoiceDocument({ ...BASE, amountIdr: 5_000_000 }, SEALS);
     expect(html).toContain('Lima Juta Rupiah');
     expect(html).toContain('meterai');
+  });
+
+  it('menampilkan metode pembayaran dari catatan berjalan', () => {
+    const html = invoiceDocument({ ...BASE, paymentMethod: 'QRIS' }, SEALS);
+    expect(html).toContain('QRIS');
   });
 
   it('menyembunyikan catatan meterai di bawah ambang', () => {
