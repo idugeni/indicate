@@ -21,10 +21,28 @@ Use the connected tools when they help. Retrieval beats memory, but nothing here
   soon after authoring, but an unapplied migration file is allowed as WIP.
 - **cloudflare-docs MCP**: recommended before citing any Cloudflare limit,
   price, or API shape.
+- **cloudflare-api MCP**: use for live zone, DNS, and account inspection;
+  pair with the `cloudflare` skill for implementation patterns.
 - **context7 MCP**: recommended before writing code against any library,
   framework, or SDK.
+- **sequential-thinking MCP**: use to break down complex architecture or
+  debugging questions before answering.
+- **exa MCP**: use for live web search and page fetch when Context7 or
+  vendor docs are insufficient.
 - **chrome-devtools MCP**: use to verify UI/rendering and web performance
   when useful, not mandatory.
+- **next-devtools MCP**: use for Next.js App Router diagnostics alongside
+  browser verification.
+- **webmcp MCP**: use for browser-side automation flows when
+  `chrome-devtools MCP` alone is insufficient.
+- **vercel MCP**: use to inspect project and deployment state before changing
+  hosting config; pair with `vercel-optimize` and
+  `vercel-react-best-practices` skills.
+- **upstash-redis MCP**: global-only, not in `.mcp.json`; use to inspect live
+  cache and queue state. Redis is acceleration only, never durable authority;
+  pair with the `upstash-redis-js` skill for client code.
+- **resend MCP**: use for email delivery inspection and debugging; never log
+  API keys or PII.
 - **Skills**: load via the skill tool when the task matches. Key triggers:
   any repo code → `indicate-conventions`; any Supabase work → `supabase`
   (+ `supabase-postgres-best-practices` for schema/SQL/RLS/index work);
