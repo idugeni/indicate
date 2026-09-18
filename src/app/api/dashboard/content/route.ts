@@ -28,6 +28,7 @@ const faqSchema = z.object({
   id: z.uuid(),
   question: z.string().trim().min(1).max(500),
   answer: z.string().trim().min(1).max(4000),
+  category: z.string().trim().min(1).max(60),
   sortOrder: z.number().int().min(0).max(1000),
   active: z.boolean(),
 }).strict();

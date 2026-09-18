@@ -19,6 +19,7 @@ export interface FaqRow {
   readonly id: string;
   readonly question: string;
   readonly answer: string;
+  readonly category: string | null;
 }
 
 export async function readFaqs(db: Database): Promise<readonly FaqRow[]> {
@@ -27,7 +28,7 @@ export async function readFaqs(db: Database): Promise<readonly FaqRow[]> {
     .from(faqs)
     .where(eq(faqs.active, true))
     .orderBy(asc(faqs.sortOrder), asc(faqs.question));
-  return Object.freeze(rows.map((row) => Object.freeze({ id: row.id, question: row.question, answer: row.answer })));
+  return Object.freeze(rows.map((row) => Object.freeze({ id: row.id, question: row.question, answer: row.answer, category: row.category })));
 }
 
 export async function readTestimonials(db: Database): Promise<readonly TestimonialRow[]> {

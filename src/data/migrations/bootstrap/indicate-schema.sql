@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (124 migrations):
+-- Reviewed sources, in journal order (125 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -137,6 +137,7 @@
 --   122  20260917020000_fix_upt_city_bapas_magelang  ledger sha256:a052e94a5c51ab785a3ca16e9f043d1ef9621e0be3e7503d4fb6037616e6fce9
 --   123  20260917030000_fix_upt_city_slawi  ledger sha256:b7051605faabec496d888d89b6db53cfa29ba04bcfaaa1326a1dfcd1eed11bae
 --   124  20260918000000_faq_canonical_13  ledger sha256:557d615cfa121741dfa1db667332fa088caf55b7521e7aafcd236ff5ee29a0a7
+--   125  20260918010000_faq_category  ledger sha256:f22a45aa12055e1739064e9a160a7b4cf223fd75f42baba2c9c3233ef67b3b2d
 
 BEGIN;
 
@@ -11484,4 +11485,25 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (124, 'faq_canonical_13', 'sha256:45b7a6df70bf29dabe7ce021357fe4bcce6a60351c74035d46f3d9a1b216cab8');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('557d615cfa121741dfa1db667332fa088caf55b7521e7aafcd236ff5ee29a0a7', 1789699812796);
+
+-- ----------------------------------------------------------------------
+-- 20260918010000_faq_category
+-- ----------------------------------------------------------------------
+-- Topik FAQ untuk pengelompokan pusat bantuan.
+--
+-- Expand (nullable); baca fallback ke 'Umum' bila NULL; backfill 13 baris
+-- kanonis sesuai topiknya (Platform, Penerbitan, Langganan & Biaya,
+-- Keamanan Data, Migrasi, Bantuan). Checksum di bawah adalah sha256 heks
+-- dari isi berkas ini sebelum baris INSERT ledger.
+ALTER TABLE public.faqs ADD COLUMN IF NOT EXISTS "category" text;
+UPDATE public.faqs SET category = 'Platform' WHERE id = 'dfd974ec-3490-4345-9201-cc46f5e78302';
+UPDATE public.faqs SET category = 'Penerbitan' WHERE id IN ('b1f479b0-a5db-4ba7-a335-62dff874b389', '64258005-e08f-4d51-af15-82703f9832f4');
+UPDATE public.faqs SET category = 'Langganan & Biaya' WHERE id IN ('63f24875-3436-4a7f-b730-4441c0106a1c', '2a0f30ac-20aa-4971-9502-944c35c1c705', 'dc114ddc-b39c-4691-920c-4f9448aff113', '64c110a9-da4b-4e9f-9be8-1190096ad96a', '761e83a9-b50d-4766-81c9-efd5652642cd', 'acd28953-8f62-42a8-9e11-9916dd86b793');
+UPDATE public.faqs SET category = 'Keamanan Data' WHERE id = 'b1d4b620-5724-40d5-8b29-ee1654d23f47';
+UPDATE public.faqs SET category = 'Migrasi' WHERE id = '1de04400-5846-4d71-a6e4-b66668c3fc76';
+UPDATE public.faqs SET category = 'Bantuan' WHERE id IN ('d849d3fe-c818-469d-bc54-10aa1b8dd235', '7e9f1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b');
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (125, 'faq_category', 'sha256:2b23e29c0fd17a13e0940e7156632f27c6a992c8e9deddb97598bc125b3c7a65');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f22a45aa12055e1739064e9a160a7b4cf223fd75f42baba2c9c3233ef67b3b2d', 1789734433960);
 COMMIT;

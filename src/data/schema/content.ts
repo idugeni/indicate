@@ -30,6 +30,7 @@ export const faqs = pgTable('faqs', {
   id: uuid('id').primaryKey(),
   question: text('question').notNull(),
   answer: text('answer').notNull(),
+  category: text('category'),
   sortOrder: integer('sort_order').default(0).notNull(),
   active: boolean('active').default(true).notNull(),
   ...timestamps,

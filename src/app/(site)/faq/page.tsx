@@ -4,7 +4,8 @@ import { getFaqs } from '@/modules/content/site-content';
 import { siteMetadata } from '@/ui/site/metadata-guard';
 import { buildFaqPageSchema } from '@/modules/site/seo';
 import { JsonLd } from '@/modules/site/components/network/json-ld';
-import { FaqAccordion, Section, SecondaryCta, toFaqGridItems } from '@/modules/site/components/layout/content';
+import { HeaderSecondaryCta, Section, toFaqGridItems } from '@/modules/site/components/layout/content';
+import { FaqBrowser } from '@/modules/site/components/layout/faq-browser';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
 const DESCRIPTION = 'Pertanyaan yang paling sering diajukan tentang pengelolaan banyak domain berita dari satu tempat.';
@@ -23,10 +24,10 @@ export default async function FaqPage() {
       description={DESCRIPTION}
       meta={[`${items.length} jawaban singkat`, 'Tanpa antre tiket', 'Dijawab manusia']}
       trail={[{ href: '/', label: 'Beranda' }]}
-      actions={<SecondaryCta href="/contact">Masih Bingung? Hubungi Kami</SecondaryCta>}
+      actions={<HeaderSecondaryCta href="/contact">Masih Bingung? Hubungi Kami</HeaderSecondaryCta>}
     >
-      <Section title="Semua jawaban" description="Klik pertanyaan untuk membuka jawabannya." eyebrow="Daftar">
-        <FaqAccordion items={items} />
+      <Section title="Semua jawaban" description="Ketik kata kunci atau klik pertanyaan untuk membuka jawabannya." eyebrow="Daftar">
+        <FaqBrowser items={items} />
       </Section>
       <JsonLd schemas={[buildFaqPageSchema(items)]} />
     </PublicPage>

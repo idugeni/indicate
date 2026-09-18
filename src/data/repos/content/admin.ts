@@ -69,12 +69,12 @@ export class DrizzleContentAdminRepository {
   }
 
   async saveFaq(authUserId: string, localUserId: string, row: {
-    readonly id: string; readonly question: string; readonly answer: string; readonly sortOrder: number; readonly active: boolean;
+    readonly id: string; readonly question: string; readonly answer: string; readonly category: string; readonly sortOrder: number; readonly active: boolean;
   }): Promise<void> {
     return this.platform(authUserId, localUserId, async (tx) => {
       await tx.insert(faqs).values({ ...row, updatedAt: new Date() }).onConflictDoUpdate({
         target: faqs.id,
-        set: { question: row.question, answer: row.answer, sortOrder: row.sortOrder, active: row.active, updatedAt: new Date() },
+        set: { question: row.question, answer: row.answer, category: row.category, sortOrder: row.sortOrder, active: row.active, updatedAt: new Date() },
       });
     });
   }

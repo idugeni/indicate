@@ -33,10 +33,11 @@ const TYPES: readonly TypeDef[] = Object.freeze([
     fields: [
       { key: 'question', label: 'Pertanyaan', kind: 'textarea', required: true },
       { key: 'answer', label: 'Jawaban', kind: 'textarea', required: true },
+      { key: 'category', label: 'Topik', kind: 'text', required: true },
       { key: 'sortOrder', label: 'Urutan', kind: 'number', required: true },
       { key: 'active', label: 'Aktif', kind: 'checkbox' },
     ],
-    newRow: () => ({ id: crypto.randomUUID(), question: '', answer: '', sortOrder: 99, active: true }),
+    newRow: () => ({ id: crypto.randomUUID(), question: '', answer: '', category: 'Umum', sortOrder: 99, active: true }),
   },
   {
     kind: 'showcase', label: 'Etalase Media', idKey: 'id',
