@@ -39,3 +39,8 @@ semantic-review/
 
 # State sementara Supabase CLI (ref proyek, versi, URL pooler)
 supabase/.temp/
+
+# Backup env berisi secret (pernah ada .env.seoul-bak berisi kredensial live)
+*.bak
+*.seoul-bak
+.env*.bak
