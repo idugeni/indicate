@@ -16,7 +16,7 @@
 ## 2. Ruang lingkup dan durasi
 
 Pemrosesan mencakup hosting situs berita, redaksi terpusat, penerbitan multi-situs,
-penyimpanan media privat, penagihan order, dan dukungan — selama Kontrak berlaku
+penyimpanan media privat, penagihan manual, dan dukungan — selama Kontrak berlaku
 ditambah masa retensi pada Kebijakan Privasi §13 (operasional ≤90 hari pasca-terminasi,
 arsip transaksi 10 tahun, jejak audit 5 tahun, log teknis 30–90 hari).
 
@@ -47,7 +47,7 @@ perubahan material diberitahukan ≥14 hari sebelumnya):
 | Antrean/cache | Penjadwalan, batas laju, invalidasi | Operasional, bukan catatan utama |
 | Jaringan tepi + DNS | Hantaran halaman publik via TLS | Salinan cache konten publik |
 | Hosting aplikasi | Eksekusi kode Layanan | Perlu untuk fungsi |
-| Surel transaksional | Notifikasi order/keamanan | Alamat + isi notifikasi |
+| Surel transaksional | Notifikasi penagihan/keamanan | Alamat + isi notifikasi |
 
 Pemroses mengikat setiap subprosesor pada kewajiban kerahasiaan dan keamanan yang setara
 dan tetap bertanggung jawab penuh atas kelalaiannya.
