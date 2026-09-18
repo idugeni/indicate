@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function TelegramPage() {
   return (
     <div>
-      <DocTitle title="Bot Telegram" description="Perintah redaksi via chat: artikel, foto, publikasi, status, retry, dan unpublish." />
+      <DocTitle title="Bot Telegram" description="Perintah redaksi via chat: artikel, foto, publikasi, saran varian, cari, status, retry, dan unpublish." />
       <DocH2>Prasyarat</DocH2>
       <DocP>
         Pemilik organisasi memetakan identitas Telegram (user + chat) ke pengguna lokal beserta peran dan cakupan
@@ -23,10 +23,14 @@ export default function TelegramPage() {
         head={['Perintah', 'Kegunaan']}
         rows={[
           [<span key="c" className="font-mono text-[13px]">/article</span>, 'Buat artikel bertahap: region → judul → body → sumber → slug.'],
+          [<span key="c" className="font-mono text-[13px]">/artikel</span>, 'Delapan artikel terbaru + tombol aksi per artikel.'],
+          [<span key="c" className="font-mono text-[13px]">/cari KATA_KUNCI</span>, 'Cari artikel berdasar judul + tombol aksi hasil.'],
+          [<span key="c" className="font-mono text-[13px]">/portal</span>, 'Portal aktif + tombol detail per portal.'],
           [<span key="c" className="font-mono text-[13px]">/image ARTICLE_ID</span>, 'Mode unggah foto (satu per pesan, boleh banyak); tiap foto otomatis tersambung [gambar:N] di akhir body.'],
           [<span key="c" className="font-mono text-[13px]">/regions</span>, 'Daftar region aktif beserta ID-nya.'],
           [<span key="c" className="font-mono text-[13px]">/sites ARTICLE_ID</span>, 'Daftar portal aktif + ID untuk dipilih sebagai target.'],
           [<span key="c" className="font-mono text-[13px]">/publish ARTICLE_ID SITE_IDS KEY</span>, 'Minta publikasi; SITE_IDS dipisah koma; KEY kunci idempoten.'],
+          [<span key="c" className="font-mono text-[13px]">/suggest ARTICLE_ID SITE_IDS</span>, 'Saran judul/deskripsi unik per portal tanpa membuat job.'],
           [<span key="c" className="font-mono text-[13px]">/status JOB_ID</span>, 'Status job + ringkasan sukses.'],
           [<span key="c" className="font-mono text-[13px]">/links JOB_ID</span>, 'URL tayang hasil publikasi.'],
           [<span key="c" className="font-mono text-[13px]">/retry JOB_ID [TARGETS]</span>, 'Antrekan ulang target gagal.'],

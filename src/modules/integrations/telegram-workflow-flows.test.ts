@@ -64,11 +64,15 @@ function harness() {
     ok: true as const,
     value: { job: { id: 'job-1', state: 'retrying' }, targets: [], result: null },
   }));
+  const publicationSuggest = vi.fn(async (): Promise<unknown> => ({
+    ok: true as const,
+    value: { articleId: 'article-1', overrides: { 'site-1': { title: 'Judul Unik', description: 'Deskripsi unik' } } },
+  }));
   const sharedFactory = {
     create: () => ({
       articles: { listEditorial, createArticle, assignArticleSites },
       media: {},
-      publication: { request: publicationRequest, status: publicationStatus, listJobs, retry: publicationRetry, unpublish: publicationRetry },
+      publication: { request: publicationRequest, status: publicationStatus, listJobs, retry: publicationRetry, unpublish: publicationRetry, suggest: publicationSuggest },
     }),
   };
   const mediaTransfer = { prepare: vi.fn(), transfer: vi.fn() };
@@ -89,7 +93,7 @@ function harness() {
     PHOTO,
     { now: () => NOW },
   );
-  return { repository, service, listEditorial, createArticle, assignArticleSites, publicationRequest, publicationStatus, listJobs, publicationRetry };
+  return { repository, service, listEditorial, createArticle, assignArticleSites, publicationRequest, publicationStatus, listJobs, publicationRetry, publicationSuggest };
 }
 
 function messageUpdate(text: string, updateId = 1) {
@@ -170,6 +174,73 @@ describe('TelegramWorkflowService discovery flows', () => {
     expect(outcome.result.ok).toBe(true);
     if (!outcome.result.ok) throw new Error('expected ok');
     expect(outcome.result.value.reply).toContain('fakta01.my.id');
+    expect(outcome.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:p:site-1:menu');
+  });
+
+  it('membuka menu detail portal dari callback', async () => {
+    const { service, listEditorial } = harness();
+    listEditorial.mockResolvedValueOnce({
+      ok: true as const,
+      value: {
+        regions: [],
+        articles: [],
+        sites: [{ id: 'site-1', status: 'active', normalizedHostname: 'fakta01.my.id', regionId: null }],
+      },
+    });
+    const outcome = await service.handle(SECRET, callbackUpdate('tg:p:site-1:menu', 16), 'req-portal-menu');
+    expect(outcome.result.ok).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(outcome.result.value.reply).toContain('fakta01.my.id');
+    expect(outcome.result.value.reply).toContain('site-1');
+  });
+
+  it('mencari artikel lewat /cari dan menangani kata kosong', async () => {
+    const empty = harness();
+    const usage = await empty.service.handle(SECRET, messageUpdate('/cari', 17), 'req-cari-usage');
+    expect(usage.result.ok).toBe(true);
+    if (!usage.result.ok) throw new Error('expected ok');
+    expect(usage.result.value.reply).toContain('/cari KATA_KUNCI');
+
+    const filled = harness();
+    filled.listEditorial.mockResolvedValueOnce({
+      ok: true as const,
+      value: {
+        regions: [],
+        articles: [{ id: 'article-1', title: 'Banjir Melanda Kota', status: 'draft', createdAt: '2026-09-18T13:00:00.000Z', regionId: null }],
+        sites: [],
+      },
+    });
+    const hit = await filled.service.handle(SECRET, messageUpdate('/cari banjir', 18), 'req-cari-hit');
+    expect(hit.result.ok).toBe(true);
+    if (!hit.result.ok) throw new Error('expected ok');
+    expect(hit.result.value.reply).toContain('Banjir Melanda Kota');
+    expect(hit.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:a:article-1:menu');
+
+    const miss = harness();
+    miss.listEditorial.mockResolvedValueOnce({ ok: true as const, value: { regions: [], articles: [], sites: [] } });
+    const missOutcome = await miss.service.handle(SECRET, messageUpdate('/cari zilch', 19), 'req-cari-miss');
+    expect(missOutcome.result.ok).toBe(true);
+    if (!missOutcome.result.ok) throw new Error('expected ok');
+    expect(missOutcome.result.value.reply).toContain('Tidak ada artikel yang cocok');
+  });
+
+  it('menyusun saran varian lewat /suggest langsung', async () => {
+    const { service, publicationSuggest } = harness();
+    const outcome = await service.handle(SECRET, messageUpdate('/suggest article-1 site-1', 20), 'req-suggest');
+    expect(outcome.result.ok).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(publicationSuggest).toHaveBeenCalledTimes(1);
+    expect(outcome.result.value.reply).toContain('Judul Unik');
+    expect(outcome.result.value.reply).toContain('Deskripsi unik');
+  });
+
+  it('memandu alur saran dari tombol artikel', async () => {
+    const { service, repository } = harness();
+    const start = await service.handle(SECRET, callbackUpdate('tg:a:article-1:sug', 21), 'req-suggest-start');
+    expect(start.result.ok).toBe(true);
+    if (!start.result.ok) throw new Error('expected ok');
+    expect(start.result.value.reply).toContain('Site ID');
+    expect(repository.saveTelegramConversation).toHaveBeenCalledTimes(1);
   });
 
   it('membuat idempotency key otomatis saat /publish tanpa KEY', async () => {

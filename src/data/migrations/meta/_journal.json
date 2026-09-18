@@ -911,6 +911,13 @@
       "when": 1789759012791,
       "tag": "20260919010000_invoice_payment_method",
       "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1789761092778,
+      "tag": "20260919020000_telegram_suggest_step",
+      "breakpoints": true
     }
   ]
 }
