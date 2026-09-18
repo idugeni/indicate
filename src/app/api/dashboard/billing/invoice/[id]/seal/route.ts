@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
 import { BillingService } from '@/modules/billing/billing-service';
+import { watermarkStamp } from '@/modules/billing/seal-watermark';
 import { getPublicConfig } from '@/core/config/public-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
@@ -67,7 +68,8 @@ async function handleGET(request: Request, context: { readonly params: Promise<{
     try {
       const object = await storage.getExact(SEAL_KEYS[parsed.data.type]);
       if (object !== null) {
-        return new Response(Buffer.from(object.body), {
+        const body = parsed.data.type === 'stamp' ? await watermarkStamp(object.body, result.value.number) : object.body;
+        return new Response(Buffer.from(body), {
           headers: {
             'Content-Type': object.contentType,
             'Cache-Control': 'private, no-store',
