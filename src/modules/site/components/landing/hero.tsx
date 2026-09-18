@@ -35,7 +35,7 @@ export function Hero() {
       <div className="relative mx-auto w-full max-w-7xl px-5 pt-12 pb-14 sm:px-8 md:pt-16 md:pb-20">
         <div className="grid gap-8 lg:grid-cols-12 lg:items-end">
           <div className="lg:col-span-8">
-            <Eyebrow>Indicate 2.0 — Infrastruktur penerbitan multi-situs</Eyebrow>
+            <Eyebrow>Infrastruktur penerbitan multi-situs</Eyebrow>
             <h1
               id="hero-heading"
               className="m-0 mt-5 font-serif text-[clamp(2.9rem,7.2vw,5.6rem)] leading-[0.98] font-medium tracking-tight text-balance"

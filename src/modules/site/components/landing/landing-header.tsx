@@ -1,21 +1,77 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, ArrowUpRight, Menu, X } from 'lucide-react';
 import { SERVICE_NAME, SITE_ROUTES, type NavigationLink } from '@/ui/site/marketing-content';
-import { GLASS_ELEVATED } from '@/modules/site/components/landing/material';
 import { cn } from '@/ui/cn';
 import { useMobileMenu } from '@/modules/site/components/layout/use-mobile-menu';
 
+const MENU_OPEN_EASE = 'cubic-bezier(0.32,0.72,0,1)';
+
 export function LandingHeader() {
-  const { open, setOpen, pathname, closeButtonRef: closeRef } = useMobileMenu();
+  const { open, setOpen, pathname, panelRef, closeButtonRef: closeRef } = useMobileMenu();
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const asideRef = useRef<HTMLElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const ctaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const backdrop = backdropRef.current;
+    const aside = asideRef.current;
+    if (!backdrop || !aside) return undefined;
+    const items = Array.from(navRef.current?.querySelectorAll('a') ?? []);
+    const cta = ctaRef.current;
+    const animated = [backdrop, aside, ...items, ...(cta ? [cta] : [])];
+    for (const element of animated) element.style.willChange = 'translate, opacity';
+    const played: Animation[] = [];
+    const play = (target: Element, frames: Keyframe[], options: KeyframeAnimationOptions) => {
+      played.push(target.animate(frames, { fill: 'both', ...options }));
+    };
+    if (open) {
+      play(backdrop, [{ opacity: '0' }, { opacity: '1' }], { duration: 300, easing: 'ease-out' });
+      play(
+        aside,
+        [{ translate: '100% 0' }, { translate: '0 0' }],
+        { duration: 380, easing: MENU_OPEN_EASE },
+      );
+      items.forEach((item, index) => {
+        play(item, [{ opacity: '0' }, { opacity: '1' }], {
+          duration: 260,
+          delay: 80 + index * 45,
+          easing: 'ease-out',
+        });
+      });
+      if (cta) {
+        play(cta, [{ opacity: '0' }, { opacity: '1' }], {
+          duration: 260,
+          delay: 320,
+          easing: 'ease-out',
+        });
+      }
+    } else {
+      for (const item of [...items, ...(cta ? [cta] : [])]) {
+        play(item, [{ opacity: '1' }, { opacity: '0' }], { duration: 150, easing: 'ease-out' });
+      }
+      play(backdrop, [{ opacity: '1' }, { opacity: '0' }], { duration: 260, easing: 'ease-out' });
+      play(aside, [{ translate: '0 0' }, { translate: '100% 0' }], { duration: 320, easing: 'ease-in' });
+    }
+    const clearHints = () => {
+      for (const element of animated) element.style.willChange = '';
+    };
+    void Promise.allSettled(played.map((animation) => animation.finished)).then(clearHints);
+    return () => {
+      for (const animation of played) animation.cancel();
+      clearHints();
+    };
+  }, [open ]);
 
   return (
     <>
-      <div className="sticky top-0 z-40 px-3 pt-3 sm:px-5 sm:pt-4">
-        <div className={cn('mx-auto w-full max-w-7xl rounded-md', GLASS_ELEVATED)}>
-          <div className="flex items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-4">
+      <div className="sticky top-0 z-40 border-b border-[#e2ded2] bg-white/85 backdrop-blur-md supports-[backdrop-filter]:bg-white/70">
+        <div className="mx-auto w-full max-w-7xl">
+          <div className="flex items-center justify-between gap-2 px-5 py-2 sm:gap-3 sm:px-8">
             <Link href="/" className="group flex min-w-0 items-center gap-2.5" aria-label={`${SERVICE_NAME} beranda`}>
               <Image
                 src="/brand/indicate-mark.svg"
@@ -26,14 +82,19 @@ export function LandingHeader() {
                 className="h-8 w-8 flex-none transition-transform duration-180 group-hover:-translate-y-px"
               />
               <span className="grid min-w-0 leading-none">
-                <strong className="truncate text-[15px] font-semibold tracking-tight">{SERVICE_NAME}</strong>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <strong className="truncate text-[15px] font-semibold tracking-tight">{SERVICE_NAME}</strong>
+                  <span className="flex-none rounded-full border border-[#b88d3a]/40 bg-[#b88d3a]/10 px-1.5 py-px font-mono text-[9px] font-semibold tracking-[0.08em] text-[#8a5f1c]">
+                    2.0
+                  </span>
+                </span>
                 <small className="mt-0.5 hidden font-mono text-[9px] tracking-[0.16em] text-[#5f6b7a] uppercase md:block">
                   Publishing infrastructure
                 </small>
               </span>
             </Link>
 
-            <nav aria-label="Navigasi utama" className="hidden min-w-0 items-center gap-0.5 lg:flex">
+            <nav aria-label="Navigasi utama" className="hidden min-w-0 items-center gap-1 rounded-full border border-[#1a2430]/10 bg-[#ece9e0]/60 p-1 lg:flex">
               {SITE_ROUTES.map((route: NavigationLink) => {
                 const active = pathname === route.href;
                 return (
@@ -42,8 +103,10 @@ export function LandingHeader() {
                     href={route.href}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
-                      'rounded px-3 py-1.5 text-[13px] font-medium whitespace-nowrap transition-colors duration-180',
-                      active ? 'bg-[#1a2430] text-white' : 'text-[#4c5b6b] hover:bg-[#1a2430]/5 hover:text-[#1a2430] active:bg-[#1a2430]/10',
+                      'relative rounded-full px-4 py-1.5 text-[13px] font-medium whitespace-nowrap transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b88d3a]',
+                      active
+                        ? 'bg-[#1a2430] text-white shadow-sm'
+                        : 'text-[#4c5b6b] hover:-translate-y-px hover:bg-white hover:text-[#1a2430] hover:shadow-sm active:translate-y-0 active:bg-white',
                     )}
                   >
                     {route.label}
@@ -61,7 +124,7 @@ export function LandingHeader() {
               </Link>
               <Link
                 href="/contact"
-                className="hidden items-center gap-1.5 rounded bg-[#1a2430] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_10px_24px_-12px_rgba(26,36,48,0.6)] transition-all duration-180 hover:-translate-y-0.5 hover:bg-[#2b3a4b] active:translate-y-0 active:bg-[#141d27] lg:inline-flex"
+                className="hidden items-center gap-1.5 rounded bg-[#1a2430] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_10px_24px_-12px_rgba(26,36,48,0.6)] transition-all duration-180 hover:-translate-y-0.5 hover:bg-[#2b3a4b] active:translate-y-0 active:bg-[#141d27] md:inline-flex"
               >
                 Jadwalkan diskusi
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -83,6 +146,7 @@ export function LandingHeader() {
 
       <div
         id="landing-menu"
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Menu navigasi"
@@ -91,15 +155,14 @@ export function LandingHeader() {
       >
         <div
           aria-hidden="true"
+          ref={backdropRef}
           onClick={() => setOpen(false)}
-          className={cn(
-            'absolute inset-0 bg-[#1a2430]/25 backdrop-blur-sm transition-opacity duration-300',
-            open ? 'opacity-100' : 'opacity-0',
-          )}
+          className={cn('absolute inset-0 bg-[#1a2430]/30', open ? 'opacity-100' : 'opacity-0')}
         />
         <aside
+          ref={asideRef}
           className={cn(
-            'absolute top-0 right-0 flex h-full w-[86%] max-w-sm flex-col border-l border-[#e2ded2] bg-[#f6f4ee] shadow-2xl transition-transform duration-300 ease-out',
+            'absolute top-0 right-0 flex h-full w-[86%] max-w-sm flex-col border-l border-[#e2ded2] bg-[#f6f4ee] shadow-2xl',
             open ? 'translate-x-0' : 'translate-x-full',
           )}
         >
@@ -130,28 +193,53 @@ export function LandingHeader() {
               <X className="h-4.5 w-4.5" aria-hidden="true" />
             </button>
           </div>
-          <nav aria-label="Navigasi seluler" className="grid flex-1 content-start gap-1 overflow-y-auto px-5 pt-3 pb-4">
-            {SITE_ROUTES.map((route: NavigationLink, index: number) => (
-              <Link
-                key={route.href}
-                href={route.href}
-                onClick={() => setOpen(false)}
-                className="group flex items-baseline gap-4 border-b border-[#e2ded2] py-3.5 last:border-b-0"
-              >
-                <span className="font-mono text-[11px] text-[#8a5f1c] tabular-nums">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-                <span className="flex-1 font-serif text-2xl leading-none tracking-tight transition-transform duration-180 group-hover:translate-x-1">
-                  {route.label}
-                </span>
-                <ArrowUpRight
-                  aria-hidden="true"
-                  className="h-5 w-5 self-center text-[#5f6b7a] transition-all duration-180 group-hover:text-[#8a5f1c]"
-                />
-              </Link>
-            ))}
+          <nav ref={navRef} aria-label="Navigasi seluler" className="grid flex-1 content-start gap-2 overflow-y-auto px-5 pt-4 pb-4">
+            {SITE_ROUTES.map((route: NavigationLink, index: number) => {
+              const active = pathname === route.href;
+              return (
+                <Link
+                  key={route.href}
+                  href={route.href}
+                  aria-current={active ? 'page' : undefined}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    'group flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-300',
+                    open ? 'opacity-100' : 'pointer-events-none opacity-0',
+                    active
+                      ? 'border-transparent bg-[#1a2430] text-white shadow-md'
+                      : 'border-[#1a2430]/10 bg-white/70 hover:-translate-y-px hover:border-[#1a2430]/25 hover:bg-white hover:shadow-md active:translate-y-0',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'flex-none rounded-md px-1.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums',
+                      active ? 'bg-white/15 text-[#e8c87a]' : 'bg-[#b88d3a]/10 text-[#8a5f1c]',
+                    )}
+                  >
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <span className="flex-1 text-[15px] font-semibold tracking-tight">{route.label}</span>
+                  <span
+                    className={cn(
+                      'flex h-7 w-7 flex-none items-center justify-center rounded-full transition-colors duration-200',
+                      active
+                        ? 'bg-white/15 text-white'
+                        : 'bg-[#1a2430]/5 text-[#5f6b7a] group-hover:bg-[#1a2430] group-hover:text-white',
+                    )}
+                  >
+                    <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+                  </span>
+                </Link>
+              );
+            })}
           </nav>
-          <div className="grid gap-2 border-t border-[#e2ded2] bg-white/60 px-5 py-5">
+          <div
+            ref={ctaRef}
+            className={cn(
+              'grid gap-2 border-t border-[#e2ded2] bg-white/60 px-5 py-5',
+              open ? 'opacity-100' : 'pointer-events-none opacity-0',
+            )}
+          >
             <Link
               href="/contact"
               onClick={() => setOpen(false)}
