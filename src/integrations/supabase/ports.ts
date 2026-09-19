@@ -8,9 +8,7 @@ export interface VerifiedAuthIdentity {
   readonly email: string | null;
 }
 
-export interface SupabaseAuthPort extends HealthCheckPort {
-  verifySession(sessionToken: string): Promise<VerifiedAuthIdentity | null>;
-}
+export type SupabaseAuthPort = HealthCheckPort;
 
 export interface SupabaseDatabasePort extends HealthCheckPort {
   readonly projectRef: string;

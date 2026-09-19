@@ -77,16 +77,6 @@ export function createSupabaseSsrAuthAdapter(input: {
         email: data.user.email ?? null,
       });
     },
-    async verifySession(sessionToken: string) {
-      const { data, error } = await client.auth.getUser(sessionToken);
-      if (error !== null || data.user === null) return null;
-      return Object.freeze({
-        authUserId: data.user.id,
-        displayName: displayNameFor(data.user),
-        avatarUrl: avatarUrlFor(data.user),
-        email: data.user.email ?? null,
-      });
-    },
     async exchangeCodeForSession(code: string) {
       if (!code) return false;
       const { error } = await client.auth.exchangeCodeForSession(code);

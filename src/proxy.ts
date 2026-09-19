@@ -4,6 +4,7 @@ import { normalizeRequestHostname } from '@/core/hostname/normalize-request-host
 import { ensureRequestId, REQUEST_ID_HEADER } from '@/core/observability/request-id';
 import { ensureTraceContext, TRACEPARENT_HEADER } from '@/core/observability/trace-context';
 import { isServicePath } from '@/core/routing/control-plane-paths';
+import { nextWithSessionRefresh } from '@/integrations/supabase/supabase-edge-session';
 import {
   PLATFORM_ALLOWED_IPS_ENV,
   extractClientIp,
@@ -174,6 +175,19 @@ function isTenantDeniedPath(path: string): boolean {
     isServicePath(path)
   );
 }
+
+/**
+ * RSC surfaces that read the session server-side and need rotated cookies persisted.
+ *
+ * @param path - Request pathname.
+ * @returns True when the edge must refresh the Supabase session before rendering.
+ * @remarks Route handlers (`/auth/*`, `/api/*`) refresh through their own adapter
+ * because their cookie writes succeed; public pages never carry a session, so only
+ * the session-reading RSC pages pay the refresh round-trip.
+ */
+function isSessionRefreshPath(path: string): boolean {
+  return path.startsWith('/dashboard') || path === '/update-password' || path.startsWith('/update-password/');
+}
 /**
  * Route edge requests to control or tenant surfaces.
  *
@@ -181,21 +195,29 @@ function isTenantDeniedPath(path: string): boolean {
  * @returns Response for the matched surface.
  * @remarks HSTS is emitted in production only to avoid pinning HTTPS on loopback origins. Trailing-slash redirect skips machine surfaces to keep API, feed, and asset URLs exact. Pembaca hilir mengutamakan x-forwarded-host (page.tsx, not-found.tsx, network-runtime.ts), jadi kedua header harus ditulis ulang — menulis `host` saja tidak berpengaruh di Vercel yang selalu menyetel keduanya. Host deployment Vercel (*.vercel.app) milik project ini diperlakukan sebagai permukaan dashboard: VERCEL_URL per deployment tidak stabil (unik per build), tetapi request *.vercel.app yang sampai ke project ini pasti deployment kita sendiri (routing Vercel per host; preview terkunci SSO dashboard); host asing lain tetap 404. Platform surfaces are IP-allowlisted fail closed; out-of-range callers get a non-disclosing 404 plus an edge audit record. A platform-only token must never enter dashboard surfaces without an on_behalf ticket proving scoped delegation. Beranda portal (`/`) dirender rute `(network)/tenant-home` agar ikut boundary segmen tenant (loading/error terang); URL kanonis tetap `/`.
  */
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const rawHost = request.headers.get('host');
   const localAuthority = rawHost?.replace(/:\d+$/u, '').toLowerCase();
   const isLocalHost = localAuthority === '127.0.0.1' || localAuthority === 'localhost';
   if (isLocalHost) {
-    return nextWithCorrelation(request, (requestHeaders) => {
+    const rewriteLocal = (requestHeaders: Headers) => {
       requestHeaders.set('host', getControlHosts().dashboard);
       requestHeaders.set('x-forwarded-host', getControlHosts().dashboard);
-    });
+    };
+    if (isSessionRefreshPath(request.nextUrl.pathname)) {
+      return nextWithSessionRefresh(request, () => nextWithCorrelation(request, rewriteLocal));
+    }
+    return nextWithCorrelation(request, rewriteLocal);
   }
   if (localAuthority !== undefined && localAuthority.endsWith('.vercel.app')) {
-    return nextWithCorrelation(request, (requestHeaders) => {
+    const rewritePreview = (requestHeaders: Headers) => {
       requestHeaders.set('host', getControlHosts().dashboard);
       requestHeaders.set('x-forwarded-host', getControlHosts().dashboard);
-    });
+    };
+    if (isSessionRefreshPath(request.nextUrl.pathname)) {
+      return nextWithSessionRefresh(request, () => nextWithCorrelation(request, rewritePreview));
+    }
+    return nextWithCorrelation(request, rewritePreview);
   }
   const parsed = normalizeRequestHostname(rawHost);
   if (!parsed.ok) return deny(400, request.headers);
@@ -228,6 +250,7 @@ export function proxy(request: NextRequest) {
 
   if (parsed.hostname === dashboard) {
     if (path.startsWith('/api/network') || path.startsWith('/api/v1/') || path.startsWith('/api/webhooks/') || path === '/domain-pending') return deny(404, request.headers);
+    if (isSessionRefreshPath(path)) return nextWithSessionRefresh(request, () => nextWithCorrelation(request));
     return nextWithCorrelation(request);
   }
   if (parsed.hostname === api) {
