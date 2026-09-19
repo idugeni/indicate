@@ -71,8 +71,10 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         SELECT display_name, avatar_url FROM indicate_private.lookup_user_profile(${membership.userId}::uuid)
       `);
       const profile = displayRows[0];
-      if (profile?.display_name === null || profile?.display_name === undefined) throw new DashboardAccessDeniedError();
-      membershipProfiles.set(membership.userId, { displayName: profile.display_name, avatarUrl: profile.avatar_url });
+      // Lookup terikat verified-user: aktor non-user (telegram/api_key) tidak
+      // punya konteks itu sehingga selalu kosong — pakai userId sebagai label
+      // netral (sudah terekspos di payload yang sama), bukan menggagalkan baca.
+      membershipProfiles.set(membership.userId, { displayName: profile?.display_name ?? membership.userId, avatarUrl: profile?.avatar_url ?? null });
     }
     const permissionsByRole = new Map<string, Set<string>>();
     for (const grant of grantRows) {
