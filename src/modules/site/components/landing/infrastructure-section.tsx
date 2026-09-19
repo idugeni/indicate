@@ -1,4 +1,6 @@
+import Image from 'next/image';
 import { SHOWCASE_BRANDS } from '@/ui/site/showcase-brands';
+import { STACK_LOGOS } from '@/ui/site/stack-logos';
 import { Eyebrow } from '@/modules/site/components/landing/material';
 
 const SPEC_ROWS = Object.freeze([
@@ -106,6 +108,43 @@ export function InfrastructureSection() {
               </p>
             </div>
           </div>
+        </div>
+
+        <div className="mt-14 border-t border-[#1a2430]/10 pt-8">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <p className="m-0 flex-none font-mono text-[11px] tracking-[0.14em] text-[#5f6b7a] uppercase">
+              Didukung oleh
+            </p>
+            <span aria-hidden="true" className="h-px flex-1 bg-[#e7e3d6]" />
+            <p className="m-0 font-mono text-[10px] tracking-[0.12em] text-[#5f6b7a] uppercase">
+              18 teknologi terbuka
+            </p>
+          </div>
+          <ul className="m-0 mt-6 grid list-none grid-cols-2 gap-3 p-0 sm:grid-cols-3 lg:grid-cols-6">
+            {STACK_LOGOS.map((logo) => (
+              <li
+                key={logo.name}
+                className="flex items-center gap-3 rounded-lg border border-[#1a2430]/10 bg-[#faf9f5] px-3.5 py-3 transition-colors duration-180 hover:bg-white"
+              >
+                <Image
+                  src={logo.file}
+                  alt=""
+                  aria-hidden="true"
+                  width={28}
+                  height={28}
+                  className="h-7 w-7 flex-none"
+                />
+                <span className="grid min-w-0 leading-tight">
+                  <span className="truncate text-[13px] font-semibold tracking-tight text-[#1a2430]">
+                    {logo.name}
+                  </span>
+                  <span className="truncate font-mono text-[10px] tracking-[0.08em] text-[#5f6b7a] uppercase">
+                    {logo.role}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>
