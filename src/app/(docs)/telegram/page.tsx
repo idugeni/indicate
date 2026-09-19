@@ -23,7 +23,7 @@ export default function TelegramPage() {
       <DocTable
         head={['Perintah', 'Kegunaan']}
         rows={[
-          [<span key="c" className="font-mono text-[13px]">/start</span>, 'Menu utama + tombol aksi bot.'],
+          [<span key="c" className="font-mono text-[13px]">/start</span>, 'Hapus pesan dasbor di atas, lalu buka menu utama + tombol aksi bot.'],
           [<span key="c" className="font-mono text-[13px]">/org</span>, 'Ganti organisasi aktif (pemilih tombol).'],
           [<span key="c" className="font-mono text-[13px]">/bantuan</span>, 'Panduan lengkap perintah bot.'],
           [<span key="c" className="font-mono text-[13px]">/article</span>, 'Buat artikel bertahap: region (tombol) → judul → body → sumber → slug; selesai tersaji tombol Terbitkan ke Semua Situs.'],

@@ -82,10 +82,11 @@ function harness() {
   const mediaTransfer = { prepare: vi.fn(), transfer: vi.fn() };
   const telegram = {
     check: vi.fn(async () => ({ service: 'telegram', status: 'healthy' as const, category: 'telegram_ready' })),
-    send: vi.fn(async () => undefined),
-    sendPhoto: vi.fn(async () => undefined),
+    send: vi.fn(async (): Promise<unknown> => undefined),
+    sendPhoto: vi.fn(async (): Promise<unknown> => undefined),
     answerCallback: vi.fn(async () => undefined),
     editMessage: vi.fn(async () => undefined),
+    deleteMessage: vi.fn(async () => undefined),
     setMyCommands: vi.fn(async () => undefined),
   };
   const service = new TelegramWorkflowService(
@@ -539,9 +540,10 @@ describe('TelegramWorkflowService organization switcher', () => {
     if (!outcome.result.ok) throw new Error('expected ok');
     expect(outcome.result.value.reply).toContain('Organisasi A aktif');
     expect(repository.clearTelegramConversation).toHaveBeenCalledTimes(1);
-    const saved = repository.saveTelegramConversation.mock.calls[0] as unknown as [{ readonly mappingId: string; readonly organizationId: string }, { readonly step: string }];
+    const saved = repository.saveTelegramConversation.mock.calls[0] as unknown as [{ readonly mappingId: string; readonly organizationId: string }, { readonly step: string; readonly data: Readonly<Record<string, unknown>> }];
     expect(saved[0]).toMatchObject({ mappingId: 'mapping-a', organizationId: 'org-a' });
     expect(saved[1]).toMatchObject({ step: 'idle' });
+    expect(saved[1].data).toMatchObject({ orgActive: true });
   });
 
   it('memakai organisasi terpilih tanpa bertanya lagi', async () => {
@@ -549,11 +551,22 @@ describe('TelegramWorkflowService organization switcher', () => {
     repository.resolveTelegramIdentity.mockResolvedValueOnce(null);
     repository.listTelegramIdentities.mockResolvedValue(options);
     repository.readTelegramConversation.mockImplementation(((ident: { readonly mappingId: string }) =>
-      Promise.resolve(ident.mappingId === 'mapping-a' ? conversationOf('idle', {}) : null)) as never);
+      Promise.resolve(ident.mappingId === 'mapping-a' ? conversationOf('idle', { orgActive: true }) : null)) as never);
     const outcome = await service.handle(SECRET, messageUpdate('/artikel', 52), 'req-org-reuse');
     expect(outcome.result.ok).toBe(true);
     if (!outcome.result.ok) throw new Error('expected ok');
     expect(outcome.result.value.reply).toContain('Belum ada artikel');
+  });
+
+  it('mengabaikan baris idle tanpa penanda pilihan organisasi', async () => {
+    const { service, repository } = harness();
+    repository.resolveTelegramIdentity.mockResolvedValueOnce(null);
+    repository.listTelegramIdentities.mockResolvedValue(options);
+    repository.readTelegramConversation.mockImplementation((async () => conversationOf('idle', { messageIds: ['9'] })) as never);
+    const outcome = await service.handle(SECRET, messageUpdate('/artikel', 55), 'req-org-plain-idle');
+    expect(outcome.result.ok).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(outcome.result.value.reply).toContain('Pilih organisasi aktif');
   });
 
   it('teks bebas tidak menghapus pilihan organisasi', async () => {
@@ -782,5 +795,94 @@ describe('TelegramWorkflowService article management', () => {
     if (!done.result.ok) throw new Error('expected ok');
     expect(restoreArticle).toHaveBeenCalledTimes(1);
     expect(done.result.value.reply).toContain('dipulihkan ke draf');
+  });
+});
+
+describe('TelegramWorkflowService single dashboard', () => {
+  it('/start menghapus pesan dasbor terlacak lalu membuka menu baru', async () => {
+    const { service, repository } = harness();
+    repository.readTelegramConversation.mockResolvedValueOnce(conversationOf('idle', { messageIds: ['21', '22'] }));
+    const outcome = await service.handle(SECRET, messageUpdate('/start', 90), 'req-start-clean');
+    expect(outcome.result.ok).toBe(true);
+    expect(repository.clearTelegramConversation).toHaveBeenCalledTimes(1);
+    const deletes = outcome.pendingReplies.filter((reply) => reply.kind === 'delete');
+    expect(deletes).toHaveLength(2);
+    expect(outcome.pendingReplies.some((reply) => reply.kind === 'photo')).toBe(true);
+    expect(outcome.identity).toMatchObject({ mappingId: 'mapping-1' });
+  });
+
+  it('tombol menu menghapus pesan asal bersama riwayat dasbor', async () => {
+    const { service, repository } = harness();
+    repository.readTelegramConversation.mockResolvedValueOnce(conversationOf('idle', { messageIds: ['21'] }));
+    const outcome = await service.handle(SECRET, callbackUpdate('tg:menu', 91), 'req-menu-clean');
+    expect(outcome.result.ok).toBe(true);
+    const deletes = outcome.pendingReplies.filter((reply) => reply.kind === 'delete');
+    expect(deletes.map((reply) => (reply.kind === 'delete' ? reply.messageId : null))).toEqual(['7', '21']);
+  });
+
+  it('/cancel menyimpan pelacakan pesan untuk bersih-bersih berikutnya', async () => {
+    const { service, repository } = harness();
+    repository.readTelegramConversation.mockResolvedValueOnce(
+      conversationOf('article_title', { regionId: 'region-1', messageIds: ['21'] }),
+    );
+    const outcome = await service.handle(SECRET, messageUpdate('/cancel', 92), 'req-cancel-track');
+    expect(outcome.result.ok).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(outcome.result.value.reply).toContain('dibatalkan');
+    expect(repository.clearTelegramConversation).toHaveBeenCalledTimes(1);
+    const saved = repository.saveTelegramConversation.mock.calls[0] as unknown as [unknown, { readonly step: string; readonly data: Readonly<Record<string, unknown>> }];
+    expect(saved[1]).toMatchObject({ step: 'idle' });
+    expect(saved[1].data).toMatchObject({ messageIds: ['21'] });
+  });
+
+  it('kegagalan tombol disunting di tempat dengan toast dan jalan kembali', async () => {
+    const { service, listEditorial } = harness();
+    listEditorial.mockResolvedValue({
+      ok: true as const,
+      value: {
+        regions: [],
+        articles: [{ id: 'other', title: 'Lain', status: 'draft', createdAt: '2026-09-18T13:00:00.000Z', regionId: null }],
+        sites: [],
+      },
+    });
+    const outcome = await service.handle(SECRET, callbackUpdate('tg:a:missing:menu', 93), 'req-fail-edit');
+    expect(outcome.result.ok).toBe(false);
+    const answer = outcome.pendingReplies.find((reply) => reply.kind === 'callback-answer');
+    expect(answer).toMatchObject({ callbackId: 'cb-1' });
+    if (answer?.kind !== 'callback-answer') throw new Error('expected answer');
+    expect(answer.text).toContain('tidak tersedia');
+    const edit = outcome.pendingReplies.find((reply) => reply.kind === 'edit');
+    expect(edit).toMatchObject({ chatId: '111', messageId: '7' });
+    if (edit?.kind !== 'edit') throw new Error('expected edit');
+    expect(edit.keyboard[0]?.[0]?.data).toBe('tg:menu');
+    expect(outcome.pendingReplies.filter((reply) => reply.kind === 'text')).toHaveLength(0);
+  });
+
+  it('pengiriman yang berhasil diingat untuk bersih-bersih /start', async () => {
+    const { service, repository, telegram } = harness();
+    telegram.send.mockResolvedValueOnce({ messageId: '31' });
+    repository.readTelegramConversation.mockResolvedValueOnce(null);
+    await service.deliverReplies([{ kind: 'text', chatId: '111', text: 'Halo' }], 'req-track', identity);
+    expect(repository.saveTelegramConversation).toHaveBeenCalledTimes(1);
+    const saved = repository.saveTelegramConversation.mock.calls[0] as unknown as [unknown, { readonly step: string; readonly data: Readonly<Record<string, unknown>> }];
+    expect(saved[1]).toMatchObject({ step: 'idle' });
+    expect(saved[1].data).toMatchObject({ messageIds: ['31'] });
+  });
+
+  it('pelacakan mempertahankan langkah dan data percakapan berjalan', async () => {
+    const { service, repository, telegram } = harness();
+    telegram.send.mockResolvedValueOnce({ messageId: '32' });
+    repository.readTelegramConversation.mockResolvedValueOnce(conversationOf('article_title', { regionId: 'region-1' }));
+    await service.deliverReplies([{ kind: 'text', chatId: '111', text: 'Halo' }], 'req-track-merge', identity);
+    const saved = repository.saveTelegramConversation.mock.calls[0] as unknown as [unknown, { readonly step: string; readonly data: Readonly<Record<string, unknown>> }];
+    expect(saved[1]).toMatchObject({ step: 'article_title' });
+    expect(saved[1].data).toMatchObject({ regionId: 'region-1', messageIds: ['32'] });
+  });
+
+  it('hapus yang gagal tidak mengganggu antrean', async () => {
+    const { service, telegram, repository } = harness();
+    telegram.deleteMessage.mockRejectedValueOnce(new Error('message to delete not found'));
+    await service.deliverReplies([{ kind: 'delete', chatId: '111', messageId: '999' }], 'req-del-fail', identity);
+    expect(repository.enqueueOutboxMessage).not.toHaveBeenCalled();
   });
 });

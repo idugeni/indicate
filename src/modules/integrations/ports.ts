@@ -108,6 +108,11 @@ export interface TelegramBotCommand {
   readonly description: string;
 }
 
+/** Receipt of a newly sent Bot API message, used to track dashboard messages. */
+export interface TelegramSentReceipt {
+  readonly messageId: string;
+}
+
 export class TelegramRateLimitedError extends Error {
   constructor(readonly retryAfterSeconds: number | null) {
     super('Telegram rate limited.');
@@ -124,10 +129,11 @@ export interface TelegramOutboxRecord {
 }
 
 export interface TelegramPort extends HealthCheckPort {
-  send(message: TelegramMessage): Promise<void>;
-  sendPhoto(message: TelegramPhotoMessage): Promise<void>;
+  send(message: TelegramMessage): Promise<TelegramSentReceipt>;
+  sendPhoto(message: TelegramPhotoMessage): Promise<TelegramSentReceipt>;
   answerCallback(answer: TelegramCallbackAnswer): Promise<void>;
   editMessage(message: TelegramEditMessage): Promise<void>;
+  deleteMessage(message: { readonly chatId: string; readonly messageId: string }): Promise<void>;
   setMyCommands(commands: readonly TelegramBotCommand[]): Promise<void>;
 }
 

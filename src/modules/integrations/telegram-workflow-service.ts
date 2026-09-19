@@ -27,7 +27,7 @@ const digest = (value: string) => createHash('sha256').update(value).digest('hex
 const words = (text: string) => text.trim().split(/\s+/);
 
 const WELCOME_CAPTION = 'Selamat datang di Bot Resmi Indicate.\n\nRuang kendali redaksi dalam genggaman: susun artikel, kirim foto, atur situs tayang, dan pantau publikasi lintas situs — semuanya dari sini.\n\nPilih menu di bawah untuk memulai.';
-const HELP_TEXT = 'Panduan Bot Indicate\n\nOrganisasi:\n/org — ganti organisasi aktif (pemilih tombol)\n\nDaftar:\n/artikel — artikel terbaru + tombol aksi\n/cari — cari artikel (ketik kata kunci setelah perintah)\n/job — pekerjaan publikasi terbaru\n/portal — daftar situs aktif + detail\n\nBuat artikel:\n/article — susun artikel langkah demi langkah (region lewat tombol)\n/edit — ubah judul, isi, atau sumber artikel\n\nPerintah di bawah cukup diketik polos — bot menampilkan pemilih tombol:\n/image — tambah foto ke artikel\n/sites — atur situs tayang artikel\n/suggest — saran judul/deskripsi unik per situs\n/publish — ajukan publikasi (termasuk sekaligus ke semua situs)\n/status — pantau status pekerjaan\n/links — lihat tautan yang terbit\n/retry — ulangi target yang gagal\n/unpublish — tarik artikel yang terbit\n\nLainnya:\n/regions — daftar Region yang aktif\n/cancel — batalkan percakapan berjalan\n/start — kembali ke menu utama';
+const HELP_TEXT = 'Panduan Bot Indicate\n\nOrganisasi:\n/org — ganti organisasi aktif (pemilih tombol)\n\nDaftar:\n/artikel — artikel terbaru + tombol aksi\n/cari — cari artikel (ketik kata kunci setelah perintah)\n/job — pekerjaan publikasi terbaru\n/portal — daftar situs aktif + detail\n\nBuat artikel:\n/article — susun artikel langkah demi langkah (region lewat tombol)\n/edit — ubah judul, isi, atau sumber artikel\n\nPerintah di bawah cukup diketik polos — bot menampilkan pemilih tombol:\n/image — tambah foto ke artikel\n/sites — atur situs tayang artikel\n/suggest — saran judul/deskripsi unik per situs\n/publish — ajukan publikasi (termasuk sekaligus ke semua situs)\n/status — pantau status pekerjaan\n/links — lihat tautan yang terbit\n/retry — ulangi target yang gagal\n/unpublish — tarik artikel yang terbit\n\nLainnya:\n/regions — daftar Region yang aktif\n/cancel — batalkan percakapan berjalan\n/start — bersihkan layar dan kembali ke menu utama';
 const MAIN_KEYBOARD: TelegramInlineKeyboard = Object.freeze([
   Object.freeze([Object.freeze({ text: '📝 Buat Artikel', data: 'tg:article' }), Object.freeze({ text: '📄 Artikel Saya', data: 'tg:articles' })]),
   Object.freeze([Object.freeze({ text: '🌐 Situs Tayang', data: 'tg:portals' }), Object.freeze({ text: '📋 Daftar Job', data: 'tg:jobs' })]),
@@ -38,6 +38,12 @@ const MAIN_KEYBOARD: TelegramInlineKeyboard = Object.freeze([
 ]);
 const LINK_REQUIRED_REPLY = 'Akses ditolak. Akun Telegram ini belum tertaut ke organisasi mana pun.\n\nHubungi administrator redaksi Anda untuk menautkan akun ini sebelum menggunakan bot.';
 const UNKNOWN_COMMAND_REPLY = 'Perintah tidak dikenali. Ketik /start untuk membuka menu utama atau /bantuan untuk panduan lengkap.';
+/** Batas ID pesan dasbor yang diingat per percakapan untuk bersih-bersih /start. */
+const TRACKED_MESSAGE_LIMIT = 20;
+/** Tombol kembali yang dipasang pada pesan galat di tempat agar obrolan tetap satu dasbor. */
+const DASHBOARD_BACK_KEYBOARD: TelegramInlineKeyboard = Object.freeze([
+  Object.freeze([Object.freeze({ text: '◀️ Menu Utama', data: 'tg:menu' })]),
+]);
 const SUGGEST_USAGE = 'Saran varian butuh artikel dan situs: ketik /suggest untuk membuka pemilih tombol.';
 const CARI_USAGE = 'Ketik /cari lalu kata kuncinya, contoh: /cari banjir';
 const CALLBACK_COMMANDS: Readonly<Record<string, string>> = Object.freeze({
@@ -111,6 +117,11 @@ export class TelegramWorkflowService {
     const now = this.clock.now(); return Object.freeze({ source: 'telegram', chatId: identity.telegramChatId, userId: identity.telegramUserId, organizationId: identity.organizationId, step, data, updatedAt: now.toISOString(), expiresAt: new Date(now.getTime() + 3_600_000).toISOString() });
   }
   private async reply(text: string): Promise<TelegramWorkflowResult> { return { reply: text }; }
+  private trackedIds(conversation: TelegramConversation | null): string[] {
+    if (conversation === null) return [];
+    const raw = conversation.data.messageIds;
+    return Array.isArray(raw) ? raw.filter((value): value is string => typeof value === 'string') : [];
+  }
   private parse(raw: unknown): TelegramUpdate | null {
     const parsed = telegramUpdateSchema.safeParse(raw); if (!parsed.success) return null;
     const callback = parsed.data.callback_query;
@@ -170,30 +181,46 @@ export class TelegramWorkflowService {
    *
    * @param replies - Pending replies queued while handling the update.
    * @param requestId - Correlation ID for reply-failure telemetry.
+   * @param identity - Resolved caller identity used to remember sent
+   * dashboard messages; null skips tracking.
    * @remarks
    * Never awaited inside `handle`, so Telegram API latency never holds the
    * webhook response. Failed non-callback replies persist to the outbox for
-   * worker retry instead of being dropped.
+   * worker retry instead of being dropped. Message deletes are best-effort:
+   * already-gone or expired messages fail silently by design.
    */
-  async deliverReplies(replies: readonly TelegramPendingReply[], requestId: string): Promise<void> {
+  async deliverReplies(replies: readonly TelegramPendingReply[], requestId: string, identity: TelegramIdentity | null = null): Promise<void> {
+    const tracked: string[] = [];
+    const track = (receipt: unknown): void => {
+      if (typeof receipt === 'object' && receipt !== null && 'messageId' in receipt) {
+        const messageId = (receipt as { readonly messageId?: unknown }).messageId;
+        if (typeof messageId === 'string' && messageId !== '') tracked.push(messageId);
+      }
+    };
     for (const reply of replies) {
       try {
         if (reply.kind === 'photo') {
           try {
-            await this.telegram.sendPhoto({ chatId: reply.chatId, photoUrl: reply.photoUrl, caption: reply.caption, ...(reply.keyboard === undefined ? {} : { keyboard: reply.keyboard }) });
+            track(await this.telegram.sendPhoto({ chatId: reply.chatId, photoUrl: reply.photoUrl, caption: reply.caption, ...(reply.keyboard === undefined ? {} : { keyboard: reply.keyboard }) }));
           } catch {
-            await this.telegram.send({ chatId: reply.chatId, text: reply.caption });
+            track(await this.telegram.send({ chatId: reply.chatId, text: reply.caption }));
           }
         } else if (reply.kind === 'callback-answer') {
           await this.telegram.answerCallback({ callbackId: reply.callbackId, ...(reply.text === undefined ? {} : { text: reply.text }) });
+        } else if (reply.kind === 'delete') {
+          try {
+            await this.telegram.deleteMessage({ chatId: reply.chatId, messageId: reply.messageId });
+          } catch {
+            /* already gone or too old: cleanup is best-effort */
+          }
         } else if (reply.kind === 'edit') {
           try {
             await this.telegram.editMessage({ chatId: reply.chatId, messageId: reply.messageId, text: reply.text, keyboard: reply.keyboard });
           } catch {
-            await this.telegram.send({ chatId: reply.chatId, text: reply.text, keyboard: reply.keyboard });
+            track(await this.telegram.send({ chatId: reply.chatId, text: reply.text, keyboard: reply.keyboard }));
           }
         } else {
-          await this.telegram.send(reply);
+          track(await this.telegram.send(reply));
         }
       } catch (error) {
         if (reply.kind === 'callback-answer') {
@@ -201,11 +228,25 @@ export class TelegramWorkflowService {
           continue;
         }
         try {
-          const text = reply.kind === 'photo' ? reply.caption : reply.text;
-          await this.repository.enqueueOutboxMessage({ organizationId: null, chatId: reply.chatId, text, now: this.clock.now().toISOString() });
+          const text = reply.kind === 'photo' ? reply.caption : reply.kind === 'delete' ? null : reply.text;
+          if (text !== null) await this.repository.enqueueOutboxMessage({ organizationId: null, chatId: reply.chatId, text, now: this.clock.now().toISOString() });
         } catch {
           logEvent('warn', { event: 'telegram.reply.deferred_failed', requestId, context: { chatId: reply.chatId, name: error instanceof Error ? error.name : 'UnknownError' } });
         }
+      }
+    }
+    if (identity !== null && tracked.length > 0) {
+      try {
+        const existing = await this.repository.readTelegramConversation(identity);
+        const previous = this.trackedIds(existing);
+        const messageIds = [...new Set([...previous, ...tracked])].slice(-TRACKED_MESSAGE_LIMIT);
+        if (existing === null) {
+          await this.repository.saveTelegramConversation(identity, this.conversation(identity, 'idle', { messageIds }));
+        } else {
+          await this.repository.saveTelegramConversation(identity, { ...existing, data: { ...existing.data, messageIds } });
+        }
+      } catch {
+        logEvent('warn', { event: 'telegram.track.failed', requestId, context: { chatId: identity.telegramChatId } });
       }
     }
   }
@@ -271,8 +312,9 @@ export class TelegramWorkflowService {
    * organization; null when no organization can be established.
    * @remarks
    * A caller linked to several organizations must pick one first: the pick
-   * is remembered as an `idle` conversation row under the chosen mapping,
-   * so no schema beyond the existing conversation table is required.
+   * is remembered as an `idle` conversation row carrying `orgActive`, while
+   * plain tracking rows written by delivery carry only `messageIds` and are
+   * never mistaken for an organization pick.
    */
   private async activeIdentity(userId: string, chatId: string): Promise<TelegramIdentity | null> {
     const direct = await this.repository.resolveTelegramIdentity(userId, chatId);
@@ -283,7 +325,7 @@ export class TelegramWorkflowService {
     const now = this.clock.now();
     for (const option of options) {
       const conversation = await this.repository.readTelegramConversation(option.identity);
-      if (conversation !== null && conversation.step === 'idle' && new Date(conversation.expiresAt) > now) return option.identity;
+      if (conversation !== null && conversation.step === 'idle' && conversation.data.orgActive === true && new Date(conversation.expiresAt) > now) return option.identity;
     }
     return null;
   }
@@ -334,7 +376,7 @@ export class TelegramWorkflowService {
     for (const option of options) {
       if (option.identity.mappingId !== mappingId) await this.repository.clearTelegramConversation(option.identity);
     }
-    await this.repository.saveTelegramConversation(found.identity, this.conversation(found.identity, 'idle', {}));
+    await this.repository.saveTelegramConversation(found.identity, this.conversation(found.identity, 'idle', { orgActive: true }));
     return { ok: true, value: this.orgHome(found) };
   }
 
@@ -572,7 +614,7 @@ export class TelegramWorkflowService {
 
   async handle(secretHeader: string | null, raw: unknown, requestId = crypto.randomUUID()): Promise<TelegramHandleOutcome> {
     const pending: TelegramPendingReply[] = [];
-    const done = (result: Result<TelegramWorkflowResult, PublicErrorEnvelope>): TelegramHandleOutcome => ({ result, pendingReplies: pending });
+    const done = (result: Result<TelegramWorkflowResult, PublicErrorEnvelope>, identity: TelegramIdentity | null = null): TelegramHandleOutcome => ({ result, pendingReplies: pending, identity });
     if (secretHeader === null || !safeEqual(secretHeader, this.webhookSecret)) return done({ ok: false, error: createNonDisclosingDenial(requestId) });
     const update = this.parse(raw); if (update === null) return done({ ok: false, error: createPublicError('INVALID_INPUT', 'Invalid Telegram update.', requestId) });
     const now = this.clock.now(); if (Math.abs(now.getTime() - new Date(update.occurredAt).getTime()) > this.freshnessSeconds * 1_000) return done({ ok: false, error: createNonDisclosingDenial(requestId) });
@@ -606,8 +648,16 @@ export class TelegramWorkflowService {
         };
         await this.repository.prepareReplayOutcome('telegram', update.updateId, bodyDigest, claimed.claim.claimToken, 'rejected', replayOutcome, this.clock.now().toISOString());
         await this.finalizePrepared('telegram', update.updateId, bodyDigest, claimed.claim.claimToken);
-        pending.push({ kind: 'text', chatId: update.chatId, text: reply });
-        return done(result);
+        if (update.callback !== null && update.messageId !== null) {
+          const callbackId = update.callback.id;
+          const messageId = update.messageId;
+          const answerIndex = pending.findIndex((item) => item.kind === 'callback-answer' && item.callbackId === callbackId);
+          if (answerIndex >= 0) pending[answerIndex] = { kind: 'callback-answer', callbackId, text: reply.slice(0, 180) };
+          pending.push({ kind: 'edit', chatId: update.chatId, messageId, text: reply, keyboard: DASHBOARD_BACK_KEYBOARD });
+        } else {
+          pending.push({ kind: 'text', chatId: update.chatId, text: reply });
+        }
+        return done(result, identity);
       }
       await this.repository.prepareReplayOutcome('telegram', update.updateId, bodyDigest, claimed.claim.claimToken, 'processed', { reply: result.value.reply }, this.clock.now().toISOString());
       await this.finalizePrepared('telegram', update.updateId, bodyDigest, claimed.claim.claimToken);
@@ -616,7 +666,7 @@ export class TelegramWorkflowService {
       else if (display !== undefined && display.editMessageId !== undefined) pending.push({ kind: 'edit', chatId: update.chatId, messageId: display.editMessageId, text: result.value.reply, keyboard: display.keyboard });
       else if (display !== undefined) pending.push({ kind: 'text', chatId: update.chatId, text: result.value.reply, keyboard: display.keyboard });
       else pending.push({ kind: 'text', chatId: update.chatId, text: result.value.reply });
-      return done({ ok: true, value: { ...result.value, actor } });
+      return done({ ok: true, value: { ...result.value, actor } }, identity);
     } catch { return done({ ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'Telegram processing is temporarily unavailable.', requestId) }); }
   }
 
@@ -875,9 +925,33 @@ export class TelegramWorkflowService {
       if (mapped === null) return { ok: true, value: this.help() };
       text = mapped;
     }
-    if (text === '/start' || text === '/menu') return { ok: true, value: this.welcome() };
+    if (text === '/start' || text === '/menu') {
+      let tracked: string[] = [];
+      try {
+        tracked = this.trackedIds(await this.repository.readTelegramConversation(identity));
+        await this.repository.clearTelegramConversation(identity);
+      } catch {
+        tracked = [];
+        logEvent('warn', { event: 'telegram.start.cleanup_failed', requestId: actor.requestId });
+      }
+      const doomed = update.messageId === null ? tracked : [...new Set([update.messageId, ...tracked])];
+      for (const messageId of doomed.slice(0, TRACKED_MESSAGE_LIMIT + 1)) pending.push({ kind: 'delete', chatId: update.chatId, messageId });
+      return { ok: true, value: this.welcome() };
+    }
     if (text === '/bantuan' || text === '/help') return { ok: true, value: this.help() };
-    if (text === '/cancel') { await this.repository.clearTelegramConversation(identity); return { ok: true, value: await this.reply('Percakapan dibatalkan.') }; }
+    if (text === '/cancel') {
+      try {
+        const conversation = await this.repository.readTelegramConversation(identity);
+        const tracked = this.trackedIds(conversation);
+        await this.repository.clearTelegramConversation(identity);
+        if (tracked.length > 0) {
+          await this.repository.saveTelegramConversation(identity, this.conversation(identity, 'idle', { messageIds: tracked.slice(-TRACKED_MESSAGE_LIMIT) }));
+        }
+      } catch {
+        logEvent('warn', { event: 'telegram.cancel.cleanup_failed', requestId: actor.requestId });
+      }
+      return { ok: true, value: await this.reply('Percakapan dibatalkan.') };
+    }
     if (text === '/regions') {
       const listed = await shared.articles.listEditorial(actor); if (!listed.ok) return listed;
       const values = listed.value.regions.filter(({ status }) => status === 'active').map(({ name }) => name);

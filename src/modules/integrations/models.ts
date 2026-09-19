@@ -113,10 +113,12 @@ export type TelegramPendingReply =
   | { readonly kind: 'text'; readonly chatId: string; readonly text: string; readonly keyboard?: TelegramInlineKeyboard }
   | { readonly kind: 'edit'; readonly chatId: string; readonly messageId: string; readonly text: string; readonly keyboard: TelegramInlineKeyboard }
   | { readonly kind: 'photo'; readonly chatId: string; readonly photoUrl: string; readonly caption: string; readonly keyboard?: TelegramInlineKeyboard }
-  | { readonly kind: 'callback-answer'; readonly callbackId: string; readonly text?: string };
+  | { readonly kind: 'callback-answer'; readonly callbackId: string; readonly text?: string }
+  | { readonly kind: 'delete'; readonly chatId: string; readonly messageId: string };
 export interface TelegramHandleOutcome {
   readonly result: Result<TelegramWorkflowResult, PublicErrorEnvelope>;
   readonly pendingReplies: readonly TelegramPendingReply[];
+  readonly identity: TelegramIdentity | null;
 }
 
 export interface WebhookReplayClaim {

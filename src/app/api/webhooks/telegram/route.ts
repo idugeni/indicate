@@ -24,7 +24,7 @@ async function handlePOST(request: Request) {
   const service = production.telegram;
   const outcome = await service.handle(request.headers.get('x-telegram-bot-api-secret-token'), await request.json().catch(() => null), requestId);
   const result = outcome.result;
-  if (outcome.pendingReplies.length > 0) after(() => service.deliverReplies(outcome.pendingReplies, requestId));
+  if (outcome.pendingReplies.length > 0) after(() => service.deliverReplies(outcome.pendingReplies, requestId, outcome.identity));
   return result.ok ? NextResponse.json({ ok: true, result: { reply: result.value.reply }, requestId }) : NextResponse.json(result.error, { status: status(result.error) });
 }
 

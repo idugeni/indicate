@@ -5,10 +5,11 @@ import { z } from 'zod';
 import type { ExactObjectAuthorization } from '@/integrations/storage/ports';
 import type { TelegramBotCommand, TelegramCallbackAnswer, TelegramEditMessage, TelegramPhotoMessage, TelegramPort } from '@/modules/integrations/ports';
 import { TelegramRateLimitedError } from '@/modules/integrations/ports';
-import type { PreparedTelegramMedia, TelegramMediaTransferPort, TelegramMessage } from '@/modules/integrations/ports';
+import type { PreparedTelegramMedia, TelegramMediaTransferPort, TelegramMessage, TelegramSentReceipt } from '@/modules/integrations/ports';
 import type { TelegramInlineKeyboard } from '@/modules/integrations/models';
 
 const fileResponseSchema = z.object({ ok: z.literal(true), result: z.object({ file_path: z.string().min(1).max(500) }) });
+const sentResponseSchema = z.object({ ok: z.literal(true), result: z.object({ message_id: z.union([z.number().int(), z.string().regex(/^\d+$/)]) }) });
 
 const toInlineKeyboard = (keyboard: TelegramInlineKeyboard) => keyboard.map((row) => row.map((button) => ({ text: button.text.slice(0, 64), callback_data: button.data.slice(0, 64) })));
 
@@ -39,7 +40,7 @@ export class TelegramBotApiAdapter implements TelegramPort, TelegramMediaTransfe
     throw new TelegramRateLimitedError(typeof retryAfter === 'number' && retryAfter > 0 ? Math.floor(retryAfter) : null);
   }
 
-  async send(message: TelegramMessage): Promise<void> {
+  async send(message: TelegramMessage): Promise<TelegramSentReceipt> {
     const response = await this.fetcher(`${this.base}/sendMessage`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -53,9 +54,12 @@ export class TelegramBotApiAdapter implements TelegramPort, TelegramMediaTransfe
     });
     await this.throwIfRateLimited(response);
     if (!response.ok) throw new Error('Telegram send failed.');
+    const parsed = sentResponseSchema.safeParse(await response.json().catch(() => null));
+    if (!parsed.success) throw new Error('Telegram send failed.');
+    return Object.freeze({ messageId: String(parsed.data.result.message_id) });
   }
 
-  async sendPhoto(message: TelegramPhotoMessage): Promise<void> {
+  async sendPhoto(message: TelegramPhotoMessage): Promise<TelegramSentReceipt> {
     const response = await this.fetcher(`${this.base}/sendPhoto`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -69,6 +73,9 @@ export class TelegramBotApiAdapter implements TelegramPort, TelegramMediaTransfe
     });
     await this.throwIfRateLimited(response);
     if (!response.ok) throw new Error('Telegram photo send failed.');
+    const parsed = sentResponseSchema.safeParse(await response.json().catch(() => null));
+    if (!parsed.success) throw new Error('Telegram photo send failed.');
+    return Object.freeze({ messageId: String(parsed.data.result.message_id) });
   }
 
   async answerCallback(answer: TelegramCallbackAnswer): Promise<void> {
@@ -100,6 +107,17 @@ export class TelegramBotApiAdapter implements TelegramPort, TelegramMediaTransfe
     });
     await this.throwIfRateLimited(response);
     if (!response.ok) throw new Error('Telegram message edit failed.');
+  }
+
+  async deleteMessage(message: { readonly chatId: string; readonly messageId: string }): Promise<void> {
+    const response = await this.fetcher(`${this.base}/deleteMessage`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: message.chatId, message_id: Number(message.messageId) }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    await this.throwIfRateLimited(response);
+    if (!response.ok) throw new Error('Telegram message delete failed.');
   }
 
   async setMyCommands(commands: readonly TelegramBotCommand[]): Promise<void> {

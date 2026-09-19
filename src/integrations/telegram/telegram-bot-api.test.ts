@@ -6,6 +6,7 @@ import { TelegramRateLimitedError } from '@/modules/integrations/ports';
 const okJson = (payload: unknown, status = 200) =>
   ({ ok: status >= 200 && status < 300, status, json: async () => payload }) as unknown as Response;
 const NOW_ISO = new Date('2026-09-18T14:00:00.000Z');
+const sentJson = (messageId: number | string = 99) => okJson({ ok: true, result: { message_id: messageId } });
 
 function harness(handler: (url: string) => Promise<Response>) {
   const fetcher = vi.fn(async (input: unknown, _init: unknown) => handler(String(input)));
@@ -30,8 +31,9 @@ describe('TelegramBotApiAdapter check', () => {
 
 describe('TelegramBotApiAdapter send', () => {
   it('memotong teks dan memetakan keyboard', async () => {
-    const { adapter, fetcher } = harness(async () => okJson({ ok: true }));
-    await adapter.send({ chatId: '111', text: 'x'.repeat(5000), keyboard: [[{ text: 't'.repeat(100), data: 'd'.repeat(100) }]] });
+    const { adapter, fetcher } = harness(async () => sentJson(12));
+    const receipt = await adapter.send({ chatId: '111', text: 'x'.repeat(5000), keyboard: [[{ text: 't'.repeat(100), data: 'd'.repeat(100) }]] });
+    expect(receipt).toEqual({ messageId: '12' });
     const body = JSON.parse(String(((fetcher.mock.calls[0]?.[1] as unknown as { body: string }).body))) as {
       text: string;
       reply_markup: { inline_keyboard: { text: string; callback_data: string }[][] };
@@ -108,5 +110,34 @@ describe('TelegramBotApiAdapter editMessage', () => {
   it('melempar saat telegram menolak suntingan', async () => {
     const { adapter } = harness(async () => okJson({ ok: false }, 400));
     await expect(adapter.editMessage({ chatId: '111', messageId: '7', text: 'x' })).rejects.toThrow('Telegram message edit failed.');
+  });
+});
+
+describe('TelegramBotApiAdapter send receipt', () => {
+  it('mengembalikan id pesan foto', async () => {
+    const { adapter } = harness(async () => sentJson(77));
+    await expect(adapter.sendPhoto({ chatId: '111', photoUrl: 'https://example.test/w.png', caption: 'Halo' })).resolves.toEqual({ messageId: '77' });
+  });
+
+  it('menolak struk kirim yang tidak lengkap', async () => {
+    const { adapter } = harness(async () => okJson({ ok: true }));
+    await expect(adapter.send({ chatId: '111', text: 'halo' })).rejects.toThrow('Telegram send failed.');
+  });
+});
+
+describe('TelegramBotApiAdapter deleteMessage', () => {
+  it('menghapus pesan lewat id numerik', async () => {
+    const { adapter, fetcher } = harness(async () => okJson({ ok: true, result: true }));
+    await adapter.deleteMessage({ chatId: '111', messageId: '7' });
+    expect(String(fetcher.mock.calls[0]?.[0])).toContain('/deleteMessage');
+    const body = JSON.parse(String((fetcher.mock.calls[0]?.[1] as unknown as { body: string }).body)) as {
+      chat_id: string; message_id: number;
+    };
+    expect(body).toEqual({ chat_id: '111', message_id: 7 });
+  });
+
+  it('melempar saat telegram menolak hapus', async () => {
+    const { adapter } = harness(async () => okJson({ ok: false, description: 'message to delete not found' }, 400));
+    await expect(adapter.deleteMessage({ chatId: '111', messageId: '7' })).rejects.toThrow('Telegram message delete failed.');
   });
 });
