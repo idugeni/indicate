@@ -111,6 +111,7 @@ function friendlyError(error: unknown): string {
 
 export function MiniAppClient() {
   const [scriptReady, setScriptReady] = useState(false);
+  const [scriptFailed, setScriptFailed] = useState(false);
   const [denied, setDenied] = useState(false);
   const [orgs, setOrgs] = useState<readonly Org[]>([]);
   const [orgId, setOrgId] = useState<string | null>(null);
@@ -123,6 +124,21 @@ export function MiniAppClient() {
     webApp?.ready();
     webApp?.expand();
   }, [webApp]);
+
+  useEffect(() => {
+    let tries = 0;
+    const timer = setInterval(() => {
+      tries += 1;
+      if (window.Telegram?.WebApp !== undefined) {
+        clearInterval(timer);
+        setScriptReady(true);
+      } else if (tries >= 40) {
+        clearInterval(timer);
+        setScriptFailed(true);
+      }
+    }, 250);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (initData === null) return;
@@ -163,8 +179,17 @@ export function MiniAppClient() {
   if (!scriptReady)
     return (
       <main style={center}>
-        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" onLoad={() => setScriptReady(true)} />
-        Memuat…
+        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" onLoad={() => setScriptReady(true)} onError={() => setScriptFailed(true)} />
+        {scriptFailed ? (
+          <>
+            <p>Gagal memuat Telegram. Periksa koneksi lalu coba lagi.</p>
+            <button type="button" style={btnAcc} onClick={() => window.location.reload()}>
+              Coba lagi
+            </button>
+          </>
+        ) : (
+          'Memuat…'
+        )}
       </main>
     );
   if (initData === null) {
