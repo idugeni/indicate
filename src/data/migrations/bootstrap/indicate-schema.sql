@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (134 migrations):
+-- Reviewed sources, in journal order (135 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -147,6 +147,7 @@
 --   132  20260919030000_template_presets_nine  ledger sha256:690b951bc2e4ed749ca8961203a2dd0c5157a2e7b73cacee1d31f31fbf188ab3
 --   133  20260919040000_telegram_identity_options  ledger sha256:e8192d2701af3ac5c1814f86becf9139bc51d77fb34f29460ba30c0133a8ba7f
 --   134  20260919050000_telegram_article_edit_step  ledger sha256:68757b6a83cc1029faa7bc376a6cac2ffe200e1a33bf24744459c054d3c18c5e
+--   135  20260919060000_retention_terminal_sweep  ledger sha256:88aa6858763e01f1b9987bb1d1cd741483962aa03813c5ce15e5f19717db331d
 
 BEGIN;
 
@@ -11744,4 +11745,67 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (134, 'telegram_article_edit_step', 'sha256:21697c7a60a4a1575b88b493ae1f5d998001f0e415eca77901a49ff0138ff0d7');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('68757b6a83cc1029faa7bc376a6cac2ffe200e1a33bf24744459c054d3c18c5e', 1789850500000);
+
+-- ----------------------------------------------------------------------
+-- 20260919060000_retention_terminal_sweep
+-- ----------------------------------------------------------------------
+-- Perluasan sweep retensi: baris terminal operasional yang menumpuk.
+--
+-- retention_sweep dinyatakan ulang dengan tiga kategori baru, semuanya
+-- terminal dan aman dihapus: invalidation_tasks completed/failed >90 hari,
+-- telegram_outbox sent/dead >30 hari, dan publication_transition_receipts
+-- >90 hari kecuali baris terbaru per job. Guard litigation hold dihormati
+-- seperti kategori lama; audit_logs tidak pernah disentuh DELETE.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE OR REPLACE FUNCTION indicate_private.retention_sweep()
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_total integer := 0; v_count integer; v_started timestamptz := now();
+BEGIN
+  DELETE FROM public.org_invitations WHERE ((accepted_at IS NOT NULL AND accepted_at < now() - interval '90 days') OR (accepted_at IS NULL AND expires_at < now() - interval '90 days')) AND NOT indicate_private.is_org_held(org_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('org_invitations', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.webhook_replay_claims WHERE expires_at < now() AND (organization_id IS NULL OR NOT indicate_private.is_org_held(organization_id));
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('webhook_replay_claims', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.object_cleanup_tasks WHERE status = 'completed' AND updated_at < now() - interval '90 days' AND NOT indicate_private.is_org_held(organization_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('object_cleanup_tasks', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.telegram_conversations WHERE expires_at < now() AND NOT indicate_private.is_org_held(organization_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('telegram_conversations', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.invalidation_tasks WHERE status IN ('completed', 'failed') AND updated_at < now() - interval '90 days' AND NOT indicate_private.is_org_held(organization_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('invalidation_tasks', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.telegram_outbox WHERE status IN ('sent', 'dead') AND updated_at < now() - interval '30 days' AND (organization_id IS NULL OR NOT indicate_private.is_org_held(organization_id));
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('telegram_outbox', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.publication_transition_receipts r
+  WHERE r.created_at < now() - interval '90 days'
+    AND NOT indicate_private.is_org_held(r.organization_id)
+    AND NOT EXISTS (
+      SELECT 1 FROM public.publication_transition_receipts latest
+      WHERE latest.organization_id = r.organization_id
+        AND latest.job_id = r.job_id
+        AND (latest.created_at, latest.id) > (r.created_at, r.id)
+    );
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('publication_transition_receipts', v_count, v_started, now());
+  v_total := v_total + v_count;
+  RETURN v_total;
+END
+$function$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (135, 'retention_terminal_sweep', 'sha256:4262ce1fa93ccd67231e53c5714a4a6b5cd6655d12056791963a5a22230ca02a');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('88aa6858763e01f1b9987bb1d1cd741483962aa03813c5ce15e5f19717db331d', 1789850600000);
 COMMIT;
