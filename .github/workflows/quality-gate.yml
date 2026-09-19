@@ -18,11 +18,62 @@ permissions:
 # dan dijaga gate ini. Job live-postgres-contract dihapus dengan alasan yang
 # sama; kembalikan bersamaan dengan suit kontraknya, bukan sebelumnya.
 jobs:
-  quality-gate:
+  static:
     runs-on: ubuntu-26.04
-    timeout-minutes: 30
+    timeout-minutes: 10
     concurrency:
-      group: quality-gate-${{ github.ref }}
+      group: quality-gate-static-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run db:bootstrap:check
+      - run: npm run typecheck
+      - run: npm run audit:production
+
+  lint:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    concurrency:
+      group: quality-gate-lint-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+
+  test:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    concurrency:
+      group: quality-gate-test-${{ github.ref }}-${{ matrix.shard }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1/8', '2/8', '3/8', '4/8', '5/8', '6/8', '7/8', '8/8']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm test -- --shard=${{ matrix.shard }}
+
+  build:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    concurrency:
+      group: quality-gate-build-${{ github.ref }}
       cancel-in-progress: true
     environment: production
     # Build memprerender dengan snapshot runtime asli: butuh kredensial baca.
@@ -58,9 +109,17 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run db:bootstrap:check
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
-      - run: npm run audit:production
       - run: npm run build
+
+  quality-gate:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    needs: [static, lint, test, build]
+    if: always()
+    steps:
+      - run: |
+          if [ "${{ needs.static.result }}" != "success" ] || [ "${{ needs.lint.result }}" != "success" ] || [ "${{ needs.test.result }}" != "success" ] || [ "${{ needs.build.result }}" != "success" ]; then
+            echo "gate failed: static=${{ needs.static.result }} lint=${{ needs.lint.result }} test=${{ needs.test.result }} build=${{ needs.build.result }}"
+            exit 1
+          fi
+          echo "gate passed."
