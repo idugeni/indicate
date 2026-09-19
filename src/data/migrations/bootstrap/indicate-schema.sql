@@ -39,9 +39,9 @@
 --   24  20260903015500_runtime_config_constraints_triggers  ledger sha256:61602bbd86ddef9b644bc768bfa0d098303afe161755eff354201df63bd11122
 --   25  20260903020000_runtime_config_mutations  ledger sha256:777f279fa3779a3b5f72d3499f4b03933d9a117b1324d17cc1b0f446e468456b
 --   26  20260903020300_de_object_rename_timestamp  ledger sha256:a9ead169f3359671ae906d7de87369f28bd555e3e0e9913af572ff85532d8d19
---   27  20260903020500_dashboard_entry_point  ledger sha256:cd31f0386fbe834eade6ed0fc9c7d24c8f33078195fa8f30ea73992be14f2833
---   28  20260903021000_role_tier  ledger sha256:05d22165ed36cd8d2d925af798bef877c03aa2595c145b39fa81846feab9fe7a
---   29  20260903021500_delivery_activation_enums  ledger sha256:06a93da7661b717e14ca71411fd3d44767b777b1dba10e7ed4510cef6281db63
+--   27  20260903020500_dashboard_entry_point  ledger sha256:6e6151a1cbac886c653de30e7d1ac2a19e0e8f8cf93221f5f4603f50dfeaf869
+--   28  20260903021000_role_tier  ledger sha256:ecac5e6c81ad46d79c87986784f9b04cc94e2486f7c3000ae14e9fc2beae5410
+--   29  20260903021500_delivery_activation_enums  ledger sha256:37844033396cfaa0104197d31052703c3d3f6e307703c50bbaf55e0f4dd50783
 --   30  20260903022000_schema_reconciliation  ledger sha256:e14501607ab9aab829aedf14cd3aae1061be2254e83b927a97b024ea658e261b
 --   31  20260903022500_stale_object_cleanup  ledger sha256:0569003d119c76c9fc283b5b825d139a53c365da0a4d2122b81ad74c0267fb81
 --   32  20260903023000_policy_singleton_key  ledger sha256:ed06cfaedf668c6c93c66c57190a0fe8533c9e5b6a544ef18b87789d4f46c174
@@ -4615,7 +4615,7 @@ ALTER TYPE "public"."audit_entry_point" RENAME VALUE 'cms' TO 'dashboard';
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (27, 'dashboard_entry_point', 'dashboard-entry-point-v1');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('cd31f0386fbe834eade6ed0fc9c7d24c8f33078195fa8f30ea73992be14f2833', 1788350776451);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6e6151a1cbac886c653de30e7d1ac2a19e0e8f8cf93221f5f4603f50dfeaf869', 1788350776451);
 
 -- ----------------------------------------------------------------------
 -- 20260903021000_role_tier
@@ -4632,7 +4632,7 @@ UPDATE "public"."roles" SET "tier" = 'admin' WHERE lower("name") LIKE '%admin%';
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (28, 'role_tier', 'role-tier-v1');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('05d22165ed36cd8d2d925af798bef877c03aa2595c145b39fa81846feab9fe7a', 1788350776452);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ecac5e6c81ad46d79c87986784f9b04cc94e2486f7c3000ae14e9fc2beae5410', 1788350776452);
 
 -- ----------------------------------------------------------------------
 -- 20260903021500_delivery_activation_enums
@@ -4682,7 +4682,7 @@ ALTER TABLE "public"."site_settings" ALTER COLUMN "seo_robots_directive" TYPE "p
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (29, 'delivery_activation_enums', 'delivery-activation-enums-v1');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('06a93da7661b717e14ca71411fd3d44767b777b1dba10e7ed4510cef6281db63', 1788350776453);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('37844033396cfaa0104197d31052703c3d3f6e307703c50bbaf55e0f4dd50783', 1788350776453);
 
 -- ----------------------------------------------------------------------
 -- 20260903022000_schema_reconciliation
