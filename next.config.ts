@@ -45,7 +45,15 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Wajib: seluruh codebase memakai `'use cache'` (site-content, network-runtime).
   cacheComponents: true,
-  serverExternalPackages: ['postgres', 'drizzle-orm'],
+  serverExternalPackages: [
+    'postgres',
+    'drizzle-orm',
+    'sharp',
+    '@aws-sdk/client-s3',
+    '@aws-sdk/s3-request-presigner',
+    '@upstash/redis',
+    'resend',
+  ],
 
   async headers() {
     if (!controlHosts.dashboard) {
@@ -88,17 +96,17 @@ const nextConfig: NextConfig = {
   experimental: {
     typedEnv: true,
     optimizePackageImports: [
-      '@radix-ui/react-accordion',
-      '@radix-ui/react-avatar',
-      '@radix-ui/react-dialog',
-      '@radix-ui/react-dropdown-menu',
-      '@radix-ui/react-popover',
-      '@radix-ui/react-scroll-area',
-      '@radix-ui/react-select',
-      '@radix-ui/react-separator',
-      '@radix-ui/react-slot',
-      '@radix-ui/react-tabs',
-      '@radix-ui/react-tooltip',
+      '@base-ui/react',
+      '@shadcn/react',
+      'lucide-react',
+      'react-icons',
+      'cmdk',
+      'sonner',
+      'recharts',
+      'embla-carousel-react',
+      'react-day-picker',
+      'react-resizable-panels',
+      'input-otp',
     ],
   },
 };

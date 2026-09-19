@@ -43,9 +43,9 @@ export const MINISTRY_FALLBACK_LOGO_URL = '/brand/logo-kemenimipas.png';
 /**
  * Ilustrasi fallback gambar utama berita: dipakai kartu artikel, hero halaman
  * artikel, dan sampul editorial bila artikel tidak punya `imageUrl`.
- * Berkasnya WAJIB ada di `public/assets/article-fallback.png`.
+ * Berkasnya WAJIB ada di `public/assets/article-fallback.webp`.
  */
-export const ARTICLE_FALLBACK_IMAGE_URL = '/assets/article-fallback.png';
+export const ARTICLE_FALLBACK_IMAGE_URL = '/assets/article-fallback.webp';
 export const SERVICE_SUMMARY =
   'Indicate menyatukan pengelolaan banyak portal berita ke dalam satu dasbor terpusat. Redaksi menulis satu kali, lalu menerbitkannya ke situs mana pun yang dipilih — dengan data masing-masing pelanggan yang terjaga dan terpisah.';
 

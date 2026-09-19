@@ -9,7 +9,7 @@ const TIME_ZONE_ID = 'Asia/Jakarta';
  * @returns URL thumbnail, gambar utama, atau fallback lokal.
  */
 export function articleImage(article: NetworkArticle): string {
-  return article.thumbnailUrl ?? article.imageUrl ?? '/assets/article-fallback.png';
+  return article.thumbnailUrl ?? article.imageUrl ?? '/assets/article-fallback.webp';
 }
 
 /**

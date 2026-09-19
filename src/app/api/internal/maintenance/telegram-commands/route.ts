@@ -40,3 +40,5 @@ async function handleGET(request: Request) {
  * @remarks Cron-guarded like the other maintenance routes; safe to retry.
  */
 export const GET = withApiAccess('GET /api/internal/maintenance/telegram-commands', handleGET);
+
+export const maxDuration = 120;

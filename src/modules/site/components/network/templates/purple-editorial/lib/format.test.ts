@@ -19,7 +19,7 @@ describe('articleImage', () => {
     expect(articleImage(makeArticle({ thumbnailUrl: null, imageUrl: 'https://cdn.example/x.jpg' }))).toBe(
       'https://cdn.example/x.jpg',
     );
-    expect(articleImage(makeArticle())).toBe('/assets/article-fallback.png');
+    expect(articleImage(makeArticle())).toBe('/assets/article-fallback.webp');
   });
 });
 

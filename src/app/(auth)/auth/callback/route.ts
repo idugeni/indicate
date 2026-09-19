@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import { after, type NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 import { getPublicConfig } from '@/core/config/public-config';
@@ -15,14 +15,10 @@ function withSupabaseCookies(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   });
 }
 
-type CallbackAuth = ReturnType<typeof createSupabaseSsrAuthAdapter>;
-
-async function welcomeConfirmedSignup(auth: CallbackAuth): Promise<void> {
+async function sendWelcomeEmail(identity: { readonly authUserId: string; readonly email: string; readonly displayName: string }): Promise<void> {
   try {
     const production = await createProductionIntegrationsContext();
-    const identity = await auth.verifyCookieSession();
-    if (identity === null || identity.email === null) return;
-    await production.emailWelcome.welcome({ authUserId: identity.authUserId, email: identity.email, displayName: identity.displayName });
+    await production.emailWelcome.welcome(identity);
   } catch {
     return;
   }
@@ -63,7 +59,11 @@ export async function GET(request: NextRequest) {
   }
 
   if (authType === 'signup') {
-    await welcomeConfirmedSignup(auth);
+    const identity = await auth.verifyCookieSession();
+    const email = identity?.email ?? null;
+    if (identity !== null && email !== null) {
+      after(() => sendWelcomeEmail({ authUserId: identity.authUserId, email, displayName: identity.displayName }));
+    }
   }
 
   const fallback = resolveCallbackDestination(authType, next);

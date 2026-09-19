@@ -296,4 +296,4 @@ export async function proxy(request: NextRequest) {
   }
   return nextWithCorrelation(request);
 }
-export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'] };
+export const config = { matcher: ['/((?!_next/static|_next/image|_vercel|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|css|js|map|woff2?|ttf|eot|mp4|webm)$).*)'] };

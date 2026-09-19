@@ -65,17 +65,21 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       transaction.select().from(publishingJobTargets).where(eq(publishingJobTargets.organizationId, organizationId)),
       transaction.select().from(auditLogs).where(eq(auditLogs.organizationId, organizationId)),
     ]);
-    const membershipProfiles = new Map<string, { displayName: string; avatarUrl: string | null }>();
-    for (const membership of membershipRows) {
-      const displayRows = await transaction.execute<{ display_name: string | null; avatar_url: string | null }>(sql`
+    const profileRows = await Promise.all(
+      membershipRows.map((membership) =>
+        transaction.execute<{ display_name: string | null; avatar_url: string | null }>(sql`
         SELECT display_name, avatar_url FROM indicate_private.lookup_user_profile(${membership.userId}::uuid)
-      `);
-      const profile = displayRows[0];
+      `),
+      ),
+    );
+    const membershipProfiles = new Map<string, { displayName: string; avatarUrl: string | null }>();
+    membershipRows.forEach((membership, index) => {
+      const profile = profileRows[index]?.[0];
       // Lookup terikat verified-user: aktor non-user (telegram/api_key) tidak
       // punya konteks itu sehingga selalu kosong — pakai userId sebagai label
       // netral (sudah terekspos di payload yang sama), bukan menggagalkan baca.
       membershipProfiles.set(membership.userId, { displayName: profile?.display_name ?? membership.userId, avatarUrl: profile?.avatar_url ?? null });
-    }
+    });
     const permissionsByRole = new Map<string, Set<string>>();
     for (const grant of grantRows) {
       const set = permissionsByRole.get(grant.roleId) ?? new Set<string>(); set.add(grant.permission); permissionsByRole.set(grant.roleId, set);

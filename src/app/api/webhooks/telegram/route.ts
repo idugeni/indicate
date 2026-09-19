@@ -34,3 +34,5 @@ async function handlePOST(request: Request) {
  * @remarks Balasan chat dikirim setelah respons: outcome sudah durable + replayable, dan deliverReplies tidak pernah melempar (kegagalan tercatat sebagai warn).
  */
 export const POST = withApiAccess('POST /api/webhooks/telegram', handlePOST);
+
+export const maxDuration = 60;

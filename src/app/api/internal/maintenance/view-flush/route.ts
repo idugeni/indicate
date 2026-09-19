@@ -201,3 +201,5 @@ async function handleGET(request: Request) {
  * @remarks Sesi pooled membawa GUC tenant/region request sebelumnya: set_tenant_context menolak org berbeda (conflict) dan region basi menyaring baris keluar, keduanya diam-diam menggugurkan flush. RESET dulu per org di dalam satu transaksi (satu koneksi terjepit), lalu tegakkan konteks flush yang bersih.
  */
 export const GET = withApiAccess('GET /api/internal/maintenance/view-flush', handleGET);
+
+export const maxDuration = 300;

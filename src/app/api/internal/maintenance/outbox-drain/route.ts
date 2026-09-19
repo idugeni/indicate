@@ -35,3 +35,5 @@ async function handleGET(request: Request) {
 }
 
 export const GET = withApiAccess('GET /api/internal/maintenance/outbox-drain', handleGET);
+
+export const maxDuration = 60;

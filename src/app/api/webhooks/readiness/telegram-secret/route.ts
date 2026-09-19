@@ -48,3 +48,5 @@ export async function handleTelegramSecretReadinessPOST(request: Request) {
 }
 
 export const POST = withApiAccess('POST /api/webhooks/readiness/telegram-secret', handleTelegramSecretReadinessPOST);
+
+export const maxDuration = 30;

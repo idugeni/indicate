@@ -24,7 +24,7 @@ export interface FaqRow {
 
 export async function readFaqs(db: Database): Promise<readonly FaqRow[]> {
   const rows = await db
-    .select()
+    .select({ id: faqs.id, question: faqs.question, answer: faqs.answer, category: faqs.category })
     .from(faqs)
     .where(eq(faqs.active, true))
     .orderBy(asc(faqs.sortOrder), asc(faqs.question));
@@ -33,7 +33,7 @@ export async function readFaqs(db: Database): Promise<readonly FaqRow[]> {
 
 export async function readTestimonials(db: Database): Promise<readonly TestimonialRow[]> {
   const rows = await db
-    .select()
+    .select({ quote: testimonials.quote, author: testimonials.author, role: testimonials.role, media: testimonials.media })
     .from(testimonials)
     .where(eq(testimonials.active, true))
     .orderBy(asc(testimonials.sortOrder), asc(testimonials.author));
@@ -43,7 +43,10 @@ export async function readTestimonials(db: Database): Promise<readonly Testimoni
 }
 
 export async function readContactChannels(db: Database): Promise<readonly { readonly title: string; readonly description: string; readonly href?: string }[]> {
-  const rows = await db.select().from(contactChannels).orderBy(asc(contactChannels.sortOrder), asc(contactChannels.key));
+  const rows = await db
+    .select({ title: contactChannels.title, description: contactChannels.description, href: contactChannels.href })
+    .from(contactChannels)
+    .orderBy(asc(contactChannels.sortOrder), asc(contactChannels.key));
   return Object.freeze(rows.map((row) => Object.freeze({
     title: row.title,
     description: row.description,

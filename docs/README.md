@@ -16,5 +16,5 @@ Indeks dokumen repo. Dokumen kanonis di root memakai huruf kapital; catatan oper
 
 - `tenants/` — catatan per-tenant, lowercase (`upt-jateng.md`).
 - `templates/` — `SOW-TEMPLATE.md` (dirujuk runbook) + PNG referensi visual template (kebab-case).
-- `templates/brand/` — master huruf brand; **terkunci**: `gradient/` hanya dibaca byte-nya oleh skill `tenant-onboarding`, dilarang hapus/rename.
+- `templates/brand/` — master huruf brand; **terkunci**: `gradient/` hanya dibaca byte-nya oleh skill `tenant-onboarding`, dilarang hapus/rename; `original/` adalah arsip master yang sama, dilarang hapus/rename.
 - `assets/` — SVG yang dirujuk dokumen.

@@ -32,3 +32,5 @@ async function handlePOST(request: Request) {
 }
 
 export const POST = withApiAccess('POST /api/webhooks/generic', handlePOST);
+
+export const maxDuration = 30;

@@ -45,3 +45,5 @@ async function handleGET(request: Request) {
 }
 
 export const GET = withApiAccess('GET /api/internal/publishing', handleGET);
+
+export const maxDuration = 120;

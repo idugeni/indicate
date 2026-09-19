@@ -58,3 +58,5 @@ export const POST = withApiAccess('POST /api/internal/delivery/reconcile', handl
  * @remarks Vercel Cron hanya mengirim GET (dengan header Authorization Bearer CRON_SECRET otomatis bila env CRON_SECRET tersedia); POST dipertahankan untuk pemicu eksternal.
  */
 export const GET = withApiAccess('GET /api/internal/delivery/reconcile', handleGET);
+
+export const maxDuration = 180;

@@ -51,3 +51,5 @@ async function handleGET(request: Request) {
 }
 
 export const GET = withApiAccess('GET /api/internal/maintenance/worm-export', handleGET);
+
+export const maxDuration = 300;
