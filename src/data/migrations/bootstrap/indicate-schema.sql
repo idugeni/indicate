@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (125 migrations):
+-- Reviewed sources, in journal order (134 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -138,6 +138,15 @@
 --   123  20260917030000_fix_upt_city_slawi  ledger sha256:b7051605faabec496d888d89b6db53cfa29ba04bcfaaa1326a1dfcd1eed11bae
 --   124  20260918000000_faq_canonical_13  ledger sha256:557d615cfa121741dfa1db667332fa088caf55b7521e7aafcd236ff5ee29a0a7
 --   125  20260918010000_faq_category  ledger sha256:f22a45aa12055e1739064e9a160a7b4cf223fd75f42baba2c9c3233ef67b3b2d
+--   126  20260918020000_publisher_attribution_short  ledger sha256:cbba982f7b67214a257c4460e577633aaa6fb479c5cb684319821353d68b88e0
+--   127  20260918030000_publisher_attribution_helper  ledger sha256:e3870e0b944265cdfa7e4f489b070eb593708cf7c14183c1d6b81bf332690ab6
+--   128  20260918040000_function_search_path  ledger sha256:92b89a3979a4955f8d6b711abdaa3b6abc42f5afe380628fa09ae5225807ff07
+--   129  20260918050000_telegram_publish_pick_site  ledger sha256:b7ad2fb3ca7aeeffff1dfafd0c1944465f8bdaa9ef127c6072319249c96d3802
+--   130  20260919010000_invoice_payment_method  ledger sha256:e89b52f05853e285fbb9a1d6b883f91928994edff92713905e05301766e09831
+--   131  20260919020000_telegram_suggest_step  ledger sha256:f7c94c8795a2d6d3c3f54917194b67f6562ba53631c9a98077ea0c475fdd5da9
+--   132  20260919030000_template_presets_nine  ledger sha256:690b951bc2e4ed749ca8961203a2dd0c5157a2e7b73cacee1d31f31fbf188ab3
+--   133  20260919040000_telegram_identity_options  ledger sha256:7030eadf20387b1be741384eca4914b8e25b803eb4919db7718637738f4254a7
+--   134  20260919050000_telegram_article_edit_step  ledger sha256:68757b6a83cc1029faa7bc376a6cac2ffe200e1a33bf24744459c054d3c18c5e
 
 BEGIN;
 
@@ -11506,4 +11515,231 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (125, 'faq_category', 'sha256:2b23e29c0fd17a13e0940e7156632f27c6a992c8e9deddb97598bc125b3c7a65');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f22a45aa12055e1739064e9a160a7b4cf223fd75f42baba2c9c3233ef67b3b2d', 1789734433960);
+
+-- ----------------------------------------------------------------------
+-- 20260918020000_publisher_attribution_short
+-- ----------------------------------------------------------------------
+-- Label atribusi pendek gaya pers: buang kelas ("Kelas II B") dari semua
+-- attribution_label ("Humas Rutan Kelas II B Wonosobo" -> "Humas Rutan Wonosobo").
+-- Kolom `name` tetap nama resmi kapital; label "Redaksi ..." tanpa kelas tak tersentuh.
+-- Kelas tanpa sub-huruf ("Kelas I Semarang", "Kelas II Klaten") ikut terpangkas;
+-- lookahead (?=\s) mencegah huruf awal kota termakan ("I S..." dan "II K..."
+-- bukan sub-kelas "II B").
+-- Pernyataan kedua membangun ulang label yang sempat terpangkas berlebih oleh
+-- revisi regex sebelumnya (huruf awal kota hilang, mis. "LPKAutoarjo",
+-- "Bapaslaten") langsung dari `name` resmi yang tak tersentuh.
+-- Idempoten: hanya baris yang berubah. Checksum di bawah adalah sha256 heks
+-- dari isi berkas ini sebelum baris INSERT.
+UPDATE public.publishers
+SET attribution_label = regexp_replace(attribution_label, '\sKelas\s+[IVX]+(\s+[A-Z](?=\s))?', '', 'g'),
+    updated_at = now()
+WHERE attribution_label IS DISTINCT FROM regexp_replace(attribution_label, '\sKelas\s+[IVX]+(\s+[A-Z](?=\s))?', '', 'g');
+UPDATE public.publishers
+SET attribution_label =
+  'Humas '
+  || replace(initcap(split_part(name, ' KELAS', 1)), 'Lpka', 'LPKA')
+  || ' '
+  || replace(initcap(regexp_replace(name, '^.* KELAS (I|II) ', '')), 'Lpka', 'LPKA'),
+    updated_at = now()
+WHERE name ~ ' KELAS (I|II) '
+  AND name !~ ' KELAS (I|II) [A-Z] '
+  AND attribution_label NOT LIKE '% Kelas%'
+  AND attribution_label IS DISTINCT FROM
+    'Humas '
+    || replace(initcap(split_part(name, ' KELAS', 1)), 'Lpka', 'LPKA')
+    || ' '
+    || replace(initcap(regexp_replace(name, '^.* KELAS (I|II) ', '')), 'Lpka', 'LPKA');
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (126, 'publisher_attribution_short', 'sha256:dc991100643411a0d1ae3d1cab6f6d9c0a646214e9c00c3622303b2cea64d523');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('cbba982f7b67214a257c4460e577633aaa6fb479c5cb684319821353d68b88e0', 1789735675398);
+
+-- ----------------------------------------------------------------------
+-- 20260918030000_publisher_attribution_helper
+-- ----------------------------------------------------------------------
+-- Sumber tunggal aturan label atribusi pendek untuk seed batch berikutnya
+-- ("RUTAN KELAS II B WONOSOBO" -> "Humas Rutan Wonosobo").
+-- Form dashboard memakai padanan TypeScript-nya
+-- (modules/dashboard/components/editorial/publisher-attribution.ts); ubah
+-- keduanya bila aturan berubah. Idempoten (CREATE OR REPLACE).
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE OR REPLACE FUNCTION indicate_private.short_attribution_label(official_name text)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+RETURN 'Humas ' || replace(initcap(regexp_replace(official_name, '\sKELAS\s+[IVX]+(\s+[A-Z](?=\s))?', '', 'g')), 'Lpka', 'LPKA');
+GRANT EXECUTE ON FUNCTION indicate_private.short_attribution_label(text) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (127, 'publisher_attribution_helper', 'sha256:62054eee4e7b9c58ecb424c6eeb5162d64a48f5487c9b6597ab378ea02dc290c');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e3870e0b944265cdfa7e4f489b070eb593708cf7c14183c1d6b81bf332690ab6', 1789736068044);
+
+-- ----------------------------------------------------------------------
+-- 20260918040000_function_search_path
+-- ----------------------------------------------------------------------
+-- Kunci search_path helper label atribusi (temuan advisor
+-- function_search_path_mutable): mengikuti konvensi repo
+-- (pg_catalog, public, indicate_private).
+-- Idempoten. Checksum di bawah adalah sha256 heks dari isi berkas ini
+-- sebelum baris INSERT.
+ALTER FUNCTION indicate_private.short_attribution_label(text) SET search_path = pg_catalog, public, indicate_private;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (128, 'function_search_path', 'sha256:2d61210529f201fbcafb264b2a34654f215505b7884a0cb839d62202eb562844');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('92b89a3979a4955f8d6b711abdaa3b6abc42f5afe380628fa09ae5225807ff07', 1789736363176);
+
+-- ----------------------------------------------------------------------
+-- 20260918050000_telegram_publish_pick_site
+-- ----------------------------------------------------------------------
+-- Tambah langkah publish_pick_site untuk alur Telegram tanpa ketik ID (tombol portal).
+-- Idempoten. Checksum di bawah adalah sha256 heks dari isi berkas ini
+-- sebelum baris INSERT.
+ALTER TYPE "public"."telegram_conversation_step" ADD VALUE IF NOT EXISTS 'publish_pick_site';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (129, 'telegram_publish_pick_site', 'sha256:b3c9dcbb60ef2f4a32180d2ada330294ff70a570fea01342020e6b2e41898fbd');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b7ad2fb3ca7aeeffff1dfafd0c1944465f8bdaa9ef127c6072319249c96d3802', 1789743743127);
+
+-- ----------------------------------------------------------------------
+-- 20260919010000_invoice_payment_method
+-- ----------------------------------------------------------------------
+-- Metode pembayaran invoice: teks tampilan ("Transfer bank") + CHECK panjang.
+-- Kolom NOT NULL berdefault agar bacaan lama tetap valid selama rollout;
+-- invoice_create menerima p_payment_method opsional (default sama).
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+ALTER TABLE public.invoices ADD COLUMN payment_method text NOT NULL DEFAULT 'Transfer bank';
+ALTER TABLE public.invoices ADD CONSTRAINT invoices_payment_method_bounded CHECK (length(payment_method) BETWEEN 1 AND 40);
+CREATE OR REPLACE FUNCTION indicate_private.invoice_create(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_amount integer, p_paid_at timestamp with time zone, p_note text, p_now timestamp with time zone, p_payment_method text DEFAULT 'Transfer bank')
+  RETURNS uuid
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid(); v_slug text; v_number text; v_method text;
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  SELECT slug INTO v_slug FROM public.organizations WHERE id = p_organization_id;
+  IF v_slug IS NULL THEN
+    RAISE EXCEPTION 'organization required' USING ERRCODE = '42501';
+  END IF;
+  IF p_amount IS NULL OR p_amount < 0 THEN
+    RAISE EXCEPTION 'amount invalid' USING ERRCODE = '42501';
+  END IF;
+  IF p_paid_at IS NULL THEN
+    RAISE EXCEPTION 'paid_at required' USING ERRCODE = '42501';
+  END IF;
+  v_method := COALESCE(NULLIF(p_payment_method, ''), 'Transfer bank');
+  v_number := 'IND-'
+    || upper(substr(md5(v_slug), 1, 5))
+    || '-' || to_char(p_now, 'YYMM-')
+    || lpad(nextval('public.invoice_number_seq')::text, 4, '0')
+    || '-' || (SELECT string_agg(substr('ABCDEFGHJKMNPQRSTUVWXYZ23456789', (floor(random() * 31) + 1)::integer, 1), '' ORDER BY s) FROM generate_series(1, 4) AS s);
+  INSERT INTO public.invoices(id, organization_id, number, amount_idr, status, paid_at, billing_note, payment_method, created_by, version, created_at, updated_at)
+  VALUES (v_id, p_organization_id, v_number, p_amount, 'paid', p_paid_at, nullif(p_note, ''), v_method, p_actor_id, 1, p_now, p_now);
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'invoice.create', 'invoice', v_id::text, 'succeeded', ARRAY['number','amount','paidAt','paymentMethod'], jsonb_build_object('number', v_number, 'amount', p_amount, 'paidAt', p_paid_at, 'paymentMethod', v_method), p_request_id, p_now);
+  RETURN v_id;
+END
+$function$;
+DROP FUNCTION IF EXISTS indicate_private.invoice_list_for_org(uuid, uuid);
+CREATE FUNCTION indicate_private.invoice_list_for_org(p_actor_id uuid, p_organization_id uuid)
+  RETURNS TABLE(id uuid, organization_id uuid, organization_name text, number text, amount_idr integer, currency text, status invoice_status, paid_at timestamp with time zone, billing_note text, payment_method text, voided_at timestamp with time zone, void_reason text, version integer, created_at timestamp with time zone)
+  LANGUAGE plpgsql
+  STABLE SECURITY DEFINER
+  SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id)
+     AND NOT EXISTS (SELECT 1 FROM public.memberships WHERE memberships.organization_id = invoice_list_for_org.p_organization_id AND memberships.user_id = p_actor_id AND memberships.status = 'active') THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT i.id, i.organization_id, o.name, i.number, i.amount_idr, i.currency, i.status, i.paid_at, i.billing_note, i.payment_method, i.voided_at, i.void_reason, i.version, i.created_at
+  FROM public.invoices i JOIN public.organizations o ON o.id = i.organization_id
+  WHERE i.organization_id = p_organization_id ORDER BY i.paid_at DESC, i.created_at DESC;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.invoice_list_for_org(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.invoice_list_for_org(uuid, uuid) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (130, 'invoice_payment_method', 'sha256:c6760485915fe0cd5645aa40afa37a8db3b9fbb3c244d58329965176c779840a');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e89b52f05853e285fbb9a1d6b883f91928994edff92713905e05301766e09831', 1789759012791);
+
+-- ----------------------------------------------------------------------
+-- 20260919020000_telegram_suggest_step
+-- ----------------------------------------------------------------------
+-- Langkah suggest_sites untuk alur saran varian Telegram (tombol 💡 + /suggest).
+-- Idempoten. Checksum di bawah adalah sha256 heks dari isi berkas ini
+-- sebelum baris INSERT.
+ALTER TYPE "public"."telegram_conversation_step" ADD VALUE IF NOT EXISTS 'suggest_sites';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (131, 'telegram_suggest_step', 'sha256:3ecf7b5f24876b5bd5b2524f8ae9fbf7b7036759be6ef9a4539d2c757868ae53');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f7c94c8795a2d6d3c3f54917194b67f6562ba53631c9a98077ea0c475fdd5da9', 1789761092778);
+
+-- ----------------------------------------------------------------------
+-- 20260919030000_template_presets_nine
+-- ----------------------------------------------------------------------
+INSERT INTO public.template_presets (id, name, description, category) VALUES
+  ('clean-blue', 'Clean Blue Editorial', 'Layout editorial terang: ticker terkini, hero 2-kolom, kartu pilihan, dan panel newsletter.', 'news'),
+  ('black-lime', 'Black Lime Pulse', 'Dark pekat aksen lime: hero split, ticker pil, kartu 4 kolom, panel paling dibaca.', 'news'),
+  ('dark-navy', 'Dark Navy Modern', 'Navy gelap modern: hero overlay, list horizontal, panel paling dibaca dan newsletter.', 'news'),
+  ('glassy-blue', 'Glassy Blue', 'Kaca biru terang: hero kartu kaca, pil kategori, kartu 3 kolom dan perspektif.', 'news'),
+  ('green-minimal', 'Green Minimal', 'Hijau minimal natural: hero split, list editorial, newsletter daun.', 'news'),
+  ('orange-modern', 'Orange Modern', 'Oranye modern: hero split kanan, kartu 4 kolom, panel perspektif senja.', 'news'),
+  ('purple-editorial', 'Purple Digital Editorial', 'Ungu digital: hero kartu bulat, pil pastel, quote gradien dan newsletter.', 'editorial'),
+  ('red-editorial', 'Red Editorial', 'Merah editorial serif: hero split klasik, daftar bernomor, panel marun.', 'editorial'),
+  ('soft-blue', 'Soft Blue Cards', 'Kartu biru lembut: hero kartu putih, kartu horizontal 2 kolom, newsletter pos.', 'news'),
+  ('warm-editorial', 'Warm Editorial', 'Terakota hangat serif: hero split krem, kartu 3 kolom, quote senja.', 'editorial')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, category = EXCLUDED.category, updated_at = now();
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (132, 'template_presets_nine', 'sha256:0d9d950fcfb63f2c576bcd0a081e3001b7e71fb63aa2c70e599e103ecea12116');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('690b951bc2e4ed749ca8961203a2dd0c5157a2e7b73cacee1d31f31fbf188ab3', 1789762092778);
+
+-- ----------------------------------------------------------------------
+-- 20260919040000_telegram_identity_options
+-- ----------------------------------------------------------------------
+-- Opsi identitas Telegram per akun (pemilih organisasi) + langkah site_pick.
+-- Idempoten. Checksum di bawah adalah sha256 heks dari isi berkas ini
+-- sebelum baris INSERT.
+ALTER TYPE "public"."telegram_conversation_step" ADD VALUE IF NOT EXISTS 'site_pick';
+CREATE OR REPLACE FUNCTION indicate_private.list_telegram_identities(p_user_id text, p_chat_id text)
+ RETURNS TABLE(mapping_id uuid, organization_id uuid, organization_name text, user_id uuid, role_id uuid, telegram_user_id text, telegram_chat_id text, region_id uuid, permissions text[])
+ LANGUAGE sql STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  SELECT m.id, m.organization_id, o.name, m.user_id, m.role_id, m.telegram_user_id,
+         m.telegram_chat_id, membership.region_id, coalesce(array_agg(DISTINCT p.name) FILTER (WHERE p.name IS NOT NULL), ARRAY[]::text[])
+  FROM public.telegram_identity_mappings m
+  JOIN public.memberships membership
+    ON membership.organization_id = m.organization_id AND membership.user_id = m.user_id
+   AND membership.role_id = m.role_id AND membership.status = 'active'
+  JOIN public.roles r
+    ON r.organization_id = membership.organization_id AND r.id = membership.role_id AND r.active
+  JOIN public.organizations o ON o.id = m.organization_id
+  WHERE m.telegram_user_id = p_user_id AND m.telegram_chat_id = p_chat_id AND m.status = 'active'
+  GROUP BY m.id, m.organization_id, o.name, m.user_id, m.role_id, m.telegram_user_id, m.telegram_chat_id, membership.region_id
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.list_telegram_identities(text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.list_telegram_identities(text, text) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (133, 'telegram_identity_options', 'sha256:b278f7df4bce37976c9f0ffad64d0b2483a31c3f6a2c39437dd964ee178c6dcf');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7030eadf20387b1be741384eca4914b8e25b803eb4919db7718637738f4254a7', 1789850400000);
+
+-- ----------------------------------------------------------------------
+-- 20260919050000_telegram_article_edit_step
+-- ----------------------------------------------------------------------
+-- Langkah article_edit dan article_edit_confirm untuk ubah artikel via tombol Telegram.
+-- Idempoten. Checksum di bawah adalah sha256 heks dari isi berkas ini
+-- sebelum baris INSERT.
+ALTER TYPE "public"."telegram_conversation_step" ADD VALUE IF NOT EXISTS 'article_edit';
+ALTER TYPE "public"."telegram_conversation_step" ADD VALUE IF NOT EXISTS 'article_edit_confirm';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (134, 'telegram_article_edit_step', 'sha256:21697c7a60a4a1575b88b493ae1f5d998001f0e415eca77901a49ff0138ff0d7');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('68757b6a83cc1029faa7bc376a6cac2ffe200e1a33bf24744459c054d3c18c5e', 1789850500000);
 COMMIT;
