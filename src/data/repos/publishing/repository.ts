@@ -87,12 +87,18 @@ export class DrizzlePublishingRepository implements PublishingRepository {
   private async enqueuePublicInvalidation(transaction: Transaction, organizationId: string, siteId: string, reason: string, now: Date, articleId?: string, mediaId?: string): Promise<void> {
     const siteRows = await transaction.select({ hostname: sites.normalizedHostname }).from(sites).where(and(eq(sites.organizationId, organizationId), eq(sites.id, siteId))).limit(1);
     const site = siteRows[0]; if (site === undefined) return;
-    let articleSlugs: string[] = []; let categorySlugs: string[] = [];
+    let articleSlugs: string[] = []; let categorySlugs: string[] = []; const extraMediaIds: string[] = [];
     if (articleId !== undefined) {
-      const rows = await transaction.select({ articleSlug: articles.slug, categorySlug: categories.slug }).from(articles).leftJoin(categories, and(eq(categories.organizationId, articles.organizationId), eq(categories.id, articles.categoryId))).where(and(eq(articles.organizationId, organizationId), eq(articles.id, articleId))).limit(1);
-      if (rows[0] !== undefined) { articleSlugs = [rows[0].articleSlug]; if (rows[0].categorySlug !== null) categorySlugs = [rows[0].categorySlug]; }
+      const rows = await transaction.select({ articleSlug: articles.slug, categorySlug: categories.slug, leadMediaId: articles.leadMediaId }).from(articles).leftJoin(categories, and(eq(categories.organizationId, articles.organizationId), eq(categories.id, articles.categoryId))).where(and(eq(articles.organizationId, organizationId), eq(articles.id, articleId))).limit(1);
+      if (rows[0] !== undefined) {
+        articleSlugs = [rows[0].articleSlug]; if (rows[0].categorySlug !== null) categorySlugs = [rows[0].categorySlug];
+        if (rows[0].leadMediaId !== null) extraMediaIds.push(rows[0].leadMediaId);
+      }
+      const relation = (await transaction.select({ customImageMediaId: articleSites.customImageMediaId }).from(articleSites).where(and(eq(articleSites.organizationId, organizationId), eq(articleSites.articleId, articleId), eq(articleSites.siteId, siteId))).limit(1))[0];
+      if (relation?.customImageMediaId != null) extraMediaIds.push(relation.customImageMediaId);
     }
-    await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId, siteId, currentHostname: site.hostname, reason, articleSlugs, categorySlugs, mediaIds: mediaId === undefined ? [] : [mediaId], now }));
+    const siblings = await transaction.select({ hostname: sites.normalizedHostname }).from(sites).where(and(eq(sites.organizationId, organizationId), sql`${sites.normalizedHostname} LIKE ${`%.${site.hostname}`}`));
+    await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId, siteId, currentHostname: site.hostname, siblingHostnames: siblings.map((row) => row.hostname), reason, articleSlugs, categorySlugs, mediaIds: [...(mediaId === undefined ? [] : [mediaId]), ...extraMediaIds], now }));
   }
 
   async recordDenial(actor: AuthorizedTenantActorContext, action: string, targetType: string, now: string): Promise<void> {
@@ -523,7 +529,8 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       let seededViews: number | null = null;
       if (input.toState === 'published') {
         const current = (await transaction.select({ viewCount: articleSites.viewCount, publishedAt: articleSites.publishedAt }).from(articleSites).where(and(eq(articleSites.organizationId, claim.organizationId), eq(articleSites.id, target.articleSiteId))).limit(1))[0];
-        if (current !== undefined) seededViews = seedInitialViewCount(current.viewCount, current.publishedAt !== null);
+        if (current !== undefined && current.viewCount === 0) seededViews = seedInitialViewCount(current.viewCount, current.publishedAt !== null);
+        await transaction.update(articles).set({ status: 'active', updatedAt: new Date(input.now) }).where(and(eq(articles.organizationId, claim.organizationId), eq(articles.id, job.articleId), eq(articles.status, 'draft')));
       }
       await transaction.update(articleSites).set({ state: input.toState, stateOccurredAt: new Date(input.now), publishedUrl: input.toState === 'published' ? input.publishedUrl ?? null : null, publishedAt: input.toState === 'published' ? new Date(input.now) : null, sanitizedFailure: input.sanitizedError ?? null, attempt: input.toState === 'processing' ? target.attempt + 1 : target.attempt, ...(seededViews === null ? {} : { viewCount: seededViews }), version: sql`${articleSites.version} + 1`, updatedAt: new Date(input.now) }).where(and(eq(articleSites.organizationId, claim.organizationId), eq(articleSites.id, target.articleSiteId)));
       if (input.toState === 'published' || input.toState === 'unpublished') {
