@@ -1,10 +1,11 @@
-const BASE_PATHS = ['/', '/kebijakan-privasi', '/syarat-ketentuan', '/tentang', '/kontak', '/search', '/robots.txt', '/sitemap.xml', '/rss.xml'] as const;
+const BASE_PATHS = ['/', '/kebijakan-privasi', '/syarat-ketentuan', '/tentang', '/kontak', '/search', '/robots.txt', '/sitemap.xml', '/rss.xml', '/llms.txt', '/news-sitemap.xml', '/tenant-home', '/report'] as const;
 
 export interface CompleteInvalidationInput {
   readonly organizationId: string;
   readonly siteId: string;
   readonly previousHostname?: string | null;
   readonly currentHostname?: string | null;
+  readonly siblingHostnames?: readonly string[];
   readonly reason: string;
   readonly articleSlugs?: readonly string[];
   readonly categorySlugs?: readonly string[];
@@ -17,10 +18,10 @@ export interface CompleteInvalidationInput {
  *
  * @param input - Invalidation input carrying hostnames, slugs, and media IDs.
  * @returns Pending invalidation row values with deduped tags, paths, and URLs.
- * @remarks Media bytes are never cached, but their edge-cached 307 redirects are: purge the media route (full + thumb twin) through exact-URL purge only. They stay out of `paths` because Next path revalidation is unreliable for query-string route variants.
+ * @remarks Media bytes are never cached, but their edge-cached 307 redirects are: purge the media route (full + thumb twin) through exact-URL purge only. They stay out of `paths` because Next path revalidation is unreliable for query-string route variants. Sibling hostnames (`<region>.<apex>`) ride the same task so one dispatch busts regional copies sharing apex brand.
  */
 export function completeInvalidationValues(input: CompleteInvalidationInput) {
-  const hostnames = [...new Set([input.previousHostname ?? null, input.currentHostname ?? null].filter((value): value is string => value !== null))];
+  const hostnames = [...new Set([input.previousHostname ?? null, input.currentHostname ?? null, ...(input.siblingHostnames ?? [])].filter((value): value is string => value !== null))];
   const articleSlugs = [...new Set(input.articleSlugs ?? [])];
   const categorySlugs = [...new Set(input.categorySlugs ?? [])];
   const paths = new Set<string>(BASE_PATHS);

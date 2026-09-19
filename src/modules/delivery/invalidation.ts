@@ -1,5 +1,5 @@
 import type { InvalidationPlan } from '@/modules/delivery/models';
-import type { CacheCoordinationPort, NextCacheInvalidationPort } from '@/modules/delivery/ports';
+import type { NextCacheInvalidationPort } from '@/modules/delivery/ports';
 import type { CloudflareAuthorityPort } from '@/integrations/cloudflare/ports';
 import type { DeliveryRepository } from '@/modules/delivery/ports';
 
@@ -9,7 +9,7 @@ export type NetworkMutation =
   | { readonly kind: 'hostname'; readonly organizationId: string; readonly siteId: string; readonly previousHostname: string | null; readonly currentHostname: string | null }
   | { readonly kind: 'publisher'; readonly organizationId: string; readonly siteId: string; readonly hostname: string; readonly articleSlugs: readonly string[] };
 
-const sitePaths = ['/', '/kebijakan-privasi', '/syarat-ketentuan', '/tentang', '/kontak', '/search', '/robots.txt', '/sitemap.xml', '/rss.xml'];
+const sitePaths = ['/', '/kebijakan-privasi', '/syarat-ketentuan', '/tentang', '/kontak', '/search', '/robots.txt', '/sitemap.xml', '/rss.xml', '/llms.txt', '/news-sitemap.xml', '/tenant-home', '/report'];
 export function planInvalidation(mutation: NetworkMutation): InvalidationPlan {
   const hostnames = mutation.kind === 'hostname' ? [mutation.previousHostname, mutation.currentHostname].filter((value): value is string => value !== null) : [mutation.hostname];
   const articleSlugs = mutation.kind === 'article' || mutation.kind === 'publication' ? [mutation.articleSlug] : mutation.kind === 'publisher' ? [...mutation.articleSlugs] : [];
@@ -23,14 +23,14 @@ export function planInvalidation(mutation: NetworkMutation): InvalidationPlan {
 }
 
 /**
- * Dispatch claimed invalidation tasks through Next cache, coordination, and edge purge.
+ * Dispatch claimed invalidation tasks through Next cache and edge purge.
  *
- * @remarks Purge edge sekali per batch (URL unik lintas task): purge per-host per-task memicu thundering-herd ke origin, padahal TTL edge hanya 60 detik. Kegagalan purge tidak menggagalkan task; Next revalidate + bypass off adalah mekanisme utama, edge pulih sendiri dalam satu TTL.
+ * @remarks Purge edge sekali per batch (URL unik lintas task): purge per-host per-task memicu thundering-herd ke origin, padahal TTL edge hanya 60 detik. Kegagalan purge tidak menggagalkan task; Next revalidate adalah mekanisme utama, edge pulih sendiri dalam satu TTL. Task beracun tidak menghentikan batch: complete yang gagal dicatat lewat fail, fail yang ikut gagal dihitung stranded.
  */
 export class InvalidationDispatcher {
-  constructor(private readonly repository: Pick<DeliveryRepository, 'claimInvalidations' | 'completeInvalidation' | 'failInvalidation'>, private readonly nextCache: NextCacheInvalidationPort, private readonly coordination: CacheCoordinationPort, private readonly cloudflare: CloudflareAuthorityPort, private readonly retryDelaysSeconds: readonly number[], private readonly maxAttempts: number) {}
+  constructor(private readonly repository: Pick<DeliveryRepository, 'claimInvalidations' | 'completeInvalidation' | 'failInvalidation'>, private readonly nextCache: NextCacheInvalidationPort, private readonly cloudflare: CloudflareAuthorityPort, private readonly retryDelaysSeconds: readonly number[], private readonly maxAttempts: number) {}
 
-  async dispatch(now: Date, limit: number): Promise<{ completed: number; failed: number }> {
+  async dispatch(now: Date, limit: number): Promise<{ completed: number; failed: number; stranded: number }> {
     const tasks = await this.repository.claimInvalidations(now.toISOString(), limit);
     const urls = [...new Set(tasks.flatMap((task) => task.urls))];
     if (urls.length > 0) {
@@ -40,25 +40,23 @@ export class InvalidationDispatcher {
         /* dibiarkan kedaluwarsa oleh edge TTL; task tetap diselesaikan di bawah */
       }
     }
-    let completed = 0; let failed = 0;
+    let completed = 0; let failed = 0; let stranded = 0;
     for (const task of tasks) {
       let step = 'revalidate';
       try {
         await this.nextCache.revalidateTags(task.tags); await this.nextCache.revalidatePaths(task.paths);
-        step = 'version';
-        await this.coordination.incrementSiteVersion(task.organizationId, task.siteId);
-        step = 'bypass_off';
-        await this.coordination.setSiteBypass(task.organizationId, task.siteId, false);
         step = 'complete';
         await this.repository.completeInvalidation(task, now.toISOString()); completed += 1;
       } catch {
-        failed += 1;
-        const terminal = task.attempts + 1 >= this.maxAttempts;
-        const seconds = this.retryDelaysSeconds[Math.min(task.attempts, this.retryDelaysSeconds.length - 1)] ?? 60;
-        await this.repository.failInvalidation(task, { code: 'provider_unavailable', step }, new Date(now.getTime() + seconds * 1_000).toISOString(), terminal, now.toISOString());
-        try { await this.coordination.setSiteBypass(task.organizationId, task.siteId, true); } catch { /* PostgreSQL bypass remains authoritative. */ }
+        try {
+          const terminal = task.attempts + 1 >= this.maxAttempts;
+          const seconds = this.retryDelaysSeconds[Math.min(task.attempts, this.retryDelaysSeconds.length - 1)] ?? 60;
+          await this.repository.failInvalidation(task, { code: 'provider_unavailable', step }, new Date(now.getTime() + seconds * 1_000).toISOString(), terminal, now.toISOString()); failed += 1;
+        } catch {
+          stranded += 1;
+        }
       }
     }
-    return { completed, failed };
+    return { completed, failed, stranded };
   }
 }

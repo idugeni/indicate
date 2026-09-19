@@ -90,7 +90,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         .innerJoin(domains, and(eq(domains.organizationId, sites.organizationId), eq(domains.id, sites.domainId), eq(domains.status, 'active')))
         .leftJoin(regions, and(eq(regions.organizationId, sites.organizationId), eq(regions.id, sites.regionId)))
         .innerJoin(siteSettings, and(eq(siteSettings.organizationId, sites.organizationId), eq(siteSettings.siteId, sites.id)))
-        .where(and(eq(sites.organizationId, context.organizationId), eq(sites.id, context.siteId), eq(sites.normalizedHostname, context.normalizedHostname), eq(sites.status, 'active'), eq(sites.activationState, 'active'), eq(sites.routingVersion, context.routingVersion), eq(sites.contentVersion, context.contentVersion), or(sql`${sites.regionId} IS NULL`, eq(regions.status, 'active')))).limit(1);
+        .where(and(eq(sites.organizationId, context.organizationId), eq(sites.id, context.siteId), eq(sites.normalizedHostname, context.normalizedHostname), eq(sites.status, 'active'), eq(sites.activationState, 'active'), or(sql`${sites.regionId} IS NULL`, eq(regions.status, 'active')))).limit(1);
       const settings = settingsRows[0]; if (settings === undefined) return null;
       let logoMediaId = settings.logoMediaId;
       let faviconMediaId = settings.faviconMediaId;
@@ -176,7 +176,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         .innerJoin(domains, and(eq(domains.organizationId, sites.organizationId), eq(domains.id, sites.domainId), eq(domains.status, 'active')))
         .leftJoin(regions, and(eq(regions.organizationId, sites.organizationId), eq(regions.id, sites.regionId)))
         .innerJoin(siteSettings, and(eq(siteSettings.organizationId, sites.organizationId), eq(siteSettings.siteId, sites.id)))
-        .where(and(eq(sites.organizationId, context.organizationId), eq(sites.id, context.siteId), eq(sites.normalizedHostname, context.normalizedHostname), eq(sites.status, 'active'), eq(sites.activationState, 'active'), eq(sites.routingVersion, context.routingVersion), eq(sites.contentVersion, context.contentVersion), or(sql`${sites.regionId} IS NULL`, eq(regions.status, 'active')))).limit(1);
+        .where(and(eq(sites.organizationId, context.organizationId), eq(sites.id, context.siteId), eq(sites.normalizedHostname, context.normalizedHostname), eq(sites.status, 'active'), eq(sites.activationState, 'active'), or(sql`${sites.regionId} IS NULL`, eq(regions.status, 'active')))).limit(1);
       const row = rows[0];
       if (row === undefined) return null;
       const robots = (row.seo as Record<string, unknown>)['robots'];

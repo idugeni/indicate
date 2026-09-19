@@ -7,7 +7,6 @@ import { CloudflareAuthorityAdapter } from '@/integrations/cloudflare/cloudflare
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleDeliveryRepository } from '@/data/repos/delivery';
 import { HttpsPendingHostnameProbe } from '@/core/hostname/pending-hostname-probe';
-import { UpstashCacheCoordination } from '@/integrations/redis/upstash-cache-coordination';
 import { VercelExactDomainAdapter } from '@/integrations/vercel/exact-domain-adapter';
 
 /**
@@ -40,6 +39,6 @@ export async function deliveryOperationsComposition() {
     },
   };
   const provisioning = new DomainProvisioningService(repository, cloudflare, vercel, new HttpsPendingHostnameProbe(), config.hosts.reserved, zoneResolver, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts);
-  const invalidation = new InvalidationDispatcher(repository, new NextCacheInvalidationAdapter(), new UpstashCacheCoordination(config.redis.url, config.redis.token, config.redis.namespace), cloudflare, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts);
+  const invalidation = new InvalidationDispatcher(repository, new NextCacheInvalidationAdapter(), cloudflare, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts);
   return { config, runtime, repository, provisioning, invalidation };
 }
