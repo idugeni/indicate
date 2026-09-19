@@ -16,15 +16,23 @@ import {
 
 const noindex = { 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'private, no-store' };
 
-/** script-src keeps 'unsafe-inline' for Next.js flight payloads; XSS defense rests on React output escaping. Allows Cloudflare Web Analytics beacon auto-injected at the edge; Cloudflare already terminates TLS/proxies, so no new trust. Development adds 'unsafe-eval' for React/Turbopack dev runtimes; production stays without it. No plugins, no framing. */
-function contentSecurityPolicy(): string {
-  const scriptSrc = isProductionEdge()
-    ? "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com"
-    : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com";
+/** Mini App Telegram berjalan di WebView/iframe klien Telegram: skrip resmi harus lolos CSP dan frame-ancestors membuka host web Telegram. Jalur lain tetap terkunci. */
+function isMiniAppPath(pathname: string): boolean {
+  return pathname === '/tg/app' || pathname.startsWith('/tg/app/');
+}
+
+/** script-src keeps 'unsafe-inline' for Next.js flight payloads; XSS defense rests on React output escaping. Allows Cloudflare Web Analytics beacon auto-injected at the edge; Cloudflare already terminates TLS/proxies, so no new trust. Allows Turnstile challenge script + widget frame (sole iframe in the app, dashboard auth). Allows Google Fonts stylesheet for the invoice print page. Development adds 'unsafe-eval' for React/Turbopack dev runtimes; production stays without it. No plugins. */
+function contentSecurityPolicy(pathname?: string): string {
+  const miniApp = pathname !== undefined && isMiniAppPath(pathname);
+  const scriptHosts = miniApp
+    ? "'self' 'unsafe-inline' https://static.cloudflareinsights.com https://telegram.org https://challenges.cloudflare.com"
+    : "'self' 'unsafe-inline' https://static.cloudflareinsights.com https://challenges.cloudflare.com";
+  const scriptSrc = isProductionEdge() ? `script-src ${scriptHosts}` : `script-src ${scriptHosts} 'unsafe-eval'`;
   return [
     "default-src 'self'",
     scriptSrc,
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "frame-src https://challenges.cloudflare.com",
     "img-src 'self' https: data: blob:",
     "font-src 'self' https: data:",
     "connect-src 'self' https:",
@@ -32,7 +40,7 @@ function contentSecurityPolicy(): string {
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    "frame-ancestors 'none'",
+    miniApp ? 'frame-ancestors https://web.telegram.org https://webk.telegram.org https://weba.telegram.org' : "frame-ancestors 'none'",
     'upgrade-insecure-requests',
   ].join('; ');
 }
@@ -46,10 +54,10 @@ const BASE_HEADERS: Record<string, string> = {
   'Origin-Agent-Cluster': '?1',
 };
 
-function securityHeaders(): Record<string, string> {
+function securityHeaders(pathname?: string): Record<string, string> {
   const headers: Record<string, string> = {
     ...BASE_HEADERS,
-    'Content-Security-Policy': contentSecurityPolicy(),
+    'Content-Security-Policy': contentSecurityPolicy(pathname),
   };
   if (isProductionEdge()) {
     headers['Strict-Transport-Security'] = 'max-age=63072000; includeSubDomains; preload';
@@ -57,11 +65,12 @@ function securityHeaders(): Record<string, string> {
   return headers;
 }
 
-function withSecurityHeaders(response: NextResponse): NextResponse {
-  const headers = securityHeaders();
+function withSecurityHeaders(response: NextResponse, pathname?: string): NextResponse {
+  const headers = securityHeaders(pathname);
   for (const [name, value] of Object.entries(headers)) {
     response.headers.set(name, value);
   }
+  if (pathname !== undefined && isMiniAppPath(pathname)) response.headers.delete('X-Frame-Options');
   return response;
 }
 
@@ -107,7 +116,7 @@ function nextWithCorrelation(request: NextRequest, mutate?: (headers: Headers) =
   requestHeaders.set(TRACEPARENT_HEADER, ensureTraceContext(requestHeaders).headerValue);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set(REQUEST_ID_HEADER, requestId);
-  return withSecurityHeaders(response);
+  return withSecurityHeaders(response, request.nextUrl.pathname);
 }
 
 function trailingSlashRedirect(request: NextRequest): NextResponse | null {
@@ -137,6 +146,34 @@ const TENANT_ALIASES: Record<string, string> = {
   '/terms': '/syarat-ketentuan',
 };
 const TENANT_GONE = new Set(['/services', '/pricing', '/faq']);
+/**
+ * Control/mini-app surfaces that must never render on tenant hostnames.
+ *
+ * @param path - Request pathname.
+ * @returns True when the edge must answer 404 without reaching a route.
+ * @remarks Auth pages are dashboard-only (brand/phishing boundary); the owner
+ * Mini App and its API are dashboard-host only so tenant domains never serve
+ * privileged UI or owner-callable backends.
+ */
+function isTenantDeniedPath(path: string): boolean {
+  return (
+    path.startsWith('/dashboard') ||
+    path.startsWith('/auth') ||
+    path.startsWith('/sign-in') ||
+    path.startsWith('/sign-up') ||
+    path.startsWith('/forgot-password') ||
+    path.startsWith('/update-password') ||
+    path === '/tg/app' ||
+    path.startsWith('/tg/app/') ||
+    path.startsWith('/api/tg/') ||
+    path.startsWith('/api/dashboard') ||
+    path.startsWith('/api/internal') ||
+    path.startsWith('/api/health') ||
+    path.startsWith('/api/v1/') ||
+    path.startsWith('/api/webhooks/') ||
+    isServicePath(path)
+  );
+}
 /**
  * Route edge requests to control or tenant surfaces.
  *
@@ -179,20 +216,38 @@ export function proxy(request: NextRequest) {
   }
   const { dashboard, api, webhook, docs } = getControlHosts();
 
+  if (parsed.hostname !== docs && (path === '/docs' || path.startsWith('/docs/'))) {
+    const url = request.nextUrl.clone();
+    url.hostname = docs;
+    url.port = '';
+    url.pathname = path === '/docs' ? '/' : path.slice('/docs'.length);
+    const redirect = NextResponse.redirect(url, 308);
+    redirect.headers.set(REQUEST_ID_HEADER, ensureRequestId(request.headers).requestId);
+    return withSecurityHeaders(redirect);
+  }
+
   if (parsed.hostname === dashboard) {
     if (path.startsWith('/api/network') || path.startsWith('/api/v1/') || path.startsWith('/api/webhooks/') || path === '/domain-pending') return deny(404, request.headers);
     return nextWithCorrelation(request);
   }
   if (parsed.hostname === api) {
-    if (!path.startsWith('/api/v1/')) return deny(404, request.headers);
+    if (path !== '/api/health' && !path.startsWith('/api/v1/')) return deny(404, request.headers);
     return nextWithCorrelation(request);
   }
   if (parsed.hostname === webhook) {
-    if (!path.startsWith('/api/webhooks/')) return deny(404, request.headers);
+    if (path !== '/api/health' && !path.startsWith('/api/webhooks/')) return deny(404, request.headers);
     return nextWithCorrelation(request);
   }
   if (parsed.hostname === docs) {
-    if (path.startsWith('/dashboard') || path === '/auth' || path.startsWith('/auth/') || path.startsWith('/sign-in') || path.startsWith('/api/') || isServicePath(path)) return deny(404, request.headers);
+    if (path === '/tg/app' || path.startsWith('/tg/app/')) return deny(404, request.headers);
+    if (path === '/docs' || path.startsWith('/docs/')) {
+      const url = request.nextUrl.clone();
+      url.pathname = path === '/docs' ? '/' : path.slice('/docs'.length);
+      const redirect = NextResponse.redirect(url, 308);
+      redirect.headers.set(REQUEST_ID_HEADER, ensureRequestId(request.headers).requestId);
+      return withSecurityHeaders(redirect);
+    }
+    if (path.startsWith('/dashboard') || path === '/auth' || path.startsWith('/auth/') || path.startsWith('/sign-in') || (path.startsWith('/api/') && path !== '/api/health') || isServicePath(path)) return deny(404, request.headers);
     return nextWithCorrelation(request);
   }
   const alias = TENANT_ALIASES[path];
@@ -203,16 +258,7 @@ export function proxy(request: NextRequest) {
     redirect.headers.set(REQUEST_ID_HEADER, ensureRequestId(request.headers).requestId);
     return withSecurityHeaders(redirect);
   }
-  if (path === '/docs' || path.startsWith('/docs/')) {
-    const url = request.nextUrl.clone();
-    url.hostname = docs;
-    url.port = '';
-    url.pathname = path === '/docs' ? '/' : path.slice('/docs'.length);
-    const redirect = NextResponse.redirect(url, 308);
-    redirect.headers.set(REQUEST_ID_HEADER, ensureRequestId(request.headers).requestId);
-    return withSecurityHeaders(redirect);
-  }
-  if (path.startsWith('/dashboard') || path.startsWith('/auth') || path.startsWith('/sign-in') || path.startsWith('/api/dashboard') || path.startsWith('/api/internal') || path.startsWith('/api/health') || path.startsWith('/api/v1/') || path.startsWith('/api/webhooks/') || isServicePath(path)) return deny(404, request.headers);
+  if (isTenantDeniedPath(path)) return deny(404, request.headers);
   if (TENANT_GONE.has(path)) return deny(404, request.headers);
   if (path === '/') {
     const url = request.nextUrl.clone();

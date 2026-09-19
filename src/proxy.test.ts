@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
 
 import { getControlHosts } from '@/core/config/edge-hosts';
-import { proxy } from '@/proxy';
+import { config as proxyConfig, proxy } from '@/proxy';
 
 const HOSTS = getControlHosts();
 
@@ -95,5 +95,60 @@ describe('proxy tenant surfaces', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('x-request-id')).toBeTruthy();
     expect(response.headers.get('x-frame-options')).toBe('DENY');
+  });
+
+  it('membuka CSP Mini App Telegram di /tg/app', () => {
+    const response = proxy(request(HOSTS.dashboard, '/tg/app'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-security-policy')).toContain('https://telegram.org');
+    expect(response.headers.get('x-frame-options')).toBeNull();
+  });
+
+  it('mengunci framing di luar Mini App', () => {
+    const response = proxy(request('portal.example', '/berita-utama'));
+    expect(response.headers.get('x-frame-options')).toBe('DENY');
+    expect(response.headers.get('content-security-policy')).not.toContain('https://telegram.org');
+  });
+
+  it('melewatkan rute media melalui matcher edge', () => {
+    const matcher = new RegExp(`^${proxyConfig.matcher[0] ?? ''}$`);
+    expect(matcher.test('/api/network/media/x')).toBe(true);
+    expect(matcher.test('/berita-utama')).toBe(true);
+    expect(matcher.test('/api/v1/commands')).toBe(true);
+  });
+
+  it('menolak permukaan auth dan Mini App di host tenant', () => {
+    expect(proxy(request('portal.example', '/tg/app')).status).toBe(404);
+    expect(proxy(request('portal.example', '/api/tg/app/session')).status).toBe(404);
+    expect(proxy(request('portal.example', '/sign-up')).status).toBe(404);
+    expect(proxy(request('portal.example', '/forgot-password')).status).toBe(404);
+    expect(proxy(request('portal.example', '/update-password')).status).toBe(404);
+  });
+
+  it('membuka health di host kontrol, menolak di tenant', () => {
+    expect(proxy(request(HOSTS.api, '/api/health')).status).toBe(200);
+    expect(proxy(request(HOSTS.webhook, '/api/health')).status).toBe(200);
+    expect(proxy(request(HOSTS.docs, '/api/health')).status).toBe(200);
+    expect(proxy(request('portal.example', '/api/health')).status).toBe(404);
+  });
+
+  it('mengarahkan /docs ke host docs dari mana saja', () => {
+    const fromTenant = proxy(request('portal.example', '/docs/panduan'));
+    expect(fromTenant.status).toBe(308);
+    expect(fromTenant.headers.get('location')).toContain(HOSTS.docs);
+    const fromApi = proxy(request(HOSTS.api, '/docs'));
+    expect(fromApi.status).toBe(308);
+    expect(fromApi.headers.get('location')).toContain(HOSTS.docs);
+    const onDocs = proxy(request(HOSTS.docs, '/docs/panduan'));
+    expect(onDocs.status).toBe(308);
+    expect(onDocs.headers.get('location') ?? '').not.toContain('/docs/');
+  });
+
+  it('mengizinkan skrip dan bingkai Turnstile serta font invoice', () => {
+    const response = proxy(request(HOSTS.dashboard, '/dashboard'));
+    const csp = response.headers.get('content-security-policy') ?? '';
+    expect(csp).toContain('https://challenges.cloudflare.com');
+    expect(csp).toContain('frame-src https://challenges.cloudflare.com');
+    expect(csp).toContain('https://fonts.googleapis.com');
   });
 });
