@@ -124,20 +124,31 @@ export class CloudflareAuthorityAdapter implements CloudflareAuthorityPort {
 
   async purgeExactUrls(urls: readonly string[]) {
     if (urls.length === 0) return;
+    const failures: string[] = [];
     const byZone = new Map<string, string[]>();
     for (const raw of urls) {
-      const url = new URL(raw);
-      if (url.protocol !== 'https:' || url.username !== '' || url.password !== '') throw new Error('cloudflare_invalid_purge_url');
-      const zone = await this.zoneForHostname(url.hostname);
-      const owned = byZone.get(zone.id) ?? [];
-      owned.push(url.toString());
-      byZone.set(zone.id, owned);
+      try {
+        const url = new URL(raw);
+        if (url.protocol !== 'https:' || url.username !== '' || url.password !== '') throw new Error('cloudflare_invalid_purge_url');
+        const zone = await this.zoneForHostname(url.hostname);
+        const owned = byZone.get(zone.id) ?? [];
+        owned.push(url.toString());
+        byZone.set(zone.id, owned);
+      } catch {
+        failures.push(raw);
+      }
     }
     for (const [zoneId, files] of byZone) {
       for (let index = 0; index < files.length; index += MAX_PURGE_FILES_PER_REQUEST) {
-        await this.call(`/zones/${zoneId}/purge_cache`, { method: 'POST', body: JSON.stringify({ files: files.slice(index, index + MAX_PURGE_FILES_PER_REQUEST) }) });
+        const chunk = files.slice(index, index + MAX_PURGE_FILES_PER_REQUEST);
+        try {
+          await this.call(`/zones/${zoneId}/purge_cache`, { method: 'POST', body: JSON.stringify({ files: chunk }) });
+        } catch {
+          failures.push(...chunk);
+        }
       }
     }
+    if (failures.length > 0) throw new Error(`cloudflare_partial_purge:${failures.length}`);
   }
 
   async purgeHostname(hostname: string) {

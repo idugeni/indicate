@@ -20,11 +20,16 @@ function zone(id: string, name: string) {
   return { id, name, name_servers: ['joan.ns.cloudflare.com', 'kanye.ns.cloudflare.com'] };
 }
 
-function harness(exact: readonly { id: string; name: string }[], pages: readonly (readonly { id: string; name: string }[])[]) {
+function harness(exact: readonly { id: string; name: string }[], pages: readonly (readonly { id: string; name: string }[])[], failPurgeIndexes: readonly number[] = []) {
   const calls: Call[] = [];
+  let purgeCount = 0;
   const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, init });
-    if (url.includes('/purge_cache')) return jsonResponse({});
+    if (url.includes('/purge_cache')) {
+      purgeCount += 1;
+      if (failPurgeIndexes.includes(purgeCount)) throw new Error('purge_chunk_failed');
+      return jsonResponse({});
+    }
     if (url.includes('/zones?name=')) return jsonResponse(exact);
     const page = Number(new URL(url, 'https://api.cloudflare.com').searchParams.get('page') ?? '1');
     return jsonResponse(pages[page - 1] ?? []);
@@ -73,5 +78,12 @@ describe('purgeExactUrls batching', () => {
     for (const call of purges) {
       expect(String(call.init?.body)).not.toContain('purge_everything');
     }
+  });
+
+  it('melanjutkan chunk lain saat satu chunk gagal lalu melaporkan parsial', async () => {
+    const { adapter, calls } = harness([zone('z1', 'fakta01.my.id')], [], [2]);
+    const urls = Array.from({ length: 65 }, (_, index) => `https://fakta01.my.id/page-${index}`);
+    await expect(adapter.purgeExactUrls(urls)).rejects.toThrow('cloudflare_partial_purge:30');
+    expect(calls.filter((call) => call.url.includes('/purge_cache'))).toHaveLength(3);
   });
 });
