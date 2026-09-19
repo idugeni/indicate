@@ -24,10 +24,22 @@ async function runReconcile(request: Request) {
   const requestId = resolveRequestId(request);
   const context = await getServerRuntimeContext(); const config = context.config;
   if (!authorized(request, config.security.cronSecret)) return new NextResponse('Not Found', { status: 404, headers: { 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
+  const scope = new URL(request.url).searchParams.get('scope') ?? 'all';
+  if (scope !== 'invalidation' && scope !== 'provisioning' && scope !== 'all') return NextResponse.json({ error: 'INVALID_SCOPE' }, { status: 400, headers: { 'Cache-Control': 'private, no-store' } });
   const composition = await deliveryOperationsComposition();
   const now = new Date();
+  if (scope === 'invalidation') {
+    const invalidation = await composition.invalidation.dispatch(now, composition.config.publishing.batchSize);
+    logEvent('info', { event: 'delivery.reconcile', requestId, route: 'GET /api/internal/delivery/reconcile', context: { scope, invalidation } });
+    return NextResponse.json({ invalidation }, { headers: { 'Cache-Control': 'private, no-store' } });
+  }
+  if (scope === 'provisioning') {
+    const activation = await composition.provisioning.reconcile(now);
+    logEvent('info', { event: 'delivery.reconcile', requestId, route: 'GET /api/internal/delivery/reconcile', context: { scope, activation } });
+    return NextResponse.json({ activation }, { headers: { 'Cache-Control': 'private, no-store' } });
+  }
   const [activation, invalidation] = await Promise.all([composition.provisioning.reconcile(now), composition.invalidation.dispatch(now, composition.config.publishing.batchSize)]);
-  logEvent('info', { event: 'delivery.reconcile', requestId, route: 'GET /api/internal/delivery/reconcile', context: { activation, invalidation } });
+  logEvent('info', { event: 'delivery.reconcile', requestId, route: 'GET /api/internal/delivery/reconcile', context: { scope, activation, invalidation } });
   return NextResponse.json({ activation, invalidation }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 

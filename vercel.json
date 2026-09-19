@@ -15,8 +15,20 @@
       "schedule": "0 23 * * *"
     },
     {
+      "path": "/api/internal/publishing?mode=work",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/internal/publishing?mode=reconcile",
+      "schedule": "0 3 * * *"
+    },
+    {
       "path": "/api/internal/delivery/reconcile",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/internal/delivery/reconcile?scope=invalidation",
+      "schedule": "0 12 * * *"
     }
   ]
 }
