@@ -31,7 +31,7 @@ describe('Tampilan data dasbor', () => {
     );
     expect(screen.getByText('Domain Aktif')).toBeDefined();
     expect(screen.getByText('Panduan mulai cepat')).toBeDefined();
-    expect(screen.getByText('Antrean sindikasi per status')).toBeDefined();
+    expect(screen.getByText('Antrean penerbitan per status')).toBeDefined();
     expect(screen.getByText('Kesehatan penyaluran')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /tulis artikel/i }));
     expect(pilih).toHaveBeenCalledWith('editorial');

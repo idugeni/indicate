@@ -29,7 +29,7 @@ const absoluteDefaultAssetUrl = (context: ResolvedSiteContext, configuredUrl: st
 /**
  * Serve delivery reads and activation writes.
  *
- * @remarks Sindikasi penuh: satu artikel kanonis tayang di portal mana pun yang diberi assignment, lintas region sekalipun. Region artikel adalah kanal asal/atribusi, bukan kunci tampil.
+ * @remarks Penerbitan penuh: satu artikel kanonis tayang di portal mana pun yang diberi assignment, lintas region sekalipun. Region artikel adalah kanal asal/atribusi, bukan kunci tampil.
  */
 export class DrizzleDeliveryRepository implements DeliveryRepository {
   constructor(private readonly database: Database, private readonly defaultImageUrl: string) {}

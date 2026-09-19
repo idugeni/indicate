@@ -36,7 +36,7 @@ interface CommandAction {
 const COMMAND_ACTIONS: readonly CommandAction[] = [
   { id: 'overview', label: 'Ringkasan Dashboard', category: 'Redaksi', href: '/dashboard', icon: LayoutDashboard },
   { id: 'editorial', label: 'Manajemen Artikel & Konten', category: 'Redaksi', href: '/dashboard?view=editorial', icon: FileText },
-  { id: 'publishing', label: 'Antrean Sindikasi & Penerbitan', category: 'Redaksi', href: '/dashboard?view=publishing', icon: Share2 },
+  { id: 'publishing', label: 'Antrean Penerbitan', category: 'Redaksi', href: '/dashboard?view=publishing', icon: Share2 },
   { id: 'media', label: 'Penyimpanan Aset Media', category: 'Redaksi', href: '/dashboard?view=media', icon: FolderKanban },
   { id: 'domains', label: 'Routing Domain & Wilayah Regional', category: 'Infrastruktur', href: '/dashboard?view=configuration', icon: Globe },
   { id: 'publishers', label: 'Direktori Penerbit & Media Terafiliasi', category: 'Infrastruktur', href: '/dashboard?view=publishers', icon: Users },

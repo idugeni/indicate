@@ -220,7 +220,7 @@ export function buildOpenApiDocument(apiHost: string): Record<string, unknown> {
     info: {
       title: 'Indicate API v1',
       version: DOCS_SPEC_VERSION,
-      description: 'Supply API headless platform sindikasi Indicate: artikel kanonis, media, dan publikasi multi-portal. Basis path tunggal dengan aksi terdiskriminasi; guardrail yang sama dengan dashboard.',
+      description: 'Supply API headless platform penerbitan Indicate: artikel kanonis, media, dan publikasi multi-portal. Basis path tunggal dengan aksi terdiskriminasi; guardrail yang sama dengan dashboard.',
     },
     servers: [{ url: `https://${apiHost}`, description: 'API produksi' }],
     security: [{ ApiKeyAuth: [] }],

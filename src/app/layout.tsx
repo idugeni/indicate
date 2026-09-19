@@ -31,7 +31,7 @@ const METADATA_BASE = resolveMetadataBase();
 export const metadata: Metadata = {
   metadataBase: METADATA_BASE,
   title: {
-    default: 'Indicate — One Signal, Multiple Distribution Channels',
+    default: 'Indicate - Publishing infrastructure',
     template: '%s | Indicate',
   },
   description:
@@ -65,7 +65,7 @@ export const metadata: Metadata = {
     locale: 'id_ID',
     url: METADATA_BASE.toString(),
     siteName: 'Indicate',
-    title: 'Indicate — One Signal, Multiple Distribution Channels',
+    title: 'Indicate - Publishing infrastructure',
     description:
       'Indicate menyatukan pengelolaan puluhan domain berita ke dalam satu Dashboard terpusat.',
     images: [
@@ -73,13 +73,13 @@ export const metadata: Metadata = {
         url: '/opengraph-image',
         width: 1200,
         height: 630,
-        alt: 'Indicate — One Signal, Multiple Distribution Channels',
+        alt: 'Indicate - Publishing infrastructure',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Indicate — One Signal, Multiple Distribution Channels',
+    title: 'Indicate - Publishing infrastructure',
     description:
       'Indicate menyatukan pengelolaan puluhan domain berita ke dalam satu Dashboard terpusat.',
     images: ['/opengraph-image'],

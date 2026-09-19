@@ -204,7 +204,7 @@ export function DataView({
 
     const quickActions: readonly { target: View; label: string; description: string; icon: typeof Globe }[] = [
       { target: 'editorial', label: 'Tulis artikel', description: 'Naskah baru untuk jaringan', icon: PenLine },
-      { target: 'publishing', label: 'Antrean penerbitan', description: 'Pantau status sindikasi', icon: Send },
+      { target: 'publishing', label: 'Antrean penerbitan', description: 'Pantau status penerbitan', icon: Send },
       { target: 'media', label: 'Pustaka media', description: 'Kelola aset visual', icon: Images },
       { target: 'configuration', label: 'Domain & wilayah', description: 'Atur tenansi jaringan', icon: Globe },
     ];
@@ -285,12 +285,12 @@ export function DataView({
         <div className={jobs ? 'grid min-w-0 gap-4 lg:grid-cols-5' : 'grid min-w-0 gap-4'}>
           {jobs ? (
             <section
-              aria-label="Distribusi antrean sindikasi"
+              aria-label="Distribusi antrean penerbitan"
               className="min-w-0 overflow-hidden rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6 lg:col-span-3"
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-3">
                 <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
-                  Antrean sindikasi per status
+                  Antrean penerbitan per status
                 </h2>
                 <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
                   {jobTotal.toLocaleString('id-ID')} tugas
@@ -299,7 +299,7 @@ export function DataView({
               <ul className="m-0 grid list-none gap-0 p-0">
                 {jobEntries.length === 0 ? (
                   <li className="py-6 text-center">
-                    <p className="m-0 font-sans text-[13px] text-paper-dim">Belum ada tugas sindikasi.</p>
+                    <p className="m-0 font-sans text-[13px] text-paper-dim">Belum ada tugas penerbitan.</p>
                     <p className="m-0 mt-1 font-sans text-xs text-paper-faint">
                       Tugas antrean akan terdaftar di sini setelah artikel pertama dijadwalkan.
                     </p>

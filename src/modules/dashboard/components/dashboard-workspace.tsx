@@ -158,8 +158,8 @@ const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
   {
-    id: 'syndication',
-    title: 'Sindikasi Sinyal',
+    id: 'publishing',
+    title: 'Sinyal Penerbitan',
     items: [{ view: 'publishing', label: 'Antrean Penerbitan', icon: Share2 }],
   },
   {

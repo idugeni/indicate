@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>A multi-tenant media syndication and publishing platform for operating many news domains from one central Dashboard.</strong><br />
+  <strong>A multi-tenant media publishing platform for operating many news domains from one central Dashboard.</strong><br />
   One shared Next.js application serves editorial workflows, APIs, webhooks, bounded publication workers, and a hostname-aware public news template, with PostgreSQL as durable authority.
 </p>
 

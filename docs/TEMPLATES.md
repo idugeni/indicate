@@ -52,6 +52,14 @@ Tautan top-bar hanya ke rute tenant yang ada (`/tentang`, `/kontak`) —
 `Redaksi` menunjuk `/tentang`; tidak ada rute `/redaksi`, `/karir`,
 `/pedoman-media` (butuh `RESERVED_ARTICLE_SLUGS` bila kelak ditambah).
 
+Dinamis, bukan hardcode: quote panel Perspektif memakai
+`site.settings.tagline ?? site.settings.description` (`black-lime`,
+`orange-modern`, `purple-editorial`, `warm-editorial`); hero `red-editorial`
+(01/02/03), `dark-navy` (dots), `glassy-blue` (counter + panah) adalah
+carousel sungguhan — rotasi otomatis 6 detik, jeda saat hover/fokus,
+hormat `prefers-reduced-motion`, semua indikator bisa diklik.
+`Paling Banyak Dibaca` diurut `viewCount` menurun.
+
 Aturan: impor lintas direktori wajib `@/`; tanpa barrel `index.ts`
 (mengikuti konvensi modul `site`); tiap template mengunci terang/gelap via
 `ui/<id>-input.tsx` + `ui/<id>-button.tsx` karena root

@@ -82,8 +82,8 @@ export const VIEW_METADATA_REGISTRY: Record<View, ViewMetadata> = {
     description: 'Penyusunan naskah kanonikal, penyuntingan metadata terstruktur, dan validasi atribusi.',
   },
   publishing: {
-    title: 'Antrean Sindikasi & Penerbitan',
-    eyebrow: 'Syndication Queue',
+    title: 'Antrean Penerbitan',
+    eyebrow: 'Publishing Queue',
     description: 'Disposisi sinyal publikasi lintas domain dan status propagasi cache invalidasi edge.',
   },
   media: {

@@ -4,7 +4,7 @@
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
-  "description": "Indicate adalah platform sindikasi media multi-tenant terpusat: satu ruang redaksi untuk mengelola ratusan portal berita di banyak domain, region, dan subdomain. Redaksi menulis satu artikel lalu menerbitkannya ke banyak publisher dan wilayah sekaligus, masing-masing dengan domain, konfigurasi, SEO, varian konten, dan status publikasi sendiri. Dilengkapi penerbitan antrean terisolasi per-target (retry, unpublish, bulk), resolusi hostname berbasis database, isolasi cache dan SEO per-host, dashboard multi-organisasi dengan RBAC, integrasi Telegram dan API key, serta jejak audit hanya-tambah.",
+  "description": "Indicate adalah platform penerbitan jaringan media multi-tenant terpusat: satu ruang redaksi untuk mengelola ratusan portal berita di banyak domain, region, dan subdomain. Redaksi menulis satu artikel lalu menerbitkannya ke banyak publisher dan wilayah sekaligus, masing-masing dengan domain, konfigurasi, SEO, varian konten, dan status publikasi sendiri. Dilengkapi penerbitan antrean terisolasi per-target (retry, unpublish, bulk), resolusi hostname berbasis database, isolasi cache dan SEO per-host, dashboard multi-organisasi dengan RBAC, integrasi Telegram dan API key, serta jejak audit hanya-tambah.",
   "author": {
     "name": "PT SANCA PHENA CAKRA",
     "email": "sancaphenacakra@gmail.com"
@@ -21,7 +21,7 @@
   "keywords": [
     "cms",
     "multi-tenant",
-    "syndication",
+    "publishing",
     "publishing-platform",
     "news-portal",
     "multi-region",

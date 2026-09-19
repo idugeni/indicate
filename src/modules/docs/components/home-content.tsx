@@ -9,7 +9,7 @@ export function DocsHomeContent({ host }: { readonly host: string }) {
     <div>
       <DocTitle
         title="Dokumentasi Indicate"
-        description="Referensi integrasi resmi platform sindikasi media multi-tenant: satu artikel kanonis diterbitkan ke banyak portal, masing-masing dengan domain, brand, SEO, dan status publikasi sendiri."
+        description="Referensi integrasi resmi platform penerbitan jaringan media multi-tenant: satu artikel kanonis diterbitkan ke banyak portal, masing-masing dengan domain, brand, SEO, dan status publikasi sendiri."
       />
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         {[

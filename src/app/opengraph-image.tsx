@@ -41,10 +41,10 @@ export default function DefaultOpenGraphImage() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ fontSize: '60px', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.03em' }}>
-            One Signal, Multiple Distribution Channels.
+            Publishing infrastructure.
           </div>
           <div style={{ fontSize: '26px', color: '#9fa6b8' }}>
-            Centralized dashboard · Multi-site syndication · indicate.web.id
+            Centralized dashboard · Multi-site publishing · indicate.web.id
           </div>
         </div>
         <div
@@ -57,7 +57,7 @@ export default function DefaultOpenGraphImage() {
           }}
         >
           <div style={{ width: '48px', height: '2px', backgroundColor: '#cc9a44' }} />
-          Regional Media Syndication Network
+          Regional Media Publishing Network
         </div>
       </div>
     ),

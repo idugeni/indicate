@@ -22,7 +22,7 @@ export function docsLlms(host: string): string {
   const lines = [
     '# Dokumentasi Indicate',
     '',
-    '> Referensi integrasi resmi platform sindikasi media multi-tenant Indicate: API publik v1, webhook generik, dan bot Telegram redaksi.',
+    '> Referensi integrasi resmi platform penerbitan jaringan media multi-tenant Indicate: API publik v1, webhook generik, dan bot Telegram redaksi.',
     '',
     '## Halaman',
     ...DOCS_PAGES.map((page) => `- [${page.title}](${absoluteDocsUrl(host, page.path)}): ${page.description}`),

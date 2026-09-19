@@ -7,7 +7,7 @@ export interface DocsPage {
 }
 
 export const DOCS_PAGES: readonly DocsPage[] = [
-  { slug: 'home', path: '/', title: 'Dokumentasi Indicate', description: 'Referensi integrasi resmi platform sindikasi media multi-tenant Indicate: API publik, webhook, bot Telegram, dan kontrak operasionalnya.', section: 'Mulai' },
+  { slug: 'home', path: '/', title: 'Dokumentasi Indicate', description: 'Referensi integrasi resmi platform penerbitan jaringan media multi-tenant Indicate: API publik, webhook, bot Telegram, dan kontrak operasionalnya.', section: 'Mulai' },
   { slug: 'quickstart', path: '/quickstart', title: 'Mulai cepat', description: 'Lima langkah dari kunci API pertama hingga publikasi tayang di banyak portal.', section: 'Mulai' },
   { slug: 'authentication', path: '/authentication', title: 'Autentikasi & scope', description: 'API key Bearer, scope per aksi, rotasi, dan respons penolakan yang tidak membocorkan informasi.', section: 'Mulai' },
   { slug: 'api-reference', path: '/api-reference', title: 'Referensi API v1', description: 'Sembilan aksi POST /api/v1/commands: artikel, media, dan publikasi dengan skema payload dan contoh.', section: 'Referensi' },

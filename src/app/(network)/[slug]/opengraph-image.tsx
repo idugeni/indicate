@@ -63,7 +63,7 @@ export default async function ArticleOpenGraphImage({ params }: Props) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '22px', color: '#9fa6b8' }}>
           <div style={{ width: '48px', height: '2px', backgroundColor: '#cc9a44' }} />
-          Jaringan Sindikasi INDICATE
+          Jaringan Penerbitan INDICATE
         </div>
       </div>
     ),
