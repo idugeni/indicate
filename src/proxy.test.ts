@@ -125,6 +125,13 @@ describe('proxy tenant surfaces', () => {
     expect((await proxy(request('portal.example', '/update-password'))).status).toBe(404);
   });
 
+  it('menolak halaman auth di host docs', async () => {
+    expect((await proxy(request(HOSTS.docs, '/sign-in'))).status).toBe(404);
+    expect((await proxy(request(HOSTS.docs, '/sign-up'))).status).toBe(404);
+    expect((await proxy(request(HOSTS.docs, '/forgot-password'))).status).toBe(404);
+    expect((await proxy(request(HOSTS.docs, '/update-password'))).status).toBe(404);
+  });
+
   it('membuka health di host kontrol, menolak di tenant', async () => {
     expect((await proxy(request(HOSTS.api, '/api/health'))).status).toBe(200);
     expect((await proxy(request(HOSTS.webhook, '/api/health'))).status).toBe(200);

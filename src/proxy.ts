@@ -270,7 +270,7 @@ export async function proxy(request: NextRequest) {
       redirect.headers.set(REQUEST_ID_HEADER, ensureRequestId(request.headers).requestId);
       return withSecurityHeaders(redirect);
     }
-    if (path.startsWith('/dashboard') || path === '/auth' || path.startsWith('/auth/') || path.startsWith('/sign-in') || (path.startsWith('/api/') && path !== '/api/health') || isServicePath(path)) return deny(404, request.headers);
+    if (path.startsWith('/dashboard') || path === '/auth' || path.startsWith('/auth/') || path.startsWith('/sign-in') || path.startsWith('/sign-up') || path.startsWith('/forgot-password') || path.startsWith('/update-password') || (path.startsWith('/api/') && path !== '/api/health') || isServicePath(path)) return deny(404, request.headers);
     return nextWithCorrelation(request);
   }
   const alias = TENANT_ALIASES[path];
