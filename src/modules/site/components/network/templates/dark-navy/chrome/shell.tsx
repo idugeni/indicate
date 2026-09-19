@@ -20,7 +20,7 @@ export function DarkNavyShell({
   readonly children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen supports-[min-height:100svh]:min-h-svh bg-[#070f22] font-sans text-[#eaf0fb] antialiased" data-template="dark-navy">
+    <div className="flex min-h-screen flex-col supports-[min-height:100svh]:min-h-svh bg-[#070f22] font-sans text-[#eaf0fb] antialiased" data-template="dark-navy">
       <a
         href="#main-content"
         className="fixed left-4 top-[-5rem] z-50 rounded-lg bg-[#2f7bff] px-4 py-3 font-sans text-sm text-white transition-[top] duration-180 focus:top-4"
@@ -28,7 +28,7 @@ export function DarkNavyShell({
         Lewati ke konten
       </a>
       <DarkNavyHeader site={site} path={path} />
-      <main id="main-content" tabIndex={-1}>
+      <main id="main-content" tabIndex={-1} className="flex-1">
         {children}
       </main>
       <DarkNavyFooter site={site} />

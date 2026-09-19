@@ -20,7 +20,7 @@ export function CleanBlueShell({
   readonly children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen supports-[min-height:100svh]:min-h-svh bg-[#f5f8fd] font-sans text-slate-900 antialiased" data-template="clean-blue">
+    <div className="flex min-h-screen flex-col supports-[min-height:100svh]:min-h-svh bg-[#f5f8fd] font-sans text-slate-900 antialiased" data-template="clean-blue">
       <a
         href="#main-content"
         className="fixed left-4 top-[-5rem] z-50 rounded-lg bg-slate-900 px-4 py-3 font-sans text-sm text-white transition-[top] duration-180 focus:top-4"
@@ -28,7 +28,7 @@ export function CleanBlueShell({
         Lewati ke konten
       </a>
       <CleanBlueHeader site={site} path={path} />
-      <main id="main-content" tabIndex={-1}>
+      <main id="main-content" tabIndex={-1} className="flex-1">
         {children}
       </main>
       <CleanBlueFooter site={site} />
