@@ -939,6 +939,13 @@
       "when": 1789850500000,
       "tag": "20260919050000_telegram_article_edit_step",
       "breakpoints": true
+    },
+    {
+      "idx": 134,
+      "version": "7",
+      "when": 1789850600000,
+      "tag": "20260919060000_retention_terminal_sweep",
+      "breakpoints": true
     }
   ]
 }
