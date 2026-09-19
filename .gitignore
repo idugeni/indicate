@@ -44,3 +44,9 @@ supabase/.temp/
 *.bak
 *.seoul-bak
 .env*.bak
+
+.vercel
+
+# Sabuk ganda: tolak semua varian .env, kecuali kontrak contoh
+.env*
+!.env.example
