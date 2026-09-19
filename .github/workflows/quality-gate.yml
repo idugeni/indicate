@@ -17,6 +17,9 @@ jobs:
   quality-gate:
     runs-on: ubuntu-26.04
     timeout-minutes: 30
+    concurrency:
+      group: quality-gate-${{ github.ref }}
+      cancel-in-progress: true
     environment: production
     # Build memprerender dengan snapshot runtime asli: butuh kredensial baca.
     # Nilai diisi dari GitHub Secrets (repo settings) — JANGAN tulis literal di sini.
@@ -51,7 +54,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run db:bootstrap:check
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      - run: npm run audit:production
       - run: npm run build
