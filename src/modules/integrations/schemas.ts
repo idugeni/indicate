@@ -111,5 +111,5 @@ export const telegramUpdateSchema = z.object({
 export const rateLimitPolicySchema = z.object({
   allowance: z.number().int().min(1).max(10_000),
   windowSeconds: z.number().int().min(1).max(3_600),
-  failureMode: z.enum(['closed', 'open_low_risk']),
+  failureMode: z.literal('closed'),
 }).strict();

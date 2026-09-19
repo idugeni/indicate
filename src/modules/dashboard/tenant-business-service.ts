@@ -3,7 +3,7 @@ import type { z } from 'zod';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type {
   ActivationAttemptRecord, AnalyticsProjection, ArticleFilter, ArticleRecord, AuditFilter, AuditRecord, AuthorRecord, CategoryRecord,
-  DashboardProjection, DomainRecord, InvitationSummary, MembershipRecord, OfficialAffiliationRecord, OperationsProjection, PublisherRecord, NetworkPublisherClaim,
+  DashboardProjection, DomainRecord, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, MembershipRecord, OfficialAffiliationRecord, OperationsProjection, PublisherRecord, NetworkPublisherClaim,
   RegionRecord, RetentionRunRecord, RoleListItem, RoleRecord, SiteRecord, SiteSettingsRecord, DashboardTenantState,
 } from '@/modules/dashboard/models';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
@@ -20,7 +20,7 @@ import type { Result } from '@/core/result';
 import {
   affiliationSchema, affiliationUpdateSchema, analyticsFilterSchema, articleCreateSchema, articleFilterSchema, articleTransitionSchema, articleUpdateSchema, assignmentSchema,
   auditFilterSchema, authorCreateSchema, authorUpdateSchema, categoryCreateSchema, categoryUpdateSchema,
-  domainCreateSchema, domainUpdateSchema, invitationCreateSchema, invitationRevokeSchema, membershipSchema, publisherCreateSchema, publisherDecisionSchema,
+  domainCreateSchema, domainUpdateSchema, invitationCreateSchema, invitationRevokeSchema, isKnownTemplateId, membershipSchema, publisherCreateSchema, publisherDecisionSchema,
   publisherUpdateSchema, regionCreateSchema, regionUpdateSchema, roleCreateSchema, roleUpdateSchema,
   siteCreateSchema, siteSettingsSchema, siteUpdateSchema, siteViewsSchema, siteCachePurgeSchema,
 } from '@/modules/dashboard/schemas';
@@ -94,11 +94,11 @@ function requireLockedRegionValue(actor: AuthorizedTenantActorContext, regionId:
   if (lock !== null && regionId !== lock) throw new DashboardAccessDeniedError();
 }
 
-function siteInScope(site: SiteRecord, lock: string | null): boolean {
+function siteInScope(site: { readonly regionId: string | null }, lock: string | null): boolean {
   return lock === null || site.regionId === null || site.regionId === lock;
 }
 
-function articleInScope(article: ArticleRecord, lock: string | null): boolean {
+function articleInScope(article: { readonly regionId: string }, lock: string | null): boolean {
   return lock === null || article.regionId === lock;
 }
 
@@ -296,6 +296,7 @@ export class TenantBusinessService {
     return this.mutate({ actor, raw, schema: siteSettingsSchema, permission: DASHBOARD_PERMISSIONS.siteManage, action: 'site.settings.update', targetType: 'site_settings', execute: (transaction, value, now) => {
       requireSiteInScope(transaction.state.sites, value.siteId, actor);
       const before = transaction.state.siteSettings.find(({ siteId }) => siteId === value.siteId);
+      if (before === undefined && !isKnownTemplateId(value.colors?.templateId)) throw new DashboardValidationError({ colors: ['templateId wajib diisi dari daftar template terdaftar.'] });
       if (before !== undefined && value.expectedVersion !== undefined) requireVersion(before, value.expectedVersion);
       const logoMediaId = this.requireActiveMedia(transaction, value.logoMediaId, before?.logoMediaId ?? null, 'logoMediaId');
       const faviconMediaId = this.requireActiveMedia(transaction, value.faviconMediaId, before?.faviconMediaId ?? null, 'faviconMediaId');
@@ -504,6 +505,31 @@ export class TenantBusinessService {
       const after: AuthorRecord = { ...before, displayName: value.displayName, byline: value.byline, status: value.status, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.authors, after); this.audit(transaction, 'author.update', 'author', after.id, before, after); return after;
     }});
+  }
+
+  async listEditorialSummaries(actor: AuthorizedTenantActorContext): Promise<Result<EditorialSummaries, PublicErrorEnvelope>> {
+    try {
+      const summaries = await this.repository.listEditorialSummaries(actor, DASHBOARD_PERMISSIONS.articleRead);
+      const lock = regionLock(actor);
+      const regions = summaries.regions.filter((region) => lock === null || region.id === lock);
+      const sites = summaries.sites.filter((site) => siteInScope(site, lock));
+      const articles = summaries.articles.filter((article) => articleInScope(article, lock));
+      const scopeRegion = lock === null ? null : regions.find(({ id }) => id === lock);
+      return { ok: true, value: { articles, sites, regions, regionScope: scopeRegion === undefined || scopeRegion === null ? null : { id: scopeRegion.id, name: scopeRegion.name } } };
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.list', 'article');
+      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+    }
+  }
+
+  async searchArticleSummaries(actor: AuthorizedTenantActorContext, keyword: string, limit = 8): Promise<Result<readonly EditorialSummaryArticle[], PublicErrorEnvelope>> {
+    if (keyword.trim() === '') return { ok: true, value: [] };
+    try {
+      return { ok: true, value: await this.repository.searchArticleSummaries(actor, DASHBOARD_PERMISSIONS.articleRead, keyword, limit) };
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.list', 'article');
+      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+    }
   }
 
   listEditorial(actor: AuthorizedTenantActorContext, rawFilter: unknown = {}) {

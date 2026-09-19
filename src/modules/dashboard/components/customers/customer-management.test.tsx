@@ -37,7 +37,7 @@ describe('Manajemen pelanggan', () => {
     await waitFor(() =>
       expect(command).toHaveBeenCalledWith(
         'customer.create',
-        expect.objectContaining({ name: 'Dinas Kominfo', slug: 'dinas-kominfo' }),
+        expect.objectContaining({ name: 'Dinas Kominfo', slug: 'dinas-kominfo', subscription: { status: 'suspended' } }),
       ),
     );
   });

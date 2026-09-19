@@ -7,11 +7,9 @@ import { rateLimitPolicySchema } from '@/modules/integrations/schemas';
 
 const identityPart = (value: string) => value.replace(/[^A-Za-z0-9:_-]/g, '_').slice(0, 200);
 /**
- * Failure-mode nyata saat ini: seluruh pemanggil (webhook, mutation dasbor,
- * API v1, intake laporan publik) memakai 'closed' — Redis down berarti tolak
- * dengan DEPENDENCY_UNAVAILABLE, bukan lolos. 'open_low_risk' disediakan hanya
- * untuk pembacaan publik berisiko rendah di masa depan; jangan memakainya
- * untuk endpoint tulis/autentikasi tanpa tinjauan keamanan.
+ * Failure-mode tunggal: seluruh pemanggil (webhook, mutation dasbor, API v1,
+ * intake laporan publik) memakai 'closed' — Redis down berarti tolak dengan
+ * DEPENDENCY_UNAVAILABLE, bukan lolos.
  */
 export class RateLimitService {
   constructor(private readonly port: RateLimitPort, private readonly clock: { now(): Date } = { now: () => new Date() }) {}
@@ -30,10 +28,6 @@ export class RateLimitService {
       const decision = await this.port.consume(key, policy, this.clock.now());
       return decision.allowed ? { ok: true, value: decision } : { ok: false, error: createPublicError('RATE_LIMITED', 'Request limit exceeded. Retry later.', requestId, { retryAfterSeconds: [String(decision.retryAfterSeconds)] }) };
     } catch {
-      if (policy.failureMode === 'open_low_risk') {
-        const now = this.clock.now();
-        return { ok: true, value: { allowed: true, remaining: 0, retryAfterSeconds: policy.windowSeconds, resetAt: new Date(now.getTime() + policy.windowSeconds * 1_000).toISOString() } };
-      }
       return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'Request protection is temporarily unavailable.', requestId) };
     }
   }

@@ -960,6 +960,27 @@
       "when": 1789850800000,
       "tag": "20260920040000_invoice_paid_month_single_price",
       "breakpoints": true
+    },
+    {
+      "idx": 137,
+      "version": "7",
+      "when": 1789850900000,
+      "tag": "20260920050000_site_settings_template_fk",
+      "breakpoints": true
+    },
+    {
+      "idx": 138,
+      "version": "7",
+      "when": 1789851000000,
+      "tag": "20260920060000_site_settings_template_fk_idx",
+      "breakpoints": true
+    },
+    {
+      "idx": 139,
+      "version": "7",
+      "when": 1789835708210,
+      "tag": "20260920070000_invoice_unpaid",
+      "breakpoints": true
     }
   ]
 }

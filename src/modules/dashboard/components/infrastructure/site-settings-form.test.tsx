@@ -35,6 +35,7 @@ describe('Formulir pengaturan kanal', () => {
     const command = vi.fn(async () => ({}));
     const { container } = render(<SiteSettingsForm data={DATA} command={command} />);
     fireEvent.change(screen.getByLabelText('Nama kanal'), { target: { value: 'Portal Contoh' } });
+    fireEvent.change(screen.getByLabelText('Layout portal (template)'), { target: { value: 'clean-blue' } });
     fireEvent.submit(container.querySelector('form') as HTMLFormElement);
     await waitFor(() =>
       expect(command).toHaveBeenCalledWith(
@@ -42,6 +43,15 @@ describe('Formulir pengaturan kanal', () => {
         expect.objectContaining({ siteId: 's-1', name: 'Portal Contoh' }),
       ),
     );
+  });
+
+  it('menahan penyimpanan saat template belum dipilih', async () => {
+    const command = vi.fn(async () => ({}));
+    const { container } = render(<SiteSettingsForm data={DATA} command={command} />);
+    fireEvent.change(screen.getByLabelText('Nama kanal'), { target: { value: 'Portal Contoh' } });
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    await waitFor(() => expect(screen.getByText('Pilih template portal terlebih dahulu.')).toBeDefined());
+    expect(command).not.toHaveBeenCalled();
   });
 
   it('membatalkan penyimpanan saat JSON warna tidak valid', async () => {

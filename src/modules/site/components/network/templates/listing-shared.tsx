@@ -26,11 +26,12 @@ export type TemplateId = (typeof TEMPLATE_IDS)[number];
  * Normalisasi id template mentah ke id yang diakui.
  *
  * @param raw - Nilai mentah dari `site_settings.colors.templateId`.
- * @returns Id template valid, fallback `clean-blue`.
+ * @returns Id template valid.
+ * @throws {Error} Jika nilai mentah bukan id template terdaftar.
  */
 export function normalizeTemplateId(raw: unknown): TemplateId {
   if (typeof raw === 'string' && (TEMPLATE_IDS as readonly string[]).includes(raw)) {
     return raw as TemplateId;
   }
-  return 'clean-blue';
+  throw new Error(`templateId tidak dikenal: ${String(raw)}`);
 }

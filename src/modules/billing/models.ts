@@ -5,8 +5,9 @@ export interface InvoiceRecord {
   readonly number: string;
   readonly amountIdr: number;
   readonly currency: string;
-  readonly status: 'paid' | 'voided';
-  readonly paidAt: string;
+  readonly status: 'paid' | 'voided' | 'unpaid';
+  readonly paidAt: string | null;
+  readonly dueAt: string | null;
   readonly billingNote: string | null;
   readonly paymentMethod: string;
   readonly voidedAt: string | null;

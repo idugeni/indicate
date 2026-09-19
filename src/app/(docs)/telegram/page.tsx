@@ -11,37 +11,20 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function TelegramPage() {
   return (
     <div>
-      <DocTitle title="Bot Telegram" description="Perintah redaksi via chat: pilih organisasi, susun artikel, terbitkan ke semua situs sekali ketuk — tanpa mengetik ID." />
+      <DocTitle title="Bot Telegram" description="Pintu masuk Mini App redaksi via chat: /start untuk tautan, /stop untuk berhenti. Seluruh aksi redaksi berjalan di Mini App." />
       <DocH2>Prasyarat</DocH2>
       <DocP>
-        Pemilik organisasi memetakan identitas Telegram (user + chat) ke pengguna lokal beserta peran dan cakupan
-        region — perintah apa pun dari identitas tak terpetakan dijawab penolakan generik. Akun yang tertaut ke
-        beberapa organisasi memilih dulu organisasi aktif lewat <InlineCode>/org</InlineCode>; pilihan diingat
-        sampai kedaluwarsa 1 jam. Percakapan multi-langkah kedaluwarsa 1 jam; <InlineCode>/cancel</InlineCode> membatalkannya kapan saja.
+        Perintah chat dipensiunkan kecuali <InlineCode>/start</InlineCode> dan <InlineCode>/stop</InlineCode>;
+        susun artikel, unggah foto, atur situs, dan terbitkan semuanya lewat Mini App. Akun yang tertaut ke
+        organisasi tetap dikenali untuk membersihkan sesi saat <InlineCode>/stop</InlineCode>; akun tanpa
+        tautan tetap menerima tautan Mini App.
       </DocP>
       <DocH2>Perintah</DocH2>
       <DocTable
         head={['Perintah', 'Kegunaan']}
         rows={[
-          [<span key="c" className="font-mono text-[13px]">/start</span>, 'Hapus pesan dasbor di atas, lalu buka menu utama + tombol aksi bot.'],
-          [<span key="c" className="font-mono text-[13px]">/org</span>, 'Ganti organisasi aktif (pemilih tombol).'],
-          [<span key="c" className="font-mono text-[13px]">/bantuan</span>, 'Panduan lengkap perintah bot.'],
-          [<span key="c" className="font-mono text-[13px]">/article</span>, 'Buat artikel bertahap: region (tombol) → judul → body → sumber → slug; selesai tersaji tombol Terbitkan ke Semua Situs.'],
-          [<span key="c" className="font-mono text-[13px]">/edit</span>, 'Pemilih artikel, lalu ubah judul/isi/sumber dengan pratinjau + tombol Simpan.'],
-          [<span key="c" className="font-mono text-[13px]">/artikel</span>, 'Delapan artikel terbaru + tombol aksi per artikel.'],
-          [<span key="c" className="font-mono text-[13px]">/cari KATA_KUNCI</span>, 'Cari artikel berdasar judul + tombol aksi hasil.'],
-          [<span key="c" className="font-mono text-[13px]">/job</span>, 'Pekerjaan publikasi terbaru + tombol aksi per job.'],
-          [<span key="c" className="font-mono text-[13px]">/portal</span>, 'Situs aktif + tombol detail per situs.'],
-          [<span key="c" className="font-mono text-[13px]">/image</span>, 'Pemilih artikel, lalu mode unggah foto (satu per pesan, boleh banyak).'],
-          [<span key="c" className="font-mono text-[13px]">/regions</span>, 'Daftar region aktif.'],
-          [<span key="c" className="font-mono text-[13px]">/sites</span>, 'Pemilih artikel, lalu centang situs tujuan lewat tombol.'],
-          [<span key="c" className="font-mono text-[13px]">/publish</span>, 'Pemilih artikel, lalu terbitkan ke situs tercentang atau sekaligus ke semua situs.'],
-          [<span key="c" className="font-mono text-[13px]">/suggest</span>, 'Pemilih artikel, lalu saran judul/deskripsi unik per situs tanpa membuat job.'],
-          [<span key="c" className="font-mono text-[13px]">/status</span>, 'Pemilih job + ringkasan sukses.'],
-          [<span key="c" className="font-mono text-[13px]">/links</span>, 'Pemilih job + URL tayang hasil publikasi.'],
-          [<span key="c" className="font-mono text-[13px]">/retry JOB_ID [TARGETS]</span>, 'Antrekan ulang target gagal.'],
-          [<span key="c" className="font-mono text-[13px]">/unpublish JOB_ID [TARGETS]</span>, 'Tarik publikasi target.'],
-          [<span key="c" className="font-mono text-[13px]">/cancel</span>, 'Batalkan percakapan berjalan.'],
+          [<span key="c" className="font-mono text-[13px]">/start</span>, 'Balasan foto + tautan buka Mini App redaksi.'],
+          [<span key="c" className="font-mono text-[13px]">/stop</span>, 'Bersihkan sesi chat ini dan hentikan tautan bot; kirim /start untuk mulai lagi.'],
         ]}
       />
       <DocH2>Keamanan & keandalan</DocH2>
@@ -52,8 +35,7 @@ export default function TelegramPage() {
         dan yang gagal masuk outbox dengan backoff menghormati <InlineCode>retry_after</InlineCode> Telegram.
       </DocP>
       <DocCallout tone="info">
-        Aturan validasi yang sama dengan dashboard/API berlaku di sini: judul/deskripsi antar situs harus unik —
-        gunakan saran varian bila publish multi-situs ditolak karena duplikat.
+        Aturan validasi yang sama dengan dashboard/API berlaku di Mini App: judul/deskripsi antar situs harus unik.
       </DocCallout>
       <DocsPager slug="telegram" />
     </div>

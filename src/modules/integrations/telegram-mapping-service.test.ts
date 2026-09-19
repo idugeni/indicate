@@ -133,6 +133,18 @@ describe('TelegramMappingService outbox broadcast', () => {
     expect(result.value).toEqual([]);
   });
 
+  it('melaporkan galat saat outbox platform gagal dibaca', async () => {
+    const { service } = harness({
+      listOutboxMessages: async () => {
+        throw new Error('db down');
+      },
+    });
+    const result = await service.listOutbox(platformManager);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('DEPENDENCY_UNAVAILABLE');
+  });
+
   it('menolak broadcast non-platform lewat denial', async () => {
     const { service } = harness();
     const result = await service.broadcast(manager, { text: 'Halo' });

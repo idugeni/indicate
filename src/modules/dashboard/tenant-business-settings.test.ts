@@ -36,7 +36,7 @@ function harness(collections: Record<string, readonly unknown[]> = {}) {
 }
 
 const site = { id: ID, organizationId: 'org-1', regionId: null };
-const settingsInput = { siteId: ID, name: 'Portal Fakta', description: 'Deskripsi portal yang informatif.' };
+const settingsInput = { siteId: ID, name: 'Portal Fakta', description: 'Deskripsi portal yang informatif.', colors: { templateId: 'clean-blue' } };
 
 describe('TenantBusinessService saveSiteSettings', () => {
   it('menyimpan pengaturan baru', async () => {
@@ -44,6 +44,14 @@ describe('TenantBusinessService saveSiteSettings', () => {
     const result = await service.saveSiteSettings(actor, settingsInput);
     expect(result.ok).toBe(true);
     expect((state.siteSettings as unknown[])).toHaveLength(1);
+  });
+
+  it('menolak pembuatan tanpa templateId', async () => {
+    const { service } = harness({ sites: [site] });
+    const result = await service.saveSiteSettings(actor, { siteId: ID, name: 'Portal Fakta', description: 'Deskripsi portal yang informatif.' });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
   });
 
   it('menolak media tidak aktif', async () => {

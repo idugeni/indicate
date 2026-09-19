@@ -38,7 +38,7 @@ export function CustomerManagement({
         slug: String(formData.get('slug') ?? '').trim(),
         customerMetadata: {},
         subscription: {
-          status: String(formData.get('status') ?? 'active'),
+          status: String(formData.get('status') ?? 'suspended'),
         },
       });
       form.reset();
@@ -139,7 +139,7 @@ export function CustomerManagement({
               id={`${slugInputId}-status`}
               name="status"
               disabled={isCreatingCustomer}
-              defaultValue="active"
+              defaultValue="suspended"
               className="h-8 w-full rounded border border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper"
             >
               <option value="active">Aktif — langsung berjalan</option>

@@ -92,7 +92,9 @@ interface InvoiceSummary {
   readonly number: string;
   readonly amountIdr: number;
   readonly status: string;
-  readonly paidAt: string;
+  readonly paidAt: string | null;
+  readonly dueAt: string | null;
+  readonly version: number;
   readonly createdAt: string;
   readonly paymentMethod: string;
 }
@@ -102,7 +104,9 @@ interface InvoiceDetailRecord {
   readonly number: string;
   readonly amountIdr: number;
   readonly status: string;
-  readonly paidAt: string;
+  readonly paidAt: string | null;
+  readonly dueAt: string | null;
+  readonly version: number;
   readonly createdAt: string;
   readonly paymentMethod: string;
   readonly billingNote: string | null;
@@ -110,7 +114,7 @@ interface InvoiceDetailRecord {
   readonly voidReason: string | null;
 }
 
-type Tab = 'home' | 'articles' | 'jobs' | 'org';
+type Tab = 'harian' | 'home' | 'articles' | 'jobs' | 'org';
 
 function themeVars(theme: MiniAppPalette): CSSProperties {
   return {
@@ -162,7 +166,7 @@ export function MiniAppClient() {
   const [orgs, setOrgs] = useState<readonly Org[]>([]);
   const [orgId, setOrgId] = useState<string | null>(null);
   const [sessionDone, setSessionDone] = useState(false);
-  const [tab, setTab] = useState<Tab>('home');
+  const [tab, setTab] = useState<Tab>('harian');
 
   const tgRef = useRef(tg);
   useEffect(() => {
@@ -198,7 +202,7 @@ export function MiniAppClient() {
     tg.saveOrg(id);
     tg.haptic('medium');
     setOrgId(id);
-    setTab('home');
+    setTab('harian');
   }, [tg]);
 
   const reloadOrgs = useCallback(async () => {
@@ -269,12 +273,13 @@ export function MiniAppClient() {
           <div style={dim}>{activeOrg === null ? '…' : activeOrg.subscription === null ? 'Tanpa langganan' : `Langganan: ${activeOrg.subscription.status}`}</div>
         </div>
       </header>
+      {tab === 'harian' && <Digest call={call} theme={theme} />}
       {tab === 'home' && <Home call={call} go={setTab} theme={theme} />}
       {tab === 'articles' && <Articles call={call} theme={theme} tg={tg} />}
       {tab === 'jobs' && <Jobs call={call} theme={theme} tg={tg} />}
       {tab === 'org' && <Orgs orgs={orgs} activeId={orgId} onPick={switchOrg} call={call} theme={theme} tg={tg} onChanged={() => void reloadOrgs()} />}
       <nav style={nav}>
-        {(['home', 'articles', 'jobs', 'org'] as const).map((key) => (
+        {(['harian', 'home', 'articles', 'jobs', 'org'] as const).map((key) => (
           <button
             key={key}
             type="button"
@@ -284,7 +289,7 @@ export function MiniAppClient() {
               setTab(key);
             }}
           >
-            {key === 'home' ? 'Beranda' : key === 'articles' ? 'Artikel' : key === 'jobs' ? 'Tayang' : 'Org'}
+            {key === 'harian' ? 'Harian' : key === 'home' ? 'Beranda' : key === 'articles' ? 'Artikel' : key === 'jobs' ? 'Tayang' : 'Org'}
           </button>
         ))}
       </nav>
@@ -316,6 +321,62 @@ function useLoad<T>(key: string, loader: () => Promise<T>): { data: T | null; er
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loader dibaca versi terbaru via ref; key+tick yang memicu muat ulang
   }, [key, tick]);
   return { data: state.data, error: state.error, reload: () => setTick((value) => value + 1) };
+}
+
+interface DigestEntry {
+  readonly organizationId: string;
+  readonly name: string;
+  readonly status: string;
+  readonly articles: number;
+  readonly published: number;
+  readonly failed: number;
+}
+
+interface DigestTotals {
+  readonly articles: number;
+  readonly published: number;
+  readonly failed: number;
+}
+
+function Digest({ call, theme }: { call: Call; theme: MiniAppPalette }) {
+  const loaded = useLoad('digest', () =>
+    call<{ date: string; organizations: readonly DigestEntry[]; totals: DigestTotals; partial: boolean }>('/api/tg/app/digest', {}));
+  if (loaded.data === null && loaded.error === null) return <CardsSkeleton theme={theme} />;
+  if (loaded.data === null) return <SectionError message={loaded.error ?? 'Gagal memuat.'} onRetry={loaded.reload} theme={theme} />;
+  const { date, organizations, totals, partial } = loaded.data;
+  const publishedOrgs = organizations.filter((org) => org.published > 0 || org.articles > 0).length;
+  return (
+    <div>
+      <div style={dim}>Ringkasan harian • {date}{partial ? ' • sebagian gagal dimuat' : ''}</div>
+      <div style={grid}>
+        <div style={cardBtn}>
+          <div style={big}>{publishedOrgs}/{organizations.length}</div>
+          <div style={dim}>org publish</div>
+        </div>
+        <div style={cardBtn}>
+          <div style={big}>{totals.published}</div>
+          <div style={dim}>tayang situs</div>
+        </div>
+        <div style={cardBtn}>
+          <div style={big}>{totals.articles}</div>
+          <div style={dim}>artikel</div>
+        </div>
+        <div style={cardBtn}>
+          <div style={big}>{totals.failed}</div>
+          <div style={dim}>job gagal</div>
+        </div>
+      </div>
+      {organizations.map((org) => (
+        <div key={org.organizationId} style={rowBtn}>
+          <div style={rowTitle}>{org.name}</div>
+          <div style={dim}>
+            {org.articles} artikel • {org.published} tayang{org.failed > 0 ? ` • ${org.failed} gagal` : ''}
+          </div>
+          <StatusDot value={org.failed > 0 ? 'failed' : org.published > 0 || org.articles > 0 ? 'published' : 'queued'} theme={theme} />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function Home({ call, go, theme }: { call: Call; go: (tab: Tab) => void; theme: MiniAppPalette }) {
@@ -876,20 +937,109 @@ function OrgInvoices({ call, org, theme }: { call: Call; org: Org; theme: MiniAp
   const loaded = useLoad(`invoices-${org.id}`, () =>
     call<{ state: string; invoices: readonly InvoiceSummary[] }>('/api/tg/app/invoices', {}));
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   if (loaded.data === null && loaded.error === null) return <ListSkeleton rows={3} theme={theme} />;
   if (loaded.data === null) return <SectionError message={loaded.error ?? 'Gagal memuat.'} onRetry={loaded.reload} theme={theme} />;
   const invoices = loaded.data.invoices;
+  const unpaid = invoices.filter((invoice) => invoice.status === 'unpaid');
+  const settled = invoices.filter((invoice) => invoice.status !== 'unpaid');
+  const unpaidTotal = unpaid.reduce((sum, invoice) => sum + invoice.amountIdr, 0);
+  const issue = async () => {
+    const due = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+    setBusy(true);
+    setNotice(null);
+    try {
+      await call('/api/tg/app/invoices', { action: 'issue', dueAt: due });
+      loaded.reload();
+    } catch (error) {
+      setNotice(friendlyError(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const pay = async (invoice: InvoiceSummary) => {
+    setBusy(true);
+    setNotice(null);
+    try {
+      await call('/api/tg/app/invoices', {
+        action: 'pay',
+        invoiceId: invoice.id,
+        expectedVersion: invoice.version,
+        paidAt: new Date().toISOString(),
+      });
+      loaded.reload();
+    } catch (error) {
+      setNotice(friendlyError(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const share = async (invoice: InvoiceSummary) => {
+    const text = [
+      `Tagihan ${invoice.number} — ${org.name}`,
+      `Nominal: ${formatRp(invoice.amountIdr)}`,
+      invoice.dueAt === null ? null : `Jatuh tempo: ${formatDate(invoice.dueAt)}`,
+      `Status: ${invoice.status === 'unpaid' ? 'BELUM BAYAR' : invoice.status.toUpperCase()}`,
+    ].filter((line): line is string => line !== null).join('\n');
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard !== undefined) {
+        await navigator.clipboard.writeText(text);
+        setNotice('Ringkasan tagihan disalin, tempel ke chat klien.');
+      } else {
+        setNotice(text);
+      }
+    } catch {
+      setNotice(text);
+    }
+  };
   return (
     <div style={card}>
       <h3 style={h3}>Faktur</h3>
-      {invoices.length === 0 ? (
-        <EmptyState title="Belum ada faktur" hint="Faktur muncul setelah pembayaran dicatat." theme={theme} />
+      {notice !== null && <div style={dim}>{notice}</div>}
+      {unpaid.length > 0 && (
+        <div style={dim}>
+          {unpaid.length} belum bayar • {formatRp(unpaidTotal)}
+        </div>
+      )}
+      <div style={row}>
+        <button type="button" style={btnAcc} disabled={busy} onClick={() => void issue()}>
+          Terbitkan tagihan
+        </button>
+      </div>
+      {unpaid.length > 0 && (
+        <>
+          <div style={dim}>Belum bayar</div>
+          {unpaid.map((invoice) => (
+            <div key={invoice.id} style={rowBtn}>
+              <button type="button" style={{ ...rowBtn, marginTop: 0, border: 'none', padding: 0 }} onClick={() => setSelectedId(invoice.id)}>
+                <div style={rowTitle}>{invoice.number}</div>
+                <div style={dim}>
+                  {formatRp(invoice.amountIdr)} • {invoice.dueAt === null ? 'tanpa jatuh tempo' : `tempo ${formatDate(invoice.dueAt)}`}
+                </div>
+              </button>
+              <StatusDot value={invoice.status} theme={theme} />
+              <div style={row}>
+                <button type="button" style={btn} disabled={busy} onClick={() => void share(invoice)}>
+                  Bagikan
+                </button>
+                <button type="button" style={btnAcc} disabled={busy} onClick={() => void pay(invoice)}>
+                  Tandai lunas
+                </button>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+      <div style={dim}>Riwayat</div>
+      {settled.length === 0 ? (
+        <EmptyState title="Belum ada faktur lunas" hint="Faktur lunas dan void tampil di sini." theme={theme} />
       ) : (
-        invoices.map((invoice) => (
+        settled.map((invoice) => (
           <button key={invoice.id} type="button" style={rowBtn} onClick={() => setSelectedId(invoice.id)}>
             <div style={rowTitle}>{invoice.number}</div>
             <div style={dim}>
-              {formatRp(invoice.amountIdr)} • {formatDate(invoice.paidAt)}
+              {formatRp(invoice.amountIdr)} • {invoice.paidAt === null ? 'belum lunas' : formatDate(invoice.paidAt)}
             </div>
             <StatusDot value={invoice.status} theme={theme} />
           </button>
@@ -917,7 +1067,8 @@ function InvoiceDetail({ call, invoiceId, theme, onClose }: {
       <h3 style={h3}>{invoice.number}</h3>
       <StatusDot value={invoice.status} theme={theme} />
       <div style={dim}>Terbit: {formatDate(invoice.createdAt)}</div>
-      <div style={dim}>Lunas: {formatDate(invoice.paidAt)}</div>
+      <div style={dim}>Lunas: {invoice.paidAt === null ? '-' : formatDate(invoice.paidAt)}</div>
+      {invoice.dueAt !== null && <div style={dim}>Jatuh tempo: {formatDate(invoice.dueAt)}</div>}
       <div style={dim}>Metode: {invoice.paymentMethod}</div>
       {invoice.billingNote !== null && invoice.billingNote !== '' && <div style={dim}>Catatan: {invoice.billingNote}</div>}
       {invoice.status === 'voided' && (

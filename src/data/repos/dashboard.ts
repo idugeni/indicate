@@ -2,7 +2,7 @@ import { and, desc, eq, gt, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { AnalyticsProjection, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, InvitationSummary, OperationsProjection, RetentionRunRecord } from '@/modules/dashboard/models';
+import type { AnalyticsProjection, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, OperationsProjection, RetentionRunRecord } from '@/modules/dashboard/models';
 import { DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
 import { redact } from '@/core/security/redaction';
 import {
@@ -51,7 +51,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
   private async load(transaction: Transaction, organizationId: string): Promise<DashboardTenantState> {
     const organization = await transaction.select().from(organizations).where(and(eq(organizations.id, organizationId), eq(organizations.status, 'active'))).limit(1);
     if (organization[0] === undefined) throw new DashboardAccessDeniedError();
-    const [domainRows, regionRows, siteRows, settingsRows, roleRows, grantRows, membershipRows, telegramMappingRows, publisherRows, affiliationRows, categoryRows, authorRows, articleRows, assignmentRows, mediaRows, jobRows, targetRows, auditRows] = await Promise.all([
+    const [domainRows, regionRows, siteRows, settingsRows, roleRows, grantRows, membershipRows, telegramMappingRows, publisherRows, affiliationRows, categoryRows, authorRows, articleRows, assignmentRows, mediaRows, jobRows, targetRows] = await Promise.all([
       transaction.select().from(domains).where(eq(domains.organizationId, organizationId)), transaction.select().from(regions).where(eq(regions.organizationId, organizationId)),
       transaction.select().from(sites).where(eq(sites.organizationId, organizationId)), transaction.select().from(siteSettings).where(eq(siteSettings.organizationId, organizationId)),
       transaction.select().from(roles).where(eq(roles.organizationId, organizationId)),
@@ -63,7 +63,6 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       transaction.select().from(articles).where(eq(articles.organizationId, organizationId)), transaction.select().from(articleSites).where(eq(articleSites.organizationId, organizationId)),
       transaction.select().from(media).where(eq(media.organizationId, organizationId)), transaction.select().from(publishingJobs).where(eq(publishingJobs.organizationId, organizationId)),
       transaction.select().from(publishingJobTargets).where(eq(publishingJobTargets.organizationId, organizationId)),
-      transaction.select().from(auditLogs).where(eq(auditLogs.organizationId, organizationId)),
     ]);
     const profileRows = await Promise.all(
       membershipRows.map((membership) =>
@@ -102,7 +101,6 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       media: mediaRows.map((row) => ({ id: row.id, organizationId, state: row.state })),
       publishingJobs: jobRows.map((row) => ({ id: row.id, organizationId, articleId: row.articleId, state: row.state, createdAt: iso(row.createdAt), occurredAt: iso(row.finalizedAt ?? row.updatedAt) })),
       publishingJobTargets: targetRows.map((row) => ({ id: row.id, organizationId, jobId: row.jobId, articleSiteId: row.articleSiteId, state: row.state, occurredAt: iso(row.finishedAt ?? row.updatedAt) })),
-      auditLogs: auditRows.map((row) => ({ id: row.id, organizationId, actorType: row.actorType, actorId: row.actorId, entryPoint: row.entryPoint, action: row.action, targetType: row.targetType, targetId: row.targetId, outcome: row.outcome, changedFields: row.changedFields, before: row.before ?? null, after: row.after ?? null, requestId: row.requestId, occurredAt: iso(row.occurredAt) })),
     };
   }
 
@@ -429,6 +427,48 @@ export class DrizzleDashboardRepository implements DashboardRepository {
   async read(actor: AuthorizedTenantActorContext, permission: string): Promise<DashboardTenantState> {    return this.database.transaction(async (transaction) => {
       await this.establishContext(transaction, actor);
       await this.authorize(transaction, actor, permission); return this.load(transaction, actor.organizationId);
+    });
+  }
+
+  async listEditorialSummaries(actor: AuthorizedTenantActorContext, permission: string): Promise<EditorialSummaries> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const organizationId = actor.organizationId;
+      const [articleRows, siteRows, regionRows] = await Promise.all([
+        transaction.select({ id: articles.id, regionId: articles.regionId, slug: articles.slug, title: articles.title, status: articles.status, createdAt: articles.createdAt }).from(articles).where(eq(articles.organizationId, organizationId)).orderBy(desc(articles.createdAt)),
+        transaction.select({ id: sites.id, regionId: sites.regionId, normalizedHostname: sites.normalizedHostname, status: sites.status }).from(sites).where(eq(sites.organizationId, organizationId)),
+        transaction.select({ id: regions.id, name: regions.name, status: regions.status }).from(regions).where(eq(regions.organizationId, organizationId)),
+      ]);
+      const scope = actor.regionScopeId === null || actor.regionScopeId === undefined ? null : regionRows.find((row) => row.id === actor.regionScopeId);
+      return Object.freeze({
+        articles: Object.freeze(articleRows.map((row) => Object.freeze({ id: row.id, regionId: row.regionId, slug: row.slug, title: row.title, status: row.status, createdAt: iso(row.createdAt) }))),
+        sites: Object.freeze(siteRows.map((row) => Object.freeze({ id: row.id, regionId: row.regionId, normalizedHostname: row.normalizedHostname, status: row.status }))),
+        regions: Object.freeze(regionRows.map((row) => Object.freeze({ id: row.id, name: row.name, status: row.status }))),
+        regionScope: scope === undefined || scope === null ? null : { id: scope.id, name: scope.name },
+      });
+    });
+  }
+
+  async searchArticleSummaries(actor: AuthorizedTenantActorContext, permission: string, keyword: string, limit: number): Promise<readonly EditorialSummaryArticle[]> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const bounded = Math.max(1, Math.min(Math.floor(limit), 20));
+      const like = `%${keyword.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+      const scope = actor.regionScopeId ?? null;
+      const rows = await transaction.execute<{
+        readonly id: string; readonly regionId: string; readonly slug: string; readonly title: string;
+        readonly status: EditorialSummaryArticle['status']; readonly createdAt: Date;
+      }>(sql`
+        SELECT id, region_id AS "regionId", slug, title, status, created_at AS "createdAt"
+        FROM articles
+        WHERE organization_id = ${actor.organizationId}
+          AND (${scope}::uuid IS NULL OR region_id = ${scope}::uuid)
+          AND (title ILIKE ${like} ESCAPE '\' OR body ILIKE ${like} ESCAPE '\')
+        ORDER BY created_at DESC
+        LIMIT ${bounded}`);
+      return Object.freeze(rows.map((row) => Object.freeze({ id: row.id, regionId: row.regionId, slug: row.slug, title: row.title, status: row.status, createdAt: row.createdAt.toISOString() })));
     });
   }
 

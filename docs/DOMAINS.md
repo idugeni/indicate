@@ -1,11 +1,12 @@
 # Inventaris domain Indicate (advisory — living document)
 
 Hanya domain terkait Indicate yang dicatat di sini — proyek-proyek lain
-milik pemilik sengaja tidak dimasukkan. Terakhir diverifikasi: 2026-09-18
-(panel IDWebHost + API Cloudflare + RDAP PANDI/Verisign + database `sites`).
+milik pemilik sengaja tidak dimasukkan. Terakhir diverifikasi: 2026-09-19
+(panel IDWebHost + API Cloudflare + RDAP PANDI/Verisign + database `sites` +
+Vercel MCP + HTTP HEAD 20/20 `200`).
 
-Tenant live di DB: **18 site = 9 apex + 9 regional** (`wonosobo.*`, semua
-Exabytes batch 2026-09-03). Domain utama: `indicate.web.id` (bukan tenant).
+Tenant live di DB: **20 site = 10 apex + 10 regional** (`wonosobo.*`).
+Domain utama: `indicate.web.id` (bukan tenant).
 
 ## A. IDWebHost — batch 2026-09-16 + domain utama
 
@@ -77,7 +78,7 @@ MCP 2026-09-18, baseline diselaraskan maksimal mengikuti
 | panggungkata.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | panggungkata.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | pastipas.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
-| penamerdeka.my.id | 2026-09-18 | 2027-09-18 | Aktif | active | — |
+| penamerdeka.my.id | 2026-09-18 | 2027-09-18 | Aktif | active | YA (apex live) |
 | pendarkata.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | pendarkata.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | penyanggafakta.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
@@ -142,7 +143,8 @@ MCP 2026-09-18, baseline diselaraskan maksimal mengikuti
 Regional live: `wonosobo.fakta01.my.id`, `wonosobo.jurnalism.web.id`,
 `wonosobo.kabar360.biz.id`, `wonosobo.liputan99.web.id`,
 `wonosobo.nusantara24.web.id`, `wonosobo.pantaunusantara.web.id`,
-`wonosobo.suarafakta24.biz.id`, `wonosobo.wartakini7.web.id`,
+`wonosobo.penamerdeka.my.id`, `wonosobo.suarafakta24.biz.id`,
+`wonosobo.wartakini7.web.id`,
 `wonosobo.wawasannusa.biz.id` (tercakup zona apex masing-masing).
 
 ## Aturan main

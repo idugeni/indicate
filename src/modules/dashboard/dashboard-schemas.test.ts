@@ -88,4 +88,8 @@ describe('siteSettingsSchema', () => {
   it('menolak templateId tak dikenal', () => {
     expect(siteSettingsSchema.safeParse({ ...settings, colors: { templateId: 'tidak-ada' } }).success).toBe(false);
   });
+
+  it('menolak colors tanpa templateId', () => {
+    expect(siteSettingsSchema.safeParse({ ...settings, colors: { aksen: '#ffffff' } }).success).toBe(false);
+  });
 });

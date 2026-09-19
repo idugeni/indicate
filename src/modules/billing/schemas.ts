@@ -29,6 +29,20 @@ export const invoiceVoidSchema = z.object({
   reason: z.string().trim().min(1).max(500),
 }).strict();
 
+export const invoiceIssueSchema = z.object({
+  organizationId: id,
+  amountIdr: z.literal(SINGLE_INVOICE_AMOUNT_IDR),
+  dueAt: z.iso.datetime(),
+  billingNote: z.string().trim().max(500).nullish(),
+}).strict();
+
+export const invoicePaySchema = z.object({
+  invoiceId: id,
+  expectedVersion: z.int().positive(),
+  paidAt: z.iso.datetime(),
+  paymentMethod: z.string().trim().min(1).max(40).nullish(),
+}).strict();
+
 export const invoiceReissueSchema = z.object({
   invoiceId: id,
   expectedVersion: z.int().positive(),

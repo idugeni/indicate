@@ -2,7 +2,7 @@
  * Identitas template Purple Digital Editorial (ungu).
  *
  * @remarks
- * Satu dari sepuluh template tenant. Dispatcher `network-listing` switch ke id ini; fallback `clean-blue`.
+ * Satu dari sepuluh template tenant. Dispatcher `network-listing` switch ke id ini; id tak dikenal melempar galat.
  */
 export const PURPLE_EDITORIAL_TEMPLATE_ID = 'purple-editorial' as const;
 

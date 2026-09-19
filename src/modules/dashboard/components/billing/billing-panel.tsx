@@ -10,8 +10,9 @@ interface InvoiceRow {
   readonly number: string;
   readonly amountIdr: number;
   readonly currency: string;
-  readonly status: 'paid' | 'voided';
-  readonly paidAt: string;
+  readonly status: 'paid' | 'voided' | 'unpaid';
+  readonly paidAt: string | null;
+  readonly dueAt: string | null;
   readonly billingNote: string | null;
   readonly paymentMethod: string;
   readonly voidedAt: string | null;
@@ -260,10 +261,12 @@ export function BillingPanel({
           {invoices.map((invoice) => (
             <li key={invoice.id} className="border-b border-hairline py-3 last:border-b-0">
               <p className="m-0 font-sans text-sm font-medium text-paper">
-                {invoice.number} — {formatIdr(invoice.amountIdr)} · {invoice.status === 'paid' ? 'Lunas' : 'Void'}
+                {invoice.number} — {formatIdr(invoice.amountIdr)} · {invoice.status === 'paid' ? 'Lunas' : invoice.status === 'unpaid' ? 'Belum bayar' : 'Void'}
               </p>
               <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
-                Bayar {formatDate(invoice.paidAt)}
+                {invoice.status === 'unpaid'
+                  ? `Tempo ${invoice.dueAt === null ? '-' : formatDate(invoice.dueAt)}`
+                  : `Bayar ${invoice.paidAt === null ? '-' : formatDate(invoice.paidAt)}`}
                 {invoice.billingNote ? ` · ${invoice.billingNote}` : ''}
               </p>
               {invoice.status === 'voided' && invoice.voidReason ? (

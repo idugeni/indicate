@@ -11,6 +11,10 @@ import { MASTER_TEMPLATE_PRESETS } from '@/ui/themes';
 
 const TEMPLATE_IDS = new Set(MASTER_TEMPLATE_PRESETS.map((preset) => preset.id));
 
+export function isKnownTemplateId(value: unknown): value is string {
+  return typeof value === 'string' && TEMPLATE_IDS.has(value);
+}
+
 const id = z.uuid();
 const expectedVersion = z.int().positive();
 const lifecycleStatus = z.enum(['active', 'inactive', 'archived']);
@@ -40,8 +44,8 @@ export const siteSettingsSchema = z.object({
   faviconMediaId: id.nullable().optional(),
   defaultMediaId: id.nullable().optional(),
   colors: z.record(z.string(), z.string().max(100)).optional().refine(
-    (colors) => colors === undefined || colors.templateId === undefined || TEMPLATE_IDS.has(colors.templateId),
-    'templateId tidak dikenal — pilih dari daftar template terdaftar.',
+    (colors) => colors === undefined || isKnownTemplateId(colors.templateId),
+    'templateId wajib diisi dari daftar template terdaftar.',
   ),
   socialLinks: z.record(z.string(), z.url()).optional(),
   seo: z.record(z.string(), z.unknown()).optional(),

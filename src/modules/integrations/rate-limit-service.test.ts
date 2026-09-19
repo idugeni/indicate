@@ -70,15 +70,4 @@ describe('RateLimitService enforce', () => {
     if (result.ok) throw new Error('expected error');
     expect(result.error.error.code).toBe('DEPENDENCY_UNAVAILABLE');
   });
-
-  it('membuka akses darurat pada mode open_low_risk saat port gagal', async () => {
-    const { service } = harness(async () => {
-      throw new Error('redis down');
-    });
-    const result = await service.enforce('k', { ...POLICY, failureMode: 'open_low_risk' }, 'req-1');
-    expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error('expected ok');
-    expect(result.value.allowed).toBe(true);
-    expect(result.value.retryAfterSeconds).toBe(60);
-  });
 });

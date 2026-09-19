@@ -1,0 +1,123 @@
+# Status Domain Aktif
+
+Ledger hidup: perbarui setiap ada aktivasi/penonaktifan domain.
+Terakhir diverifikasi: 2026-09-19 (DB + Vercel MCP + HTTP HEAD 20/20 `200`, sampel GET `wonosobo.fakta01.my.id` merender 173.441 byte HTML).
+
+## Kuota Vercel
+
+Project `indicate`: **51/50 domain — LIMIT TERCAPAI**.
+API menolak penambahan dengan `project_domain_limit_reached` ("maximum
+allowed number of domains (50) ... contact sales"). Angka 250 tidak berlaku
+per-project di plan saat ini. Tanpa penaikan limit, tidak ada hostname baru
+yang bisa masuk — termasuk untuk 59 org backlog.
+
+## Fokus Wonosobo
+
+Region `wonosobo` (org Pengelola Platform) — 10/10 subdomain aktif, template mengikuti apex masing-masing. Tidak ditemukan domain nonaktif di DB, Vercel, maupun HTTP: tidak ada yang perlu diaktivasi.
+
+| Hostname | Site | Template | DB | Vercel | HTTP |
+|---|---|---|---|---|---|
+| wonosobo.fakta01.my.id | Fakta01 Wonosobo | dark-navy | active/active | verified | 200 |
+| wonosobo.jurnalism.web.id | Jurnalism Wonosobo | red-editorial | active/active | verified | 200 |
+| wonosobo.kabar360.biz.id | Kabar360 Wonosobo | soft-blue | active/active | verified | 200 |
+| wonosobo.liputan99.web.id | Liputan99 Wonosobo | glassy-blue | active/active | verified | 200 |
+| wonosobo.nusantara24.web.id | Nusantara24 Wonosobo | orange-modern | active/active | verified | 200 |
+| wonosobo.pantaunusantara.web.id | PantauNusantara Wonosobo | warm-editorial | active/active | verified | 200 |
+| wonosobo.penamerdeka.my.id | PenaMerdeka Wonosobo | purple-editorial | active/active | verified | 200 |
+| wonosobo.suarafakta24.biz.id | SuaraFakta24 Wonosobo | clean-blue | active/active | verified | 200 |
+| wonosobo.wartakini7.web.id | WartaKini7 Wonosobo | green-minimal | active/active | verified | 200 |
+| wonosobo.wawasannusa.biz.id | WawasanNusa Wonosobo | black-lime | active/active | verified | 200 |
+
+## Apex (induk, 10/10 aktif)
+
+| Hostname | Site | Template | DB | Vercel | HTTP |
+|---|---|---|---|---|---|
+| fakta01.my.id | Fakta01 | dark-navy | active/active | verified | 200 |
+| jurnalism.web.id | Jurnalism | red-editorial | active/active | verified | 200 |
+| kabar360.biz.id | Kabar360 | soft-blue | active/active | verified | 200 |
+| liputan99.web.id | Liputan99 | glassy-blue | active/active | verified | 200 |
+| nusantara24.web.id | Nusantara24 | orange-modern | active/active | verified | 200 |
+| pantaunusantara.web.id | PantauNusantara | warm-editorial | active/active | verified | 200 |
+| penamerdeka.my.id | PenaMerdeka | purple-editorial | active/active | verified | 200 |
+| suarafakta24.biz.id | SuaraFakta24 | clean-blue | active/active | verified | 200 |
+| wartakini7.web.id | WartaKini7 | green-minimal | active/active | verified | 200 |
+| wawasannusa.biz.id | WawasanNusa | black-lime | active/active | verified | 200 |
+
+## Rekonsiliasi Wonosobo
+
+`wonosobo.fakta01.my.id` tercatat 1 jejak aktivasi `failed` terminal (5x percobaan, 13 Sep 2026, `dependency_unavailable`) — tetapi hostname ini **live di tiga lapis**: site DB `active/active`, domain Vercel `verified: true`, HTTP `200` + merender penuh. Artinya aktivasi terjadi di luar saga setelah kegagalan itu. Baris jejak dibiarkan sebagai riwayat (tidak ditulis ulang); saga TIDAK dijalankan ulang karena kegagalan terminal akan menonaktifkan site yang sedang live (`failActivation` terminal → `status inactive`). Tidak ada tindakan pendaftaran tersisa di scope Wonosobo.
+
+## Stok terdaftar 2026-09-19 (parkir, belum jadi tenant)
+
+25 domain stok berhasil masuk Vercel (semua `verified: true`, DNS CNAME
+apex+wildcard ke target project sudah ada sejak 2026-09-16 kecuali
+`bahariraya.biz.id`, `berandainvestigasi.biz.id`, `bidikan.my.id`, dan
+`faktura.web.id` yang dibuatkan saat itu juga). Tanpa site/tenant,
+hostname ini menyajikan halaman landing generik (terverifikasi
+`bacazaman.web.id` → 200 judul "Indicate - Publishing infrastructure";
+tanpa kebocoran konten tenant).
+
+Terdaftar: arsip24publik.biz.id, bacazaman.web.id, bahariraya.biz.id,
+bentangkata.biz.id, bentara9.web.id, berandafakta.biz.id,
+berandafakta.my.id, berandainvestigasi.biz.id, bidik24perkara.biz.id,
+bidikan.my.id, bilik7wacana.web.id, cakrawalakata.web.id,
+cermin24berita.web.id, denyutpublik.my.id, faktura.web.id,
+garisfakta.web.id, gatrapublik.web.id, gerbanginvestigasi.my.id,
+gerbangkata.web.id, guratfakta.biz.id, guratfakta.my.id,
+independensi.my.id, jajakperkara.my.id, jalurperkara.web.id,
+jaring9perkara.web.id.
+
+## Onboarding 25/25 menjadi portal (2026-09-19) — SELESAI
+
+## Verifikasi render 25 portal baru (2026-09-19)
+
+22/25 langsung merender judul portal masing-masing (HTTP 200). Sisanya:
+`cakrawalakata.web.id` + `guratfakta.my.id` masih landing lama (cache edge,
+sembuh sendiri), **Update pantau:** `cakrawalakata.web.id` + `guratfakta.my.id` kini
+merender portal (24/25). `gerbanginvestigasi.my.id` + `independensi.my.id`
+masih 525 (DNS baru dibuat; menunggu propagasi + penerbitan sertifikat
+Vercel). Pola DNS hilang yang sama sebelumnya: bahariraya,
+berandainvestigasi, bidikan, faktura (sudah diperbaiki, terverifikasi
+200).
+
+25 apex di atas kini punya baris `domains` + `sites` + `site_settings`
+aktif di org Pengelola Platform (total org: 35 domain, 45 site, 45
+settings; 45/45 nama dan deskripsi unik), masing-masing dengan nama,
+tagline, deskripsi, SEO, dan template: Arsip24Publik (black-lime),
+BacaZaman (clean-blue), BahariRaya (dark-navy), BentangKata
+(glassy-blue), Bentara9 (green-minimal), BerandaFakta (orange-modern),
+BerandaNusa untuk berandafakta.my.id (purple-editorial),
+BerandaNusa untuk berandafakta.my.id (purple-editorial),
+BerandaInvestigasi (red-editorial), Bidik24Perkara (soft-blue), Bidikan
+(warm-editorial), Bilik7Wacana (black-lime), CakrawalaKata (clean-blue),
+Cermin24Berita (dark-navy), DenyutPublik (glassy-blue), Faktura
+(green-minimal), GarisFakta (orange-modern), GatraPublik
+(purple-editorial), GerbangInvestigasi (red-editorial), GerbangKata
+(soft-blue), GuratFakta (warm-editorial), GuratNusa untuk guratfakta.my.id
+(black-lime), Independensi (clean-blue), JajakPerkara (dark-navy),
+JalurPerkara (glassy-blue), Jaring9Perkara (green-minimal). Media default
+berbagi aset operator yang aktif.
+
+Logo 25/25 selesai (2026-09-19): tiap portal punya logo + favicon dari
+master gradient huruf awal namanya (A–J, tabrakan berbagi bytes dengan
+upload terpisah per site, pola terverifikasi checksum lawan master
+milik 10 apex lama) — 50 objek R2 terverifikasi HEAD, 50 baris media
+aktif, reservasi `used`, invalidasi `media.activated`, audit
+(50 reserve + 50 activate + 25 settings-update, request
+`ops:brand-25apex`), 2 objek yatim pilot dihapus. Tidak ada lagi
+fallback logo Kemenimipas di 25 portal baru. Guard DB (`zone`, settings lengkap, hostname shape) lolos
+semua; resolver DB mengembalikan site baru.
+
+Catatan cache: HTTP masih menyajikan landing lama karena cache edge
+(`Age` ~16 menit, TTL data ~30 menit); fungsi resolver DB sudah
+mengembalikan site baru. Verifikasi render ulang setelah TTL lewat.
+
+Antre selesai — tidak ada sisa.
+
+Gagal masuk (limit tercapai): jejakkebenaran.my.id, jejakwacana.my.id,
+jendelapublik.my.id, jurnalpas.web.id, keberimbangan.biz.id,
+kelanaberita.web.id. Belum dicoba: 63 domain stok sisanya.
+
+## Backlog (belum punya site)
+
+59 org customer (UPT Jateng): langganan active, member active, 0 site. Estimasi kebutuhan: 59 slot bila 1 hostname/org → total ±85/250, aman.

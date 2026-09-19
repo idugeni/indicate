@@ -36,6 +36,8 @@ function harness(repoOverrides: Record<string, unknown> = {}) {
     createInvoice: vi.fn(async (_actor: unknown, input: unknown) => ({ id: 'inv-1', ...(input as object) })),
     voidInvoice: vi.fn(async () => ({ id: 'inv-1', status: 'void' })),
     reissueInvoice: vi.fn(async () => ({ id: 'inv-2', status: 'paid' })),
+    issueInvoice: vi.fn(async (_actor: unknown, input: unknown) => ({ id: 'inv-3', status: 'unpaid', ...(input as object) })),
+    payInvoice: vi.fn(async (_actor: unknown, input: unknown) => ({ id: 'inv-3', status: 'paid', ...(input as object) })),
     ...repoOverrides,
   };
   const service = new BillingService(repository as never, { now: () => NOW });
@@ -167,5 +169,40 @@ describe('BillingService invoices', () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');
     expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+  });
+});
+
+describe('BillingService tagihan unpaid', () => {
+  it('menerbitkan tagihan unpaid dengan jatuh tempo', async () => {
+    const { service, repository } = harness();
+    const issued = await service.issueInvoice(platformActor, { organizationId: ID, amountIdr: 550000, dueAt: '2026-10-20T00:00:00.000Z' });
+    expect(issued.ok).toBe(true);
+    expect(repository.issueInvoice).toHaveBeenCalledTimes(1);
+
+    const broken = await service.issueInvoice(platformActor, { organizationId: ID, amountIdr: 550000, dueAt: 'bukan-tanggal' });
+    expect(broken.ok).toBe(false);
+    if (broken.ok) throw new Error('expected error');
+    expect(broken.error.error.code).toBe('INVALID_INPUT');
+  });
+
+  it('menolak terbitkan tagihan dari non-platform', async () => {
+    const { service } = harness();
+    const result = await service.issueInvoice(userActor, { organizationId: ID, amountIdr: 550000, dueAt: '2026-10-20T00:00:00.000Z' });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+  });
+
+  it('melunasi tagihan unpaid dan menolak versi basi', async () => {
+    const { service, repository } = harness({
+      payInvoice: vi.fn(async () => {
+        throw new BillingConflictError();
+      }),
+    });
+    const paid = await service.payInvoice(platformActor, { invoiceId: ID, expectedVersion: 1, paidAt: '2026-09-20T00:00:00.000Z' });
+    expect(paid.ok).toBe(false);
+    if (paid.ok) throw new Error('expected error');
+    expect(paid.error.error.code).toBe('CONFLICT');
+    expect(repository.payInvoice).toHaveBeenCalledTimes(1);
   });
 });

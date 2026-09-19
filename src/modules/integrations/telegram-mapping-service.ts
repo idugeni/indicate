@@ -57,7 +57,7 @@ export class TelegramMappingService {
       || actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.customerAdmin) === true;
     if (actor.actorType !== 'user' || !platform) return { ok: true, value: Object.freeze([]) };
     try { return { ok: true, value: await this.repository.listOutboxMessages(actor.actorId) }; }
-    catch { return { ok: true, value: Object.freeze([]) } };
+    catch { return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'Telegram outbox is temporarily unavailable.', actor.requestId) } };
   }
 
   /** Broadcast platform: antrekan satu pesan ke semua mapping aktif (worker mengirim berirama). */

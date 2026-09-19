@@ -54,7 +54,7 @@ interface DataViewProps {
 type StatusTone = 'ok' | 'bad' | 'busy' | 'idle';
 
 function resolveStatus(rawStatus: unknown): { readonly label: string; readonly tone: StatusTone } {
-  const status = String(rawStatus ?? 'active').toLowerCase();
+  const status = String(rawStatus ?? 'unknown').toLowerCase();
 
   switch (status) {
     case 'active':
@@ -505,7 +505,7 @@ export function DataView({
                     {paginatedItems.map((item, index) => {
                       const itemId = String(item.id ?? `${collectionKey}-${startIndex + index}`);
                       const name = resolveItemName(item);
-                      const status = String(item.status ?? item.state ?? item.verificationStatus ?? 'active');
+                      const status = String(item.status ?? item.state ?? item.verificationStatus ?? 'unknown');
                       const transitions = (editorConfig?.transitions ?? []).filter(
                         (transition) => transition.whenStatus === undefined || transition.whenStatus.includes(status),
                       );

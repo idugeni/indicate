@@ -104,7 +104,7 @@ export interface TelegramWorkflowResult {
   readonly businessResult?: unknown;
   readonly display?: {
     readonly photoUrl?: string;
-    readonly keyboard: TelegramInlineKeyboard;
+    readonly keyboard?: TelegramInlineKeyboard;
     readonly editMessageId?: string;
   };
 }
@@ -160,7 +160,7 @@ export interface CustomerProjection { readonly customer: CustomerRecord; readonl
 export interface RateLimitPolicy {
   readonly allowance: number;
   readonly windowSeconds: number;
-  readonly failureMode: 'closed' | 'open_low_risk';
+  readonly failureMode: 'closed';
 }
 export interface RateLimitDecision {
   readonly allowed: boolean;

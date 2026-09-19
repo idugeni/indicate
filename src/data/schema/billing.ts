@@ -13,7 +13,7 @@ import {
 
 import { organizations, users } from '@/data/schema/identity';
 
-export const invoiceStatus = pgEnum('invoice_status', ['paid', 'voided']);
+export const invoiceStatus = pgEnum('invoice_status', ['paid', 'voided', 'unpaid']);
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -28,7 +28,8 @@ export const invoices = pgTable('invoices', {
   amountIdr: integer('amount_idr').notNull(),
   currency: text('currency').default('IDR').notNull(),
   status: invoiceStatus('status').default('paid').notNull(),
-  paidAt: timestamp('paid_at', { withTimezone: true }).notNull(),
+  paidAt: timestamp('paid_at', { withTimezone: true }),
+  dueAt: timestamp('due_at', { withTimezone: true }),
   billingNote: text('billing_note'),
   paymentMethod: text('payment_method').default('Transfer bank').notNull(),
   createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),

@@ -2,7 +2,7 @@
  * Identitas template Soft Blue Cards (biru lembut).
  *
  * @remarks
- * Satu dari sepuluh template tenant. Dispatcher `network-listing` switch ke id ini; fallback `clean-blue`.
+ * Satu dari sepuluh template tenant. Dispatcher `network-listing` switch ke id ini; id tak dikenal melempar galat.
  */
 export const SOFT_BLUE_TEMPLATE_ID = 'soft-blue' as const;
 

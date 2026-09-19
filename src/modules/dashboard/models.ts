@@ -256,7 +256,6 @@ export interface DashboardTenantState {
   readonly media: readonly MediaSummary[];
   readonly publishingJobs: readonly PublishingJobSummary[];
   readonly publishingJobTargets: readonly PublishingJobTargetSummary[];
-  readonly auditLogs: readonly AuditRecord[];
 }
 
 export interface ArticleFilter {
@@ -267,6 +266,36 @@ export interface ArticleFilter {
   readonly authorId?: string;
   readonly publicationState?: PublishingState;
   readonly search?: string;
+}
+
+export interface EditorialSummaryArticle {
+  readonly id: string;
+  readonly regionId: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly status: ArticleStatus;
+  readonly createdAt: string;
+}
+
+export interface EditorialSummarySite {
+  readonly id: string;
+  readonly regionId: string | null;
+  readonly normalizedHostname: string;
+  readonly status: LifecycleStatus;
+}
+
+export interface EditorialSummaryRegion {
+  readonly id: string;
+  readonly name: string;
+  readonly status: LifecycleStatus;
+}
+
+/** Ringkasan editorial tanpa body untuk jalur baca ringan (bot, pemilih); mutasi tetap memakai state penuh. */
+export interface EditorialSummaries {
+  readonly articles: readonly EditorialSummaryArticle[];
+  readonly sites: readonly EditorialSummarySite[];
+  readonly regions: readonly EditorialSummaryRegion[];
+  readonly regionScope: { readonly id: string; readonly name: string } | null;
 }
 
 export interface AuditFilter {

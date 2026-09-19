@@ -76,11 +76,14 @@ function formatMonthYear(iso: string): string {
  */
 export function invoiceDocument(invoice: InvoiceRecord, seals: InvoiceSeals): string {
   const voided = invoice.status === 'voided';
+  const unpaid = invoice.status === 'unpaid';
   const badge = voided
     ? `<div class="badge-void" role="status">VOID${invoice.voidReason ? ` · ${esc(invoice.voidReason)}` : ''}</div>`
-    : `<div class="badge-paid" role="status">LUNAS</div>`;
-  const docKind = voided ? 'Faktur Void' : 'Faktur Lunas &amp; Kuitansi Pembayaran';
-  const period = formatMonthYear(invoice.paidAt);
+    : unpaid
+      ? `<div class="badge-unpaid" role="status">BELUM BAYAR</div>`
+      : `<div class="badge-paid" role="status">LUNAS</div>`;
+  const docKind = voided ? 'Faktur Void' : unpaid ? 'Tagihan Pembayaran' : 'Faktur Lunas &amp; Kuitansi Pembayaran';
+  const period = formatMonthYear(invoice.paidAt ?? invoice.createdAt);
   const totals = voided
     ? `<table role="presentation" style="width: 100%; border-collapse: collapse; font-size: 13px;">
         <tbody>
@@ -91,6 +94,16 @@ export function invoiceDocument(invoice: InvoiceRecord, seals: InvoiceSeals): st
         </tbody>
       </table>
       ${invoice.voidedAt ? `<p class="void-note">Dibatalkan pada ${esc(formatDate(invoice.voidedAt))}.</p>` : ''}`
+    : unpaid
+      ? `<table role="presentation" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <tbody>
+          <tr>
+            <td style="color: var(--ash); padding: 10px 0 5px; border-top: 2px solid var(--volcanic-black); font-weight: 700; font-size: 14px;">Total Tagihan</td>
+            <td style="font-family: 'IBM Plex Mono', monospace; text-align: right; padding: 10px 0 5px; border-top: 2px solid var(--volcanic-black); font-weight: 700; font-size: 14px;">${esc(formatIdr(invoice.amountIdr))}</td>
+          </tr>
+        </tbody>
+      </table>
+      ${invoice.dueAt ? `<p class="tax-note">Jatuh tempo: ${esc(formatDate(invoice.dueAt))}. Lunasi sebelum tanggal tersebut agar layanan tidak terhenti.</p>` : ''}`
     : `<table role="presentation" style="width: 100%; border-collapse: collapse; font-size: 13px;">
         <tbody>
           <tr>
@@ -156,6 +169,7 @@ export function invoiceDocument(invoice: InvoiceRecord, seals: InvoiceSeals): st
   .badge-paid { display: inline-flex; align-items: center; gap: 8px; background: var(--success); color: #ffffff; padding: 6px 14px; border-radius: 100px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; }
   .badge-paid::before { content: "✓"; font-weight: bold; font-size: 11px; }
   .badge-void { display: inline-flex; align-items: center; gap: 8px; background: #b3261e; color: #ffffff; padding: 6px 14px; border-radius: 100px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; }
+  .badge-unpaid { display: inline-flex; align-items: center; gap: 8px; background: #8a6d00; color: #ffffff; padding: 6px 14px; border-radius: 100px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; }
   .product-block { padding: 28px 36px 16px; border-bottom: 1px dashed var(--line); }
   .product-block .label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ash); margin-bottom: 4px; }
   .product-name { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 600; color: var(--ember); line-height: 1.1; }
@@ -247,7 +261,9 @@ export function invoiceDocument(invoice: InvoiceRecord, seals: InvoiceSeals): st
         <table role="presentation" style="width: 100%; border-collapse: collapse; font-size: 13px;"><tbody>
           <tr><td style="color: var(--ash); white-space: nowrap; padding: 3px 0;">No. Faktur</td><td style="color: var(--ash); width: 14px; text-align: center; padding: 3px 0;">:</td><td style="font-family: 'IBM Plex Mono', monospace; font-weight: 500; text-align: right; padding: 3px 0;">${esc(invoice.number)}</td></tr>
           <tr><td style="color: var(--ash); white-space: nowrap; padding: 3px 0;">Tanggal Terbit</td><td style="color: var(--ash); width: 14px; text-align: center; padding: 3px 0;">:</td><td style="font-family: 'IBM Plex Mono', monospace; font-weight: 500; text-align: right; padding: 3px 0;">${esc(formatDate(invoice.createdAt))}</td></tr>
-          <tr><td style="color: var(--ash); white-space: nowrap; padding: 3px 0;">Tanggal Lunas</td><td style="color: var(--ash); width: 14px; text-align: center; padding: 3px 0;">:</td><td style="font-family: 'IBM Plex Mono', monospace; font-weight: 500; text-align: right; padding: 3px 0;">${esc(formatDate(invoice.paidAt))}</td></tr>
+          ${unpaid
+            ? `<tr><td style="color: var(--ash); white-space: nowrap; padding: 3px 0;">Jatuh Tempo</td><td style="color: var(--ash); width: 14px; text-align: center; padding: 3px 0;">:</td><td style="font-family: 'IBM Plex Mono', monospace; font-weight: 500; text-align: right; padding: 3px 0;">${invoice.dueAt === null ? '-' : esc(formatDate(invoice.dueAt))}</td></tr>`
+            : `<tr><td style="color: var(--ash); white-space: nowrap; padding: 3px 0;">Tanggal Lunas</td><td style="color: var(--ash); width: 14px; text-align: center; padding: 3px 0;">:</td><td style="font-family: 'IBM Plex Mono', monospace; font-weight: 500; text-align: right; padding: 3px 0;">${invoice.paidAt === null ? '-' : esc(formatDate(invoice.paidAt))}</td></tr>`}
           <tr><td style="color: var(--ash); white-space: nowrap; padding: 3px 0;">Metode Pembayaran</td><td style="color: var(--ash); width: 14px; text-align: center; padding: 3px 0;">:</td><td style="font-family: 'IBM Plex Mono', monospace; font-weight: 500; text-align: right; padding: 3px 0;">${esc(invoice.paymentMethod)}</td></tr>
         </tbody></table>
       </td>

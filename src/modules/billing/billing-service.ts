@@ -4,7 +4,7 @@ import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import { BillingAccessDeniedError, BillingConflictError, type BillingRepository } from '@/modules/billing/ports';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
-import { inviteCreateSchema, inviteRedeemSchema, invoiceCreateSchema, invoiceReissueSchema, invoiceVoidSchema } from '@/modules/billing/schemas';
+import { inviteCreateSchema, inviteRedeemSchema, invoiceCreateSchema, invoiceIssueSchema, invoicePaySchema, invoiceReissueSchema, invoiceVoidSchema } from '@/modules/billing/schemas';
 
 export class BillingService {
   constructor(
@@ -104,6 +104,50 @@ export class BillingService {
       };
     } catch (error) {
       return this.error(actor.requestId, 'invoice.create', error);
+    }
+  }
+
+  async issueInvoice(actor: ActorContext, raw: unknown): Promise<Result<InvoiceRecord, PublicErrorEnvelope>> {
+    if (!this.userActor(actor) || !this.platform(actor)) return this.denied(actor.requestId);
+    const parsed = invoiceIssueSchema.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the invoice fields.', actor.requestId) };
+    try {
+      const now = this.clock.now().toISOString();
+      return {
+        ok: true,
+        value: await this.repository.issueInvoice(actor, {
+          organizationId: parsed.data.organizationId,
+          amountIdr: parsed.data.amountIdr,
+          dueAt: parsed.data.dueAt,
+          billingNote: parsed.data.billingNote ?? null,
+          requestId: actor.requestId,
+          now,
+        }),
+      };
+    } catch (error) {
+      return this.error(actor.requestId, 'invoice.issue', error);
+    }
+  }
+
+  async payInvoice(actor: ActorContext, raw: unknown): Promise<Result<InvoiceRecord, PublicErrorEnvelope>> {
+    if (!this.userActor(actor) || !this.platform(actor)) return this.denied(actor.requestId);
+    const parsed = invoicePaySchema.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the payment fields.', actor.requestId) };
+    try {
+      const now = this.clock.now().toISOString();
+      return {
+        ok: true,
+        value: await this.repository.payInvoice(actor, {
+          invoiceId: parsed.data.invoiceId,
+          expectedVersion: parsed.data.expectedVersion,
+          paidAt: parsed.data.paidAt,
+          paymentMethod: parsed.data.paymentMethod ?? 'Transfer bank',
+          requestId: actor.requestId,
+          now,
+        }),
+      };
+    } catch (error) {
+      return this.error(actor.requestId, 'invoice.pay', error);
     }
   }
 

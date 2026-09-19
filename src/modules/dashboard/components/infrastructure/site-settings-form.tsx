@@ -13,7 +13,7 @@ const TEMPLATE_IDS = new Set(MASTER_TEMPLATE_PRESETS.map((preset) => preset.id))
 
 function initialTemplateId(colors: Readonly<Record<string, string>> | undefined): string {
   const raw = colors?.templateId;
-  return raw !== undefined && TEMPLATE_IDS.has(raw) ? raw : 'clean-blue';
+  return raw !== undefined && TEMPLATE_IDS.has(raw) ? raw : '';
 }
 
 interface SiteOption {
@@ -112,6 +112,10 @@ function SiteSettingsEditor({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    if (template === '') {
+      setError('Pilih template portal terlebih dahulu.');
+      return;
+    }
     let colorsValue: Readonly<Record<string, unknown>>;
     let socialValue: Readonly<Record<string, unknown>>;
     let seoValue: Readonly<Record<string, unknown>>;
@@ -380,6 +384,9 @@ function SiteSettingsEditor({
                 {preset.name}
               </option>
             ))}
+            <option value="" disabled>
+              Pilih template…
+            </option>
           </select>
           <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">
             {MASTER_TEMPLATE_PRESETS.find((preset) => preset.id === template)?.description}

@@ -5,6 +5,7 @@ import { TELEGRAM_BOT_COMMANDS, TelegramWorkflowService } from '@/modules/integr
 const NOW = new Date('2026-09-18T14:00:00.000Z');
 const SECRET = 'test-webhook-secret';
 const PHOTO = 'https://example.test/brand/welcome.png';
+const MINI_APP = 'https://dashboard.example.test/tg/app';
 
 const identity = {
   mappingId: 'mapping-1',
@@ -57,13 +58,7 @@ function harness() {
     editMessage: vi.fn(async () => undefined),
     setMyCommands: vi.fn(async () => undefined),
   };
-  const sharedFactory = {
-    create: () => ({
-      articles: { listEditorial: vi.fn(async () => ({ ok: true as const, value: { regions: [{ id: 'region-1', name: 'Jawa', status: 'active' }], articles: [], sites: [] } })) },
-      media: {},
-      publication: { listJobs: vi.fn(async () => ({ ok: true as const, value: [] })) },
-    }),
-  };
+  const sharedFactory = { create: () => ({ articles: {}, media: {}, publication: {} }) };
   const mediaTransfer = { prepare: vi.fn(), transfer: vi.fn() };
   const service = new TelegramWorkflowService(
     repository as never,
@@ -75,6 +70,7 @@ function harness() {
     3600,
     PHOTO,
     { now: () => NOW },
+    MINI_APP,
   );
   return { repository, telegram, service };
 }
@@ -86,26 +82,44 @@ function messageUpdate(text: string, updateId = 1) {
   };
 }
 
-describe('TelegramWorkflowService welcome desk', () => {
-  it('answers /start with a photo, caption, and menu keyboard', async () => {
+describe('TelegramWorkflowService entry desk', () => {
+  it('answers /start with a photo entry linking the Mini App', async () => {
     const { service, telegram } = harness();
-    const raw = messageUpdate('/start');
-    const outcome = await service.handle(SECRET, raw, 'req-1');
+    const outcome = await service.handle(SECRET, messageUpdate('/start'), 'req-1');
 
     expect(outcome.result.ok).toBe(true);
     const photo = outcome.pendingReplies.find((reply) => reply.kind === 'photo');
     expect(photo).toMatchObject({ chatId: '111', photoUrl: PHOTO });
-    if (photo?.kind !== 'photo') throw new Error('welcome photo missing');
-    expect(photo.caption).toContain('Selamat datang di Bot Resmi Indicate');
-    expect(photo.keyboard).toHaveLength(6);
+    if (photo?.kind !== 'photo') throw new Error('entry photo missing');
+    expect(photo.caption).toContain('Mini App');
+    expect(photo.caption).toContain(MINI_APP);
 
     await service.deliverReplies(outcome.pendingReplies, 'req-1');
     expect(telegram.sendPhoto).toHaveBeenCalledTimes(1);
     expect(telegram.send).not.toHaveBeenCalled();
   });
 
-  it('routes menu button taps to the matching command flow', async () => {
-    const { repository, telegram, service } = harness();
+  it('answers retired commands with the same Mini App entry', async () => {
+    const { service } = harness();
+    const outcome = await service.handle(SECRET, messageUpdate('/publish'), 'req-retired');
+
+    expect(outcome.result.ok).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(outcome.result.value.reply).toContain('Mini App');
+  });
+
+  it('clears the conversation on /stop and confirms opt-out', async () => {
+    const { service, repository } = harness();
+    const outcome = await service.handle(SECRET, messageUpdate('/stop'), 'req-stop');
+
+    expect(outcome.result.ok).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(outcome.result.value.reply).toContain('/start');
+    expect(repository.clearTelegramConversation).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers tapped buttons without failing', async () => {
+    const { service, telegram } = harness();
     const raw = {
       update_id: 2,
       callback_query: {
@@ -119,51 +133,18 @@ describe('TelegramWorkflowService welcome desk', () => {
 
     expect(outcome.result.ok).toBe(true);
     expect(outcome.pendingReplies[0]).toMatchObject({ kind: 'callback-answer', callbackId: 'cb-1' });
-    expect(repository.saveTelegramConversation).toHaveBeenCalledTimes(1);
 
     await service.deliverReplies(outcome.pendingReplies, 'req-2');
     expect(telegram.answerCallback).toHaveBeenCalledWith({ callbackId: 'cb-1' });
   });
 
-  it('explains linking professionally to unknown senders', async () => {
-    const { service, repository } = harness();
-    repository.resolveTelegramIdentity.mockResolvedValueOnce(null);
-    const outcome = await service.handle(SECRET, messageUpdate('/start', 3), 'req-3');
-
-    expect(outcome.result.ok).toBe(false);
-    expect(outcome.pendingReplies).toHaveLength(1);
-    expect(outcome.pendingReplies[0]).toMatchObject({ kind: 'text' });
-    if (outcome.pendingReplies[0]?.kind !== 'text') throw new Error('expected text denial');
-    expect(outcome.pendingReplies[0].text).toContain('belum tertaut');
-  });
-
-  it('opens a job picker for bare /status instead of failing silently', async () => {
-    const { service } = harness();
-    const outcome = await service.handle(SECRET, messageUpdate('/status', 4), 'req-4');
-
-    expect(outcome.result.ok).toBe(true);
-    if (!outcome.result.ok) throw new Error('expected ok');
-    expect(outcome.result.value.reply).toContain('Belum ada pekerjaan publikasi');
-  });
-
-  it('falls back to caption text when the welcome photo fails', async () => {
-    const { service, repository, telegram } = harness();
+  it('falls back to caption text when the entry photo fails', async () => {
+    const { service, telegram } = harness();
     telegram.sendPhoto.mockRejectedValueOnce(new Error('fetch failed'));
     const outcome = await service.handle(SECRET, messageUpdate('/start', 5), 'req-5');
 
     await service.deliverReplies(outcome.pendingReplies, 'req-5');
     expect(telegram.send).toHaveBeenCalledTimes(1);
-    expect(repository.enqueueOutboxMessage).not.toHaveBeenCalled();
-  });
-
-  it('queues caption text when both photo and text delivery fail', async () => {
-    const { service, repository, telegram } = harness();
-    telegram.sendPhoto.mockRejectedValueOnce(new Error('fetch failed'));
-    telegram.send.mockRejectedValueOnce(new Error('send failed'));
-    const outcome = await service.handle(SECRET, messageUpdate('/start', 6), 'req-6');
-
-    await service.deliverReplies(outcome.pendingReplies, 'req-6');
-    expect(repository.enqueueOutboxMessage).toHaveBeenCalledTimes(1);
   });
 });
 

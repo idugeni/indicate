@@ -1,9 +1,9 @@
 /**
- * Identitas tunggal template Clean Blue Editorial.
+ * Identitas template Clean Blue Editorial.
  *
  * @remarks
- * Satu-satunya template tenant yang diakui runtime. Dispatcher
- * `network-listing` selalu jatuh ke id ini.
+ * Satu dari sepuluh template tenant. Dispatcher `network-listing` switch ke
+ * id ini; id tak dikenal melempar galat.
  */
 export const CLEAN_BLUE_TEMPLATE_ID = 'clean-blue' as const;
 

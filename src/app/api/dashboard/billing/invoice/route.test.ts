@@ -13,6 +13,7 @@ const BASE: InvoiceRecord = {
   currency: 'IDR',
   status: 'paid',
   paidAt: '2026-09-01T00:00:00.000Z',
+  dueAt: null,
   billingNote: null,
   paymentMethod: 'Transfer bank',
   voidedAt: null,
@@ -91,5 +92,14 @@ describe('invoiceDocument', () => {
 
   it('menyembunyikan catatan meterai di bawah ambang', () => {
     expect(invoiceDocument(BASE, SEALS)).not.toContain('meterai');
+  });
+
+  it('merender tagihan unpaid tanpa tanggal lunas', () => {
+    const html = invoiceDocument({ ...BASE, status: 'unpaid', paidAt: null, dueAt: '2026-10-20T00:00:00.000Z' }, SEALS);
+    expect(html).toContain('badge-unpaid');
+    expect(html).toContain('BELUM BAYAR');
+    expect(html).toContain('Tagihan Pembayaran');
+    expect(html).toContain('Jatuh tempo');
+    expect(html).not.toContain('Jumlah yang Dibayar');
   });
 });

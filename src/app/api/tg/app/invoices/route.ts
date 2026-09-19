@@ -22,6 +22,12 @@ async function handlePOST(request: Request) {
     readonly organizationId?: unknown;
     readonly targetOrganizationId?: unknown;
     readonly invoiceId?: unknown;
+    readonly action?: unknown;
+    readonly dueAt?: unknown;
+    readonly billingNote?: unknown;
+    readonly expectedVersion?: unknown;
+    readonly paidAt?: unknown;
+    readonly paymentMethod?: unknown;
   } | null;
   if (body === null) return invalid(requestId);
   if (body.invoiceId !== undefined && (typeof body.invoiceId !== 'string' || body.invoiceId === '')) return invalid(requestId);
@@ -37,6 +43,29 @@ async function handlePOST(request: Request) {
   if (admin === null) return invalid(requestId);
   const actor = ownerAdminActor(admin, target, requestId);
   const billing = new BillingService(new DrizzleBillingRepository(runtime.db));
+  if (body.action === 'issue') {
+    if (typeof body.dueAt !== 'string' || (typeof body.billingNote !== 'string' && body.billingNote !== undefined)) return invalid(requestId);
+    const issued = await billing.issueInvoice(actor, {
+      organizationId: target,
+      amountIdr: 550000,
+      dueAt: body.dueAt,
+      billingNote: typeof body.billingNote === 'string' ? body.billingNote : null,
+    });
+    if (!issued.ok) return miniAppErrorResponse(issued.error);
+    return NextResponse.json({ invoice: issued.value }, { headers: { 'Cache-Control': 'private, no-store' } });
+  }
+  if (body.action === 'pay') {
+    if (typeof body.invoiceId !== 'string' || typeof body.expectedVersion !== 'number' || typeof body.paidAt !== 'string'
+      || (typeof body.paymentMethod !== 'string' && body.paymentMethod !== undefined)) return invalid(requestId);
+    const paid = await billing.payInvoice(actor, {
+      invoiceId: body.invoiceId,
+      expectedVersion: body.expectedVersion,
+      paidAt: body.paidAt,
+      paymentMethod: typeof body.paymentMethod === 'string' ? body.paymentMethod : null,
+    });
+    if (!paid.ok) return miniAppErrorResponse(paid.error);
+    return NextResponse.json({ invoice: paid.value }, { headers: { 'Cache-Control': 'private, no-store' } });
+  }
   if (typeof body.invoiceId === 'string') {
     const detail = await billing.invoiceDetail(actor, target, body.invoiceId);
     if (!detail.ok) return miniAppErrorResponse(detail.error);
@@ -55,6 +84,8 @@ async function handlePOST(request: Request) {
         amountIdr: invoice.amountIdr,
         status: invoice.status,
         paidAt: invoice.paidAt,
+        dueAt: invoice.dueAt,
+        version: invoice.version,
         createdAt: invoice.createdAt,
         paymentMethod: invoice.paymentMethod,
       })),

@@ -222,8 +222,9 @@ export function ListingPage({ site, title, description, path = '/', indexable = 
     case 'warm-editorial':
       return <WarmEditorialListing site={site} title={title} description={description} path={path} indexable={indexable} />;
     case 'clean-blue':
-    default:
       return <CleanBlueListing site={site} title={title} description={description} path={path} indexable={indexable} />;
+    default:
+      throw new Error('Template site tidak dikenal.');
   }
 }
 
@@ -251,8 +252,9 @@ export function TemplateLoader({ templateId }: { readonly templateId: unknown })
     case 'warm-editorial':
       return <WarmEditorialLoader />;
     case 'clean-blue':
-    default:
       return <CleanBlueLoader />;
+    default:
+      throw new Error('Template site tidak dikenal.');
   }
 }
 
@@ -292,8 +294,9 @@ export function ArticlePage({
     case 'warm-editorial':
       return <WarmEditorialArticle site={site} article={article} related={related} newer={newer} older={older} />;
     case 'clean-blue':
-    default:
       return <CleanBlueArticle site={site} article={article} related={related} newer={newer} older={older} />;
+    default:
+      throw new Error('Template site tidak dikenal.');
   }
 }
 
@@ -329,8 +332,9 @@ export function LegalPage(props: LegalPageProps) {
     case 'warm-editorial':
       return <WarmEditorialLegal {...props} />;
     case 'clean-blue':
-    default:
       return <CleanBlueLegal {...props} />;
+    default:
+      throw new Error('Template site tidak dikenal.');
   }
 }
 
@@ -365,8 +369,9 @@ export function AboutPage(props: AboutPageProps) {
     case 'warm-editorial':
       return <WarmEditorialAbout {...props} />;
     case 'clean-blue':
-    default:
       return <CleanBlueAbout {...props} />;
+    default:
+      throw new Error('Template site tidak dikenal.');
   }
 }
 
@@ -401,8 +406,9 @@ export function ContactPage(props: ContactPageProps) {
     case 'warm-editorial':
       return <WarmEditorialContact {...props} />;
     case 'clean-blue':
-    default:
       return <CleanBlueContact {...props} />;
+    default:
+      throw new Error('Template site tidak dikenal.');
   }
 }
 
@@ -435,8 +441,9 @@ export function SearchPage(props: SearchPageProps) {
     case 'warm-editorial':
       return <WarmEditorialSearch {...props} />;
     case 'clean-blue':
-    default:
       return <CleanBlueSearch {...props} />;
+    default:
+      throw new Error('Template site tidak dikenal.');
   }
 }
 
@@ -469,8 +476,9 @@ export function ReportPage(props: ReportPageProps) {
     case 'warm-editorial':
       return <WarmEditorialReport {...props} />;
     case 'clean-blue':
-    default:
       return <CleanBlueReport {...props} />;
+    default:
+      throw new Error('Template site tidak dikenal.');
   }
 }
 
@@ -498,8 +506,9 @@ export function NotFoundPage({ site }: { readonly site: NetworkSiteData }) {
     case 'warm-editorial':
       return <WarmEditorialNotFound site={site} />;
     case 'clean-blue':
-    default:
       return <CleanBlueNotFound site={site} />;
+    default:
+      throw new Error('Template site tidak dikenal.');
   }
 }
 
@@ -537,7 +546,8 @@ export function ChannelPage(props: ChannelPageProps) {
     case 'warm-editorial':
       return <WarmEditorialChannel {...props} />;
     case 'clean-blue':
-    default:
       return <CleanBlueChannel {...props} />;
+    default:
+      throw new Error('Template site tidak dikenal.');
   }
 }

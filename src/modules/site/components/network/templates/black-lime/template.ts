@@ -2,7 +2,7 @@
  * Identitas template Black Lime Pulse (dark + lime).
  *
  * @remarks
- * Satu dari sepuluh template tenant. Dispatcher `network-listing` switch ke id ini; fallback `clean-blue`.
+ * Satu dari sepuluh template tenant. Dispatcher `network-listing` switch ke id ini; id tak dikenal melempar galat.
  */
 export const BLACK_LIME_TEMPLATE_ID = 'black-lime' as const;
 

@@ -1,5 +1,5 @@
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { ActivationAttemptRecord, AnalyticsProjection, AuditFilter, AuditRecord, DashboardProjection, DashboardTenantState, InvitationSummary, OperationsProjection, RetentionRunRecord } from '@/modules/dashboard/models';
+import type { ActivationAttemptRecord, AnalyticsProjection, AuditFilter, AuditRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, OperationsProjection, RetentionRunRecord } from '@/modules/dashboard/models';
 
 export type MutableTenantState = {
   -readonly [Key in keyof DashboardTenantState]: DashboardTenantState[Key] extends readonly (infer Item)[] ? Item[] : DashboardTenantState[Key];
@@ -18,6 +18,10 @@ export interface CachePurgeTarget {
 
 export interface DashboardRepository {
   read(actor: AuthorizedTenantActorContext, permission: string): Promise<DashboardTenantState>;
+  /** Ringkasan editorial tanpa body (judul + situs + region dalam scope); tanpa memuat state tenan penuh. */
+  listEditorialSummaries(actor: AuthorizedTenantActorContext, permission: string): Promise<EditorialSummaries>;
+  /** Cari artikel berdasar judul/isi di sisi database (desc, dibatasi); tanpa memuat state tenan penuh. */
+  searchArticleSummaries(actor: AuthorizedTenantActorContext, permission: string, keyword: string, limit: number): Promise<readonly EditorialSummaryArticle[]>;
   /** Ringkasan hitung untuk view dashboard; tanpa memuat state tenan penuh. */
   dashboardCounts(actor: AuthorizedTenantActorContext, permission: string): Promise<DashboardProjection>;
   /** Agregasi analitik (group-by) untuk rentang tanggal; tanpa memuat state tenan penuh. */
