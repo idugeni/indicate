@@ -85,6 +85,7 @@ function harness() {
     send: vi.fn(async () => undefined),
     sendPhoto: vi.fn(async () => undefined),
     answerCallback: vi.fn(async () => undefined),
+    editMessage: vi.fn(async () => undefined),
     setMyCommands: vi.fn(async () => undefined),
   };
   const service = new TelegramWorkflowService(
@@ -98,7 +99,7 @@ function harness() {
     PHOTO,
     { now: () => NOW },
   );
-  return { repository, service, listEditorial, createArticle, updateArticle, archiveArticle, restoreArticle, assignArticleSites, publicationRequest, publicationStatus, listJobs, publicationRetry, publicationSuggest };
+  return { repository, telegram, service, listEditorial, createArticle, updateArticle, archiveArticle, restoreArticle, assignArticleSites, publicationRequest, publicationStatus, listJobs, publicationRetry, publicationSuggest };
 }
 
 function messageUpdate(text: string, updateId = 1) {
@@ -250,7 +251,7 @@ describe('TelegramWorkflowService discovery flows', () => {
       value: {
         regions: [],
         articles: [{ id: 'article-1', title: 'Judul', status: 'draft', createdAt: '2026-09-18T13:00:00.000Z', regionId: null }],
-        sites: [{ id: 'site-1', status: 'active', normalizedHostname: 'portal.example', regionId: null }],
+        sites: [{ id: 'site-1', status: 'active', normalizedHostname: 'situs.example', regionId: null }],
       },
     });
     const start = await service.handle(SECRET, callbackUpdate('tg:a:article-1:sug', 21), 'req-suggest-start');
@@ -304,7 +305,7 @@ describe('TelegramWorkflowService discovery flows', () => {
     const outcome = await service.handle(SECRET, callbackUpdate('tg:a:article-1:pub', 17), 'req-pick');
     expect(outcome.result.ok).toBe(true);
     if (!outcome.result.ok) throw new Error('expected ok');
-    expect(outcome.result.value.reply).toContain('Pilih portal');
+    expect(outcome.result.value.reply).toContain('Pilih situs');
     expect(outcome.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:ps:all');
     expect(outcome.result.value.display?.keyboard?.[1]?.[0]?.data).toBe('tg:ps:site-1');
     expect(repository.saveTelegramConversation).toHaveBeenCalled();
@@ -445,7 +446,7 @@ describe('TelegramWorkflowService sites assignment', () => {
       regions: [{ id: 'region-1', name: 'Jawa' }],
       articles: [{ id: 'article-1', title: 'Judul', status: 'draft', createdAt: '2026-09-18T13:00:00.000Z', regionId: 'region-1' }],
       sites: [
-        { id: 'site-1', status: 'active', normalizedHostname: 'portal.example', regionId: null },
+        { id: 'site-1', status: 'active', normalizedHostname: 'situs.example', regionId: null },
         { id: 'site-2', status: 'inactive', normalizedHostname: 'mati.example', regionId: null },
       ],
     },
@@ -457,7 +458,7 @@ describe('TelegramWorkflowService sites assignment', () => {
     const outcome = await service.handle(SECRET, messageUpdate('/sites article-1', 40), 'req-sites');
     expect(outcome.result.ok).toBe(true);
     if (!outcome.result.ok) throw new Error('expected ok');
-    expect(outcome.result.value.reply).toContain('Pilih artikel untuk diatur portalnya');
+    expect(outcome.result.value.reply).toContain('Pilih artikel untuk diatur situsnya');
     expect(outcome.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:a:article-1:sites');
   });
 
@@ -468,7 +469,7 @@ describe('TelegramWorkflowService sites assignment', () => {
       value: {
         regions: [],
         articles: [{ id: 'article-1', title: 'Judul', status: 'draft', createdAt: '2026-09-18T13:00:00.000Z', regionId: null }],
-        sites: [{ id: 'site-1', status: 'active', normalizedHostname: 'portal.example', regionId: null }],
+        sites: [{ id: 'site-1', status: 'active', normalizedHostname: 'situs.example', regionId: null }],
       },
     });
     repository.readTelegramConversation.mockResolvedValueOnce(
@@ -477,7 +478,7 @@ describe('TelegramWorkflowService sites assignment', () => {
     const toggled = await service.handle(SECRET, callbackUpdate('tg:ts:site-1', 41), 'req-toggle');
     expect(toggled.result.ok).toBe(true);
     if (!toggled.result.ok) throw new Error('expected ok');
-    expect(toggled.result.value.reply).toContain('1 portal dipilih');
+    expect(toggled.result.value.reply).toContain('1 situs dipilih');
 
     repository.readTelegramConversation.mockResolvedValueOnce(
       conversationOf('site_pick', { articleId: 'article-1', mode: 'publish', selected: ['site-1'], availableSiteIds: ['site-1'] }),
@@ -625,6 +626,34 @@ describe('TelegramWorkflowService button flows', () => {
     expect(sent.siteIds).toEqual(['site-1', 'site-2']);
   });
 
+  it('menyunting pesan menu di tempat saat tombol diketuk', async () => {
+    const { service, listEditorial } = harness();
+    listEditorial.mockResolvedValue({
+      ok: true as const,
+      value: {
+        regions: [],
+        articles: [{ id: 'article-1', title: 'Judul', status: 'draft', createdAt: '2026-09-18T13:00:00.000Z', regionId: null }],
+        sites: [],
+      },
+    });
+    const outcome = await service.handle(SECRET, callbackUpdate('tg:a:article-1:menu', 80), 'req-edit-in-place');
+    expect(outcome.result.ok).toBe(true);
+    const edit = outcome.pendingReplies.find((reply) => reply.kind === 'edit');
+    expect(edit).toMatchObject({ chatId: '111', messageId: '7' });
+    expect(outcome.pendingReplies.filter((reply) => reply.kind === 'text')).toHaveLength(0);
+  });
+
+  it('mengirim pesan baru saat edit gagal', async () => {
+    const { service, telegram } = harness();
+    telegram.editMessage.mockRejectedValueOnce(new Error('message not modified'));
+    await service.deliverReplies(
+      [{ kind: 'edit', chatId: '111', messageId: '7', text: 'Menu', keyboard: [[{ text: 't', data: 'd' }]] }],
+      'req-edit-fallback',
+    );
+    expect(telegram.editMessage).toHaveBeenCalledTimes(1);
+    expect(telegram.send).toHaveBeenCalledTimes(1);
+  });
+
   it('perintah tanpa ID membuka pemilih artikel', async () => {
     const { service, listEditorial } = harness();
     listEditorial.mockResolvedValueOnce({
@@ -657,7 +686,7 @@ describe('TelegramWorkflowService button flows', () => {
     const pickerOutcome = await picker.service.handle(SECRET, messageUpdate('site-1', 65), 'req-nudge-picker');
     expect(pickerOutcome.result.ok).toBe(true);
     if (!pickerOutcome.result.ok) throw new Error('expected ok');
-    expect(pickerOutcome.result.value.reply).toContain('Ketuk tombol portal');
+    expect(pickerOutcome.result.value.reply).toContain('Ketuk tombol situs');
   });
 });
 

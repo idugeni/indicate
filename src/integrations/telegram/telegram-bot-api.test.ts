@@ -93,3 +93,20 @@ describe('TelegramBotApiAdapter setMyCommands', () => {
     await expect(adapter.setMyCommands([{ command: 'start', description: 'Menu' }])).rejects.toThrow('command menu update failed');
   });
 });
+
+describe('TelegramBotApiAdapter editMessage', () => {
+  it('menyunting teks dan keyboard pesan asal', async () => {
+    const { adapter, fetcher } = harness(async () => okJson({ ok: true }));
+    await adapter.editMessage({ chatId: '111', messageId: '7', text: 'Menu baru', keyboard: [[{ text: 't', data: 'd' }]] });
+    expect(String(fetcher.mock.calls[0]?.[0])).toContain('/editMessageText');
+    const body = JSON.parse(String((fetcher.mock.calls[0]?.[1] as unknown as { body: string }).body)) as {
+      chat_id: string; message_id: number; text: string;
+    };
+    expect(body).toMatchObject({ chat_id: '111', message_id: 7, text: 'Menu baru' });
+  });
+
+  it('melempar saat telegram menolak suntingan', async () => {
+    const { adapter } = harness(async () => okJson({ ok: false }, 400));
+    await expect(adapter.editMessage({ chatId: '111', messageId: '7', text: 'x' })).rejects.toThrow('Telegram message edit failed.');
+  });
+});

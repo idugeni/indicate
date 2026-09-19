@@ -26,11 +26,11 @@ const safeEqual = (left: string, right: string): boolean => { const a = Buffer.f
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 const words = (text: string) => text.trim().split(/\s+/);
 
-const WELCOME_CAPTION = 'Selamat datang di Bot Resmi Indicate.\n\nRuang kendali redaksi dalam genggaman: susun artikel, kirim foto, atur portal tayang, dan pantau publikasi lintas portal — semuanya dari sini.\n\nPilih menu di bawah untuk memulai.';
-const HELP_TEXT = 'Panduan Bot Indicate\n\nOrganisasi:\n/org — ganti organisasi aktif (pemilih tombol)\n\nDaftar:\n/artikel — artikel terbaru + tombol aksi\n/cari — cari artikel (ketik kata kunci setelah perintah)\n/job — pekerjaan publikasi terbaru\n/portal — daftar portal aktif + detail\n\nBuat artikel:\n/article — susun artikel langkah demi langkah (region lewat tombol)\n/edit — ubah judul, isi, atau sumber artikel\n\nPerintah di bawah cukup diketik polos — bot menampilkan pemilih tombol:\n/image — tambah foto ke artikel\n/sites — atur portal tayang artikel\n/suggest — saran judul/deskripsi unik per portal\n/publish — ajukan publikasi (termasuk sekaligus ke semua portal)\n/status — pantau status pekerjaan\n/links — lihat tautan yang terbit\n/retry — ulangi target yang gagal\n/unpublish — tarik artikel yang terbit\n\nLainnya:\n/regions — daftar Region yang aktif\n/cancel — batalkan percakapan berjalan\n/start — kembali ke menu utama';
+const WELCOME_CAPTION = 'Selamat datang di Bot Resmi Indicate.\n\nRuang kendali redaksi dalam genggaman: susun artikel, kirim foto, atur situs tayang, dan pantau publikasi lintas situs — semuanya dari sini.\n\nPilih menu di bawah untuk memulai.';
+const HELP_TEXT = 'Panduan Bot Indicate\n\nOrganisasi:\n/org — ganti organisasi aktif (pemilih tombol)\n\nDaftar:\n/artikel — artikel terbaru + tombol aksi\n/cari — cari artikel (ketik kata kunci setelah perintah)\n/job — pekerjaan publikasi terbaru\n/portal — daftar situs aktif + detail\n\nBuat artikel:\n/article — susun artikel langkah demi langkah (region lewat tombol)\n/edit — ubah judul, isi, atau sumber artikel\n\nPerintah di bawah cukup diketik polos — bot menampilkan pemilih tombol:\n/image — tambah foto ke artikel\n/sites — atur situs tayang artikel\n/suggest — saran judul/deskripsi unik per situs\n/publish — ajukan publikasi (termasuk sekaligus ke semua situs)\n/status — pantau status pekerjaan\n/links — lihat tautan yang terbit\n/retry — ulangi target yang gagal\n/unpublish — tarik artikel yang terbit\n\nLainnya:\n/regions — daftar Region yang aktif\n/cancel — batalkan percakapan berjalan\n/start — kembali ke menu utama';
 const MAIN_KEYBOARD: TelegramInlineKeyboard = Object.freeze([
   Object.freeze([Object.freeze({ text: '📝 Buat Artikel', data: 'tg:article' }), Object.freeze({ text: '📄 Artikel Saya', data: 'tg:articles' })]),
-  Object.freeze([Object.freeze({ text: '🌐 Portal Tayang', data: 'tg:portals' }), Object.freeze({ text: '📋 Daftar Job', data: 'tg:jobs' })]),
+  Object.freeze([Object.freeze({ text: '🌐 Situs Tayang', data: 'tg:portals' }), Object.freeze({ text: '📋 Daftar Job', data: 'tg:jobs' })]),
   Object.freeze([Object.freeze({ text: '🖼 Tambah Foto', data: 'tg:image' }), Object.freeze({ text: '🔗 Tautan Terbit', data: 'tg:links' })]),
   Object.freeze([Object.freeze({ text: '🔍 Cari Artikel', data: 'tg:search' }), Object.freeze({ text: '🗺 Daftar Region', data: 'tg:regions' })]),
   Object.freeze([Object.freeze({ text: '🏢 Organisasi', data: 'tg:orgs' }), Object.freeze({ text: '❓ Bantuan', data: 'tg:help' })]),
@@ -38,7 +38,7 @@ const MAIN_KEYBOARD: TelegramInlineKeyboard = Object.freeze([
 ]);
 const LINK_REQUIRED_REPLY = 'Akses ditolak. Akun Telegram ini belum tertaut ke organisasi mana pun.\n\nHubungi administrator redaksi Anda untuk menautkan akun ini sebelum menggunakan bot.';
 const UNKNOWN_COMMAND_REPLY = 'Perintah tidak dikenali. Ketik /start untuk membuka menu utama atau /bantuan untuk panduan lengkap.';
-const SUGGEST_USAGE = 'Saran varian butuh artikel dan portal: ketik /suggest untuk membuka pemilih tombol.';
+const SUGGEST_USAGE = 'Saran varian butuh artikel dan situs: ketik /suggest untuk membuka pemilih tombol.';
 const CARI_USAGE = 'Ketik /cari lalu kata kuncinya, contoh: /cari banjir';
 const CALLBACK_COMMANDS: Readonly<Record<string, string>> = Object.freeze({
   'tg:article': '/article',
@@ -76,13 +76,13 @@ export const TELEGRAM_BOT_COMMANDS: readonly TelegramBotCommand[] = Object.freez
   Object.freeze({ command: 'artikel', description: 'Artikel terbaru + tombol aksi' }),
   Object.freeze({ command: 'cari', description: 'Cari artikel berdasar judul' }),
   Object.freeze({ command: 'job', description: 'Pekerjaan publikasi terbaru' }),
-  Object.freeze({ command: 'portal', description: 'Daftar portal aktif + detail' }),
+  Object.freeze({ command: 'portal', description: 'Daftar situs aktif + detail' }),
   Object.freeze({ command: 'article', description: 'Susun artikel langkah demi langkah' }),
   Object.freeze({ command: 'edit', description: 'Ubah judul, isi, atau sumber artikel' }),
   Object.freeze({ command: 'image', description: 'Mode unggah foto ke artikel' }),
-  Object.freeze({ command: 'sites', description: 'Pilih portal tayang artikel' }),
-  Object.freeze({ command: 'suggest', description: 'Saran judul/deskripsi unik per portal' }),
-  Object.freeze({ command: 'publish', description: 'Ajukan publikasi ke portal' }),
+  Object.freeze({ command: 'sites', description: 'Pilih situs tayang artikel' }),
+  Object.freeze({ command: 'suggest', description: 'Saran judul/deskripsi unik per situs' }),
+  Object.freeze({ command: 'publish', description: 'Ajukan publikasi ke situs' }),
   Object.freeze({ command: 'status', description: 'Pantau status pekerjaan publikasi' }),
   Object.freeze({ command: 'links', description: 'Lihat tautan artikel yang terbit' }),
   Object.freeze({ command: 'retry', description: 'Ulangi target publikasi yang gagal' }),
@@ -118,7 +118,7 @@ export class TelegramWorkflowService {
       const origin = callback.message; if (origin === undefined) return null;
       return {
         updateId: String(parsed.data.update_id), occurredAt: new Date(origin.date * 1_000).toISOString(),
-        userId: String(callback.from.id), chatId: String(origin.chat.id), text: null, document: null,
+        userId: String(callback.from.id), chatId: String(origin.chat.id), messageId: String(origin.message_id), text: null, document: null,
         callback: { id: callback.id, data: callback.data ?? null },
       };
     }
@@ -137,7 +137,7 @@ export class TelegramWorkflowService {
         : { fileId: largestPhoto.fileId, filename: 'telegram-photo.jpg', mediaType: 'image/jpeg', sizeBytes: largestPhoto.sizeBytes }
       : { fileId: document.file_id, filename: document.file_name, mediaType: document.mime_type, sizeBytes: document.file_size };
     return {
-      updateId: String(parsed.data.update_id), occurredAt: new Date(message.date * 1_000).toISOString(), userId: String(message.from.id), chatId: String(message.chat.id), text: message.text ?? null,
+      updateId: String(parsed.data.update_id), occurredAt: new Date(message.date * 1_000).toISOString(), userId: String(message.from.id), chatId: String(message.chat.id), messageId: null, text: message.text ?? null,
       document: attachment, callback: null,
     };
   }
@@ -159,7 +159,7 @@ export class TelegramWorkflowService {
     if (receipt.action === 'article.sites.assign') {
       const after = typeof receipt.after === 'object' && receipt.after !== null ? receipt.after as Readonly<Record<string, unknown>> : {};
       const count = Array.isArray(after.siteIds) ? after.siteIds.length : 0;
-      return { reply: `Berhasil menautkan ${count} portal.`, recovered: true };
+      return { reply: `Berhasil menautkan ${count} situs.`, recovered: true };
     }
     if (receipt.action === 'media.activate') return { reply: 'Foto terpasang ke artikel.', recovered: true };
     if (receipt.action === 'publication.request') return { reply: 'Publikasi diterima dan antre diproses.', recovered: true };
@@ -186,6 +186,12 @@ export class TelegramWorkflowService {
           }
         } else if (reply.kind === 'callback-answer') {
           await this.telegram.answerCallback({ callbackId: reply.callbackId, ...(reply.text === undefined ? {} : { text: reply.text }) });
+        } else if (reply.kind === 'edit') {
+          try {
+            await this.telegram.editMessage({ chatId: reply.chatId, messageId: reply.messageId, text: reply.text, keyboard: reply.keyboard });
+          } catch {
+            await this.telegram.send({ chatId: reply.chatId, text: reply.text, keyboard: reply.keyboard });
+          }
         } else {
           await this.telegram.send(reply);
         }
@@ -306,7 +312,8 @@ export class TelegramWorkflowService {
     await this.repository.prepareReplayOutcome('telegram', update.updateId, bodyDigest, claimToken, 'processed', { reply: result.value.reply }, this.clock.now().toISOString());
     await this.finalizePrepared('telegram', update.updateId, bodyDigest, claimToken);
     const display = result.value.display;
-    if (display !== undefined) pending.push({ kind: 'text', chatId: update.chatId, text: result.value.reply, keyboard: display.keyboard });
+    if (display !== undefined && update.messageId !== null) pending.push({ kind: 'edit', chatId: update.chatId, messageId: update.messageId, text: result.value.reply, keyboard: display.keyboard });
+    else if (display !== undefined) pending.push({ kind: 'text', chatId: update.chatId, text: result.value.reply, keyboard: display.keyboard });
     else pending.push({ kind: 'text', chatId: update.chatId, text: result.value.reply });
     return { ok: true, value: result.value };
   }
@@ -368,49 +375,49 @@ export class TelegramWorkflowService {
     const article = listed.value.articles.find(({ id }) => id === articleId);
     if (article === undefined) return { ok: false, error: createNonDisclosingDenial(actor.requestId) };
     const available = listed.value.sites.filter(({ status }) => status === 'active').slice(0, 20);
-    if (available.length === 0) return { ok: true, value: await this.reply('Tidak ada portal aktif yang tersedia.') };
+    if (available.length === 0) return { ok: true, value: await this.reply('Tidak ada situs aktif yang tersedia.') };
     await this.repository.saveTelegramConversation(identity, this.conversation(identity, 'site_pick', { articleId, mode, selected: [], availableSiteIds: available.map(({ id }) => id) }));
     const action = mode === 'publish' ? 'menerbitkan' : mode === 'suggest' ? 'menyusun saran untuk' : 'menautkan';
-    return { ok: true, value: { ...(await this.reply(`Ketuk portal untuk ${action} "${this.shortTitle(article.title)}":\n\n0 portal dipilih.`)), display: { keyboard: this.sitePickerKeyboard(available, [], mode === 'publish' ? '🚀 Terbitkan' : mode === 'suggest' ? '✨ Susun Saran' : '🔗 Tautkan') } } };
+    return { ok: true, value: { ...(await this.reply(`Ketuk situs untuk ${action} "${this.shortTitle(article.title)}":\n\n0 situs dipilih.`)), display: { keyboard: this.sitePickerKeyboard(available, [], mode === 'publish' ? '🚀 Terbitkan' : mode === 'suggest' ? '✨ Susun Saran' : '🔗 Tautkan') } } };
   }
 
   private async toggleSitePick(identity: TelegramIdentity, actor: AuthorizedTenantActorContext, shared: TelegramSharedServices, siteId: string): Promise<Result<TelegramWorkflowResult, PublicErrorEnvelope> | null> {
     const conversation = await this.repository.readTelegramConversation(identity);
     if (conversation === null || new Date(conversation.expiresAt) <= this.clock.now() || conversation.step !== 'site_pick') {
-      return { ok: true, value: await this.reply('Sesi pemilihan portal kedaluwarsa. Buka /artikel lalu pilih aksi untuk mengulang.') };
+      return { ok: true, value: await this.reply('Sesi pemilihan situs kedaluwarsa. Buka /artikel lalu pilih aksi untuk mengulang.') };
     }
     const mode = conversation.data.mode === 'publish' || conversation.data.mode === 'suggest' || conversation.data.mode === 'assign' ? conversation.data.mode : null;
     const availableSiteIds = Array.isArray(conversation.data.availableSiteIds) ? conversation.data.availableSiteIds.filter((value): value is string => typeof value === 'string') : [];
     const selected = Array.isArray(conversation.data.selected) ? conversation.data.selected.filter((value): value is string => typeof value === 'string') : [];
     const articleId = typeof conversation.data.articleId === 'string' ? conversation.data.articleId : '';
     if (mode === null || articleId === '' || !availableSiteIds.includes(siteId)) {
-      return { ok: true, value: await this.reply('Pilihan tidak dikenal. Ketuk tombol portal yang tampil.') };
+      return { ok: true, value: await this.reply('Pilihan tidak dikenal. Ketuk tombol situs yang tampil.') };
     }
     const next = selected.includes(siteId) ? selected.filter((value) => value !== siteId) : [...selected, siteId];
     await this.repository.saveTelegramConversation(identity, this.conversation(identity, 'site_pick', { articleId, mode, selected: next, availableSiteIds }));
     const listed = await shared.articles.listEditorial(actor); if (!listed.ok) return listed;
     const available = listed.value.sites.filter((site) => availableSiteIds.includes(site.id));
     const label = mode === 'publish' ? '🚀 Terbitkan' : mode === 'suggest' ? '✨ Susun Saran' : '🔗 Tautkan';
-    return { ok: true, value: { ...(await this.reply(`${next.length} portal dipilih. Ketuk ${label} bila sudah pas.`)), display: { keyboard: this.sitePickerKeyboard(available, next, label) } } };
+    return { ok: true, value: { ...(await this.reply(`${next.length} situs dipilih. Ketuk ${label} bila sudah pas.`)), display: { keyboard: this.sitePickerKeyboard(available, next, label) } } };
   }
 
   private async confirmSitePick(identity: TelegramIdentity, actor: AuthorizedTenantActorContext, shared: TelegramSharedServices): Promise<Result<TelegramWorkflowResult, PublicErrorEnvelope> | null> {
     const conversation = await this.repository.readTelegramConversation(identity);
     if (conversation === null || new Date(conversation.expiresAt) <= this.clock.now() || conversation.step !== 'site_pick') {
-      return { ok: true, value: await this.reply('Sesi pemilihan portal kedaluwarsa. Buka /artikel lalu pilih aksi untuk mengulang.') };
+      return { ok: true, value: await this.reply('Sesi pemilihan situs kedaluwarsa. Buka /artikel lalu pilih aksi untuk mengulang.') };
     }
     const mode = conversation.data.mode === 'publish' || conversation.data.mode === 'suggest' || conversation.data.mode === 'assign' ? conversation.data.mode : null;
     const selected = Array.isArray(conversation.data.selected) ? conversation.data.selected.filter((value): value is string => typeof value === 'string') : [];
     const articleId = typeof conversation.data.articleId === 'string' ? conversation.data.articleId : '';
     if (mode === null || articleId === '') {
       await this.repository.clearTelegramConversation(identity);
-      return { ok: true, value: await this.reply('Sesi pemilihan portal rusak. Mulai lagi dari /artikel.') };
+      return { ok: true, value: await this.reply('Sesi pemilihan situs rusak. Mulai lagi dari /artikel.') };
     }
-    if (selected.length === 0) return { ok: true, value: await this.reply('Belum ada portal dipilih. Ketuk dulu tombol portalnya.') };
+    if (selected.length === 0) return { ok: true, value: await this.reply('Belum ada situs dipilih. Ketuk dulu tombol situsnya.') };
     if (mode === 'assign') {
       const assigned = await shared.articles.assignArticleSites(actor, { articleId, siteIds: selected }); if (!assigned.ok) return assigned;
       await this.repository.clearTelegramConversation(identity);
-      return { ok: true, value: { ...(await this.reply(`Berhasil menautkan ${assigned.value.length} portal.`)), businessResult: assigned.value } };
+      return { ok: true, value: { ...(await this.reply(`Berhasil menautkan ${assigned.value.length} situs.`)), businessResult: assigned.value } };
     }
     if (mode === 'suggest') return this.runSuggest(identity, actor, shared, articleId, selected);
     const publication = await shared.publication.request(actor, { articleId, siteIds: selected, idempotencyKey: this.autoKey(), options: {} });
@@ -421,7 +428,7 @@ export class TelegramWorkflowService {
   }
 
   /**
-   * Publishes one article to every active portal in a single job.
+   * Publishes one article to every active site in a single job.
    *
    * @param identity - Active organization identity of the caller.
    * @param actor - Tenant actor derived from that identity.
@@ -434,11 +441,11 @@ export class TelegramWorkflowService {
     const article = listed.value.articles.find(({ id }) => id === articleId);
     if (article === undefined) return { ok: false, error: createNonDisclosingDenial(actor.requestId) };
     const siteIds = listed.value.sites.filter(({ status }) => status === 'active').map(({ id }) => id);
-    if (siteIds.length === 0) return { ok: true, value: await this.reply('Tidak ada portal aktif yang tersedia.') };
+    if (siteIds.length === 0) return { ok: true, value: await this.reply('Tidak ada situs aktif yang tersedia.') };
     const publication = await shared.publication.request(actor, { articleId, siteIds, idempotencyKey: this.autoKey(), options: {} });
     if (!publication.ok) return publication;
     await this.repository.clearTelegramConversation(identity);
-    return { ok: true, value: { ...(await this.reply(`Publikasi ${publication.value.job.state} untuk "${this.shortTitle(article.title)}" ke ${siteIds.length} portal. Pantau lewat tombol 📊 Status di bawah.`)), businessResult: publication.value, display: { keyboard: this.jobMenuKeyboard(publication.value.job.id) } } };
+    return { ok: true, value: { ...(await this.reply(`Publikasi ${publication.value.job.state} untuk "${this.shortTitle(article.title)}" ke ${siteIds.length} situs. Pantau lewat tombol 📊 Status di bawah.`)), businessResult: publication.value, display: { keyboard: this.jobMenuKeyboard(publication.value.job.id) } } };
   }
 
   private async loadArticle(actor: AuthorizedTenantActorContext, shared: TelegramSharedServices, articleId: string) {
@@ -606,6 +613,7 @@ export class TelegramWorkflowService {
       await this.finalizePrepared('telegram', update.updateId, bodyDigest, claimed.claim.claimToken);
       const display = result.value.display;
       if (display?.photoUrl !== undefined) pending.push({ kind: 'photo', chatId: update.chatId, photoUrl: display.photoUrl, caption: result.value.reply, keyboard: display.keyboard });
+      else if (display !== undefined && display.editMessageId !== undefined) pending.push({ kind: 'edit', chatId: update.chatId, messageId: display.editMessageId, text: result.value.reply, keyboard: display.keyboard });
       else if (display !== undefined) pending.push({ kind: 'text', chatId: update.chatId, text: result.value.reply, keyboard: display.keyboard });
       else pending.push({ kind: 'text', chatId: update.chatId, text: result.value.reply });
       return done({ ok: true, value: { ...result.value, actor } });
@@ -674,18 +682,18 @@ export class TelegramWorkflowService {
   private async listPortals(actor: AuthorizedTenantActorContext, shared: TelegramSharedServices): Promise<Result<TelegramWorkflowResult, PublicErrorEnvelope>> {
     const listed = await shared.articles.listEditorial(actor); if (!listed.ok) return listed;
     const active = listed.value.sites.filter(({ status }) => status === 'active');
-    if (active.length === 0) return { ok: true, value: await this.reply('Tidak ada portal aktif yang tersedia.') };
+    if (active.length === 0) return { ok: true, value: await this.reply('Tidak ada situs aktif yang tersedia.') };
     const lines = active.map(({ normalizedHostname, regionId }) => `${normalizedHostname} [${this.regionLabel(listed.value.regions, regionId)}]`);
     const keyboard: TelegramInlineKeyboard = Object.freeze(active.slice(0, 20).map((site) => Object.freeze([Object.freeze({ text: `▸ ${this.shortTitle(site.normalizedHostname)}`, data: `tg:p:${site.id}:menu` })])));
-    return { ok: true, value: { ...(await this.reply(`Portal aktif:\n\n${lines.join('\n')}\n\nKetuk portal untuk detail, atau terbitkan tanpa mengetik lewat /artikel → 🚀 Publikasikan.`)), display: { keyboard } } };
+    return { ok: true, value: { ...(await this.reply(`Situs aktif:\n\n${lines.join('\n')}\n\nKetuk situs untuk detail, atau terbitkan tanpa mengetik lewat /artikel → 🚀 Publikasikan.`)), display: { keyboard } } };
   }
   private async articleMenu(actor: AuthorizedTenantActorContext, shared: TelegramSharedServices, articleId: string): Promise<Result<TelegramWorkflowResult, PublicErrorEnvelope>> {
     const listed = await shared.articles.listEditorial(actor); if (!listed.ok) return listed;
     const article = listed.value.articles.find(({ id }) => id === articleId);
     if (article === undefined) return { ok: false, error: createNonDisclosingDenial(actor.requestId) };
     const keyboard: TelegramInlineKeyboard = Object.freeze([
-      Object.freeze([Object.freeze({ text: '🖼 Foto', data: `tg:a:${articleId}:img` }), Object.freeze({ text: '🌐 Portal', data: `tg:a:${articleId}:sites` })]),
-      Object.freeze([Object.freeze({ text: '🚀 Publikasikan', data: `tg:a:${articleId}:pub` }), Object.freeze({ text: '🚀 Semua Portal', data: `tg:a:${articleId}:puball` })]),
+      Object.freeze([Object.freeze({ text: '🖼 Foto', data: `tg:a:${articleId}:img` }), Object.freeze({ text: '🌐 Situs', data: `tg:a:${articleId}:sites` })]),
+      Object.freeze([Object.freeze({ text: '🚀 Publikasikan', data: `tg:a:${articleId}:pub` }), Object.freeze({ text: '🚀 Semua Situs', data: `tg:a:${articleId}:puball` })]),
       Object.freeze([Object.freeze({ text: '✏️ Edit', data: `tg:a:${articleId}:edt` }), Object.freeze({ text: '💡 Saran Varian', data: `tg:a:${articleId}:sug` })]),
       Object.freeze([
         article.status === 'archived'
@@ -732,7 +740,7 @@ export class TelegramWorkflowService {
     const site = listed.value.sites.find(({ id }) => id === siteId);
     if (site === undefined) return { ok: false, error: createNonDisclosingDenial(actor.requestId) };
     const keyboard: TelegramInlineKeyboard = Object.freeze([
-      Object.freeze([Object.freeze({ text: '◀️ Daftar Portal', data: 'tg:portals' })]),
+      Object.freeze([Object.freeze({ text: '◀️ Daftar Situs', data: 'tg:portals' })]),
     ]);
     return { ok: true, value: { ...(await this.reply(`${site.normalizedHostname}\nRegion: ${this.regionLabel(listed.value.regions, site.regionId)}\nStatus: ${site.status}`)), display: { keyboard } } };
   }
@@ -741,19 +749,19 @@ export class TelegramWorkflowService {
     const article = listed.value.articles.find(({ id }) => id === articleId);
     if (article === undefined) return { ok: false, error: createNonDisclosingDenial(actor.requestId) };
     const active = listed.value.sites.filter(({ status }) => status === 'active').slice(0, 20);
-    if (active.length === 0) return { ok: true, value: await this.reply('Tidak ada portal aktif yang tersedia.') };
+    if (active.length === 0) return { ok: true, value: await this.reply('Tidak ada situs aktif yang tersedia.') };
     await this.repository.saveTelegramConversation(identity, this.conversation(identity, 'publish_pick_site', { articleId }));
     const keyboard: TelegramInlineKeyboard = Object.freeze([
-      Object.freeze([Object.freeze({ text: '🚀 Semua Portal', data: 'tg:ps:all' })]),
+      Object.freeze([Object.freeze({ text: '🚀 Semua Situs', data: 'tg:ps:all' })]),
       ...active.map((site) => Object.freeze([Object.freeze({ text: `🚀 ${this.shortTitle(site.normalizedHostname)}`, data: `tg:ps:${site.id}` })])),
     ]);
-    return { ok: true, value: { ...(await this.reply(`Pilih portal untuk menerbitkan "${this.shortTitle(article.title)}":`)), display: { keyboard } } };
+    return { ok: true, value: { ...(await this.reply(`Pilih situs untuk menerbitkan "${this.shortTitle(article.title)}":`)), display: { keyboard } } };
   }
   private async publishPickedSite(identity: TelegramIdentity, actor: AuthorizedTenantActorContext, shared: TelegramSharedServices, siteId: string): Promise<Result<TelegramWorkflowResult, PublicErrorEnvelope>> {
     const conversation = await this.repository.readTelegramConversation(identity);
     const articleId = conversation?.data.articleId;
     if (conversation === null || conversation.step !== 'publish_pick_site' || typeof articleId !== 'string' || articleId === '') {
-      return { ok: true, value: await this.reply('Sesi pemilihan portal kedaluwarsa. Buka /artikel lalu ketuk 🚀 Publikasikan untuk mengulang.') };
+      return { ok: true, value: await this.reply('Sesi pemilihan situs kedaluwarsa. Buka /artikel lalu ketuk 🚀 Publikasikan untuk mengulang.') };
     }
     const publication = await shared.publication.request(actor, { articleId, siteIds: [siteId], idempotencyKey: this.autoKey(), options: {} });
     if (!publication.ok) return publication;
@@ -826,7 +834,7 @@ export class TelegramWorkflowService {
         const conversation = await this.repository.readTelegramConversation(identity);
         const articleId = conversation?.data.articleId;
         if (conversation === null || conversation.step !== 'publish_pick_site' || typeof articleId !== 'string' || articleId === '') {
-          return { ok: true, value: await this.reply('Sesi pemilihan portal kedaluwarsa. Buka /artikel lalu ketuk 🚀 Publikasikan untuk mengulang.') };
+          return { ok: true, value: await this.reply('Sesi pemilihan situs kedaluwarsa. Buka /artikel lalu ketuk 🚀 Publikasikan untuk mengulang.') };
         }
         return this.publishAll(identity, actor, shared, articleId);
       }
@@ -841,12 +849,28 @@ export class TelegramWorkflowService {
     return null;
   }
 
+  /**
+   * Rewrites a callback-driven menu result to edit the originating message.
+   *
+   * @param update - Update carrying the tapped button, if any.
+   * @param result - Structured outcome produced for that button.
+   * @returns The same outcome with an in-place edit target when the origin
+   * message is known and the result is a button menu, so chats stay to one
+   * message per menu instead of growing a new message per tap.
+   */
+  private asMenuRefresh(update: TelegramUpdate, result: Result<TelegramWorkflowResult, PublicErrorEnvelope>): Result<TelegramWorkflowResult, PublicErrorEnvelope> {
+    if (!result.ok || update.messageId === null) return result;
+    const display = result.value.display;
+    if (display === undefined || display.photoUrl !== undefined) return result;
+    return { ok: true, value: { ...result.value, display: { keyboard: display.keyboard, editMessageId: update.messageId } } };
+  }
+
   private async execute(identity: TelegramIdentity, actor: AuthorizedTenantActorContext, shared: TelegramSharedServices, update: TelegramUpdate, pending: TelegramPendingReply[]): Promise<Result<TelegramWorkflowResult, PublicErrorEnvelope>> {
     let text = update.text?.trim() ?? '';
     if (update.callback !== null) {
       pending.push({ kind: 'callback-answer', callbackId: update.callback.id });
       const structured = await this.routeCallback(identity, actor, shared, update.callback.data);
-      if (structured !== null) return structured;
+      if (structured !== null) return this.asMenuRefresh(update, structured);
       const mapped = callbackCommand(update.callback.data);
       if (mapped === null) return { ok: true, value: this.help() };
       text = mapped;
@@ -859,7 +883,7 @@ export class TelegramWorkflowService {
       const values = listed.value.regions.filter(({ status }) => status === 'active').map(({ name }) => name);
       return { ok: true, value: await this.reply(values.length === 0 ? 'Tidak ada Region yang aktif.' : `Region aktif:\n\n${values.join('\n')}`) };
     }
-    if (text === '/sites' || text.startsWith('/sites ')) return this.pickArticle(actor, shared, 'sites', 'Pilih artikel untuk diatur portalnya:');
+    if (text === '/sites' || text.startsWith('/sites ')) return this.pickArticle(actor, shared, 'sites', 'Pilih artikel untuk diatur situsnya:');
     if (text === '/image' || text.startsWith('/image ')) return this.pickArticle(actor, shared, 'img', 'Pilih artikel untuk ditambah foto:');
     if (text === '/suggest' || text.startsWith('/suggest ')) return this.pickArticle(actor, shared, 'sug', 'Pilih artikel untuk disusun sarannya:');
     if (text === '/publish' || text.startsWith('/publish ')) return this.pickArticle(actor, shared, 'pub', 'Pilih artikel untuk diterbitkan:');
@@ -904,13 +928,13 @@ export class TelegramWorkflowService {
       if (!created.ok) return created;
       await this.repository.clearTelegramConversation(identity);
       const keyboard: TelegramInlineKeyboard = Object.freeze([
-        Object.freeze([Object.freeze({ text: '🚀 Terbitkan ke Semua Portal', data: `tg:a:${created.value.id}:puball` })]),
-        Object.freeze([Object.freeze({ text: '🌐 Pilih Portal', data: `tg:a:${created.value.id}:sites` }), Object.freeze({ text: '💡 Saran Varian', data: `tg:a:${created.value.id}:sug` })]),
+        Object.freeze([Object.freeze({ text: '🚀 Terbitkan ke Semua Situs', data: `tg:a:${created.value.id}:puball` })]),
+        Object.freeze([Object.freeze({ text: '🌐 Pilih Situs', data: `tg:a:${created.value.id}:sites` }), Object.freeze({ text: '💡 Saran Varian', data: `tg:a:${created.value.id}:sug` })]),
       ]);
-      return { ok: true, value: { ...(await this.reply('Artikel berhasil dibuat. Langsung terbitkan atau atur dulu portalnya:')), businessResult: created.value, display: { keyboard } } };
+      return { ok: true, value: { ...(await this.reply('Artikel berhasil dibuat. Langsung terbitkan atau atur dulu situsnya:')), businessResult: created.value, display: { keyboard } } };
     }
     if (conversation.step === 'site_pick') {
-      return { ok: true, value: await this.reply('Ketuk tombol portal di atas untuk mencentang, lalu ketuk tombol konfirmasi. /cancel untuk batal.') };
+      return { ok: true, value: await this.reply('Ketuk tombol situs di atas untuk mencentang, lalu ketuk tombol konfirmasi. /cancel untuk batal.') };
     }
     if (conversation.step === 'article_image') {
       if (update.document === null) return { ok: true, value: await this.reply('Kirim foto atau dokumen gambar untuk artikel ini. /cancel untuk selesai.') };
@@ -938,7 +962,7 @@ export class TelegramWorkflowService {
       return { ok: true, value: { ...(await this.reply(`Foto ke-${Math.max(1, position)} terpasang ([gambar:${Math.max(1, position)}]). Kirim lagi atau /cancel.`)), businessResult: completed.value } };
     }
     if (conversation.step === 'publish_pick_site') {
-      return { ok: true, value: await this.reply('Ketuk tombol portal di atas. /cancel untuk batal.') };
+      return { ok: true, value: await this.reply('Ketuk tombol situs di atas. /cancel untuk batal.') };
     }
     if (conversation.step === 'suggest_sites' || conversation.step === 'article_sites') {
       await this.repository.clearTelegramConversation(identity);

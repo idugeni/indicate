@@ -54,6 +54,7 @@ function harness() {
     send: vi.fn(async () => undefined),
     sendPhoto: vi.fn(async () => undefined),
     answerCallback: vi.fn(async () => undefined),
+    editMessage: vi.fn(async () => undefined),
     setMyCommands: vi.fn(async () => undefined),
   };
   const sharedFactory = {

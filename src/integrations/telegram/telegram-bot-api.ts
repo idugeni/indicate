@@ -3,7 +3,7 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import type { ExactObjectAuthorization } from '@/integrations/storage/ports';
-import type { TelegramBotCommand, TelegramCallbackAnswer, TelegramPhotoMessage, TelegramPort } from '@/modules/integrations/ports';
+import type { TelegramBotCommand, TelegramCallbackAnswer, TelegramEditMessage, TelegramPhotoMessage, TelegramPort } from '@/modules/integrations/ports';
 import { TelegramRateLimitedError } from '@/modules/integrations/ports';
 import type { PreparedTelegramMedia, TelegramMediaTransferPort, TelegramMessage } from '@/modules/integrations/ports';
 import type { TelegramInlineKeyboard } from '@/modules/integrations/models';
@@ -83,6 +83,23 @@ export class TelegramBotApiAdapter implements TelegramPort, TelegramMediaTransfe
     });
     await this.throwIfRateLimited(response);
     if (!response.ok) throw new Error('Telegram callback answer failed.');
+  }
+
+  async editMessage(message: TelegramEditMessage): Promise<void> {
+    const response = await this.fetcher(`${this.base}/editMessageText`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: message.chatId,
+        message_id: Number(message.messageId),
+        text: message.text.slice(0, 4096),
+        disable_web_page_preview: true,
+        ...(message.keyboard === undefined ? {} : { reply_markup: { inline_keyboard: toInlineKeyboard(message.keyboard) } }),
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    await this.throwIfRateLimited(response);
+    if (!response.ok) throw new Error('Telegram message edit failed.');
   }
 
   async setMyCommands(commands: readonly TelegramBotCommand[]): Promise<void> {

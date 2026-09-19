@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function TelegramPage() {
   return (
     <div>
-      <DocTitle title="Bot Telegram" description="Perintah redaksi via chat: pilih organisasi, susun artikel, terbitkan ke semua portal sekali ketuk — tanpa mengetik ID." />
+      <DocTitle title="Bot Telegram" description="Perintah redaksi via chat: pilih organisasi, susun artikel, terbitkan ke semua situs sekali ketuk — tanpa mengetik ID." />
       <DocH2>Prasyarat</DocH2>
       <DocP>
         Pemilik organisasi memetakan identitas Telegram (user + chat) ke pengguna lokal beserta peran dan cakupan
@@ -26,17 +26,17 @@ export default function TelegramPage() {
           [<span key="c" className="font-mono text-[13px]">/start</span>, 'Menu utama + tombol aksi bot.'],
           [<span key="c" className="font-mono text-[13px]">/org</span>, 'Ganti organisasi aktif (pemilih tombol).'],
           [<span key="c" className="font-mono text-[13px]">/bantuan</span>, 'Panduan lengkap perintah bot.'],
-          [<span key="c" className="font-mono text-[13px]">/article</span>, 'Buat artikel bertahap: region (tombol) → judul → body → sumber → slug; selesai tersaji tombol Terbitkan ke Semua Portal.'],
+          [<span key="c" className="font-mono text-[13px]">/article</span>, 'Buat artikel bertahap: region (tombol) → judul → body → sumber → slug; selesai tersaji tombol Terbitkan ke Semua Situs.'],
           [<span key="c" className="font-mono text-[13px]">/edit</span>, 'Pemilih artikel, lalu ubah judul/isi/sumber dengan pratinjau + tombol Simpan.'],
           [<span key="c" className="font-mono text-[13px]">/artikel</span>, 'Delapan artikel terbaru + tombol aksi per artikel.'],
           [<span key="c" className="font-mono text-[13px]">/cari KATA_KUNCI</span>, 'Cari artikel berdasar judul + tombol aksi hasil.'],
           [<span key="c" className="font-mono text-[13px]">/job</span>, 'Pekerjaan publikasi terbaru + tombol aksi per job.'],
-          [<span key="c" className="font-mono text-[13px]">/portal</span>, 'Portal aktif + tombol detail per portal.'],
+          [<span key="c" className="font-mono text-[13px]">/portal</span>, 'Situs aktif + tombol detail per situs.'],
           [<span key="c" className="font-mono text-[13px]">/image</span>, 'Pemilih artikel, lalu mode unggah foto (satu per pesan, boleh banyak).'],
           [<span key="c" className="font-mono text-[13px]">/regions</span>, 'Daftar region aktif.'],
-          [<span key="c" className="font-mono text-[13px]">/sites</span>, 'Pemilih artikel, lalu centang portal tujuan lewat tombol.'],
-          [<span key="c" className="font-mono text-[13px]">/publish</span>, 'Pemilih artikel, lalu terbitkan ke portal tercentang atau sekaligus ke semua portal.'],
-          [<span key="c" className="font-mono text-[13px]">/suggest</span>, 'Pemilih artikel, lalu saran judul/deskripsi unik per portal tanpa membuat job.'],
+          [<span key="c" className="font-mono text-[13px]">/sites</span>, 'Pemilih artikel, lalu centang situs tujuan lewat tombol.'],
+          [<span key="c" className="font-mono text-[13px]">/publish</span>, 'Pemilih artikel, lalu terbitkan ke situs tercentang atau sekaligus ke semua situs.'],
+          [<span key="c" className="font-mono text-[13px]">/suggest</span>, 'Pemilih artikel, lalu saran judul/deskripsi unik per situs tanpa membuat job.'],
           [<span key="c" className="font-mono text-[13px]">/status</span>, 'Pemilih job + ringkasan sukses.'],
           [<span key="c" className="font-mono text-[13px]">/links</span>, 'Pemilih job + URL tayang hasil publikasi.'],
           [<span key="c" className="font-mono text-[13px]">/retry JOB_ID [TARGETS]</span>, 'Antrekan ulang target gagal.'],
@@ -52,8 +52,8 @@ export default function TelegramPage() {
         dan yang gagal masuk outbox dengan backoff menghormati <InlineCode>retry_after</InlineCode> Telegram.
       </DocP>
       <DocCallout tone="info">
-        Aturan validasi yang sama dengan dashboard/API berlaku di sini: judul/deskripsi antar portal harus unik —
-        gunakan saran varian bila publish multi-portal ditolak karena duplikat.
+        Aturan validasi yang sama dengan dashboard/API berlaku di sini: judul/deskripsi antar situs harus unik —
+        gunakan saran varian bila publish multi-situs ditolak karena duplikat.
       </DocCallout>
       <DocsPager slug="telegram" />
     </div>

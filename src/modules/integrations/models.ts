@@ -85,6 +85,7 @@ export interface TelegramUpdate {
   readonly occurredAt: string;
   readonly userId: string;
   readonly chatId: string;
+  readonly messageId: string | null;
   readonly text: string | null;
   readonly document: null | {
     readonly fileId: string;
@@ -104,11 +105,13 @@ export interface TelegramWorkflowResult {
   readonly display?: {
     readonly photoUrl?: string;
     readonly keyboard: TelegramInlineKeyboard;
+    readonly editMessageId?: string;
   };
 }
 /** Outgoing chat reply queued during `handle()`; delivery is deferred to `after()` by the caller. */
 export type TelegramPendingReply =
   | { readonly kind: 'text'; readonly chatId: string; readonly text: string; readonly keyboard?: TelegramInlineKeyboard }
+  | { readonly kind: 'edit'; readonly chatId: string; readonly messageId: string; readonly text: string; readonly keyboard: TelegramInlineKeyboard }
   | { readonly kind: 'photo'; readonly chatId: string; readonly photoUrl: string; readonly caption: string; readonly keyboard?: TelegramInlineKeyboard }
   | { readonly kind: 'callback-answer'; readonly callbackId: string; readonly text?: string };
 export interface TelegramHandleOutcome {

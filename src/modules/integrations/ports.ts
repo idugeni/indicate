@@ -96,6 +96,13 @@ export interface TelegramCallbackAnswer {
   readonly text?: string;
 }
 
+export interface TelegramEditMessage {
+  readonly chatId: string;
+  readonly messageId: string;
+  readonly text: string;
+  readonly keyboard?: TelegramInlineKeyboard;
+}
+
 export interface TelegramBotCommand {
   readonly command: string;
   readonly description: string;
@@ -120,6 +127,7 @@ export interface TelegramPort extends HealthCheckPort {
   send(message: TelegramMessage): Promise<void>;
   sendPhoto(message: TelegramPhotoMessage): Promise<void>;
   answerCallback(answer: TelegramCallbackAnswer): Promise<void>;
+  editMessage(message: TelegramEditMessage): Promise<void>;
   setMyCommands(commands: readonly TelegramBotCommand[]): Promise<void>;
 }
 
