@@ -530,10 +530,10 @@ export function DashboardWorkspace({
 
   return (
     <TooltipProvider delay={150}>
-      <div className="flex min-h-screen bg-bg text-paper antialiased" data-generation={generation}>
+      <div className="flex min-h-screen supports-[min-height:100svh]:min-h-svh bg-bg text-paper antialiased" data-generation={generation}>
         <aside
           aria-label="Navigasi utama Dashboard"
-          className={`sticky top-0 hidden h-screen flex-none flex-col overflow-hidden border-r border-hairline bg-bg-raised/40 transition-[width] duration-300 ease-out md:flex ${
+          className={`sticky top-0 hidden h-screen supports-[height:100svh]:h-svh flex-none flex-col overflow-hidden border-r border-hairline bg-bg-raised/40 transition-[width] duration-300 ease-out md:flex ${
             sidebarCollapsed ? 'w-16' : 'w-64'
           }`}
         >

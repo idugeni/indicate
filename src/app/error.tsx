@@ -48,7 +48,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
     <main
       role="alert"
       aria-live="assertive"
-      className="flex min-h-svh items-center justify-center p-6"
+      className="flex min-h-screen supports-[min-height:100svh]:min-h-svh items-center justify-center [padding:max(1.5rem,env(safe-area-inset-top))_max(1.5rem,env(safe-area-inset-right))_max(1.5rem,env(safe-area-inset-bottom))_max(1.5rem,env(safe-area-inset-left))]"
     >
       <div className="mx-auto w-full max-w-lg rounded-lg border border-[#e2ded2] bg-white p-8 text-center">
         <p className="m-0 font-mono text-xs font-medium uppercase tracking-wider text-[#b3261e]">Gangguan sementara</p>

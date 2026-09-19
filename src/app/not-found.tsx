@@ -31,7 +31,7 @@ async function resolveNotFoundSite() {
 
 function GenericNotFound() {
   return (
-    <main className="flex min-h-screen items-center bg-[#f4f2ec] p-6 text-[#1a2430]">
+    <main className="flex min-h-screen supports-[min-height:100svh]:min-h-svh items-center justify-center bg-[#f4f2ec] [padding:max(1.5rem,env(safe-area-inset-top))_max(1.5rem,env(safe-area-inset-right))_max(1.5rem,env(safe-area-inset-bottom))_max(1.5rem,env(safe-area-inset-left))] text-[#1a2430]">
       <div className="mx-auto w-full max-w-md rounded-lg border border-[#e2ded2] bg-white p-8 text-center">
         <p className="m-0 font-mono text-xs font-medium uppercase tracking-wider text-[#8a5f1c]">404 · Not found</p>
         <h1 className="m-0 mt-2 font-sans text-2xl font-bold tracking-tight">Halaman tidak ditemukan</h1>

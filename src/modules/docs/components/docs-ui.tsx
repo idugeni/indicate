@@ -6,7 +6,7 @@ import { DocsNav } from '@/modules/docs/components/docs-nav';
 
 export function DocsShell({ host, children }: { readonly host: string; readonly children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-900 antialiased">
+    <div className="min-h-screen supports-[min-height:100svh]:min-h-svh bg-white font-sans text-slate-900 antialiased">
       <a
         href="#docs-content"
         className="fixed left-4 top-[-5rem] z-50 rounded-lg bg-slate-900 px-4 py-3 text-sm text-white transition-[top] duration-180 focus:top-4"

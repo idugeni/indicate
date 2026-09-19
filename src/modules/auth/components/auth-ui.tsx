@@ -19,7 +19,7 @@ export function AuthPage({
   readonly footer?: ReactNode;
 }) {
   return (
-    <main className="grid min-h-screen bg-[#f4f2ec] text-[#1a2430] [color-scheme:light] md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+    <main className="grid min-h-screen supports-[min-height:100svh]:min-h-svh bg-[#f4f2ec] text-[#1a2430] [color-scheme:light] md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       <BrandPanel />
 
       <div className="flex flex-col justify-center px-6 py-12 md:px-14">

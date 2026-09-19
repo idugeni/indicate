@@ -46,6 +46,14 @@ describe('LandingHeader', () => {
     expect(buka.getAttribute('aria-expanded')).toBe('false');
   });
 
+  it('tidak memutar animasi tutup saat mount awal, tapi tetap beranimasi saat dibuka', () => {
+    render(<LandingHeader />);
+    const animasikan = vi.mocked(Element.prototype.animate);
+    expect(animasikan).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Buka menu navigasi' }));
+    expect(animasikan).toHaveBeenCalled();
+  });
+
   it('menandai tautan aktif sesuai pathname', () => {
     jalur.saatIni = '/pricing';
     render(<LandingHeader />);

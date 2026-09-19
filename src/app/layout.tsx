@@ -12,6 +12,7 @@ export const viewport: Viewport = {
   colorScheme: 'dark',
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
 };
 
 /** Control-plane metadataBase fallback. Tenant pages derive absolute canonical/OG URLs from the request host, so this base never anchors tenant content. */
@@ -128,7 +129,7 @@ export default function RootLayout({
         plexMono.variable
       )}
     >
-      <body className="min-h-screen bg-bg text-paper antialiased">
+      <body className="min-h-screen supports-[min-height:100svh]:min-h-svh bg-bg text-paper antialiased">
         {children}
         <Toaster />
         <Analytics />

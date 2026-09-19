@@ -11,13 +11,19 @@ import { useMobileMenu } from '@/modules/site/components/layout/use-mobile-menu'
 const MENU_OPEN_EASE = 'cubic-bezier(0.32,0.72,0,1)';
 
 export function LandingHeader() {
-  const { open, setOpen, pathname, panelRef, closeButtonRef: closeRef } = useMobileMenu();
+  const { open, setOpen, pathname, menuButtonRef, panelRef, closeButtonRef: closeRef } =
+    useMobileMenu();
+  const firstPaintRef = useRef(true);
   const backdropRef = useRef<HTMLDivElement>(null);
   const asideRef = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (firstPaintRef.current) {
+      firstPaintRef.current = false;
+      if (!open) return undefined;
+    }
     const backdrop = backdropRef.current;
     const aside = asideRef.current;
     if (!backdrop || !aside) return undefined;
@@ -130,12 +136,13 @@ export function LandingHeader() {
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </Link>
               <button
+                ref={menuButtonRef}
                 type="button"
                 onClick={() => setOpen(true)}
                 aria-label="Buka menu navigasi"
                 aria-expanded={open}
                 aria-controls="landing-menu"
-                className="flex h-9 w-9 items-center justify-center rounded border border-[#1a2430]/10 bg-white/60 transition-colors hover:border-[#1a2430]/30 lg:hidden"
+                className="flex h-9 w-9 touch-manipulation items-center justify-center rounded border border-[#1a2430]/10 bg-white/60 transition-colors hover:border-[#1a2430]/30 lg:hidden"
               >
                 <Menu className="h-4.5 w-4.5" aria-hidden="true" />
               </button>
@@ -188,12 +195,12 @@ export function LandingHeader() {
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Tutup menu navigasi"
-              className="flex h-9 w-9 items-center justify-center rounded border border-[#1a2430]/10 bg-white/70 transition-colors hover:border-[#1a2430]/30"
+              className="flex h-9 w-9 touch-manipulation items-center justify-center rounded border border-[#1a2430]/10 bg-white/70 transition-colors hover:border-[#1a2430]/30"
             >
               <X className="h-4.5 w-4.5" aria-hidden="true" />
             </button>
           </div>
-          <nav ref={navRef} aria-label="Navigasi seluler" className="grid flex-1 content-start gap-2 overflow-y-auto px-5 pt-4 pb-4">
+          <nav ref={navRef} aria-label="Navigasi seluler" className="grid flex-1 content-start gap-2 overflow-y-auto overscroll-contain px-5 pt-4 pb-4">
             {SITE_ROUTES.map((route: NavigationLink, index: number) => {
               const active = pathname === route.href;
               return (

@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ArticlePage } from '@/modules/site/components/network/network-listing';
-import { CleanBlueLoader } from '@/modules/site/components/network/templates/clean-blue/ui/loader';
+import RootLoading from '@/app/loading';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 export const maxDuration = 60;
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default function DetailPage({ params }: Props) {
   return (
-    <Suspense fallback={<CleanBlueLoader />}>
+    <Suspense fallback={<RootLoading />}>
       <DetailContent params={params} />
     </Suspense>
   );

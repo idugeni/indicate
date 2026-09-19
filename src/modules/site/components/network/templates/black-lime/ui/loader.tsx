@@ -1,27 +1,5 @@
-import { Newspaper } from 'lucide-react';
+import { TemplateRingLoader } from '@/modules/site/components/network/ui/ring-loader';
 
-/**
- * Loader global tenant Black Lime: dua cincin contra-rotasi di tengah
- * viewport (luar berputar kiri, dalam berputar kanan), tanpa teks.
- */
 export function BlackLimeLoader() {
-  return (
-    <div
-      role="status"
-      aria-busy="true"
-      aria-label="Memuat"
-      className="flex min-h-screen items-center justify-center bg-[#0a0c07]"
-    >
-      <div aria-hidden="true" className="relative flex h-28 w-28 items-center justify-center">
-        <span className="absolute inset-0 animate-[blacklime-spin-rev_1.6s_linear_infinite] rounded-full bg-[conic-gradient(from_0deg,transparent_15%,#c5f82a_50%,transparent_85%)]" />
-        <span className="absolute inset-2 rounded-full bg-[#0a0c07]" />
-        <span className="absolute inset-2 animate-[blacklime-spin_1.1s_linear_infinite] rounded-full bg-[conic-gradient(from_180deg,transparent_20%,#9ecb14_55%,transparent_80%)]" />
-        <span className="absolute inset-4 rounded-full bg-[#0a0c07]" />
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#c5f82a] text-[#0a0c07] shadow-lg shadow-[#c5f82a]/30">
-          <Newspaper className="h-5 w-5" />
-        </span>
-      </div>
-      <style>{`@keyframes blacklime-spin { to { transform: rotate(360deg); } } @keyframes blacklime-spin-rev { to { transform: rotate(-360deg); } }`}</style>
-    </div>
-  );
+  return <TemplateRingLoader background="#0a0c07" accent="#c5f82a" halo="#9ecb14" foreground="#0a0c07" />;
 }

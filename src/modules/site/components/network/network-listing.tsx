@@ -91,6 +91,16 @@ import { WarmEditorialSearch } from '@/modules/site/components/network/templates
 import { WarmEditorialReport } from '@/modules/site/components/network/templates/warm-editorial/pages/report-page';
 import { WarmEditorialNotFound } from '@/modules/site/components/network/templates/warm-editorial/pages/not-found-page';
 import { WarmEditorialChannel } from '@/modules/site/components/network/templates/warm-editorial/pages/channel-page';
+import { CleanBlueLoader } from '@/modules/site/components/network/templates/clean-blue/ui/loader';
+import { BlackLimeLoader } from '@/modules/site/components/network/templates/black-lime/ui/loader';
+import { DarkNavyLoader } from '@/modules/site/components/network/templates/dark-navy/ui/loader';
+import { GlassyBlueLoader } from '@/modules/site/components/network/templates/glassy-blue/ui/loader';
+import { GreenMinimalLoader } from '@/modules/site/components/network/templates/green-minimal/ui/loader';
+import { OrangeModernLoader } from '@/modules/site/components/network/templates/orange-modern/ui/loader';
+import { PurpleEditorialLoader } from '@/modules/site/components/network/templates/purple-editorial/ui/loader';
+import { RedEditorialLoader } from '@/modules/site/components/network/templates/red-editorial/ui/loader';
+import { SoftBlueLoader } from '@/modules/site/components/network/templates/soft-blue/ui/loader';
+import { WarmEditorialLoader } from '@/modules/site/components/network/templates/warm-editorial/ui/loader';
 
 export { TEMPLATE_IDS, type TemplateId } from '@/modules/site/components/network/templates/listing-shared';
 export type { ListingProps } from '@/modules/site/components/network/templates/clean-blue/pages/listing-page';
@@ -214,6 +224,35 @@ export function ListingPage({ site, title, description, path = '/', indexable = 
     case 'clean-blue':
     default:
       return <CleanBlueListing site={site} title={title} description={description} path={path} indexable={indexable} />;
+  }
+}
+
+/**
+ * Dispatcher loader tenant antar-template: titik yang sudah memegang template aktif merender cincin warnanya sendiri.
+ */
+export function TemplateLoader({ templateId }: { readonly templateId: unknown }) {
+  switch (normalizeTemplateId(templateId)) {
+    case 'black-lime':
+      return <BlackLimeLoader />;
+    case 'dark-navy':
+      return <DarkNavyLoader />;
+    case 'glassy-blue':
+      return <GlassyBlueLoader />;
+    case 'green-minimal':
+      return <GreenMinimalLoader />;
+    case 'orange-modern':
+      return <OrangeModernLoader />;
+    case 'purple-editorial':
+      return <PurpleEditorialLoader />;
+    case 'red-editorial':
+      return <RedEditorialLoader />;
+    case 'soft-blue':
+      return <SoftBlueLoader />;
+    case 'warm-editorial':
+      return <WarmEditorialLoader />;
+    case 'clean-blue':
+    default:
+      return <CleanBlueLoader />;
   }
 }
 

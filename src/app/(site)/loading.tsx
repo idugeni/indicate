@@ -1,5 +1,4 @@
 import { Skeleton } from '@/components/ui/skeleton';
-import { Spinner } from '@/components/ui/spinner';
 
 import { Container } from '@/modules/site/components/layout/content';
 
@@ -14,16 +13,10 @@ export default function SiteLoading() {
       role="status"
       aria-busy="true"
       aria-label="Memuat halaman layanan"
-      className="fixed inset-0 z-[100] overflow-y-auto bg-[#f4f2ec]"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-[#f4f2ec] [padding:env(safe-area-inset-top)_env(safe-area-inset-right)_env(safe-area-inset-bottom)_env(safe-area-inset-left)]"
     >
       <div className="flex min-h-full flex-col justify-center py-16">
         <Container className="space-y-10">
-          <div className="flex items-center gap-3" aria-hidden="true">
-            <Spinner role="presentation" aria-hidden="true" className="h-4 w-4 text-[#b88d3a]" />
-            <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-[#5f6b7a]">
-              Memuat halaman…
-            </p>
-          </div>
           <div className="grid gap-10 rounded-[3px] bg-[#1a2430] p-6 lg:grid-cols-12" aria-hidden="true">
             <div className="space-y-3 lg:col-span-7">
               <Skeleton className="h-3 w-24 bg-white/15" />

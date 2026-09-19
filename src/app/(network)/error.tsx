@@ -24,7 +24,7 @@ export default function NetworkErrorPage({ error, reset }: ErrorPageProps) {
     <main
       role="alert"
       aria-live="assertive"
-      className="flex min-h-svh items-center justify-center bg-[#f5f8fd] p-6"
+      className="flex min-h-screen supports-[min-height:100svh]:min-h-svh items-center justify-center bg-[#f5f8fd] [padding:max(1.5rem,env(safe-area-inset-top))_max(1.5rem,env(safe-area-inset-right))_max(1.5rem,env(safe-area-inset-bottom))_max(1.5rem,env(safe-area-inset-left))]"
     >
       <div className="mx-auto w-full max-w-lg rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200/70">
         <p className="m-0 inline-flex items-center gap-2 font-sans text-xs font-bold uppercase tracking-wider text-[#1a5fd0]">

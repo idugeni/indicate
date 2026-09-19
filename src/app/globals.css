@@ -223,6 +223,16 @@
     cursor: pointer;
   }
 
+  /* WebView: matikan tap-delay/double-tap-zoom di semua tombol agar gestur
+     pull-refresh tidak disintesis jadi klik hamburger, dan tahan scroll
+     di dalam drawer seluler agar tidak merembet jadi refresh halaman. */
+  button {
+    touch-action: manipulation;
+  }
+  nav[aria-label='Navigasi seluler'] {
+    overscroll-behavior: contain;
+  }
+
   /* Scrollbar ramping enterprise untuk web utama yang terang: gutter
      paper, thumb pasir yang menjadi brass saat hover. */
   html {

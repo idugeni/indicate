@@ -40,9 +40,10 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             -webkit-font-smoothing: antialiased;
             display: flex;
             min-height: 100vh;
+            min-height: 100svh;
             align-items: center;
             justify-content: center;
-            padding: 1.5rem;
+            padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
           }
           .error-card {
             width: 100%;

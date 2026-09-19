@@ -4,8 +4,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 /** Dashboard suspense skeleton mirroring the workspace frame so streaming swaps content without layout shift. */
 export default function DashboardLoading() {
   return (
-    <div className="flex min-h-screen animate-in bg-bg text-paper antialiased fade-in duration-200" aria-busy="true" aria-label="Memuat ruang redaksi">
-      <aside aria-hidden="true" className="sticky top-0 hidden h-screen w-64 flex-none flex-col border-r border-hairline bg-bg-raised/40 md:flex">
+    <div className="flex min-h-screen supports-[min-height:100svh]:min-h-svh animate-in bg-bg text-paper antialiased fade-in duration-200" aria-busy="true" aria-label="Memuat ruang redaksi">
+      <aside aria-hidden="true" className="sticky top-0 hidden h-screen supports-[height:100svh]:h-svh w-64 flex-none flex-col border-r border-hairline bg-bg-raised/40 md:flex">
         <div className="flex h-12 flex-none items-center gap-2 border-b border-hairline px-3">
           <Skeleton className="h-7 w-7 rounded-md bg-bg-raised-2" />
           <Skeleton className="h-4 w-24 bg-bg-raised-2" />

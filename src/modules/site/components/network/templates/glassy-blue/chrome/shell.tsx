@@ -20,7 +20,7 @@ export function GlassyBlueShell({
   readonly children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#edf4ff] font-sans text-slate-900 antialiased" data-template="glassy-blue">
+    <div className="min-h-screen supports-[min-height:100svh]:min-h-svh bg-[#edf4ff] font-sans text-slate-900 antialiased" data-template="glassy-blue">
       <a
         href="#main-content"
         className="fixed left-4 top-[-5rem] z-50 rounded-lg bg-slate-900 px-4 py-3 font-sans text-sm text-white transition-[top] duration-180 focus:top-4"

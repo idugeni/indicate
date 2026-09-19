@@ -36,8 +36,8 @@ export default async function SignInPage({
 }) {
   const year = await currentYear();
   return (
-    <div className="min-h-dvh bg-[#f4f2ec] font-sans text-[#1a2430] antialiased [color-scheme:light] lg:grid lg:h-dvh lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] lg:overflow-hidden">
-      <main className="flex flex-col justify-center px-5 py-10 sm:px-10 lg:h-dvh lg:overflow-y-auto lg:py-8">
+    <div className="min-h-screen supports-[min-height:100svh]:min-h-svh bg-[#f4f2ec] font-sans text-[#1a2430] antialiased [color-scheme:light] lg:grid lg:h-svh lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] lg:overflow-hidden">
+      <main className="flex flex-col justify-center px-5 py-10 sm:px-10 lg:h-svh lg:overflow-y-auto lg:py-8">
         <div className="mx-auto w-full max-w-md">
           <Link
             href="/"

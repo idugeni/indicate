@@ -1,6 +1,9 @@
-import { CleanBlueLoader } from '@/modules/site/components/network/templates/clean-blue/ui/loader';
+import RootLoading from '@/app/loading';
 
-/** Tenant public loader global: tanpa skeleton, tanpa teks. */
+/**
+ * Tenant fallback before site resolves: template is still unknown, so the
+ * platform-neutral loader renders instead of any template-owned identity.
+ */
 export default function PublicLoading() {
-  return <CleanBlueLoader />;
+  return <RootLoading />;
 }
