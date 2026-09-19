@@ -4,6 +4,10 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    # Senin 04:00 Asia/Jakarta, setelah dependabot mingguan (03:00),
+    # agar bit-rot eksternal ketahuan tanpa menunggu push.
+    - cron: '0 21 * * 0'
 
 permissions:
   contents: read
