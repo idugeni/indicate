@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
+import { Redis } from '@upstash/redis';
 import { sql } from 'drizzle-orm';
 
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { parsePageviewKey } from '@/modules/site/pageview-contract';
-import { Redis } from '@upstash/redis';
-import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
+import { withApiAccess } from '@/core/observability/api-access';
 
 /**
  * Compare the presented Authorization header against the cron secret.
@@ -44,9 +44,47 @@ interface FlushEntry {
   readonly count: number;
 }
 
-const MAX_FLUSH_KEYS = 5000;
+type FlushDelta = Map<string, FlushEntry & { count: number }>;
+
+const POP_PAGE_SCRIPT = `
+local out = {}
+for _, key in ipairs(KEYS) do
+  local val = redis.call('GETDEL', key)
+  if val then
+    out[#out + 1] = key
+    out[#out + 1] = val
+  end
+end
+return out
+`;
+
 const UPDATE_CHUNK_SIZE = 500;
-const DEL_CHUNK_SIZE = 500;
+
+export function collectPoppedDeltas(pairs: readonly string[]): {
+  readonly deltas: FlushDelta;
+  readonly invalidKeys: readonly string[];
+} {
+  const deltas: FlushDelta = new Map();
+  const invalidKeys: string[] = [];
+  for (let index = 0; index + 1 < pairs.length; index += 2) {
+    const key = pairs[index]!;
+    const count = Number(pairs[index + 1]);
+    const identity = parsePageviewKey(key);
+    if (identity === null || !Number.isFinite(count) || count <= 0) {
+      invalidKeys.push(key);
+      continue;
+    }
+    const { organizationId, siteId, articleSiteId } = identity;
+    const existing = deltas.get(key);
+    deltas.set(key, {
+      organizationId: existing?.organizationId ?? organizationId,
+      siteId: existing?.siteId ?? siteId,
+      articleSiteId: existing?.articleSiteId ?? articleSiteId,
+      count: (existing?.count ?? 0) + count,
+    });
+  }
+  return { deltas, invalidKeys };
+}
 
 async function handleGET(request: Request) {
   const requestId = resolveRequestId(request);
@@ -59,28 +97,26 @@ async function handleGET(request: Request) {
   {
     const redis = new Redis({ url: context.config.redis.url, token: context.config.redis.token });
     const prefix = `pv:${context.bootstrap.environment}:`;
-    const deltas = new Map<string, FlushEntry & { count: number }>();
+    const deltas: FlushDelta = new Map();
+    let invalid = 0;
     let cursor = 0;
     do {
       const [next, keys] = await redis.scan(cursor, { match: `${prefix}*`, count: 200 });
       cursor = Number(next);
       if (keys.length > 0) {
-        const counts = await redis.mget<number[]>(...keys);
-        keys.forEach((key, index) => {
-          const identity = parsePageviewKey(key);
-          const count = Number(counts[index] ?? 0);
-          if (identity === null || !Number.isFinite(count) || count <= 0) return;
-          const { organizationId, siteId, articleSiteId } = identity;
+        const popped = (await redis.eval(POP_PAGE_SCRIPT, keys, [])) as string[];
+        const outcome = collectPoppedDeltas(popped);
+        for (const [key, entry] of outcome.deltas) {
           const existing = deltas.get(key);
           deltas.set(key, {
-            organizationId: existing?.organizationId ?? organizationId,
-            siteId: existing?.siteId ?? siteId,
-            articleSiteId: existing?.articleSiteId ?? articleSiteId,
-            count: (existing?.count ?? 0) + count,
+            organizationId: existing?.organizationId ?? entry.organizationId,
+            siteId: existing?.siteId ?? entry.siteId,
+            articleSiteId: existing?.articleSiteId ?? entry.articleSiteId,
+            count: (existing?.count ?? 0) + entry.count,
           });
-        });
+        }
+        invalid += outcome.invalidKeys.length;
       }
-      if (deltas.size >= MAX_FLUSH_KEYS) break;
     } while (cursor !== 0);
     const byOrg = new Map<string, { key: string; entry: FlushEntry & { count: number } }[]>();
     for (const [key, entry] of deltas) {
@@ -145,24 +181,17 @@ async function handleGET(request: Request) {
         });
       } catch (error) {
         skipped += rows.length;
+        try {
+          const pipeline = redis.pipeline();
+          for (const { key, entry } of rows) pipeline.incrby(key, entry.count);
+          await pipeline.exec();
+        } catch {
+          auditFlushIssue(requestId, 'view-flush.org.restore-failed', { organizationId, rows: rows.length });
+        }
         auditFlushIssue(requestId, 'view-flush.org.skipped', { organizationId, rows: rows.length, error: error instanceof Error ? error.message : 'unknown' });
       }
     }
-    for (let index = 0; index < appliedKeys.length; index += DEL_CHUNK_SIZE) {
-      try {
-        await redis.del(...appliedKeys.slice(index, index + DEL_CHUNK_SIZE));
-      } catch {
-        /* key yang gagal di-del akan ter-flush ganda kecil pada proses berikut; hitungan tetap konvergen */
-      }
-    }
-    for (let index = 0; index < orphanKeys.length; index += DEL_CHUNK_SIZE) {
-      try {
-        await redis.del(...orphanKeys.slice(index, index + DEL_CHUNK_SIZE));
-      } catch {
-        /* yatim yang gagal di-del dibersihkan pada proses berikut */
-      }
-    }
-    return NextResponse.json({ requestId, keys: deltas.size, applied, skipped, orphans }, { headers: noStore });
+    return NextResponse.json({ requestId, keys: deltas.size + invalid, applied, skipped, orphans, invalid }, { headers: noStore });
   }
 }
 
