@@ -16,9 +16,33 @@ function stubBilling(state: string, invoices: unknown[]) {
   );
 }
 
+interface CapturedPost {
+  readonly url: string;
+  readonly body: { readonly action?: string; readonly payload?: Record<string, unknown> };
+}
+
+function stubBillingWithCapture(state: string, invoices: unknown[]) {
+  const posts: CapturedPost[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: string, init?: RequestInit) => {
+      const url = String(input);
+      if (init?.method === 'POST') {
+        posts.push({ url, body: JSON.parse(String(init.body)) as CapturedPost['body'] });
+        return { ok: true, json: async () => ({}) };
+      }
+      if (url.includes('scope=subscription-state')) return { ok: true, json: async () => ({ state }) };
+      if (url.includes('scope=invoices')) return { ok: true, json: async () => invoices };
+      return { ok: true, json: async () => ({}) };
+    }),
+  );
+  return posts;
+}
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 const FAKTUR = [
@@ -36,6 +60,24 @@ const FAKTUR = [
     voidReason: null,
     version: 1,
     createdAt: '2026-01-05T00:00:00.000Z',
+  },
+];
+
+const FAKTUR_VOID = [
+  {
+    id: 'inv-2',
+    organizationId: 'org-1',
+    number: 'IND-ORG-2601-0002-CD34',
+    amountIdr: 550000,
+    currency: 'IDR',
+    status: 'voided',
+    paidAt: '2026-01-06T00:00:00.000Z',
+    billingNote: 'Transfer bank',
+    paymentMethod: 'Transfer bank',
+    voidedAt: '2026-01-07T00:00:00.000Z',
+    voidReason: 'salah catat',
+    version: 2,
+    createdAt: '2026-01-06T00:00:00.000Z',
   },
 ];
 
@@ -77,5 +119,69 @@ describe('Panel langganan', () => {
     await screen.findByText(/Catat invoice \(pembayaran manual terkonfirmasi\)/);
     fireEvent.click(screen.getByRole('button', { name: 'Catat invoice' }));
     expect(await screen.findByText('Isi UUID organisasi dan nominal yang valid.')).toBeDefined();
+  });
+
+  it('mengunci nominal pada harga tunggal', async () => {
+    stubBilling('active', []);
+    render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
+    await screen.findByText(/Catat invoice \(pembayaran manual terkonfirmasi\)/);
+    const amount = screen.getByLabelText('Nominal (Rp)') as HTMLInputElement;
+    expect(amount.value).toBe('550000');
+    expect(amount.readOnly).toBe(true);
+    expect(screen.getByText('Rp550.000/bulan — harga tunggal')).toBeDefined();
+  });
+
+  it('mencatat invoice lewat envelope billing', async () => {
+    const posts = stubBillingWithCapture('active', []);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
+    await screen.findByText(/Catat invoice \(pembayaran manual terkonfirmasi\)/);
+    fireEvent.change(screen.getByPlaceholderText('UUID organisasi…'), { target: { value: 'org-2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Catat invoice' }));
+    expect(await screen.findByText('Invoice tercatat.')).toBeDefined();
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('Rp550.000'));
+    const post = posts.find((call) => call.url === '/api/dashboard/billing');
+    expect(post?.body.action).toBe('invoice.create');
+    expect(post?.body.payload).toMatchObject({ organizationId: 'org-2', amountIdr: 550000 });
+    expect(posts.some((call) => call.url === '/api/dashboard/integrations')).toBe(false);
+  });
+
+  it('membatalkan invoice lewat envelope billing', async () => {
+    const posts = stubBillingWithCapture('active', FAKTUR);
+    vi.spyOn(window, 'prompt').mockReturnValue('salah catat');
+    render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Void invoice' }));
+    expect(await screen.findByText(/di-void/)).toBeDefined();
+    const post = posts.find((call) => call.url === '/api/dashboard/billing');
+    expect(post?.body.action).toBe('invoice.void');
+    expect(post?.body.payload).toMatchObject({ invoiceId: 'inv-1', expectedVersion: 1, reason: 'salah catat' });
+  });
+
+  it('menerbitkan ulang invoice void lewat envelope billing', async () => {
+    const posts = stubBillingWithCapture('active', FAKTUR_VOID);
+    vi.spyOn(window, 'prompt').mockReturnValue('koreksi nomor');
+    render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Terbitkan ulang' }));
+    expect(await screen.findByText(/terbit/)).toBeDefined();
+    const post = posts.find((call) => call.url === '/api/dashboard/billing');
+    expect(post?.body.action).toBe('invoice.reissue');
+    expect(post?.body.payload).toMatchObject({ invoiceId: 'inv-2', expectedVersion: 2, reason: 'koreksi nomor' });
+  });
+
+  it('menampilkan unduh pada faktur void untuk platform', async () => {
+    stubBilling('active', FAKTUR_VOID);
+    render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
+    expect(await screen.findByText(/IND-ORG-2601-0002-CD34/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Unduh' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Terbitkan ulang' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Void invoice' })).toBeNull();
+  });
+
+  it('tetap menampilkan unduh pada faktur void untuk tenant', async () => {
+    stubBilling('active', FAKTUR_VOID);
+    render(<BillingPanel organizationId="org-1" permissions={[]} />);
+    expect(await screen.findByText(/IND-ORG-2601-0002-CD34/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Unduh' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Terbitkan ulang' })).toBeNull();
   });
 });

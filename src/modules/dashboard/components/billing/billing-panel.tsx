@@ -59,7 +59,7 @@ export function BillingPanel({
   const [manualOrgId, setManualOrgId] = useState('');
   const [manualStatus, setManualStatus] = useState('active');
   const [invoiceOrgId, setInvoiceOrgId] = useState('');
-  const [invoiceAmount, setInvoiceAmount] = useState('');
+  const [invoiceAmount, setInvoiceAmount] = useState('550000');
   const [invoicePaidAt, setInvoicePaidAt] = useState('');
   const [invoiceNote, setInvoiceNote] = useState('');
   const [invoiceMethod, setInvoiceMethod] = useState('');
@@ -91,6 +91,18 @@ export function BillingPanel({
   useEffect(() => {
     void Promise.resolve().then(() => reload());
   }, [reload]);
+
+  const postBilling = useCallback(
+    async (action: string, payload: Record<string, unknown>) => {
+      const body = (await api('/api/dashboard/billing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, payload }),
+      })) as unknown;
+      return body;
+    },
+    [],
+  );
 
   const postIntegrations = useCallback(
     async (action: string, payload: Record<string, unknown>) => {
@@ -154,7 +166,7 @@ export function BillingPanel({
     setError(null);
     setNotice(null);
     try {
-      await postIntegrations('invoice.create', {
+      await postBilling('invoice.create', {
         organizationId: orgId,
         amountIdr: amount,
         paidAt,
@@ -163,7 +175,7 @@ export function BillingPanel({
       });
       setNotice('Invoice tercatat.');
       setInvoiceOrgId('');
-      setInvoiceAmount('');
+      setInvoiceAmount('550000');
       setInvoicePaidAt('');
       setInvoiceNote('');
       setInvoiceMethod('');
@@ -182,7 +194,7 @@ export function BillingPanel({
     setError(null);
     setNotice(null);
     try {
-      await postIntegrations('invoice.void', {
+      await postBilling('invoice.void', {
         invoiceId: invoice.id,
         expectedVersion: invoice.version,
         reason: reason.trim(),
@@ -191,6 +203,27 @@ export function BillingPanel({
       await reload();
     } catch {
       setError('Void invoice gagal.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reissueInvoice = async (invoice: InvoiceRow) => {
+    const reason = window.prompt(`Alasan terbitkan ulang invoice ${invoice.number}:`);
+    if (reason === null || reason.trim() === '') return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await postBilling('invoice.reissue', {
+        invoiceId: invoice.id,
+        expectedVersion: invoice.version,
+        reason: reason.trim(),
+      });
+      setNotice(`Invoice pengganti ${invoice.number} terbit.`);
+      await reload();
+    } catch {
+      setError('Terbitkan ulang invoice gagal.');
     } finally {
       setBusy(false);
     }
@@ -253,7 +286,24 @@ export function BillingPanel({
                     Void invoice
                   </button>
                 </div>
-              ) : !isPlatform ? (
+              ) : isPlatform ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => window.open(`/api/dashboard/billing/invoice/${invoice.id}?organizationId=${encodeURIComponent(invoice.organizationId)}`, '_blank', 'noopener')}
+                    disabled={busy}
+                    className="h-8 border border-hairline-strong px-3 font-sans text-xs text-paper-dim hover:text-paper disabled:opacity-50"
+                  >
+                    Unduh
+                  </button>
+                  <button
+                    type="button" onClick={() => void reissueInvoice(invoice)} disabled={busy}
+                    className="h-8 border border-brass/60 px-3 font-sans text-xs text-paper-dim hover:text-paper disabled:opacity-50"
+                  >
+                    Terbitkan ulang
+                  </button>
+                </div>
+              ) : (
                 <div className="mt-2">
                   <button
                     type="button"
@@ -264,7 +314,7 @@ export function BillingPanel({
                     Unduh
                   </button>
                 </div>
-              ) : null}
+              )}
             </li>
           ))}
           {invoices.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada faktur.</li> : null}
@@ -332,10 +382,11 @@ export function BillingPanel({
                 Nominal (Rp)
               </label>
               <input
-                id="invoice-amount" value={invoiceAmount} onChange={(event) => setInvoiceAmount(event.target.value)} disabled={busy}
+                id="invoice-amount" value={invoiceAmount} readOnly disabled={busy}
                 placeholder="550000" inputMode="numeric"
                 className="h-9 border border-hairline-strong bg-bg px-3 font-mono text-xs text-paper"
               />
+              <p className="m-0 font-sans text-xs text-paper-faint">Rp550.000/bulan — harga tunggal</p>
             </div>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="invoice-paid-at" className="font-sans text-xs font-medium text-paper-dim">

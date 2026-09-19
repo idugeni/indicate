@@ -13,9 +13,11 @@ export const inviteRedeemSchema = z.object({
   tokenHash: z.string().length(64),
 }).strict();
 
+export const SINGLE_INVOICE_AMOUNT_IDR = 550_000;
+
 export const invoiceCreateSchema = z.object({
   organizationId: id,
-  amountIdr: z.number().int().min(0).max(999_999_999_999),
+  amountIdr: z.literal(SINGLE_INVOICE_AMOUNT_IDR),
   paidAt: z.iso.datetime(),
   billingNote: z.string().trim().max(500).nullish(),
   paymentMethod: z.string().trim().min(1).max(40).nullish(),
@@ -25,4 +27,10 @@ export const invoiceVoidSchema = z.object({
   invoiceId: id,
   expectedVersion: z.int().positive(),
   reason: z.string().trim().min(1).max(500),
+}).strict();
+
+export const invoiceReissueSchema = z.object({
+  invoiceId: id,
+  expectedVersion: z.int().positive(),
+  reason: z.string().trim().min(1).max(500).nullish(),
 }).strict();

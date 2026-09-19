@@ -17,7 +17,7 @@ import {
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
 const DESCRIPTION =
-  'Tidak ada daftar harga paket: hubungi kami, sepakati biaya di depan, dan organisasi Anda diaktifkan maksimal 1x24 jam — berjalan terus tanpa kedaluwarsa.';
+  'Satu harga pasti Rp550.000 per bulan, sudah termasuk PPN: hubungi kami, bayar manual via transfer bank, dan organisasi Anda diaktifkan maksimal 1x24 jam — berjalan terus tanpa kedaluwarsa.';
 
 export function generateMetadata(): Metadata {
   return siteMetadata('Harga', DESCRIPTION, '/pricing');
@@ -28,9 +28,9 @@ export default async function HargaPage() {
   return (
     <PublicPage
       eyebrow="Harga"
-      title="Satu harga yang disepakati, bukan katalog paket"
+      title="Satu harga pasti: Rp550.000 per bulan"
       description={DESCRIPTION}
-      meta={['Aktif maks. 1x24 jam', 'Berjalan terus', 'Tanpa biaya tersembunyi']}
+      meta={['Sudah termasuk PPN', 'Berjalan terus', 'Tanpa biaya tersembunyi']}
       trail={[{ href: '/', label: 'Beranda' }]}
       actions={
         <>
@@ -39,9 +39,9 @@ export default async function HargaPage() {
       }
     >
       <Section title="Cara membeli" description="Tiga langkah, tanpa formulir rumit." eyebrow="Alur">
-        <WhatsAppCard message="Halo Indicate, saya ingin bertanya soal biaya." />
+        <WhatsAppCard message="Halo Indicate, saya ingin berlangganan Rp550.000 per bulan." />
       </Section>
-      <Section title="Sebelum menghubungi" description="Siapkan info ini agar obrolan cepat menemukan angka." eyebrow="Persiapan">
+      <Section title="Sebelum menghubungi" description="Siapkan info ini agar aktivasi berjalan cepat." eyebrow="Persiapan">
         <Prose>
           <ul className="grid list-disc gap-2 pl-5 sm:grid-cols-2">
             {CONTACT_CHECKLIST.map((item) => <li key={item}>{item}</li>)}

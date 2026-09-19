@@ -110,6 +110,7 @@ async function handlePOST(request: Request) {
         'invite.redeem': (payload) => service.redeemInvitation(session.actor, payload),
         'invoice.create': (payload) => service.createInvoice(session.actor, payload),
         'invoice.void': (payload) => service.voidInvoice(session.actor, payload),
+        'invoice.reissue': (payload) => service.reissueInvoice(session.actor, payload),
       };
       const action = actions[parsed.data.action];
       if (action === undefined) return response(createPublicError('INVALID_INPUT', 'Unknown billing command.', requestId));

@@ -3,6 +3,11 @@
 import Script from 'next/script';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { SearchList, StatusDot } from '@/app/tg/app/components/data-list';
+import { MatrixPanel } from '@/app/tg/app/components/matrix-panel';
+import { CardsSkeleton, EmptyState, ListSkeleton, SectionError } from '@/app/tg/app/components/section-states';
+import { useTelegram } from '@/app/tg/app/hooks/use-telegram';
+import { miniAppPalette, type MiniAppPalette } from '@/app/tg/app/theme';
 
 interface TelegramUser {
   readonly id: number;
@@ -77,18 +82,48 @@ interface JobDetail {
   readonly successfulCount: number | null;
 }
 
+interface SubscriptionState {
+  readonly state: string;
+  readonly version: number | null;
+}
+
+interface InvoiceSummary {
+  readonly id: string;
+  readonly number: string;
+  readonly amountIdr: number;
+  readonly status: string;
+  readonly paidAt: string;
+  readonly createdAt: string;
+  readonly paymentMethod: string;
+}
+
+interface InvoiceDetailRecord {
+  readonly id: string;
+  readonly number: string;
+  readonly amountIdr: number;
+  readonly status: string;
+  readonly paidAt: string;
+  readonly createdAt: string;
+  readonly paymentMethod: string;
+  readonly billingNote: string | null;
+  readonly voidedAt: string | null;
+  readonly voidReason: string | null;
+}
+
 type Tab = 'home' | 'articles' | 'jobs' | 'org';
 
-const dark: Record<string, string> = {
-  bg: '#141126',
-  card: '#1e1a33',
-  line: '#2e2752',
-  text: '#f2eefc',
-  dim: '#a89fd1',
-  accent: '#c9a227',
-  danger: '#e5484d',
-  ok: '#3fb68b',
-};
+function themeVars(theme: MiniAppPalette): CSSProperties {
+  return {
+    '--tg-bg': theme.bg,
+    '--tg-card': theme.card,
+    '--tg-line': theme.line,
+    '--tg-text': theme.text,
+    '--tg-dim': theme.dim,
+    '--tg-accent': theme.accent,
+    '--tg-danger': theme.danger,
+    '--tg-ok': theme.ok,
+  } as CSSProperties;
+}
 
 async function post<T>(path: string, payload: Record<string, unknown>): Promise<T> {
   const response = await fetch(path, {
@@ -109,78 +144,88 @@ function friendlyError(error: unknown): string {
   return 'Gagal memuat. Ketuk Muat ulang.';
 }
 
+function formatRp(amount: number): string {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
+}
+
+function formatDate(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export function MiniAppClient() {
-  const [scriptReady, setScriptReady] = useState(false);
-  const [scriptFailed, setScriptFailed] = useState(false);
+  const tg = useTelegram();
+  const theme = miniAppPalette(tg.colorScheme);
+  const vars = themeVars(theme);
   const [denied, setDenied] = useState(false);
   const [orgs, setOrgs] = useState<readonly Org[]>([]);
   const [orgId, setOrgId] = useState<string | null>(null);
+  const [sessionDone, setSessionDone] = useState(false);
   const [tab, setTab] = useState<Tab>('home');
 
-  const webApp = scriptReady ? (window.Telegram?.WebApp ?? null) : null;
-  const initData = webApp === null || webApp.initData === '' ? null : webApp.initData;
+  const tgRef = useRef(tg);
+  useEffect(() => {
+    tgRef.current = tg;
+  });
+
+  const initData = tg.ready && typeof window !== 'undefined' ? (window.Telegram?.WebApp?.initData ?? null) : null;
+  const resolvedInitData = initData === null || initData === '' ? null : initData;
 
   useEffect(() => {
-    webApp?.ready();
-    webApp?.expand();
-  }, [webApp]);
-
-  useEffect(() => {
-    let tries = 0;
-    const timer = setInterval(() => {
-      tries += 1;
-      if (window.Telegram?.WebApp !== undefined) {
-        clearInterval(timer);
-        setScriptReady(true);
-      } else if (tries >= 40) {
-        clearInterval(timer);
-        setScriptFailed(true);
-      }
-    }, 250);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    if (initData === null) return;
+    if (resolvedInitData === null) return;
     let cancelled = false;
     (async () => {
       try {
-        const session = await post<{ organizations: readonly Org[] }>('/api/tg/app/session', { initData });
+        const session = await post<{ organizations: readonly Org[] }>('/api/tg/app/session', { initData: resolvedInitData });
         if (cancelled) return;
         setOrgs(session.organizations);
-        const saved = window.localStorage.getItem('tg-org');
+        const saved = tgRef.current.loadOrg();
         const pick = session.organizations.some((org) => org.id === saved) ? (saved as string) : session.organizations[0]?.id ?? null;
         setOrgId(pick);
       } catch {
         if (!cancelled) setDenied(true);
+      } finally {
+        if (!cancelled) setSessionDone(true);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [initData]);
+  }, [resolvedInitData]);
 
   const switchOrg = useCallback((id: string) => {
-    window.localStorage.setItem('tg-org', id);
+    tg.saveOrg(id);
+    tg.haptic('medium');
     setOrgId(id);
     setTab('home');
-  }, []);
+  }, [tg]);
+
+  const reloadOrgs = useCallback(async () => {
+    if (resolvedInitData === null) return;
+    try {
+      const session = await post<{ organizations: readonly Org[] }>('/api/tg/app/session', { initData: resolvedInitData });
+      setOrgs(session.organizations);
+    } catch {
+      tg.haptic('error');
+    }
+  }, [resolvedInitData, tg]);
 
   const call = useCallback(
     async <T,>(path: string, payload: Record<string, unknown>): Promise<T> => {
-      if (initData === null || orgId === null) throw new Error('Belum siap.');
-      return post<T>(path, { ...payload, initData, organizationId: orgId });
+      if (resolvedInitData === null || orgId === null) throw new Error('Belum siap.');
+      return post<T>(path, { ...payload, initData: resolvedInitData, organizationId: orgId });
     },
-    [initData, orgId],
+    [resolvedInitData, orgId],
   );
 
   const activeOrg = useMemo(() => orgs.find((org) => org.id === orgId) ?? null, [orgs, orgId]);
 
-  if (!scriptReady)
+  if (!tg.ready)
     return (
-      <main style={center}>
-        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" onLoad={() => setScriptReady(true)} onError={() => setScriptFailed(true)} />
-        {scriptFailed ? (
+      <main style={{ ...center, ...vars }}>
+        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" />
+        {tg.failed ? (
           <>
             <p>Gagal memuat Telegram. Periksa koneksi lalu coba lagi.</p>
             <button type="button" style={btnAcc} onClick={() => window.location.reload()}>
@@ -188,40 +233,57 @@ export function MiniAppClient() {
             </button>
           </>
         ) : (
-          'Memuat…'
+          <div style={{ width: '100%' }}>
+            <ListSkeleton rows={3} theme={theme} />
+          </div>
         )}
       </main>
     );
-  if (initData === null) {
+  if (resolvedInitData === null) {
     return (
-      <main style={center}>
+      <main style={{ ...center, ...vars }}>
         <p>Mini App ini hanya terbuka dari Telegram dan hanya untuk pemilik.</p>
       </main>
     );
   }
-  if (denied || (orgs.length === 0 && orgId === null)) {
+  if (denied || !sessionDone || orgId === null) {
     return (
-      <main style={center}>
-        <p>{denied ? 'Akses ditolak.' : 'Memuat organisasi…'}</p>
+      <main style={{ ...center, ...vars }}>
+        {denied ? (
+          <p>Akses ditolak.</p>
+        ) : !sessionDone || orgId === null ? (
+          <div style={{ width: '100%' }}>
+            <ListSkeleton rows={3} theme={theme} />
+          </div>
+        ) : (
+          <EmptyState title="Tidak ada organisasi" hint="Minta akses pemilik ke Dashboard." theme={theme} />
+        )}
       </main>
     );
   }
   return (
-    <main style={shell}>
-      <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" onLoad={() => setScriptReady(true)} />
+    <main style={{ ...shell, ...vars }}>
       <header style={head}>
         <div>
           <div style={orgName}>{activeOrg?.name ?? '…'}</div>
           <div style={dim}>{activeOrg === null ? '…' : activeOrg.subscription === null ? 'Tanpa langganan' : `Langganan: ${activeOrg.subscription.status}`}</div>
         </div>
       </header>
-      {tab === 'home' && <Home call={call} go={setTab} />}
-      {tab === 'articles' && <Articles call={call} />}
-      {tab === 'jobs' && <Jobs call={call} />}
-      {tab === 'org' && <Orgs orgs={orgs} activeId={orgId} onPick={switchOrg} />}
+      {tab === 'home' && <Home call={call} go={setTab} theme={theme} />}
+      {tab === 'articles' && <Articles call={call} theme={theme} tg={tg} />}
+      {tab === 'jobs' && <Jobs call={call} theme={theme} tg={tg} />}
+      {tab === 'org' && <Orgs orgs={orgs} activeId={orgId} onPick={switchOrg} call={call} theme={theme} tg={tg} onChanged={() => void reloadOrgs()} />}
       <nav style={nav}>
         {(['home', 'articles', 'jobs', 'org'] as const).map((key) => (
-          <button key={key} type="button" style={tab === key ? tabActive : tabBtn} onClick={() => setTab(key)}>
+          <button
+            key={key}
+            type="button"
+            style={tab === key ? tabActive : tabBtn}
+            onClick={() => {
+              tg.haptic('light');
+              setTab(key);
+            }}
+          >
             {key === 'home' ? 'Beranda' : key === 'articles' ? 'Artikel' : key === 'jobs' ? 'Tayang' : 'Org'}
           </button>
         ))}
@@ -231,6 +293,7 @@ export function MiniAppClient() {
 }
 
 type Call = <T>(path: string, payload: Record<string, unknown>) => Promise<T>;
+type TelegramApi = ReturnType<typeof useTelegram>;
 
 function useLoad<T>(key: string, loader: () => Promise<T>): { data: T | null; error: string | null; reload: () => void } {
   const [state, setState] = useState<{ data: T | null; error: string | null }>({ data: null, error: null });
@@ -255,7 +318,7 @@ function useLoad<T>(key: string, loader: () => Promise<T>): { data: T | null; er
   return { data: state.data, error: state.error, reload: () => setTick((value) => value + 1) };
 }
 
-function Home({ call, go }: { call: Call; go: (tab: Tab) => void }) {
+function Home({ call, go, theme }: { call: Call; go: (tab: Tab) => void; theme: MiniAppPalette }) {
   const articles = useLoad('articles', () => call<{ articles: readonly ArticleSummary[] }>('/api/tg/app/articles', {}));
   const jobs = useLoad('jobs', () => call<{ jobs: readonly JobSummary[] }>('/api/tg/app/jobs', {}));
   const sites = useLoad('sites', () => call<{ sites: readonly Site[] }>('/api/tg/app/sites', {}));
@@ -269,9 +332,24 @@ function Home({ call, go }: { call: Call; go: (tab: Tab) => void }) {
     { label: 'Job', value: jobList.length, tab: 'jobs' },
     { label: 'Job gagal', value: failed, tab: 'jobs' },
   ];
+  const loading =
+    articles.data === null && jobs.data === null && sites.data === null &&
+    articles.error === null && jobs.error === null && sites.error === null;
+  const error = articles.error ?? jobs.error ?? sites.error;
+  if (loading) return <CardsSkeleton theme={theme} />;
   return (
     <section>
-      {(articles.error !== null || jobs.error !== null || sites.error !== null) && <p style={err}>{articles.error ?? jobs.error ?? sites.error}</p>}
+      {error !== null && (
+        <SectionError
+          message={error}
+          onRetry={() => {
+            articles.reload();
+            jobs.reload();
+            sites.reload();
+          }}
+          theme={theme}
+        />
+      )}
       <div style={grid}>
         {cards.map((card) => (
           <button key={card.label} type="button" style={cardBtn} onClick={() => go(card.tab)}>
@@ -284,56 +362,99 @@ function Home({ call, go }: { call: Call; go: (tab: Tab) => void }) {
   );
 }
 
-function Articles({ call }: { call: Call }) {
-  const [query, setQuery] = useState('');
+function Articles({ call, theme, tg }: { call: Call; theme: MiniAppPalette; tg: TelegramApi }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const loaded = useLoad('articles', () => call<{ articles: readonly ArticleSummary[] }>('/api/tg/app/articles', {}));
-  const list = (loaded.data?.articles ?? []).filter((article) => article.title.toLowerCase().includes(query.toLowerCase()));
+  useEffect(() => {
+    if (publishing) {
+      tg.showBack(() => {
+        tg.haptic('light');
+        setPublishing(false);
+      });
+      return () => tg.hideBack();
+    }
+    if (editing) {
+      tg.showBack(() => {
+        tg.haptic('light');
+        setEditing(false);
+      });
+      return () => tg.hideBack();
+    }
+    if (selectedId !== null) {
+      tg.showBack(() => {
+        tg.haptic('light');
+        setSelectedId(null);
+      });
+      return () => tg.hideBack();
+    }
+    tg.hideBack();
+    return undefined;
+  }, [publishing, editing, selectedId, tg]);
+  const statusOptions = useMemo(
+    () => [...new Set((loaded.data?.articles ?? []).map((article) => article.status))].map((status) => ({ value: status, label: status })),
+    [loaded.data],
+  );
   return (
     <section>
-      <div style={row}>
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari judul…" style={input} />
-        <button
-          type="button"
-          style={btnAcc}
-          onClick={() => {
-            setSelectedId(null);
-            setEditing(true);
-          }}
-        >
-          ＋ Baru
-        </button>
-      </div>
-      {loaded.error !== null && <p style={err}>{loaded.error}</p>}
-      {list.map((article) => (
-        <button
-          key={article.id}
-          type="button"
-          style={rowBtn}
-          onClick={() => {
-            setSelectedId(article.id);
-            setEditing(false);
-          }}
-        >
-          <div style={rowTitle}>{article.title}</div>
-          <div style={dim}>{article.status}</div>
-        </button>
-      ))}
-      {editing && <ArticleEditor call={call} articleId={selectedId} done={() => { setEditing(false); loaded.reload(); }} />}
-      {!editing && selectedId !== null && <ArticleDetail call={call} articleId={selectedId} refresh={() => loaded.reload()} />}
+      <button
+        type="button"
+        style={{ ...btnAcc, width: '100%' }}
+        onClick={() => {
+          setSelectedId(null);
+          setEditing(true);
+        }}
+      >
+        ＋ Baru
+      </button>
+      {loaded.data === null && loaded.error === null ? (
+        <ListSkeleton rows={5} theme={theme} />
+      ) : (
+        <>
+          {loaded.error !== null && <SectionError message={loaded.error} onRetry={loaded.reload} theme={theme} />}
+          <SearchList
+            items={loaded.data?.articles ?? []}
+            keyOf={(article) => article.id}
+            renderItem={(article) => (
+              <button
+                type="button"
+                style={rowBtn}
+                onClick={() => {
+                  setSelectedId(article.id);
+                  setEditing(false);
+                }}
+              >
+                <div style={rowTitle}>{article.title}</div>
+                <StatusDot value={article.status} theme={theme} />
+              </button>
+            )}
+            searchKeys={(article) => article.title}
+            placeholder="Cari judul…"
+            emptyTitle="Belum ada artikel"
+            emptyHint="Buat artikel pertama dari tombol di atas."
+            statusFilter={{ label: 'Status', options: statusOptions, getValue: (article) => article.status }}
+            theme={theme}
+          />
+        </>
+      )}
+      {editing && <ArticleEditor call={call} articleId={selectedId} theme={theme} tg={tg} done={() => { setEditing(false); loaded.reload(); }} />}
+      {!editing && selectedId !== null && <ArticleDetail call={call} articleId={selectedId} refresh={() => loaded.reload()} theme={theme} tg={tg} publishing={publishing} setPublishing={setPublishing} />}
     </section>
   );
 }
 
-function ArticleEditor({ call, articleId, done }: { call: Call; articleId: string | null; done: () => void }) {
+function ArticleEditor({ call, articleId, theme, tg, done }: { call: Call; articleId: string | null; theme: MiniAppPalette; tg: TelegramApi; done: () => void }) {
   const detail = useLoad(articleId === null ? 'new' : `edit-${articleId}`, async () => {
     if (articleId === null) return null;
     return call<{ article: ArticleDetail }>('/api/tg/app/article', { articleId });
   });
   const sites = useLoad('sites', () => call<{ regions: readonly Region[]; sites: readonly Site[] }>('/api/tg/app/sites', {}));
   const regions = (sites.data?.regions ?? []).filter((region) => region.status === 'active');
-  if (articleId !== null && detail.data === null) return <p style={dim}>{detail.error ?? 'Memuat…'}</p>;
+  if (articleId !== null && detail.data === null) {
+    if (detail.error !== null) return <SectionError message={detail.error} onRetry={detail.reload} theme={theme} />;
+    return <ListSkeleton rows={4} theme={theme} />;
+  }
   return (
     <ArticleForm
       key={articleId ?? 'new'}
@@ -342,16 +463,18 @@ function ArticleEditor({ call, articleId, done }: { call: Call; articleId: strin
       initial={detail.data?.article ?? null}
       regions={regions}
       done={done}
+      tg={tg}
     />
   );
 }
 
-function ArticleForm({ call, articleId, initial, regions, done }: {
+function ArticleForm({ call, articleId, initial, regions, done, tg }: {
   call: Call;
   articleId: string | null;
   initial: ArticleDetail | null;
   regions: readonly Region[];
   done: () => void;
+  tg: TelegramApi;
 }) {
   const [regionId, setRegionId] = useState(initial?.regionId ?? '');
   const [title, setTitle] = useState(initial?.title ?? '');
@@ -370,8 +493,10 @@ function ArticleForm({ call, articleId, initial, regions, done }: {
           ? { regionId, title, body, source, slug: finalSlug, status: 'draft' }
           : { id: articleId, regionId, title, body, source, slug },
       });
+      tg.haptic('success');
       done();
     } catch (failure) {
+      tg.haptic('error');
       setError(friendlyError(failure));
     } finally {
       setSaving(false);
@@ -407,10 +532,9 @@ function ArticleForm({ call, articleId, initial, regions, done }: {
   );
 }
 
-function ArticleDetail({ call, articleId, refresh }: { call: Call; articleId: string; refresh: () => void }) {
+function ArticleDetail({ call, articleId, refresh, theme, tg, publishing, setPublishing }: { call: Call; articleId: string; refresh: () => void; theme: MiniAppPalette; tg: TelegramApi; publishing: boolean; setPublishing: (open: boolean) => void }) {
   const detail = useLoad(`detail-${articleId}`, () => call<{ article: ArticleDetail }>('/api/tg/app/article', { articleId }));
   const sites = useLoad('sites', () => call<{ sites: readonly Site[]; regions: readonly Region[] }>('/api/tg/app/sites', {}));
-  const [publishing, setPublishing] = useState(false);
   const [checked, setChecked] = useState<readonly string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const article = detail.data?.article ?? null;
@@ -420,12 +544,17 @@ function ArticleDetail({ call, articleId, refresh }: { call: Call; articleId: st
     try {
       await call(path, { articleId, ...payload });
       setNotice(ok);
+      tg.haptic('success');
       refresh();
     } catch (failure) {
       setNotice(friendlyError(failure));
+      tg.haptic('error');
     }
   };
-  if (detail.data === null) return <p style={dim}>{detail.error ?? 'Memuat…'}</p>;
+  if (detail.data === null) {
+    if (detail.error !== null) return <SectionError message={detail.error} onRetry={detail.reload} theme={theme} />;
+    return <ListSkeleton rows={4} theme={theme} />;
+  }
   return (
     <div style={card}>
       <h3 style={h3}>{article?.title}</h3>
@@ -460,13 +589,15 @@ function ArticleDetail({ call, articleId, refresh }: { call: Call; articleId: st
             setNotice(message);
             refresh();
           }}
+          onClose={() => setPublishing(false)}
+          tg={tg}
         />
       )}
     </div>
   );
 }
 
-function PublishSheet({ call, articleId, sites, hostnames, checked, onToggle, done }: {
+function PublishSheet({ call, articleId, sites, hostnames, checked, onToggle, done, onClose, tg }: {
   call: Call;
   articleId: string;
   sites: readonly Site[];
@@ -474,6 +605,8 @@ function PublishSheet({ call, articleId, sites, hostnames, checked, onToggle, do
   checked: readonly string[];
   onToggle: (id: string) => void;
   done: (message: string) => void;
+  onClose: () => void;
+  tg: TelegramApi;
 }) {
   const [busy, setBusy] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
@@ -485,8 +618,10 @@ function PublishSheet({ call, articleId, sites, hostnames, checked, onToggle, do
     setBusy(true);
     try {
       await call('/api/tg/app/publish', { articleId, siteIds: [...siteIds] });
+      tg.haptic('success');
       done('Publikasi antre diproses.');
     } catch (failure) {
+      tg.haptic('error');
       done(friendlyError(failure));
     } finally {
       setBusy(false);
@@ -526,30 +661,81 @@ function PublishSheet({ call, articleId, sites, hostnames, checked, onToggle, do
         <button type="button" style={btn} disabled={busy} onClick={() => void suggest()}>
           Saran
         </button>
+        <button type="button" style={btn} disabled={busy} onClick={onClose}>
+          Tutup
+        </button>
       </div>
       {suggestion !== null && <pre style={pre}>{suggestion}</pre>}
     </div>
   );
 }
 
-function Jobs({ call }: { call: Call }) {
+function Jobs({ call, theme, tg }: { call: Call; theme: MiniAppPalette; tg: TelegramApi }) {
   const loaded = useLoad('jobs', () => call<{ jobs: readonly JobSummary[] }>('/api/tg/app/jobs', {}));
+  const articles = useLoad('articles', () => call<{ articles: readonly ArticleSummary[] }>('/api/tg/app/articles', {}));
+  const sites = useLoad('sites', () => call<{ sites: readonly Site[] }>('/api/tg/app/sites', {}));
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (selectedId === null) {
+      tg.hideBack();
+      return undefined;
+    }
+    tg.showBack(() => {
+      tg.haptic('light');
+      setSelectedId(null);
+    });
+    return () => tg.hideBack();
+  }, [selectedId, tg]);
+  const statusOptions = useMemo(
+    () => [...new Set((loaded.data?.jobs ?? []).map((job) => job.state))].map((state) => ({ value: state, label: state })),
+    [loaded.data],
+  );
+  const selectArticle = (articleId: string) => {
+    const title = articles.data?.articles.find((article) => article.id === articleId)?.title;
+    if (title === undefined) return;
+    const job = [...(loaded.data?.jobs ?? [])].reverse().find((item) => item.articleTitle === title);
+    if (job !== undefined) setSelectedId(job.id);
+  };
   return (
     <section>
-      {loaded.error !== null && <p style={err}>{loaded.error}</p>}
-      {(loaded.data?.jobs ?? []).map((job) => (
-        <button key={job.id} type="button" style={rowBtn} onClick={() => setSelectedId(job.id)}>
-          <div style={rowTitle}>{job.articleTitle}</div>
-          <div style={dim}>{job.state}</div>
-        </button>
-      ))}
-      {selectedId !== null && <JobDetail call={call} jobId={selectedId} refresh={() => loaded.reload()} />}
+      {loaded.data === null && loaded.error === null ? (
+        <ListSkeleton rows={5} theme={theme} />
+      ) : (
+        <>
+          {loaded.error !== null && <SectionError message={loaded.error} onRetry={loaded.reload} theme={theme} />}
+          {articles.data !== null && sites.data !== null && loaded.data !== null && (
+            <MatrixPanel
+              call={call}
+              articles={articles.data.articles}
+              sites={sites.data.sites}
+              jobs={loaded.data.jobs}
+              onSelectArticle={selectArticle}
+              theme={theme}
+            />
+          )}
+          <SearchList
+            items={loaded.data?.jobs ?? []}
+            keyOf={(job) => job.id}
+            renderItem={(job) => (
+              <button type="button" style={rowBtn} onClick={() => setSelectedId(job.id)}>
+                <div style={rowTitle}>{job.articleTitle}</div>
+                <StatusDot value={job.state} theme={theme} />
+              </button>
+            )}
+            searchKeys={(job) => `${job.articleTitle} ${job.state}`}
+            placeholder="Cari tayang…"
+            emptyTitle="Belum ada job tayang"
+            statusFilter={{ label: 'Status', options: statusOptions, getValue: (job) => job.state }}
+            theme={theme}
+          />
+        </>
+      )}
+      {selectedId !== null && <JobDetail call={call} jobId={selectedId} refresh={() => loaded.reload()} theme={theme} tg={tg} />}
     </section>
   );
 }
 
-function JobDetail({ call, jobId, refresh }: { call: Call; jobId: string; refresh: () => void }) {
+function JobDetail({ call, jobId, refresh, theme, tg }: { call: Call; jobId: string; refresh: () => void; theme: MiniAppPalette; tg: TelegramApi }) {
   const detail = useLoad(`job-${jobId}`, () => call<JobDetail>('/api/tg/app/job', { jobId }));
   const sites = useLoad('sites', () => call<{ sites: readonly Site[] }>('/api/tg/app/sites', {}));
   const [notice, setNotice] = useState<string | null>(null);
@@ -560,12 +746,17 @@ function JobDetail({ call, jobId, refresh }: { call: Call; jobId: string; refres
     try {
       await call('/api/tg/app/job', { jobId, action });
       setNotice('Berhasil.');
+      tg.haptic('success');
       refresh();
     } catch (failure) {
       setNotice(friendlyError(failure));
+      tg.haptic('error');
     }
   };
-  if (job === null) return <p style={dim}>{detail.error ?? 'Memuat…'}</p>;
+  if (job === null) {
+    if (detail.error !== null) return <SectionError message={detail.error} onRetry={detail.reload} theme={theme} />;
+    return <ListSkeleton rows={3} theme={theme} />;
+  }
   return (
     <div style={card}>
       <div style={dim}>Status: {job.state}</div>
@@ -592,7 +783,16 @@ function JobDetail({ call, jobId, refresh }: { call: Call; jobId: string; refres
   );
 }
 
-function Orgs({ orgs, activeId, onPick }: { orgs: readonly Org[]; activeId: string | null; onPick: (id: string) => void }) {
+function Orgs({ orgs, activeId, onPick, call, theme, tg, onChanged }: {
+  orgs: readonly Org[];
+  activeId: string | null;
+  onPick: (id: string) => void;
+  call: Call;
+  theme: MiniAppPalette;
+  tg: TelegramApi;
+  onChanged: () => void;
+}) {
+  const active = orgs.find((org) => org.id === activeId) ?? null;
   return (
     <section>
       {orgs.map((org) => (
@@ -604,30 +804,157 @@ function Orgs({ orgs, activeId, onPick }: { orgs: readonly Org[]; activeId: stri
           <div style={dim}>{org.subscription === null ? 'Tanpa langganan' : org.subscription.status}</div>
         </button>
       ))}
+      {active !== null && <OrgSubscription key={`sub-${active.id}`} call={call} org={active} theme={theme} tg={tg} onChanged={onChanged} />}
+      {active !== null && <OrgInvoices key={`invoices-${active.id}`} call={call} org={active} theme={theme} />}
     </section>
   );
 }
 
-const shell: CSSProperties = { background: dark.bg, color: dark.text, minHeight: '100dvh', padding: '16px 16px 76px', fontFamily: 'system-ui, sans-serif' };
+function OrgSubscription({ call, org, theme, tg, onChanged }: {
+  call: Call;
+  org: Org;
+  theme: MiniAppPalette;
+  tg: TelegramApi;
+  onChanged: () => void;
+}) {
+  const loaded = useLoad(`sub-${org.id}`, () => call<SubscriptionState>('/api/tg/app/subscription', { action: 'state' }));
+  const [busy, setBusy] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const state = loaded.data?.state ?? null;
+  const version = loaded.data?.version ?? null;
+  const update = async (status: string, label: string) => {
+    if (!window.confirm(`${label} langganan ${org.name}?`)) return;
+    setBusy(status);
+    setNotice(null);
+    try {
+      await call('/api/tg/app/subscription', {
+        action: 'update',
+        status,
+        ...(version === null ? {} : { expectedVersion: version }),
+      });
+      tg.haptic('success');
+      loaded.reload();
+      onChanged();
+    } catch (failure) {
+      tg.haptic('error');
+      setNotice(friendlyError(failure));
+    } finally {
+      setBusy(null);
+    }
+  };
+  if (loaded.data === null && loaded.error === null) return <ListSkeleton rows={2} theme={theme} />;
+  if (loaded.data === null) return <SectionError message={loaded.error ?? 'Gagal memuat.'} onRetry={loaded.reload} theme={theme} />;
+  const actions: readonly { status: string; label: string }[] =
+    state === 'active'
+      ? [{ status: 'suspended', label: 'Tangguhkan' }, { status: 'cancelled', label: 'Batalkan' }]
+      : state === 'suspended'
+        ? [{ status: 'active', label: 'Aktifkan' }, { status: 'cancelled', label: 'Batalkan' }]
+        : [{ status: 'active', label: 'Aktifkan' }];
+  return (
+    <div style={card}>
+      <h3 style={h3}>Langganan</h3>
+      <StatusDot value={state ?? 'none'} theme={theme} />
+      {notice !== null && <p style={err}>{notice}</p>}
+      <div style={row}>
+        {actions.map((action) => (
+          <button
+            key={action.status}
+            type="button"
+            style={action.status === 'active' ? btnAcc : btnDanger}
+            disabled={busy !== null}
+            onClick={() => void update(action.status, action.label)}
+          >
+            {busy === action.status ? 'Menyimpan…' : action.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OrgInvoices({ call, org, theme }: { call: Call; org: Org; theme: MiniAppPalette }) {
+  const loaded = useLoad(`invoices-${org.id}`, () =>
+    call<{ state: string; invoices: readonly InvoiceSummary[] }>('/api/tg/app/invoices', {}));
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  if (loaded.data === null && loaded.error === null) return <ListSkeleton rows={3} theme={theme} />;
+  if (loaded.data === null) return <SectionError message={loaded.error ?? 'Gagal memuat.'} onRetry={loaded.reload} theme={theme} />;
+  const invoices = loaded.data.invoices;
+  return (
+    <div style={card}>
+      <h3 style={h3}>Faktur</h3>
+      {invoices.length === 0 ? (
+        <EmptyState title="Belum ada faktur" hint="Faktur muncul setelah pembayaran dicatat." theme={theme} />
+      ) : (
+        invoices.map((invoice) => (
+          <button key={invoice.id} type="button" style={rowBtn} onClick={() => setSelectedId(invoice.id)}>
+            <div style={rowTitle}>{invoice.number}</div>
+            <div style={dim}>
+              {formatRp(invoice.amountIdr)} • {formatDate(invoice.paidAt)}
+            </div>
+            <StatusDot value={invoice.status} theme={theme} />
+          </button>
+        ))
+      )}
+      {selectedId !== null && <InvoiceDetail call={call} invoiceId={selectedId} theme={theme} onClose={() => setSelectedId(null)} />}
+    </div>
+  );
+}
+
+function InvoiceDetail({ call, invoiceId, theme, onClose }: {
+  call: Call;
+  invoiceId: string;
+  theme: MiniAppPalette;
+  onClose: () => void;
+}) {
+  const detail = useLoad(`invoice-${invoiceId}`, () => call<{ invoice: InvoiceDetailRecord }>('/api/tg/app/invoices', { invoiceId }));
+  if (detail.data === null) {
+    if (detail.error !== null) return <SectionError message={detail.error} onRetry={detail.reload} theme={theme} />;
+    return <ListSkeleton rows={3} theme={theme} />;
+  }
+  const invoice = detail.data.invoice;
+  return (
+    <div style={card}>
+      <h3 style={h3}>{invoice.number}</h3>
+      <StatusDot value={invoice.status} theme={theme} />
+      <div style={dim}>Terbit: {formatDate(invoice.createdAt)}</div>
+      <div style={dim}>Lunas: {formatDate(invoice.paidAt)}</div>
+      <div style={dim}>Metode: {invoice.paymentMethod}</div>
+      {invoice.billingNote !== null && invoice.billingNote !== '' && <div style={dim}>Catatan: {invoice.billingNote}</div>}
+      {invoice.status === 'voided' && (
+        <div style={dim}>
+          Dibatalkan: {invoice.voidedAt === null ? '-' : formatDate(invoice.voidedAt)}
+          {invoice.voidReason === null || invoice.voidReason === '' ? '' : ` • Alasan: ${invoice.voidReason}`}
+        </div>
+      )}
+      <div style={row}>
+        <button type="button" style={btn} onClick={onClose}>
+          Tutup
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const shell: CSSProperties = { background: 'var(--tg-bg)', color: 'var(--tg-text)', minHeight: '100svh', paddingTop: 'calc(16px + var(--tg-safe-top, 0px))', paddingRight: 16, paddingBottom: 'calc(76px + var(--tg-safe-bottom, 0px))', paddingLeft: 16, fontFamily: 'system-ui, sans-serif' };
 const center: CSSProperties = { ...shell, display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center', justifyContent: 'center', textAlign: 'center' };
 const head: CSSProperties = { marginBottom: 12 };
 const orgName: CSSProperties = { fontSize: 18, fontWeight: 700 };
-const dim: CSSProperties = { color: dark.dim, fontSize: 13 };
-const nav: CSSProperties = { position: 'fixed', left: 0, right: 0, bottom: 0, display: 'flex', background: dark.card, borderTop: `1px solid ${dark.line}` };
-const tabBtn: CSSProperties = { flex: 1, padding: '12px 4px', background: 'transparent', border: 'none', color: dark.dim, fontSize: 14 };
-const tabActive: CSSProperties = { ...tabBtn, color: dark.accent, fontWeight: 700 };
+const dim: CSSProperties = { color: 'var(--tg-dim)', fontSize: 13 };
+const nav: CSSProperties = { position: 'fixed', left: 0, right: 0, bottom: 'var(--tg-safe-bottom, 0px)', display: 'flex', background: 'var(--tg-card)', borderTop: '1px solid var(--tg-line)' };
+const tabBtn: CSSProperties = { flex: 1, padding: '12px 4px', background: 'transparent', border: 'none', color: 'var(--tg-dim)', fontSize: 14 };
+const tabActive: CSSProperties = { ...tabBtn, color: 'var(--tg-accent)', fontWeight: 700 };
 const grid: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 };
-const cardBtn: CSSProperties = { background: dark.card, border: `1px solid ${dark.line}`, borderRadius: 12, padding: 16, color: dark.text, textAlign: 'left' };
+const cardBtn: CSSProperties = { background: 'var(--tg-card)', border: '1px solid var(--tg-line)', borderRadius: 12, padding: 16, color: 'var(--tg-text)', textAlign: 'left' };
 const big: CSSProperties = { fontSize: 28, fontWeight: 800 };
-const card: CSSProperties = { background: dark.card, border: `1px solid ${dark.line}`, borderRadius: 12, padding: 12, marginTop: 12 };
+const card: CSSProperties = { background: 'var(--tg-card)', border: '1px solid var(--tg-line)', borderRadius: 12, padding: 12, marginTop: 12 };
 const row: CSSProperties = { display: 'flex', gap: 8, marginTop: 8 };
-const rowBtn: CSSProperties = { display: 'block', width: '100%', background: dark.card, border: `1px solid ${dark.line}`, borderRadius: 12, padding: 12, marginTop: 8, color: dark.text, textAlign: 'left' };
+const rowBtn: CSSProperties = { display: 'block', width: '100%', background: 'var(--tg-card)', border: '1px solid var(--tg-line)', borderRadius: 12, padding: 12, marginTop: 8, color: 'var(--tg-text)', textAlign: 'left' };
 const rowTitle: CSSProperties = { fontWeight: 600, marginBottom: 4 };
-const btn: CSSProperties = { background: dark.line, color: dark.text, border: 'none', borderRadius: 10, padding: '10px 14px', fontSize: 14 };
-const btnAcc: CSSProperties = { ...btn, background: dark.accent, color: '#141126', fontWeight: 700 };
-const btnDanger: CSSProperties = { ...btn, background: dark.danger, color: '#fff', fontWeight: 700 };
-const input: CSSProperties = { width: '100%', boxSizing: 'border-box', background: dark.bg, color: dark.text, border: `1px solid ${dark.line}`, borderRadius: 10, padding: '10px 12px', fontSize: 14, marginTop: 8 };
+const btn: CSSProperties = { background: 'var(--tg-line)', color: 'var(--tg-text)', border: 'none', borderRadius: 10, padding: '10px 14px', fontSize: 14 };
+const btnAcc: CSSProperties = { ...btn, background: 'var(--tg-accent)', color: '#141126', fontWeight: 700 };
+const btnDanger: CSSProperties = { ...btn, background: 'var(--tg-danger)', color: '#fff', fontWeight: 700 };
+const input: CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'var(--tg-bg)', color: 'var(--tg-text)', border: '1px solid var(--tg-line)', borderRadius: 10, padding: '10px 12px', fontSize: 14, marginTop: 8 };
 const h3: CSSProperties = { margin: '0 0 4px', fontSize: 16 };
-const err: CSSProperties = { color: '#ff9d9d', fontSize: 13 };
-const pre: CSSProperties = { whiteSpace: 'pre-wrap', fontSize: 13, color: dark.text };
+const err: CSSProperties = { color: 'var(--tg-danger)', fontSize: 13 };
+const pre: CSSProperties = { whiteSpace: 'pre-wrap', fontSize: 13, color: 'var(--tg-text)' };
 const checkRow: CSSProperties = { display: 'flex', gap: 8, alignItems: 'center', padding: '8px 0', fontSize: 14 };

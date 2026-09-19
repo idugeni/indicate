@@ -150,4 +150,35 @@ export class DrizzleBillingRepository implements BillingRepository {
       throw error;
     }
   }
+
+  /**
+   * Issue a replacement paid invoice for a voided one.
+   *
+   * @param actor - Platform admin actor.
+   * @param input - Source invoice id, expected version, reason, and request metadata.
+   * @returns Replacement invoice record.
+   */
+  async reissueInvoice(actor: ActorContext, input: { readonly invoiceId: string; readonly expectedVersion: number; readonly reason: string | null; readonly requestId: string; readonly now: string }): Promise<InvoiceRecord> {
+    const { id } = userActor(actor);
+    try {
+      return await this.database.transaction(async (tx) => {
+        await this.billingContext(tx, actor);
+        const created = await tx.execute<{ invoice_reissue: string }>(sql`SELECT indicate_private.invoice_reissue(${id}::uuid, ${input.requestId}, ${input.invoiceId}::uuid, ${input.expectedVersion}, ${input.reason}, ${input.now}::timestamptz) AS invoice_reissue`);
+        const invoiceId = created[0]?.invoice_reissue;
+        if (invoiceId === undefined) throw new BillingConflictError();
+        const rows = await tx.execute<{
+          id: string; organization_id: string; organization_name: string; number: string; amount_idr: number; currency: string;
+          status: InvoiceRecord['status']; paid_at: Date | string; billing_note: string | null; payment_method: string;
+          voided_at: Date | string | null; void_reason: string | null; version: number; created_at: Date | string;
+        }>(sql`SELECT i.*, o.name AS organization_name FROM public.invoices i JOIN public.organizations o ON o.id = i.organization_id WHERE i.id = ${invoiceId}::uuid LIMIT 1`);
+        const row = rows[0];
+        if (row === undefined) throw new BillingConflictError();
+        return DrizzleBillingRepository.toInvoiceRecord(row);
+      });
+    } catch (error) {
+      if (error instanceof BillingConflictError) throw error;
+      if (deniedViolation(error)) throw new BillingAccessDeniedError();
+      throw error;
+    }
+  }
 }

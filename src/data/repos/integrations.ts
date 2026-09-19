@@ -276,7 +276,7 @@ export class DrizzleIntegrationsRepository implements IntegrationsRepository {
   }
   async updateSubscription(actor: AuthorizedTenantActorContext, input: { readonly organizationId: string; readonly expectedVersion?: number; readonly status: SubscriptionRecord['status']; readonly now: string; readonly platform: boolean }): Promise<SubscriptionRecord> {
     if (!input.platform) throw new IntegrationsAccessDeniedError();
-    const command = (executor: Database | Transaction) => executor.execute<{ updated: boolean }>(sql`SELECT indicate_private.subscription_update(${actor.actorId}::uuid, ${actor.requestId}, ${input.organizationId}::uuid, ${input.expectedVersion ?? null}::integer, ${input.status}::subscription_status, ${input.now}::timestamptz) AS updated`);
+    const command = (executor: Database | Transaction) => executor.execute<{ updated: boolean }>(sql`SELECT indicate_private.subscription_update(${actor.actorId}::uuid, ${actor.requestId}, ${input.organizationId}::uuid, ${input.expectedVersion ?? null}::integer, ${input.status}::subscription_status, ${input.now}::timestamptz, ${actor.entryPoint}) AS updated`);
     try {
       if (input.platform) {
         return this.database.transaction(async (tx) => {

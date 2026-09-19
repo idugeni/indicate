@@ -18,7 +18,7 @@ bertahap — hapus yang tidak dipakai)
 ## 3. Harga dan pembayaran
 
 (nominal, jadwal bayar, rekening tujuan; faktur pajak diterbitkan atas nama
-PT SANCA PHENA CAKRA NPWP 1000000011023036. Harga belum termasuk PPN apabila berlaku.)
+PT SANCA PHENA CAKRA NPWP 1000000011023036. Harga sudah termasuk PPN.)
 
 ## 4. Jadwal dan tanggung jawab
 

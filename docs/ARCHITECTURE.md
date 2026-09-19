@@ -303,14 +303,17 @@ sequenceDiagram
 
 ### 8.1 Billing model (manual activation)
 
-There are no packages, tiers, prices, or orders. A subscription is a
+There are no packages, tiers, or orders — there is exactly one price:
+Rp550.000 per month, PPN-inclusive, pinned by schema, service, and database
+check. A subscription is a
 status-only row (`active` / `suspended` / `cancelled`) with no plan and no
 period: an active organization keeps running indefinitely, with no grace,
 expiry sweep, or quota enforcement. Purchase happens out-of-band (buyer
 contacts the owner); the owner flips the status in the superadmin dashboard
-after manual payment. Manual invoicing is recorded in `invoices`
-(numbered `amount_idr` rows with void support), not in any package/order
-flow. Member onboarding via invites is unrelated to billing
+after manual payment. Each month the owner processes one manual Rp550.000
+bank-transfer payment and records one paid `invoices` row for that month
+(numbered `amount_idr` rows with void support); the subscription itself has
+no period and stays active until the owner cancels it. Member onboarding via invites is unrelated to billing
 and stays.
 
 ## 9. Data architecture

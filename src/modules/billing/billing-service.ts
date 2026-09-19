@@ -4,7 +4,7 @@ import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import { BillingAccessDeniedError, BillingConflictError, type BillingRepository } from '@/modules/billing/ports';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
-import { inviteCreateSchema, inviteRedeemSchema, invoiceCreateSchema, invoiceVoidSchema } from '@/modules/billing/schemas';
+import { inviteCreateSchema, inviteRedeemSchema, invoiceCreateSchema, invoiceReissueSchema, invoiceVoidSchema } from '@/modules/billing/schemas';
 
 export class BillingService {
   constructor(
@@ -137,6 +137,34 @@ export class BillingService {
       return { ok: true, value: row };
     } catch (error) {
       return this.error(actor.requestId, 'invoice.detail', error);
+    }
+  }
+
+  /**
+   * Issue a replacement paid invoice for a voided one.
+   *
+   * @param actor - Platform admin actor.
+   * @param raw - Invoice id, expected version, and optional reason.
+   * @returns Replacement invoice record.
+   */
+  async reissueInvoice(actor: ActorContext, raw: unknown): Promise<Result<InvoiceRecord, PublicErrorEnvelope>> {
+    if (!this.userActor(actor) || !this.platform(actor)) return this.denied(actor.requestId);
+    const parsed = invoiceReissueSchema.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the reissue fields.', actor.requestId) };
+    try {
+      const now = this.clock.now().toISOString();
+      return {
+        ok: true,
+        value: await this.repository.reissueInvoice(actor, {
+          invoiceId: parsed.data.invoiceId,
+          expectedVersion: parsed.data.expectedVersion,
+          reason: parsed.data.reason ?? null,
+          requestId: actor.requestId,
+          now,
+        }),
+      };
+    } catch (error) {
+      return this.error(actor.requestId, 'invoice.reissue', error);
     }
   }
 }

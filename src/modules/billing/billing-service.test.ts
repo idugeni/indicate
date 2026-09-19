@@ -35,6 +35,7 @@ function harness(repoOverrides: Record<string, unknown> = {}) {
     listInvoices: vi.fn(async () => [{ id: 'inv-1' }]),
     createInvoice: vi.fn(async (_actor: unknown, input: unknown) => ({ id: 'inv-1', ...(input as object) })),
     voidInvoice: vi.fn(async () => ({ id: 'inv-1', status: 'void' })),
+    reissueInvoice: vi.fn(async () => ({ id: 'inv-2', status: 'paid' })),
     ...repoOverrides,
   };
   const service = new BillingService(repository as never, { now: () => NOW });
@@ -112,7 +113,7 @@ describe('BillingService invitations', () => {
 });
 
 describe('BillingService invoices', () => {
-  const invoice = { organizationId: ID, amountIdr: 150_000, paidAt: '2026-09-18T14:00:00.000Z' };
+  const invoice = { organizationId: ID, amountIdr: 550_000, paidAt: '2026-09-18T14:00:00.000Z' };
 
   it('membuat invoice platform dan menolak payload rusak', async () => {
     const { service, repository } = harness();
@@ -146,5 +147,25 @@ describe('BillingService invoices', () => {
     expect(missing.ok).toBe(false);
     if (missing.ok) throw new Error('expected error');
     expect(missing.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+  });
+
+  it('menerbitkan ulang invoice void dan menolak payload rusak', async () => {
+    const { service, repository } = harness();
+    const reissued = await service.reissueInvoice(platformActor, { invoiceId: ID, expectedVersion: 2, reason: 'koreksi nomor' });
+    expect(reissued.ok).toBe(true);
+    expect(repository.reissueInvoice).toHaveBeenCalledTimes(1);
+
+    const broken = await service.reissueInvoice(platformActor, { invoiceId: 'bukan-uuid', expectedVersion: 2 });
+    expect(broken.ok).toBe(false);
+    if (broken.ok) throw new Error('expected error');
+    expect(broken.error.error.code).toBe('INVALID_INPUT');
+  });
+
+  it('menolak terbitkan ulang dari non-platform', async () => {
+    const { service } = harness();
+    const result = await service.reissueInvoice(userActor, { invoiceId: ID, expectedVersion: 2 });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
   });
 });

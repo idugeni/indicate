@@ -98,9 +98,9 @@ export const VALUE_PROPOSITIONS: readonly FeatureItem[] = Object.freeze([
       'Nama domain dibeli dan dipegang atas nama Anda sendiri. Berhenti kapan pun: domain, konten, dan data dibawa pergi tanpa sandera.',
   },
   {
-    title: 'Biaya jelas, tanpa paket',
+    title: 'Satu harga pasti',
     description:
-      'Tidak ada tingkatan paket: Anda menghubungi kami, sepakat soal biaya, lalu organisasi Anda diaktifkan dan berjalan terus. Tidak ada biaya tersembunyi.',
+      'Satu harga Rp550.000 per bulan, sudah termasuk PPN: Anda menghubungi kami, membayar manual ke rekening resmi, lalu organisasi Anda diaktifkan dan berjalan terus. Tidak ada biaya tersembunyi.',
   },
 ]);
 
@@ -227,9 +227,9 @@ export const WORKFLOW_STEPS: readonly FeatureItem[] = Object.freeze([
       'Ceritakan kebutuhan lewat WhatsApp atau surel — jumlah portal, wilayah, dan jadwal yang diinginkan.',
   },
   {
-    title: 'Sepakat dan bayar',
+    title: 'Bayar per bulan',
     description:
-      'Biaya disepakati di depan lewat obrolan langsung. Pembayaran manual ke rekening resmi yang kami informasikan.',
+      'Biaya tetap Rp550.000 per bulan, sudah termasuk PPN. Pembayaran manual ke rekening resmi yang kami informasikan; admin memproses satu pembayaran beserta satu invoice untuk setiap bulan berjalan.',
   },
   {
     title: 'Kami siapkan semuanya',
@@ -260,9 +260,9 @@ export const GUARANTEES: readonly FeatureItem[] = Object.freeze([
       'Tidak ada masa aktif 30 hari dan tidak ada masa tenggang: selama status aktif, seluruh fungsi berjalan penuh.',
   },
   {
-    title: 'Biaya disepakati di depan',
+    title: 'Rp550.000 per bulan, sudah termasuk PPN',
     description:
-      'Nominal disepakati lewat obrolan langsung sebelum Anda membayar. Tidak ada tagihan kejutan di tengah jalan.',
+      'Satu nominal pasti setiap bulan: tidak ada tingkatan, tidak ada katalog, dan tidak ada tagihan kejutan di tengah jalan.',
   },
   {
     title: 'Berhenti tanpa sandera',
@@ -273,7 +273,7 @@ export const GUARANTEES: readonly FeatureItem[] = Object.freeze([
 
 export const ABOUT_STORY: readonly string[] = Object.freeze([
   'Indicate lahir dari pengalaman mendampingi grup media yang portalnya tumbuh lebih cepat dari timnya. Tiap portal baru berarti pengeluaran baru yang berlipat — padahal yang dibutuhkan redaksi hanya tempat menulis dan tombol terbitkan.',
-  'Kami membalik pendekatannya: satu ruang redaksi untuk seluruh jaringan portal. Nambah portal tidak lagi jadi proyek besar yang mahal. Biaya disepakati di depan lewat obrolan langsung, dan domain tetap milik Anda sepenuhnya.',
+  'Kami membalik pendekatannya: satu ruang redaksi untuk seluruh jaringan portal. Nambah portal tidak lagi jadi proyek besar yang mahal. Biaya tetap Rp550.000 per bulan, sudah termasuk PPN, dan domain tetap milik Anda sepenuhnya.',
   'Hari ini Indicate melayani redaksi solo hingga grup media — semuanya dengan janji yang sama: Anda terima beres, kami yang mengurus mesinnya.',
 ]);
 
@@ -284,9 +284,9 @@ export const ABOUT_PRINCIPLES: readonly FeatureItem[] = Object.freeze([
       'Anda tidak perlu tahu cara kerja server, cache, atau DNS. Tugas Anda menulis dan menerbitkan; tugas kami memastikan semuanya jalan.',
   },
   {
-    title: 'Biaya jelas, tanpa paket',
+    title: 'Satu harga pasti',
     description:
-      'Tidak ada tingkatan dan tidak ada biaya tersembunyi: nominal disepakati lewat obrolan langsung sebelum Anda membayar.',
+      'Tidak ada tingkatan dan tidak ada biaya tersembunyi: satu harga Rp550.000 per bulan, sudah termasuk PPN.',
   },
   {
     title: 'Milik Anda tetap milik Anda',
@@ -367,11 +367,11 @@ export const TERMS_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   },
   {
     heading: '5. Pemesanan dan pembentukan kontrak',
-    body: 'Alur pemesanan standar adalah: Anda menghubungi kami lewat halaman Kontak, menceritakan kebutuhan, menyepakati biaya di depan, lalu melakukan pembayaran manual ke rekening resmi yang kami informasikan. Kontrak terbentuk pada saat organisasi Anda kami aktifkan, bukan pada saat Anda membayar. Kami dapat menolak pemesanan yang melewati batas kapasitas operasional, memuat domain yang bermasalah secara hukum, atau terindikasi penipuan, dengan pengembalian dana penuh atas pembayaran yang sudah diterima untuk pemesanan yang ditolak tersebut. Untuk kebutuhan khusus, ruang lingkup tambahan dituangkan dalam kesepakatan tertulis yang berlaku melengkapi Ketentuan ini kecuali dinyatakan sebaliknya secara tertulis.',
+    body: 'Alur pemesanan standar adalah: Anda menghubungi kami lewat halaman Kontak, lalu melakukan pembayaran manual sebesar Rp550.000 ke rekening resmi yang kami informasikan. Kontrak terbentuk pada saat organisasi Anda kami aktifkan, bukan pada saat Anda membayar. Kami dapat menolak pemesanan yang melewati batas kapasitas operasional, memuat domain yang bermasalah secara hukum, atau terindikasi penipuan, dengan pengembalian dana penuh atas pembayaran yang sudah diterima untuk pemesanan yang ditolak tersebut. Untuk kebutuhan khusus, ruang lingkup tambahan dituangkan dalam kesepakatan tertulis yang berlaku melengkapi Ketentuan ini kecuali dinyatakan sebaliknya secara tertulis.',
   },
   {
     heading: '6. Biaya, pajak, dan transparansi',
-    body: 'Tidak ada daftar harga paket: nominal disepakati lewat obrolan langsung sebelum Anda membayar, dan itulah angka yang mengikat. Harga yang tercantum belum termasuk pajak yang diwajibkan peraturan perundang-undangan (termasuk PPN apabila berlaku), biaya perbankan, serta biaya registrar domain yang dibayarkan langsung oleh Anda kepada registrar pilihan Anda. Apabila terjadi kesalahan penulisan nominal yang nyata dan tidak wajar, kami akan memberi tahu Anda sebelum aktivasi dan memberi pilihan untuk melanjutkan dengan angka yang benar atau menerima pengembalian dana penuh. Status langganan selalu dapat diperiksa dari dasbor organisasi Anda demi keterbukaan penuh. Kebijakan refund: pemesanan yang ditolak mendapat pengembalian penuh; refund pasca-aktivasi hanya atas persetujuan platform dan diproses paling lambat 14 hari kerja ke rekening asal; penghentian sukarela tidak dihitung pro-rata; arsip penagihan tersedia di dasbor, sedangkan dokumen pajak resmi diterbitkan atas nama PT SANCA PHENA CAKRA mengikuti ketentuan perpajakan yang berlaku pada saat transaksi.',
+    body: 'Biaya layanan adalah Rp550.000 per bulan dan sudah termasuk PPN. Admin memproses satu pembayaran manual beserta satu invoice untuk setiap bulan berjalan; langganan sendiri tidak memiliki jangka waktu dan tetap aktif sampai admin membatalkannya. Biaya perbankan mengikuti ketentuan bank yang digunakan, serta biaya registrar domain dibayarkan langsung oleh Anda kepada registrar pilihan Anda. Apabila terjadi kesalahan penulisan nominal yang nyata dan tidak wajar, kami akan memberi tahu Anda sebelum aktivasi dan memberi pilihan untuk melanjutkan dengan angka yang benar atau menerima pengembalian dana penuh. Status langganan selalu dapat diperiksa dari dasbor organisasi Anda demi keterbukaan penuh. Kebijakan refund: pemesanan yang ditolak mendapat pengembalian penuh; refund pasca-aktivasi hanya atas persetujuan platform dan diproses paling lambat 14 hari kerja ke rekening asal; penghentian sukarela tidak dihitung pro-rata; arsip penagihan tersedia di dasbor, sedangkan dokumen pajak resmi diterbitkan atas nama PT SANCA PHENA CAKRA mengikuti ketentuan perpajakan yang berlaku pada saat transaksi.',
   },
   {
     heading: '7. Pembayaran dan verifikasi',
@@ -379,11 +379,11 @@ export const TERMS_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   },
   {
     heading: '8. Aktivasi dan masa berlaku',
-    body: 'Begitu pembayaran terkonfirmasi, organisasi Anda diaktifkan — paling lambat 1x24 jam kecuali terdapat kendala DNS di sisi registrar yang berada di luar kendali kami. Selama status aktif, seluruh fungsi tersedia penuh: menulis, mengunggah media, menerbitkan lintas situs, mengelola pengguna, dan mengunduh arsip. Tidak ada masa aktif berkala yang kedaluwarsa dan tidak ada masa tenggang: status aktif berjalan terus sampai Anda meminta penghentian atau kami menangguhkan karena pelanggaran.',
+    body: 'Begitu pembayaran terkonfirmasi, administrator mengaktifkan organisasi Anda — paling lambat 1x24 jam kecuali terdapat kendala DNS di sisi registrar yang berada di luar kendali kami. Selama status aktif, seluruh fungsi tersedia penuh: menulis, mengunggah media, menerbitkan lintas situs, mengelola pengguna, dan mengunduh arsip. Tidak ada masa aktif berkala yang kedaluwarsa dan tidak ada masa tenggang: langganan tidak memiliki jangka waktu dan berjalan terus sampai administrator membatalkannya atas permintaan tertulis Anda yang terverifikasi atau menangguhkan karena pelanggaran.',
   },
   {
     heading: '9. Penangguhan dan pemutusan',
-    body: 'Kami hanya menangguhkan layanan karena pelanggaran ketentuan (setelah peringatan tertulis sebagaimana Bagian 15), perintah hukum, atau atas permintaan tertulis Anda. Penangguhan bukan penghapusan — data Anda dipertahankan sesuai jadwal retensi pada Kebijakan Privasi — dan pemulihan penuh dilakukan segera setelah dasar penangguhan selesai. Kami hanya melakukan pemutusan permanen dan penghapusan data operasional setelah seluruh kewajiban selesai dan tenggat retensi terpenuhi, atau lebih awal atas permintaan tertulis Anda.',
+    body: 'Penangguhan dan pemutusan dilaksanakan oleh administrator. Kami hanya menangguhkan layanan karena pelanggaran ketentuan (setelah peringatan tertulis sebagaimana Bagian 15), perintah hukum, atau atas permintaan tertulis Anda yang terverifikasi. Penangguhan bukan penghapusan — data Anda dipertahankan sesuai jadwal retensi pada Kebijakan Privasi — dan pemulihan penuh dilakukan segera setelah dasar penangguhan selesai. Kami hanya melakukan pemutusan permanen dan penghapusan data operasional setelah seluruh kewajiban selesai dan tenggat retensi terpenuhi, atau lebih awal atas permintaan tertulis Anda yang terverifikasi.',
   },
   {
     heading: '10. Perubahan kebutuhan',

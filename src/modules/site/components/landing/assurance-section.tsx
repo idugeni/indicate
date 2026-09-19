@@ -15,7 +15,7 @@ export function AssuranceSection({ channels }: { readonly channels: readonly Fea
             id="kepastian-heading"
             className="m-0 mt-4 font-serif text-3xl leading-[1.05] font-medium tracking-tight text-balance sm:text-[2.75rem]"
           >
-            Biaya disepakati di depan. <em className="text-[#8a5f1c]">Tanpa paket.</em>
+            Rp550.000 per bulan. <em className="text-[#8a5f1c]">Sudah termasuk PPN.</em>
           </h2>
           <ol className="m-0 mt-10 grid list-none gap-0 border-t border-[#1a2430]/15 p-0">
             {GUARANTEES.map((item, index) => (
@@ -53,18 +53,18 @@ export function AssuranceSection({ channels }: { readonly channels: readonly Fea
           <div className={cn('rounded-lg p-7 sm:p-8 lg:sticky lg:top-28', GLASS_HIGHLIGHTED)}>
             <p className="m-0 font-mono text-[11px] tracking-[0.14em] text-[#8a5f1c] uppercase">Berapa biayanya?</p>
             <p className="m-0 mt-3 font-serif text-[1.65rem] leading-[1.15] font-medium tracking-tight">
-              Satu angka pasti, disepakati sebelum Anda membayar apa pun.
+              Satu harga pasti Rp550.000 per bulan, sudah termasuk PPN.
             </p>
             <p className="m-0 mt-4 text-sm leading-relaxed text-[#4c5b6b]">
-              Ceritakan kebutuhan dan jumlah situs Anda lewat WhatsApp atau surel. Tidak ada tingkatan, tidak ada
-              kuota fitur yang dikunci.
+              Tidak ada tingkatan, tidak ada katalog, tidak ada kuota fitur yang dikunci. Pembayaran manual via
+              transfer bank setiap bulan; langganan berjalan terus sampai admin membatalkannya.
             </p>
             <div className="mt-6 grid gap-2">
               <Link
                 href="/contact"
                 className="group inline-flex items-center justify-center gap-2 rounded bg-[#1a2430] px-6 py-3 text-sm font-semibold text-white transition-all duration-180 hover:-translate-y-0.5 hover:bg-[#2b3a4b] active:translate-y-0 active:bg-[#141d27]"
               >
-                Minta penawaran
+                Hubungi kami
                 <ArrowRight className="h-4 w-4 transition-transform duration-180 group-hover:translate-x-0.5" aria-hidden="true" />
               </Link>
               <Link

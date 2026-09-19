@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Single-price manual billing (v136–v137): Rp550.000 incl PPN pinned by schema/service/DB; invoice numbers follow paid month; `invoice.reissue` for voided invoices; subscription/invoice Telegram routes run as the sole platform admin with `telegram` audit entry point; unlimited subscription until admin suspends/cancels via dashboard, API, or Telegram Mini App
+
 - `THIRD-PARTY-NOTICES.md` — upstream attributions (Radix/Base UI/shadcn/Lucide/react-icons, Fraunces/IBM Plex OFL, sharp LGPL, lightningcss MPL) plus trademark disclaimer
 - `docs/PENDING-IMPLEMENTATION.md` — sisa pekerjaan yang belum dieksekusi (menggantikan folder `docs/plans/` yang dihapus)
 - Clickwrap consent on billing orders (`termsAccepted` + `TERMS_VERSION=2026-09-05`, checkbox UI with 12-month cap summary)
