@@ -23,6 +23,7 @@ afterEach(() => {
   refreshMock.mockReset();
   otpMock.mockReset();
   verifyMock.mockReset();
+  delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 });
 
 describe('Formulir masuk kode OTP', () => {
@@ -60,5 +61,15 @@ describe('Formulir masuk kode OTP', () => {
     await screen.findByRole('button', { name: 'Ganti email' });
     fireEvent.click(screen.getByRole('button', { name: 'Ganti email' }));
     expect(screen.getByRole('button', { name: /kirim kode masuk/i })).toBeDefined();
+  });
+
+  it('menahan pengiriman kode sampai turnstile terverifikasi', async () => {
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'kunci-uji';
+    render(<OtpSignInForm />);
+    expect(screen.getByRole('button', { name: /kirim kode masuk/i }).hasAttribute('disabled')).toBe(true);
+    fireEvent.change(screen.getByLabelText('Alamat email'), { target: { value: 'nama@wartanusantara.net' } });
+    fireEvent.submit(screen.getByLabelText('Alamat email').closest('form') as HTMLFormElement);
+    expect(await screen.findByText('Selesaikan verifikasi keamanan terlebih dahulu.')).toBeDefined();
+    expect(otpMock).not.toHaveBeenCalled();
   });
 });

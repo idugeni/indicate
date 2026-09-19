@@ -16,6 +16,7 @@ export function ForgotPasswordForm() {
   const [sent, setSent] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [challengeNonce, setChallengeNonce] = useState(0);
+  const turnstilePending = isTurnstileConfigured() && captchaToken === null;
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -79,10 +80,10 @@ export function ForgotPasswordForm() {
         <Input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@kabarjateng.org" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
       </div>
 
-      <AuthSubmit busy={busy} busyLabel="Mengirim..." icon={Send}>
+      <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
+      <AuthSubmit busy={busy} busyLabel="Mengirim..." icon={Send} disabled={turnstilePending}>
         Kirim Tautan Pemulihan
       </AuthSubmit>
-      <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
     </form>
   );
 }

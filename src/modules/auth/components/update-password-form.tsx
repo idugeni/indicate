@@ -6,6 +6,7 @@ import { Check } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
+import { TurnstileField, isTurnstileConfigured } from '@/modules/auth/components/turnstile-field';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
 
 /** Client password-update leaf; parent page stays a Server Component. */
@@ -16,6 +17,9 @@ export function UpdatePasswordForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [challengeNonce, setChallengeNonce] = useState(0);
+  const turnstilePending = isTurnstileConfigured() && captchaToken === null;
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -31,12 +35,19 @@ export function UpdatePasswordForm() {
       setBusy(false);
       return;
     }
+    if (isTurnstileConfigured() && captchaToken === null) {
+      setError('Selesaikan verifikasi keamanan terlebih dahulu.');
+      setBusy(false);
+      return;
+    }
 
     try {
       const supabase = createBrowserSupabaseClient();
       const { error } = await supabase.auth.updateUser({ password });
       if (error) {
         setError(error.message);
+        setCaptchaToken(null);
+        setChallengeNonce((value) => value + 1);
         setBusy(false);
         return;
       }
@@ -44,6 +55,8 @@ export function UpdatePasswordForm() {
       setTimeout(() => router.push('/dashboard'), 1200);
     } catch {
       setError('Terjadi gangguan jaringan saat memperbarui kata sandi.');
+      setCaptchaToken(null);
+      setChallengeNonce((value) => value + 1);
       setBusy(false);
     }
   };
@@ -77,7 +90,8 @@ export function UpdatePasswordForm() {
         <Input id="confirmation" type="password" required minLength={8} autoComplete="new-password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} placeholder="Ulangi kata sandi" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
       </div>
 
-      <AuthSubmit busy={busy} busyLabel="Menyimpan...">
+      <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
+      <AuthSubmit busy={busy} busyLabel="Menyimpan..." disabled={turnstilePending}>
         Simpan Kata Sandi
       </AuthSubmit>
     </form>

@@ -4,11 +4,15 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
+import { TurnstileField, isTurnstileConfigured } from '@/modules/auth/components/turnstile-field';
 
 export function GoogleButton() {
   const [busy, setBusy] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstilePending = isTurnstileConfigured() && captchaToken === null;
 
   const handleGoogle = async () => {
+    if (turnstilePending) return;
     setBusy(true);
     const supabase = createBrowserSupabaseClient();
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
@@ -22,11 +26,14 @@ export function GoogleButton() {
   };
 
   return (
-    <Button type="button" variant="outline" size="lg" onClick={() => void handleGoogle()} disabled={busy} className="w-full justify-center border-[#1a2430]/15 bg-white text-[#1a2430] hover:bg-[#1a2430]/5 hover:text-[#1a2430] dark:border-[#1a2430]/15 dark:bg-white dark:text-[#1a2430] dark:hover:bg-[#1a2430]/5">
-      <span aria-hidden="true" className="flex h-4 w-4 items-center justify-center font-sans text-sm font-bold">
-        G
-      </span>
-      {busy ? 'Membuka Google...' : 'Lanjutkan dengan Google'}
-    </Button>
+    <div className="space-y-3">
+      <Button type="button" variant="outline" size="lg" onClick={() => void handleGoogle()} disabled={busy || turnstilePending} className="w-full justify-center border-[#1a2430]/15 bg-white text-[#1a2430] hover:bg-[#1a2430]/5 hover:text-[#1a2430] dark:border-[#1a2430]/15 dark:bg-white dark:text-[#1a2430] dark:hover:bg-[#1a2430]/5">
+        <span aria-hidden="true" className="flex h-4 w-4 items-center justify-center font-sans text-sm font-bold">
+          G
+        </span>
+        {busy ? 'Membuka Google...' : 'Lanjutkan dengan Google'}
+      </Button>
+      <TurnstileField onToken={setCaptchaToken} />
+    </div>
   );
 }

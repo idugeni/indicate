@@ -19,6 +19,7 @@ export function SignInForm() {
   const [error, setError] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [challengeNonce, setChallengeNonce] = useState(0);
+  const turnstilePending = isTurnstileConfigured() && captchaToken === null;
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -85,11 +86,11 @@ export function SignInForm() {
           </div>
         </div>
 
-        <AuthSubmit busy={busy} busyLabel="Verifikasi Sesi..." icon={ArrowRight}>
+        <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
+
+        <AuthSubmit busy={busy} busyLabel="Verifikasi Sesi..." icon={ArrowRight} disabled={turnstilePending}>
           Masuk ke Dashboard
         </AuthSubmit>
-
-        <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
       </form>
     </>
   );

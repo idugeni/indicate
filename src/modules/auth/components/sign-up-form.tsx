@@ -19,6 +19,7 @@ export function SignUpForm() {
   const [sent, setSent] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [challengeNonce, setChallengeNonce] = useState(0);
+  const turnstilePending = isTurnstileConfigured() && captchaToken === null;
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -100,10 +101,10 @@ export function SignUpForm() {
             <p className="m-0 mt-1.5 font-sans text-xs text-[#5f6b7a]">Minimal 8 karakter.</p>
           </div>
 
-          <AuthSubmit busy={busy} busyLabel="Mendaftarkan..." icon={ArrowRight}>
+          <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
+          <AuthSubmit busy={busy} busyLabel="Mendaftarkan..." icon={ArrowRight} disabled={turnstilePending}>
             Buat Akun
           </AuthSubmit>
-          <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
         </form>
       )}
 

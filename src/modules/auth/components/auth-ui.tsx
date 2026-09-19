@@ -96,14 +96,16 @@ export function AuthSubmit({
   busyLabel,
   icon: Icon,
   children,
+  disabled,
 }: {
   readonly busy: boolean;
   readonly busyLabel: string;
   readonly icon?: AuthIcon;
   readonly children: ReactNode;
+  readonly disabled?: boolean;
 }) {
   return (
-    <Button type="submit" variant="default" size="lg" disabled={busy} className="w-full justify-center">
+    <Button type="submit" variant="default" size="lg" disabled={busy || disabled} className="w-full justify-center">
       {busy ? busyLabel : children} {Icon ? <Icon className="h-4 w-4" /> : null}
     </Button>
   );

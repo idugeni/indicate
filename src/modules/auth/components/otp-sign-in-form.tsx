@@ -25,6 +25,7 @@ export function OtpSignInForm() {
   const [challengeNonce, setChallengeNonce] = useState(0);
   const [cooldown, setCooldown] = useState(0);
   const verifyingRef = useRef(false);
+  const turnstilePending = isTurnstileConfigured() && captchaToken === null;
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -75,6 +76,10 @@ export function OtpSignInForm() {
 
   const handleVerify = async (value: string) => {
     if (sentTo === null || verifyingRef.current) return;
+    if (isTurnstileConfigured() && captchaToken === null) {
+      setError('Selesaikan verifikasi keamanan terlebih dahulu.');
+      return;
+    }
     verifyingRef.current = true;
     setBusy(true);
     setError(null);
@@ -86,8 +91,10 @@ export function OtpSignInForm() {
         type: 'email',
       });
       if (verifyError) {
-        setError('Kode salah atau kedaluwarsa. Periksa kembali 6 digit kode.');
+        setError('Kode salah atau kedaluwarsa. Periksa kembali 8 digit kode.');
         setCode('');
+        setCaptchaToken(null);
+        setChallengeNonce((nonce) => nonce + 1);
         return;
       }
       router.push('/dashboard');
@@ -142,10 +149,10 @@ export function OtpSignInForm() {
               className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white"
             />
           </div>
-          <AuthSubmit busy={busy} busyLabel="Mengirim kode..." icon={ArrowRight}>
+          <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
+          <AuthSubmit busy={busy} busyLabel="Mengirim kode..." icon={ArrowRight} disabled={turnstilePending}>
             Kirim kode masuk
           </AuthSubmit>
-          <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
         </form>
       </>
     );
@@ -193,10 +200,10 @@ export function OtpSignInForm() {
             </InputOTPGroup>
           </InputOTP>
         </div>
-        <AuthSubmit busy={busy} busyLabel="Memverifikasi..." icon={ArrowRight}>
+        <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
+        <AuthSubmit busy={busy} busyLabel="Memverifikasi..." icon={ArrowRight} disabled={turnstilePending}>
           Masuk
         </AuthSubmit>
-        <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
       </form>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
         <button
@@ -213,7 +220,7 @@ export function OtpSignInForm() {
         <button
           type="button"
           onClick={() => void handleResend()}
-          disabled={busy || cooldown > 0}
+          disabled={busy || cooldown > 0 || turnstilePending}
           className="font-sans text-sm font-medium text-[#8a5f1c] transition-colors hover:underline disabled:text-[#5f6b7a] disabled:hover:no-underline"
         >
           {cooldown > 0 ? `Kirim ulang dalam ${cooldown} dtk` : 'Kirim ulang kode'}
