@@ -7,7 +7,18 @@
  * saat refactor modular `clean-blue/` — format dan kartu kini milik
  * `clean-blue/lib/format.ts` dan `clean-blue/cards/`.
  */
-export const TEMPLATE_IDS = ['clean-blue'] as const;
+export const TEMPLATE_IDS = [
+  'clean-blue',
+  'black-lime',
+  'dark-navy',
+  'glassy-blue',
+  'green-minimal',
+  'orange-modern',
+  'purple-editorial',
+  'red-editorial',
+  'soft-blue',
+  'warm-editorial',
+] as const;
 
 export type TemplateId = (typeof TEMPLATE_IDS)[number];
 

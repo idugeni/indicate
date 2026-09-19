@@ -1,0 +1,303 @@
+import Image from 'next/image';
+import Link from 'next/link';
+import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag } from 'lucide-react';
+
+import { buildSeoDocument } from '@/modules/site/seo';
+import { parseArticleBody } from '@/modules/site/article-markup';
+import { resolvePublisherChannels } from '@/modules/site/company-contact';
+import { channelIcon } from '@/modules/site/components/network/channel-icons';
+import { ArticleBodyView } from '@/modules/site/components/article-body-view';
+import { BlackLimeJsonLd } from '@/modules/site/components/network/templates/black-lime/seo/json-ld';
+import { BlackLimeShell } from '@/modules/site/components/network/templates/black-lime/chrome/shell';
+import { BlackLimeShareButtons } from '@/modules/site/components/network/templates/black-lime/cards/share-buttons';
+import { BlackLimeViewBeacon } from '@/modules/site/components/network/templates/black-lime/cards/view-beacon';
+import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
+import { BlackLimePicks } from '@/modules/site/components/network/templates/black-lime/cards/picks';
+import { articleImage, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/black-lime/lib/format';
+import { VIEW_COUNT_FRESHNESS_NOTE } from '@/modules/site/pageview-contract';
+
+export function BlackLimeArticle({
+  site,
+  article,
+  related = [],
+  newer = null,
+  older = null,
+}: {
+  readonly site: NetworkSiteData;
+  readonly article: NetworkArticle;
+  readonly related?: readonly NetworkArticle[];
+  readonly newer?: NetworkArticle | null;
+  readonly older?: NetworkArticle | null;
+}) {
+  const seo = buildSeoDocument(site, { path: `/${article.slug}`, article });
+  const src = articleImage(article);
+  const reading = readingMinutes(article);
+  const bylineName = article.attribution;
+  const bylineInitial = bylineName.trim().slice(0, 1).toUpperCase();
+  const canonical = `https://${site.context.normalizedHostname}/${article.slug}`;
+  const blocks = parseArticleBody(article.body);
+  const publisherChannels = resolvePublisherChannels(article.publisherSocials);
+  const gallery = article.gallery.map((image, position) => ({ url: image.url, alt: `${article.title} (gambar ${position + 1})` }));
+
+  return (
+    <BlackLimeShell site={site} path={`/${article.slug}`}>
+      <BlackLimeViewBeacon
+        organizationId={site.context.organizationId}
+        siteId={site.context.siteId}
+        articleSiteId={article.articleSiteId}
+      />
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
+          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 font-sans text-xs text-[#a3ad9a]">
+            <Link href="/" className="transition-colors hover:text-[#c5f82a]">
+              Beranda
+            </Link>
+            <ChevronRight className="h-3 w-3" aria-hidden="true" />
+            {article.categorySlug ? (
+              <>
+                <Link href={`/categories/${article.categorySlug}`} className="transition-colors hover:text-[#c5f82a]">
+                  {article.categoryName}
+                </Link>
+                <ChevronRight className="h-3 w-3" aria-hidden="true" />
+              </>
+            ) : null}
+            <span className="max-w-xs truncate text-[#f2f5e9]" aria-current="page">{article.title}</span>
+          </nav>
+
+          {article.categoryName === null ? null : (
+            <p className="m-0 mt-6 flex items-center gap-2 font-sans text-sm font-semibold text-[#c5f82a]">
+              <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#c5f82a]" />
+              {article.categoryName}
+            </p>
+          )}
+          <h1 className="m-0 mt-3 block w-full font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-[#f2f5e9] sm:text-4xl">
+            {article.title}
+          </h1>
+          <p className="m-0 mt-4 block w-full border-l-[3px] border-[#c5f82a] pl-4 font-sans text-[19px] font-medium leading-[1.7] text-[#a3ad9a]">
+            {article.description}
+          </p>
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#131711] p-4 shadow-sm ring-1 ring-[#242b1f]/60 sm:px-5">
+            <p className="m-0 flex min-w-0 items-center gap-3">
+              <span aria-hidden="true" className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-[#c5f82a]/10 font-sans text-base font-bold text-[#c5f82a]">
+                {bylineInitial}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate font-sans text-sm font-bold text-[#f2f5e9]">
+                  {bylineName}
+                </span>
+                <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-sans text-xs tabular-nums text-[#a3ad9a]">
+                  <span className="inline-flex items-center gap-1">
+                    <Calendar className="h-3 w-3" aria-hidden="true" />
+                    <time dateTime={article.publishedAt}>{formatDate(article.publishedAt, 'medium')}</time>
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span>{reading} menit baca</span>
+                  <span aria-hidden="true">·</span>
+                  <span className="inline-flex items-center gap-1" title={VIEW_COUNT_FRESHNESS_NOTE}>
+                    <Eye className="h-3 w-3" aria-hidden="true" />
+                    {formatFullViews(article.viewCount)}
+                  </span>
+                </span>
+              </span>
+            </p>
+            <BlackLimeShareButtons article={article} canonical={canonical} />
+          </div>
+
+          <div className="mt-6 overflow-hidden rounded-2xl shadow-sm">
+            <Image
+              unoptimized={!isLocalImageSrc(src)}
+              src={src}
+              alt={article.title}
+              priority
+              className="aspect-video w-full object-cover"
+              width={article.imageWidth ?? 1200}
+              height={article.imageHeight ?? 675}
+              sizes="(max-width: 768px) 100vw, 768px"
+            />
+          </div>
+
+          <div className="mt-8 space-y-6">
+            <ArticleBodyView
+              blocks={blocks}
+              images={gallery}
+              paragraphClassName="text-justify font-sans text-[17px] leading-[1.85] text-[#f2f5e9]"
+              listClassName="space-y-2 pl-6 font-sans text-[17px] leading-[1.85] text-[#f2f5e9] [list-style:disc]"
+              renderFigure={(image) => (
+                <figure className="m-0 overflow-hidden rounded-2xl shadow-sm">
+                  <Image
+                    unoptimized={!isLocalImageSrc(image.url)}
+                    src={image.url}
+                    alt={image.alt}
+                    className="aspect-video w-full object-cover"
+                    width={1200}
+                    height={675}
+                    sizes="(max-width: 768px) 100vw, 768px"
+                  />
+                </figure>
+              )}
+            />
+          </div>
+
+          {article.tags.length > 0 ? (
+            <div className="mt-8 flex flex-wrap items-center gap-2" aria-label="Topik artikel">
+              {article.tags.map((tag) => (
+                <Link
+                  key={tag}
+                  href={`/tags/${encodeURIComponent(tag)}`}
+                  className="rounded-full bg-[#131711] px-3 py-1.5 font-sans text-xs font-medium text-[#a3ad9a] ring-1 ring-[#242b1f] transition-colors hover:text-[#c5f82a]"
+                >
+                  #{tag}
+                </Link>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="mt-8 rounded-2xl bg-[#131711] p-5 shadow-sm ring-1 ring-[#242b1f]/60 sm:p-6">
+            <div className="flex items-center gap-4">
+              {article.publisherLogoUrl ? (
+                <Image
+                  unoptimized
+                  src={article.publisherLogoUrl}
+                  alt={`Logo ${article.attribution}`}
+                  width={56}
+                  height={56}
+                  className="h-14 w-14 flex-none rounded-xl border border-[#242b1f] object-cover"
+                />
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="flex h-14 w-14 flex-none items-center justify-center rounded-xl bg-[#c5f82a]/10 font-sans text-xl font-bold text-[#c5f82a]"
+                >
+                  {article.attribution.trim().slice(0, 1).toUpperCase()}
+                </span>
+              )}
+              <div className="min-w-0">
+                <p className="m-0 flex min-w-0 items-center gap-1.5 truncate font-sans text-base font-bold text-[#f2f5e9]">
+                  <span className="truncate">{article.attribution}</span>
+                  {article.publisherVerified ? (
+                    <BadgeCheck className="h-4 w-4 flex-none text-[#c5f82a]" aria-label="Penerbit terverifikasi" />
+                  ) : null}
+                </p>
+                <p className="m-0 mt-0.5 truncate font-sans text-xs text-[#a3ad9a]">
+                  Penerbit
+                  {article.officialInstitution ? ` · ${article.officialInstitution}` : ''}
+                  {article.publisherCity ? ` · ${article.publisherCity}` : ''}
+                </p>
+              </div>
+            </div>
+            {article.publisherBio ? (
+              <p className="m-0 mt-3 font-sans text-sm leading-relaxed text-[#a3ad9a]">
+                {article.publisherBio}
+              </p>
+            ) : null}
+            {publisherChannels.length > 0 ? (
+              <p className="m-0 mt-4 flex flex-wrap items-center gap-2">
+                {publisherChannels.map((channel) => {
+                  const Icon = channelIcon(channel.key);
+                  return (
+                    <a
+                      key={channel.key}
+                      href={channel.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`${article.attribution} di ${channel.label}`}
+                      title={channel.label}
+                      className="flex h-9 w-9 items-center justify-center rounded-full text-[#a3ad9a] ring-1 ring-[#242b1f] transition-colors hover:text-[#c5f82a]"
+                    >
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                    </a>
+                  );
+                })}
+              </p>
+            ) : null}
+            <dl className="m-0 mt-4 grid grid-cols-3 gap-px overflow-hidden rounded-xl bg-[#22300a] ring-1 ring-[#242b1f]">
+              <div className="bg-[#131711] px-3 py-2.5 text-center">
+                <dt className="font-sans text-[10px] uppercase tracking-wider text-[#646b5e]">Terbit</dt>
+                <dd className="m-0 mt-0.5 font-sans text-xs font-bold tabular-nums text-[#f2f5e9]">
+                  <time dateTime={article.publishedAt}>{formatDate(article.publishedAt, 'medium')}</time>
+                </dd>
+              </div>
+              <div className="bg-[#131711] px-3 py-2.5 text-center">
+                <dt className="font-sans text-[10px] uppercase tracking-wider text-[#646b5e]">Baca</dt>
+                <dd className="m-0 mt-0.5 font-sans text-xs font-bold tabular-nums text-[#f2f5e9]">{reading} menit</dd>
+              </div>
+              <div className="bg-[#131711] px-3 py-2.5 text-center">
+                <dt className="font-sans text-[10px] uppercase tracking-wider text-[#646b5e]">Dibaca</dt>
+                <dd className="m-0 mt-0.5 inline-flex items-center justify-center gap-1 font-sans text-xs font-bold tabular-nums text-[#f2f5e9]" title={VIEW_COUNT_FRESHNESS_NOTE}>
+                  <Eye className="h-3 w-3 text-[#646b5e]" aria-hidden="true" />
+                  {formatFullViews(article.viewCount)}
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          {related.length > 0 ? (
+            <div className="mt-10">
+              <BlackLimePicks
+                articles={related.slice(0, 3)}
+                heading="Artikel terkait"
+                description="Bacaan lain untuk Anda"
+                linkHref={null}
+              />
+            </div>
+          ) : null}
+
+          {newer !== null || older !== null ? (
+            <nav aria-label="Navigasi artikel" className="mt-10 grid grid-cols-2 gap-3 border-t border-[#242b1f] pt-6 sm:gap-4">
+              <div className={`min-w-0 ${newer !== null && older === null ? 'col-span-2' : ''}`}>
+                {newer !== null ? (
+                  <Link
+                    href={`/${newer.slug}`}
+                    className="group flex h-full items-start gap-3 rounded-2xl bg-[#131711] p-4 shadow-sm ring-1 ring-[#242b1f]/60 transition-all hover:shadow-md hover:ring-[#c5f82a]/50 sm:p-5"
+                  >
+                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#22300a] text-[#c5f82a] transition-colors group-hover:bg-[#c5f82a] group-hover:text-white">
+                      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-sans text-[11px] font-bold uppercase tracking-wider text-[#646b5e]">
+                        Lebih baru
+                      </span>
+                      <span className="mt-1 block font-sans text-sm font-semibold leading-snug text-[#f2f5e9] group-hover:text-[#c5f82a]">
+                        {newer.title}
+                      </span>
+                    </span>
+                  </Link>
+                ) : null}
+              </div>
+              <div className={`min-w-0 ${older !== null && newer === null ? 'col-span-2' : ''}`}>
+                {older !== null ? (
+                  <Link
+                    href={`/${older.slug}`}
+                    className="group flex h-full flex-row-reverse items-start gap-3 rounded-2xl bg-[#131711] p-4 text-right shadow-sm ring-1 ring-[#242b1f]/60 transition-all hover:shadow-md hover:ring-[#c5f82a]/50 sm:p-5"
+                  >
+                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#22300a] text-[#c5f82a] transition-colors group-hover:bg-[#c5f82a] group-hover:text-white">
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-sans text-[11px] font-bold uppercase tracking-wider text-[#646b5e]">
+                        Lebih lama
+                      </span>
+                      <span className="mt-1 block font-sans text-sm font-semibold leading-snug text-[#f2f5e9] group-hover:text-[#c5f82a]">
+                        {older.title}
+                      </span>
+                    </span>
+                  </Link>
+                ) : null}
+              </div>
+            </nav>
+          ) : null}
+
+          <p className="m-0 mt-8 flex items-center gap-1.5 font-sans text-xs text-[#a3ad9a]">
+            <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>
+              Menemukan pelanggaran?{' '}
+              <Link href={`/report?artikel=${encodeURIComponent(article.slug)}`} className="font-semibold text-[#c5f82a] hover:underline">
+                Laporkan konten
+              </Link>
+            </span>
+          </p>
+        </div>
+      <BlackLimeJsonLd schemas={seo.jsonLd} />
+    </BlackLimeShell>
+  );
+}

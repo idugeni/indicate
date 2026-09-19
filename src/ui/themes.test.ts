@@ -3,8 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { MASTER_TEMPLATE_PRESETS } from '@/ui/themes';
 
 describe('MASTER_TEMPLATE_PRESETS', () => {
-  it('mendaftarkan satu template aktif clean-blue', () => {
-    expect(MASTER_TEMPLATE_PRESETS).toHaveLength(1);
+  it('mendaftarkan sepuluh template aktif termasuk clean-blue', () => {
+    expect(MASTER_TEMPLATE_PRESETS).toHaveLength(10);
+    const ids = new Set(MASTER_TEMPLATE_PRESETS.map((preset) => preset.id));
+    for (const id of ['clean-blue', 'black-lime', 'dark-navy', 'glassy-blue', 'green-minimal', 'orange-modern', 'purple-editorial', 'red-editorial', 'soft-blue', 'warm-editorial']) {
+      expect(ids.has(id)).toBe(true);
+    }
     const preset = MASTER_TEMPLATE_PRESETS[0];
     expect(preset?.id).toBe('clean-blue');
     expect(preset?.name).toContain('Clean Blue');

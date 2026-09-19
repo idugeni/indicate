@@ -129,7 +129,7 @@ function SiteFooterView({ year, channels }: { readonly year: number | null; read
               @safenca_id
             </a>
           </address>
-          <p className="m-0 flex flex-wrap items-center gap-2">
+          <p className="m-0 flex flex-wrap items-center gap-2 pt-2">
             {socials.map((channel) => {
               const Icon = channelIcon(channel.key);
               return (

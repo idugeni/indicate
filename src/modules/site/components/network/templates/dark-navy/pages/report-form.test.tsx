@@ -1,0 +1,58 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+
+import { DarkNavyReportForm } from '@/modules/site/components/network/templates/dark-navy/pages/report-form';
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+function setup(articleSlug: string | null = 'berita-utama') {
+  return render(<DarkNavyReportForm articleSlug={articleSlug} />);
+}
+
+describe('DarkNavyReportForm validation', () => {
+  it('menolak submit dengan kontak dan uraian pendek', () => {
+    const fetch = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetch);
+    setup();
+    fireEvent.click(screen.getByRole('button', { name: /kirim laporan/i }));
+    expect(screen.getByText(/lengkapi kontak dan uraian/i)).toBeDefined();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('menyembunyikan baris artikel saat slug null', () => {
+    setup(null);
+    expect(screen.queryByText(/artikel:/i)).toBe(null);
+  });
+});
+
+describe('DarkNavyReportForm submit', () => {
+  it('mengirim laporan valid dan menampilkan terima kasih', async () => {
+    const fetch = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetch);
+    setup();
+    fireEvent.change(screen.getByLabelText(/kontak anda/i), { target: { value: 'warga@example.test' } });
+    fireEvent.change(screen.getByLabelText(/kategori pelanggaran/i), { target: { value: 'misinformation' } });
+    fireEvent.change(screen.getByLabelText(/uraian spesifik/i), { target: { value: 'Paragraf kedua memuat klaim tanpa sumber yang jelas.' } });
+    fireEvent.click(screen.getByRole('button', { name: /kirim laporan/i }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(
+      '/api/network/reports',
+      expect.objectContaining({ method: 'POST' }),
+    ));
+    const call = fetch.mock.calls[0] as unknown as [string, { body: string }];
+    expect(JSON.parse(call[1].body)).toMatchObject({ articleSlug: 'berita-utama', category: 'misinformation' });
+    expect(await screen.findByText(/laporan diterima/i)).toBeDefined();
+  });
+
+  it('menampilkan galat ramah saat server menolak', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('err', { status: 429 })));
+    setup();
+    fireEvent.change(screen.getByLabelText(/kontak anda/i), { target: { value: 'warga@example.test' } });
+    fireEvent.change(screen.getByLabelText(/uraian spesifik/i), { target: { value: 'Uraian yang cukup panjang untuk validasi.' } });
+    fireEvent.click(screen.getByRole('button', { name: /kirim laporan/i }));
+    expect(await screen.findByText(/laporan gagal dikirim/i)).toBeDefined();
+  });
+});

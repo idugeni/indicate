@@ -1,0 +1,37 @@
+/**
+ * Palet mandiri Green Minimal (hijau natural).
+ *
+ * @remarks
+ * Ditanggung template langsung, bukan `site_settings.colors`. Disengaja
+ * mengabaikan variabel `--site-*` agar tampil persis seperti contoh dalam
+ * segala kondisi, termasuk di bawah root `<html class="dark">`.
+ */
+export const GREEN_MINIMAL = {
+  primary: '#1d7a38',
+  primaryDark: '#145c2a',
+  primarySoft: '#e0f0e5',
+  ink: '#10231a',
+  muted: '#4d6356',
+  faint: '#93a89b',
+  canvas: '#f7faf7',
+  card: '#ffffff',
+  ring: '#d9e7de',
+} as const;
+
+const BADGE_STYLES = [
+  { color: '#166534', backgroundColor: '#dcfce7' },
+  { color: '#854d0e', backgroundColor: '#fef9c3' },
+  { color: '#0e7490', backgroundColor: '#cffafe' },
+  { color: '#4d7c0f', backgroundColor: '#ecfccb' },
+] as const;
+
+/**
+ * Ambil gaya badge kategori berdasarkan indeks.
+ *
+ * @param index - Posisi kartu dalam daftar.
+ * @returns Pasangan warna teks dan latar badge.
+ */
+export function badgeStyle(index: number): { readonly color: string; readonly backgroundColor: string } {
+  const pick = BADGE_STYLES[index % BADGE_STYLES.length] ?? BADGE_STYLES[0];
+  return { color: pick.color, backgroundColor: pick.backgroundColor };
+}
