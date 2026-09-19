@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { ChannelPage } from '@/modules/site/components/network/network-listing';
 import RootLoading from '@/app/loading';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
+import { normalizeSlugCandidate } from '@/modules/site/slug-allocator';
 
 export const maxDuration = 60;
 
@@ -16,7 +17,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (slug.trim() === '') {
     return { title: 'Not Found', robots: { index: false, follow: false } };
   }
-  return networkMetadata(`/categories/${slug}`, { categorySlug: slug });
+  const clean = normalizeSlugCandidate(slug);
+  return networkMetadata(`/categories/${clean}`, { categorySlug: clean });
 }
 
 /** Cangkang statis untuk validasi instant: params hanya dibaca di dalam Suspense. */
@@ -31,7 +33,8 @@ export default function CategoryPage({ params }: Props) {
 async function CategoryContent({ params }: Pick<Props, 'params'>) {
   const { slug } = await params;
   if (slug.trim() === '') notFound();
-  const site = await resolveNetworkSite({ categorySlug: slug }, `/categories/${slug}`);
-  const name = site.articles[0]?.categoryName ?? slug;
-  return <ChannelPage site={site} kicker="Kanal liputan" title={name} path={`/categories/${slug}`} />;
+  const clean = normalizeSlugCandidate(slug);
+  const site = await resolveNetworkSite({ categorySlug: clean }, `/categories/${clean}`);
+  const name = site.articles[0]?.categoryName ?? clean;
+  return <ChannelPage site={site} kicker="Kanal liputan" title={name} path={`/categories/${clean}`} />;
 }

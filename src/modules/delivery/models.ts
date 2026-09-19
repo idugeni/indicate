@@ -1,7 +1,7 @@
 import type { HostnameContext } from '@/core/operation-context';
 
 export type PublicOutcome = 'site' | 'unknown' | 'ambiguous' | 'invalid';
-export type ControlSurface = 'dashboard' | 'api' | 'webhook' | 'docs';
+export type ControlSurface = 'dashboard' | 'api' | 'webhook';
 
 export interface ResolvedSiteContext extends HostnameContext {
   readonly contentVersion: number;

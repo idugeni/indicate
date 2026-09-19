@@ -64,15 +64,6 @@ async function handleGET() {
       },
     });
   }
-  if (result.kind === 'control' && result.surface === 'docs') {
-    const { docsLlms } = await import('@/modules/docs/site-map');
-    return new Response(docsLlms(config.hosts.docs), {
-      headers: {
-        'Content-Type': 'text/markdown; charset=utf-8',
-        'Cache-Control': 'public, max-age=0, s-maxage=300',
-      },
-    });
-  }
   if (result.kind === 'site') {
     const site = await resolveNetworkSite({}, '/llms.txt');
     const siteName = site.settings.seoSiteName ?? site.settings.name;

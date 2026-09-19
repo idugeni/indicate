@@ -33,12 +33,6 @@ async function handleGET() {
       headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=600, stale-while-revalidate=600' },
     });
   }
-  if (result.kind === 'control' && result.surface === 'docs') {
-    const { docsSitemap } = await import('@/modules/docs/site-map');
-    return new Response(docsSitemap(config.hosts.docs), {
-      headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=600, stale-while-revalidate=600' },
-    });
-  }
   if (result.kind !== 'site') return denied(result.kind === 'invalid' ? 400 : result.kind === 'ambiguous' ? 500 : 404);
   const site = await content.load(result.context, {}, { path: '/sitemap.xml', locale: config.seo.defaultLocale });
   if (site === null) return denied(404);

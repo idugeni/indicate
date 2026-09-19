@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (140 migrations):
+-- Reviewed sources, in journal order (141 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -153,6 +153,7 @@
 --   138  20260920050000_site_settings_template_fk  ledger sha256:f3cdcf931e6bcfa7e384d7133e9793c5941b61bb4e393ab6fc647de414c7501c
 --   139  20260920060000_site_settings_template_fk_idx  ledger sha256:4222bd4f7d9c0293328682acf0d52f19a2d881c60c57073aad86af718a90d53e
 --   140  20260920070000_invoice_unpaid  ledger sha256:5b92a475182327b1dbfc02f84f62be080c91a6d8ae9de9f4d5b8c834664efebc
+--   141  20260920080000_article_tags_canonical  ledger sha256:f15e59155ae924936f42fccd5a2f6293ebc7914a9ead56e39245a89f15ba9de2
 
 BEGIN;
 
@@ -12132,4 +12133,40 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (140, 'invoice_unpaid', 'sha256:207d0829a94ee9486889ef196ad9db9c5ae7d5fa075a242acea50c3260cc35f7');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5b92a475182327b1dbfc02f84f62be080c91a6d8ae9de9f4d5b8c834664efebc', 1789835708210);
+
+-- ----------------------------------------------------------------------
+-- 20260920080000_article_tags_canonical
+-- ----------------------------------------------------------------------
+-- Kanonik tag artikel ke kebab-case: cermin aturan tulis aplikasi
+-- (lowercase, buang non `[a-z0-9 _-]', spasi/underscore jadi `-`, kolap strip,
+-- maks 60 char, buang kosong, dedupe dengan urutan kemunculan pertama).
+-- Idempoten: hanya baris yang hasil normalisasinya berbeda yang ditulis.
+WITH normalized AS (
+  SELECT
+    a.organization_id,
+    a.id,
+    COALESCE((
+      SELECT array_agg(norm.tag ORDER BY norm.first_ord)
+      FROM (
+        SELECT canon.tag, min(u.ord) AS first_ord
+        FROM unnest(a.tags) WITH ORDINALITY AS u(elem, ord)
+        CROSS JOIN LATERAL (
+          SELECT rtrim(left(trim(both '-' from regexp_replace(regexp_replace(regexp_replace(lower(trim(u.elem)), '[^a-z0-9\s_-]', '', 'g'), '[\s_]+', '-', 'g'), '-+', '-', 'g')), 60), '-') AS tag
+        ) AS canon
+        WHERE u.elem ~ '[a-zA-Z0-9]' AND canon.tag <> ''
+        GROUP BY canon.tag
+      ) AS norm
+    ), ARRAY[]::text[]) AS tags
+  FROM public.articles AS a
+)
+UPDATE public.articles AS target
+SET tags = normalized.tags
+FROM normalized
+WHERE target.organization_id = normalized.organization_id
+  AND target.id = normalized.id
+  AND target.tags IS DISTINCT FROM normalized.tags;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (141, 'article_tags_canonical', 'sha256:caff95bc251c87b804fbce84eba79e2d4c5d3360faa86d4abbe55fb9b4a6ee1f');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f15e59155ae924936f42fccd5a2f6293ebc7914a9ead56e39245a89f15ba9de2', 1789841835396);
 COMMIT;

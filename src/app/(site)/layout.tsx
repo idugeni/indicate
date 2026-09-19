@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Suspense } from 'react';
 import type { Viewport } from 'next';
@@ -7,6 +8,13 @@ import { requireDashboardSurface } from '@/ui/site/metadata-guard';
 export const viewport: Viewport = {
   themeColor: '#f4f2ec',
   colorScheme: 'light',
+};
+
+export const metadata: Metadata = {
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-icon.png',
+  },
 };
 
 /**

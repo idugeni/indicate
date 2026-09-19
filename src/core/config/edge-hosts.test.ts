@@ -8,7 +8,6 @@ describe('getControlHosts', () => {
       dashboard: 'indicate.web.id',
       api: 'api.indicate.web.id',
       webhook: 'webhook.indicate.web.id',
-      docs: 'docs.indicate.web.id',
     });
   });
 

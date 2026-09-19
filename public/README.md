@@ -6,8 +6,10 @@ Kontrak direktori ini. File di sini disajikan apa adanya dari setiap host.
   lencana generik (`stack/`, `app-store.svg`, `google-play.svg`).
 - `assets/` — fallback generik tanpa merek (`default.png`,
   `article-fallback.png`).
-- Ikon kanonis tunggal adalah `src/app/apple-icon.png` (512x512) dan
-  `src/app/favicon.ico`; jangan tambah duplikat di `public/`.
+- Ikon control-plane disajikan dari `public/favicon.ico` dan
+  `public/apple-icon.png` (URL `/favicon.ico`, `/apple-icon.png`); jangan
+  tambah file ikon di `src/app/` karena konvensi file di sana ikut
+  ter-inject ke semua host termasuk tenant.
 - Merek tenant tinggal di R2, bukan di sini. Pengecualian yang disengaja:
   `logo-pas.png` dan `logo-kemenimipas.png` (brand mitra, dipakai seed dan
   fallback sampai migrasi R2 selesai).

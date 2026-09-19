@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   articleCreateSchema,
   assignmentSchema,
+  categoryCreateSchema,
   invitationCreateSchema,
   membershipSchema,
   roleCreateSchema,
@@ -45,6 +46,42 @@ describe('articleCreateSchema', () => {
     if (!parsed.success) throw new Error('expected ok');
     expect(parsed.data.status).toBe('draft');
     expect(parsed.data.tags).toEqual([]);
+  });
+
+  it('menerima slug kapital dan memaafkan spasi menjadi kebab-case', () => {
+    const parsed = articleCreateSchema.safeParse({ ...article, slug: 'Berita Utama Daerah' });
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) throw new Error('expected ok');
+    expect(parsed.data.slug).toBe('berita-utama-daerah');
+  });
+
+  it('menolak slug tanpa alfanumerik', () => {
+    expect(articleCreateSchema.safeParse({ ...article, slug: '!!!' }).success).toBe(false);
+  });
+
+  it('mengkanonik tag: lowercase, hyphen, dedupe, buang kosong', () => {
+    const parsed = articleCreateSchema.safeParse({
+      ...article,
+      tags: ['Politik', 'harga emas', 'Q&A', 'politik', '   ', '!!!', 'harga-emas'],
+    });
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) throw new Error('expected ok');
+    expect(parsed.data.tags).toEqual(['politik', 'harga-emas', 'qa']);
+  });
+
+  it('menolak tag non-string dan lebih dari 10 tag unik', () => {
+    expect(articleCreateSchema.safeParse({ ...article, tags: ['baik', 42] }).success).toBe(false);
+    expect(articleCreateSchema.safeParse({ ...article, tags: Array.from({ length: 11 }, (_, i) => `topik-${i}`) }).success).toBe(false);
+  });
+});
+
+describe('categoryCreateSchema', () => {
+  it('menerima nama bebas dan mengkanonik slug kapital berspasi', () => {
+    const parsed = categoryCreateSchema.safeParse({ name: 'Politik & Ekonomi', slug: 'Politik & Ekonomi' });
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) throw new Error('expected ok');
+    expect(parsed.data.slug).toBe('politik-ekonomi');
+    expect(parsed.data.name).toBe('Politik & Ekonomi');
   });
 });
 

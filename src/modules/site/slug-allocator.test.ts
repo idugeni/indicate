@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { allocateUniqueSlug, normalizeSlugCandidate } from '@/modules/site/slug-allocator';
+import { allocateUniqueSlug, normalizeSlugCandidate, normalizeTagCandidate, normalizeTagList } from '@/modules/site/slug-allocator';
 
 describe('normalizeSlugCandidate', () => {
   it('menormalkan judul ke kebab-case', () => {
@@ -19,6 +19,34 @@ describe('normalizeSlugCandidate', () => {
     const slug = normalizeSlugCandidate(`${'a'.repeat(120)} ---`);
     expect(slug.length).toBeLessThanOrEqual(100);
     expect(slug.endsWith('-')).toBe(false);
+  });
+});
+
+describe('normalizeTagCandidate', () => {
+  it('mengkanonik kapital dan spasi menjadi kebab-case', () => {
+    expect(normalizeTagCandidate('Harga Emas')).toBe('harga-emas');
+  });
+
+  it('membuang karakter khusus tanpa alfanumerik menjadi null', () => {
+    expect(normalizeTagCandidate('!!!')).toBe(null);
+    expect(normalizeTagCandidate('   ')).toBe(null);
+  });
+
+  it('memotong ke batas tag tanpa ekor strip', () => {
+    const tag = normalizeTagCandidate(`${'a'.repeat(80)} ---`);
+    expect(tag).not.toBe(null);
+    expect(tag!.length).toBeLessThanOrEqual(60);
+    expect(tag!.endsWith('-')).toBe(false);
+  });
+});
+
+describe('normalizeTagList', () => {
+  it('dedupe dengan urutan kemunculan pertama', () => {
+    expect(normalizeTagList(['Politik', 'politik', 'Ekonomi', '!!!'])).toEqual(['politik', 'ekonomi']);
+  });
+
+  it('meneruskan non-string agar validasi menolaknya', () => {
+    expect(normalizeTagList(['baik', 42])).toEqual(['baik', 42]);
   });
 });
 

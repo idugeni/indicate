@@ -1,15 +1,27 @@
 # Status Domain Aktif
 
 Ledger hidup: perbarui setiap ada aktivasi/penonaktifan domain.
-Terakhir diverifikasi: 2026-09-19 (DB + Vercel MCP + HTTP HEAD 20/20 `200`, sampel GET `wonosobo.fakta01.my.id` merender 173.441 byte HTML).
+Terakhir diverifikasi: 2026-09-20 (surface `docs.indicate.web.id` dihapus dari kode + domain Vercel dilepas; DB + Vercel MCP).
 
 ## Kuota Vercel
 
-Project `indicate`: **51/50 domain — LIMIT TERCAPAI**.
-API menolak penambahan dengan `project_domain_limit_reached` ("maximum
-allowed number of domains (50) ... contact sales"). Angka 250 tidak berlaku
-per-project di plan saat ini. Tanpa penaikan limit, tidak ada hostname baru
-yang bisa masuk — termasuk untuk 59 org backlog.
+Project `indicate`: **50/50 domain — LIMIT TERCAPAI lagi** (sempat 49/50
+setelah `www.indicate.web.id` dilepas; 1 slot dipakai `jejakkebenaran.my.id`
+→ kembali 50/50).
+`docs.indicate.web.id` dilepas via `DELETE /v9/projects/:id/domains` karena
+surface docs dihapus penuh dari codebase (config, proxy, route `(docs)`,
+modul `src/modules/docs`, `openapi.json`, `docs-opengraph-image`, guard,
+test, tautan README/SUPPORT). DNS Cloudflare tidak punya record khusus
+`docs` (tercakup wildcard), jadi tidak ada yang dihapus di sana.
+`www.indicate.web.id` (dulu redirect 301 Vercel → apex) dipindah ke
+Cloudflare Redirect Rule `www_to_apex_301`
+(`http.host eq "www.indicate.web.id"` → `concat("https://indicate.web.id",
+http.request.uri.path)`, 301, preserve query; ruleset
+`www to apex redirect`, fase `http_request_dynamic_redirect`,
+terverifikasi live `/` dan `/tentang?x=1`), lalu domain dilepas dari Vercel.
+Sisa 0 slot; penambahan berikutnya tetap butuh penaikan limit
+(`project_domain_limit_reached`, "maximum allowed number of domains
+(50) ... contact sales").
 
 ## Fokus Wonosobo
 
@@ -47,12 +59,16 @@ Region `wonosobo` (org Pengelola Platform) — 10/10 subdomain aktif, template m
 
 `wonosobo.fakta01.my.id` tercatat 1 jejak aktivasi `failed` terminal (5x percobaan, 13 Sep 2026, `dependency_unavailable`) — tetapi hostname ini **live di tiga lapis**: site DB `active/active`, domain Vercel `verified: true`, HTTP `200` + merender penuh. Artinya aktivasi terjadi di luar saga setelah kegagalan itu. Baris jejak dibiarkan sebagai riwayat (tidak ditulis ulang); saga TIDAK dijalankan ulang karena kegagalan terminal akan menonaktifkan site yang sedang live (`failActivation` terminal → `status inactive`). Tidak ada tindakan pendaftaran tersisa di scope Wonosobo.
 
-## Stok terdaftar 2026-09-19 (parkir, belum jadi tenant)
+## Stok terdaftar 2026-09-20 (parkir, belum jadi tenant)
 
-25 domain stok berhasil masuk Vercel (semua `verified: true`, DNS CNAME
+26 domain stok masuk Vercel (semua `verified: true`, DNS CNAME
 apex+wildcard ke target project sudah ada sejak 2026-09-16 kecuali
 `bahariraya.biz.id`, `berandainvestigasi.biz.id`, `bidikan.my.id`, dan
-`faktura.web.id` yang dibuatkan saat itu juga). Tanpa site/tenant,
+`faktura.web.id` yang dibuatkan saat itu juga; `jejakkebenaran.my.id`
+masuk 2026-09-20 langsung `verified: true` lewat slot bekas `www`,
+tapi record CNAME apex+wildcard-nya belum ada sehingga HTTP gagal —
+dibuatkan saat itu juga mengikuti pola baseline, sempat 525 (sertifikat
+edge baru, sembuh sendiri) lalu 200 landing generik). Tanpa site/tenant,
 hostname ini menyajikan halaman landing generik (terverifikasi
 `bacazaman.web.id` → 200 judul "Indicate - Publishing infrastructure";
 tanpa kebocoran konten tenant).
@@ -65,7 +81,7 @@ cermin24berita.web.id, denyutpublik.my.id, faktura.web.id,
 garisfakta.web.id, gatrapublik.web.id, gerbanginvestigasi.my.id,
 gerbangkata.web.id, guratfakta.biz.id, guratfakta.my.id,
 independensi.my.id, jajakperkara.my.id, jalurperkara.web.id,
-jaring9perkara.web.id.
+jaring9perkara.web.id, jejakkebenaran.my.id.
 
 ## Onboarding 25/25 menjadi portal (2026-09-19) — SELESAI
 
@@ -114,9 +130,9 @@ mengembalikan site baru. Verifikasi render ulang setelah TTL lewat.
 
 Antre selesai — tidak ada sisa.
 
-Gagal masuk (limit tercapai): jejakkebenaran.my.id, jejakwacana.my.id,
+Gagal masuk (limit tercapai): jejakwacana.my.id,
 jendelapublik.my.id, jurnalpas.web.id, keberimbangan.biz.id,
-kelanaberita.web.id. Belum dicoba: 63 domain stok sisanya.
+kelanaberita.web.id. Belum dicoba: 62 domain stok sisanya.
 
 ## Backlog (belum punya site)
 

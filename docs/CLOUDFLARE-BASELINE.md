@@ -23,7 +23,7 @@ diverifikasi: 2026-09-17 via API (104 zona Indicate + `safenca.id`).
 
 ## Pengecualian tercatat
 
-- `indicate.web.id`: + record `www`, `pv` (Worker pageview), Email Routing + Resend aktif.
+- `indicate.web.id`: + record `www`, `pv` (Worker pageview), Email Routing + Resend aktif. Redirect Rule `www_to_apex_301` (fase `http_request_dynamic_redirect`, ruleset `www to apex redirect`): `www.indicate.web.id` → `https://indicate.web.id` + path, 301, preserve query — pengganti redirect domain Vercel `www` yang dilepas 2026-09-20 untuk slot kuota project.
 - 9 tenant: DMARC + SPF + DKIM-null; tanpa Email Routing/Resend.
 - `safenca.id`: tanpa `Indicate edge cache`, tanpa wildcard; Email Routing + Resend aktif.
 - 94 bank: tanpa TXT kirim/terima selain hardening; tanpa record `www`/`pv`.

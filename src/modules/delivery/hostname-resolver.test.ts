@@ -6,7 +6,7 @@ vi.mock('react', async (importOriginal) => ({ ...(await importOriginal<object>()
 import { HostnameResolver, hasReservedHostnameConflict } from '@/modules/delivery/hostname-resolver';
 import type { ResolvedSiteContext } from '@/modules/delivery/models';
 
-const HOSTS = { dashboard: 'dash.example', api: 'api.example', webhook: 'hook.example', docs: 'docs.example' };
+const HOSTS = { dashboard: 'dash.example', api: 'api.example', webhook: 'hook.example' };
 
 function resolverWith(matches: readonly ResolvedSiteContext[]) {
   return new HostnameResolver({ findActiveSitesByExactHostname: async () => matches }, HOSTS);

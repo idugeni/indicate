@@ -981,6 +981,13 @@
       "when": 1789835708210,
       "tag": "20260920070000_invoice_unpaid",
       "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "7",
+      "when": 1789841835396,
+      "tag": "20260920080000_article_tags_canonical",
+      "breakpoints": true
     }
   ]
 }

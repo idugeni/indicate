@@ -99,10 +99,6 @@
         "type": "remote",
         "url": "https://mcp.resend.com/mcp"
       },
-      "statsig": {
-        "type": "remote",
-        "url": "https://api.statsig.com/v1/mcp"
-      },
       "telegram": {
         // Token TIDAK ditulis di sini. @iqai/mcp-telegram membawa dotenvx:
         // saat spawn dengan cwd = workspace, ia memuat TELEGRAM_BOT_TOKEN
@@ -118,13 +114,6 @@
         ],
         "environment": {
           "SAMPLING_ENABLED": "false"
-        }
-      },
-      "stitch": {
-        "type": "remote",
-        "url": "https://stitch.googleapis.com/mcp",
-        "headers": {
-          "X-Goog-Api-Key": "{env:STITCH_API_KEY}"
         }
       }
     }

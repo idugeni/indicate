@@ -59,20 +59,6 @@ async function handleGET() {
       headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=3600, stale-while-revalidate=600' },
     });
   }
-  if (result.kind === 'control' && result.surface === 'docs') {
-    return new Response(
-      [
-        'User-agent: *',
-        'Allow: /',
-        'Disallow: /api/',
-        `Sitemap: https://${config.hosts.docs}/sitemap.xml`,
-        '',
-      ].join('\n'),
-      {
-        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=3600, stale-while-revalidate=600' },
-      },
-    );
-  }
   if (result.kind !== 'site') return deniedRobotsTxt(result.kind === 'invalid' ? 400 : result.kind === 'ambiguous' ? 500 : 404);
   const robots = await loadCachedRobots(result.context);
   if (robots === null) return deniedRobotsTxt(404);

@@ -38,14 +38,6 @@ export const metadata: Metadata = {
   description:
     'Indicate menyatukan pengelolaan puluhan domain berita ke dalam satu Dashboard terpusat. Redaksi menulis satu kali, lalu menerbitkannya ke situs mana pun yang dipilih.',
   applicationName: 'Indicate',
-  icons: {
-    icon: [
-      { url: '/apple-icon.png', sizes: '512x512', type: 'image/png' },
-      { url: '/brand/indicate-mark.svg', type: 'image/svg+xml' },
-    ],
-    shortcut: [{ url: '/favicon.ico', type: 'image/x-icon' }],
-    apple: [{ url: '/apple-icon.png', sizes: '512x512', type: 'image/png' }],
-  },
   authors: [{ name: 'Indicate' }],
   creator: 'Indicate',
   publisher: 'Indicate',
@@ -115,7 +107,10 @@ const plexMono = IBM_Plex_Mono({
  * Brand portal TIDAK di-resolve di root layout: pembacaan host + DB di sini
  * menahan prerender seluruh rute (blocking-prerender-dynamic). Chrome tenant
  * berasal dari shell per-template (`CleanBlueShell` dkk., dipilih dispatcher
- * `network-listing` per Site); shell kontrol tidak butuh brand.
+ * `network-listing` per Site); shell kontrol tidak butuh brand. Ikon juga
+ * TIDAK dideklarasikan di sini: setiap surface (control-plane via metadata
+ * layout masing-masing, tenant via `tenantFavicon`) membawa ikonnya sendiri
+ * agar tidak ada fallback lintas host.
  */
 export default function RootLayout({
   children,

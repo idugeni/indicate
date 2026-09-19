@@ -36,7 +36,6 @@ describe('getBootstrapConfig', () => {
       'DASHBOARD_HOST',
       'API_HOST',
       'WEBHOOK_HOST',
-      'DOCS_HOST',
       'NEXT_PUBLIC_SUPABASE_ANON_KEY',
       'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
       'DEFAULT_LOCALE',

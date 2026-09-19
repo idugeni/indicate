@@ -1,4 +1,6 @@
 export const SLUG_MAX_LENGTH = 100;
+export const TAG_MAX_LENGTH = 60;
+export const TAG_MAX_COUNT = 10;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const MAX_SUFFIX_ATTEMPTS = 1000;
 
@@ -46,4 +48,39 @@ export function allocateUniqueSlug(existingSlugs: readonly string[], base: strin
     if (!taken.has(candidate) && SLUG_PATTERN.test(candidate)) return candidate;
   }
   throw new Error('Slug space exhausted');
+}
+
+/**
+ * Menormalkan satu kandidat tag ke bentuk kanonik kebab-case.
+ *
+ * @param input - Teks tag bebas (mis. `Harga Emas`).
+ * @returns Tag kanonik maksimal `TAG_MAX_LENGTH`, atau `null` bila tanpa alfanumerik.
+ */
+export function normalizeTagCandidate(input: string): string | null {
+  if (!/[a-z0-9]/i.test(input)) return null;
+  const tag = normalizeSlugCandidate(input).slice(0, TAG_MAX_LENGTH).replace(/-+$/g, '');
+  return tag.length === 0 ? null : tag;
+}
+
+/**
+ * Menormalkan daftar tag mentah ke bentuk kanonik yang stabil untuk query.
+ *
+ * @param input - Elemen mentah (string atau nilai lain).
+ * @returns Tag kanonik unik dengan urutan kemunculan pertama.
+ * @remarks Non-string diteruskan apa adanya agar validasi skema tetap menolaknya.
+ */
+export function normalizeTagList(input: readonly unknown[]): unknown[] {
+  const seen = new Set<string>();
+  const normalized: unknown[] = [];
+  for (const item of input) {
+    if (typeof item !== 'string') {
+      normalized.push(item);
+      continue;
+    }
+    const tag = normalizeTagCandidate(item);
+    if (tag === null || seen.has(tag)) continue;
+    seen.add(tag);
+    normalized.push(tag);
+  }
+  return normalized;
 }

@@ -72,10 +72,9 @@ describe('proxy tenant surfaces', () => {
     expect(response.headers.get('location')).toContain('/tentang');
   });
 
-  it('mengalihkan /docs ke host docs', async () => {
-    const response = await proxy(request('portal.example', '/docs'));
-    expect(response.status).toBe(308);
-    expect(response.headers.get('location')).toContain(HOSTS.docs);
+  it('menolak /docs yang sudah dihapus', async () => {
+    expect((await proxy(request('portal.example', '/docs'))).status).toBe(404);
+    expect((await proxy(request(HOSTS.dashboard, '/docs'))).status).toBe(404);
   });
 
   it('menolak permukaan kontrol di host tenant', async () => {
@@ -125,30 +124,23 @@ describe('proxy tenant surfaces', () => {
     expect((await proxy(request('portal.example', '/update-password'))).status).toBe(404);
   });
 
-  it('menolak halaman auth di host docs', async () => {
-    expect((await proxy(request(HOSTS.docs, '/sign-in'))).status).toBe(404);
-    expect((await proxy(request(HOSTS.docs, '/sign-up'))).status).toBe(404);
-    expect((await proxy(request(HOSTS.docs, '/forgot-password'))).status).toBe(404);
-    expect((await proxy(request(HOSTS.docs, '/update-password'))).status).toBe(404);
+  it('menolak host docs lama sebagai unknown', async () => {
+    const root = await proxy(request('docs.indicate.web.id', '/'));
+    expect(root.status).toBe(200);
+    expect(root.headers.get('x-middleware-rewrite')).toContain('/tenant-home');
+    expect((await proxy(request('docs.indicate.web.id', '/sign-in'))).status).toBe(404);
   });
 
   it('membuka health di host kontrol, menolak di tenant', async () => {
     expect((await proxy(request(HOSTS.api, '/api/health'))).status).toBe(200);
     expect((await proxy(request(HOSTS.webhook, '/api/health'))).status).toBe(200);
-    expect((await proxy(request(HOSTS.docs, '/api/health'))).status).toBe(200);
     expect((await proxy(request('portal.example', '/api/health'))).status).toBe(404);
   });
 
-  it('mengarahkan /docs ke host docs dari mana saja', async () => {
-    const fromTenant = await proxy(request('portal.example', '/docs/panduan'));
-    expect(fromTenant.status).toBe(308);
-    expect(fromTenant.headers.get('location')).toContain(HOSTS.docs);
-    const fromApi = await proxy(request(HOSTS.api, '/docs'));
-    expect(fromApi.status).toBe(308);
-    expect(fromApi.headers.get('location')).toContain(HOSTS.docs);
-    const onDocs = await proxy(request(HOSTS.docs, '/docs/panduan'));
-    expect(onDocs.status).toBe(308);
-    expect(onDocs.headers.get('location') ?? '').not.toContain('/docs/');
+  it('menolak /docs dari mana saja', async () => {
+    expect((await proxy(request('portal.example', '/docs/panduan'))).status).toBe(404);
+    expect((await proxy(request(HOSTS.api, '/docs'))).status).toBe(404);
+    expect((await proxy(request('docs.indicate.web.id', '/docs/panduan'))).status).toBe(404);
   });
 
   it('mengizinkan skrip dan bingkai Turnstile serta font invoice', async () => {

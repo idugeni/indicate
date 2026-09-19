@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation';
 import { buildSeoDocument, indexableRobots, nonIndexableRobots, tenantFavicon } from '@/modules/site/seo';
 import type { NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
 import { deliveryComposition } from '@/modules/delivery';
+import { TAG_MAX_LENGTH, normalizeSlugCandidate } from '@/modules/site/slug-allocator';
 
 /**
  * Konten tenant per-host di Next cache. Tag memakai kosakata yang sama dengan
@@ -51,8 +52,8 @@ export async function resolveNetworkSite(query: NetworkContentQuery = {}, path =
   if (classification.kind !== 'site') notFound();
   const sanitized: NetworkContentQuery = {
     ...(query.articleSlug === undefined ? {} : { articleSlug: query.articleSlug.trim().toLowerCase() }),
-    ...(query.categorySlug === undefined ? {} : { categorySlug: query.categorySlug.trim().toLowerCase() }),
-    ...(query.tag === undefined || query.tag.trim() === '' ? {} : { tag: query.tag.trim().toLowerCase().slice(0, 60) }),
+    ...(query.categorySlug === undefined || query.categorySlug.trim() === '' ? {} : { categorySlug: normalizeSlugCandidate(query.categorySlug) }),
+    ...(query.tag === undefined || query.tag.trim() === '' ? {} : { tag: normalizeSlugCandidate(query.tag).slice(0, TAG_MAX_LENGTH) }),
     ...(query.search === undefined || query.search.trim() === '' ? {} : { search: query.search.trim().slice(0, 120) }),
   };
   const bypassed = await repository.isCacheBypassed(classification.context);
@@ -215,6 +216,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
       title: seo.title,
       description: seo.description,
       robots: nonIndexableRobots(),
+      ...tenantFavicon(site.settings.faviconUrl),
     };
   }
 

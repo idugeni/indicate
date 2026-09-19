@@ -7,6 +7,7 @@ import {
   SEO_TITLE_MAX,
   SEO_TITLE_MIN,
 } from '@/modules/site/seo-validation';
+import { TAG_MAX_COUNT, normalizeSlugCandidate, normalizeTagList } from '@/modules/site/slug-allocator';
 import { MASTER_TEMPLATE_PRESETS } from '@/ui/themes';
 
 const TEMPLATE_IDS = new Set(MASTER_TEMPLATE_PRESETS.map((preset) => preset.id));
@@ -18,7 +19,13 @@ export function isKnownTemplateId(value: unknown): value is string {
 const id = z.uuid();
 const expectedVersion = z.int().positive();
 const lifecycleStatus = z.enum(['active', 'inactive', 'archived']);
-const slug = z.string().trim().min(1).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+
+function normalizeSlugInput(value: unknown): unknown {
+  if (typeof value !== 'string' || !/[a-z0-9]/i.test(value)) return value;
+  return normalizeSlugCandidate(value);
+}
+
+const slug = z.preprocess(normalizeSlugInput, z.string().trim().min(1).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/));
 const RESERVED_ARTICLE_SLUGS = new Set(['articles', 'categories', 'tags', 'search', 'report', 'tentang', 'kontak', 'kebijakan-privasi', 'syarat-ketentuan', 'privacy', 'terms', 'about', 'contact', 'services', 'pricing', 'faq', 'api', 'dashboard', 'auth', 'sign-in', 'domain-pending']);
 const articleSlug = slug.refine((value) => !RESERVED_ARTICLE_SLUGS.has(value), 'Slug ini dicadangkan untuk rute portal.');
 const hostname = z.string().trim().toLowerCase().min(3).max(253).regex(/^(?=.{3,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/);
@@ -114,7 +121,7 @@ export const articleCreateSchema = z.object({
   title: z.string().trim().min(1).max(300),
   body: z.string().trim().min(1).max(200_000),
   source: z.string().trim().min(1).max(500),
-  tags: z.array(z.string().trim().min(1).max(60)).max(10).default([]),
+  tags: z.preprocess((value) => (Array.isArray(value) ? normalizeTagList(value) : value), z.array(z.string().trim().min(1).max(60)).max(TAG_MAX_COUNT)).default([]),
   status: z.enum(['draft', 'active']).default('draft'),
 }).strict();
 export const articleUpdateSchema = articleCreateSchema.extend({ id, expectedVersion });

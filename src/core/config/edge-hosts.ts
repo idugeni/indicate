@@ -3,14 +3,12 @@
 const DEFAULT_DASHBOARD_HOST = 'indicate.web.id';
 const DEFAULT_API_HOST = 'api.indicate.web.id';
 const DEFAULT_WEBHOOK_HOST = 'webhook.indicate.web.id';
-const DEFAULT_DOCS_HOST = 'docs.indicate.web.id';
 const DEFAULT_PAGEVIEW_ENDPOINT = 'https://pv.indicate.web.id/v';
 
 export interface ControlHosts {
   readonly dashboard: string;
   readonly api: string;
   readonly webhook: string;
-  readonly docs: string;
 }
 
 export function getControlHosts(environment: NodeJS.ProcessEnv = process.env): ControlHosts {
@@ -18,7 +16,6 @@ export function getControlHosts(environment: NodeJS.ProcessEnv = process.env): C
     dashboard: (environment.DASHBOARD_HOST ?? DEFAULT_DASHBOARD_HOST).trim().toLowerCase(),
     api: (environment.API_HOST ?? DEFAULT_API_HOST).trim().toLowerCase(),
     webhook: (environment.WEBHOOK_HOST ?? DEFAULT_WEBHOOK_HOST).trim().toLowerCase(),
-    docs: (environment.DOCS_HOST ?? DEFAULT_DOCS_HOST).trim().toLowerCase(),
   });
 }
 

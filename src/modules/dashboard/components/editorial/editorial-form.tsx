@@ -22,6 +22,7 @@ import type {
 } from '@/modules/dashboard/components/shared/types';
 import { slugify } from '@/modules/dashboard/components/shared/form-utils';
 import { parseArticleBody } from '@/modules/site/article-markup';
+import { TAG_MAX_COUNT, normalizeTagList } from '@/modules/site/slug-allocator';
 import { ArticleBodyView } from '@/modules/site/components/article-body-view';
 
 export function EditorialForm({
@@ -110,11 +111,7 @@ export function EditorialForm({
         title: String(formData.get('title') ?? '').trim(),
         body: String(formData.get('body') ?? '').trim(),
         source: String(formData.get('source') ?? '').trim(),
-        tags: String(formData.get('tags') ?? '')
-          .split(',')
-          .map((tag) => tag.trim().toLowerCase().replace(/\s+/g, '-'))
-          .filter((tag) => tag.length > 0)
-          .slice(0, 10),
+        tags: normalizeTagList(String(formData.get('tags') ?? '').split(',')).slice(0, TAG_MAX_COUNT),
         status: 'draft',
       })) as { readonly slug?: string } | null;
       if (created !== null && typeof created.slug === 'string' && created.slug !== payloadSlug) {

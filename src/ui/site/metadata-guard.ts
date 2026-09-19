@@ -16,13 +16,6 @@ export async function requireDashboardSurface(): Promise<void> {
   if (classification.kind !== 'control' || classification.surface !== 'dashboard') notFound();
 }
 
-/** Docs-surface guard for `docs.indicate.web.id`: same shape as the dashboard guard. */
-export async function requireDocsSurface(): Promise<void> {
-  const { resolver } = await deliveryComposition();
-  const classification = await resolver.classify((await headers()).get('host'));
-  if (classification.kind !== 'control' || classification.surface !== 'docs') notFound();
-}
-
 function controlPlaneOrigin(): string {
   try {
     const siteUrl = getPublicConfig(process.env).siteUrl.trim();

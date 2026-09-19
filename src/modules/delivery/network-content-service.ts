@@ -2,6 +2,7 @@ import { cacheEntryMatches, createCacheIdentity } from '@/modules/delivery/cache
 import type { NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
 import type { NetworkSiteCachePort } from '@/modules/delivery/ports';
 import type { DeliveryRepository } from '@/modules/delivery/ports';
+import { TAG_MAX_LENGTH, normalizeSlugCandidate } from '@/modules/site/slug-allocator';
 
 export interface NetworkCacheRequest {
   readonly path: string;
@@ -16,8 +17,8 @@ export class NetworkContentService {
   async load(context: ResolvedSiteContext, query: NetworkContentQuery = {}, cacheRequest?: NetworkCacheRequest): Promise<NetworkSiteData | null> {
     const sanitized: NetworkContentQuery = {
       ...(query.articleSlug === undefined ? {} : { articleSlug: query.articleSlug.trim().toLowerCase() }),
-      ...(query.categorySlug === undefined ? {} : { categorySlug: query.categorySlug.trim().toLowerCase() }),
-      ...(query.tag === undefined || query.tag.trim() === '' ? {} : { tag: query.tag.trim().toLowerCase().slice(0, 60) }),
+      ...(query.categorySlug === undefined || query.categorySlug.trim() === '' ? {} : { categorySlug: normalizeSlugCandidate(query.categorySlug) }),
+      ...(query.tag === undefined || query.tag.trim() === '' ? {} : { tag: normalizeSlugCandidate(query.tag).slice(0, TAG_MAX_LENGTH) }),
       ...(query.search === undefined || query.search.trim() === '' ? {} : { search: query.search.trim().slice(0, 120) }),
     };
     const load = () => this.repository.loadNetworkSite(context, sanitized);

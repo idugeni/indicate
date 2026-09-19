@@ -236,17 +236,9 @@ export async function proxy(request: NextRequest) {
     auditEdgeDeny(request, 'dashboard.platform_token.denied');
     return deny(404, request.headers);
   }
-  const { dashboard, api, webhook, docs } = getControlHosts();
+  const { dashboard, api, webhook } = getControlHosts();
 
-  if (parsed.hostname !== docs && (path === '/docs' || path.startsWith('/docs/'))) {
-    const url = request.nextUrl.clone();
-    url.hostname = docs;
-    url.port = '';
-    url.pathname = path === '/docs' ? '/' : path.slice('/docs'.length);
-    const redirect = NextResponse.redirect(url, 308);
-    redirect.headers.set(REQUEST_ID_HEADER, ensureRequestId(request.headers).requestId);
-    return withSecurityHeaders(redirect);
-  }
+  if (path === '/docs' || path.startsWith('/docs/')) return deny(404, request.headers);
 
   if (parsed.hostname === dashboard) {
     if (path.startsWith('/api/network') || path.startsWith('/api/v1/') || path.startsWith('/api/webhooks/') || path === '/domain-pending') return deny(404, request.headers);
@@ -259,18 +251,6 @@ export async function proxy(request: NextRequest) {
   }
   if (parsed.hostname === webhook) {
     if (path !== '/api/health' && !path.startsWith('/api/webhooks/')) return deny(404, request.headers);
-    return nextWithCorrelation(request);
-  }
-  if (parsed.hostname === docs) {
-    if (path === '/tg/app' || path.startsWith('/tg/app/')) return deny(404, request.headers);
-    if (path === '/docs' || path.startsWith('/docs/')) {
-      const url = request.nextUrl.clone();
-      url.pathname = path === '/docs' ? '/' : path.slice('/docs'.length);
-      const redirect = NextResponse.redirect(url, 308);
-      redirect.headers.set(REQUEST_ID_HEADER, ensureRequestId(request.headers).requestId);
-      return withSecurityHeaders(redirect);
-    }
-    if (path.startsWith('/dashboard') || path === '/auth' || path.startsWith('/auth/') || path.startsWith('/sign-in') || path.startsWith('/sign-up') || path.startsWith('/forgot-password') || path.startsWith('/update-password') || (path.startsWith('/api/') && path !== '/api/health') || isServicePath(path)) return deny(404, request.headers);
     return nextWithCorrelation(request);
   }
   const alias = TENANT_ALIASES[path];
