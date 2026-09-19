@@ -6,6 +6,14 @@
   },
   "mcp": {
     "servers": {
+      "browser-use": {
+        "type": "remote",
+        "url": "https://api.browser-use.com/v3/mcp",
+        "oauth": false,
+        "headers": {
+          "x-browser-use-api-key": "{env:BROWSER_USE_API_KEY}"
+        }
+      },
       "supabase": {
         "type": "remote",
         "url": "https://mcp.supabase.com/mcp?project_ref=cmqipmerhfpfqoeasibs&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching%2Cstorage"
@@ -94,6 +102,23 @@
       "statsig": {
         "type": "remote",
         "url": "https://api.statsig.com/v1/mcp"
+      },
+      "telegram": {
+        // Token TIDAK ditulis di sini. @iqai/mcp-telegram membawa dotenvx:
+        // saat spawn dengan cwd = workspace, ia memuat TELEGRAM_BOT_TOKEN
+        // dari .env project ini (git-ignored). Jangan set token di sini —
+        // string kosong dari substitusi env justru menutupi fallback .env.
+        "type": "local",
+        "command": [
+          "cmd",
+          "/c",
+          "npx",
+          "-y",
+          "@iqai/mcp-telegram"
+        ],
+        "environment": {
+          "SAMPLING_ENABLED": "false"
+        }
       }
     }
   }

@@ -1,5 +1,12 @@
 {
   "mcpServers": {
+    "browser-use": {
+      "type": "http",
+      "url": "https://api.browser-use.com/v3/mcp",
+      "headers": {
+        "x-browser-use-api-key": "${BROWSER_USE_API_KEY}"
+      }
+    },
     "supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=cmqipmerhfpfqoeasibs&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching%2Cstorage"
@@ -71,6 +78,16 @@
     "statsig": {
       "type": "http",
       "url": "https://api.statsig.com/v1/mcp"
+    },
+    "telegram": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@iqai/mcp-telegram"
+      ],
+      "env": {
+        "SAMPLING_ENABLED": "false"
+      }
     }
   }
 }
