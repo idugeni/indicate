@@ -45,7 +45,7 @@ export function GlassyBlueHeaderBar({
         <div className="flex flex-none items-center gap-2 justify-self-end">
           <Link
             href="#newsletter"
-            className="hidden h-10 flex-none items-center rounded-full bg-[#1f7cff] px-5 font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#155fd0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f7cff] sm:inline-flex"
+            className="hidden h-10 flex-none items-center rounded-full bg-[#1f7cff] px-5 font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#155fd0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f7cff] lg:inline-flex"
           >
             Langganan
           </Link>
@@ -56,7 +56,7 @@ export function GlassyBlueHeaderBar({
             aria-expanded={searchOpen}
             aria-label={searchOpen ? 'Tutup pencarian' : 'Cari berita'}
             title={searchOpen ? 'Tutup pencarian' : 'Cari berita'}
-            className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[#1f7cff] font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#155fd0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f7cff]"
+            className="hidden h-10 w-10 flex-none items-center justify-center rounded-full bg-[#1f7cff] font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#155fd0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f7cff] lg:flex"
           >
             <Search className="h-4 w-4" aria-hidden="true" />
           </button>

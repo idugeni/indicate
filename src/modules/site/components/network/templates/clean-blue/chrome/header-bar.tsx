@@ -49,7 +49,7 @@ export function CleanBlueHeaderBar({
             aria-expanded={searchOpen}
             aria-label={searchOpen ? 'Tutup pencarian' : 'Cari berita'}
             title={searchOpen ? 'Tutup pencarian' : 'Cari berita'}
-            className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[#1a5fd0] font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#155cb8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a5fd0]"
+            className="hidden h-10 w-10 flex-none items-center justify-center rounded-full bg-[#1a5fd0] font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#155cb8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a5fd0] lg:flex"
           >
             <Search className="h-4 w-4" aria-hidden="true" />
           </button>
