@@ -32,7 +32,9 @@ const MAIN_KEYBOARD: TelegramInlineKeyboard = Object.freeze([
   Object.freeze([Object.freeze({ text: '📝 Buat Artikel', data: 'tg:article' }), Object.freeze({ text: '📄 Artikel Saya', data: 'tg:articles' })]),
   Object.freeze([Object.freeze({ text: '🌐 Portal Tayang', data: 'tg:portals' }), Object.freeze({ text: '📋 Daftar Job', data: 'tg:jobs' })]),
   Object.freeze([Object.freeze({ text: '🖼 Tambah Foto', data: 'tg:image' }), Object.freeze({ text: '🔗 Tautan Terbit', data: 'tg:links' })]),
-  Object.freeze([Object.freeze({ text: '❓ Bantuan', data: 'tg:help' }), Object.freeze({ text: '✖️ Batal', data: 'tg:cancel' })]),
+  Object.freeze([Object.freeze({ text: '🔍 Cari Artikel', data: 'tg:search' }), Object.freeze({ text: '🗺 Daftar Region', data: 'tg:regions' })]),
+  Object.freeze([Object.freeze({ text: '🏢 Organisasi', data: 'tg:orgs' }), Object.freeze({ text: '❓ Bantuan', data: 'tg:help' })]),
+  Object.freeze([Object.freeze({ text: '✖️ Batal', data: 'tg:cancel' })]),
 ]);
 const LINK_REQUIRED_REPLY = 'Akses ditolak. Akun Telegram ini belum tertaut ke organisasi mana pun.\n\nHubungi administrator redaksi Anda untuk menautkan akun ini sebelum menggunakan bot.';
 const UNKNOWN_COMMAND_REPLY = 'Perintah tidak dikenali. Ketik /start untuk membuka menu utama atau /bantuan untuk panduan lengkap.';
@@ -55,6 +57,8 @@ const CALLBACK_COMMANDS: Readonly<Record<string, string>> = Object.freeze({
   'tg:jobs': '/job',
   'tg:portals': '/portal',
   'tg:orgs': '/org',
+  'tg:search': '/cari',
+  'tg:regions': '/regions',
 });
 const callbackCommand = (data: string | null): string | null => (data === null ? null : (CALLBACK_COMMANDS[data] ?? null));
 
@@ -328,12 +332,7 @@ export class TelegramWorkflowService {
   }
 
   private orgHome(option: TelegramIdentityOption): TelegramWorkflowResult {
-    const keyboard: TelegramInlineKeyboard = Object.freeze([
-      Object.freeze([Object.freeze({ text: '📝 Buat Artikel', data: 'tg:article' }), Object.freeze({ text: '📄 Artikel Saya', data: 'tg:articles' })]),
-      Object.freeze([Object.freeze({ text: '🌐 Portal Tayang', data: 'tg:portals' }), Object.freeze({ text: '📋 Daftar Job', data: 'tg:jobs' })]),
-      Object.freeze([Object.freeze({ text: '🔄 Ganti Organisasi', data: 'tg:orgs' }), Object.freeze({ text: '❓ Bantuan', data: 'tg:help' })]),
-    ]);
-    return { reply: `${option.organizationName} aktif sebagai organisasi berjalan.\n\nPilih aksi:`, display: { keyboard } };
+    return { reply: `${option.organizationName} aktif sebagai organisasi berjalan.\n\nPilih aksi:`, display: { keyboard: MAIN_KEYBOARD } };
   }
 
   private async pickRegion(identity: TelegramIdentity, actor: AuthorizedTenantActorContext, shared: TelegramSharedServices, regionId: string): Promise<Result<TelegramWorkflowResult, PublicErrorEnvelope>> {
