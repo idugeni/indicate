@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (135 migrations):
+-- Reviewed sources, in journal order (137 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -148,6 +148,8 @@
 --   133  20260919040000_telegram_identity_options  ledger sha256:e8192d2701af3ac5c1814f86becf9139bc51d77fb34f29460ba30c0133a8ba7f
 --   134  20260919050000_telegram_article_edit_step  ledger sha256:68757b6a83cc1029faa7bc376a6cac2ffe200e1a33bf24744459c054d3c18c5e
 --   135  20260919060000_retention_terminal_sweep  ledger sha256:88aa6858763e01f1b9987bb1d1cd741483962aa03813c5ce15e5f19717db331d
+--   136  20260920030000_subscription_update_entry_point  ledger sha256:ce315b60f682d837381b5a08910ed05484d5c7811487629f0078d8c972bcdfd6
+--   137  20260920040000_invoice_paid_month_single_price  ledger sha256:8039b3d3b9dadc3faae32b2b4c9ee5b7d70336eed108f13212a09a328a77423d
 
 BEGIN;
 
@@ -11808,4 +11810,166 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (135, 'retention_terminal_sweep', 'sha256:4262ce1fa93ccd67231e53c5714a4a6b5cd6655d12056791963a5a22230ca02a');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('88aa6858763e01f1b9987bb1d1cd741483962aa03813c5ce15e5f19717db331d', 1789850600000);
+
+-- ----------------------------------------------------------------------
+-- 20260920030000_subscription_update_entry_point
+-- ----------------------------------------------------------------------
+-- Catat titik masuk pemanggil pada audit subscription_update.
+--
+-- Kolom entry_point selama ini diisi hardcoded 'dashboard', sehingga tulis
+-- langganan dari Telegram Mini App tersalahatribusi di audit_logs. Parameter
+-- baru p_entry_point (default 'dashboard') meneruskan entry_point aktor;
+-- pemanggil lama enam argumen tetap valid tanpa perubahan.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+DROP FUNCTION IF EXISTS indicate_private.subscription_update(uuid, text, uuid, integer, subscription_status, timestamptz);
+CREATE FUNCTION indicate_private.subscription_update(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_expected_version integer, p_status subscription_status, p_now timestamp with time zone, p_entry_point text DEFAULT 'dashboard')
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  IF p_expected_version IS NULL THEN
+    INSERT INTO public.subscriptions(organization_id, status, version, created_at, updated_at)
+    VALUES (p_organization_id, p_status, 1, p_now, p_now)
+    ON CONFLICT (organization_id) DO NOTHING;
+    IF NOT FOUND THEN RETURN false; END IF;
+  ELSE
+    UPDATE public.subscriptions SET status = p_status, version = version + 1, updated_at = p_now
+    WHERE organization_id = p_organization_id AND version = p_expected_version;
+    IF NOT FOUND THEN RETURN false; END IF;
+  END IF;
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, p_entry_point, 'subscription.update', 'subscription', p_organization_id::text, 'succeeded', ARRAY['status'], jsonb_build_object('status', p_status), p_request_id, p_now);
+  RETURN true;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.subscription_update(uuid, text, uuid, integer, subscription_status, timestamptz, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.subscription_update(uuid, text, uuid, integer, subscription_status, timestamptz, text) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (136, 'subscription_update_entry_point', 'sha256:5afd115d9c049e8d8248ce63afad86ec78b70d9c20fc796cd5e356e89e44094d');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ce315b60f682d837381b5a08910ed05484d5c7811487629f0078d8c972bcdfd6', 1789850700000);
+
+-- ----------------------------------------------------------------------
+-- 20260920040000_invoice_paid_month_single_price
+-- ----------------------------------------------------------------------
+-- Faktur ikut bulan bayar, harga tunggal Rp550.000, dan terbitkan ulang.
+--
+-- Nomor IND-{ORG5}-{YYMM}-{SEQ4}-{RAND4} memakai YYMM dari p_paid_at (bulan
+-- dana diterima) bukan p_now (saat admin mencatat), agar arsip bulanan rapi
+-- walau faktur dibuat belakangan. invoice_create menolak nominal selain
+-- 550000; CHECK NOT VALID menjaga baris baru tanpa menolak arsip lama.
+-- invoice_reissue membuat pengganti paid dari faktur void (salin
+-- organisasi/nominal/paid_at/catatan/metode, nomor baru, audit reissue).
+-- Kedua overload invoice_create (7-arg lama, 8-arg metode) diperbarui.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+ALTER TABLE public.invoices ADD CONSTRAINT invoices_amount_single CHECK (amount_idr = 550000) NOT VALID;
+CREATE OR REPLACE FUNCTION indicate_private.invoice_create(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_amount integer, p_paid_at timestamp with time zone, p_note text, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid(); v_slug text; v_number text;
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  SELECT slug INTO v_slug FROM public.organizations WHERE id = p_organization_id;
+  IF v_slug IS NULL THEN
+    RAISE EXCEPTION 'organization required' USING ERRCODE = '42501';
+  END IF;
+  IF p_amount IS NULL OR p_amount <> 550000 THEN
+    RAISE EXCEPTION 'amount invalid' USING ERRCODE = '42501';
+  END IF;
+  IF p_paid_at IS NULL THEN
+    RAISE EXCEPTION 'paid_at required' USING ERRCODE = '42501';
+  END IF;
+  v_number := 'IND-'
+    || upper(substr(md5(v_slug), 1, 5))
+    || '-' || to_char(p_paid_at, 'YYMM-')
+    || lpad(nextval('public.invoice_number_seq')::text, 4, '0')
+    || '-' || (SELECT string_agg(substr('ABCDEFGHJKMNPQRSTUVWXYZ23456789', (floor(random() * 31) + 1)::integer, 1), '' ORDER BY s) FROM generate_series(1, 4) AS s);
+  INSERT INTO public.invoices(id, organization_id, number, amount_idr, status, paid_at, billing_note, payment_method, created_by, version, created_at, updated_at)
+  VALUES (v_id, p_organization_id, v_number, p_amount, 'paid', p_paid_at, nullif(p_note, ''), 'Transfer bank', p_actor_id, 1, p_now, p_now);
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'invoice.create', 'invoice', v_id::text, 'succeeded', ARRAY['number','amount','paidAt','paymentMethod'], jsonb_build_object('number', v_number, 'amount', p_amount, 'paidAt', p_paid_at, 'paymentMethod', 'Transfer bank'), p_request_id, p_now);
+  RETURN v_id;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.invoice_create(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_amount integer, p_paid_at timestamp with time zone, p_note text, p_now timestamp with time zone, p_payment_method text DEFAULT 'Transfer bank')
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid(); v_slug text; v_number text; v_method text;
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  SELECT slug INTO v_slug FROM public.organizations WHERE id = p_organization_id;
+  IF v_slug IS NULL THEN
+    RAISE EXCEPTION 'organization required' USING ERRCODE = '42501';
+  END IF;
+  IF p_amount IS NULL OR p_amount <> 550000 THEN
+    RAISE EXCEPTION 'amount invalid' USING ERRCODE = '42501';
+  END IF;
+  IF p_paid_at IS NULL THEN
+    RAISE EXCEPTION 'paid_at required' USING ERRCODE = '42501';
+  END IF;
+  v_method := COALESCE(NULLIF(p_payment_method, ''), 'Transfer bank');
+  v_number := 'IND-'
+    || upper(substr(md5(v_slug), 1, 5))
+    || '-' || to_char(p_paid_at, 'YYMM-')
+    || lpad(nextval('public.invoice_number_seq')::text, 4, '0')
+    || '-' || (SELECT string_agg(substr('ABCDEFGHJKMNPQRSTUVWXYZ23456789', (floor(random() * 31) + 1)::integer, 1), '' ORDER BY s) FROM generate_series(1, 4) AS s);
+  INSERT INTO public.invoices(id, organization_id, number, amount_idr, status, paid_at, billing_note, payment_method, created_by, version, created_at, updated_at)
+  VALUES (v_id, p_organization_id, v_number, p_amount, 'paid', p_paid_at, nullif(p_note, ''), v_method, p_actor_id, 1, p_now, p_now);
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'invoice.create', 'invoice', v_id::text, 'succeeded', ARRAY['number','amount','paidAt','paymentMethod'], jsonb_build_object('number', v_number, 'amount', p_amount, 'paidAt', p_paid_at, 'paymentMethod', v_method), p_request_id, p_now);
+  RETURN v_id;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.invoice_reissue(p_actor_id uuid, p_request_id text, p_invoice_id uuid, p_expected_version integer, p_reason text, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_src public.invoices%ROWTYPE; v_id uuid := gen_random_uuid(); v_slug text; v_number text;
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  SELECT * INTO v_src FROM public.invoices WHERE id = p_invoice_id FOR UPDATE;
+  IF v_src.id IS NULL OR v_src.status <> 'voided' OR v_src.version <> p_expected_version THEN
+    RETURN NULL;
+  END IF;
+  SELECT slug INTO v_slug FROM public.organizations WHERE id = v_src.organization_id;
+  IF v_slug IS NULL THEN
+    RAISE EXCEPTION 'organization required' USING ERRCODE = '42501';
+  END IF;
+  v_number := 'IND-'
+    || upper(substr(md5(v_slug), 1, 5))
+    || '-' || to_char(v_src.paid_at, 'YYMM-')
+    || lpad(nextval('public.invoice_number_seq')::text, 4, '0')
+    || '-' || (SELECT string_agg(substr('ABCDEFGHJKMNPQRSTUVWXYZ23456789', (floor(random() * 31) + 1)::integer, 1), '' ORDER BY s) FROM generate_series(1, 4) AS s);
+  INSERT INTO public.invoices(id, organization_id, number, amount_idr, status, paid_at, billing_note, payment_method, created_by, version, created_at, updated_at)
+  VALUES (v_id, v_src.organization_id, v_number, v_src.amount_idr, 'paid', v_src.paid_at, v_src.billing_note, v_src.payment_method, p_actor_id, 1, p_now, p_now);
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (v_src.organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'invoice.reissue', 'invoice', v_id::text, 'succeeded', ARRAY['number','replaces'], jsonb_build_object('number', v_number, 'replaces', p_invoice_id, 'reason', p_reason), p_request_id, p_now);
+  RETURN v_id;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.invoice_reissue(uuid, text, uuid, integer, text, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.invoice_reissue(uuid, text, uuid, integer, text, timestamptz) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (137, 'invoice_paid_month_single_price', 'sha256:2195e850eb0180bf790c738c90eafaf27bd6ea156bd58d47ee297c371f888d0a');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('8039b3d3b9dadc3faae32b2b4c9ee5b7d70336eed108f13212a09a328a77423d', 1789850800000);
 COMMIT;
