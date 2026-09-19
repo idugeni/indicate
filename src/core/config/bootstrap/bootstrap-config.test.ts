@@ -32,6 +32,23 @@ describe('getBootstrapConfig', () => {
   });
 
   it('memuat dan me-memoize konfigurasi valid', () => {
+    for (const key of [
+      'DASHBOARD_HOST',
+      'API_HOST',
+      'WEBHOOK_HOST',
+      'DOCS_HOST',
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+      'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+      'DEFAULT_LOCALE',
+      'SITE_DEFAULT_ASSET_URL',
+      'SUPABASE_PROJECT_REF',
+      'R2_AUDIT_BUCKET_NAME',
+      'R2_AUDIT_ACCESS_KEY_ID',
+      'R2_AUDIT_SECRET_ACCESS_KEY',
+      'RESEND_API_KEY',
+      'RESEND_DEFAULT_FROM',
+      'RESEND_WEBHOOK_SECRET',
+    ]) delete process.env[key];
     for (const [key, value] of Object.entries(VALID)) vi.stubEnv(key, value);
     const first = getBootstrapConfig();
     expect(first.controlHosts.api).toBe('api.indicate.web.id');
