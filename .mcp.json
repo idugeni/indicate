@@ -68,6 +68,10 @@
       "type": "http",
       "url": "https://mcp.resend.com/mcp"
     },
+    "statsig": {
+      "type": "http",
+      "url": "https://api.statsig.com/v1/mcp"
+    },
     "canva": {
       "command": "npx",
       "args": [
