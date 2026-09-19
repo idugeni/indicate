@@ -61,6 +61,7 @@ export interface RuntimeConfig {
   readonly telegram: {
     readonly botToken: string;
     readonly webhookSecret: string;
+    readonly ownerIds: readonly string[];
   };
   /** Email transaksional Resend; null bila belum dikonfigurasi (pengirim nonaktif). */
   readonly email: {

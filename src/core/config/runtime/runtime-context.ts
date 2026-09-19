@@ -96,6 +96,7 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
     telegram: Object.freeze({
       botToken: bootstrap.credentials.telegramBotToken.reveal(),
       webhookSecret: bootstrap.credentials.telegramWebhookSecret.reveal(),
+      ownerIds: bootstrap.credentials.telegramOwnerIds,
     }),
     email:
       bootstrap.credentials.resendApiKey === null || bootstrap.credentials.resendDefaultFrom === null

@@ -57,6 +57,7 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'UPSTASH_REDIS_REST_TOKEN',
   'TELEGRAM_BOT_TOKEN',
   'TELEGRAM_WEBHOOK_SECRET',
+  'TELEGRAM_OWNER_IDS',
   'RESEND_API_KEY',
   'RESEND_DEFAULT_FROM',
   'RESEND_WEBHOOK_SECRET',
@@ -108,6 +109,7 @@ const bootstrapSchema = z
     UPSTASH_REDIS_REST_TOKEN: secretSchema,
     TELEGRAM_BOT_TOKEN: secretSchema,
     TELEGRAM_WEBHOOK_SECRET: secretSchema,
+    TELEGRAM_OWNER_IDS: z.string().regex(/^\d+(,\d+)*$/).optional(),
     RESEND_API_KEY: secretSchema.optional(),
     RESEND_DEFAULT_FROM: z.string().min(3).max(320).optional(),
     RESEND_WEBHOOK_SECRET: secretSchema.optional(),
@@ -206,6 +208,8 @@ export interface BootstrapConfig {
     readonly upstashRestToken: SecretString;
     readonly telegramBotToken: SecretString;
     readonly telegramWebhookSecret: SecretString;
+    /** Telegram user ID pemilik Mini App; kosong berarti Mini App nonaktif. */
+    readonly telegramOwnerIds: readonly string[];
     /** Pasangan kredensial Resend; null bila email transaksional belum dikonfigurasi. */
     readonly resendApiKey: SecretString | null;
     readonly resendDefaultFrom: string | null;
@@ -264,6 +268,7 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       upstashRestToken: SecretString.fromPlain(value.UPSTASH_REDIS_REST_TOKEN),
       telegramBotToken: SecretString.fromPlain(value.TELEGRAM_BOT_TOKEN),
       telegramWebhookSecret: SecretString.fromPlain(value.TELEGRAM_WEBHOOK_SECRET),
+      telegramOwnerIds: Object.freeze(value.TELEGRAM_OWNER_IDS === undefined ? [] : value.TELEGRAM_OWNER_IDS.split(',')),
       resendApiKey: value.RESEND_API_KEY === undefined ? null : SecretString.fromPlain(value.RESEND_API_KEY),
       resendDefaultFrom: value.RESEND_DEFAULT_FROM ?? null,
       resendWebhookSecret: value.RESEND_WEBHOOK_SECRET === undefined ? null : SecretString.fromPlain(value.RESEND_WEBHOOK_SECRET),
