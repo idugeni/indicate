@@ -58,9 +58,13 @@ export interface TelegramIdentity {
   readonly regionId: string | null;
   readonly permissions: ReadonlySet<string>;
 }
+export interface TelegramIdentityOption {
+  readonly identity: TelegramIdentity;
+  readonly organizationName: string;
+}
 export type TelegramConversationStep =
   | 'idle' | 'article_region' | 'article_title' | 'article_body' | 'article_source' | 'article_slug'
-  | 'article_sites' | 'article_image' | 'publication_status' | 'publish_pick_site' | 'suggest_sites';
+  | 'article_sites' | 'article_image' | 'publication_status' | 'publish_pick_site' | 'suggest_sites' | 'site_pick' | 'article_edit' | 'article_edit_confirm';
 export interface TelegramConversation {
   readonly source: 'telegram';
   readonly chatId: string;

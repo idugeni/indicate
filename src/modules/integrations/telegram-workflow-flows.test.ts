@@ -43,6 +43,7 @@ function harness() {
     prepareReplayOutcome: vi.fn(async () => claim('x')),
     finalizeReplay: vi.fn(async () => claim('x')),
     resolveTelegramIdentity: vi.fn(async (): Promise<typeof identity | null> => identity),
+    listTelegramIdentities: vi.fn(async (): Promise<unknown[]> => []),
     readTelegramConversation: vi.fn(async (): Promise<unknown> => null),
     saveTelegramConversation: vi.fn(async () => undefined),
     clearTelegramConversation: vi.fn(async () => undefined),
@@ -50,6 +51,9 @@ function harness() {
   };
   const listEditorial = vi.fn(async (): Promise<unknown> => ({ ok: true as const, value: { regions: [], articles: [], sites: [] } }));
   const createArticle = vi.fn(async (): Promise<unknown> => ({ ok: true as const, value: { id: 'article-9' } }));
+  const updateArticle = vi.fn(async (_actor: unknown, _input: unknown): Promise<unknown> => ({ ok: true as const, value: { id: 'article-1' } }));
+  const archiveArticle = vi.fn(async (_actor: unknown, _input: unknown): Promise<unknown> => ({ ok: true as const, value: { id: 'article-1', status: 'archived' } }));
+  const restoreArticle = vi.fn(async (_actor: unknown, _input: unknown): Promise<unknown> => ({ ok: true as const, value: { id: 'article-1', status: 'draft' } }));
   const assignArticleSites = vi.fn(async (): Promise<unknown> => ({ ok: true as const, value: [{ id: 'as-1' }] }));
   const publicationRequest = vi.fn(async (_actor: unknown, _input: unknown): Promise<unknown> => ({
     ok: true as const,
@@ -70,7 +74,7 @@ function harness() {
   }));
   const sharedFactory = {
     create: () => ({
-      articles: { listEditorial, createArticle, assignArticleSites },
+      articles: { listEditorial, createArticle, updateArticle, archiveArticle, restoreArticle, assignArticleSites },
       media: {},
       publication: { request: publicationRequest, status: publicationStatus, listJobs, retry: publicationRetry, unpublish: publicationRetry, suggest: publicationSuggest },
     }),
@@ -81,6 +85,7 @@ function harness() {
     send: vi.fn(async () => undefined),
     sendPhoto: vi.fn(async () => undefined),
     answerCallback: vi.fn(async () => undefined),
+    setMyCommands: vi.fn(async () => undefined),
   };
   const service = new TelegramWorkflowService(
     repository as never,
@@ -93,7 +98,7 @@ function harness() {
     PHOTO,
     { now: () => NOW },
   );
-  return { repository, service, listEditorial, createArticle, assignArticleSites, publicationRequest, publicationStatus, listJobs, publicationRetry, publicationSuggest };
+  return { repository, service, listEditorial, createArticle, updateArticle, archiveArticle, restoreArticle, assignArticleSites, publicationRequest, publicationStatus, listJobs, publicationRetry, publicationSuggest };
 }
 
 function messageUpdate(text: string, updateId = 1) {
@@ -191,7 +196,7 @@ describe('TelegramWorkflowService discovery flows', () => {
     expect(outcome.result.ok).toBe(true);
     if (!outcome.result.ok) throw new Error('expected ok');
     expect(outcome.result.value.reply).toContain('fakta01.my.id');
-    expect(outcome.result.value.reply).toContain('site-1');
+    expect(outcome.result.value.reply).toContain('Status: active');
   });
 
   it('mencari artikel lewat /cari dan menangani kata kosong', async () => {
@@ -199,7 +204,7 @@ describe('TelegramWorkflowService discovery flows', () => {
     const usage = await empty.service.handle(SECRET, messageUpdate('/cari', 17), 'req-cari-usage');
     expect(usage.result.ok).toBe(true);
     if (!usage.result.ok) throw new Error('expected ok');
-    expect(usage.result.value.reply).toContain('/cari KATA_KUNCI');
+    expect(usage.result.value.reply).toContain('kata kunci');
 
     const filled = harness();
     filled.listEditorial.mockResolvedValueOnce({
@@ -224,32 +229,66 @@ describe('TelegramWorkflowService discovery flows', () => {
     expect(missOutcome.result.value.reply).toContain('Tidak ada artikel yang cocok');
   });
 
-  it('menyusun saran varian lewat /suggest langsung', async () => {
-    const { service, publicationSuggest } = harness();
-    const outcome = await service.handle(SECRET, messageUpdate('/suggest article-1 site-1', 20), 'req-suggest');
+  it('menyusun saran varian lewat centang tombol', async () => {
+    const { service, repository, publicationSuggest } = harness();
+    repository.readTelegramConversation.mockResolvedValueOnce(
+      conversationOf('site_pick', { articleId: 'article-1', mode: 'suggest', selected: ['site-1'], availableSiteIds: ['site-1'] }),
+    );
+    const outcome = await service.handle(SECRET, callbackUpdate('tg:ts:go', 20), 'req-suggest');
     expect(outcome.result.ok).toBe(true);
     if (!outcome.result.ok) throw new Error('expected ok');
     expect(publicationSuggest).toHaveBeenCalledTimes(1);
     expect(outcome.result.value.reply).toContain('Judul Unik');
     expect(outcome.result.value.reply).toContain('Deskripsi unik');
+    expect(repository.clearTelegramConversation).toHaveBeenCalled();
   });
 
   it('memandu alur saran dari tombol artikel', async () => {
-    const { service, repository } = harness();
+    const { service, repository, listEditorial } = harness();
+    listEditorial.mockResolvedValue({
+      ok: true as const,
+      value: {
+        regions: [],
+        articles: [{ id: 'article-1', title: 'Judul', status: 'draft', createdAt: '2026-09-18T13:00:00.000Z', regionId: null }],
+        sites: [{ id: 'site-1', status: 'active', normalizedHostname: 'portal.example', regionId: null }],
+      },
+    });
     const start = await service.handle(SECRET, callbackUpdate('tg:a:article-1:sug', 21), 'req-suggest-start');
     expect(start.result.ok).toBe(true);
     if (!start.result.ok) throw new Error('expected ok');
-    expect(start.result.value.reply).toContain('Site ID');
+    expect(start.result.value.reply).toContain('menyusun saran');
+    expect(start.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:ts:site-1');
     expect(repository.saveTelegramConversation).toHaveBeenCalledTimes(1);
   });
 
-  it('membuat idempotency key otomatis saat /publish tanpa KEY', async () => {
-    const { service, publicationRequest } = harness();
-    const outcome = await service.handle(SECRET, messageUpdate('/publish article-1 site-1', 16), 'req-publish-auto');
+  it('perintah berargumen ID dialihkan ke pemilih tombol', async () => {
+    const typed = harness();
+    typed.listEditorial.mockResolvedValue({
+      ok: true as const,
+      value: {
+        regions: [],
+        articles: [{ id: 'article-1', title: 'Judul', status: 'draft', createdAt: '2026-09-18T13:00:00.000Z', regionId: null }],
+        sites: [],
+      },
+    });
+    const outcome = await typed.service.handle(SECRET, messageUpdate('/publish article-1 site-1', 16), 'req-publish-auto');
     expect(outcome.result.ok).toBe(true);
-    expect(publicationRequest).toHaveBeenCalledTimes(1);
-    const sent = publicationRequest.mock.calls[0]?.[1] as unknown as { idempotencyKey: string };
-    expect(sent.idempotencyKey.startsWith('tg-')).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(outcome.result.value.reply).toContain('Pilih artikel');
+    expect(outcome.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:a:article-1:pub');
+    expect(typed.publicationRequest).not.toHaveBeenCalled();
+
+    const status = harness();
+    status.listJobs.mockResolvedValueOnce({
+      ok: true as const,
+      value: [{ job: { id: 'job-1', state: 'queued', createdAt: '2026-09-18T13:00:00.000Z' }, articleTitle: 'Judul' }],
+    });
+    const statusOutcome = await status.service.handle(SECRET, messageUpdate('/status job-1', 17), 'req-status-typed');
+    expect(statusOutcome.result.ok).toBe(true);
+    if (!statusOutcome.result.ok) throw new Error('expected ok');
+    expect(statusOutcome.result.value.reply).toContain('Pilih pekerjaan');
+    expect(statusOutcome.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:j:job-1:menu');
+    expect(status.publicationStatus).not.toHaveBeenCalled();
   });
 
   it('membuka picker portal dari callback artikel dan menyimpan sesi', async () => {
@@ -266,7 +305,8 @@ describe('TelegramWorkflowService discovery flows', () => {
     expect(outcome.result.ok).toBe(true);
     if (!outcome.result.ok) throw new Error('expected ok');
     expect(outcome.result.value.reply).toContain('Pilih portal');
-    expect(outcome.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:ps:site-1');
+    expect(outcome.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:ps:all');
+    expect(outcome.result.value.display?.keyboard?.[1]?.[0]?.data).toBe('tg:ps:site-1');
     expect(repository.saveTelegramConversation).toHaveBeenCalled();
   });
 
@@ -296,7 +336,8 @@ describe('TelegramWorkflowService discovery flows', () => {
     const menuOutcome = await picker.service.handle(SECRET, callbackUpdate('tg:j:job-1:menu', 20), 'req-job-menu');
     expect(menuOutcome.result.ok).toBe(true);
     if (!menuOutcome.result.ok) throw new Error('expected ok');
-    expect(menuOutcome.result.value.reply).toContain('Job: job-1');
+    expect(menuOutcome.result.value.reply).toContain('Status: queued');
+    expect(menuOutcome.result.value.reply).not.toContain('job-1');
 
     const retryer = harness();
     const retryOutcome = await retryer.service.handle(SECRET, callbackUpdate('tg:j:job-1:retry', 21), 'req-job-retry');
@@ -322,21 +363,34 @@ function conversationOf(step: string, data: Record<string, unknown> = {}) {
 
 describe('TelegramWorkflowService article wizard', () => {
   it('memulai wizard /article dari region hingga slug', async () => {
-    const { service, repository, createArticle } = harness();
+    const { service, repository, listEditorial, createArticle } = harness();
+    listEditorial.mockResolvedValueOnce({
+      ok: true as const,
+      value: { regions: [{ id: 'region-1', name: 'Jawa', status: 'active' }], articles: [], sites: [] },
+    });
     const started = await service.handle(SECRET, messageUpdate('/article', 30), 'req-wizard-start');
     expect(started.result.ok).toBe(true);
     if (!started.result.ok) throw new Error('expected ok');
-    expect(started.result.value.reply).toContain('ID Region');
+    expect(started.result.value.reply).toContain('Pilih region');
+
+    repository.readTelegramConversation.mockResolvedValueOnce(conversationOf('article_region', {}));
+    listEditorial.mockResolvedValueOnce({
+      ok: true as const,
+      value: { regions: [{ id: 'region-1', name: 'Jawa', status: 'active' }], articles: [], sites: [] },
+    });
+    const picked = await service.handle(SECRET, callbackUpdate('tg:rg:region-1', 31), 'req-wizard-region');
+    expect(picked.result.ok).toBe(true);
+    if (!picked.result.ok) throw new Error('expected ok');
+    expect(picked.result.value.reply).toContain('judul');
 
     const steps: Array<[string, Record<string, unknown>, string]> = [
-      ['article_region', {}, 'judul'],
       ['article_title', { regionId: 'region-1' }, 'isi'],
       ['article_body', { regionId: 'region-1', title: 'Judul' }, 'atribusi'],
       ['article_source', { regionId: 'region-1', title: 'Judul', body: 'Isi' }, 'slug'],
     ];
     for (const [index, [step, data, hint]] of steps.entries()) {
       repository.readTelegramConversation.mockResolvedValueOnce(conversationOf(step, data));
-      const outcome = await service.handle(SECRET, messageUpdate(`jawaban-${index}`, 31 + index), `req-wizard-${index}`);
+      const outcome = await service.handle(SECRET, messageUpdate(`jawaban-${index}`, 32 + index), `req-wizard-${index}`);
       expect(outcome.result.ok).toBe(true);
       if (!outcome.result.ok) throw new Error('expected ok');
       expect(outcome.result.value.reply.toLowerCase()).toContain(hint);
@@ -348,7 +402,8 @@ describe('TelegramWorkflowService article wizard', () => {
     const done = await service.handle(SECRET, messageUpdate('judul-artikel', 35), 'req-wizard-done');
     expect(done.result.ok).toBe(true);
     if (!done.result.ok) throw new Error('expected ok');
-    expect(done.result.value.reply).toContain('article-9');
+    expect(done.result.value.reply).toContain('Artikel berhasil dibuat');
+    expect(done.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:a:article-9:puball');
     expect(createArticle).toHaveBeenCalledTimes(1);
     expect(repository.clearTelegramConversation).toHaveBeenCalled();
   });
@@ -388,7 +443,7 @@ describe('TelegramWorkflowService sites assignment', () => {
     ok: true as const,
     value: {
       regions: [{ id: 'region-1', name: 'Jawa' }],
-      articles: [{ id: 'article-1', regionId: 'region-1' }],
+      articles: [{ id: 'article-1', title: 'Judul', status: 'draft', createdAt: '2026-09-18T13:00:00.000Z', regionId: 'region-1' }],
       sites: [
         { id: 'site-1', status: 'active', normalizedHostname: 'portal.example', regionId: null },
         { id: 'site-2', status: 'inactive', normalizedHostname: 'mati.example', regionId: null },
@@ -396,38 +451,55 @@ describe('TelegramWorkflowService sites assignment', () => {
     },
   };
 
-  it('menampilkan portal aktif untuk /sites', async () => {
+  it('mengalihkan /sites berargumen ke pemilih artikel', async () => {
     const { service, listEditorial } = harness();
     listEditorial.mockResolvedValue(editorial);
     const outcome = await service.handle(SECRET, messageUpdate('/sites article-1', 40), 'req-sites');
     expect(outcome.result.ok).toBe(true);
     if (!outcome.result.ok) throw new Error('expected ok');
-    expect(outcome.result.value.reply).toContain('portal.example');
-    expect(outcome.result.value.reply).not.toContain('mati.example');
+    expect(outcome.result.value.reply).toContain('Pilih artikel untuk diatur portalnya');
+    expect(outcome.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:a:article-1:sites');
   });
 
-  it('menautkan portal terpilih dan menutup sesi', async () => {
-    const { service, repository, assignArticleSites } = harness();
+  it('mencentang portal lewat tombol lalu menerbitkan pilihan', async () => {
+    const { service, repository, listEditorial, publicationRequest } = harness();
+    listEditorial.mockResolvedValue({
+      ok: true as const,
+      value: {
+        regions: [],
+        articles: [{ id: 'article-1', title: 'Judul', status: 'draft', createdAt: '2026-09-18T13:00:00.000Z', regionId: null }],
+        sites: [{ id: 'site-1', status: 'active', normalizedHostname: 'portal.example', regionId: null }],
+      },
+    });
     repository.readTelegramConversation.mockResolvedValueOnce(
-      conversationOf('article_sites', { articleId: 'article-1', availableSiteIds: ['site-1'] }),
+      conversationOf('site_pick', { articleId: 'article-1', mode: 'publish', selected: [], availableSiteIds: ['site-1'] }),
     );
-    const outcome = await service.handle(SECRET, messageUpdate('site-1', 41), 'req-assign');
-    expect(outcome.result.ok).toBe(true);
-    if (!outcome.result.ok) throw new Error('expected ok');
-    expect(outcome.result.value.reply).toContain('1 portal');
-    expect(assignArticleSites).toHaveBeenCalledTimes(1);
+    const toggled = await service.handle(SECRET, callbackUpdate('tg:ts:site-1', 41), 'req-toggle');
+    expect(toggled.result.ok).toBe(true);
+    if (!toggled.result.ok) throw new Error('expected ok');
+    expect(toggled.result.value.reply).toContain('1 portal dipilih');
+
+    repository.readTelegramConversation.mockResolvedValueOnce(
+      conversationOf('site_pick', { articleId: 'article-1', mode: 'publish', selected: ['site-1'], availableSiteIds: ['site-1'] }),
+    );
+    const confirmed = await service.handle(SECRET, callbackUpdate('tg:ts:go', 42), 'req-confirm');
+    expect(confirmed.result.ok).toBe(true);
+    expect(publicationRequest).toHaveBeenCalledTimes(1);
+    const sent = publicationRequest.mock.calls[0]?.[1] as unknown as { articleId: string; siteIds: string[] };
+    expect(sent.articleId).toBe('article-1');
+    expect(sent.siteIds).toEqual(['site-1']);
     expect(repository.clearTelegramConversation).toHaveBeenCalled();
   });
 
-  it('menolak site di luar daftar dengan invalid input', async () => {
+  it('menolak tombol portal di luar daftar', async () => {
     const { service, repository } = harness();
     repository.readTelegramConversation.mockResolvedValueOnce(
-      conversationOf('article_sites', { articleId: 'article-1', availableSiteIds: ['site-1'] }),
+      conversationOf('site_pick', { articleId: 'article-1', mode: 'publish', selected: [], availableSiteIds: ['site-1'] }),
     );
-    const outcome = await service.handle(SECRET, messageUpdate('site-asing', 42), 'req-assign-bad');
-    expect(outcome.result.ok).toBe(false);
-    if (outcome.result.ok) throw new Error('expected error');
-    expect(outcome.result.error.error.code).toBe('INVALID_INPUT');
+    const outcome = await service.handle(SECRET, callbackUpdate('tg:ts:site-asing', 43), 'req-toggle-bad');
+    expect(outcome.result.ok).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(outcome.result.value.reply).toContain('tidak dikenal');
   });
 
   it('meminta foto saat /image tanpa dokumen', async () => {
@@ -437,5 +509,249 @@ describe('TelegramWorkflowService sites assignment', () => {
     expect(outcome.result.ok).toBe(true);
     if (!outcome.result.ok) throw new Error('expected ok');
     expect(outcome.result.value.reply).toContain('Kirim foto');
+  });
+});
+
+describe('TelegramWorkflowService organization switcher', () => {
+  const options = [
+    { identity: { ...identity, mappingId: 'mapping-a', organizationId: 'org-a' }, organizationName: 'Organisasi A' },
+    { identity: { ...identity, mappingId: 'mapping-b', organizationId: 'org-b' }, organizationName: 'Organisasi B' },
+  ];
+
+  it('menampilkan pemilih organisasi saat akun tertaut ke banyak org', async () => {
+    const { service, repository } = harness();
+    repository.resolveTelegramIdentity.mockResolvedValueOnce(null);
+    repository.listTelegramIdentities.mockResolvedValue(options);
+    const outcome = await service.handle(SECRET, messageUpdate('/start', 50), 'req-org-picker');
+    expect(outcome.result.ok).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(outcome.result.value.reply).toContain('Pilih organisasi aktif');
+    expect(outcome.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:org:mapping-a');
+  });
+
+  it('memilih organisasi lewat tombol dan mengingatnya', async () => {
+    const { service, repository } = harness();
+    repository.resolveTelegramIdentity.mockResolvedValueOnce(null);
+    repository.listTelegramIdentities.mockResolvedValue(options);
+    const outcome = await service.handle(SECRET, callbackUpdate('tg:org:mapping-a', 51), 'req-org-pick');
+    expect(outcome.result.ok).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(outcome.result.value.reply).toContain('Organisasi A aktif');
+    expect(repository.clearTelegramConversation).toHaveBeenCalledTimes(1);
+    const saved = repository.saveTelegramConversation.mock.calls[0] as unknown as [{ readonly mappingId: string; readonly organizationId: string }, { readonly step: string }];
+    expect(saved[0]).toMatchObject({ mappingId: 'mapping-a', organizationId: 'org-a' });
+    expect(saved[1]).toMatchObject({ step: 'idle' });
+  });
+
+  it('memakai organisasi terpilih tanpa bertanya lagi', async () => {
+    const { service, repository } = harness();
+    repository.resolveTelegramIdentity.mockResolvedValueOnce(null);
+    repository.listTelegramIdentities.mockResolvedValue(options);
+    repository.readTelegramConversation.mockImplementation(((ident: { readonly mappingId: string }) =>
+      Promise.resolve(ident.mappingId === 'mapping-a' ? conversationOf('idle', {}) : null)) as never);
+    const outcome = await service.handle(SECRET, messageUpdate('/artikel', 52), 'req-org-reuse');
+    expect(outcome.result.ok).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(outcome.result.value.reply).toContain('Belum ada artikel');
+  });
+
+  it('teks bebas tidak menghapus pilihan organisasi', async () => {
+    const { service, repository } = harness();
+    repository.readTelegramConversation.mockResolvedValueOnce(conversationOf('idle', {}));
+    const outcome = await service.handle(SECRET, messageUpdate('halo', 53), 'req-org-idle');
+    expect(outcome.result.ok).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(outcome.result.value.reply).toContain('tidak dikenali');
+    expect(repository.clearTelegramConversation).not.toHaveBeenCalled();
+  });
+
+  it('menolak identitas yang sama sekali tidak tertaut', async () => {
+    const { service, repository } = harness();
+    repository.resolveTelegramIdentity.mockResolvedValueOnce(null);
+    repository.listTelegramIdentities.mockResolvedValue([]);
+    const outcome = await service.handle(SECRET, messageUpdate('/start', 54), 'req-org-none');
+    expect(outcome.result.ok).toBe(false);
+  });
+});
+
+describe('TelegramWorkflowService button flows', () => {
+  it('menampilkan tombol region saat /article', async () => {
+    const { service, listEditorial } = harness();
+    listEditorial.mockResolvedValueOnce({
+      ok: true as const,
+      value: {
+        regions: [{ id: 'region-1', name: 'Jawa', status: 'active' }],
+        articles: [],
+        sites: [],
+      },
+    });
+    const outcome = await service.handle(SECRET, messageUpdate('/article', 60), 'req-region-picker');
+    expect(outcome.result.ok).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(outcome.result.value.reply).toContain('Pilih region');
+    expect(outcome.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:rg:region-1');
+  });
+
+  it('tombol region melanjutkan wizard tanpa ketik ID', async () => {
+    const { service, repository, listEditorial } = harness();
+    repository.readTelegramConversation.mockResolvedValueOnce(conversationOf('article_region', {}));
+    listEditorial.mockResolvedValueOnce({
+      ok: true as const,
+      value: { regions: [{ id: 'region-1', name: 'Jawa', status: 'active' }], articles: [], sites: [] },
+    });
+    const outcome = await service.handle(SECRET, callbackUpdate('tg:rg:region-1', 61), 'req-region-pick');
+    expect(outcome.result.ok).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(outcome.result.value.reply).toContain('Kirim judul artikel');
+  });
+
+  it('menerbitkan ke semua portal sekali ketuk', async () => {
+    const { service, listEditorial, publicationRequest } = harness();
+    listEditorial.mockResolvedValue({
+      ok: true as const,
+      value: {
+        regions: [],
+        articles: [{ id: 'article-1', title: 'Judul', status: 'draft', createdAt: '2026-09-18T13:00:00.000Z', regionId: null }],
+        sites: [
+          { id: 'site-1', status: 'active', normalizedHostname: 'satu.example', regionId: null },
+          { id: 'site-2', status: 'active', normalizedHostname: 'dua.example', regionId: null },
+        ],
+      },
+    });
+    const outcome = await service.handle(SECRET, callbackUpdate('tg:a:article-1:puball', 62), 'req-puball');
+    expect(outcome.result.ok).toBe(true);
+    expect(publicationRequest).toHaveBeenCalledTimes(1);
+    const sent = publicationRequest.mock.calls[0]?.[1] as unknown as { siteIds: string[] };
+    expect(sent.siteIds).toEqual(['site-1', 'site-2']);
+  });
+
+  it('perintah tanpa ID membuka pemilih artikel', async () => {
+    const { service, listEditorial } = harness();
+    listEditorial.mockResolvedValueOnce({
+      ok: true as const,
+      value: {
+        regions: [],
+        articles: [{ id: 'article-1', title: 'Judul', status: 'draft', createdAt: '2026-09-18T13:00:00.000Z', regionId: null }],
+        sites: [],
+      },
+    });
+    const outcome = await service.handle(SECRET, messageUpdate('/publish', 63), 'req-publish-picker');
+    expect(outcome.result.ok).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(outcome.result.value.reply).toContain('Pilih artikel');
+    expect(outcome.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:a:article-1:pub');
+  });
+
+  it('teks bebas saat sesi tombol hanya mengingatkan tombol', async () => {
+    const region = harness();
+    region.repository.readTelegramConversation.mockResolvedValueOnce(conversationOf('article_region', {}));
+    const regionOutcome = await region.service.handle(SECRET, messageUpdate('region-1', 64), 'req-nudge-region');
+    expect(regionOutcome.result.ok).toBe(true);
+    if (!regionOutcome.result.ok) throw new Error('expected ok');
+    expect(regionOutcome.result.value.reply).toContain('Ketuk tombol region');
+
+    const picker = harness();
+    picker.repository.readTelegramConversation.mockResolvedValueOnce(
+      conversationOf('publish_pick_site', { articleId: 'article-1' }),
+    );
+    const pickerOutcome = await picker.service.handle(SECRET, messageUpdate('site-1', 65), 'req-nudge-picker');
+    expect(pickerOutcome.result.ok).toBe(true);
+    if (!pickerOutcome.result.ok) throw new Error('expected ok');
+    expect(pickerOutcome.result.value.reply).toContain('Ketuk tombol portal');
+  });
+});
+
+describe('TelegramWorkflowService article management', () => {
+  const fullArticle = {
+    id: 'article-1', title: 'Judul Lama', status: 'draft', createdAt: '2026-09-18T13:00:00.000Z',
+    regionId: null, version: 3, publisherId: null, categoryId: null, authorId: null,
+    slug: 'judul-lama', body: 'Isi lama', source: 'Humas', tags: [],
+  };
+  const editorialWith = (articles: readonly unknown[]) => ({
+    ok: true as const,
+    value: { regions: [], articles, sites: [] },
+  });
+
+  it('membuka menu edit dari tombol artikel', async () => {
+    const { service, listEditorial } = harness();
+    listEditorial.mockResolvedValue(editorialWith([fullArticle]));
+    const outcome = await service.handle(SECRET, callbackUpdate('tg:a:article-1:edt', 70), 'req-edit-menu');
+    expect(outcome.result.ok).toBe(true);
+    if (!outcome.result.ok) throw new Error('expected ok');
+    expect(outcome.result.value.reply).toContain('Ubah bagian mana');
+    expect(outcome.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:a:article-1:et');
+  });
+
+  it('mengubah judul lewat tombol, pratinjau, dan simpan', async () => {
+    const { service, repository, listEditorial, updateArticle } = harness();
+    listEditorial.mockResolvedValue(editorialWith([fullArticle]));
+    const start = await service.handle(SECRET, callbackUpdate('tg:a:article-1:et', 71), 'req-edit-start');
+    expect(start.result.ok).toBe(true);
+    if (!start.result.ok) throw new Error('expected ok');
+    expect(start.result.value.reply).toContain('Kirim judul baru');
+
+    repository.readTelegramConversation.mockResolvedValueOnce(
+      conversationOf('article_edit', { articleId: 'article-1', field: 'title' }),
+    );
+    const preview = await service.handle(SECRET, messageUpdate('Judul Baru', 72), 'req-edit-text');
+    expect(preview.result.ok).toBe(true);
+    if (!preview.result.ok) throw new Error('expected ok');
+    expect(preview.result.value.reply).toContain('Pratinjau judul baru');
+    expect(preview.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:e:yes');
+
+    repository.readTelegramConversation.mockResolvedValueOnce(
+      conversationOf('article_edit_confirm', { articleId: 'article-1', field: 'title', value: 'Judul Baru' }),
+    );
+    const done = await service.handle(SECRET, callbackUpdate('tg:e:yes', 73), 'req-edit-save');
+    expect(done.result.ok).toBe(true);
+    if (!done.result.ok) throw new Error('expected ok');
+    expect(updateArticle).toHaveBeenCalledTimes(1);
+    const sent = updateArticle.mock.calls[0]?.[1] as unknown as { id: string; expectedVersion: number; title: string; body: string };
+    expect(sent).toMatchObject({ id: 'article-1', expectedVersion: 3, title: 'Judul Baru', body: 'Isi lama' });
+    expect(done.result.value.reply).toContain('Artikel diperbarui');
+  });
+
+  it('menampilkan Pulihkan untuk artikel arsip dan Arsipkan untuk draf', async () => {
+    const archived = harness();
+    archived.listEditorial.mockResolvedValue(editorialWith([{ ...fullArticle, status: 'archived' }]));
+    const archivedMenu = await archived.service.handle(SECRET, callbackUpdate('tg:a:article-1:menu', 74), 'req-menu-archived');
+    expect(archivedMenu.result.ok).toBe(true);
+    if (!archivedMenu.result.ok) throw new Error('expected ok');
+    expect(JSON.stringify(archivedMenu.result.value.display?.keyboard)).toContain('tg:a:article-1:restore');
+
+    const draft = harness();
+    draft.listEditorial.mockResolvedValue(editorialWith([fullArticle]));
+    const draftMenu = await draft.service.handle(SECRET, callbackUpdate('tg:a:article-1:menu', 75), 'req-menu-draft');
+    expect(draftMenu.result.ok).toBe(true);
+    if (!draftMenu.result.ok) throw new Error('expected ok');
+    expect(JSON.stringify(draftMenu.result.value.display?.keyboard)).toContain('tg:a:article-1:arch');
+  });
+
+  it('mengarsipkan lewat konfirmasi tombol', async () => {
+    const { service, listEditorial, archiveArticle } = harness();
+    listEditorial.mockResolvedValue(editorialWith([fullArticle]));
+    const confirm = await service.handle(SECRET, callbackUpdate('tg:a:article-1:arch', 76), 'req-arch');
+    expect(confirm.result.ok).toBe(true);
+    if (!confirm.result.ok) throw new Error('expected ok');
+    expect(confirm.result.value.reply).toContain('Arsipkan');
+    expect(confirm.result.value.display?.keyboard?.[0]?.[0]?.data).toBe('tg:a:article-1:archyes');
+
+    const done = await service.handle(SECRET, callbackUpdate('tg:a:article-1:archyes', 77), 'req-archyes');
+    expect(done.result.ok).toBe(true);
+    if (!done.result.ok) throw new Error('expected ok');
+    expect(archiveArticle).toHaveBeenCalledTimes(1);
+    const sent = archiveArticle.mock.calls[0]?.[1] as unknown as { id: string; expectedVersion: number };
+    expect(sent).toMatchObject({ id: 'article-1', expectedVersion: 3 });
+    expect(done.result.value.reply).toContain('diarsipkan');
+  });
+
+  it('memulihkan artikel arsip ke draf', async () => {
+    const { service, listEditorial, restoreArticle } = harness();
+    listEditorial.mockResolvedValue(editorialWith([{ ...fullArticle, status: 'archived' }]));
+    const done = await service.handle(SECRET, callbackUpdate('tg:a:article-1:restore', 78), 'req-restore');
+    expect(done.result.ok).toBe(true);
+    if (!done.result.ok) throw new Error('expected ok');
+    expect(restoreArticle).toHaveBeenCalledTimes(1);
+    expect(done.result.value.reply).toContain('dipulihkan ke draf');
   });
 });

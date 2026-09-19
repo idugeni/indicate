@@ -925,6 +925,20 @@
       "when": 1789762092778,
       "tag": "20260919030000_template_presets_nine",
       "breakpoints": true
+    },
+    {
+      "idx": 132,
+      "version": "7",
+      "when": 1789850400000,
+      "tag": "20260919040000_telegram_identity_options",
+      "breakpoints": true
+    },
+    {
+      "idx": 133,
+      "version": "7",
+      "when": 1789850500000,
+      "tag": "20260919050000_telegram_article_edit_step",
+      "breakpoints": true
     }
   ]
 }

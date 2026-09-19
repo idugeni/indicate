@@ -75,3 +75,21 @@ describe('TelegramBotApiAdapter prepare transfer', () => {
     ).rejects.toThrow('checksum mismatch');
   });
 });
+
+describe('TelegramBotApiAdapter setMyCommands', () => {
+  it('mendaftarkan menu dengan batas panjang bot api', async () => {
+    const { adapter, fetcher } = harness(async () => okJson({ ok: true }));
+    await adapter.setMyCommands([{ command: '/status', description: 'Pantau status pekerjaan publikasi' }]);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(String(fetcher.mock.calls[0]?.[0])).toContain('/setMyCommands');
+    const body = JSON.parse(String((fetcher.mock.calls[0]?.[1] as unknown as { body: string }).body)) as {
+      commands: readonly { command: string; description: string }[];
+    };
+    expect(body.commands).toEqual([{ command: 'status', description: 'Pantau status pekerjaan publikasi' }]);
+  });
+
+  it('melempar saat telegram menolak', async () => {
+    const { adapter } = harness(async () => okJson({ ok: false }, 400));
+    await expect(adapter.setMyCommands([{ command: 'start', description: 'Menu' }])).rejects.toThrow('command menu update failed');
+  });
+});

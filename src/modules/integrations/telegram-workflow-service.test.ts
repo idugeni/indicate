@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { TelegramWorkflowService } from '@/modules/integrations/telegram-workflow-service';
+import { TELEGRAM_BOT_COMMANDS, TelegramWorkflowService } from '@/modules/integrations/telegram-workflow-service';
 
 const NOW = new Date('2026-09-18T14:00:00.000Z');
 const SECRET = 'test-webhook-secret';
@@ -43,6 +43,7 @@ function harness() {
     prepareReplayOutcome: vi.fn(async () => claim('x')),
     finalizeReplay: vi.fn(async () => claim('x')),
     resolveTelegramIdentity: vi.fn(async (): Promise<typeof identity | null> => identity),
+    listTelegramIdentities: vi.fn(async (): Promise<unknown[]> => []),
     readTelegramConversation: vi.fn(async () => null),
     saveTelegramConversation: vi.fn(async () => undefined),
     clearTelegramConversation: vi.fn(async () => undefined),
@@ -53,12 +54,13 @@ function harness() {
     send: vi.fn(async () => undefined),
     sendPhoto: vi.fn(async () => undefined),
     answerCallback: vi.fn(async () => undefined),
+    setMyCommands: vi.fn(async () => undefined),
   };
   const sharedFactory = {
     create: () => ({
-      articles: { listEditorial: vi.fn(async () => ({ ok: true as const, value: { regions: [], articles: [], sites: [] } })) },
+      articles: { listEditorial: vi.fn(async () => ({ ok: true as const, value: { regions: [{ id: 'region-1', name: 'Jawa', status: 'active' }], articles: [], sites: [] } })) },
       media: {},
-      publication: {},
+      publication: { listJobs: vi.fn(async () => ({ ok: true as const, value: [] })) },
     }),
   };
   const mediaTransfer = { prepare: vi.fn(), transfer: vi.fn() };
@@ -134,13 +136,13 @@ describe('TelegramWorkflowService welcome desk', () => {
     expect(outcome.pendingReplies[0].text).toContain('belum tertaut');
   });
 
-  it('answers bare /status with usage instead of failing silently', async () => {
+  it('opens a job picker for bare /status instead of failing silently', async () => {
     const { service } = harness();
     const outcome = await service.handle(SECRET, messageUpdate('/status', 4), 'req-4');
 
     expect(outcome.result.ok).toBe(true);
     if (!outcome.result.ok) throw new Error('expected ok');
-    expect(outcome.result.value.reply).toContain('/status JOB_ID');
+    expect(outcome.result.value.reply).toContain('Belum ada pekerjaan publikasi');
   });
 
   it('falls back to caption text when the welcome photo fails', async () => {
@@ -161,5 +163,22 @@ describe('TelegramWorkflowService welcome desk', () => {
 
     await service.deliverReplies(outcome.pendingReplies, 'req-6');
     expect(repository.enqueueOutboxMessage).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('TelegramWorkflowService bot menu', () => {
+  it('mendorong menu perintah kanonis yang valid ke Bot API', async () => {
+    const { service, telegram } = harness();
+    await service.syncBotCommands();
+    expect(telegram.setMyCommands).toHaveBeenCalledTimes(1);
+    expect(telegram.setMyCommands).toHaveBeenCalledWith(TELEGRAM_BOT_COMMANDS);
+    const seen = new Set<string>();
+    for (const { command, description } of TELEGRAM_BOT_COMMANDS) {
+      expect(command).toMatch(/^[a-z0-9_]{1,32}$/);
+      expect(description.length).toBeGreaterThan(0);
+      expect(description.length).toBeLessThanOrEqual(256);
+      expect(seen.has(command)).toBe(false);
+      seen.add(command);
+    }
   });
 });

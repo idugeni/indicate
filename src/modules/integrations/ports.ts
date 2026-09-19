@@ -1,6 +1,6 @@
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type {
-  ApiKeyRecord, CustomerProjection, StoredApiKey, SubscriptionRecord, TelegramConversation, TelegramIdentity, TelegramInlineKeyboard, TelegramMappingRecord, WebhookReplayClaim,
+  ApiKeyRecord, CustomerProjection, StoredApiKey, SubscriptionRecord, TelegramConversation, TelegramIdentity, TelegramIdentityOption, TelegramInlineKeyboard, TelegramMappingRecord, WebhookReplayClaim,
 } from '@/modules/integrations/models';
 import type { RateLimitDecision, RateLimitPolicy } from '@/modules/integrations/models';
 import type { ExactObjectAuthorization } from '@/integrations/storage/ports';
@@ -44,6 +44,7 @@ export interface IntegrationsRepository {
   recordApiKeyUse(organizationId: string, id: string, now: string): Promise<void>;
 
   resolveTelegramIdentity(telegramUserId: string, telegramChatId: string): Promise<TelegramIdentity | null>;
+  listTelegramIdentities(telegramUserId: string, telegramChatId: string): Promise<readonly TelegramIdentityOption[]>;
   listTelegramMappings(actor: AuthorizedTenantActorContext): Promise<readonly TelegramMappingRecord[]>;
   createTelegramMapping(actor: AuthorizedTenantActorContext, input: { readonly id: string; readonly userId: string; readonly roleId: string; readonly telegramUserId: string; readonly telegramChatId: string; readonly consentedAt: string | null; readonly consentTextVersion: string | null; readonly ipHash: string | null; readonly now: string }): Promise<TelegramMappingRecord>;
   updateTelegramMapping(actor: AuthorizedTenantActorContext, input: { readonly mappingId: string; readonly expectedVersion: number; readonly userId: string; readonly roleId: string; readonly telegramUserId: string; readonly telegramChatId: string; readonly status: TelegramMappingRecord['status']; readonly now: string }): Promise<TelegramMappingRecord>;
@@ -95,6 +96,11 @@ export interface TelegramCallbackAnswer {
   readonly text?: string;
 }
 
+export interface TelegramBotCommand {
+  readonly command: string;
+  readonly description: string;
+}
+
 export class TelegramRateLimitedError extends Error {
   constructor(readonly retryAfterSeconds: number | null) {
     super('Telegram rate limited.');
@@ -114,6 +120,7 @@ export interface TelegramPort extends HealthCheckPort {
   send(message: TelegramMessage): Promise<void>;
   sendPhoto(message: TelegramPhotoMessage): Promise<void>;
   answerCallback(answer: TelegramCallbackAnswer): Promise<void>;
+  setMyCommands(commands: readonly TelegramBotCommand[]): Promise<void>;
 }
 
 export interface PreparedTelegramMedia {

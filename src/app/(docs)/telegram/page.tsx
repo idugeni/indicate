@@ -11,28 +11,34 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function TelegramPage() {
   return (
     <div>
-      <DocTitle title="Bot Telegram" description="Perintah redaksi via chat: artikel, foto, publikasi, saran varian, cari, status, retry, dan unpublish." />
+      <DocTitle title="Bot Telegram" description="Perintah redaksi via chat: pilih organisasi, susun artikel, terbitkan ke semua portal sekali ketuk — tanpa mengetik ID." />
       <DocH2>Prasyarat</DocH2>
       <DocP>
         Pemilik organisasi memetakan identitas Telegram (user + chat) ke pengguna lokal beserta peran dan cakupan
-        region — perintah apa pun dari identitas tak terpetakan dijawab penolakan generik. Percakapan multi-langkah
-        kedaluwarsa 1 jam; <InlineCode>/cancel</InlineCode> membatalkannya kapan saja.
+        region — perintah apa pun dari identitas tak terpetakan dijawab penolakan generik. Akun yang tertaut ke
+        beberapa organisasi memilih dulu organisasi aktif lewat <InlineCode>/org</InlineCode>; pilihan diingat
+        sampai kedaluwarsa 1 jam. Percakapan multi-langkah kedaluwarsa 1 jam; <InlineCode>/cancel</InlineCode> membatalkannya kapan saja.
       </DocP>
       <DocH2>Perintah</DocH2>
       <DocTable
         head={['Perintah', 'Kegunaan']}
         rows={[
-          [<span key="c" className="font-mono text-[13px]">/article</span>, 'Buat artikel bertahap: region → judul → body → sumber → slug.'],
+          [<span key="c" className="font-mono text-[13px]">/start</span>, 'Menu utama + tombol aksi bot.'],
+          [<span key="c" className="font-mono text-[13px]">/org</span>, 'Ganti organisasi aktif (pemilih tombol).'],
+          [<span key="c" className="font-mono text-[13px]">/bantuan</span>, 'Panduan lengkap perintah bot.'],
+          [<span key="c" className="font-mono text-[13px]">/article</span>, 'Buat artikel bertahap: region (tombol) → judul → body → sumber → slug; selesai tersaji tombol Terbitkan ke Semua Portal.'],
+          [<span key="c" className="font-mono text-[13px]">/edit</span>, 'Pemilih artikel, lalu ubah judul/isi/sumber dengan pratinjau + tombol Simpan.'],
           [<span key="c" className="font-mono text-[13px]">/artikel</span>, 'Delapan artikel terbaru + tombol aksi per artikel.'],
           [<span key="c" className="font-mono text-[13px]">/cari KATA_KUNCI</span>, 'Cari artikel berdasar judul + tombol aksi hasil.'],
+          [<span key="c" className="font-mono text-[13px]">/job</span>, 'Pekerjaan publikasi terbaru + tombol aksi per job.'],
           [<span key="c" className="font-mono text-[13px]">/portal</span>, 'Portal aktif + tombol detail per portal.'],
-          [<span key="c" className="font-mono text-[13px]">/image ARTICLE_ID</span>, 'Mode unggah foto (satu per pesan, boleh banyak); tiap foto otomatis tersambung [gambar:N] di akhir body.'],
-          [<span key="c" className="font-mono text-[13px]">/regions</span>, 'Daftar region aktif beserta ID-nya.'],
-          [<span key="c" className="font-mono text-[13px]">/sites ARTICLE_ID</span>, 'Daftar portal aktif + ID untuk dipilih sebagai target.'],
-          [<span key="c" className="font-mono text-[13px]">/publish ARTICLE_ID SITE_IDS KEY</span>, 'Minta publikasi; SITE_IDS dipisah koma; KEY kunci idempoten.'],
-          [<span key="c" className="font-mono text-[13px]">/suggest ARTICLE_ID SITE_IDS</span>, 'Saran judul/deskripsi unik per portal tanpa membuat job.'],
-          [<span key="c" className="font-mono text-[13px]">/status JOB_ID</span>, 'Status job + ringkasan sukses.'],
-          [<span key="c" className="font-mono text-[13px]">/links JOB_ID</span>, 'URL tayang hasil publikasi.'],
+          [<span key="c" className="font-mono text-[13px]">/image</span>, 'Pemilih artikel, lalu mode unggah foto (satu per pesan, boleh banyak).'],
+          [<span key="c" className="font-mono text-[13px]">/regions</span>, 'Daftar region aktif.'],
+          [<span key="c" className="font-mono text-[13px]">/sites</span>, 'Pemilih artikel, lalu centang portal tujuan lewat tombol.'],
+          [<span key="c" className="font-mono text-[13px]">/publish</span>, 'Pemilih artikel, lalu terbitkan ke portal tercentang atau sekaligus ke semua portal.'],
+          [<span key="c" className="font-mono text-[13px]">/suggest</span>, 'Pemilih artikel, lalu saran judul/deskripsi unik per portal tanpa membuat job.'],
+          [<span key="c" className="font-mono text-[13px]">/status</span>, 'Pemilih job + ringkasan sukses.'],
+          [<span key="c" className="font-mono text-[13px]">/links</span>, 'Pemilih job + URL tayang hasil publikasi.'],
           [<span key="c" className="font-mono text-[13px]">/retry JOB_ID [TARGETS]</span>, 'Antrekan ulang target gagal.'],
           [<span key="c" className="font-mono text-[13px]">/unpublish JOB_ID [TARGETS]</span>, 'Tarik publikasi target.'],
           [<span key="c" className="font-mono text-[13px]">/cancel</span>, 'Batalkan percakapan berjalan.'],

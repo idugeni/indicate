@@ -3,7 +3,7 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import type { ExactObjectAuthorization } from '@/integrations/storage/ports';
-import type { TelegramCallbackAnswer, TelegramPhotoMessage, TelegramPort } from '@/modules/integrations/ports';
+import type { TelegramBotCommand, TelegramCallbackAnswer, TelegramPhotoMessage, TelegramPort } from '@/modules/integrations/ports';
 import { TelegramRateLimitedError } from '@/modules/integrations/ports';
 import type { PreparedTelegramMedia, TelegramMediaTransferPort, TelegramMessage } from '@/modules/integrations/ports';
 import type { TelegramInlineKeyboard } from '@/modules/integrations/models';
@@ -83,6 +83,22 @@ export class TelegramBotApiAdapter implements TelegramPort, TelegramMediaTransfe
     });
     await this.throwIfRateLimited(response);
     if (!response.ok) throw new Error('Telegram callback answer failed.');
+  }
+
+  async setMyCommands(commands: readonly TelegramBotCommand[]): Promise<void> {
+    const response = await this.fetcher(`${this.base}/setMyCommands`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        commands: commands.map(({ command, description }) => ({
+          command: command.replace(/^\//, '').slice(0, 32),
+          description: description.slice(0, 256),
+        })),
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    await this.throwIfRateLimited(response);
+    if (!response.ok) throw new Error('Telegram command menu update failed.');
   }
 
   async prepare(input: { readonly fileId: string; readonly expectedSize: number }): Promise<PreparedTelegramMedia> {
