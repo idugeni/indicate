@@ -15,7 +15,7 @@ permissions:
 # sama; kembalikan bersamaan dengan suit kontraknya, bukan sebelumnya.
 jobs:
   quality-gate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: production
     # Build memprerender dengan snapshot runtime asli: butuh kredensial baca.
