@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
 import { TurnstileField, isTurnstileConfigured } from '@/modules/auth/components/turnstile-field';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
@@ -78,7 +79,7 @@ export function SignInForm() {
           <AuthLabel htmlFor="password">
             Kata sandi
           </AuthLabel>
-          <Input id="password" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" className="border-[#1a2430]/20 bg-white dark:border-[#1a2430]/20 dark:bg-white" />
+          <PasswordInput id="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" className="border-[#1a2430]/20 bg-white dark:border-[#1a2430]/20 dark:bg-white" />
           <div className="mt-1.5 flex justify-end">
             <Link href="/forgot-password" className="font-sans text-xs text-[#8a5f1c] hover:underline">
               Lupa kata sandi?

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
 import { GoogleButton } from '@/modules/auth/components/google-button';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
@@ -97,7 +98,7 @@ export function SignUpForm() {
             <AuthLabel htmlFor="password">
               Kata sandi
             </AuthLabel>
-            <Input id="password" type="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 8 karakter" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
+            <PasswordInput id="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 8 karakter" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
             <p className="m-0 mt-1.5 font-sans text-xs text-[#5f6b7a]">Minimal 8 karakter.</p>
           </div>
 

@@ -5,7 +5,7 @@ import { KeyRound, Link2, Loader2 } from 'lucide-react';
 
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
 
 interface LinkedIdentity {
@@ -89,13 +89,13 @@ export function LoginMethodsForm() {
           <p className="m-0 font-sans text-xs text-paper-dim">
             Anda masuk dengan Google. Buat kata sandi agar email ini juga bisa masuk langsung.
           </p>
-          <Input
-            type="password" required minLength={8} autoComplete="new-password" disabled={busy}
+          <PasswordInput
+            required minLength={8} autoComplete="new-password" disabled={busy}
             value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Kata sandi baru"
             className="h-8 font-sans text-xs"
           />
-          <Input
-            type="password" required minLength={8} autoComplete="new-password" disabled={busy}
+          <PasswordInput
+            required minLength={8} autoComplete="new-password" disabled={busy}
             value={confirm} onChange={(event) => setConfirm(event.target.value)} placeholder="Konfirmasi kata sandi"
             className="h-8 font-sans text-xs"
           />

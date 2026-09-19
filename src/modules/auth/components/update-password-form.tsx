@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
 import { TurnstileField, isTurnstileConfigured } from '@/modules/auth/components/turnstile-field';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
@@ -80,14 +80,14 @@ export function UpdatePasswordForm() {
         <AuthLabel htmlFor="password">
           Kata sandi baru
         </AuthLabel>
-        <Input id="password" type="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 8 karakter" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
+        <PasswordInput id="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 8 karakter" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
       </div>
 
       <div>
         <AuthLabel htmlFor="confirmation">
           Konfirmasi kata sandi
         </AuthLabel>
-        <Input id="confirmation" type="password" required minLength={8} autoComplete="new-password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} placeholder="Ulangi kata sandi" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
+        <PasswordInput id="confirmation" required minLength={8} autoComplete="new-password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} placeholder="Ulangi kata sandi" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
       </div>
 
       <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
