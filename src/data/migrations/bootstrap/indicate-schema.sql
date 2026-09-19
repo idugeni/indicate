@@ -145,7 +145,7 @@
 --   130  20260919010000_invoice_payment_method  ledger sha256:e89b52f05853e285fbb9a1d6b883f91928994edff92713905e05301766e09831
 --   131  20260919020000_telegram_suggest_step  ledger sha256:f7c94c8795a2d6d3c3f54917194b67f6562ba53631c9a98077ea0c475fdd5da9
 --   132  20260919030000_template_presets_nine  ledger sha256:690b951bc2e4ed749ca8961203a2dd0c5157a2e7b73cacee1d31f31fbf188ab3
---   133  20260919040000_telegram_identity_options  ledger sha256:7030eadf20387b1be741384eca4914b8e25b803eb4919db7718637738f4254a7
+--   133  20260919040000_telegram_identity_options  ledger sha256:e8192d2701af3ac5c1814f86becf9139bc51d77fb34f29460ba30c0133a8ba7f
 --   134  20260919050000_telegram_article_edit_step  ledger sha256:68757b6a83cc1029faa7bc376a6cac2ffe200e1a33bf24744459c054d3c18c5e
 
 BEGIN;
@@ -11720,15 +11720,17 @@ AS $function$
   JOIN public.roles r
     ON r.organization_id = membership.organization_id AND r.id = membership.role_id AND r.active
   JOIN public.organizations o ON o.id = m.organization_id
+  LEFT JOIN public.role_permissions rp ON rp.organization_id = m.organization_id AND rp.role_id = m.role_id
+  LEFT JOIN public.permissions p ON p.id = rp.permission_id
   WHERE m.telegram_user_id = p_user_id AND m.telegram_chat_id = p_chat_id AND m.status = 'active'
   GROUP BY m.id, m.organization_id, o.name, m.user_id, m.role_id, m.telegram_user_id, m.telegram_chat_id, membership.region_id
 $function$;
 REVOKE ALL ON FUNCTION indicate_private.list_telegram_identities(text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.list_telegram_identities(text, text) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (133, 'telegram_identity_options', 'sha256:b278f7df4bce37976c9f0ffad64d0b2483a31c3f6a2c39437dd964ee178c6dcf');
+VALUES (133, 'telegram_identity_options', 'sha256:39fd5403801ce886b3f469c08bdd960fccc4bfcb1b19e41253625e1d6ae66a14');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7030eadf20387b1be741384eca4914b8e25b803eb4919db7718637738f4254a7', 1789850400000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e8192d2701af3ac5c1814f86becf9139bc51d77fb34f29460ba30c0133a8ba7f', 1789850400000);
 
 -- ----------------------------------------------------------------------
 -- 20260919050000_telegram_article_edit_step
