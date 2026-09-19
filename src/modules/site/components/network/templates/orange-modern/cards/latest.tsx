@@ -7,7 +7,7 @@ import { articleImage, formatDate, isLocalImageSrc, readingMinutes } from '@/mod
 import { badgeStyle } from '@/modules/site/components/network/templates/orange-modern/theme';
 import { SectionHeading } from '@/modules/site/components/network/templates/orange-modern/ui/section-heading';
 
-export function OrangeModernQuotePanel({ siteName }: { readonly siteName: string }) {
+export function OrangeModernQuotePanel({ siteName, quote }: { readonly siteName: string; readonly quote: string }) {
   return (
     <aside
       aria-label="Perspektif redaksi"
@@ -20,7 +20,7 @@ export function OrangeModernQuotePanel({ siteName }: { readonly siteName: string
           Perspektif
         </p>
         <blockquote className="m-0 mt-3 font-sans text-2xl font-extrabold leading-snug tracking-tight">
-          &ldquo;Indonesia lebih maju di tangan kita.&rdquo;
+          &ldquo;{quote}&rdquo;
         </blockquote>
       </div>
       <div className="relative mt-6 flex items-end justify-between gap-4">
@@ -46,6 +46,7 @@ export function OrangeModernQuotePanel({ siteName }: { readonly siteName: string
 export function OrangeModernLatest({
   articles,
   siteName,
+  quote,
   heading = 'Berita Terbaru',
   description = 'Kabar terkini yang baru diterbitkan',
   linkHref = null,
@@ -53,6 +54,7 @@ export function OrangeModernLatest({
 }: {
   readonly articles: readonly NetworkArticle[];
   readonly siteName: string;
+  readonly quote: string;
   readonly heading?: string;
   readonly description?: string;
   readonly linkHref?: string | null;
@@ -117,7 +119,7 @@ export function OrangeModernLatest({
             );
           })}
         </ul>
-        <OrangeModernQuotePanel siteName={siteName} />
+        <OrangeModernQuotePanel siteName={siteName} quote={quote} />
       </div>
     </section>
   );

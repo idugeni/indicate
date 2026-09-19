@@ -31,7 +31,7 @@ export interface ListingProps {
 export async function GlassyBlueListing({ site, title, description, path, indexable }: ListingProps) {
   const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const nav = await getSiteCategoryNav(site, 7);
-  const [hero, ...rest] = site.articles;
+  const rest = site.articles.slice(1);
   const picks = rest.slice(0, 3);
   const latest = rest.slice(3, 7);
   const spotlight = rest[7] ?? null;
@@ -46,7 +46,7 @@ export async function GlassyBlueListing({ site, title, description, path, indexa
           <GlassyBlueEmpty title={title} />
         ) : (
           <>
-            {hero ? <GlassyBlueHero article={hero} /> : null}
+            <GlassyBlueHero articles={site.articles.slice(0, 5)} />
             <GlassyBlueCategoryPills items={nav} activePath={path ?? '/'} />
             <GlassyBluePicks
               articles={picks}

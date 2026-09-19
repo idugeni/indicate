@@ -27,7 +27,7 @@ export interface ListingProps {
  */
 export function RedEditorialListing({ site, title, description, path, indexable }: ListingProps) {
   const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
-  const [hero, ...rest] = site.articles;
+  const rest = site.articles.slice(1);
   const picks = rest.slice(0, 4);
   const archive = rest.slice(4);
 
@@ -40,7 +40,7 @@ export function RedEditorialListing({ site, title, description, path, indexable 
           <RedEditorialEmpty title={title} />
         ) : (
           <>
-            {hero ? <RedEditorialHero article={hero} /> : null}
+            <RedEditorialHero articles={site.articles.slice(0, 3)} />
             <RedEditorialPicks articles={picks} description={description ?? 'Informasi terkurasi untuk Anda'} />
             <RedEditorialNewsletter />
             <RedEditorialLoadMore

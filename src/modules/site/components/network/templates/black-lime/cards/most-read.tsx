@@ -5,7 +5,7 @@ import { TrendingUp } from 'lucide-react';
 import type { NetworkArticle } from '@/modules/delivery/models';
 import { articleImage, formatCompactViews, isLocalImageSrc } from '@/modules/site/components/network/templates/black-lime/lib/format';
 
-export function BlackLimeQuotePanel({ siteName }: { readonly siteName: string }) {
+export function BlackLimeQuotePanel({ siteName, quote }: { readonly siteName: string; readonly quote: string }) {
   return (
     <aside
       aria-label="Perspektif redaksi"
@@ -21,7 +21,7 @@ export function BlackLimeQuotePanel({ siteName }: { readonly siteName: string })
           <span aria-hidden="true" className="h-0.5 w-8 rounded-full bg-[#c5f82a]" />
         </p>
         <blockquote className="m-0 mt-3 font-sans text-2xl font-extrabold leading-snug tracking-tight text-slate-100">
-          &ldquo;Informasi yang lebih jernih untuk masa depan yang lebih baik.&rdquo;
+          &ldquo;{quote}&rdquo;
         </blockquote>
       </div>
       <div className="relative mt-6">

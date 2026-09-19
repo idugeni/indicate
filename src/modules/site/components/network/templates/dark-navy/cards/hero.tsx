@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
@@ -5,16 +8,39 @@ import { ArrowRight } from 'lucide-react';
 import type { NetworkArticle } from '@/modules/delivery/models';
 import { articleImage, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/dark-navy/lib/format';
 
-export function DarkNavyHero({ article }: { readonly article: NetworkArticle }) {
+const ROTATE_MS = 6000;
+
+export function DarkNavyHero({ articles }: { readonly articles: readonly NetworkArticle[] }) {
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const count = articles.length;
+
+  useEffect(() => {
+    if (count < 2 || paused) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const id = window.setTimeout(() => setIndex((current) => (current + 1) % count), ROTATE_MS);
+    return () => window.clearTimeout(id);
+  }, [count, paused, index]);
+
+  const article = articles[count === 0 ? 0 : index % count];
+  if (article === undefined) return null;
+
   const src = articleImage(article);
 
   return (
-    <section aria-label="Sorotan utama" className="relative overflow-hidden rounded-2xl shadow-sm">
+    <section
+      aria-label="Sorotan utama"
+      className="relative overflow-hidden rounded-2xl shadow-sm"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+    >
       <Image
         unoptimized={!isLocalImageSrc(src)}
         src={src}
         alt={article.title}
-        priority
+        priority={index === 0}
         className="aspect-[16/10] w-full object-cover sm:aspect-[21/9]"
         width={article.imageWidth ?? 1600}
         height={article.imageHeight ?? 686}
@@ -56,11 +82,25 @@ export function DarkNavyHero({ article }: { readonly article: NetworkArticle }) 
               {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca
             </span>
           </p>
-          <span aria-hidden="true" className="flex flex-none items-center gap-1.5">
-            <span className="h-1.5 w-5 rounded-full bg-white" />
-            <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
-            <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
-          </span>
+          {count > 1 ? (
+            <span className="flex flex-none items-center gap-1.5" role="group" aria-label="Pilih sorotan">
+              {articles.map((item, position) => {
+                const active = position === index % count;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setIndex(position)}
+                    aria-label={`Sorotan ${position + 1}: ${item.title}`}
+                    aria-current={active}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      active ? 'w-5 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/70'
+                    }`}
+                  />
+                );
+              })}
+            </span>
+          ) : null}
         </div>
       </div>
     </section>

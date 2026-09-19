@@ -25,7 +25,7 @@ const FOOTER_COLUMNS: readonly FooterColumn[] = Object.freeze([
     heading: 'Platform',
     label: 'Tautan footer platform',
     links: Object.freeze([
-      { href: '/services', label: 'Layanan Sindikasi' },
+      { href: '/services', label: 'Layanan Penerbitan' },
       { href: '/pricing', label: 'Harga' },
       { href: '/faq', label: 'Pusat Bantuan' },
     ]),
@@ -93,7 +93,7 @@ function SiteFooterView({ year, channels }: { readonly year: number | null; read
           <p className="m-0">
             <Image
               src="/brand/indicate-landscape.svg"
-              alt="Indicate — Publishing infrastructure"
+              alt="Indicate - Publishing infrastructure"
               width={240}
               height={60}
               className="h-auto w-60"

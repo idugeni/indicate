@@ -28,7 +28,7 @@ export interface ListingProps {
  */
 export function DarkNavyListing({ site, title, description, path, indexable }: ListingProps) {
   const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
-  const [hero, ...rest] = site.articles;
+  const rest = site.articles.slice(1);
   const latest = rest.slice(0, 5);
   const mostRead = [...rest].sort((a, b) => b.viewCount - a.viewCount).slice(0, 5);
   const archive = rest.slice(5);
@@ -42,7 +42,7 @@ export function DarkNavyListing({ site, title, description, path, indexable }: L
           <DarkNavyEmpty title={title} />
         ) : (
           <>
-            {hero ? <DarkNavyHero article={hero} /> : null}
+            <DarkNavyHero articles={site.articles.slice(0, 5)} />
             <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
               <DarkNavyLatest
                 articles={latest}

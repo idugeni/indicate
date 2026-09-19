@@ -3,13 +3,10 @@ import Link from 'next/link';
 import { Rss } from 'lucide-react';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { COMPANY_NAME, SOCIAL_ORDER, resolveContactChannels } from '@/modules/site/company-contact';
+import { COMPANY_NAME, SOCIAL_ORDER } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { getSiteCategoryNav } from '@/modules/site/components/network/templates/glassy-blue/server/site-nav';
 import { GlassyBlueStoreBadges } from '@/modules/site/components/network/templates/glassy-blue/chrome/store-badges';
-
-/** Ikon sosmed default: tampil selalu; tanpa URL menjadi pajangan tanpa link. */
-const DEFAULT_SOCIALS = SOCIAL_ORDER;
 
 const ABOUT_LINKS = [
   { label: 'Profil', href: '/tentang' },
@@ -22,9 +19,9 @@ export async function GlassyBlueFooter({ site }: { readonly site: NetworkSiteDat
   const categories = await getSiteCategoryNav(site, 6);
   const tagline = site.settings.tagline ?? site.settings.description;
   const year = new Date().getFullYear();
-  const socialByName = new Map(
-    resolveContactChannels(site.settings.socialLinks).map((channel) => [channel.key, channel.href] as const),
-  );
+  const configuredSocials = SOCIAL_ORDER
+    .map((name) => ({ name, href: (site.settings.socialLinks[name] ?? '').trim() }))
+    .filter((social) => social.href !== '');
 
   return (
     <footer className="border-t border-slate-200 bg-white">
@@ -51,43 +48,32 @@ export async function GlassyBlueFooter({ site }: { readonly site: NetworkSiteDat
           <p className="m-0 mt-4 max-w-xs font-sans text-sm leading-relaxed text-slate-600">
             {site.settings.description}
           </p>
-          <p className="m-0 mt-4 flex flex-wrap items-center gap-2">
-            {DEFAULT_SOCIALS.map((name) => {
-              const Icon = channelIcon(name);
-              const href = socialByName.get(name);
-              if (href === undefined) {
+          {configuredSocials.length > 0 ? (
+            <p className="m-0 mt-4 flex flex-wrap items-center gap-2">
+              {configuredSocials.map(({ name, href }) => {
+                const Icon = channelIcon(name);
                 return (
-                  <span
+                  <a
                     key={name}
-                    aria-hidden="true"
-                    title={name}
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 ring-1 ring-slate-200"
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${site.settings.name} di ${name}`}
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1f7cff]"
                   >
-                    <Icon className="h-4 w-4" />
-                  </span>
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                  </a>
                 );
-              }
-              return (
-                <a
-                  key={name}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`${site.settings.name} di ${name}`}
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1f7cff]"
-                >
-                  <Icon className="h-4 w-4" aria-hidden="true" />
-                </a>
-              );
-            })}
-            <Link
-              href="/rss.xml"
-              aria-label="Umpan RSS"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1f7cff]"
-            >
-              <Rss className="h-4 w-4" aria-hidden="true" />
-            </Link>
-          </p>
+              })}
+              <Link
+                href="/rss.xml"
+                aria-label="Umpan RSS"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#1f7cff]"
+              >
+                <Rss className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </p>
+          ) : null}
         </div>
 
         <nav aria-label="Kategori">

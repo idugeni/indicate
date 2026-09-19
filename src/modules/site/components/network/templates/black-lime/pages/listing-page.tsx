@@ -32,6 +32,7 @@ export function BlackLimeListing({ site, title, description, path, indexable }: 
   const picks = rest.slice(0, 4);
   const mostRead = [...rest].sort((a, b) => b.viewCount - a.viewCount).slice(0, 5);
   const archive = rest.slice(4);
+  const quote = site.settings.tagline ?? site.settings.description;
 
   return (
     <BlackLimeShell site={site} path={path ?? '/'}>
@@ -51,7 +52,7 @@ export function BlackLimeListing({ site, title, description, path, indexable }: 
               description={description ?? 'Kabar terkini untuk Anda'}
             />
             <div className="grid items-start gap-5 lg:grid-cols-2">
-              <BlackLimeQuotePanel siteName={site.settings.name} />
+              <BlackLimeQuotePanel siteName={site.settings.name} quote={quote} />
               <BlackLimeMostRead articles={mostRead} />
             </div>
             <BlackLimeNewsletter />

@@ -6,7 +6,7 @@ import { articleImage, formatDate, isLocalImageSrc, readingMinutes } from '@/mod
 import { badgeStyle } from '@/modules/site/components/network/templates/purple-editorial/theme';
 import { SectionHeading } from '@/modules/site/components/network/templates/purple-editorial/ui/section-heading';
 
-export function PurpleEditorialQuotePanel({ siteName }: { readonly siteName: string }) {
+export function PurpleEditorialQuotePanel({ siteName, quote }: { readonly siteName: string; readonly quote: string }) {
   return (
     <aside
       aria-label="Perspektif redaksi"
@@ -19,7 +19,7 @@ export function PurpleEditorialQuotePanel({ siteName }: { readonly siteName: str
           Perspektif
         </p>
         <blockquote className="m-0 mt-3 font-sans text-2xl font-extrabold leading-snug tracking-tight">
-          &ldquo;Informasi yang lebih jernih untuk masa depan yang lebih baik.&rdquo;
+          &ldquo;{quote}&rdquo;
         </blockquote>
       </div>
       <div className="relative mt-6">
@@ -36,6 +36,7 @@ export function PurpleEditorialQuotePanel({ siteName }: { readonly siteName: str
 export function PurpleEditorialLatest({
   articles,
   siteName,
+  quote,
   heading = 'Berita Terbaru',
   description = 'Kabar terkini yang baru diterbitkan',
   linkHref = null,
@@ -43,6 +44,7 @@ export function PurpleEditorialLatest({
 }: {
   readonly articles: readonly NetworkArticle[];
   readonly siteName: string;
+  readonly quote: string;
   readonly heading?: string;
   readonly description?: string;
   readonly linkHref?: string | null;
@@ -107,7 +109,7 @@ export function PurpleEditorialLatest({
             );
           })}
         </ul>
-        <PurpleEditorialQuotePanel siteName={siteName} />
+        <PurpleEditorialQuotePanel siteName={siteName} quote={quote} />
       </div>
     </section>
   );

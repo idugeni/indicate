@@ -32,6 +32,7 @@ export function PurpleEditorialListing({ site, title, description, path, indexab
   const picks = rest.slice(0, 3);
   const latest = rest.slice(3, 7);
   const archive = rest.slice(7);
+  const quote = site.settings.tagline ?? site.settings.description;
 
   return (
     <PurpleEditorialShell site={site} path={path ?? '/'}>
@@ -44,7 +45,7 @@ export function PurpleEditorialListing({ site, title, description, path, indexab
           <>
             {hero ? <PurpleEditorialHero article={hero} /> : null}
             <PurpleEditorialPicks articles={picks} description={description ?? 'Informasi terkurasi untuk Anda'} />
-            <PurpleEditorialLatest articles={latest} siteName={site.settings.name} />
+            <PurpleEditorialLatest articles={latest} siteName={site.settings.name} quote={quote} />
             <PurpleEditorialNewsletter />
             <PurpleEditorialLoadMore
               articles={archive}

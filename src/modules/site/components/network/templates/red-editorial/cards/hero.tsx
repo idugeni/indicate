@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, MapPin } from 'lucide-react';
@@ -6,20 +9,43 @@ import type { NetworkArticle } from '@/modules/delivery/models';
 import { RedEditorialHeroActions } from '@/modules/site/components/network/templates/red-editorial/cards/hero-actions';
 import { articleImage, isLocalImageSrc } from '@/modules/site/components/network/templates/red-editorial/lib/format';
 
+const ROTATE_MS = 6000;
+
 function splitAccent(title: string): { readonly head: string; readonly tail: string } {
   const words = title.trim().split(/\s+/u).filter(Boolean);
   const tail = words.pop() ?? '';
   return { head: words.join(' '), tail };
 }
 
-export function RedEditorialHero({ article }: { readonly article: NetworkArticle }) {
+export function RedEditorialHero({ articles }: { readonly articles: readonly NetworkArticle[] }) {
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const count = articles.length;
+
+  useEffect(() => {
+    if (count < 2 || paused) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const id = window.setTimeout(() => setIndex((current) => (current + 1) % count), ROTATE_MS);
+    return () => window.clearTimeout(id);
+  }, [count, paused, index]);
+
+  const article = articles[count === 0 ? 0 : index % count];
+  if (article === undefined) return null;
+
   const src = articleImage(article);
   const kicker = article.categoryName ?? 'Sorotan';
   const place = article.publisherCity ?? article.attribution;
   const { head, tail } = splitAccent(article.title);
 
   return (
-    <section aria-label="Sorotan utama" className="grid items-center gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
+    <section
+      aria-label="Sorotan utama"
+      className="grid items-center gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+    >
       <div className="min-w-0">
         <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[#b91c1c]">
           <span aria-hidden="true" className="h-px w-8 bg-[#b91c1c]" />
@@ -47,13 +73,32 @@ export function RedEditorialHero({ article }: { readonly article: NetworkArticle
           </Link>
           <RedEditorialHeroActions slug={article.slug} title={article.title} />
         </div>
-        <p aria-label="Navigasi sorotan" className="m-0 mt-7 flex items-center gap-2.5 text-xs font-bold tabular-nums">
-          <span className="text-[#b91c1c]">01</span>
-          <span aria-hidden="true" className="h-px w-8 bg-[#b91c1c]" />
-          <span className="text-[#ac9393]">02</span>
-          <span aria-hidden="true" className="h-px w-8 bg-[#ecd3d3]" />
-          <span className="text-[#ac9393]">03</span>
-        </p>
+        {count > 1 ? (
+          <div role="group" aria-label="Navigasi sorotan" className="m-0 mt-7 flex items-center gap-2.5 text-xs font-bold tabular-nums">
+            {articles.map((item, position) => {
+              const active = position === index % count;
+              return (
+                <span key={item.id} className="flex items-center gap-2.5">
+                  {position > 0 ? (
+                    <span aria-hidden="true" className="h-px w-8 bg-[#ecd3d3]" />
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setIndex(position)}
+                    aria-label={`Sorotan ${position + 1}: ${item.title}`}
+                    aria-current={active}
+                    className={active ? 'text-[#b91c1c]' : 'text-[#ac9393] transition-colors hover:text-[#b91c1c]'}
+                  >
+                    {String(position + 1).padStart(2, '0')}
+                  </button>
+                  {position === 0 ? (
+                    <span aria-hidden="true" className="h-px w-8 bg-[#b91c1c]" />
+                  ) : null}
+                </span>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
 
       <div className="relative min-w-0">
@@ -66,19 +111,13 @@ export function RedEditorialHero({ article }: { readonly article: NetworkArticle
             unoptimized={!isLocalImageSrc(src)}
             src={src}
             alt=""
-            priority
+            priority={index === 0}
             className="aspect-[16/10] w-full object-cover"
             width={article.imageWidth ?? 1200}
             height={article.imageHeight ?? 750}
             sizes="(max-width: 1024px) 100vw, 55vw"
           />
         </Link>
-        <p className="absolute right-4 top-4 m-0 max-w-[10rem] rounded-xl bg-white/95 px-3 py-2 text-right shadow-sm">
-          <span className="block text-[10px] font-bold uppercase leading-snug tracking-wider text-[#230d0d]">
-            Indonesia Lebih Baik Bersama
-          </span>
-          <span aria-hidden="true" className="ml-auto mt-1 block h-0.5 w-8 bg-[#b91c1c]" />
-        </p>
         <span
           aria-hidden="true"
           style={{ writingMode: 'vertical-rl' }}

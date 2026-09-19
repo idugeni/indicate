@@ -32,6 +32,7 @@ export function WarmEditorialListing({ site, title, description, path, indexable
   const picks = rest.slice(0, 3);
   const latest = rest.slice(3, 7);
   const archive = rest.slice(7);
+  const quote = site.settings.tagline ?? site.settings.description;
 
   return (
     <WarmEditorialShell site={site} path={path ?? '/'}>
@@ -44,7 +45,7 @@ export function WarmEditorialListing({ site, title, description, path, indexable
           <>
             {hero ? <WarmEditorialHero article={hero} /> : null}
             <WarmEditorialPicks articles={picks} description={description ?? 'Informasi terkurasi untuk Anda'} />
-            <WarmEditorialLatest articles={latest} siteName={site.settings.name} />
+            <WarmEditorialLatest articles={latest} siteName={site.settings.name} quote={quote} />
             <WarmEditorialNewsletter />
             <WarmEditorialLoadMore
               articles={archive}

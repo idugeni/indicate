@@ -32,6 +32,7 @@ export function OrangeModernListing({ site, title, description, path, indexable 
   const picks = rest.slice(0, 4);
   const latest = rest.slice(4, 8);
   const archive = rest.slice(8);
+  const quote = site.settings.tagline ?? site.settings.description;
 
   return (
     <OrangeModernShell site={site} path={path ?? '/'}>
@@ -51,7 +52,7 @@ export function OrangeModernListing({ site, title, description, path, indexable 
               columns={4}
               description={description ?? 'Informasi terkurasi untuk Anda'}
             />
-            <OrangeModernLatest articles={latest} siteName={site.settings.name} />
+            <OrangeModernLatest articles={latest} siteName={site.settings.name} quote={quote} />
             <OrangeModernNewsletter />
             <OrangeModernLoadMore
               articles={archive}
