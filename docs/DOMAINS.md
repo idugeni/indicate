@@ -1,7 +1,7 @@
 # Inventaris domain Indicate (advisory — living document)
 
 Hanya domain terkait Indicate yang dicatat di sini — proyek-proyek lain
-milik pemilik sengaja tidak dimasukkan. Terakhir diverifikasi: 2026-09-16
+milik pemilik sengaja tidak dimasukkan. Terakhir diverifikasi: 2026-09-18
 (panel IDWebHost + API Cloudflare + RDAP PANDI/Verisign + database `sites`).
 
 Tenant live di DB: **18 site = 9 apex + 9 regional** (`wonosobo.*`, semua
@@ -21,6 +21,10 @@ dibuatkan zona + NS diganti malam yang sama; delegasi 36/36 terverifikasi
 nalarharian, ID 1080206–1080219, dibeli 2026-09-16) dibuatkan zona + NS
 diganti malam yang sama; delegasi 14/14 terverifikasi + CF 14/14 `active`
 23:36 WIB. Kolom Tenant diisi hanya dari penunjukan eksplisit pemilik.
+Domain `penamerdeka.my.id` (ID 1082181, didaftarkan 2026-09-18) dibuatkan
+zona + NS diganti ke Cloudflare pada 2026-09-18; CF `active` per verifikasi
+MCP 2026-09-18, baseline diselaraskan maksimal mengikuti
+`docs/CLOUDFLARE-BASELINE.md`.
 
 | Domain | Terdaftar | Kedaluwarsa | IDW | CF | Tenant? |
 |---|---|---|---|---|---|
@@ -73,6 +77,7 @@ diganti malam yang sama; delegasi 14/14 terverifikasi + CF 14/14 `active`
 | panggungkata.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | panggungkata.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | pastipas.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
+| penamerdeka.my.id | 2026-09-18 | 2027-09-18 | Aktif | active | — |
 | pendarkata.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | pendarkata.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | penyanggafakta.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
