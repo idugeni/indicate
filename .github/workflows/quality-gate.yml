@@ -33,7 +33,14 @@ jobs:
       - run: npm ci
       - run: npm run db:bootstrap:check
       - run: npm run typecheck
-      - run: npm run audit:production
+      - name: audit production dependencies (tahan outage registry singkat)
+        run: |
+          for i in 1 2 3 4 5; do
+            npm run audit:production && break || {
+              [ "$i" -eq 5 ] && exit 1
+              sleep $((i * 120))
+            }
+          done
 
   lint:
     runs-on: ubuntu-26.04
