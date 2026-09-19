@@ -75,8 +75,8 @@ jaring9perkara.web.id.
 `cakrawalakata.web.id` + `guratfakta.my.id` masih landing lama (cache edge,
 sembuh sendiri), **Update pantau:** `cakrawalakata.web.id` + `guratfakta.my.id` kini
 merender portal (24/25). `gerbanginvestigasi.my.id` + `independensi.my.id`
-masih 525 (DNS baru dibuat; menunggu propagasi + penerbitan sertifikat
-Vercel). Pola DNS hilang yang sama sebelumnya: bahariraya,
+sempat 525 (DNS baru), kini **200 dengan judul portal benar — 25/25
+lengkap**. Pola DNS hilang yang sama sebelumnya: bahariraya,
 berandainvestigasi, bidikan, faktura (sudah diperbaiki, terverifikasi
 200).
 
