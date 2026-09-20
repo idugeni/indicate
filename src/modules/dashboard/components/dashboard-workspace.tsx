@@ -40,6 +40,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DashboardCollectionsSkeleton,
   DashboardContentSkeleton,
@@ -58,6 +59,7 @@ import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import { DataView } from '@/modules/dashboard/components/data-view';
 import { FilterControls } from '@/modules/dashboard/components/filter-controls';
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
+import { PanelErrorBoundary } from '@/modules/dashboard/components/shared/panel-error-boundary';
 import type { EmailStatus } from '@/modules/dashboard/components/settings/integration-settings';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
 
@@ -628,7 +630,6 @@ export function DashboardWorkspace({
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-        <CommandPalette showTrigger={false} />
         <header className="sticky top-0 z-30 flex h-12 flex-none items-center gap-2 border-b border-hairline bg-bg/95 px-4 backdrop-blur sm:px-6">
           <button
             type="button"
@@ -658,6 +659,7 @@ export function DashboardWorkspace({
           </Breadcrumb>
 
           <div className="ml-auto flex flex-none items-center gap-1.5">
+            <CommandPalette />
             <p className="m-0 hidden items-center gap-2 rounded-md border border-hairline bg-bg-raised px-2.5 py-1.5 font-mono text-xs tabular-nums text-paper-dim md:inline-flex">
               <span className="relative flex h-1.5 w-1.5 flex-none" aria-hidden="true">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-75" />
@@ -796,6 +798,7 @@ export function DashboardWorkspace({
 
             <FilterControls view={view} data={data} onApply={setFilterQuery} />
 
+            <PanelErrorBoundary key={`forms:${organizationId}:${view}`} name={activeMetadata.title}>
             {view === 'publishers' ? <PublisherForm data={data} command={command} /> : null}
             {view === 'editorial' ? (
               <EditorialForm
@@ -806,12 +809,26 @@ export function DashboardWorkspace({
               />
             ) : null}
             {view === 'configuration' ? (
-              <div className="space-y-6">
-                <ConfigurationPanel data={data} command={command} />
-                <SiteSettingsForm data={data} command={command} />
-                <CachePurgeForm data={data} command={command} />
-                <AccessManagementForm data={data} command={command} organizationId={organizationId} />
-              </div>
+              <Tabs defaultValue="domain" className="w-full">
+                <TabsList aria-label="Bagian infrastruktur">
+                  <TabsTrigger value="domain">Domain & Wilayah</TabsTrigger>
+                  <TabsTrigger value="brand">SEO & Brand</TabsTrigger>
+                  <TabsTrigger value="cache">Cache</TabsTrigger>
+                  <TabsTrigger value="access">Akses</TabsTrigger>
+                </TabsList>
+                <TabsContent value="domain">
+                  <ConfigurationPanel data={data} command={command} />
+                </TabsContent>
+                <TabsContent value="brand">
+                  <SiteSettingsForm data={data} command={command} />
+                </TabsContent>
+                <TabsContent value="cache">
+                  <CachePurgeForm data={data} command={command} />
+                </TabsContent>
+                <TabsContent value="access">
+                  <AccessManagementForm data={data} command={command} organizationId={organizationId} />
+                </TabsContent>
+              </Tabs>
             ) : null}
             {view === 'media' ? <MediaForm data={data} command={command} /> : null}
             {view === 'publishing' ? <PublishingForm data={data} command={command} /> : null}
@@ -820,10 +837,12 @@ export function DashboardWorkspace({
             {view === 'moderation' ? <ModerationPanel organizationId={organizationId} /> : null}
             {view === 'customers' ? <CustomerManagement command={command} /> : null}
             {view === 'content' ? <ContentManager /> : null}
+            </PanelErrorBoundary>
 
             {view === 'billing' || view === 'moderation' ? null : busy && !data ? (
               view === 'dashboard' ? <DashboardContentSkeleton /> : <DashboardCollectionsSkeleton />
             ) : (
+              <PanelErrorBoundary key={`data:${organizationId}:${view}`} name={`${activeMetadata.title} — data`}>
               <DataView
                 view={view}
                 data={data}
@@ -836,6 +855,7 @@ export function DashboardWorkspace({
                   setCurrentPage(1);
                 }}
               />
+              </PanelErrorBoundary>
             )}
             </div>
             </div>
