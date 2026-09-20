@@ -84,7 +84,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
     });
   }
 
-  private async readSite(transaction: Transaction, context: ResolvedSiteContext, query: NetworkContentQuery): Promise<NetworkSiteData | null> {
+  private async readSettings(transaction: Transaction, context: ResolvedSiteContext) {
       const settingsRows = await transaction.select({ name: siteSettings.name, description: siteSettings.description, tagline: siteSettings.tagline, seoDefaultTitle: siteSettings.seoDefaultTitle, seoDefaultDescription: siteSettings.seoDefaultDescription, seoOpenGraphSiteName: siteSettings.seoOpenGraphSiteName, locale: siteSettings.locale, colors: siteSettings.colors, socialLinks: siteSettings.socialLinks, seo: siteSettings.seo, navigation: siteSettings.navigation, logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId, defaultMediaId: siteSettings.defaultMediaId, regionName: regions.name })
         .from(sites)
         .innerJoin(domains, and(eq(domains.organizationId, sites.organizationId), eq(domains.id, sites.domainId), eq(domains.status, 'active')))
@@ -105,6 +105,42 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           if (faviconMediaId === null) faviconMediaId = parent.faviconMediaId;
         }
       }
+      if (logoMediaId === null) return null;
+      return {
+        context,
+        regionName: settings.regionName,
+        settings: {
+          name: settings.name, description: settings.description, tagline: settings.tagline,
+          seoDefaultTitle: settings.seoDefaultTitle, seoDefaultDescription: settings.seoDefaultDescription,
+          seoSiteName: settings.seoOpenGraphSiteName, locale: settings.locale,
+          colors: settings.colors, socialLinks: settings.socialLinks,
+          navigation: settings.navigation.map((item) => ({ label: String(item.label ?? ''), path: String(item.path ?? '/') })),
+          logoUrl: absoluteMediaUrl(context, logoMediaId),
+          faviconUrl: faviconMediaId === null ? null : absoluteMediaUrl(context, faviconMediaId),
+          defaultImageUrl: settings.defaultMediaId === null ? absoluteDefaultAssetUrl(context, this.defaultImageUrl) : absoluteMediaUrl(context, settings.defaultMediaId),
+          robots: Array.isArray(settings.seo.robots) ? settings.seo.robots.map(String) : [],
+        },
+      };
+  }
+
+  /**
+   * Cangkang situs untuk 404 bermerek: settings tanpa query artikel/galeri.
+   *
+   * @remarks Probe bot ke path acak tidak membayar query konten; branded 404
+   * tetap tampil dengan logo + nama tenant.
+   */
+  async loadSiteShell(context: ResolvedSiteContext): Promise<NetworkSiteData | null> {
+    return this.database.transaction(async (transaction) => {
+      await this.publicTenant(transaction, context);
+      const shell = await this.readSettings(transaction, context);
+      if (shell === null) return null;
+      return { ...shell, articles: [] };
+    });
+  }
+
+  private async readSite(transaction: Transaction, context: ResolvedSiteContext, query: NetworkContentQuery): Promise<NetworkSiteData | null> {
+      const shell = await this.readSettings(transaction, context);
+      if (shell === null) return null;
 
       const conditions = [eq(articles.organizationId, context.organizationId), eq(articleSites.organizationId, context.organizationId), eq(articleSites.siteId, context.siteId), eq(articleSites.state, 'published'), eq(articleSites.active, true), eq(articles.status, 'active'), isNotNull(articleSites.publishedAt)];
       if (query.articleSlug !== undefined) conditions.push(eq(articles.slug, query.articleSlug));
@@ -139,22 +175,9 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           return { url, thumbnailUrl: galleryRow.thumbObjectKey === null ? null : `${url}?variant=thumb` };
         });
       }
-
-      if (logoMediaId === null) return null;
+      const settings = shell.settings;
       return {
-        context,
-        regionName: settings.regionName,
-        settings: {
-          name: settings.name, description: settings.description, tagline: settings.tagline,
-          seoDefaultTitle: settings.seoDefaultTitle, seoDefaultDescription: settings.seoDefaultDescription,
-          seoSiteName: settings.seoOpenGraphSiteName, locale: settings.locale,
-          colors: settings.colors, socialLinks: settings.socialLinks,
-          navigation: settings.navigation.map((item) => ({ label: String(item.label ?? ''), path: String(item.path ?? '/') })),
-          logoUrl: absoluteMediaUrl(context, logoMediaId),
-          faviconUrl: faviconMediaId === null ? null : absoluteMediaUrl(context, faviconMediaId),
-          defaultImageUrl: settings.defaultMediaId === null ? absoluteDefaultAssetUrl(context, this.defaultImageUrl) : absoluteMediaUrl(context, settings.defaultMediaId),
-          robots: Array.isArray(settings.seo.robots) ? settings.seo.robots.map(String) : [],
-        },
+        ...shell,
         articles: rows.filter((row) => row.publishedAt !== null).map((row) => ({ id: row.id, slug: row.slug, title: row.customTitle ?? row.title, description: row.customDescription ?? excerptForDescription(articleBodyText(row.bodyExcerpt ?? ''), 180), ...(detailTarget !== undefined && detailBody !== null && row.id === detailTarget.id ? { body: detailBody, gallery: detailGallery } : {}), tags: [...row.tags], regionId: row.regionId, categoryId: row.categoryId, categorySlug: row.categorySlug, categoryName: row.categoryName, authorName: row.authorName, authorDisplayName: row.authorDisplayName, authorBio: row.authorBio, authorAvatarUrl: row.authorAvatarUrl, publisherName: row.publisherName, attribution: row.attribution ?? row.publisherName ?? settings.name, publisherLogoUrl: row.publisherLogoUrl, publisherCity: row.publisherCity, publisherBio: row.publisherBio ?? DEFAULT_PUBLISHER_BIO, publisherSocials: pickPublisherSocials((row.publisherContacts ?? {}) as Readonly<Record<string, unknown>>), publisherVerified: row.publisherVerification === 'verified', independent: row.publisherType === 'independent_publisher', officialInstitution: row.publisherVerification === 'verified' ? row.affiliationInstitution : null, publishedAt: iso(row.publishedAt!), updatedAt: iso(row.updatedAt), articleSiteId: row.articleSiteId, viewCount: row.viewCount, imageMediaType: row.customImageMediaId !== null ? row.customMediaType : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaType : null, imageUrl: row.customImageMediaId !== null ? absoluteMediaUrl(context, row.customImageMediaId) : row.leadMediaId !== null && row.mediaState === 'active' ? absoluteMediaUrl(context, row.leadMediaId) : row.coverImageUrl, thumbnailUrl: row.customImageMediaId !== null ? (row.customThumbKey === null ? null : `${absoluteMediaUrl(context, row.customImageMediaId)}?variant=thumb`) : row.leadMediaId !== null && row.mediaState === 'active' ? (row.leadThumbKey === null ? null : `${absoluteMediaUrl(context, row.leadMediaId)}?variant=thumb`) : null, imageWidth: null, imageHeight: null })),
       };
   }

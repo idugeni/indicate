@@ -12,18 +12,12 @@ async function resolveNotFoundSite() {
 
     if (!host) return null;
 
-    const { resolver, content, config } = await deliveryComposition();
+    const { resolver, content } = await deliveryComposition();
     const classification = await resolver.classify(host);
 
     if (classification.kind !== 'site') return null;
 
-    const site = await content.load(
-      classification.context,
-      {},
-      { path: '/404', locale: config.seo.defaultLocale }
-    );
-
-    return site;
+    return content.loadShell(classification.context);
   } catch {
     return null;
   }

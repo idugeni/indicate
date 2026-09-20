@@ -46,4 +46,4 @@ async function handleGET() {
  *
  * @remarks Without the control-plane branch the robots.txt Sitemap line would advertise a 404. Sitemap stays dynamic per request per host with DB load (replacing force-dynamic); edge TTL 600 plus SWR 600 absorbs crawler bursts without repeating the full load.
  */
-export const GET = withApiAccess('GET /sitemap.xml', handleGET);
+export const GET = withApiAccess('GET /sitemap.xml', handleGET, { accessLog: 'errors-only' });

@@ -178,8 +178,24 @@ describe('readSite projection', () => {
   });
 });
 
-describe('loadNetworkFeed', () => {
-  it('menyertakan body penuh untuk RSS', async () => {
+describe('loadSiteShell', () => {
+  it('tanpa query artikel untuk 404 bermerek', async () => {
+    const { repository, selectLog } = harness({});
+    const shell = await repository.loadSiteShell({ ...CONTEXT });
+    expect(shell).not.toBe(null);
+    expect(shell?.articles).toEqual([]);
+    expect(shell?.settings.name).toBe('Portal');
+    expect(selectLog).toHaveLength(1);
+    expect(selectLog.some((entry) => entry.keys.includes('slug') || entry.keys.includes('body'))).toBe(false);
+  });
+
+  it('null bila settings situs tidak ada', async () => {
+    const { repository } = harness({ settings: [] });
+    await expect(repository.loadSiteShell({ ...CONTEXT })).resolves.toBe(null);
+  });
+});
+
+describe('loadNetworkFeed', () => {  it('menyertakan body penuh untuk RSS', async () => {
     const feedRow = {
       id: 'a1',
       slug: 'berita-utama',

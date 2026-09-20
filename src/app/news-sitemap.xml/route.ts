@@ -23,4 +23,4 @@ async function handleGET() {
  *
  * @remarks Tetap dinamis per request karena klasifikasi per-host + DB; pengganti force-dynamic.
  */
-export const GET = withApiAccess('GET /news-sitemap.xml', handleGET);
+export const GET = withApiAccess('GET /news-sitemap.xml', handleGET, { accessLog: 'errors-only' });

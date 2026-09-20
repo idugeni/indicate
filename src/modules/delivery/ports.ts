@@ -34,6 +34,8 @@ export interface DeliveryRepository {
   loadNetworkBundle(context: ResolvedSiteContext, query: NetworkContentQuery): Promise<PublicBundle>;
   /** Baris feed RSS (metadata + body, tanpa galeri) untuk satu host. */
   loadNetworkFeed(context: ResolvedSiteContext, limit?: number): Promise<readonly FeedArticle[]>;
+  /** Cangkang settings tanpa artikel untuk 404 bermerek. */
+  loadSiteShell(context: ResolvedSiteContext): Promise<NetworkSiteData | null>;
   /** Robots kustom tenant (kolom seo settings, tanpa artikel) untuk /robots.txt. */
   loadSiteRobots(context: ResolvedSiteContext): Promise<readonly string[] | null>;
   /** Daftar kategori aktif org (ringan, untuk nav yang identik di semua halaman). */

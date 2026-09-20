@@ -97,4 +97,4 @@ async function handleGET() {
  *
  * @remarks Klasifikasi per-host tetap dinamis per request; pengganti force-dynamic.
  */
-export const GET = withApiAccess('GET /llms.txt', handleGET);
+export const GET = withApiAccess('GET /llms.txt', handleGET, { accessLog: 'errors-only' });

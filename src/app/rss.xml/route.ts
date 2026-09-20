@@ -13,4 +13,4 @@ async function handleGET() {
  *
  * @remarks Tetap dinamis per request karena feed per-host + DB; pengganti force-dynamic.
  */
-export const GET = withApiAccess('GET /rss.xml', handleGET);
+export const GET = withApiAccess('GET /rss.xml', handleGET, { accessLog: 'errors-only' });

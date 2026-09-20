@@ -12,7 +12,7 @@ export interface NetworkCacheRequest {
 }
 
 export class NetworkContentService {
-  constructor(private readonly repository: Pick<DeliveryRepository, 'loadNetworkSite' | 'loadNetworkBundle' | 'loadNetworkFeed' | 'resolveArticleId' | 'isCacheBypassed'>, private readonly cache?: NetworkSiteCachePort) {}
+  constructor(private readonly repository: Pick<DeliveryRepository, 'loadNetworkSite' | 'loadNetworkBundle' | 'loadNetworkFeed' | 'loadSiteShell' | 'resolveArticleId' | 'isCacheBypassed'>, private readonly cache?: NetworkSiteCachePort) {}
 
   async load(context: ResolvedSiteContext, query: NetworkContentQuery = {}, cacheRequest?: NetworkCacheRequest): Promise<NetworkSiteData | null> {
     const sanitized: NetworkContentQuery = {
@@ -41,6 +41,10 @@ export class NetworkContentService {
 
   async loadFeed(context: ResolvedSiteContext, limit = 50): Promise<readonly FeedArticle[]> {
     return this.repository.loadNetworkFeed(context, limit);
+  }
+
+  async loadShell(context: ResolvedSiteContext): Promise<NetworkSiteData | null> {
+    return this.repository.loadSiteShell(context);
   }
 
   /**

@@ -72,4 +72,4 @@ async function handleGET() {
  *
  * @remarks Advertise public service paths while keeping auth and machine surfaces out of the index. Tenant surfaces use an explicit denylist without a catch-all so they stay out of the control-plane index.
  */
-export const GET = withApiAccess('GET /robots.txt', handleGET);
+export const GET = withApiAccess('GET /robots.txt', handleGET, { accessLog: 'errors-only' });
