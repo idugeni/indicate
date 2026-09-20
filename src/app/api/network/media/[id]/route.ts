@@ -20,4 +20,4 @@ async function handleGET(request: Request, { params }: { readonly params: Promis
  * menahan burst revalidasi serentak; bingkai basi di dalamnya mungkin membawa URL
  * presigned kedaluwarsa hingga revalidasi latar selesai.
  */
-export const GET = withApiAccess('GET /api/network/media/[id]', handleGET);
+export const GET = withApiAccess('GET /api/network/media/[id]', handleGET, { accessLog: 'errors-only' });
