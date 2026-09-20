@@ -42,7 +42,7 @@ export function WarmEditorialLoadMore({
           <button
             type="button"
             onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-[#b4532a] px-7 font-sans text-sm font-bold text-white transition-colors hover:bg-[#8a3c1d]"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-[var(--tpl-primary,#b4532a)] px-7 font-sans text-sm font-bold text-white transition-colors hover:bg-[var(--tpl-primary-dark,#8a3c1d)]"
           >
             <ArrowDown className="h-4 w-4" aria-hidden="true" />
             Muat lebih banyak ({remaining} lagi)

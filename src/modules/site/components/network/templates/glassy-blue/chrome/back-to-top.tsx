@@ -20,7 +20,7 @@ export function GlassyBlueBackToTop() {
       type="button"
       onClick={scrollToTop}
       aria-label="Kembali ke atas"
-      className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#1f7cff] text-white shadow-lg transition-colors hover:bg-[#155fd0]"
+      className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--tpl-primary,#1f7cff)] text-white shadow-lg transition-colors hover:bg-[var(--tpl-primary-dark,#155fd0)]"
     >
       <ArrowUp className="h-5 w-5" aria-hidden="true" />
     </button>

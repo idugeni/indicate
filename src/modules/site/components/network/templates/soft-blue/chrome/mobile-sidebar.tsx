@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 
-import { SoftBluePrimaryButton } from '@/modules/site/components/network/templates/soft-blue/ui/soft-blue-button';
-import { SoftBlueInput } from '@/modules/site/components/network/templates/soft-blue/ui/soft-blue-input';
+import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
 import { cn } from '@/ui/cn';
 
 /**
@@ -88,7 +88,7 @@ export function SoftBlueMobileSidebar({
             type="button"
             onClick={onClose}
             aria-label="Tutup menu"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#2563eb]"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[var(--tpl-primary,#2563eb)]"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -97,7 +97,7 @@ export function SoftBlueMobileSidebar({
           <label htmlFor="soft-blue-sidebar-search" className="sr-only">
             Cari berita
           </label>
-          <SoftBlueInput
+          <TemplateInput
             id="soft-blue-sidebar-search"
             value={sidebarQuery}
             onChange={(event) => setSidebarQuery(event.target.value)}
@@ -106,13 +106,21 @@ export function SoftBlueMobileSidebar({
             placeholder="Cari berita…"
             className="h-9 min-w-0 flex-1 rounded-full font-sans text-sm"
           />
-          <SoftBluePrimaryButton type="submit" aria-label="Cari" className="h-9 w-9 flex-none rounded-full p-0">
+          <TemplateButton type="submit" aria-label="Cari" className="h-9 w-9 flex-none rounded-full p-0">
             <Search className="h-4 w-4" aria-hidden="true" />
-          </SoftBluePrimaryButton>
+          </TemplateButton>
         </form>
         <nav aria-label="Navigasi seluler" className="flex-1 overflow-y-auto px-4 py-4" onClick={onClose}>
           {children}
         </nav>
+        <div className="flex-none border-t border-slate-100 px-5 py-4" onClick={onClose}>
+          <ul className="m-0 grid list-none grid-cols-2 gap-x-3 gap-y-2 p-0 font-sans text-xs">
+            <li><Link href="/tentang" className="text-slate-500 transition-colors hover:text-[var(--tpl-primary,#2563eb)]">Tentang</Link></li>
+            <li><Link href="/kontak" className="text-slate-500 transition-colors hover:text-[var(--tpl-primary,#2563eb)]">Kontak</Link></li>
+            <li><Link href="/kebijakan-privasi" className="text-slate-500 transition-colors hover:text-[var(--tpl-primary,#2563eb)]">Kebijakan Privasi</Link></li>
+            <li><Link href="/syarat-ketentuan" className="text-slate-500 transition-colors hover:text-[var(--tpl-primary,#2563eb)]">Syarat & Ketentuan</Link></li>
+          </ul>
+        </div>
       </div>
     </div>,
     document.body,

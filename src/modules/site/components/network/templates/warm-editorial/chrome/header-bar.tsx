@@ -49,7 +49,7 @@ export function WarmEditorialHeaderBar({
             aria-expanded={searchOpen}
             aria-label={searchOpen ? 'Tutup pencarian' : 'Cari berita'}
             title={searchOpen ? 'Tutup pencarian' : 'Cari berita'}
-            className="hidden h-10 w-10 flex-none items-center justify-center rounded-full bg-[#b4532a] font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#8a3c1d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b4532a] lg:flex"
+            className="hidden h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#b4532a)] font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#8a3c1d)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#b4532a)] lg:flex"
           >
             <Search className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -59,7 +59,7 @@ export function WarmEditorialHeaderBar({
             onClick={() => setSidebarOpen(true)}
             aria-expanded={sidebarOpen}
             aria-label="Buka menu"
-            className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[#b4532a] text-white shadow-sm transition-colors hover:bg-[#8a3c1d] lg:hidden"
+            className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#b4532a)] text-white shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#8a3c1d)] lg:hidden"
           >
             <Menu className="h-4 w-4" aria-hidden="true" />
           </button>

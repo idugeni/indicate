@@ -34,13 +34,13 @@ export function SoftBlueHero({ article }: { readonly article: ArticleListItem })
 
       <div className="min-w-0">
         {article.categoryName === null ? null : (
-          <p className="m-0 flex items-center gap-2 font-sans text-sm font-semibold text-[#2563eb]">
-            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#2563eb]" />
+          <p className="m-0 flex items-center gap-2 font-sans text-sm font-semibold text-[var(--tpl-primary,#2563eb)]">
+            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[var(--tpl-primary,#2563eb)]" />
             {article.categoryName}
           </p>
         )}
-        <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-[#0e1b33] sm:text-4xl">
-          <Link href={`/${article.slug}`} className="hover:text-[#2563eb]">
+        <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-[var(--tpl-ink,#0e1b33)] sm:text-4xl">
+          <Link href={`/${article.slug}`} className="hover:text-[var(--tpl-primary,#2563eb)]">
             {article.title}
           </Link>
         </h1>

@@ -42,7 +42,7 @@ export function BlackLimeLoadMore({
           <button
             type="button"
             onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-[#c5f82a] px-7 font-sans text-sm font-bold text-[#0a0c07] transition-colors hover:bg-[#9ecb14]"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-[var(--tpl-primary,#c5f82a)] px-7 font-sans text-sm font-bold text-[var(--tpl-on-primary,#0a0c07)] transition-colors hover:bg-[var(--tpl-primary-dark,#9ecb14)]"
           >
             <ArrowDown className="h-4 w-4" aria-hidden="true" />
             Muat lebih banyak ({remaining} lagi)

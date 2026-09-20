@@ -45,7 +45,7 @@ export function RedEditorialHeaderBar({
         <div className="flex flex-none items-center gap-2 justify-self-end">
           <Link
             href="#newsletter"
-            className="hidden h-10 flex-none items-center rounded-full bg-[#b91c1c] px-5 font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#7f1212] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b91c1c] lg:inline-flex"
+            className="hidden h-10 flex-none items-center rounded-full bg-[var(--tpl-primary,#b91c1c)] px-5 font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#7f1212)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#b91c1c)] lg:inline-flex"
           >
             Langganan
           </Link>
@@ -56,7 +56,7 @@ export function RedEditorialHeaderBar({
             aria-expanded={searchOpen}
             aria-label={searchOpen ? 'Tutup pencarian' : 'Cari berita'}
             title={searchOpen ? 'Tutup pencarian' : 'Cari berita'}
-            className="hidden h-10 w-10 flex-none items-center justify-center rounded-full bg-[#b91c1c] font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#7f1212] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b91c1c] lg:flex"
+            className="hidden h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#b91c1c)] font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#7f1212)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#b91c1c)] lg:flex"
           >
             <Search className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -66,7 +66,7 @@ export function RedEditorialHeaderBar({
             onClick={() => setSidebarOpen(true)}
             aria-expanded={sidebarOpen}
             aria-label="Buka menu"
-            className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#b91c1c] lg:hidden"
+            className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[var(--tpl-primary,#b91c1c)] lg:hidden"
           >
             <Menu className="h-4 w-4" aria-hidden="true" />
           </button>

@@ -20,7 +20,7 @@ export function DarkNavyBackToTop() {
       type="button"
       onClick={scrollToTop}
       aria-label="Kembali ke atas"
-      className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#2f7bff] text-white shadow-lg transition-colors hover:bg-[#1a5fd0]"
+      className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--tpl-primary,#2f7bff)] text-white shadow-lg transition-colors hover:bg-[var(--tpl-primary-dark,#1a5fd0)]"
     >
       <ArrowUp className="h-5 w-5" aria-hidden="true" />
     </button>

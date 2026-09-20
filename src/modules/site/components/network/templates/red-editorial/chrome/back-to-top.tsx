@@ -20,7 +20,7 @@ export function RedEditorialBackToTop() {
       type="button"
       onClick={scrollToTop}
       aria-label="Kembali ke atas"
-      className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#b91c1c] text-white shadow-lg transition-colors hover:bg-[#7f1212]"
+      className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--tpl-primary,#b91c1c)] text-white shadow-lg transition-colors hover:bg-[var(--tpl-primary-dark,#7f1212)]"
     >
       <ArrowUp className="h-5 w-5" aria-hidden="true" />
     </button>

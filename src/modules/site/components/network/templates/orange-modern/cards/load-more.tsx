@@ -42,7 +42,7 @@ export function OrangeModernLoadMore({
           <button
             type="button"
             onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-[#ea580c] px-7 font-sans text-sm font-bold text-white transition-colors hover:bg-[#c2410c]"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-[var(--tpl-primary,#ea580c)] px-7 font-sans text-sm font-bold text-white transition-colors hover:bg-[var(--tpl-primary-dark,#c2410c)]"
           >
             <ArrowDown className="h-4 w-4" aria-hidden="true" />
             Muat lebih banyak ({remaining} lagi)

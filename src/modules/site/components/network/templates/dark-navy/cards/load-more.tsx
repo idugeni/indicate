@@ -26,7 +26,7 @@ export function DarkNavyLoadMore({
     <section aria-label={heading}>
       <div className="flex items-end justify-between gap-4">
         <SectionHeading description={description}>{heading}</SectionHeading>
-        <p className="m-0 flex-none font-sans text-xs tabular-nums text-[#5f6f8c]" role="status">
+        <p className="m-0 flex-none font-sans text-xs tabular-nums text-[var(--tpl-faint,#5f6f8c)]" role="status">
           {visible.length}/{articles.length}
         </p>
       </div>
@@ -42,14 +42,14 @@ export function DarkNavyLoadMore({
           <button
             type="button"
             onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-[#2f7bff] px-7 font-sans text-sm font-bold text-white transition-colors hover:bg-[#1a5fd0]"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-[var(--tpl-primary,#2f7bff)] px-7 font-sans text-sm font-bold text-white transition-colors hover:bg-[var(--tpl-primary-dark,#1a5fd0)]"
           >
             <ArrowDown className="h-4 w-4" aria-hidden="true" />
             Muat lebih banyak ({remaining} lagi)
           </button>
         </div>
       ) : (
-        <p className="m-0 mt-8 text-center font-sans text-xs text-[#5f6f8c]">
+        <p className="m-0 mt-8 text-center font-sans text-xs text-[var(--tpl-faint,#5f6f8c)]">
           Anda telah melihat seluruh {articles.length} liputan kanal ini.
         </p>
       )}

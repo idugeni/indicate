@@ -33,13 +33,13 @@ export function CleanBlueHero({ article }: { readonly article: ArticleListItem }
 
       <div className="min-w-0">
         {article.categoryName === null ? null : (
-          <p className="m-0 flex items-center gap-2 font-sans text-sm font-semibold text-[#1a5fd0]">
-            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1a5fd0]" />
+          <p className="m-0 flex items-center gap-2 font-sans text-sm font-semibold text-[var(--tpl-primary,#1a5fd0)]">
+            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[var(--tpl-primary,#1a5fd0)]" />
             {article.categoryName}
           </p>
         )}
         <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl">
-          <Link href={`/${article.slug}`} className="hover:text-[#1a5fd0]">
+          <Link href={`/${article.slug}`} className="hover:text-[var(--tpl-primary,#1a5fd0)]">
             {article.title}
           </Link>
         </h1>

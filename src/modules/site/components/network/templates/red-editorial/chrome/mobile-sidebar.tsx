@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 
-import { RedEditorialPrimaryButton } from '@/modules/site/components/network/templates/red-editorial/ui/red-editorial-button';
-import { RedEditorialInput } from '@/modules/site/components/network/templates/red-editorial/ui/red-editorial-input';
+import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
 import { cn } from '@/ui/cn';
 
 /**
@@ -88,7 +88,7 @@ export function RedEditorialMobileSidebar({
             type="button"
             onClick={onClose}
             aria-label="Tutup menu"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#b91c1c]"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[var(--tpl-primary,#b91c1c)]"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -97,7 +97,7 @@ export function RedEditorialMobileSidebar({
           <label htmlFor="red-editorial-sidebar-search" className="sr-only">
             Cari berita
           </label>
-          <RedEditorialInput
+          <TemplateInput
             id="red-editorial-sidebar-search"
             value={sidebarQuery}
             onChange={(event) => setSidebarQuery(event.target.value)}
@@ -106,13 +106,21 @@ export function RedEditorialMobileSidebar({
             placeholder="Cari berita…"
             className="h-9 min-w-0 flex-1 rounded-full font-sans text-sm"
           />
-          <RedEditorialPrimaryButton type="submit" aria-label="Cari" className="h-9 w-9 flex-none rounded-full p-0">
+          <TemplateButton type="submit" aria-label="Cari" className="h-9 w-9 flex-none rounded-full p-0">
             <Search className="h-4 w-4" aria-hidden="true" />
-          </RedEditorialPrimaryButton>
+          </TemplateButton>
         </form>
         <nav aria-label="Navigasi seluler" className="flex-1 overflow-y-auto px-4 py-4" onClick={onClose}>
           {children}
         </nav>
+        <div className="flex-none border-t border-slate-100 px-5 py-4" onClick={onClose}>
+          <ul className="m-0 grid list-none grid-cols-2 gap-x-3 gap-y-2 p-0 font-sans text-xs">
+            <li><Link href="/tentang" className="text-slate-500 transition-colors hover:text-[var(--tpl-primary,#b91c1c)]">Tentang</Link></li>
+            <li><Link href="/kontak" className="text-slate-500 transition-colors hover:text-[var(--tpl-primary,#b91c1c)]">Kontak</Link></li>
+            <li><Link href="/kebijakan-privasi" className="text-slate-500 transition-colors hover:text-[var(--tpl-primary,#b91c1c)]">Kebijakan Privasi</Link></li>
+            <li><Link href="/syarat-ketentuan" className="text-slate-500 transition-colors hover:text-[var(--tpl-primary,#b91c1c)]">Syarat & Ketentuan</Link></li>
+          </ul>
+        </div>
       </div>
     </div>,
     document.body,

@@ -20,18 +20,18 @@ export function BlackLimeHero({ article }: { readonly article: ArticleListItem }
     <section className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12" aria-label="Sorotan utama">
       <div className="min-w-0">
         {article.categoryName === null ? null : (
-          <p className="m-0 flex items-center gap-2 font-sans text-sm font-semibold uppercase tracking-wider text-[#c5f82a]">
+          <p className="m-0 flex items-center gap-2 font-sans text-sm font-semibold uppercase tracking-wider text-[var(--tpl-primary,#c5f82a)]">
             {article.categoryName}
-            <span aria-hidden="true" className="h-0.5 w-8 rounded-full bg-[#c5f82a]" />
+            <span aria-hidden="true" className="h-0.5 w-8 rounded-full bg-[var(--tpl-primary,#c5f82a)]" />
           </p>
         )}
         <h1 className="m-0 mt-3 font-sans text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-100 sm:text-5xl">
-          <Link href={`/${article.slug}`} className="hover:text-[#c5f82a]">
+          <Link href={`/${article.slug}`} className="hover:text-[var(--tpl-primary,#c5f82a)]">
             {lead}
             {accent === null ? null : (
               <>
                 {' '}
-                <span className="text-[#c5f82a]">{accent}</span>
+                <span className="text-[var(--tpl-primary,#c5f82a)]">{accent}</span>
               </>
             )}
           </Link>
@@ -45,7 +45,7 @@ export function BlackLimeHero({ article }: { readonly article: ArticleListItem }
             className="group inline-flex flex-none items-center gap-3 font-sans text-sm font-bold text-slate-100"
             aria-label={`Baca selengkapnya: ${article.title}`}
           >
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#c5f82a] text-[#0a0c07] transition-colors group-hover:bg-[#9ecb14]">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--tpl-primary,#c5f82a)] text-[var(--tpl-on-primary,#0a0c07)] transition-colors group-hover:bg-[var(--tpl-primary-dark,#9ecb14)]">
               <ArrowRight className="h-5 w-5" aria-hidden="true" />
             </span>
             Baca Selengkapnya
@@ -81,14 +81,14 @@ export function BlackLimeHero({ article }: { readonly article: ArticleListItem }
         </Link>
         {location === null || location === '' ? null : (
           <p className="m-0 absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-[#0a0c07]/70 px-3 py-1.5 font-sans text-xs font-semibold text-slate-100 backdrop-blur">
-            <MapPin className="h-3.5 w-3.5 text-[#c5f82a]" aria-hidden="true" />
+            <MapPin className="h-3.5 w-3.5 text-[var(--tpl-primary,#c5f82a)]" aria-hidden="true" />
             {location}
           </p>
         )}
         <Link
           href={`/${article.slug}`}
           aria-label={`Buka: ${article.title}`}
-          className="absolute bottom-4 right-4 flex h-9 w-9 items-center justify-center rounded-lg bg-[#c5f82a] text-[#0a0c07] shadow-md transition-colors hover:bg-[#9ecb14]"
+          className="absolute bottom-4 right-4 flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--tpl-primary,#c5f82a)] text-[var(--tpl-on-primary,#0a0c07)] shadow-md transition-colors hover:bg-[var(--tpl-primary-dark,#9ecb14)]"
         >
           <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
         </Link>

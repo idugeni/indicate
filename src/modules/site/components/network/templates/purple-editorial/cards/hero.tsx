@@ -43,13 +43,13 @@ export function PurpleEditorialHero({ article }: { readonly article: ArticleList
       <div className="min-w-0">
         {article.categoryName === null ? null : (
           <p className="m-0">
-            <span className="inline-block rounded-md bg-[#ede9fe] px-3 py-1 font-sans text-xs font-bold text-[#7c3aed]">
+            <span className="inline-block rounded-md bg-[var(--tpl-primary-soft,#ede9fe)] px-3 py-1 font-sans text-xs font-bold text-[var(--tpl-primary,#7c3aed)]">
               {article.categoryName}
             </span>
           </p>
         )}
-        <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-[#1c1440] sm:text-4xl">
-          <Link href={`/${article.slug}`} className="hover:text-[#7c3aed]">
+        <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-[var(--tpl-ink,#1c1440)] sm:text-4xl">
+          <Link href={`/${article.slug}`} className="hover:text-[var(--tpl-primary,#7c3aed)]">
             {article.title}
           </Link>
         </h1>
@@ -71,7 +71,7 @@ export function PurpleEditorialHero({ article }: { readonly article: ArticleList
             <Link
               href={`/${article.slug}`}
               aria-label={`Baca: ${article.title}`}
-              className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[#ede9fe] text-[#7c3aed] transition-colors hover:bg-[#7c3aed] hover:text-white"
+              className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary-soft,#ede9fe)] text-[var(--tpl-primary,#7c3aed)] transition-colors hover:bg-[var(--tpl-primary,#7c3aed)] hover:text-white"
             >
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>

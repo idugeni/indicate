@@ -20,7 +20,7 @@ export function BlackLimeBackToTop() {
       type="button"
       onClick={scrollToTop}
       aria-label="Kembali ke atas"
-      className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#c5f82a] text-[#0a0c07] shadow-lg transition-colors hover:bg-[#9ecb14]"
+      className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--tpl-primary,#c5f82a)] text-[var(--tpl-on-primary,#0a0c07)] shadow-lg transition-colors hover:bg-[var(--tpl-primary-dark,#9ecb14)]"
     >
       <ArrowUp className="h-5 w-5" aria-hidden="true" />
     </button>

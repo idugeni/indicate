@@ -81,13 +81,13 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
         <div className="min-w-0 px-1 py-1 sm:px-2">
           <div className="flex items-center justify-between gap-3">
             {article.categoryName === null ? (
-              <span className="m-0 flex items-center gap-2 font-sans text-xs font-bold uppercase tracking-wider text-[#1f7cff]">
-                <span aria-hidden="true" className="h-1 w-6 rounded-full bg-[#1f7cff]" />
+              <span className="m-0 flex items-center gap-2 font-sans text-xs font-bold uppercase tracking-wider text-[var(--tpl-primary,#1f7cff)]">
+                <span aria-hidden="true" className="h-1 w-6 rounded-full bg-[var(--tpl-primary,#1f7cff)]" />
                 Sorotan
               </span>
             ) : (
-              <p className="m-0 flex items-center gap-2 font-sans text-xs font-bold uppercase tracking-wider text-[#1f7cff]">
-                <span aria-hidden="true" className="h-1 w-6 rounded-full bg-[#1f7cff]" />
+              <p className="m-0 flex items-center gap-2 font-sans text-xs font-bold uppercase tracking-wider text-[var(--tpl-primary,#1f7cff)]">
+                <span aria-hidden="true" className="h-1 w-6 rounded-full bg-[var(--tpl-primary,#1f7cff)]" />
                 {article.categoryName}
               </p>
             )}
@@ -100,7 +100,7 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
                   type="button"
                   onClick={() => go(position - 1)}
                   aria-label="Sorotan sebelumnya"
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200 transition-colors hover:text-[#1f7cff]"
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200 transition-colors hover:text-[var(--tpl-primary,#1f7cff)]"
                 >
                   <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -108,15 +108,15 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
                   type="button"
                   onClick={() => go(position + 1)}
                   aria-label="Sorotan berikutnya"
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200 transition-colors hover:text-[#1f7cff]"
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200 transition-colors hover:text-[var(--tpl-primary,#1f7cff)]"
                 >
                   <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
             ) : null}
           </div>
-          <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.12] tracking-tight text-[#0e1b33] sm:text-4xl">
-            <Link href={`/${article.slug}`} className="hover:text-[#1f7cff]">
+          <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.12] tracking-tight text-[var(--tpl-ink,#0e1b33)] sm:text-4xl">
+            <Link href={`/${article.slug}`} className="hover:text-[var(--tpl-primary,#1f7cff)]">
               {article.title}
             </Link>
           </h1>
@@ -138,7 +138,7 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
               <Link
                 href={`/${article.slug}`}
                 aria-label={`Baca: ${article.title}`}
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1f7cff] text-white shadow-lg shadow-[#1f7cff]/30 transition-colors hover:bg-[#155fd0]"
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--tpl-primary,#1f7cff)] text-white shadow-lg shadow-[#1f7cff]/30 transition-colors hover:bg-[var(--tpl-primary-dark,#155fd0)]"
               >
                 <ArrowRight className="h-5 w-5" aria-hidden="true" />
               </Link>

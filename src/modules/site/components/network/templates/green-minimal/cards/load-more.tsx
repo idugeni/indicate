@@ -42,7 +42,7 @@ export function GreenMinimalLoadMore({
           <button
             type="button"
             onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-[#1d7a38] px-7 font-sans text-sm font-bold text-white transition-colors hover:bg-[#145c2a]"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-[var(--tpl-primary,#1d7a38)] px-7 font-sans text-sm font-bold text-white transition-colors hover:bg-[var(--tpl-primary-dark,#145c2a)]"
           >
             <ArrowDown className="h-4 w-4" aria-hidden="true" />
             Muat lebih banyak ({remaining} lagi)

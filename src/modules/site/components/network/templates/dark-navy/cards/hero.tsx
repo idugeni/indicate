@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/dark-navy/lib/format';
+import { articleImage, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/dark-navy/lib/format';
 
 const ROTATE_MS = 6000;
 
@@ -48,11 +48,11 @@ export function DarkNavyHero({ articles }: { readonly articles: readonly Article
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#070f22] via-[#070f22]/55 to-transparent"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[var(--tpl-canvas,#070f22)] via-[#070f22]/55 to-transparent"
       />
       <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4 sm:p-6">
         {article.categoryName === null ? null : (
-          <span className="inline-block rounded-lg bg-[#2f7bff] px-3 py-1 font-sans text-xs font-bold text-white shadow-md">
+          <span className="inline-block rounded-lg bg-[var(--tpl-primary,#2f7bff)] px-3 py-1 font-sans text-xs font-bold text-white shadow-md">
             {article.categoryName}
           </span>
         )}
@@ -73,13 +73,13 @@ export function DarkNavyHero({ articles }: { readonly articles: readonly Article
               className="group inline-flex flex-none items-center gap-2.5 font-sans text-sm font-bold text-white"
               aria-label={`Baca selengkapnya: ${article.title}`}
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#070f22] transition-colors group-hover:bg-[#2f7bff] group-hover:text-white">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[var(--tpl-canvas,#070f22)] transition-colors group-hover:bg-[var(--tpl-primary,#2f7bff)] group-hover:text-white">
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </span>
               Baca Selengkapnya
             </Link>
             <span className="hidden font-sans text-xs tabular-nums text-[#eaf0fb]/70 sm:inline">
-              {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca
+              {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatCompactViews(article.viewCount)} pembaca
             </span>
           </p>
           {count > 1 ? (
