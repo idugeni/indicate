@@ -134,6 +134,24 @@ Gagal masuk (limit tercapai): jejakwacana.my.id,
 jendelapublik.my.id, jurnalpas.web.id, keberimbangan.biz.id,
 kelanaberita.web.id. Belum dicoba: 62 domain stok sisanya.
 
+## Onboarding jejakkebenaran.my.id menjadi portal (2026-09-20) — DB + BRAND SELESAI, HTTP MENYUSUL
+
+Portal ke-36 di org Pengelola Platform (template `red-editorial`, kelompok
+hitungan 4 terundi agar distribusi merata): `domains` + `sites` +
+`site_settings` aktif (`active/active`, settings v2, SEO unik bernada
+nasional tanpa sebut region), logo + favicon dari master gradient huruf J
+(26810 byte, checksum ganda cocok lawan master, 2 objek R2 terverifikasi
+HEAD, tanpa yatim), reservasi `used`, invalidasi `media.activated`
+`pending`, audit lengkap (2 reserve + 2 activate + 1 settings-update,
+request `ops:onboard-jejakkebenaran`). `sitemap.xml`, `robots.txt`,
+`llms.txt`, dan `GET /api/network/media/{logo}` (307 ke R2) sudah
+melayani sebagai tenant; halaman `/` sempat landing lama karena cache edge
+(pola yang sama dengan 25 portal sebelumnya) — setelah 3x pemicu
+reconciler `scope=invalidation` (20+6 completed, 0 failed, antre habis),
+`/` merender portal: judul `JejakKebenaran - Kebenaran Punya Jejak.`,
+meta description SEO, tagline, logo (`alt="JejakKebenaran"`), favicon
+(307) — lengkap seperti tenant lain.
+
 ## Backlog (belum punya site)
 
 59 org customer (UPT Jateng): langganan active, member active, 0 site. Estimasi kebutuhan: 59 slot bila 1 hostname/org → total ±85/250, aman.
