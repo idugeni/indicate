@@ -92,6 +92,7 @@ function SiteFooterView({ year, channels }: { readonly year: number | null; read
         <div className="space-y-4">
           <p className="m-0">
             <Image
+              unoptimized
               src="/brand/indicate-landscape.svg"
               alt="Indicate - Publishing infrastructure"
               width={240}

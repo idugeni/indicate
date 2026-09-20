@@ -17,6 +17,7 @@ export async function BrandPanel() {
         <Link href="/" className="flex items-center gap-3 no-underline" aria-label="Indicate beranda">
           <span className="flex h-9 w-9 items-center justify-center rounded bg-[#f4f2ec]">
             <Image
+              unoptimized
               src="/brand/indicate-mark.svg"
               alt=""
               aria-hidden="true"

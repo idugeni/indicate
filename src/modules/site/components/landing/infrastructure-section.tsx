@@ -127,6 +127,7 @@ export function InfrastructureSection() {
                 className="flex items-center gap-3 rounded-lg border border-[#1a2430]/10 bg-[#faf9f5] px-3.5 py-3 transition-colors duration-180 hover:bg-white"
               >
                 <Image
+                  unoptimized
                   src={logo.file}
                   alt=""
                   aria-hidden="true"

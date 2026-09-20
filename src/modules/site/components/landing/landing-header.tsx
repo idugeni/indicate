@@ -80,6 +80,7 @@ export function LandingHeader() {
           <div className="flex items-center justify-between gap-2 px-5 py-2 sm:gap-3 sm:px-8">
             <Link href="/" className="group flex min-w-0 items-center gap-2.5" aria-label={`${SERVICE_NAME} beranda`}>
               <Image
+                unoptimized
                 src="/brand/indicate-mark.svg"
                 alt=""
                 aria-hidden="true"
@@ -176,6 +177,7 @@ export function LandingHeader() {
           <div className="flex items-center justify-between border-b border-[#e2ded2] px-5 py-4">
             <span className="flex items-center gap-2.5">
               <Image
+                unoptimized
                 src="/brand/indicate-mark.svg"
                 alt=""
                 aria-hidden="true"
