@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (141 migrations):
+-- Reviewed sources, in journal order (143 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -154,6 +154,8 @@
 --   139  20260920060000_site_settings_template_fk_idx  ledger sha256:4222bd4f7d9c0293328682acf0d52f19a2d881c60c57073aad86af718a90d53e
 --   140  20260920070000_invoice_unpaid  ledger sha256:5b92a475182327b1dbfc02f84f62be080c91a6d8ae9de9f4d5b8c834664efebc
 --   141  20260920080000_article_tags_canonical  ledger sha256:f15e59155ae924936f42fccd5a2f6293ebc7914a9ead56e39245a89f15ba9de2
+--   142  20260920090000_dashboard_metric_indexes  ledger sha256:03d1c9876901f91d99345df94b9e4444d48b5256b0210c53c88f2c5e47aa9b26
+--   143  20260920100000_publisher_logo_single_host  ledger sha256:b0776d14e863da4b48fe56209d6c8f2413f2943dfd43b9264c4dc299612cb730
 
 BEGIN;
 
@@ -12169,4 +12171,41 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (141, 'article_tags_canonical', 'sha256:caff95bc251c87b804fbce84eba79e2d4c5d3360faa86d4abbe55fb9b4a6ee1f');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f15e59155ae924936f42fccd5a2f6293ebc7914a9ead56e39245a89f15ba9de2', 1789841835396);
+
+-- ----------------------------------------------------------------------
+-- 20260920090000_dashboard_metric_indexes
+-- ----------------------------------------------------------------------
+-- Indeks komposit untuk hitungan metrik dashboard (dashboardCounts) dan agregasi analitik.
+--
+-- Menutup pemindaian berurutan pada filter (organization_id, state/status):
+-- publishing_jobs.state, article_sites.state, sites.status. Tanpa perubahan perilaku;
+-- hanya mempercepat count(*) dan GROUP BY per organisasi.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+CREATE INDEX IF NOT EXISTS publishing_jobs_organization_state_idx ON public.publishing_jobs USING btree (organization_id, state);
+CREATE INDEX IF NOT EXISTS article_sites_organization_state_idx ON public.article_sites USING btree (organization_id, state);
+CREATE INDEX IF NOT EXISTS sites_organization_status_idx ON public.sites USING btree (organization_id, status);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (142, 'dashboard_metric_indexes', 'sha256:9d0b7442a791cfd15ce4b0152231c4fdfd3284b58ae47369839c3daca4835b3d');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('03d1c9876901f91d99345df94b9e4444d48b5256b0210c53c88f2c5e47aa9b26', 1789914174720);
+
+-- ----------------------------------------------------------------------
+-- 20260920100000_publisher_logo_single_host
+-- ----------------------------------------------------------------------
+-- Normalisasi logo publisher lintas-host ke path relatif satu-host.
+--
+-- Separuh baris menyimpan fallback sebagai URL absolut control-plane
+-- (https://indicate.web.id/brand/...) sehingga <img> dan logo JSON-LD
+-- penerbit menunjuk lintas host; kembalikan ke path relatif agar
+-- di-re-anchor ke hostname tenant yang meminta.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+
+UPDATE public.publishers SET contacts = contacts || jsonb_build_object('logoUrl', '/' || split_part(contacts ->> 'logoUrl', 'indicate.web.id/', 2)), updated_at = now() WHERE (contacts ->> 'logoUrl') LIKE 'https://indicate.web.id/brand/%' OR (contacts ->> 'logoUrl') LIKE 'https://indicate.web.id/assets/%';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (143, 'publisher_logo_single_host', 'sha256:5c4a1186143f4b1ac8da08448ca4e3486ce03e41b9e2b2ba596e79c8ed614227');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b0776d14e863da4b48fe56209d6c8f2413f2943dfd43b9264c4dc299612cb730', 1789915000000);
 COMMIT;
