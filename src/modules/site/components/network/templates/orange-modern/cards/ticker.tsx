@@ -25,7 +25,7 @@ export function OrangeModernTicker({ articles }: { readonly articles: readonly A
       <span role="status" className="sr-only">
         {running ? 'Memutar headline terkini' : `Jeda: ${tickerPauseLabel(reason)}`}
       </span>
-      {items.length > 1 ? (
+      {items.length > 1 && running ? (
         <span aria-hidden="true" className="pointer-events-none absolute inset-x-4 bottom-1 h-[2px] overflow-hidden rounded-full sm:inset-x-24">
           <span
             key={cycle}
@@ -45,7 +45,7 @@ export function OrangeModernTicker({ articles }: { readonly articles: readonly A
         className={`m-0 min-w-0 flex-1 font-sans text-[15px] font-medium leading-snug text-slate-800 line-clamp-2 sm:text-sm sm:line-clamp-1 ${reduceMotion ? '' : 'ticker-enter'}`}
         aria-live="polite"
       >
-        <Link href={`/${article.slug}`} className="hover:text-[var(--tpl-primary,#ea580c)]">
+        <Link href={`/${article.slug}`} className="no-underline hover:text-[var(--tpl-primary,#ea580c)]">
           {tickerHeadline(article)}
         </Link>
       </p>

@@ -67,6 +67,25 @@ describe('useTickerRotation', () => {
     expect(result.current.index).toBe(0);
   });
 
+  it('mengabaikan hover emulasi-sentuh agar putaran lanjut', () => {
+    const { result } = renderHook(() => useTickerRotation(3));
+    act(() => {
+      result.current.interactionProps.onTouchStart({
+        touches: [{ clientX: 100 }],
+      } as unknown as TouchEvent);
+    });
+    act(() => {
+      result.current.interactionProps.onTouchEnd({
+        changedTouches: [{ clientX: 100 }],
+      } as unknown as TouchEvent);
+    });
+    act(() => {
+      result.current.interactionProps.onMouseEnter();
+    });
+    expect(result.current.running).toBe(true);
+    expect(result.current.reason).toBe(null);
+  });
+
   it('melepas fokus setelah klik mouse agar putaran lanjut', () => {
     const { result } = renderHook(() => useTickerRotation(3));
     const tombol = document.createElement('button');

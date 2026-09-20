@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 /**
  * Jeda rotasi headline tenant; satu sumber untuk 10 template.
@@ -75,6 +75,12 @@ export function tickerPauseLabel(reason: TickerPauseReason | null): string {
 const SWIPE_PX = 40;
 
 /**
+ * Masa abaikan hover emulasi-sentuh setelah `touchend` (iOS menembakkan
+ * `mouseenter` setelah ketukan; tanpa ini ticker macet jeda di sentuh).
+ */
+const TOUCH_HOVER_GRACE_MS = 700;
+
+/**
  * Putaran headline cerdas: timer satu langkah, jeda hover/fokus/tab/gerakan, geser sentuh.
  *
  * @param count - Jumlah headline yang dirotasi.
@@ -87,6 +93,7 @@ export function useTickerRotation(count: number, intervalMs = TICKER_INTERVAL_MS
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [touchX, setTouchX] = useState<number | null>(null);
+  const touchEndAt = useRef(0);
   const reduceMotion = useSyncExternalStore(
     subscribeReduceMotion,
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -137,7 +144,10 @@ export function useTickerRotation(count: number, intervalMs = TICKER_INTERVAL_MS
     go,
     navigate,
     interactionProps: {
-      onMouseEnter: () => setHovered(true),
+      onMouseEnter: () => {
+        if (Date.now() - touchEndAt.current < TOUCH_HOVER_GRACE_MS) return;
+        setHovered(true);
+      },
       onMouseLeave: () => setHovered(false),
       onFocus: () => setFocused(true),
       onBlur: () => setFocused(false),
@@ -146,6 +156,8 @@ export function useTickerRotation(count: number, intervalMs = TICKER_INTERVAL_MS
         if (touch !== undefined) setTouchX(touch.clientX);
       },
       onTouchEnd: (event) => {
+        touchEndAt.current = Date.now();
+        setHovered(false);
         const touch = event.changedTouches[0];
         if (touchX === null || touch === undefined) return;
         const delta = touch.clientX - touchX;
