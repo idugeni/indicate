@@ -116,7 +116,7 @@ function tenantHiddenMeta(
  *
  * @remarks Judul memakai bentuk absolut agar tidak ditempeli template '| Indicate' milik control-plane (src/app/layout.tsx).
  */
-export async function networkMetadata(path: string, query: NetworkContentQuery = {}, titleOverride?: string): Promise<Metadata> {
+export async function networkMetadata(path: string, query: NetworkContentQuery = {}, titleOverride?: string, descriptionOverride?: string): Promise<Metadata> {
   const site = await resolveNetworkSite(query, path);
   const candidate = query.articleSlug === undefined ? undefined : site.articles[0];
   const article = candidate !== undefined && isNetworkArticle(candidate) ? candidate : undefined;
@@ -212,7 +212,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
     };
   }
 
-  const seo = buildSeoDocument(site, { path, ...(article === undefined ? {} : { article }), ...(titleOverride === undefined ? {} : { titleOverride }) });
+  const seo = buildSeoDocument(site, { path, ...(article === undefined ? {} : { article }), ...(titleOverride === undefined ? {} : { titleOverride }), ...(descriptionOverride === undefined ? {} : { descriptionOverride }) });
   if (seo.canonical === null || seo.openGraph === null) {
     return {
       title: { absolute: seo.title },

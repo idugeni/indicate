@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { FeedArticle, NetworkArticle, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
+import { deriveAboutPublisher } from '@/modules/site/about-profile';
 import { articleBodyText } from '@/modules/site/article-markup';
 import { MINISTRY_FALLBACK_LOGO_URL } from '@/ui/site/marketing-content';
 
@@ -111,13 +112,13 @@ function homeTitle(siteName: string, siteDescription: string): string {
   return chars.length <= 48 ? `${siteName} - ${siteDescription.trim()}` : `${siteName} - ${tagline}`;
 }
 
-export function buildSeoDocument(site: NetworkSiteData, options: { readonly path: string; readonly article?: NetworkArticle; readonly indexable?: boolean; readonly titleOverride?: string }): SeoDocument {
+export function buildSeoDocument(site: NetworkSiteData, options: { readonly path: string; readonly article?: NetworkArticle; readonly indexable?: boolean; readonly titleOverride?: string; readonly descriptionOverride?: string }): SeoDocument {
   const indexable = options.indexable ?? true;
   const article = options.article;
   const siteName = site.settings.seoSiteName || site.settings.name;
   const siteDescription = site.settings.seoDefaultDescription || site.settings.description;
   const title = options.titleOverride ?? (article === undefined ? (site.settings.seoDefaultTitle || (site.settings.tagline === null ? homeTitle(siteName, siteDescription) : `${siteName} - ${site.settings.tagline}`)) : `${article.title} - ${siteName}`);
-  const description = article?.description ?? siteDescription;
+  const description = options.descriptionOverride ?? article?.description ?? siteDescription;
   if (!indexable) return { title, description, canonical: null, robots: 'noindex, nofollow', openGraph: null, jsonLd: [] };
   const canonical = absoluteSiteUrl(site.context, options.path);
   const image = absoluteSiteAssetUrl(site.context, article?.imageUrl ?? site.settings.defaultImageUrl);
@@ -128,13 +129,34 @@ export function buildSeoDocument(site: NetworkSiteData, options: { readonly path
     : absoluteSiteAssetUrl(site.context, article.publisherLogoUrl);
   const publisher = article?.officialInstitution ?? article?.publisherName ?? siteName;
   const websiteId = absoluteSiteUrl(site.context, '/#website');
+  const organizationId = absoluteSiteUrl(site.context, '/#organization');
+  const aboutProfile = article === undefined && options.path === '/tentang' ? deriveAboutPublisher(site) : null;
+  const sameAs = [...new Set([...Object.values(site.settings.socialLinks), ...Object.values(aboutProfile?.socials ?? {})].map((href) => href.trim()).filter((href) => /^https?:\/\//u.test(href)))];
   const jsonLd: Record<string, unknown>[] = [
     {
       '@context': 'https://schema.org', '@type': 'WebSite', '@id': websiteId, name: siteName, url: absoluteSiteUrl(site.context, '/'), inLanguage: 'id',
       potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: absoluteSiteUrl(site.context, '/search?q={search_term_string}') }, 'query-input': 'required name=search_term_string' },
     },
-    { '@context': 'https://schema.org', '@type': 'Organization', name: publisher, url: absoluteSiteUrl(site.context, '/'), logo: { '@type': 'ImageObject', url: logo } },
+    {
+      '@context': 'https://schema.org', '@type': 'Organization', '@id': organizationId, name: publisher, url: absoluteSiteUrl(site.context, '/'), logo: { '@type': 'ImageObject', url: logo },
+      ...(aboutProfile === null
+        ? {}
+        : {
+            description: aboutProfile.bio ?? description,
+            ...(sameAs.length === 0 ? {} : { sameAs }),
+            ...(aboutProfile.city === null
+              ? {}
+              : { address: { '@type': 'PostalAddress', addressLocality: aboutProfile.city, addressCountry: 'ID' } }),
+          }),
+    },
   ];
+  if (aboutProfile !== null) {
+    jsonLd.push({
+      '@context': 'https://schema.org', '@type': 'AboutPage', '@id': `${canonical}#about`, url: canonical, name: title, description,
+      inLanguage: 'id', about: { '@id': organizationId },
+    });
+    jsonLd.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Beranda', item: absoluteSiteUrl(site.context, '/') }, { '@type': 'ListItem', position: 2, name: title, item: canonical }] });
+  }
   if (article !== undefined) {
     const wordCount = stripHtml(article.body).split(/\s+/u).filter(Boolean).length;
     jsonLd.push({

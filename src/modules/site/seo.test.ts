@@ -94,6 +94,41 @@ describe('buildSeoDocument', () => {
     expect(document.openGraph?.type).toBe('article');
     expect(document.jsonLd.some((node) => node['@type'] === 'NewsArticle')).toBe(true);
   });
+
+  it('memperkaya Organization dan AboutPage untuk halaman tentang', () => {
+    const article = makeNetworkArticle({
+      publisherName: 'Humas Uji',
+      publisherBio: 'Bio humas uji.',
+      publisherCity: 'Wonosobo',
+      publisherSocials: { instagram: 'https://instagram.com/humasuji' },
+      publisherVerified: true,
+    });
+    const base = makeNetworkSite([article]);
+    const site = { ...base, settings: { ...base.settings, socialLinks: { x: 'https://x.com/portaluji' } } };
+    const document = buildSeoDocument(site, { path: '/tentang' });
+    const organization = document.jsonLd.find((node) => node['@type'] === 'Organization');
+    expect(organization?.['description']).toBe('Bio humas uji.');
+    expect(organization?.['sameAs']).toEqual(
+      expect.arrayContaining(['https://x.com/portaluji', 'https://instagram.com/humasuji']),
+    );
+    expect(organization?.['address']).toMatchObject({ addressLocality: 'Wonosobo', addressCountry: 'ID' });
+    expect(document.jsonLd.some((node) => node['@type'] === 'AboutPage')).toBe(true);
+    expect(document.jsonLd.some((node) => node['@type'] === 'BreadcrumbList')).toBe(true);
+  });
+
+  it('tidak menyematkan AboutPage di luar halaman tentang', () => {
+    const document = buildSeoDocument(makeNetworkSite(), { path: '/' });
+    expect(document.jsonLd.some((node) => node['@type'] === 'AboutPage')).toBe(false);
+  });
+
+  it('menerapkan override deskripsi regional', () => {
+    const document = buildSeoDocument(makeNetworkSite(), {
+      path: '/tentang',
+      descriptionOverride: 'Deskripsi portal. Melayani wilayah Jawa Tengah.',
+    });
+    expect(document.description).toBe('Deskripsi portal. Melayani wilayah Jawa Tengah.');
+    expect(document.openGraph?.description).toBe('Deskripsi portal. Melayani wilayah Jawa Tengah.');
+  });
 });
 
 describe('serializers', () => {
