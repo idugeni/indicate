@@ -21,10 +21,10 @@ interface ReferenceModel {
 /**
  * Merender kontrol filter data.
  *
- * @remarks Analytics tidak punya field filter: jangan render card kosong.
+ * @remarks Analytics hanya punya filter rentang tanggal (from/to) sesuai analyticsFilterSchema.
  */
 export function FilterControls({ view, data, onApply }: FilterControlsProps) {
-  if (view !== 'editorial' && view !== 'audit') return null;
+  if (view !== 'editorial' && view !== 'audit' && view !== 'analytics') return null;
 
   const model = data as ReferenceModel | null;
 
@@ -67,8 +67,8 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
         }}
       >
         <div className="flex flex-wrap items-end justify-between gap-4">
-          {/* Kolom mengikuti jumlah field: editorial 4, audit 3 — tanpa slot kosong. */}
-          <div className={view === 'audit' ? 'grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-3' : 'grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'}>
+          {/* Kolom mengikuti jumlah field: editorial 4, audit 3, analytics 2 — tanpa slot kosong. */}
+          <div className={view === 'audit' ? 'grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-3' : view === 'analytics' ? 'grid flex-1 gap-3 sm:grid-cols-2' : 'grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'}>
           {view === 'editorial' ? (
             <>
               <div className="flex flex-col gap-1.5">
@@ -179,6 +179,34 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
                   <option value="denied">Ditolak</option>
                   <option value="failed">Gagal</option>
                 </select>
+              </div>
+            </>
+          ) : null}
+
+          {view === 'analytics' ? (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="filter-from" className="font-sans text-xs font-medium text-paper-dim">
+                  Dari tanggal
+                </label>
+                <Input
+                  id="filter-from"
+                  name="from"
+                  type="date"
+                  className="h-9 border-hairline-strong bg-bg px-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus-visible:ring-brass"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="filter-to" className="font-sans text-xs font-medium text-paper-dim">
+                  Sampai tanggal
+                </label>
+                <Input
+                  id="filter-to"
+                  name="to"
+                  type="date"
+                  className="h-9 border-hairline-strong bg-bg px-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus-visible:ring-brass"
+                />
               </div>
             </>
           ) : null}
