@@ -1,5 +1,3 @@
-import sharp from 'sharp';
-
 function escapeXml(value: string): string {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 }
@@ -17,6 +15,7 @@ function escapeXml(value: string): string {
  * ```
  */
 export async function watermarkStamp(image: Uint8Array, label: string): Promise<Uint8Array> {
+  const { default: sharp } = await import('sharp');
   const base = sharp(image);
   const meta = await base.metadata();
   const width = meta.width ?? 0;
