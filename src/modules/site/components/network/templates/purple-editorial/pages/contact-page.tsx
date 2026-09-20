@@ -1,5 +1,5 @@
 import { buildSeoDocument } from '@/modules/site/seo';
-import { COMPANY_NAME, resolveContactChannels } from '@/modules/site/company-contact';
+import { COMPANY_NAME, channelAction, channelHandle, isPrimaryContact, resolveContactChannels } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { PurpleEditorialShell } from '@/modules/site/components/network/templates/purple-editorial/chrome/shell';
@@ -21,6 +21,8 @@ export interface PurpleEditorialContactProps {
 export function PurpleEditorialContact({ site, title, description, path = '/' }: PurpleEditorialContactProps) {
   const seo = buildSeoDocument(site, { path });
   const channels = resolveContactChannels(site.settings.socialLinks);
+  const primary = channels.filter((channel) => isPrimaryContact(channel.key));
+  const socials = channels.filter((channel) => !isPrimaryContact(channel.key));
   return (
     <PurpleEditorialShell site={site} path={path}>
       <PurpleEditorialContainer className="space-y-6 py-6 md:py-8">
@@ -41,34 +43,61 @@ export function PurpleEditorialContact({ site, title, description, path = '/' }:
         {channels.length === 0 ? (
           <PurpleEditorialEmpty title={title} />
         ) : (
-          <ul className="m-0 grid list-none gap-4 p-0 sm:grid-cols-2">
-            {channels.map((channel) => {
-              const Icon = channelIcon(channel.key);
-              const external = channel.href.startsWith('http');
-              return (
-                <li key={channel.key} className="m-0 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60">
-                  <p className="m-0 flex items-center gap-2.5 font-sans text-base font-bold text-slate-900">
-                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#7c3aed]/10 text-[#7c3aed]">
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    {channel.label}
-                  </p>
-                  <a
-                    href={channel.href}
-                    target={external ? '_blank' : undefined}
-                    rel={external ? 'noopener noreferrer' : undefined}
-                    className="mt-2 inline-flex items-center gap-1 break-all font-sans text-sm font-semibold text-[#7c3aed] hover:underline"
-                  >
-                    {external ? 'Buka kanal' : channel.href}
-                    {external ? <span aria-hidden="true">→</span> : null}
-                    {external ? (
-                      <span className="sr-only"> (tautan eksternal {channel.label}, membuka di tab baru)</span>
-                    ) : null}
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="space-y-4">
+            <ul className="m-0 grid list-none gap-3 p-0">
+              {primary.map((channel) => {
+                const Icon = channelIcon(channel.key);
+                const external = channel.href.startsWith('http');
+                return (
+                  <li key={channel.key} className="m-0">
+                    <a
+                      href={channel.href}
+                      target={external ? '_blank' : undefined}
+                      rel={external ? 'noopener noreferrer' : undefined}
+                      className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 transition-colors hover:ring-[#7c3aed]/50"
+                    >
+                      <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[#7c3aed]/10 text-[#7c3aed]">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-sans text-sm font-bold text-slate-900">{channel.label}</span>
+                        <span className="block truncate font-sans text-xs text-slate-500">{channelHandle(channel)}</span>
+                      </span>
+                      <span className="flex-none rounded-full bg-[#7c3aed]/10 px-3 py-1.5 font-sans text-xs font-bold text-[#7c3aed]">
+                        {channelAction(channel.key)}
+                      </span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+            {socials.length === 0 ? null : (
+              <ul className="m-0 grid list-none grid-cols-2 gap-3 p-0">
+                {socials.map((channel) => {
+                  const Icon = channelIcon(channel.key);
+                  const external = channel.href.startsWith('http');
+                  return (
+                    <li key={channel.key} className="m-0">
+                      <a
+                        href={channel.href}
+                        target={external ? '_blank' : undefined}
+                        rel={external ? 'noopener noreferrer' : undefined}
+                        className="flex h-full items-center gap-2.5 rounded-2xl bg-white p-3.5 shadow-sm ring-1 ring-slate-200/60 transition-colors hover:ring-[#7c3aed]/50"
+                      >
+                        <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#7c3aed]/10 text-[#7c3aed]">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-sans text-sm font-bold text-slate-900">{channel.label}</span>
+                          <span className="block truncate font-sans text-[11px] text-slate-500">{channelHandle(channel)}</span>
+                        </span>
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         )}
       </PurpleEditorialContainer>
       <PurpleEditorialJsonLd schemas={seo.jsonLd} />

@@ -16,6 +16,7 @@ export const WARM_EDITORIAL = {
   canvas: '#fdf7f0',
   card: '#ffffff',
   ring: '#e9d5c0',
+  scheme: 'light',
 } as const;
 
 const BADGE_STYLES = [

@@ -7,7 +7,7 @@ import { ArrowRight, MapPin } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { RedEditorialHeroActions } from '@/modules/site/components/network/templates/red-editorial/cards/hero-actions';
-import { articleImage, isLocalImageSrc } from '@/modules/site/components/network/templates/red-editorial/lib/format';
+import { articleImage, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/red-editorial/lib/format';
 
 const ROTATE_MS = 6000;
 
@@ -35,6 +35,7 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
   const src = articleImage(article);
   const kicker = article.categoryName ?? 'Sorotan';
   const place = article.publisherCity ?? article.attribution;
+  const reading = readingMinutes(article);
   const { head, tail } = splitAccent(article.title);
 
   return (
@@ -47,26 +48,29 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
       onBlur={() => setPaused(false)}
     >
       <div className="min-w-0">
-        <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[#b91c1c]">
-          <span aria-hidden="true" className="h-px w-8 bg-[#b91c1c]" />
+        <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[var(--tpl-primary,#b91c1c)]">
+          <span aria-hidden="true" className="h-px w-8 bg-[var(--tpl-primary,#b91c1c)]" />
           {kicker}
         </p>
-        <h1 className="m-0 mt-4 font-serif text-4xl font-bold leading-[1.12] tracking-tight text-[#230d0d] sm:text-5xl">
+        <h1 className="m-0 mt-4 font-serif text-4xl font-bold leading-[1.12] tracking-tight text-[var(--tpl-ink,#230d0d)] sm:text-5xl">
           {head === '' ? (
             article.title
           ) : (
             <>
-              {head} <span className="text-[#b91c1c]">{tail}</span>
+              {head} <span className="text-[var(--tpl-primary,#b91c1c)]">{tail}</span>
             </>
           )}
         </h1>
-        <p className="m-0 mt-4 max-w-xl text-[15px] leading-relaxed text-[#705050]">
+        <p className="m-0 mt-4 max-w-xl text-[15px] leading-relaxed text-[var(--tpl-muted,#705050)]">
           {article.description}
+        </p>
+        <p className="m-0 mt-3 font-sans text-xs tabular-nums text-[var(--tpl-faint,#ac9393)]">
+          {formatDate(article.publishedAt, 'medium')} · {reading} mnt baca · {formatCompactViews(article.viewCount)} pembaca
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link
             href={`/${article.slug}`}
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-[#b91c1c] px-6 text-sm font-bold text-white transition-colors hover:bg-[#7f1212]"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-[var(--tpl-primary,#b91c1c)] px-6 text-sm font-bold text-white transition-colors hover:bg-[var(--tpl-primary-dark,#7f1212)]"
           >
             Baca Selengkapnya
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -74,26 +78,27 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
           <RedEditorialHeroActions slug={article.slug} title={article.title} />
         </div>
         {count > 1 ? (
-          <div role="group" aria-label="Navigasi sorotan" className="m-0 mt-7 flex items-center gap-2.5 text-xs font-bold tabular-nums">
+          <div role="group" aria-label="Navigasi sorotan" className="m-0 mt-7 flex items-center justify-center gap-2 text-xs font-bold tabular-nums">
             {articles.map((item, position) => {
               const active = position === index % count;
               return (
-                <span key={item.id} className="flex items-center gap-2.5">
+                <span key={item.id} className="flex items-center gap-2">
                   {position > 0 ? (
-                    <span aria-hidden="true" className="h-px w-8 bg-[#ecd3d3]" />
+                    <span aria-hidden="true" className="h-px w-6 bg-[var(--tpl-ring,#ecd3d3)]" />
                   ) : null}
                   <button
                     type="button"
                     onClick={() => setIndex(position)}
                     aria-label={`Sorotan ${position + 1}: ${item.title}`}
                     aria-current={active}
-                    className={active ? 'text-[#b91c1c]' : 'text-[#ac9393] transition-colors hover:text-[#b91c1c]'}
+                    className={
+                      active
+                        ? 'flex h-8 w-8 items-center justify-center rounded-full bg-[var(--tpl-primary,#b91c1c)] text-white shadow-sm'
+                        : 'flex h-8 w-8 items-center justify-center rounded-full text-[var(--tpl-faint,#ac9393)] transition-colors hover:bg-[var(--tpl-primary-soft,#fbe3e3)] hover:text-[var(--tpl-primary,#b91c1c)]'
+                    }
                   >
                     {String(position + 1).padStart(2, '0')}
                   </button>
-                  {position === 0 ? (
-                    <span aria-hidden="true" className="h-px w-8 bg-[#b91c1c]" />
-                  ) : null}
                 </span>
               );
             })}
@@ -118,13 +123,6 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
             sizes="(max-width: 1024px) 100vw, 55vw"
           />
         </Link>
-        <span
-          aria-hidden="true"
-          style={{ writingMode: 'vertical-rl' }}
-          className="absolute right-4 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/45 px-1.5 py-3 text-[10px] font-bold uppercase tracking-[0.25em] text-white backdrop-blur-sm sm:block"
-        >
-          {kicker}
-        </span>
         <p className="absolute bottom-4 left-4 m-0 flex max-w-[calc(100%-2rem)] items-center gap-2 rounded-xl bg-black/55 px-3.5 py-2.5 text-white backdrop-blur-sm">
           <MapPin className="h-4 w-4 flex-none text-red-300" aria-hidden="true" />
           <span className="min-w-0">
@@ -135,7 +133,7 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
         <Link
           href={`/${article.slug}`}
           aria-label={`Buka: ${article.title}`}
-          className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#b91c1c] text-white shadow-md transition-colors hover:bg-[#7f1212]"
+          className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--tpl-primary,#b91c1c)] text-white shadow-md transition-colors hover:bg-[var(--tpl-primary-dark,#7f1212)]"
         >
           <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </Link>

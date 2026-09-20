@@ -4,6 +4,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import { CleanBlueHeroActions } from '@/modules/site/components/network/templates/clean-blue/cards/hero-actions';
 
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
 const tulis = vi.hoisted(() => vi.fn(async () => {}));
 
 afterEach(() => {
@@ -11,8 +13,7 @@ afterEach(() => {
 });
 
 beforeEach(() => {
-  tulis.mockClear();
-  window.localStorage.clear();
+  vi.clearAllMocks();
   Object.defineProperty(navigator, 'clipboard', {
     value: { writeText: tulis },
     configurable: true,
@@ -20,26 +21,17 @@ beforeEach(() => {
 });
 
 describe('CleanBlueHeroActions', () => {
-  it('menyimpan dan melepas simpanan lokal', () => {
-    render(<CleanBlueHeroActions slug="berita-x" title="Judul X" />);
-    const simpan = screen.getByRole('button', { name: 'Simpan artikel' });
-    fireEvent.click(simpan);
-    expect(screen.getByRole('button', { name: 'Hapus dari simpanan' }).getAttribute('aria-pressed')).toBe('true');
-    expect(window.localStorage.getItem('clean-blue:bookmark:berita-x')).toBe('1');
-    fireEvent.click(screen.getByRole('button', { name: 'Hapus dari simpanan' }));
-    expect(screen.getByRole('button', { name: 'Simpan artikel' }).getAttribute('aria-pressed')).toBe('false');
-  });
-
-  it('memulihkan status tersimpan dari localStorage', () => {
-    window.localStorage.setItem('clean-blue:bookmark:berita-x', '1');
-    render(<CleanBlueHeroActions slug="berita-x" title="Judul X" />);
-    expect(screen.getByRole('button', { name: 'Hapus dari simpanan' })).toBeDefined();
-  });
-
-  it('membagikan lewat clipboard dan menampilkan status tersalin', async () => {
+  it('membuka dialog kanal saat Web Share API absen', async () => {
+    Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
     render(<CleanBlueHeroActions slug="berita-x" title="Judul X" />);
     fireEvent.click(screen.getByRole('button', { name: 'Bagikan artikel' }));
-    expect(tulis).toHaveBeenCalledWith(expect.stringContaining('berita-x'));
-    expect(await screen.findByLabelText('Tautan tersalin')).toBeDefined();
+    expect(await screen.findByRole('dialog')).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Bagikan ke WhatsApp' })).toBeDefined();
+    const { toast } = await import('sonner');
+    fireEvent.click(screen.getByRole('button', { name: 'Salin tautan artikel' }));
+    await vi.waitFor(() => {
+      expect(tulis).toHaveBeenCalledWith(expect.stringContaining('berita-x'));
+      expect(toast.success).toHaveBeenCalledWith('Tautan tersalin');
+    });
   });
 });

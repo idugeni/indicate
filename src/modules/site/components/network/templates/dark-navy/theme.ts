@@ -16,6 +16,7 @@ export const DARK_NAVY = {
   canvas: '#070f22',
   card: '#0e1a33',
   ring: '#1b2c4f',
+  scheme: 'dark',
 } as const;
 
 const BADGE_STYLES = [

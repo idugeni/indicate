@@ -16,6 +16,7 @@ export const SOFT_BLUE = {
   canvas: '#f1f6ff',
   card: '#ffffff',
   ring: '#d3e2fb',
+  scheme: 'light',
 } as const;
 
 const BADGE_STYLES = [

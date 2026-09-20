@@ -35,13 +35,11 @@ describe('WarmEditorialDesktopNav', () => {
 });
 
 describe('WarmEditorialMobileNav', () => {
-  it('menyembunyikan kategori dan informasi hingga dibuka', async () => {
+  it('menampilkan kategori langsung dan menyembunyikan informasi hingga dibuka', async () => {
     render(<WarmEditorialMobileNav categories={kanal(3)} path="/" />);
     expect(screen.getByRole('link', { name: 'Beranda' })).toBeDefined();
-    expect(screen.queryByRole('link', { name: 'Kat 3' })).toBe(null);
+    expect(screen.getByRole('link', { name: 'Kat 3' })).toBeDefined();
     expect(screen.queryByRole('link', { name: 'Profil' })).toBe(null);
-    fireEvent.click(screen.getByRole('button', { name: 'Kategori' }));
-    expect(await screen.findByRole('link', { name: 'Kat 3' })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Informasi' }));
     expect(await screen.findByRole('link', { name: 'Profil' })).toBeDefined();
     expect(screen.getByRole('link', { name: 'Profil' }).getAttribute('href')).toBe('/tentang');

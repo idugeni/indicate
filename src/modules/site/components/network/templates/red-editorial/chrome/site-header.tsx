@@ -11,7 +11,7 @@ import { getSiteCategoryNav } from '@/modules/site/components/network/templates/
  * Tengah: Beranda + kategori inline hingga batas, sisanya ke menu "Lainnya".
  */
 export async function RedEditorialHeader({ site, path = '/' }: { readonly site: NetworkSiteData; readonly path?: string }) {
-  const nav = await getSiteCategoryNav(site, 24);
+  const nav = await getSiteCategoryNav(site, 8);
   const showRegion =
     site.regionName !== null &&
     site.regionName !== undefined &&

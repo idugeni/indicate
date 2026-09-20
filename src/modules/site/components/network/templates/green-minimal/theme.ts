@@ -16,6 +16,7 @@ export const GREEN_MINIMAL = {
   canvas: '#f7faf7',
   card: '#ffffff',
   ring: '#d9e7de',
+  scheme: 'light',
 } as const;
 
 const BADGE_STYLES = [

@@ -108,13 +108,6 @@ export async function RedEditorialFooter({ site }: { readonly site: NetworkSiteD
             Dapatkan pengalaman membaca berita yang lebih baik di perangkat mobile Anda.
           </p>
           <RedEditorialStoreBadges />
-          <p aria-hidden="true" className="m-0 mt-4 select-none text-right font-sans text-[10px] font-bold uppercase leading-snug tracking-wider text-[#b91c1c]/40">
-            Indonesia
-            <br />
-            Lebih Baik
-            <br />
-            Bersama
-          </p>
         </div>
       </div>
 

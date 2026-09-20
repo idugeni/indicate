@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
+import { templateThemeStyle } from '@/modules/site/components/network/ui/template-theme';
+import { PURPLE_EDITORIAL } from '@/modules/site/components/network/templates/purple-editorial/theme';
 import { PurpleEditorialHeader } from '@/modules/site/components/network/templates/purple-editorial/chrome/site-header';
 import { PurpleEditorialFooter } from '@/modules/site/components/network/templates/purple-editorial/chrome/site-footer';
 import { PurpleEditorialBackToTop } from '@/modules/site/components/network/templates/purple-editorial/chrome/back-to-top';
@@ -20,7 +22,7 @@ export function PurpleEditorialShell({
   readonly children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col supports-[min-height:100svh]:min-h-svh bg-[#f8f7ff] font-sans text-slate-900 antialiased" data-template="purple-editorial">
+    <div className="flex min-h-screen flex-col supports-[min-height:100svh]:min-h-svh bg-[#f8f7ff] font-sans text-slate-900 antialiased" data-template="purple-editorial" style={templateThemeStyle(PURPLE_EDITORIAL)}>
       <a
         href="#main-content"
         className="fixed left-4 top-[-5rem] z-50 rounded-lg bg-slate-900 px-4 py-3 font-sans text-sm text-white transition-[top] duration-180 focus:top-4"

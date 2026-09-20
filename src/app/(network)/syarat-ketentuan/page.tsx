@@ -22,6 +22,7 @@ export default async function TermsPage() {
       description={interpolateLegalText(doc.description, vars)}
       path="/syarat-ketentuan"
       sections={resolveLegalSections(doc.sections, vars)}
+      effectiveDate={doc.effectiveDate}
     />
   );
 }

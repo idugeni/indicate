@@ -16,6 +16,8 @@ export const BLACK_LIME = {
   canvas: '#0a0c07',
   card: '#131711',
   ring: '#242b1f',
+  onPrimary: '#0a0c07',
+  scheme: 'dark',
 } as const;
 
 const BADGE_STYLES = [

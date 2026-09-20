@@ -1,5 +1,5 @@
 import { buildSeoDocument } from '@/modules/site/seo';
-import { COMPANY_NAME, resolveContactChannels } from '@/modules/site/company-contact';
+import { COMPANY_NAME, channelAction, channelHandle, isPrimaryContact, resolveContactChannels } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { DarkNavyShell } from '@/modules/site/components/network/templates/dark-navy/chrome/shell';
@@ -21,6 +21,8 @@ export interface DarkNavyContactProps {
 export function DarkNavyContact({ site, title, description, path = '/' }: DarkNavyContactProps) {
   const seo = buildSeoDocument(site, { path });
   const channels = resolveContactChannels(site.settings.socialLinks);
+  const primary = channels.filter((channel) => isPrimaryContact(channel.key));
+  const socials = channels.filter((channel) => !isPrimaryContact(channel.key));
   return (
     <DarkNavyShell site={site} path={path}>
       <DarkNavyContainer className="space-y-6 py-6 md:py-8">
@@ -41,34 +43,61 @@ export function DarkNavyContact({ site, title, description, path = '/' }: DarkNa
         {channels.length === 0 ? (
           <DarkNavyEmpty title={title} />
         ) : (
-          <ul className="m-0 grid list-none gap-4 p-0 sm:grid-cols-2">
-            {channels.map((channel) => {
-              const Icon = channelIcon(channel.key);
-              const external = channel.href.startsWith('http');
-              return (
-                <li key={channel.key} className="m-0 rounded-2xl bg-[#0e1a33] p-5 shadow-sm ring-1 ring-[#1b2c4f]/60">
-                  <p className="m-0 flex items-center gap-2.5 font-sans text-base font-bold text-[#eaf0fb]">
-                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#2f7bff]/10 text-[#2f7bff]">
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    {channel.label}
-                  </p>
-                  <a
-                    href={channel.href}
-                    target={external ? '_blank' : undefined}
-                    rel={external ? 'noopener noreferrer' : undefined}
-                    className="mt-2 inline-flex items-center gap-1 break-all font-sans text-sm font-semibold text-[#2f7bff] hover:underline"
-                  >
-                    {external ? 'Buka kanal' : channel.href}
-                    {external ? <span aria-hidden="true">→</span> : null}
-                    {external ? (
-                      <span className="sr-only"> (tautan eksternal {channel.label}, membuka di tab baru)</span>
-                    ) : null}
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="space-y-4">
+            <ul className="m-0 grid list-none gap-3 p-0">
+              {primary.map((channel) => {
+                const Icon = channelIcon(channel.key);
+                const external = channel.href.startsWith('http');
+                return (
+                  <li key={channel.key} className="m-0">
+                    <a
+                      href={channel.href}
+                      target={external ? '_blank' : undefined}
+                      rel={external ? 'noopener noreferrer' : undefined}
+                      className="flex items-center gap-3 rounded-2xl bg-[#0e1a33] p-4 shadow-sm ring-1 ring-[#1b2c4f]/60 transition-colors hover:ring-[#2f7bff]/50"
+                    >
+                      <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[#2f7bff]/10 text-[#2f7bff]">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-sans text-sm font-bold text-[#eaf0fb]">{channel.label}</span>
+                        <span className="block truncate font-sans text-xs text-[#9aa9c4]">{channelHandle(channel)}</span>
+                      </span>
+                      <span className="flex-none rounded-full bg-[#2f7bff]/10 px-3 py-1.5 font-sans text-xs font-bold text-[#2f7bff]">
+                        {channelAction(channel.key)}
+                      </span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+            {socials.length === 0 ? null : (
+              <ul className="m-0 grid list-none grid-cols-2 gap-3 p-0">
+                {socials.map((channel) => {
+                  const Icon = channelIcon(channel.key);
+                  const external = channel.href.startsWith('http');
+                  return (
+                    <li key={channel.key} className="m-0">
+                      <a
+                        href={channel.href}
+                        target={external ? '_blank' : undefined}
+                        rel={external ? 'noopener noreferrer' : undefined}
+                        className="flex h-full items-center gap-2.5 rounded-2xl bg-[#0e1a33] p-3.5 shadow-sm ring-1 ring-[#1b2c4f]/60 transition-colors hover:ring-[#2f7bff]/50"
+                      >
+                        <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#2f7bff]/10 text-[#2f7bff]">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-sans text-sm font-bold text-[#eaf0fb]">{channel.label}</span>
+                          <span className="block truncate font-sans text-[11px] text-[#9aa9c4]">{channelHandle(channel)}</span>
+                        </span>
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         )}
       </DarkNavyContainer>
       <DarkNavyJsonLd schemas={seo.jsonLd} />

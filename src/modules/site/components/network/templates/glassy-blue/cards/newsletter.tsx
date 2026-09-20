@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { Mail } from 'lucide-react';
+import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
 
 /**
  * Kartu newsletter gradien biru terang gaya contoh Kabar.id.
@@ -35,25 +35,25 @@ export function GlassyBlueNewsletter() {
             </p>
           </div>
         </div>
-        <div>
-          <p className="m-0 flex flex-col gap-2.5 sm:flex-row">
+        <div className="min-w-0">
+          <div className="flex flex-col gap-2.5 sm:flex-row">
             <label htmlFor="glassy-blue-newsletter-email" className="sr-only">
               Alamat email
             </label>
-            <input
+            <TemplateInput
               id="glassy-blue-newsletter-email"
               type="email"
               required
               placeholder="Masukkan alamat email"
-              className="h-11 w-full flex-1 appearance-none rounded-full border border-white bg-white px-4 font-sans text-base text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-[#1f7cff] focus:outline-none sm:text-sm"
+              className="h-11 w-full min-w-0 appearance-none rounded-full px-4 font-sans text-base shadow-sm focus:outline-none sm:flex-1 sm:text-sm"
             />
-            <Link
-              href="#newsletter"
-              className="inline-flex h-11 flex-none items-center justify-center rounded-full bg-[#1f7cff] px-6 font-sans text-sm font-bold text-white shadow-md shadow-[#1f7cff]/30 transition-colors hover:bg-[#155fd0]"
+            <TemplateButton
+              type="button"
+              className="h-11 w-full flex-none rounded-full px-6 font-sans text-sm shadow-md sm:w-auto"
             >
               Berlangganan
-            </Link>
-          </p>
+            </TemplateButton>
+          </div>
           <p className="m-0 mt-2.5 font-sans text-xs text-slate-600">
             Kami menghargai privasi Anda. Tidak ada spam, hanya berita penting.
           </p>

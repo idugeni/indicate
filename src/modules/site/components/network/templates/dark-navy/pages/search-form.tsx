@@ -1,5 +1,6 @@
 import Form from 'next/form';
 import { Search } from 'lucide-react';
+import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { DarkNavyPicks } from '@/modules/site/components/network/templates/dark-navy/cards/picks';
@@ -18,22 +19,22 @@ export function DarkNavySearchForm({ query }: { readonly query: string }) {
         <div className="flex flex-col gap-2.5 sm:flex-row">
           <div className="relative flex-1">
             <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5f6f8c]" />
-            <input
+            <TemplateInput
               id="dark-navy-search"
               name="q"
               defaultValue={query}
               maxLength={120}
               autoComplete="off"
               placeholder="Ketik kata kunci…"
-              className="h-11 w-full appearance-none rounded-full border border-[#1b2c4f] bg-[#070f22] pl-11 pr-4 font-sans text-base text-[#eaf0fb] placeholder:text-[#5f6f8c] focus:border-[#2f7bff] focus:outline-none sm:text-sm"
+              className="h-11 w-full appearance-none rounded-full pl-11 pr-4 font-sans text-base focus:outline-none sm:text-sm"
             />
           </div>
-          <button
+          <TemplateButton
             type="submit"
-            className="inline-flex h-11 flex-none items-center justify-center rounded-full bg-[#2f7bff] px-6 font-sans text-sm font-bold text-white transition-colors hover:bg-[#1a5fd0]"
+            className="inline-flex h-11 flex-none items-center justify-center rounded-full px-6 font-sans text-sm font-bold"
           >
             Cari
-          </button>
+          </TemplateButton>
         </div>
       </Form>
     </section>

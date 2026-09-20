@@ -4,8 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 
-import { WarmEditorialGhostButton, WarmEditorialPrimaryButton } from '@/modules/site/components/network/templates/warm-editorial/ui/warm-editorial-button';
-import { WarmEditorialInput } from '@/modules/site/components/network/templates/warm-editorial/ui/warm-editorial-input';
+import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
 
 /**
  * Panel pencarian expandable di bawah header desktop.
@@ -58,7 +57,7 @@ export function WarmEditorialSearchPanel({
         <label htmlFor="warm-editorial-search" className="sr-only">
           Cari berita
         </label>
-        <WarmEditorialInput
+        <TemplateInput
           ref={inputRef}
           id="warm-editorial-search"
           value={query}
@@ -71,10 +70,10 @@ export function WarmEditorialSearchPanel({
           placeholder="Ketik kata kunci…"
           className="h-10 min-w-0 flex-1 rounded-full font-sans text-sm"
         />
-        <WarmEditorialPrimaryButton type="submit" className="h-10 flex-none rounded-full px-5 text-sm">
+        <TemplateButton type="submit" className="h-10 flex-none rounded-full px-5 text-sm">
           Cari
-        </WarmEditorialPrimaryButton>
-        <WarmEditorialGhostButton
+        </TemplateButton>
+        <TemplateButton variant="ghost"
           type="button"
           size="icon"
           aria-label="Tutup pencarian"
@@ -82,7 +81,7 @@ export function WarmEditorialSearchPanel({
           className="h-10 w-10 flex-none rounded-full"
         >
           <X className="h-4 w-4" aria-hidden="true" />
-        </WarmEditorialGhostButton>
+        </TemplateButton>
       </form>
     </div>
   );

@@ -44,7 +44,7 @@ export function OrangeModernListing({ site, title, description, path, indexable 
         ) : (
           <>
             {hero ? (
-              <OrangeModernHero article={hero} sideNote={site.settings.tagline ?? null} />
+              <OrangeModernHero article={hero} />
             ) : null}
             <OrangeModernPicks
               articles={picks}

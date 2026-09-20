@@ -257,6 +257,29 @@
     background-color: #b88d3a;
   }
 
+  html:has(.dashboard-scroll) {
+    scrollbar-color: var(--hairline-strong) var(--bg);
+    color-scheme: dark;
+  }
+  html:has(.dashboard-scroll)::-webkit-scrollbar-track,
+  html:has(.dashboard-scroll)::-webkit-scrollbar-corner,
+  .dashboard-scroll::-webkit-scrollbar-track,
+  .dashboard-scroll::-webkit-scrollbar-corner,
+  .dashboard-scroll ::-webkit-scrollbar-track,
+  .dashboard-scroll ::-webkit-scrollbar-corner {
+    background: var(--bg);
+  }
+  html:has(.dashboard-scroll)::-webkit-scrollbar-thumb,
+  .dashboard-scroll::-webkit-scrollbar-thumb,
+  .dashboard-scroll ::-webkit-scrollbar-thumb {
+    background-color: var(--hairline-strong);
+  }
+  html:has(.dashboard-scroll)::-webkit-scrollbar-thumb:hover,
+  .dashboard-scroll::-webkit-scrollbar-thumb:hover,
+  .dashboard-scroll ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--brass);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
@@ -606,6 +629,21 @@
     0% { opacity: 1; }
     50% { opacity: 0.35; }
     100% { opacity: 1; }
+  }
+
+  .ticker-progress {
+    animation-name: ticker-progress;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+  }
+
+  @keyframes ticker-progress {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ticker-progress { animation: none; }
   }
 
   .gallery-rail,

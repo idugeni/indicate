@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { Send } from 'lucide-react';
+import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
 
 export function BlackLimeNewsletter() {
   return (
@@ -13,26 +13,26 @@ export function BlackLimeNewsletter() {
             Berlangganan newsletter kami dan jangan lewatkan informasi penting setiap hari.
           </p>
         </div>
-        <div>
-          <p className="m-0 flex flex-col gap-2.5 sm:flex-row">
+        <div className="min-w-0">
+          <div className="flex flex-col gap-2.5 sm:flex-row">
             <label htmlFor="black-lime-newsletter-email" className="sr-only">
               Alamat email
             </label>
-            <input
+            <TemplateInput
               id="black-lime-newsletter-email"
               type="email"
               required
               placeholder="Masukkan alamat email"
-              className="h-11 w-full flex-1 appearance-none rounded-full border border-[#242b1f] bg-[#0a0c07] px-4 font-sans text-base text-slate-100 placeholder:text-slate-500 focus:border-[#c5f82a] focus:outline-none sm:text-sm"
+              className="h-11 w-full min-w-0 appearance-none rounded-full px-4 font-sans text-base focus:outline-none sm:flex-1 sm:text-sm"
             />
             {/* Pendaftaran dinonaktifkan sengaja hingga backend newsletter tersedia. */}
-            <Link
-              href=""
-              className="inline-flex h-11 flex-none items-center justify-center rounded-full bg-[#c5f82a] px-6 font-sans text-sm font-bold text-[#0a0c07] transition-colors hover:bg-[#9ecb14]"
+            <TemplateButton
+              type="button"
+              className="h-11 w-full flex-none rounded-full px-6 font-sans text-sm sm:w-auto"
             >
               Berlangganan
-            </Link>
-          </p>
+            </TemplateButton>
+          </div>
           <p className="m-0 mt-2.5 font-sans text-xs text-slate-500">
             Kami menghargai privasi Anda. Tidak ada spam, hanya berita penting.
           </p>

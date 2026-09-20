@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Rss } from 'lucide-react';
+import { TemplateInput } from '@/modules/site/components/network/ui/field';
+import { ArrowRight, Rss } from 'lucide-react';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { COMPANY_NAME, SOCIAL_ORDER } from '@/modules/site/company-contact';
@@ -110,12 +111,12 @@ export async function WarmEditorialFooter({ site }: { readonly site: NetworkSite
             <label htmlFor="warm-editorial-footer-email" className="sr-only">
               Alamat email
             </label>
-            <input
+            <TemplateInput
               id="warm-editorial-footer-email"
               type="email"
               required
               placeholder="Masukkan alamat email"
-              className="h-10 w-full min-w-0 flex-1 appearance-none rounded-xl border border-slate-200 bg-white px-3.5 font-sans text-base text-slate-900 placeholder:text-slate-400 focus:border-[#b4532a] focus:outline-none sm:text-sm"
+              className="h-10 w-full min-w-0 flex-1 appearance-none rounded-xl px-3.5 font-sans text-base focus:outline-none sm:text-sm"
             />
             {/* Pendaftaran dinonaktifkan sengaja hingga backend newsletter tersedia. */}
             <Link
@@ -123,7 +124,7 @@ export async function WarmEditorialFooter({ site }: { readonly site: NetworkSite
               aria-label="Ke formulir berlangganan"
               className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-[#b4532a] font-sans text-base font-bold text-white transition-colors hover:bg-[#8a3c1d]"
             >
-              <span aria-hidden="true">→</span>
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </p>
         </div>

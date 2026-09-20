@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/purple-editorial/lib/format';
@@ -61,7 +62,7 @@ export function PurpleEditorialLatest({
             className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[#7c3aed] hover:underline"
           >
             {linkLabel}
-            <span aria-hidden="true">→</span>
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         ) : null}
       </div>

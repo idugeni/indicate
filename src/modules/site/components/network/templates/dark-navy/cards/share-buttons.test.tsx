@@ -5,6 +5,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { makeNetworkArticle } from '@/modules/delivery/network-test-fixtures';
 import { DarkNavyShareButtons } from '@/modules/site/components/network/templates/dark-navy/cards/share-buttons';
 
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
 const tulis = vi.hoisted(() => vi.fn(async () => {}));
 
 afterEach(() => {
@@ -12,7 +14,7 @@ afterEach(() => {
 });
 
 beforeEach(() => {
-  tulis.mockClear();
+  vi.clearAllMocks();
   Object.defineProperty(navigator, 'clipboard', {
     value: { writeText: tulis },
     configurable: true,
@@ -35,7 +37,10 @@ describe('DarkNavyShareButtons', () => {
   it('menyalin tautan dan menampilkan status tersalin', async () => {
     render(<DarkNavyShareButtons article={artikel} canonical={kanonis} />);
     fireEvent.click(screen.getByRole('button', { name: 'Salin tautan artikel' }));
-    expect(tulis).toHaveBeenCalledWith(kanonis);
-    expect(await screen.findByText('Tersalin!')).toBeDefined();
+    const { toast } = await import('sonner');
+    await vi.waitFor(() => {
+      expect(tulis).toHaveBeenCalledWith(kanonis);
+      expect(toast.success).toHaveBeenCalledWith('Tautan tersalin');
+    });
   });
 });

@@ -16,6 +16,7 @@ export const PURPLE_EDITORIAL = {
   canvas: '#f8f7ff',
   card: '#ffffff',
   ring: '#ddd3f8',
+  scheme: 'light',
 } as const;
 
 const BADGE_STYLES = [

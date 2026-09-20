@@ -16,6 +16,7 @@ export const CLEAN_BLUE = {
   canvas: '#f5f8fd',
   card: '#ffffff',
   ring: '#e2e8f0',
+  scheme: 'light',
 } as const;
 
 const BADGE_STYLES = [

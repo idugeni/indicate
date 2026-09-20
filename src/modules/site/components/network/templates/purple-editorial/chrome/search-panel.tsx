@@ -4,8 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 
-import { PurpleEditorialGhostButton, PurpleEditorialPrimaryButton } from '@/modules/site/components/network/templates/purple-editorial/ui/purple-editorial-button';
-import { PurpleEditorialInput } from '@/modules/site/components/network/templates/purple-editorial/ui/purple-editorial-input';
+import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
 
 /**
  * Panel pencarian expandable di bawah header desktop.
@@ -58,7 +57,7 @@ export function PurpleEditorialSearchPanel({
         <label htmlFor="purple-editorial-search" className="sr-only">
           Cari berita
         </label>
-        <PurpleEditorialInput
+        <TemplateInput
           ref={inputRef}
           id="purple-editorial-search"
           value={query}
@@ -71,10 +70,10 @@ export function PurpleEditorialSearchPanel({
           placeholder="Ketik kata kunci…"
           className="h-10 min-w-0 flex-1 rounded-full font-sans text-sm"
         />
-        <PurpleEditorialPrimaryButton type="submit" className="h-10 flex-none rounded-full px-5 text-sm">
+        <TemplateButton type="submit" className="h-10 flex-none rounded-full px-5 text-sm">
           Cari
-        </PurpleEditorialPrimaryButton>
-        <PurpleEditorialGhostButton
+        </TemplateButton>
+        <TemplateButton variant="ghost"
           type="button"
           size="icon"
           aria-label="Tutup pencarian"
@@ -82,7 +81,7 @@ export function PurpleEditorialSearchPanel({
           className="h-10 w-10 flex-none rounded-full"
         >
           <X className="h-4 w-4" aria-hidden="true" />
-        </PurpleEditorialGhostButton>
+        </TemplateButton>
       </form>
     </div>
   );

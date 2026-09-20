@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { Lock } from 'lucide-react';
+import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
 
 export function SoftBlueNewsletter() {
   return (
@@ -15,24 +15,24 @@ export function SoftBlueNewsletter() {
           <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-slate-600">
             Berita penting, dikurasi setiap hari. Tanpa spam, hanya informasi berkualitas.
           </p>
-          <p className="m-0 mt-5 flex flex-col gap-2.5 sm:flex-row">
+          <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
             <label htmlFor="soft-blue-newsletter-email" className="sr-only">
               Alamat email
             </label>
-            <input
+            <TemplateInput
               id="soft-blue-newsletter-email"
               type="email"
               required
               placeholder="Masukkan alamat email"
-              className="h-11 w-full flex-1 appearance-none rounded-full border border-slate-200 bg-white px-4 font-sans text-base text-slate-900 placeholder:text-slate-400 focus:border-[#2563eb] focus:outline-none sm:text-sm"
+              className="h-11 w-full min-w-0 appearance-none rounded-full px-4 font-sans text-base focus:outline-none sm:flex-1 sm:text-sm"
             />
-            <Link
-              href=""
-              className="inline-flex h-11 flex-none items-center justify-center rounded-full bg-[#2563eb] px-6 font-sans text-sm font-bold text-white transition-colors hover:bg-[#1d4ed8]"
+            <TemplateButton
+              type="button"
+              className="h-11 w-full flex-none rounded-full px-6 font-sans text-sm sm:w-auto"
             >
               Berlangganan
-            </Link>
-          </p>
+            </TemplateButton>
+          </div>
           <p className="m-0 mt-2.5 flex items-center gap-1.5 font-sans text-xs text-slate-600">
             <Lock className="h-3.5 w-3.5" aria-hidden="true" />
             Kami menjaga privasi Anda. Tidak ada spam.

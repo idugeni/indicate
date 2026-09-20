@@ -11,7 +11,7 @@ template — semua lewat registry di `network-listing.tsx`.
 - `chrome/` — rangka permanen: shell, header, search-panel, mobile-sidebar,
   nav-menu, footer, store-badges, back-to-top.
 - `ui/` — primitif: container, status-line, empty, author-avatar,
-  article-meta, section-heading, purple-editorial-input, purple-editorial-button, loader.
+  article-meta, section-heading, loader.
 - `seo/` — JSON-LD mandiri.
 - `cards/` — hero, ticker, picks, pick-card, load-more, newsletter,
   hero-actions, share-buttons, view-beacon.
@@ -20,8 +20,9 @@ template — semua lewat registry di `network-listing.tsx`.
 ## Kontrak
 
 1. Impor lintas direktori wajib `@/`, tanpa `../`. Tanpa barrel `index.ts`.
-2. Template ini mengunci terang/gelap sendiri di bawah root `<html class="dark">` — form
-   wajib pakai `ui/purple-editorial-input.tsx` / `ui/purple-editorial-button.tsx`,
-   jangan `Input`/`Button` shadcn langsung.
+2. Shell memasang variabel `--tpl-*` dari `theme.ts`; kontrol form wajib
+   pakai `TemplateInput`/`TemplateTextarea`/`TemplateSelect`/
+   `TemplateButton` dari `network/ui/` — jangan shadcn langsung maupun
+   elemen form native tanpa gaya.
 3. Tambah halaman baru di `pages/`, daftarkan ke switch `network-listing.tsx`.
 4. `lib/` tetap pure agar mudah diuji tanpa runner UI.

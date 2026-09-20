@@ -61,10 +61,15 @@ hormat `prefers-reduced-motion`, semua indikator bisa diklik.
 `Paling Banyak Dibaca` diurut `viewCount` menurun.
 
 Aturan: impor lintas direktori wajib `@/`; tanpa barrel `index.ts`
-(mengikuti konvensi modul `site`); tiap template mengunci terang/gelap via
-`ui/<id>-input.tsx` + `ui/<id>-button.tsx` karena root
-`<html class="dark">` permanen — jangan pakai `Input`/`Button` shadcn
-langsung di template mana pun.
+(mengikuti konvensi modul `site`); kontrol form/table-tema lewat
+`network/ui/` bersama — `templateThemeStyle()` di root shell +
+`TemplateInput`/`TemplateTextarea`/`TemplateSelect`/`TemplateButton`
+yang membaca variabel `--tpl-*`. Jangan pakai `Input`/`Button`/
+`Textarea` shadcn langsung maupun elemen form native tanpa gaya:
+semua warna datang dari variabel tema (kebal root `<html
+class="dark">` permanen), bentuk dari pemanggil. Pengecualian sadar:
+titik indikator carousel/ticker (tanpa padanan shadcn) dan daftar
+buka-tutup `<select>` bawaan OS.
 
 ## Tiga registry (wajib kompak)
 

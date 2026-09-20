@@ -22,6 +22,7 @@ export default async function PrivacyPage() {
       description={interpolateLegalText(doc.description, vars)}
       path="/kebijakan-privasi"
       sections={resolveLegalSections(doc.sections, vars)}
+      effectiveDate={doc.effectiveDate}
     />
   );
 }

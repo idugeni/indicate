@@ -1,5 +1,8 @@
+import Link from 'next/link';
+
 import { buildSeoDocument } from '@/modules/site/seo';
 import { slugify, type DocSectionItem } from '@/modules/site/components/layout/content';
+import { TENANT_RELATED_DOCS } from '@/modules/site/legal-documents';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GreenMinimalShell } from '@/modules/site/components/network/templates/green-minimal/chrome/shell';
 import { GreenMinimalContainer } from '@/modules/site/components/network/templates/green-minimal/ui/container';
@@ -11,13 +14,14 @@ export interface GreenMinimalLegalProps {
   readonly description?: string | undefined;
   readonly path?: string | undefined;
   readonly sections: readonly DocSectionItem[];
+  readonly effectiveDate: string;
 }
 
 /**
  * Render dokumen legal dalam chrome Clean Blue: judul, daftar isi jangkar,
  * lalu pasal mengalir bernomor — copy master sama untuk semua tenant.
  */
-export function GreenMinimalLegal({ site, title, description, path = '/', sections }: GreenMinimalLegalProps) {
+export function GreenMinimalLegal({ site, title, description, path = '/', sections, effectiveDate }: GreenMinimalLegalProps) {
   const seo = buildSeoDocument(site, { path });
   return (
     <GreenMinimalShell site={site} path={path}>
@@ -33,7 +37,7 @@ export function GreenMinimalLegal({ site, title, description, path = '/', sectio
             </p>
           )}
           <p className="m-0 mt-2 font-mono text-[11px] tabular-nums text-slate-400">
-            {sections.length} bagian · Berlaku untuk {site.context.normalizedHostname}
+            {sections.length} bagian · Berlaku untuk {site.context.normalizedHostname} · Berlaku sejak {effectiveDate}
           </p>
         </div>
         <nav aria-label="Daftar isi" className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 sm:p-5">
@@ -53,6 +57,21 @@ export function GreenMinimalLegal({ site, title, description, path = '/', sectio
             ))}
           </ol>
         </nav>
+        <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 sm:p-5">
+          <p className="m-0 font-sans text-sm font-bold text-slate-900">Dokumen terkait</p>
+          <ul className="m-0 mt-3 flex list-none flex-wrap gap-2 p-0">
+            {TENANT_RELATED_DOCS.filter((doc) => doc.href !== path).map((doc) => (
+              <li key={doc.href} className="m-0">
+                <Link
+                  href={doc.href}
+                  className="inline-block rounded-full bg-white px-4 py-2 font-sans text-sm font-semibold text-[#1d7a38] shadow-sm ring-1 ring-slate-200/60 transition-colors hover:bg-[#1d7a38] hover:text-white"
+                >
+                  {doc.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
         <div className="space-y-4">
           {sections.map((section, index) => (
             <article

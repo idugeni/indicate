@@ -4,8 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 
-import { SoftBlueGhostButton, SoftBluePrimaryButton } from '@/modules/site/components/network/templates/soft-blue/ui/soft-blue-button';
-import { SoftBlueInput } from '@/modules/site/components/network/templates/soft-blue/ui/soft-blue-input';
+import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
 
 /**
  * Panel pencarian expandable di bawah header desktop.
@@ -58,7 +57,7 @@ export function SoftBlueSearchPanel({
         <label htmlFor="soft-blue-search" className="sr-only">
           Cari berita
         </label>
-        <SoftBlueInput
+        <TemplateInput
           ref={inputRef}
           id="soft-blue-search"
           value={query}
@@ -71,10 +70,10 @@ export function SoftBlueSearchPanel({
           placeholder="Ketik kata kunci…"
           className="h-10 min-w-0 flex-1 rounded-full font-sans text-sm"
         />
-        <SoftBluePrimaryButton type="submit" className="h-10 flex-none rounded-full px-5 text-sm">
+        <TemplateButton type="submit" className="h-10 flex-none rounded-full px-5 text-sm">
           Cari
-        </SoftBluePrimaryButton>
-        <SoftBlueGhostButton
+        </TemplateButton>
+        <TemplateButton variant="ghost"
           type="button"
           size="icon"
           aria-label="Tutup pencarian"
@@ -82,7 +81,7 @@ export function SoftBlueSearchPanel({
           className="h-10 w-10 flex-none rounded-full"
         >
           <X className="h-4 w-4" aria-hidden="true" />
-        </SoftBlueGhostButton>
+        </TemplateButton>
       </form>
     </div>
   );

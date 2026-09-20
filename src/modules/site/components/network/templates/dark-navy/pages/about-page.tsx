@@ -1,9 +1,6 @@
 import Link from 'next/link';
-import { BadgeCheck } from 'lucide-react';
 import { buildSeoDocument } from '@/modules/site/seo';
-import { resolvePublisherChannels } from '@/modules/site/company-contact';
-import { channelIcon } from '@/modules/site/components/network/channel-icons';
-import { ABOUT_TRUST_LINKS, deriveAboutCategories, deriveAboutPublisher } from '@/modules/site/about-profile';
+import { ABOUT_TRUST_LINKS, deriveAboutCategories } from '@/modules/site/about-profile';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { DarkNavyShell } from '@/modules/site/components/network/templates/dark-navy/chrome/shell';
 import { DarkNavyContainer } from '@/modules/site/components/network/templates/dark-navy/ui/container';
@@ -24,8 +21,6 @@ export interface DarkNavyAboutProps {
 export function DarkNavyAbout({ site, title, description, path = '/' }: DarkNavyAboutProps) {
   const seo = buildSeoDocument(site, { path });
   const categories = deriveAboutCategories(site);
-  const publisher = deriveAboutPublisher(site);
-  const publisherChannels = publisher === null ? [] : resolvePublisherChannels(publisher.socials);
   return (
     <DarkNavyShell site={site} path={path}>
       <DarkNavyContainer className="space-y-6 py-6 md:py-8">
@@ -44,7 +39,7 @@ export function DarkNavyAbout({ site, title, description, path = '/' }: DarkNavy
             {site.regionName === null ? null : ` · Cakupan ${site.regionName}`}
           </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-4">
           <div className="rounded-2xl bg-[#0e1a33] p-5 shadow-sm ring-1 ring-[#1b2c4f]/60">
             <p className="m-0 font-mono text-2xl font-bold tabular-nums text-[#eaf0fb]">{site.articles.length}</p>
             <p className="m-0 mt-1 font-sans text-sm text-[#9aa9c4]">Artikel terbit di kanal ini</p>
@@ -54,53 +49,6 @@ export function DarkNavyAbout({ site, title, description, path = '/' }: DarkNavy
             <p className="m-0 mt-1 font-sans text-sm text-[#9aa9c4]">Kanal liputan aktif</p>
           </div>
         </div>
-        {publisher === null ? null : (
-          <section aria-label="Penerbit">
-            <h2 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-[#eaf0fb]">
-              <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#2f7bff]" />
-              Penerbit
-            </h2>
-            <div className="mt-4 rounded-2xl bg-[#0e1a33] p-5 shadow-sm ring-1 ring-[#1b2c4f]/60">
-              <div className="flex items-center gap-3">
-                <span aria-hidden="true" className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-[#2f7bff]/10 font-sans text-xl font-bold text-[#2f7bff]">
-                  {publisher.name.trim().slice(0, 1).toUpperCase()}
-                </span>
-                <div className="min-w-0">
-                  <p className="m-0 flex min-w-0 items-center gap-1.5 font-sans text-base font-bold text-[#eaf0fb]">
-                    <span className="truncate">{publisher.name}</span>
-                    {publisher.verified ? <BadgeCheck className="h-4 w-4 flex-none text-[#2f7bff]" aria-label="Penerbit terverifikasi" /> : null}
-                  </p>
-                  <p className="m-0 mt-0.5 truncate font-sans text-xs text-[#9aa9c4]">
-                    Penerbit{publisher.city === null ? '' : ` · ${publisher.city}`} · {publisher.articleCount} artikel
-                  </p>
-                </div>
-              </div>
-              {publisher.bio === null ? null : (
-                <p className="m-0 mt-3 font-sans text-sm leading-relaxed text-[#9aa9c4]">{publisher.bio}</p>
-              )}
-              {publisherChannels.length === 0 ? null : (
-                <p className="m-0 mt-4 flex flex-wrap items-center gap-2">
-                  {publisherChannels.map((channel) => {
-                    const Icon = channelIcon(channel.key);
-                    return (
-                      <a
-                        key={channel.key}
-                        href={channel.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={`${publisher.name} di ${channel.label}`}
-                        title={channel.label}
-                        className="flex h-9 w-9 items-center justify-center rounded-full text-[#9aa9c4] ring-1 ring-[#1b2c4f] transition-colors hover:text-[#2f7bff]"
-                      >
-                        <Icon className="h-4 w-4" aria-hidden="true" />
-                      </a>
-                    );
-                  })}
-                </p>
-              )}
-            </div>
-          </section>
-        )}
         {categories.length === 0 ? null : (
           <section aria-label="Kanal liputan">
             <h2 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-[#eaf0fb]">

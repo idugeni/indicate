@@ -16,6 +16,7 @@ export const GLASSY_BLUE = {
   canvas: '#edf4ff',
   card: '#ffffff',
   ring: '#d6e5fb',
+  scheme: 'light',
 } as const;
 
 const BADGE_STYLES = [

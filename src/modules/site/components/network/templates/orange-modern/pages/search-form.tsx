@@ -1,5 +1,6 @@
 import Form from 'next/form';
 import { Search } from 'lucide-react';
+import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { OrangeModernPicks } from '@/modules/site/components/network/templates/orange-modern/cards/picks';
@@ -18,22 +19,22 @@ export function OrangeModernSearchForm({ query }: { readonly query: string }) {
         <div className="flex flex-col gap-2.5 sm:flex-row">
           <div className="relative flex-1">
             <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
+            <TemplateInput
               id="orange-modern-search"
               name="q"
               defaultValue={query}
               maxLength={120}
               autoComplete="off"
               placeholder="Ketik kata kunci…"
-              className="h-11 w-full appearance-none rounded-full border border-slate-200 bg-[#fff9f4] pl-11 pr-4 font-sans text-base text-slate-900 placeholder:text-slate-400 focus:border-[#ea580c] focus:outline-none sm:text-sm"
+              className="h-11 w-full appearance-none rounded-full pl-11 pr-4 font-sans text-base focus:outline-none sm:text-sm"
             />
           </div>
-          <button
+          <TemplateButton
             type="submit"
-            className="inline-flex h-11 flex-none items-center justify-center rounded-full bg-[#ea580c] px-6 font-sans text-sm font-bold text-white transition-colors hover:bg-[#c2410c]"
+            className="inline-flex h-11 flex-none items-center justify-center rounded-full px-6 font-sans text-sm font-bold"
           >
             Cari
-          </button>
+          </TemplateButton>
         </div>
       </Form>
     </section>

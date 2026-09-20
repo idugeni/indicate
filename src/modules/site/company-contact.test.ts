@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { pickPublisherSocials, resolveContactChannels, resolvePublisherChannels } from '@/modules/site/company-contact';
+import { channelAction, channelHandle, isPrimaryContact, pickPublisherSocials, resolveContactChannels, resolvePublisherChannels } from '@/modules/site/company-contact';
 
 describe('resolveContactChannels', () => {
   it('default perusahaan tampil bila situs belum diisi', () => {
@@ -23,6 +23,32 @@ describe('resolveContactChannels', () => {
   it('nilai kosong situs jatuh ke default perusahaan', () => {
     const channels = resolveContactChannels({ facebook: '   ' });
     expect(channels.find((c) => c.key === 'facebook')?.href).toBe('https://facebook.com/safenca.id');
+  });
+});
+
+describe('channelHandle, channelAction, isPrimaryContact', () => {
+  it('mengurai email, telepon, dan whatsapp', () => {
+    expect(channelHandle({ key: 'email', label: 'Email', href: 'mailto:sancaphenacakra@gmail.com' })).toBe('sancaphenacakra@gmail.com');
+    expect(channelHandle({ key: 'telepon', label: 'Telepon', href: 'tel:085641159405' })).toBe('085641159405');
+    expect(channelHandle({ key: 'whatsapp', label: 'WhatsApp', href: 'https://wa.me/6285641159405' })).toBe('085641159405');
+  });
+
+  it('mengurai handle sosmed dengan @ bila wajar', () => {
+    expect(channelHandle({ key: 'instagram', label: 'Instagram', href: 'https://instagram.com/safenca.id' })).toBe('@safenca.id');
+    expect(channelHandle({ key: 'x', label: 'X', href: 'https://x.com/safenca_id' })).toBe('@safenca_id');
+    expect(channelHandle({ key: 'youtube', label: 'YouTube', href: 'https://youtube.com/@safenca.id' })).toBe('safenca.id');
+    expect(channelHandle({ key: 'facebook', label: 'Facebook', href: 'https://facebook.com/safenca.id' })).toBe('safenca.id');
+  });
+
+  it('kata kerja dan kanal utama sesuai kunci', () => {
+    expect(channelAction('whatsapp')).toBe('Chat');
+    expect(channelAction('instagram')).toBe('Ikuti');
+    expect(channelAction('email')).toBe('Kirim email');
+    expect(channelAction('blog')).toBe('Buka');
+    expect(isPrimaryContact('email')).toBe(true);
+    expect(isPrimaryContact('telepon')).toBe(true);
+    expect(isPrimaryContact('whatsapp')).toBe(true);
+    expect(isPrimaryContact('instagram')).toBe(false);
   });
 });
 

@@ -130,6 +130,82 @@ export interface ContactChannel {
   readonly href: string;
 }
 
+/** Kanal kontak langsung yang tampil sebagai baris utama penuh. */
+export const PRIMARY_CONTACT_KEYS = ['email', 'telepon', 'whatsapp'] as const;
+
+/**
+ * True bila kanal termasuk kontak langsung (baris utama).
+ *
+ * @param key - Kunci kanal (`ContactChannel.key`).
+ * @returns True untuk email, telepon, dan WhatsApp.
+ */
+export function isPrimaryContact(key: string): boolean {
+  return (PRIMARY_CONTACT_KEYS as readonly string[]).includes(key);
+}
+
+const CHANNEL_ACTIONS: Readonly<Record<string, string>> = {
+  whatsapp: 'Chat',
+  telegram: 'Chat',
+  email: 'Kirim email',
+  telepon: 'Hubungi',
+  facebook: 'Ikuti',
+  instagram: 'Ikuti',
+  x: 'Ikuti',
+  tiktok: 'Ikuti',
+  linkedin: 'Ikuti',
+  threads: 'Ikuti',
+  bluesky: 'Ikuti',
+  youtube: 'Tonton',
+  twitch: 'Tonton',
+  vimeo: 'Tonton',
+  dailymotion: 'Tonton',
+};
+
+/**
+ * Kata kerja ajakan per kanal.
+ *
+ * @param key - Kunci kanal (`ContactChannel.key`).
+ * @returns Ajakan singkat; `Buka` bila tak dikenal.
+ */
+export function channelAction(key: string): string {
+  return CHANNEL_ACTIONS[key] ?? 'Buka';
+}
+
+const HANDLE_PREFIX_KEYS: ReadonlySet<string> = new Set([
+  'instagram',
+  'x',
+  'tiktok',
+  'telegram',
+  'threads',
+  'bluesky',
+]);
+
+/**
+ * Teks tampil/handle kanal dari href mentah.
+ *
+ * @param channel - Kanal kontak siap render.
+ * @returns Alamat email, nomor telepon, atau handle `@...` / slug; href asli bila tak terurai.
+ */
+export function channelHandle(channel: ContactChannel): string {
+  const href = channel.href.trim();
+  if (channel.key === 'email') return href.replace(/^mailto:/iu, '');
+  if (channel.key === 'telepon' || href.startsWith('tel:')) return href.replace(/^tel:/iu, '');
+  if (channel.key === 'whatsapp') {
+    const digits = href.replace(/\D/gu, '');
+    const local = digits.replace(/^62/u, '0');
+    return local === '' ? href : local;
+  }
+  try {
+    const url = new URL(href);
+    const segments = url.pathname.split('/').filter(Boolean);
+    const tail = (segments[segments.length - 1] ?? '').replace(/^@/u, '');
+    if (tail === '') return url.hostname.replace(/^www\./u, '');
+    return HANDLE_PREFIX_KEYS.has(channel.key) ? `@${tail}` : tail;
+  } catch {
+    return href;
+  }
+}
+
 /**
  * Extracts a publisher's own social links from raw `contacts` JSON.
  *

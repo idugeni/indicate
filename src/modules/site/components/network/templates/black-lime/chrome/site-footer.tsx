@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Rss } from 'lucide-react';
+import { TemplateInput } from '@/modules/site/components/network/ui/field';
+import { ArrowRight, Rss } from 'lucide-react';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { COMPANY_NAME, SOCIAL_ORDER } from '@/modules/site/company-contact';
@@ -110,12 +111,12 @@ export async function BlackLimeFooter({ site }: { readonly site: NetworkSiteData
             <label htmlFor="black-lime-footer-email" className="sr-only">
               Alamat email
             </label>
-            <input
+            <TemplateInput
               id="black-lime-footer-email"
               type="email"
               required
               placeholder="Masukkan alamat email"
-              className="h-10 w-full min-w-0 flex-1 appearance-none rounded-xl border border-[#242b1f] bg-[#131711] px-3.5 font-sans text-base text-slate-100 placeholder:text-slate-500 focus:border-[#c5f82a] focus:outline-none sm:text-sm"
+              className="h-10 w-full min-w-0 flex-1 appearance-none rounded-xl px-3.5 font-sans text-base focus:outline-none sm:text-sm"
             />
             {/* Pendaftaran dinonaktifkan sengaja hingga backend newsletter tersedia. */}
             <Link
@@ -123,7 +124,7 @@ export async function BlackLimeFooter({ site }: { readonly site: NetworkSiteData
               aria-label="Ke formulir berlangganan"
               className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-[#c5f82a] font-sans text-base font-bold text-[#0a0c07] transition-colors hover:bg-[#9ecb14]"
             >
-              <span aria-hidden="true">→</span>
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </p>
         </div>

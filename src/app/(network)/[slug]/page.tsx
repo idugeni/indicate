@@ -41,7 +41,8 @@ async function DetailContent({ params }: Pick<Props, 'params'>) {
   const site = await resolveNetworkSite({ articleSlug: normalized }, `/${slug}`);
   const article = site.articles.find((item) => item.slug === normalized);
   if (article === undefined || !isNetworkArticle(article)) notFound();
-  const rest = site.articles.filter((item) => item.id !== article.id);
+  const neighborSite = await resolveNetworkSite({}, '/');
+  const rest = neighborSite.articles.filter((item) => item.id !== article.id);
   const mates = article.categorySlug === null
     ? []
     : rest.filter((item) => item.categorySlug === article.categorySlug).slice(0, 4);

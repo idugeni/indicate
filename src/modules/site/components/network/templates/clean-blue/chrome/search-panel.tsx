@@ -4,8 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 
-import { CleanBlueGhostButton, CleanBluePrimaryButton } from '@/modules/site/components/network/templates/clean-blue/ui/clean-blue-button';
-import { CleanBlueInput } from '@/modules/site/components/network/templates/clean-blue/ui/clean-blue-input';
+import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
 
 /**
  * Panel pencarian expandable di bawah header desktop.
@@ -58,7 +57,7 @@ export function CleanBlueSearchPanel({
         <label htmlFor="clean-blue-search" className="sr-only">
           Cari berita
         </label>
-        <CleanBlueInput
+        <TemplateInput
           ref={inputRef}
           id="clean-blue-search"
           value={query}
@@ -71,10 +70,10 @@ export function CleanBlueSearchPanel({
           placeholder="Ketik kata kunci…"
           className="h-10 min-w-0 flex-1 rounded-full font-sans text-sm"
         />
-        <CleanBluePrimaryButton type="submit" className="h-10 flex-none rounded-full px-5 text-sm">
+        <TemplateButton type="submit" className="h-10 flex-none rounded-full px-5 text-sm">
           Cari
-        </CleanBluePrimaryButton>
-        <CleanBlueGhostButton
+        </TemplateButton>
+        <TemplateButton variant="ghost"
           type="button"
           size="icon"
           aria-label="Tutup pencarian"
@@ -82,7 +81,7 @@ export function CleanBlueSearchPanel({
           className="h-10 w-10 flex-none rounded-full"
         >
           <X className="h-4 w-4" aria-hidden="true" />
-        </CleanBlueGhostButton>
+        </TemplateButton>
       </form>
     </div>
   );

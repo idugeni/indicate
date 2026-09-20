@@ -18,6 +18,7 @@ export const RED_EDITORIAL = {
   canvas: '#fffafa',
   card: '#ffffff',
   ring: '#ecd3d3',
+  scheme: 'light',
 } as const;
 
 const BADGE_STYLES = [

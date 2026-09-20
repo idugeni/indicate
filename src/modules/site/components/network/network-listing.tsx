@@ -306,6 +306,7 @@ export interface LegalPageProps {
   readonly description?: string | undefined;
   readonly path?: string | undefined;
   readonly sections: readonly DocSectionItem[];
+  readonly effectiveDate: string;
 }
 
 /**

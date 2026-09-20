@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { Send } from 'lucide-react';
+import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
 
 export function WarmEditorialNewsletter() {
   return (
@@ -13,26 +13,26 @@ export function WarmEditorialNewsletter() {
             Berlangganan newsletter kami dan jangan lewatkan informasi penting setiap hari.
           </p>
         </div>
-        <div>
-          <p className="m-0 flex flex-col gap-2.5 sm:flex-row">
+        <div className="min-w-0">
+          <div className="flex flex-col gap-2.5 sm:flex-row">
             <label htmlFor="warm-editorial-newsletter-email" className="sr-only">
               Alamat email
             </label>
-            <input
+            <TemplateInput
               id="warm-editorial-newsletter-email"
               type="email"
               required
               placeholder="Masukkan alamat email"
-              className="h-11 w-full flex-1 appearance-none rounded-full border border-slate-200 bg-white px-4 font-sans text-base text-slate-900 placeholder:text-slate-400 focus:border-[#b4532a] focus:outline-none sm:text-sm"
+              className="h-11 w-full min-w-0 appearance-none rounded-full px-4 font-sans text-base focus:outline-none sm:flex-1 sm:text-sm"
             />
             {/* Pendaftaran dinonaktifkan sengaja hingga backend newsletter tersedia. */}
-            <Link
-              href=""
-              className="inline-flex h-11 flex-none items-center justify-center rounded-full bg-[#b4532a] px-6 font-sans text-sm font-bold text-white transition-colors hover:bg-[#8a3c1d]"
+            <TemplateButton
+              type="button"
+              className="h-11 w-full flex-none rounded-full px-6 font-sans text-sm sm:w-auto"
             >
               Berlangganan
-            </Link>
-          </p>
+            </TemplateButton>
+          </div>
           <p className="m-0 mt-2.5 font-sans text-xs text-slate-600">
             Kami menghargai privasi Anda. Tidak ada spam, hanya berita penting.
           </p>

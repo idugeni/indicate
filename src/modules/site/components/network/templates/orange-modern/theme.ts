@@ -16,6 +16,7 @@ export const ORANGE_MODERN = {
   canvas: '#fff9f4',
   card: '#ffffff',
   ring: '#f2dcc9',
+  scheme: 'light',
 } as const;
 
 const BADGE_STYLES = [
