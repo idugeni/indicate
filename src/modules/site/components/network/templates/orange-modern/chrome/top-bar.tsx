@@ -1,11 +1,9 @@
-import Link from 'next/link';
-
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { resolveContactChannels } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 
 /**
- * Bilah atas terang: tanggal hari ini + tagline di kiri, tautan info + sosmed di kanan.
+ * Bilah atas terang: tanggal hari ini + tagline di kiri, sosmed di kanan.
  *
  * @param site - Data situs tenant untuk tagline dan kanal sosial.
  * @returns Bilah atas server-only di atas header utama.
@@ -32,14 +30,6 @@ export function OrangeModernTopBar({ site }: { readonly site: NetworkSiteData })
           <span className="truncate">{tagline}</span>
         </p>
         <div className="flex flex-none items-center gap-4">
-          <nav aria-label="Tautan informasi" className="flex items-center gap-3 font-sans text-xs text-slate-600">
-            <Link href="/tentang" className="transition-colors hover:text-[#ea580c]">
-              Tentang Kami
-            </Link>
-            <Link href="/kontak" className="transition-colors hover:text-[#ea580c]">
-              Kontak
-            </Link>
-          </nav>
           {socials.length > 0 ? (
             <p className="m-0 flex items-center gap-1.5">
               {socials.map((channel) => {
