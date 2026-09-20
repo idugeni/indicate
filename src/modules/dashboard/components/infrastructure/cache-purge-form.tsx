@@ -2,6 +2,16 @@
 
 import { useId, useState, useTransition, type FormEvent } from 'react';
 import { RefreshCw } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 
@@ -23,14 +33,14 @@ export function CachePurgeForm({
   const [siteId, setSiteId] = useState('');
   const [confirmBulk, setConfirmBulk] = useState(false);
   const [notice, setNotice] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
+  const [confirmBulkOpen, setConfirmBulkOpen] = useState(false);
   const [isPurging, startPurgeTransition] = useTransition();
 
   const sites = model?.sites ?? [];
   const isBulk = siteId === '';
   const targetLabel = isBulk ? 'semua situs dalam scope' : (sites.find((site) => site.id === siteId)?.normalizedHostname ?? siteId);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const doPurge = () => {
     setNotice(null);
     startPurgeTransition(async () => {
       const result = await command('site.cache.purge', isBulk ? { confirmBulk: true } : { siteId });
@@ -45,6 +55,15 @@ export function CachePurgeForm({
         : `${value.dispatched.completed} tugas selesai, ${value.dispatched.failed} gagal`;
       setNotice({ tone: 'success', message: `Purge diminta untuk ${targetLabel} (${count} situs) — ${dispatchNote}.` });
     });
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isBulk) {
+      setConfirmBulkOpen(true);
+      return;
+    }
+    doPurge();
   };
 
   return (
@@ -100,6 +119,27 @@ export function CachePurgeForm({
           </button>
         </div>
       </form>
+      <AlertDialog open={confirmBulkOpen} onOpenChange={setConfirmBulkOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Purge {sites.length} situs sekaligus?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Purge massal mendinginkan semua situs dalam scope dan membebani origin. Lanjutkan hanya bila diperlukan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmBulkOpen(false);
+                doPurge();
+              }}
+            >
+              Ya, purge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SectionCard>
   );
 }

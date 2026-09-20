@@ -28,6 +28,7 @@ describe('CachePurgeForm bulk guard', () => {
     expect(button.hasAttribute('disabled')).toBe(false);
 
     fireEvent.click(button);
+    fireEvent.click(await screen.findByRole('button', { name: /ya, purge/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith('site.cache.purge', { confirmBulk: true }));
     expect(await screen.findByText(/Purge diminta untuk semua situs dalam scope \(1 situs\)/)).toBeDefined();
   });
@@ -36,6 +37,7 @@ describe('CachePurgeForm bulk guard', () => {
     setup(vi.fn(async () => null));
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: /purge sekarang/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /ya, purge/i }));
     expect(await screen.findByText(/Purge gagal/)).toBeDefined();
   });
 });
