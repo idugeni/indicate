@@ -163,3 +163,22 @@ describe('proxy tenant surfaces', () => {
     }
   });
 });
+
+describe('proxy cache-control', () => {
+  it('rewrite beranda tenant membawa header CDN publik', async () => {
+    const response = await proxy(request('portal.example', '/'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('public, max-age=0, s-maxage=60, stale-while-revalidate=300');
+  });
+
+  it('denial dan auth tetap private no-store', async () => {
+    for (const path of ['/dashboard', '/api/health', '/sign-in', '/sign-up']) {
+      const response = await proxy(request('portal.example', path));
+      expect(response.status).toBe(404);
+      expect(response.headers.get('cache-control')).toContain('private, no-store');
+    }
+    const invalid = await proxy(request('-buruk-.example', '/'));
+    expect(invalid.status).toBe(400);
+    expect(invalid.headers.get('cache-control')).toContain('private, no-store');
+  });
+});

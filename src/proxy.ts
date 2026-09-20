@@ -272,6 +272,7 @@ export async function proxy(request: NextRequest) {
     requestHeaders.set(TRACEPARENT_HEADER, ensureTraceContext(requestHeaders).headerValue);
     const rewritten = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     rewritten.headers.set(REQUEST_ID_HEADER, requestId);
+    rewritten.headers.set('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
     return withSecurityHeaders(rewritten);
   }
   return nextWithCorrelation(request);

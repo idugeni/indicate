@@ -38,8 +38,6 @@ function tenantImagePatterns(): RemotePattern[] {
   return patterns;
 }
 
-const controlHosts = getControlHosts();
-
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
@@ -56,22 +54,10 @@ const nextConfig: NextConfig = {
   ],
 
   async headers() {
-    if (!controlHosts.dashboard) {
-      return [];
-    }
-
-    return [
-      {
-        source: '/',
-        has: [{ type: 'host', value: controlHosts.dashboard }],
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, s-maxage=60, stale-while-revalidate=300',
-          },
-        ],
-      },
-    ];
+    const denyEdgeCache = () => [{ key: 'Cache-Control', value: 'private, no-store, max-age=0' }];
+    return ['/dashboard/:path*', '/sign-in/:path*', '/sign-up/:path*', '/update-password/:path*', '/api/:path*'].map(
+      (source) => ({ source, headers: denyEdgeCache() }),
+    );
   },
 
   images: {
