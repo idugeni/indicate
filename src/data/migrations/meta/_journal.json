@@ -988,6 +988,13 @@
       "when": 1789841835396,
       "tag": "20260920080000_article_tags_canonical",
       "breakpoints": true
+    },
+    {
+      "idx": 141,
+      "version": "7",
+      "when": 1789914174720,
+      "tag": "20260920090000_dashboard_metric_indexes",
+      "breakpoints": true
     }
   ]
 }

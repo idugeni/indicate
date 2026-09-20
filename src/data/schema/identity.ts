@@ -196,6 +196,7 @@ export const sites = pgTable('sites', {
   foreignKey({ name: 'sites_region_fk', columns: [table.organizationId, table.regionId], foreignColumns: [regions.organizationId, regions.id] }).onDelete('restrict'),
   index('sites_exact_active_hostname_idx').on(table.normalizedHostname, table.status, table.activationState),
   index('sites_organization_domain_idx').on(table.organizationId, table.domainId),
+  index('sites_organization_status_idx').on(table.organizationId, table.status),
   check('sites_versions_positive', sql`${table.routingVersion} > 0 AND ${table.contentVersion} > 0 AND ${table.version} > 0`),
 ]);
 

@@ -166,6 +166,7 @@ export const articleSites = pgTable('article_sites', {
   foreignKey({ name: 'article_sites_site_fk', columns: [table.organizationId, table.siteId], foreignColumns: [sites.organizationId, sites.id] }).onDelete('restrict'),
   index('article_sites_site_state_date_idx').on(table.organizationId, table.siteId, table.state, table.publishedAt),
   index('article_sites_outcome_date_idx').on(table.organizationId, table.siteId, table.state, table.stateOccurredAt),
+  index('article_sites_organization_state_idx').on(table.organizationId, table.state),
   check('article_sites_attempt_nonnegative', sql`${table.attempt} >= 0 AND ${table.version} > 0`),
   check('article_sites_view_counts_nonnegative', sql`${table.viewCount} >= 0`),
   check('article_sites_custom_title_shape', sql`${table.customTitle} IS NULL OR (char_length(${table.customTitle}) BETWEEN 10 AND 160)`),

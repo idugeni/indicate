@@ -72,6 +72,7 @@ export const publishingJobs = pgTable('publishing_jobs', {
   index('publishing_jobs_state_lease_idx').on(table.state, table.leaseExpiresAt),
   index('publishing_jobs_reconciliation_claim_idx').on(table.dispatchStatus, table.reconciliationClaimExpiresAt),
   index('publishing_jobs_organization_date_idx').on(table.organizationId, table.createdAt),
+  index('publishing_jobs_organization_state_idx').on(table.organizationId, table.state),
   check('publishing_jobs_bounded_fields', sql`${table.fingerprintVersion} > 0 AND ${table.dispatchAttempts} >= 0 AND ${table.fencingToken} >= 0 AND ${table.version} > 0`),
   check('publishing_jobs_idempotency_length', sql`length(${table.idempotencyKey}) BETWEEN 1 AND 200`),
 ]);
