@@ -421,6 +421,25 @@ export function DataView({
   const lookups: LookupTables = Object.fromEntries(collections);
 
   if (collections.length === 0) {
+    if (view === 'operations') {
+      return (
+        <EmptyState
+          title="Antrean sehat — tidak ada backlog"
+          description="Semua tugas invalidasi, pembersihan objek, dan antrean latar selesai diproses. Tugas baru akan terdaftar di sini saat tiba."
+          icon={<CircleCheck className="h-5 w-5 text-signal" aria-hidden="true" />}
+          action={
+            <Button
+              type="button"
+              onClick={onRefresh}
+              className="inline-flex items-center gap-2 border border-hairline-strong bg-transparent px-3 py-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint"
+            >
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+              Periksa antrean
+            </Button>
+          }
+        />
+      );
+    }
     return (
       <EmptyState
         title="Tidak ada rekaman data"
