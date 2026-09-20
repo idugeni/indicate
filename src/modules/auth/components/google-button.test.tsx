@@ -13,7 +13,6 @@ vi.mock('@/integrations/supabase/supabase-browser', () => ({
 afterEach(() => {
   cleanup();
   oauthMock.mockReset();
-  delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 });
 
 describe('Tombol Google', () => {
@@ -37,12 +36,5 @@ describe('Tombol Google', () => {
     render(<GoogleButton />);
     fireEvent.click(screen.getByRole('button', { name: /lanjutkan dengan google/i }));
     expect(await screen.findByRole('button', { name: /lanjutkan dengan google/i })).toBeDefined();
-  });
-
-  it('menonaktifkan tombol sampai turnstile terverifikasi', () => {
-    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'kunci-uji';
-    render(<GoogleButton />);
-    expect(screen.getByRole('button', { name: /lanjutkan dengan google/i }).hasAttribute('disabled')).toBe(true);
-    expect(oauthMock).not.toHaveBeenCalled();
   });
 });

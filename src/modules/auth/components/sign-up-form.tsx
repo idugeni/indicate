@@ -8,7 +8,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
 import { GoogleButton } from '@/modules/auth/components/google-button';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
-import { TurnstileField, isTurnstileConfigured } from '@/modules/auth/components/turnstile-field';
+import { TurnstileField, useTurnstileChallenge } from '@/modules/auth/components/turnstile-field';
 
 /** Client sign-up leaf; parent page stays a Server Component. */
 export function SignUpForm() {
@@ -18,9 +18,8 @@ export function SignUpForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [challengeNonce, setChallengeNonce] = useState(0);
-  const turnstilePending = isTurnstileConfigured() && captchaToken === null;
+  const { captchaToken, challengeNonce, turnstilePending, resetChallenge, onChallengeToken } =
+    useTurnstileChallenge();
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -31,7 +30,7 @@ export function SignUpForm() {
       setBusy(false);
       return;
     }
-    if (isTurnstileConfigured() && captchaToken === null) {
+    if (turnstilePending) {
       setError('Selesaikan verifikasi keamanan terlebih dahulu.');
       setBusy(false);
       return;
@@ -51,16 +50,14 @@ export function SignUpForm() {
       });
       if (error) {
         setError(error.message);
-        setCaptchaToken(null);
-        setChallengeNonce((value) => value + 1);
+        resetChallenge();
         setBusy(false);
         return;
       }
       setSent(true);
     } catch {
       setError('Terjadi gangguan jaringan saat mendaftarkan akun.');
-      setCaptchaToken(null);
-      setChallengeNonce((value) => value + 1);
+      resetChallenge();
       setBusy(false);
     }
   };
@@ -102,7 +99,7 @@ export function SignUpForm() {
             <p className="m-0 mt-1.5 font-sans text-xs text-[#5f6b7a]">Minimal 8 karakter.</p>
           </div>
 
-          <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
+          <TurnstileField key={challengeNonce} onToken={onChallengeToken} />
           <AuthSubmit busy={busy} busyLabel="Mendaftarkan..." icon={ArrowRight} disabled={turnstilePending}>
             Buat Akun
           </AuthSubmit>

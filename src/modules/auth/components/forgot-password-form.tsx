@@ -5,7 +5,7 @@ import { Send } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
-import { TurnstileField, isTurnstileConfigured } from '@/modules/auth/components/turnstile-field';
+import { TurnstileField, useTurnstileChallenge } from '@/modules/auth/components/turnstile-field';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
 
 /** Client recovery leaf; parent page stays a Server Component. */
@@ -14,9 +14,8 @@ export function ForgotPasswordForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [challengeNonce, setChallengeNonce] = useState(0);
-  const turnstilePending = isTurnstileConfigured() && captchaToken === null;
+  const { captchaToken, challengeNonce, turnstilePending, resetChallenge, onChallengeToken } =
+    useTurnstileChallenge();
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -27,7 +26,7 @@ export function ForgotPasswordForm() {
       setBusy(false);
       return;
     }
-    if (isTurnstileConfigured() && captchaToken === null) {
+    if (turnstilePending) {
       setError('Selesaikan verifikasi keamanan terlebih dahulu.');
       setBusy(false);
       return;
@@ -42,16 +41,14 @@ export function ForgotPasswordForm() {
       });
       if (error) {
         setError(error.message);
-        setCaptchaToken(null);
-        setChallengeNonce((value) => value + 1);
+        resetChallenge();
         setBusy(false);
         return;
       }
       setSent(true);
     } catch {
       setError('Terjadi gangguan jaringan saat mengirim tautan pemulihan.');
-      setCaptchaToken(null);
-      setChallengeNonce((value) => value + 1);
+      resetChallenge();
       setBusy(false);
     }
   };
@@ -80,7 +77,7 @@ export function ForgotPasswordForm() {
         <Input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@kabarjateng.org" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
       </div>
 
-      <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
+      <TurnstileField key={challengeNonce} onToken={onChallengeToken} />
       <AuthSubmit busy={busy} busyLabel="Mengirim..." icon={Send} disabled={turnstilePending}>
         Kirim Tautan Pemulihan
       </AuthSubmit>

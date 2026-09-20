@@ -7,7 +7,7 @@ import { ArrowRight, MailCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
-import { TurnstileField, isTurnstileConfigured } from '@/modules/auth/components/turnstile-field';
+import { TurnstileField, useTurnstileChallenge } from '@/modules/auth/components/turnstile-field';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
 
 const CODE_LENGTH = 8;
@@ -21,11 +21,10 @@ export function OtpSignInForm() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [challengeNonce, setChallengeNonce] = useState(0);
+  const { captchaToken, challengeNonce, turnstilePending, resetChallenge, onChallengeToken } =
+    useTurnstileChallenge();
   const [cooldown, setCooldown] = useState(0);
   const verifyingRef = useRef(false);
-  const turnstilePending = isTurnstileConfigured() && captchaToken === null;
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -53,7 +52,7 @@ export function OtpSignInForm() {
       setError('Masukkan alamat email yang valid.');
       return;
     }
-    if (isTurnstileConfigured() && captchaToken === null) {
+    if (turnstilePending) {
       setError('Selesaikan verifikasi keamanan terlebih dahulu.');
       return;
     }
@@ -63,23 +62,17 @@ export function OtpSignInForm() {
     setBusy(false);
     if (sendError) {
       setError('Gagal mengirim kode. Periksa alamat email lalu coba lagi.');
-      setCaptchaToken(null);
-      setChallengeNonce((value) => value + 1);
+      resetChallenge();
       return;
     }
     setSentTo(target);
     setCode('');
     setCooldown(RESEND_COOLDOWN_S);
-    setCaptchaToken(null);
-    setChallengeNonce((value) => value + 1);
+    resetChallenge();
   };
 
   const handleVerify = async (value: string) => {
     if (sentTo === null || verifyingRef.current) return;
-    if (isTurnstileConfigured() && captchaToken === null) {
-      setError('Selesaikan verifikasi keamanan terlebih dahulu.');
-      return;
-    }
     verifyingRef.current = true;
     setBusy(true);
     setError(null);
@@ -93,8 +86,6 @@ export function OtpSignInForm() {
       if (verifyError) {
         setError('Kode salah atau kedaluwarsa. Periksa kembali 8 digit kode.');
         setCode('');
-        setCaptchaToken(null);
-        setChallengeNonce((nonce) => nonce + 1);
         return;
       }
       router.push('/dashboard');
@@ -113,7 +104,7 @@ export function OtpSignInForm() {
 
   const handleResend = async () => {
     if (sentTo === null || busy || cooldown > 0) return;
-    if (isTurnstileConfigured() && captchaToken === null) {
+    if (turnstilePending) {
       setError('Selesaikan verifikasi keamanan terlebih dahulu.');
       return;
     }
@@ -127,8 +118,7 @@ export function OtpSignInForm() {
     }
     setCode('');
     setCooldown(RESEND_COOLDOWN_S);
-    setCaptchaToken(null);
-    setChallengeNonce((value) => value + 1);
+    resetChallenge();
   };
 
   if (sentTo === null) {
@@ -149,7 +139,7 @@ export function OtpSignInForm() {
               className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white"
             />
           </div>
-          <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
+          <TurnstileField key={challengeNonce} onToken={onChallengeToken} />
           <AuthSubmit busy={busy} busyLabel="Mengirim kode..." icon={ArrowRight} disabled={turnstilePending}>
             Kirim kode masuk
           </AuthSubmit>
@@ -200,8 +190,8 @@ export function OtpSignInForm() {
             </InputOTPGroup>
           </InputOTP>
         </div>
-        <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
-        <AuthSubmit busy={busy} busyLabel="Memverifikasi..." icon={ArrowRight} disabled={turnstilePending}>
+        <TurnstileField key={challengeNonce} onToken={onChallengeToken} />
+        <AuthSubmit busy={busy} busyLabel="Memverifikasi..." icon={ArrowRight}>
           Masuk
         </AuthSubmit>
       </form>

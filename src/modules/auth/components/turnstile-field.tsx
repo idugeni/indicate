@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface TurnstileRenderOptions {
   readonly sitekey: string;
@@ -28,21 +28,42 @@ function loadScript(): Promise<void> {
   if (scriptPromise !== null) return scriptPromise;
   scriptPromise = new Promise<void>((resolve, reject) => {
     if (typeof document === 'undefined') {
+      scriptPromise = null;
       reject(new Error('turnstile_unavailable'));
       return;
     }
     const existing = document.querySelector(`script[src="${SCRIPT_SRC}"]`);
     if (existing !== null) {
-      resolve();
-      return;
+      if (window.turnstile !== undefined) {
+        resolve();
+        return;
+      }
+      if (existing.getAttribute('data-turnstile-loaded') === 'true') {
+        existing.remove();
+      } else {
+        existing.addEventListener('load', () => resolve(), { once: true });
+        existing.addEventListener(
+          'error',
+          () => {
+            scriptPromise = null;
+            reject(new Error('turnstile_unavailable'));
+          },
+          { once: true },
+        );
+        return;
+      }
     }
     const script = document.createElement('script');
     script.src = SCRIPT_SRC;
     script.async = true;
     script.defer = true;
-    script.onload = () => resolve();
+    script.onload = () => {
+      script.setAttribute('data-turnstile-loaded', 'true');
+      resolve();
+    };
     script.onerror = () => {
       scriptPromise = null;
+      script.remove();
       reject(new Error('turnstile_unavailable'));
     };
     document.head.appendChild(script);
@@ -57,6 +78,30 @@ function loadScript(): Promise<void> {
  */
 export function isTurnstileConfigured(): boolean {
   return (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '').trim().length > 0;
+}
+
+/**
+ * Tracks a single Turnstile challenge for an auth form.
+ *
+ * @returns Token state with helpers to gate submits and reset the widget after each attempt, since Supabase consumes the token once.
+ */
+export function useTurnstileChallenge() {
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [challengeNonce, setChallengeNonce] = useState(0);
+  const turnstilePending = isTurnstileConfigured() && captchaToken === null;
+
+  const resetChallenge = (): void => {
+    setCaptchaToken(null);
+    setChallengeNonce((value) => value + 1);
+  };
+
+  return {
+    captchaToken,
+    challengeNonce,
+    turnstilePending,
+    resetChallenge,
+    onChallengeToken: setCaptchaToken,
+  } as const;
 }
 
 /**

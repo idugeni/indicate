@@ -8,7 +8,7 @@ import { ArrowRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
-import { TurnstileField, isTurnstileConfigured } from '@/modules/auth/components/turnstile-field';
+import { TurnstileField, useTurnstileChallenge } from '@/modules/auth/components/turnstile-field';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
 
 /** Client sign-in leaf; parent page stays a Server Component. */
@@ -18,9 +18,8 @@ export function SignInForm() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [challengeNonce, setChallengeNonce] = useState(0);
-  const turnstilePending = isTurnstileConfigured() && captchaToken === null;
+  const { captchaToken, challengeNonce, turnstilePending, resetChallenge, onChallengeToken } =
+    useTurnstileChallenge();
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -33,7 +32,7 @@ export function SignInForm() {
       return;
     }
 
-    if (isTurnstileConfigured() && captchaToken === null) {
+    if (turnstilePending) {
       setError('Selesaikan verifikasi keamanan terlebih dahulu.');
       setBusy(false);
       return;
@@ -48,8 +47,7 @@ export function SignInForm() {
       });
       if (error) {
         setError('Kredensial tidak valid atau akun belum diverifikasi.');
-        setCaptchaToken(null);
-        setChallengeNonce((value) => value + 1);
+        resetChallenge();
         setBusy(false);
         return;
       }
@@ -57,8 +55,7 @@ export function SignInForm() {
       router.refresh();
     } catch {
       setError('Terjadi gangguan jaringan saat mencoba masuk.');
-      setCaptchaToken(null);
-      setChallengeNonce((value) => value + 1);
+      resetChallenge();
       setBusy(false);
     }
   };
@@ -87,7 +84,7 @@ export function SignInForm() {
           </div>
         </div>
 
-        <TurnstileField key={challengeNonce} onToken={setCaptchaToken} />
+        <TurnstileField key={challengeNonce} onToken={onChallengeToken} />
 
         <AuthSubmit busy={busy} busyLabel="Verifikasi Sesi..." icon={ArrowRight} disabled={turnstilePending}>
           Masuk ke Dashboard

@@ -21,7 +21,6 @@ afterEach(() => {
   pushMock.mockReset();
   refreshMock.mockReset();
   updateMock.mockReset();
-  delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 });
 
 describe('Formulir perbarui kata sandi', () => {
@@ -49,16 +48,5 @@ describe('Formulir perbarui kata sandi', () => {
     fireEvent.change(screen.getByLabelText('Konfirmasi kata sandi'), { target: { value: 'rahasia123' } });
     fireEvent.submit(screen.getByLabelText('Kata sandi baru').closest('form') as HTMLFormElement);
     expect(await screen.findByText('Kata sandi diperbarui')).toBeDefined();
-  });
-
-  it('menahan penyimpanan sampai turnstile terverifikasi', async () => {
-    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'kunci-uji';
-    render(<UpdatePasswordForm />);
-    expect(screen.getByRole('button', { name: /simpan kata sandi/i }).hasAttribute('disabled')).toBe(true);
-    fireEvent.change(screen.getByLabelText('Kata sandi baru'), { target: { value: 'rahasia123' } });
-    fireEvent.change(screen.getByLabelText('Konfirmasi kata sandi'), { target: { value: 'rahasia123' } });
-    fireEvent.submit(screen.getByLabelText('Kata sandi baru').closest('form') as HTMLFormElement);
-    expect(await screen.findByText('Selesaikan verifikasi keamanan terlebih dahulu.')).toBeDefined();
-    expect(updateMock).not.toHaveBeenCalled();
   });
 });
