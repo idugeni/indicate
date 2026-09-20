@@ -1,21 +1,55 @@
 import type {
+  AktivitasJam,
+  AktivitasTerbaru,
   AnalyticsPoint,
   AnalyticsProjection,
+  ArusPenerbit,
   ArticleFilter,
   ArticleRecord,
   AuditFilter,
   AuditRecord,
   DashboardProjection,
+  JendelaDeret,
   OfficialAffiliationRecord,
   NetworkPublisherClaim,
+  PenyaluranHarian,
   PublisherRecord,
   DashboardTenantState,
+  TugasHarian,
+  ViewsHarian,
+  ViewsPoint,
 } from '@/modules/dashboard/models';
 
 function group(values: readonly string[]): readonly AnalyticsPoint[] {
   const counts = new Map<string, number>();
   for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
   return [...counts].sort(([left], [right]) => left.localeCompare(right)).map(([key, count]) => ({ key, count }));
+}
+
+const DERET_MAKS_HARI = 90;
+const WIB_MILIS = 7 * 3_600_000;
+
+function kurangiHari(hari: string, jumlah: number): string {
+  const tanggal = new Date(`${hari}T00:00:00Z`);
+  tanggal.setUTCDate(tanggal.getUTCDate() - jumlah);
+  return tanggal.toISOString().slice(0, 10);
+}
+
+function daftarHari(awal: string, akhir: string): string[] {
+  const daftar: string[] = [];
+  let hari = awal;
+  while (hari <= akhir) {
+    daftar.push(hari);
+    const tanggal = new Date(`${hari}T00:00:00Z`);
+    tanggal.setUTCDate(tanggal.getUTCDate() + 1);
+    hari = tanggal.toISOString().slice(0, 10);
+  }
+  return daftar;
+}
+
+function dalamHari(iso: string, jendela: JendelaDeret): boolean {
+  const hari = iso.slice(0, 10);
+  return hari >= jendela.awal && hari <= jendela.akhir;
 }
 
 export function filterArticles(state: DashboardTenantState, filter: ArticleFilter): readonly ArticleRecord[] {
@@ -81,8 +115,13 @@ export function buildNetworkPublisherClaim(
 export function buildDashboard(state: DashboardTenantState): DashboardProjection {
   const states = ['queued', 'processing', 'published', 'failed', 'retrying'] as const;
   const tenant = state.organizationId;
+  const domainHostById = new Map(
+    state.domains.filter(({ organizationId }) => organizationId === tenant).map(({ id, normalizedHostname }) => [id, normalizedHostname] as const),
+  );
   return Object.freeze({
     activeDomains: state.domains.filter(({ organizationId, status }) => organizationId === tenant && status === 'active').length,
+    activeSubdomains: state.sites.filter(({ organizationId, status, domainId, normalizedHostname }) =>
+      organizationId === tenant && status === 'active' && domainHostById.get(domainId) !== normalizedHostname).length,
     activeSites: state.sites.filter(({ organizationId, status }) => organizationId === tenant && status === 'active').length,
     activeArticles: state.articles.filter(({ organizationId, status }) => organizationId === tenant && status === 'active').length,
     archivedArticles: state.articles.filter(({ organizationId, status }) => organizationId === tenant && status === 'archived').length,
@@ -94,9 +133,19 @@ export function buildDashboard(state: DashboardTenantState): DashboardProjection
   });
 }
 
+/**
+ * Bangun proyeksi analitik tenan dari state dalam memori.
+ *
+ * @param state - State tenan penuh (sudah terotorisasi).
+ * @param filter - Rentang `from`/`to` ISO; membatasi marginal dan jendela deret.
+ * @param hariAcuan - Hari acuan `YYYY-MM-DD` bila `filter.to` kosong; deret selalu 90 hari ke belakang.
+ * @returns Proyeksi analitik beku.
+ * @remarks Jendela deret: akhir = `filter.to` atau `hariAcuan`, awal = `filter.from` atau 89 hari sebelumnya, bentang dijepit maks 90 hari. Jam peta panas memakai Asia/Jakarta.
+ */
 export function buildAnalytics(
   state: DashboardTenantState,
   filter: { readonly from?: string | undefined; readonly to?: string | undefined } = {},
+  hariAcuan: string,
 ): AnalyticsProjection {
   const inRange = (date: string) => (filter.from === undefined || date >= filter.from)
     && (filter.to === undefined || date <= filter.to);
@@ -126,15 +175,143 @@ export function buildAnalytics(
       return assignment === undefined ? [] : dimension(job.articleId, assignment.siteId, job.state) ?? [];
     }));
   const outcomeDimensions = outcomeAssignments.flatMap((assignment) => dimension(assignment.articleId, assignment.siteId, assignment.state) ?? []);
+  const judulOf = (articleId: string): string => articleById.get(articleId)?.title ?? articleId;
+
+  const akhir = filter.to === undefined ? hariAcuan : filter.to.slice(0, 10);
+  const awalBaku = filter.from === undefined ? kurangiHari(akhir, DERET_MAKS_HARI - 1) : filter.from.slice(0, 10);
+  const awalJepit = kurangiHari(akhir, DERET_MAKS_HARI - 1) > awalBaku ? kurangiHari(akhir, DERET_MAKS_HARI - 1) : awalBaku;
+  const jendela: JendelaDeret = awalJepit > akhir ? { awal: akhir, akhir } : { awal: awalJepit, akhir };
+
+  const tugasHarian: TugasHarian[] = daftarHari(jendela.awal, jendela.akhir).map((hari) => {
+    const harian = tenantJobs.filter(({ occurredAt }) => dalamHari(occurredAt, jendela) && occurredAt.slice(0, 10) === hari);
+    return {
+      hari,
+      diterbitkan: harian.filter(({ state }) => state === 'published').length,
+      gagal: harian.filter(({ state }) => state === 'failed').length,
+      antre: harian.filter(({ state }) => state === 'queued' || state === 'processing' || state === 'retrying').length,
+    };
+  });
+
+  const jamCounts = new Map<string, number>();
+  for (const assignment of outcomeAssignments) {
+    if (!dalamHari(assignment.stateOccurredAt, jendela)) continue;
+    const wib = new Date(assignment.stateOccurredAt).getTime() + WIB_MILIS;
+    const wibDate = new Date(wib);
+    const hari = (wibDate.getUTCDay() + 6) % 7;
+    const jam = wibDate.getUTCHours();
+    const kunci = `${hari}:${jam}`;
+    jamCounts.set(kunci, (jamCounts.get(kunci) ?? 0) + 1);
+  }
+  const aktivitasPerJam: AktivitasJam[] = [...jamCounts]
+    .sort(([kiri], [kanan]) => (kiri < kanan ? -1 : 1))
+    .map(([kunci, jumlah]) => {
+      const [hari, jam] = kunci.split(':').map(Number);
+      return { hari: hari ?? 0, jam: jam ?? 0, jumlah };
+    });
+
+  const peristiwa: AktivitasTerbaru[] = [
+    ...tenantJobs.map((job) => ({ id: `job:${job.id}`, label: judulOf(job.articleId), status: job.state, at: job.occurredAt })),
+    ...outcomeAssignments.map((assignment) => ({
+      id: `hasil:${assignment.id}`,
+      label: judulOf(assignment.articleId),
+      status: assignment.state,
+      at: assignment.stateOccurredAt,
+    })),
+    ...tenantArticles.map((article) => ({ id: `artikel:${article.id}`, label: article.title, status: article.status, at: article.createdAt })),
+  ];
+  const aktivitasTerbaru: AktivitasTerbaru[] = [...peristiwa]
+    .sort((kiri, kanan) => (kiri.at < kanan.at ? 1 : kiri.at > kanan.at ? -1 : 0))
+    .slice(0, 8);
+
+  const arusCounts = new Map<string, number>();
+  for (const assignment of outcomeAssignments) {
+    const article = articleById.get(assignment.articleId);
+    if (article?.publisherId === undefined || article.publisherId === null) continue;
+    const kunci = JSON.stringify([article.publisherId, assignment.siteId, assignment.state]);
+    arusCounts.set(kunci, (arusCounts.get(kunci) ?? 0) + 1);
+  }
+  const arusPenerbit: ArusPenerbit[] = [...arusCounts]
+    .map(([kunci, jumlah]) => {
+      const [penerbit, situs, hasil] = JSON.parse(kunci) as [string, string, string];
+      return { penerbit, situs, hasil, jumlah };
+    })
+    .sort((kiri, kanan) => kanan.jumlah - kiri.jumlah);
+
+  const penyaluranHarian: PenyaluranHarian[] = daftarHari(jendela.awal, jendela.akhir).map((hari) => {
+    const harian = outcomeAssignments.filter(({ stateOccurredAt }) => dalamHari(stateOccurredAt, jendela) && stateOccurredAt.slice(0, 10) === hari);
+    return {
+      hari,
+      diterbitkan: harian.filter(({ state }) => state === 'published').length,
+      gagal: harian.filter(({ state }) => state === 'failed').length,
+      antre: harian.filter(({ state }) => state === 'queued' || state === 'processing' || state === 'retrying' || state === 'unpublished').length,
+    };
+  });
+
+  const viewsHarian: ViewsHarian[] = daftarHari(jendela.awal, jendela.akhir).map((hari) => {
+    const harian = outcomeAssignments.filter(({ stateOccurredAt }) => dalamHari(stateOccurredAt, jendela) && stateOccurredAt.slice(0, 10) === hari);
+    return {
+      hari,
+      penyaluran: harian.length,
+      views: harian.reduce((jumlah, penyaluran) => jumlah + penyaluran.viewCount, 0),
+    };
+  });
+
+  const viewsPerSite = new Map<string, { count: number; views: number }>();
+  const viewsPerArticle = new Map<string, { count: number; views: number }>();
+  for (const assignment of outcomeAssignments) {
+    const site = viewsPerSite.get(assignment.siteId) ?? { count: 0, views: 0 };
+    site.count += 1;
+    site.views += assignment.viewCount;
+    viewsPerSite.set(assignment.siteId, site);
+    const article = viewsPerArticle.get(assignment.articleId) ?? { count: 0, views: 0 };
+    article.count += 1;
+    article.views += assignment.viewCount;
+    viewsPerArticle.set(assignment.articleId, article);
+  }
+  const viewsBySite: ViewsPoint[] = [...viewsPerSite]
+    .map(([key, slot]) => ({ key, count: slot.count, views: slot.views }))
+    .sort((kiri, kanan) => kanan.views - kiri.views);
+  const viewsByArticle: ViewsPoint[] = [...viewsPerArticle]
+    .map(([key, slot]) => ({ key, count: slot.count, views: slot.views }))
+    .sort((kiri, kanan) => kanan.views - kiri.views);
+
+  const siteLabels: Record<string, string> = {};
+  for (const site of tenantSites) siteLabels[site.id] = site.normalizedHostname;
+  const categoryLabels: Record<string, string> = {};
+  for (const category of state.categories.filter(({ organizationId }) => organizationId === tenant)) categoryLabels[category.id] = category.name;
+  const publisherLabels: Record<string, string> = {};
+  for (const publisher of state.publishers.filter(({ organizationId }) => organizationId === tenant)) publisherLabels[publisher.id] = publisher.name;
+  const regionLabels: Record<string, string> = {};
+  for (const region of state.regions.filter(({ organizationId }) => organizationId === tenant)) regionLabels[region.id] = region.name;
+  const articleLabels: Record<string, string> = {};
+  for (const article of allTenantArticles) articleLabels[article.id] = article.title;
+
   return Object.freeze({
     articlesByRegion: group(tenantArticles.map(({ regionId }) => regionId)),
     articlesBySite: group(activeAssignments.map(({ siteId }) => siteId)),
     articlesByCategory: group(tenantArticles.flatMap(({ categoryId }) => categoryId ?? [])),
     articlesByPublisher: group(tenantArticles.flatMap(({ publisherId }) => publisherId ?? [])),
+    articlesByStatus: group(tenantArticles.map(({ status }) => status)),
     jobsByState: group(tenantJobs.map(({ state: value }) => value)),
     jobsBySiteRegionAndState: group(jobDimensions),
     outcomesBySiteAndState: group(outcomeAssignments.map(({ siteId, state: value }) => `${siteId}:${value}`)),
     outcomesBySiteRegionAndState: group(outcomeDimensions),
+    jendela,
+    tugasHarian,
+    aktivitasPerJam,
+    aktivitasTerbaru,
+    arusPenerbit,
+    penyaluranHarian,
+    viewsHarian,
+    viewsBySite,
+    viewsByArticle,
+    totalViews: outcomeAssignments.reduce((jumlah, penyaluran) => jumlah + penyaluran.viewCount, 0),
+    totalPenyaluran: outcomeAssignments.length,
+    siteLabels,
+    categoryLabels,
+    publisherLabels,
+    regionLabels,
+    articleLabels,
   });
 }
 

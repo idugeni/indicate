@@ -3,6 +3,7 @@
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
+import { presetRentang, type PresetRentang } from '@/modules/dashboard/components/shared/dashboard-dates';
 
 export interface FilterControlsProps {
   readonly view: View;
@@ -57,6 +58,17 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
     onApply('');
   };
 
+  const terapkanPreset = (preset: PresetRentang) => {
+    const rentang = presetRentang(preset);
+    onApply(`&from=${encodeURIComponent(rentang.from)}&to=${encodeURIComponent(rentang.to)}`);
+  };
+
+  const PRESET: readonly { readonly kunci: PresetRentang; readonly label: string }[] = [
+    { kunci: 'hari-ini', label: 'Hari ini' },
+    { kunci: '7-hari', label: '7 hari' },
+    { kunci: '30-hari', label: '30 hari' },
+  ];
+
   return (
     <section aria-label={`Filter data untuk ${view}`} className="rounded-lg border border-hairline bg-bg-raised p-4 sm:p-5">
       <form
@@ -67,8 +79,8 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
         }}
       >
         <div className="flex flex-wrap items-end justify-between gap-4">
-          {/* Kolom mengikuti jumlah field: editorial 4, audit 3, analytics 2 — tanpa slot kosong. */}
-          <div className={view === 'audit' ? 'grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-3' : view === 'analytics' ? 'grid flex-1 gap-3 sm:grid-cols-2' : 'grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'}>
+          {/* Kolom mengikuti jumlah field: editorial 4, audit 3, analytics 3 — tanpa slot kosong. */}
+          <div className={view === 'audit' ? 'grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-3' : view === 'analytics' ? 'grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-3' : 'grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'}>
           {view === 'editorial' ? (
             <>
               <div className="flex flex-col gap-1.5">
@@ -185,6 +197,23 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
 
           {view === 'analytics' ? (
             <>
+              <div className="flex flex-col gap-1.5">
+                <span id="filter-preset-label" className="font-sans text-xs font-medium text-paper-dim">
+                  Rentang cepat
+                </span>
+                <div role="group" aria-labelledby="filter-preset-label" className="flex h-9 items-center gap-1.5">
+                  {PRESET.map(({ kunci, label }) => (
+                    <button
+                      key={kunci}
+                      type="button"
+                      onClick={() => terapkanPreset(kunci)}
+                      className="inline-flex h-7 items-center rounded border border-hairline px-2 font-sans text-[11px] text-paper-dim transition-colors duration-180 hover:border-hairline-strong hover:text-paper focus:outline-none focus-visible:ring-2 focus-visible:ring-brass focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="filter-from" className="font-sans text-xs font-medium text-paper-dim">
                   Dari tanggal

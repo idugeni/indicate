@@ -26,7 +26,7 @@ export default function DashboardError({
   }, [error, clientId]);
 
   return (
-    <main className="flex min-h-[50vh] items-center justify-center p-6" role="alert">
+    <main className="flex min-h-screen supports-[min-height:100svh]:min-h-svh items-center justify-center p-6" role="alert">
       <div className="w-full max-w-md rounded-lg border border-hairline bg-bg-raised p-8 text-center">
         <p className="m-0 font-mono text-xs font-medium uppercase tracking-wider text-error">Gangguan sementara</p>
         <h1 className="m-0 mt-2 font-sans text-xl font-bold tracking-tight text-paper">Ruang redaksi belum dapat dimuat</h1>

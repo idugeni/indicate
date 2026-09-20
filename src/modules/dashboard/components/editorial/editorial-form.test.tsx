@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { EditorialForm } from '@/modules/dashboard/components/editorial/editorial-form';
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), promise: vi.fn((task: Promise<unknown>) => task) },
 }));
 
 afterEach(() => {

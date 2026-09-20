@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { Command } from 'cmdk';
 import {
   BarChart3,
   Building2,
@@ -64,11 +65,8 @@ const COMMAND_ACTIONS: readonly CommandAction[] = [
 export function CommandPalette({ showTrigger = true }: { readonly showTrigger?: boolean }) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
-  const [selectedIndex, setSelectedIndex] = React.useState(0);
 
   const router = useRouter();
-  const listRef = React.useRef<HTMLDivElement>(null);
-  const scrolledOnce = React.useRef(false);
 
   React.useEffect(() => () => {
     document.documentElement.style.removeProperty('overflow');
@@ -99,12 +97,6 @@ export function CommandPalette({ showTrigger = true }: { readonly showTrigger?: 
     );
   }, [query]);
 
-  const [prevQuery, setPrevQuery] = React.useState('');
-  if (query !== prevQuery) {
-    setPrevQuery(query);
-    setSelectedIndex(0);
-  }
-
   const handleSelect = React.useCallback(
     (href: string) => {
       setOpen(false);
@@ -113,41 +105,6 @@ export function CommandPalette({ showTrigger = true }: { readonly showTrigger?: 
     },
     [router]
   );
-
-  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (filtered.length === 0) return;
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev + 1) % filtered.length);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev - 1 + filtered.length) % filtered.length);
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      const target = filtered[selectedIndex];
-      if (target) handleSelect(target.href);
-    }
-  };
-
-  React.useEffect(() => {
-    if (open) scrolledOnce.current = false;
-  }, [open]);
-
-  React.useEffect(() => {
-    if (!listRef.current) return;
-    if (!scrolledOnce.current) {
-      scrolledOnce.current = true;
-      return;
-    }
-    const activeElement = listRef.current.querySelector<HTMLElement>('[data-selected="true"]');
-    if (activeElement) {
-      activeElement.scrollIntoView({ block: 'nearest' });
-    }
-  }, [selectedIndex]);
-
-  const activeOption = filtered[selectedIndex];
-  const activeDescendantId = activeOption ? `cmd-palette-option-${activeOption.id}` : undefined;
 
   return (
     <>
@@ -168,114 +125,91 @@ export function CommandPalette({ showTrigger = true }: { readonly showTrigger?: 
         <DialogContent className="max-w-xl overflow-hidden rounded border border-hairline bg-bg-raised p-0 shadow-none">
           <DialogTitle className="sr-only">Navigasi Perintah Redaksi</DialogTitle>
 
-          <div className="flex items-center border-b border-hairline bg-bg px-3.5">
-            <Search className="h-4 w-4 flex-none text-brass" aria-hidden="true" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleInputKeyDown}
-              placeholder="Ketik rute tujuan, modul, atau perintah..."
-              aria-label="Cari perintah atau rute Dashboard"
-              role="combobox"
-              aria-expanded="true"
-              aria-autocomplete="list"
-              aria-controls="cmd-palette-listbox"
-              aria-activedescendant={activeDescendantId}
-              className="h-11 w-full border-0 bg-transparent px-3 font-mono text-xs text-paper placeholder:text-paper-faint focus:outline-none"
-              autoFocus
-            />
-            {query ? (
-              <Tooltip>
-                <TooltipTrigger
-                  type="button"
-                  onClick={() => setQuery('')}
-                  className="flex h-6 w-6 flex-none items-center justify-center rounded text-paper-faint hover:text-paper"
-                  aria-label="Bersihkan pencarian"
-                >
-                  <X className="h-3.5 w-3.5" aria-hidden="true" />
-                </TooltipTrigger>
-                <TooltipContent className="rounded border border-hairline bg-bg-raised p-2 font-mono text-xs text-paper">
-                  Bersihkan kata kunci pencarian
-                </TooltipContent>
-              </Tooltip>
-            ) : null}
-          </div>
-
-          <p className="sr-only" role="status">
-            {filtered.length === 0
-              ? 'Tidak ada hasil yang cocok.'
-              : `${filtered.length} hasil tersedia.`}
-          </p>
-          <div
-            ref={listRef}
-            id="cmd-palette-listbox"
-            role="listbox"
-            aria-label="Hasil perintah"
-            className="max-h-72 space-y-1 overflow-y-auto p-2 font-mono text-xs"
+          <Command
+            label="Navigasi Perintah Redaksi"
+            shouldFilter={false}
+            className="flex size-full flex-col overflow-hidden bg-transparent text-paper"
           >
-            {filtered.length === 0 ? (
-              <div className="py-8 text-center font-sans text-xs text-paper-faint">
+            <div className="flex items-center border-b border-hairline bg-bg px-3.5">
+              <Search className="h-4 w-4 flex-none text-brass" aria-hidden="true" />
+              <Command.Input
+                value={query}
+                onValueChange={setQuery}
+                placeholder="Ketik rute tujuan, modul, atau perintah..."
+                aria-label="Cari perintah atau rute Dashboard"
+                className="h-11 w-full border-0 bg-transparent px-3 font-mono text-xs text-paper placeholder:text-paper-faint focus:outline-none"
+                autoFocus
+              />
+              {query ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    type="button"
+                    onClick={() => setQuery('')}
+                    className="flex h-6 w-6 flex-none items-center justify-center rounded text-paper-faint hover:text-paper"
+                    aria-label="Bersihkan pencarian"
+                  >
+                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  </TooltipTrigger>
+                  <TooltipContent className="rounded border border-hairline bg-bg-raised p-2 font-mono text-xs text-paper">
+                    Bersihkan kata kunci pencarian
+                  </TooltipContent>
+                </Tooltip>
+              ) : null}
+            </div>
+
+            <p className="sr-only" role="status">
+              {filtered.length === 0
+                ? 'Tidak ada hasil yang cocok.'
+                : `${filtered.length} hasil tersedia.`}
+            </p>
+            <Command.List
+              aria-label="Hasil perintah"
+              className="max-h-72 space-y-1 overflow-y-auto p-2 font-mono text-xs"
+            >
+              <Command.Empty className="py-8 text-center font-sans text-xs text-paper-faint">
                 Tidak ada perintah atau rute yang cocok dengan kata kunci.
-              </div>
-            ) : (
-              filtered.map((cmd, index) => {
+              </Command.Empty>
+              {filtered.map((cmd) => {
                 const Icon = cmd.icon;
-                const isSelected = index === selectedIndex;
 
                 return (
-                  <button
+                  <Command.Item
                     key={cmd.id}
-                    id={`cmd-palette-option-${cmd.id}`}
-                    role="option"
-                    aria-selected={isSelected}
-                    data-selected={isSelected}
-                    type="button"
-                    tabIndex={-1}
-                    onClick={() => handleSelect(cmd.href)}
-                    onMouseEnter={() => setSelectedIndex(index)}
-                    className={`flex w-full items-center justify-between rounded px-3 py-2 text-left transition-colors duration-180 ${
-                      isSelected
-                        ? 'border border-hairline-strong bg-bg-raised-2 text-paper'
-                        : 'border border-transparent bg-transparent text-paper-dim hover:text-paper'
-                    }`}
+                    value={cmd.id}
+                    keywords={[cmd.label, cmd.category]}
+                    onSelect={() => handleSelect(cmd.href)}
+                    aria-label={cmd.label}
+                    className="group/cmd-item flex w-full cursor-pointer items-center justify-between gap-2 rounded border border-transparent bg-transparent px-3 py-2 text-left text-paper-dim transition-colors duration-180 hover:text-paper data-[selected=true]:border-hairline-strong data-[selected=true]:bg-bg-raised-2 data-[selected=true]:text-paper"
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`flex h-6 w-6 items-center justify-center rounded border ${
-                          isSelected
-                            ? 'border-brass/40 bg-bg text-brass-soft'
-                            : 'border-hairline bg-bg text-paper-faint'
-                        }`}
-                      >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-6 w-6 flex-none items-center justify-center rounded border border-hairline bg-bg text-paper-faint group-data-[selected=true]/cmd-item:border-brass/40 group-data-[selected=true]/cmd-item:bg-bg group-data-[selected=true]/cmd-item:text-brass-soft">
                         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                       </div>
-                      <span className="font-sans text-xs font-medium text-paper">
+                      <span className="truncate font-sans text-xs font-medium text-paper">
                         {cmd.label}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-none items-center gap-2">
                       <span className="rounded border border-hairline bg-bg px-1.5 py-0.5 font-mono text-[10px] text-paper-faint">
                         {cmd.category}
                       </span>
-                      {isSelected ? (
-                        <CornerDownLeft className="h-3 w-3 text-brass" aria-hidden="true" />
-                      ) : null}
+                      <CornerDownLeft className="h-3 w-3 text-brass opacity-0 group-data-[selected=true]/cmd-item:opacity-100" aria-hidden="true" />
                     </div>
-                  </button>
+                  </Command.Item>
                 );
-              })
-            )}
-          </div>
+              })}
+            </Command.List>
 
-          <div className="flex items-center justify-between border-t border-hairline bg-bg px-3.5 py-2 font-mono text-[10px] text-paper-faint">
-            <div className="flex items-center gap-3">
-              <span>↑↓ Navigasi</span>
-              <span>↵ Pilih</span>
-              <span>ESC Tutup</span>
+            <div className="flex items-center justify-between border-t border-hairline bg-bg px-3.5 py-2 font-mono text-[10px] text-paper-faint">
+              <div className="flex items-center gap-3">
+                <span>↑↓ Navigasi</span>
+                <span>↵ Pilih</span>
+                <span>ESC Tutup</span>
+              </div>
+              <span>INDICATE Command Mesh</span>
             </div>
-            <span>INDICATE Command Mesh</span>
-          </div>
+          </Command>
         </DialogContent>
       </Dialog>
     </>

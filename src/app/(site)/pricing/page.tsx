@@ -17,7 +17,7 @@ import {
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
 const DESCRIPTION =
-  'Satu harga pasti Rp550.000 per bulan, sudah termasuk PPN: hubungi kami, bayar manual via transfer bank, dan organisasi Anda diaktifkan maksimal 1x24 jam — berjalan terus tanpa kedaluwarsa.';
+  'Hubungi kami, bayar manual via transfer bank, dan organisasi Anda diaktifkan maksimal 1x24 jam — berjalan terus tanpa kedaluwarsa.';
 
 export function generateMetadata(): Metadata {
   return siteMetadata('Harga', DESCRIPTION, '/pricing');
@@ -28,9 +28,9 @@ export default async function HargaPage() {
   return (
     <PublicPage
       eyebrow="Harga"
-      title="Satu harga pasti: Rp550.000 per bulan"
+      title="Satu harga pasti, hubungi kami"
       description={DESCRIPTION}
-      meta={['Sudah termasuk PPN', 'Berjalan terus', 'Tanpa biaya tersembunyi']}
+      meta={['Pembayaran manual', 'Berjalan terus', 'Tanpa biaya tersembunyi']}
       trail={[{ href: '/', label: 'Beranda' }]}
       actions={
         <>
@@ -39,7 +39,7 @@ export default async function HargaPage() {
       }
     >
       <Section title="Cara membeli" description="Tiga langkah, tanpa formulir rumit." eyebrow="Alur">
-        <WhatsAppCard message="Halo Indicate, saya ingin berlangganan Rp550.000 per bulan." />
+        <WhatsAppCard message="Halo Indicate, saya ingin berlangganan." />
       </Section>
       <Section title="Sebelum menghubungi" description="Siapkan info ini agar aktivasi berjalan cepat." eyebrow="Persiapan">
         <Prose>
@@ -49,7 +49,13 @@ export default async function HargaPage() {
         </Prose>
       </Section>
       <Section title="Jaminan kami" description="Komitmen yang tertulis, bukan sekadar janji." eyebrow="Jaminan" tone="band">
-        <FeatureGrid items={withIcons(GUARANTEES, GUARANTEE_ICONS)} columns={2} />
+        <FeatureGrid
+          items={withIcons(
+            GUARANTEES.filter((item) => !item.title.includes('Rp')),
+            GUARANTEE_ICONS,
+          )}
+          columns={2}
+        />
       </Section>
       <Section
         title="Kanal lain"

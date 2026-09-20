@@ -61,7 +61,12 @@ const nextConfig: NextConfig = {
   },
 
   images: {
-    formats: ['image/avif', 'image/webp'],
+    // Wajib true: mematikan Image Optimization API Vercel agar tidak ada
+    // biaya transformasi gambar; seluruh <Image> disajikan apa adanya.
+    // `formats` dihapus karena hanya berlaku untuk optimizer yang dimatikan;
+    // `remotePatterns` dipertahankan sebagai kontrak allowlist bila flag ini
+    // suatu saat dikembalikan.
+    unoptimized: true,
     remotePatterns: [
       ...tenantImagePatterns(),
       {
@@ -93,6 +98,9 @@ const nextConfig: NextConfig = {
       'react-day-picker',
       'react-resizable-panels',
       'input-otp',
+      'nuqs',
+      '@tanstack/react-table',
+      'date-fns',
     ],
   },
 };

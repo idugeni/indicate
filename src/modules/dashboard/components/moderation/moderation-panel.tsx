@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { formatRelatif, formatTanggal } from '@/modules/dashboard/components/shared/dashboard-dates';
 
 interface ReportRow {
   readonly id: string;
@@ -391,7 +392,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               </p>
               <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">{hold.reason}</p>
               <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
-                {hold.id} · {hold.createdAt}
+                {hold.id} · {formatTanggal(hold.createdAt)} ({formatRelatif(hold.createdAt)})
               </p>
               {hold.releasedAt === null ? (
                 <div className="mt-2">
@@ -453,8 +454,8 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               </p>
               <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">{row.reason}</p>
               <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
-                {row.id} · {row.createdAt}
-                {row.completedAt ? ` → ${row.completedAt}` : ''}
+                {row.id} · {formatTanggal(row.createdAt)} ({formatRelatif(row.createdAt)})
+                {row.completedAt ? ` → ${formatTanggal(row.completedAt)}` : ''}
               </p>
             </li>
           ))}

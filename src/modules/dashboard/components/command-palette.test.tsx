@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { CommandPalette } from '@/modules/dashboard/components/command-palette';
@@ -10,8 +10,29 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
+beforeEach(() => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe(): void {
+        return undefined;
+      }
+      unobserve(): void {
+        return undefined;
+      }
+      disconnect(): void {
+        return undefined;
+      }
+    },
+  );
+  if (typeof Element !== 'undefined' && Element.prototype.scrollIntoView === undefined) {
+    Element.prototype.scrollIntoView = () => undefined;
+  }
+});
+
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   pushMock.mockReset();
 });
 

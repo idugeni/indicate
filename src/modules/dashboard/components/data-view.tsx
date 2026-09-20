@@ -1,9 +1,25 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useState } from 'react';
-import { Archive, ArrowRight, CircleCheck, CircleX, Copy, FileText, Globe, Images, Inbox, LayoutGrid, ListChecks, MoreVertical, Pencil, PenLine, RefreshCw, RotateCcw, SearchX, Send } from 'lucide-react';
+import { Fragment, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { Archive, ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Check, CircleCheck, CircleX, Copy, Eye, FileText, Globe, Images, Inbox, LayoutGrid, ListChecks, MoreVertical, Network, Pencil, PenLine, RefreshCw, RotateCcw, SearchX, Send, SlidersHorizontal } from 'lucide-react';
+import { flexRender, useTable } from '@tanstack/react-table';
+import {
+  columnVisibilityFeature,
+  createSortedRowModel,
+  rowSelectionFeature,
+  rowSortingFeature,
+  tableFeatures,
+  type Column,
+  type ColumnDef,
+  type ColumnVisibilityState,
+  type Row,
+  type RowSelectionState,
+  type SortingState,
+} from '@tanstack/table-core';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,11 +49,34 @@ import {
   DashboardContentSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
-import { getEditorConfig, type LookupTables } from '@/modules/dashboard/components/shared/record-editor-config';
+import type { AnalyticsProjection } from '@/modules/dashboard/models';
+import { BentoUtamaLoading, GaleriTelemetriLoading } from '@/modules/dashboard/components/analytics/bento-skeletons';
+import { getEditorConfig, type EditorTransition, type LookupTables } from '@/modules/dashboard/components/shared/record-editor-config';
 import { RecordEditorForm } from '@/modules/dashboard/components/shared/record-editor-form';
 import { cn } from '@/ui/cn';
 
 const PAGE_SIZE = 10;
+
+function isAnalyticsProjection(value: unknown): value is AnalyticsProjection {
+  if (typeof value !== 'object' || value === null) return false;
+  return Array.isArray((value as Partial<AnalyticsProjection>).articlesByRegion);
+}
+
+const GaleriTelemetri = dynamic(
+  () =>
+    import('@/modules/dashboard/components/analytics/galeri').then((module) => ({
+      default: module.GaleriTelemetri,
+    })),
+  { loading: () => <GaleriTelemetriLoading /> },
+);
+
+const BentoUtama = dynamic(
+  () =>
+    import('@/modules/dashboard/components/analytics/bento-utama').then((module) => ({
+      default: module.BentoUtama,
+    })),
+  { loading: () => <BentoUtamaLoading /> },
+);
 
 interface DataViewProps {
   readonly view: View;
@@ -120,7 +159,7 @@ function resolveItemName(item: Record<string, unknown>): string {
 /**
  * Render dashboard data collections.
  *
- * @remarks setState-in-effect: defer setEditing() to a microtask so setState stays async.
+ * @remarks Koleksi generik dirender lewat tabel TanStack (sortir, seleksi, visibilitas kolom); paginasi tetap milik workspace agar sinkron dengan `?page=`.
  */
 export function DataView({
   view,
@@ -131,41 +170,6 @@ export function DataView({
   command,
   onSelectView,
 }: DataViewProps) {
-  const copyToClipboard = useCallback(async (text: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success(`Tersalin ke clipboard: ${label}`);
-    } catch {
-      toast.error(`Gagal menyalin ${label}.`);
-    }
-  }, []);
-
-  const [editing, setEditing] = useState<{ readonly collection: string; readonly id: string } | null>(null);
-
-  useEffect(() => {
-    void Promise.resolve().then(() => setEditing(null));
-  }, [view]);
-
-  const handlePageChange = useCallback(
-    (page: number) => {
-      setEditing(null);
-      onPageChange(page);
-    },
-    [onPageChange],
-  );
-
-  const runTransition = useCallback(
-    async (action: string, item: Record<string, unknown>) => {
-      if (command === undefined) return;
-      const result = await command(action, { id: item.id, expectedVersion: Number(item.version ?? 1) });
-      if (result !== null) {
-        setEditing(null);
-        onRefresh();
-      }
-    },
-    [command, onRefresh],
-  );
-
   if (data === null || data === undefined) {
     return view === 'dashboard' ? <DashboardContentSkeleton /> : <DashboardCollectionsSkeleton />;
   }
@@ -176,22 +180,24 @@ export function DataView({
 
     const asNumber = (value: unknown): number => (typeof value === 'number' ? value : 0);
     const activeDomains = asNumber(dashboard.activeDomains);
+    const activeSubdomains = asNumber(dashboard.activeSubdomains);
     const activeSites = asNumber(dashboard.activeSites);
     const activeArticles = asNumber(dashboard.activeArticles);
     const archivedArticles = asNumber(dashboard.archivedArticles);
     const activeMedia = asNumber(dashboard.activeMedia);
     const successfulOutcomes = asNumber(dashboard.successfulSiteOutcomes);
     const failedOutcomes = asNumber(dashboard.failedSiteOutcomes);
-    const outcomeTotal = successfulOutcomes + failedOutcomes;
-    const successRate = outcomeTotal > 0 ? Math.round((successfulOutcomes / outcomeTotal) * 100) : 0;
+    const analytics = isAnalyticsProjection(dashboard.analytics) ? dashboard.analytics : null;
 
     const metrics = [
       { key: 'domains', label: 'Domain Aktif', value: activeDomains, icon: Globe },
+      { key: 'subdomains', label: 'Subdomain Aktif', value: activeSubdomains, icon: Network },
       { key: 'sites', label: 'Situs Aktif', value: activeSites, icon: LayoutGrid },
       { key: 'articles', label: 'Artikel Aktif', value: activeArticles, icon: FileText },
       { key: 'archived', label: 'Artikel Diarsipkan', value: archivedArticles, icon: Archive },
       { key: 'media', label: 'Media Aktif', value: activeMedia, icon: Images },
       { key: 'delivered', label: 'Penyaluran Berhasil', value: successfulOutcomes, icon: CircleCheck },
+      { key: 'views', label: 'Total Tayangan', value: analytics?.totalViews ?? 0, icon: Eye },
     ];
 
     const setupSteps: readonly { key: string; label: string; description: string; done: boolean; target: View }[] = [
@@ -209,15 +215,12 @@ export function DataView({
       { target: 'configuration', label: 'Domain & wilayah', description: 'Atur tenansi jaringan', icon: Globe },
     ];
 
-    const jobEntries = jobs ? Object.entries(jobs) : [];
-    const jobTotal = jobEntries.reduce((sum, [, count]) => sum + Number(count), 0);
-
     return (
-      <div className="space-y-6">
+      <div className="grid min-w-0 grid-cols-1 gap-4 min-[420px]:grid-cols-6 lg:grid-cols-12">
         {completedSteps < setupSteps.length ? (
           <section
             aria-label="Panduan mulai cepat"
-            className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6"
+            className="col-span-full rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="m-0 inline-flex items-center gap-2 font-sans text-sm font-semibold tracking-tight text-paper">
@@ -264,11 +267,9 @@ export function DataView({
           </section>
         ) : null}
 
-        {/* Tanpa m-0: anak langsung space-y-6, margin-bottom 24px datang dari sana.
-            m-0 akan mengalahkan space-y di Tailwind v4 karena rule space memakai :where (spesifisitas nol). */}
-        <dl className="grid min-w-0 grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-3">
+        <dl className="col-span-full grid min-w-0 grid-cols-1 gap-4 min-[420px]:grid-cols-12 lg:grid-cols-4">
           {metrics.map(({ key, label, value, icon: Icon }) => (
-            <div key={key} className="min-w-0 overflow-hidden rounded-lg border border-hairline bg-bg-raised p-5 transition-colors duration-150 hover:border-hairline-strong">
+            <div key={key} className="min-w-0 overflow-hidden rounded-lg border border-hairline bg-bg-raised p-5 transition-colors duration-150 min-[420px]:col-span-6 hover:border-hairline-strong lg:col-span-1">
               <dt className="flex min-w-0 items-center gap-1.5 font-sans text-xs font-medium text-paper-dim">
                 <Icon className="h-3.5 w-3.5 flex-none text-brass" aria-hidden="true" />
                 <span className="min-w-0 flex-1 break-words leading-snug">
@@ -282,106 +283,17 @@ export function DataView({
           ))}
         </dl>
 
-        <div className={jobs ? 'grid min-w-0 gap-4 lg:grid-cols-5' : 'grid min-w-0 gap-4'}>
-          {jobs ? (
-            <section
-              aria-label="Distribusi antrean penerbitan"
-              className="min-w-0 overflow-hidden rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6 lg:col-span-3"
-            >
-              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-3">
-                <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
-                  Antrean penerbitan per status
-                </h2>
-                <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
-                  {jobTotal.toLocaleString('id-ID')} tugas
-                </p>
-              </div>
-              <ul className="m-0 grid list-none gap-0 p-0">
-                {jobEntries.length === 0 ? (
-                  <li className="py-6 text-center">
-                    <p className="m-0 font-sans text-[13px] text-paper-dim">Belum ada tugas penerbitan.</p>
-                    <p className="m-0 mt-1 font-sans text-xs text-paper-faint">
-                      Tugas antrean akan terdaftar di sini setelah artikel pertama dijadwalkan.
-                    </p>
-                  </li>
-                ) : (
-                  jobEntries.map(([state, count]) => {
-                  const meta = resolveStatus(state);
-                  const pct = jobTotal > 0 ? (Number(count) / jobTotal) * 100 : 0;
-                  return (
-                    <li key={state} className="grid min-w-0 grid-cols-[minmax(0,5.5rem)_minmax(0,1fr)_auto] items-center gap-2 border-b border-hairline py-2.5 last:border-0 min-[480px]:grid-cols-[8rem_minmax(0,1fr)_auto] sm:gap-3">
-                      <span className="inline-flex min-w-0 items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider">
-                        <span className={cn('h-1.5 w-1.5 flex-none', STATUS_DOT[meta.tone])} aria-hidden="true" />
-                        <span className={cn('min-w-0 flex-1 truncate', STATUS_TEXT[meta.tone])} title={meta.label}>{meta.label}</span>
-                      </span>
-                      <span className="h-1 min-w-0 overflow-hidden rounded-full bg-bg-raised-2" role="presentation">
-                        <span
-                          className={cn('block h-full rounded-full transition-[width] duration-500 ease-out', STATUS_DOT[meta.tone])}
-                          style={{ width: `${Math.max(pct, 2)}%` }}
-                        />
-                      </span>
-                      <span className="flex-none font-mono text-sm font-bold tabular-nums text-paper">
-                        {Number(count).toLocaleString('id-ID')}
-                      </span>
-                    </li>
-                  );
-                })
-              )}
-              </ul>
-            </section>
-          ) : null}
-
-          <section
-            aria-label="Kesehatan penyaluran"
-            className={jobs ? 'min-w-0 overflow-hidden rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6 lg:col-span-2' : 'min-w-0 overflow-hidden rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6'}
-          >
-            <h2 className="m-0 border-b border-hairline pb-3 font-sans text-sm font-semibold tracking-tight text-paper">
-              Kesehatan penyaluran
-            </h2>
-            {outcomeTotal > 0 ? (
-              <>
-                <p className="m-0 mt-4 font-mono text-3xl font-bold tabular-nums tracking-tight text-paper">
-                  {successRate}
-                  <span className="text-base font-medium text-paper-faint">%</span>
-                </p>
-                <p className="m-0 mt-1 font-sans text-xs text-paper-dim">hasil situs berakhir sukses</p>
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-bg-raised-2" role="presentation">
-                  <div
-                    className="h-full rounded-full bg-signal transition-[width] duration-500 ease-out"
-                    style={{ width: `${successRate}%` }}
-                  />
-                </div>
-                <dl className="m-0 mt-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <dt className="inline-flex items-center gap-1.5 font-sans text-xs text-paper-dim">
-                      <CircleCheck className="h-3.5 w-3.5 text-signal" aria-hidden="true" />
-                      Berhasil
-                    </dt>
-                    <dd className="m-0 font-mono text-sm font-bold tabular-nums text-paper">
-                      {successfulOutcomes.toLocaleString('id-ID')}
-                    </dd>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <dt className="inline-flex items-center gap-1.5 font-sans text-xs text-paper-dim">
-                      <CircleX className="h-3.5 w-3.5 text-error" aria-hidden="true" />
-                      Gagal
-                    </dt>
-                    <dd className="m-0 font-mono text-sm font-bold tabular-nums text-paper">
-                      {failedOutcomes.toLocaleString('id-ID')}
-                    </dd>
-                  </div>
-                </dl>
-              </>
-            ) : (
-              <p className="m-0 mt-4 font-sans text-[13px] leading-relaxed text-paper-dim">
-                Belum ada hasil penyaluran. Hasil situs akan diringkas di sini setelah antrean pertama berjalan.
-              </p>
-            )}
-          </section>
-        </div>
+        <BentoUtama
+          jobs={jobs ?? {}}
+          berhasil={successfulOutcomes}
+          gagal={failedOutcomes}
+          aktif={activeArticles}
+          arsip={archivedArticles}
+          analytics={analytics}
+        />
 
         {onSelectView === undefined ? null : (
-          <section aria-label="Aksi cepat">
+          <section aria-label="Aksi cepat" className="col-span-full">
             <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {quickActions.map(({ target, label, description, icon: Icon }) => (
                 <button
@@ -459,229 +371,522 @@ export function DataView({
     );
   }
 
+  if (view === 'analytics') {
+    const projection = data as Partial<AnalyticsProjection>;
+    if (Array.isArray(projection.articlesByRegion)) {
+      return (
+        <div className="space-y-10">
+          <GaleriTelemetri data={projection as AnalyticsProjection} />
+        </div>
+      );
+    }
+  }
+
   return (
     <div className="space-y-10">
-      {collections.map(([collectionKey, rawItems]) => {
-        const totalItems = rawItems.length;
-        const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
-        const safePage = Math.min(Math.max(1, currentPage), totalPages);
-        const startIndex = (safePage - 1) * PAGE_SIZE;
-        const paginatedItems = rawItems.slice(startIndex, startIndex + PAGE_SIZE);
-
-        const formattedTitle = collectionKey
-          .replace(/([A-Z])/g, ' $1')
-          .trim();
-
-        const editorConfig = command === undefined ? undefined : getEditorConfig(collectionKey);
-
-        return (
-          <section key={collectionKey} aria-label={formattedTitle} className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
-            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-3">
-              <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
-                {formattedTitle}
-              </h2>
-              <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
-                {totalItems.toLocaleString('id-ID')} entitas
-              </p>
-            </div>
-
-            {totalItems === 0 ? (
-              <EmptyState
-                title="Koleksi kosong"
-                description={`Tidak ada rekaman untuk koleksi ${collectionKey}. Buat entitas pertama melalui formulir modul ini, atau segarkan untuk memeriksa antrean ingress.`}
-                icon={<Inbox className="h-5 w-5 text-paper-faint" aria-hidden="true" />}
-                action={
-                  <Button
-                    type="button"
-                    onClick={onRefresh}
-                    className="inline-flex items-center gap-2 border border-hairline-strong bg-transparent px-3 py-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-                    Segarkan koleksi
-                  </Button>
-                }
-              />
-            ) : (
-              <div className="overflow-x-auto">
-                <Table className="w-full text-sm">
-                  <caption className="sr-only">
-                    {formattedTitle}: {totalItems.toLocaleString('id-ID')} entitas, halaman {safePage} dari {totalPages}
-                  </caption>
-                  <TableHeader>
-                    <TableRow className="border-b border-hairline hover:bg-transparent">
-                      <TableHead className="font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">
-                        Nama
-                      </TableHead>
-                      <TableHead className="font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">
-                        Status
-                      </TableHead>
-                      <TableHead className="w-12 text-right font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">
-                        <span className="sr-only">Aksi</span>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedItems.map((item, index) => {
-                      const itemId = String(item.id ?? `${collectionKey}-${startIndex + index}`);
-                      const name = resolveItemName(item);
-                      const status = String(item.status ?? item.state ?? item.verificationStatus ?? 'unknown');
-                      const transitions = (editorConfig?.transitions ?? []).filter(
-                        (transition) => transition.whenStatus === undefined || transition.whenStatus.includes(status),
-                      );
-                      const isEditing = editing !== null && editing.collection === collectionKey && editing.id === itemId;
-
-                      return (
-                        <Fragment key={itemId}>
-                        <TableRow
-                          className="border-b border-hairline/60 transition-colors duration-180 hover:bg-bg-raised-2"
-                        >
-                          <TableCell className="py-3">
-                            <div className="font-sans font-medium text-paper">
-                              {name}
-                            </div>
-                            <div className="mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
-                              {itemId}
-                            </div>
-                          </TableCell>
-
-                          <TableCell className="py-3">
-                            <StatusMark status={status} />
-                          </TableCell>
-
-                          <TableCell className="py-3 text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                className="inline-flex h-7 w-7 items-center justify-center text-paper-faint transition-colors duration-180 hover:bg-bg-raised-2 hover:text-paper focus:outline-none"
-                                aria-label={`Aksi untuk ${name}`}
-                                title={`Aksi untuk ${name}`}
-                              >
-                                <MoreVertical className="h-4 w-4" aria-hidden="true" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                align="end"
-                                className="border border-hairline bg-bg-raised p-1 font-sans text-xs shadow-none"
-                              >
-                                <DropdownMenuLabel className="px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-paper-faint">
-                                  Opsi data
-                                </DropdownMenuLabel>
-                                <DropdownMenuItem
-                                  onClick={() => void copyToClipboard(itemId, `ID: ${itemId}`)}
-                                  className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-xs text-paper-dim hover:text-paper"
-                                >
-                                  <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                                  <span>Salin ID</span>
-                                </DropdownMenuItem>
-                                {editorConfig !== undefined ? (
-                                  <DropdownMenuItem
-                                    onClick={() => setEditing({ collection: collectionKey, id: itemId })}
-                                    className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-xs text-paper-dim hover:text-paper"
-                                  >
-                                    <Pencil className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
-                                    <span>Ubah rekaman</span>
-                                  </DropdownMenuItem>
-                                ) : null}
-                                {transitions.length > 0 ? (
-                                  <>
-                                    <DropdownMenuSeparator className="bg-hairline" />
-                                    {transitions.map((transition) => (
-                                      <DropdownMenuItem
-                                        key={transition.action}
-                                        onClick={() => void runTransition(transition.action, item)}
-                                        className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-xs text-paper-dim hover:text-paper"
-                                      >
-                                        {transition.action.includes('archive') ? (
-                                          <Archive className="h-3.5 w-3.5" aria-hidden="true" />
-                                        ) : (
-                                          <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-                                        )}
-                                        <span>{transition.label}</span>
-                                      </DropdownMenuItem>
-                                    ))}
-                                  </>
-                                ) : null}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                        {isEditing && editorConfig !== undefined ? (
-                          <TableRow className="border-b border-hairline/60 hover:bg-transparent">
-                            <TableCell colSpan={3} className="p-0">
-                              <RecordEditorForm
-                                config={editorConfig}
-                                collectionKey={collectionKey}
-                                item={item}
-                                lookups={lookups}
-                                onSaved={() => {
-                                  setEditing(null);
-                                  onRefresh();
-                                }}
-                                onCancel={() => setEditing(null)}
-                                onSubmit={async (action, payload) =>
-                                  command === undefined ? null : command(action, payload)
-                                }
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ) : null}
-                        </Fragment>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-
-            {totalItems > 0 ? (
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                <span role="status" aria-live="polite" aria-atomic="true" className="font-mono text-[11px] tabular-nums text-paper-faint">
-                  {startIndex + 1}–{Math.min(startIndex + PAGE_SIZE, totalItems)} dari{' '}
-                  {totalItems}
-                </span>
-
-                <Pagination className="mx-0 w-auto">
-                  <PaginationContent className="gap-4">
-                    <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        aria-label="Ke halaman sebelumnya"
-                        aria-disabled={safePage <= 1}
-                        tabIndex={safePage <= 1 ? -1 : 0}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (safePage > 1) handlePageChange(safePage - 1);
-                        }}
-                        className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${
-                          safePage <= 1 ? 'pointer-events-none opacity-40' : 'cursor-pointer'
-                        }`}
-                      />
-                    </PaginationItem>
-                    <PaginationItem>
-                      <span className="font-mono text-[11px] tabular-nums text-paper-faint">
-                        {safePage} / {totalPages}
-                      </span>
-                    </PaginationItem>
-                    <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        aria-label="Ke halaman berikutnya"
-                        aria-disabled={safePage >= totalPages}
-                        tabIndex={safePage >= totalPages ? -1 : 0}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (safePage < totalPages) handlePageChange(safePage + 1);
-                        }}
-                        className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${
-                          safePage >= totalPages ? 'pointer-events-none opacity-40' : 'cursor-pointer'
-                        }`}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
-            ) : null}
-          </section>
-        );
-      })}
+      {collections.map(([collectionKey, rawItems]) => (
+        <CollectionTable
+          key={collectionKey}
+          collectionKey={collectionKey}
+          rawItems={rawItems}
+          lookups={lookups}
+          currentPage={currentPage}
+          onPageChange={onPageChange}
+          onRefresh={onRefresh}
+          command={command}
+        />
+      ))}
     </div>
+  );
+}
+
+type CollectionItem = Record<string, unknown>;
+
+const dashboardFeatures = tableFeatures({
+  rowSortingFeature,
+  rowSelectionFeature,
+  columnVisibilityFeature,
+  sortedRowModel: createSortedRowModel(),
+});
+
+type DashboardFeatures = typeof dashboardFeatures;
+
+/**
+ * Render satu koleksi generik sebagai tabel interaktif.
+ *
+ * @remarks Sortir, seleksi baris, dan visibilitas kolom milik TanStack; paginasi tetap milik workspace agar sinkron dengan `?page=`.
+ */
+function CollectionTable({
+  collectionKey,
+  rawItems,
+  lookups,
+  currentPage,
+  onPageChange,
+  onRefresh,
+  command,
+}: {
+  readonly collectionKey: string;
+  readonly rawItems: readonly CollectionItem[];
+  readonly lookups: LookupTables;
+  readonly currentPage: number;
+  readonly onPageChange: (page: number) => void;
+  readonly onRefresh: () => void;
+  readonly command: ((action: string, payload: unknown) => Promise<unknown>) | undefined;
+}) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const editorConfig = command === undefined ? undefined : getEditorConfig(collectionKey);
+  const formattedTitle = collectionKey.replace(/([A-Z])/g, ' $1').trim();
+  const memoData = useMemo(() => [...rawItems], [rawItems]);
+
+  const copyToClipboard = async (text: string, label: string): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`Tersalin ke clipboard: ${label}`);
+    } catch {
+      toast.error(`Gagal menyalin ${label}.`);
+    }
+  };
+
+  const runTransition = async (action: string, item: CollectionItem): Promise<void> => {
+    if (command === undefined) return;
+    const result = await command(action, { id: item.id, expectedVersion: Number(item.version ?? 1) });
+    if (result !== null) {
+      setEditingId(null);
+      onRefresh();
+    }
+  };
+
+  const table = useTable({
+    features: dashboardFeatures,
+    data: memoData,
+    columns: [
+      {
+        id: 'select',
+        enableSorting: false,
+        enableHiding: false,
+        header: ({ table: headerTable }) => (
+          <Checkbox
+            checked={headerTable.getIsAllPageRowsSelected()}
+            indeterminate={headerTable.getIsSomePageRowsSelected()}
+            onCheckedChange={(value) => headerTable.toggleAllPageRowsSelected(value)}
+            aria-label="Pilih semua baris halaman ini"
+            className="border-hairline-strong data-checked:border-brass data-checked:bg-brass data-checked:text-bg"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(value)}
+            aria-label={`Pilih ${resolveItemName(row.original)}`}
+            className="border-hairline-strong data-checked:border-brass data-checked:bg-brass data-checked:text-bg"
+          />
+        ),
+      },
+      {
+        id: 'name',
+        accessorFn: (item) => resolveItemName(item),
+        header: ({ column }) => <SortHeader label="Nama" column={column} />,
+        cell: ({ row }) => {
+          const name = resolveItemName(row.original);
+          return (
+            <>
+              <div className="font-sans font-medium text-paper">
+                {name}
+              </div>
+              <div className="mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
+                {row.id}
+              </div>
+            </>
+          );
+        },
+      },
+      {
+        id: 'status',
+        accessorFn: (item) => String(item.status ?? item.state ?? item.verificationStatus ?? 'unknown'),
+        header: ({ column }) => <SortHeader label="Status" column={column} />,
+        cell: ({ getValue }) => <StatusMark status={String(getValue())} />,
+      },
+      {
+        id: 'actions',
+        enableSorting: false,
+        enableHiding: false,
+        header: () => <span className="sr-only">Aksi</span>,
+        cell: ({ row }) => {
+          const item = row.original;
+          const itemId = row.id;
+          const name = resolveItemName(item);
+          const status = String(item.status ?? item.state ?? item.verificationStatus ?? 'unknown');
+          const transitions = (editorConfig?.transitions ?? []).filter(
+            (transition) => transition.whenStatus === undefined || transition.whenStatus.includes(status),
+          );
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="inline-flex h-7 w-7 items-center justify-center text-paper-faint transition-colors duration-180 hover:bg-bg-raised-2 hover:text-paper focus:outline-none"
+                aria-label={`Aksi untuk ${name}`}
+                title={`Aksi untuk ${name}`}
+              >
+                <MoreVertical className="h-4 w-4" aria-hidden="true" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="border border-hairline bg-bg-raised p-1 font-sans text-xs shadow-none"
+              >
+                <DropdownMenuLabel className="px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-paper-faint">
+                  Opsi data
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => void copyToClipboard(itemId, `ID: ${itemId}`)}
+                  className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-xs text-paper-dim hover:text-paper"
+                >
+                  <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Salin ID</span>
+                </DropdownMenuItem>
+                {editorConfig !== undefined ? (
+                  <DropdownMenuItem
+                    onClick={() => setEditingId(itemId)}
+                    className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-xs text-paper-dim hover:text-paper"
+                  >
+                    <Pencil className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
+                    <span>Ubah rekaman</span>
+                  </DropdownMenuItem>
+                ) : null}
+                {transitions.length > 0 ? (
+                  <>
+                    <DropdownMenuSeparator className="bg-hairline" />
+                    {transitions.map((transition) => (
+                      <DropdownMenuItem
+                        key={transition.action}
+                        onClick={() => void runTransition(transition.action, item)}
+                        className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-xs text-paper-dim hover:text-paper"
+                      >
+                        {transition.action.includes('archive') ? (
+                          <Archive className="h-3.5 w-3.5" aria-hidden="true" />
+                        ) : (
+                          <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                        )}
+                        <span>{transition.label}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+      },
+    ] satisfies ColumnDef<DashboardFeatures, CollectionItem>[],
+    state: { sorting, rowSelection, columnVisibility },
+    onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
+    onColumnVisibilityChange: setColumnVisibility,
+    getRowId: (original, index) => String(original.id ?? `${collectionKey}-${index}`),
+  });
+
+  const totalItems = rawItems.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safePage - 1) * PAGE_SIZE;
+  const pageRows = table.getSortedRowModel().rows.slice(startIndex, startIndex + PAGE_SIZE);
+  const selectedRows = table.getSelectedRowModel().rows;
+  const selectedCount = selectedRows.length;
+
+  const statusOf = (row: Row<DashboardFeatures, CollectionItem>): string =>
+    String(row.original.status ?? row.original.state ?? row.original.verificationStatus ?? 'unknown');
+  const commonTransitions: readonly EditorTransition[] = (editorConfig?.transitions ?? []).filter(
+    (transition) =>
+      selectedCount > 0 &&
+      selectedRows.every((row) => transition.whenStatus === undefined || transition.whenStatus.includes(statusOf(row))),
+  );
+
+  const handlePageChange = (page: number): void => {
+    setEditingId(null);
+    onPageChange(page);
+  };
+
+  const copySelected = async (): Promise<void> => {
+    const ids = selectedRows.map((row) => String(row.original.id ?? row.id));
+    try {
+      await navigator.clipboard.writeText(ids.join('\n'));
+      toast.success(`${ids.length} ID tersalin ke clipboard.`);
+    } catch {
+      toast.error('Gagal menyalin ID terpilih.');
+    }
+  };
+
+  const runBulk = async (transition: EditorTransition, rows: readonly Row<DashboardFeatures, CollectionItem>[]): Promise<void> => {
+    if (command === undefined) return;
+    let berhasil = 0;
+    try {
+      await toast.promise(
+        (async () => {
+          for (const row of rows) {
+            const result = await command(transition.action, {
+              id: row.original.id,
+              expectedVersion: Number(row.original.version ?? 1),
+            });
+            if (result !== null) berhasil += 1;
+          }
+          if (berhasil === 0) throw new Error(`Aksi ${transition.label} gagal untuk semua ${rows.length} baris.`);
+          return berhasil;
+        })(),
+        {
+          loading: `Menjalankan ${transition.label} untuk ${rows.length} baris…`,
+          success: (jumlah) => `${transition.label}: ${jumlah} dari ${rows.length} baris berhasil.`,
+          error: (cause) => (cause instanceof Error ? cause.message : `Aksi ${transition.label} gagal.`),
+        },
+      );
+    } catch {
+      /* Toast galat sudah tampil; abaikan penolakan lanjutan. */
+    }
+    setEditingId(null);
+    setRowSelection({});
+    onRefresh();
+  };
+
+  return (
+    <section key={collectionKey} aria-label={formattedTitle} className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-3">
+        <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
+          {formattedTitle}
+        </h2>
+        <div className="flex items-center gap-3">
+          <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
+            {totalItems.toLocaleString('id-ID')} entitas
+          </p>
+          {totalItems > 0 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label="Alihkan kolom tabel"
+                className="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 font-sans text-[11px] text-paper-dim transition-colors duration-180 hover:border-hairline-strong hover:text-paper focus:outline-none"
+              >
+                <SlidersHorizontal className="h-3 w-3" aria-hidden="true" />
+                Kolom
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="border border-hairline bg-bg-raised p-1 font-sans text-xs shadow-none"
+              >
+                {table
+                  .getAllLeafColumns()
+                  .filter((column) => column.getCanHide())
+                  .map((column) => (
+                    <DropdownMenuItem
+                      key={column.id}
+                      onClick={() => column.toggleVisibility()}
+                      className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-xs text-paper-dim hover:text-paper"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border ${column.getIsVisible() ? 'border-brass bg-brass text-bg' : 'border-hairline-strong'}`}
+                      >
+                        {column.getIsVisible() ? <Check className="h-3 w-3" aria-hidden="true" /> : null}
+                      </span>
+                      <span>{column.id === 'name' ? 'Nama' : 'Status'}</span>
+                    </DropdownMenuItem>
+                  ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+        </div>
+      </div>
+
+      {selectedCount > 0 ? (
+        <div role="status" className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-hairline-strong bg-bg px-3 py-2">
+          <span className="font-mono text-[11px] tabular-nums text-paper-dim">
+            {selectedCount} baris terpilih
+          </span>
+          <button
+            type="button"
+            onClick={() => void copySelected()}
+            className="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 font-sans text-[11px] text-paper transition-colors duration-180 hover:border-hairline-strong hover:text-brass"
+          >
+            <Copy className="h-3 w-3" aria-hidden="true" />
+            Salin ID
+          </button>
+          {commonTransitions.map((transition) => (
+            <button
+              key={transition.action}
+              type="button"
+              onClick={() => void runBulk(transition, selectedRows)}
+              className="inline-flex h-7 items-center rounded border border-brass/60 px-2 font-sans text-[11px] text-paper transition-colors duration-180 hover:text-brass"
+            >
+              {transition.label} ({selectedCount})
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setRowSelection({})}
+            className="inline-flex h-7 items-center rounded px-2 font-sans text-[11px] text-paper-faint transition-colors duration-180 hover:text-paper"
+          >
+            Batal
+          </button>
+        </div>
+      ) : null}
+
+      {totalItems === 0 ? (
+        <EmptyState
+          title="Koleksi kosong"
+          description={`Tidak ada rekaman untuk koleksi ${collectionKey}. Buat entitas pertama melalui formulir modul ini, atau segarkan untuk memeriksa antrean ingress.`}
+          icon={<Inbox className="h-5 w-5 text-paper-faint" aria-hidden="true" />}
+          action={
+            <Button
+              type="button"
+              onClick={onRefresh}
+              className="inline-flex items-center gap-2 border border-hairline-strong bg-transparent px-3 py-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint"
+            >
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+              Segarkan koleksi
+            </Button>
+          }
+        />
+      ) : (
+        <div className="overflow-x-auto">
+          <Table className="w-full text-sm">
+            <caption className="sr-only">
+              {formattedTitle}: {totalItems.toLocaleString('id-ID')} entitas, halaman {safePage} dari {totalPages}
+            </caption>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id} className="border-b border-hairline hover:bg-transparent">
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      className={
+                        header.column.id === 'actions'
+                          ? 'w-12 text-right font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint'
+                          : 'font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint'
+                      }
+                    >
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {pageRows.map((row) => {
+                const item = row.original;
+                const itemId = row.id;
+                const isEditing = editingId === itemId;
+                return (
+                  <Fragment key={itemId}>
+                    <TableRow className="border-b border-hairline/60 transition-colors duration-180 hover:bg-bg-raised-2">
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} className={cell.column.id === 'actions' ? 'py-3 text-right' : 'py-3'}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    {isEditing && editorConfig !== undefined ? (
+                      <TableRow className="border-b border-hairline/60 hover:bg-transparent">
+                        <TableCell colSpan={4} className="p-0">
+                          <RecordEditorForm
+                            config={editorConfig}
+                            collectionKey={collectionKey}
+                            item={item}
+                            lookups={lookups}
+                            onSaved={() => {
+                              setEditingId(null);
+                              onRefresh();
+                            }}
+                            onCancel={() => setEditingId(null)}
+                            onSubmit={async (action, payload) =>
+                              command === undefined ? null : command(action, payload)
+                            }
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {totalItems > 0 ? (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <span role="status" aria-live="polite" aria-atomic="true" className="font-mono text-[11px] tabular-nums text-paper-faint">
+            {startIndex + 1}–{Math.min(startIndex + PAGE_SIZE, totalItems)} dari{' '}
+            {totalItems}
+          </span>
+
+          <Pagination className="mx-0 w-auto">
+            <PaginationContent className="gap-4">
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  aria-label="Ke halaman sebelumnya"
+                  aria-disabled={safePage <= 1}
+                  tabIndex={safePage <= 1 ? -1 : 0}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (safePage > 1) handlePageChange(safePage - 1);
+                  }}
+                  className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${
+                    safePage <= 1 ? 'pointer-events-none opacity-40' : 'cursor-pointer'
+                  }`}
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <span className="font-mono text-[11px] tabular-nums text-paper-faint">
+                  {safePage} / {totalPages}
+                </span>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  aria-label="Ke halaman berikutnya"
+                  aria-disabled={safePage >= totalPages}
+                  tabIndex={safePage >= totalPages ? -1 : 0}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (safePage < totalPages) handlePageChange(safePage + 1);
+                  }}
+                  className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${
+                    safePage >= totalPages ? 'pointer-events-none opacity-40' : 'cursor-pointer'
+                  }`}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * Tombol kepala kolom yang mengalihkan arah sortir TanStack.
+ *
+ * @param label - Nama kolom yang tampil.
+ * @param column - Kolom TanStack yang bisa disortir.
+ * @returns Tombol sortir dengan ikon arah aktif.
+ */
+function SortHeader({
+  label,
+  column,
+}: {
+  readonly label: string;
+  readonly column: Column<DashboardFeatures, CollectionItem>;
+}) {
+  const sorted = column.getIsSorted();
+  const Icon = sorted === 'asc' ? ArrowUp : sorted === 'desc' ? ArrowDown : ArrowUpDown;
+  return (
+    <button
+      type="button"
+      onClick={column.getToggleSortingHandler()}
+      aria-label={`Urutkan ${label}`}
+      className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint transition-colors duration-180 hover:text-paper"
+    >
+      {label}
+      <Icon className="h-3 w-3" aria-hidden="true" />
+    </button>
   );
 }

@@ -2,7 +2,7 @@ import { and, desc, eq, gt, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { AnalyticsProjection, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, OperationsProjection, RetentionRunRecord } from '@/modules/dashboard/models';
+import type { AktivitasJam, AktivitasTerbaru, AnalyticsProjection, ArusPenerbit, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, JendelaDeret, OperationsProjection, RetentionRunRecord, TugasHarian } from '@/modules/dashboard/models';
 import { DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
 import { redact } from '@/core/security/redaction';
 import {
@@ -15,7 +15,34 @@ import { completeInvalidationValues } from '@/data/repos/shared/delivery-invalid
 type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 const iso = (value: Date) => value.toISOString();
+const isoOf = (value: Date | string) => (value instanceof Date ? value.toISOString() : new Date(value).toISOString());
 const optionalIso = (value: Date | null) => value?.toISOString() ?? null;
+
+function kurangiHari(hari: string, jumlah: number): string {
+  const tanggal = new Date(`${hari}T00:00:00Z`);
+  tanggal.setUTCDate(tanggal.getUTCDate() - jumlah);
+  return tanggal.toISOString().slice(0, 10);
+}
+
+function daftarHari(awal: string, akhir: string): string[] {
+  const daftar: string[] = [];
+  let hari = awal;
+  while (hari <= akhir) {
+    daftar.push(hari);
+    const tanggal = new Date(`${hari}T00:00:00Z`);
+    tanggal.setUTCDate(tanggal.getUTCDate() + 1);
+    hari = tanggal.toISOString().slice(0, 10);
+  }
+  return daftar;
+}
+
+function tentukanJendela(filter: { readonly from?: string | undefined; readonly to?: string | undefined }): JendelaDeret {
+  const hariIni = new Date().toISOString().slice(0, 10);
+  const akhir = filter.to === undefined ? hariIni : filter.to.slice(0, 10);
+  const awalBaku = filter.from === undefined ? kurangiHari(akhir, 89) : filter.from.slice(0, 10);
+  const awalJepit = kurangiHari(akhir, 89) > awalBaku ? kurangiHari(akhir, 89) : awalBaku;
+  return awalJepit > akhir ? { awal: akhir, akhir } : { awal: awalJepit, akhir };
+}
 const MANUAL_PURGE_BULK_COOLDOWN_SECONDS = 120;
 
 /**
@@ -117,8 +144,9 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const orgId = actor.organizationId;
       const from: string | null = filter.from ?? null;
       const to: string | null = filter.to ?? null;
+      const jendela = tentukanJendela(filter);
       const inArticleRange = sql`(${from}::timestamptz IS NULL OR created_at >= ${from}::timestamptz) AND (${to}::timestamptz IS NULL OR created_at <= ${to}::timestamptz)`;
-      const [byRegion, byCategory, byPublisher, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions] = await Promise.all([
+      const [byRegion, byCategory, byPublisher, byStatus, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions, tugasBaris, jamBaris, tugasBaru, hasilBaru, artikelBaru, arusBaris, penyaluranBaris, viewsBaris, viewsSiteBaris, viewsArticleBaris, totalBaris, siteLabelBaris, categoryLabelBaris, publisherLabelBaris, regionLabelBaris, articleLabelBaris] = await Promise.all([
         transaction.execute<{ key: string; count: number }>(sql`
           SELECT region_id AS key, count(*)::int AS count FROM articles
           WHERE organization_id = ${orgId} AND ${inArticleRange} GROUP BY region_id`),
@@ -128,6 +156,9 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         transaction.execute<{ key: string; count: number }>(sql`
           SELECT publisher_id AS key, count(*)::int AS count FROM articles
           WHERE organization_id = ${orgId} AND publisher_id IS NOT NULL AND ${inArticleRange} GROUP BY publisher_id`),
+        transaction.execute<{ key: string; count: number }>(sql`
+          SELECT status AS key, count(*)::int AS count FROM articles
+          WHERE organization_id = ${orgId} AND ${inArticleRange} GROUP BY status`),
         transaction.execute<{ key: string; count: number }>(sql`
           SELECT state AS key, count(*)::int AS count FROM publishing_jobs
           WHERE organization_id = ${orgId}
@@ -165,6 +196,102 @@ export class DrizzleDashboardRepository implements DashboardRepository {
           WHERE s.organization_id = ${orgId}
             AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
             AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)`),
+        transaction.execute<{ hari: string; state: string; count: number }>(sql`
+          SELECT (COALESCE(j.finalized_at, j.updated_at) AT TIME ZONE 'UTC')::date::text AS hari,
+            j.state AS state, count(*)::int AS count
+          FROM publishing_jobs j
+          WHERE j.organization_id = ${orgId}
+            AND (COALESCE(j.finalized_at, j.updated_at) AT TIME ZONE 'UTC')::date >= ${jendela.awal}::date
+            AND (COALESCE(j.finalized_at, j.updated_at) AT TIME ZONE 'UTC')::date <= ${jendela.akhir}::date
+          GROUP BY 1, 2`),
+        transaction.execute<{ hari: number; jam: number; jumlah: number }>(sql`
+          SELECT ((EXTRACT(DOW FROM s.state_occurred_at AT TIME ZONE 'Asia/Jakarta')::int + 6) % 7) AS hari,
+            EXTRACT(HOUR FROM s.state_occurred_at AT TIME ZONE 'Asia/Jakarta')::int AS jam,
+            count(*)::int AS jumlah
+          FROM article_sites s
+          WHERE s.organization_id = ${orgId}
+            AND (s.state_occurred_at AT TIME ZONE 'UTC')::date >= ${jendela.awal}::date
+            AND (s.state_occurred_at AT TIME ZONE 'UTC')::date <= ${jendela.akhir}::date
+          GROUP BY 1, 2`),
+        transaction.execute<{ id: string; label: string; status: string; at: Date | string }>(sql`
+          SELECT j.id AS id, ar.title AS label, j.state AS status, COALESCE(j.finalized_at, j.updated_at) AS at
+          FROM publishing_jobs j
+          JOIN articles ar ON ar.organization_id = ${orgId} AND ar.id = j.article_id
+          WHERE j.organization_id = ${orgId}
+            AND (${from}::timestamptz IS NULL OR COALESCE(j.finalized_at, j.updated_at) >= ${from}::timestamptz)
+            AND (${to}::timestamptz IS NULL OR COALESCE(j.finalized_at, j.updated_at) <= ${to}::timestamptz)
+          ORDER BY at DESC LIMIT 8`),
+        transaction.execute<{ id: string; label: string; status: string; at: Date | string }>(sql`
+          SELECT s.id AS id, ar.title AS label, s.state AS status, s.state_occurred_at AS at
+          FROM article_sites s
+          JOIN articles ar ON ar.organization_id = ${orgId} AND ar.id = s.article_id
+          WHERE s.organization_id = ${orgId}
+            AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
+            AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)
+          ORDER BY at DESC LIMIT 8`),
+        transaction.execute<{ id: string; label: string; status: string; at: Date | string }>(sql`
+          SELECT a.id AS id, a.title AS label, a.status AS status, a.created_at AS at
+          FROM articles a
+          WHERE a.organization_id = ${orgId} AND ${inArticleRange}
+          ORDER BY at DESC LIMIT 8`),
+        transaction.execute<{ penerbit: string; situs: string; hasil: string; jumlah: number }>(sql`
+          SELECT a.publisher_id AS penerbit, s.site_id AS situs, s.state AS hasil, count(*)::int AS jumlah
+          FROM article_sites s
+          JOIN articles a ON a.organization_id = ${orgId} AND a.id = s.article_id
+          WHERE s.organization_id = ${orgId} AND a.publisher_id IS NOT NULL
+            AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
+            AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)
+          GROUP BY 1, 2, 3`),
+        transaction.execute<{ hari: string; state: string; count: number }>(sql`
+          SELECT (s.state_occurred_at AT TIME ZONE 'UTC')::date::text AS hari,
+            s.state AS state, count(*)::int AS count
+          FROM article_sites s
+          WHERE s.organization_id = ${orgId}
+            AND (s.state_occurred_at AT TIME ZONE 'UTC')::date >= ${jendela.awal}::date
+            AND (s.state_occurred_at AT TIME ZONE 'UTC')::date <= ${jendela.akhir}::date
+          GROUP BY 1, 2`),
+        transaction.execute<{ hari: string; penyaluran: number; views: number }>(sql`
+          SELECT (s.state_occurred_at AT TIME ZONE 'UTC')::date::text AS hari,
+            count(*)::int AS penyaluran, COALESCE(SUM(s.view_count), 0)::int AS views
+          FROM article_sites s
+          WHERE s.organization_id = ${orgId}
+            AND (s.state_occurred_at AT TIME ZONE 'UTC')::date >= ${jendela.awal}::date
+            AND (s.state_occurred_at AT TIME ZONE 'UTC')::date <= ${jendela.akhir}::date
+          GROUP BY 1`),
+        transaction.execute<{ id: string; nama: string; jumlah: number; tayangan: number }>(sql`
+          SELECT s.site_id AS id, st.normalized_hostname AS nama,
+            count(*)::int AS jumlah, COALESCE(SUM(s.view_count), 0)::int AS tayangan
+          FROM article_sites s
+          JOIN sites st ON st.organization_id = ${orgId} AND st.id = s.site_id
+          WHERE s.organization_id = ${orgId}
+            AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
+            AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)
+          GROUP BY 1, 2`),
+        transaction.execute<{ id: string; nama: string; jumlah: number; tayangan: number }>(sql`
+          SELECT s.article_id AS id, ar.title AS nama,
+            count(*)::int AS jumlah, COALESCE(SUM(s.view_count), 0)::int AS tayangan
+          FROM article_sites s
+          JOIN articles ar ON ar.organization_id = ${orgId} AND ar.id = s.article_id
+          WHERE s.organization_id = ${orgId}
+            AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
+            AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)
+          GROUP BY 1, 2`),
+        transaction.execute<{ total: number; salur: number }>(sql`
+          SELECT COALESCE(SUM(s.view_count), 0)::int AS total, count(*)::int AS salur
+          FROM article_sites s
+          WHERE s.organization_id = ${orgId}
+            AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
+            AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)`),
+        transaction.execute<{ id: string; nama: string }>(sql`
+          SELECT id, normalized_hostname AS nama FROM sites WHERE organization_id = ${orgId}`),
+        transaction.execute<{ id: string; nama: string }>(sql`
+          SELECT id, name AS nama FROM categories WHERE organization_id = ${orgId}`),
+        transaction.execute<{ id: string; nama: string }>(sql`
+          SELECT id, name AS nama FROM publishers WHERE organization_id = ${orgId}`),
+        transaction.execute<{ id: string; nama: string }>(sql`
+          SELECT id, name AS nama FROM regions WHERE organization_id = ${orgId}`),
+        transaction.execute<{ id: string; nama: string }>(sql`
+          SELECT id, title AS nama FROM articles WHERE organization_id = ${orgId}`),
       ]);
       const points = (rows: readonly { key: string; count: number }[]) =>
         [...rows].map(({ key, count }) => ({ key, count })).sort((a, b) => a.key.localeCompare(b.key));
@@ -177,15 +304,90 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         }
         return [...counts].sort(([left], [right]) => left.localeCompare(right)).map(([key, count]) => ({ key, count }));
       };
+      const perHari = new Map<string, { diterbitkan: number; gagal: number; antre: number }>();
+      for (const row of tugasBaris) {
+        const slot = perHari.get(row.hari) ?? { diterbitkan: 0, gagal: 0, antre: 0 };
+        if (row.state === 'published') slot.diterbitkan += row.count;
+        else if (row.state === 'failed') slot.gagal += row.count;
+        else if (row.state === 'queued' || row.state === 'processing' || row.state === 'retrying') slot.antre += row.count;
+        perHari.set(row.hari, slot);
+      }
+      const tugasHarian: TugasHarian[] = daftarHari(jendela.awal, jendela.akhir).map((hari) => ({
+        hari,
+        ...(perHari.get(hari) ?? { diterbitkan: 0, gagal: 0, antre: 0 }),
+      }));
+      const aktivitasPerJam: AktivitasJam[] = [...jamBaris]
+        .sort((kiri, kanan) => kiri.hari - kanan.hari || kiri.jam - kanan.jam)
+        .map(({ hari, jam, jumlah }) => ({ hari, jam, jumlah }));
+      const aktivitasTerbaru: AktivitasTerbaru[] = [
+        ...tugasBaru.map((row) => ({ id: `job:${row.id}`, label: row.label, status: row.status, at: isoOf(row.at) })),
+        ...hasilBaru.map((row) => ({ id: `hasil:${row.id}`, label: row.label, status: row.status, at: isoOf(row.at) })),
+        ...artikelBaru.map((row) => ({ id: `artikel:${row.id}`, label: row.label, status: row.status, at: isoOf(row.at) })),
+      ]
+        .sort((kiri, kanan) => (kiri.at < kanan.at ? 1 : kiri.at > kanan.at ? -1 : 0))
+        .slice(0, 8);
+      const arusPenerbit: ArusPenerbit[] = [...arusBaris]
+        .sort((kiri, kanan) => kanan.jumlah - kiri.jumlah)
+        .map(({ penerbit, situs, hasil, jumlah }) => ({ penerbit, situs, hasil, jumlah }));
+      const penyaluranPerHari = new Map<string, { diterbitkan: number; gagal: number; antre: number }>();
+      for (const row of penyaluranBaris) {
+        const slot = penyaluranPerHari.get(row.hari) ?? { diterbitkan: 0, gagal: 0, antre: 0 };
+        if (row.state === 'published') slot.diterbitkan += row.count;
+        else if (row.state === 'failed') slot.gagal += row.count;
+        else if (row.state === 'queued' || row.state === 'processing' || row.state === 'retrying' || row.state === 'unpublished') slot.antre += row.count;
+        penyaluranPerHari.set(row.hari, slot);
+      }
+      const penyaluranHarian = daftarHari(jendela.awal, jendela.akhir).map((hari) => ({
+        hari,
+        ...(penyaluranPerHari.get(hari) ?? { diterbitkan: 0, gagal: 0, antre: 0 }),
+      }));
+      const viewsPerHari = new Map(viewsBaris.map((row) => [row.hari, row] as const));
+      const viewsHarian = daftarHari(jendela.awal, jendela.akhir).map((hari) => {
+        const row = viewsPerHari.get(hari);
+        return { hari, penyaluran: row?.penyaluran ?? 0, views: row?.views ?? 0 };
+      });
+      const siteLabels: Record<string, string> = {};
+      for (const row of siteLabelBaris) siteLabels[row.id] = row.nama;
+      const categoryLabels: Record<string, string> = {};
+      for (const row of categoryLabelBaris) categoryLabels[row.id] = row.nama;
+      const publisherLabels: Record<string, string> = {};
+      for (const row of publisherLabelBaris) publisherLabels[row.id] = row.nama;
+      const regionLabels: Record<string, string> = {};
+      for (const row of regionLabelBaris) regionLabels[row.id] = row.nama;
+      const articleLabels: Record<string, string> = {};
+      for (const row of articleLabelBaris) articleLabels[row.id] = row.nama;
+      for (const row of viewsSiteBaris) siteLabels[row.id] ??= row.nama;
+      for (const row of viewsArticleBaris) articleLabels[row.id] ??= row.nama;
       return Object.freeze({
         articlesByRegion: points(byRegion),
         articlesBySite: points(bySite),
         articlesByCategory: points(byCategory),
         articlesByPublisher: points(byPublisher),
+        articlesByStatus: points(byStatus),
         jobsByState: points(jobsByState),
         jobsBySiteRegionAndState: dimensionPoints(jobDimensions),
         outcomesBySiteAndState: points(outcomesBySite),
         outcomesBySiteRegionAndState: dimensionPoints(outcomeDimensions),
+        jendela,
+        tugasHarian,
+        aktivitasPerJam,
+        aktivitasTerbaru,
+        arusPenerbit,
+        penyaluranHarian,
+        viewsHarian,
+        viewsBySite: [...viewsSiteBaris]
+          .sort((kiri, kanan) => kanan.tayangan - kiri.tayangan)
+          .map((row) => ({ key: row.id, count: row.jumlah, views: row.tayangan })),
+        viewsByArticle: [...viewsArticleBaris]
+          .sort((kiri, kanan) => kanan.tayangan - kiri.tayangan)
+          .map((row) => ({ key: row.id, count: row.jumlah, views: row.tayangan })),
+        totalViews: totalBaris[0]?.total ?? 0,
+        totalPenyaluran: totalBaris[0]?.salur ?? 0,
+        siteLabels,
+        categoryLabels,
+        publisherLabels,
+        regionLabels,
+        articleLabels,
       });
     });
   }
@@ -479,12 +681,13 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const organization = await transaction.select({ id: organizations.id }).from(organizations).where(and(eq(organizations.id, actor.organizationId), eq(organizations.status, 'active'))).limit(1);
       if (organization.length !== 1) throw new DashboardAccessDeniedError();
       const [row] = await transaction.execute<{
-        readonly activeDomains: number; readonly activeSites: number; readonly activeArticles: number; readonly archivedArticles: number;
+        readonly activeDomains: number; readonly activeSubdomains: number; readonly activeSites: number; readonly activeArticles: number; readonly archivedArticles: number;
         readonly jobsQueued: number; readonly jobsProcessing: number; readonly jobsPublished: number; readonly jobsFailed: number; readonly jobsRetrying: number;
         readonly successfulSiteOutcomes: number; readonly failedSiteOutcomes: number; readonly activeMedia: number;
       }>(sql`
         SELECT
           (SELECT count(*)::int FROM domains WHERE organization_id = ${actor.organizationId} AND status = 'active') AS "activeDomains",
+          (SELECT count(*)::int FROM sites s JOIN domains d ON d.organization_id = ${actor.organizationId} AND d.id = s.domain_id WHERE s.organization_id = ${actor.organizationId} AND s.status = 'active' AND s.normalized_hostname <> d.normalized_hostname) AS "activeSubdomains",
           (SELECT count(*)::int FROM sites WHERE organization_id = ${actor.organizationId} AND status = 'active') AS "activeSites",
           (SELECT count(*)::int FROM articles WHERE organization_id = ${actor.organizationId} AND status = 'active') AS "activeArticles",
           (SELECT count(*)::int FROM articles WHERE organization_id = ${actor.organizationId} AND status = 'archived') AS "archivedArticles",
@@ -503,6 +706,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const scopeRow = scopeRows[0];
       return Object.freeze({
         activeDomains: row.activeDomains,
+        activeSubdomains: row.activeSubdomains,
         activeSites: row.activeSites,
         activeArticles: row.activeArticles,
         archivedArticles: row.archivedArticles,

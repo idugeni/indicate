@@ -11,7 +11,7 @@ documents nominative trademark use. It does not modify any license.
 - shadcn/ui — MIT © shadcn. Component patterns vendored into `src/components/ui/*`.
 - `class-variance-authority`, `clsx`, `tailwind-merge` — MIT/Apache-2.0, see `package-lock.json`.
 - `cmdk`, `embla-carousel-react`, `vaul`, `sonner`, `input-otp` — MIT.
-- `react-icons` — MIT © react-icons contributors. No third-party brand glyphs are rendered; the Google sign-in button uses text only.
+- `react-icons` — MIT © react-icons contributors. The Google sign-in button renders the official multicolor "G" inline (nominative use per Google branding guidelines), not a react-icons glyph.
 - `react-day-picker`, `recharts` — MIT.
 
 ## Icons and fonts

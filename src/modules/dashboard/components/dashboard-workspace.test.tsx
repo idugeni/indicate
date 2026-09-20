@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { DashboardWorkspace } from '@/modules/dashboard/components/dashboard-workspace';
 
@@ -8,8 +8,17 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
 
+vi.mock('nuqs', async () => {
+  const React = await import('react');
+  return {
+    parseAsStringEnum: () => ({ withDefault: (fallback: unknown) => ({ withOptions: () => fallback }) }),
+    parseAsInteger: { withDefault: (fallback: unknown) => ({ withOptions: () => fallback }) },
+    useQueryState: (key: string) => React.useState(key === 'page' ? 1 : 'dashboard'),
+  };
+});
+
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), promise: vi.fn((task: Promise<unknown>) => task) },
 }));
 
 vi.mock('@/modules/dashboard/switch-organization-action', () => ({
@@ -77,5 +86,48 @@ describe('Ruang kerja dashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Artikel & Naskah' }));
     expect(await screen.findByText('Manajemen Artikel & Konten')).toBeDefined();
     expect(await screen.findByText('Tidak ada rekaman data')).toBeDefined();
+  });
+
+  it('menempelkan footer di bawah dengan label pengelola', async () => {
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANISASI} />);
+    await screen.findByText('Ringkasan Ekosistem Redaksi');
+    const footer = screen.getByText(/PT Sanca Phena Cakra/).closest('footer');
+    expect(footer).not.toBeNull();
+    expect(footer?.className).toContain('sticky');
+    expect(footer?.className).toContain('bottom-0');
+    expect(screen.getByText('Next.js 16 · Supabase · Drizzle · Cloudflare · Upstash')).toBeDefined();
+  });
+
+  it('melewatkan fetch analitik saat snapshot sudah memuatnya', async () => {
+    const fetchMock = vi.fn(async (_url: unknown) => ({ ok: true, json: async () => ({}) }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <DashboardWorkspace
+        displayName="Redaktur Uji"
+        organizations={ORGANISASI}
+        initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1, analytics: { articlesByRegion: [] } } }}
+      />,
+    );
+    await screen.findByText('Domain Aktif');
+    const urls = fetchMock.mock.calls.map(([url]) => String(url));
+    expect(urls.some((url) => url.includes('view=analytics'))).toBe(false);
+    expect(urls.some((url) => url.includes('view=dashboard'))).toBe(false);
+  });
+
+  it('mengambil analitik saat snapshot belum memuatnya', async () => {
+    const fetchMock = vi.fn(async (_url: unknown) => ({ ok: true, json: async () => ({}) }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <DashboardWorkspace
+        displayName="Redaktur Uji"
+        organizations={ORGANISASI}
+        initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1 } }}
+      />,
+    );
+    await screen.findByText('Domain Aktif');
+    await waitFor(() => {
+      const urls = fetchMock.mock.calls.map(([url]) => String(url));
+      expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);
+    });
   });
 });

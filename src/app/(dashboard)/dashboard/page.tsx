@@ -15,6 +15,7 @@ import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorizati
 import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
 import { UuidGenerator } from '@/core/system/uuid-generator';
 import { DashboardWorkspace, type OrganizationOption } from '@/modules/dashboard/components/dashboard-workspace';
+import { DashboardFooter } from '@/modules/dashboard/components/dashboard-footer';
 import { RedeemInviteForm } from '@/modules/dashboard/components/billing/redeem-invite-form';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
 import DashboardLoading from '@/app/(dashboard)/loading';
@@ -98,32 +99,35 @@ async function DashboardBody() {
   }
   if (organizations.length === 0) {
     return (
-      <main className="mx-auto flex min-h-[70svh] w-full max-w-2xl flex-col items-center justify-center px-6 py-16 text-center">
-        <p className="m-0 font-mono text-xs uppercase tracking-wider text-brass">Akun aktif</p>
-        <h1 className="mt-3 font-sans text-2xl font-bold tracking-tight text-paper sm:text-3xl">
-          Halo, {displayName} — akun Anda belum terhubung ke organisasi mana pun.
-        </h1>
-        <p className="mt-3 max-w-xl font-sans text-sm leading-relaxed text-paper-dim">
-          Minta admin platform menetapkan Anda sebagai admin pertama organisasi Anda, atau hubungi tim penjualan bila
-          Anda pelanggan baru. Begitu keanggotaan aktif, dasbor redaksi langsung tersedia di halaman ini.
-        </p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href="/contact"
-            className="inline-flex items-center justify-center rounded bg-brass px-5 py-2.5 font-sans text-sm font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft"
-          >
-            Hubungi Kami
-          </Link>
-          <Link
-            href="/pricing"
-            className="inline-flex items-center justify-center rounded border border-hairline-strong bg-transparent px-5 py-2.5 font-sans text-sm font-medium text-paper-dim transition-colors duration-180 hover:text-paper"
-          >
-            Lihat Info Harga
-          </Link>
-          <SignOutDialog mode="button" />
-        </div>
-        <RedeemInviteForm />
-      </main>
+      <div className="flex min-h-screen supports-[min-height:100svh]:min-h-svh flex-col bg-bg text-paper">
+        <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+          <p className="m-0 font-mono text-xs uppercase tracking-wider text-brass">Akun aktif</p>
+          <h1 className="mt-3 font-sans text-2xl font-bold tracking-tight text-paper sm:text-3xl">
+            Halo, {displayName} — akun Anda belum terhubung ke organisasi mana pun.
+          </h1>
+          <p className="mt-3 max-w-xl font-sans text-sm leading-relaxed text-paper-dim">
+            Minta admin platform menetapkan Anda sebagai admin pertama organisasi Anda, atau hubungi tim penjualan bila
+            Anda pelanggan baru. Begitu keanggotaan aktif, dasbor redaksi langsung tersedia di halaman ini.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/contact"
+              className="inline-flex items-center justify-center rounded bg-brass px-5 py-2.5 font-sans text-sm font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft"
+            >
+              Hubungi Kami
+            </Link>
+            <Link
+              href="/pricing"
+              className="inline-flex items-center justify-center rounded border border-hairline-strong bg-transparent px-5 py-2.5 font-sans text-sm font-medium text-paper-dim transition-colors duration-180 hover:text-paper"
+            >
+              Lihat Info Harga
+            </Link>
+            <SignOutDialog mode="button" />
+          </div>
+          <RedeemInviteForm />
+        </main>
+        <DashboardFooter />
+      </div>
     );
   }
   const firstOrganization = organizations[0];

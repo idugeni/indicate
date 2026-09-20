@@ -43,4 +43,13 @@ describe('Kontrol filter', () => {
     expect(screen.getByLabelText('Tipe aksi')).toBeDefined();
     expect(screen.getByLabelText('Hasil transaksi')).toBeDefined();
   });
+
+  it('menerapkan preset rentang cepat untuk tampilan telemetri', () => {
+    const terapkan = vi.fn();
+    render(<FilterControls view="analytics" data={null} onApply={terapkan} />);
+    expect(screen.getByLabelText('Dari tanggal')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: '7 hari' }));
+    expect(terapkan).toHaveBeenCalledWith(expect.stringContaining('from='));
+    expect(terapkan).toHaveBeenCalledWith(expect.stringContaining('to='));
+  });
 });

@@ -21,6 +21,15 @@ describe('Tombol Google', () => {
     expect(screen.getByRole('button', { name: /lanjutkan dengan google/i })).toBeDefined();
   });
 
+  it('merender markah-G empat warna resmi Google', () => {
+    const { container } = render(<GoogleButton />);
+    const paths = container.querySelectorAll('svg path');
+    const fills = new Set(Array.from(paths).map((path) => path.getAttribute('fill')));
+    for (const brand of ['#4285F4', '#34A853', '#FBBC05', '#EA4335']) {
+      expect(fills.has(brand)).toBe(true);
+    }
+  });
+
   it('menampilkan status sibuk saat proses oauth berjalan', async () => {
     oauthMock.mockImplementationOnce(() => new Promise(() => {}));
     render(<GoogleButton />);

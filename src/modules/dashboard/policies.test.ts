@@ -121,8 +121,14 @@ describe('buildDashboard and filterAuditLogs', () => {
   it('menghitung agregat tenant dan mengabaikan org lain', () => {
     const projection = buildDashboard(
       stateWith({
-        domains: [{ organizationId: 'org-1', status: 'active' }, { organizationId: 'org-1', status: 'inactive' }],
-        sites: [{ organizationId: 'org-1', status: 'active' }],
+        domains: [
+          { id: 'd-1', organizationId: 'org-1', status: 'active', normalizedHostname: 'portal.example' },
+          { organizationId: 'org-1', status: 'inactive' },
+        ],
+        sites: [
+          { id: 's-1', organizationId: 'org-1', status: 'active', domainId: 'd-1', normalizedHostname: 'portal.example' },
+          { id: 's-2', organizationId: 'org-1', status: 'active', domainId: 'd-1', normalizedHostname: 'kota.portal.example' },
+        ],
         articles: [article({ status: 'active' }), article({ id: 'art-2', status: 'archived' })],
         publishingJobs: [{ organizationId: 'org-1', state: 'queued' }, { organizationId: 'org-lain', state: 'queued' }],
         articleSites: [{ organizationId: 'org-1', state: 'published' }],
@@ -130,7 +136,8 @@ describe('buildDashboard and filterAuditLogs', () => {
       }) as never,
     );
     expect(projection.activeDomains).toBe(1);
-    expect(projection.activeSites).toBe(1);
+    expect(projection.activeSubdomains).toBe(1);
+    expect(projection.activeSites).toBe(2);
     expect(projection.activeArticles).toBe(1);
     expect(projection.archivedArticles).toBe(1);
     expect(projection.jobsByState.queued).toBe(1);

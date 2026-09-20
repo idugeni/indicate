@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 
 import { PublishingForm } from '@/modules/dashboard/components/publishing/publishing-form';
 
-vi.mock('sonner', () => ({ toast: { warning: vi.fn(), info: vi.fn() } }));
+vi.mock('sonner', () => ({ toast: { warning: vi.fn(), info: vi.fn(), promise: vi.fn((task: Promise<unknown>) => task) } }));
 
 afterEach(() => {
   cleanup();

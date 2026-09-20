@@ -179,6 +179,16 @@ Aturan gaya:
 - Self-healing: jika file yang kamu sentuh masih memakai `../` yang bisa
   diganti `@/`, migrasikan dalam PR yang sama.
 
+## Gambar (biaya Vercel)
+
+Seluruh gambar wajib tanpa optimasi Vercel agar tidak ada biaya
+transformasi `/_next/image`:
+
+1. `next.config.ts` wajib `images.unoptimized: true` — saklar global,
+   tidak boleh dimatikan tanpa persetujuan owner.
+2. Setiap `<Image>` dari `next/image` wajib prop `unoptimized`
+   (pertahanan lapis kedua bila saklar global berubah).
+
 ## Komit (WAJIB — bukan relaxed mode)
 
 Bagian ini mengikat setiap agen AI dan manusia. Tidak dicover oleh

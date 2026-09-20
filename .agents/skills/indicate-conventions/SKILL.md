@@ -22,11 +22,11 @@ Detailed guidance lives in `references/`: `architecture.md`, `tenancy-security.m
 
 Hexagonal / ports-and-adapters modular monolith under `src/`. Dependency direction: `app/` → `modules/` → `core/` + ports ← `integrations/`, with `data/` for persistence.
 
-- `src/app/` handles Next.js App Router concerns (route groups `(site)`, `(network)`, `(auth)`, `(dashboard)`, `api/`). Prefer delegating business logic to `src/modules/` and `src/data/`.
+- `src/app/` handles Next.js App Router concerns (route groups `(site)`, `(network)`, `(auth)`, `(dashboard)`, `api/`, plus `domain-pending/`, `tg/`, and machine-readable surfaces `llms.txt/`, `robots.txt/`, `rss.xml/`, `sitemap.xml/`, `news-sitemap.xml/`). Prefer delegating business logic to `src/modules/` and `src/data/`.
 - `src/modules/` (`audit`, `auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `moderation`, `persisted-config`, `publishing`, `site`) encapsulates product capabilities. Only `dashboard`, `delivery`, and `integrations` expose a barrel `index.ts` — import other modules by file path, never by bare module specifier.
-- `src/integrations/` holds provider adapters (`supabase`, `storage`, `redis`, `telegram`, `cloudflare`, `vercel`) and stays server-only (`server-only` import at the top).
+- `src/integrations/` holds provider adapters (`supabase`, `storage`, `redis`, `telegram`, `cloudflare`, `vercel`, `email`) and stays server-only (`server-only` import at the top).
 - `src/core/` is the shared kernel (`config/`, errors, operation context, hostname, observability, routing, security, system, transactions).
-- `src/data/` holds the Drizzle schema (`schema/`), client factory, repository implementations, and hand-written SQL migrations (`migrations/`).
+- `src/data/` holds the Drizzle schema (`schema/`), client factory (`client.ts`, pooled `DATABASE_POOL_URL` with `prepare: false`), repository implementations (`repos/`), and hand-written SQL migrations (`migrations/`).
 - Path aliases: `@/*` → `./src/*`, plus `@/components/*`, `@/modules/*`, `@/data/*`, `@/core/*`, `@/integrations/*`, `@/ui/*`.
 - Dashboard, API, Telegram, background, and reconciliation adapters should invoke shared application services — avoid issuing tenant SQL directly or reimplementing business rules.
 - External effects (purge, DNS, Telegram sends) should happen after durable intent is recorded in Postgres, and should be resumable, bounded, and idempotent.
@@ -45,14 +45,14 @@ Hexagonal / ports-and-adapters modular monolith under `src/`. Dependency directi
 ## Database and migrations
 
 - Drizzle ORM with PostgreSQL dialect. Schema in `src/data/schema/` (`billing`, `content`, `editorial`, `identity`, `operations`, `runtime-config`).
-- Migrations are forward-only SQL by default in `src/data/migrations/`, applied manually in the order recorded by `src/data/migrations/meta/_journal.json` with the direct credential (`DATABASE_DIRECT_URL`); runtime traffic uses the pooled URL with prepared statements disabled. History edits and `db:*` scripts are allowed in development with reviewer approval.
+- Migrations are forward-only SQL by default in `src/data/migrations/`, applied manually in the order recorded by `src/data/migrations/meta/_journal.json` with the direct credential (`DATABASE_DIRECT_URL`); runtime traffic uses the pooled `DATABASE_POOL_URL` with prepared statements disabled. History edits and `db:*` scripts are allowed in development with reviewer approval.
 - Schema evolution should follow expand → backfill → verify → contract across compatible releases. Avoid dropping a column/table in the same release that stops writing it; fix failed migrations preferably with a new forward migration.
 - RLS is currently enforced at the PostgreSQL level with the dedicated non-owner, non-`BYPASSRLS` `indicate_runtime` role (code fact). Audit logs are currently insert-only (no update/delete).
-- After migration work, verify via `GET /api/health` when practical. The schema-version gate (`migration_gate_events.required_version`) is currently evaluated at runtime-context initialization (code fact; advisory in relaxed docs).
+- After migration work, verify via `GET /api/health` when practical. The schema-version gate (`migration_gate_events.required_version`) is currently evaluated at runtime-context initialization when armed (no row means disarmed; code fact, advisory in relaxed docs).
 
 ## Configuration and security
 
-- Environment schema in `src/core/config/runtime/runtime-schema.ts` is Zod-validated and currently fail-closed in code: missing or malformed values block activation rather than falling back.
+- Environment schema in `src/core/config/bootstrap/bootstrap-schema.ts` is Zod-validated and currently fail-closed in code: missing or malformed values block activation rather than falling back. `src/core/config/runtime/runtime-schema.ts` is the assembled plain `RuntimeConfig` interface (bootstrap env + Postgres snapshot) and does not parse env itself.
 - Secrets should stay in server-only environment storage. Avoid putting secrets, tokens, or internal diagnostics in browser bundles, logs, fixtures, or error responses. Prefer non-disclosing denials.
 - Supabase Auth supplies session identity only; authorization lives in local Membership/Role/Permission data.
 
@@ -60,7 +60,7 @@ Hexagonal / ports-and-adapters modular monolith under `src/`. Dependency directi
 
 - Files `kebab-case.ts(x)`; components, types, and interfaces `PascalCase`; functions and variables `camelCase`; constants `UPPER_SNAKE_CASE`.
 - Commands: `npm run dev`, `npm run build`, `npm run start`, `npm run typecheck` (`tsc --noEmit`), `npm run lint` (ESLint, `--max-warnings=0`). Run `typecheck` and `lint` after code changes.
-- `next.config.ts` keeps `postgres` and `drizzle-orm` in `serverExternalPackages`; image `remotePatterns` are a tenant allowlist — unknown hosts stay rejected.
+- `next.config.ts` keeps `postgres`, `drizzle-orm`, `sharp`, `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `@upstash/redis`, and `resend` in `serverExternalPackages`, sets `cacheComponents: true` and `images.unoptimized: true` (no Vercel image-optimization cost); image `remotePatterns` are a tenant allowlist — unknown hosts stay rejected.
 
 ## Commits
 
@@ -100,4 +100,4 @@ Summary (source of truth stays in `AGENTS.md`):
 
 ## UI and design
 
-Visual decisions should follow the in-code authority (`src/app/globals.css` tokens, `src/components/ui/` primitives, tenant templates under `src/modules/site/components/`): dark indigo control-room aesthetic, brass accent, Fraunces + Plex type system, exact-number reporting, small radii, anti-slop rules. shadcn/ui components live in `src/components/ui/` per `components.json`.
+Visual decisions should follow the in-code authority (`src/app/globals.css` tokens, `src/components/ui/` primitives, tenant templates under `src/modules/site/components/`): dark indigo control-room aesthetic, brass accent, Fraunces + IBM Plex Sans/Mono type system, exact-number reporting, small radii, anti-slop rules. shadcn/ui components live in `src/components/ui/` per `components.json`.

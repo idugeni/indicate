@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { formatTanggal } from '@/modules/dashboard/components/shared/dashboard-dates';
 
 interface InvoiceRow {
   readonly id: string;
@@ -23,10 +24,7 @@ interface InvoiceRow {
 }
 
 const formatIdr = (value: number) => `Rp${new Intl.NumberFormat('id-ID').format(value)}`;
-const formatDate = (iso: string) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium' }).format(d);
-};
+const formatDate = formatTanggal;
 
 async function api(path: string, init?: RequestInit) {
   const response = await fetch(path, { cache: 'no-store', ...init });

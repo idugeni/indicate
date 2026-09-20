@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { DashboardProviders } from '@/app/(dashboard)/dashboard-providers';
 
 export const metadata: Metadata = {
   title: 'Dashboard',
@@ -15,5 +16,9 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardLayout({ children }: { readonly children: ReactNode }) {
-  return children;
+  return (
+    <DashboardProviders>
+      <div className="dashboard-scroll">{children}</div>
+    </DashboardProviders>
+  );
 }

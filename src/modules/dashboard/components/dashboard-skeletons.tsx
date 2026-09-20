@@ -42,11 +42,11 @@ export function DashboardFormSkeleton() {
   );
 }
 
-/** Stats fallback mirroring the metric boxes (icon + label, mono value). */
+/** Stats fallback mirroring the 8 metric boxes (icon + label, mono value). */
 export function DashboardStatsSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
-      {[0, 1, 2, 3, 4, 5].map((index) => (
+    <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-4" aria-hidden="true">
+      {[0, 1, 2, 3, 4, 5, 6, 7].map((index) => (
         <div key={index} className="rounded-lg border border-hairline bg-bg-raised p-5">
           <div className="flex items-center gap-1.5">
             <Skeleton className="h-3.5 w-3.5 bg-bg-raised-2" />

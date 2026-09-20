@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Removed `99.99% tergaransi` / `100% Exact` warranty language (now operational targets referencing Terms §17); softened absolute isolation/audit/media claims
-- Replaced third-party Google logo glyph with neutral text sign-in button
+- Replaced neutral text sign-in button with the official-style Google button (inline multicolor "G", white pill, Google Identity styling)
 - Edge-deny logs now mask client IPs (/24–/48); media redirects use `private, no-store`; Telegram 429 surfaces `retry_after`; image `remotePatterns` narrowed to single-level wildcards
 - Footer copyright attributes the rights holder; README carries trademark and non-SLA disclaimers
 

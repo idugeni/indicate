@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
+import { fetchCachedAnalytics } from '@/modules/dashboard/dashboard-dal';
 import { createTelegramNotificationService } from '@/modules/integrations/integrations-composition';
 import { getPublicConfig } from '@/core/config/public-config';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
@@ -98,7 +99,10 @@ async function handleGET(request: Request) {
       : parsed.data.view === 'configuration' ? await service.listConfiguration(actor)
       : parsed.data.view === 'publishers' ? await service.listPublishers(actor)
       : parsed.data.view === 'editorial' ? await service.listEditorial(actor, editorialFilter)
-      : parsed.data.view === 'analytics' ? await service.analytics(actor, rangeFilter)
+      : parsed.data.view === 'analytics'
+        ? actor.actorType === 'user'
+          ? await fetchCachedAnalytics(actor, rangeFilter)
+          : { ok: false as const, error: createNonDisclosingDenial(requestId) }
       : parsed.data.view === 'operations' ? await service.operations(actor)
       : await service.auditLogs(actor, auditFilter);
     return result.ok ? NextResponse.json(result.value) : NextResponse.json(result.error, { status: responseStatus(result.error) });

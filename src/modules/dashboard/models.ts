@@ -309,6 +309,7 @@ export interface AuditFilter {
 
 export interface DashboardProjection {
   readonly activeDomains: number;
+  readonly activeSubdomains: number;
   readonly activeSites: number;
   readonly activeArticles: number;
   readonly archivedArticles: number;
@@ -325,15 +326,91 @@ export interface AnalyticsPoint {
   readonly count: number;
 }
 
+/** Satu ember harian deret tugas; `hari` format `YYYY-MM-DD` (UTC). */
+export interface TugasHarian {
+  readonly hari: string;
+  readonly diterbitkan: number;
+  readonly gagal: number;
+  readonly antre: number;
+}
+
+/** Satu ember harian deret penyaluran situs; `hari` format `YYYY-MM-DD` (UTC). */
+export interface PenyaluranHarian {
+  readonly hari: string;
+  readonly diterbitkan: number;
+  readonly gagal: number;
+  readonly antre: number;
+}
+
+/** Satu ember harian tayangan; `views` jumlah `view_count` penyaluran hari itu. */
+export interface ViewsHarian {
+  readonly hari: string;
+  readonly penyaluran: number;
+  readonly views: number;
+}
+
+/** Satu titik volume plus tayangan untuk satu dimensi (`key` = ID, label lewat peta label). */
+export interface ViewsPoint {
+  readonly key: string;
+  readonly count: number;
+  readonly views: number;
+}
+
+/** Satu sel peta panas; `hari` 0=Senin..6=Minggu (Asia/Jakarta), `jam` 0..23. */
+export interface AktivitasJam {
+  readonly hari: number;
+  readonly jam: number;
+  readonly jumlah: number;
+}
+
+/** Satu peristiwa terbaru untuk lini masa operasional. */
+export interface AktivitasTerbaru {
+  readonly id: string;
+  readonly label: string;
+  readonly status: string;
+  readonly at: string;
+}
+
+/** Satu sisi arus penerbit → situs → hasil untuk diagram Sankey. */
+export interface ArusPenerbit {
+  readonly penerbit: string;
+  readonly situs: string;
+  readonly hasil: string;
+  readonly jumlah: number;
+}
+
+/** Jendela kalender deret (`YYYY-MM-DD`, inklusif, maks 90 hari). */
+export interface JendelaDeret {
+  readonly awal: string;
+  readonly akhir: string;
+}
+
 export interface AnalyticsProjection {
   readonly articlesByRegion: readonly AnalyticsPoint[];
   readonly articlesBySite: readonly AnalyticsPoint[];
   readonly articlesByCategory: readonly AnalyticsPoint[];
   readonly articlesByPublisher: readonly AnalyticsPoint[];
+  readonly articlesByStatus: readonly AnalyticsPoint[];
   readonly jobsByState: readonly AnalyticsPoint[];
   readonly jobsBySiteRegionAndState: readonly AnalyticsPoint[];
   readonly outcomesBySiteAndState: readonly AnalyticsPoint[];
   readonly outcomesBySiteRegionAndState: readonly AnalyticsPoint[];
+  readonly jendela: JendelaDeret;
+  readonly tugasHarian: readonly TugasHarian[];
+  readonly aktivitasPerJam: readonly AktivitasJam[];
+  readonly aktivitasTerbaru: readonly AktivitasTerbaru[];
+  readonly arusPenerbit: readonly ArusPenerbit[];
+  readonly penyaluranHarian?: readonly PenyaluranHarian[];
+  readonly viewsHarian?: readonly ViewsHarian[];
+  readonly viewsBySite?: readonly ViewsPoint[];
+  readonly viewsByArticle?: readonly ViewsPoint[];
+  readonly totalViews?: number;
+  readonly totalPenyaluran?: number;
+  readonly siteLabels?: Readonly<Record<string, string>>;
+  readonly categoryLabels?: Readonly<Record<string, string>>;
+  readonly publisherLabels?: Readonly<Record<string, string>>;
+  readonly regionLabels?: Readonly<Record<string, string>>;
+  readonly articleLabels?: Readonly<Record<string, string>>;
 }
 
 export interface NetworkPublisherClaim {

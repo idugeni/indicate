@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/orange-modern/lib/format';
+import { articleImage, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/orange-modern/lib/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/orange-modern/theme';
 import { SectionHeading } from '@/modules/site/components/network/templates/orange-modern/ui/section-heading';
 
@@ -106,7 +106,7 @@ export function OrangeModernLatest({
                       </span>
                     )}
                     <span className="tabular-nums text-slate-500">
-                      {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca
+                      {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatCompactViews(article.viewCount)} pembaca
                     </span>
                   </p>
                   <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-[15px] font-bold leading-snug text-slate-900">

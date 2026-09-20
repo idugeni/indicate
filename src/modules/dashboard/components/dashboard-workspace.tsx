@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import {
   BarChart3,
   CreditCard,
@@ -57,9 +58,11 @@ import {
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import { DataView } from '@/modules/dashboard/components/data-view';
+import { DashboardFooter } from '@/modules/dashboard/components/dashboard-footer';
 import { FilterControls } from '@/modules/dashboard/components/filter-controls';
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
 import { PanelErrorBoundary } from '@/modules/dashboard/components/shared/panel-error-boundary';
+import { useDashboardPage, useDashboardView } from '@/modules/dashboard/components/shared/use-dashboard-query';
 import type { EmailStatus } from '@/modules/dashboard/components/settings/integration-settings';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
 
@@ -288,6 +291,19 @@ interface ApiErrorResponse {
   };
 }
 
+function withAnalytics(body: unknown, analytics: unknown): unknown {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return body;
+  if (typeof analytics !== 'object' || analytics === null) return body;
+  return { ...(body as Record<string, unknown>), analytics };
+}
+
+function hasEmbeddedAnalytics(snapshot: unknown): boolean {
+  if (typeof snapshot !== 'object' || snapshot === null || Array.isArray(snapshot)) return false;
+  const analytics = (snapshot as Record<string, unknown>).analytics;
+  if (typeof analytics !== 'object' || analytics === null || Array.isArray(analytics)) return false;
+  return Array.isArray((analytics as Record<string, unknown>).articlesByRegion);
+}
+
 function resolveApiEndpoint(target: View | string): 'publishing' | 'integrations' | 'workspace' {
   if (
     target === 'media' ||
@@ -358,12 +374,12 @@ export function DashboardWorkspace({
 
   const [organizationId, setOrganizationId] = useState(initialOrgId);
   const [generation, setGeneration] = useState(initialOrgId ? 1 : 0);
-  const [view, setView] = useState<View>('dashboard');
+  const [view, setView] = useDashboardView();
   const [data, setData] = useState<unknown>(null);
   const [filterQuery, setFilterQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useDashboardPage();
   const [navOpen, setNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -403,6 +419,22 @@ export function DashboardWorkspace({
     description: 'Modul sistem terdistribusi INDICATE.',
   };
 
+  const fetchAnalytics = useCallback(
+    async (targetOrg: string, signal?: AbortSignal): Promise<unknown> => {
+      try {
+        const response = await fetch(
+          `/api/dashboard/workspace?organizationId=${encodeURIComponent(targetOrg)}&view=analytics`,
+          { cache: 'no-store', ...(signal ? { signal } : {}) },
+        );
+        if (!response.ok) return null;
+        return (await response.json()) as unknown;
+      } catch {
+        return null;
+      }
+    },
+    []
+  );
+
   const fetchData = useCallback(
     async (targetView: View, targetOrg: string, query: string, signal?: AbortSignal) => {
       if (!targetOrg) return;
@@ -414,6 +446,7 @@ export function DashboardWorkspace({
 
       try {
         const response = await fetch(url, { cache: 'no-store', ...(signal ? { signal } : {}) });
+        const analyticsPromise = targetView === 'dashboard' ? fetchAnalytics(targetOrg, signal) : null;
         const body = (await response.json()) as unknown;
 
         if (activeOrgRef.current !== targetOrg) return;
@@ -421,6 +454,10 @@ export function DashboardWorkspace({
         if (!response.ok) {
           const apiError = body as ApiErrorResponse;
           setError(apiError.error?.message ?? 'Operasi data Dashboard gagal diproses oleh server.');
+        } else if (targetView === 'dashboard') {
+          const analytics = await analyticsPromise;
+          if (activeOrgRef.current !== targetOrg) return;
+          setData(withAnalytics(body, analytics));
         } else {
           setData(body);
         }
@@ -435,7 +472,7 @@ export function DashboardWorkspace({
         }
       }
     },
-    []
+    [fetchAnalytics]
   );
 
   useEffect(() => {
@@ -448,7 +485,13 @@ export function DashboardWorkspace({
     ) {
       snapshotConsumedRef.current = true;
       const snapshot = initialDashboard.data;
+      const snapshotOrg = initialDashboard.organizationId;
       void Promise.resolve().then(() => setData(snapshot));
+      if (hasEmbeddedAnalytics(snapshot)) return;
+      void fetchAnalytics(snapshotOrg).then((analytics) => {
+        if (analytics === null || activeOrgRef.current !== snapshotOrg) return;
+        setData((prev: unknown) => withAnalytics(prev, analytics));
+      });
       return;
     }
     if (view === 'content' || view === 'billing' || view === 'moderation') {
@@ -464,7 +507,7 @@ export function DashboardWorkspace({
       fetchData(view, organizationId, filterQuery, controller.signal)
     );
     return () => controller.abort();
-  }, [fetchData, view, organizationId, filterQuery, initialDashboard]);
+  }, [fetchAnalytics, fetchData, view, organizationId, filterQuery, initialDashboard]);
 
   const handleSwitchCommitted = useCallback(
     (nextOrgId: string) => {
@@ -477,7 +520,7 @@ export function DashboardWorkspace({
       setCurrentPage(1);
       toast.success(`Organisasi aktif beralih ke: ${target?.name ?? nextOrgId}`);
     },
-    [organizations]
+    [organizations, setCurrentPage]
   );
 
   const handleSwitchFailed = useCallback((message: string) => {
@@ -492,7 +535,7 @@ export function DashboardWorkspace({
 
     const endpoint = resolveApiEndpoint(action);
 
-    try {
+    const run = async (): Promise<unknown> => {
       const response = await fetch(`/api/dashboard/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -507,20 +550,34 @@ export function DashboardWorkspace({
         const fieldDetails = apiErr.error?.fields
           ? ` (${Object.entries(apiErr.error.fields).map(([f, m]) => `${f}: ${m.join(', ')}`).join('; ')})`
           : '';
-        const message = `${apiErr.error?.message ?? 'Gagal mengeksekusi instruksi aksi.'}${fieldDetails}`;
-        setError(message);
-        toast.error(message);
-        return null;
+        throw new Error(`${apiErr.error?.message ?? 'Gagal mengeksekusi instruksi aksi.'}${fieldDetails}`);
       }
+      return body;
+    };
 
-      toast.success(`Aksi sistem [${action}] berhasil dieksekusi.`);
+    try {
+      const body = await toast.promise(run(), {
+        loading: `Menjalankan ${action}…`,
+        success: `Aksi [${action}] berhasil dieksekusi.`,
+        error: (cause) =>
+          cause instanceof TypeError
+            ? 'Kesalahan fatal jaringan saat mengirim instruksi transaksi.'
+            : cause instanceof Error
+              ? cause.message
+              : 'Gagal mengeksekusi instruksi aksi.',
+      });
+      if (body === null || activeOrgRef.current !== targetOrg) return null;
       void fetchData(view, targetOrg, filterQuery);
       return body;
-    } catch {
+    } catch (err: unknown) {
       if (activeOrgRef.current === targetOrg) {
-        const message = 'Kesalahan fatal jaringan saat mengirim instruksi transaksi.';
-        setError(message);
-        toast.error(message);
+        setError(
+          err instanceof TypeError
+            ? 'Kesalahan fatal jaringan saat mengirim instruksi transaksi.'
+            : err instanceof Error
+              ? err.message
+              : 'Gagal mengeksekusi instruksi aksi.',
+        );
       }
       return null;
     } finally {
@@ -539,14 +596,35 @@ export function DashboardWorkspace({
             sidebarCollapsed ? 'w-16' : 'w-64'
           }`}
         >
-          <div className={`flex h-12 flex-none items-center border-b border-hairline ${sidebarCollapsed ? 'justify-center px-0' : 'gap-2 px-3'}`}>
-            {sidebarCollapsed ? null : (
+          <div className={`flex flex-none items-center border-b border-hairline ${sidebarCollapsed ? 'flex-col justify-center gap-1.5 px-0 py-2' : 'h-12 gap-2 px-3'}`}>
+            {sidebarCollapsed ? (
+              <Image
+                src="/brand/indicate-mark.svg"
+                alt=""
+                aria-hidden="true"
+                unoptimized
+                width={28}
+                height={28}
+                className="h-7 w-7 flex-none rounded-md"
+              />
+            ) : (
               <>
-                <div className="flex h-7 w-7 flex-none items-center justify-center rounded-md bg-brass font-sans text-xs font-bold text-bg">
-                  I
-                </div>
-              <span className="min-w-0 flex-1 animate-in truncate font-sans text-sm font-semibold tracking-tight text-paper fade-in duration-200">
-                Indicate
+                <Image
+                  src="/brand/indicate-mark.svg"
+                  alt=""
+                  aria-hidden="true"
+                  unoptimized
+                  width={28}
+                  height={28}
+                  className="h-7 w-7 flex-none rounded-md"
+                />
+              <span className="grid min-w-0 flex-1 animate-in leading-none fade-in duration-200">
+                <span className="truncate font-sans text-sm font-semibold tracking-tight text-paper">
+                  Indicate
+                </span>
+                <span className="mt-1 truncate font-mono text-[9px] font-medium uppercase tracking-[0.18em] text-paper-faint">
+                  Publishing infrastructure
+                </span>
               </span>
               </>
             )}
@@ -694,8 +772,22 @@ export function DashboardWorkspace({
             className="w-[min(20rem,85vw)] gap-0 overflow-hidden border-hairline bg-bg-raised p-0 shadow-none"
           >
             <SheetHeader className="flex-none border-b border-hairline px-4 py-3 text-left">
-              <SheetTitle className="font-sans text-sm font-bold tracking-tight text-paper">
-                Indicate Dashboard
+              <SheetTitle className="flex items-center gap-2 font-sans text-sm font-bold tracking-tight text-paper">
+                <Image
+                  src="/brand/indicate-mark.svg"
+                  alt=""
+                  aria-hidden="true"
+                  unoptimized
+                  width={24}
+                  height={24}
+                  className="h-6 w-6 flex-none rounded-md"
+                />
+                <span className="grid min-w-0 leading-none">
+                  <span className="truncate">Indicate Dashboard</span>
+                  <span className="mt-1 truncate font-mono text-[9px] font-medium uppercase tracking-[0.18em] text-paper-faint">
+                    Publishing infrastructure
+                  </span>
+                </span>
               </SheetTitle>
             </SheetHeader>
             <div className="flex-none border-b border-hairline px-4 py-3">
@@ -860,6 +952,7 @@ export function DashboardWorkspace({
             </div>
             </div>
           </main>
+          <DashboardFooter />
         </div>
       </div>
     </TooltipProvider>

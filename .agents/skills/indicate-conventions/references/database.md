@@ -5,16 +5,16 @@ Source of truth: `docs/MIGRATIONS.md`, `src/data/`.
 ## Layout
 
 - `src/data/schema/` — Drizzle table definitions: `billing`, `content`, `editorial`, `identity`, `operations`, `runtime-config`.
-- `src/data/client.ts` — `createRuntimeDatabase()` factory (pooled URL, `prepare: false`); singleton ownership lives in `src/core/config/runtime/runtime-context.ts`.
+- `src/data/client.ts` — `createRuntimeDatabase()` factory (pooled `DATABASE_POOL_URL`, `prepare: false`); singleton ownership lives in `src/core/config/runtime/runtime-context.ts`.
 - `src/data/repos/` — repository implementations (e.g. `DrizzlePublishingRepository`, `DrizzleBillingRepository`).
-- `src/data/migrations/` — forward-only, hand-written SQL + `bootstrap/indicate-schema.sql`. No `db:*` npm scripts.
+- `src/data/migrations/` — forward-only, hand-written SQL + `bootstrap/indicate-schema.sql`. Only `db:bootstrap` / `db:bootstrap:check` scripts exist; no per-migration `db:*` runners.
 
 ## Migration workflow
 
 1. Write forward-only SQL; review every migration for drift against Drizzle snapshot metadata; run deterministic source checks.
 2. Back up target Supabase Postgres; review every SQL file.
 3. Apply in filename order with the direct migration credential (`psql` or Supabase SQL editor).
-4. Verify through the pooled runtime path: boot the app and confirm `GET /api/health` reports valid configuration. Activation is blocked unless the required schema version is present.
+4. Verify through the pooled runtime path: boot the app and confirm `GET /api/health` reports valid configuration. The schema-version gate (`migration_gate_events.required_version`) is enforced at runtime-context initialization when armed (missing row means disarmed); the health handler surfaces the snapshot version but does not itself block.
 5. Run the full quality gate (`typecheck` + `lint` + build) before promotion.
 
 ## Evolution rules
