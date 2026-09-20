@@ -2,10 +2,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Bookmark } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, formatDate, isLocalImageSrc } from '@/modules/site/components/network/templates/red-editorial/lib/format';
 
-export function RedEditorialPickCard({ article, index }: { readonly article: NetworkArticle; readonly index: number }) {
+export function RedEditorialPickCard({ article, index }: { readonly article: ArticleListItem; readonly index: number }) {
   const src = articleImage(article);
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#ecd3d3]/70">

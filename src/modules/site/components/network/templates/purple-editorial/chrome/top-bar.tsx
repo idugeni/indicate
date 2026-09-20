@@ -36,9 +36,6 @@ export function PurpleEditorialTopBar({ site }: { readonly site: NetworkSiteData
             <Link href="/tentang" className="transition-colors hover:text-[#7c3aed]">
               Tentang Kami
             </Link>
-            <Link href="/tentang" className="transition-colors hover:text-[#7c3aed]">
-              Redaksi
-            </Link>
             <Link href="/kontak" className="transition-colors hover:text-[#7c3aed]">
               Kontak
             </Link>

@@ -35,12 +35,11 @@ export interface PublicSiteSettings {
   readonly robots: readonly string[];
 }
 
-export interface NetworkArticle {
+export interface ArticleListItem {
   readonly id: string;
   readonly slug: string;
   readonly title: string;
   readonly description: string;
-  readonly body: string;
   readonly tags: readonly string[];
   readonly regionId: string;  readonly categoryId: string | null;
   readonly categorySlug: string | null;
@@ -71,8 +70,35 @@ export interface NetworkArticle {
   readonly imageMediaType: string | null;
   readonly imageWidth: number | null;
   readonly imageHeight: number | null;
+}
+
+export interface NetworkArticle extends ArticleListItem {
+  readonly body: string;
   /** Galeri milik artikel (media aktif bertipe gambar, urut waktu unggah); kosong bila tak ada. */
   readonly gallery: readonly ArticleGalleryImage[];
+}
+
+/**
+ * Guard item daftar ke artikel detail: true bila baris membawa body + galeri penuh.
+ *
+ * @param item - Item artikel dari proyeksi daftar.
+ * @returns True bila item adalah artikel detail penuh.
+ */
+export function isNetworkArticle(item: ArticleListItem): item is NetworkArticle {
+  return 'body' in item && typeof (item as { readonly body?: unknown }).body === 'string';
+}
+
+/** Baris feed RSS: metadata + body penuh tanpa relasi berat. */
+export interface FeedArticle {
+  readonly id: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly description: string;
+  readonly body: string;
+  readonly imageUrl: string | null;
+  readonly imageMediaType: string | null;
+  readonly publishedAt: string;
+  readonly categoryName: string | null;
 }
 
 export interface ArticleGalleryImage {
@@ -94,7 +120,7 @@ export interface NetworkSiteData {
   readonly context: ResolvedSiteContext;
   readonly regionName: string | null;
   readonly settings: PublicSiteSettings;
-  readonly articles: readonly NetworkArticle[];
+  readonly articles: readonly ArticleListItem[];
 }
 
 export interface NetworkContentQuery {

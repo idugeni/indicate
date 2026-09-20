@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, MapPin } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/orange-modern/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/orange-modern/ui/author-avatar';
 import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/orange-modern/lib/format';
@@ -11,7 +11,7 @@ export function OrangeModernHero({
   article,
   sideNote = null,
 }: {
-  readonly article: NetworkArticle;
+  readonly article: ArticleListItem;
   readonly sideNote?: string | null;
 }) {
   const src = articleImage(article);

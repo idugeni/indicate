@@ -1,13 +1,13 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/soft-blue/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/soft-blue/ui/author-avatar';
 import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/soft-blue/lib/format';
 import { SoftBlueHeroActions } from '@/modules/site/components/network/templates/soft-blue/cards/hero-actions';
 
-export function SoftBlueHero({ article }: { readonly article: NetworkArticle }) {
+export function SoftBlueHero({ article }: { readonly article: ArticleListItem }) {
   const src = articleImage(article);
   const reading = readingMinutes(article);
   const publisherName = article.attribution;

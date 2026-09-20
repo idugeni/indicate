@@ -1,4 +1,4 @@
-import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
+import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import type { DocSectionItem } from '@/modules/site/components/layout/content';
 import { normalizeTemplateId } from '@/modules/site/components/network/templates/listing-shared';
 import { CleanBlueListing, type ListingProps } from '@/modules/site/components/network/templates/clean-blue/pages/listing-page';
@@ -270,9 +270,9 @@ export function ArticlePage({
 }: {
   readonly site: NetworkSiteData;
   readonly article: NetworkArticle;
-  readonly related?: readonly NetworkArticle[];
-  readonly newer?: NetworkArticle | null;
-  readonly older?: NetworkArticle | null;
+  readonly related?: readonly ArticleListItem[];
+  readonly newer?: ArticleListItem | null;
+  readonly older?: ArticleListItem | null;
 }) {
   switch (normalizeTemplateId(site.settings.colors.templateId)) {
     case 'black-lime':

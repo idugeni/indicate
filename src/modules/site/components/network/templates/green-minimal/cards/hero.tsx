@@ -2,12 +2,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, MapPin } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/green-minimal/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/green-minimal/ui/author-avatar';
 import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/green-minimal/lib/format';
 
-export function GreenMinimalHero({ article }: { readonly article: NetworkArticle }) {
+export function GreenMinimalHero({ article }: { readonly article: ArticleListItem }) {
   const src = articleImage(article);
   const reading = readingMinutes(article);
   const publisherName = article.attribution;

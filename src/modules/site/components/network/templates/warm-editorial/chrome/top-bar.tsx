@@ -36,9 +36,6 @@ export function WarmEditorialTopBar({ site }: { readonly site: NetworkSiteData }
             <Link href="/tentang" className="transition-colors hover:text-[#b4532a]">
               Tentang Kami
             </Link>
-            <Link href="/tentang" className="transition-colors hover:text-[#b4532a]">
-              Redaksi
-            </Link>
             <Link href="/kontak" className="transition-colors hover:text-[#b4532a]">
               Kontak
             </Link>

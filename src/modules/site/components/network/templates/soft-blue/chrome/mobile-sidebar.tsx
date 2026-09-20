@@ -77,7 +77,7 @@ export function SoftBlueMobileSidebar({
         aria-modal="true"
         aria-label="Menu navigasi"
         className={cn(
-          'absolute inset-y-0 right-0 flex w-[min(22rem,88vw)] flex-col bg-white shadow-2xl transition-transform duration-300 ease-out',
+          'absolute inset-y-0 right-0 flex w-[min(19rem,84vw)] flex-col bg-white shadow-2xl transition-transform duration-300 ease-out',
           open ? 'translate-x-0' : 'translate-x-full',
         )}
       >

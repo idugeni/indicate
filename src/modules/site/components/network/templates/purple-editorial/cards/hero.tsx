@@ -2,13 +2,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, MapPin } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/purple-editorial/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/purple-editorial/ui/author-avatar';
 import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/purple-editorial/lib/format';
 import { PurpleEditorialHeroActions } from '@/modules/site/components/network/templates/purple-editorial/cards/hero-actions';
 
-export function PurpleEditorialHero({ article }: { readonly article: NetworkArticle }) {
+export function PurpleEditorialHero({ article }: { readonly article: ArticleListItem }) {
   const src = articleImage(article);
   const reading = readingMinutes(article);
   const publisherName = article.attribution;

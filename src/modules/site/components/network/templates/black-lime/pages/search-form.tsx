@@ -1,7 +1,7 @@
 import Form from 'next/form';
 import { Search } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { BlackLimePicks } from '@/modules/site/components/network/templates/black-lime/cards/picks';
 
 export function BlackLimeSearchForm({ query }: { readonly query: string }) {
@@ -25,7 +25,7 @@ export function BlackLimeSearchForm({ query }: { readonly query: string }) {
               maxLength={120}
               autoComplete="off"
               placeholder="Ketik kata kunci…"
-              className="h-11 w-full rounded-full border border-[#242b1f] bg-[#0a0c07] pl-11 pr-4 font-sans text-sm text-[#f2f5e9] placeholder:text-[#646b5e] focus:border-[#c5f82a] focus:outline-none"
+              className="h-11 w-full appearance-none rounded-full border border-[#242b1f] bg-[#0a0c07] pl-11 pr-4 font-sans text-base text-[#f2f5e9] placeholder:text-[#646b5e] focus:border-[#c5f82a] focus:outline-none sm:text-sm"
             />
           </div>
           <button
@@ -40,7 +40,7 @@ export function BlackLimeSearchForm({ query }: { readonly query: string }) {
   );
 }
 
-export function BlackLimeSearchResults({ articles, query }: { readonly articles: readonly NetworkArticle[]; readonly query: string }) {
+export function BlackLimeSearchResults({ articles, query }: { readonly articles: readonly ArticleListItem[]; readonly query: string }) {
   if (articles.length === 0) {
     return (
       <div role="status" className="rounded-2xl border border-dashed border-[#242b1f] bg-[#131711] p-8 text-center sm:p-12">

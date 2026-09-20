@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Rss } from 'lucide-react';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { SOCIAL_ORDER } from '@/modules/site/company-contact';
+import { COMPANY_NAME, SOCIAL_ORDER } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { getSiteCategoryNav } from '@/modules/site/components/network/templates/purple-editorial/server/site-nav';
 import { PurpleEditorialStoreBadges } from '@/modules/site/components/network/templates/purple-editorial/chrome/store-badges';
@@ -25,8 +25,8 @@ export async function PurpleEditorialFooter({ site }: { readonly site: NetworkSi
 
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
-        <div>
+      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:grid-cols-2 sm:gap-10 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="col-span-2 sm:col-span-1">
           <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
             <Image
               unoptimized
@@ -102,7 +102,7 @@ export async function PurpleEditorialFooter({ site }: { readonly site: NetworkSi
           </ul>
         </nav>
 
-        <div>
+        <div className="col-span-2 sm:col-span-1">
           <h2 className="m-0 font-sans text-sm font-bold text-slate-900">Unduh Aplikasi</h2>
           <p className="m-0 mt-4 font-sans text-sm leading-relaxed text-slate-600">
             Baca berita kapan saja, di mana saja dengan aplikasi {site.settings.name}.
@@ -113,20 +113,8 @@ export async function PurpleEditorialFooter({ site }: { readonly site: NetworkSi
 
       <div className="border-t border-slate-200">
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 py-4 text-center font-sans text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:text-left">
-          <p className="m-0">© {year} {site.settings.name}. Semua hak dilindungi.</p>
-          <nav aria-label="Legal" className="m-0 flex items-center gap-2">
-            <Link href="/kebijakan-privasi" className="transition-colors hover:text-[#7c3aed]">
-              Privasi
-            </Link>
-            <span aria-hidden="true" className="text-slate-300">|</span>
-            <Link href="/syarat-ketentuan" className="transition-colors hover:text-[#7c3aed]">
-              Syarat
-            </Link>
-            <span aria-hidden="true" className="text-slate-300">|</span>
-            <Link href="/kontak" className="transition-colors hover:text-[#7c3aed]">
-              Kontak
-            </Link>
-          </nav>
+          <p className="m-0">© {year} {site.settings.name}. Semua hak dilindungi undang-undang.</p>
+          <p className="m-0 font-semibold tracking-wide text-slate-500">{COMPANY_NAME}</p>
         </div>
       </div>
     </footer>

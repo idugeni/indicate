@@ -13,12 +13,12 @@ function kanal(n: number) {
 }
 
 describe('CleanBlueDesktopNav', () => {
-  it('menampilkan beranda, lima kategori, dan pemicu lainnya', () => {
+  it('menampilkan beranda, empat kategori, dan pemicu lainnya', () => {
     render(<CleanBlueDesktopNav categories={kanal(7)} path="/" />);
     expect(screen.getByRole('link', { name: 'Beranda' })).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Kat 5' })).toBeDefined();
-    expect(screen.queryByRole('link', { name: 'Kat 6' })).toBe(null);
-    expect(screen.getByRole('button', { name: /kategori lainnya \(2\)/i })).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Kat 4' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Kat 5' })).toBe(null);
+    expect(screen.getByRole('button', { name: /kategori lainnya \(3\)/i })).toBeDefined();
   });
 
   it('menandai path aktif', () => {
@@ -29,24 +29,28 @@ describe('CleanBlueDesktopNav', () => {
   it('membuka menu lainnya dan menampilkan sisa kategori', async () => {
     render(<CleanBlueDesktopNav categories={kanal(7)} path="/" />);
     fireEvent.click(screen.getByRole('button', { name: /kategori lainnya/i }));
-    expect(await screen.findByRole('menuitem', { name: 'Kat 6' })).toBeDefined();
+    expect(await screen.findByRole('menuitem', { name: 'Kat 5' })).toBeDefined();
     expect(screen.getByRole('menuitem', { name: 'Kat 7' })).toBeDefined();
   });
 });
 
 describe('CleanBlueMobileNav', () => {
-  it('menampilkan seluruh kategori dan tautan informasi', () => {
+  it('menyembunyikan kategori dan informasi hingga dibuka', async () => {
     render(<CleanBlueMobileNav categories={kanal(3)} path="/" />);
     expect(screen.getByRole('link', { name: 'Beranda' })).toBeDefined();
-    expect(screen.getByText('Kategori')).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Kat 3' })).toBeDefined();
-    expect(screen.getByText('Informasi')).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Kat 3' })).toBe(null);
+    expect(screen.queryByRole('link', { name: 'Profil' })).toBe(null);
+    fireEvent.click(screen.getByRole('button', { name: 'Kategori' }));
+    expect(await screen.findByRole('link', { name: 'Kat 3' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Informasi' }));
+    expect(await screen.findByRole('link', { name: 'Profil' })).toBeDefined();
     expect(screen.getByRole('link', { name: 'Profil' }).getAttribute('href')).toBe('/tentang');
     expect(screen.getByRole('link', { name: 'Kontak' })).toBeDefined();
   });
 
-  it('menandai path aktif', () => {
+  it('menandai path aktif', async () => {
     render(<CleanBlueMobileNav categories={kanal(3)} path="/tentang" />);
-    expect(screen.getByRole('link', { name: 'Profil' }).getAttribute('aria-current')).toBe('page');
+    fireEvent.click(screen.getByRole('button', { name: 'Informasi' }));
+    expect((await screen.findByRole('link', { name: 'Profil' })).getAttribute('aria-current')).toBe('page');
   });
 });

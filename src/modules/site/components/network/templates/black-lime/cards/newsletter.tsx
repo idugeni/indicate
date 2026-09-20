@@ -23,7 +23,7 @@ export function BlackLimeNewsletter() {
               type="email"
               required
               placeholder="Masukkan alamat email"
-              className="h-11 w-full flex-1 rounded-full border border-[#242b1f] bg-[#0a0c07] px-4 font-sans text-sm text-slate-100 placeholder:text-slate-500 focus:border-[#c5f82a] focus:outline-none"
+              className="h-11 w-full flex-1 appearance-none rounded-full border border-[#242b1f] bg-[#0a0c07] px-4 font-sans text-base text-slate-100 placeholder:text-slate-500 focus:border-[#c5f82a] focus:outline-none sm:text-sm"
             />
             {/* Pendaftaran dinonaktifkan sengaja hingga backend newsletter tersedia. */}
             <Link

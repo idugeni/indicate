@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import type { NetworkArticle, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
+import type { FeedArticle, NetworkArticle, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
 import { articleBodyText } from '@/modules/site/article-markup';
 import { MINISTRY_FALLBACK_LOGO_URL } from '@/ui/site/marketing-content';
 
@@ -349,12 +349,16 @@ export function serializeNewsSitemap(site: NetworkSiteData): string {
   return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${body}</urlset>`;
 }
 
-export function serializeRss(site: NetworkSiteData): string {
-  const channel = absoluteSiteUrl(site.context, '/');
-  const siteName = site.settings.seoSiteName || site.settings.name;
-  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>${xml(siteName)}</title><link>${xml(channel)}</link><description>${xml(site.settings.seoDefaultDescription || site.settings.description)}</description><language>id-ID</language>${site.articles.map((article) => {
-    const link = absoluteSiteUrl(site.context, `/${article.slug}`);
-    const enclosure = article.imageUrl === null ? '' : `<enclosure url="${xml(absoluteSiteAssetUrl(site.context, article.imageUrl))}"${article.imageMediaType === null ? ' type="image/jpeg"' : ` type="${xml(article.imageMediaType)}"`} />`;
+export function serializeRss(channel: {
+  readonly context: ResolvedSiteContext;
+  readonly siteName: string;
+  readonly description: string;
+  readonly articles: readonly FeedArticle[];
+}): string {
+  const feedChannel = absoluteSiteUrl(channel.context, '/');
+  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>${xml(channel.siteName)}</title><link>${xml(feedChannel)}</link><description>${xml(channel.description)}</description><language>id-ID</language>${channel.articles.map((article) => {
+    const link = absoluteSiteUrl(channel.context, `/${article.slug}`);
+    const enclosure = article.imageUrl === null ? '' : `<enclosure url="${xml(absoluteSiteAssetUrl(channel.context, article.imageUrl))}"${article.imageMediaType === null ? ' type="image/jpeg"' : ` type="${xml(article.imageMediaType)}"`} />`;
     return `<item><title>${xml(article.title)}</title><link>${xml(link)}</link><guid isPermaLink="true">${xml(link)}</guid><description>${xml(article.description)}</description><content:encoded>${xml(article.body)}</content:encoded>${enclosure}<pubDate>${new Date(article.publishedAt).toUTCString()}</pubDate>${article.categoryName === null ? '' : `<category>${xml(article.categoryName)}</category>`}</item>`;
   }).join('')}</channel></rss>`;
 }

@@ -9,6 +9,7 @@ export function GlassyBlueStoreBadges() {
         className="flex-none cursor-pointer transition duration-180 hover:scale-[1.03] hover:brightness-110 sm:min-w-0 sm:flex-1 sm:basis-0"
       >
         <Image
+          unoptimized
           src="/brand/app-store.svg"
           alt="Segera hadir di App Store"
           width={120}
@@ -21,6 +22,7 @@ export function GlassyBlueStoreBadges() {
         className="flex-none cursor-pointer transition duration-180 hover:scale-[1.03] hover:brightness-110 sm:min-w-0 sm:flex-1 sm:basis-0"
       >
         <Image
+          unoptimized
           src="/brand/google-play.svg"
           alt="Segera hadir di Google Play"
           width={120}

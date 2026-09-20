@@ -25,8 +25,8 @@ export async function DarkNavyFooter({ site }: { readonly site: NetworkSiteData 
 
   return (
     <footer className="border-t border-[#1b2c4f] bg-[#070f22]">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
-        <div>
+      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:grid-cols-2 sm:gap-10 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="col-span-2 sm:col-span-1">
           <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
             <Image
               unoptimized
@@ -102,7 +102,7 @@ export async function DarkNavyFooter({ site }: { readonly site: NetworkSiteData 
           </ul>
         </nav>
 
-        <div>
+        <div className="col-span-2 sm:col-span-1">
           <h2 className="m-0 font-sans text-sm font-bold text-[#eaf0fb]">Aplikasi Mobile</h2>
           <p className="m-0 mt-4 font-sans text-sm leading-relaxed text-[#9aa9c4]">
             Dapatkan pengalaman membaca berita yang lebih baik di perangkat mobile Anda.
@@ -113,7 +113,7 @@ export async function DarkNavyFooter({ site }: { readonly site: NetworkSiteData 
 
       <div className="border-t border-[#1b2c4f]">
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 py-4 text-center font-sans text-xs text-[#9aa9c4] sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:text-left">
-          <p className="m-0">© {year} {site.settings.name}. Semua hak dilindungi.</p>
+          <p className="m-0">© {year} {site.settings.name}. Semua hak dilindungi undang-undang.</p>
           <p className="m-0 font-semibold tracking-wide text-[#5f6f8c]">{COMPANY_NAME}</p>
         </div>
       </div>

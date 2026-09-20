@@ -36,9 +36,6 @@ export function GreenMinimalTopBar({ site }: { readonly site: NetworkSiteData })
             <Link href="/tentang" className="transition-colors hover:text-[#1d7a38]">
               Tentang Kami
             </Link>
-            <Link href="/tentang" className="transition-colors hover:text-[#1d7a38]">
-              Redaksi
-            </Link>
             <Link href="/kontak" className="transition-colors hover:text-[#1d7a38]">
               Kontak
             </Link>

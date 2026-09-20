@@ -1,4 +1,4 @@
-import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
+import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 
 export function makeNetworkArticle(overrides: Partial<NetworkArticle> = {}): NetworkArticle {
   return {
@@ -40,7 +40,7 @@ export function makeNetworkArticle(overrides: Partial<NetworkArticle> = {}): Net
 }
 
 export function makeNetworkSite(
-  articles: readonly NetworkArticle[] = [],
+  articles: readonly ArticleListItem[] = [],
   navigation: readonly { readonly label: string; readonly path: string }[] = [],
 ): NetworkSiteData {
   return {

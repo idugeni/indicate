@@ -36,9 +36,6 @@ export function OrangeModernTopBar({ site }: { readonly site: NetworkSiteData })
             <Link href="/tentang" className="transition-colors hover:text-[#ea580c]">
               Tentang Kami
             </Link>
-            <Link href="/tentang" className="transition-colors hover:text-[#ea580c]">
-              Redaksi
-            </Link>
             <Link href="/kontak" className="transition-colors hover:text-[#ea580c]">
               Kontak
             </Link>

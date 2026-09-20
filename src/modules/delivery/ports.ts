@@ -1,5 +1,5 @@
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { ActivationAttempt, CacheIdentity, InvalidationPlan, InvalidationTask, NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
+import type { ActivationAttempt, CacheIdentity, FeedArticle, InvalidationPlan, InvalidationTask, NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
 
 export interface NextCacheInvalidationPort {
   revalidateTags(tags: readonly string[]): Promise<void>;
@@ -32,6 +32,8 @@ export interface DeliveryRepository {
   findPendingActivation(hostname: string, attemptId: string): Promise<boolean>;
   loadNetworkSite(context: ResolvedSiteContext, query: NetworkContentQuery): Promise<NetworkSiteData | null>;
   loadNetworkBundle(context: ResolvedSiteContext, query: NetworkContentQuery): Promise<PublicBundle>;
+  /** Baris feed RSS (metadata + body, tanpa galeri) untuk satu host. */
+  loadNetworkFeed(context: ResolvedSiteContext, limit?: number): Promise<readonly FeedArticle[]>;
   /** Robots kustom tenant (kolom seo settings, tanpa artikel) untuk /robots.txt. */
   loadSiteRobots(context: ResolvedSiteContext): Promise<readonly string[] | null>;
   /** Daftar kategori aktif org (ringan, untuk nav yang identik di semua halaman). */

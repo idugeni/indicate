@@ -33,7 +33,7 @@ export function RedEditorialNewsletter() {
               type="email"
               required
               placeholder="Masukkan alamat email"
-              className="h-11 w-full flex-1 rounded-full border border-white/20 bg-white px-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-white focus:outline-none"
+              className="h-11 w-full flex-1 appearance-none rounded-full border border-white/20 bg-white px-4 text-base text-slate-900 placeholder:text-slate-400 focus:border-white focus:outline-none sm:text-sm"
             />
             <Link
               href=""

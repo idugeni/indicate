@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 
 const CATEGORIES = [
   { value: 'copyright', label: 'Pelanggaran hak cipta' },
@@ -55,27 +56,30 @@ export function DarkNavyReportForm({ articleSlug }: { readonly articleSlug: stri
         <input
           type="text" value={contact} disabled={busy} maxLength={320}
           onChange={(event) => setContact(event.target.value)}
-          className="mt-1.5 block h-11 w-full rounded-xl border border-[#1b2c4f] bg-[#070f22] px-3.5 font-sans text-sm text-[#eaf0fb] focus:border-[#2f7bff] focus:outline-none"
+          className="mt-1.5 block h-11 w-full appearance-none rounded-xl border border-[#1b2c4f] bg-[#070f22] px-3.5 font-sans text-base text-[#eaf0fb] focus:border-[#2f7bff] focus:outline-none sm:text-sm"
         />
       </label>
       <label className="block font-sans text-xs font-medium text-[#9aa9c4]">
         Kategori pelanggaran
-        <select
-          value={category} disabled={busy}
-          onChange={(event) => setCategory(event.target.value)}
-          className="mt-1.5 block h-11 w-full rounded-xl border border-[#1b2c4f] bg-[#070f22] px-3 font-sans text-sm text-[#eaf0fb] focus:border-[#2f7bff] focus:outline-none"
-        >
+        <div className="relative mt-1.5">
+          <select
+            value={category} disabled={busy}
+            onChange={(event) => setCategory(event.target.value)}
+            className="block h-11 w-full appearance-none rounded-xl border border-[#1b2c4f] bg-[#070f22] pl-3 pr-10 font-sans text-base text-[#eaf0fb] focus:border-[#2f7bff] focus:outline-none sm:text-sm"
+          >
           {CATEGORIES.map((option) => (
             <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5f6f8c]" aria-hidden="true" />
+        </div>
       </label>
       <label className="block font-sans text-xs font-medium text-[#9aa9c4]">
         Uraian spesifik (bagian mana yang melanggar dan mengapa)
         <textarea
           value={details} disabled={busy} rows={5} maxLength={4000}
           onChange={(event) => setDetails(event.target.value)}
-          className="mt-1.5 block w-full rounded-xl border border-[#1b2c4f] bg-[#070f22] px-3.5 py-2.5 font-sans text-sm text-[#eaf0fb] focus:border-[#2f7bff] focus:outline-none"
+          className="mt-1.5 block w-full appearance-none rounded-xl border border-[#1b2c4f] bg-[#070f22] px-3.5 py-2.5 font-sans text-base text-[#eaf0fb] focus:border-[#2f7bff] focus:outline-none sm:text-sm"
         />
       </label>
       {error ? <p className="m-0 font-sans text-xs font-medium text-red-600">{error}</p> : null}

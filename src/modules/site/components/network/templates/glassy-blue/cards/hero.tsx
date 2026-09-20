@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/glassy-blue/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/glassy-blue/ui/author-avatar';
 import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/glassy-blue/lib/format';
@@ -19,7 +19,7 @@ const ROTATE_MS = 6000;
  * @param articles - Artikel sorotan yang dirotasi (indikator + panah fungsional).
  * @returns Kartu hero kaca dengan badge, meta penulis, dan panah lingkaran.
  */
-export function GlassyBlueHero({ articles }: { readonly articles: readonly NetworkArticle[] }) {
+export function GlassyBlueHero({ articles }: { readonly articles: readonly ArticleListItem[] }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const count = articles.length;

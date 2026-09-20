@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { WarmEditorialPickCard } from '@/modules/site/components/network/templates/warm-editorial/cards/pick-card';
 import { SectionHeading } from '@/modules/site/components/network/templates/warm-editorial/ui/section-heading';
 
@@ -12,7 +12,7 @@ export function WarmEditorialPicks({
   linkHref = null,
   linkLabel = 'Lihat Semua',
 }: {
-  readonly articles: readonly NetworkArticle[];
+  readonly articles: readonly ArticleListItem[];
   readonly description: string;
   readonly heading?: string;
   readonly linkHref?: string | null;

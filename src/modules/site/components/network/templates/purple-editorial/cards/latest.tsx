@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/purple-editorial/lib/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/purple-editorial/theme';
 import { SectionHeading } from '@/modules/site/components/network/templates/purple-editorial/ui/section-heading';
@@ -42,7 +42,7 @@ export function PurpleEditorialLatest({
   linkHref = null,
   linkLabel = 'Lihat Semua',
 }: {
-  readonly articles: readonly NetworkArticle[];
+  readonly articles: readonly ArticleListItem[];
   readonly siteName: string;
   readonly quote: string;
   readonly heading?: string;

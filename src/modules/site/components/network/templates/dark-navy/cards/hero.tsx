@@ -5,12 +5,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/dark-navy/lib/format';
 
 const ROTATE_MS = 6000;
 
-export function DarkNavyHero({ articles }: { readonly articles: readonly NetworkArticle[] }) {
+export function DarkNavyHero({ articles }: { readonly articles: readonly ArticleListItem[] }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const count = articles.length;

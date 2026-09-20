@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { TrendingUp } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, formatCompactViews, isLocalImageSrc } from '@/modules/site/components/network/templates/black-lime/lib/format';
 
 export function BlackLimeQuotePanel({ siteName, quote }: { readonly siteName: string; readonly quote: string }) {
@@ -35,7 +35,7 @@ export function BlackLimeQuotePanel({ siteName, quote }: { readonly siteName: st
   );
 }
 
-export function BlackLimeMostRead({ articles }: { readonly articles: readonly NetworkArticle[] }) {
+export function BlackLimeMostRead({ articles }: { readonly articles: readonly ArticleListItem[] }) {
   const items = articles.slice(0, 5);
   if (items.length === 0) return null;
   return (

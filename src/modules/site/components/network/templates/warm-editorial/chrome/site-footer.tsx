@@ -24,8 +24,8 @@ export async function WarmEditorialFooter({ site }: { readonly site: NetworkSite
 
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
-        <div>
+      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:grid-cols-2 sm:gap-10 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="col-span-2 sm:col-span-1">
           <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
             <Image
               unoptimized
@@ -101,7 +101,7 @@ export async function WarmEditorialFooter({ site }: { readonly site: NetworkSite
           </ul>
         </nav>
 
-        <div>
+        <div className="col-span-2 sm:col-span-1">
           <h2 className="m-0 font-sans text-sm font-bold text-slate-900">Langganan Berita</h2>
           <p className="m-0 mt-4 font-sans text-sm leading-relaxed text-slate-600">
             Dapatkan berita terbaru langsung di email Anda.
@@ -115,7 +115,7 @@ export async function WarmEditorialFooter({ site }: { readonly site: NetworkSite
               type="email"
               required
               placeholder="Masukkan alamat email"
-              className="h-10 w-full min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3.5 font-sans text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#b4532a] focus:outline-none"
+              className="h-10 w-full min-w-0 flex-1 appearance-none rounded-xl border border-slate-200 bg-white px-3.5 font-sans text-base text-slate-900 placeholder:text-slate-400 focus:border-[#b4532a] focus:outline-none sm:text-sm"
             />
             {/* Pendaftaran dinonaktifkan sengaja hingga backend newsletter tersedia. */}
             <Link
@@ -131,7 +131,7 @@ export async function WarmEditorialFooter({ site }: { readonly site: NetworkSite
 
       <div className="border-t border-slate-200">
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 py-4 text-center font-sans text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:text-left">
-          <p className="m-0">© {year} {site.settings.name}. Semua hak dilindungi.</p>
+          <p className="m-0">© {year} {site.settings.name}. Semua hak dilindungi undang-undang.</p>
           <p className="m-0 font-semibold tracking-wide text-slate-500">{COMPANY_NAME}</p>
         </div>
       </div>

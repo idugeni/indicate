@@ -1,4 +1,4 @@
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 
 const TIME_ZONE_ID = 'Asia/Jakarta';
 
@@ -8,7 +8,7 @@ const TIME_ZONE_ID = 'Asia/Jakarta';
  * @param article - Artikel jaringan yang akan ditampilkan.
  * @returns URL thumbnail, gambar utama, atau fallback lokal.
  */
-export function articleImage(article: NetworkArticle): string {
+export function articleImage(article: ArticleListItem): string {
   return article.thumbnailUrl ?? article.imageUrl ?? '/assets/article-fallback.webp';
 }
 
@@ -28,7 +28,7 @@ export function isLocalImageSrc(src: string): boolean {
  * @param article - Artikel yang diambil judul tampilnya.
  * @returns Judul tanpa ekor `—`/`–`/`|`; judul kanonis bila tanpa ekor.
  */
-export function tickerHeadline(article: NetworkArticle): string {
+export function tickerHeadline(article: ArticleListItem): string {
   const title = article.title.trim();
   const pruned = title.replace(/\s+[—–|]\s+[^—–|]+$/, '').trim();
   return pruned === '' ? title : pruned;
@@ -63,8 +63,9 @@ export function tickerTime(isoString: string): string {
  * @param article - Artikel yang dihitung kata-katanya.
  * @returns Minimal 1 menit.
  */
-export function readingMinutes(article: NetworkArticle): number {
-  const words = (article.body || article.description || '').trim().split(/\s+/u).filter(Boolean).length;
+export function readingMinutes(article: Pick<ArticleListItem, 'description'> & { readonly body?: string }): number {
+  const text = article.body === undefined || article.body === '' ? article.description : article.body;
+  const words = (text ?? '').trim().split(/\s+/u).filter(Boolean).length;
   return Math.max(1, Math.ceil(words / 200));
 }
 
@@ -96,7 +97,7 @@ export function formatFullViews(value: number): string {
  * @param article - Artikel yang dibaca nama penulisnya.
  * @returns Nama tampilan penulis.
  */
-export function authorDisplayName(article: NetworkArticle): string {
+export function authorDisplayName(article: ArticleListItem): string {
   return article.authorDisplayName ?? article.authorName ?? article.attribution;
 }
 

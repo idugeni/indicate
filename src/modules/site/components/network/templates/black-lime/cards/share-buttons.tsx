@@ -4,13 +4,13 @@ import { useState } from 'react';
 import { Check, Link2, Mail } from 'lucide-react';
 import { FaFacebookF, FaTelegram, FaWhatsapp, FaXTwitter } from 'react-icons/fa6';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 
 /**
  * Barisan tombol bagikan: WhatsApp, X, Facebook, Telegram, Email,
  * dan salin tautan (clipboard + status tersalin).
  */
-export function BlackLimeShareButtons({ article, canonical }: { readonly article: NetworkArticle; readonly canonical: string }) {
+export function BlackLimeShareButtons({ article, canonical }: { readonly article: ArticleListItem; readonly canonical: string }) {
   const [copied, setCopied] = useState(false);
   const shareText = encodeURIComponent(`${article.title} ${canonical}`);
 
@@ -33,7 +33,7 @@ export function BlackLimeShareButtons({ article, canonical }: { readonly article
     'flex h-9 w-9 items-center justify-center rounded-full text-[#a3ad9a] ring-1 ring-[#242b1f] transition-colors hover:text-[#c5f82a]';
 
   return (
-    <p className="m-0 flex flex-none flex-wrap items-center gap-2" aria-label="Bagikan artikel">
+    <p className="m-0 flex flex-none flex-wrap items-center justify-center gap-2 sm:justify-start" aria-label="Bagikan artikel">
       <a
         href={`https://wa.me/?text=${shareText}`}
         target="_blank"

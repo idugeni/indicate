@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { ArticlePage } from '@/modules/site/components/network/network-listing';
 import RootLoading from '@/app/loading';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
+import { isNetworkArticle } from '@/modules/delivery/models';
 
 export const maxDuration = 60;
 
@@ -37,9 +38,9 @@ async function DetailContent({ params }: Pick<Props, 'params'>) {
   const { slug } = await params;
   if (slug.trim() === '') notFound();
   const normalized = slug.trim().toLowerCase();
-  const site = await resolveNetworkSite({}, `/${slug}`);
+  const site = await resolveNetworkSite({ articleSlug: normalized }, `/${slug}`);
   const article = site.articles.find((item) => item.slug === normalized);
-  if (article === undefined) notFound();
+  if (article === undefined || !isNetworkArticle(article)) notFound();
   const rest = site.articles.filter((item) => item.id !== article.id);
   const mates = article.categorySlug === null
     ? []

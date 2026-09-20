@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ArrowDown } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { BlackLimePickCard } from '@/modules/site/components/network/templates/black-lime/cards/pick-card';
 import { SectionHeading } from '@/modules/site/components/network/templates/black-lime/ui/section-heading';
 
@@ -14,7 +14,7 @@ export function BlackLimeLoadMore({
   heading,
   description,
 }: {
-  readonly articles: readonly NetworkArticle[];
+  readonly articles: readonly ArticleListItem[];
   readonly heading: string;
   readonly description: string;
 }) {

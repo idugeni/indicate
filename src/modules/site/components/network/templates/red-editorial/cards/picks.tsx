@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, TrendingUp } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { RedEditorialPickCard } from '@/modules/site/components/network/templates/red-editorial/cards/pick-card';
 import { SectionHeading } from '@/modules/site/components/network/templates/red-editorial/ui/section-heading';
 import { articleImage, formatCompactViews, isLocalImageSrc } from '@/modules/site/components/network/templates/red-editorial/lib/format';
@@ -17,7 +17,7 @@ export function RedEditorialPicks({
   linkHref = null,
   linkLabel = 'Lihat Semua',
 }: {
-  readonly articles: readonly NetworkArticle[];
+  readonly articles: readonly ArticleListItem[];
   readonly description: string;
   readonly heading?: string;
   readonly linkHref?: string | null;

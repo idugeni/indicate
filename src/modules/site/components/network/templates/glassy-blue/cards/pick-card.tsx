@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/glassy-blue/lib/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/glassy-blue/theme';
 import { ArticleMeta } from '@/modules/site/components/network/templates/glassy-blue/ui/article-meta';
@@ -16,7 +16,7 @@ import { AuthorAvatar } from '@/modules/site/components/network/templates/glassy
  * @param index - Posisi kartu untuk varian badge pastel.
  * @returns Kartu pilihan kaca terang.
  */
-export function GlassyBluePickCard({ article, index }: { readonly article: NetworkArticle; readonly index: number }) {
+export function GlassyBluePickCard({ article, index }: { readonly article: ArticleListItem; readonly index: number }) {
   const src = articleImage(article);
   const reading = readingMinutes(article);
   const badge = badgeStyle(index);

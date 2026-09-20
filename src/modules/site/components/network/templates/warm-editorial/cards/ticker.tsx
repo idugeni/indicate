@@ -4,7 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { formatDate, tickerHeadline } from '@/modules/site/components/network/templates/warm-editorial/lib/format';
 
 const ROTATE_MS = 5000;
@@ -22,7 +22,7 @@ function subscribeTabHidden(onChange: () => void): () => void {
 }
 
 /** Ticker TERKINI: rotasi otomatis 5 detik, jeda saat hover/fokus/tab tersembunyi, dot + panah untuk lompat manual. */
-export function WarmEditorialTicker({ articles }: { readonly articles: readonly NetworkArticle[] }) {
+export function WarmEditorialTicker({ articles }: { readonly articles: readonly ArticleListItem[] }) {
   const items = articles.slice(0, MAX_ITEMS);
   const [index, setIndex] = useState(0);
   const [cycle, setCycle] = useState(0);

@@ -2,12 +2,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, MapPin } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/warm-editorial/ui/article-meta';
 import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/warm-editorial/lib/format';
 import { WarmEditorialHeroActions } from '@/modules/site/components/network/templates/warm-editorial/cards/hero-actions';
 
-export function WarmEditorialHero({ article }: { readonly article: NetworkArticle }) {
+export function WarmEditorialHero({ article }: { readonly article: ArticleListItem }) {
   const src = articleImage(article);
   const reading = readingMinutes(article);
   const location = article.publisherCity;

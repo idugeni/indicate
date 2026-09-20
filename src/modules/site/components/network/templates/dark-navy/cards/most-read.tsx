@@ -2,10 +2,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Flame } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, formatCompactViews, isLocalImageSrc } from '@/modules/site/components/network/templates/dark-navy/lib/format';
 
-export function DarkNavyMostRead({ articles }: { readonly articles: readonly NetworkArticle[] }) {
+export function DarkNavyMostRead({ articles }: { readonly articles: readonly ArticleListItem[] }) {
   const items = articles.slice(0, 5);
   if (items.length === 0) return null;
   return (

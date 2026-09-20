@@ -1,5 +1,5 @@
 import { cacheEntryMatches, createCacheIdentity } from '@/modules/delivery/cache-identity';
-import type { NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
+import type { FeedArticle, NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
 import type { NetworkSiteCachePort } from '@/modules/delivery/ports';
 import type { DeliveryRepository } from '@/modules/delivery/ports';
 import { TAG_MAX_LENGTH, normalizeSlugCandidate } from '@/modules/site/slug-allocator';
@@ -12,7 +12,7 @@ export interface NetworkCacheRequest {
 }
 
 export class NetworkContentService {
-  constructor(private readonly repository: Pick<DeliveryRepository, 'loadNetworkSite' | 'loadNetworkBundle' | 'isCacheBypassed'>, private readonly cache?: NetworkSiteCachePort) {}
+  constructor(private readonly repository: Pick<DeliveryRepository, 'loadNetworkSite' | 'loadNetworkBundle' | 'loadNetworkFeed' | 'isCacheBypassed'>, private readonly cache?: NetworkSiteCachePort) {}
 
   async load(context: ResolvedSiteContext, query: NetworkContentQuery = {}, cacheRequest?: NetworkCacheRequest): Promise<NetworkSiteData | null> {
     const sanitized: NetworkContentQuery = {
@@ -37,5 +37,9 @@ export class NetworkContentService {
     if (data === null) return null;
     if (data.context.organizationId !== context.organizationId || data.context.siteId !== context.siteId || data.context.normalizedHostname !== context.normalizedHostname || data.context.routingVersion !== context.routingVersion || data.context.contentVersion !== context.contentVersion) return null;
     return data;
+  }
+
+  async loadFeed(context: ResolvedSiteContext, limit = 50): Promise<readonly FeedArticle[]> {
+    return this.repository.loadNetworkFeed(context, limit);
   }
 }

@@ -9,9 +9,10 @@ import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { ArticleBodyView } from '@/modules/site/components/article-body-view';
 import { BlackLimeJsonLd } from '@/modules/site/components/network/templates/black-lime/seo/json-ld';
 import { BlackLimeShell } from '@/modules/site/components/network/templates/black-lime/chrome/shell';
+import { AuthorAvatar } from '@/modules/site/components/network/templates/black-lime/ui/author-avatar';
 import { BlackLimeShareButtons } from '@/modules/site/components/network/templates/black-lime/cards/share-buttons';
 import { BlackLimeViewBeacon } from '@/modules/site/components/network/templates/black-lime/cards/view-beacon';
-import type { NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
+import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimePicks } from '@/modules/site/components/network/templates/black-lime/cards/picks';
 import { articleImage, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/black-lime/lib/format';
 import { VIEW_COUNT_FRESHNESS_NOTE } from '@/modules/site/pageview-contract';
@@ -25,15 +26,14 @@ export function BlackLimeArticle({
 }: {
   readonly site: NetworkSiteData;
   readonly article: NetworkArticle;
-  readonly related?: readonly NetworkArticle[];
-  readonly newer?: NetworkArticle | null;
-  readonly older?: NetworkArticle | null;
+  readonly related?: readonly ArticleListItem[];
+  readonly newer?: ArticleListItem | null;
+  readonly older?: ArticleListItem | null;
 }) {
   const seo = buildSeoDocument(site, { path: `/${article.slug}`, article });
   const src = articleImage(article);
   const reading = readingMinutes(article);
   const bylineName = article.attribution;
-  const bylineInitial = bylineName.trim().slice(0, 1).toUpperCase();
   const canonical = `https://${site.context.normalizedHostname}/${article.slug}`;
   const blocks = parseArticleBody(article.body);
   const publisherChannels = resolvePublisherChannels(article.publisherSocials);
@@ -78,9 +78,7 @@ export function BlackLimeArticle({
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#131711] p-4 shadow-sm ring-1 ring-[#242b1f]/60 sm:px-5">
             <p className="m-0 flex min-w-0 items-center gap-3">
-              <span aria-hidden="true" className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-[#c5f82a]/10 font-sans text-base font-bold text-[#c5f82a]">
-                {bylineInitial}
-              </span>
+              <AuthorAvatar name={bylineName} avatarUrl={article.publisherLogoUrl} size="md" />
               <span className="min-w-0">
                 <span className="block truncate font-sans text-sm font-bold text-[#f2f5e9]">
                   {bylineName}
@@ -243,13 +241,23 @@ export function BlackLimeArticle({
           ) : null}
 
           {newer !== null || older !== null ? (
-            <nav aria-label="Navigasi artikel" className="mt-10 grid grid-cols-2 gap-3 border-t border-[#242b1f] pt-6 sm:gap-4">
+            <nav aria-label="Navigasi artikel" className="mt-10 grid grid-cols-1 gap-3 border-t border-[#242b1f] pt-6 sm:grid-cols-2 sm:gap-4">
               <div className={`min-w-0 ${newer !== null && older === null ? 'col-span-2' : ''}`}>
                 {newer !== null ? (
                   <Link
                     href={`/${newer.slug}`}
                     className="group flex h-full items-start gap-3 rounded-2xl bg-[#131711] p-4 shadow-sm ring-1 ring-[#242b1f]/60 transition-all hover:shadow-md hover:ring-[#c5f82a]/50 sm:p-5"
                   >
+                    <Image
+                      unoptimized={!isLocalImageSrc(articleImage(newer))}
+                      src={articleImage(newer)}
+                      alt=""
+                      aria-hidden="true"
+                      loading="lazy"
+                      width={112}
+                      height={112}
+                      className="h-14 w-14 flex-none rounded-xl object-cover"
+                    />
                     <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#22300a] text-[#c5f82a] transition-colors group-hover:bg-[#c5f82a] group-hover:text-white">
                       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                     </span>
@@ -270,6 +278,16 @@ export function BlackLimeArticle({
                     href={`/${older.slug}`}
                     className="group flex h-full flex-row-reverse items-start gap-3 rounded-2xl bg-[#131711] p-4 text-right shadow-sm ring-1 ring-[#242b1f]/60 transition-all hover:shadow-md hover:ring-[#c5f82a]/50 sm:p-5"
                   >
+                    <Image
+                      unoptimized={!isLocalImageSrc(articleImage(older))}
+                      src={articleImage(older)}
+                      alt=""
+                      aria-hidden="true"
+                      loading="lazy"
+                      width={112}
+                      height={112}
+                      className="h-14 w-14 flex-none rounded-xl object-cover"
+                    />
                     <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#22300a] text-[#c5f82a] transition-colors group-hover:bg-[#c5f82a] group-hover:text-white">
                       <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </span>

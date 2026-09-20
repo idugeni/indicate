@@ -18,26 +18,42 @@ import {
 
 describe('serializeRss enclosure', () => {
   it('memakai tipe MIME media R2 bila diketahui', () => {
-    const site = makeNetworkSite([
+    const articles = [
       makeNetworkArticle({
         title: 'Judul berita utama',
         description: 'Deskripsi berita utama yang cukup panjang untuk kebutuhan tayang.',
         imageUrl: 'https://portal.example/api/network/media/img1',
         imageMediaType: 'image/webp',
       }),
-    ]);
-    expect(serializeRss(site)).toContain('type="image/webp"');
+    ];
+    const site = makeNetworkSite(articles);
+    expect(
+      serializeRss({
+        context: site.context,
+        siteName: site.settings.name,
+        description: site.settings.description,
+        articles,
+      }),
+    ).toContain('type="image/webp"');
   });
 
   it('mempertahankan image/jpeg untuk hotlink eksternal', () => {
-    const site = makeNetworkSite([
+    const articles = [
       makeNetworkArticle({
         title: 'Judul berita utama',
         description: 'Deskripsi berita utama yang cukup panjang untuk kebutuhan tayang.',
         imageUrl: 'https://images.unsplash.com/photo-123?auto=format&fit=crop&w=1200&q=80',
       }),
-    ]);
-    expect(serializeRss(site)).toContain('type="image/jpeg"');
+    ];
+    const site = makeNetworkSite(articles);
+    expect(
+      serializeRss({
+        context: site.context,
+        siteName: site.settings.name,
+        description: site.settings.description,
+        articles,
+      }),
+    ).toContain('type="image/jpeg"');
   });
 });
 
@@ -71,8 +87,9 @@ describe('buildSeoDocument', () => {
   });
 
   it('menyematkan NewsArticle untuk halaman artikel', () => {
-    const site = makeNetworkSite([makeNetworkArticle({ title: 'Judul Utama', description: 'Deskripsi artikel yang cukup panjang.' })]);
-    const document = buildSeoDocument(site, { path: '/berita-utama', article: site.articles[0]! });
+    const article = makeNetworkArticle({ title: 'Judul Utama', description: 'Deskripsi artikel yang cukup panjang.' });
+    const site = makeNetworkSite([article]);
+    const document = buildSeoDocument(site, { path: '/berita-utama', article });
     expect(document.title).toContain('Judul Utama');
     expect(document.openGraph?.type).toBe('article');
     expect(document.jsonLd.some((node) => node['@type'] === 'NewsArticle')).toBe(true);

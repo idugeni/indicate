@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { OrangeModernPickCard } from '@/modules/site/components/network/templates/orange-modern/cards/pick-card';
 import { SectionHeading } from '@/modules/site/components/network/templates/orange-modern/ui/section-heading';
 
@@ -13,7 +13,7 @@ export function OrangeModernPicks({
   linkHref = null,
   linkLabel = 'Lihat Semua',
 }: {
-  readonly articles: readonly NetworkArticle[];
+  readonly articles: readonly ArticleListItem[];
   readonly description: string;
   readonly heading?: string;
   readonly columns?: 3 | 4;

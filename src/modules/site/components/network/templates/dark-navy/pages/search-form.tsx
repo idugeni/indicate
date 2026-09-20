@@ -1,7 +1,7 @@
 import Form from 'next/form';
 import { Search } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { DarkNavyPicks } from '@/modules/site/components/network/templates/dark-navy/cards/picks';
 
 export function DarkNavySearchForm({ query }: { readonly query: string }) {
@@ -25,7 +25,7 @@ export function DarkNavySearchForm({ query }: { readonly query: string }) {
               maxLength={120}
               autoComplete="off"
               placeholder="Ketik kata kunci…"
-              className="h-11 w-full rounded-full border border-[#1b2c4f] bg-[#070f22] pl-11 pr-4 font-sans text-sm text-[#eaf0fb] placeholder:text-[#5f6f8c] focus:border-[#2f7bff] focus:outline-none"
+              className="h-11 w-full appearance-none rounded-full border border-[#1b2c4f] bg-[#070f22] pl-11 pr-4 font-sans text-base text-[#eaf0fb] placeholder:text-[#5f6f8c] focus:border-[#2f7bff] focus:outline-none sm:text-sm"
             />
           </div>
           <button
@@ -40,7 +40,7 @@ export function DarkNavySearchForm({ query }: { readonly query: string }) {
   );
 }
 
-export function DarkNavySearchResults({ articles, query }: { readonly articles: readonly NetworkArticle[]; readonly query: string }) {
+export function DarkNavySearchResults({ articles, query }: { readonly articles: readonly ArticleListItem[]; readonly query: string }) {
   if (articles.length === 0) {
     return (
       <div role="status" className="rounded-2xl border border-dashed border-[#1b2c4f] bg-[#0e1a33] p-8 text-center sm:p-12">

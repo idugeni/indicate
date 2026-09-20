@@ -5,6 +5,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { buildSeoDocument, indexableRobots, nonIndexableRobots, tenantFavicon } from '@/modules/site/seo';
 import type { NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
+import { isNetworkArticle } from '@/modules/delivery/models';
 import { deliveryComposition } from '@/modules/delivery';
 import { TAG_MAX_LENGTH, normalizeSlugCandidate } from '@/modules/site/slug-allocator';
 
@@ -117,7 +118,8 @@ function tenantHiddenMeta(
  */
 export async function networkMetadata(path: string, query: NetworkContentQuery = {}, titleOverride?: string): Promise<Metadata> {
   const site = await resolveNetworkSite(query, path);
-  const article = query.articleSlug === undefined ? undefined : site.articles[0];
+  const candidate = query.articleSlug === undefined ? undefined : site.articles[0];
+  const article = candidate !== undefined && isNetworkArticle(candidate) ? candidate : undefined;
 
   if (query.articleSlug !== undefined && article === undefined) {
     return tenantHiddenMeta(site, path, site.settings.name, site.settings.seoDefaultDescription ?? site.settings.description);
@@ -213,7 +215,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
   const seo = buildSeoDocument(site, { path, ...(article === undefined ? {} : { article }), ...(titleOverride === undefined ? {} : { titleOverride }) });
   if (seo.canonical === null || seo.openGraph === null) {
     return {
-      title: seo.title,
+      title: { absolute: seo.title },
       description: seo.description,
       robots: nonIndexableRobots(),
       ...tenantFavicon(site.settings.faviconUrl),

@@ -1,7 +1,7 @@
 import Form from 'next/form';
 import { Search } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { OrangeModernPicks } from '@/modules/site/components/network/templates/orange-modern/cards/picks';
 
 export function OrangeModernSearchForm({ query }: { readonly query: string }) {
@@ -25,7 +25,7 @@ export function OrangeModernSearchForm({ query }: { readonly query: string }) {
               maxLength={120}
               autoComplete="off"
               placeholder="Ketik kata kunci…"
-              className="h-11 w-full rounded-full border border-slate-200 bg-[#fff9f4] pl-11 pr-4 font-sans text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#ea580c] focus:outline-none"
+              className="h-11 w-full appearance-none rounded-full border border-slate-200 bg-[#fff9f4] pl-11 pr-4 font-sans text-base text-slate-900 placeholder:text-slate-400 focus:border-[#ea580c] focus:outline-none sm:text-sm"
             />
           </div>
           <button
@@ -40,7 +40,7 @@ export function OrangeModernSearchForm({ query }: { readonly query: string }) {
   );
 }
 
-export function OrangeModernSearchResults({ articles, query }: { readonly articles: readonly NetworkArticle[]; readonly query: string }) {
+export function OrangeModernSearchResults({ articles, query }: { readonly articles: readonly ArticleListItem[]; readonly query: string }) {
   if (articles.length === 0) {
     return (
       <div role="status" className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center sm:p-12">

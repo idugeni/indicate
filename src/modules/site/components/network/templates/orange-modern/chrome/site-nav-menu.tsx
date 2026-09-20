@@ -9,9 +9,10 @@ import {
   DropdownMenuLinkItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { CategoryNavItem } from '@/modules/site/components/network/templates/orange-modern/lib/nav';
 
-const MAX_VISIBLE_CATEGORIES = 5;
+const MAX_VISIBLE_CATEGORIES = 4;
 
 const INFO_LINKS = [
   { label: 'Profil', href: '/tentang' },
@@ -99,8 +100,12 @@ export function OrangeModernMobileNav({ categories, path }: { readonly categorie
       >
         Beranda
       </Link>
-      <div>
-        <p className="m-0 px-4 font-sans text-xs font-bold uppercase tracking-wider text-slate-400">Kategori</p>
+      <Collapsible>
+        <CollapsibleTrigger onClick={(event) => event.stopPropagation()} className="flex w-full cursor-pointer items-center justify-between px-4 font-sans text-xs font-bold uppercase tracking-wider text-slate-400">
+          Kategori
+          <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
         <ul className="m-0 mt-2 list-none space-y-1 p-0">
           {categories.map((item) => (
             <li key={`${item.href}:${item.label}`} className="m-0 p-0">
@@ -114,9 +119,14 @@ export function OrangeModernMobileNav({ categories, path }: { readonly categorie
             </li>
           ))}
         </ul>
-      </div>
-      <div>
-        <p className="m-0 px-4 font-sans text-xs font-bold uppercase tracking-wider text-slate-400">Informasi</p>
+        </CollapsibleContent>
+      </Collapsible>
+      <Collapsible>
+        <CollapsibleTrigger onClick={(event) => event.stopPropagation()} className="flex w-full cursor-pointer items-center justify-between px-4 font-sans text-xs font-bold uppercase tracking-wider text-slate-400">
+          Informasi
+          <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
         <ul className="m-0 mt-2 list-none space-y-1 p-0">
           {INFO_LINKS.map((item) => (
             <li key={item.href} className="m-0 p-0">
@@ -130,7 +140,8 @@ export function OrangeModernMobileNav({ categories, path }: { readonly categorie
             </li>
           ))}
         </ul>
-      </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

@@ -29,7 +29,7 @@ export function PurpleEditorialNewsletter() {
               type="email"
               required
               placeholder="Masukkan alamat email"
-              className="h-11 w-full flex-1 rounded-full border border-slate-200 bg-white px-4 font-sans text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#7c3aed] focus:outline-none"
+              className="h-11 w-full flex-1 appearance-none rounded-full border border-slate-200 bg-white px-4 font-sans text-base text-slate-900 placeholder:text-slate-400 focus:border-[#7c3aed] focus:outline-none sm:text-sm"
             />
             <Link
               href=""

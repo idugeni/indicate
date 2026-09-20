@@ -3,13 +3,13 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/warm-editorial/lib/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/warm-editorial/theme';
 import { ArticleMeta } from '@/modules/site/components/network/templates/warm-editorial/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/warm-editorial/ui/author-avatar';
 
-export function WarmEditorialPickCard({ article, index }: { readonly article: NetworkArticle; readonly index: number }) {
+export function WarmEditorialPickCard({ article, index }: { readonly article: ArticleListItem; readonly index: number }) {
   const src = articleImage(article);
   const reading = readingMinutes(article);
   const badge = badgeStyle(index);

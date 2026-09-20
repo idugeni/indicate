@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { SectionHeading } from '@/modules/site/components/network/templates/glassy-blue/ui/section-heading';
 import { articleImage, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/glassy-blue/lib/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/glassy-blue/theme';
@@ -26,8 +26,8 @@ export function GlassyBlueLatestNews({
   linkHref = null,
   linkLabel = 'Lihat Semua',
 }: {
-  readonly articles: readonly NetworkArticle[];
-  readonly spotlight: NetworkArticle | null;
+  readonly articles: readonly ArticleListItem[];
+  readonly spotlight: ArticleListItem | null;
   readonly heading?: string;
   readonly description?: string | undefined;
   readonly linkHref?: string | null;

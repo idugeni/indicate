@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
-import type { NetworkArticle } from '@/modules/delivery/models';
+import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/warm-editorial/lib/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/warm-editorial/theme';
 import { SectionHeading } from '@/modules/site/components/network/templates/warm-editorial/ui/section-heading';
@@ -42,7 +42,7 @@ export function WarmEditorialLatest({
   linkHref = null,
   linkLabel = 'Lihat Semua',
 }: {
-  readonly articles: readonly NetworkArticle[];
+  readonly articles: readonly ArticleListItem[];
   readonly siteName: string;
   readonly quote: string;
   readonly heading?: string;
