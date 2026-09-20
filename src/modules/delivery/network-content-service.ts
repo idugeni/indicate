@@ -12,7 +12,7 @@ export interface NetworkCacheRequest {
 }
 
 export class NetworkContentService {
-  constructor(private readonly repository: Pick<DeliveryRepository, 'loadNetworkSite' | 'loadNetworkBundle' | 'loadNetworkFeed' | 'isCacheBypassed'>, private readonly cache?: NetworkSiteCachePort) {}
+  constructor(private readonly repository: Pick<DeliveryRepository, 'loadNetworkSite' | 'loadNetworkBundle' | 'loadNetworkFeed' | 'resolveArticleId' | 'isCacheBypassed'>, private readonly cache?: NetworkSiteCachePort) {}
 
   async load(context: ResolvedSiteContext, query: NetworkContentQuery = {}, cacheRequest?: NetworkCacheRequest): Promise<NetworkSiteData | null> {
     const sanitized: NetworkContentQuery = {
@@ -41,5 +41,18 @@ export class NetworkContentService {
 
   async loadFeed(context: ResolvedSiteContext, limit = 50): Promise<readonly FeedArticle[]> {
     return this.repository.loadNetworkFeed(context, limit);
+  }
+
+  /**
+   * Resolve a published article id by slug without body or gallery reads.
+   *
+   * @param context - Resolved tenant hostname context.
+   * @param slug - Raw slug candidate from the caller.
+   * @returns Article id when published on the site, otherwise null.
+   */
+  async resolveArticleId(context: ResolvedSiteContext, slug: string): Promise<string | null> {
+    const normalized = slug.trim().toLowerCase();
+    if (normalized === '') return null;
+    return this.repository.resolveArticleId(context, normalized);
   }
 }

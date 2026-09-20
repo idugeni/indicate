@@ -52,8 +52,7 @@ async function handlePOST(request: Request) {
     if (!parsed.success) return NextResponse.json(createPublicError('INVALID_INPUT', 'Please correct the report fields.', requestId), { status: 400, headers: noStore });
     let articleId: string | null = null;
     if (parsed.data.articleSlug !== null) {
-      const site = await composition.content.load(result.context, { articleSlug: parsed.data.articleSlug });
-      articleId = site?.articles.find((article) => article.slug === parsed.data.articleSlug?.trim().toLowerCase())?.id ?? null;
+      articleId = await composition.content.resolveArticleId(result.context, parsed.data.articleSlug);
     }
     const runtime = getSharedRuntimeDatabase(context.bootstrap);
       const service = new ModerationService(new DrizzleModerationRepository(runtime.db));

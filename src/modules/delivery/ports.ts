@@ -38,6 +38,14 @@ export interface DeliveryRepository {
   loadSiteRobots(context: ResolvedSiteContext): Promise<readonly string[] | null>;
   /** Daftar kategori aktif org (ringan, untuk nav yang identik di semua halaman). */
   loadSiteCategories(context: ResolvedSiteContext): Promise<readonly SiteCategory[]>;
+  /**
+   * Resolve published article id by slug without loading body or gallery.
+   *
+   * @param context - Resolved tenant hostname context.
+   * @param slug - Normalized article slug candidate.
+   * @returns Article id when published on the site, otherwise null.
+   */
+  resolveArticleId(context: ResolvedSiteContext, slug: string): Promise<string | null>;
   isCacheBypassed(context: ResolvedSiteContext): Promise<boolean>;
   beginActivation(actor: AuthorizedTenantActorContext, siteId: string, hostname: string, previousHostname: string | null, now: string): Promise<ActivationAttempt>;
   updateActivation(actor: AuthorizedTenantActorContext, attemptId: string, activationState: ActivationAttempt['activationState'], externalStatus: Readonly<Record<string, unknown>>, now: string): Promise<ActivationAttempt>;

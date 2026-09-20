@@ -195,6 +195,25 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
   }
 
   /**
+   * Resolve a published article id by slug without body or gallery reads.
+   *
+   * @param context - Resolved tenant hostname context.
+   * @param slug - Normalized article slug.
+   * @returns Article id when published on the site, otherwise null.
+   */
+  async resolveArticleId(context: ResolvedSiteContext, slug: string): Promise<string | null> {
+    return this.database.transaction(async (transaction) => {
+      await this.publicTenant(transaction, context);
+      const rows = await transaction.select({ id: articles.id })
+        .from(articleSites)
+        .innerJoin(articles, and(eq(articles.organizationId, articleSites.organizationId), eq(articles.id, articleSites.articleId)))
+        .where(and(eq(articleSites.organizationId, context.organizationId), eq(articleSites.siteId, context.siteId), eq(articleSites.state, 'published'), eq(articleSites.active, true), eq(articles.status, 'active'), isNotNull(articleSites.publishedAt), eq(articles.slug, slug)))
+        .limit(1);
+      return rows[0]?.id ?? null;
+    });
+  }
+
+  /**
    * Feed RSS per host: metadata + body penuh tanpa relasi berat.
    *
    * @remarks Satu-satunya pembaca body massal selain halaman detail artikel
