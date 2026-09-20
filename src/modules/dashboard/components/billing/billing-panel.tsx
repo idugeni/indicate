@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 
 interface InvoiceRow {
@@ -67,6 +68,7 @@ export function BillingPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [preview, setPreview] = useState<InvoiceRow | null>(null);
 
   const reload = useCallback(async () => {
     setBusy(true);
@@ -230,6 +232,10 @@ export function BillingPanel({
     }
   };
 
+  const paidInvoices = invoices.filter((invoice) => invoice.status === 'paid');
+  const unpaidInvoices = invoices.filter((invoice) => invoice.status === 'unpaid');
+  const paidTotal = paidInvoices.reduce((sum, invoice) => sum + invoice.amountIdr, 0);
+
   return (
     <div className="grid grid-cols-1 items-start gap-x-10 gap-y-8 md:grid-cols-2">
       <section aria-label="Status langganan" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
@@ -255,6 +261,15 @@ export function BillingPanel({
         </p>
       </section>
 
+      <section aria-label="Ringkasan faktur" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
+        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Ringkasan faktur</p>
+        <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-paper-dim">
+          {invoices.length === 0
+            ? 'Belum ada faktur tercatat untuk organisasi ini.'
+            : `${invoices.length} faktur · ${paidInvoices.length} lunas (${formatIdr(paidTotal)}) · ${unpaidInvoices.length} belum bayar.`}
+        </p>
+      </section>
+
       <section aria-label="Faktur saya" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Faktur saya</p>
         <ul className="m-0 mt-2 grid list-none gap-0 p-0">
@@ -272,6 +287,16 @@ export function BillingPanel({
               {invoice.status === 'voided' && invoice.voidReason ? (
                 <p className="m-0 mt-0.5 font-sans text-xs text-error">Void: {invoice.voidReason}</p>
               ) : null}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPreview(invoice)}
+                  disabled={busy}
+                  className="h-8 border border-hairline-strong px-3 font-sans text-xs text-paper hover:text-brass disabled:opacity-50"
+                >
+                  Pratinjau
+                </button>
+              </div>
               {isPlatform && invoice.status === 'paid' ? (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <button
@@ -431,6 +456,61 @@ export function BillingPanel({
           </div>
         </section>
       ) : null}
+
+      <Dialog open={preview !== null} onOpenChange={(open) => { if (!open) setPreview(null); }}>
+        <DialogContent className="border border-hairline bg-bg-raised">
+          <DialogTitle className="font-sans text-sm font-semibold text-paper">
+            {preview === null ? 'Pratinjau faktur' : preview.number}
+          </DialogTitle>
+          <DialogDescription className="font-sans text-xs text-paper-dim">
+            Stempel LUNAS dan paraf digital dibubuhkan otomatis pada dokumen unduhan.
+          </DialogDescription>
+          {preview === null ? null : (
+            <dl className="m-0 space-y-2 font-sans text-xs">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-paper-faint">Nominal</dt>
+                <dd className="m-0 font-mono tabular-nums text-paper">{formatIdr(preview.amountIdr)}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-paper-faint">Status</dt>
+                <dd className="m-0 text-paper">{preview.status === 'paid' ? 'Lunas' : preview.status === 'unpaid' ? 'Belum bayar' : 'Void'}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-paper-faint">{preview.status === 'unpaid' ? 'Tempo' : 'Tanggal bayar'}</dt>
+                <dd className="m-0 font-mono tabular-nums text-paper">
+                  {preview.status === 'unpaid'
+                    ? (preview.dueAt === null ? '-' : formatDate(preview.dueAt))
+                    : (preview.paidAt === null ? '-' : formatDate(preview.paidAt))}
+                </dd>
+              </div>
+              {preview.billingNote ? (
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-paper-faint">Catatan</dt>
+                  <dd className="m-0 text-right text-paper">{preview.billingNote}</dd>
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-paper-faint">Metode</dt>
+                <dd className="m-0 text-paper">{preview.paymentMethod}</dd>
+              </div>
+            </dl>
+          )}
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (preview !== null) {
+                  window.open(`/api/dashboard/billing/invoice/${preview.id}?organizationId=${encodeURIComponent(preview.organizationId)}`, '_blank', 'noopener');
+                }
+              }}
+              disabled={busy || preview === null}
+              className="h-8 bg-brass px-3 font-sans text-xs font-semibold text-bg hover:bg-brass-soft disabled:opacity-50"
+            >
+              Unduh dokumen
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
