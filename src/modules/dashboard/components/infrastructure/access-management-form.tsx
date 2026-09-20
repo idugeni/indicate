@@ -5,6 +5,7 @@ import { KeyRound, Loader2, Plus, Send, UserPlus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { createInviteSecret, formatInviteCode, hashInviteCode } from '@/modules/dashboard/components/shared/invite-code';
 import { PermissionChecklist } from '@/modules/dashboard/components/shared/permission-checklist';
 import { ROLE_PERMISSION_OPTIONS } from '@/modules/dashboard/components/shared/record-editor-config';
 
@@ -94,17 +95,14 @@ export function AccessManagementForm({
           setInviteNotice('Isi email dan peran target dulu.');
           return;
         }
-        const secretBytes = new Uint8Array(24);
-        crypto.getRandomValues(secretBytes);
-        const secret = btoa(String.fromCharCode(...secretBytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${organizationId}:${email}:${secret}`));
-        const tokenHash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+        const secret = await createInviteSecret();
+        const tokenHash = await hashInviteCode(organizationId, email, secret);
         const result = await command('invitation.create', { email, roleId, tokenHash });
         if (result === null) {
           setInviteNotice('Undangan gagal dibuat. Periksa peran dan email.');
           return;
         }
-        setInviteCode(`${organizationId}:${email}:${secret}`);
+        setInviteCode(formatInviteCode(organizationId, email, secret));
         setInviteNotice('Undangan aktif 24 jam, sekali pakai. Salin kode di bawah untuk penerima.');
         setInviteEmail('');
       } catch {

@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { hashInviteCode } from '@/modules/dashboard/components/shared/invite-code';
 
 export function RedeemInviteForm() {
   const router = useRouter();
@@ -18,8 +19,7 @@ export function RedeemInviteForm() {
       const parts = code.trim().split(':');
       if (parts.length !== 3 || parts.some((part) => part.length === 0)) throw new Error('bad-code');
       const [orgId, email, secret] = parts as [string, string, string];
-      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${orgId}:${email.toLowerCase()}:${secret}`));
-      const tokenHash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+      const tokenHash = await hashInviteCode(orgId, email, secret);
       const response = await fetch('/api/dashboard/billing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

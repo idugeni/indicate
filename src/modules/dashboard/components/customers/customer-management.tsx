@@ -5,6 +5,7 @@ import { Loader2, Plus, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { createInviteSecret, formatInviteCode, hashInviteCode } from '@/modules/dashboard/components/shared/invite-code';
 import { slugify } from '@/modules/dashboard/components/shared/form-utils';
 
 export function CustomerManagement({
@@ -73,20 +74,17 @@ export function CustomerManagement({
     setInviteCode(null);
     startInviteTransition(async () => {
       try {
-        const secretBytes = new Uint8Array(24);
-        crypto.getRandomValues(secretBytes);
-        const secret = btoa(String.fromCharCode(...secretBytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        const secret = await createInviteSecret();
         const orgId = inviteOrgId.trim();
         const email = inviteEmail.trim().toLowerCase();
-        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${orgId}:${email}:${secret}`));
-        const tokenHash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+        const tokenHash = await hashInviteCode(orgId, email, secret);
         const response = await fetch('/api/dashboard/billing', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'invite.create', payload: { orgId, roleId: inviteRoleId.trim(), email, tokenHash } }),
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        setInviteCode(`${orgId}:${email}:${secret}`);
+        setInviteCode(formatInviteCode(orgId, email, secret));
         setInviteNotice('Undangan aktif 24 jam, sekali pakai. Salin kode di bawah untuk penerima.');
       } catch {
         setInviteNotice('Undangan gagal dibuat. Periksa ID org/role dan email.');
