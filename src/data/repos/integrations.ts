@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull, like, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
@@ -155,6 +155,14 @@ export class DrizzleIntegrationsRepository implements IntegrationsRepository {
     const id = rows[0]?.outbox_enqueue;
     if (id === undefined) throw new IntegrationsConflictError();
     return Object.freeze({ id });
+  }
+  async listOrganizationGroupChats(organizationId: string): Promise<readonly string[]> {
+    return this.database.transaction(async (tx) => {
+      await this.context(tx, organizationId, 'telegram-notify', 'telegram-notify');
+      const rows = await tx.selectDistinct({ chatId: telegramIdentityMappings.telegramChatId }).from(telegramIdentityMappings)
+        .where(and(eq(telegramIdentityMappings.organizationId, organizationId), eq(telegramIdentityMappings.status, 'active'), like(telegramIdentityMappings.telegramChatId, '-%')));
+      return rows.map((row) => row.chatId);
+    });
   }
 
   async claimOutboxMessages(now: string, limit: number): Promise<readonly TelegramOutboxRecord[]> {

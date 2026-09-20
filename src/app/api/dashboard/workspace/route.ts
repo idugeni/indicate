@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
+import { createTelegramNotificationService } from '@/modules/integrations/integrations-composition';
 import { getPublicConfig } from '@/core/config/public-config';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
@@ -69,7 +70,7 @@ async function contextFor(organizationId: string, requestId: string, headers: He
   }
   return {
     actor: { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), regionScopeId: membership.regionId ?? null, entryPoint: 'dashboard', requestId },
-    service: new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator()),
+    service: new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator(), undefined, createTelegramNotificationService(context.config, context.bootstrap)),
   };
 }
 

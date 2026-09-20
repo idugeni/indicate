@@ -52,6 +52,7 @@ export interface IntegrationsRepository {
   saveTelegramConversation(identity: TelegramIdentity, conversation: TelegramConversation): Promise<void>;
   clearTelegramConversation(identity: TelegramIdentity): Promise<void>;
   enqueueOutboxMessage(input: { readonly organizationId: string | null; readonly chatId: string; readonly text: string; readonly now: string }): Promise<{ readonly id: string }>;
+  listOrganizationGroupChats(organizationId: string): Promise<readonly string[]>;
   claimOutboxMessages(now: string, limit: number): Promise<readonly TelegramOutboxRecord[]>;
   ackOutboxMessage(input: { readonly id: string; readonly ok: boolean; readonly retryAfterSeconds: number | null; readonly error: string | null; readonly now: string }): Promise<void>;
   listBroadcastTargets(actorId: string): Promise<readonly { readonly organizationId: string; readonly chatId: string }[]>;

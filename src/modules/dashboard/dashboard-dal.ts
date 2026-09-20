@@ -4,6 +4,7 @@ import { unstable_cache } from 'next/cache';
 
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
+import { createTelegramNotificationService } from '@/modules/integrations/integrations-composition';
 import type { DashboardSnapshot, DashboardProjection } from '@/modules/dashboard/models';
 import { orgTag } from '@/modules/dashboard/cache-tags';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
@@ -29,7 +30,7 @@ function loadDashboardProjection(input: {
     async (): Promise<DashboardProjection> => {
       const context = await getServerRuntimeContext();
       const runtime = getSharedRuntimeDatabase(context.bootstrap);
-      const service = new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator());
+      const service = new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator(), undefined, createTelegramNotificationService(context.config, context.bootstrap));
       const actor: AuthorizedTenantActorContext = {
         actorType: 'user',
         actorId: input.actorId,

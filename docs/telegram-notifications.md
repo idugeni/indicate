@@ -1,7 +1,10 @@
 # Telegram Notifications — Decision Log
 
-Status: planned, not implemented. Bot chat commands are still intact; do not
-treat this file as a build instruction until the owner approves execution.
+Status: partially implemented (2026-09-19, owner-approved): event composers
+(`telegram-notifications.ts`: article created, job published/failed) and
+group fan-out (`TelegramNotificationService` + worker/article hooks, outbox +
+drain) are live. Per-event preferences and multi-group subscriptions remain
+planned; chat commands stay retired.
 
 ## 2026-09-19 — group-only notifications, chat commands retired
 

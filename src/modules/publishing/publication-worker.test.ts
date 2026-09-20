@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { QueueClaim, RedisCoordinationPort } from '@/integrations/redis/ports';
 import type { ObjectStoragePort } from '@/integrations/storage/ports';
-import type { PublicationJobRecord, WorkerClaim } from '@/modules/publishing/models';
+import type { PublicationJobRecord, PublicationStatusProjection, PublicationTargetRecord, WorkerClaim } from '@/modules/publishing/models';
 import type { PublicationTargetPublisherPort, PublishingRepository } from '@/modules/publishing/ports';
 import { PublicationWorker, type WorkerPolicy } from '@/modules/publishing/publication-worker';
 
@@ -107,6 +107,54 @@ describe('PublicationWorker run', () => {
     expect(repository.calls).toContain('releaseJob');
     expect(queue.acknowledged).toEqual([claim]);
   });
+
+  it('memberi kabar grup saat pekerjaan terminal dalam run', async () => {
+    const claim: QueueClaim = { logicalId: 'org-1:job-1', claimToken: 't-1', leaseExpiresAt: new Date() };
+    const queue = queueStub([claim]);
+    const workerClaim: WorkerClaim = { organizationId: 'org-1', jobId: 'job-1', workerId: 'w-1', fencingToken: 1, leaseExpiresAt: new Date().toISOString() };
+    const target: PublicationTargetRecord = {
+      id: 'tgt-1', organizationId: 'org-1', jobId: 'job-1', articleSiteId: 'as-1', siteId: 'site-1', state: 'queued',
+      attempt: 1, fencingToken: 1, nextAttemptAt: '2026-09-18T00:00:00.000Z', startedAt: null, finishedAt: null,
+      publishedUrl: null, publishedAt: null, sanitizedError: null,
+    };
+    const terminal: PublicationStatusProjection = {
+      job: jobRecord({ state: 'published', finalizedAt: '2026-09-19T11:00:00.000Z' }),
+      targets: [{ ...target, state: 'published', publishedUrl: 'https://portal.test/a' }],
+      result: { finalState: 'published', successfulCount: 1, urls: ['https://portal.test/a'] },
+    };
+    const transitionTarget = vi.fn(async () => ({ status: terminal, receiptId: 'rc-1' }));
+    const repository = repositoryStub({
+      claimJob: async () => workerClaim,
+      runnableTargets: async () => [target],
+      transitionTarget: transitionTarget as never,
+      getPublication: async () => terminal,
+      loadJobNotificationContext: async () => ({ articleTitle: 'Rilis', hostnames: { 'site-1': 'portal.test' } }),
+    });
+    const notifier = { notifyJobTerminal: vi.fn(async () => undefined) };
+    const worker = new PublicationWorker(repository, queue, PUBLISHER, STORAGE, POLICY, undefined, notifier);
+    await worker.run('w-1');
+    expect(notifier.notifyJobTerminal).toHaveBeenCalledTimes(1);
+    expect(notifier.notifyJobTerminal).toHaveBeenCalledWith({
+      organizationId: 'org-1', jobId: 'job-1', articleTitle: 'Rilis', finishedAt: '2026-09-19T11:00:00.000Z',
+      published: [{ hostname: 'portal.test', url: 'https://portal.test/a' }], failed: [],
+    });
+  });
+
+  it('diam saat pekerjaan sudah terminal tanpa transisi run', async () => {
+    const claim: QueueClaim = { logicalId: 'org-1:job-1', claimToken: 't-1', leaseExpiresAt: new Date() };
+    const queue = queueStub([claim]);
+    const workerClaim: WorkerClaim = { organizationId: 'org-1', jobId: 'job-1', workerId: 'w-1', fencingToken: 1, leaseExpiresAt: new Date().toISOString() };
+    const terminal: PublicationStatusProjection = {
+      job: jobRecord({ state: 'failed', finalizedAt: '2026-09-19T11:00:00.000Z' }),
+      targets: [],
+      result: { finalState: 'failed' as const, successfulCount: 0, urls: [] },
+    };
+    const repository = repositoryStub({ claimJob: async () => workerClaim, getPublication: async () => terminal });
+    const notifier = { notifyJobTerminal: vi.fn(async () => undefined) };
+    const worker = new PublicationWorker(repository, queue, PUBLISHER, STORAGE, POLICY, undefined, notifier);
+    await worker.run('w-1');
+    expect(notifier.notifyJobTerminal).not.toHaveBeenCalled();
+  });
 });
 
 describe('PublicationWorker reconcile', () => {
@@ -120,5 +168,22 @@ describe('PublicationWorker reconcile', () => {
   it('mengembalikan nol saat tidak ada pekerjaan', async () => {
     const worker = new PublicationWorker(repositoryStub(), queueStub(), PUBLISHER, STORAGE, POLICY);
     await expect(worker.reconcile()).resolves.toEqual({ claimed: 0, processed: 0, reconciled: 0, cleaned: 0 });
+  });
+
+  it('memberi kabar grup saat lease pulih menjadi terminal', async () => {
+    const terminal: PublicationStatusProjection = {
+      job: jobRecord({ state: 'failed', finalizedAt: '2026-09-19T11:00:00.000Z' }),
+      targets: [],
+      result: { finalState: 'failed' as const, successfulCount: 0, urls: [] },
+    };
+    const repository = repositoryStub({
+      findExpiredLeases: async () => [jobRecord()],
+      getPublication: async () => terminal,
+      loadJobNotificationContext: async () => ({ articleTitle: 'Rilis', hostnames: {} }),
+    });
+    const notifier = { notifyJobTerminal: vi.fn(async () => undefined) };
+    const worker = new PublicationWorker(repository, queueStub(), PUBLISHER, STORAGE, POLICY, undefined, notifier);
+    await worker.reconcile();
+    expect(notifier.notifyJobTerminal).toHaveBeenCalledTimes(1);
   });
 });

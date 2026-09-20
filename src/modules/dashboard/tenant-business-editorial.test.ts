@@ -157,6 +157,30 @@ describe('TenantBusinessService affiliations memberships articles', () => {
     expect(result.value.slug).toBe('berita-utama-2');
   });
 
+  it('memberi kabar grup saat artikel dibuat', async () => {
+    const notifyArticleCreated = vi.fn(async () => undefined);
+    const state: Record<string, unknown> = { organizationId: 'org-1', regions: [{ id: ID2, status: 'active' }], articles: [] as unknown[] };
+    for (const key of COLLECTIONS) state[key] ??= [];
+    const repository = {
+      execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {
+        const op = operation as (transaction: unknown) => unknown;
+        return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit: vi.fn() });
+      }),
+      recordDenied: vi.fn(async () => undefined),
+    };
+    const service = new TenantBusinessService(repository as never, { create: () => ID }, { now: () => NOW }, { notifyArticleCreated });
+    const result = await service.createArticle(actor, {
+      regionId: ID2,
+      slug: 'berita-baru',
+      title: 'Judul Artikel Yang Cukup Panjang',
+      body: 'Isi artikel yang cukup panjang untuk lolos validasi.',
+      source: 'Humas',
+    });
+    expect(result.ok).toBe(true);
+    expect(notifyArticleCreated).toHaveBeenCalledTimes(1);
+    expect(notifyArticleCreated).toHaveBeenCalledWith({ organizationId: 'org-1', articleId: ID, title: 'Judul Artikel Yang Cukup Panjang' });
+  });
+
   it('menolak update slug duplikat', async () => {
     const article = { id: ID, organizationId: 'org-1', regionId: ID2, slug: 'lama', title: 'T', body: 'B', source: 'S', tags: [], status: 'draft', version: 1, publisherId: null, categoryId: null, authorId: null };
     const { service } = harness({

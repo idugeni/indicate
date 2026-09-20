@@ -13,7 +13,7 @@ import { excerptForDescription } from '@/modules/publishing/variant-suggester';
 import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
 import {
   PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type AcceptPublicationInput, type AcceptPublicationResult,
-  type ActivateMediaInput, type ArticleVariantContext, type PublicationTargetSelection, type ReserveMediaCandidate, type ReservationCandidateResult, type PublishingRepository,
+  type ActivateMediaInput, type ArticleVariantContext, type JobNotificationContext, type PublicationTargetSelection, type ReserveMediaCandidate, type ReservationCandidateResult, type PublishingRepository,
   type TargetTransitionInput,
 } from '@/modules/publishing/ports';
 import { redact } from '@/core/security/redaction';
@@ -475,6 +475,20 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         .where(eq(publishingJobs.organizationId, actor.organizationId))
         .orderBy(desc(publishingJobs.createdAt)).limit(Math.max(1, Math.min(limit, 20)));
       return rows.map(({ job, articleTitle }) => ({ job: mapJob(job), articleTitle }));
+    });
+  }
+  async loadJobNotificationContext(organizationId: string, jobId: string): Promise<JobNotificationContext | null> {
+    return this.database.transaction(async (transaction) => {
+      await this.context(transaction, organizationId, jobId, 'worker-notify');
+      const jobs = await transaction.select({ articleId: publishingJobs.articleId }).from(publishingJobs).where(and(eq(publishingJobs.organizationId, organizationId), eq(publishingJobs.id, jobId))).limit(1);
+      const job = jobs[0]; if (job === undefined) return null;
+      const titles = await transaction.select({ title: articles.title }).from(articles).where(and(eq(articles.organizationId, organizationId), eq(articles.id, job.articleId))).limit(1);
+      const title = titles[0]?.title; if (title === undefined) return null;
+      const hosts = await transaction.select({ siteId: sites.id, hostname: sites.normalizedHostname }).from(publishingJobTargets)
+        .innerJoin(articleSites, and(eq(articleSites.organizationId, publishingJobTargets.organizationId), eq(articleSites.id, publishingJobTargets.articleSiteId)))
+        .innerJoin(sites, and(eq(sites.organizationId, publishingJobTargets.organizationId), eq(sites.id, articleSites.siteId)))
+        .where(and(eq(publishingJobTargets.organizationId, organizationId), eq(publishingJobTargets.jobId, jobId)));
+      return { articleTitle: title, hostnames: Object.fromEntries(hosts.map(({ siteId, hostname }) => [siteId, hostname])) };
     });
   }
   private async loadJobs(refs: readonly { organization_id: string; job_id: string }[]): Promise<PublicationJobRecord[]> {

@@ -106,6 +106,7 @@ export interface PublishingRepository {
   recordDispatchScheduled(organizationId: string, jobId: string, now: string, claimToken?: string): Promise<void>;
   recordDispatchFailure(organizationId: string, jobId: string, retryable: boolean, nextAt: string, now: string, claimToken?: string): Promise<void>;
   getPublication(actor: AuthorizedTenantActorContext, jobId: string): Promise<PublicationStatusProjection | null>;
+  loadJobNotificationContext(organizationId: string, jobId: string): Promise<JobNotificationContext | null>;
   listPublications(actor: AuthorizedTenantActorContext, limit: number): Promise<readonly PublicationJobSummary[]>;
   claimDispatchGaps(now: string, limit: number, claimToken: string, claimExpiresAt: string): Promise<readonly PublicationJobRecord[]>;
   claimJob(organizationId: string, jobId: string, workerId: string, leaseExpiresAt: string, now: string): Promise<WorkerClaim | null>;
@@ -130,6 +131,37 @@ export type TargetPublicationOutcome =
 
 export interface PublicationTargetPublisherPort {
   publish(claim: WorkerClaim, target: PublicationTargetRecord): Promise<TargetPublicationOutcome>;
+}
+
+/**
+ * Konteks tampilan untuk kabar final pekerjaan: judul artikel plus
+ * hostname per portal agar pesan grup terbaca tanpa kueri tambahan.
+ */
+export interface JobNotificationContext {
+  readonly articleTitle: string;
+  readonly hostnames: Readonly<Record<string, string>>;
+}
+
+/**
+ * Kabar final satu pekerjaan penerbitan dalam bentuk data polos.
+ */
+export interface JobTerminalNotice {
+  readonly organizationId: string;
+  readonly jobId: string;
+  readonly articleTitle: string;
+  readonly finishedAt: string;
+  readonly published: readonly { readonly hostname: string; readonly url: string }[];
+  readonly failed: readonly { readonly hostname: string; readonly code: string }[];
+}
+
+/**
+ * Port pemberitahuan grup yang dipanggil worker saat pekerjaan terminal.
+ *
+ * @remarks Implementasi tidak pernah melempar: kegagalan antrean hanya
+ * telemetri agar pemrosesan latar tidak gagal karena notifikasi.
+ */
+export interface PublicationTerminalNotifier {
+  notifyJobTerminal(input: JobTerminalNotice): Promise<void>;
 }
 
 export class PublishingAccessDeniedError extends Error {

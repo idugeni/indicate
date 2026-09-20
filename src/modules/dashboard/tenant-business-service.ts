@@ -71,6 +71,16 @@ function regionLock(actor: AuthorizedTenantActorContext): string | null {
   return actor.regionScopeId ?? null;
 }
 
+/**
+ * Port pemberitahuan grup yang dipanggil layanan artikel saat draf dibuat.
+ *
+ * @remarks Implementasi tidak pernah melempar: kegagalan antrean hanya
+ * telemetri agar penulisan artikel tidak gagal karena notifikasi.
+ */
+export interface ArticleCreatedNotifier {
+  notifyArticleCreated(input: { readonly organizationId: string; readonly articleId: string; readonly title: string }): Promise<void>;
+}
+
 function requireUnrestrictedRegion(actor: AuthorizedTenantActorContext): void {
   if (regionLock(actor) !== null) throw new DashboardAccessDeniedError();
 }
@@ -113,6 +123,7 @@ export class TenantBusinessService {
     private readonly repository: DashboardRepository,
     private readonly identifiers: IdentifierGenerator,
     private readonly clock: ClockLike = { now: () => new Date() },
+    private readonly notifier: ArticleCreatedNotifier | null = null,
   ) {}
 
   private invalid(actor: AuthorizedTenantActorContext, error: z.ZodError): Result<never, PublicErrorEnvelope> {
@@ -555,14 +566,20 @@ export class TenantBusinessService {
     });
   }
 
-  createArticle(actor: AuthorizedTenantActorContext, raw: unknown) {
-    return this.mutate({ actor, raw, schema: articleCreateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.create', targetType: 'article', execute: (transaction, value, now) => {
+  async createArticle(actor: AuthorizedTenantActorContext, raw: unknown) {
+    const result = await this.mutate({ actor, raw, schema: articleCreateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.create', targetType: 'article', execute: (transaction, value, now) => {
       this.requireArticleReferences(transaction.state, value);
       requireLockedRegionValue(actor, value.regionId);
       const slug = allocateUniqueSlug(transaction.state.articles.map(({ slug }) => slug), value.slug);
       const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, publishedAt: null, archivedAt: null };
       transaction.state.articles.push(record); this.audit(transaction, 'article.create', 'article', record.id, null, record); return record;
     }});
+    if (result.ok && this.notifier !== null) {
+      try {
+        await this.notifier.notifyArticleCreated({ organizationId: actor.organizationId, articleId: result.value.id, title: result.value.title });
+      } catch { /* notifikasi best-effort: kegagalan antrean tidak menggagalkan penulisan */ }
+    }
+    return result;
   }
 
   updateArticle(actor: AuthorizedTenantActorContext, raw: unknown) {
