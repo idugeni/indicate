@@ -41,6 +41,9 @@
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "perf:listing-payload": "node scripts/perf/listing-payload.mjs",
+    "perf:seal-coldstart": "node scripts/perf/seal-coldstart.mjs",
+    "perf": "npm run perf:listing-payload && npm run perf:seal-coldstart",
     "db:bootstrap": "node scripts/db-bootstrap.mjs",
     "db:bootstrap:check": "node scripts/db-bootstrap.mjs --check",
     "audit:production": "npm audit --omit=dev --audit-level=high"

@@ -124,15 +124,30 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run build
 
+  perf:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    concurrency:
+      group: quality-gate-perf-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run perf
+
   quality-gate:
     runs-on: ubuntu-26.04
     timeout-minutes: 5
-    needs: [static, lint, test, build]
+    needs: [static, lint, test, perf, build]
     if: always()
     steps:
       - run: |
-          if [ "${{ needs.static.result }}" != "success" ] || [ "${{ needs.lint.result }}" != "success" ] || [ "${{ needs.test.result }}" != "success" ] || [ "${{ needs.build.result }}" != "success" ]; then
-            echo "gate failed: static=${{ needs.static.result }} lint=${{ needs.lint.result }} test=${{ needs.test.result }} build=${{ needs.build.result }}"
+          if [ "${{ needs.static.result }}" != "success" ] || [ "${{ needs.lint.result }}" != "success" ] || [ "${{ needs.test.result }}" != "success" ] || [ "${{ needs.perf.result }}" != "success" ] || [ "${{ needs.build.result }}" != "success" ]; then
+            echo "gate failed: static=${{ needs.static.result }} lint=${{ needs.lint.result }} test=${{ needs.test.result }} perf=${{ needs.perf.result }} build=${{ needs.build.result }}"
             exit 1
           fi
           echo "gate passed."
