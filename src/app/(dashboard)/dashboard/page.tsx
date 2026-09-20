@@ -12,29 +12,12 @@ import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
-import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
 import { UuidGenerator } from '@/core/system/uuid-generator';
 import { DashboardWorkspace, type OrganizationOption } from '@/modules/dashboard/components/dashboard-workspace';
 import { DashboardFooter } from '@/modules/dashboard/components/dashboard-footer';
 import { RedeemInviteForm } from '@/modules/dashboard/components/billing/redeem-invite-form';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
 import DashboardLoading from '@/app/(dashboard)/loading';
-
-async function resolveDisplayAvatarUrl(
-  stored: string | null,
-  context: Awaited<ReturnType<typeof getServerRuntimeContext>>,
-): Promise<string | null> {
-  if (stored === null) return null;
-  if (stored.startsWith('https://')) return stored;
-  if (!stored.startsWith('r2:')) return null;
-  try {
-    const storage = new R2ObjectStorageAdapter({ accountId: context.config.r2.accountId, bucketName: context.config.r2.bucketName, accessKeyId: context.config.r2.accessKeyId, secretAccessKey: context.config.r2.secretAccessKey });
-    const authorization = await storage.authorizeExactGet(stored.slice('r2:'.length), context.config.r2.readTtlSeconds);
-    return authorization.url;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Render dashboard workspace shell.
@@ -52,8 +35,6 @@ export default function DashboardPage() {
 async function DashboardBody() {
   await connection();
   const cookieStore = await cookies();
-  let avatarUrl: string | null = null;
-  let organizations: readonly OrganizationOption[] = [];
   const publicConfig = getPublicConfig(process.env);
   const auth = createSupabaseSsrAuthAdapter({
     url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey,
@@ -74,25 +55,25 @@ async function DashboardBody() {
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
   const repository = new DrizzleAuthorizationRepository(runtime.db);
   const discovery = await resolveVerifiedUserOrganizations(identity, repository, new UuidGenerator()); if (!discovery.ok) redirect('/sign-in');
-  const localUserId = discovery.value.localUser.id;
-  avatarUrl = await resolveDisplayAvatarUrl(discovery.value.localUser.avatarUrl ?? identity.avatarUrl, context);
-  const withTiers = await Promise.all(
-    discovery.value.organizations.map(async ({ id, name }): Promise<OrganizationOption> => {
-      const membership = await repository.findActiveMembership(id, localUserId);
-      return {
-        id,
-        name,
-        records: [],
-        ...(membership === null
-          ? {}
-          : {
-            role: membership.roleTier,
-            permissions: [...membership.orgPermissions, ...membership.platformPermissions],
-          }),
-      };
-    }),
+  const localUser = discovery.value.localUser;
+  const memberships = await repository.findActiveMemberships(
+    localUser.id,
+    discovery.value.organizations.map(({ id }) => id),
   );
-  organizations = withTiers;
+  let organizations: readonly OrganizationOption[] = discovery.value.organizations.map(({ id, name }) => {
+    const membership = memberships.get(id);
+    return {
+      id,
+      name,
+      records: [],
+      ...(membership === undefined
+        ? {}
+        : {
+          role: membership.roleTier,
+          permissions: [...membership.orgPermissions, ...membership.platformPermissions],
+        }),
+    };
+  });
   const selected = z.uuid().safeParse(cookieStore.get('indicate-active-organization')?.value);
   if (selected.success && organizations.some(({ id }) => id === selected.data)) {
     organizations = [organizations.find(({ id }) => id === selected.data)!, ...organizations.filter(({ id }) => id !== selected.data)];
@@ -131,7 +112,12 @@ async function DashboardBody() {
     );
   }
   const firstOrganization = organizations[0];
-  const initialDashboard =
-    firstOrganization === undefined ? null : await getDashboardSnapshot(firstOrganization.id, identity);
-  return <DashboardWorkspace displayName={displayName} avatarUrl={avatarUrl} organizations={organizations} initialDashboard={initialDashboard} />;
+  const firstMembership = firstOrganization === undefined ? undefined : memberships.get(firstOrganization.id);
+  const initialDashboard = firstOrganization === undefined
+    ? null
+    : firstMembership === undefined
+      ? await getDashboardSnapshot(firstOrganization.id, identity)
+      : await getDashboardSnapshot(firstOrganization.id, identity, { localUser, membership: firstMembership });
+  const avatarRef = localUser.avatarUrl ?? identity.avatarUrl;
+  return <DashboardWorkspace displayName={displayName} avatarUrl={avatarRef} organizations={organizations} initialDashboard={initialDashboard} />;
 }

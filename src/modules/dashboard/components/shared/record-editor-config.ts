@@ -107,7 +107,7 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
     updateAction: 'domain.update',
     title: 'Ubah domain',
     fields: [
-      { key: 'normalizedHostname', label: 'Hostname apex', kind: 'text', required: true, placeholder: 'beritakota.news' },
+      { key: 'normalizedHostname', label: 'Nama domain utama', kind: 'text', required: true, placeholder: 'beritakota.news' },
       { key: 'status', label: 'Status', kind: 'select', required: true, options: LIFECYCLE_OPTIONS },
     ],
   },
@@ -116,18 +116,18 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
     title: 'Ubah wilayah',
     fields: [
       { key: 'name', label: 'Nama wilayah', kind: 'text', required: true, placeholder: 'Wonosobo' },
-      { key: 'slug', label: 'Slug', kind: 'text', required: true, placeholder: 'wonosobo', pattern: '[a-z0-9-]+' },
-      { key: 'externalKey', label: 'Kunci eksternal', kind: 'text', required: true, placeholder: 'wonosobo', pattern: '[a-z0-9-]+' },
+      { key: 'slug', label: 'Kode Wilayah', kind: 'text', required: true, placeholder: 'wonosobo', pattern: '[a-z0-9-]+' },
+      { key: 'externalKey', label: 'Kode Eksternal', kind: 'text', required: true, placeholder: 'wonosobo', pattern: '[a-z0-9-]+' },
       { key: 'status', label: 'Status', kind: 'select', required: true, options: LIFECYCLE_OPTIONS },
     ],
   },
   sites: {
     updateAction: 'site.update',
-    title: 'Ubah kanal',
+    title: 'Ubah situs',
     fields: [
-      { key: 'domainId', label: 'Domain induk', kind: 'select', required: true, optionSource: 'domains' },
-      { key: 'regionId', label: 'Wilayah', kind: 'select', optionSource: 'regions', allowEmpty: true, emptyLabel: 'Kanal apex (sentral)' },
-      { key: 'normalizedHostname', label: 'Hostname', kind: 'text', required: true, placeholder: 'pekalongan.wartakota.tv' },
+      { key: 'domainId', label: 'Domain', kind: 'select', required: true, optionSource: 'domains' },
+      { key: 'regionId', label: 'Wilayah', kind: 'select', optionSource: 'regions', allowEmpty: true, emptyLabel: 'Domain utama (tanpa wilayah)' },
+      { key: 'normalizedHostname', label: 'Alamat Situs', kind: 'text', required: true, placeholder: 'pekalongan.wartakota.tv' },
       { key: 'status', label: 'Status', kind: 'select', required: true, options: LIFECYCLE_OPTIONS },
     ],
   },
@@ -136,7 +136,7 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
     title: 'Ubah kategori',
     fields: [
       { key: 'name', label: 'Nama', kind: 'text', required: true },
-      { key: 'slug', label: 'Slug', kind: 'text', required: true, pattern: '[a-z0-9-]+' },
+      { key: 'slug', label: 'Kode Kategori', kind: 'text', required: true, pattern: '[a-z0-9-]+' },
       { key: 'status', label: 'Status', kind: 'select', required: true, options: LIFECYCLE_OPTIONS },
     ],
   },
@@ -145,7 +145,7 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
     title: 'Ubah penulis',
     fields: [
       { key: 'displayName', label: 'Nama tampilan', kind: 'text', required: true },
-      { key: 'byline', label: 'Byline', kind: 'text', required: true },
+      { key: 'byline', label: 'Nama pena', kind: 'text', required: true },
       { key: 'status', label: 'Status', kind: 'select', required: true, options: LIFECYCLE_OPTIONS },
     ],
   },
@@ -154,8 +154,8 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
     title: 'Ubah penerbit',
     fields: [
       { key: 'name', label: 'Nama resmi', kind: 'text', required: true },
-      { key: 'type', label: 'Klasifikasi entitas', kind: 'select', required: true, options: PUBLISHER_TYPE_OPTIONS },
-      { key: 'attributionLabel', label: 'Label atribusi kanonikal', kind: 'text', required: true },
+      { key: 'type', label: 'Jenis Penerbit', kind: 'select', required: true, options: PUBLISHER_TYPE_OPTIONS },
+      { key: 'attributionLabel', label: 'Nama Tampil', kind: 'text', required: true },
       { key: 'evidenceReference', label: 'Referensi bukti (opsional)', kind: 'text', placeholder: 'ref-dewanpers-2026-09' },
       ...SOCIAL_FIELD_DEFS.map((field) => ({
         key: `contacts.${field.key}`,
@@ -177,16 +177,16 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
   },
   articles: {
     updateAction: 'article.update',
-    title: 'Ubah naskah',    fields: [
+    title: 'Ubah Artikel',    fields: [
       { key: 'title', label: 'Judul', kind: 'text', required: true },
-      { key: 'slug', label: 'Slug', kind: 'text', required: true, pattern: '[a-z0-9-]+' },
-      { key: 'regionId', label: 'Wilayah induk', kind: 'select', required: true, optionSource: 'regions' },
+      { key: 'slug', label: 'Slug URL', kind: 'text', required: true, pattern: '[a-z0-9-]+' },
+      { key: 'regionId', label: 'Wilayah', kind: 'select', required: true, optionSource: 'regions' },
       { key: 'publisherId', label: 'Penerbit', kind: 'select', optionSource: 'publishers', allowEmpty: true, emptyLabel: 'Tanpa penerbit' },
       { key: 'categoryId', label: 'Kategori', kind: 'select', optionSource: 'categories', allowEmpty: true, emptyLabel: 'Tanpa kategori' },
       { key: 'authorId', label: 'Penulis', kind: 'select', optionSource: 'authors', allowEmpty: true, emptyLabel: 'Tanpa penulis' },
       { key: 'source', label: 'Sumber', kind: 'text', required: true },
       { key: 'status', label: 'Status', kind: 'select', required: true, options: ARTICLE_STATUS_OPTIONS },
-      { key: 'body', label: 'Isi naskah', kind: 'textarea', required: true },
+      { key: 'body', label: 'Isi Artikel', kind: 'textarea', required: true },
     ],
     transitions: [
       { action: 'article.archive', label: 'Arsipkan', whenStatus: ['draft', 'active'] },

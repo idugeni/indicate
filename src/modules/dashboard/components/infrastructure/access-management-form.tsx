@@ -224,13 +224,13 @@ export function AccessManagementForm({
 
           <div className="space-y-1.5">
             <label htmlFor={memberUserId} className="font-mono text-xs text-paper-dim">
-              Atau ID pengguna baru (sudah pernah masuk sekali)
+              Atau ID pengguna baru (sudah pernah masuk)
             </label>
             <Input
               id={memberUserId}
               name="newUserId"
               disabled={isSavingMembership}
-              placeholder="UUID pengguna"
+              placeholder="ID pengguna"
               className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
             />
           </div>
@@ -283,7 +283,7 @@ export function AccessManagementForm({
               ) : (
                 <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
               )}
-              <span>Terapkan penetapan</span>
+              <span>Simpan Penetapan</span>
             </button>
           </div>
         </form>
@@ -345,7 +345,7 @@ export function AccessManagementForm({
                   <div className="min-w-0 flex-1">
                     <p className="m-0 truncate font-sans text-xs font-medium text-paper">{invitation.email}</p>
                     <p className="m-0 truncate font-mono text-[10px] uppercase tracking-wider text-paper-faint">
-                      {invitation.roleName} · {invitation.status}
+                      {invitation.roleName} · {invitation.status === 'pending' ? 'Menunggu' : invitation.status === 'accepted' ? 'Diterima' : invitation.status === 'expired' ? 'Kedaluwarsa' : invitation.status}
                     </p>
                   </div>
                   {invitation.status === 'pending' ? (

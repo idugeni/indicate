@@ -153,13 +153,13 @@ export function EditorialForm({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-      <SectionCard icon={Plus} title="Naskah baru" eyebrow="Tulis sekali">
+      <SectionCard icon={Plus} title="Artikel Baru" eyebrow="Tulis sekali">
 
         <form onSubmit={handleCreateArticle} className="space-y-3.5">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label htmlFor={regionSelectId} className="font-mono text-xs text-paper-dim">
-                Wilayah Induk
+                Wilayah
               </label>
               <select
                 id={regionSelectId}
@@ -178,7 +178,7 @@ export function EditorialForm({
 
             <div className="space-y-1.5">
               <label htmlFor={publisherSelectId} className="font-mono text-xs text-paper-dim">
-                Penerbit (Publisher)
+                Penerbit
               </label>
               <select
                 id={publisherSelectId}
@@ -186,7 +186,7 @@ export function EditorialForm({
                 disabled={isSubmitting}
                 className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
               >
-                <option value="">Tanpa Afiliasi (Mandiri)</option>
+                <option value="">Mandiri (tanpa penerbit)</option>
                 {model?.publishers?.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -199,7 +199,7 @@ export function EditorialForm({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label htmlFor={categorySelectId} className="font-mono text-xs text-paper-dim">
-                Kategori Taksonomi
+                Kategori
               </label>
               <select
                 id={categorySelectId}
@@ -218,7 +218,7 @@ export function EditorialForm({
 
             <div className="space-y-1.5">
               <label htmlFor={authorSelectId} className="font-mono text-xs text-paper-dim">
-                Atribusi Penulis (Author)
+                Penulis
               </label>
               <select
                 id={authorSelectId}
@@ -254,7 +254,7 @@ export function EditorialForm({
 
             <div className="space-y-1.5">
               <label htmlFor={slugInputId} className="font-mono text-xs text-paper-dim">
-                URL Slug (Kanonikal)
+                Slug URL
               </label>
               <Input
                 id={slugInputId}
@@ -268,14 +268,14 @@ export function EditorialForm({
                 className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
               />
               <p className="m-0 font-mono text-[11px] text-paper-faint">
-                Bila sudah dipakai, akhiran -2, -3 ditambahkan otomatis.
+                Nama pendek alamat artikel (huruf kecil, tanpa spasi). Bila sudah dipakai, akhiran -2, -3 ditambahkan otomatis.
               </p>
             </div>
           </div>
 
           <div className="space-y-1.5">
             <label htmlFor={sourceInputId} className="font-mono text-xs text-paper-dim">
-              Sumber / Verifikasi Rilis
+              Sumber
             </label>
             <Input
               id={sourceInputId}
@@ -302,7 +302,7 @@ export function EditorialForm({
 
           <div className="space-y-1.5">
             <label htmlFor={bodyInputId} className="font-mono text-xs text-paper-dim">
-              Isi Naskah Lengkap (Plain Text / Paragraf Terstruktur)
+              Isi Artikel Lengkap
             </label>
             <div className="flex flex-wrap gap-1.5">
               <button type="button" title="Tebal (**teks**)" onClick={() => insertMarkup('**', '**')} disabled={isSubmitting} className="rounded border border-hairline-strong bg-bg px-2 py-1 font-mono text-[11px] text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50">
@@ -330,7 +330,7 @@ export function EditorialForm({
               className="min-h-[140px] rounded border border-hairline-strong bg-bg p-3 font-sans text-xs leading-relaxed text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
             />
             <p className="m-0 font-mono text-[11px] text-paper-faint">
-              Baris kosong = paragraf baru. Nomor [gambar:N] mengikuti urutan unggah di tab Media (pemilik artikel ini).
+              Baris kosong = paragraf baru. [gambar:N] memakai gambar ke-N dari halaman Media.
             </p>
             {bodyDraft.trim() !== '' ? (
               <div className="rounded border border-hairline bg-bg-raised p-3">
@@ -358,13 +358,13 @@ export function EditorialForm({
               ) : (
                 <Send className="h-3.5 w-3.5" aria-hidden="true" />
               )}
-              <span>Simpan Draf Kanonikal</span>
+              <span>Simpan Draf</span>
             </button>
           </div>
         </form>
       </SectionCard>
 
-      <SectionCard icon={Layers} title="Alokasi portal" eyebrow="Kanal tujuan">
+      <SectionCard icon={Layers} title="Penyaluran Artikel" eyebrow="Pilih situs tujuan">
 
         <form onSubmit={handleAssignSites} className="space-y-4">
           <div className="space-y-1.5">
@@ -387,12 +387,12 @@ export function EditorialForm({
 
           <div className="space-y-2">
             <span className="block font-mono text-xs text-paper-dim">
-              Kanal Distribusi Sinyal
+              Situs Tujuan
             </span>
             <div className="max-h-60 space-y-1.5 overflow-y-auto rounded border border-hairline bg-bg p-3">
               {model?.sites?.length === 0 ? (
                 <p className="m-0 font-mono text-xs text-paper-faint">
-                  Tidak ada kanal aktif terdaftar.
+                  Belum ada situs aktif.
                 </p>
               ) : (
                 model?.sites?.map((site) => (
@@ -427,14 +427,14 @@ export function EditorialForm({
               ) : (
                 <Check className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
               )}
-              <span>Terapkan Pemetaan Kanal</span>
+              <span>Simpan Penyaluran</span>
             </button>
           </div>
         </form>
 
         <form onSubmit={handleSetViews} className="mt-5 space-y-3 border-t border-hairline pt-5">
           <p className="m-0 font-mono text-xs text-paper-dim">
-            Jumlah tayang absolut (tayang perdana terisi otomatis 10rb-100rb; real menumpuk di atas angka ini)
+            Jumlah tayangan awal terisi otomatis; tayangan asli bertambah di atas angka ini.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -456,7 +456,7 @@ export function EditorialForm({
             </div>
             <div className="space-y-1.5">
               <label htmlFor={viewsSiteSelectId} className="font-mono text-xs text-paper-dim">
-                Kanal
+                Situs
               </label>
               <select
                 id={viewsSiteSelectId}
@@ -497,7 +497,7 @@ export function EditorialForm({
             ) : (
               <Check className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
             )}
-            <span>Simpan tampilan manual</span>
+            <span>Simpan Jumlah Tayangan</span>
           </button>
         </form>
       </SectionCard>

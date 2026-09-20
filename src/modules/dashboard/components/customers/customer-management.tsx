@@ -87,14 +87,14 @@ export function CustomerManagement({
         setInviteCode(formatInviteCode(orgId, email, secret));
         setInviteNotice('Undangan aktif 24 jam, sekali pakai. Salin kode di bawah untuk penerima.');
       } catch {
-        setInviteNotice('Undangan gagal dibuat. Periksa ID org/role dan email.');
+        setInviteNotice('Undangan gagal dibuat. Periksa ID organisasi/peran dan email.');
       }
     });
   };
 
   return (
     <div className="grid w-full grid-cols-1 items-start gap-4 lg:grid-cols-3">
-      <SectionCard icon={Users} title="Tenant baru" eyebrow="Registrasi akun">
+      <SectionCard icon={Users} title="Organisasi Baru" eyebrow="Registrasi akun">
 
         <form onSubmit={handleCreateCustomer} className="space-y-3.5">
           <div className="space-y-1.5">
@@ -114,7 +114,7 @@ export function CustomerManagement({
 
           <div className="space-y-1.5">
             <label htmlFor={slugInputId} className="font-mono text-xs text-paper-dim">
-              Slug Tenant (Kanonikal)
+              Kode Organisasi
             </label>
             <Input
               id={slugInputId}
@@ -156,7 +156,7 @@ export function CustomerManagement({
               ) : (
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               )}
-              <span>Buat Organisasi Tenant</span>
+              <span>Buat Organisasi</span>
             </button>
           </div>
         </form>
@@ -175,7 +175,7 @@ export function CustomerManagement({
               disabled={isAssigning}
               value={assignOrgId}
               onChange={(e) => setAssignOrgId(e.target.value)}
-              placeholder="UUID organisasi"
+              placeholder="ID organisasi"
               className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
             />
           </div>
@@ -228,14 +228,14 @@ export function CustomerManagement({
               disabled={isInviting}
               value={inviteOrgId}
               onChange={(e) => setInviteOrgId(e.target.value)}
-              placeholder="UUID organisasi"
+              placeholder="ID organisasi"
               className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
             />
           </div>
 
           <div className="space-y-1.5">
             <label htmlFor={`${slugInputId}-invite-role`} className="font-mono text-xs text-paper-dim">
-              ID Role Target
+              ID Peran Target
             </label>
             <Input
               id={`${slugInputId}-invite-role`}
@@ -243,7 +243,7 @@ export function CustomerManagement({
               disabled={isInviting}
               value={inviteRoleId}
               onChange={(e) => setInviteRoleId(e.target.value)}
-              placeholder="UUID role (bukan superadmin)"
+              placeholder="ID peran (bukan superadmin)"
               className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
             />
           </div>

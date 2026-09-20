@@ -11,8 +11,8 @@ export interface EmptyStateProps {
 }
 
 export function EmptyState({
-  title = 'Tidak ada rekaman data',
-  description = 'Tidak ditemukan entitas yang cocok dengan kriteria filter atau parameter pencarian saat ini.',
+  title = 'Belum ada data',
+  description = 'Tidak ada data yang cocok dengan filter atau pencarian saat ini.',
   action,
   icon,
   className,

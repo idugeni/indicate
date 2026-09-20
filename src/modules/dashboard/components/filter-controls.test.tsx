@@ -16,16 +16,16 @@ describe('Kontrol filter', () => {
 
   it('merender empat medan untuk tampilan redaksi', () => {
     render(<FilterControls view="editorial" data={null} onApply={vi.fn()} />);
-    expect(screen.getByLabelText('Wilayah regional')).toBeDefined();
-    expect(screen.getByLabelText('Kanal (site)')).toBeDefined();
+    expect(screen.getByLabelText('Wilayah')).toBeDefined();
+    expect(screen.getByLabelText('Situs')).toBeDefined();
     expect(screen.getByLabelText('Kategori')).toBeDefined();
-    expect(screen.getByLabelText('Cari judul / slug')).toBeDefined();
+    expect(screen.getByLabelText('Cari judul')).toBeDefined();
   });
 
   it('meneruskan query pencarian saat diterapkan', () => {
     const terapkan = vi.fn();
     render(<FilterControls view="editorial" data={null} onApply={terapkan} />);
-    fireEvent.change(screen.getByLabelText('Cari judul / slug'), { target: { value: 'kabar' } });
+    fireEvent.change(screen.getByLabelText('Cari judul'), { target: { value: 'kabar' } });
     fireEvent.click(screen.getByRole('button', { name: 'Terapkan' }));
     expect(terapkan).toHaveBeenCalledWith(expect.stringContaining('search=kabar'));
   });
@@ -39,9 +39,9 @@ describe('Kontrol filter', () => {
 
   it('merender medan audit untuk tampilan log keamanan', () => {
     render(<FilterControls view="audit" data={null} onApply={vi.fn()} />);
-    expect(screen.getByLabelText('Aktor (ID)')).toBeDefined();
-    expect(screen.getByLabelText('Tipe aksi')).toBeDefined();
-    expect(screen.getByLabelText('Hasil transaksi')).toBeDefined();
+    expect(screen.getByLabelText('Pelaku (ID)')).toBeDefined();
+    expect(screen.getByLabelText('Jenis Aksi')).toBeDefined();
+    expect(screen.getByLabelText('Hasil')).toBeDefined();
   });
 
   it('menerapkan preset rentang cepat untuk tampilan telemetri', () => {

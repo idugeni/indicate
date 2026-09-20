@@ -102,43 +102,43 @@ describe('Panel langganan', () => {
     stubBilling('active', []);
     render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
     expect(await screen.findByText(/Ubah status \(pembayaran manual di luar sistem\)/)).toBeDefined();
-    expect(await screen.findByText(/Catat invoice \(pembayaran manual terkonfirmasi\)/)).toBeDefined();
+    expect(await screen.findByText(/Catat faktur \(pembayaran manual terkonfirmasi\)/)).toBeDefined();
   });
 
-  it('menolak status manual tanpa UUID organisasi', async () => {
+  it('menolak status manual tanpa ID organisasi', async () => {
     stubBilling('active', []);
     render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
     await screen.findByText(/Ubah status \(pembayaran manual di luar sistem\)/);
     fireEvent.click(screen.getByRole('button', { name: 'Terapkan status' }));
-    expect(await screen.findByText('Isi UUID organisasi target dulu.')).toBeDefined();
+    expect(await screen.findByText('Isi ID organisasi target dulu.')).toBeDefined();
   });
 
-  it('menolak invoice tanpa nominal yang valid', async () => {
+  it('menolak faktur tanpa nominal yang valid', async () => {
     stubBilling('active', []);
     render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
-    await screen.findByText(/Catat invoice \(pembayaran manual terkonfirmasi\)/);
-    fireEvent.click(screen.getByRole('button', { name: 'Catat invoice' }));
-    expect(await screen.findByText('Isi UUID organisasi dan nominal yang valid.')).toBeDefined();
+    await screen.findByText(/Catat faktur \(pembayaran manual terkonfirmasi\)/);
+    fireEvent.click(screen.getByRole('button', { name: 'Catat faktur' }));
+    expect(await screen.findByText('Isi ID organisasi dan nominal yang valid.')).toBeDefined();
   });
 
   it('mengunci nominal pada harga tunggal', async () => {
     stubBilling('active', []);
     render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
-    await screen.findByText(/Catat invoice \(pembayaran manual terkonfirmasi\)/);
+    await screen.findByText(/Catat faktur \(pembayaran manual terkonfirmasi\)/);
     const amount = screen.getByLabelText('Nominal (Rp)') as HTMLInputElement;
     expect(amount.value).toBe('550000');
     expect(amount.readOnly).toBe(true);
     expect(screen.getByText('Rp550.000/bulan — harga tunggal')).toBeDefined();
   });
 
-  it('mencatat invoice lewat envelope billing', async () => {
+  it('mencatat faktur lewat envelope billing', async () => {
     const posts = stubBillingWithCapture('active', []);
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
-    await screen.findByText(/Catat invoice \(pembayaran manual terkonfirmasi\)/);
-    fireEvent.change(screen.getByPlaceholderText('UUID organisasi…'), { target: { value: 'org-2' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Catat invoice' }));
-    expect(await screen.findByText('Invoice tercatat.')).toBeDefined();
+    await screen.findByText(/Catat faktur \(pembayaran manual terkonfirmasi\)/);
+    fireEvent.change(screen.getByPlaceholderText('ID organisasi…'), { target: { value: 'org-2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Catat faktur' }));
+    expect(await screen.findByText('Faktur tercatat.')).toBeDefined();
     expect(confirm).toHaveBeenCalledWith(expect.stringContaining('Rp550.000'));
     const post = posts.find((call) => call.url === '/api/dashboard/billing');
     expect(post?.body.action).toBe('invoice.create');
@@ -146,18 +146,18 @@ describe('Panel langganan', () => {
     expect(posts.some((call) => call.url === '/api/dashboard/integrations')).toBe(false);
   });
 
-  it('membatalkan invoice lewat envelope billing', async () => {
+  it('membatalkan faktur lewat envelope billing', async () => {
     const posts = stubBillingWithCapture('active', FAKTUR);
     vi.spyOn(window, 'prompt').mockReturnValue('salah catat');
     render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Void invoice' }));
-    expect(await screen.findByText(/di-void/)).toBeDefined();
+    fireEvent.click(await screen.findByRole('button', { name: 'Batalkan' }));
+    expect(await screen.findByText(/dibatalkan/)).toBeDefined();
     const post = posts.find((call) => call.url === '/api/dashboard/billing');
     expect(post?.body.action).toBe('invoice.void');
     expect(post?.body.payload).toMatchObject({ invoiceId: 'inv-1', expectedVersion: 1, reason: 'salah catat' });
   });
 
-  it('menerbitkan ulang invoice void lewat envelope billing', async () => {
+  it('menerbitkan ulang tagihan batal lewat envelope billing', async () => {
     const posts = stubBillingWithCapture('active', FAKTUR_VOID);
     vi.spyOn(window, 'prompt').mockReturnValue('koreksi nomor');
     render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
@@ -168,16 +168,16 @@ describe('Panel langganan', () => {
     expect(post?.body.payload).toMatchObject({ invoiceId: 'inv-2', expectedVersion: 2, reason: 'koreksi nomor' });
   });
 
-  it('menampilkan unduh pada faktur void untuk platform', async () => {
+  it('menampilkan unduh pada faktur batal untuk platform', async () => {
     stubBilling('active', FAKTUR_VOID);
     render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
     expect(await screen.findByText(/IND-ORG-2601-0002-CD34/)).toBeDefined();
     expect(screen.getByRole('button', { name: 'Unduh' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Terbitkan ulang' })).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Void invoice' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Batalkan' })).toBeNull();
   });
 
-  it('tetap menampilkan unduh pada faktur void untuk tenant', async () => {
+  it('tetap menampilkan unduh pada faktur batal untuk tenant', async () => {
     stubBilling('active', FAKTUR_VOID);
     render(<BillingPanel organizationId="org-1" permissions={[]} />);
     expect(await screen.findByText(/IND-ORG-2601-0002-CD34/)).toBeDefined();

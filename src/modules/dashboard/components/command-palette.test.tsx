@@ -41,7 +41,7 @@ describe('Palet perintah', () => {
     render(<CommandPalette />);
     fireEvent.click(screen.getByRole('button', { name: 'Buka navigasi cepat' }));
     expect(await screen.findByLabelText('Cari perintah atau rute Dashboard')).toBeDefined();
-    expect(await screen.findByText('Ringkasan Dashboard')).toBeDefined();
+    expect(await screen.findByText('Beranda')).toBeDefined();
   });
 
   it('menyaring perintah sesuai kata kunci', async () => {
@@ -50,7 +50,7 @@ describe('Palet perintah', () => {
     const input = await screen.findByLabelText('Cari perintah atau rute Dashboard');
     fireEvent.change(input, { target: { value: 'langganan' } });
     expect(await screen.findByText('Langganan')).toBeDefined();
-    expect(screen.queryByText('Ringkasan Dashboard')).toBe(null);
+    expect(screen.queryByText('Beranda')).toBe(null);
     expect(screen.getByText('1 hasil tersedia.')).toBeDefined();
   });
 

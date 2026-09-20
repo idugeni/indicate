@@ -11,7 +11,7 @@ afterEach(() => {
 describe('Manajemen pelanggan', () => {
   it('merender tiga kartu utama', () => {
     render(<CustomerManagement command={vi.fn(async () => ({}))} />);
-    expect(screen.getByText('Tenant baru')).toBeDefined();
+    expect(screen.getByText('Organisasi Baru')).toBeDefined();
     expect(screen.getByText('Admin pertama')).toBeDefined();
     expect(screen.getByText('Undangan organisasi')).toBeDefined();
   });
@@ -46,7 +46,7 @@ describe('Manajemen pelanggan', () => {
     const command = vi.fn(async () => ({}));
     const { container } = render(<CustomerManagement command={command} />);
     const formulir = container.querySelectorAll('form')[1] as HTMLFormElement;
-    fireEvent.change(within(formulir).getByPlaceholderText('UUID organisasi'), { target: { value: 'org-1' } });
+    fireEvent.change(within(formulir).getByPlaceholderText('ID organisasi'), { target: { value: 'org-1' } });
     fireEvent.change(within(formulir).getByPlaceholderText('admin@organisasi.id'), { target: { value: 'admin@organisasi.id' } });
     fireEvent.submit(formulir);
     await waitFor(() =>

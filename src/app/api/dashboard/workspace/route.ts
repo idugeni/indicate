@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
-import { fetchCachedAnalytics } from '@/modules/dashboard/dashboard-dal';
+import { fetchCachedAnalytics, fetchCachedDashboard } from '@/modules/dashboard/dashboard-dal';
 import { createTelegramNotificationService } from '@/modules/integrations/integrations-composition';
 import { getPublicConfig } from '@/core/config/public-config';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
@@ -95,7 +95,10 @@ async function handleGET(request: Request) {
     const editorialFilter = compact([['regionId', parsed.data.regionId], ['siteId', parsed.data.siteId], ['categoryId', parsed.data.categoryId], ['publisherId', parsed.data.publisherId], ['authorId', parsed.data.authorId], ['publicationState', parsed.data.publicationState], ['search', parsed.data.search]]);
     const rangeFilter = compact([['from', parsed.data.from], ['to', parsed.data.to]]);
     const auditFilter = { ...rangeFilter, ...compact([['actorId', parsed.data.actorId], ['action', parsed.data.action], ['targetType', parsed.data.targetType], ['outcome', parsed.data.outcome]]) };
-    const result = parsed.data.view === 'dashboard' ? await service.dashboard(actor)
+    const result = parsed.data.view === 'dashboard'
+      ? actor.actorType === 'user'
+        ? await fetchCachedDashboard(actor)
+        : { ok: false as const, error: createNonDisclosingDenial(requestId) }
       : parsed.data.view === 'configuration' ? await service.listConfiguration(actor)
       : parsed.data.view === 'publishers' ? await service.listPublishers(actor)
       : parsed.data.view === 'editorial' ? await service.listEditorial(actor, editorialFilter)

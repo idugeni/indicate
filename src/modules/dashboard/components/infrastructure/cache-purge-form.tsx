@@ -38,22 +38,22 @@ export function CachePurgeForm({
 
   const sites = model?.sites ?? [];
   const isBulk = siteId === '';
-  const targetLabel = isBulk ? 'semua situs dalam scope' : (sites.find((site) => site.id === siteId)?.normalizedHostname ?? siteId);
+  const targetLabel = isBulk ? 'semua situs' : (sites.find((site) => site.id === siteId)?.normalizedHostname ?? siteId);
 
   const doPurge = () => {
     setNotice(null);
     startPurgeTransition(async () => {
       const result = await command('site.cache.purge', isBulk ? { confirmBulk: true } : { siteId });
       if (result === null) {
-        setNotice({ tone: 'error', message: 'Purge gagal. Periksa pesan kesalahan di atas halaman.' });
+        setNotice({ tone: 'error', message: 'Bersihkan cache gagal. Periksa pesan kesalahan di atas halaman.' });
         return;
       }
       const value = result as { readonly sites?: readonly { readonly hostname: string }[]; readonly dispatched?: { readonly completed: number; readonly failed: number } | null };
       const count = value.sites?.length ?? 0;
       const dispatchNote = value.dispatched === null || value.dispatched === undefined
-        ? 'dieksekusi reconciler berikutnya'
+        ? 'dijalankan sistem berikutnya'
         : `${value.dispatched.completed} tugas selesai, ${value.dispatched.failed} gagal`;
-      setNotice({ tone: 'success', message: `Purge diminta untuk ${targetLabel} (${count} situs) — ${dispatchNote}.` });
+      setNotice({ tone: 'success', message: `Permintaan dikirim untuk ${targetLabel} (${count} situs) — ${dispatchNote}.` });
     });
   };
 
@@ -67,12 +67,12 @@ export function CachePurgeForm({
   };
 
   return (
-    <SectionCard icon={RefreshCw} title="Purge cache" eyebrow="Edge & CDN">
+    <SectionCard icon={RefreshCw} title="Bersihkan Cache" eyebrow="Perbarui tampilan">
       <form onSubmit={handleSubmit} className="space-y-3.5">
         {notice ? <FormNotice tone={notice.tone}>{notice.message}</FormNotice> : null}
         <div className="space-y-1.5">
           <label htmlFor={siteSelectId} className="font-mono text-xs text-paper-dim">
-            Target purge
+            Target
           </label>
           <select
             id={siteSelectId}
@@ -89,8 +89,8 @@ export function CachePurgeForm({
             ))}
           </select>
           <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">
-            Mengirim invalidasi Next + Cloudflare untuk {targetLabel}. Tercatat di audit dan terlihat di Operasional.
-            {isBulk ? ` Purge massal mendinginkan ${sites.length} situs sekaligus dan dibatasi 2 menit per org.` : null}
+            Memperbarui tampilan {targetLabel} di semua server. Tercatat di Riwayat Keamanan dan terlihat di Tugas Latar Belakang.
+            {isBulk ? ` Pembersihan massal menyegarkan ${sites.length} situs sekaligus dan dibatasi 2 menit per organisasi.` : null}
           </p>
         </div>
         {isBulk ? (
@@ -104,7 +104,7 @@ export function CachePurgeForm({
               className="mt-0.5 h-3.5 w-3.5 accent-[#c9a227]"
             />
             <label htmlFor={confirmBulkId} className="font-sans text-[11px] leading-relaxed text-paper-dim">
-              Saya memahami purge {sites.length} situs sekaligus membebani origin.
+              Saya paham membersihkan {sites.length} situs sekaligus membebani server.
             </label>
           </div>
         ) : null}
@@ -115,16 +115,16 @@ export function CachePurgeForm({
             className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
           >
             {isPurging ? <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
-            <span>{isPurging ? 'Mengirim purge…' : 'Purge sekarang'}</span>
+            <span>{isPurging ? 'Mengirim…' : 'Bersihkan Sekarang'}</span>
           </button>
         </div>
       </form>
       <AlertDialog open={confirmBulkOpen} onOpenChange={setConfirmBulkOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Purge {sites.length} situs sekaligus?</AlertDialogTitle>
+            <AlertDialogTitle>Bersihkan {sites.length} situs sekaligus?</AlertDialogTitle>
             <AlertDialogDescription>
-              Purge massal mendinginkan semua situs dalam scope dan membebani origin. Lanjutkan hanya bila diperlukan.
+              Pembersihan massal menyegarkan semua situs dan membebani server. Lanjutkan hanya bila diperlukan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -135,7 +135,7 @@ export function CachePurgeForm({
                 doPurge();
               }}
             >
-              Ya, purge
+              Ya, bersihkan
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

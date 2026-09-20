@@ -48,7 +48,7 @@ function stringify(value: unknown): string {
 function parseRecord(raw: string, label: string): Readonly<Record<string, unknown>> {
   const parsed: unknown = JSON.parse(raw === '' ? '{}' : raw);
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new Error(`${label} harus berupa objek JSON.`);
+    throw new Error(`${label} harus berupa data JSON yang valid.`);
   }
   return parsed as Readonly<Record<string, unknown>>;
 }
@@ -113,7 +113,7 @@ function SiteSettingsEditor({
     event.preventDefault();
     setError(null);
     if (template === '') {
-      setError('Pilih template portal terlebih dahulu.');
+      setError('Pilih template situs terlebih dahulu.');
       return;
     }
     let colorsValue: Readonly<Record<string, unknown>>;
@@ -122,12 +122,12 @@ function SiteSettingsEditor({
     let navigationValue: unknown;
     try {
       colorsValue = { ...parseRecord(colors, 'Warna'), templateId: template };
-      socialValue = parseRecord(socialLinks, 'Tautan sosial');
+      socialValue = parseRecord(socialLinks, 'Tautan media sosial');
       seoValue = parseRecord(seo, 'SEO');
       navigationValue = JSON.parse(navigation === '' ? '[]' : navigation);
-      if (!Array.isArray(navigationValue)) throw new Error('Navigasi harus berupa array JSON.');
+      if (!Array.isArray(navigationValue)) throw new Error('Navigasi harus berupa daftar JSON.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Dokumen JSON tidak valid.');
+      setError(err instanceof Error ? err.message : 'Format JSON tidak valid.');
       return;
     }
 
@@ -161,7 +161,7 @@ function SiteSettingsEditor({
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <label htmlFor={nameId} className="font-mono text-xs text-paper-dim">
-            Nama kanal
+            Nama situs
           </label>
           <Input
             id={nameId}
@@ -195,7 +195,7 @@ function SiteSettingsEditor({
           value={tagline}
           disabled={isSaving}
           maxLength={120}
-          placeholder="Slogan pendek kanal — kosong = ikut deskripsi"
+          placeholder="Slogan pendek situs — kosong = ikut deskripsi"
           onChange={(event) => setTagline(event.target.value)}
           className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
         />
@@ -204,28 +204,28 @@ function SiteSettingsEditor({
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <label htmlFor={seoTitleId} className="font-mono text-xs text-paper-dim">
-            Judul SEO (10–160 karakter, unik per hostname)
+            Judul SEO (10–160 karakter, unik per situs)
           </label>
           <Input
             id={seoTitleId}
             value={seoTitle}
             disabled={isSaving}
             maxLength={160}
-            placeholder="Kosong = compose dari nama + tagline"
+            placeholder="Kosong = digabung dari nama + slogan"
             onChange={(event) => setSeoTitle(event.target.value)}
             className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
           />
         </div>
         <div className="space-y-1.5">
           <label htmlFor={ogSiteNameId} className="font-mono text-xs text-paper-dim">
-            Nama situs OG (unik per hostname)
+            Nama untuk pratinjau tautan (unik per situs)
           </label>
           <Input
             id={ogSiteNameId}
             value={ogSiteName}
             disabled={isSaving}
             maxLength={160}
-            placeholder="Kosong = ikut nama kanal"
+            placeholder="Kosong = ikut nama situs"
             onChange={(event) => setOgSiteName(event.target.value)}
             className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
           />
@@ -234,7 +234,7 @@ function SiteSettingsEditor({
 
       <div className="space-y-1.5">
         <label htmlFor={seoDescriptionId} className="font-mono text-xs text-paper-dim">
-          Deskripsi SEO (50–500 karakter, unik per hostname, tanpa :)
+          Deskripsi SEO (50–500 karakter, unik per situs, tanpa :)
         </label>
         <Textarea
           id={seoDescriptionId}
@@ -242,7 +242,7 @@ function SiteSettingsEditor({
           disabled={isSaving}
           rows={3}
           maxLength={500}
-          placeholder="Kosong = ikut deskripsi kanal"
+          placeholder="Kosong = ikut deskripsi situs"
           onChange={(event) => setSeoDescription(event.target.value)}
           className="font-mono text-xs"
         />
@@ -251,7 +251,7 @@ function SiteSettingsEditor({
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <label htmlFor={localeId} className="font-mono text-xs text-paper-dim">
-            Locale (format id-ID)
+            Bahasa (format id-ID)
           </label>
           <Input
             id={localeId}
@@ -265,7 +265,7 @@ function SiteSettingsEditor({
         </div>
         <div className="space-y-1.5">
           <label htmlFor={robotsId} className="font-mono text-xs text-paper-dim">
-            Arahan robots
+            Izin mesin pencari
           </label>
           <select
             id={robotsId}
@@ -274,7 +274,7 @@ function SiteSettingsEditor({
             onChange={(event) => setRobots(event.target.value)}
             className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
           >
-            <option value="">Ikut bawaan (index,follow)</option>
+            <option value="">Ikut bawaan (tampil di hasil cari)</option>
             <option value="index,follow">index,follow</option>
             <option value="noindex,nofollow">noindex,nofollow</option>
           </select>
@@ -284,14 +284,14 @@ function SiteSettingsEditor({
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="space-y-1.5">
           <label htmlFor={logoId} className="font-mono text-xs text-paper-dim">
-            Logo (ID media)
+            Logo
           </label>
           <Input
             id={logoId}
             value={logoMedia}
             disabled={isSaving}
             spellCheck={false}
-            placeholder="UUID media aktif — wajib diisi"
+            placeholder="ID gambar — wajib diisi"
             onChange={(event) => setLogoMedia(event.target.value)}
             className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
           />
@@ -311,20 +311,20 @@ function SiteSettingsEditor({
                 height={24}
                 className="h-6 w-6 rounded border border-hairline object-contain"
               />
-              <span>Pratinjau logo di kanal</span>
+              <span>Pratinjau logo di situs</span>
             </a>
           ) : null}
         </div>
         <div className="space-y-1.5">
           <label htmlFor={faviconId} className="font-mono text-xs text-paper-dim">
-            Favicon (ID media)
+            Favicon
           </label>
           <Input
             id={faviconId}
             value={faviconMedia}
             disabled={isSaving}
             spellCheck={false}
-            placeholder="UUID media — kosong = tanpa ikon"
+            placeholder="ID gambar — kosong = tanpa ikon"
             onChange={(event) => setFaviconMedia(event.target.value)}
             className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
           />
@@ -344,25 +344,25 @@ function SiteSettingsEditor({
                 height={24}
                 className="h-6 w-6 rounded border border-hairline object-contain"
               />
-              <span>Pratinjau favicon di kanal</span>
+              <span>Pratinjau favicon di situs</span>
             </a>
           ) : null}
         </div>
         <div className="space-y-1.5">
           <label htmlFor={defaultMediaId} className="font-mono text-xs text-paper-dim">
-            Gambar default OG (ID media)
+            Gambar bawaan
           </label>
           <Input
             id={defaultMediaId}
             value={defaultMedia}
             disabled={isSaving}
             spellCheck={false}
-            placeholder="UUID media — kosong = bawaan"
+            placeholder="ID gambar — kosong = bawaan"
             onChange={(event) => setDefaultMedia(event.target.value)}
             className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
           />
           <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">
-            Dipakai untuk Open Graph saat artikel tanpa gambar.
+            Dipakai untuk pratinjau tautan saat artikel tanpa gambar.
           </p>
         </div>
       </div>
@@ -370,7 +370,7 @@ function SiteSettingsEditor({
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <label htmlFor={templateId} className="font-mono text-xs text-paper-dim">
-            Layout portal (template)
+            Tampilan situs (template)
           </label>
           <select
             id={templateId}
@@ -394,7 +394,7 @@ function SiteSettingsEditor({
         </div>
         <div className="space-y-1.5">
           <label htmlFor={colorsId} className="font-mono text-xs text-paper-dim">
-            Warna (objek JSON)
+            Warna (format JSON)
           </label>
           <Textarea
             id={colorsId}
@@ -410,7 +410,7 @@ function SiteSettingsEditor({
 
       <div className="space-y-1.5">
         <label htmlFor={socialId} className="font-mono text-xs text-paper-dim">
-          Tautan sosial (objek JSON)
+          Tautan media sosial (format JSON)
         </label>
         <Textarea
           id={socialId}
@@ -425,7 +425,7 @@ function SiteSettingsEditor({
 
       <div className="space-y-1.5">
         <label htmlFor={seoId} className="font-mono text-xs text-paper-dim">
-          SEO (objek JSON)
+          Pengaturan SEO (format JSON)
         </label>
         <Textarea
           id={seoId}
@@ -440,7 +440,7 @@ function SiteSettingsEditor({
 
       <div className="space-y-1.5">
         <label htmlFor={navigationId} className="font-mono text-xs text-paper-dim">
-          Navigasi (array JSON berisi label + path)
+          Menu navigasi (format JSON: label + path)
         </label>
         <Textarea
           id={navigationId}
@@ -460,7 +460,7 @@ function SiteSettingsEditor({
           className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
         >
           {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
-          <span>{isSaving ? 'Menyimpan…' : 'Simpan pengaturan kanal'}</span>
+          <span>{isSaving ? 'Menyimpan…' : 'Simpan pengaturan situs'}</span>
         </button>
       </div>
     </form>
@@ -488,11 +488,11 @@ export function SiteSettingsForm({
   const activeSettings = model?.siteSettings?.find((row) => row.siteId === activeSiteId);
 
   return (
-    <SectionCard icon={Settings2} title="Pengaturan kanal" eyebrow="Identitas & SEO">
+    <SectionCard icon={Settings2} title="Pengaturan situs" eyebrow="Identitas & SEO">
       <div className="space-y-3.5">
         <div className="space-y-1.5">
           <label htmlFor={siteSelectId} className="font-mono text-xs text-paper-dim">
-            Pilih kanal
+            Pilih situs
           </label>
           <select
             id={siteSelectId}
@@ -509,7 +509,7 @@ export function SiteSettingsForm({
         </div>
 
         {activeSite === undefined ? (
-          <p className="m-0 font-sans text-xs text-paper-faint">Belum ada kanal. Buat kanal dulu pada panel di atas.</p>
+          <p className="m-0 font-sans text-xs text-paper-faint">Belum ada situs. Buat situs dulu pada panel di atas.</p>
         ) : (
           <SiteSettingsEditor
             key={activeSite.id}

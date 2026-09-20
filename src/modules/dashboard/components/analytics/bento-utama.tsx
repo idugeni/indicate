@@ -416,10 +416,10 @@ export function BentoUtama({
       <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-5">
         <LiniMasa peristiwa={analytics?.aktivitasTerbaru ?? []} />
       </div>
-      <PeringkatTeratas judul="Top wilayah" baris={berlabel(analytics?.articlesByRegion, analytics?.regionLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
-      <PeringkatTeratas judul="Top kategori" baris={berlabel(analytics?.articlesByCategory, analytics?.categoryLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
-      <PeringkatTeratas judul="Top situs" baris={berlabel(analytics?.articlesBySite, analytics?.siteLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
-      <PeringkatTeratas judul="Top penerbit" baris={berlabel(analytics?.articlesByPublisher, analytics?.publisherLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
+      <PeringkatTeratas judul="Wilayah teratas" baris={berlabel(analytics?.articlesByRegion, analytics?.regionLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
+      <PeringkatTeratas judul="Kategori teratas" baris={berlabel(analytics?.articlesByCategory, analytics?.categoryLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
+      <PeringkatTeratas judul="Situs teratas" baris={berlabel(analytics?.articlesBySite, analytics?.siteLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
+      <PeringkatTeratas judul="Penerbit teratas" baris={berlabel(analytics?.articlesByPublisher, analytics?.publisherLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
     </div>
   );
 }

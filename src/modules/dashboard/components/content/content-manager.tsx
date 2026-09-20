@@ -114,7 +114,7 @@ export function ContentManager() {
       const body = (await response.json()) as ContentBundle;
       setBundle(body); setDrafts({});
     } catch {
-      setError('Gagal memuat konten dinamis.');
+      setError('Gagal memuat konten website.');
     } finally {
       setBusy(false);
     }
@@ -205,7 +205,7 @@ export function ContentManager() {
         })}
       </div>
       <p className="m-0 font-sans text-xs text-paper-faint">
-        Ubah ID/slug/kunci untuk menduplikasi sebagai baris baru. Perubahan tayang segera setelah disimpan.
+        Ubah ID untuk menduplikasi sebagai baris baru. Perubahan tayang segera setelah disimpan.
       </p>
     </div>
   );

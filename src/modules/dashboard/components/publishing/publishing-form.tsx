@@ -8,6 +8,15 @@ import { Input } from '@/components/ui/input';
 import { generateIdempotencyUuid } from '@/modules/dashboard/components/shared/form-utils';
 import type { PublicationStatusProjection, PublishingState } from '@/modules/publishing/models';
 
+const STATE_LABELS: Readonly<Record<PublishingState, string>> = {
+  queued: 'Antre',
+  processing: 'Diproses',
+  published: 'Terkirim',
+  failed: 'Gagal',
+  retrying: 'Diulang',
+  unpublished: 'Batal',
+};
+
 function TargetStateBadge({ state }: { readonly state: PublishingState }) {
   const dot =
     state === 'published'
@@ -25,10 +34,11 @@ function TargetStateBadge({ state }: { readonly state: PublishingState }) {
         : state === 'unpublished'
           ? 'text-paper-faint'
           : 'text-warning';
+  const label = STATE_LABELS[state];
   return (
     <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider">
       <span className={`h-1.5 w-1.5 ${dot}`} aria-hidden="true" />
-      <span className={text}>{state}</span>
+      <span className={text}>{label}</span>
     </span>
   );
 }
@@ -76,7 +86,7 @@ export function PublishingForm({
         if (result !== null && typeof result === 'object' && 'job' in result && 'targets' in result) {
           setJobStatus(result);
         } else {
-          setStatusError('Status publikasi tidak dapat dimuat.');
+          setStatusError('Status pengiriman tidak dapat dimuat.');
         }
       } catch {
         setStatusError('Status publikasi tidak dapat dimuat.');
@@ -91,7 +101,7 @@ export function PublishingForm({
     const articleId = String(values.get('articleId') ?? '');
     const siteIds = values.getAll('siteIds').map(String);
     if (articleId === '' || siteIds.length === 0) {
-      toast.warning('Pilih artikel dan minimal satu portal dulu sebelum membuat varian.');
+      toast.warning('Pilih artikel dan minimal satu situs dulu sebelum membuat varian.');
       return;
     }
     startSuggestTransition(async () => {
@@ -104,7 +114,7 @@ export function PublishingForm({
         next[siteId] = { title: override?.title ?? '', description: override?.description ?? '', imageMediaId: '' };
       }
       setSuggested(next);
-      toast.info(`Varian unik terisi untuk ${Object.keys(next).length} portal — periksa sebelum kirim.`);
+      toast.info(`Varian unik terisi untuk ${Object.keys(next).length} situs — periksa sebelum kirim.`);
     });
   };
 
@@ -140,7 +150,7 @@ export function PublishingForm({
 
   return (
     <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-      <SectionCard icon={Send} title="Terbitkan ke kanal" eyebrow="Penerbitan">
+      <SectionCard icon={Send} title="Terbitkan ke Situs" eyebrow="Penerbitan">
 
         <form ref={formRef} onSubmit={handlePublish} className="space-y-4">
           <div className="space-y-1.5">
@@ -164,12 +174,12 @@ export function PublishingForm({
 
           <div className="space-y-2">
             <span className="block font-mono text-xs text-paper-dim">
-              Sasaran Portal Distribusi
+              Situs Tujuan
             </span>
             <div className="max-h-52 divide-y divide-hairline overflow-y-auto border-y border-hairline">
               {model?.sites?.length === 0 ? (
                 <p className="m-0 py-3 font-sans text-xs text-paper-faint">
-                  Tidak ada target portal yang tersedia.
+                  Belum ada situs tujuan.
                 </p>
               ) : (
                 model?.sites?.map((item) => (
@@ -194,7 +204,7 @@ export function PublishingForm({
                         maxLength={160}
                         value={suggested[item.id]?.title ?? ''}
                         onChange={(e) => setSuggested((prev) => ({ ...prev, [item.id]: { title: e.target.value, description: prev[item.id]?.description ?? '', imageMediaId: prev[item.id]?.imageMediaId ?? '' } }))}
-                        placeholder="Judul khusus portal ini (10-160 karakter, unik per portal)"
+                        placeholder="Judul khusus situs ini (10-160 karakter, unik per situs)"
                         className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
                       />
                       <Input
@@ -203,7 +213,7 @@ export function PublishingForm({
                         maxLength={500}
                         value={suggested[item.id]?.description ?? ''}
                         onChange={(e) => setSuggested((prev) => ({ ...prev, [item.id]: { title: prev[item.id]?.title ?? '', description: e.target.value, imageMediaId: prev[item.id]?.imageMediaId ?? '' } }))}
-                        placeholder="Deskripsi khusus portal ini (50-500 karakter, unik per portal)"
+                        placeholder="Deskripsi khusus situs ini (50-500 karakter, unik per situs)"
                         className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
                       />
                       <Input
@@ -211,7 +221,7 @@ export function PublishingForm({
                         disabled={isPublishing}
                         value={suggested[item.id]?.imageMediaId ?? ''}
                         onChange={(e) => setSuggested((prev) => ({ ...prev, [item.id]: { title: prev[item.id]?.title ?? '', description: prev[item.id]?.description ?? '', imageMediaId: e.target.value } }))}
-                        placeholder="UUID gambar khusus portal ini (opsional, lihat tab Media)"
+                        placeholder="ID gambar khusus situs ini (opsional, lihat halaman Media)"
                         className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
                       />
                     </div>
@@ -224,7 +234,7 @@ export function PublishingForm({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label htmlFor={idempotencyInputId} className="font-mono text-xs text-paper-dim">
-                Kunci Idempotensi Transaksi
+                Kunci Pengiriman
               </label>
               <button
                 type="button"
@@ -232,7 +242,7 @@ export function PublishingForm({
                 disabled={isPublishing}
                 className="font-mono text-[10px] text-brass hover:underline focus:outline-none"
               >
-                Regenerasi UUID
+                Regenerasi Kunci
               </button>
             </div>
             <Input
@@ -269,13 +279,13 @@ export function PublishingForm({
               ) : (
                 <Send className="h-3.5 w-3.5" aria-hidden="true" />
               )}
-              <span>Kirim Sinyal Penerbitan</span>
+              <span>Kirim Penerbitan</span>
             </button>
           </div>
         </form>
       </SectionCard>
 
-      <SectionCard icon={Send} title="Status target" eyebrow="Per kanal">
+      <SectionCard icon={Send} title="Status Pengiriman" eyebrow="Per situs">
         <form
           className="space-y-3"
           onSubmit={(event) => {
@@ -286,14 +296,14 @@ export function PublishingForm({
         >
           <div className="space-y-1.5">
             <label htmlFor={statusJobInputId} className="font-mono text-xs text-paper-dim">
-              ID Job Publikasi
+              ID Pengiriman
             </label>
             <div className="flex gap-2">
               <Input
                 id={statusJobInputId}
                 name="statusJobId"
                 disabled={isStatusBusy}
-                placeholder="UUID job dari hasil penerbitan"
+                placeholder="ID dari hasil pengiriman"
                 className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
               />
               <button
@@ -313,7 +323,7 @@ export function PublishingForm({
         {jobStatus !== null ? (
           <div className="mt-3 space-y-3">
             <p className="m-0 font-mono text-xs text-paper-dim">
-              Job <span className="text-paper">{jobStatus.job.id}</span> · {jobStatus.job.state} · {jobStatus.targets.length} target
+              Pengiriman <span className="text-paper">{jobStatus.job.id}</span> · {STATE_LABELS[jobStatus.job.state] ?? jobStatus.job.state} · {jobStatus.targets.length} situs
             </p>
             <div className="divide-y divide-hairline border-y border-hairline">
               {jobStatus.targets.map((target) => (

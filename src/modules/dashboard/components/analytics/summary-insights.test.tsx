@@ -22,7 +22,7 @@ describe('Peringkat teratas', () => {
   it('mengurutkan menurun dan membatasi lima baris', () => {
     render(
       <PeringkatTeratas
-        judul="Top wilayah"
+        judul="Wilayah teratas"
         baris={[
           { key: 'a', count: 1 },
           { key: 'b', count: 9 },
@@ -35,7 +35,7 @@ describe('Peringkat teratas', () => {
   });
 
   it('menampilkan pesan kosong saat nihil', () => {
-    render(<PeringkatTeratas judul="Top wilayah" baris={[]} />);
+    render(<PeringkatTeratas judul="Wilayah teratas" baris={[]} />);
     expect(screen.getByText('Belum ada data.')).toBeDefined();
   });
 });

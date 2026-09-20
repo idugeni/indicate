@@ -36,9 +36,9 @@ function pasang(perintah: {
 describe('Formulir redaksi', () => {
   it('merender panel naskah dan alokasi portal', () => {
     pasang({});
-    expect(screen.getByText('Naskah baru')).toBeDefined();
-    expect(screen.getByText('Alokasi portal')).toBeDefined();
-    expect(screen.getByRole('button', { name: /simpan draf kanonikal/i })).toBeDefined();
+    expect(screen.getByText('Artikel Baru')).toBeDefined();
+    expect(screen.getByText('Penyaluran Artikel')).toBeDefined();
+    expect(screen.getByRole('button', { name: /simpan draf/i })).toBeDefined();
   });
 
   it('mengisi slug otomatis dari judul saat blur', () => {
@@ -46,7 +46,7 @@ describe('Formulir redaksi', () => {
     const judul = screen.getByLabelText('Judul Artikel');
     fireEvent.change(judul, { target: { value: 'Judul Berita Hari Ini' } });
     fireEvent.blur(judul);
-    expect((screen.getByLabelText('URL Slug (Kanonikal)') as HTMLInputElement).value).toBe(
+    expect((screen.getByLabelText('Slug URL') as HTMLInputElement).value).toBe(
       'judul-berita-hari-ini',
     );
   });
@@ -56,8 +56,8 @@ describe('Formulir redaksi', () => {
     const judul = screen.getByLabelText('Judul Artikel');
     fireEvent.change(judul, { target: { value: 'Judul Uji' } });
     fireEvent.blur(judul);
-    fireEvent.change(screen.getByLabelText('Sumber / Verifikasi Rilis'), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText(/Isi Naskah Lengkap/), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber'), { target: { value: 'Rilis Resmi' } });
+    fireEvent.change(screen.getByLabelText(/Isi Artikel Lengkap/), { target: { value: 'Isi berita lengkap.' } });
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
       expect(kirim).toHaveBeenCalledWith(
@@ -66,7 +66,7 @@ describe('Formulir redaksi', () => {
     );
   });
 
-  it('menerapkan pemetaan kanal ke artikel', async () => {
+  it('menerapkan pemetaan situs ke artikel', async () => {
     const { alokasi, container } = pasang({});
     fireEvent.click(screen.getByRole('checkbox', { name: /portal\.example/ }));
     fireEvent.submit(container.querySelectorAll('form')[1] as HTMLFormElement);

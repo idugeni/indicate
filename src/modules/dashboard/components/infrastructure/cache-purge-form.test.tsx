@@ -21,24 +21,24 @@ describe('CachePurgeForm bulk guard', () => {
   it('mengunci submit massal hingga checkbox dicentang', async () => {
     const command = vi.fn(async () => ({ sites: [{ hostname: 'portal.example' }] }));
     setup(command);
-    const button = screen.getByRole('button', { name: /purge sekarang/i });
+    const button = screen.getByRole('button', { name: /bersihkan sekarang/i });
     expect(button.hasAttribute('disabled')).toBe(true);
 
     fireEvent.click(screen.getByRole('checkbox'));
     expect(button.hasAttribute('disabled')).toBe(false);
 
     fireEvent.click(button);
-    fireEvent.click(await screen.findByRole('button', { name: /ya, purge/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /ya, bersihkan/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith('site.cache.purge', { confirmBulk: true }));
-    expect(await screen.findByText(/Purge diminta untuk semua situs dalam scope \(1 situs\)/)).toBeDefined();
+    expect(await screen.findByText(/Permintaan dikirim untuk semua situs \(1 situs\)/)).toBeDefined();
   });
 
   it('menampilkan notice error saat command null', async () => {
     setup(vi.fn(async () => null));
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: /purge sekarang/i }));
-    fireEvent.click(await screen.findByRole('button', { name: /ya, purge/i }));
-    expect(await screen.findByText(/Purge gagal/)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /bersihkan sekarang/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /ya, bersihkan/i }));
+    expect(await screen.findByText(/Bersihkan cache gagal/)).toBeDefined();
   });
 });
 
@@ -46,19 +46,19 @@ describe('CachePurgeForm single site', () => {
   it('mengirim siteId tanpa konfirmasi massal', async () => {
     const command = vi.fn(async () => ({ sites: [{ hostname: 'portal.example' }] }));
     setup(command);
-    fireEvent.change(screen.getByLabelText(/target purge/i), { target: { value: 'site-1' } });
+    fireEvent.change(screen.getByLabelText('Target'), { target: { value: 'site-1' } });
     expect(screen.queryByRole('checkbox')).toBe(null);
 
-    fireEvent.click(screen.getByRole('button', { name: /purge sekarang/i }));
+    fireEvent.click(screen.getByRole('button', { name: /bersihkan sekarang/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith('site.cache.purge', { siteId: 'site-1' }));
-    expect(await screen.findByText(/Purge diminta untuk/)).toBeDefined();
+    expect(await screen.findByText(/Permintaan dikirim untuk/)).toBeDefined();
   });
 
   it('mereset centang saat target berubah', () => {
     setup(vi.fn(async () => ({ sites: [] })));
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText(/target purge/i), { target: { value: 'site-1' } });
-    fireEvent.change(screen.getByLabelText(/target purge/i), { target: { value: '' } });
-    expect(screen.getByRole('button', { name: /purge sekarang/i }).hasAttribute('disabled')).toBe(true);
+    fireEvent.change(screen.getByLabelText('Target'), { target: { value: 'site-1' } });
+    fireEvent.change(screen.getByLabelText('Target'), { target: { value: '' } });
+    expect(screen.getByRole('button', { name: /bersihkan sekarang/i }).hasAttribute('disabled')).toBe(true);
   });
 });

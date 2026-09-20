@@ -72,7 +72,7 @@ export function LoginMethodsForm() {
       });
       if (error) throw error;
     } catch {
-      setNotice('Penautan Google gagal. Pastikan manual linking aktif di pengaturan Auth.');
+      setNotice('Penautan Google gagal. Pastikan penautan manual aktif di pengaturan Auth.');
       setBusy(false);
     }
   };

@@ -37,11 +37,11 @@ afterEach(() => {
 });
 
 describe('Seksi ringkasan kebijakan', () => {
-  it('menampilkan pesan grant saat API menolak', async () => {
+  it('menampilkan pesan izin saat API menolak', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ status: 404, ok: false, json: async () => ({}) })));
     render(<PolicyOverviewSection />);
     expect(
-      await screen.findByText('Panel ini membutuhkan grant platform.runtime_config.manage.'),
+      await screen.findByText('Panel ini membutuhkan izin platform.runtime_config.manage.'),
     ).toBeDefined();
   });
 

@@ -120,10 +120,10 @@ export function BillingPanel({
   const manualSetSubscription = async () => {
     const orgId = manualOrgId.trim();
     if (orgId === '') {
-      setError('Isi UUID organisasi target dulu.');
+      setError('Isi ID organisasi target dulu.');
       return;
     }
-    if (!window.confirm(`Ubah status langganan? Org ${orgId} → ${manualStatus} (berlaku serta-merta, tanpa kedaluwarsa).`)) return;
+    if (!window.confirm(`Ubah status langganan? Organisasi ${orgId} → ${manualStatus} (berlaku segera, tanpa kedaluwarsa).`)) return;
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -150,7 +150,7 @@ export function BillingPanel({
     const orgId = invoiceOrgId.trim();
     const amount = Number(invoiceAmount.trim());
     if (orgId === '' || !Number.isInteger(amount) || amount < 0) {
-      setError('Isi UUID organisasi dan nominal yang valid.');
+      setError('Isi ID organisasi dan nominal yang valid.');
       return;
     }
     let paidAt = new Date().toISOString();
@@ -162,7 +162,7 @@ export function BillingPanel({
       }
       paidAt = parsed.toISOString();
     }
-    if (!window.confirm(`Catat invoice? Org ${orgId} · ${formatIdr(amount)} · bayar ${formatDate(paidAt)}.`)) return;
+    if (!window.confirm(`Catat faktur? Organisasi ${orgId} · ${formatIdr(amount)} · bayar ${formatDate(paidAt)}.`)) return;
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -174,7 +174,7 @@ export function BillingPanel({
         billingNote: invoiceNote.trim() === '' ? null : invoiceNote.trim(),
         paymentMethod: invoiceMethod.trim() === '' ? null : invoiceMethod.trim(),
       });
-      setNotice('Invoice tercatat.');
+      setNotice('Faktur tercatat.');
       setInvoiceOrgId('');
       setInvoiceAmount('550000');
       setInvoicePaidAt('');
@@ -182,14 +182,14 @@ export function BillingPanel({
       setInvoiceMethod('');
       await reload();
     } catch {
-      setError('Invoice gagal dicatat.');
+      setError('Faktur gagal dicatat.');
     } finally {
       setBusy(false);
     }
   };
 
   const voidInvoice = async (invoice: InvoiceRow) => {
-    const reason = window.prompt(`Alasan void invoice ${invoice.number}:`);
+    const reason = window.prompt(`Alasan batal tagihan ${invoice.number}:`);
     if (reason === null || reason.trim() === '') return;
     setBusy(true);
     setError(null);
@@ -200,17 +200,17 @@ export function BillingPanel({
         expectedVersion: invoice.version,
         reason: reason.trim(),
       });
-      setNotice(`Invoice ${invoice.number} di-void.`);
+      setNotice(`Tagihan ${invoice.number} dibatalkan.`);
       await reload();
     } catch {
-      setError('Void invoice gagal.');
+      setError('Batalkan tagihan gagal.');
     } finally {
       setBusy(false);
     }
   };
 
   const reissueInvoice = async (invoice: InvoiceRow) => {
-    const reason = window.prompt(`Alasan terbitkan ulang invoice ${invoice.number}:`);
+    const reason = window.prompt(`Alasan terbitkan ulang tagihan ${invoice.number}:`);
     if (reason === null || reason.trim() === '') return;
     setBusy(true);
     setError(null);
@@ -221,10 +221,10 @@ export function BillingPanel({
         expectedVersion: invoice.version,
         reason: reason.trim(),
       });
-      setNotice(`Invoice pengganti ${invoice.number} terbit.`);
+      setNotice(`Faktur pengganti ${invoice.number} terbit.`);
       await reload();
     } catch {
-      setError('Terbitkan ulang invoice gagal.');
+      setError('Terbitkan ulang faktur gagal.');
     } finally {
       setBusy(false);
     }
@@ -274,7 +274,7 @@ export function BillingPanel({
           {invoices.map((invoice) => (
             <li key={invoice.id} className="border-b border-hairline py-3 last:border-b-0">
               <p className="m-0 font-sans text-sm font-medium text-paper">
-                {invoice.number} — {formatIdr(invoice.amountIdr)} · {invoice.status === 'paid' ? 'Lunas' : invoice.status === 'unpaid' ? 'Belum bayar' : 'Void'}
+                {invoice.number} — {formatIdr(invoice.amountIdr)} · {invoice.status === 'paid' ? 'Lunas' : invoice.status === 'unpaid' ? 'Belum bayar' : 'Batal'}
               </p>
               <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
                 {invoice.status === 'unpaid'
@@ -283,7 +283,7 @@ export function BillingPanel({
                 {invoice.billingNote ? ` · ${invoice.billingNote}` : ''}
               </p>
               {invoice.status === 'voided' && invoice.voidReason ? (
-                <p className="m-0 mt-0.5 font-sans text-xs text-error">Void: {invoice.voidReason}</p>
+                <p className="m-0 mt-0.5 font-sans text-xs text-error">Batal: {invoice.voidReason}</p>
               ) : null}
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <button
@@ -309,7 +309,7 @@ export function BillingPanel({
                     type="button" onClick={() => void voidInvoice(invoice)} disabled={busy}
                     className="h-8 border border-error px-3 font-sans text-xs text-error disabled:opacity-50"
                   >
-                    Void invoice
+                    Batalkan
                   </button>
                 </div>
               ) : isPlatform ? (
@@ -353,11 +353,11 @@ export function BillingPanel({
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="manual-org-id" className="font-sans text-xs font-medium text-paper-dim">
-                UUID organisasi
+                ID organisasi
               </label>
               <input
                 id="manual-org-id" value={manualOrgId} onChange={(event) => setManualOrgId(event.target.value)} disabled={busy}
-                placeholder="UUID organisasi target…" spellCheck={false}
+                placeholder="ID organisasi target…" spellCheck={false}
                 className="h-9 border border-hairline-strong bg-bg px-3 font-mono text-xs text-paper"
               />
             </div>
@@ -387,19 +387,19 @@ export function BillingPanel({
       ) : null}
 
       {isPlatform ? (
-        <section aria-label="Catat invoice" className="rounded-lg border border-brass/60 bg-bg-raised p-5 sm:p-6 md:col-span-2">
-          <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Catat invoice (pembayaran manual terkonfirmasi)</p>
+        <section aria-label="Catat faktur" className="rounded-lg border border-brass/60 bg-bg-raised p-5 sm:p-6 md:col-span-2">
+          <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Catat faktur (pembayaran manual terkonfirmasi)</p>
           <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
-            Nomor faktur format IND-{`{ORG}`}-{`{YYMM}`}-{`{SEQ}`}-{`{RAND}`} dibuat otomatis dan tidak bisa ditebak. Invoice tercatat langsung berstatus lunas.
+            Nomor faktur dibuat otomatis dan tidak bisa ditebak. Faktur tercatat langsung berstatus lunas.
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="invoice-org-id" className="font-sans text-xs font-medium text-paper-dim">
-                UUID organisasi
+                ID organisasi
               </label>
               <input
                 id="invoice-org-id" value={invoiceOrgId} onChange={(event) => setInvoiceOrgId(event.target.value)} disabled={busy}
-                placeholder="UUID organisasi…" spellCheck={false}
+                placeholder="ID organisasi…" spellCheck={false}
                 className="h-9 border border-hairline-strong bg-bg px-3 font-mono text-xs text-paper"
               />
             </div>
@@ -449,7 +449,7 @@ export function BillingPanel({
               type="button" onClick={() => void createInvoice()} disabled={busy}
               className="h-9 bg-brass px-4 font-sans text-xs font-semibold text-bg hover:bg-brass-soft disabled:opacity-50"
             >
-              Catat invoice
+              Catat faktur
             </button>
           </div>
         </section>
@@ -471,7 +471,7 @@ export function BillingPanel({
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-paper-faint">Status</dt>
-                <dd className="m-0 text-paper">{preview.status === 'paid' ? 'Lunas' : preview.status === 'unpaid' ? 'Belum bayar' : 'Void'}</dd>
+                <dd className="m-0 text-paper">{preview.status === 'paid' ? 'Lunas' : preview.status === 'unpaid' ? 'Belum bayar' : 'Batal'}</dd>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-paper-faint">{preview.status === 'unpaid' ? 'Tempo' : 'Tanggal bayar'}</dt>

@@ -29,7 +29,7 @@ describe('Formulir editor rekaman', () => {
     );
     expect(screen.getByText('Ubah domain')).toBeDefined();
     expect(screen.getByText('ID d-1 · versi 2')).toBeDefined();
-    expect((screen.getByLabelText('Hostname apex') as HTMLInputElement).value).toBe('apex.example');
+    expect((screen.getByLabelText('Nama domain utama') as HTMLInputElement).value).toBe('apex.example');
   });
 
   it('mengirim payload normalisasi saat disimpan', async () => {
@@ -46,7 +46,7 @@ describe('Formulir editor rekaman', () => {
         onSubmit={kirim}
       />,
     );
-    fireEvent.change(screen.getByLabelText('Hostname apex'), { target: { value: 'BARU.EXAMPLE' } });
+    fireEvent.change(screen.getByLabelText('Nama domain utama'), { target: { value: 'BARU.EXAMPLE' } });
     fireEvent.click(screen.getByRole('button', { name: /simpan perubahan/i }));
     await waitFor(() =>
       expect(kirim).toHaveBeenCalledWith(

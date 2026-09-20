@@ -19,8 +19,8 @@ describe('Formulir unggah media', () => {
     expect(screen.getByText('Unggah media')).toBeDefined();
     expect(screen.getByLabelText(/Pilih Berkas Gambar/)).toBeDefined();
     expect(screen.getByLabelText(/Tujuan Penggunaan/)).toBeDefined();
-    expect(screen.getByLabelText('Tipe Kepemilikan')).toBeDefined();
-    expect(screen.getByRole('button', { name: /otorisasi & unggah aset/i })).toBeDefined();
+    expect(screen.getByLabelText('Kepemilikan')).toBeDefined();
+    expect(screen.getByRole('button', { name: /unggah berkas/i })).toBeDefined();
   });
 
   it('menolak submit tanpa berkas yang valid', async () => {
@@ -34,8 +34,8 @@ describe('Formulir unggah media', () => {
 
   it('menampilkan opsi pemilik dari artikel dan situs', () => {
     render(<MediaForm data={DATA} command={vi.fn(async () => ({}))} />);
-    expect(screen.getByRole('option', { name: 'Organisasi Induk' })).toBeDefined();
+    expect(screen.getByRole('option', { name: 'Organisasi' })).toBeDefined();
     expect(screen.getByRole('option', { name: 'Artikel: art-1' })).toBeDefined();
-    expect(screen.getByRole('option', { name: 'Site: portal.example' })).toBeDefined();
+    expect(screen.getByRole('option', { name: 'Situs: portal.example' })).toBeDefined();
   });
 });

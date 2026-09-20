@@ -99,7 +99,7 @@ export function ConfigurationPanel({
         <form onSubmit={handleDomainSubmit} className="mt-4 space-y-3.5">
           <div className="space-y-1.5">
             <label htmlFor={domainInputId} className="font-sans text-xs font-medium text-paper-dim">
-              Hostname apex
+              Nama domain utama
             </label>
             <Input
               id={domainInputId}
@@ -152,7 +152,7 @@ export function ConfigurationPanel({
 
           <div className="space-y-1.5">
             <label htmlFor={regionSlugId} className="font-sans text-xs font-medium text-paper-dim">
-              Slug
+              Kode Wilayah
             </label>
             <Input
               id={regionSlugId}
@@ -180,12 +180,12 @@ export function ConfigurationPanel({
         </form>
       </section>
 
-      <section aria-label="Tambah kanal" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
+      <section aria-label="Tambah situs" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <div className="flex items-baseline gap-2">
           <span className="font-mono text-[11px] tabular-nums text-brass">03</span>
           <h3 className="m-0 flex items-center gap-2 font-sans text-sm font-semibold tracking-tight text-paper">
             <FolderPlus className="h-4 w-4 text-brass" aria-hidden="true" />
-            Kanal
+            Situs
           </h3>
         </div>
 
@@ -218,7 +218,7 @@ export function ConfigurationPanel({
               disabled={isAddingSite}
               className="h-9 w-full border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus:border-brass focus:outline-none"
             >
-              <option value="">Kanal apex (sentral)</option>
+              <option value="">Domain utama (tanpa wilayah)</option>
               {model?.regions?.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
@@ -229,7 +229,7 @@ export function ConfigurationPanel({
 
           <div className="space-y-1.5">
             <label htmlFor={siteHostnameInputId} className="font-sans text-xs font-medium text-paper-dim">
-              Hostname
+              Alamat Situs
             </label>
             <Input
               id={siteHostnameInputId}
@@ -251,7 +251,7 @@ export function ConfigurationPanel({
             ) : (
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
             )}
-            <span>Buat kanal</span>
+            <span>Buat situs</span>
           </button>
         </form>
       </section>

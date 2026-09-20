@@ -87,7 +87,7 @@ describe('Bento utama', () => {
     expect(screen.getByText('Gelembung tayangan')).toBeDefined();
     expect(screen.getByText('Matriks status')).toBeDefined();
     expect(screen.getByText('Lini masa')).toBeDefined();
-    expect(screen.getByText('Top wilayah')).toBeDefined();
+    expect(screen.getByText('Wilayah teratas')).toBeDefined();
     expect(screen.getAllByText('portal.example').length).toBeGreaterThan(0);
   });
 

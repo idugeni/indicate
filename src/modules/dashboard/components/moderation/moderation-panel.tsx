@@ -119,7 +119,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
   );
 
   const decideReport = async (reportId: string, actionTaken: boolean) => {
-    if (actionTaken && !window.confirm('Tandai laporan ini sudah ditindak (pastikan penarikan konten via alur unpublish sudah dilakukan)?')) return;
+    if (actionTaken && !window.confirm('Tandai laporan ini sudah ditindak (pastikan konten sudah ditarik)?')) return;
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -157,21 +157,21 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
 
   const createHold = async () => {
     if (holdOrgId.trim() === '' || holdReason.trim().length < 10) {
-      setError('Isi UUID organisasi dan alasan hold (min. 10 karakter).');
+      setError('Isi ID organisasi dan alasan penundaan (min. 10 karakter).');
       return;
     }
-    if (!window.confirm(`Tahan penghapusan untuk org ${holdOrgId.trim()}? Penyapuan dan erasure melewatkan org ini sampai hold dilepas.`)) return;
+    if (!window.confirm(`Tahan penghapusan untuk organisasi ${holdOrgId.trim()}? Pembersihan dan penghapusan melewatkan organisasi ini sampai penundaan dilepas.`)) return;
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
       await post('hold.create', { organizationId: holdOrgId.trim(), reason: holdReason.trim() });
-      setNotice('Litigation hold aktif.');
+      setNotice('Penundaan hapus aktif.');
       setHoldOrgId('');
       setHoldReason('');
       await reload();
     } catch {
-      setError('Hold gagal disimpan (mungkin org sudah di-hold).');
+      setError('Penundaan gagal disimpan (mungkin organisasi ini sudah ditunda).');
     } finally {
       setBusy(false);
     }
@@ -179,10 +179,10 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
 
   const requestErasure = async () => {
     if (erasureOrgId.trim() === '' || erasureReason.trim().length < 10) {
-      setError('Isi UUID organisasi dan alasan erasure (min. 10 karakter).');
+      setError('Isi ID organisasi dan alasan hapus data (min. 10 karakter).');
       return;
     }
-    if (!window.confirm(`Hapus operasional org ${erasureOrgId.trim()} secara permanen? Arsip legal (audit, invoice, order) dipertahankan. Aksi ini tidak bisa dibatalkan setelah worker berjalan.`)) return;
+    if (!window.confirm(`Hapus data organisasi ${erasureOrgId.trim()} secara permanen? Arsip legal (audit, faktur, order) dipertahankan. Aksi ini tidak bisa dibatalkan setelah sistem berjalan.`)) return;
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -192,27 +192,27 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
         reason: erasureReason.trim(),
         scheduledFor: new Date().toISOString(),
       });
-      setNotice('Erasure diminta. Worker harian mengeksekusi; org di-hold akan dilewatkan.');
+      setNotice('Penghapusan diminta. Sistem harian mengeksekusi; organisasi yang ditunda akan dilewatkan.');
       setErasureOrgId('');
       setErasureReason('');
       await reload();
     } catch {
-      setError('Permintaan erasure gagal disimpan.');
+      setError('Permintaan hapus data gagal disimpan.');
     } finally {
       setBusy(false);
     }
   };
 
-  const releaseHold = async (holdId: string) => {    if (!window.confirm('Lepas hold ini? Penghapusan terjadwal berjalan kembali.')) return;
+  const releaseHold = async (holdId: string) => {    if (!window.confirm('Lepas penundaan ini? Penghapusan terjadwal berjalan kembali.')) return;
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
       await post('hold.release', { holdId });
-      setNotice('Hold dilepas.');
+      setNotice('Penundaan dilepas.');
       await reload();
     } catch {
-      setError('Pelepasan hold gagal.');
+      setError('Pelepasan penundaan gagal.');
     } finally {
       setBusy(false);
     }
@@ -285,7 +285,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
       </section>
 
       <section aria-label="Permintaan data" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
-        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Permintaan data baru (DSAR)</p>
+        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Permintaan data baru</p>
         <div className="mt-3 flex flex-col gap-2">
           <select
             value={privacyType} onChange={(event) => setPrivacyType(event.target.value)} disabled={busy}
@@ -314,7 +314,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
       </section>
 
       <section aria-label="Tiket permintaan data" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
-        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Tiket DSAR (SLA 30 hari)</p>
+        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Tiket permintaan (SLA 30 hari)</p>
         <ul className="m-0 mt-2 grid list-none gap-0 p-0">
           {privacy.map((ticket) => (
             <li key={ticket.id} className="border-b border-hairline py-3 last:border-b-0">
@@ -349,19 +349,19 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
         </ul>
       </section>
 
-      <section aria-label="Litigation hold" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6 md:col-span-2">
-        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Litigation hold (tunda hapus resmi)</p>
+      <section aria-label="Tunda hapus resmi" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6 md:col-span-2">
+        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Tunda hapus resmi</p>
         <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
-          Org yang di-hold dilewatkan penyapuan retensi dan erasure sampai hold dilepas. Satu hold aktif per org.
+          Organisasi yang ditunda dilewatkan pembersihan retensi dan penghapusan sampai penundaan dilepas. Satu penundaan aktif per organisasi.
         </p>
         <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="hold-org-id" className="font-sans text-xs font-medium text-paper-dim">
-              UUID organisasi
+              ID organisasi
             </label>
             <input
               id="hold-org-id" value={holdOrgId} onChange={(event) => setHoldOrgId(event.target.value)} disabled={busy}
-              placeholder="UUID organisasi…" spellCheck={false}
+              placeholder="ID organisasi…" spellCheck={false}
               className="h-9 border border-hairline-strong bg-bg px-3 font-mono text-xs text-paper"
             />
           </div>
@@ -400,30 +400,30 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
                     type="button" onClick={() => void releaseHold(hold.id)} disabled={busy}
                     className="h-8 border border-hairline-strong px-3 font-sans text-xs text-paper hover:border-paper-faint disabled:opacity-50"
                   >
-                    Lepas hold
+                    Lepas penundaan
                   </button>
                 </div>
               ) : null}
             </li>
           ))}
-          {holds.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada hold.</li> : null}
+          {holds.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada penundaan.</li> : null}
         </ul>
       </section>
 
-      <section aria-label="Erasure organisasi" className="rounded-lg border border-error/60 bg-bg-raised p-5 sm:p-6 md:col-span-2">
-        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Erasure organisasi penuh</p>
+      <section aria-label="Hapus data organisasi" className="rounded-lg border border-error/60 bg-bg-raised p-5 sm:p-6 md:col-span-2">
+        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Hapus data organisasi</p>
         <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
-          Hapus permanen data operasional + anonimkan PII anggota. Arsip legal (audit, invoice, order,
-          langganan) dipertahankan; org menjadi archived. Org di-hold atau org platform ditolak worker.
+          Hapus permanen data operasional + samarkan data pribadi anggota. Arsip legal (audit, faktur, order,
+          langganan) dipertahankan; organisasi menjadi arsip. Organisasi yang ditunda atau organisasi platform akan ditolak sistem.
         </p>
         <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="erasure-org-id" className="font-sans text-xs font-medium text-paper-dim">
-              UUID organisasi
+              ID organisasi
             </label>
             <input
               id="erasure-org-id" value={erasureOrgId} onChange={(event) => setErasureOrgId(event.target.value)} disabled={busy}
-              placeholder="UUID organisasi…" spellCheck={false}
+              placeholder="ID organisasi…" spellCheck={false}
               className="h-9 border border-hairline-strong bg-bg px-3 font-mono text-xs text-paper"
             />
           </div>
@@ -433,7 +433,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             </label>
             <input
               id="erasure-reason" value={erasureReason} onChange={(event) => setErasureReason(event.target.value)} disabled={busy}
-              placeholder="Terminasi + retensi terpenuhi …"
+              placeholder="Alasan penghapusan data…"
               className="h-9 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
             />
           </div>
@@ -442,7 +442,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               type="button" onClick={() => void requestErasure()} disabled={busy}
               className="h-9 border border-error px-4 font-sans text-xs font-semibold text-error hover:border-error disabled:opacity-50"
             >
-              Minta erasure
+              Minta hapus data
             </button>
           </div>
         </div>
@@ -459,7 +459,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               </p>
             </li>
           ))}
-          {erasures.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada permintaan erasure.</li> : null}
+          {erasures.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada permintaan hapus data.</li> : null}
         </ul>
       </section>
     </div>

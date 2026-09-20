@@ -83,9 +83,9 @@ describe('Ruang kerja dashboard', () => {
   it('berganti judul saat modul redaksi dipilih', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANISASI} />);
     await screen.findByText('Ringkasan Ekosistem Redaksi');
-    fireEvent.click(screen.getByRole('button', { name: 'Artikel & Naskah' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tulis Berita' }));
     expect(await screen.findByText('Manajemen Artikel & Konten')).toBeDefined();
-    expect(await screen.findByText('Tidak ada rekaman data')).toBeDefined();
+    expect(await screen.findByText('Belum ada data')).toBeDefined();
   });
 
   it('menempelkan footer di bawah dengan label pengelola', async () => {
@@ -108,7 +108,7 @@ describe('Ruang kerja dashboard', () => {
         initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1, analytics: { articlesByRegion: [] } } }}
       />,
     );
-    await screen.findByText('Domain Aktif');
+    await screen.findByText('Domain Utama');
     const urls = fetchMock.mock.calls.map(([url]) => String(url));
     expect(urls.some((url) => url.includes('view=analytics'))).toBe(false);
     expect(urls.some((url) => url.includes('view=dashboard'))).toBe(false);
@@ -124,7 +124,7 @@ describe('Ruang kerja dashboard', () => {
         initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1 } }}
       />,
     );
-    await screen.findByText('Domain Aktif');
+    await screen.findByText('Domain Utama');
     await waitFor(() => {
       const urls = fetchMock.mock.calls.map(([url]) => String(url));
       expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);

@@ -30,6 +30,14 @@ export interface AuthorizationRepository {
     readonly avatarUrl?: string | null;
   }): Promise<LocalUserIdentity | null>;
   findActiveMembership(organizationId: string, userId: string): Promise<MembershipAuthorization | null>;
+  /**
+   * Batch membership lookup for one user across many organizations in a single roundtrip.
+   *
+   * @param userId - Local user id owning the memberships.
+   * @param organizationIds - Organization ids to resolve; empty returns an empty map.
+   * @returns Map of organization id to authorization; missing orgs have no active membership.
+   */
+  findActiveMemberships(userId: string, organizationIds: readonly string[]): Promise<ReadonlyMap<string, MembershipAuthorization>>;
   /** Platform-scoped grant names for a local user (billing/platform surfaces for users without an org membership). */
   listPlatformPermissions(userId: string): Promise<readonly string[]>;
   findActiveActorAuthorization(

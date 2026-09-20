@@ -20,11 +20,11 @@ afterEach(() => {
 });
 
 describe('Seksi kebijakan media', () => {
-  it('menampilkan pesan grant saat API menolak', async () => {
+  it('menampilkan pesan izin saat API menolak', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ status: 404, ok: false, json: async () => ({}) })));
     render(<MediaPolicySection />);
     expect(
-      await screen.findByText('Panel ini membutuhkan grant platform.runtime_config.manage.'),
+      await screen.findByText('Panel ini membutuhkan izin platform.runtime_config.manage.'),
     ).toBeDefined();
   });
 
@@ -32,8 +32,8 @@ describe('Seksi kebijakan media', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => KEBIJAKAN })));
     render(<MediaPolicySection />);
     expect(await screen.findByText(/Tipe diizinkan: image\/jpeg, image\/png/)).toBeDefined();
-    expect(screen.getByLabelText('Maks objek (MB)')).toBeDefined();
-    expect(screen.getByLabelText('TTL URL unggah (detik)')).toBeDefined();
+    expect(screen.getByLabelText('Ukuran maks berkas (MB)')).toBeDefined();
+    expect(screen.getByLabelText('Masa berlaku tautan unggah (detik)')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Simpan kebijakan media' })).toBeDefined();
   });
 
@@ -43,9 +43,9 @@ describe('Seksi kebijakan media', () => {
     render(<MediaPolicySection />);
     await screen.findByRole('button', { name: 'Simpan kebijakan media' });
     fetchMock.mockClear();
-    fireEvent.change(screen.getByLabelText('Maks objek (MB)'), { target: { value: '-5' } });
-    fireEvent.submit(screen.getByLabelText('Maks objek (MB)').closest('form') as HTMLFormElement);
-    expect(await screen.findByText('Nilai harus angka positif; TTL dalam detik bulat.')).toBeDefined();
+    fireEvent.change(screen.getByLabelText('Ukuran maks berkas (MB)'), { target: { value: '-5' } });
+    fireEvent.submit(screen.getByLabelText('Ukuran maks berkas (MB)').closest('form') as HTMLFormElement);
+    expect(await screen.findByText('Nilai harus angka positif; masa berlaku dalam detik bulat.')).toBeDefined();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -57,13 +57,13 @@ describe('Seksi kebijakan media', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<MediaPolicySection />);
     await screen.findByRole('button', { name: 'Simpan kebijakan media' });
-    fireEvent.submit(screen.getByLabelText('Maks objek (MB)').closest('form') as HTMLFormElement);
+    fireEvent.submit(screen.getByLabelText('Ukuran maks berkas (MB)').closest('form') as HTMLFormElement);
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/dashboard/runtime-config',
         expect.objectContaining({ method: 'POST' }),
       ),
     );
-    expect(await screen.findByText('Kebijakan media tersimpan dan beraudit.')).toBeDefined();
+    expect(await screen.findByText('Kebijakan media tersimpan dan tercatat.')).toBeDefined();
   });
 });

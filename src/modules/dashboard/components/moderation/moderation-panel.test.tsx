@@ -26,13 +26,13 @@ describe('Panel moderasi', () => {
     stubModerasi();
     render(<ModerationPanel organizationId="org-1" />);
     expect(screen.getByText('Laporan konten publik')).toBeDefined();
-    expect(screen.getByText('Permintaan data baru (DSAR)')).toBeDefined();
-    expect(screen.getByText('Tiket DSAR (SLA 30 hari)')).toBeDefined();
-    expect(screen.getByText('Litigation hold (tunda hapus resmi)')).toBeDefined();
-    expect(screen.getByText('Erasure organisasi penuh')).toBeDefined();
+    expect(screen.getByText('Permintaan data baru')).toBeDefined();
+    expect(screen.getByText('Tiket permintaan (SLA 30 hari)')).toBeDefined();
+    expect(screen.getByText('Tunda hapus resmi')).toBeDefined();
+    expect(screen.getByText('Hapus data organisasi')).toBeDefined();
     expect(await screen.findByText('Belum ada laporan konten.')).toBeDefined();
-    expect(await screen.findByText('Belum ada hold.')).toBeDefined();
-    expect(await screen.findByText('Belum ada permintaan erasure.')).toBeDefined();
+    expect(await screen.findByText('Belum ada penundaan.')).toBeDefined();
+    expect(await screen.findByText('Belum ada permintaan hapus data.')).toBeDefined();
   });
 
   it('menolak permintaan data dengan uraian pendek', async () => {
@@ -44,20 +44,20 @@ describe('Panel moderasi', () => {
     expect(await screen.findByText('Uraian permintaan minimal 10 karakter.')).toBeDefined();
   });
 
-  it('menolak hold tanpa alasan yang cukup', async () => {
+  it('menolak penundaan tanpa alasan yang cukup', async () => {
     stubModerasi();
     render(<ModerationPanel organizationId="org-1" />);
     await screen.findByText('Belum ada laporan konten.');
     fireEvent.click(screen.getByRole('button', { name: 'Tahan hapus' }));
-    expect(await screen.findByText('Isi UUID organisasi dan alasan hold (min. 10 karakter).')).toBeDefined();
+    expect(await screen.findByText('Isi ID organisasi dan alasan penundaan (min. 10 karakter).')).toBeDefined();
   });
 
-  it('menolak erasure tanpa isian yang cukup', async () => {
+  it('menolak hapus data tanpa isian yang cukup', async () => {
     stubModerasi();
     render(<ModerationPanel organizationId="org-1" />);
     await screen.findByText('Belum ada laporan konten.');
-    fireEvent.click(screen.getByRole('button', { name: 'Minta erasure' }));
-    expect(await screen.findByText('Isi UUID organisasi dan alasan erasure (min. 10 karakter).')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Minta hapus data' }));
+    expect(await screen.findByText('Isi ID organisasi dan alasan hapus data (min. 10 karakter).')).toBeDefined();
   });
 
   it('menandai laporan sudah ditindak setelah konfirmasi', async () => {

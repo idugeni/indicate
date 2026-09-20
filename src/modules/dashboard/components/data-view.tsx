@@ -1,7 +1,6 @@
 'use client';
 
 import { Fragment, useMemo, useState } from 'react';
-import dynamic from 'next/dynamic';
 import { Archive, ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Check, CircleCheck, CircleX, Copy, Eye, FileText, Globe, Images, Inbox, LayoutGrid, ListChecks, MoreVertical, Network, Pencil, PenLine, RefreshCw, RotateCcw, SearchX, Send, SlidersHorizontal } from 'lucide-react';
 import { flexRender, useTable } from '@tanstack/react-table';
 import {
@@ -50,7 +49,8 @@ import {
 } from '@/modules/dashboard/components/dashboard-skeletons';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
 import type { AnalyticsProjection } from '@/modules/dashboard/models';
-import { BentoUtamaLoading, GaleriTelemetriLoading } from '@/modules/dashboard/components/analytics/bento-skeletons';
+import { GaleriTelemetri } from '@/modules/dashboard/components/analytics/galeri';
+import { BentoUtama } from '@/modules/dashboard/components/analytics/bento-utama';
 import { getEditorConfig, type EditorTransition, type LookupTables } from '@/modules/dashboard/components/shared/record-editor-config';
 import { RecordEditorForm } from '@/modules/dashboard/components/shared/record-editor-form';
 import { cn } from '@/ui/cn';
@@ -61,22 +61,6 @@ function isAnalyticsProjection(value: unknown): value is AnalyticsProjection {
   if (typeof value !== 'object' || value === null) return false;
   return Array.isArray((value as Partial<AnalyticsProjection>).articlesByRegion);
 }
-
-const GaleriTelemetri = dynamic(
-  () =>
-    import('@/modules/dashboard/components/analytics/galeri').then((module) => ({
-      default: module.GaleriTelemetri,
-    })),
-  { loading: () => <GaleriTelemetriLoading /> },
-);
-
-const BentoUtama = dynamic(
-  () =>
-    import('@/modules/dashboard/components/analytics/bento-utama').then((module) => ({
-      default: module.BentoUtama,
-    })),
-  { loading: () => <BentoUtamaLoading /> },
-);
 
 interface DataViewProps {
   readonly view: View;
@@ -153,7 +137,7 @@ function resolveItemName(item: Record<string, unknown>): string {
 
   return typeof possibleName === 'string' && possibleName.trim()
     ? possibleName.trim()
-    : String(item.id ?? 'Rekaman Data');
+    : String(item.id ?? 'Data');
 }
 
 /**
@@ -190,29 +174,29 @@ export function DataView({
     const analytics = isAnalyticsProjection(dashboard.analytics) ? dashboard.analytics : null;
 
     const metrics = [
-      { key: 'domains', label: 'Domain Aktif', value: activeDomains, icon: Globe },
-      { key: 'subdomains', label: 'Subdomain Aktif', value: activeSubdomains, icon: Network },
-      { key: 'sites', label: 'Situs Aktif', value: activeSites, icon: LayoutGrid },
-      { key: 'articles', label: 'Artikel Aktif', value: activeArticles, icon: FileText },
-      { key: 'archived', label: 'Artikel Diarsipkan', value: archivedArticles, icon: Archive },
-      { key: 'media', label: 'Media Aktif', value: activeMedia, icon: Images },
+      { key: 'domains', label: 'Domain Utama', value: activeDomains, icon: Globe },
+      { key: 'subdomains', label: 'Subdomain', value: activeSubdomains, icon: Network },
+      { key: 'sites', label: 'Total Situs', value: activeSites, icon: LayoutGrid },
+      { key: 'articles', label: 'Artikel Tayang', value: activeArticles, icon: FileText },
+      { key: 'archived', label: 'Artikel Arsip', value: archivedArticles, icon: Archive },
+      { key: 'media', label: 'Media', value: activeMedia, icon: Images },
       { key: 'delivered', label: 'Penyaluran Berhasil', value: successfulOutcomes, icon: CircleCheck },
       { key: 'views', label: 'Total Tayangan', value: analytics?.totalViews ?? 0, icon: Eye },
     ];
 
     const setupSteps: readonly { key: string; label: string; description: string; done: boolean; target: View }[] = [
-      { key: 'domain', label: 'Hubungkan domain pertama', description: 'Sambungkan domain kontrol ke jaringan Indicate.', done: activeDomains > 0, target: 'configuration' },
-      { key: 'site', label: 'Aktifkan situs pertama', description: 'Nyalakan portal berita di domain tersebut.', done: activeSites > 0, target: 'configuration' },
-      { key: 'article', label: 'Terbitkan artikel pertama', description: 'Tulis naskah perdana dari ruang redaksi.', done: activeArticles > 0, target: 'editorial' },
-      { key: 'delivery', label: 'Capai penyaluran berhasil pertama', description: 'Antrekan artikel ke situs dan pastikan terkirim.', done: successfulOutcomes > 0, target: 'publishing' },
+      { key: 'domain', label: 'Daftarkan domain utama', description: 'Sambungkan domain utama Anda ke jaringan Indicate.', done: activeDomains > 0, target: 'configuration' },
+      { key: 'site', label: 'Aktifkan subdomain pertama', description: 'Buat situs wilayah di bawah domain utama, mis. semarang.domainanda.id.', done: activeSites > 0, target: 'configuration' },
+      { key: 'article', label: 'Terbitkan artikel pertama', description: 'Tulis artikel perdana dari ruang redaksi.', done: activeArticles > 0, target: 'editorial' },
+      { key: 'delivery', label: 'Capai pengiriman berhasil pertama', description: 'Kirim artikel ke situs dan pastikan tiba.', done: successfulOutcomes > 0, target: 'publishing' },
     ];
     const completedSteps = setupSteps.filter((step) => step.done).length;
 
     const quickActions: readonly { target: View; label: string; description: string; icon: typeof Globe }[] = [
-      { target: 'editorial', label: 'Tulis artikel', description: 'Naskah baru untuk jaringan', icon: PenLine },
-      { target: 'publishing', label: 'Antrean penerbitan', description: 'Pantau status penerbitan', icon: Send },
-      { target: 'media', label: 'Pustaka media', description: 'Kelola aset visual', icon: Images },
-      { target: 'configuration', label: 'Domain & wilayah', description: 'Atur tenansi jaringan', icon: Globe },
+      { target: 'editorial', label: 'Tulis Berita', description: 'Berita baru untuk jaringan', icon: PenLine },
+      { target: 'publishing', label: 'Antrean Penerbitan', description: 'Pantau status pengiriman', icon: Send },
+      { target: 'media', label: 'Media', description: 'Kelola foto & gambar', icon: Images },
+      { target: 'configuration', label: 'Domain & Wilayah', description: 'Atur domain & subdomain wilayah', icon: Globe },
     ];
 
     return (
@@ -336,8 +320,8 @@ export function DataView({
     if (view === 'operations') {
       return (
         <EmptyState
-          title="Antrean sehat — tidak ada backlog"
-          description="Semua tugas invalidasi, pembersihan objek, dan antrean latar selesai diproses. Tugas baru akan terdaftar di sini saat tiba."
+          title="Antrean kosong — tidak ada tugas tertunda"
+          description="Semua pekerjaan sistem sudah selesai. Tugas baru akan muncul di sini saat tiba."
           icon={<CircleCheck className="h-5 w-5 text-signal" aria-hidden="true" />}
           action={
             <Button
@@ -354,8 +338,8 @@ export function DataView({
     }
     return (
       <EmptyState
-        title="Tidak ada rekaman data"
-        description="Belum ada data yang tercatat atau cocok dengan parameter filter modul ini. Longgarkan filter atau muat ulang dari PostgreSQL."
+        title="Belum ada data"
+        description="Belum ada data yang cocok dengan filter halaman ini. Longgarkan filter atau muat ulang dari server."
         icon={<SearchX className="h-5 w-5 text-paper-faint" aria-hidden="true" />}
         action={
           <Button
@@ -552,7 +536,7 @@ function CollectionTable({
                     className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-xs text-paper-dim hover:text-paper"
                   >
                     <Pencil className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
-                    <span>Ubah rekaman</span>
+                    <span>Ubah data</span>
                   </DropdownMenuItem>
                 ) : null}
                 {transitions.length > 0 ? (
@@ -656,7 +640,7 @@ function CollectionTable({
         </h2>
         <div className="flex items-center gap-3">
           <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
-            {totalItems.toLocaleString('id-ID')} entitas
+            {totalItems.toLocaleString('id-ID')} data
           </p>
           {totalItems > 0 ? (
             <DropdownMenu>
@@ -730,8 +714,8 @@ function CollectionTable({
 
       {totalItems === 0 ? (
         <EmptyState
-          title="Koleksi kosong"
-          description={`Tidak ada rekaman untuk koleksi ${collectionKey}. Buat entitas pertama melalui formulir modul ini, atau segarkan untuk memeriksa antrean ingress.`}
+          title="Belum ada data"
+          description={`Belum ada data ${formattedTitle}. Buat data pertama lewat formulir di halaman ini, atau muat ulang.`}
           icon={<Inbox className="h-5 w-5 text-paper-faint" aria-hidden="true" />}
           action={
             <Button
@@ -740,7 +724,7 @@ function CollectionTable({
               className="inline-flex items-center gap-2 border border-hairline-strong bg-transparent px-3 py-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint"
             >
               <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-              Segarkan koleksi
+              Muat ulang
             </Button>
           }
         />
@@ -748,7 +732,7 @@ function CollectionTable({
         <div className="overflow-x-auto">
           <Table className="w-full text-sm">
             <caption className="sr-only">
-              {formattedTitle}: {totalItems.toLocaleString('id-ID')} entitas, halaman {safePage} dari {totalPages}
+              {formattedTitle}: {totalItems.toLocaleString('id-ID')} data, halaman {safePage} dari {totalPages}
             </caption>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (

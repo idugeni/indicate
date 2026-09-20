@@ -22,7 +22,7 @@ describe('PublisherForm attribution suggestion', () => {
     setup(vi.fn(async () => undefined));
     const name = screen.getByPlaceholderText(/radar jawa tengah sentral/i);
     fireEvent.change(name, { target: { value: 'RUTAN KELAS II B WONOSOBO' } });
-    fireEvent.change(screen.getByLabelText(/klasifikasi entitas/i), { target: { value: 'government_institution' } });
+    fireEvent.change(screen.getByLabelText(/jenis penerbit/i), { target: { value: 'government_institution' } });
     fireEvent.blur(name);
     expect((screen.getByPlaceholderText(/redaksi wonosobo news/i) as HTMLInputElement).value).toBe('Humas Rutan Wonosobo');
   });
@@ -56,9 +56,9 @@ describe('PublisherForm submit', () => {
   it('memverifikasi penerbit terpilih dengan versinya', async () => {
     const command = vi.fn(async () => ({ id: 'pub-1' }));
     setup(command);
-    const decision = screen.getByLabelText(/keputusan redaksi/i);
+    const decision = screen.getByLabelText('Keputusan');
     fireEvent.change(decision, { target: { value: 'publisher.approve' } });
-    fireEvent.click(screen.getByRole('button', { name: /terapkan resolusi status/i }));
+    fireEvent.click(screen.getByRole('button', { name: /terapkan keputusan/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'publisher.approve',
       expect.objectContaining({ id: 'pub-1', expectedVersion: 3 }),

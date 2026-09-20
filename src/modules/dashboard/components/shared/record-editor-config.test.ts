@@ -25,7 +25,7 @@ describe('getEditorConfig', () => {
 
   it('memberi judul dan field wajib pada konfigurasi', () => {
     const config = getEditorConfig('articles');
-    expect(config?.title).toBe('Ubah naskah');
+    expect(config?.title).toBe('Ubah Artikel');
     expect(config?.fields.length).toBeGreaterThan(0);
     for (const field of config?.fields ?? []) {
       expect(field.key.length).toBeGreaterThan(0);

@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DashboardAvatar } from '@/modules/dashboard/components/dashboard-avatar';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -149,36 +149,36 @@ const NAV_GROUPS: readonly NavGroup[] = [
     id: 'overview',
     title: 'Ringkasan',
     items: [
-      { view: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { view: 'analytics', label: 'Telemetri Jaringan', icon: BarChart3 },
+      { view: 'dashboard', label: 'Beranda', icon: LayoutDashboard },
+      { view: 'analytics', label: 'Statistik & Grafik', icon: BarChart3 },
     ],
   },
   {
     id: 'editorial',
     title: 'Redaksi & Konten',
     items: [
-      { view: 'editorial', label: 'Artikel & Naskah', icon: FileText },
-      { view: 'publishers', label: 'Direktori Penerbit', icon: Users },
-      { view: 'media', label: 'Pustaka Media', icon: FolderKanban },
+      { view: 'editorial', label: 'Tulis Berita', icon: FileText },
+      { view: 'publishers', label: 'Daftar Penerbit', icon: Users },
+      { view: 'media', label: 'Media', icon: FolderKanban },
     ],
   },
   {
     id: 'publishing',
-    title: 'Sinyal Penerbitan',
+    title: 'Penerbitan',
     items: [{ view: 'publishing', label: 'Antrean Penerbitan', icon: Share2 }],
   },
   {
     id: 'system',
-    title: 'Infrastruktur & Akses',
+    title: 'Pengaturan Sistem',
     items: [
       { view: 'configuration', label: 'Domain & Wilayah', icon: Globe },
-      { view: 'settings', label: 'Integrasi & API', icon: KeyRound, requiredPermission: INTEGRATIONS_PERMISSIONS.apiKeyRead },
+      { view: 'settings', label: 'Koneksi & Kunci Akses', icon: KeyRound, requiredPermission: INTEGRATIONS_PERMISSIONS.apiKeyRead },
       { view: 'billing', label: 'Langganan', icon: CreditCard, requiredPermission: INTEGRATIONS_PERMISSIONS.subscriptionRead },
-      { view: 'audit', label: 'Log Keamanan', icon: ShieldAlert, requiredPermission: DASHBOARD_PERMISSIONS.auditRead },
-      { view: 'operations', label: 'Operasional', icon: RefreshCw, requiredPermission: DASHBOARD_PERMISSIONS.auditRead },
-      { view: 'moderation', label: 'Moderasi & Hak Data', icon: Flag, requiredPermission: DASHBOARD_PERMISSIONS.auditRead },
-      { view: 'customers', label: 'Manajemen Lisensi', icon: Settings, requiredPermission: INTEGRATIONS_PERMISSIONS.superAdmin },
-      { view: 'content', label: 'Konten Dinamis', icon: Megaphone, requiredPermission: CONTENT_MANAGE_PERMISSION },
+      { view: 'audit', label: 'Riwayat Keamanan', icon: ShieldAlert, requiredPermission: DASHBOARD_PERMISSIONS.auditRead },
+      { view: 'operations', label: 'Tugas Latar Belakang', icon: RefreshCw, requiredPermission: DASHBOARD_PERMISSIONS.auditRead },
+      { view: 'moderation', label: 'Laporan & Data Pengguna', icon: Flag, requiredPermission: DASHBOARD_PERMISSIONS.auditRead },
+      { view: 'customers', label: 'Kelola Pelanggan', icon: Settings, requiredPermission: INTEGRATIONS_PERMISSIONS.superAdmin },
+      { view: 'content', label: 'Konten Website', icon: Megaphone, requiredPermission: CONTENT_MANAGE_PERMISSION },
     ],
   },
 ];
@@ -355,7 +355,7 @@ function LiveClock() {
 /**
  * Merender ruang kerja dashboard.
  *
- * @remarks Adopt the prefetched RSC snapshot once; live API fetch stays source of truth after. SetState-in-effect: defer ke microtask agar setState tetap async.
+ * @remarks Adopt the prefetched RSC snapshot once; live API fetch stays source of truth after. SetState-in-effect: defer ke microtask agar setState tetap async. `avatarUrl` membawa referensi mentah (https langsung, `r2:` di-resolve async oleh DashboardAvatar) agar RSC tidak menunggu presign R2.
  */
 export function DashboardWorkspace({
   displayName,
@@ -415,8 +415,8 @@ export function DashboardWorkspace({
 
   const activeMetadata = VIEW_METADATA_REGISTRY[view] ?? {
     title: 'Ruang Kerja Redaksi',
-    eyebrow: 'Control Plane',
-    description: 'Modul sistem terdistribusi INDICATE.',
+    eyebrow: 'Sistem',
+    description: 'Modul sistem INDICATE.',
   };
 
   const fetchAnalytics = useCallback(
@@ -445,17 +445,20 @@ export function DashboardWorkspace({
       const url = `/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${targetView}${query}`;
 
       try {
-        const response = await fetch(url, { cache: 'no-store', ...(signal ? { signal } : {}) });
-        const analyticsPromise = targetView === 'dashboard' ? fetchAnalytics(targetOrg, signal) : null;
-        const body = (await response.json()) as unknown;
+        const pendingBody = fetch(url, { cache: 'no-store', ...(signal ? { signal } : {}) });
+        const pendingAnalytics = targetView === 'dashboard' ? fetchAnalytics(targetOrg, signal) : null;
+        const response = await pendingBody;
+        const [body, analytics] = await Promise.all([
+          response.json() as Promise<unknown>,
+          pendingAnalytics ?? Promise.resolve(null),
+        ]);
 
         if (activeOrgRef.current !== targetOrg) return;
 
         if (!response.ok) {
           const apiError = body as ApiErrorResponse;
-          setError(apiError.error?.message ?? 'Operasi data Dashboard gagal diproses oleh server.');
+          setError(apiError.error?.message ?? 'Server gagal memproses. Coba lagi.');
         } else if (targetView === 'dashboard') {
-          const analytics = await analyticsPromise;
           if (activeOrgRef.current !== targetOrg) return;
           setData(withAnalytics(body, analytics));
         } else {
@@ -464,7 +467,7 @@ export function DashboardWorkspace({
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
         if (activeOrgRef.current === targetOrg) {
-          setError('Hambatan komunikasi jaringan dengan endpoint API.');
+          setError('Gagal menghubungi server. Periksa koneksi internet, lalu coba lagi.');
         }
       } finally {
         if (activeOrgRef.current === targetOrg) {
@@ -550,7 +553,7 @@ export function DashboardWorkspace({
         const fieldDetails = apiErr.error?.fields
           ? ` (${Object.entries(apiErr.error.fields).map(([f, m]) => `${f}: ${m.join(', ')}`).join('; ')})`
           : '';
-        throw new Error(`${apiErr.error?.message ?? 'Gagal mengeksekusi instruksi aksi.'}${fieldDetails}`);
+        throw new Error(`${apiErr.error?.message ?? 'Gagal menjalankan perintah.'}${fieldDetails}`);
       }
       return body;
     };
@@ -558,13 +561,13 @@ export function DashboardWorkspace({
     try {
       const body = await toast.promise(run(), {
         loading: `Menjalankan ${action}…`,
-        success: `Aksi [${action}] berhasil dieksekusi.`,
+        success: `Perintah ${action} berhasil dijalankan.`,
         error: (cause) =>
           cause instanceof TypeError
-            ? 'Kesalahan fatal jaringan saat mengirim instruksi transaksi.'
+            ? 'Gagal menghubungi server saat mengirim perintah.'
             : cause instanceof Error
               ? cause.message
-              : 'Gagal mengeksekusi instruksi aksi.',
+              : 'Gagal menjalankan perintah.',
       });
       if (body === null || activeOrgRef.current !== targetOrg) return null;
       void fetchData(view, targetOrg, filterQuery);
@@ -573,10 +576,10 @@ export function DashboardWorkspace({
       if (activeOrgRef.current === targetOrg) {
         setError(
           err instanceof TypeError
-            ? 'Kesalahan fatal jaringan saat mengirim instruksi transaksi.'
+            ? 'Gagal menghubungi server saat mengirim perintah.'
             : err instanceof Error
               ? err.message
-              : 'Gagal mengeksekusi instruksi aksi.',
+              : 'Gagal menjalankan perintah.',
         );
       }
       return null;
@@ -663,7 +666,7 @@ export function DashboardWorkspace({
                   />
                 ) : (
                   <p className="truncate px-1 font-sans text-[13px] font-medium text-paper">
-                    {activeOrganization?.name ?? 'Tanpa tenansi aktif'}
+                    {activeOrganization?.name ?? 'Belum ada organisasi'}
                   </p>
                 )}
               </div>
@@ -684,12 +687,7 @@ export function DashboardWorkspace({
 
           <div className="flex-none border-t border-hairline p-3">
             <div className={sidebarCollapsed ? 'flex flex-col items-center gap-2' : 'flex items-center gap-2.5'}>
-              <Avatar className="h-7 w-7 flex-none border border-hairline">
-                {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
-                <AvatarFallback className="bg-bg-raised-2 font-mono text-xs font-semibold text-brass">
-                  {displayName.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <DashboardAvatar displayName={displayName} avatarRef={avatarUrl} />
               {sidebarCollapsed ? null : (
                 <div className="min-w-0 flex-1 animate-in fade-in duration-200">
                   <p className="truncate font-sans text-xs font-medium text-paper">{displayName}</p>
@@ -805,7 +803,7 @@ export function DashboardWorkspace({
                   />
                 ) : (
                   <p className="truncate font-sans text-[13px] font-medium text-paper">
-                    {activeOrganization?.name ?? 'Tanpa tenansi aktif'}
+                    {activeOrganization?.name ?? 'Belum ada organisasi'}
                   </p>
                 )}
               </div>
@@ -823,12 +821,7 @@ export function DashboardWorkspace({
             </div>
             <div className="flex-none border-t border-hairline px-4 py-3">
               <div className="flex items-center gap-2.5">
-                <Avatar className="h-7 w-7 flex-none border border-hairline">
-                  {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
-                  <AvatarFallback className="bg-bg-raised-2 font-mono text-xs font-semibold text-brass">
-                    {displayName.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <DashboardAvatar displayName={displayName} avatarRef={avatarUrl} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-sans text-xs font-medium text-paper">{displayName}</p>
                   {activeOrganization?.role ? (

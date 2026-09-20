@@ -42,7 +42,7 @@ export function RedeemInviteForm() {
         value={code}
         onChange={(event) => setCode(event.target.value)}
         required
-        placeholder="orgId:email:rahasia"
+        placeholder="ID-organisasi:surel:rahasia"
         aria-label="Kode undangan"
         className="mt-3 w-full border border-hairline-strong bg-bg px-3 py-2.5 font-mono text-xs text-paper placeholder:text-paper-faint"
       />

@@ -37,21 +37,21 @@ describe('PublishingForm publish', () => {
     const command = vi.fn(async (action: string) => (action === 'publication.request' ? STATUS : null));
     setup(command);
     fireEvent.click(screen.getAllByRole('checkbox')[0]!);
-    fireEvent.click(screen.getByRole('button', { name: /kirim sinyal penerbitan/i }));
+    fireEvent.click(screen.getByRole('button', { name: /kirim penerbitan/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'publication.request',
       expect.objectContaining({ articleId: 'article-1', siteIds: ['site-1'], options: { mode: 'immediate' } }),
     ));
     expect(await screen.findByText(/job-1/)).toBeDefined();
-    expect(screen.getByText('published')).toBeDefined();
-    expect(screen.getByText('failed')).toBeDefined();
+    expect(screen.getByText('Terkirim')).toBeDefined();
+    expect(screen.getByText('Gagal')).toBeDefined();
   });
 
   it('meregenerasi kunci idempotensi', () => {
     setup(vi.fn(async () => null));
-    const input = screen.getByLabelText(/kunci idempotensi/i) as HTMLInputElement;
+    const input = screen.getByLabelText(/kunci pengiriman/i) as HTMLInputElement;
     const before = input.value;
-    fireEvent.click(screen.getByRole('button', { name: /regenerasi uuid/i }));
+    fireEvent.click(screen.getByRole('button', { name: /regenerasi kunci/i }));
     expect(input.value).not.toBe(before);
   });
 
@@ -59,8 +59,8 @@ describe('PublishingForm publish', () => {
     const command = vi.fn(async () => STATUS);
     setup(command);
     fireEvent.click(screen.getAllByRole('checkbox')[0]!);
-    fireEvent.change(screen.getAllByPlaceholderText(/judul khusus portal/i)[0]!, { target: { value: 'Judul Khusus Portal Yang Unik' } });
-    fireEvent.click(screen.getByRole('button', { name: /kirim sinyal penerbitan/i }));
+    fireEvent.change(screen.getAllByPlaceholderText(/judul khusus situs/i)[0]!, { target: { value: 'Judul Khusus Portal Yang Unik' } });
+    fireEvent.click(screen.getByRole('button', { name: /kirim penerbitan/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'publication.request',
       expect.objectContaining({ overrides: { 'site-1': { title: 'Judul Khusus Portal Yang Unik' } } }),
@@ -86,14 +86,14 @@ describe('PublishingForm suggest and status', () => {
     fireEvent.click(screen.getAllByRole('checkbox')[0]!);
     fireEvent.click(screen.getByRole('button', { name: /varian unik otomatis/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith('publication.suggest', { articleId: 'article-1', siteIds: ['site-1'] }));
-    expect((screen.getAllByPlaceholderText(/judul khusus portal/i)[0]! as HTMLInputElement).value).toBe('Judul Saran Unik');
+    expect((screen.getAllByPlaceholderText(/judul khusus situs/i)[0]! as HTMLInputElement).value).toBe('Judul Saran Unik');
   });
 
   it('memuat status via form dan mengulang yang gagal', async () => {
     const user = userEvent.setup();
     const command = vi.fn(async (action: string) => (action === 'publication.status' ? STATUS : STATUS));
     setup(command);
-    await user.type(screen.getByPlaceholderText(/uuid job/i), 'job-1');
+    await user.type(screen.getByPlaceholderText(/id dari hasil pengiriman/i), 'job-1');
     await user.click(screen.getByRole('button', { name: /^muat$/i }));
     expect(await screen.findByText(/job-1/)).toBeDefined();
 
@@ -105,7 +105,7 @@ describe('PublishingForm suggest and status', () => {
     const user = userEvent.setup();
     const command = vi.fn(async () => STATUS);
     setup(command);
-    await user.type(screen.getByPlaceholderText(/uuid job/i), 'job-1');
+    await user.type(screen.getByPlaceholderText(/id dari hasil pengiriman/i), 'job-1');
     await user.click(screen.getByRole('button', { name: /^muat$/i }));
     expect(await screen.findByText(/job-1/)).toBeDefined();
 
@@ -120,7 +120,7 @@ describe('PublishingForm suggest and status', () => {
 
   it('menampilkan galat status yang ramah', async () => {
     setup(vi.fn(async () => null));
-    fireEvent.change(screen.getByPlaceholderText(/uuid job/i), { target: { value: 'job-1' } });
+    fireEvent.change(screen.getByPlaceholderText(/id dari hasil pengiriman/i), { target: { value: 'job-1' } });
     fireEvent.click(screen.getByRole('button', { name: /^muat$/i }));
     expect(await screen.findByText(/tidak dapat dimuat/)).toBeDefined();
   });

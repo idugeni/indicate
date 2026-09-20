@@ -85,7 +85,7 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
             <>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="filter-region" className="font-sans text-xs font-medium text-paper-dim">
-                  Wilayah regional
+                  Wilayah
                 </label>
                 <select
                   id="filter-region"
@@ -103,14 +103,14 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
 
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="filter-site" className="font-sans text-xs font-medium text-paper-dim">
-                  Kanal (site)
+                  Situs
                 </label>
                 <select
                   id="filter-site"
                   name="siteId"
                   className="h-9 border border-hairline-strong bg-bg px-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus:border-brass focus:outline-none"
                 >
-                  <option value="">Semua kanal</option>
+                  <option value="">Semua situs</option>
                   {model?.sites?.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.normalizedHostname}
@@ -139,12 +139,12 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
 
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="filter-search" className="font-sans text-xs font-medium text-paper-dim">
-                  Cari judul / slug
+                  Cari judul
                 </label>
                 <Input
                   id="filter-search"
                   name="search"
-                  placeholder="Query judul atau slug…"
+                  placeholder="Ketik judul…"
                   className="h-9 border-hairline-strong bg-bg px-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus-visible:ring-brass"
                 />
               </div>
@@ -155,19 +155,19 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
             <>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="filter-actor" className="font-sans text-xs font-medium text-paper-dim">
-                  Aktor (ID)
+                  Pelaku (ID)
                 </label>
                 <Input
                   id="filter-actor"
                   name="actorId"
-                  placeholder="ID entitas aktor…"
+                  placeholder="ID pelaku…"
                   className="h-9 border-hairline-strong bg-bg px-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus-visible:ring-brass"
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="filter-action" className="font-sans text-xs font-medium text-paper-dim">
-                  Tipe aksi
+                  Jenis Aksi
                 </label>
                 <Input
                   id="filter-action"
@@ -179,7 +179,7 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
 
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="filter-outcome" className="font-sans text-xs font-medium text-paper-dim">
-                  Hasil transaksi
+                  Hasil
                 </label>
                 <select
                   id="filter-outcome"

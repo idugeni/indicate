@@ -28,7 +28,7 @@ describe('Panel konfigurasi infrastruktur', () => {
     render(<ConfigurationPanel data={DATA} command={vi.fn(async () => ({}))} />);
     expect(screen.getByRole('region', { name: 'Tambah domain' })).toBeDefined();
     expect(screen.getByRole('region', { name: 'Tambah wilayah' })).toBeDefined();
-    expect(screen.getByRole('region', { name: 'Tambah kanal' })).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Tambah situs' })).toBeDefined();
     expect(screen.getByRole('region', { name: 'Kebijakan media' })).toBeDefined();
     expect(screen.getByRole('region', { name: 'Ringkasan kebijakan platform' })).toBeDefined();
   });
@@ -37,7 +37,7 @@ describe('Panel konfigurasi infrastruktur', () => {
     stubRuntime();
     const command = vi.fn(async () => ({}));
     const { container } = render(<ConfigurationPanel data={DATA} command={command} />);
-    fireEvent.change(screen.getByLabelText('Hostname apex'), { target: { value: 'Contoh.Co.ID' } });
+    fireEvent.change(screen.getByLabelText('Nama domain utama'), { target: { value: 'Contoh.Co.ID' } });
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
       expect(command).toHaveBeenCalledWith(
@@ -52,7 +52,7 @@ describe('Panel konfigurasi infrastruktur', () => {
     const command = vi.fn(async () => ({}));
     const { container } = render(<ConfigurationPanel data={DATA} command={command} />);
     fireEvent.change(screen.getByLabelText('Nama wilayah'), { target: { value: 'Wonosobo' } });
-    fireEvent.change(screen.getByLabelText('Slug'), { target: { value: 'wonosobo' } });
+    fireEvent.change(screen.getByLabelText('Kode Wilayah'), { target: { value: 'wonosobo' } });
     fireEvent.submit(container.querySelectorAll('form')[1] as HTMLFormElement);
     await waitFor(() =>
       expect(command).toHaveBeenCalledWith(
@@ -62,11 +62,11 @@ describe('Panel konfigurasi infrastruktur', () => {
     );
   });
 
-  it('membuat kanal baru lewat command', async () => {
+  it('membuat situs baru lewat command', async () => {
     stubRuntime();
     const command = vi.fn(async () => ({}));
     const { container } = render(<ConfigurationPanel data={DATA} command={command} />);
-    fireEvent.change(screen.getByLabelText('Hostname'), { target: { value: 'Wonosobo.SuaraDesa.net' } });
+    fireEvent.change(screen.getByLabelText('Alamat Situs'), { target: { value: 'Wonosobo.SuaraDesa.net' } });
     fireEvent.submit(container.querySelectorAll('form')[2] as HTMLFormElement);
     await waitFor(() =>
       expect(command).toHaveBeenCalledWith(

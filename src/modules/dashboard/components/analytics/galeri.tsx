@@ -13,7 +13,7 @@ import { TugasBertumpuk } from '@/modules/dashboard/components/analytics/tumpuka
 import type { AnalyticsProjection } from '@/modules/dashboard/models';
 
 /**
- * Render galeri visual Telemetri Jaringan dari satu proyeksi.
+ * Render galeri visual Statistik & Grafik dari satu proyeksi.
  *
  * @param data - Proyeksi analitik per organisasi dari endpoint workspace.
  * @returns Tumpukan 15 visual inti: tren, KPI, perbandingan, panas, alur, dan distribusi.

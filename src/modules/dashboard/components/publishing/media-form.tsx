@@ -92,7 +92,7 @@ export function MediaForm({
         const checksum = prepared.checksum;
         if (prepared.mode === 'compressed') {
           setUploadStatus(
-            `Terkompresi ${formatBytes(source.size)} → ${formatBytes(prepared.sizeBytes)} (WebP). Membuat reservasi penyimpanan bucket...`,
+            `Terkompresi ${formatBytes(source.size)} → ${formatBytes(prepared.sizeBytes)} (WebP). Menyiapkan tempat penyimpanan...`,
           );
         } else {
           setUploadStatus('Gambar sudah efisien, lanjut tanpa kompresi ulang...');
@@ -140,11 +140,11 @@ export function MediaForm({
           !reserved.authorization?.url ||
           !reserved.authorization.requiredHeaders
         ) {
-          setUploadStatus('Gagal mendapatkan otorisasi reservasi penyimpanan.');
+          setUploadStatus('Gagal menyiapkan penyimpanan. Coba lagi.');
           return;
         }
 
-        setUploadStatus('Mengunggah berkas ke object storage...');
+        setUploadStatus('Mengunggah berkas...');
         const uploadResponse = await fetch(reserved.authorization.url, {
           method: 'PUT',
           headers: reserved.authorization.requiredHeaders,
@@ -152,14 +152,14 @@ export function MediaForm({
         });
 
         if (!uploadResponse.ok) {
-          setUploadStatus('Kegagalan transfer data saat transmisi stream.');
+          setUploadStatus('Gagal mengunggah. Periksa koneksi lalu coba lagi.');
           return;
         }
 
         let thumbPayload: { readonly sizeBytes: number; readonly checksum: string } | undefined;
         const thumbAuth = reserved.thumb?.authorization;
         if (prepared.thumb !== null && thumbAuth?.url !== undefined && thumbAuth.requiredHeaders !== undefined) {
-          setUploadStatus('Mengunggah varian thumb untuk listing…');
+          setUploadStatus('Mengunggah gambar kecil (thumbnail)…');
           const thumbResponse = await fetch(thumbAuth.url, {
             method: 'PUT',
             headers: thumbAuth.requiredHeaders,
@@ -170,14 +170,14 @@ export function MediaForm({
           }
         }
 
-        setUploadStatus('Menyelesaikan verifikasi manifest aset...');
+        setUploadStatus('Menyelesaikan pemeriksaan berkas...');
         const completed = await command('media.complete', thumbPayload === undefined ? { reservationId: reserved.reservationId } : { reservationId: reserved.reservationId, thumb: thumbPayload });
         if (completed === null) {
-          setUploadStatus('Verifikasi aset gagal. Reservasi mungkin kedaluwarsa atau berkas tidak cocok — ulangi unggahan.');
+          setUploadStatus('Pemeriksaan berkas gagal. Coba unggah ulang.');
           return;
         }
 
-        setUploadStatus('Aset media berhasil diverifikasi dan disimpan.');
+        setUploadStatus('Berkas berhasil diunggah dan disimpan.');
         form.reset();
       } catch {
         setUploadStatus('Terjadi kendala jaringan selama proses pengunggahan.');
@@ -187,7 +187,7 @@ export function MediaForm({
 
   return (
     <div>
-      <SectionCard icon={UploadCloud} title="Unggah media" eyebrow="Verifikasi SHA-256">
+      <SectionCard icon={UploadCloud} title="Unggah media" eyebrow="Unggah berkas">
 
         <form onSubmit={handleUpload} className="space-y-3.5">
           <div className="space-y-1.5">
@@ -207,7 +207,7 @@ export function MediaForm({
 
           <div className="space-y-1.5">
             <label htmlFor={purposeInputId} className="font-mono text-xs text-paper-dim">
-              Tujuan Penggunaan (Purpose)
+              Tujuan Penggunaan
             </label>
             <Input
               id={purposeInputId}
@@ -222,7 +222,7 @@ export function MediaForm({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label htmlFor={ownerKindSelectId} className="font-mono text-xs text-paper-dim">
-                Tipe Kepemilikan
+                Kepemilikan
               </label>
               <select
                 id={ownerKindSelectId}
@@ -230,15 +230,15 @@ export function MediaForm({
                 disabled={isUploading}
                 className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
               >
-                <option value="organization">Organisasi (Global Asset)</option>
-                <option value="article">Artikel Spesifik</option>
-                <option value="site">Portal / Site Spesifik</option>
+                <option value="organization">Organisasi (umum)</option>
+                <option value="article">Artikel tertentu</option>
+                <option value="site">Situs tertentu</option>
               </select>
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor={ownerSelectId} className="font-mono text-xs text-paper-dim">
-                ID Entitas Pemilik
+                Pemilik
               </label>
               <select
                 id={ownerSelectId}
@@ -246,7 +246,7 @@ export function MediaForm({
                 disabled={isUploading}
                 className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
               >
-                <option value="">Organisasi Induk</option>
+                <option value="">Organisasi</option>
                 {model?.articles?.map((item) => (
                   <option key={item.id} value={item.id}>
                     Artikel: {item.id}
@@ -254,7 +254,7 @@ export function MediaForm({
                 ))}
                 {model?.sites?.map((item) => (
                   <option key={item.id} value={item.id}>
-                    Site: {item.normalizedHostname}
+                    Situs: {item.normalizedHostname}
                   </option>
                 ))}
               </select>
@@ -278,7 +278,7 @@ export function MediaForm({
               ) : (
                 <UploadCloud className="h-3.5 w-3.5" aria-hidden="true" />
               )}
-              <span>Otorisasi & Unggah Aset</span>
+              <span>Unggah Berkas</span>
             </button>
           </div>
         </form>

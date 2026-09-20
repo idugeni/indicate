@@ -39,17 +39,17 @@ describe('Tampilan data dasbor', () => {
     render(
       <DataView view="dashboard" data={DASBOR} currentPage={1} onPageChange={vi.fn()} onRefresh={vi.fn()} onSelectView={pilih} />,
     );
-    expect(screen.getByText('Domain Aktif')).toBeDefined();
-    expect(screen.getByText('Subdomain Aktif')).toBeDefined();
+    expect(screen.getByText('Domain Utama')).toBeDefined();
+    expect(screen.getByText('Subdomain')).toBeDefined();
     expect(screen.getByText('Total Tayangan')).toBeDefined();
     expect(screen.getByText('Panduan mulai cepat')).toBeDefined();
     expect(await screen.findByText('Distribusi antrean', undefined, { timeout: 30000 })).toBeDefined();
     expect(await screen.findByText('Corong konversi', undefined, { timeout: 30000 })).toBeDefined();
-    expect(await screen.findByText('Top wilayah', undefined, { timeout: 30000 })).toBeDefined();
-    expect(await screen.findByText('Top kategori', undefined, { timeout: 30000 })).toBeDefined();
+    expect(await screen.findByText('Wilayah teratas', undefined, { timeout: 30000 })).toBeDefined();
+    expect(await screen.findByText('Kategori teratas', undefined, { timeout: 30000 })).toBeDefined();
     expect(await screen.findByText('Komposisi hasil', undefined, { timeout: 30000 })).toBeDefined();
     expect(await screen.findByText('Tren tayangan', undefined, { timeout: 30000 })).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: /tulis artikel/i }));
+    fireEvent.click(screen.getByRole('button', { name: /tulis berita/i }));
     expect(pilih).toHaveBeenCalledWith('editorial');
   });
 
@@ -66,7 +66,7 @@ describe('Tampilan data koleksi', () => {
     render(
       <DataView view="configuration" data={{}} currentPage={1} onPageChange={vi.fn()} onRefresh={muatUlang} />,
     );
-    expect(screen.getByText('Tidak ada rekaman data')).toBeDefined();
+    expect(screen.getByText('Belum ada data')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /muat ulang data/i }));
     expect(muatUlang).toHaveBeenCalledTimes(1);
   });

@@ -152,7 +152,7 @@ export function ProfileForm() {
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label htmlFor={localeId} className="font-mono text-xs text-paper-dim">
-                Locale
+                Bahasa
               </label>
               <select
                 id={localeId}
@@ -194,7 +194,7 @@ export function ProfileForm() {
                   disabled={busy || (mode === 'oauth' && profile.oauthAvatarUrl === null)}
                   className={`rounded border px-2.5 py-1.5 font-sans text-xs transition-colors duration-180 disabled:opacity-40 ${avatarMode === mode ? 'border-brass text-paper' : 'border-hairline-strong text-paper-dim hover:text-paper'}`}
                 >
-                  {mode === 'keep' ? 'Pertahankan' : mode === 'upload' ? 'Unggah baru' : mode === 'oauth' ? 'Foto OAuth' : 'Hapus'}
+                  {mode === 'keep' ? 'Pertahankan' : mode === 'upload' ? 'Unggah baru' : mode === 'oauth' ? 'Foto dari Google' : 'Hapus'}
                 </button>
               ))}
             </div>

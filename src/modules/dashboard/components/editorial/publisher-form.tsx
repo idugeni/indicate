@@ -12,6 +12,13 @@ import { suggestAttributionLabel } from '@/modules/dashboard/components/editoria
 import { Input } from '@/components/ui/input';
 import type { PublisherEntity, SiteEntity } from '@/modules/dashboard/components/shared/types';
 
+const VERIFICATION_STATUS_LABELS: Readonly<Record<string, string>> = {
+  unverified: 'Belum diverifikasi',
+  pending: 'Menunggu verifikasi',
+  verified: 'Terverifikasi',
+  rejected: 'Ditolak',
+};
+
 export function PublisherForm({
   data,
   command,
@@ -119,7 +126,7 @@ export function PublisherForm({
 
           <div className="space-y-1.5">
             <label htmlFor={createTypeId} className="font-mono text-xs text-paper-dim">
-              Klasifikasi Entitas
+              Jenis Penerbit
             </label>
             <select
               id={createTypeId}
@@ -138,7 +145,7 @@ export function PublisherForm({
 
           <div className="space-y-1.5">
             <label htmlFor={createAttrId} className="font-mono text-xs text-paper-dim">
-              Label Atribusi Kanonikal
+              Nama Tampil
             </label>
             <Input
               id={createAttrId}
@@ -185,7 +192,7 @@ export function PublisherForm({
         <form onSubmit={handleVerify} className="space-y-3.5">
           <div className="space-y-1.5">
             <label htmlFor={verifyPubId} className="font-mono text-xs text-paper-dim">
-              Pilih Target Penerbit
+              Pilih Penerbit
             </label>
             <select
               id={verifyPubId}
@@ -195,7 +202,7 @@ export function PublisherForm({
             >
               {model?.publishers?.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name} · [{item.verificationStatus}]
+                  {item.name} · [{VERIFICATION_STATUS_LABELS[item.verificationStatus] ?? item.verificationStatus}]
                 </option>
               ))}
             </select>
@@ -203,7 +210,7 @@ export function PublisherForm({
 
           <div className="space-y-1.5">
             <label htmlFor={verifyDecisionId} className="font-mono text-xs text-paper-dim">
-              Keputusan Redaksi (Action)
+              Keputusan
             </label>
             <select
               id={verifyDecisionId}
@@ -211,16 +218,16 @@ export function PublisherForm({
               disabled={isVerifying}
               className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
             >
-              <option value="publisher.submit">Submit (Kirim ke Antrean Audit)</option>
-              <option value="publisher.approve">Approve (Verifikasi & Setujui)</option>
-              <option value="publisher.reject">Reject (Tolak Otorisasi)</option>
-              <option value="publisher.archive">Archive (Arsipkan / Bekukan)</option>
+              <option value="publisher.submit">Kirim untuk Verifikasi</option>
+              <option value="publisher.approve">Setujui & Verifikasi</option>
+              <option value="publisher.reject">Tolak</option>
+              <option value="publisher.archive">Arsipkan</option>
             </select>
           </div>
 
           <div className="space-y-1.5">
             <label htmlFor={verifyEvidenceId} className="font-mono text-xs text-paper-dim">
-              Dokumen Rujukan Audit
+              Bukti Pendukung
             </label>
             <Input
               id={verifyEvidenceId}
@@ -233,13 +240,13 @@ export function PublisherForm({
 
           <div className="space-y-1.5">
             <label htmlFor={verifyReasonId} className="font-mono text-xs text-paper-dim">
-              Catatan Evaluasi / Alasan Penolakan
+              Catatan / Alasan Penolakan
             </label>
             <Input
               id={verifyReasonId}
               name="reason"
               disabled={isVerifying}
-              placeholder="Wajib diisi jika status penolakan dipilih..."
+              placeholder="Wajib diisi bila memilih Tolak."
               className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
             />
           </div>
@@ -255,7 +262,7 @@ export function PublisherForm({
               ) : (
                 <Check className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
               )}
-              <span>Terapkan Resolusi Status</span>
+              <span>Terapkan Keputusan</span>
             </button>
           </div>
         </form>

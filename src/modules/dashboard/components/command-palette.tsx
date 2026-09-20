@@ -40,21 +40,21 @@ interface CommandAction {
 }
 
 const COMMAND_ACTIONS: readonly CommandAction[] = [
-  { id: 'overview', label: 'Ringkasan Dashboard', category: 'Redaksi', href: '/dashboard', icon: LayoutDashboard },
+  { id: 'overview', label: 'Beranda', category: 'Redaksi', href: '/dashboard', icon: LayoutDashboard },
   { id: 'editorial', label: 'Manajemen Artikel & Konten', category: 'Redaksi', href: '/dashboard?view=editorial', icon: FileText },
   { id: 'publishing', label: 'Antrean Penerbitan', category: 'Redaksi', href: '/dashboard?view=publishing', icon: Share2 },
-  { id: 'media', label: 'Penyimpanan Aset Media', category: 'Redaksi', href: '/dashboard?view=media', icon: FolderKanban },
-  { id: 'content', label: 'Konten Dinamis & Tema', category: 'Redaksi', href: '/dashboard?view=content', icon: Megaphone },
-  { id: 'domains', label: 'Routing Domain & Wilayah Regional', category: 'Infrastruktur', href: '/dashboard?view=configuration', icon: Globe },
-  { id: 'publishers', label: 'Direktori Penerbit & Media Terafiliasi', category: 'Infrastruktur', href: '/dashboard?view=publishers', icon: Users },
-  { id: 'analytics', label: 'Metrik & Throughput Jaringan', category: 'Infrastruktur', href: '/dashboard?view=analytics', icon: BarChart3 },
-  { id: 'settings', label: 'Kunci API & Integrasi Edge Gateway', category: 'Sistem', href: '/dashboard?view=settings', icon: KeyRound },
+  { id: 'media', label: 'Media', category: 'Redaksi', href: '/dashboard?view=media', icon: FolderKanban },
+  { id: 'content', label: 'Konten Website', category: 'Redaksi', href: '/dashboard?view=content', icon: Megaphone },
+  { id: 'domains', label: 'Domain & Wilayah', category: 'Infrastruktur', href: '/dashboard?view=configuration', icon: Globe },
+  { id: 'publishers', label: 'Daftar Lembaga Penerbit', category: 'Infrastruktur', href: '/dashboard?view=publishers', icon: Users },
+  { id: 'analytics', label: 'Statistik & Grafik', category: 'Infrastruktur', href: '/dashboard?view=analytics', icon: BarChart3 },
+  { id: 'settings', label: 'Koneksi & Kunci Akses', category: 'Sistem', href: '/dashboard?view=settings', icon: KeyRound },
   { id: 'billing', label: 'Langganan', category: 'Sistem', href: '/dashboard?view=billing', icon: CreditCard },
-  { id: 'audit', label: 'Log Audit & Keamanan', category: 'Sistem', href: '/dashboard?view=audit', icon: ShieldAlert },
-  { id: 'operations', label: 'Operasional & Antrean Latar', category: 'Sistem', href: '/dashboard?view=operations', icon: RefreshCw },
-  { id: 'moderation', label: 'Moderasi & Hak Data', category: 'Sistem', href: '/dashboard?view=moderation', icon: Flag },
-  { id: 'customers', label: 'Manajemen Lisensi', category: 'Sistem', href: '/dashboard?view=customers', icon: Building2 },
-  { id: 'auth', label: 'Autentikasi & Sesi Pengguna', category: 'Sistem', href: '/sign-in', icon: Settings },
+  { id: 'audit', label: 'Riwayat Keamanan', category: 'Sistem', href: '/dashboard?view=audit', icon: ShieldAlert },
+  { id: 'operations', label: 'Tugas Latar Belakang', category: 'Sistem', href: '/dashboard?view=operations', icon: RefreshCw },
+  { id: 'moderation', label: 'Laporan & Data Pengguna', category: 'Sistem', href: '/dashboard?view=moderation', icon: Flag },
+  { id: 'customers', label: 'Kelola Pelanggan', category: 'Sistem', href: '/dashboard?view=customers', icon: Building2 },
+  { id: 'auth', label: 'Masuk & Sesi Pengguna', category: 'Sistem', href: '/sign-in', icon: Settings },
 ];
 
 /**

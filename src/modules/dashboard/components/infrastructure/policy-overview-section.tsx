@@ -100,7 +100,7 @@ export function PolicyOverviewSection() {
   if (forbidden) {
     return (
       <section aria-label="Ringkasan kebijakan platform" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
-        <p className="m-0 font-mono text-xs text-paper-faint">Panel ini membutuhkan grant platform.runtime_config.manage.</p>
+        <p className="m-0 font-mono text-xs text-paper-faint">Panel ini membutuhkan izin platform.runtime_config.manage.</p>
       </section>
     );
   }
@@ -125,7 +125,7 @@ export function PolicyOverviewSection() {
         )}
       </div>
       <p className="m-0 mt-1 font-mono text-[11px] text-paper-faint">
-        Read-only · perubahan via migrasi atau panel kebijakan masing-masing.
+        Hanya baca · perubahan lewat migrasi atau panel masing-masing.
       </p>
 
       {error ? <p className="m-0 mt-4 font-mono text-xs text-error">{error}</p> : null}
@@ -206,7 +206,7 @@ export function PolicyOverviewSection() {
               Rate limits
             </h4>
             {policies.rateLimits.length === 0 ? (
-              <p className="m-0 mt-2 font-mono text-xs text-paper-faint">Belum ada baris rate limit.</p>
+              <p className="m-0 mt-2 font-mono text-xs text-paper-faint">Belum ada batas laju.</p>
             ) : (
               <div className="mt-2">
                 <DefinitionList

@@ -12,8 +12,8 @@ describe('EmptyState bawaan', () => {
   it('merender judul dan deskripsi default dengan role status', () => {
     render(<EmptyState />);
     expect(screen.getByRole('status')).toBeDefined();
-    expect(screen.getByText('Tidak ada rekaman data')).toBeDefined();
-    expect(screen.getByText(/Tidak ditemukan entitas/)).toBeDefined();
+    expect(screen.getByText('Belum ada data')).toBeDefined();
+    expect(screen.getByText(/Tidak ada data yang cocok/)).toBeDefined();
   });
 });
 

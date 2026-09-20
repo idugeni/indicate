@@ -1,7 +1,8 @@
-import { and, eq, gt, isNotNull, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizationRepository } from '@/modules/auth/ports';
+import type { MembershipAuthorization } from '@/modules/auth/rbac';
 import {
   apiKeys,
   domains,
@@ -133,8 +134,22 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
   }
 
   async findActiveMembership(organizationId: string, userId: string) {
+    const batch = await this.findActiveMemberships(userId, [organizationId]);
+    return batch.get(organizationId) ?? null;
+  }
+
+  /**
+   * Resolve active memberships for one user across organizations in one roundtrip.
+   *
+   * @param userId - Local user id owning the memberships.
+   * @param organizationIds - Organization ids to resolve; duplicates are ignored.
+   * @returns Map of organization id to authorization for every active membership found.
+   */
+  async findActiveMemberships(userId: string, organizationIds: readonly string[]) {
+    const targets = [...new Set(organizationIds)];
+    if (targets.length === 0) return new Map();
     return this.database.transaction(async (transaction) => {
-      await transaction.execute(sql`SELECT indicate_private.set_tenant_context(${organizationId}::uuid, ${userId}, ${'membership-authorization'})`);
+      await transaction.execute(sql`SELECT indicate_private.set_tenant_context(${targets[0]}::uuid, ${userId}, ${'membership-authorization'})`);
       const rows = await transaction
         .select({
           organizationId: memberships.organizationId,
@@ -161,24 +176,35 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
           eq(permissions.scope, 'organization'),
         ))
         .where(and(
-          eq(memberships.organizationId, organizationId),
+          inArray(memberships.organizationId, targets),
           eq(memberships.userId, userId),
           eq(memberships.status, 'active'),
         ));
-      const first = rows[0];
-      if (first === undefined) return null;
+      if (rows.length === 0) return new Map();
       const platformRows = await transaction.execute<{ name: string }>(sql`SELECT name FROM indicate_private.permission_list_platform(${userId}::uuid)`);
-      return {
-        organizationId: first.organizationId,
-        userId: first.userId,
-        roleId: first.roleId,
-        status: first.membershipStatus,
-        roleActive: first.roleActive,
-        roleTier: first.roleTier,
-        regionId: first.regionId,
-        orgPermissions: new Set(rows.flatMap((row) => row.permissionName === null ? [] : [row.permissionName])),
-        platformPermissions: new Set(platformRows.map(({ name }) => name)),
-      };
+      const platformPermissions = new Set(platformRows.map(({ name }) => name));
+      const grouped = new Map<string, typeof rows>();
+      for (const row of rows) {
+        const group = grouped.get(row.organizationId) ?? [];
+        group.push(row);
+        grouped.set(row.organizationId, group);
+      }
+      const output = new Map<string, MembershipAuthorization>();
+      for (const [organizationId, group] of grouped) {
+        const first = group[0]!;
+        output.set(organizationId, {
+          organizationId: first.organizationId,
+          userId: first.userId,
+          roleId: first.roleId,
+          status: first.membershipStatus,
+          roleActive: first.roleActive,
+          roleTier: first.roleTier,
+          regionId: first.regionId,
+          orgPermissions: new Set(group.flatMap((row) => row.permissionName === null ? [] : [row.permissionName])),
+          platformPermissions,
+        });
+      }
+      return output;
     });
   }
 

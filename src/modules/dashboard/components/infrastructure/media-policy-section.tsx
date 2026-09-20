@@ -59,7 +59,7 @@ export function MediaPolicySection() {
     const uploadTtl = Number(values.get('uploadTtl'));
     const readTtl = Number(values.get('readTtl'));
     if (!Number.isFinite(maxMb) || maxMb <= 0 || !Number.isInteger(uploadTtl) || uploadTtl <= 0 || !Number.isInteger(readTtl) || readTtl <= 0) {
-      setError('Nilai harus angka positif; TTL dalam detik bulat.');
+      setError('Nilai harus angka positif; masa berlaku dalam detik bulat.');
       return;
     }
     startSaveTransition(async () => {
@@ -86,7 +86,7 @@ export function MediaPolicySection() {
           return;
         }
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        setNotice('Kebijakan media tersimpan dan beraudit.');
+        setNotice('Kebijakan media tersimpan dan tercatat.');
         form.reset();
         reload();
       } catch {
@@ -98,7 +98,7 @@ export function MediaPolicySection() {
   if (forbidden) {
     return (
       <section aria-label="Kebijakan media" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
-        <p className="m-0 font-mono text-xs text-paper-faint">Panel ini membutuhkan grant platform.runtime_config.manage.</p>
+        <p className="m-0 font-mono text-xs text-paper-faint">Panel ini membutuhkan izin platform.runtime_config.manage.</p>
       </section>
     );
   }
@@ -126,7 +126,7 @@ export function MediaPolicySection() {
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">
               <label htmlFor={maxMbInputId} className="font-sans text-xs font-medium text-paper-dim">
-                Maks objek (MB)
+                Ukuran maks berkas (MB)
               </label>
               <Input
                 id={maxMbInputId}
@@ -142,7 +142,7 @@ export function MediaPolicySection() {
             </div>
             <div className="space-y-1.5">
               <label htmlFor={uploadTtlInputId} className="font-sans text-xs font-medium text-paper-dim">
-                TTL URL unggah (detik)
+                Masa berlaku tautan unggah (detik)
               </label>
               <Input
                 id={uploadTtlInputId}
@@ -158,7 +158,7 @@ export function MediaPolicySection() {
             </div>
             <div className="space-y-1.5">
               <label htmlFor={readTtlInputId} className="font-sans text-xs font-medium text-paper-dim">
-                TTL URL baca (detik)
+                Masa berlaku tautan baca (detik)
               </label>
               <Input
                 id={readTtlInputId}
