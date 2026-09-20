@@ -4,16 +4,21 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import {
   BarChart3,
+  Building2,
   CornerDownLeft,
   CreditCard,
   FileText,
+  Flag,
   FolderKanban,
   Globe,
   KeyRound,
   LayoutDashboard,
+  Megaphone,
+  RefreshCw,
   Search,
   Settings,
   Share2,
+  ShieldAlert,
   Users,
   X,
 } from 'lucide-react';
@@ -38,11 +43,16 @@ const COMMAND_ACTIONS: readonly CommandAction[] = [
   { id: 'editorial', label: 'Manajemen Artikel & Konten', category: 'Redaksi', href: '/dashboard?view=editorial', icon: FileText },
   { id: 'publishing', label: 'Antrean Penerbitan', category: 'Redaksi', href: '/dashboard?view=publishing', icon: Share2 },
   { id: 'media', label: 'Penyimpanan Aset Media', category: 'Redaksi', href: '/dashboard?view=media', icon: FolderKanban },
+  { id: 'content', label: 'Konten Dinamis & Tema', category: 'Redaksi', href: '/dashboard?view=content', icon: Megaphone },
   { id: 'domains', label: 'Routing Domain & Wilayah Regional', category: 'Infrastruktur', href: '/dashboard?view=configuration', icon: Globe },
   { id: 'publishers', label: 'Direktori Penerbit & Media Terafiliasi', category: 'Infrastruktur', href: '/dashboard?view=publishers', icon: Users },
   { id: 'analytics', label: 'Metrik & Throughput Jaringan', category: 'Infrastruktur', href: '/dashboard?view=analytics', icon: BarChart3 },
   { id: 'settings', label: 'Kunci API & Integrasi Edge Gateway', category: 'Sistem', href: '/dashboard?view=settings', icon: KeyRound },
   { id: 'billing', label: 'Langganan', category: 'Sistem', href: '/dashboard?view=billing', icon: CreditCard },
+  { id: 'audit', label: 'Log Audit & Keamanan', category: 'Sistem', href: '/dashboard?view=audit', icon: ShieldAlert },
+  { id: 'operations', label: 'Operasional & Antrean Latar', category: 'Sistem', href: '/dashboard?view=operations', icon: RefreshCw },
+  { id: 'moderation', label: 'Moderasi & Hak Data', category: 'Sistem', href: '/dashboard?view=moderation', icon: Flag },
+  { id: 'customers', label: 'Manajemen Lisensi', category: 'Sistem', href: '/dashboard?view=customers', icon: Building2 },
   { id: 'auth', label: 'Autentikasi & Sesi Pengguna', category: 'Sistem', href: '/sign-in', icon: Settings },
 ];
 
