@@ -65,8 +65,17 @@ describe('absoluteSiteAssetUrl', () => {
     expect(absoluteSiteAssetUrl(context, 'https://portal.example/foto.jpg?w=100')).toBe('https://portal.example/foto.jpg?w=100');
   });
 
-  it('mengekstrak path URL eksternal ke hostname situs', () => {
-    expect(absoluteSiteAssetUrl(context, 'https://evil.test/x?y=1')).toBe('https://portal.example/x?y=1');
+  it('mempertahankan URL gambar eksternal apa adanya', () => {
+    expect(absoluteSiteAssetUrl(context, 'https://images.unsplash.com/photo-123?auto=format&fit=crop&w=1200&q=80')).toBe(
+      'https://images.unsplash.com/photo-123?auto=format&fit=crop&w=1200&q=80',
+    );
+    expect(absoluteSiteAssetUrl(context, 'https://evil.test/x?y=1')).toBe('https://evil.test/x?y=1');
+  });
+
+  it('me-re-anchor aset publik bersama ke hostname situs', () => {
+    expect(absoluteSiteAssetUrl(context, 'https://indicate.web.id/brand/logo-kemenimipas.png')).toBe(
+      'https://portal.example/brand/logo-kemenimipas.png',
+    );
   });
 });
 

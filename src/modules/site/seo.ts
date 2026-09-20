@@ -11,10 +11,23 @@ function absoluteSiteUrl(context: ResolvedSiteContext, path: string): string {
   return url.toString();
 }
 
+/**
+ * Resolve gambar/aset publik ke URL absolut satu-host milik tenant.
+ *
+ * @param context - Konteks hostname tenant yang meminta.
+ * @param value - Path relatif atau URL absolut aset.
+ * @returns URL absolut; URL eksternal dipertahankan apa adanya agar og:image tidak 404.
+ */
 export function absoluteSiteAssetUrl(context: ResolvedSiteContext, value: string): string {
   if (value.startsWith('/')) return absoluteSiteUrl(context, value);
-  const parsed = new URL(value, `https://${context.normalizedHostname}`);
-  return absoluteSiteUrl(context, `${parsed.pathname}${parsed.search}`);
+  try {
+    const parsed = new URL(value);
+    const path = `${parsed.pathname}${parsed.search}`;
+    if (path.startsWith('/brand/') || path.startsWith('/assets/')) return absoluteSiteUrl(context, path);
+    return parsed.toString();
+  } catch {
+    return absoluteSiteUrl(context, value.startsWith('/') ? value : `/${value}`);
+  }
 }
 
 function xml(value: string): string {
