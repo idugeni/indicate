@@ -80,22 +80,41 @@ export interface RetryPolicy {
   readonly delaysSeconds: readonly number[];
 }
 
-export const INITIAL_VIEW_COUNT_MIN = 10_000;
-export const INITIAL_VIEW_COUNT_MAX = 100_000;
+export const INITIAL_VIEW_COUNT_MIN = 1_000;
+export const INITIAL_VIEW_COUNT_MAX = 12_000;
+
+const SEED_TIERS = [
+  { weight: 70, min: 1_000, max: 4_000 },
+  { weight: 25, min: 4_001, max: 8_000 },
+  { weight: 5, min: 8_001, max: 12_000 },
+] as const;
+
+function randomBelow(bound: number): number {
+  const sample = new Uint32Array(1);
+  crypto.getRandomValues(sample);
+  return Number(sample[0]! % bound);
+}
 
 /**
  * Menentukan baseline tayang perdana suatu target portal.
  *
  * @param viewCount - Jumlah tayang tersimpan saat ini.
  * @param hasPublishedBefore - True bila relasi pernah mencapai `published`.
- * @returns Bilangan acak 10.000-100.000 pada publikasi perdana; null bila tidak perlu seeding.
+ * @returns Bilangan bertingkat 1.000-12.000 pada publikasi perdana; null bila tidak perlu seeding.
  */
 export function seedInitialViewCount(viewCount: number, hasPublishedBefore: boolean): number | null {
   if (viewCount !== 0 || hasPublishedBefore) return null;
-  const span = INITIAL_VIEW_COUNT_MAX - INITIAL_VIEW_COUNT_MIN + 1;
-  const sample = new Uint32Array(1);
-  crypto.getRandomValues(sample);
-  return INITIAL_VIEW_COUNT_MIN + Number(sample[0]! % span);
+  const roll = randomBelow(100);
+  const tier = roll < SEED_TIERS[0]!.weight
+    ? SEED_TIERS[0]!
+    : roll < SEED_TIERS[0]!.weight + SEED_TIERS[1]!.weight
+      ? SEED_TIERS[1]!
+      : SEED_TIERS[2]!;
+  const base = tier.min + randomBelow(tier.max - tier.min + 1);
+  let value = Math.floor(base / 10) * 10 + (1 + randomBelow(9));
+  if (value < INITIAL_VIEW_COUNT_MIN) value += 10;
+  if (value > INITIAL_VIEW_COUNT_MAX) value -= 10;
+  return value;
 }
 export function retryDelaySeconds(policy: RetryPolicy, completedAttempts: number): number | null {
   if (completedAttempts < 1 || completedAttempts >= policy.maxAttempts) return null;

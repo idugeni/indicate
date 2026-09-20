@@ -97,7 +97,7 @@ describe('projectPublicationResult', () => {
 describe('seedInitialViewCount and hasCurrentFence', () => {
   it('hanya seeding pada publikasi perdana dengan view nol', () => {
     const seeded = seedInitialViewCount(0, false);
-    expect(seeded !== null && seeded >= 10_000 && seeded <= 100_000).toBe(true);
+    expect(seeded !== null && seeded >= 1_000 && seeded <= 12_000 && seeded % 10 !== 0).toBe(true);
     expect(seedInitialViewCount(5, false)).toBe(null);
     expect(seedInitialViewCount(0, true)).toBe(null);
   });
