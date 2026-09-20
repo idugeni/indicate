@@ -24,6 +24,12 @@ function kurangiHari(hari: string, jumlah: number): string {
   return tanggal.toISOString().slice(0, 10);
 }
 
+function esokHari(hari: string): string {
+  const tanggal = new Date(`${hari}T00:00:00Z`);
+  tanggal.setUTCDate(tanggal.getUTCDate() + 1);
+  return tanggal.toISOString().slice(0, 10);
+}
+
 function daftarHari(awal: string, akhir: string): string[] {
   const daftar: string[] = [];
   let hari = awal;
@@ -71,7 +77,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       .innerJoin(rolePermissions, and(eq(rolePermissions.organizationId, roles.organizationId), eq(rolePermissions.roleId, roles.id)))
       .innerJoin(permissions, eq(permissions.id, rolePermissions.permissionId))
       .where(and(eq(memberships.organizationId, actor.organizationId), eq(memberships.userId, actor.actorId), eq(memberships.status, 'active'), eq(roles.active, true), eq(permissions.organizationId, actor.organizationId), eq(permissions.scope, 'organization'), eq(permissions.name, permission)))
-      .limit(1).for('update', { of: memberships });
+      .limit(1);
     if (grants.length !== 1) throw new DashboardAccessDeniedError();
   }
 
@@ -145,6 +151,8 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const from: string | null = filter.from ?? null;
       const to: string | null = filter.to ?? null;
       const jendela = tentukanJendela(filter);
+      const windowStart = `${jendela.awal}T00:00:00Z`;
+      const windowEnd = `${esokHari(jendela.akhir)}T00:00:00Z`;
       const inArticleRange = sql`(${from}::timestamptz IS NULL OR created_at >= ${from}::timestamptz) AND (${to}::timestamptz IS NULL OR created_at <= ${to}::timestamptz)`;
       const [byRegion, byCategory, byPublisher, byStatus, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions, tugasBaris, jamBaris, tugasBaru, hasilBaru, artikelBaru, arusBaris, penyaluranBaris, viewsBaris, viewsSiteBaris, viewsArticleBaris, totalBaris, siteLabelBaris, categoryLabelBaris, publisherLabelBaris, regionLabelBaris, articleLabelBaris] = await Promise.all([
         transaction.execute<{ key: string; count: number }>(sql`
@@ -201,8 +209,8 @@ export class DrizzleDashboardRepository implements DashboardRepository {
             j.state AS state, count(*)::int AS count
           FROM publishing_jobs j
           WHERE j.organization_id = ${orgId}
-            AND (COALESCE(j.finalized_at, j.updated_at) AT TIME ZONE 'UTC')::date >= ${jendela.awal}::date
-            AND (COALESCE(j.finalized_at, j.updated_at) AT TIME ZONE 'UTC')::date <= ${jendela.akhir}::date
+            AND COALESCE(j.finalized_at, j.updated_at) >= ${windowStart}::timestamptz
+            AND COALESCE(j.finalized_at, j.updated_at) < ${windowEnd}::timestamptz
           GROUP BY 1, 2`),
         transaction.execute<{ hari: number; jam: number; jumlah: number }>(sql`
           SELECT ((EXTRACT(DOW FROM s.state_occurred_at AT TIME ZONE 'Asia/Jakarta')::int + 6) % 7) AS hari,
@@ -210,8 +218,8 @@ export class DrizzleDashboardRepository implements DashboardRepository {
             count(*)::int AS jumlah
           FROM article_sites s
           WHERE s.organization_id = ${orgId}
-            AND (s.state_occurred_at AT TIME ZONE 'UTC')::date >= ${jendela.awal}::date
-            AND (s.state_occurred_at AT TIME ZONE 'UTC')::date <= ${jendela.akhir}::date
+            AND s.state_occurred_at >= ${windowStart}::timestamptz
+            AND s.state_occurred_at < ${windowEnd}::timestamptz
           GROUP BY 1, 2`),
         transaction.execute<{ id: string; label: string; status: string; at: Date | string }>(sql`
           SELECT j.id AS id, ar.title AS label, j.state AS status, COALESCE(j.finalized_at, j.updated_at) AS at
@@ -247,16 +255,16 @@ export class DrizzleDashboardRepository implements DashboardRepository {
             s.state AS state, count(*)::int AS count
           FROM article_sites s
           WHERE s.organization_id = ${orgId}
-            AND (s.state_occurred_at AT TIME ZONE 'UTC')::date >= ${jendela.awal}::date
-            AND (s.state_occurred_at AT TIME ZONE 'UTC')::date <= ${jendela.akhir}::date
+            AND s.state_occurred_at >= ${windowStart}::timestamptz
+            AND s.state_occurred_at < ${windowEnd}::timestamptz
           GROUP BY 1, 2`),
         transaction.execute<{ hari: string; penyaluran: number; views: number }>(sql`
           SELECT (s.state_occurred_at AT TIME ZONE 'UTC')::date::text AS hari,
             count(*)::int AS penyaluran, COALESCE(SUM(s.view_count), 0)::int AS views
           FROM article_sites s
           WHERE s.organization_id = ${orgId}
-            AND (s.state_occurred_at AT TIME ZONE 'UTC')::date >= ${jendela.awal}::date
-            AND (s.state_occurred_at AT TIME ZONE 'UTC')::date <= ${jendela.akhir}::date
+            AND s.state_occurred_at >= ${windowStart}::timestamptz
+            AND s.state_occurred_at < ${windowEnd}::timestamptz
           GROUP BY 1`),
         transaction.execute<{ id: string; nama: string; jumlah: number; tayangan: number }>(sql`
           SELECT s.site_id AS id, st.normalized_hostname AS nama,
