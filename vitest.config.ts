@@ -7,7 +7,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'workers/**/*.test.ts'],
     environment: 'node',
     alias: {
       'server-only': `${import.meta.dirname}/src/test/stubs/server-only.ts`,

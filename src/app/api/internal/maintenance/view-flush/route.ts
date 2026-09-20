@@ -4,7 +4,7 @@ import { sql } from 'drizzle-orm';
 
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
-import { parsePageviewKey } from '@/modules/site/pageview-contract';
+import { PAGEVIEW_KEY_TTL_SECONDS, parsePageviewKey } from '@/modules/site/pageview-contract';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { withApiAccess } from '@/core/observability/api-access';
 
@@ -152,6 +152,19 @@ async function handleGET(request: Request) {
               FROM (VALUES ${values}) AS v(id, site_id, count)
               WHERE s.organization_id = ${organizationId}::uuid AND s.id = v.id AND s.site_id = v.site_id
               RETURNING s.id`);
+            const appliedIds = new Set(updated.map((row) => row.id));
+            const appliedEntries = chunk.filter(({ entry }) => appliedIds.has(entry.articleSiteId));
+            if (appliedEntries.length > 0) {
+              const dayValues = sql.join(
+                appliedEntries.map(({ entry }) => sql`(${organizationId}::uuid, ${entry.articleSiteId}::uuid, ${entry.siteId}::uuid, CURRENT_DATE, ${entry.count}::int)`),
+                sql`,`,
+              );
+              await transaction.execute(sql`
+                INSERT INTO public.article_site_view_days AS d (organization_id, article_site_id, site_id, day, views)
+                VALUES ${dayValues}
+                ON CONFLICT (organization_id, article_site_id, day)
+                DO UPDATE SET views = d.views + EXCLUDED.views`);
+            }
             for (const row of updated) {
               const hit = pending.get(row.id);
               if (hit !== undefined) {
@@ -183,7 +196,10 @@ async function handleGET(request: Request) {
         skipped += rows.length;
         try {
           const pipeline = redis.pipeline();
-          for (const { key, entry } of rows) pipeline.incrby(key, entry.count);
+          for (const { key, entry } of rows) {
+            pipeline.incrby(key, entry.count);
+            pipeline.expire(key, PAGEVIEW_KEY_TTL_SECONDS);
+          }
           await pipeline.exec();
         } catch {
           auditFlushIssue(requestId, 'view-flush.org.restore-failed', { organizationId, rows: rows.length });
@@ -196,9 +212,9 @@ async function handleGET(request: Request) {
 }
 
 /**
- * Flush buffered pageview counts into article view totals.
+ * Flush buffered pageview counts into article view totals plus daily buckets.
  *
- * @remarks Sesi pooled membawa GUC tenant/region request sebelumnya: set_tenant_context menolak org berbeda (conflict) dan region basi menyaring baris keluar, keduanya diam-diam menggugurkan flush. RESET dulu per org di dalam satu transaksi (satu koneksi terjepit), lalu tegakkan konteks flush yang bersih.
+ * @remarks Sesi pooled membawa GUC tenant/region request sebelumnya: set_tenant_context menolak org berbeda (conflict) dan region basi menyaring baris keluar, keduanya diam-diam menggugurkan flush. RESET dulu per org di dalam satu transaksi (satu koneksi terjepit), lalu tegakkan konteks flush yang bersih. Tiap chunk menulis dua tabel atomik: view_count lifetime dan upsert article_site_view_days hari ini (hanya baris yang RETURNING, orphan tak masuk bucket harian). Restore INCRBY aman dari duplikasi parsial karena transaksi per org atomik: throw di mana pun membatalkan seluruh chunk org itu sehingga kembalian tepat sebesar yang di-pop; kunci restore diberi EXPIRE 7 hari.
  */
 export const GET = withApiAccess('GET /api/internal/maintenance/view-flush', handleGET);
 

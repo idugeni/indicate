@@ -2,6 +2,16 @@ import { z } from 'zod';
 
 export const PAGEVIEW_BODY_MAX_BYTES = 1024;
 
+export const PAGEVIEW_KEY_TTL_SECONDS = 604_800;
+
+const BOT_USER_AGENT_PATTERN = /bot|crawl|spider|slurp|mediapartners|baidu|yandex|sogou|exabot|facebot|ia_archiver|archive\.org|ahrefs|semrush|mj12|dotbot|petal|bytespider|gptbot|claudebot|ccbot|anthropic|facebookexternalhit|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|whatsapp|python-requests|python-urllib|curl|wget|httpie|httpclient|okhttp|postman|insomnia|headless|phantomjs|selenium|playwright|puppeteer/i;
+
+export interface PageviewCfHints {
+  readonly verifiedBot?: boolean | undefined;
+  readonly botScore?: number | undefined;
+  readonly threatScore?: number | undefined;
+}
+
 export const pageviewBeaconSchema = z.object({ o: z.uuid(), s: z.uuid(), a: z.uuid() }).strict();
 
 export type PageviewBeacon = z.infer<typeof pageviewBeaconSchema>;
@@ -39,6 +49,21 @@ export function serializePageviewBeacon(input: {
  */
 export function buildPageviewKey(environment: string, beacon: PageviewBeacon): string {
   return `pv:${environment}:${beacon.o}:${beacon.s}:${beacon.a}`;
+}
+
+/**
+ * Tentukan apakah permintaan beacon berasal dari bot/pemindai otomatis.
+ *
+ * @param userAgent - Nilai header `User-Agent`; null bila tidak ada.
+ * @param cf - Sinyal verifikasi Cloudflare yang dinormalisasi dari `request.cf`.
+ * @returns True bila terindikasi bot; UA kosong fail-open agar pembaca sah tak hilang.
+ */
+export function isBotPageview(userAgent: string | null, cf?: PageviewCfHints | null): boolean {
+  if (cf?.verifiedBot === true) return true;
+  if (typeof cf?.botScore === 'number' && Number.isFinite(cf.botScore) && cf.botScore < 30) return true;
+  if (typeof cf?.threatScore === 'number' && Number.isFinite(cf.threatScore) && cf.threatScore >= 50) return true;
+  if (userAgent === null || userAgent === '') return false;
+  return BOT_USER_AGENT_PATTERN.test(userAgent);
 }
 
 /**

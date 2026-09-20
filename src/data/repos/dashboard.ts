@@ -154,7 +154,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const windowStart = `${jendela.awal}T00:00:00Z`;
       const windowEnd = `${esokHari(jendela.akhir)}T00:00:00Z`;
       const inArticleRange = sql`(${from}::timestamptz IS NULL OR created_at >= ${from}::timestamptz) AND (${to}::timestamptz IS NULL OR created_at <= ${to}::timestamptz)`;
-      const [byRegion, byCategory, byPublisher, byStatus, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions, tugasBaris, jamBaris, tugasBaru, hasilBaru, artikelBaru, arusBaris, penyaluranBaris, viewsBaris, viewsSiteBaris, viewsArticleBaris, totalBaris, siteLabelBaris, categoryLabelBaris, publisherLabelBaris, regionLabelBaris, articleLabelBaris] = await Promise.all([
+      const [byRegion, byCategory, byPublisher, byStatus, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions, tugasBaris, jamBaris, tugasBaru, hasilBaru, artikelBaru, arusBaris, penyaluranBaris, viewsBaris, viewsHariBaris, viewsSiteBaris, viewsArticleBaris, totalBaris, siteLabelBaris, categoryLabelBaris, publisherLabelBaris, regionLabelBaris, articleLabelBaris] = await Promise.all([
         transaction.execute<{ key: string; count: number }>(sql`
           SELECT region_id AS key, count(*)::int AS count FROM articles
           WHERE organization_id = ${orgId} AND ${inArticleRange} GROUP BY region_id`),
@@ -258,38 +258,50 @@ export class DrizzleDashboardRepository implements DashboardRepository {
             AND s.state_occurred_at >= ${windowStart}::timestamptz
             AND s.state_occurred_at < ${windowEnd}::timestamptz
           GROUP BY 1, 2`),
-        transaction.execute<{ hari: string; penyaluran: number; views: number }>(sql`
+        transaction.execute<{ hari: string; penyaluran: number }>(sql`
           SELECT (s.state_occurred_at AT TIME ZONE 'UTC')::date::text AS hari,
-            count(*)::int AS penyaluran, COALESCE(SUM(s.view_count), 0)::int AS views
+            count(*)::int AS penyaluran
           FROM article_sites s
           WHERE s.organization_id = ${orgId}
             AND s.state_occurred_at >= ${windowStart}::timestamptz
             AND s.state_occurred_at < ${windowEnd}::timestamptz
           GROUP BY 1`),
+        transaction.execute<{ hari: string; views: number }>(sql`
+          SELECT d.day::text AS hari, COALESCE(SUM(d.views), 0)::int AS views
+          FROM article_site_view_days d
+          WHERE d.organization_id = ${orgId}
+            AND d.day >= ${windowStart}::date
+            AND d.day < ${windowEnd}::date
+          GROUP BY 1`),
         transaction.execute<{ id: string; nama: string; jumlah: number; tayangan: number }>(sql`
-          SELECT s.site_id AS id, st.normalized_hostname AS nama,
-            count(*)::int AS jumlah, COALESCE(SUM(s.view_count), 0)::int AS tayangan
-          FROM article_sites s
-          JOIN sites st ON st.organization_id = ${orgId} AND st.id = s.site_id
-          WHERE s.organization_id = ${orgId}
-            AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
-            AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)
+          SELECT d.site_id AS id, st.normalized_hostname AS nama,
+            COUNT(DISTINCT d.article_site_id)::int AS jumlah, COALESCE(SUM(d.views), 0)::int AS tayangan
+          FROM article_site_view_days d
+          JOIN sites st ON st.organization_id = ${orgId} AND st.id = d.site_id
+          WHERE d.organization_id = ${orgId}
+            AND (${from}::timestamptz IS NULL OR d.day >= (${from}::timestamptz AT TIME ZONE 'UTC')::date)
+            AND (${to}::timestamptz IS NULL OR d.day <= (${to}::timestamptz AT TIME ZONE 'UTC')::date)
           GROUP BY 1, 2`),
         transaction.execute<{ id: string; nama: string; jumlah: number; tayangan: number }>(sql`
           SELECT s.article_id AS id, ar.title AS nama,
-            count(*)::int AS jumlah, COALESCE(SUM(s.view_count), 0)::int AS tayangan
-          FROM article_sites s
+            COUNT(DISTINCT d.site_id)::int AS jumlah, COALESCE(SUM(d.views), 0)::int AS tayangan
+          FROM article_site_view_days d
+          JOIN article_sites s ON s.organization_id = ${orgId} AND s.id = d.article_site_id
           JOIN articles ar ON ar.organization_id = ${orgId} AND ar.id = s.article_id
-          WHERE s.organization_id = ${orgId}
-            AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
-            AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)
+          WHERE d.organization_id = ${orgId}
+            AND (${from}::timestamptz IS NULL OR d.day >= (${from}::timestamptz AT TIME ZONE 'UTC')::date)
+            AND (${to}::timestamptz IS NULL OR d.day <= (${to}::timestamptz AT TIME ZONE 'UTC')::date)
           GROUP BY 1, 2`),
         transaction.execute<{ total: number; salur: number }>(sql`
-          SELECT COALESCE(SUM(s.view_count), 0)::int AS total, count(*)::int AS salur
-          FROM article_sites s
-          WHERE s.organization_id = ${orgId}
-            AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
-            AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)`),
+          SELECT
+            (SELECT COALESCE(SUM(d.views), 0)::int FROM article_site_view_days d
+              WHERE d.organization_id = ${orgId}
+                AND (${from}::timestamptz IS NULL OR d.day >= (${from}::timestamptz AT TIME ZONE 'UTC')::date)
+                AND (${to}::timestamptz IS NULL OR d.day <= (${to}::timestamptz AT TIME ZONE 'UTC')::date)) AS total,
+            (SELECT count(*)::int FROM article_sites s
+              WHERE s.organization_id = ${orgId}
+                AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
+                AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)) AS salur`),
         transaction.execute<{ id: string; nama: string }>(sql`
           SELECT id, normalized_hostname AS nama FROM sites WHERE organization_id = ${orgId}`),
         transaction.execute<{ id: string; nama: string }>(sql`
@@ -349,11 +361,13 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         hari,
         ...(penyaluranPerHari.get(hari) ?? { diterbitkan: 0, gagal: 0, antre: 0 }),
       }));
-      const viewsPerHari = new Map(viewsBaris.map((row) => [row.hari, row] as const));
-      const viewsHarian = daftarHari(jendela.awal, jendela.akhir).map((hari) => {
-        const row = viewsPerHari.get(hari);
-        return { hari, penyaluran: row?.penyaluran ?? 0, views: row?.views ?? 0 };
-      });
+      const penyaluranPerHariViews = new Map(viewsBaris.map((row) => [row.hari, row.penyaluran] as const));
+      const viewsSumPerHari = new Map(viewsHariBaris.map((row) => [row.hari, row.views] as const));
+      const viewsHarian = daftarHari(jendela.awal, jendela.akhir).map((hari) => ({
+        hari,
+        penyaluran: penyaluranPerHariViews.get(hari) ?? 0,
+        views: viewsSumPerHari.get(hari) ?? 0,
+      }));
       const siteLabels: Record<string, string> = {};
       for (const row of siteLabelBaris) siteLabels[row.id] = row.nama;
       const categoryLabels: Record<string, string> = {};

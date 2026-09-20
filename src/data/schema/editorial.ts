@@ -3,6 +3,7 @@ import {
   bigint,
   boolean,
   check,
+  date,
   foreignKey,
   index,
   integer,
@@ -172,6 +173,18 @@ export const articleSites = pgTable('article_sites', {
   check('article_sites_custom_title_shape', sql`${table.customTitle} IS NULL OR (char_length(${table.customTitle}) BETWEEN 10 AND 160)`),
   check('article_sites_custom_description_shape', sql`${table.customDescription} IS NULL OR (char_length(${table.customDescription}) BETWEEN 50 AND 500)`),
   check('article_sites_published_outcome', sql`${table.state} <> 'published' OR (${table.publishedUrl} IS NOT NULL AND ${table.publishedAt} IS NOT NULL)`),
+]);
+
+export const articleSiteViewDays = pgTable('article_site_view_days', {
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
+  articleSiteId: uuid('article_site_id').notNull(),
+  siteId: uuid('site_id').notNull(),
+  day: date('day').notNull(),
+  views: integer('views').default(0).notNull(),
+}, (table) => [
+  primaryKey({ name: 'article_site_view_days_pk', columns: [table.organizationId, table.articleSiteId, table.day] }),
+  index('article_site_view_days_organization_day_idx').on(table.organizationId, table.day.desc()),
+  check('article_site_view_days_views_nonnegative', sql`${table.views} >= 0`),
 ]);
 
 export const officialAffiliations = pgTable('official_affiliations', {
