@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { TrendingUp } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, formatCompactViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/black-lime/lib/format';
+import { articleImage, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/black-lime/lib/format';
 
 export function BlackLimeQuotePanel({ siteName, quote }: { readonly siteName: string; readonly quote: string }) {
   return (
@@ -70,7 +70,7 @@ export function BlackLimeMostRead({ articles }: { readonly articles: readonly Ar
                   </Link>
                 </h3>
                 <p className="m-0 mt-1 font-sans text-xs tabular-nums text-slate-500">
-                  {formatCompactViews(article.viewCount)} pembaca · {readingMinutes(article)} mnt baca
+                  {formatFullViews(article.viewCount)} pembaca · {readingMinutes(article)} mnt baca
                 </p>
               </div>
               <Image

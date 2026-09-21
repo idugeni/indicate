@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/purple-editorial/lib/format';
+import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/purple-editorial/lib/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/purple-editorial/theme';
 import { SectionHeading } from '@/modules/site/components/network/templates/purple-editorial/ui/section-heading';
 
@@ -97,7 +97,7 @@ export function PurpleEditorialLatest({
                       </span>
                     )}
                     <span className="tabular-nums text-slate-500">
-                      {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatCompactViews(article.viewCount)} pembaca
+                      {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
                     </span>
                   </p>
                   <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-[15px] font-bold leading-snug text-slate-900">

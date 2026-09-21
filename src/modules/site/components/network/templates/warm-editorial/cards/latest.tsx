@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/warm-editorial/lib/format';
+import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/warm-editorial/lib/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/warm-editorial/theme';
 import { SectionHeading } from '@/modules/site/components/network/templates/warm-editorial/ui/section-heading';
 
@@ -96,7 +96,7 @@ export function WarmEditorialLatest({
                       </span>
                     )}
                     <span className="tabular-nums text-slate-500">
-                      {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatCompactViews(article.viewCount)} pembaca
+                      {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
                     </span>
                   </p>
                   <h3 className="m-0 mt-1.5 line-clamp-2 font-serif text-[17px] font-bold leading-snug text-slate-900">

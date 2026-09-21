@@ -7,7 +7,7 @@ import { ArrowRight, MapPin } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { RedEditorialHeroActions } from '@/modules/site/components/network/templates/red-editorial/cards/hero-actions';
-import { articleImage, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/red-editorial/lib/format';
+import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/red-editorial/lib/format';
 
 const ROTATE_MS = 6000;
 
@@ -65,7 +65,7 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
           {article.description}
         </p>
         <p className="m-0 mt-3 font-sans text-xs tabular-nums text-[var(--tpl-faint,#ac9393)]">
-          {formatDate(article.publishedAt, 'medium')} · {reading} mnt baca · {formatCompactViews(article.viewCount)} pembaca
+          {formatDate(article.publishedAt, 'medium')} · {reading} mnt baca · {formatFullViews(article.viewCount)} pembaca
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link

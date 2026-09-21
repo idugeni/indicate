@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/dark-navy/lib/format';
+import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/dark-navy/lib/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/dark-navy/theme';
 import { SectionHeading } from '@/modules/site/components/network/templates/dark-navy/ui/section-heading';
 
@@ -65,7 +65,7 @@ export function DarkNavyLatest({
                     </span>
                   )}
                   <span className="tabular-nums text-[#5f6f8c]">
-                    {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatCompactViews(article.viewCount)} pembaca
+                    {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
                   </span>
                 </p>
                 <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-base font-bold leading-snug text-[#eaf0fb] sm:text-lg">

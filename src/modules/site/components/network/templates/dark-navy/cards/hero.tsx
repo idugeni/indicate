@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/dark-navy/lib/format';
+import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/dark-navy/lib/format';
 
 const ROTATE_MS = 6000;
 
@@ -79,7 +79,7 @@ export function DarkNavyHero({ articles }: { readonly articles: readonly Article
               Baca Selengkapnya
             </Link>
             <span className="hidden font-sans text-xs tabular-nums text-[#eaf0fb]/70 sm:inline">
-              {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatCompactViews(article.viewCount)} pembaca
+              {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
             </span>
           </p>
           {count > 1 ? (

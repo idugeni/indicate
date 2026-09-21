@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/green-minimal/lib/format';
+import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/green-minimal/lib/format';
 import { SectionHeading } from '@/modules/site/components/network/templates/green-minimal/ui/section-heading';
 
 export function GreenMinimalLatest({
@@ -62,7 +62,7 @@ export function GreenMinimalLatest({
                   )}
                   <span aria-hidden="true" className="text-slate-300">·</span>
                   <span className="font-medium normal-case tracking-normal text-slate-500">
-                    {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatCompactViews(article.viewCount)} pembaca
+                    {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
                   </span>
                 </p>
                 <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-lg font-bold leading-snug text-[#10231a]">

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Bookmark } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/red-editorial/lib/format';
+import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/red-editorial/lib/format';
 
 export function RedEditorialPickCard({ article, index }: { readonly article: ArticleListItem; readonly index: number }) {
   const src = articleImage(article);
@@ -42,7 +42,7 @@ export function RedEditorialPickCard({ article, index }: { readonly article: Art
             {' · '}
             {reading} mnt baca
             {' · '}
-            {formatCompactViews(article.viewCount)} pembaca
+            {formatFullViews(article.viewCount)} pembaca
           </span>
           <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-[#b91c1c] ring-1 ring-[#ecd3d3]">
             <Bookmark className="h-4 w-4" aria-hidden="true" />

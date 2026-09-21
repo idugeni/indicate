@@ -5,7 +5,7 @@ import { ArrowRight, TrendingUp } from 'lucide-react';
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { RedEditorialPickCard } from '@/modules/site/components/network/templates/red-editorial/cards/pick-card';
 import { SectionHeading } from '@/modules/site/components/network/templates/red-editorial/ui/section-heading';
-import { articleImage, formatCompactViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/red-editorial/lib/format';
+import { articleImage, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/red-editorial/lib/format';
 
 const GRID_SIZE = 4;
 const POPULAR_SIZE = 5;
@@ -73,7 +73,7 @@ export function RedEditorialPicks({
                         {article.title}
                       </Link>
                       <span className="mt-1 block text-[11px] tabular-nums text-[#ac9393]">
-                        {formatCompactViews(article.viewCount)} pembaca · {readingMinutes(article)} mnt baca
+                        {formatFullViews(article.viewCount)} pembaca · {readingMinutes(article)} mnt baca
                       </span>
                     </span>
                     <Image

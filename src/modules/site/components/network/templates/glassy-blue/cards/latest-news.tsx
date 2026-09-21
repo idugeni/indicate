@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { SectionHeading } from '@/modules/site/components/network/templates/glassy-blue/ui/section-heading';
-import { articleImage, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/glassy-blue/lib/format';
+import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/glassy-blue/lib/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/glassy-blue/theme';
 
 /**
@@ -79,7 +79,7 @@ export function GlassyBlueLatestNews({
                         </span>
                       )}
                       <span className="tabular-nums text-slate-500">
-                        {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} menit baca · {formatCompactViews(article.viewCount)} pembaca
+                        {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} menit baca · {formatFullViews(article.viewCount)} pembaca
                       </span>
                     </span>
                     <span className="line-clamp-2 font-sans text-[15px] font-bold leading-snug text-slate-900 group-hover:text-[#1f7cff]">
@@ -118,7 +118,7 @@ export function GlassyBlueLatestNews({
                 {spotlight.description}
               </p>
               <p className="m-0 font-sans text-xs tabular-nums text-white/75">
-                {formatDate(spotlight.publishedAt, 'medium')} · {readingMinutes(spotlight)} menit baca · {formatCompactViews(spotlight.viewCount)} pembaca
+                {formatDate(spotlight.publishedAt, 'medium')} · {readingMinutes(spotlight)} menit baca · {formatFullViews(spotlight.viewCount)} pembaca
               </p>
               <p className="m-0 mt-1">
                 <Link
