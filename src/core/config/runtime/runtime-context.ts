@@ -7,7 +7,7 @@ import { DrizzleRuntimeConfigRepository } from '@/data/repos/runtime-config/read
 import { RuntimeConfigSnapshotCache } from '@/core/system/runtime-config-snapshot-cache';
 import { UpstashSnapshotStore } from '@/integrations/redis/upstash-snapshot-store';
 import { HrTimeMonotonicClock } from '@/core/system/monotonic-clock';
-import { createRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase } from '@/data/client';
 import { deriveRedisNamespace } from '@/core/config/runtime/derived-values';
 import { RuntimeConfigReadError } from '@/modules/persisted-config/ports';
 import type { RuntimeConfig } from '@/core/config/runtime/runtime-schema';
@@ -25,11 +25,14 @@ let hydratedPromise: Promise<RuntimeContext> | null = null;
 /**
  * Single-flight server runtime context via the bounded cache.
  *
- * @remarks Prerender build tidak boleh membaca/menulis cache bersama: selain tidak valid untuk runtime, lapis jaringan ekstra bisa menggantung worker build. Singleton owns the client for the app lifetime (covers 300s refreshes).
+ * @remarks Prerender build tidak boleh membaca/menulis cache bersama: selain tidak valid untuk runtime, lapis jaringan ekstra bisa menggantung worker build. Rejected hydration clears the single-flight so later requests retry transient faults; the pool is shared process-wide and never closed by callers.
  */
 export async function getServerRuntimeContext(): Promise<RuntimeContext> {
   if (hydratedPromise === null) {
-    hydratedPromise = initializeContext();
+    hydratedPromise = initializeContext().catch((error: unknown) => {
+      hydratedPromise = null;
+      throw error;
+    });
   }
   return hydratedPromise;
 }
@@ -141,7 +144,7 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
  * process refuses to activate. No row means disarmed (pre-production) and
  * behavior is unchanged. Versions are not secrets.
  */
-async function assertSchemaGate(client: Pick<ReturnType<typeof createRuntimeDatabase>, 'client'>['client']): Promise<void> {
+async function assertSchemaGate(client: Pick<ReturnType<typeof getSharedRuntimeDatabase>, 'client'>['client']): Promise<void> {
   const gates = await client<{ required_version: number }[]>`SELECT required_version FROM public.migration_gate_events ORDER BY checked_at DESC LIMIT 1`;
   const required = gates[0]?.required_version;
   if (required === undefined) return;
@@ -156,7 +159,7 @@ async function initializeContext(): Promise<RuntimeContext> {
   const bootstrap = getBootstrapConfig();
 
   if (cache === null) {
-    const runtime = createRuntimeDatabase(bootstrap);
+    const runtime = getSharedRuntimeDatabase(bootstrap);
     await assertSchemaGate(runtime.client);
     const repository = new DrizzleRuntimeConfigRepository(runtime.db);
     const snapshotStore: UpstashSnapshotStore | null =
@@ -168,7 +171,6 @@ async function initializeContext(): Promise<RuntimeContext> {
             namespace: `indicate:shared:${bootstrap.environment}`,
           });
     cache = new RuntimeConfigSnapshotCache({ repository, clock: new HrTimeMonotonicClock(), snapshotStore });
-    void runtime;
   }
 
   const entry = await cache.get(bootstrap.environment).catch((error: unknown) => {
@@ -190,7 +192,10 @@ async function initializeContext(): Promise<RuntimeContext> {
 let registerPromise: Promise<RuntimeContext> | null = null;
 export function registerServerRuntime(): Promise<RuntimeContext> {
   if (registerPromise === null) {
-    registerPromise = getServerRuntimeContext();
+    registerPromise = getServerRuntimeContext().catch((error: unknown) => {
+      registerPromise = null;
+      throw error;
+    });
   }
   return registerPromise;
 }

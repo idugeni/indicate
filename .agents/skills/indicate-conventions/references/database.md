@@ -5,7 +5,7 @@ Source of truth: `docs/MIGRATIONS.md`, `src/data/`.
 ## Layout
 
 - `src/data/schema/` — Drizzle table definitions: `billing`, `content`, `editorial`, `identity`, `operations`, `runtime-config`.
-- `src/data/client.ts` — `createRuntimeDatabase()` factory (pooled `DATABASE_POOL_URL`, `prepare: false`); singleton ownership lives in `src/core/config/runtime/runtime-context.ts`.
+- `src/data/client.ts` — `createRuntimeDatabase()` factory (pooled `DATABASE_POOL_URL`, `prepare: false`); process-wide sharing via `getSharedRuntimeDatabase()`, also used by `src/core/config/runtime/runtime-context.ts`.
 - `src/data/repos/` — repository implementations (e.g. `DrizzlePublishingRepository`, `DrizzleBillingRepository`).
 - `src/data/migrations/` — forward-only, hand-written SQL + `bootstrap/indicate-schema.sql`. Only `db:bootstrap` / `db:bootstrap:check` scripts exist; no per-migration `db:*` runners.
 

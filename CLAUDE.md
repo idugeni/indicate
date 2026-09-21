@@ -131,7 +131,7 @@ Migrations in `src/data/migrations/` are applied manually in filename order agai
 - **ORM:** Drizzle with PostgreSQL dialect
 - **Schema:** `src/data/schema/` (billing, content, editorial, identity, operations, runtime-config)
 - **Migrations:** `src/data/migrations/`, forward-only SQL with Drizzle-kit metadata in `meta/`
-- **Client:** factory `createRuntimeDatabase()` in `src/data/client.ts` (pooled URL, `prepare: false`); singleton ownership lives in `src/core/config/runtime/runtime-context.ts`
+- **Client:** factory `createRuntimeDatabase()` in `src/data/client.ts` (pooled URL, `prepare: false`); process-wide sharing via `getSharedRuntimeDatabase()`, also used by `src/core/config/runtime/runtime-context.ts`
 
 ## Configuration
 

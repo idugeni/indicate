@@ -16,8 +16,14 @@ interface RequestErrorContext {
 export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
   // Bootstrap-first: validate config before I/O, then hydrate the server runtime snapshot. Must not crash startup when the DB is down.
-  const { registerServerRuntime } = await import('@/core/config/runtime/runtime-context');
-  await registerServerRuntime();
+  try {
+    const { registerServerRuntime } = await import('@/core/config/runtime/runtime-context');
+    await registerServerRuntime();
+  } catch (error) {
+    const { logEvent } = await import('@/core/observability/logger');
+    const { sanitizeError } = await import('@/core/security/redaction');
+    logEvent('warn', { event: 'lifecycle.runtime-deferred', context: sanitizeError(error) });
+  }
 
   // Kept in a separate module so `process.on` never enters the Edge bundle (Node.js runtime only).
   const { attachProcessSafetyNet } = await import('@/core/observability/process-safety-net');
