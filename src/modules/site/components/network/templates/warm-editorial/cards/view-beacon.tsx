@@ -6,8 +6,8 @@ import { serializePageviewBeacon } from '@/modules/site/pageview-contract';
 
 /**
  * Beacon pageview via Cloudflare Worker → Upstash INCR.
- * Mencatat SEMUA view termasuk yang diserve edge-cache, dengan NOL
- * execution Vercel. Fire-and-forget sekali per mount; kegagalan diam.
+ * Records ALL views including edge-cache serves, with ZERO
+ * Vercel execution. Fire-and-forget once per mount; failures stay silent.
  */
 const ENDPOINT = getPageviewEndpoint();
 
@@ -24,19 +24,31 @@ export function WarmEditorialViewBeacon({
 
   useEffect(() => {
     if (sent.current) return;
-    sent.current = true;
-    try {
-      const body = serializePageviewBeacon({ o: organizationId, s: siteId, a: articleSiteId });
-      if (body === null) return;
-      const queued = navigator.sendBeacon(ENDPOINT, body);
-      if (!queued) {
-        void fetch(ENDPOINT, { method: 'POST', body, keepalive: true }).catch(() => {
-          /* hitungan boleh hilang */
-        });
+    const fire = () => {
+      try {
+        const body = serializePageviewBeacon({ o: organizationId, s: siteId, a: articleSiteId });
+        if (body === null) return;
+        const queued = navigator.sendBeacon(ENDPOINT, body);
+        if (!queued) {
+          void fetch(ENDPOINT, { method: 'POST', body, keepalive: true }).catch(() => {
+            /* counts may be lost */
+          });
+        }
+      } catch {
+        /* counts may be lost */
       }
-    } catch {
-      /* hitungan boleh hilang */
+    };
+    if (typeof document !== 'undefined' && (document as Document & { readonly prerendering?: boolean }).prerendering === true) {
+      const activate = () => {
+        if (sent.current) return;
+        sent.current = true;
+        fire();
+      };
+      document.addEventListener('prerenderingchange', activate, { once: true });
+      return () => document.removeEventListener('prerenderingchange', activate);
     }
+    sent.current = true;
+    fire();
   }, [organizationId, siteId, articleSiteId]);
 
   return null;
