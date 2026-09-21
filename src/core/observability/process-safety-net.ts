@@ -7,7 +7,7 @@ export async function attachProcessSafetyNet(): Promise<void> {
   const { logEvent } = await import('@/core/observability/logger');
   const { sanitizeError } = await import('@/core/security/redaction');
 
-  logEvent('info', { event: 'lifecycle.start' });
+  logEvent('debug', { event: 'lifecycle.start' });
 
   process.on('unhandledRejection', (reason: unknown) => {
     try {
