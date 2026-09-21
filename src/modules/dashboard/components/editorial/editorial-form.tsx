@@ -10,6 +10,7 @@ import {
   Send,
 } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -394,9 +395,7 @@ export function EditorialForm({
             </span>
             <div className="max-h-60 space-y-1.5 overflow-y-auto rounded border border-hairline bg-bg p-3">
               {model?.sites?.length === 0 ? (
-                <p className="m-0 font-mono text-xs text-paper-faint">
-                  Belum ada situs aktif.
-                </p>
+                <EmptyState title="Belum ada situs aktif." description="Data akan tampil di sini setelah tersedia." />
               ) : (
                 model?.sites?.map((site) => (
                   <Label

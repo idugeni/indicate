@@ -8,6 +8,7 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea';
 
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { formatRelatif, formatTanggal } from '@/modules/dashboard/components/shared/dashboard-dates';
 
 interface ReportRow {
@@ -283,7 +284,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               ) : null}
             </li>
           ))}
-          {reports.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada laporan konten.</li> : null}
+          {reports.length === 0 ? <li><EmptyState title="Belum ada laporan konten." description="Data akan tampil di sini setelah tersedia." /></li> : null}
         </ul>
       </section>
 
@@ -346,7 +347,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               ) : null}
             </li>
           ))}
-          {privacy.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada tiket permintaan data.</li> : null}
+          {privacy.length === 0 ? <li><EmptyState title="Belum ada tiket permintaan data." description="Data akan tampil di sini setelah tersedia." /></li> : null}
         </ul>
       </section>
 
@@ -405,7 +406,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               ) : null}
             </li>
           ))}
-          {holds.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada penundaan.</li> : null}
+          {holds.length === 0 ? <li><EmptyState title="Belum ada penundaan." description="Data akan tampil di sini setelah tersedia." /></li> : null}
         </ul>
       </section>
 
@@ -457,7 +458,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               </p>
             </li>
           ))}
-          {erasures.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada permintaan hapus data.</li> : null}
+          {erasures.length === 0 ? <li><EmptyState title="Belum ada permintaan hapus data." description="Data akan tampil di sini setelah tersedia." /></li> : null}
         </ul>
       </section>
     </div>

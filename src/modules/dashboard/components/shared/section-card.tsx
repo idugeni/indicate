@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { IconComponent } from '@/modules/dashboard/components/dashboard-types';
 
 export function SectionCard({
@@ -14,18 +15,17 @@ export function SectionCard({
   readonly children: ReactNode;
 }) {
   return (
-    <section
-      aria-label={title}
-      className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline pb-4">
-        <h3 className="m-0 flex items-center gap-2 font-sans text-sm font-semibold tracking-tight text-paper">
-          <Icon className="h-4 w-4 text-brass" aria-hidden="true" />
-          {title}
-        </h3>
-        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">{eyebrow}</p>
-      </div>
-      <div className="mt-5">{children}</div>
+    <section aria-label={title}>
+      <Card className="rounded-lg border border-hairline bg-bg-raised shadow-none ring-0">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 border-b border-hairline px-5 pb-4 pt-5 sm:px-6 sm:pt-6">
+          <CardTitle className="flex items-center gap-2 font-sans text-sm font-semibold tracking-tight text-paper">
+            <Icon className="h-4 w-4 text-brass" aria-hidden="true" />
+            {title}
+          </CardTitle>
+          <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">{eyebrow}</p>
+        </CardHeader>
+        <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6">{children}</CardContent>
+      </Card>
     </section>
   );
 }

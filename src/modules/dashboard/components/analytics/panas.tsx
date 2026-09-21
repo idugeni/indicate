@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { AktivitasJam, TugasHarian } from '@/modules/dashboard/models';
 import { labelHari } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 const NAMA_HARI = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as const;
 
@@ -130,7 +131,7 @@ export function KalenderPanass({ series }: { readonly series: readonly TugasHari
         </div>
       </div>
       {potong.length === 0 ? (
-        <p className="m-auto px-2 py-6 text-center font-sans text-[13px] text-paper-dim">Belum ada data deret waktu.</p>
+        <EmptyState title="Belum ada data deret waktu." description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <div className="mt-4 flex gap-1 overflow-x-auto pb-1">
           {kolom.map((lajur, indeks) => (

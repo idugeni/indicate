@@ -6,6 +6,7 @@ import type { SankeyNode } from 'recharts/types/util/types';
 import { ChartContainer } from '@/components/ui/chart';
 import type { ArusPenerbit } from '@/modules/dashboard/models';
 import { potongLabel, warnaKategori } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 const BATAS_SIMPUL = 6;
 
@@ -115,7 +116,7 @@ export function AlurSankey({ arus }: { readonly arus: readonly ArusPenerbit[] })
         <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
           Alur penerbit
         </h2>
-        <p className="m-auto px-2 py-6 text-center font-sans text-[13px] text-paper-dim">Belum ada arus penerbit.</p>
+        <EmptyState title="Belum ada arus penerbit." description="Data akan tampil di sini setelah tersedia." />
       </section>
     );
   }

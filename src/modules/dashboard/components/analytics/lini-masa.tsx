@@ -1,3 +1,4 @@
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { formatRelatif, formatTanggalWaktu } from '@/modules/dashboard/components/shared/dashboard-dates';
 import type { AktivitasTerbaru } from '@/modules/dashboard/models';
 import { cn } from '@/ui/cn';
@@ -29,7 +30,7 @@ export function LiniMasa({ peristiwa }: { readonly peristiwa: readonly Aktivitas
         Aktivitas operasional terbaru
       </p>
       {peristiwa.length === 0 ? (
-        <p className="m-auto px-2 py-6 text-center font-sans text-[13px] text-paper-dim">Belum ada aktivitas tercatat.</p>
+        <EmptyState title="Belum ada aktivitas tercatat." description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <ol className="m-0 mt-4 list-none space-y-0 p-0">
           {peristiwa.map((item, indeks) => (

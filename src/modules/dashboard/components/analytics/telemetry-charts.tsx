@@ -5,6 +5,7 @@ import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { AnalyticsProjection } from '@/modules/dashboard/models';
 import { warnaKategori } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 interface Dimensi {
   readonly judul: string;
@@ -56,7 +57,7 @@ export function TelemetryCharts({ data }: { readonly data: AnalyticsProjection }
               </p>
             </div>
             {teratas.length === 0 ? (
-              <p className="m-auto px-2 py-6 text-center font-sans text-[13px] text-paper-dim">Belum ada data.</p>
+              <EmptyState title="Belum ada data." description="Data akan tampil di sini setelah tersedia." />
             ) : (
               <ChartContainer
                 config={{ count: { label: judul, color: warna } }}

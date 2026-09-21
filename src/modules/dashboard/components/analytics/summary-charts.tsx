@@ -3,6 +3,7 @@
 import { Cell, Pie, PieChart, PolarAngleAxis, RadialBar, RadialBarChart } from 'recharts';
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { cn } from '@/ui/cn';
 
 const WARNA_STATUS: Record<string, string> = {
@@ -59,7 +60,7 @@ function Donat({
         </p>
       </div>
       {total === 0 ? (
-        <p className="m-auto px-2 py-6 text-center font-sans text-[13px] leading-relaxed text-paper-dim">{kosong}</p>
+        <EmptyState title={kosong} description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <div className="mt-2 flex flex-wrap items-center gap-4">
           <ChartContainer config={{ nilai: { label: judul } }} className="aspect-square w-36 flex-none sm:w-40">
@@ -201,9 +202,7 @@ export function TingkatKeberhasilan({
         </p>
       </div>
       {total === 0 ? (
-        <p className="m-auto px-2 py-6 text-center font-sans text-[13px] leading-relaxed text-paper-dim">
-          Belum ada hasil penyaluran. Cincin terisi setelah antrean pertama berjalan.
-        </p>
+        <EmptyState title="Belum ada hasil penyaluran." description="Cincin terisi setelah antrean pertama berjalan." />
       ) : (
         <>
           <div className="relative mx-auto mt-2 w-full max-w-52">

@@ -25,6 +25,7 @@ import {
 import { toast } from 'sonner';
 
 import { DashboardAvatar } from '@/modules/dashboard/components/dashboard-avatar';
+import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -863,22 +864,24 @@ export function DashboardWorkspace({
 
             <div className="space-y-6 pt-6">
             {error ? (
-              <div
-                role="alert"
+              <Alert
+                variant="destructive"
                 className="flex animate-in items-start gap-3 border-l-2 border-error bg-error/[0.06] px-4 py-3 fade-in slide-in-from-top-2 duration-200"
               >
-                <div className="flex-1 font-sans text-sm text-paper">{error}</div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => setError(null)}
-                  aria-label="Tutup pesan kesalahan"
-                  className="text-paper-faint hover:text-paper"
-                >
-                  <X className="h-4 w-4" aria-hidden="true" />
-                </Button>
-              </div>
+                <AlertDescription className="flex-1 font-sans text-sm text-paper">{error}</AlertDescription>
+                <AlertAction className="static">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => setError(null)}
+                    aria-label="Tutup pesan kesalahan"
+                    className="text-paper-faint hover:text-paper"
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </AlertAction>
+              </Alert>
             ) : null}
 
             {activeOrganization && activeOrganization.records.length > 0 ? (

@@ -2,6 +2,7 @@
 
 import { Component, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface PanelErrorBoundaryState {
   readonly message: string | null;
@@ -27,20 +28,15 @@ export class PanelErrorBoundary extends Component<
   render(): ReactNode {
     if (this.state.message !== null) {
       return (
-        <div
-          role="alert"
-          className="rounded-lg border border-error/40 bg-error/[0.06] p-5 font-sans text-sm text-paper"
-        >
-          <p className="m-0 font-semibold">{this.props.name} gagal dimuat.</p>
-          <p className="m-0 mt-1 text-xs text-paper-dim">{this.state.message}</p>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={this.reset}
-          >
-            Coba lagi
-          </Button>
-        </div>
+        <Alert variant="destructive">
+          <AlertTitle>{this.props.name} gagal dimuat.</AlertTitle>
+          <AlertDescription>{this.state.message}</AlertDescription>
+          <AlertAction>
+            <Button type="button" variant="outline" size="sm" onClick={this.reset}>
+              Coba lagi
+            </Button>
+          </AlertAction>
+        </Alert>
       );
     }
     return this.props.children;

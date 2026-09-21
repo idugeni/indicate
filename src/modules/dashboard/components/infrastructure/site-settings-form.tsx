@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { MASTER_TEMPLATE_PRESETS } from '@/ui/themes';
 
@@ -513,7 +514,7 @@ export function SiteSettingsForm({
         </div>
 
         {activeSite === undefined ? (
-          <p className="m-0 font-sans text-xs text-paper-faint">Belum ada situs. Buat situs dulu pada panel di atas.</p>
+          <EmptyState title="Belum ada situs. Buat situs dulu pada panel di atas." description="Data akan tampil di sini setelah tersedia." />
         ) : (
           <SiteSettingsEditor
             key={activeSite.id}

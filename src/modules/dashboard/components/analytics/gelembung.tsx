@@ -5,6 +5,7 @@ import { Scatter, ScatterChart, XAxis, YAxis, ZAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { AnalyticsPoint } from '@/modules/dashboard/models';
 import { potongLabel } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 const BATAS_SITUS = 20;
 
@@ -54,7 +55,7 @@ export function GelembungSitus({ hasil }: { readonly hasil: readonly AnalyticsPo
         Volume vs persen sukses per situs
       </p>
       {data.length === 0 ? (
-        <p className="m-auto px-2 py-6 text-center font-sans text-[13px] text-paper-dim">Belum ada hasil situs.</p>
+        <EmptyState title="Belum ada hasil situs." description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <ChartContainer config={{ total: { label: 'Volume', color: '#6c93c9' } }} className="mt-4 h-64 w-full">
           <ScatterChart margin={{ left: 0, right: 12, top: 8, bottom: 0 }}>

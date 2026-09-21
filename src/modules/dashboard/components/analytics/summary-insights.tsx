@@ -1,3 +1,4 @@
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import type { AnalyticsPoint } from '@/modules/dashboard/models';
 
 const BATAS_BARIS = 5;
@@ -92,7 +93,7 @@ export function PeringkatTeratas({
         {judul}
       </h2>
       {teratas.length === 0 ? (
-        <p className="m-auto px-2 py-6 text-center font-sans text-[13px] text-paper-dim">Belum ada data.</p>
+        <EmptyState title="Belum ada data." description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <ol className="m-0 mt-3 list-none space-y-2.5 p-0">
           {teratas.map((titik, peringkat) => (

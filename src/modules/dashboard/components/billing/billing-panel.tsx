@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { formatTanggal } from '@/modules/dashboard/components/shared/dashboard-dates';
 
 interface InvoiceRow {
@@ -265,9 +266,11 @@ export function BillingPanel({
       <section aria-label="Ringkasan faktur" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Ringkasan faktur</p>
         <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-paper-dim">
-          {invoices.length === 0
-            ? 'Belum ada faktur tercatat untuk organisasi ini.'
-            : `${invoices.length} faktur · ${paidInvoices.length} lunas (${formatIdr(paidTotal)}) · ${unpaidInvoices.length} belum bayar.`}
+          {invoices.length === 0 ? (
+            <EmptyState title="Belum ada faktur tercatat untuk organisasi ini." description="Data akan tampil di sini setelah tersedia." />
+          ) : (
+            `${invoices.length} faktur · ${paidInvoices.length} lunas (${formatIdr(paidTotal)}) · ${unpaidInvoices.length} belum bayar.`
+          )}
         </p>
       </section>
 
@@ -345,7 +348,7 @@ export function BillingPanel({
               )}
             </li>
           ))}
-          {invoices.length === 0 ? <li className="py-3 font-sans text-sm text-paper-faint">Belum ada faktur.</li> : null}
+          {invoices.length === 0 ? <li><EmptyState title="Belum ada faktur." description="Data akan tampil di sini setelah tersedia." /></li> : null}
         </ul>
       </section>
 

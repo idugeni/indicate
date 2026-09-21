@@ -4,6 +4,7 @@ import { useId, useRef, useState, useTransition, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Send, Sparkles } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -181,9 +182,7 @@ export function PublishingForm({
             </span>
             <div className="max-h-52 divide-y divide-hairline overflow-y-auto border-y border-hairline">
               {model?.sites?.length === 0 ? (
-                <p className="m-0 py-3 font-sans text-xs text-paper-faint">
-                  Belum ada situs tujuan.
-                </p>
+                <EmptyState title="Belum ada situs tujuan." description="Data akan tampil di sini setelah tersedia." />
               ) : (
                 model?.sites?.map((item) => (
                   <details key={item.id} className="py-1">

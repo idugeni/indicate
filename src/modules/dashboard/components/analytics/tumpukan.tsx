@@ -5,6 +5,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { TugasHarian } from '@/modules/dashboard/models';
 import { WARNA_ANTRE, WARNA_GAGAL, WARNA_TERBIT, labelHari } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 /**
  * Render komposisi tugas harian sebagai batang bertumpuk.
@@ -31,7 +32,7 @@ export function TugasBertumpuk({ series }: { readonly series: readonly TugasHari
         Diterbitkan, gagal, dan antre per hari
       </p>
       {data.length === 0 ? (
-        <p className="m-auto px-2 py-6 text-center font-sans text-[13px] text-paper-dim">Belum ada data deret waktu.</p>
+        <EmptyState title="Belum ada data deret waktu." description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <ChartContainer
           config={{

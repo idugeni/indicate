@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 interface DeploymentOverview {
   readonly supabaseProjectRef: string;
@@ -209,7 +210,7 @@ export function PolicyOverviewSection() {
               Rate limits
             </h4>
             {policies.rateLimits.length === 0 ? (
-              <p className="m-0 mt-2 font-mono text-xs text-paper-faint">Belum ada batas laju.</p>
+              <EmptyState title="Belum ada batas laju." description="Data akan tampil di sini setelah tersedia." />
             ) : (
               <div className="mt-2">
                 <DefinitionList

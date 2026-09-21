@@ -5,6 +5,7 @@ import { Treemap } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { AnalyticsPoint } from '@/modules/dashboard/models';
 import { PALET_KATEGORI } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 const BATAS_SEGMEN = 12;
 
@@ -200,7 +201,7 @@ export function PetaPohon({
         </p>
       </div>
       {data.length === 0 ? (
-        <p className="m-auto px-2 py-6 text-center font-sans text-[13px] text-paper-dim">{kosong}</p>
+        <EmptyState title={kosong} description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <ChartContainer config={{}} className="mt-4 h-64 w-full">
           <Treemap

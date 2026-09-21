@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { AnalyticsProjection, ViewsHarian, ViewsPoint } from '@/modules/dashboard/models';
 import { labelHari, potongLabel, warnaKategori } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { KalenderPanass, PetaPanas } from '@/modules/dashboard/components/analytics/panas';
 import { KpiSparkline } from '@/modules/dashboard/components/analytics/kpi-spark';
 import { LiniMasa } from '@/modules/dashboard/components/analytics/lini-masa';
@@ -79,7 +80,7 @@ export function GarisTayangan({ series }: { readonly series: readonly ViewsHaria
         </div>
       </div>
       {data.length === 0 ? (
-        <p className="m-auto px-2 py-6 text-center font-sans text-[13px] text-paper-dim">Belum ada data tayangan.</p>
+        <EmptyState title="Belum ada data tayangan." description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <ChartContainer
           config={{ tayangan: { label: 'Tayangan', color: '#cc9a44' } }}
@@ -143,7 +144,7 @@ export function BarTayanganSitus({ baris, label }: { readonly baris: readonly Vi
         </p>
       </div>
       {data.length === 0 ? (
-        <p className="m-auto px-2 py-6 text-center font-sans text-[13px] text-paper-dim">Belum ada data tayangan situs.</p>
+        <EmptyState title="Belum ada data tayangan situs." description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <ChartContainer config={{ tayangan: { label: 'Tayangan', color: '#6c93c9' } }} className="mt-4 max-h-64 w-full">
           <BarChart data={data} layout="vertical" margin={{ left: 8, right: 12 }}>
@@ -218,7 +219,7 @@ export function TumpukanSitus({ hasil, label }: { readonly hasil: readonly { rea
         Penyaluran 8 situs teratas per status
       </p>
       {data.length === 0 ? (
-        <p className="m-auto px-2 py-6 text-center font-sans text-[13px] text-paper-dim">Belum ada hasil situs.</p>
+        <EmptyState title="Belum ada hasil situs." description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <ChartContainer
           config={Object.fromEntries(statusList.map((status) => [status, { label: status, color: WARNA_TUMPUK[status] ?? '#8b93a7' }]))}
@@ -284,7 +285,7 @@ export function GelembungTayangan({ baris, label }: { readonly baris: readonly V
         Volume vs rata-rata tayangan per situs
       </p>
       {data.length === 0 ? (
-        <p className="m-auto px-2 py-6 text-center font-sans text-[13px] text-paper-dim">Belum ada data sebar tayangan.</p>
+        <EmptyState title="Belum ada data sebar tayangan." description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <ChartContainer config={{ total: { label: 'Tayangan', color: '#5fcbb0' } }} className="mt-4 h-64 w-full">
           <ScatterChart margin={{ left: 0, right: 12, top: 8, bottom: 0 }}>
