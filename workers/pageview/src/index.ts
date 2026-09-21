@@ -38,27 +38,40 @@ function readCfHints(request: Request): PageviewCfHints | null {
 }
 
 /**
- * Penerima beacon pageview pengganti worker tak berversi: `POST /v` menambah
- * satu counter Upstash, respons lain 404, kegagalan apa pun tetap 204 agar
- * beacon fire-and-forget tidak pernah memecah halaman. `content-type` sengaja
- * tidak diwajibkan karena `navigator.sendBeacon(string)` mengirim text/plain.
- * Bot terdeteksi (UA + sinyal `request.cf`) ditolak dengan 204 tanpa INCR.
- * Kunci counter diberi EXPIRE 7 hari agar tak menumpuk bila cron flush mati lama.
+ * Pageview beacon receiver replacing the unversioned worker: `POST /v` increments
+ * one Upstash counter, other responses 404, any failure still 204 so the
+ * fire-and-forget beacon never breaks the page. `content-type` is deliberately
+ * not required because `navigator.sendBeacon(string)` sends text/plain.
+ * Detected bots (UA + `request.cf` signals) are rejected with 204 without INCR.
+ * The counter key gets a 7-day EXPIRE so keys do not pile up when the flush cron stays down long.
+ * Loose CORS (`*`) + `OPTIONS → 204` so future JSON payloads that trigger
+ * preflight do not fail silently; the beacon never reads the response, so
+ * opening the origin does not weaken the limits (UUID + 1 KB validation still apply).
  */
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Max-Age': '86400',
+} as const;
+
 const worker = {
   async fetch(request: Request, env: PageviewWorkerEnv): Promise<Response> {
     const url = new URL(request.url);
+    if (request.method === 'OPTIONS' && url.pathname === '/v') {
+      return new Response(null, { status: 204, headers: { ...CORS_HEADERS } });
+    }
     if (request.method !== 'POST' || url.pathname !== '/v') {
-      return new Response('Not Found', { status: 404 });
+      return new Response('Not Found', { status: 404, headers: { ...CORS_HEADERS } });
     }
     try {
       if (isBotPageview(request.headers.get('user-agent'), readCfHints(request))) {
-        return new Response(null, { status: 204 });
+        return new Response(null, { status: 204, headers: { ...CORS_HEADERS } });
       }
       const raw = await request.text();
-      if (raw.length === 0 || raw.length > PAGEVIEW_BODY_MAX_BYTES) return new Response(null, { status: 204 });
+      if (raw.length === 0 || raw.length > PAGEVIEW_BODY_MAX_BYTES) return new Response(null, { status: 204, headers: { ...CORS_HEADERS } });
       const parsed = pageviewBeaconSchema.safeParse(JSON.parse(raw));
-      if (!parsed.success) return new Response(null, { status: 204 });
+      if (!parsed.success) return new Response(null, { status: 204, headers: { ...CORS_HEADERS } });
       const key = buildPageviewKey(env.ENVIRONMENT ?? 'production', parsed.data);
       const upstream = await fetch(`${env.UPSTASH_REDIS_REST_URL}/pipeline`, {
         method: 'POST',
@@ -73,9 +86,9 @@ const worker = {
       });
       await upstream.arrayBuffer();
     } catch {
-      /* hitungan boleh hilang */
+      /* counts may be lost */
     }
-    return new Response(null, { status: 204 });
+    return new Response(null, { status: 204, headers: { ...CORS_HEADERS } });
   },
 };
 

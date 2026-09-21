@@ -55,6 +55,7 @@ describe('pageview worker', () => {
     vi.stubGlobal('fetch', upstream);
     const response = await worker.fetch(postBeacon(BROWSER_UA, JSON.stringify(BEACON)), { ...ENV });
     expect(response.status).toBe(204);
+    expect(response.headers.get('access-control-allow-origin')).toBe('*');
     expect(upstream).toHaveBeenCalledTimes(1);
     const [, init] = upstream.mock.calls[0] as unknown as [string, RequestInit];
     const key = `pv:test:${BEACON.o}:${BEACON.s}:${BEACON.a}`;
@@ -62,5 +63,15 @@ describe('pageview worker', () => {
       ['INCR', key],
       ['EXPIRE', key, PAGEVIEW_KEY_TTL_SECONDS],
     ]);
+  });
+
+  it('jawab preflight OPTIONS dengan 204 + CORS tanpa menyentuh Upstash', async () => {
+    const upstream = vi.fn(async () => new Response(null, { status: 200 }));
+    vi.stubGlobal('fetch', upstream);
+    const response = await worker.fetch(new Request('https://pv.indicate.web.id/v', { method: 'OPTIONS' }), { ...ENV });
+    expect(response.status).toBe(204);
+    expect(response.headers.get('access-control-allow-origin')).toBe('*');
+    expect(response.headers.get('access-control-allow-methods')).toContain('POST');
+    expect(upstream).not.toHaveBeenCalled();
   });
 });

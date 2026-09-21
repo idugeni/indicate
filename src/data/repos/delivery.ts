@@ -29,7 +29,7 @@ const absoluteDefaultAssetUrl = (context: ResolvedSiteContext, configuredUrl: st
 /**
  * Serve delivery reads and activation writes.
  *
- * @remarks Penerbitan penuh: satu artikel kanonis tayang di portal mana pun yang diberi assignment, lintas region sekalipun. Region artikel adalah kanal asal/atribusi, bukan kunci tampil.
+ * @remarks Full syndication: one canonical article airs on any portal granted an assignment, even across regions. The article region is the origin/attribution channel, not a visibility key.
  */
 export class DrizzleDeliveryRepository implements DeliveryRepository {
   constructor(private readonly database: Database, private readonly defaultImageUrl: string) {}
@@ -50,7 +50,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
    *
    * @param hostname - Exact hostname to resolve.
    * @returns Resolved site contexts with valid versions.
-   * @remarks Fail closed cepat: baris tanpa versi routing/konten valid diperlakukan sebagai host tak dikenal (404) alih-alih meledak sebagai UNDEFINED_VALUE jauh di dalam pembangunan query (500 + CPU terbuang).
+   * @remarks Fail closed fast: rows without a valid routing/content version are treated as unknown hosts (404) instead of exploding as UNDEFINED_VALUE deep inside query building (500 + wasted CPU).
    */
   async findActiveSitesByExactHostname(hostname: string): Promise<readonly ResolvedSiteContext[]> {
     const rows = await this.database.execute<{
@@ -124,10 +124,10 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
   }
 
   /**
-   * Cangkang situs untuk 404 bermerek: settings tanpa query artikel/galeri.
+   * Site shell for branded 404s: settings without article/gallery queries.
    *
-   * @remarks Probe bot ke path acak tidak membayar query konten; branded 404
-   * tetap tampil dengan logo + nama tenant.
+   * @remarks Bot probes to random paths pay no content queries; the branded 404
+   * still renders with the tenant logo + name.
    */
   async loadSiteShell(context: ResolvedSiteContext): Promise<NetworkSiteData | null> {
     return this.database.transaction(async (transaction) => {
@@ -156,7 +156,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         .leftJoin(media, and(eq(media.organizationId, articles.organizationId), eq(media.id, articles.leadMediaId), eq(media.state, 'active')))
         .leftJoin(customMedia, and(eq(customMedia.organizationId, articles.organizationId), eq(customMedia.id, articleSites.customImageMediaId), eq(customMedia.state, 'active')))
         .leftJoin(officialAffiliations, and(eq(officialAffiliations.organizationId, articles.organizationId), eq(officialAffiliations.publisherId, articles.publisherId), eq(officialAffiliations.siteId, context.siteId), eq(officialAffiliations.active, true), isNotNull(officialAffiliations.verifiedAt), sql`${officialAffiliations.claimScopes} @> ARRAY['site_name']::text[]`))
-        .where(and(...conditions)).orderBy(sql`${articleSites.publishedAt} DESC`).limit(query.articleSlug === undefined ? 100 : 2);
+        .where(and(...conditions)).orderBy(sql`${articleSites.publishedAt} DESC`).limit(query.articleSlug !== undefined ? 2 : query.search !== undefined ? 20 : 100);
       const detailTarget = query.articleSlug === undefined ? undefined : rows[0];
       let detailBody: string | null = null;
       let detailGallery: readonly { readonly url: string; readonly thumbnailUrl: string | null }[] = [];
@@ -237,10 +237,10 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
   }
 
   /**
-   * Feed RSS per host: metadata + body penuh tanpa relasi berat.
+   * Per-host RSS feed: metadata + full body without heavy relations.
    *
-   * @remarks Satu-satunya pembaca body massal selain halaman detail artikel
-   * tunggal; lalu lintas RSS rendah dan ter-cache edge 600 detik.
+   * @remarks The only bulk body reader besides the single-article detail page;
+   * RSS traffic is low and edge-cached for 600 seconds.
    */
   async loadNetworkFeed(context: ResolvedSiteContext, limit = 50): Promise<readonly FeedArticle[]> {
     return this.database.transaction(async (transaction) => {

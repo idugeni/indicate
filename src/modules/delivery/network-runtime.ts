@@ -3,17 +3,55 @@ import type { Metadata } from 'next';
 import { cacheLife, cacheTag } from 'next/cache';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { buildSeoDocument, indexableRobots, nonIndexableRobots, tenantFavicon } from '@/modules/site/seo';
-import type { NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
+import type { NetworkContentQuery, NetworkSiteData, RequestClassification, ResolvedSiteContext } from '@/modules/delivery/models';
 import { isNetworkArticle } from '@/modules/delivery/models';
 import { deliveryComposition } from '@/modules/delivery';
 import { TAG_MAX_LENGTH, normalizeSlugCandidate } from '@/modules/site/slug-allocator';
+import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
+import { readPageviewCounts } from '@/integrations/redis/pageview-buffer';
+import { buildPageviewKey } from '@/modules/site/pageview-contract';
+
+const getDeliveryComposition = cache(async () => deliveryComposition());
 
 /**
- * Konten tenant per-host di Next cache. Tag memakai kosakata yang sama dengan
- * `planInvalidation()` (`host:`/`site:`/`org:`/`article:`) sehingga dispatcher invalidasi
- * yang sudah ada (publish/unpublish/media/hostname) fan-out otomatis tanpa
- * perubahan dispatcher. Key cache mencakup context + query + path + locale.
+ * Classify a request hostname with per-request deduplication.
+ *
+ * @param host - Value of `x-forwarded-host` or `host` for the request.
+ * @returns Control, site, or error classification for the hostname.
+ * @remarks Shared by page, metadata, and throttle helpers so one request pays a single hostname lookup no matter how many server components resolve the tenant.
+ */
+export const classifyTenantHost = cache(async (host: string | null | undefined): Promise<RequestClassification> => {
+  const { resolver } = await getDeliveryComposition();
+  return resolver.classify(host);
+});
+
+const readBypassed = cache(async (organizationId: string, siteId: string): Promise<boolean> => {
+  const { repository } = await getDeliveryComposition();
+  return repository.isCacheBypassed({ organizationId, siteId });
+});
+
+const readArticleBuffer = cache(async (organizationId: string, siteId: string, articleSiteId: string): Promise<number> => {
+  try {
+    if (process.env.NEXT_PHASE === 'phase-production-build') return 0;
+    const context = await getServerRuntimeContext();
+    const [pending] = await readPageviewCounts({
+      url: context.config.redis.url,
+      token: context.config.redis.token,
+      keys: [buildPageviewKey(context.bootstrap.environment, { o: organizationId, s: siteId, a: articleSiteId })],
+    });
+    return pending ?? 0;
+  } catch {
+    return 0;
+  }
+});
+
+/**
+ * Per-host tenant content in the Next cache. Tags use the same vocabulary as
+ * `planInvalidation()` (`host:`/`site:`/`org:`/`article:`) so the existing invalidation dispatcher
+ * (publish/unpublish/media/hostname) fans out automatically with no
+ * dispatcher changes. Cache keys cover context + query + path + locale.
  */
 async function loadFreshNetworkSite(
   context: ResolvedSiteContext,
@@ -21,7 +59,7 @@ async function loadFreshNetworkSite(
   path: string,
   locale: string,
 ): Promise<NetworkSiteData | null> {
-  const { content } = await deliveryComposition();
+  const { content } = await getDeliveryComposition();
   return content.load(context, query, { path, locale });
 }
 async function loadCachedNetworkSite(
@@ -33,22 +71,36 @@ async function loadCachedNetworkSite(
   'use cache';
   cacheLife('minutes');
   cacheTag(`host:${context.normalizedHostname}`, `site:${context.siteId}`, `org:${context.organizationId}`, ...(query.articleSlug === undefined ? [] : [`article:${query.articleSlug}`]));
-  const { content } = await deliveryComposition();
+  const { content } = await getDeliveryComposition();
+  return content.load(context, query, { path, locale });
+}
+async function loadCachedSearchSite(
+  context: ResolvedSiteContext,
+  query: NetworkContentQuery,
+  path: string,
+  locale: string,
+): Promise<NetworkSiteData | null> {
+  'use cache';
+  cacheLife('seconds');
+  cacheTag(`host:${context.normalizedHostname}`, `site:${context.siteId}`, `org:${context.organizationId}`);
+  const { content } = await getDeliveryComposition();
   return content.load(context, query, { path, locale });
 }
 
 /**
- * Selesaikan situs tenant untuk host dan path masuk.
+ * Resolve the tenant site for the incoming host and path.
  *
- * @remarks Sanitasi di sini agar key cache stabil (load internal memakai aturan yang sama).
- * Bypass Postgres dilewati sebelum loader cache: mutasi yang mengantre invalidasi
- * harus terbaca segar walau entri luar masih hangat.
+ * @remarks Sanitize here to keep cache keys stable (internal loads use the same rules).
+ * Host classification, delivery composition, and the bypass flag are deduplicated per request
+ * via `cache()` so `generateMetadata()` + page components + neighbor lookups
+ * share one context without duplicate transactions. Search queries use the
+ * `seconds` loader so unbounded keys never inhabit the minute cache.
  */
 export async function resolveNetworkSite(query: NetworkContentQuery = {}, path = '/'): Promise<NetworkSiteData> {
   const requestHeaders = await headers();
   const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host');
-  const { resolver, config, repository } = await deliveryComposition();
-  const classification = await resolver.classify(host);
+  const { config } = await getDeliveryComposition();
+  const classification = await classifyTenantHost(host);
   if (classification.kind === 'ambiguous') throw new Error('AMBIGUOUS_PUBLIC_HOST_CONFIGURATION');
   if (classification.kind !== 'site') notFound();
   const sanitized: NetworkContentQuery = {
@@ -57,28 +109,37 @@ export async function resolveNetworkSite(query: NetworkContentQuery = {}, path =
     ...(query.tag === undefined || query.tag.trim() === '' ? {} : { tag: normalizeSlugCandidate(query.tag).slice(0, TAG_MAX_LENGTH) }),
     ...(query.search === undefined || query.search.trim() === '' ? {} : { search: query.search.trim().slice(0, 120) }),
   };
-  const bypassed = await repository.isCacheBypassed(classification.context);
+  const bypassed = await readBypassed(classification.context.organizationId, classification.context.siteId);
+  const loader = sanitized.search === undefined ? loadCachedNetworkSite : loadCachedSearchSite;
   const site = bypassed
     ? await loadFreshNetworkSite(classification.context, sanitized, path, config.seo.defaultLocale)
-    : await loadCachedNetworkSite(classification.context, sanitized, path, config.seo.defaultLocale);
+    : await loader(classification.context, sanitized, path, config.seo.defaultLocale);
   if (site === null) notFound();
-  return site;
+  if (sanitized.articleSlug === undefined) return site;
+  const head = site.articles[0];
+  if (head === undefined) return site;
+  const pending = await readArticleBuffer(site.context.organizationId, site.context.siteId, head.articleSiteId);
+  if (pending === 0) return site;
+  return {
+    ...site,
+    articles: site.articles.map((item, index) => (index === 0 ? { ...item, viewCount: item.viewCount + pending } : item)),
+  };
 }
 
 /** Tenant metadata; search pages stay `noindex, follow` (link equity without index entry). */
 
 /**
- * Ambang indeks agregator: halaman daftar/tag/kategori di-noindex sampai volume
- * konten cukup (anti thin-content). Naik sendiri saat artikel bertambah —
- * tanpa konfigurasi per site.
+ * Aggregator index threshold: list/tag/category pages stay noindex until content volume
+ * is sufficient (anti thin-content). Rises on its own as articles grow,
+ * with no per-site configuration.
  */
 const TAG_INDEX_MINIMUM = 3;
 const CATEGORY_INDEX_MINIMUM = 3;
 
 /**
- * Metadata tenant untuk halaman yang sengaja tidak diindeks (pencarian,
- * agregator di bawah ambang, artikel hilang): tetap membawa canonical + OG
- * milik tenant agar tidak mewarisi metadata control-plane dari layout.
+ * Tenant metadata for deliberately unindexed pages (search,
+ * below-threshold aggregators, missing articles): still carries the tenant's own canonical + OG
+ * so it never inherits control-plane metadata from the layout.
  */
 function tenantHiddenMeta(
   site: NetworkSiteData,
@@ -112,9 +173,9 @@ function tenantHiddenMeta(
   };
 }
 /**
- * Susun metadata tenant untuk path dan query yang diberikan.
+ * Build tenant metadata for the given path and query.
  *
- * @remarks Judul memakai bentuk absolut agar tidak ditempeli template '| Indicate' milik control-plane (src/app/layout.tsx).
+ * @remarks Titles use the absolute form so the control-plane '| Indicate' template (src/app/layout.tsx) is never appended.
  */
 export async function networkMetadata(path: string, query: NetworkContentQuery = {}, titleOverride?: string, descriptionOverride?: string): Promise<Metadata> {
   const site = await resolveNetworkSite(query, path);

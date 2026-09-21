@@ -3,11 +3,11 @@ import 'server-only';
 import { Redis } from '@upstash/redis';
 
 /**
- * Lapis kedua cache snapshot runtime di Redis bersama (bukan per-instance).
- * Kunci mencakup revision sehingga tidak ada bacaan basi menurut konstruksi;
- * kunci kedaluwarsa sendiri. Setiap kegagalan (jaringan, parse, bentuk)
- * mengembalikan null dan pemanggil jatuh kembali ke baca Postgres penuh —
- * tidak pernah mengadopsi nilai parsial.
+ * Second-layer runtime snapshot cache in shared Redis (not per-instance).
+ * Keys include the revision so stale reads are impossible by construction;
+ * keys expire on their own. Every failure (network, parse, shape)
+ * returns null and the caller falls back to a full Postgres read —
+ * never adopting a partial value.
  */
 export class UpstashSnapshotStore {
   private readonly redis: Redis;
@@ -48,6 +48,32 @@ export class UpstashSnapshotStore {
   }
 
   /**
+   * Read several namespaced keys in one round-trip.
+   *
+   * @param keys - Key suffixes appended to the store namespace.
+   * @returns Parsed payloads in input order; miss or failure yields null per key.
+   */
+  async readMany(keys: readonly string[]): Promise<readonly (unknown | null)[]> {
+    if (keys.length === 0) return [];
+    try {
+      const raws = await this.redis.mget(...keys.map((key) => `${this.namespace}:${key}`));
+      return raws.map((raw) => {
+        if (typeof raw === 'string') {
+          try {
+            return JSON.parse(raw) as unknown;
+          } catch {
+            return null;
+          }
+        }
+        if (raw !== null && typeof raw === 'object') return raw;
+        return null;
+      });
+    } catch {
+      return keys.map(() => null);
+    }
+  }
+
+  /**
    * Write an arbitrary namespaced key with a self-expiring TTL.
    *
    * @param key - Key suffix appended to the store namespace.
@@ -58,7 +84,7 @@ export class UpstashSnapshotStore {
     try {
       await this.redis.set(`${this.namespace}:${key}`, JSON.stringify(model), { ex: ttlSeconds });
     } catch {
-      /* best-effort: kegagalan tulis tidak menggagalkan refresh */
+      /* best-effort: write failure does not fail the refresh */
     }
   }
 }

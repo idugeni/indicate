@@ -1,14 +1,12 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { SearchPage } from '@/modules/site/components/network/network-listing';
-import { deliveryComposition } from '@/modules/delivery';
 import { checkSearchRateLimit } from '@/modules/delivery/search-rate-limit';
-import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
+import { classifyTenantHost, networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 import { createProductionIntegrationsContext } from '@/modules/integrations';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
-import { nonIndexableRobots } from '@/modules/site/seo';
 
-export const maxDuration = 60;
+export const maxDuration = 25;
 
 type Props = {
   readonly searchParams: Promise<{ q?: string } & { [key: string]: string | string[] | undefined }>;
@@ -27,14 +25,10 @@ export function normalizeQuery(value: string | string[] | undefined): string {
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const resolved = await searchParams;
-  const retryAfterSeconds = await throttledSearch();
-  if (retryAfterSeconds !== null) {
-    return { title: { absolute: 'Pencarian dibatasi' }, robots: nonIndexableRobots() };
-  }
   return networkMetadata('/search', { search: normalizeQuery(resolved.q) });
 }
 
-/** Pencarian tenant: hasil dari korpus situs aktif. */
+/** Tenant search: results from the active site corpus. */
 export default async function SearchPageRoute({ searchParams }: Props) {
   const resolved = await searchParams;
   const query = normalizeQuery(resolved.q);
@@ -46,9 +40,8 @@ export default async function SearchPageRoute({ searchParams }: Props) {
 
 async function throttledSearch(): Promise<string | null> {
   const requestId = crypto.randomUUID();
-  const composition = await deliveryComposition();
   const incoming = await headers();
-  const result = await composition.resolver.classify(
+  const result = await classifyTenantHost(
     incoming.get('x-forwarded-host') ?? incoming.get('host'),
   );
   if (result.kind !== 'site') return null;

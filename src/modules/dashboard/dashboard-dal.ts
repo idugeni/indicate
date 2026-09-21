@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { and, eq, inArray } from 'drizzle-orm';
 import { unstable_cache } from 'next/cache';
 
 import { getBootstrapConfig } from '@/core/config/bootstrap/bootstrap-config';
@@ -11,13 +12,16 @@ import type { AnalyticsProjection, DashboardSnapshot, DashboardProjection } from
 import { analyticsFilterSchema } from '@/modules/dashboard/schemas';
 import { createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
+import { readPageviewCounts } from '@/integrations/redis/pageview-buffer';
 import { UpstashSnapshotStore } from '@/integrations/redis/upstash-snapshot-store';
 import { orgTag } from '@/modules/dashboard/cache-tags';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
+import { articleSites } from '@/data/schema';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { UuidGenerator } from '@/core/system/uuid-generator';
+import { buildPageviewKey } from '@/modules/site/pageview-contract';
 import type { VerifiedAuthIdentity } from '@/integrations/supabase/ports';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 
@@ -97,13 +101,69 @@ function isAnalyticsProjection(value: unknown): value is AnalyticsProjection {
   return Array.isArray((value as { readonly articlesByRegion?: unknown }).articlesByRegion);
 }
 
-function isFullSnapshot(value: unknown, organizationId: string): value is DashboardSnapshot {
+interface SnapshotData extends DashboardProjection {
+  readonly analytics: AnalyticsProjection;
+}
+
+function isFullSnapshot(value: unknown, organizationId: string): value is DashboardSnapshot & { readonly data: SnapshotData } {
   if (typeof value !== 'object' || value === null) return false;
   const record = value as { readonly organizationId?: unknown; readonly data?: unknown };
   if (record.organizationId !== organizationId) return false;
   if (typeof record.data !== 'object' || record.data === null) return false;
   const data = record.data as Record<string, unknown>;
   return isDashboardProjection(data) && isAnalyticsProjection(data.analytics);
+}
+
+const PAGEVIEW_BUFFER_ARTICLE_LIMIT = 100;
+
+async function mergePageviewBuffer(organizationId: string, projection: AnalyticsProjection): Promise<AnalyticsProjection> {
+  try {
+    const rows = projection.viewsByArticle ?? [];
+    if (rows.length === 0) return projection;
+    if (process.env.NEXT_PHASE === 'phase-production-build') return projection;
+    const context = await getServerRuntimeContext();
+    const articleIds = [...new Set(rows.map((row) => row.key))].slice(0, PAGEVIEW_BUFFER_ARTICLE_LIMIT);
+    if (articleIds.length === 0) return projection;
+    const runtime = getSharedRuntimeDatabase(context.bootstrap);
+    const mappings = await runtime.db
+      .select({ id: articleSites.id, siteId: articleSites.siteId, articleId: articleSites.articleId })
+      .from(articleSites)
+      .where(and(eq(articleSites.organizationId, organizationId), inArray(articleSites.articleId, articleIds)));
+    if (mappings.length === 0) return projection;
+    const keys = mappings.map((mapping) =>
+      buildPageviewKey(context.bootstrap.environment, { o: organizationId, s: mapping.siteId, a: mapping.id }),
+    );
+    const counts = await readPageviewCounts({ url: context.config.redis.url, token: context.config.redis.token, keys });
+    const perArticle = new Map<string, number>();
+    const perSite = new Map<string, number>();
+    let total = 0;
+    mappings.forEach((mapping, index) => {
+      const count = counts[index] ?? 0;
+      if (count <= 0) return;
+      perArticle.set(mapping.articleId, (perArticle.get(mapping.articleId) ?? 0) + count);
+      perSite.set(mapping.siteId, (perSite.get(mapping.siteId) ?? 0) + count);
+      total += count;
+    });
+    if (total === 0) return projection;
+    const today = new Date().toISOString().slice(0, 10);
+    return {
+      ...projection,
+      viewsByArticle: (projection.viewsByArticle ?? []).map((row) => {
+        const pending = perArticle.get(row.key) ?? 0;
+        return pending === 0 ? row : { ...row, views: row.views + pending };
+      }),
+      viewsBySite: (projection.viewsBySite ?? []).map((row) => {
+        const pending = perSite.get(row.key) ?? 0;
+        return pending === 0 ? row : { ...row, views: row.views + pending };
+      }),
+      viewsHarian: (projection.viewsHarian ?? []).map((row) =>
+        row.hari === today ? { ...row, views: row.views + total } : row,
+      ),
+      totalViews: (projection.totalViews ?? 0) + total,
+    };
+  } catch {
+    return projection;
+  }
 }
 
 async function loadDashboardProjectionFromDatabase(input: ProjectionInput): Promise<DashboardProjection> {
@@ -165,10 +225,10 @@ async function loadAnalyticsProjectionFromDatabase(input: AnalyticsInput): Promi
 }
 
 /**
- * Load proyeksi analitik lewat cache 60 detik per (org, aktor, izin, rentang).
+ * Load the analytics projection through the 60-second cache per (org, actor, permissions, range).
  *
- * @param input - Identitas org/aktor, izin terurut, scope region, dan rentang `from`/`to` tervalidasi.
- * @returns Proyeksi analitik beku; gagal bila izin analitik tidak terpenuhi.
+ * @param input - Org/actor identity, sorted permissions, region scope, and validated `from`/`to` range.
+ * @returns Frozen analytics projection; fails when analytics permission is unmet.
  */
 function loadAnalyticsProjection(input: AnalyticsInput): Promise<AnalyticsProjection> {
   const permissionKey = [...input.permissions].sort().join(',');
@@ -191,10 +251,10 @@ function loadAnalyticsProjection(input: AnalyticsInput): Promise<AnalyticsProjec
 }
 
 /**
- * Baca metrik dashboard lewat lapisan cache bersama tanpa query penuh saat hit.
+ * Read dashboard metrics through the shared cache layer without a full query on hit.
  *
- * @param actor - Aktor user tenant; izin org dan platform digabung menjadi kunci cache.
- * @returns Proyeksi hitung atau envelope ketidaktersediaan; cache hanya menyimpan sukses.
+ * @param actor - Tenant user actor; org and platform permissions merge into the cache key.
+ * @returns Count projection or unavailability envelope; the cache stores successes only.
  */
 export async function fetchCachedDashboard(
   actor: Extract<AuthorizedTenantActorContext, { readonly actorType: 'user' }>,
@@ -215,11 +275,11 @@ export async function fetchCachedDashboard(
 }
 
 /**
- * Baca analitik dengan validasi filter dan cache snapshot.
+ * Read analytics with filter validation and snapshot caching.
  *
- * @param actor - Aktor user tenant dari route workspace (sesi cookie selalu user).
- * @param rawFilter - Filter mentah `from`/`to`; divalidasi sebelum menyentuh cache.
- * @returns Proyeksi analitik atau envelope input-tidak-valid; cache hanya menyimpan sukses.
+ * @param actor - Tenant user actor from the workspace route (cookie sessions are always users).
+ * @param rawFilter - Raw `from`/`to` filter; validated before touching the cache.
+ * @returns Analytics projection or invalid-input envelope; the cache stores successes only.
  */
 export async function fetchCachedAnalytics(
   actor: Extract<AuthorizedTenantActorContext, { readonly actorType: 'user' }>,
@@ -245,7 +305,7 @@ export async function fetchCachedAnalytics(
       from: parsed.data.from,
       to: parsed.data.to,
     });
-    return { ok: true, value };
+    return { ok: true, value: await mergePageviewBuffer(actor.organizationId, value) };
   } catch {
     return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The operation could not be completed.', actor.requestId) };
   }
@@ -293,15 +353,34 @@ export async function getDashboardSnapshot(organizationId: string, identity: Ver
     };
     const store = resolveDashboardStore();
     if (store !== null) {
-      const hit = await store.readKey(fullSnapshotRedisKey(projectionInput));
-      if (isFullSnapshot(hit, organizationId)) return hit;
+      const fullKey = fullSnapshotRedisKey(projectionInput);
+      const dashboardKey = dashboardRedisKey(projectionInput);
+      const analyticsKey = analyticsRedisKey({ ...projectionInput, from: undefined, to: undefined });
+      const [fullHit, dashboardHit, analyticsHit] = await store.readMany([fullKey, dashboardKey, analyticsKey]);
+      if (isFullSnapshot(fullHit, organizationId)) {
+        return {
+          organizationId,
+          data: { ...fullHit.data, analytics: await mergePageviewBuffer(organizationId, fullHit.data.analytics) },
+        };
+      }
+      if (isDashboardProjection(dashboardHit) && isAnalyticsProjection(analyticsHit)) {
+        const snapshot: DashboardSnapshot = {
+          organizationId,
+          data: { ...dashboardHit, analytics: await mergePageviewBuffer(organizationId, analyticsHit) },
+        };
+        await store.writeKey(fullKey, snapshot, DASHBOARD_REDIS_TTL_SECONDS);
+        return snapshot;
+      }
     }
     const [data, analytics] = await Promise.all([
       loadDashboardProjection(projectionInput),
       loadAnalyticsProjection({ ...projectionInput, from: undefined, to: undefined }).catch(() => null),
     ]);
     if (analytics === null) return { organizationId, data };
-    const snapshot: DashboardSnapshot = { organizationId, data: { ...data, analytics } };
+    const snapshot: DashboardSnapshot = {
+      organizationId,
+      data: { ...data, analytics: await mergePageviewBuffer(organizationId, analytics) },
+    };
     if (store !== null) await store.writeKey(fullSnapshotRedisKey(projectionInput), snapshot, DASHBOARD_REDIS_TTL_SECONDS);
     return snapshot;
   } catch {

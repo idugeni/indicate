@@ -32,13 +32,13 @@ export interface DeliveryRepository {
   findPendingActivation(hostname: string, attemptId: string): Promise<boolean>;
   loadNetworkSite(context: ResolvedSiteContext, query: NetworkContentQuery): Promise<NetworkSiteData | null>;
   loadNetworkBundle(context: ResolvedSiteContext, query: NetworkContentQuery): Promise<PublicBundle>;
-  /** Baris feed RSS (metadata + body, tanpa galeri) untuk satu host. */
+  /** RSS feed row (metadata + body, no gallery) for one host. */
   loadNetworkFeed(context: ResolvedSiteContext, limit?: number): Promise<readonly FeedArticle[]>;
-  /** Cangkang settings tanpa artikel untuk 404 bermerek. */
+  /** Article-less settings shell for branded 404s. */
   loadSiteShell(context: ResolvedSiteContext): Promise<NetworkSiteData | null>;
-  /** Robots kustom tenant (kolom seo settings, tanpa artikel) untuk /robots.txt. */
+  /** Tenant custom robots (seo settings column, no articles) for /robots.txt. */
   loadSiteRobots(context: ResolvedSiteContext): Promise<readonly string[] | null>;
-  /** Daftar kategori aktif org (ringan, untuk nav yang identik di semua halaman). */
+  /** Active org category list (lightweight, for the identical nav on every page). */
   loadSiteCategories(context: ResolvedSiteContext): Promise<readonly SiteCategory[]>;
   /**
    * Resolve published article id by slug without loading body or gallery.
@@ -48,7 +48,7 @@ export interface DeliveryRepository {
    * @returns Article id when published on the site, otherwise null.
    */
   resolveArticleId(context: ResolvedSiteContext, slug: string): Promise<string | null>;
-  isCacheBypassed(context: ResolvedSiteContext): Promise<boolean>;
+  isCacheBypassed(context: Pick<ResolvedSiteContext, 'organizationId' | 'siteId'>): Promise<boolean>;
   beginActivation(actor: AuthorizedTenantActorContext, siteId: string, hostname: string, previousHostname: string | null, now: string): Promise<ActivationAttempt>;
   updateActivation(actor: AuthorizedTenantActorContext, attemptId: string, activationState: ActivationAttempt['activationState'], externalStatus: Readonly<Record<string, unknown>>, now: string): Promise<ActivationAttempt>;
   failActivation(actor: AuthorizedTenantActorContext, attemptId: string, failure: Readonly<Record<string, unknown>>, nextAttemptAt: string, terminal: boolean, now: string): Promise<ActivationAttempt>;
