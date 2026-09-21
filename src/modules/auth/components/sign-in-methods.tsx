@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { GoogleButton } from '@/modules/auth/components/google-button';
 import { OtpSignInForm } from '@/modules/auth/components/otp-sign-in-form';
@@ -16,13 +17,14 @@ export function SignInMethods() {
       <div className="space-y-6">
         <SignInForm />
         <p className="m-0 text-center">
-          <button
+          <Button
             type="button"
+            variant="link"
             onClick={() => setMethod('otp')}
-            className="font-sans text-sm font-medium text-[#8a5f1c] hover:underline"
+            className="h-auto px-0 font-sans text-[#8a5f1c]"
           >
             Masuk dengan kode email
-          </button>
+          </Button>
         </p>
       </div>
     );
@@ -42,13 +44,14 @@ export function SignInMethods() {
       <GoogleButton />
 
       <p className="m-0 text-center">
-        <button
+        <Button
           type="button"
+          variant="link"
           onClick={() => setMethod('password')}
-          className="font-sans text-sm font-medium text-[#8a5f1c] hover:underline"
+          className="h-auto px-0 font-sans text-[#8a5f1c]"
         >
           Masuk dengan kata sandi
-        </button>
+        </Button>
       </p>
     </div>
   );

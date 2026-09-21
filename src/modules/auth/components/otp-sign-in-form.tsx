@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, MailCheck } from 'lucide-react';
 
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
@@ -196,25 +197,27 @@ export function OtpSignInForm() {
         </AuthSubmit>
       </form>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
-        <button
+        <Button
           type="button"
+          variant="link"
           onClick={() => {
             setSentTo(null);
             setCode('');
             setError(null);
           }}
-          className="font-sans text-sm text-[#4c5b6b] transition-colors hover:text-[#1a2430]"
+          className="h-auto px-0 font-sans font-normal text-[#4c5b6b] hover:text-[#1a2430] hover:no-underline"
         >
           Ganti email
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="link"
           onClick={() => void handleResend()}
           disabled={busy || cooldown > 0 || turnstilePending}
-          className="font-sans text-sm font-medium text-[#8a5f1c] transition-colors hover:underline disabled:text-[#5f6b7a] disabled:hover:no-underline"
+          className="h-auto px-0 font-sans text-[#8a5f1c] disabled:text-[#5f6b7a] disabled:hover:no-underline"
         >
           {cooldown > 0 ? `Kirim ulang dalam ${cooldown} dtk` : 'Kirim ulang kode'}
-        </button>
+        </Button>
       </div>
     </>
   );
