@@ -167,8 +167,6 @@ Detailed procedures: [database migration operations](docs/migrations.md) and [pr
 - [Support](SUPPORT.md)
 - [Code of conduct](CODE_OF_CONDUCT.md)
 - [Changelog](CHANGELOG.md)
-- [Implemented Indicate MVP specification](.kiro/specs/indicate-mvp/)
-- [Pending database-backed runtime configuration specification](.kiro/specs/database-backed-runtime-config/)
 
 ## License
 
