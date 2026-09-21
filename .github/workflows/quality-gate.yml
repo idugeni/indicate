@@ -155,7 +155,7 @@ jobs:
       - run: npm run lint:md
       - uses: lycheeverse/lychee-action@v2
         with:
-          args: --no-progress --exclude-mail '**/*.md'
+          args: --no-progress '**/*.md'
           fail: true
 
   quality-gate:
