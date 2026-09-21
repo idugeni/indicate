@@ -5,19 +5,19 @@ import { Newspaper } from 'lucide-react';
  *
  * @param background - Page background; 6-digit hex.
  * @param accent - Outer ring and badge fill; 6-digit hex.
- * @param halo - Inner ring highlight; 6-digit hex.
+ * @param glow - Inner ring highlight; 6-digit hex.
  * @param foreground - Badge icon color; any CSS color.
  * @returns Viewport-fixed loading overlay without visible text.
  */
 export function TemplateRingLoader({
   background,
   accent,
-  halo,
+  glow,
   foreground,
 }: {
   readonly background: string;
   readonly accent: string;
-  readonly halo: string;
+  readonly glow: string;
   readonly foreground: string;
 }) {
   return (
@@ -36,7 +36,7 @@ export function TemplateRingLoader({
         <span className="absolute inset-2 rounded-full" style={{ background }} />
         <span
           className="absolute inset-2 animate-[template-ring-spin_1.1s_linear_infinite] rounded-full"
-          style={{ background: `conic-gradient(from 180deg, transparent 20%, ${halo} 55%, transparent 80%)` }}
+          style={{ background: `conic-gradient(from 180deg, transparent 20%, ${glow} 55%, transparent 80%)` }}
         />
         <span className="absolute inset-4 rounded-full" style={{ background }} />
         <span

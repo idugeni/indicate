@@ -10,19 +10,19 @@ describe('SHOWCASE_BRANDS', () => {
 
   it('menurunkan inisial dari nama setiap brand', () => {
     for (const brand of SHOWCASE_BRANDS) {
-      const inisial = brand.name
+      const initials = brand.name
         .split(' ')
-        .map((kata) => kata[0])
+        .map((word) => word[0])
         .join('');
-      expect(brand.initials).toBe(inisial);
+      expect(brand.initials).toBe(initials);
     }
   });
 
   it('menyusun nama dari head dan tail dengan aksen hex dan wordmark terisi', () => {
     for (const brand of SHOWCASE_BRANDS) {
-      const gabung = `${brand.head}${brand.tail}`.toLowerCase().replace(/[^a-z]/g, '');
-      const nama = brand.name.toLowerCase().replace(/[^a-z]/g, '');
-      expect(gabung).toBe(nama);
+      const joined = `${brand.head}${brand.tail}`.toLowerCase().replace(/[^a-z]/g, '');
+      const name = brand.name.toLowerCase().replace(/[^a-z]/g, '');
+      expect(joined).toBe(name);
       expect(brand.accent).toMatch(/^#[0-9a-f]{6}$/);
       expect(brand.wordmarkClass.length).toBeGreaterThan(0);
       expect(brand.category.length).toBeGreaterThan(0);
@@ -34,7 +34,7 @@ describe('SHOWCASE_BRANDS', () => {
 describe('SHOWCASE_REGIONAL_EDITIONS', () => {
   it('mencantumkan empat edisi daerah plus penutup', () => {
     expect(SHOWCASE_REGIONAL_EDITIONS).toHaveLength(5);
-    expect(SHOWCASE_REGIONAL_EDITIONS.slice(0, 4).every((edisi) => edisi.startsWith('Edisi '))).toBe(true);
+    expect(SHOWCASE_REGIONAL_EDITIONS.slice(0, 4).every((edition) => edition.startsWith('Edisi '))).toBe(true);
     expect(SHOWCASE_REGIONAL_EDITIONS[4]).toContain('daerah lain');
   });
 });

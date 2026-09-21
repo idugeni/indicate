@@ -34,12 +34,12 @@ function remainder(total: Map<string, number>, top: readonly string[]): number {
 }
 
 function buildGraph(flows: readonly ArusPenerbit[]): { nodes: { name: string }[]; links: FlowLink[] } {
-  const totalPenerbit = countBy(flows, (row) => row.penerbit);
-  const totalSitus = countBy(flows, (row) => row.situs);
-  const topPublishers = topN(totalPenerbit);
-  const topSites = topN(totalSitus);
-  const otherPublishers = remainder(totalPenerbit, topPublishers) > 0 ? ['Penerbit lain'] : [];
-  const otherSites = remainder(totalSitus, topSites) > 0 ? ['Situs lain'] : [];
+  const publisherTotals = countBy(flows, (row) => row.penerbit);
+  const siteTotals = countBy(flows, (row) => row.situs);
+  const topPublishers = topN(publisherTotals);
+  const topSites = topN(siteTotals);
+  const otherPublishers = remainder(publisherTotals, topPublishers) > 0 ? ['Penerbit lain'] : [];
+  const otherSites = remainder(siteTotals, topSites) > 0 ? ['Situs lain'] : [];
   const outcomes = [...new Set(flows.map((row) => row.hasil))].sort();
   const publisherName = (value: string): string => (topPublishers.includes(value) ? value : 'Penerbit lain');
   const siteName = (value: string): string => (topSites.includes(value) ? value : 'Situs lain');

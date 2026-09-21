@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { siteMetadata } from '@/ui/site/metadata-guard';
 
-const envAsli = { ...process.env };
+const originalEnv = { ...process.env };
 
 beforeEach(() => {
   process.env.NEXT_PUBLIC_SITE_URL = 'https://dasbor.example/';
@@ -11,7 +11,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  process.env = { ...envAsli };
+  process.env = { ...originalEnv };
 });
 
 describe('siteMetadata', () => {

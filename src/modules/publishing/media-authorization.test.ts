@@ -8,7 +8,7 @@ import type {
   PublishingSiteRef,
 } from '@/modules/publishing/models';
 
-function media(lewat: Partial<MediaAssetRecord> = {}): MediaAssetRecord {
+function media(overrides: Partial<MediaAssetRecord> = {}): MediaAssetRecord {
   return {
     id: 'm1',
     organizationId: 'o1',
@@ -23,22 +23,22 @@ function media(lewat: Partial<MediaAssetRecord> = {}): MediaAssetRecord {
     version: 1,
     createdAt: '2026-09-14T10:00:00.000Z',
     updatedAt: '2026-09-14T10:00:00.000Z',
-    ...lewat,
+    ...overrides,
   };
 }
 
-function situs(lewat: Partial<PublishingSiteRef> = {}): PublishingSiteRef {
+function site(overrides: Partial<PublishingSiteRef> = {}): PublishingSiteRef {
   return {
     id: 's1',
     organizationId: 'o1',
     active: true,
     normalizedHostname: 'portal.example',
     settingsMediaIds: [],
-    ...lewat,
+    ...overrides,
   };
 }
 
-function artikel(lewat: Partial<PublishingArticleRef> = {}): PublishingArticleRef {
+function article(overrides: Partial<PublishingArticleRef> = {}): PublishingArticleRef {
   return {
     id: 'a1',
     organizationId: 'o1',
@@ -46,11 +46,11 @@ function artikel(lewat: Partial<PublishingArticleRef> = {}): PublishingArticleRe
     leadMediaId: 'm1',
     title: 'Judul',
     slug: 'judul',
-    ...lewat,
+    ...overrides,
   };
 }
 
-function relasi(lewat: Partial<PublishingArticleSiteRef> = {}): PublishingArticleSiteRef {
+function relation(overrides: Partial<PublishingArticleSiteRef> = {}): PublishingArticleSiteRef {
   return {
     id: 'as1',
     organizationId: 'o1',
@@ -61,11 +61,11 @@ function relasi(lewat: Partial<PublishingArticleSiteRef> = {}): PublishingArticl
     publishedUrl: 'https://portal.example/judul',
     publishedAt: '2026-09-14T10:00:00.000Z',
     version: 1,
-    ...lewat,
+    ...overrides,
   };
 }
 
-const konteks = {
+const context = {
   normalizedHostname: 'portal.example',
   organizationId: 'o1',
   domainId: 'd1',
@@ -90,64 +90,64 @@ describe('canTenantAccessMedia', () => {
 });
 
 describe('canPublicAccessMedia', () => {
-  it('mengizinkan media yang terdaftar di pengaturan situs', () => {
-    const hasil = canPublicAccessMedia({
-      context: konteks,
+  it('mengizinkan media yang terdaftar di pengaturan site', () => {
+    const result = canPublicAccessMedia({
+      context: context,
       media: media({ owner: { kind: 'organization' } }),
-      site: situs({ settingsMediaIds: ['m1'] }),
+      site: site({ settingsMediaIds: ['m1'] }),
       articles: [],
       articleSites: [],
     });
-    expect(hasil).toBe(true);
+    expect(result).toBe(true);
   });
 
-  it('mengizinkan media artikel yang tayang di situs', () => {
-    const hasil = canPublicAccessMedia({
-      context: konteks,
+  it('mengizinkan media article yang tayang di site', () => {
+    const result = canPublicAccessMedia({
+      context: context,
       media: media(),
-      site: situs(),
-      articles: [artikel()],
-      articleSites: [relasi()],
+      site: site(),
+      articles: [article()],
+      articleSites: [relation()],
     });
-    expect(hasil).toBe(true);
+    expect(result).toBe(true);
   });
 
   it('menolak media tidak aktif atau beda organisasi', () => {
-    const dasar = { context: konteks, site: situs(), articles: [artikel()], articleSites: [relasi()] };
-    expect(canPublicAccessMedia({ ...dasar, media: media({ state: 'archived' }) })).toBe(false);
-    expect(canPublicAccessMedia({ ...dasar, media: media({ organizationId: 'o2' }) })).toBe(false);
+    const base = { context: context, site: site(), articles: [article()], articleSites: [relation()] };
+    expect(canPublicAccessMedia({ ...base, media: media({ state: 'archived' }) })).toBe(false);
+    expect(canPublicAccessMedia({ ...base, media: media({ organizationId: 'o2' }) })).toBe(false);
   });
 
-  it('menolak situs yang tidak cocok atau nonaktif', () => {
-    const dasar = { context: konteks, media: media(), articles: [artikel()], articleSites: [relasi()] };
-    expect(canPublicAccessMedia({ ...dasar, site: situs({ id: 's2' }) })).toBe(false);
-    expect(canPublicAccessMedia({ ...dasar, site: situs({ active: false }) })).toBe(false);
-    expect(canPublicAccessMedia({ ...dasar, site: situs({ organizationId: 'o2' }) })).toBe(false);
+  it('menolak site yang tidak cocok atau nonaktif', () => {
+    const base = { context: context, media: media(), articles: [article()], articleSites: [relation()] };
+    expect(canPublicAccessMedia({ ...base, site: site({ id: 's2' }) })).toBe(false);
+    expect(canPublicAccessMedia({ ...base, site: site({ active: false }) })).toBe(false);
+    expect(canPublicAccessMedia({ ...base, site: site({ organizationId: 'o2' }) })).toBe(false);
   });
 
-  it('menolak pemilik non-artikel di luar pengaturan situs', () => {
-    const hasil = canPublicAccessMedia({
-      context: konteks,
+  it('menolak pemilik non-article di luar pengaturan site', () => {
+    const result = canPublicAccessMedia({
+      context: context,
       media: media({ owner: { kind: 'site', siteId: 's1' } }),
-      site: situs(),
-      articles: [artikel()],
-      articleSites: [relasi()],
+      site: site(),
+      articles: [article()],
+      articleSites: [relation()],
     });
-    expect(hasil).toBe(false);
+    expect(result).toBe(false);
   });
 
-  it('menolak artikel yang hilang, nonaktif, atau beda organisasi', () => {
-    const dasar = { context: konteks, media: media(), site: situs(), articleSites: [relasi()] };
-    expect(canPublicAccessMedia({ ...dasar, articles: [] })).toBe(false);
-    expect(canPublicAccessMedia({ ...dasar, articles: [artikel({ active: false })] })).toBe(false);
-    expect(canPublicAccessMedia({ ...dasar, articles: [artikel({ organizationId: 'o2' })] })).toBe(false);
+  it('menolak article yang hilang, nonaktif, atau beda organisasi', () => {
+    const base = { context: context, media: media(), site: site(), articleSites: [relation()] };
+    expect(canPublicAccessMedia({ ...base, articles: [] })).toBe(false);
+    expect(canPublicAccessMedia({ ...base, articles: [article({ active: false })] })).toBe(false);
+    expect(canPublicAccessMedia({ ...base, articles: [article({ organizationId: 'o2' })] })).toBe(false);
   });
 
-  it('menolak relasi yang belum tayang atau tidak cocok', () => {
-    const dasar = { context: konteks, media: media(), site: situs(), articles: [artikel()] };
-    expect(canPublicAccessMedia({ ...dasar, articleSites: [] })).toBe(false);
-    expect(canPublicAccessMedia({ ...dasar, articleSites: [relasi({ state: 'queued' })] })).toBe(false);
-    expect(canPublicAccessMedia({ ...dasar, articleSites: [relasi({ active: false })] })).toBe(false);
-    expect(canPublicAccessMedia({ ...dasar, articleSites: [relasi({ siteId: 's2' })] })).toBe(false);
+  it('menolak relation yang belum tayang atau tidak cocok', () => {
+    const base = { context: context, media: media(), site: site(), articles: [article()] };
+    expect(canPublicAccessMedia({ ...base, articleSites: [] })).toBe(false);
+    expect(canPublicAccessMedia({ ...base, articleSites: [relation({ state: 'queued' })] })).toBe(false);
+    expect(canPublicAccessMedia({ ...base, articleSites: [relation({ active: false })] })).toBe(false);
+    expect(canPublicAccessMedia({ ...base, articleSites: [relation({ siteId: 's2' })] })).toBe(false);
   });
 });

@@ -9,69 +9,69 @@ afterEach(() => {
   cleanup();
 });
 
-const NILAI = ['satu', 'dua', 'tiga'] as const;
-type Nilai = (typeof NILAI)[number];
+const VALUES = ['satu', 'dua', 'tiga'] as const;
+type Value = (typeof VALUES)[number];
 
-function Probe({ onPilih }: { onPilih?: (nilai: Nilai) => void }) {
-  const [aktif, setAktif] = useState<Nilai>('satu');
-  const { register, tabIndexFor, onKeyDown } = useRovingSelection(NILAI, aktif, (nilai) => {
-    setAktif(nilai);
-    onPilih?.(nilai);
+function Probe({ onSelect }: { onSelect?: (value: Value) => void }) {
+  const [active, setActive] = useState<Value>('satu');
+  const { register, tabIndexFor, onKeyDown } = useRovingSelection(VALUES, active, (value) => {
+    setActive(value);
+    onSelect?.(value);
   });
   return (
     <div role="tablist" onKeyDown={onKeyDown}>
-      {NILAI.map((nilai) => (
-        <button key={nilai} ref={register(nilai)} tabIndex={tabIndexFor(nilai)} type="button">
-          {nilai}
+      {VALUES.map((value) => (
+        <button key={value} ref={register(value)} tabIndex={tabIndexFor(value)} type="button">
+          {value}
         </button>
       ))}
     </div>
   );
 }
 
-function tombol(nama: string) {
-  return screen.getByRole('button', { name: nama });
+function getButton(name: string) {
+  return screen.getByRole('button', { name });
 }
 
 describe('useRovingSelection', () => {
   it('memberi tabIndex nol hanya pada nilai aktif', () => {
     render(<Probe />);
-    expect(tombol('satu').tabIndex).toBe(0);
-    expect(tombol('dua').tabIndex).toBe(-1);
-    expect(tombol('tiga').tabIndex).toBe(-1);
+    expect(getButton('satu').tabIndex).toBe(0);
+    expect(getButton('dua').tabIndex).toBe(-1);
+    expect(getButton('tiga').tabIndex).toBe(-1);
   });
 
   it('memindahkan pilihan ke kanan dan memfokuskan tombolnya', () => {
-    const onPilih = vi.fn();
-    render(<Probe onPilih={onPilih} />);
-    fireEvent.keyDown(tombol('satu'), { key: 'ArrowRight' });
-    expect(onPilih).toHaveBeenCalledWith('dua');
-    expect(document.activeElement).toBe(tombol('dua'));
-    expect(tombol('dua').tabIndex).toBe(0);
+    const onSelect = vi.fn();
+    render(<Probe onSelect={onSelect} />);
+    fireEvent.keyDown(getButton('satu'), { key: 'ArrowRight' });
+    expect(onSelect).toHaveBeenCalledWith('dua');
+    expect(document.activeElement).toBe(getButton('dua'));
+    expect(getButton('dua').tabIndex).toBe(0);
   });
 
   it('membungkus panah kiri dari awal ke akhir', () => {
-    const onPilih = vi.fn();
-    render(<Probe onPilih={onPilih} />);
-    fireEvent.keyDown(tombol('satu'), { key: 'ArrowLeft' });
-    expect(onPilih).toHaveBeenCalledWith('tiga');
-    expect(document.activeElement).toBe(tombol('tiga'));
+    const onSelect = vi.fn();
+    render(<Probe onSelect={onSelect} />);
+    fireEvent.keyDown(getButton('satu'), { key: 'ArrowLeft' });
+    expect(onSelect).toHaveBeenCalledWith('tiga');
+    expect(document.activeElement).toBe(getButton('tiga'));
   });
 
   it('melompat lewat Home dan End', () => {
-    const onPilih = vi.fn();
-    render(<Probe onPilih={onPilih} />);
-    fireEvent.keyDown(tombol('satu'), { key: 'End' });
-    expect(onPilih).toHaveBeenCalledWith('tiga');
-    fireEvent.keyDown(tombol('tiga'), { key: 'Home' });
-    expect(onPilih).toHaveBeenCalledWith('satu');
+    const onSelect = vi.fn();
+    render(<Probe onSelect={onSelect} />);
+    fireEvent.keyDown(getButton('satu'), { key: 'End' });
+    expect(onSelect).toHaveBeenCalledWith('tiga');
+    fireEvent.keyDown(getButton('tiga'), { key: 'Home' });
+    expect(onSelect).toHaveBeenCalledWith('satu');
   });
 
   it('mengabaikan tombol selain navigasi', () => {
-    const onPilih = vi.fn();
-    render(<Probe onPilih={onPilih} />);
-    fireEvent.keyDown(tombol('satu'), { key: 'a' });
-    expect(onPilih).not.toHaveBeenCalled();
-    expect(tombol('satu').tabIndex).toBe(0);
+    const onSelect = vi.fn();
+    render(<Probe onSelect={onSelect} />);
+    fireEvent.keyDown(getButton('satu'), { key: 'a' });
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(getButton('satu').tabIndex).toBe(0);
   });
 });

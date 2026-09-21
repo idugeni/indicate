@@ -8,10 +8,10 @@ type FrameCallback = (now: number) => void;
 let frames: FrameCallback[];
 let scrollTo: ReturnType<typeof vi.fn>;
 
-function jalankanFrame(now: number): void {
-  const antre = [...frames];
+function runFrame(now: number): void {
+  const queue = [...frames];
   frames = [];
-  for (const frame of antre) frame(now);
+  for (const frame of queue) frame(now);
 }
 
 beforeEach(() => {
@@ -49,11 +49,11 @@ describe('scrollToTop', () => {
     document.documentElement.style.scrollBehavior = 'smooth';
     scrollToTop();
     expect(document.documentElement.style.scrollBehavior).toBe('auto');
-    jalankanFrame(0);
+    runFrame(0);
     expect(scrollTo).toHaveBeenLastCalledWith(0, 600);
-    jalankanFrame(325);
+    runFrame(325);
     expect(scrollTo).toHaveBeenLastCalledWith(0, 300);
-    jalankanFrame(650);
+    runFrame(650);
     expect(scrollTo).toHaveBeenLastCalledWith(0, 0);
     expect(document.documentElement.style.scrollBehavior).toBe('smooth');
   });
@@ -61,10 +61,10 @@ describe('scrollToTop', () => {
   it('membatalkan animasi saat ada input wheel', () => {
     Object.defineProperty(window, 'scrollY', { value: 600, configurable: true });
     scrollToTop();
-    jalankanFrame(0);
+    runFrame(0);
     expect(scrollTo).toHaveBeenCalledTimes(1);
     window.dispatchEvent(new window.Event('wheel'));
-    jalankanFrame(325);
+    runFrame(325);
     expect(scrollTo).toHaveBeenCalledTimes(1);
   });
 });

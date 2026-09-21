@@ -19,17 +19,17 @@ describe('formatBytes', () => {
 
 describe('prepareImageUpload', () => {
   it('melewatkan berkas apa adanya saat decode gagal', async () => {
-    const berkas = new File([new Uint8Array([1, 2, 3])], 'foto.jpg', { type: 'image/jpeg' });
-    const hasil = await prepareImageUpload(berkas);
-    expect(hasil.mode).toBe('passthrough');
-    expect(hasil.blob).toBe(berkas);
-    expect(hasil.filename).toBe('foto.jpg');
-    expect(hasil.mediaType).toBe('image/jpeg');
-    expect(hasil.sizeBytes).toBe(berkas.size);
-    expect(hasil.savingsBytes).toBe(0);
-    expect(hasil.thumb).toBe(null);
-    expect(hasil.width).toBe(null);
-    expect(hasil.height).toBe(null);
-    expect(hasil.checksum.length).toBeGreaterThan(0);
+    const file = new File([new Uint8Array([1, 2, 3])], 'foto.jpg', { type: 'image/jpeg' });
+    const result = await prepareImageUpload(file);
+    expect(result.mode).toBe('passthrough');
+    expect(result.blob).toBe(file);
+    expect(result.filename).toBe('foto.jpg');
+    expect(result.mediaType).toBe('image/jpeg');
+    expect(result.sizeBytes).toBe(file.size);
+    expect(result.savingsBytes).toBe(0);
+    expect(result.thumb).toBe(null);
+    expect(result.width).toBe(null);
+    expect(result.height).toBe(null);
+    expect(result.checksum.length).toBeGreaterThan(0);
   });
 });

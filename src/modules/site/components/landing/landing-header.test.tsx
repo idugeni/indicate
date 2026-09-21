@@ -4,10 +4,10 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import { LandingHeader } from '@/modules/site/components/landing/landing-header';
 
-const jalur = vi.hoisted(() => ({ saatIni: '/' }));
+const pathState = vi.hoisted(() => ({ current: '/' }));
 
 vi.mock('next/navigation', () => ({
-  usePathname: () => jalur.saatIni,
+  usePathname: () => pathState.current,
 }));
 
 afterEach(() => {
@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 beforeEach(() => {
-  jalur.saatIni = '/';
+  pathState.current = '/';
   Object.defineProperty(window, 'matchMedia', {
     value: () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }),
     configurable: true,
@@ -38,26 +38,26 @@ describe('LandingHeader', () => {
 
   it('membuka dan menutup menu seluler', () => {
     render(<LandingHeader />);
-    const buka = screen.getByRole('button', { name: 'Buka menu navigasi' });
-    fireEvent.click(buka);
-    expect(buka.getAttribute('aria-expanded')).toBe('true');
+    const openButton = screen.getByRole('button', { name: 'Buka menu navigasi' });
+    fireEvent.click(openButton);
+    expect(openButton.getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByRole('button', { name: 'Tutup menu navigasi' })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Tutup menu navigasi' }));
-    expect(buka.getAttribute('aria-expanded')).toBe('false');
+    expect(openButton.getAttribute('aria-expanded')).toBe('false');
   });
 
   it('tidak memutar animasi tutup saat mount awal, tapi tetap beranimasi saat dibuka', () => {
     render(<LandingHeader />);
-    const animasikan = vi.mocked(Element.prototype.animate);
-    expect(animasikan).not.toHaveBeenCalled();
+    const animateMock = vi.mocked(Element.prototype.animate);
+    expect(animateMock).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Buka menu navigasi' }));
-    expect(animasikan).toHaveBeenCalled();
+    expect(animateMock).toHaveBeenCalled();
   });
 
   it('menandai tautan aktif sesuai pathname', () => {
-    jalur.saatIni = '/pricing';
+    pathState.current = '/pricing';
     render(<LandingHeader />);
-    const tautan = screen.getAllByRole('link', { name: 'Harga' });
-    expect(tautan.some((el) => el.getAttribute('aria-current') === 'page')).toBe(true);
+    const links = screen.getAllByRole('link', { name: 'Harga' });
+    expect(links.some((el) => el.getAttribute('aria-current') === 'page')).toBe(true);
   });
 });

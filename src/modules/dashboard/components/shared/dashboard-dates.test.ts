@@ -19,17 +19,17 @@ describe('Util tanggal dasbor', () => {
   });
 
   it('memformat jarak relatif terhadap acuan', () => {
-    const acuan = new Date('2026-09-18T14:00:00.000Z');
-    expect(formatRelative('2026-09-18T11:00:00.000Z', acuan)).toContain('3 jam');
+    const reference = new Date('2026-09-18T14:00:00.000Z');
+    expect(formatRelative('2026-09-18T11:00:00.000Z', reference)).toContain('3 jam');
   });
 
   it('menghasilkan rentang preset yang konsisten', () => {
-    const acuan = new Date('2026-09-18T14:00:00.000Z');
-    const hariIni = presetRange('today', acuan);
-    expect(hariIni.to).toBe(acuan.toISOString());
-    expect(hariIni.from < hariIni.to).toBe(true);
-    const tujuh = presetRange('7-days', acuan);
-    const tigaPuluh = presetRange('30-days', acuan);
-    expect(tujuh.from > tigaPuluh.from).toBe(true);
+    const reference = new Date('2026-09-18T14:00:00.000Z');
+    const today = presetRange('today', reference);
+    expect(today.to).toBe(reference.toISOString());
+    expect(today.from < today.to).toBe(true);
+    const seven = presetRange('7-days', reference);
+    const thirty = presetRange('30-days', reference);
+    expect(seven.from > thirty.from).toBe(true);
   });
 });

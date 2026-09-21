@@ -9,47 +9,47 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function pasangMatchMedia(lebar: number) {
-  const pendengar = new Set<() => void>();
+function installMatchMedia(width: number) {
+  const listeners = new Set<() => void>();
   const mql = {
-    matches: lebar < 768,
-    addEventListener: vi.fn((_jenis: string, rawat: () => void) => {
-      pendengar.add(rawat);
+    matches: width < 768,
+    addEventListener: vi.fn((_type: string, handler: () => void) => {
+      listeners.add(handler);
     }),
-    removeEventListener: vi.fn((_jenis: string, rawat: () => void) => {
-      pendengar.delete(rawat);
+    removeEventListener: vi.fn((_type: string, handler: () => void) => {
+      listeners.delete(handler);
     }),
   };
   Object.defineProperty(window, 'matchMedia', { value: () => mql, configurable: true, writable: true });
-  Object.defineProperty(window, 'innerWidth', { value: lebar, configurable: true, writable: true });
-  return { mql, pendengar };
+  Object.defineProperty(window, 'innerWidth', { value: width, configurable: true, writable: true });
+  return { mql, listeners };
 }
 
 function Probe() {
-  const mobil = useIsMobile();
-  return <p>{mobil ? 'seluler' : 'desktop'}</p>;
+  const mobile = useIsMobile();
+  return <p>{mobile ? 'seluler' : 'desktop'}</p>;
 }
 
 describe('useIsMobile', () => {
   it('mengembalikan false pada viewport desktop', () => {
-    pasangMatchMedia(1024);
+    installMatchMedia(1024);
     render(<Probe />);
     expect(screen.getByText('desktop')).toBeDefined();
   });
 
   it('mengembalikan true pada viewport mobile', () => {
-    pasangMatchMedia(375);
+    installMatchMedia(375);
     render(<Probe />);
     expect(screen.getByText('seluler')).toBeDefined();
   });
 
   it('memperbarui status saat media query berubah dan berhenti saat unmount', () => {
-    const { mql, pendengar } = pasangMatchMedia(1024);
+    const { mql, listeners } = installMatchMedia(1024);
     const { unmount } = render(<Probe />);
     expect(screen.getByText('desktop')).toBeDefined();
     act(() => {
       Object.defineProperty(window, 'innerWidth', { value: 500, configurable: true, writable: true });
-      for (const rawat of pendengar) rawat();
+      for (const handler of listeners) handler();
     });
     expect(screen.getByText('seluler')).toBeDefined();
     unmount();

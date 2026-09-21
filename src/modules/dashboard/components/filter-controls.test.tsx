@@ -23,18 +23,18 @@ describe('Kontrol filter', () => {
   });
 
   it('meneruskan query pencarian saat diterapkan', () => {
-    const terapkan = vi.fn();
-    render(<FilterControls view="editorial" data={null} onApply={terapkan} />);
+    const onApply = vi.fn();
+    render(<FilterControls view="editorial" data={null} onApply={onApply} />);
     fireEvent.change(screen.getByLabelText('Cari judul'), { target: { value: 'kabar' } });
     fireEvent.click(screen.getByRole('button', { name: 'Terapkan' }));
-    expect(terapkan).toHaveBeenCalledWith(expect.stringContaining('search=kabar'));
+    expect(onApply).toHaveBeenCalledWith(expect.stringContaining('search=kabar'));
   });
 
   it('mengosongkan query saat filter dibersihkan', () => {
-    const terapkan = vi.fn();
-    render(<FilterControls view="editorial" data={null} onApply={terapkan} />);
+    const onApply = vi.fn();
+    render(<FilterControls view="editorial" data={null} onApply={onApply} />);
     fireEvent.click(screen.getByRole('button', { name: 'Bersihkan filter' }));
-    expect(terapkan).toHaveBeenCalledWith('');
+    expect(onApply).toHaveBeenCalledWith('');
   });
 
   it('merender medan audit untuk tampilan log keamanan', () => {
@@ -45,11 +45,11 @@ describe('Kontrol filter', () => {
   });
 
   it('menerapkan preset rentang cepat untuk tampilan telemetri', () => {
-    const terapkan = vi.fn();
-    render(<FilterControls view="analytics" data={null} onApply={terapkan} />);
+    const onApply = vi.fn();
+    render(<FilterControls view="analytics" data={null} onApply={onApply} />);
     expect(screen.getByLabelText('Dari tanggal')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: '7 hari' }));
-    expect(terapkan).toHaveBeenCalledWith(expect.stringContaining('from='));
-    expect(terapkan).toHaveBeenCalledWith(expect.stringContaining('to='));
+    expect(onApply).toHaveBeenCalledWith(expect.stringContaining('from='));
+    expect(onApply).toHaveBeenCalledWith(expect.stringContaining('to='));
   });
 });
