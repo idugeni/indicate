@@ -25,11 +25,8 @@ export type IconComponent = ComponentType<{
   'aria-hidden'?: boolean | 'true' | 'false';
 }>;
 
-export type BadgeVariant = 'default' | 'brass' | 'signal' | 'warning' | 'error';
-
 export interface NavBadge {
   readonly label: string | number;
-  readonly variant?: BadgeVariant;
 }
 
 /** Membership tier bound to `roles.tier`; `superadmin` is platform-org only (DB trigger guards it). */

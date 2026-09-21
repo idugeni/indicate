@@ -2,16 +2,13 @@ import type { ReactNode } from 'react';
 
 import type { IconComponent } from '@/modules/dashboard/components/dashboard-types';
 
-/** Alias kept for existing call sites; new code should use `IconComponent`. */
-export type SectionCardIcon = IconComponent;
-
 export function SectionCard({
   icon: Icon,
   title,
   eyebrow,
   children,
 }: {
-  readonly icon: SectionCardIcon;
+  readonly icon: IconComponent;
   readonly title: string;
   readonly eyebrow: string;
   readonly children: ReactNode;

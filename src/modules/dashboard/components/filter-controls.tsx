@@ -79,7 +79,6 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
         }}
       >
         <div className="flex flex-wrap items-end justify-between gap-4">
-          {/* Kolom mengikuti jumlah field: editorial 4, audit 3, analytics 3 — tanpa slot kosong. */}
           <div className={view === 'audit' ? 'grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-3' : view === 'analytics' ? 'grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-3' : 'grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'}>
           {view === 'editorial' ? (
             <>
