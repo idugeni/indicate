@@ -56,4 +56,17 @@ describe('validateBootstrapConfig gagal', () => {
     const result = validateBootstrapConfig({ ...validEnv(), NODE_ENV: 'production', TELEGRAM_BOT_TOKEN: undefined, TELEGRAM_BOT_TOKEN_X: 'x' } as Record<string, string | undefined>);
     expect(result.success).toBe(false);
   });
+
+  it('mewajibkan turnstile site key saat production', () => {
+    const secrets = Object.fromEntries(
+      ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ORIGIN_SECRET', 'VERCEL_API_TOKEN', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_WEBHOOK_SECRET', 'GENERIC_WEBHOOK_SECRET', 'CRON_SECRET'].map((name) => [name, 'kredensial-produksi-yang-cukup-panjang']),
+    );
+    const missing = validateBootstrapConfig({ ...validEnv(), ...secrets, NODE_ENV: 'production' });
+    expect(missing.success).toBe(false);
+    if (!missing.success) {
+      expect(missing.issues.some((issue) => issue.category === 'turnstile_site_key_required')).toBe(true);
+    }
+    const present = validateBootstrapConfig({ ...validEnv(), ...secrets, NODE_ENV: 'production', NEXT_PUBLIC_TURNSTILE_SITE_KEY: 'turnstile-site-key' });
+    expect(present.success).toBe(true);
+  });
 });

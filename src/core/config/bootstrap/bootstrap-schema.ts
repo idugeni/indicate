@@ -62,6 +62,7 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'RESEND_WEBHOOK_SECRET',
   'GENERIC_WEBHOOK_SECRET',
   'CRON_SECRET',
+  'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
 ]);
 
 const hostnameSchema = z
@@ -89,6 +90,7 @@ const bootstrapSchema = z
     NEXT_PUBLIC_SUPABASE_URL: httpsUrlSchema,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(8).optional(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(8).optional(),
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
     DEFAULT_LOCALE: z.string().regex(/^[a-z]{2}-[A-Z]{2}$/).default('id-ID'),
     SITE_DEFAULT_ASSET_URL: httpsUrlSchema.default('https://indicate.web.id/assets/default.png'),
     SUPABASE_PROJECT_REF: z.string().regex(/^[a-z0-9]{8,32}$/).optional(),
@@ -134,6 +136,9 @@ const bootstrapSchema = z
         (value.RESEND_API_KEY.length < 24 || /(?:change[ -]?me|example|placeholder|sentinel|development|test-secret)/iu.test(value.RESEND_API_KEY))
       ) {
         context.addIssue({ code: 'custom', path: ['RESEND_API_KEY'], message: 'production_secret_not_bounded' });
+      }
+      if (value.NEXT_PUBLIC_TURNSTILE_SITE_KEY === undefined || value.NEXT_PUBLIC_TURNSTILE_SITE_KEY.trim() === '') {
+        context.addIssue({ code: 'custom', path: ['NEXT_PUBLIC_TURNSTILE_SITE_KEY'], message: 'turnstile_site_key_required' });
       }
     }
     if ((value.RESEND_API_KEY === undefined) !== (value.RESEND_DEFAULT_FROM === undefined)) {
