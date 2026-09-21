@@ -7,7 +7,9 @@ import { isServicePath } from '@/core/routing/control-plane-paths';
 import { nextWithSessionRefresh } from '@/integrations/supabase/supabase-edge-session';
 import {
   PLATFORM_ALLOWED_IPS_ENV,
+  PLATFORM_ORIGIN_SECRET_ENV,
   extractClientIp,
+  hasPlatformOriginProof,
   isDashboardPath,
   isPlatformPath,
   isPlatformRequestAllowed,
@@ -193,7 +195,7 @@ function isSessionRefreshPath(path: string): boolean {
  *
  * @param request - Incoming edge request.
  * @returns Response for the matched surface.
- * @remarks HSTS is emitted in production only to avoid pinning HTTPS on loopback origins. Trailing-slash redirect skips machine surfaces to keep API, feed, and asset URLs exact. Pembaca hilir mengutamakan x-forwarded-host (page.tsx, not-found.tsx, network-runtime.ts), jadi kedua header harus ditulis ulang — menulis `host` saja tidak berpengaruh di Vercel yang selalu menyetel keduanya. Host deployment Vercel (*.vercel.app) milik project ini diperlakukan sebagai permukaan dashboard: VERCEL_URL per deployment tidak stabil (unik per build), tetapi request *.vercel.app yang sampai ke project ini pasti deployment kita sendiri (routing Vercel per host; preview terkunci SSO dashboard); host asing lain tetap 404. Platform surfaces are IP-allowlisted fail closed; out-of-range callers get a non-disclosing 404 plus an edge audit record. A platform-only token must never enter dashboard surfaces without an on_behalf ticket proving scoped delegation. Beranda portal (`/`) dirender rute `(network)/tenant-home` agar ikut boundary segmen tenant (loading/error terang); URL kanonis tetap `/`.
+ * @remarks HSTS is emitted in production only to avoid pinning HTTPS on loopback origins. Trailing-slash redirect skips machine surfaces to keep API, feed, and asset URLs exact. Pembaca hilir mengutamakan x-forwarded-host (page.tsx, not-found.tsx, network-runtime.ts), jadi kedua header harus ditulis ulang — menulis `host` saja tidak berpengaruh di Vercel yang selalu menyetel keduanya. Host deployment Vercel (*.vercel.app) milik project ini diperlakukan sebagai permukaan dashboard: VERCEL_URL per deployment tidak stabil (unik per build), tetapi request *.vercel.app yang sampai ke project ini pasti deployment kita sendiri (routing Vercel per host; preview terkunci SSO dashboard); host asing lain tetap 404. Platform surfaces are IP-allowlisted and origin-proofed fail closed; out-of-range callers get a non-disclosing 404 plus an edge audit record. A platform-only token must never enter dashboard surfaces without an on_behalf ticket proving scoped delegation. Beranda portal (`/`) dirender rute `(network)/tenant-home` agar ikut boundary segmen tenant (loading/error terang); URL kanonis tetap `/`.
  */
 export async function proxy(request: NextRequest) {
   const rawHost = request.headers.get('host');
@@ -226,7 +228,8 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   if (isPlatformPath(path)) {
     const allowlist = parsePlatformAllowedIps(process.env[PLATFORM_ALLOWED_IPS_ENV]);
-    if (!isPlatformRequestAllowed({ headers: request.headers, allowlist })) {
+    const originSecret = process.env[PLATFORM_ORIGIN_SECRET_ENV] ?? '';
+    if (!isPlatformRequestAllowed({ headers: request.headers, allowlist }) || !hasPlatformOriginProof(request.headers, originSecret)) {
       auditEdgeDeny(request, 'platform.ip.denied');
       return deny(404, request.headers);
     }

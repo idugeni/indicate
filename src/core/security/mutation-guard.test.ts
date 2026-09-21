@@ -26,8 +26,8 @@ describe('denyCrossSiteHeaders', () => {
     expect(denyCrossSiteHeaders(headersOf({ host: 'a.test', referer: 'https://evil.test/x' }))).toBe(true);
   });
 
-  it('mengizinkan tanpa sinyal cross-site', () => {
-    expect(denyCrossSiteHeaders(headersOf({}))).toBe(false);
+  it('menolak tanpa host dan mengizinkan tanpa sinyal cross-site', () => {
+    expect(denyCrossSiteHeaders(headersOf({}))).toBe(true);
     expect(denyCrossSiteHeaders(headersOf({ host: 'a.test' }))).toBe(false);
   });
 });

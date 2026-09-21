@@ -1,8 +1,10 @@
-/** Edge-safe platform guards (dependency-free for the proxy bundle): `x-platform-token`/`Bearer plat_*`, `x-on-behalf-ticket` for tenant paths, IP allowlist for `/platform/*`. */
+/** Edge-safe platform guards (dependency-free for the proxy bundle): `x-platform-token`/`Bearer plat_*`, `x-on-behalf-ticket` for tenant paths, IP allowlist plus Cloudflare origin proof for `/platform/*`. */
 
 export const PLATFORM_TOKEN_HEADER = 'x-platform-token';
 export const ON_BEHALF_TICKET_HEADER = 'x-on-behalf-ticket';
 export const PLATFORM_ALLOWED_IPS_ENV = 'PLATFORM_ALLOWED_IPS';
+export const PLATFORM_ORIGIN_HEADER = 'x-indicate-cloudflare-origin';
+export const PLATFORM_ORIGIN_SECRET_ENV = 'CLOUDFLARE_ORIGIN_SECRET';
 
 export function isPlatformPath(pathname: string): boolean {
   return (
@@ -65,14 +67,39 @@ export function isIpAllowlisted(ip: string, allowlist: readonly string[]): boole
 }
 
 export function extractClientIp(headers: Headers): string | null {
+  const connecting = headers.get('cf-connecting-ip')?.trim();
+  if (connecting !== undefined && connecting !== '') return connecting;
   const forwarded = headers.get('x-forwarded-for');
   if (forwarded !== null) {
-    const first = forwarded.split(',')[0]?.trim();
-    if (first !== undefined && first.length > 0) return first;
+    const entries = forwarded.split(',').map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+    const last = entries.at(-1);
+    if (last !== undefined) return last;
   }
   const realIp = headers.get('x-real-ip');
   if (realIp !== null && realIp.trim().length > 0) return realIp.trim();
   return null;
+}
+
+function secretEqual(left: string, right: string): boolean {
+  if (left.length === 0 || left.length !== right.length) return false;
+  let diff = 0;
+  for (let index = 0; index < left.length; index++) diff |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  return diff === 0;
+}
+
+/**
+ * Verify the Cloudflare origin proof for platform surfaces.
+ *
+ * @param headers - Incoming request headers.
+ * @param originSecret - Expected secret injected as a header by Cloudflare.
+ * @returns True only on an exact proof match (timing-safe, edge-safe).
+ * @remarks Same header contract as `trustedCloudflareSource`; compared without
+ * `node:crypto` so the proxy bundle stays edge-safe.
+ */
+export function hasPlatformOriginProof(headers: Headers, originSecret: string): boolean {
+  const proof = headers.get(PLATFORM_ORIGIN_HEADER);
+  if (proof === null || originSecret === '') return false;
+  return secretEqual(proof, originSecret);
 }
 
 export function carriesPlatformToken(headers: Headers): boolean {
