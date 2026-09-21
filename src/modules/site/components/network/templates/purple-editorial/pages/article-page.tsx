@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag, Info } from 'lucide-react';
 
 import { buildSeoDocument } from '@/modules/site/seo';
 import { parseArticleBody } from '@/modules/site/article-markup';
@@ -14,7 +14,7 @@ import { PurpleEditorialShareButtons } from '@/modules/site/components/network/t
 import { PurpleEditorialViewBeacon } from '@/modules/site/components/network/templates/purple-editorial/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { PurpleEditorialPicks } from '@/modules/site/components/network/templates/purple-editorial/cards/picks';
-import { articleImage, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/purple-editorial/lib/format';
+import { articleImage, authorDisplayName, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/purple-editorial/lib/format';
 import { VIEW_COUNT_FRESHNESS_NOTE } from '@/modules/site/pageview-contract';
 
 export function PurpleEditorialArticle({
@@ -100,6 +100,15 @@ export function PurpleEditorialArticle({
             </p>
             <PurpleEditorialShareButtons article={article} canonical={canonical} />
           </div>
+
+          {article.independent ? (
+            <p className="m-0 mt-4 flex items-start gap-1.5 font-sans text-xs leading-relaxed text-slate-500">
+              <Info className="mt-0.5 h-3.5 w-3.5 flex-none" aria-hidden="true" />
+              <span>
+                Konten ini ditulis oleh {authorDisplayName(article)} dan menjadi tanggung jawab penuh penulis. Isinya tidak mewakili pandangan resmi redaksi {site.settings.name}.
+              </span>
+            </p>
+          ) : null}
 
           <div className="mt-6 overflow-hidden rounded-2xl shadow-sm">
             <Image
@@ -305,15 +314,23 @@ export function PurpleEditorialArticle({
             </nav>
           ) : null}
 
-          <p className="m-0 mt-8 flex items-center gap-1.5 font-sans text-xs text-slate-600">
-            <Flag className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>
-              Menemukan pelanggaran?{' '}
-              <Link href={`/report?artikel=${encodeURIComponent(article.slug)}`} className="font-semibold text-[#7c3aed] hover:underline">
-                Laporkan konten
-              </Link>
+          <aside aria-label="Laporkan konten" className="mt-8 flex flex-col gap-4 rounded-2xl bg-[#7c3aed]/5 p-4 ring-1 ring-[#7c3aed]/15 sm:flex-row sm:items-center sm:p-5">
+            <span className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-[#7c3aed]/10 text-[#7c3aed]">
+              <Flag className="h-4 w-4" aria-hidden="true" />
             </span>
-          </p>
+            <span className="min-w-0 flex-1">
+              <span className="block font-sans text-sm font-bold text-slate-900">Menemukan pelanggaran?</span>
+              <span className="mt-0.5 block font-sans text-sm leading-relaxed text-slate-600">
+                Laporkan konten — ditinjau redaksi paling lambat 1x24 jam.
+              </span>
+            </span>
+            <Link
+              href={`/report?artikel=${encodeURIComponent(article.slug)}`}
+              className="inline-flex flex-none items-center justify-center rounded-xl px-4 py-2.5 font-sans text-sm font-bold text-[#7c3aed] ring-1 ring-[#7c3aed]/30 transition-colors hover:bg-[#7c3aed] hover:text-white"
+            >
+              Laporkan konten
+            </Link>
+          </aside>
         </div>
       <PurpleEditorialJsonLd schemas={seo.jsonLd} />
     </PurpleEditorialShell>
