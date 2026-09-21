@@ -1,4 +1,9 @@
-# Database migration operations (advisory — relaxed 2026-09-14)
+# Database migration operations
+
+> **Status:** Advisory (relaxed 2026-09-14 — warns, does not block without owner sign-off).
+> **Owner:** Platform team.
+> **Source of truth:** `src/data/migrations/` applied in `src/data/migrations/meta/_journal.json` order with `DATABASE_DIRECT_URL`; runtime reads via `DATABASE_POOL_URL`.
+> **Related:** [architecture](architecture.md) · [production readiness runbook](production-readiness-runbook.md) · [release checklist](release-checklist.md)
 
 Indicate uses forward-only Drizzle PostgreSQL migrations in `src/data/migrations/` by default (history edits allowed in development with reviewer approval). Runtime traffic uses `DATABASE_POOL_URL` with prepared statements disabled; migrations use the separate `DATABASE_DIRECT_URL` credential.
 

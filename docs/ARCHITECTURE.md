@@ -1,16 +1,17 @@
 # Indicate MVP Architecture
 
+> **Status:** Approved (2026-08-30, kept as history).
+> **Owner:** Platform team.
+> **Source of truth:** the codebase (`src/core/config/bootstrap/bootstrap-schema.ts`, `src/proxy.ts`, `src/data/migrations/meta/_journal.json`). On conflict, code wins.
+> **Related:** [migrations](migrations.md) · [production readiness runbook](production-readiness-runbook.md) · [architecture rules](architecture-rules.md) · [templates](templates.md)
+
 ## Review status
 
-- **Status:** Approved
-- **Approval gate:** Satisfied on 2026-08-30 for this document.
-- **Approval record:** User/reviewer approval was explicitly provided through this session on 2026-08-30.
-- **Source of truth:** this document.
-- **Scope of this version:** Approved architecture definition. This approval clears the pre-code documentation gate for a subsequent invocation; this document does not itself perform application, dependency, infrastructure, or deployment changes.
+- **Scope of this version:** Architecture summary. This document does not itself perform application, dependency, infrastructure, or deployment changes.
 
 ## 1. Architecture summary
 
-Indicate MVP is a modular monolith implemented as one TypeScript Next.js App Router application and deployed to one Vercel project. The same application serves the protected Dashboard, APIs, webhooks, short-lived background handlers, and one shared public news template for all configured publication hostnames.
+Indicate MVP is a modular monolith implemented as one TypeScript Next.js App Router application and deployed to one Vercel project. The same application serves the protected Dashboard, APIs, webhooks, short-lived background handlers, and ten hostname-aware public news templates for all configured publication hostnames.
 
 The durable source of truth is one PostgreSQL database in one Supabase project. That same project supplies Supabase Auth. One private Cloudflare R2 bucket stores media, and one Upstash Redis resource coordinates publication dispatch, leases, rate limits, idempotency acceleration, and cache invalidation. Redis, Vercel Cron invocations, provider state, and caches are recoverable projections of durable PostgreSQL intent.
 
@@ -20,7 +21,7 @@ Every tenant operation carries one immutable Organization context derived from a
 
 ## 2. Architectural invariants
 
-1. Exactly one application codebase, Next.js application, Vercel project, Supabase project/database/Auth instance, R2 bucket, Upstash Redis resource, and Public News Template serve every tenant and hostname.
+1. Exactly one application codebase, Next.js application, Vercel project, Supabase project/database/Auth instance, R2 bucket, and Upstash Redis resource, plus ten public news templates, serve every tenant and hostname.
 2. Cloudflare remains authoritative for all managed nameservers, DNS, wildcard records, SSL proxy behavior, and CDN configuration; Vercel is hosting only.
 3. A normalized hostname resolves only by exact equality to one reserved control-plane surface or one unique active Site; no fallback tenant exists.
 4. Every tenant entity, relationship, query, mutation, job, object authorization, cache namespace, aggregate, and audit event preserves Organization ownership.
@@ -56,7 +57,7 @@ flowchart LR
 
 | Resource | Quantity | Responsibility | Explicit boundary |
 |---|---:|---|---|
-| Next.js App Router application | 1 | Dashboard, APIs, webhooks, cron handlers, public template | No tenant-specific application or build |
+| Next.js App Router application | 1 | Dashboard, APIs, webhooks, cron handlers, public templates | No tenant-specific application or build |
 | Vercel project | 1 | Application hosting and exact custom-domain association | No nameserver delegation, DNS authority, or Vercel wildcard registration |
 | Supabase project | 1 | PostgreSQL and Supabase Auth | No per-tenant project or database |
 | PostgreSQL database | 1 | Durable business state, constraints, idempotency, jobs, audit, recovery intent | All tenant records explicitly Organization-scoped |
@@ -64,7 +65,7 @@ flowchart LR
 | Cloudflare R2 bucket | 1 | Private media objects | No public bucket, list grants, or per-tenant buckets |
 | Upstash Redis | 1 | Queue/cache/rate-limit coordination | Recoverable projection, never durable authority |
 | Cloudflare DNS/CDN | One authority across managed zones | Nameservers, DNS, wildcard records, TLS proxying, CDN | Authority is never transferred to Vercel |
-| Public News Template | 1 | All root and regional public experiences | Branding/settings come from exact Site context |
+| Public news templates | 10 | All root and regional public experiences | Branding/settings come from exact Site context; see `docs/templates.md` |
 
 ## 4. Deployment and hostname architecture
 
@@ -705,7 +706,7 @@ Additional Central Java regions use the same data path without source changes.
 
 ### 20.3 Promotion
 
-1. Confirm `docs/ARCHITECTURE.md` exists and has explicit approval.
+1. Confirm `docs/architecture.md` exists and has explicit approval.
 2. Run deterministic typecheck and lint checks.
 3. Validate Runtime Configuration and provider connectivity without tenant mutation.
 4. Apply reviewed Drizzle migrations with the direct migration credential and verify schema version.
@@ -737,7 +738,7 @@ Implementation may begin without waiting for document approval (approval recorde
 2. **Major Tenancy — Persistence and authorization:** Drizzle schema/migrations/seed, Supabase Auth, tenant transactions, Membership, RBAC.
 3. **Major Dashboard — Business and Dashboard:** shared services, Dashboard modules, Publisher Registry, canonical Articles, filtering, Basic Analytics, Audit Logs.
 4. **Major Publishing — Media and publication:** private R2 media, durable jobs, Upstash dispatch, idempotency, leases/fencing, bounded retries, results.
-5. **Major Delivery — Public delivery:** Cloudflare/Vercel exact-domain activation, hostname resolver, shared public template, SEO, cache/invalidation.
+5. **Major Delivery — Public delivery:** Cloudflare/Vercel exact-domain activation, hostname resolver, shared public templates, SEO, cache/invalidation.
 6. **Major Integrations — External entry points:** Telegram, API Keys, rate limiting, replay defense, customer/subscription administration.
 7. **Major Release — Production readiness:** automated validation across all active root domains and regions, starting with Wonosobo, Magelang, and Semarang.
 
@@ -759,9 +760,9 @@ The following are discouraged by default but allowed with owner approval and a b
 - unbounded retries or long-running workers;
 - mutation success when the required Audit Log did not commit.
 
-## 24. Reviewer approval and implementation-stage confirmations
+## 24. Implementation-stage confirmations (approval 2026-08-30 kept as history)
 
-The user/reviewer explicitly approved this architecture through this session on 2026-08-30, satisfying the pre-code documentation gate. The following operational confirmations remain required at the applicable implementation or promotion stage:
+The following operational confirmations remain required at the applicable implementation or promotion stage:
 
 1. **Exact-domain operations:** confirm that every active Site will be individually associated with the one Vercel project while Cloudflare retains nameserver/DNS authority.
 2. **Provider capacity:** confirm the Vercel plan supports the projected exact-domain count, cron frequency, execution duration, and the unbounded domain-plus-regional-Site scale target.

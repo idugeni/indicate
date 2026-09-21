@@ -1,7 +1,9 @@
 # Status Domain Aktif
 
-Ledger hidup: perbarui setiap ada aktivasi/penonaktifan domain.
-Terakhir diverifikasi: 2026-09-20 (surface `docs.indicate.web.id` dihapus dari kode + domain Vercel dilepas; DB + Vercel MCP).
+> **Status:** Living ledger — perbarui setiap ada aktivasi/penonaktifan domain.
+> **Owner:** Platform team.
+> **Last verified:** 2026-09-20 (surface `docs.indicate.web.id` dihapus dari kode + domain Vercel dilepas; DB + Vercel MCP).
+> **Related:** [domains](domains.md) · [cloudflare baseline](cloudflare-baseline.md) · [release checklist](release-checklist.md)
 
 ## Kuota Vercel
 

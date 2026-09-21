@@ -38,9 +38,11 @@ Use the connected tools when they help. Retrieval beats memory, but nothing here
 - **vercel MCP**: use to inspect project and deployment state before changing
   hosting config; pair with `vercel-optimize` and
   `vercel-react-best-practices` skills.
-- **upstash-redis MCP**: global-only, not in `.mcp.json`; use to inspect live
-  cache and queue state. Redis is acceleration only, never durable authority;
-  pair with the `upstash-redis-js` skill for client code.
+- **upstash-redis MCP**: repo-declared in `.mcp.json`/`opencode.jsonc` with
+  credentials from git-ignored `.env` (`UPSTASH_REDIS_REST_URL`,
+  `UPSTASH_REDIS_REST_TOKEN`); use to inspect live cache and queue state.
+  Redis is acceleration only, never durable authority; pair with the
+  `upstash-redis-js` skill for client code.
 - **resend MCP**: use for email delivery inspection and debugging; never log
   API keys or PII.
 - **Skills**: load via the skill tool when the task matches. Key triggers:
@@ -236,7 +238,7 @@ rules constrain the agent's defaults and initiative, never the owner's
 taste. When the owner changes requirements:
 
 1. Adjust first, docs may follow: code the change, then update the
-   governing docs (`docs/ARCHITECTURE.md`, `docs/MIGRATIONS.md`, this file)
+   governing docs (`docs/architecture.md`, `docs/migrations.md`, this file)
    in the same PR when practical. Docs are advisory, not a pre-code gate.
 2. Changed mind on a standing decision below? Update or remove that
    entry in the same turn — do not keep enforcing a revoked decision.
@@ -258,4 +260,4 @@ these grounds; warn once at most and proceed:
    explicit owner approval.
 3. The migration gate (`migration_gate_events.required_version`) may be
    armed or adjusted whenever the release needs it — no promotion-checklist
-   restriction. See docs/MIGRATIONS.md (advisory).
+   restriction. See docs/migrations.md (advisory).

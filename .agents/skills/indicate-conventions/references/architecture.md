@@ -1,12 +1,12 @@
 # Architecture reference
 
-Source of truth: `docs/ARCHITECTURE.md` (approved 2026-08-30).
+Source of truth: the codebase (`src/core/config/bootstrap/bootstrap-schema.ts`, `src/proxy.ts`, `src/data/migrations/meta/_journal.json`). `docs/architecture.md` summarizes; on conflict, code wins.
 
-## Managed resources (exactly one of each by default)
+## Managed resources (exactly one of each by default, except templates)
 
 | Resource | Responsibility | Boundary |
 |---|---|---|
-| Next.js App Router app | Dashboard, APIs, webhooks, cron handlers, one shared public news template | No tenant-specific app or build |
+| Next.js App Router app | Dashboard, APIs, webhooks, cron handlers, ten public news templates | No tenant-specific app or build |
 | Vercel project | Hosting + exact custom-domain association | No nameserver delegation, DNS authority, or wildcard registration |
 | Supabase project | PostgreSQL 17 + Auth | No per-tenant project or database |
 | Cloudflare | Nameservers, DNS, wildcard records, edge TLS proxy, CDN, R2, cache purge | Authority never transferred to Vercel |
@@ -34,4 +34,4 @@ src/app/ → src/modules/ → src/core/ + ports ← src/integrations/
 - Adapters (Dashboard, API, Telegram, background, reconciliation) invoke shared application services; no tenant SQL or duplicated business rules in adapters.
 - Record durable intent in Postgres first; external effects after, resumable/bounded/idempotent.
 - Publication acceptance is transactional and Organization-scoped by Idempotency Key + canonical Request Fingerprint.
-- Next.js 16 conventions: `proxy.ts` for hostname routing, `instrumentation.ts` registers runtime context, `typedEnv` enabled.
+- Next.js 16 conventions: `src/proxy.ts` for hostname routing, `instrumentation.ts` registers runtime context, `typedEnv` enabled.

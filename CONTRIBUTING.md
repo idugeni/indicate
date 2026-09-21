@@ -88,7 +88,7 @@ compatible license in the PR.
 
 ### Formatting
 
-No Prettier config — follow the existing formatting conventions in the codebase.
+Markdown and prose follow `.prettierrc` (`proseWrap: preserve`, `printWidth: 100`) and `.markdownlint.json`; `npm run lint:md` covers curated markdown. Code follows the existing formatting conventions in the codebase.
 Use single quotes, trailing commas, and 2-space indentation.
 
 ### Path aliases
@@ -107,7 +107,7 @@ Configured in `tsconfig.json` (all under `src/`):
 
 ## Architecture rules
 
-The source of truth is [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The source of truth is [docs/architecture.md](docs/architecture.md).
 The summary below must not contradict it.
 
 ### Repository layout
@@ -121,7 +121,7 @@ The summary below must not contradict it.
 | `src/data/` | Persistence: Drizzle schema, `repos/`, `client.ts`, and forward-only-by-default SQL `migrations/` |
 | `src/integrations/` | Provider adapters: Supabase, R2 storage, Upstash Redis, Telegram, Cloudflare, Vercel (server-only) |
 | `src/ui/` | Shared client-safe UI utilities (`cn`, themes, hooks, site helpers) |
-| `proxy.ts` | Edge middleware: hostname resolution, security headers, platform guards |
+| `src/proxy.ts` | Edge routing: hostname resolution, security headers, platform guards |
 | `.agents/skills/` | Agent playbooks (`indicate-conventions`, `tenant-onboarding`, provider skills); see `AGENTS.md` for load triggers |
 
 There are no `_composition/`, `_lib/`, or `_components/` group folders in `src/app/` (corrected 2026-09-14 to match `CLAUDE.md` and disk). Services are wired directly in route handlers via shared modules.
@@ -139,8 +139,8 @@ migration, release, and secret boundaries.
 
 | Path | Serves | Rule |
 |---|---|---|
-| `.agents/skills/` | Canonical skill source for all agent tools | Edit here only; `.claude/skills` and `.kiro/skills` are junctions to this directory — never edit through them |
-| `.mcp.json` | Canonical repo MCP declaration | `opencode.jsonc` mirrors it; `.vscode/mcp.json` is editor-local convenience |
+| `.agents/skills/` | Canonical skill source for all agent tools | Edit here only; `.claude/skills` carries a subset and is not canonical — never edit through it |
+| `.mcp.json` | Canonical repo MCP declaration | `opencode.jsonc` mirrors it |
 | `supabase/` | Supabase CLI residue (`.temp/`, git-ignored) | Leave alone |
 | `public/brand/` | Static control-plane masters | Tenant brand bytes live in R2, never here |
 
@@ -291,8 +291,8 @@ update                            # undescriptive
 3. Apply the migration through the direct credential, then run the schema gate
    through the pooled runtime credential before activation.
 4. Review every migration body for drift against the typed schema before
-   promotion. Full procedures: [docs/MIGRATIONS.md](docs/MIGRATIONS.md) and
-   [docs/PRODUCTION_READINESS_RUNBOOK.md](docs/PRODUCTION_READINESS_RUNBOOK.md).
+   promotion. Full procedures: [docs/migrations.md](docs/migrations.md) and
+   [docs/production-readiness-runbook.md](docs/production-readiness-runbook.md).
 
 ## Security
 
@@ -340,9 +340,9 @@ When making structural changes, consider updating these files:
 | File | What to update |
 |---|---|
 | `README.md` | Repository layout, commands, architecture overview |
-| `docs/ARCHITECTURE.md` | System topology, layer responsibilities |
-| `docs/MIGRATIONS.md` | Migration or rollback procedure changes |
-| `docs/PRODUCTION_READINESS_RUNBOOK.md` | Readiness or rollback changes |
+| `docs/architecture.md` | System topology, layer responsibilities |
+| `docs/migrations.md` | Migration or rollback procedure changes |
+| `docs/production-readiness-runbook.md` | Readiness or rollback changes |
 | `src/app/globals.css` + `src/components/ui/` | Visual tokens, component specs (if adding UI) |
 | `CHANGELOG.md` | Notable changes under `[Unreleased]` |
 | `.env.example` | Runtime contract changes (placeholders only) |
@@ -351,7 +351,7 @@ When making structural changes, consider updating these files:
 
 If you are unsure where code belongs or how to handle a specific pattern, check:
 
-1. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for system design
+1. [docs/architecture.md](docs/architecture.md) for system design
 2. [src/app/globals.css](src/app/globals.css) and `src/components/ui/` for visual decisions
 3. [SUPPORT.md](SUPPORT.md) for where to ask for help
 4. Existing code in the same layer for established patterns

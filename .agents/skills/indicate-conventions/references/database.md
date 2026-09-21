@@ -1,6 +1,6 @@
 # Database reference
 
-Source of truth: `docs/MIGRATIONS.md`, `src/data/`.
+Source of truth: `docs/migrations.md`, `src/data/`.
 
 ## Layout
 
@@ -15,7 +15,7 @@ Source of truth: `docs/MIGRATIONS.md`, `src/data/`.
 2. Back up target Supabase Postgres; review every SQL file.
 3. Apply in filename order with the direct migration credential (`psql` or Supabase SQL editor).
 4. Verify through the pooled runtime path: boot the app and confirm `GET /api/health` reports valid configuration. The schema-version gate (`migration_gate_events.required_version`) is enforced at runtime-context initialization when armed (missing row means disarmed); the health handler surfaces the snapshot version but does not itself block.
-5. Run the full quality gate (`typecheck` + `lint` + build) before promotion.
+5. Run the quality gate (`typecheck` + `lint` + `test` + `build`, plus `lint:md` when docs change) before promotion.
 
 ## Evolution rules
 

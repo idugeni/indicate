@@ -85,8 +85,8 @@ GET /api/health    # valid configuration before/after (for runtime or migration 
 
 ## Docs updated
 
-- [ ] `README.md` / `docs/ARCHITECTURE.md` / `docs/MIGRATIONS.md` /
-      `docs/PRODUCTION_READINESS_RUNBOOK.md` as applicable
+- [ ] `README.md` / `docs/architecture.md` / `docs/migrations.md` /
+      `docs/production-readiness-runbook.md` as applicable
 - [ ] `CHANGELOG.md` entry under `[Unreleased]`
 - [ ] `.env.example` updated only if the runtime contract changed (placeholders
       only, never real values)

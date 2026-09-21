@@ -1,6 +1,6 @@
 # Multi-tenancy and security reference
 
-## Hostname routing (`proxy.ts`)
+## Hostname routing (`src/proxy.ts`)
 
 Control-plane matching precedes public Site lookup. A candidate that normalizes to a reserved hostname is rejected before public activation.
 

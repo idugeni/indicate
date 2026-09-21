@@ -1,13 +1,13 @@
 # Surat Perintah Kerja (SOW) — Template Kebutuhan Khusus
 
-**Status:** dilengkapi per pelanggan bila ada pekerjaan kustom dan ditandatangani bersama DPA.
-**Dasar:** Ketentuan Layanan (`/terms` §11); SOW ini melengkapi Ketentuan, bukan menggantikannya, kecuali dinyatakan tertulis.
+> **Status:** Template per pelanggan — dilengkapi bila ada pekerjaan kustom, ditandatangani bersama DPA.
+> **Owner:** Platform team.
+> **Dasar:** Ketentuan Layanan (`/terms` §11); SOW ini melengkapi Ketentuan, bukan menggantikannya, kecuali dinyatakan tertulis.
+> **Related:** [dpa](../dpa.md)
 
 ## 1. Para pihak
 
-- **Penyelenggara:** PT SANCA PHENA CAKRA, Jl. Raya Kalierang Gg. Melati
-  RT 001/RW 005, Kalierang, Selomerto, Kabupaten Wonosobo, Jawa Tengah 56361,
-  NPWP 1000000011023036, sancaphenacakra@gmail.com, 0856-4115-9405.
+- **Penyelenggara:** (nama badan usaha, alamat lengkap, NPWP, surel, telepon).
 - **Pelanggan:** (nama organisasi, alamat, NPWP, penanggung jawab, surel, telepon).
 
 ## 2. Ruang lingkup
@@ -18,7 +18,7 @@ bertahap — hapus yang tidak dipakai)
 ## 3. Harga dan pembayaran
 
 (nominal, jadwal bayar, rekening tujuan; faktur pajak diterbitkan atas nama
-PT SANCA PHENA CAKRA NPWP 1000000011023036. Harga sudah termasuk PPN.)
+penyelenggara. Harga sudah termasuk PPN.)
 
 ## 4. Jadwal dan tanggung jawab
 

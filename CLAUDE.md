@@ -24,7 +24,7 @@ Hexagonal / ports-and-adapters modular monolith under `src/`. One application, o
 
 **Dependency direction:**
 
-```
+```text
 src/app/ → src/modules/ → src/core/ + ports ← src/integrations/
                                               ↘ src/data/ (persistence)
 ```
@@ -41,7 +41,7 @@ All routes live under `src/app/` (there is no root-level `app/`).
 
 ### Route groups
 
-```
+```text
 src/app/
 ├── (site)/     # Service landing and informational pages (Dashboard host only)
 ├── (network)/  # Tenant-facing public content (articles, categories, search)
@@ -73,7 +73,7 @@ There are no `_composition/`, `_lib/`, or `_components/` group folders. Services
 
 Configured in `tsconfig.json`:
 
-```
+```text
 @/*              → ./src/*
 @/components/*   → ./src/components/*
 @/modules/*      → ./src/modules/*
@@ -92,14 +92,14 @@ Configured in `tsconfig.json`:
 
 ## Multi-tenant routing
 
-`proxy.ts` at the repo root (Next.js 16 proxy convention) performs hostname-based request routing:
+`src/proxy.ts` (Next.js 16 proxy convention) performs hostname-based request routing:
 
 - **Dashboard host** → control-plane pages and API
 - **API host** → v1 API surface
 - **Webhook host** → webhook endpoints
 - **Public tenant hosts** → exact-match hostname resolution to one Site
 
-Every tenant operation resolves exactly one Organization. Public reads resolve Organization and Site from one exact normalized hostname. No fallback tenant exists in production. Denials are non-disclosing (`deny()` → opaque 404/400 + `noindex`), with platform security headers (CSP/HSTS) applied at the edge. Development exception: localhost and `*.vercel.app` preview hosts are rewritten to the Dashboard host in `proxy.ts` — never rely on this outside local/preview work.
+Every tenant operation resolves exactly one Organization. Public reads resolve Organization and Site from one exact normalized hostname. No fallback tenant exists in production. Denials are non-disclosing (`deny()` → opaque 404/400 + `noindex`), with platform security headers (CSP/HSTS) applied at the edge. Development exception: localhost and `*.vercel.app` preview hosts are rewritten to the Dashboard host in `src/proxy.ts` — never rely on this outside local/preview work.
 
 ## Server-only enforcement
 

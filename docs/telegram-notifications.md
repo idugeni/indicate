@@ -1,10 +1,9 @@
 # Telegram Notifications — Decision Log
 
-Status: partially implemented (2026-09-19, owner-approved): event composers
-(`telegram-notifications.ts`: article created, job published/failed) and
-group fan-out (`TelegramNotificationService` + worker/article hooks, outbox +
-drain) are live. Per-event preferences and multi-group subscriptions remain
-planned; chat commands stay retired.
+> **Status:** Partially implemented (2026-09-19, owner-approved).
+> **Owner:** Platform team.
+> **Scope:** event composers (`telegram-notifications.ts`: article created, job published/failed) and group fan-out (`TelegramNotificationService` + worker/article hooks, outbox + drain) are live. Per-event preferences and multi-group subscriptions remain planned; chat commands stay retired.
+> **Related:** [architecture](architecture.md)
 
 ## 2026-09-19 — group-only notifications, chat commands retired
 

@@ -1,6 +1,10 @@
 # Architecture Rules
 
-Runbook for contributors. Companion to `docs/ARCHITECTURE.md` (still the source of truth for topology and invariants). These rules encode the performance and caching decisions applied in the current tree.
+> **Status:** Advisory companion to [architecture](architecture.md) (source of truth for topology and invariants).
+> **Owner:** Platform team.
+> **Related:** [architecture](architecture.md) · [templates](templates.md)
+
+Runbook for contributors. These rules encode the performance and caching decisions applied in the current tree.
 
 ## 1. Data projection rule: listings never load `body` or `gallery`
 
@@ -37,12 +41,12 @@ Native or large server libraries (reference case: `sharp`) must follow the `seal
 
 `npm run perf:seal-coldstart` exits 1 on any static import outside the owner module. The `perf` CI job runs it on every PR and `main` push.
 
-## 4. Caching strategy: edge TTL in `proxy.ts` vs durable-intent revalidation
+## 4. Caching strategy: edge TTL in `src/proxy.ts` vs durable-intent revalidation
 
 Two layers, two owners:
 
-- **Fast path (edge).** `proxy.ts:275` sets `Cache-Control: public, max-age=0, s-maxage=60, stale-while-revalidate=300` on the tenant `/` rewrite to `/tenant-home`. Browsers always revalidate (`max-age=0`); the CDN serves stale up to 60 s and revalidates in background for up to 300 s. This absorbs homepage/listing bursts without hitting Postgres. Authenticated, preview, control-plane, and error responses stay `private, no-store` (see `route.ts:36`, seal route headers).
-- **Freshness path (durable intent).** Mutations never purge synchronously. They write `invalidation_tasks` in the same Postgres transaction (`delivery.ts:364`), planned by `planInvalidation()` (`src/modules/delivery/invalidation.ts:13`) into tag set (`org:`, `site:`, `host:`, `article:`) plus path and URL lists. `InvalidationDispatcher.dispatch()` (`invalidation.ts:33`) claims tasks, purges exact Cloudflare URLs best-effort in one batch, then runs Next `revalidateTags` + `revalidatePaths`. Purge failure does not fail the task; the 60 s edge TTL self-heals. Poison tasks are counted via `failed`/`stranded`, never blocking the batch.
+- **Fast path (edge).** `src/proxy.ts:278` sets `Cache-Control: public, max-age=0, s-maxage=60, stale-while-revalidate=300` on the tenant `/` rewrite to `/tenant-home`. Browsers always revalidate (`max-age=0`); the CDN serves stale up to 60 s and revalidates in background for up to 300 s. This absorbs homepage/listing bursts without hitting Postgres. Authenticated, preview, control-plane, and error responses stay `private, no-store` (see `route.ts:36`, seal route headers).
+- **Freshness path (durable intent).** Mutations never purge synchronously. They write `invalidation_tasks` in the same Postgres transaction (`delivery.ts:387`), planned by `planInvalidation()` (`src/modules/delivery/invalidation.ts:13`) into tag set (`org:`, `site:`, `host:`, `article:`) plus path and URL lists. `InvalidationDispatcher.dispatch()` (`invalidation.ts:33`) claims tasks, purges exact Cloudflare URLs best-effort in one batch, then runs Next `revalidateTags` + `revalidatePaths`. Purge failure does not fail the task; the 60 s edge TTL self-heals. Poison tasks are counted via `failed`/`stranded`, never blocking the batch.
 
 When adding a tenant-visible mutation: build a `NetworkMutation`, call `planInvalidation()`, persist via `createInvalidation()` in the committing transaction. Do not call `revalidateTag`/`revalidatePath` inline from the CMS route (exception: the marketing `site-content` tag with hourly TTL, invalidated directly in `src/app/api/dashboard/content/route.ts:139`).
 

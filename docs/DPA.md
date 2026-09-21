@@ -1,16 +1,15 @@
 # Adendum Pemrosesan Data (DPA)
 
-**Status:** dilengkapi dan ditandatangani bersama SOW untuk paket Enterprise.
-**Dasar:** UU PDP No. 27/2022; Ketentuan Layanan (`/terms` §19) dan Kebijakan Privasi (`/privacy` §11–§12).
+> **Status:** Enterprise template — dilengkapi dan ditandatangani bersama SOW per paket Enterprise.
+> **Owner:** Platform team.
+> **Dasar:** UU PDP No. 27/2022; Ketentuan Layanan (`/terms` §19) dan Kebijakan Privasi (`/privacy` §11–§12).
+> **Related:** [sow template](templates/sow-template.md)
 
 ## 1. Para pihak dan peran
 
 - **Pengendali:** Pelanggan (organisasi) untuk Konten Pelanggan dan data pribadi pihak ketiga di dalamnya.
-- **Pemroses:** PT SANCA PHENA CAKRA ("Penyelenggara Indicate"), berdomisili di
-  Jl. Raya Kalierang Gg. Melati RT 001/RW 005, Kalierang, Selomerto,
-  Kabupaten Wonosobo, Jawa Tengah 56361, NPWP 1000000011023036,
-  surel sancaphenacakra@gmail.com, telepon 0856-4115-9405 — untuk pemrosesan
-  atas instruksi Pengendali demi penyediaan Layanan.
+- **Pemroses:** (nama badan usaha penyelenggara, alamat lengkap, NPWP,
+  surel, telepon) — untuk pemrosesan atas instruksi Pengendali demi penyediaan Layanan.
 - Untuk data akun/penagihan/operasional Layanan, Penyelenggara bertindak sebagai Pengendali tersendiri (lihat Kebijakan Privasi §1).
 
 ## 2. Ruang lingkup dan durasi
@@ -68,12 +67,12 @@ sebagai pelanggaran Kontrak.
 
 | | Pemroses | Pengendali |
 |---|---|---|
-| Nama jelas | PT SANCA PHENA CAKRA | (nama organisasi) |
+| Nama jelas | (nama badan usaha penyelenggara) | (nama organisasi) |
 | Jabatan penandatangan | | |
 | Tanggal | | |
 | Tanda tangan + stempel | | |
 
-Kontak privasi Pemroses: sancaphenacakra@gmail.com (lihat Kebijakan Privasi §20
+Kontak privasi Pemroses: (surel privasi penyelenggara) (lihat Kebijakan Privasi §20
 untuk jalur pengaduan ke otoritas).
 
 ---

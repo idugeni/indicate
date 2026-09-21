@@ -17,7 +17,7 @@
   <a href="https://github.com/idugeni/indicate/commits/main"><img alt="Last commit on main" src="https://img.shields.io/github/last-commit/idugeni/indicate/main?style=for-the-badge&amp;label=Last%20commit" /></a>
 </p>
 
-**Navigate:** [Why Indicate](#why-indicate) · [Status](#project-status) · [Architecture](#architecture) · [Prerequisites](#technology-and-prerequisites) · [Quick start](#quick-start) · [Commands](#commands) · [Release](#release-quality-and-promotion) · [Security](#security-and-tenant-isolation) · [Operations](#migrations-and-rollback) · [Docs](#documentation-and-specifications)
+**Navigate:** [Why Indicate](#why-indicate) · [Status](#project-status) · [Architecture](#architecture) · [Prerequisites](#technology-and-prerequisites) · [Quick start](#quick-start) · [Commands](#commands) · [Release](#release-quality-and-promotion-advisory--relaxed-2026-09-14) · [Security](#security-and-tenant-isolation) · [Operations](#migrations-and-rollback) · [Docs](#documentation-and-specifications)
 
 ## Why Indicate
 
@@ -38,7 +38,7 @@
 > **Last verified CI:** [Release Quality Gate run 33383014309](https://github.com/idugeni/indicate/actions/runs/33383014309). This is recorded evidence, not a claim that current CI, live provider contracts, or any deployment is presently green.
 
 > [!IMPORTANT]
-> **Specified, not implemented:** parts of the persisted runtime-config surface have approved requirements and design artifacts, but some implementation tasks remain pending. See `docs/ARCHITECTURE.md` and the `src/data/migrations/` sequence for the current state.
+> **Specified, not implemented:** parts of the persisted runtime-config surface have approved requirements and design artifacts, but some implementation tasks remain pending. See `docs/architecture.md` and the `src/data/migrations/` sequence for the current state.
 
 > [!WARNING]
 > [.env.example](.env.example) is the authority for the bootstrap environment: connections, secrets, hosts, and build-time values. Tunable policies and deployment identifiers live in PostgreSQL runtime config and are managed through the superadmin surface, not environment variables.
@@ -84,7 +84,7 @@ Install or provide:
 | `src/data/` | Persistence: Drizzle schema, `repos/`, `client.ts`, and forward-only SQL `migrations/` |
 | `src/integrations/` | Provider adapters: Supabase, R2 storage, Upstash Redis, Telegram, Cloudflare, Vercel |
 | `src/ui/` | Shared client-safe UI utilities (`cn`, themes, hooks, site helpers) |
-| `proxy.ts` | Edge middleware: hostname resolution, security headers, platform guards |
+| `src/proxy.ts` | Edge routing: hostname resolution, security headers, platform guards |
 | `.agents/skills/` | Agent playbooks (`indicate-conventions`, `tenant-onboarding`, provider skills); see `AGENTS.md` for load triggers |
 
 ## Quick start
@@ -133,9 +133,9 @@ Forward migrations are hand-written and reviewed by default, not generated. `dri
 CI runs the Release Quality Gate (`typecheck`, `lint`, production `build`) on every pull request and push to `main`. Promotion beyond CI is a manual operator decision:
 
 - Preserve a green gate on the promoted commit when practical; promoting a red or unchecked commit needs explicit owner sign-off with a recorded risk note.
-- Apply reviewed forward-by-default migrations (see [database migration operations](docs/MIGRATIONS.md)) and confirm `GET /api/health` reports a valid configuration before and after when practical.
+- Apply reviewed forward-by-default migrations (see [database migration operations](docs/migrations.md)) and confirm `GET /api/health` reports a valid configuration before and after when practical.
 - Prefer promoting the already-built artifact to the existing Vercel project; a second project or tenant deployment needs explicit owner approval.
-- Verify production readiness against the checklist in the [production readiness and rollback runbook](docs/PRODUCTION_READINESS_RUNBOOK.md) before routing traffic.
+- Verify production readiness against the checklist in the [production readiness and rollback runbook](docs/production-readiness-runbook.md) before routing traffic.
 - `npm run audit:production` audits production dependencies at high severity as part of the decision.
 
 ## Security and tenant isolation
@@ -155,13 +155,13 @@ Database evolution is forward-only. Apply reviewed migrations with the direct mi
 
 Application rollback selects the last schema-compatible deployment in the same Vercel project. It must preserve the current database schema and durable jobs/intents, keep Cloudflare authority unchanged, avoid duplicate infrastructure, and resume bounded reconcilers afterward. Irreversible database issues are corrected with a new forward migration.
 
-Detailed procedures: [database migration operations](docs/MIGRATIONS.md) and [production readiness and rollback](docs/PRODUCTION_READINESS_RUNBOOK.md).
+Detailed procedures: [database migration operations](docs/migrations.md) and [production readiness and rollback](docs/production-readiness-runbook.md).
 
 ## Documentation and specifications
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [Migration operations](docs/MIGRATIONS.md)
-- [Production readiness and rollback runbook](docs/PRODUCTION_READINESS_RUNBOOK.md)
+- [Architecture](docs/architecture.md)
+- [Migration operations](docs/migrations.md)
+- [Production readiness and rollback runbook](docs/production-readiness-runbook.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 - [Support](SUPPORT.md)

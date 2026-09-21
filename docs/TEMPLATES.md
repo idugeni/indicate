@@ -1,4 +1,9 @@
-# Tenant templates (advisory)
+# Tenant templates
+
+> **Status:** Advisory.
+> **Owner:** Platform team.
+> **Source of truth:** `src/modules/site/components/network/templates/` (dispatcher: `src/modules/site/components/network/network-listing.tsx`).
+> **Related:** [architecture](architecture.md) · [architecture rules](architecture-rules.md)
 
 Sepuluh template hidup di `src/modules/site/components/network/templates/`:
 `clean-blue` + 9 varian (`black-lime`, `dark-navy`, `glassy-blue`,
@@ -19,7 +24,7 @@ netral — boundary Suspense tidak punya konteks Site, jadi loader per-template
 
 ## Struktur per-template (modular, contoh `clean-blue/`)
 
-```
+```text
 <id>/
   template.ts, theme.ts          # identitas + palet mandiri (bukan site_settings.colors)
   lib/format.ts, lib/nav.ts      # pure helpers (tanggal/views/baca/nav)
@@ -86,12 +91,10 @@ buka-tutup `<select>` bawaan OS.
 4. Sitemap/invalidasi/robots bila ada path baru; footer bila ada link baru.
 5. Matriks render: tiap host tenant × tiap halaman (200 + canonical host
    sendiri), host dashboard × halaman control-plane tetap 200, slug cadangan
-   308/404 sesuai `proxy.ts` (`TENANT_ALIASES`/`TENANT_GONE`).
+   308/404 sesuai `src/proxy.ts` (`TENANT_ALIASES`/`TENANT_GONE`).
 
 ## Catatan
 
-- `templateId` masih menumpang di `site_settings.colors` (JSONB) — pindah ke
-  kolom dedicated mengikuti expand→backfill→verify→contract (tertunda, 10
-  template masih menumpang).
+- `templateId` menumpang di `site_settings.colors` (JSONB), disurfaced via kolom generated `template_id` dengan FK ke `template_presets(id)` (`20260920050000_site_settings_template_fk.sql`): id tak dikenal ditolak saat tulis; kolom writable dedicated masih tertunda.
 - SEO, sitemap, RSS, invalidasi, dan copy legal bersama tetap
   template-agnostic di `modules/site/` dan `modules/delivery/`.

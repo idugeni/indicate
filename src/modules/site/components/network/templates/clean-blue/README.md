@@ -1,6 +1,6 @@
 # Clean Blue Editorial — panduan modul
 
-Satu-satunya template tenant hidup. Route `(network)` tidak mengenal nama
+Satu dari sepuluh template tenant. Route `(network)` tidak mengenal nama
 template — semua lewat registry di `network-listing.tsx`.
 
 ## Folder

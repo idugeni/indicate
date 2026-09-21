@@ -1,7 +1,12 @@
-# Checklist Rilis Production + Runbook Pemantauan (advisory)
+# Checklist Rilis Production + Runbook Pemantauan
 
-Pelengkap `docs/PRODUCTION_READINESS_RUNBOOK.md` (readiness + rollback) dan
-`docs/MIGRATIONS.md` (prosedur migrasi). Dokumen ini mengatur urutan kerja
+> **Status:** Advisory — pelengkap runbook readiness.
+> **Owner:** Platform team.
+> **Trigger:** setiap rilis: pra-rilis → promosi → smoke test → pemantauan → rollback.
+> **Related:** [production readiness runbook](production-readiness-runbook.md) · [migrations](migrations.md) · [active domains](active-domains.md)
+
+Pelengkap `docs/production-readiness-runbook.md` (readiness + rollback) dan
+`docs/migrations.md` (prosedur migrasi). Dokumen ini mengatur urutan kerja
 rilis: pra-rilis → promosi → smoke test → pemantauan bertahap → rollback.
 
 Topologi tidak berubah saat rilis: satu project Vercel `indicate` (`sin1`),
@@ -11,16 +16,17 @@ satu database Supabase, satu bucket R2 privat, satu resource Upstash Redis.
 
 - [ ] Quality gate hijau di commit yang akan dirilis
       (`.github/workflows/quality-gate.yml`): `static`
-      (`db:bootstrap:check`, `typecheck`, `npm audit`), `lint`,
-      `test` (4 shard), `perf` (`npm run perf`), `build`.
+      (`db:bootstrap:check`, `typecheck`, `audit:production`), `lint`,
+      `test` (4 shard), `perf` (`npm run perf`), `docs`
+      (`npm run lint:md`, link check), `build`.
       Cek manual setara: `npm run typecheck`, `npm run lint`,
-      `npm test`, `npm run perf`.
+      `npm test`, `npm run perf`, `npm run lint:md`.
 - [ ] Migrasi database (bila ada file baru di `src/data/migrations/`):
       backup Supabase dulu, terapkan tiap file SQL sesuai urutan
       `src/data/migrations/meta/_journal.json` dengan kredensial direct
       (`DATABASE_DIRECT_URL`), lalu verifikasi `GET /api/health`
       melaporkan snapshot version yang diharapkan. Rujukan:
-      `docs/MIGRATIONS.md`. Tanpa migrasi baru: konfirmasi tidak ada
+      `docs/migrations.md`. Tanpa migrasi baru: konfirmasi tidak ada
       drift (`npm run db:bootstrap:check` sudah mencakup di gate).
 - [ ] Kompatibilitas rollback: rilis ini tidak menghapus kolom/tabel yang
       masih dibaca deployment sebelumnya (aturan expand → backfill →
@@ -96,5 +102,5 @@ node scripts/qa/preview-headers.mjs
       antrean (publication, activation, invalidation, cleanup) tetap
       durable dan resumable.
 - [ ] Setelah rollback: ulangi smoke test §3 + readiness check
-      `PRODUCTION_READINESS_RUNBOOK.md`, lanjutkan reconciler yang
+      `production-readiness-runbook.md`, lanjutkan reconciler yang
       bounded, catat kategori kegagalan + ID rilis di sistem insiden.

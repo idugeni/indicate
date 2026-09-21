@@ -4,7 +4,7 @@
 
 | Channel | Use for |
 |---------|---------|
-| [Architecture](docs/ARCHITECTURE.md) · [Migrations](docs/MIGRATIONS.md) · [Readiness runbook](docs/PRODUCTION_READINESS_RUNBOOK.md) · [Data agreement](docs/DPA.md) · [Changelog](CHANGELOG.md) | First stop for integration contracts, behavior, topology, operations, contract duties, and history |
+| [Architecture](docs/architecture.md) · [Migrations](docs/migrations.md) · [Readiness runbook](docs/production-readiness-runbook.md) · [Data agreement](docs/dpa.md) · [Changelog](CHANGELOG.md) | First stop for integration contracts, behavior, topology, operations, contract duties, and history |
 | [Bug report](.github/ISSUE_TEMPLATE/bug_report.yml) | Reproducible defects on a specific commit |
 | [Feature request](.github/ISSUE_TEMPLATE/feature_request.yml) | Proposed capabilities with tenant-isolation analysis |
 | [Contributing guide](CONTRIBUTING.md) | Environment setup, conventions, PR process |
@@ -49,7 +49,7 @@ information.
 Production readiness is environment-dependent. Always run the deterministic,
 provider, and readiness gates against authorized resources before any
 promotion decision — see the
-[readiness runbook](docs/PRODUCTION_READINESS_RUNBOOK.md).
+[readiness runbook](docs/production-readiness-runbook.md).
 
 ## Security vs. support boundary
 

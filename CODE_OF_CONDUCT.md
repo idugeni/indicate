@@ -47,7 +47,7 @@ rejected on technical grounds.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to **sancaphenacakra@gmail.com**. All complaints are reviewed
+reported to **[sancaphenacakra@gmail.com](mailto:sancaphenacakra@gmail.com)**. All complaints are reviewed
 promptly and confidentially.
 
 Enforcement follows these graduated steps:

@@ -34,7 +34,7 @@ General bugs without a security impact belong in the public
 
 **Do not open a public issue for a suspected vulnerability.**
 
-Email **sancaphenacakra@gmail.com** with:
+Email **[sancaphenacakra@gmail.com](mailto:sancaphenacakra@gmail.com)** with:
 
 1. Affected commit SHA or tag (production is the only environment).
 2. Host/route involved (Dashboard host, API host, webhook host, tenant host).
@@ -79,5 +79,5 @@ Security fixes follow the same promotion guidance as any release:
   (`src/data/migrations/`), then confirm `GET /api/health` reports a valid
   configuration before and after when practical.
 - Prefer promoting the already-built artifact to the existing Vercel project.
-- Verify against [production readiness and rollback](docs/PRODUCTION_READINESS_RUNBOOK.md)
-  before routing traffic. See also [migration operations](docs/MIGRATIONS.md).
+- Verify against [production readiness and rollback](docs/production-readiness-runbook.md)
+  before routing traffic. See also [migration operations](docs/migrations.md).

@@ -1,4 +1,8 @@
-# Pelajaran operasional (ditulis 2026-09-19 dari insiden nyata)
+# Pelajaran operasional
+
+> **Status:** Living document — ditulis 2026-09-19 dari insiden nyata, perbarui tiap ada insiden baru.
+> **Owner:** Platform team.
+> **Related:** [migrations](migrations.md) · [active domains](active-domains.md)
 
 ## 1. Tulis ke Supabase via MCP: selalu transaksi eksplisit + konteks tenant
 

@@ -12,8 +12,8 @@ Indicate is a multi-tenant media syndication platform: one Next.js application, 
 Load the relevant reference before acting, and treat these repo docs as authoritative when they conflict with this skill:
 
 - `CLAUDE.md` — tech stack, App Router conventions, commands, security invariants.
-- `docs/ARCHITECTURE.md` — the architectural invariants and system topology (single Vercel project, Cloudflare DNS authority, durable-Postgres-first design).
-- `docs/MIGRATIONS.md` — migration promotion gate and Supabase roles.
+- `docs/architecture.md` — the architectural invariants and system topology (single Vercel project, Cloudflare DNS authority, durable-Postgres-first design).
+- `docs/migrations.md` — migration promotion gate and Supabase roles.
 - `.env.example` — authoritative contract for currently implemented environment variables.
 
 Detailed guidance lives in `references/`: `architecture.md`, `tenancy-security.md`, `database.md`, `design.md`.
@@ -33,7 +33,7 @@ Hexagonal / ports-and-adapters modular monolith under `src/`. Dependency directi
 
 ## Multi-tenancy (defaults — overridable with owner approval in relaxed mode)
 
-`proxy.ts` (Next.js 16 proxy convention, not `middleware.ts`) routes by hostname: Dashboard host, API host, webhook host, or one public tenant host.
+`src/proxy.ts` (Next.js 16 proxy convention, not `middleware.ts`) routes by hostname: Dashboard host, API host, webhook host, or one public tenant host.
 
 - A normalized hostname should resolve by exact equality to one reserved control-plane surface or one unique active Site. Avoid fallback tenants in production (localhost/preview rewrite is dev-only); avoid suffix-only or substring-only matching.
 - Every tenant operation should derive exactly one authorized `organizationId`. Public reads should resolve Organization and Site from one exact normalized hostname.
@@ -59,7 +59,7 @@ Hexagonal / ports-and-adapters modular monolith under `src/`. Dependency directi
 ## Naming and commands
 
 - Files `kebab-case.ts(x)`; components, types, and interfaces `PascalCase`; functions and variables `camelCase`; constants `UPPER_SNAKE_CASE`.
-- Commands: `npm run dev`, `npm run build`, `npm run start`, `npm run typecheck` (`tsc --noEmit`), `npm run lint` (ESLint, `--max-warnings=0`). Run `typecheck` and `lint` after code changes.
+- Commands: `npm run dev`, `npm run build`, `npm run start`, `npm run typecheck` (`tsc --noEmit`), `npm run lint` (ESLint, `--max-warnings=0`), `npm run lint:md` (markdownlint over curated md; link check runs in the CI `docs` job). Run `typecheck` and `lint` after code changes, `lint:md` after docs changes.
 - `next.config.ts` keeps `postgres`, `drizzle-orm`, `sharp`, `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `@upstash/redis`, and `resend` in `serverExternalPackages`, sets `cacheComponents: true` and `images.unoptimized: true` (no Vercel image-optimization cost); image `remotePatterns` are a tenant allowlist — unknown hosts stay rejected.
 
 ## Commits

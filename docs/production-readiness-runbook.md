@@ -1,4 +1,9 @@
-# Indicate Production Readiness and Rollback Runbook (advisory — relaxed 2026-09-14)
+# Indicate Production Readiness and Rollback Runbook
+
+> **Status:** Advisory (relaxed 2026-09-14 — recommended checklist, not a hard gate).
+> **Owner:** Platform team.
+> **Trigger:** before every production promotion or rollback decision.
+> **Related:** [migrations](migrations.md) · [release checklist](release-checklist.md) · [cloudflare baseline](cloudflare-baseline.md) · [active domains](active-domains.md)
 
 ## Purpose
 
@@ -16,7 +21,7 @@ Cloudflare must remain authoritative for nameservers, DNS, wildcard records, edg
 ## Owner-gated items (dashboard/provider actions no agent can perform)
 
 - Cloudflare R2 WORM audit: bucket `indicate-audit-worm` + lock `worm-indefinite` + `R2_AUDIT_BUCKET_NAME` (production env) selesai 2026-09-07; kredensial utama mencakup bucket ini (token scoped terpisah opsional). Redeploy production sekali agar env terbaca cron 05:00; lalu konfirmasi baris `audit_worm_export` harian di `retention_runs`.
-- Per enterprise deal: sign SOW (from `docs/templates/SOW-TEMPLATE.md`) + DPA (`docs/DPA.md`); confirm Vercel plan capacity for the new domains.
+- Per enterprise deal: sign SOW (from `docs/templates/sow-template.md`) + DPA (`docs/dpa.md`); confirm Vercel plan capacity for the new domains.
 
 ## Production checks
 

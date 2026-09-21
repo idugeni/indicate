@@ -1,7 +1,11 @@
-# Cloudflare baseline operasional (living document)
+# Cloudflare baseline operasional
 
-Acuan kanonis per zona + checklist zona baru + ritme tinjauan. Terakhir
-diverifikasi: 2026-09-17 via API (104 zona Indicate + `safenca.id`).
+> **Status:** Living document.
+> **Owner:** Platform team.
+> **Last verified:** 2026-09-17 via API (104 zona Indicate + `safenca.id`).
+> **Related:** [domains](domains.md) · [active domains](active-domains.md) · [production readiness runbook](production-readiness-runbook.md)
+
+Acuan kanonis per zona + checklist zona baru + ritme tinjauan.
 
 ## Baseline zona Indicate (106 zona: 104 + utama sudah termasuk)
 

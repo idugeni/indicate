@@ -1,9 +1,12 @@
-# Inventaris domain Indicate (advisory — living document)
+# Inventaris domain Indicate
+
+> **Status:** Living document (advisory).
+> **Owner:** Platform team.
+> **Last verified:** 2026-09-19 (IDWebHost panel + Cloudflare API + RDAP PANDI/Verisign + DB `sites` + Vercel MCP + HTTP HEAD 20/20 `200`).
+> **Related:** [active domains](active-domains.md) · [cloudflare baseline](cloudflare-baseline.md)
 
 Hanya domain terkait Indicate yang dicatat di sini — proyek-proyek lain
-milik pemilik sengaja tidak dimasukkan. Terakhir diverifikasi: 2026-09-19
-(panel IDWebHost + API Cloudflare + RDAP PANDI/Verisign + database `sites` +
-Vercel MCP + HTTP HEAD 20/20 `200`).
+milik pemilik sengaja tidak dimasukkan.
 
 Tenant live di DB: **20 site = 10 apex + 10 regional** (`wonosobo.*`).
 Domain utama: `indicate.web.id` (bukan tenant).
@@ -25,7 +28,7 @@ diganti malam yang sama; delegasi 14/14 terverifikasi + CF 14/14 `active`
 Domain `penamerdeka.my.id` (ID 1082181, didaftarkan 2026-09-18) dibuatkan
 zona + NS diganti ke Cloudflare pada 2026-09-18; CF `active` per verifikasi
 MCP 2026-09-18, baseline diselaraskan maksimal mengikuti
-`docs/CLOUDFLARE-BASELINE.md`.
+`docs/cloudflare-baseline.md`.
 
 | Domain | Terdaftar | Kedaluwarsa | IDW | CF | Tenant? |
 |---|---|---|---|---|---|
