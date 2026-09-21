@@ -4,6 +4,8 @@ import { useId, useState, useTransition, type FormEvent } from 'react';
 import Image from 'next/image';
 import { Loader2, Settings2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
@@ -160,9 +162,9 @@ function SiteSettingsEditor({
       {error ? <FormNotice tone="error">{error}</FormNotice> : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <label htmlFor={nameId} className="font-mono text-xs text-paper-dim">
+          <Label htmlFor={nameId} className="font-mono text-xs text-paper-dim">
             Nama situs
-          </label>
+          </Label>
           <Input
             id={nameId}
             value={name}
@@ -173,9 +175,9 @@ function SiteSettingsEditor({
           />
         </div>
         <div className="space-y-1.5">
-          <label htmlFor={descriptionId} className="font-mono text-xs text-paper-dim">
+          <Label htmlFor={descriptionId} className="font-mono text-xs text-paper-dim">
             Deskripsi
-          </label>
+          </Label>
           <Input
             id={descriptionId}
             value={description}
@@ -187,9 +189,9 @@ function SiteSettingsEditor({
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor={taglineId} className="font-mono text-xs text-paper-dim">
+        <Label htmlFor={taglineId} className="font-mono text-xs text-paper-dim">
           Tagline (slogan)
-        </label>
+        </Label>
         <Input
           id={taglineId}
           value={tagline}
@@ -203,9 +205,9 @@ function SiteSettingsEditor({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <label htmlFor={seoTitleId} className="font-mono text-xs text-paper-dim">
+          <Label htmlFor={seoTitleId} className="font-mono text-xs text-paper-dim">
             Judul SEO (10–160 karakter, unik per situs)
-          </label>
+          </Label>
           <Input
             id={seoTitleId}
             value={seoTitle}
@@ -217,9 +219,9 @@ function SiteSettingsEditor({
           />
         </div>
         <div className="space-y-1.5">
-          <label htmlFor={ogSiteNameId} className="font-mono text-xs text-paper-dim">
+          <Label htmlFor={ogSiteNameId} className="font-mono text-xs text-paper-dim">
             Nama untuk pratinjau tautan (unik per situs)
-          </label>
+          </Label>
           <Input
             id={ogSiteNameId}
             value={ogSiteName}
@@ -233,9 +235,9 @@ function SiteSettingsEditor({
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor={seoDescriptionId} className="font-mono text-xs text-paper-dim">
+        <Label htmlFor={seoDescriptionId} className="font-mono text-xs text-paper-dim">
           Deskripsi SEO (50–500 karakter, unik per situs, tanpa :)
-        </label>
+        </Label>
         <Textarea
           id={seoDescriptionId}
           value={seoDescription}
@@ -250,9 +252,9 @@ function SiteSettingsEditor({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <label htmlFor={localeId} className="font-mono text-xs text-paper-dim">
+          <Label htmlFor={localeId} className="font-mono text-xs text-paper-dim">
             Bahasa (format id-ID)
-          </label>
+          </Label>
           <Input
             id={localeId}
             value={locale}
@@ -264,28 +266,28 @@ function SiteSettingsEditor({
           />
         </div>
         <div className="space-y-1.5">
-          <label htmlFor={robotsId} className="font-mono text-xs text-paper-dim">
+          <Label htmlFor={robotsId} className="font-mono text-xs text-paper-dim">
             Izin mesin pencari
-          </label>
-          <select
+          </Label>
+          <NativeSelect
             id={robotsId}
             value={robots}
             disabled={isSaving}
             onChange={(event) => setRobots(event.target.value)}
-            className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+            className="w-full"
           >
-            <option value="">Ikut bawaan (tampil di hasil cari)</option>
-            <option value="index,follow">index,follow</option>
-            <option value="noindex,nofollow">noindex,nofollow</option>
-          </select>
+            <NativeSelectOption value="">Ikut bawaan (tampil di hasil cari)</NativeSelectOption>
+            <NativeSelectOption value="index,follow">index,follow</NativeSelectOption>
+            <NativeSelectOption value="noindex,nofollow">noindex,nofollow</NativeSelectOption>
+          </NativeSelect>
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="space-y-1.5">
-          <label htmlFor={logoId} className="font-mono text-xs text-paper-dim">
+          <Label htmlFor={logoId} className="font-mono text-xs text-paper-dim">
             Logo
-          </label>
+          </Label>
           <Input
             id={logoId}
             value={logoMedia}
@@ -316,9 +318,9 @@ function SiteSettingsEditor({
           ) : null}
         </div>
         <div className="space-y-1.5">
-          <label htmlFor={faviconId} className="font-mono text-xs text-paper-dim">
+          <Label htmlFor={faviconId} className="font-mono text-xs text-paper-dim">
             Favicon
-          </label>
+          </Label>
           <Input
             id={faviconId}
             value={faviconMedia}
@@ -349,9 +351,9 @@ function SiteSettingsEditor({
           ) : null}
         </div>
         <div className="space-y-1.5">
-          <label htmlFor={defaultMediaId} className="font-mono text-xs text-paper-dim">
+          <Label htmlFor={defaultMediaId} className="font-mono text-xs text-paper-dim">
             Gambar bawaan
-          </label>
+          </Label>
           <Input
             id={defaultMediaId}
             value={defaultMedia}
@@ -369,33 +371,33 @@ function SiteSettingsEditor({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <label htmlFor={templateId} className="font-mono text-xs text-paper-dim">
+          <Label htmlFor={templateId} className="font-mono text-xs text-paper-dim">
             Tampilan situs (template)
-          </label>
-          <select
+          </Label>
+          <NativeSelect
             id={templateId}
             value={template}
             disabled={isSaving}
             onChange={(event) => handleTemplateChange(event.target.value)}
-            className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+            className="w-full"
           >
             {MASTER_TEMPLATE_PRESETS.map((preset) => (
-              <option key={preset.id} value={preset.id}>
+              <NativeSelectOption key={preset.id} value={preset.id}>
                 {preset.name}
-              </option>
+              </NativeSelectOption>
             ))}
-            <option value="" disabled>
+            <NativeSelectOption value="" disabled>
               Pilih template…
-            </option>
-          </select>
+            </NativeSelectOption>
+          </NativeSelect>
           <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">
             {MASTER_TEMPLATE_PRESETS.find((preset) => preset.id === template)?.description}
           </p>
         </div>
         <div className="space-y-1.5">
-          <label htmlFor={colorsId} className="font-mono text-xs text-paper-dim">
+          <Label htmlFor={colorsId} className="font-mono text-xs text-paper-dim">
             Warna (format JSON)
-          </label>
+          </Label>
           <Textarea
             id={colorsId}
             value={colors}
@@ -409,9 +411,9 @@ function SiteSettingsEditor({
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor={socialId} className="font-mono text-xs text-paper-dim">
+        <Label htmlFor={socialId} className="font-mono text-xs text-paper-dim">
           Tautan media sosial (format JSON)
-        </label>
+        </Label>
         <Textarea
           id={socialId}
           value={socialLinks}
@@ -424,9 +426,9 @@ function SiteSettingsEditor({
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor={seoId} className="font-mono text-xs text-paper-dim">
+        <Label htmlFor={seoId} className="font-mono text-xs text-paper-dim">
           Pengaturan SEO (format JSON)
-        </label>
+        </Label>
         <Textarea
           id={seoId}
           value={seo}
@@ -439,9 +441,9 @@ function SiteSettingsEditor({
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor={navigationId} className="font-mono text-xs text-paper-dim">
+        <Label htmlFor={navigationId} className="font-mono text-xs text-paper-dim">
           Menu navigasi (format JSON: label + path)
-        </label>
+        </Label>
         <Textarea
           id={navigationId}
           value={navigation}
@@ -491,21 +493,21 @@ export function SiteSettingsForm({
     <SectionCard icon={Settings2} title="Pengaturan situs" eyebrow="Identitas & SEO">
       <div className="space-y-3.5">
         <div className="space-y-1.5">
-          <label htmlFor={siteSelectId} className="font-mono text-xs text-paper-dim">
+          <Label htmlFor={siteSelectId} className="font-mono text-xs text-paper-dim">
             Pilih situs
-          </label>
-          <select
+          </Label>
+          <NativeSelect
             id={siteSelectId}
             value={activeSiteId}
             onChange={(event) => setSiteId(event.target.value)}
-            className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+            className="w-full"
           >
             {sites.map((site) => (
-              <option key={site.id} value={site.id}>
+              <NativeSelectOption key={site.id} value={site.id}>
                 {site.normalizedHostname}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </div>
 
         {activeSite === undefined ? (

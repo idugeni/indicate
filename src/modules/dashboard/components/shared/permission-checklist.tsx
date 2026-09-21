@@ -1,6 +1,8 @@
 'use client';
 
 import { useId, useMemo } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import type { EditorOption } from '@/modules/dashboard/components/shared/record-editor-config';
 
 function groupOf(value: string): string {
@@ -47,17 +49,16 @@ export function PermissionChecklist({
             {items.map((option) => {
               const inputId = `${baseId}-${option.value}`;
               return (
-                <label key={option.value} htmlFor={inputId} className="flex cursor-pointer items-center gap-2">
-                  <input
+                <Label key={option.value} htmlFor={inputId} className="flex cursor-pointer items-center gap-2">
+                  <Checkbox
                     id={inputId}
-                    type="checkbox"
                     checked={selected.includes(option.value)}
                     disabled={disabled}
-                    onChange={(event) => toggle(option.value, event.target.checked)}
-                    className="h-4 w-4 flex-none accent-brass"
+                    onCheckedChange={(checked) => toggle(option.value, checked)}
+                    className="flex-none"
                   />
                   <span className="font-mono text-xs text-paper-dim">{option.label}</span>
-                </label>
+                </Label>
               );
             })}
           </div>

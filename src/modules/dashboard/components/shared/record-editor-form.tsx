@@ -2,7 +2,10 @@
 
 import { useId, useState, useTransition, type FormEvent } from 'react';
 import { Loader2, X } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import {
   buildUpdatePayload,
@@ -92,44 +95,42 @@ export function RecordEditorForm({
           }
           if (field.kind === 'checkbox') {
             return (
-              <label key={field.key} htmlFor={inputId} className="flex cursor-pointer items-center gap-2 sm:col-span-2">
-                <input
+              <Label key={field.key} htmlFor={inputId} className="flex cursor-pointer items-center gap-2 sm:col-span-2">
+                <Checkbox
                   id={inputId}
-                  type="checkbox"
                   checked={value === true}
                   disabled={isSaving}
-                  onChange={(event) => setValue(field.key, event.target.checked)}
-                  className="h-4 w-4 accent-brass"
+                  onCheckedChange={(checked) => setValue(field.key, checked)}
                 />
                 <span className="font-sans text-xs text-paper-dim">{field.label}</span>
-              </label>
+              </Label>
             );
           }
           if (field.kind === 'select') {
             return (
-              <label key={field.key} htmlFor={inputId} className="block">
+              <Label key={field.key} htmlFor={inputId} className="block">
                 <span className="mb-1.5 block font-sans text-xs font-medium text-paper-dim">{field.label}</span>
-                <select
+                <NativeSelect
                   id={inputId}
                   value={typeof value === 'string' ? value : ''}
                   required={field.required}
                   disabled={isSaving}
                   onChange={(event) => setValue(field.key, event.target.value)}
-                  className="h-9 w-full border border-hairline-strong bg-bg-raised px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus:border-brass focus:outline-none"
+                  className="w-full"
                 >
-                  {field.allowEmpty ? <option value="">{field.emptyLabel ?? 'Tanpa relasi'}</option> : null}
+                  {field.allowEmpty ? <NativeSelectOption value="">{field.emptyLabel ?? 'Tanpa relasi'}</NativeSelectOption> : null}
                   {resolveFieldOptions(field, lookups).map((option) => (
-                    <option key={option.value} value={option.value}>
+                    <NativeSelectOption key={option.value} value={option.value}>
                       {option.label}
-                    </option>
+                    </NativeSelectOption>
                   ))}
-                </select>
-              </label>
+                </NativeSelect>
+              </Label>
             );
           }
           if (field.kind === 'textarea') {
             return (
-              <label key={field.key} htmlFor={inputId} className={wide ? 'block sm:col-span-2' : 'block'}>
+              <Label key={field.key} htmlFor={inputId} className={wide ? 'block sm:col-span-2' : 'block'}>
                 <span className="mb-1.5 block font-sans text-xs font-medium text-paper-dim">{field.label}</span>
                 <Textarea
                   id={inputId}
@@ -141,11 +142,11 @@ export function RecordEditorForm({
                   onChange={(event) => setValue(field.key, event.target.value)}
                   className="w-full font-sans text-xs"
                 />
-              </label>
+              </Label>
             );
           }
           return (
-            <label key={field.key} htmlFor={inputId} className={wide ? 'block sm:col-span-2' : 'block'}>
+            <Label key={field.key} htmlFor={inputId} className={wide ? 'block sm:col-span-2' : 'block'}>
               <span className="mb-1.5 block font-sans text-xs font-medium text-paper-dim">{field.label}</span>
               <Input
                 id={inputId}
@@ -157,7 +158,7 @@ export function RecordEditorForm({
                 onChange={(event) => setValue(field.key, event.target.value)}
                 className="font-sans text-xs"
               />
-            </label>
+            </Label>
           );
         })}
       </div>

@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Textarea } from '@/components/ui/textarea';
+
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { formatRelatif, formatTanggal } from '@/modules/dashboard/components/shared/dashboard-dates';
 
@@ -287,22 +291,22 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
       <section aria-label="Permintaan data" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Permintaan data baru</p>
         <div className="mt-3 flex flex-col gap-2">
-          <select
+          <NativeSelect
             value={privacyType} onChange={(event) => setPrivacyType(event.target.value)} disabled={busy}
             aria-label="Jenis permintaan data"
-            className="h-9 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+            className="w-full"
           >
-            <option value="access">Akses / salinan data</option>
-            <option value="correction">Koreksi data</option>
-            <option value="deletion">Penghapusan data</option>
-            <option value="portability">Portabilitas data</option>
-            <option value="restriction">Pembatasan pemrosesan</option>
-          </select>
-          <textarea
+            <NativeSelectOption value="access">Akses / salinan data</NativeSelectOption>
+            <NativeSelectOption value="correction">Koreksi data</NativeSelectOption>
+            <NativeSelectOption value="deletion">Penghapusan data</NativeSelectOption>
+            <NativeSelectOption value="portability">Portabilitas data</NativeSelectOption>
+            <NativeSelectOption value="restriction">Pembatasan pemrosesan</NativeSelectOption>
+          </NativeSelect>
+          <Textarea
             value={privacyDetails} onChange={(event) => setPrivacyDetails(event.target.value)} disabled={busy}
             placeholder="Uraian spesifik permintaan (min. 10 karakter)"
             aria-label="Uraian permintaan data" rows={3}
-            className="border border-hairline-strong bg-bg px-3 py-2 font-sans text-xs text-paper"
+            className="font-sans text-xs"
           />
           <button
             type="button" onClick={submitPrivacy} disabled={busy}
@@ -356,9 +360,9 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
         </p>
         <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="hold-org-id" className="font-sans text-xs font-medium text-paper-dim">
+            <Label htmlFor="hold-org-id" className="font-sans text-xs font-medium text-paper-dim">
               ID organisasi
-            </label>
+            </Label>
             <input
               id="hold-org-id" value={holdOrgId} onChange={(event) => setHoldOrgId(event.target.value)} disabled={busy}
               placeholder="ID organisasi…" spellCheck={false}
@@ -366,9 +370,9 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="hold-reason" className="font-sans text-xs font-medium text-paper-dim">
+            <Label htmlFor="hold-reason" className="font-sans text-xs font-medium text-paper-dim">
               Alasan perkara (min. 10 karakter)
-            </label>
+            </Label>
             <input
               id="hold-reason" value={holdReason} onChange={(event) => setHoldReason(event.target.value)} disabled={busy}
               placeholder="Perkara No. … / permintaan aparat …"
@@ -418,9 +422,9 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
         </p>
         <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="erasure-org-id" className="font-sans text-xs font-medium text-paper-dim">
+            <Label htmlFor="erasure-org-id" className="font-sans text-xs font-medium text-paper-dim">
               ID organisasi
-            </label>
+            </Label>
             <input
               id="erasure-org-id" value={erasureOrgId} onChange={(event) => setErasureOrgId(event.target.value)} disabled={busy}
               placeholder="ID organisasi…" spellCheck={false}
@@ -428,9 +432,9 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="erasure-reason" className="font-sans text-xs font-medium text-paper-dim">
+            <Label htmlFor="erasure-reason" className="font-sans text-xs font-medium text-paper-dim">
               Alasan (min. 10 karakter)
-            </label>
+            </Label>
             <input
               id="erasure-reason" value={erasureReason} onChange={(event) => setErasureReason(event.target.value)} disabled={busy}
               placeholder="Alasan penghapusan data…"

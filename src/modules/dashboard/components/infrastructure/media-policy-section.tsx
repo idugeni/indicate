@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useState, useTransition, type FormEvent } from 'react';
 import { Gauge, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface MediaPolicy {
   readonly allowedMimeTypes: readonly string[];
@@ -125,9 +126,9 @@ export function MediaPolicySection() {
           </p>
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">
-              <label htmlFor={maxMbInputId} className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor={maxMbInputId} className="font-sans text-xs font-medium text-paper-dim">
                 Ukuran maks berkas (MB)
-              </label>
+              </Label>
               <Input
                 id={maxMbInputId}
                 name="maxMb"
@@ -141,9 +142,9 @@ export function MediaPolicySection() {
               />
             </div>
             <div className="space-y-1.5">
-              <label htmlFor={uploadTtlInputId} className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor={uploadTtlInputId} className="font-sans text-xs font-medium text-paper-dim">
                 Masa berlaku tautan unggah (detik)
-              </label>
+              </Label>
               <Input
                 id={uploadTtlInputId}
                 name="uploadTtl"
@@ -157,9 +158,9 @@ export function MediaPolicySection() {
               />
             </div>
             <div className="space-y-1.5">
-              <label htmlFor={readTtlInputId} className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor={readTtlInputId} className="font-sans text-xs font-medium text-paper-dim">
                 Masa berlaku tautan baca (detik)
-              </label>
+              </Label>
               <Input
                 id={readTtlInputId}
                 name="readTtl"

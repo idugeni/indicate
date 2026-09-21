@@ -33,6 +33,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { Label } from '@/components/ui/label';
 import { CommandPalette } from '@/modules/dashboard/components/command-palette';
 import {
   Sheet,
@@ -652,9 +653,9 @@ export function DashboardWorkspace({
 
           {sidebarCollapsed ? null : (
             <div className="flex-none animate-in border-b border-hairline p-3 fade-in duration-200">
-              <label htmlFor={selectOrgId} className="px-1 font-sans text-[11px] font-medium uppercase tracking-wider text-paper-faint">
+              <Label htmlFor={selectOrgId} className="px-1 font-sans text-[11px] font-medium uppercase tracking-wider text-paper-faint">
                 Organisasi
-              </label>
+              </Label>
               <div className="mt-1.5">
                 {organizations.length > 1 ? (
                   <OrganizationSwitcher
@@ -789,9 +790,9 @@ export function DashboardWorkspace({
               </SheetTitle>
             </SheetHeader>
             <div className="flex-none border-b border-hairline px-4 py-3">
-              <label htmlFor={drawerOrgId} className="font-sans text-[11px] font-medium uppercase tracking-wider text-paper-faint">
+              <Label htmlFor={drawerOrgId} className="font-sans text-[11px] font-medium uppercase tracking-wider text-paper-faint">
                 Organisasi
-              </label>
+              </Label>
               <div className="mt-1.5">
                 {organizations.length > 1 ? (
                   <OrganizationSwitcher

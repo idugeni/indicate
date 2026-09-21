@@ -10,6 +10,8 @@ import {
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { suggestAttributionLabel } from '@/modules/dashboard/components/editorial/publisher-attribution';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import type { PublisherEntity, SiteEntity } from '@/modules/dashboard/components/shared/types';
 
 const VERIFICATION_STATUS_LABELS: Readonly<Record<string, string>> = {
@@ -108,9 +110,9 @@ export function PublisherForm({
 
         <form onSubmit={handleCreate} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor={createNameId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={createNameId} className="font-mono text-xs text-paper-dim">
               Nama Resmi Media / Lembaga
-            </label>
+            </Label>
             <Input
               id={createNameId}
               name="name"
@@ -125,28 +127,28 @@ export function PublisherForm({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={createTypeId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={createTypeId} className="font-mono text-xs text-paper-dim">
               Jenis Penerbit
-            </label>
-            <select
+            </Label>
+            <NativeSelect
               id={createTypeId}
               name="type"
               disabled={isCreating}
               onChange={(event) => {
                 if (event.currentTarget.form !== null) refreshAttributionSuggestion(event.currentTarget.form);
               }}
-              className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+              className="w-full"
             >
-              <option value="independent_publisher">Penerbit Independen Regional</option>
-              <option value="government_institution">Institusi / Lembaga Kedinasan</option>
-              <option value="company">Badan Usaha / Korporasi Media</option>
-            </select>
+              <NativeSelectOption value="independent_publisher">Penerbit Independen Regional</NativeSelectOption>
+              <NativeSelectOption value="government_institution">Institusi / Lembaga Kedinasan</NativeSelectOption>
+              <NativeSelectOption value="company">Badan Usaha / Korporasi Media</NativeSelectOption>
+            </NativeSelect>
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={createAttrId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={createAttrId} className="font-mono text-xs text-paper-dim">
               Nama Tampil
-            </label>
+            </Label>
             <Input
               id={createAttrId}
               name="attributionLabel"
@@ -158,9 +160,9 @@ export function PublisherForm({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={createEvidenceId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={createEvidenceId} className="font-mono text-xs text-paper-dim">
               Referensi Bukti Legalitas / Sertifikat (Opsional)
-            </label>
+            </Label>
             <Input
               id={createEvidenceId}
               name="evidenceReference"
@@ -191,44 +193,44 @@ export function PublisherForm({
 
         <form onSubmit={handleVerify} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor={verifyPubId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={verifyPubId} className="font-mono text-xs text-paper-dim">
               Pilih Penerbit
-            </label>
-            <select
+            </Label>
+            <NativeSelect
               id={verifyPubId}
               name="publisherId"
               disabled={isVerifying}
-              className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+              className="w-full"
             >
               {model?.publishers?.map((item) => (
-                <option key={item.id} value={item.id}>
+                <NativeSelectOption key={item.id} value={item.id}>
                   {item.name} · [{VERIFICATION_STATUS_LABELS[item.verificationStatus] ?? item.verificationStatus}]
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={verifyDecisionId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={verifyDecisionId} className="font-mono text-xs text-paper-dim">
               Keputusan
-            </label>
-            <select
+            </Label>
+            <NativeSelect
               id={verifyDecisionId}
               name="decision"
               disabled={isVerifying}
-              className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+              className="w-full"
             >
-              <option value="publisher.submit">Kirim untuk Verifikasi</option>
-              <option value="publisher.approve">Setujui & Verifikasi</option>
-              <option value="publisher.reject">Tolak</option>
-              <option value="publisher.archive">Arsipkan</option>
-            </select>
+              <NativeSelectOption value="publisher.submit">Kirim untuk Verifikasi</NativeSelectOption>
+              <NativeSelectOption value="publisher.approve">Setujui & Verifikasi</NativeSelectOption>
+              <NativeSelectOption value="publisher.reject">Tolak</NativeSelectOption>
+              <NativeSelectOption value="publisher.archive">Arsipkan</NativeSelectOption>
+            </NativeSelect>
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={verifyEvidenceId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={verifyEvidenceId} className="font-mono text-xs text-paper-dim">
               Bukti Pendukung
-            </label>
+            </Label>
             <Input
               id={verifyEvidenceId}
               name="evidenceReference"
@@ -239,9 +241,9 @@ export function PublisherForm({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={verifyReasonId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={verifyReasonId} className="font-mono text-xs text-paper-dim">
               Catatan / Alasan Penolakan
-            </label>
+            </Label>
             <Input
               id={verifyReasonId}
               name="reason"

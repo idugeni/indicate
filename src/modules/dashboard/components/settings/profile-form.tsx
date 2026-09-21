@@ -6,6 +6,9 @@ import { Loader2, UserRound } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Textarea } from '@/components/ui/textarea';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 
@@ -134,10 +137,10 @@ export function ProfileForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={bioId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={bioId} className="font-mono text-xs text-paper-dim">
               Bio (maks 500 karakter)
-            </label>
-            <textarea
+            </Label>
+            <Textarea
               id={bioId}
               value={bio}
               onChange={(event) => setBio(event.target.value)}
@@ -145,31 +148,31 @@ export function ProfileForm() {
               rows={3}
               disabled={busy}
               placeholder="Ceritakan peran Anda…"
-              className="w-full rounded border border-hairline-strong bg-bg px-2.5 py-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+              className="font-sans text-xs"
             />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label htmlFor={localeId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={localeId} className="font-mono text-xs text-paper-dim">
                 Bahasa
-              </label>
-              <select
+              </Label>
+              <NativeSelect
                 id={localeId}
                 value={locale}
                 onChange={(event) => setLocale(event.target.value)}
                 disabled={busy}
-                className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+                className="w-full"
               >
-                <option value="">— bawaan —</option>
-                <option value="id-ID">id-ID</option>
-                <option value="en-US">en-US</option>
-              </select>
+                <NativeSelectOption value="">— bawaan —</NativeSelectOption>
+                <NativeSelectOption value="id-ID">id-ID</NativeSelectOption>
+                <NativeSelectOption value="en-US">en-US</NativeSelectOption>
+              </NativeSelect>
             </div>
             <div className="space-y-1.5">
-              <label htmlFor={timezoneId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={timezoneId} className="font-mono text-xs text-paper-dim">
                 Zona waktu
-              </label>
+              </Label>
               <Input
                 id={timezoneId}
                 value={timezone}

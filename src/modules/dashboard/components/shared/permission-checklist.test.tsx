@@ -19,14 +19,14 @@ describe('Daftar centang izin', () => {
     render(<PermissionChecklist options={OPSI} selected={[]} onChange={vi.fn()} />);
     expect(screen.getByText('article')).toBeDefined();
     expect(screen.getByText('billing')).toBeDefined();
-    expect(screen.getByLabelText('article.read')).toBeDefined();
-    expect(screen.getByLabelText('billing.read')).toBeDefined();
+    expect(screen.getByRole('checkbox', { name: 'article.read' })).toBeDefined();
+    expect(screen.getByRole('checkbox', { name: 'billing.read' })).toBeDefined();
   });
 
   it('menambahkan izin saat kotak dicentang', () => {
     const ubah = vi.fn();
     render(<PermissionChecklist options={OPSI} selected={[]} onChange={ubah} />);
-    fireEvent.click(screen.getByLabelText('article.read'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'article.read' }));
     expect(ubah).toHaveBeenCalledWith(['article.read']);
   });
 
@@ -35,13 +35,13 @@ describe('Daftar centang izin', () => {
     render(
       <PermissionChecklist options={OPSI} selected={['article.read', 'billing.read']} onChange={ubah} />,
     );
-    fireEvent.click(screen.getByLabelText('article.read'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'article.read' }));
     expect(ubah).toHaveBeenCalledWith(['billing.read']);
   });
 
   it('mengunci semua kotak saat nonaktif', () => {
     render(<PermissionChecklist options={OPSI} selected={[]} disabled onChange={vi.fn()} />);
-    expect((screen.getByLabelText('article.read') as HTMLInputElement).disabled).toBe(true);
-    expect((screen.getByLabelText('billing.read') as HTMLInputElement).disabled).toBe(true);
+    expect(screen.getByRole('checkbox', { name: 'article.read' }).getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByRole('checkbox', { name: 'billing.read' }).getAttribute('aria-disabled')).toBe('true');
   });
 });

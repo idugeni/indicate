@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import type {
   AuthorEntity,
@@ -158,89 +160,89 @@ export function EditorialForm({
         <form onSubmit={handleCreateArticle} className="space-y-3.5">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label htmlFor={regionSelectId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={regionSelectId} className="font-mono text-xs text-paper-dim">
                 Wilayah
-              </label>
-              <select
+              </Label>
+              <NativeSelect
                 id={regionSelectId}
                 name="regionId"
                 required
                 disabled={isSubmitting}
-                className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+                className="w-full"
               >
                 {model?.regions?.map((r) => (
-                  <option key={r.id} value={r.id}>
+                  <NativeSelectOption key={r.id} value={r.id}>
                     {r.name}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor={publisherSelectId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={publisherSelectId} className="font-mono text-xs text-paper-dim">
                 Penerbit
-              </label>
-              <select
+              </Label>
+              <NativeSelect
                 id={publisherSelectId}
                 name="publisherId"
                 disabled={isSubmitting}
-                className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+                className="w-full"
               >
-                <option value="">Mandiri (tanpa penerbit)</option>
+                <NativeSelectOption value="">Mandiri (tanpa penerbit)</NativeSelectOption>
                 {model?.publishers?.map((p) => (
-                  <option key={p.id} value={p.id}>
+                  <NativeSelectOption key={p.id} value={p.id}>
                     {p.name}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label htmlFor={categorySelectId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={categorySelectId} className="font-mono text-xs text-paper-dim">
                 Kategori
-              </label>
-              <select
+              </Label>
+              <NativeSelect
                 id={categorySelectId}
                 name="categoryId"
                 disabled={isSubmitting}
-                className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+                className="w-full"
               >
-                <option value="">Umum / Tanpa Kategori</option>
+                <NativeSelectOption value="">Umum / Tanpa Kategori</NativeSelectOption>
                 {model?.categories?.map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <NativeSelectOption key={c.id} value={c.id}>
                     {c.name}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor={authorSelectId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={authorSelectId} className="font-mono text-xs text-paper-dim">
                 Penulis
-              </label>
-              <select
+              </Label>
+              <NativeSelect
                 id={authorSelectId}
                 name="authorId"
                 disabled={isSubmitting}
-                className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+                className="w-full"
               >
-                <option value="">Redaksi Bersama</option>
+                <NativeSelectOption value="">Redaksi Bersama</NativeSelectOption>
                 {model?.authors?.map((a) => (
-                  <option key={a.id} value={a.id}>
+                  <NativeSelectOption key={a.id} value={a.id}>
                     {a.displayName}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label htmlFor={titleInputId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={titleInputId} className="font-mono text-xs text-paper-dim">
                 Judul Artikel
-              </label>
+              </Label>
               <Input
                 id={titleInputId}
                 name="title"
@@ -253,9 +255,9 @@ export function EditorialForm({
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor={slugInputId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={slugInputId} className="font-mono text-xs text-paper-dim">
                 Slug URL
-              </label>
+              </Label>
               <Input
                 id={slugInputId}
                 name="slug"
@@ -274,9 +276,9 @@ export function EditorialForm({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={sourceInputId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={sourceInputId} className="font-mono text-xs text-paper-dim">
               Sumber
-            </label>
+            </Label>
             <Input
               id={sourceInputId}
               name="source"
@@ -288,9 +290,9 @@ export function EditorialForm({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={tagsInputId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={tagsInputId} className="font-mono text-xs text-paper-dim">
               Topik (koma, maks. 10)
-            </label>
+            </Label>
             <Input
               id={tagsInputId}
               name="tags"
@@ -301,9 +303,9 @@ export function EditorialForm({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={bodyInputId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={bodyInputId} className="font-mono text-xs text-paper-dim">
               Isi Artikel Lengkap
-            </label>
+            </Label>
             <div className="flex flex-wrap gap-1.5">
               <button type="button" title="Tebal (**teks**)" onClick={() => insertMarkup('**', '**')} disabled={isSubmitting} className="rounded border border-hairline-strong bg-bg px-2 py-1 font-mono text-[11px] text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50">
                 Tebal
@@ -368,21 +370,21 @@ export function EditorialForm({
 
         <form onSubmit={handleAssignSites} className="space-y-4">
           <div className="space-y-1.5">
-            <label htmlFor={assignArticleSelectId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={assignArticleSelectId} className="font-mono text-xs text-paper-dim">
               Pilih Artikel Target
-            </label>
-            <select
+            </Label>
+            <NativeSelect
               id={assignArticleSelectId}
               name="articleId"
               disabled={isAssigning}
-              className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+              className="w-full"
             >
               {model?.articles?.map((a) => (
-                <option key={a.id} value={a.id}>
+                <NativeSelectOption key={a.id} value={a.id}>
                   {a.title}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </div>
 
           <div className="space-y-2">
@@ -396,7 +398,7 @@ export function EditorialForm({
                 </p>
               ) : (
                 model?.sites?.map((site) => (
-                  <label
+                  <Label
                     key={site.id}
                     className="flex cursor-pointer items-center gap-2.5 rounded p-1.5 transition-colors duration-180 hover:bg-bg-raised-2"
                   >
@@ -410,7 +412,7 @@ export function EditorialForm({
                     <span className="font-mono text-xs text-paper">
                       {site.normalizedHostname}
                     </span>
-                  </label>
+                  </Label>
                 ))
               )}
             </div>
@@ -438,44 +440,44 @@ export function EditorialForm({
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label htmlFor={viewsArticleSelectId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={viewsArticleSelectId} className="font-mono text-xs text-paper-dim">
                 Artikel
-              </label>
-              <select
+              </Label>
+              <NativeSelect
                 id={viewsArticleSelectId}
                 name="viewsArticleId"
                 disabled={isSettingViews}
-                className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+                className="w-full"
               >
                 {model?.articles?.map((a) => (
-                  <option key={a.id} value={a.id}>
+                  <NativeSelectOption key={a.id} value={a.id}>
                     {a.title}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
             <div className="space-y-1.5">
-              <label htmlFor={viewsSiteSelectId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={viewsSiteSelectId} className="font-mono text-xs text-paper-dim">
                 Situs
-              </label>
-              <select
+              </Label>
+              <NativeSelect
                 id={viewsSiteSelectId}
                 name="viewsSiteId"
                 disabled={isSettingViews}
-                className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+                className="w-full"
               >
                 {model?.sites?.map((site) => (
-                  <option key={site.id} value={site.id}>
+                  <NativeSelectOption key={site.id} value={site.id}>
                     {site.normalizedHostname}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
           </div>
           <div className="space-y-1.5">
-            <label htmlFor={viewsCountInputId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={viewsCountInputId} className="font-mono text-xs text-paper-dim">
               Jumlah tayang
-            </label>
+            </Label>
             <Input
               id={viewsCountInputId}
               name="viewCount"

@@ -12,6 +12,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 
@@ -71,23 +74,23 @@ export function CachePurgeForm({
       <form onSubmit={handleSubmit} className="space-y-3.5">
         {notice ? <FormNotice tone={notice.tone}>{notice.message}</FormNotice> : null}
         <div className="space-y-1.5">
-          <label htmlFor={siteSelectId} className="font-mono text-xs text-paper-dim">
+          <Label htmlFor={siteSelectId} className="font-mono text-xs text-paper-dim">
             Target
-          </label>
-          <select
+          </Label>
+          <NativeSelect
             id={siteSelectId}
             value={siteId}
             disabled={isPurging}
             onChange={(event) => { setSiteId(event.target.value); setConfirmBulk(false); }}
-            className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+            className="w-full"
           >
-            <option value="">Semua situs</option>
+            <NativeSelectOption value="">Semua situs</NativeSelectOption>
             {sites.map((site) => (
-              <option key={site.id} value={site.id}>
+              <NativeSelectOption key={site.id} value={site.id}>
                 {site.normalizedHostname}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
           <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">
             Memperbarui tampilan {targetLabel} di semua server. Tercatat di Riwayat Keamanan dan terlihat di Tugas Latar Belakang.
             {isBulk ? ` Pembersihan massal menyegarkan ${sites.length} situs sekaligus dan dibatasi 2 menit per organisasi.` : null}
@@ -95,17 +98,16 @@ export function CachePurgeForm({
         </div>
         {isBulk ? (
           <div className="flex items-start gap-2">
-            <input
+            <Checkbox
               id={confirmBulkId}
-              type="checkbox"
               checked={confirmBulk}
               disabled={isPurging}
-              onChange={(event) => setConfirmBulk(event.target.checked)}
-              className="mt-0.5 h-3.5 w-3.5 accent-[#c9a227]"
+              onCheckedChange={(checked) => setConfirmBulk(checked)}
+              className="mt-0.5"
             />
-            <label htmlFor={confirmBulkId} className="font-sans text-[11px] leading-relaxed text-paper-dim">
+            <Label htmlFor={confirmBulkId} className="font-sans text-[11px] leading-relaxed text-paper-dim">
               Saya paham membersihkan {sites.length} situs sekaligus membebani server.
-            </label>
+            </Label>
           </div>
         ) : null}
         <div>

@@ -4,6 +4,8 @@ import { useId, useState, useTransition, type FormEvent } from 'react';
 import { Loader2, UploadCloud } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { formatBytes, prepareImageUpload } from '@/modules/publishing/compress-image';
 
 const SUPPORTED_MEDIA_TYPES = new Set([
@@ -191,9 +193,9 @@ export function MediaForm({
 
         <form onSubmit={handleUpload} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor={fileInputId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={fileInputId} className="font-mono text-xs text-paper-dim">
               Pilih Berkas Gambar (JPEG, PNG, WebP, AVIF, ICO, HEIC)
-            </label>
+            </Label>
             <Input
               id={fileInputId}
               name="file"
@@ -206,9 +208,9 @@ export function MediaForm({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={purposeInputId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={purposeInputId} className="font-mono text-xs text-paper-dim">
               Tujuan Penggunaan
-            </label>
+            </Label>
             <Input
               id={purposeInputId}
               name="purpose"
@@ -221,43 +223,43 @@ export function MediaForm({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label htmlFor={ownerKindSelectId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={ownerKindSelectId} className="font-mono text-xs text-paper-dim">
                 Kepemilikan
-              </label>
-              <select
+              </Label>
+              <NativeSelect
                 id={ownerKindSelectId}
                 name="ownerKind"
                 disabled={isUploading}
-                className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+                className="w-full"
               >
-                <option value="organization">Organisasi (umum)</option>
-                <option value="article">Artikel tertentu</option>
-                <option value="site">Situs tertentu</option>
-              </select>
+                <NativeSelectOption value="organization">Organisasi (umum)</NativeSelectOption>
+                <NativeSelectOption value="article">Artikel tertentu</NativeSelectOption>
+                <NativeSelectOption value="site">Situs tertentu</NativeSelectOption>
+              </NativeSelect>
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor={ownerSelectId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={ownerSelectId} className="font-mono text-xs text-paper-dim">
                 Pemilik
-              </label>
-              <select
+              </Label>
+              <NativeSelect
                 id={ownerSelectId}
                 name="ownerId"
                 disabled={isUploading}
-                className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+                className="w-full"
               >
-                <option value="">Organisasi</option>
+                <NativeSelectOption value="">Organisasi</NativeSelectOption>
                 {model?.articles?.map((item) => (
-                  <option key={item.id} value={item.id}>
+                  <NativeSelectOption key={item.id} value={item.id}>
                     Artikel: {item.id}
-                  </option>
+                  </NativeSelectOption>
                 ))}
                 {model?.sites?.map((item) => (
-                  <option key={item.id} value={item.id}>
+                  <NativeSelectOption key={item.id} value={item.id}>
                     Situs: {item.normalizedHostname}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
           </div>
 

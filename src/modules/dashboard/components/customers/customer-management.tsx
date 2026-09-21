@@ -3,6 +3,8 @@
 import { useId, useState, useTransition, type FormEvent } from 'react';
 import { Loader2, Plus, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { createInviteSecret, formatInviteCode, hashInviteCode } from '@/modules/dashboard/components/shared/invite-code';
@@ -98,9 +100,9 @@ export function CustomerManagement({
 
         <form onSubmit={handleCreateCustomer} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor={nameInputId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={nameInputId} className="font-mono text-xs text-paper-dim">
               Nama Organisasi / Lembaga
-            </label>
+            </Label>
             <Input
               id={nameInputId}
               name="name"
@@ -113,9 +115,9 @@ export function CustomerManagement({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={slugInputId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={slugInputId} className="font-mono text-xs text-paper-dim">
               Kode Organisasi
-            </label>
+            </Label>
             <Input
               id={slugInputId}
               name="slug"
@@ -130,19 +132,19 @@ export function CustomerManagement({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={`${slugInputId}-status`} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={`${slugInputId}-status`} className="font-mono text-xs text-paper-dim">
               Status Awal (aktivasi manual setelah bayar)
-            </label>
-            <select
+            </Label>
+            <NativeSelect
               id={`${slugInputId}-status`}
               name="status"
               disabled={isCreatingCustomer}
               defaultValue="suspended"
-              className="h-8 w-full rounded border border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper"
+              className="w-full"
             >
-              <option value="active">Aktif — langsung berjalan</option>
-              <option value="suspended">Ditangguhkan — aktifkan belakangan</option>
-            </select>
+              <NativeSelectOption value="active">Aktif — langsung berjalan</NativeSelectOption>
+              <NativeSelectOption value="suspended">Ditangguhkan — aktifkan belakangan</NativeSelectOption>
+            </NativeSelect>
           </div>
 
           <div className="pt-2">
@@ -166,9 +168,9 @@ export function CustomerManagement({
 
         <form onSubmit={handleAssignFirstAdmin} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor={`${slugInputId}-org`} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={`${slugInputId}-org`} className="font-mono text-xs text-paper-dim">
               ID Organisasi
-            </label>
+            </Label>
             <Input
               id={`${slugInputId}-org`}
               required
@@ -181,9 +183,9 @@ export function CustomerManagement({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={`${slugInputId}-email`} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={`${slugInputId}-email`} className="font-mono text-xs text-paper-dim">
               Surel Pengguna
-            </label>
+            </Label>
             <Input
               id={`${slugInputId}-email`}
               type="email"
@@ -219,9 +221,9 @@ export function CustomerManagement({
 
         <form onSubmit={handleCreateInvite} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor={`${slugInputId}-invite-org`} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={`${slugInputId}-invite-org`} className="font-mono text-xs text-paper-dim">
               ID Organisasi
-            </label>
+            </Label>
             <Input
               id={`${slugInputId}-invite-org`}
               required
@@ -234,9 +236,9 @@ export function CustomerManagement({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={`${slugInputId}-invite-role`} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={`${slugInputId}-invite-role`} className="font-mono text-xs text-paper-dim">
               ID Peran Target
-            </label>
+            </Label>
             <Input
               id={`${slugInputId}-invite-role`}
               required
@@ -249,9 +251,9 @@ export function CustomerManagement({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={`${slugInputId}-invite-email`} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={`${slugInputId}-invite-email`} className="font-mono text-xs text-paper-dim">
               Surel Penerima
-            </label>
+            </Label>
             <Input
               id={`${slugInputId}-invite-email`}
               type="email"

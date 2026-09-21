@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Trash2 } from 'lucide-react';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 type FieldKind = 'text' | 'textarea' | 'number' | 'checkbox' | 'json' | 'color';
 interface FieldDef { readonly key: string; readonly label: string; readonly kind: FieldKind; readonly required?: boolean }
@@ -180,16 +183,16 @@ export function ContentManager() {
               <p className="m-0 font-mono text-xs tabular-nums text-paper-dim">{String(row[def.idKey])}</p>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 {def.fields.map((field) => (
-                  <label key={field.key} className={field.kind === 'textarea' ? 'block sm:col-span-2' : 'block'}>
+                  <Label key={field.key} className={field.kind === 'textarea' ? 'block sm:col-span-2' : 'block'}>
                     <span className="mb-1.5 block font-sans text-xs font-medium text-paper-dim">{field.label}</span>
                     {field.kind === 'checkbox' ? (
-                      <input type="checkbox" checked={toFieldValue(field, current) === true} onChange={(e) => setDraft(def.idKey, row, field.key, e.target.checked)} className="h-4 w-4 accent-brass" />
+                      <Checkbox checked={toFieldValue(field, current) === true} onCheckedChange={(checked) => setDraft(def.idKey, row, field.key, checked)} />
                     ) : field.kind === 'textarea' ? (
-                      <textarea value={String(toFieldValue(field, current))} onChange={(e) => setDraft(def.idKey, row, field.key, e.target.value)} rows={3} className="w-full border border-hairline bg-bg px-3 py-2 font-sans text-xs text-paper" />
+                      <Textarea value={String(toFieldValue(field, current))} onChange={(e) => setDraft(def.idKey, row, field.key, e.target.value)} rows={3} className="font-sans text-xs" />
                     ) : (
                       <Input type={field.kind === 'color' ? 'text' : field.kind} value={String(toFieldValue(field, current) ?? '')} onChange={(e) => setDraft(def.idKey, row, field.key, e.target.value)} className="font-sans text-xs" />
                     )}
-                  </label>
+                  </Label>
                 ))}
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-2">

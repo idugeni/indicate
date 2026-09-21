@@ -6,6 +6,7 @@ import {
   switchActiveOrganization,
   type SwitchOrganizationState,
 } from '@/modules/dashboard/switch-organization-action';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import type { OrganizationOption } from '@/modules/dashboard/components/dashboard-types';
 
 const INITIAL_STATE: SwitchOrganizationState = Object.freeze({ status: 'idle' });
@@ -49,20 +50,19 @@ export function OrganizationSwitcher({
 
   return (
     <>
-      <select
+      <NativeSelect
         id={selectId}
         value={optimisticId}
         disabled={isPending || organizations.length === 0}
         onChange={handleChange}
         aria-busy={isPending}
-        className="rounded border border-hairline-strong bg-bg-raised-2 px-2.5 py-1.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none disabled:opacity-50"
       >
         {organizations.map((org) => (
-          <option key={org.id} value={org.id} className="bg-bg-raised text-paper">
+          <NativeSelectOption key={org.id} value={org.id}>
             {org.name}
-          </option>
+          </NativeSelectOption>
         ))}
-      </select>
+      </NativeSelect>
       <span aria-live="polite" className="sr-only">
         {isPending ? 'Beralih organisasi…' : ''}
       </span>

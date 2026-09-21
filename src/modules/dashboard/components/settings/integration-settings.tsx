@@ -13,6 +13,8 @@ import {
 import { toast } from 'sonner';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 export interface EmailStatus {
   readonly configured: boolean;
@@ -120,9 +122,9 @@ export function IntegrationSettings({
 
         <form onSubmit={handleIssueKey} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor={apiKeyNameId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={apiKeyNameId} className="font-mono text-xs text-paper-dim">
               Nama Kunci
-            </label>
+            </Label>
             <Input
               id={apiKeyNameId}
               name="name"
@@ -134,9 +136,9 @@ export function IntegrationSettings({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={apiKeyScopesId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={apiKeyScopesId} className="font-mono text-xs text-paper-dim">
               Hak Akses Kunci (pisahkan koma)
-            </label>
+            </Label>
             <Input
               id={apiKeyScopesId}
               name="scopes"
@@ -188,9 +190,9 @@ export function IntegrationSettings({
         <form onSubmit={handleCreateMapping} className="space-y-3.5">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label htmlFor={tgUserId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={tgUserId} className="font-mono text-xs text-paper-dim">
                 ID Pengguna
-              </label>
+              </Label>
               <Input
                 id={tgUserId}
                 name="userId"
@@ -202,9 +204,9 @@ export function IntegrationSettings({
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor={tgRoleId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={tgRoleId} className="font-mono text-xs text-paper-dim">
                 ID Peran
-              </label>
+              </Label>
               <Input
                 id={tgRoleId}
                 name="roleId"
@@ -218,9 +220,9 @@ export function IntegrationSettings({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label htmlFor={tgTgUserId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={tgTgUserId} className="font-mono text-xs text-paper-dim">
                 Telegram User ID
-              </label>
+              </Label>
               <Input
                 id={tgTgUserId}
                 name="telegramUserId"
@@ -232,9 +234,9 @@ export function IntegrationSettings({
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor={tgChatId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={tgChatId} className="font-mono text-xs text-paper-dim">
                 Telegram Chat ID
-              </label>
+              </Label>
               <Input
                 id={tgChatId}
                 name="telegramChatId"
@@ -265,7 +267,7 @@ export function IntegrationSettings({
             <p className="m-0 mt-1 font-sans text-xs text-paper-dim">
               Satu pesan ke semua kanal aktif. Diantrekan, dikirim bertahap oleh sistem, coba lagi otomatis bila kena batas.
             </p>
-            <textarea
+            <Textarea
               value={broadcastText}
               onChange={(event) => setBroadcastText(event.target.value)}
               disabled={isBroadcasting}
@@ -273,7 +275,7 @@ export function IntegrationSettings({
               maxLength={4000}
               placeholder="Pengumuman untuk semua kanal…"
               aria-label="Teks pengumuman"
-              className="mt-2 w-full border border-hairline-strong bg-bg px-3 py-2 font-sans text-xs text-paper"
+              className="mt-2 font-sans text-xs"
             />
             {broadcastNotice ? (
               <p className="m-0 mt-1 font-sans text-xs text-signal">{broadcastNotice}</p>

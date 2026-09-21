@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { formatTanggal } from '@/modules/dashboard/components/shared/dashboard-dates';
 
@@ -352,9 +354,9 @@ export function BillingPanel({
           <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Ubah status (pembayaran manual di luar sistem)</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="manual-org-id" className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor="manual-org-id" className="font-sans text-xs font-medium text-paper-dim">
                 ID organisasi
-              </label>
+              </Label>
               <input
                 id="manual-org-id" value={manualOrgId} onChange={(event) => setManualOrgId(event.target.value)} disabled={busy}
                 placeholder="ID organisasi target…" spellCheck={false}
@@ -362,17 +364,17 @@ export function BillingPanel({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="manual-status" className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor="manual-status" className="font-sans text-xs font-medium text-paper-dim">
                 Status
-              </label>
-              <select
+              </Label>
+              <NativeSelect
                 id="manual-status" value={manualStatus} onChange={(event) => setManualStatus(event.target.value)} disabled={busy}
-                className="h-9 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+                className="w-full"
               >
-                <option value="active">Aktif (bisa dipakai)</option>
-                <option value="suspended">Ditangguhkan</option>
-                <option value="cancelled">Dibatalkan</option>
-              </select>
+                <NativeSelectOption value="active">Aktif (bisa dipakai)</NativeSelectOption>
+                <NativeSelectOption value="suspended">Ditangguhkan</NativeSelectOption>
+                <NativeSelectOption value="cancelled">Dibatalkan</NativeSelectOption>
+              </NativeSelect>
             </div>
           </div>
           <div className="mt-3">
@@ -394,9 +396,9 @@ export function BillingPanel({
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="invoice-org-id" className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor="invoice-org-id" className="font-sans text-xs font-medium text-paper-dim">
                 ID organisasi
-              </label>
+              </Label>
               <input
                 id="invoice-org-id" value={invoiceOrgId} onChange={(event) => setInvoiceOrgId(event.target.value)} disabled={busy}
                 placeholder="ID organisasi…" spellCheck={false}
@@ -404,9 +406,9 @@ export function BillingPanel({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="invoice-amount" className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor="invoice-amount" className="font-sans text-xs font-medium text-paper-dim">
                 Nominal (Rp)
-              </label>
+              </Label>
               <input
                 id="invoice-amount" value={invoiceAmount} readOnly disabled={busy}
                 placeholder="550000" inputMode="numeric"
@@ -415,18 +417,18 @@ export function BillingPanel({
               <p className="m-0 font-sans text-xs text-paper-faint">Rp550.000/bulan — harga tunggal</p>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="invoice-paid-at" className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor="invoice-paid-at" className="font-sans text-xs font-medium text-paper-dim">
                 Tanggal bayar
-              </label>
+              </Label>
               <input
                 id="invoice-paid-at" type="date" value={invoicePaidAt} onChange={(event) => setInvoicePaidAt(event.target.value)} disabled={busy}
                 className="h-9 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="invoice-note" className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor="invoice-note" className="font-sans text-xs font-medium text-paper-dim">
                 Catatan (opsional)
-              </label>
+              </Label>
               <input
                 id="invoice-note" value={invoiceNote} onChange={(event) => setInvoiceNote(event.target.value)} disabled={busy}
                 placeholder="Bank, periode, keterangan…"
@@ -434,9 +436,9 @@ export function BillingPanel({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="invoice-method" className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor="invoice-method" className="font-sans text-xs font-medium text-paper-dim">
                 Metode (opsional)
-              </label>
+              </Label>
               <input
                 id="invoice-method" value={invoiceMethod} onChange={(event) => setInvoiceMethod(event.target.value)} disabled={busy}
                 placeholder="Transfer bank" spellCheck={false} maxLength={40}

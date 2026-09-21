@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { Loader2, Send, Sparkles } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { generateIdempotencyUuid } from '@/modules/dashboard/components/shared/form-utils';
 import type { PublicationStatusProjection, PublishingState } from '@/modules/publishing/models';
 
@@ -154,22 +156,22 @@ export function PublishingForm({
 
         <form ref={formRef} onSubmit={handlePublish} className="space-y-4">
           <div className="space-y-1.5">
-            <label htmlFor={articleSelectId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={articleSelectId} className="font-mono text-xs text-paper-dim">
               Pilih Artikel
-            </label>
-            <select
+            </Label>
+            <NativeSelect
               id={articleSelectId}
               name="articleId"
               disabled={isPublishing}
               onChange={() => setSuggested({})}
-              className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+              className="w-full"
             >
               {model?.articles?.map((item) => (
-                <option key={item.id} value={item.id}>
+                <NativeSelectOption key={item.id} value={item.id}>
                   {item.title ? `${item.title} (${item.slug ?? item.id})` : item.id}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </div>
 
           <div className="space-y-2">
@@ -233,9 +235,9 @@ export function PublishingForm({
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label htmlFor={idempotencyInputId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={idempotencyInputId} className="font-mono text-xs text-paper-dim">
                 Kunci Pengiriman
-              </label>
+              </Label>
               <button
                 type="button"
                 onClick={handleGenerateKey}
@@ -295,9 +297,9 @@ export function PublishingForm({
           }}
         >
           <div className="space-y-1.5">
-            <label htmlFor={statusJobInputId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={statusJobInputId} className="font-mono text-xs text-paper-dim">
               ID Pengiriman
-            </label>
+            </Label>
             <div className="flex gap-2">
               <Input
                 id={statusJobInputId}

@@ -9,6 +9,8 @@ import {
   Plus,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import type { DomainEntity, RegionEntity, SiteEntity } from '@/modules/dashboard/components/shared/types';
 import { MediaPolicySection } from '@/modules/dashboard/components/infrastructure/media-policy-section';
 import { PolicyOverviewSection } from '@/modules/dashboard/components/infrastructure/policy-overview-section';
@@ -98,9 +100,9 @@ export function ConfigurationPanel({
 
         <form onSubmit={handleDomainSubmit} className="mt-4 space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor={domainInputId} className="font-sans text-xs font-medium text-paper-dim">
+            <Label htmlFor={domainInputId} className="font-sans text-xs font-medium text-paper-dim">
               Nama domain utama
-            </label>
+            </Label>
             <Input
               id={domainInputId}
               name="hostname"
@@ -137,9 +139,9 @@ export function ConfigurationPanel({
 
         <form onSubmit={handleRegionSubmit} className="mt-4 space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor={regionNameId} className="font-sans text-xs font-medium text-paper-dim">
+            <Label htmlFor={regionNameId} className="font-sans text-xs font-medium text-paper-dim">
               Nama wilayah
-            </label>
+            </Label>
             <Input
               id={regionNameId}
               name="name"
@@ -151,9 +153,9 @@ export function ConfigurationPanel({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={regionSlugId} className="font-sans text-xs font-medium text-paper-dim">
+            <Label htmlFor={regionSlugId} className="font-sans text-xs font-medium text-paper-dim">
               Kode Wilayah
-            </label>
+            </Label>
             <Input
               id={regionSlugId}
               name="slug"
@@ -191,46 +193,46 @@ export function ConfigurationPanel({
 
         <form onSubmit={handleSiteSubmit} className="mt-4 space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor={siteDomainSelectId} className="font-sans text-xs font-medium text-paper-dim">
+            <Label htmlFor={siteDomainSelectId} className="font-sans text-xs font-medium text-paper-dim">
               Domain
-            </label>
-            <select
+            </Label>
+            <NativeSelect
               id={siteDomainSelectId}
               name="domainId"
               disabled={isAddingSite}
-              className="h-9 w-full border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus:border-brass focus:outline-none"
+              className="w-full"
             >
               {model?.domains?.map((item) => (
-                <option key={item.id} value={item.id}>
+                <NativeSelectOption key={item.id} value={item.id}>
                   {item.normalizedHostname}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={siteRegionSelectId} className="font-sans text-xs font-medium text-paper-dim">
+            <Label htmlFor={siteRegionSelectId} className="font-sans text-xs font-medium text-paper-dim">
               Wilayah
-            </label>
-            <select
+            </Label>
+            <NativeSelect
               id={siteRegionSelectId}
               name="regionId"
               disabled={isAddingSite}
-              className="h-9 w-full border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus:border-brass focus:outline-none"
+              className="w-full"
             >
-              <option value="">Domain utama (tanpa wilayah)</option>
+              <NativeSelectOption value="">Domain utama (tanpa wilayah)</NativeSelectOption>
               {model?.regions?.map((item) => (
-                <option key={item.id} value={item.id}>
+                <NativeSelectOption key={item.id} value={item.id}>
                   {item.name}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={siteHostnameInputId} className="font-sans text-xs font-medium text-paper-dim">
+            <Label htmlFor={siteHostnameInputId} className="font-sans text-xs font-medium text-paper-dim">
               Alamat Situs
-            </label>
+            </Label>
             <Input
               id={siteHostnameInputId}
               name="hostname"

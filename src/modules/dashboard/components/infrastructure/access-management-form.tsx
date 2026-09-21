@@ -3,6 +3,8 @@
 import { useId, useState, useTransition, type FormEvent } from 'react';
 import { KeyRound, Loader2, Plus, Send, UserPlus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { createInviteSecret, formatInviteCode, hashInviteCode } from '@/modules/dashboard/components/shared/invite-code';
@@ -144,9 +146,9 @@ export function AccessManagementForm({
       <SectionCard icon={KeyRound} title="Peran baru" eyebrow="Hak akses">
         <form onSubmit={handleCreateRole} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor={roleNameId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={roleNameId} className="font-mono text-xs text-paper-dim">
               Nama peran
-            </label>
+            </Label>
             <Input
               id={roleNameId}
               name="name"
@@ -159,24 +161,24 @@ export function AccessManagementForm({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label htmlFor={roleTierId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={roleTierId} className="font-mono text-xs text-paper-dim">
                 Tingkat
-              </label>
-              <select
+              </Label>
+              <NativeSelect
                 id={roleTierId}
                 name="tier"
                 disabled={isCreatingRole}
                 defaultValue="user"
-                className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+                className="w-full"
               >
-                <option value="user">Anggota</option>
-                <option value="admin">Admin</option>
-              </select>
+                <NativeSelectOption value="user">Anggota</NativeSelectOption>
+                <NativeSelectOption value="admin">Admin</NativeSelectOption>
+              </NativeSelect>
             </div>
-            <label htmlFor={`${roleNameId}-active`} className="flex cursor-pointer items-end gap-2 pb-2">
+            <Label htmlFor={`${roleNameId}-active`} className="flex cursor-pointer items-end gap-2 pb-2">
               <input id={`${roleNameId}-active`} name="active" type="checkbox" defaultChecked disabled={isCreatingRole} className="h-4 w-4 accent-brass" />
               <span className="font-sans text-xs text-paper-dim">Peran aktif</span>
-            </label>
+            </Label>
           </div>
 
           <div className="space-y-1.5">
@@ -204,28 +206,28 @@ export function AccessManagementForm({
       <SectionCard icon={UserPlus} title="Penetapan anggota" eyebrow="Peran & status">
         <form onSubmit={handleSaveMembership} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor={memberSelectId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={memberSelectId} className="font-mono text-xs text-paper-dim">
               Anggota terdaftar
-            </label>
-            <select
+            </Label>
+            <NativeSelect
               id={memberSelectId}
               name="userId"
               disabled={isSavingMembership}
-              className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+              className="w-full"
             >
-              <option value="">— pilih anggota —</option>
+              <NativeSelectOption value="">— pilih anggota —</NativeSelectOption>
               {model?.memberships?.map((member) => (
-                <option key={member.userId} value={member.userId}>
+                <NativeSelectOption key={member.userId} value={member.userId}>
                   {member.displayName} · {member.userId}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={memberUserId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={memberUserId} className="font-mono text-xs text-paper-dim">
               Atau ID pengguna baru (sudah pernah masuk)
-            </label>
+            </Label>
             <Input
               id={memberUserId}
               name="newUserId"
@@ -237,38 +239,38 @@ export function AccessManagementForm({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label htmlFor={memberRoleId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={memberRoleId} className="font-mono text-xs text-paper-dim">
                 Peran target
-              </label>
-              <select
+              </Label>
+              <NativeSelect
                 id={memberRoleId}
                 name="roleId"
                 required
                 disabled={isSavingMembership}
-                className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+                className="w-full"
               >
                 {model?.roles?.map((role) => (
-                  <option key={role.id} value={role.id}>
+                  <NativeSelectOption key={role.id} value={role.id}>
                     {role.name}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
             <div className="space-y-1.5">
-              <label htmlFor={memberStatusId} className="font-mono text-xs text-paper-dim">
+              <Label htmlFor={memberStatusId} className="font-mono text-xs text-paper-dim">
                 Status
-              </label>
-              <select
+              </Label>
+              <NativeSelect
                 id={memberStatusId}
                 name="status"
                 disabled={isSavingMembership}
                 defaultValue="active"
-                className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+                className="w-full"
               >
-                <option value="active">Aktif</option>
-                <option value="inactive">Nonaktif</option>
-                <option value="archived">Diarsipkan</option>
-              </select>
+                <NativeSelectOption value="active">Aktif</NativeSelectOption>
+                <NativeSelectOption value="inactive">Nonaktif</NativeSelectOption>
+                <NativeSelectOption value="archived">Diarsipkan</NativeSelectOption>
+              </NativeSelect>
             </div>
           </div>
 
@@ -292,9 +294,9 @@ export function AccessManagementForm({
       <SectionCard icon={Send} title="Undang anggota" eyebrow="Undangan sekali pakai">
         <form onSubmit={handleCreateInvite} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor={inviteEmailId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={inviteEmailId} className="font-mono text-xs text-paper-dim">
               Email calon anggota
-            </label>
+            </Label>
             <Input
               id={inviteEmailId}
               name="email"
@@ -309,25 +311,25 @@ export function AccessManagementForm({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor={inviteRoleIdInput} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={inviteRoleIdInput} className="font-mono text-xs text-paper-dim">
               Peran target
-            </label>
-            <select
+            </Label>
+            <NativeSelect
               id={inviteRoleIdInput}
               name="roleId"
               required
               disabled={isInviting}
               value={inviteRoleId}
               onChange={(event) => setInviteRoleId(event.target.value)}
-              className="h-8 w-full rounded border border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
+              className="w-full"
             >
-              <option value="">— pilih peran —</option>
+              <NativeSelectOption value="">— pilih peran —</NativeSelectOption>
               {model?.roles?.map((role) => (
-                <option key={role.id} value={role.id}>
+                <NativeSelectOption key={role.id} value={role.id}>
                   {role.name}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </div>
 
           {inviteNotice ? <FormNotice tone="muted">{inviteNotice}</FormNotice> : null}

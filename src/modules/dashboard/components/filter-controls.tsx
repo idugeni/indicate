@@ -2,6 +2,8 @@
 
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
 import { presetRentang, type PresetRentang } from '@/modules/dashboard/components/shared/dashboard-dates';
 
@@ -83,63 +85,63 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
           {view === 'editorial' ? (
             <>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="filter-region" className="font-sans text-xs font-medium text-paper-dim">
+                <Label htmlFor="filter-region" className="font-sans text-xs font-medium text-paper-dim">
                   Wilayah
-                </label>
-                <select
+                </Label>
+                <NativeSelect
                   id="filter-region"
                   name="regionId"
-                  className="h-9 border border-hairline-strong bg-bg px-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus:border-brass focus:outline-none"
+                  className="w-full"
                 >
-                  <option value="">Semua wilayah</option>
+                  <NativeSelectOption value="">Semua wilayah</NativeSelectOption>
                   {model?.regions?.map((item) => (
-                    <option key={item.id} value={item.id}>
+                    <NativeSelectOption key={item.id} value={item.id}>
                       {item.name}
-                    </option>
+                    </NativeSelectOption>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="filter-site" className="font-sans text-xs font-medium text-paper-dim">
+                <Label htmlFor="filter-site" className="font-sans text-xs font-medium text-paper-dim">
                   Situs
-                </label>
-                <select
+                </Label>
+                <NativeSelect
                   id="filter-site"
                   name="siteId"
-                  className="h-9 border border-hairline-strong bg-bg px-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus:border-brass focus:outline-none"
+                  className="w-full"
                 >
-                  <option value="">Semua situs</option>
+                  <NativeSelectOption value="">Semua situs</NativeSelectOption>
                   {model?.sites?.map((item) => (
-                    <option key={item.id} value={item.id}>
+                    <NativeSelectOption key={item.id} value={item.id}>
                       {item.normalizedHostname}
-                    </option>
+                    </NativeSelectOption>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="filter-category" className="font-sans text-xs font-medium text-paper-dim">
+                <Label htmlFor="filter-category" className="font-sans text-xs font-medium text-paper-dim">
                   Kategori
-                </label>
-                <select
+                </Label>
+                <NativeSelect
                   id="filter-category"
                   name="categoryId"
-                  className="h-9 border border-hairline-strong bg-bg px-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus:border-brass focus:outline-none"
+                  className="w-full"
                 >
-                  <option value="">Semua kategori</option>
+                  <NativeSelectOption value="">Semua kategori</NativeSelectOption>
                   {model?.categories?.map((item) => (
-                    <option key={item.id} value={item.id}>
+                    <NativeSelectOption key={item.id} value={item.id}>
                       {item.name}
-                    </option>
+                    </NativeSelectOption>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="filter-search" className="font-sans text-xs font-medium text-paper-dim">
+                <Label htmlFor="filter-search" className="font-sans text-xs font-medium text-paper-dim">
                   Cari judul
-                </label>
+                </Label>
                 <Input
                   id="filter-search"
                   name="search"
@@ -153,9 +155,9 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
           {view === 'audit' ? (
             <>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="filter-actor" className="font-sans text-xs font-medium text-paper-dim">
+                <Label htmlFor="filter-actor" className="font-sans text-xs font-medium text-paper-dim">
                   Pelaku (ID)
-                </label>
+                </Label>
                 <Input
                   id="filter-actor"
                   name="actorId"
@@ -165,9 +167,9 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="filter-action" className="font-sans text-xs font-medium text-paper-dim">
+                <Label htmlFor="filter-action" className="font-sans text-xs font-medium text-paper-dim">
                   Jenis Aksi
-                </label>
+                </Label>
                 <Input
                   id="filter-action"
                   name="action"
@@ -177,19 +179,19 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="filter-outcome" className="font-sans text-xs font-medium text-paper-dim">
+                <Label htmlFor="filter-outcome" className="font-sans text-xs font-medium text-paper-dim">
                   Hasil
-                </label>
-                <select
+                </Label>
+                <NativeSelect
                   id="filter-outcome"
                   name="outcome"
-                  className="h-9 border border-hairline-strong bg-bg px-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus:border-brass focus:outline-none"
+                  className="w-full"
                 >
-                  <option value="">Semua hasil</option>
-                  <option value="succeeded">Berhasil</option>
-                  <option value="denied">Ditolak</option>
-                  <option value="failed">Gagal</option>
-                </select>
+                  <NativeSelectOption value="">Semua hasil</NativeSelectOption>
+                  <NativeSelectOption value="succeeded">Berhasil</NativeSelectOption>
+                  <NativeSelectOption value="denied">Ditolak</NativeSelectOption>
+                  <NativeSelectOption value="failed">Gagal</NativeSelectOption>
+                </NativeSelect>
               </div>
             </>
           ) : null}
@@ -214,9 +216,9 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="filter-from" className="font-sans text-xs font-medium text-paper-dim">
+                <Label htmlFor="filter-from" className="font-sans text-xs font-medium text-paper-dim">
                   Dari tanggal
-                </label>
+                </Label>
                 <Input
                   id="filter-from"
                   name="from"
@@ -226,9 +228,9 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="filter-to" className="font-sans text-xs font-medium text-paper-dim">
+                <Label htmlFor="filter-to" className="font-sans text-xs font-medium text-paper-dim">
                   Sampai tanggal
-                </label>
+                </Label>
                 <Input
                   id="filter-to"
                   name="to"
