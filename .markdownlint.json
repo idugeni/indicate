@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint/main/schema/markdownlint.json",
+  "default": true,
+  "MD013": false,
+  "MD024": { "siblings_only": true },
+  "MD025": false,
+  "MD028": false,
+  "MD033": { "allowed_elements": ["img", "br", "p", "a", "strong"] },
+  "MD041": false,
+  "MD045": false,
+  "MD060": false
+}

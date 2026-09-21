@@ -145,6 +145,12 @@
       "skillPath": "skills/theme-factory/SKILL.md",
       "computedHash": "e9ec1fe85faa729e9f3d1731cd7e4e485f98c099ccc7c1c0d198f473aa4b654a"
     },
+    "upstash": {
+      "source": "upstash/skills",
+      "sourceType": "github",
+      "skillPath": "skills/upstash/SKILL.md",
+      "computedHash": "262c3e646a27b8ee4aa6eaba1103f0ce52cd24779b10f917359498078234e290"
+    },
     "upstash-redis-js": {
       "source": "upstash/skills",
       "sourceType": "github",

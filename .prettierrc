@@ -1,0 +1,5 @@
+{
+  "$schema": "https://prettierjs.io/schemas/prettier.json",
+  "proseWrap": "preserve",
+  "printWidth": 100
+}

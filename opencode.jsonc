@@ -115,6 +115,25 @@
         "environment": {
           "SAMPLING_ENABLED": "false"
         }
+      },
+      "upstash-redis": {
+        // Kredensial TIDAK ditulis di sini. dotenvx memuat .env project
+        // (git-ignored) saat spawn dengan cwd = workspace, pola yang sama
+        // dengan dotenvx bawaan @iqai/mcp-telegram. {env:...} tidak dipakai
+        // karena hanya membaca process environment OpenCode, bukan file .env.
+        "type": "local",
+        "command": [
+          "cmd",
+          "/c",
+          "npx",
+          "-y",
+          "@dotenvx/dotenvx",
+          "run",
+          "--",
+          "npx",
+          "-y",
+          "@upstash/redis-mcp"
+        ]
       }
     }
   }

@@ -84,6 +84,18 @@
       "env": {
         "SAMPLING_ENABLED": "false"
       }
+    },
+    "upstash-redis": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@dotenvx/dotenvx",
+        "run",
+        "--",
+        "npx",
+        "-y",
+        "@upstash/redis-mcp"
+      ]
     }
   }
 }

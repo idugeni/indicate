@@ -41,6 +41,7 @@ function tenantImagePatterns(): RemotePattern[] {
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  allowedDevOrigins: ['127.0.0.1'],
   // Wajib: seluruh codebase memakai `'use cache'` (site-content, network-runtime).
   cacheComponents: true,
   serverExternalPackages: [
