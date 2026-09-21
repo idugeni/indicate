@@ -1,12 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { TemplateInput } from '@/modules/site/components/network/ui/field';
-import { ArrowRight, Rss } from 'lucide-react';
+import { Rss } from 'lucide-react';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { COMPANY_NAME, SOCIAL_ORDER } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { getSiteCategoryNav } from '@/modules/site/components/network/templates/warm-editorial/server/site-nav';
+import { WarmEditorialStoreBadges } from '@/modules/site/components/network/templates/warm-editorial/chrome/store-badges';
 
 const ABOUT_LINKS = [
   { label: 'Profil', href: '/tentang' },
@@ -103,30 +103,11 @@ export async function WarmEditorialFooter({ site }: { readonly site: NetworkSite
         </nav>
 
         <div className="col-span-2 sm:col-span-1">
-          <h2 className="m-0 font-sans text-sm font-bold text-slate-900">Langganan Berita</h2>
+          <h2 className="m-0 font-sans text-sm font-bold text-slate-900">Aplikasi Mobile</h2>
           <p className="m-0 mt-4 font-sans text-sm leading-relaxed text-slate-600">
-            Dapatkan berita terbaru langsung di email Anda.
+            Dapatkan pengalaman membaca berita yang lebih baik di perangkat mobile Anda.
           </p>
-          <p className="m-0 mt-4 flex items-center gap-2">
-            <label htmlFor="warm-editorial-footer-email" className="sr-only">
-              Alamat email
-            </label>
-            <TemplateInput
-              id="warm-editorial-footer-email"
-              type="email"
-              required
-              placeholder="Masukkan alamat email"
-              className="h-10 w-full min-w-0 flex-1 appearance-none rounded-xl px-3.5 font-sans text-base focus:outline-none sm:text-sm"
-            />
-            {/* Pendaftaran dinonaktifkan sengaja hingga backend newsletter tersedia. */}
-            <Link
-              href="#newsletter"
-              aria-label="Ke formulir berlangganan"
-              className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-[#b4532a] font-sans text-base font-bold text-white transition-colors hover:bg-[#8a3c1d]"
-            >
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-          </p>
+          <WarmEditorialStoreBadges />
         </div>
       </div>
 
