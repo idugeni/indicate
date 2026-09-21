@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -288,59 +289,58 @@ export function BillingPanel({
                 <p className="m-0 mt-0.5 font-sans text-xs text-error">Batal: {invoice.voidReason}</p>
               ) : null}
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => setPreview(invoice)}
                   disabled={busy}
-                  className="h-8 border border-hairline-strong px-3 font-sans text-xs text-paper hover:text-brass disabled:opacity-50"
                 >
                   Pratinjau
-                </button>
+                </Button>
               </div>
               {isPlatform && invoice.status === 'paid' ? (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={() => window.open(`/api/dashboard/billing/invoice/${invoice.id}?organizationId=${encodeURIComponent(invoice.organizationId)}`, '_blank', 'noopener')}
                     disabled={busy}
-                    className="h-8 border border-hairline-strong px-3 font-sans text-xs text-paper-dim hover:text-paper disabled:opacity-50"
                   >
                     Unduh
-                  </button>
-                  <button
-                    type="button" onClick={() => void voidInvoice(invoice)} disabled={busy}
-                    className="h-8 border border-error px-3 font-sans text-xs text-error disabled:opacity-50"
+                  </Button>
+                  <Button
+                    type="button" variant="destructive" onClick={() => void voidInvoice(invoice)} disabled={busy}
                   >
                     Batalkan
-                  </button>
+                  </Button>
                 </div>
               ) : isPlatform ? (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={() => window.open(`/api/dashboard/billing/invoice/${invoice.id}?organizationId=${encodeURIComponent(invoice.organizationId)}`, '_blank', 'noopener')}
                     disabled={busy}
-                    className="h-8 border border-hairline-strong px-3 font-sans text-xs text-paper-dim hover:text-paper disabled:opacity-50"
                   >
                     Unduh
-                  </button>
-                  <button
-                    type="button" onClick={() => void reissueInvoice(invoice)} disabled={busy}
-                    className="h-8 border border-brass/60 px-3 font-sans text-xs text-paper-dim hover:text-paper disabled:opacity-50"
+                  </Button>
+                  <Button
+                    type="button" variant="outline" onClick={() => void reissueInvoice(invoice)} disabled={busy}
+                    className="border-brass/60"
                   >
                     Terbitkan ulang
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <div className="mt-2">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={() => window.open(`/api/dashboard/billing/invoice/${invoice.id}?organizationId=${encodeURIComponent(invoice.organizationId)}`, '_blank', 'noopener')}
                     disabled={busy}
-                    className="h-8 border border-hairline-strong px-3 font-sans text-xs text-paper-dim hover:text-paper disabled:opacity-50"
                   >
                     Unduh
-                  </button>
+                  </Button>
                 </div>
               )}
             </li>
@@ -378,12 +378,11 @@ export function BillingPanel({
             </div>
           </div>
           <div className="mt-3">
-            <button
-              type="button" onClick={() => void manualSetSubscription()} disabled={busy}
-              className="h-9 bg-brass px-4 font-sans text-xs font-semibold text-bg hover:bg-brass-soft disabled:opacity-50"
+            <Button
+              type="button" variant="default" size="lg" onClick={() => void manualSetSubscription()} disabled={busy}
             >
               Terapkan status
-            </button>
+            </Button>
           </div>
         </section>
       ) : null}
@@ -447,12 +446,11 @@ export function BillingPanel({
             </div>
           </div>
           <div className="mt-3">
-            <button
-              type="button" onClick={() => void createInvoice()} disabled={busy}
-              className="h-9 bg-brass px-4 font-sans text-xs font-semibold text-bg hover:bg-brass-soft disabled:opacity-50"
+            <Button
+              type="button" variant="default" size="lg" onClick={() => void createInvoice()} disabled={busy}
             >
               Catat faktur
-            </button>
+            </Button>
           </div>
         </section>
       ) : null}
@@ -496,18 +494,18 @@ export function BillingPanel({
             </dl>
           )}
           <div className="flex justify-end gap-2">
-            <button
+            <Button
               type="button"
+              variant="default"
               onClick={() => {
                 if (preview !== null) {
                   window.open(`/api/dashboard/billing/invoice/${preview.id}?organizationId=${encodeURIComponent(preview.organizationId)}`, '_blank', 'noopener');
                 }
               }}
               disabled={busy || preview === null}
-              className="h-8 bg-brass px-3 font-sans text-xs font-semibold text-bg hover:bg-brass-soft disabled:opacity-50"
             >
               Unduh dokumen
-            </button>
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

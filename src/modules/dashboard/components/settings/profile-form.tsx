@@ -5,6 +5,7 @@ import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { Loader2, UserRound } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -217,14 +218,14 @@ export function ProfileForm() {
           {notice ? <FormNotice tone="success">{notice}</FormNotice> : null}
 
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <button
+            <Button
               type="submit"
+              variant="default"
               disabled={busy}
-              className="inline-flex h-8 items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
             >
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
               <span>Simpan Profil</span>
-            </button>
+            </Button>
             <Link
               href="/update-password"
               className="inline-flex h-8 items-center rounded border border-hairline-strong px-3.5 font-sans text-xs text-paper-dim transition-colors duration-180 hover:text-paper"

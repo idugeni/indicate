@@ -1,7 +1,6 @@
 'use client';
 
 import { useId, useState, useTransition, type FormEvent } from 'react';
-import { Loader2, X } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +15,7 @@ import {
   type LookupTables,
 } from '@/modules/dashboard/components/shared/record-editor-config';
 import { PermissionChecklist } from '@/modules/dashboard/components/shared/permission-checklist';
+import { FormActions } from '@/modules/dashboard/components/shared/form-actions';
 
 export function RecordEditorForm({
   config,
@@ -163,25 +163,12 @@ export function RecordEditorForm({
         })}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="submit"
-          disabled={isSaving}
-          className="inline-flex h-8 items-center gap-1.5 bg-brass px-4 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
-        >
-          {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
-          <span>{isSaving ? 'Menyimpan…' : 'Simpan perubahan'}</span>
-        </button>
-        <button
-          type="button"
-          disabled={isSaving}
-          onClick={onCancel}
-          className="inline-flex h-8 items-center gap-1.5 border border-hairline px-4 font-sans text-xs text-paper-dim transition-colors duration-180 hover:border-hairline-strong hover:text-paper disabled:opacity-50"
-        >
-          <X className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>Batal</span>
-        </button>
-      </div>
+      <FormActions
+        submitLabel="Simpan perubahan"
+        busySubmitLabel="Menyimpan…"
+        onCancel={onCancel}
+        isBusy={isSaving}
+      />
     </form>
   );
 }

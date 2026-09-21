@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -149,10 +150,11 @@ export function IntegrationSettings({
             />
           </div>
 
-          <button
+          <Button
             type="submit"
+            variant="default"
             disabled={isIssuing}
-            className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+            className="w-full"
           >
             {isIssuing ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -160,7 +162,7 @@ export function IntegrationSettings({
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
             )}
             <span>Terbitkan Kunci API</span>
-          </button>
+          </Button>
 
           {issuedPlaintext ? (
             <div className="mt-3 space-y-2 rounded border border-brass/40 bg-bg p-3">
@@ -171,14 +173,15 @@ export function IntegrationSettings({
                 <code className="break-all font-mono text-xs text-paper">
                   {issuedPlaintext}
                 </code>
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="icon-sm"
                   onClick={() => void handleCopyKey()}
-                  className="flex h-7 w-7 flex-none items-center justify-center rounded border border-hairline bg-bg-raised text-paper-dim hover:text-paper"
                   aria-label="Salin kunci API"
                 >
                   <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
+                </Button>
               </div>
             </div>
           ) : null}
@@ -248,10 +251,11 @@ export function IntegrationSettings({
             </div>
           </div>
 
-          <button
+          <Button
             type="submit"
+            variant="outline"
             disabled={isCreatingMapping}
-            className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded border border-hairline-strong bg-bg px-3.5 font-sans text-xs font-semibold text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50"
+            className="w-full"
           >
             {isCreatingMapping ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -259,7 +263,7 @@ export function IntegrationSettings({
               <Plus className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
             )}
             <span>Tautkan Telegram</span>
-          </button>
+          </Button>
         </form>
         {isPlatform ? (
           <div className="mt-5 border-t border-hairline pt-5">
@@ -280,14 +284,15 @@ export function IntegrationSettings({
             {broadcastNotice ? (
               <p className="m-0 mt-1 font-sans text-xs text-signal">{broadcastNotice}</p>
             ) : null}
-            <button
+            <Button
               type="button"
+              variant="default"
               onClick={handleBroadcast}
               disabled={isBroadcasting || broadcastText.trim().length === 0}
-              className="mt-2 inline-flex h-8 items-center justify-center gap-1.5 bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+              className="mt-2"
             >
               <span>Kirim Pengumuman</span>
-            </button>
+            </Button>
           </div>
         ) : null}
       </SectionCard>
@@ -322,17 +327,18 @@ export function IntegrationSettings({
                 aria-label="Alamat surel uji"
                 className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
               />
-              <button
+              <Button
                 type="button"
+                variant="default"
                 onClick={handleTestEmail}
                 disabled={isTestingEmail || testEmail.trim().length === 0}
-                className="inline-flex h-8 flex-none items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+                className="flex-none"
               >
                 {isTestingEmail ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                 ) : null}
                 <span>Kirim uji</span>
-              </button>
+              </Button>
             </div>
             {testNotice ? (
               <p className="m-0 mt-1 font-sans text-xs text-signal">{testNotice}</p>

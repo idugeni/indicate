@@ -3,6 +3,7 @@
 import { useId, useState, useTransition, type FormEvent } from 'react';
 import { Loader2, UploadCloud } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -270,10 +271,11 @@ export function MediaForm({
           ) : null}
 
           <div className="pt-2">
-            <button
+            <Button
               type="submit"
+              variant="default"
               disabled={isUploading}
-              className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+              className="w-full"
             >
               {isUploading ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -281,7 +283,7 @@ export function MediaForm({
                 <UploadCloud className="h-3.5 w-3.5" aria-hidden="true" />
               )}
               <span>Unggah Berkas</span>
-            </button>
+            </Button>
           </div>
         </form>
       </SectionCard>

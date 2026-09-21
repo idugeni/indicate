@@ -1,6 +1,7 @@
 'use client';
 
 import { Search, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -204,14 +205,15 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
                 </span>
                 <div role="group" aria-labelledby="filter-preset-label" className="flex h-9 items-center gap-1.5">
                   {PRESET.map(({ kunci, label }) => (
-                    <button
+                    <Button
                       key={kunci}
                       type="button"
+                      variant="outline"
+                      size="xs"
                       onClick={() => terapkanPreset(kunci)}
-                      className="inline-flex h-7 items-center rounded border border-hairline px-2 font-sans text-[11px] text-paper-dim transition-colors duration-180 hover:border-hairline-strong hover:text-paper focus:outline-none focus-visible:ring-2 focus-visible:ring-brass focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                     >
                       {label}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -242,21 +244,23 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
           ) : null}
           </div>
           <div className="flex flex-none items-center gap-2">
-            <button
+            <Button
               type="submit"
-              className="inline-flex h-9 items-center gap-1.5 bg-brass px-4 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-brass focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+              variant="default"
+              size="lg"
             >
               <Search className="h-3 w-3" aria-hidden="true" />
               <span>Terapkan</span>
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outline"
+              size="lg"
               onClick={handleReset}
-              className="inline-flex h-9 items-center gap-1.5 border border-hairline px-3 font-sans text-xs text-paper-dim transition-colors duration-180 hover:border-hairline-strong hover:text-paper focus:outline-none focus-visible:ring-2 focus-visible:ring-brass focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
               aria-label="Bersihkan filter"
             >
               <X className="h-3 w-3" aria-hidden="true" />
-            </button>
+            </Button>
           </div>
         </div>
       </form>

@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -111,14 +112,15 @@ export function CachePurgeForm({
           </div>
         ) : null}
         <div>
-          <button
+          <Button
             type="submit"
+            variant="default"
             disabled={isPurging || (isBulk && !confirmBulk)}
-            className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+            className="w-full"
           >
             {isPurging ? <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
             <span>{isPurging ? 'Mengirim…' : 'Bersihkan Sekarang'}</span>
-          </button>
+          </Button>
         </div>
       </form>
       <AlertDialog open={confirmBulkOpen} onOpenChange={setConfirmBulkOpen}>

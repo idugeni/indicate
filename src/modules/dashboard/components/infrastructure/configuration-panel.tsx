@@ -8,6 +8,7 @@ import {
   Loader2,
   Plus,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -113,10 +114,12 @@ export function ConfigurationPanel({
             />
           </div>
 
-          <button
+          <Button
             type="submit"
+            variant="default"
+            size="lg"
             disabled={isAddingDomain}
-            className="inline-flex h-9 w-full items-center justify-center gap-1.5 bg-brass px-3 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+            className="w-full"
           >
             {isAddingDomain ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -124,7 +127,7 @@ export function ConfigurationPanel({
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
             )}
             <span>Buat domain</span>
-          </button>
+          </Button>
         </form>
       </section>
 
@@ -167,10 +170,12 @@ export function ConfigurationPanel({
             />
           </div>
 
-          <button
+          <Button
             type="submit"
+            variant="default"
+            size="lg"
             disabled={isAddingRegion}
-            className="inline-flex h-9 w-full items-center justify-center gap-1.5 bg-brass px-3 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+            className="w-full"
           >
             {isAddingRegion ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -178,7 +183,7 @@ export function ConfigurationPanel({
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
             )}
             <span>Buat wilayah</span>
-          </button>
+          </Button>
         </form>
       </section>
 
@@ -243,10 +248,12 @@ export function ConfigurationPanel({
             />
           </div>
 
-          <button
+          <Button
             type="submit"
+            variant="default"
+            size="lg"
             disabled={isAddingSite}
-            className="inline-flex h-9 w-full items-center justify-center gap-1.5 bg-brass px-3 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+            className="w-full"
           >
             {isAddingSite ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -254,7 +261,7 @@ export function ConfigurationPanel({
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
             )}
             <span>Buat situs</span>
-          </button>
+          </Button>
         </form>
       </section>
     </div>

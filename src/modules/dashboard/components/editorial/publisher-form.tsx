@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { suggestAttributionLabel } from '@/modules/dashboard/components/editorial/publisher-attribution';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -173,10 +174,11 @@ export function PublisherForm({
           </div>
 
           <div className="pt-2">
-            <button
+            <Button
               type="submit"
+              variant="default"
               disabled={isCreating}
-              className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+              className="w-full"
             >
               {isCreating ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -184,7 +186,7 @@ export function PublisherForm({
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               )}
               <span>Daftarkan Penerbit</span>
-            </button>
+            </Button>
           </div>
         </form>
       </SectionCard>
@@ -254,10 +256,11 @@ export function PublisherForm({
           </div>
 
           <div className="pt-2">
-            <button
+            <Button
               type="submit"
+              variant="outline"
               disabled={isVerifying}
-              className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded border border-hairline-strong bg-bg px-3.5 font-sans text-xs font-semibold text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50"
+              className="w-full"
             >
               {isVerifying ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -265,7 +268,7 @@ export function PublisherForm({
                 <Check className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
               )}
               <span>Terapkan Keputusan</span>
-            </button>
+            </Button>
           </div>
         </form>
       </SectionCard>

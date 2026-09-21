@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
@@ -109,16 +110,17 @@ export function CommandPalette({ showTrigger = true }: { readonly showTrigger?: 
   return (
     <>
       {showTrigger ? (
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="icon"
           onClick={() => setOpen(true)}
           aria-haspopup="dialog"
           aria-label="Buka navigasi cepat"
           title="Navigasi cepat (Ctrl+K)"
-          className="inline-flex h-9 w-9 items-center justify-center rounded border border-hairline bg-bg-raised text-paper-dim transition-colors duration-180 hover:border-hairline-strong hover:text-paper"
         >
           <Search className="h-4 w-4 text-brass" aria-hidden="true" />
-        </button>
+        </Button>
       ) : null}
 
       <Dialog open={open} onOpenChange={setOpen}>

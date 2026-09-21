@@ -236,14 +236,16 @@ export function DataView({
                     <p className="m-0 font-sans text-xs text-paper-faint line-clamp-2">{step.description}</p>
                   </div>
                   {step.done || onSelectView === undefined ? null : (
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="xs"
                       onClick={() => onSelectView(step.target)}
-                      className="inline-flex flex-none items-center gap-1 rounded-md px-2 py-1 font-sans text-xs font-medium text-brass transition-colors duration-150 hover:bg-bg-raised-2 hover:text-brass-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
+                      className="flex-none font-medium text-brass hover:text-brass-soft"
                     >
                       Buka
                       <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                    </button>
+                    </Button>
                   )}
                 </li>
               ))}
@@ -684,31 +686,36 @@ function CollectionTable({
           <span className="font-mono text-[11px] tabular-nums text-paper-dim">
             {selectedCount} baris terpilih
           </span>
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => void copySelected()}
-            className="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 font-sans text-[11px] text-paper transition-colors duration-180 hover:border-hairline-strong hover:text-brass"
           >
             <Copy className="h-3 w-3" aria-hidden="true" />
             Salin ID
-          </button>
+          </Button>
           {commonTransitions.map((transition) => (
-            <button
+            <Button
               key={transition.action}
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => void runBulk(transition, selectedRows)}
-              className="inline-flex h-7 items-center rounded border border-brass/60 px-2 font-sans text-[11px] text-paper transition-colors duration-180 hover:text-brass"
+              className="border-brass/60"
             >
               {transition.label} ({selectedCount})
-            </button>
+            </Button>
           ))}
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => setRowSelection({})}
-            className="inline-flex h-7 items-center rounded px-2 font-sans text-[11px] text-paper-faint transition-colors duration-180 hover:text-paper"
+            className="text-paper-faint hover:text-paper"
           >
             Batal
-          </button>
+          </Button>
         </div>
       ) : null}
 
@@ -863,14 +870,16 @@ function SortHeader({
   const sorted = column.getIsSorted();
   const Icon = sorted === 'asc' ? ArrowUp : sorted === 'desc' ? ArrowDown : ArrowUpDown;
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="xs"
       onClick={column.getToggleSortingHandler()}
       aria-label={`Urutkan ${label}`}
-      className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint transition-colors duration-180 hover:text-paper"
+      className="font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint hover:text-paper"
     >
       {label}
       <Icon className="h-3 w-3" aria-hidden="true" />
-    </button>
+    </Button>
   );
 }

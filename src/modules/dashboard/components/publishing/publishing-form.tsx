@@ -4,6 +4,7 @@ import { useId, useRef, useState, useTransition, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Send, Sparkles } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -238,14 +239,16 @@ export function PublishingForm({
               <Label htmlFor={idempotencyInputId} className="font-mono text-xs text-paper-dim">
                 Kunci Pengiriman
               </Label>
-              <button
+              <Button
                 type="button"
+                variant="link"
+                size="xs"
                 onClick={handleGenerateKey}
                 disabled={isPublishing}
-                className="font-mono text-[10px] text-brass hover:underline focus:outline-none"
+                className="font-mono text-[10px] text-brass"
               >
                 Regenerasi Kunci
-              </button>
+              </Button>
             </div>
             <Input
               id={idempotencyInputId}
@@ -258,11 +261,12 @@ export function PublishingForm({
           </div>
 
           <div className="space-y-2 pt-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={handleSuggest}
               disabled={isPublishing || isSuggesting}
-              className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded border border-hairline-strong bg-bg px-3.5 font-sans text-xs font-semibold text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50"
+              className="w-full"
             >
               {isSuggesting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -270,11 +274,12 @@ export function PublishingForm({
                 <Sparkles className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
               )}
               <span>Buat Varian Unik Otomatis</span>
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
+              variant="default"
               disabled={isPublishing}
-              className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+              className="w-full"
             >
               {isPublishing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -282,7 +287,7 @@ export function PublishingForm({
                 <Send className="h-3.5 w-3.5" aria-hidden="true" />
               )}
               <span>Kirim Penerbitan</span>
-            </button>
+            </Button>
           </div>
         </form>
       </SectionCard>
@@ -308,14 +313,14 @@ export function PublishingForm({
                 placeholder="ID dari hasil pengiriman"
                 className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
               />
-              <button
+              <Button
                 type="submit"
+                variant="outline"
                 disabled={isStatusBusy}
-                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded border border-hairline-strong bg-bg px-3 font-sans text-xs font-semibold text-paper transition-colors duration-180 hover:bg-bg-raised-2 disabled:opacity-50"
               >
                 {isStatusBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
                 <span>Muat</span>
-              </button>
+              </Button>
             </div>
           </div>
         </form>
@@ -343,26 +348,28 @@ export function PublishingForm({
               ))}
             </div>
             <div className="flex gap-2">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 disabled={isStatusBusy || !jobStatus.targets.some((target) => target.state === 'failed')}
                 onClick={() => refreshStatus(jobStatus.job.id, 'publication.retry', { jobId: jobStatus.job.id })}
-                className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded border border-hairline-strong bg-bg px-3 font-sans text-xs font-semibold text-paper transition-colors duration-180 hover:bg-bg-raised-2 disabled:opacity-50"
+                className="flex-1"
               >
                 Ulangi yang Gagal
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="destructive"
                 disabled={isStatusBusy || !jobStatus.targets.some((target) => target.state === 'published')}
                 onClick={() => {
                   if (window.confirm('Tarik publikasi yang tayang pada job ini? Konten hilang dari situs target.')) {
                     refreshStatus(jobStatus.job.id, 'publication.unpublish', { jobId: jobStatus.job.id });
                   }
                 }}
-                className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded border border-error bg-bg px-3 font-sans text-xs font-semibold text-error transition-colors duration-180 hover:bg-error/10 disabled:opacity-50"
+                className="flex-1"
               >
                 Tarik yang Tayang
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}

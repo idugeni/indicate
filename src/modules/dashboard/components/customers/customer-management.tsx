@@ -2,6 +2,7 @@
 
 import { useId, useState, useTransition, type FormEvent } from 'react';
 import { Loader2, Plus, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -148,10 +149,11 @@ export function CustomerManagement({
           </div>
 
           <div className="pt-2">
-            <button
+            <Button
               type="submit"
+              variant="default"
               disabled={isCreatingCustomer}
-              className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+              className="w-full"
             >
               {isCreatingCustomer ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -159,7 +161,7 @@ export function CustomerManagement({
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               )}
               <span>Buat Organisasi</span>
-            </button>
+            </Button>
           </div>
         </form>
       </SectionCard>
@@ -201,10 +203,11 @@ export function CustomerManagement({
           {assignNotice ? <FormNotice tone="muted">{assignNotice}</FormNotice> : null}
 
           <div className="pt-2">
-            <button
+            <Button
               type="submit"
+              variant="default"
               disabled={isAssigning}
-              className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+              className="w-full"
             >
               {isAssigning ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -212,7 +215,7 @@ export function CustomerManagement({
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               )}
               <span>Tetapkan sebagai Admin</span>
-            </button>
+            </Button>
           </div>
         </form>
       </SectionCard>
@@ -272,10 +275,11 @@ export function CustomerManagement({
           ) : null}
 
           <div className="pt-2">
-            <button
+            <Button
               type="submit"
+              variant="default"
               disabled={isInviting}
-              className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+              className="w-full"
             >
               {isInviting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -283,7 +287,7 @@ export function CustomerManagement({
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               )}
               <span>Buat Undangan</span>
-            </button>
+            </Button>
           </div>
         </form>
       </SectionCard>

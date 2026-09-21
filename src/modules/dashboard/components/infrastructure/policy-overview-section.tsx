@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface DeploymentOverview {
   readonly supabaseProjectRef: string;
@@ -114,14 +115,16 @@ export function PolicyOverviewSection() {
           Kebijakan platform
         </h3>
         {policies === null ? null : (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="xs"
             onClick={() => reload()}
             disabled={isLoading}
-            className="ml-auto font-mono text-[11px] text-paper-dim transition-colors duration-180 hover:text-paper disabled:opacity-50"
+            className="ml-auto font-mono text-[11px] text-paper-dim hover:text-paper"
           >
             {isLoading ? 'Memuat…' : 'Muat ulang'}
-          </button>
+          </Button>
         )}
       </div>
       <p className="m-0 mt-1 font-mono text-[11px] text-paper-faint">

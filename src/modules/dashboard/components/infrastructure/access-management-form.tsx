@@ -2,6 +2,7 @@
 
 import { useId, useState, useTransition, type FormEvent } from 'react';
 import { KeyRound, Loader2, Plus, Send, UserPlus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -187,10 +188,11 @@ export function AccessManagementForm({
           </div>
 
           <div className="pt-2">
-            <button
+            <Button
               type="submit"
+              variant="default"
               disabled={isCreatingRole}
-              className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+              className="w-full"
             >
               {isCreatingRole ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -198,7 +200,7 @@ export function AccessManagementForm({
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               )}
               <span>Buat peran</span>
-            </button>
+            </Button>
           </div>
         </form>
       </SectionCard>
@@ -275,10 +277,11 @@ export function AccessManagementForm({
           </div>
 
           <div className="pt-2">
-            <button
+            <Button
               type="submit"
+              variant="default"
               disabled={isSavingMembership}
-              className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+              className="w-full"
             >
               {isSavingMembership ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -286,7 +289,7 @@ export function AccessManagementForm({
                 <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
               )}
               <span>Simpan Penetapan</span>
-            </button>
+            </Button>
           </div>
         </form>
       </SectionCard>
@@ -351,14 +354,16 @@ export function AccessManagementForm({
                     </p>
                   </div>
                   {invitation.status === 'pending' ? (
-                    <button
+                    <Button
                       type="button"
+                      variant="destructive"
+                      size="xs"
                       disabled={isRevoking}
                       onClick={() => handleRevokeInvite(invitation.id)}
-                      className="flex-none rounded border border-hairline-strong px-2 py-1 font-sans text-[11px] text-paper-dim transition-colors duration-180 hover:border-error hover:text-error disabled:opacity-50"
+                      className="flex-none"
                     >
                       Batalkan
-                    </button>
+                    </Button>
                   ) : null}
                 </li>
               ))}
@@ -366,10 +371,11 @@ export function AccessManagementForm({
           ) : null}
 
           <div className="pt-2">
-            <button
+            <Button
               type="submit"
+              variant="default"
               disabled={isInviting}
-              className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+              className="w-full"
             >
               {isInviting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -377,7 +383,7 @@ export function AccessManagementForm({
                 <Send className="h-3.5 w-3.5" aria-hidden="true" />
               )}
               <span>Buat undangan</span>
-            </button>
+            </Button>
           </div>
         </form>
       </SectionCard>

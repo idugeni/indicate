@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { hashInviteCode } from '@/modules/dashboard/components/shared/invite-code';
 
@@ -46,13 +47,14 @@ export function RedeemInviteForm() {
         aria-label="Kode undangan"
         className="mt-3 w-full border border-hairline-strong bg-bg px-3 py-2.5 font-mono text-xs text-paper placeholder:text-paper-faint"
       />
-      <button
+      <Button
         type="submit"
+        variant="outline"
         disabled={busy}
-        className="mt-2 inline-flex w-full items-center justify-center border border-hairline-strong bg-transparent px-5 py-2.5 font-sans text-sm font-medium text-paper transition-colors duration-180 hover:border-paper-faint disabled:opacity-50"
+        className="mt-2 w-full"
       >
         {busy ? 'Memeriksa…' : 'Tukarkan undangan'}
-      </button>
+      </Button>
       {notice ? <FormNotice tone="muted">{notice}</FormNotice> : null}
     </form>
   );

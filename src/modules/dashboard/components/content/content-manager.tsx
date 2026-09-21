@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Trash2 } from 'lucide-react';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -169,9 +170,9 @@ export function ContentManager() {
             {t.label}
           </button>
         ))}
-        <button type="button" onClick={() => void reload()} disabled={busy} className="ml-auto inline-flex items-center gap-1.5 pb-2 font-sans text-xs text-paper-dim hover:text-paper disabled:opacity-50">
+        <Button type="button" variant="ghost" size="xs" onClick={() => void reload()} disabled={busy} className="ml-auto text-paper-dim hover:text-paper">
           <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Muat ulang
-        </button>
+        </Button>
       </div>
       {error ? <FormNotice tone="error">{error}</FormNotice> : null}
       {notice ? <FormNotice tone="success">{notice}</FormNotice> : null}
@@ -196,12 +197,12 @@ export function ContentManager() {
                 ))}
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-2">
-                <button type="button" disabled={busy} onClick={() => saveRow(row)} className="bg-brass px-4 py-1.5 font-sans text-xs font-semibold text-bg hover:bg-brass-soft disabled:opacity-50">
+                <Button type="button" variant="default" disabled={busy} onClick={() => saveRow(row)}>
                   Simpan
-                </button>
-                <button type="button" disabled={busy} onClick={() => post('row.delete', { kind: def.kind, id: String(row[def.idKey]) })} className="inline-flex items-center gap-1.5 border border-hairline px-4 py-1.5 font-sans text-xs text-paper-dim hover:border-hairline-strong hover:text-paper disabled:opacity-50">
+                </Button>
+                <Button type="button" variant="outline" disabled={busy} onClick={() => post('row.delete', { kind: def.kind, id: String(row[def.idKey]) })}>
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Hapus
-                </button>
+                </Button>
               </div>
             </section>
           );

@@ -33,6 +33,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { CommandPalette } from '@/modules/dashboard/components/command-palette';
 import {
@@ -708,15 +709,17 @@ export function DashboardWorkspace({
 
         <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-12 flex-none items-center gap-2 border-b border-hairline bg-bg/95 px-4 backdrop-blur sm:px-6">
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={() => setNavOpen(true)}
             aria-label="Buka navigasi workspace"
             aria-haspopup="dialog"
-            className="inline-flex h-8 w-8 flex-none items-center justify-center rounded-md text-paper-dim transition-colors duration-150 hover:bg-bg-raised-2 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 md:hidden"
+            className="flex-none text-paper-dim hover:text-paper md:hidden"
           >
             <Menu className="h-4 w-4" aria-hidden="true" />
-          </button>
+          </Button>
           <Breadcrumb className="min-w-0">
             <BreadcrumbList className="flex-nowrap font-sans text-[13px] text-paper-dim">
               <BreadcrumbItem className="hidden sm:list-item">
@@ -865,14 +868,16 @@ export function DashboardWorkspace({
                 className="flex animate-in items-start gap-3 border-l-2 border-error bg-error/[0.06] px-4 py-3 fade-in slide-in-from-top-2 duration-200"
               >
                 <div className="flex-1 font-sans text-sm text-paper">{error}</div>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon-xs"
                   onClick={() => setError(null)}
-                  className="rounded-md text-paper-faint transition-colors duration-150 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
                   aria-label="Tutup pesan kesalahan"
+                  className="text-paper-faint hover:text-paper"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
-                </button>
+                </Button>
               </div>
             ) : null}
 

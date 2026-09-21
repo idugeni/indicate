@@ -1,6 +1,7 @@
 'use client';
 
 import { Component, type ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
 
 interface PanelErrorBoundaryState {
   readonly message: string | null;
@@ -32,13 +33,13 @@ export class PanelErrorBoundary extends Component<
         >
           <p className="m-0 font-semibold">{this.props.name} gagal dimuat.</p>
           <p className="m-0 mt-1 text-xs text-paper-dim">{this.state.message}</p>
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={this.reset}
-            className="mt-3 inline-flex h-8 items-center rounded border border-hairline-strong px-3 text-xs text-paper transition-colors duration-150 hover:border-paper-faint"
           >
             Coba lagi
-          </button>
+          </Button>
         </div>
       );
     }

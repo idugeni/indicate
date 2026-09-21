@@ -10,6 +10,7 @@ import {
   Send,
 } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -307,18 +308,18 @@ export function EditorialForm({
               Isi Artikel Lengkap
             </Label>
             <div className="flex flex-wrap gap-1.5">
-              <button type="button" title="Tebal (**teks**)" onClick={() => insertMarkup('**', '**')} disabled={isSubmitting} className="rounded border border-hairline-strong bg-bg px-2 py-1 font-mono text-[11px] text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50">
+              <Button type="button" variant="outline" size="xs" title="Tebal (**teks**)" onClick={() => insertMarkup('**', '**')} disabled={isSubmitting}>
                 Tebal
-              </button>
-              <button type="button" title="Miring (*teks*)" onClick={() => insertMarkup('*', '*')} disabled={isSubmitting} className="rounded border border-hairline-strong bg-bg px-2 py-1 font-mono text-[11px] text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50">
+              </Button>
+              <Button type="button" variant="outline" size="xs" title="Miring (*teks*)" onClick={() => insertMarkup('*', '*')} disabled={isSubmitting}>
                 Miring
-              </button>
-              <button type="button" title="Daftar (- item)" onClick={() => insertMarkup('\n- ')} disabled={isSubmitting} className="rounded border border-hairline-strong bg-bg px-2 py-1 font-mono text-[11px] text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50">
+              </Button>
+              <Button type="button" variant="outline" size="xs" title="Daftar (- item)" onClick={() => insertMarkup('\n- ')} disabled={isSubmitting}>
                 Daftar
-              </button>
-              <button type="button" title="Sisip gambar ([gambar:N])" onClick={insertFigureMarker} disabled={isSubmitting} className="rounded border border-hairline-strong bg-bg px-2 py-1 font-mono text-[11px] text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50">
+              </Button>
+              <Button type="button" variant="outline" size="xs" title="Sisip gambar ([gambar:N])" onClick={insertFigureMarker} disabled={isSubmitting}>
                 Gambar
-              </button>
+              </Button>
             </div>
             <Textarea
               id={bodyInputId}
@@ -350,10 +351,10 @@ export function EditorialForm({
           </div>
 
           <div className="pt-2">
-            <button
+            <Button
               type="submit"
+              variant="default"
               disabled={isSubmitting}
-              className="inline-flex h-8 items-center justify-center gap-1.5 rounded bg-brass px-4 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
             >
               {isSubmitting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -361,7 +362,7 @@ export function EditorialForm({
                 <Send className="h-3.5 w-3.5" aria-hidden="true" />
               )}
               <span>Simpan Draf</span>
-            </button>
+            </Button>
           </div>
         </form>
       </SectionCard>
@@ -419,10 +420,11 @@ export function EditorialForm({
           </div>
 
           <div className="pt-2">
-            <button
+            <Button
               type="submit"
+              variant="outline"
               disabled={isAssigning}
-              className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded border border-hairline-strong bg-bg px-3.5 font-sans text-xs font-semibold text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50"
+              className="w-full"
             >
               {isAssigning ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -430,7 +432,7 @@ export function EditorialForm({
                 <Check className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
               )}
               <span>Simpan Penyaluran</span>
-            </button>
+            </Button>
           </div>
         </form>
 
@@ -489,10 +491,11 @@ export function EditorialForm({
               className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
             />
           </div>
-          <button
+          <Button
             type="submit"
+            variant="outline"
             disabled={isSettingViews}
-            className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded border border-hairline-strong bg-bg px-3.5 font-sans text-xs font-semibold text-paper transition-colors duration-180 hover:border-hairline hover:bg-bg-raised-2 disabled:opacity-50"
+            className="w-full"
           >
             {isSettingViews ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -500,7 +503,7 @@ export function EditorialForm({
               <Check className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
             )}
             <span>Simpan Jumlah Tayangan</span>
-          </button>
+          </Button>
         </form>
       </SectionCard>
     </div>

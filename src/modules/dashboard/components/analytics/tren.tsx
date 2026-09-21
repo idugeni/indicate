@@ -3,6 +3,7 @@
 import { useId, useState } from 'react';
 import { Area, AreaChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
 
+import { Button } from '@/components/ui/button';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { TugasHarian } from '@/modules/dashboard/models';
 import { WARNA_ANTRE, WARNA_GAGAL, WARNA_TERBIT, labelHari } from '@/modules/dashboard/components/analytics/bantuan-grafik';
@@ -57,19 +58,21 @@ export function TrenPublikasi({ series }: { readonly series: readonly TugasHaria
         </div>
         <div role="group" aria-label="Rentang tren" className="flex items-center gap-1.5">
           {RENTANG.map((pilihan) => (
-            <button
+            <Button
               key={pilihan}
               type="button"
+              variant="outline"
+              size="xs"
               onClick={() => setRentang(pilihan)}
               aria-pressed={rentang === pilihan}
-              className={`inline-flex h-7 items-center rounded border px-2.5 font-mono text-[11px] tabular-nums transition-colors duration-180 focus:outline-none ${
+              className={`font-mono text-[11px] tabular-nums ${
                 rentang === pilihan
                   ? 'border-brass/60 bg-bg-raised-2 text-paper'
                   : 'border-hairline text-paper-faint hover:border-hairline-strong hover:text-paper'
               }`}
             >
               {pilihan}h
-            </button>
+            </Button>
           ))}
         </div>
       </div>

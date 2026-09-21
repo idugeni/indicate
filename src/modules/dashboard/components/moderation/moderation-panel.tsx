@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
@@ -267,18 +268,16 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
                     className="h-8 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
                   />
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button" onClick={() => void decideReport(report.id, true)} disabled={busy}
-                      className="h-8 bg-brass px-3 font-sans text-xs font-semibold text-bg hover:bg-brass-soft disabled:opacity-50"
+                    <Button
+                      type="button" variant="default" onClick={() => void decideReport(report.id, true)} disabled={busy}
                     >
                       Sudah ditindak
-                    </button>
-                    <button
-                      type="button" onClick={() => void decideReport(report.id, false)} disabled={busy}
-                      className="h-8 border border-hairline-strong px-3 font-sans text-xs text-paper hover:border-paper-faint disabled:opacity-50"
+                    </Button>
+                    <Button
+                      type="button" variant="outline" onClick={() => void decideReport(report.id, false)} disabled={busy}
                     >
                       Tolak
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : null}
@@ -308,12 +307,11 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             aria-label="Uraian permintaan data" rows={3}
             className="font-sans text-xs"
           />
-          <button
-            type="button" onClick={submitPrivacy} disabled={busy}
-            className="h-9 bg-brass px-4 font-sans text-xs font-semibold text-bg hover:bg-brass-soft disabled:opacity-50"
+          <Button
+            type="button" variant="default" size="lg" onClick={submitPrivacy} disabled={busy}
           >
             Kirim permintaan
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -337,12 +335,11 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     {(['in_progress', 'fulfilled', 'rejected'] as const).map((status) => (
-                      <button
-                        key={status} type="button" onClick={() => void decidePrivacy(ticket.ticketNumber, status)} disabled={busy}
-                        className="h-8 border border-hairline-strong px-3 font-sans text-xs text-paper hover:border-paper-faint disabled:opacity-50"
+                      <Button
+                        key={status} type="button" variant="outline" size="sm" onClick={() => void decidePrivacy(ticket.ticketNumber, status)} disabled={busy}
                       >
                         {status}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -380,12 +377,11 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             />
           </div>
           <div className="flex items-end">
-            <button
-              type="button" onClick={() => void createHold()} disabled={busy}
-              className="h-9 bg-brass px-4 font-sans text-xs font-semibold text-bg hover:bg-brass-soft disabled:opacity-50"
+            <Button
+              type="button" variant="default" size="lg" onClick={() => void createHold()} disabled={busy}
             >
               Tahan hapus
-            </button>
+            </Button>
           </div>
         </div>
         <ul className="m-0 mt-2 grid list-none gap-0 p-0 md:grid-cols-2 md:gap-x-10">
@@ -400,12 +396,11 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               </p>
               {hold.releasedAt === null ? (
                 <div className="mt-2">
-                  <button
-                    type="button" onClick={() => void releaseHold(hold.id)} disabled={busy}
-                    className="h-8 border border-hairline-strong px-3 font-sans text-xs text-paper hover:border-paper-faint disabled:opacity-50"
+                  <Button
+                    type="button" variant="outline" onClick={() => void releaseHold(hold.id)} disabled={busy}
                   >
                     Lepas penundaan
-                  </button>
+                  </Button>
                 </div>
               ) : null}
             </li>
@@ -442,12 +437,11 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             />
           </div>
           <div className="flex items-end">
-            <button
-              type="button" onClick={() => void requestErasure()} disabled={busy}
-              className="h-9 border border-error px-4 font-sans text-xs font-semibold text-error hover:border-error disabled:opacity-50"
+            <Button
+              type="button" variant="destructive" size="lg" onClick={() => void requestErasure()} disabled={busy}
             >
               Minta hapus data
-            </button>
+            </Button>
           </div>
         </div>
         <ul className="m-0 mt-2 grid list-none gap-0 p-0 md:grid-cols-2 md:gap-x-10">

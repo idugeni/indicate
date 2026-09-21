@@ -5,6 +5,7 @@ import { KeyRound, Link2, Loader2 } from 'lucide-react';
 
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { Button } from '@/components/ui/button';
 import { PasswordInput } from '@/components/ui/password-input';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
 
@@ -99,25 +100,23 @@ export function LoginMethodsForm() {
             value={confirm} onChange={(event) => setConfirm(event.target.value)} placeholder="Konfirmasi kata sandi"
             className="h-8 font-sans text-xs"
           />
-          <button
-            type="submit" disabled={busy}
-            className="inline-flex h-8 items-center justify-center gap-1.5 rounded bg-brass px-3.5 font-sans text-xs font-semibold text-bg hover:bg-brass-soft disabled:opacity-50"
+          <Button
+            type="submit" variant="default" disabled={busy}
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
             <span>Simpan Kata Sandi</span>
-          </button>
+          </Button>
         </form>
       ) : null}
 
       {hasEmail && !hasGoogle ? (
         <div className="mt-4">
-          <button
-            type="button" onClick={() => void handleLinkGoogle()} disabled={busy}
-            className="inline-flex h-8 items-center justify-center gap-1.5 rounded border border-hairline-strong px-3.5 font-sans text-xs font-medium text-paper-dim hover:text-paper disabled:opacity-50"
+          <Button
+            type="button" variant="outline" onClick={() => void handleLinkGoogle()} disabled={busy}
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Link2 className="h-3.5 w-3.5" aria-hidden="true" />}
             <span>Tautkan Akun Google</span>
-          </button>
+          </Button>
         </div>
       ) : null}
 

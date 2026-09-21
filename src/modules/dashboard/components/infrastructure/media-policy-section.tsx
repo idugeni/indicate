@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useState, useTransition, type FormEvent } from 'react';
 import { Gauge, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -182,14 +183,16 @@ export function MediaPolicySection() {
             <div className="rounded border border-hairline bg-bg p-2.5 font-mono text-xs text-error">{error}</div>
           ) : null}
 
-          <button
+          <Button
             type="submit"
+            variant="default"
+            size="lg"
             disabled={isSaving}
-            className="inline-flex h-9 w-full items-center justify-center gap-1.5 bg-brass px-3 font-sans text-xs font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft disabled:opacity-50"
+            className="w-full"
           >
             {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
             <span>Simpan kebijakan media</span>
-          </button>
+          </Button>
         </form>
       )}
     </section>
