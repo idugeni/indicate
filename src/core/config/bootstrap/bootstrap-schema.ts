@@ -137,9 +137,6 @@ const bootstrapSchema = z
       ) {
         context.addIssue({ code: 'custom', path: ['RESEND_API_KEY'], message: 'production_secret_not_bounded' });
       }
-      if (value.NEXT_PUBLIC_TURNSTILE_SITE_KEY === undefined || value.NEXT_PUBLIC_TURNSTILE_SITE_KEY.trim() === '') {
-        context.addIssue({ code: 'custom', path: ['NEXT_PUBLIC_TURNSTILE_SITE_KEY'], message: 'turnstile_site_key_required' });
-      }
     }
     if ((value.RESEND_API_KEY === undefined) !== (value.RESEND_DEFAULT_FROM === undefined)) {
       context.addIssue({
