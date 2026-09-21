@@ -8,17 +8,17 @@ import { COLOR_PUBLISHED, COLOR_FAILED, COLOR_QUEUED, weekdayLabel } from '@/mod
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 /**
- * Render komposisi tugas harian sebagai batang bertumpuk.
+ * Render daily task composition as stacked bars.
  *
- * @param series - Ember harian dari proyeksi analitik (maks 90 hari).
- * @returns Kartu batang 30 hari terakhir per status tugas.
+ * @param series - Daily buckets from the analytics projection (max 90 days).
+ * @returns Bar card for the trailing 30 days by task status.
  */
 export function StackedTasks({ series }: { readonly series: readonly TugasHarian[] }) {
-  const data = series.slice(-30).map((titik) => ({
-    label: weekdayLabel(titik.hari),
-    Diterbitkan: titik.diterbitkan,
-    Gagal: titik.gagal,
-    Antre: titik.antre,
+  const data = series.slice(-30).map((point) => ({
+    label: weekdayLabel(point.hari),
+    Diterbitkan: point.diterbitkan,
+    Gagal: point.gagal,
+    Antre: point.antre,
   }));
   return (
     <section
@@ -49,8 +49,8 @@ export function StackedTasks({ series }: { readonly series: readonly TugasHarian
             <ChartTooltip
               content={
                 <ChartTooltipContent
-                  formatter={(nilai) =>
-                    typeof nilai === 'number' ? nilai.toLocaleString('id-ID') : String(nilai ?? '')
+                  formatter={(value) =>
+                    typeof value === 'number' ? value.toLocaleString('id-ID') : String(value ?? '')
                   }
                 />
               }

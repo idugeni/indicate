@@ -1,65 +1,65 @@
 import { format, formatDistance, startOfDay, subDays } from 'date-fns';
 import { id } from 'date-fns/locale';
 
-function parseTanggal(iso: string): Date | null {
+function parseDate(iso: string): Date | null {
   const parsed = new Date(iso);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 /**
- * Format tanggal kalender Indonesia untuk dasbor.
+ * Format an Indonesian calendar date for the dashboard.
  *
- * @param iso - String tanggal ISO atau mentah dari API.
- * @returns Tanggal `d MMM yyyy` (id-ID); input tak valid dikembalikan apa adanya.
+ * @param iso - ISO or raw date string from the API.
+ * @returns Date as `d MMM yyyy` (id-ID); invalid input returns as-is.
  */
-export function formatTanggal(iso: string): string {
-  const parsed = parseTanggal(iso);
+export function formatDate(iso: string): string {
+  const parsed = parseDate(iso);
   if (parsed === null) return iso;
   return format(parsed, 'd MMM yyyy', { locale: id });
 }
 
 /**
- * Format tanggal beserta jam untuk cap waktu dasbor.
+ * Format a date with time for dashboard timestamps.
  *
- * @param iso - String tanggal ISO atau mentah dari API.
- * @returns Tanggal `d MMM yyyy, HH.mm` (id-ID); input tak valid dikembalikan apa adanya.
+ * @param iso - ISO or raw date string from the API.
+ * @returns Date as `d MMM yyyy, HH.mm` (id-ID); invalid input returns as-is.
  */
-export function formatTanggalWaktu(iso: string): string {
-  const parsed = parseTanggal(iso);
+export function formatDateTime(iso: string): string {
+  const parsed = parseDate(iso);
   if (parsed === null) return iso;
   return format(parsed, 'd MMM yyyy, HH.mm', { locale: id });
 }
 
 /**
- * Jarak waktu relatif terhadap kini untuk cap waktu dasbor.
+ * Relative time distance to now for dashboard timestamps.
  *
- * @param iso - String tanggal ISO atau mentah dari API.
- * @param now - Acuan waktu; default `new Date()` di production.
- * @returns Frasa seperti `3 jam lalu`; input tak valid dikembalikan apa adanya.
+ * @param iso - ISO or raw date string from the API.
+ * @param now - Reference time; defaults to `new Date()` in production.
+ * @returns Phrase such as `3 jam lalu`; invalid input returns as-is.
  */
-export function formatRelatif(iso: string, now: Date = new Date()): string {
-  const parsed = parseTanggal(iso);
+export function formatRelative(iso: string, now: Date = new Date()): string {
+  const parsed = parseDate(iso);
   if (parsed === null) return iso;
   return formatDistance(parsed, now, { locale: id, addSuffix: true, includeSeconds: true });
 }
 
-export type PresetRentang = 'hari-ini' | '7-hari' | '30-hari';
+export type RangePreset = 'today' | '7-days' | '30-days';
 
-export interface RentangIso {
+export interface RangeIso {
   readonly from: string;
   readonly to: string;
 }
 
 /**
- * Rentang ISO siap filter analitik/telemetri dari satu preset.
+ * ISO range ready for analytics/telemetry filters from a single preset.
  *
- * @param preset - Salah satu `hari-ini`, `7-hari`, atau `30-hari`.
- * @param now - Acuan waktu; default `new Date()` di production.
- * @returns Pasangan `from`/`to` ISO; `to` selalu waktu acuan.
+ * @param preset - One of `today`, `7-days`, or `30-days`.
+ * @param now - Reference time; defaults to `new Date()` in production.
+ * @returns `from`/`to` ISO pair; `to` is always the reference time.
  */
-export function presetRentang(preset: PresetRentang, now: Date = new Date()): RentangIso {
+export function presetRange(preset: RangePreset, now: Date = new Date()): RangeIso {
   const to = now.toISOString();
-  if (preset === 'hari-ini') return { from: startOfDay(now).toISOString(), to };
-  const hari = preset === '7-hari' ? 6 : 29;
-  return { from: startOfDay(subDays(now, hari)).toISOString(), to };
+  if (preset === 'today') return { from: startOfDay(now).toISOString(), to };
+  const days = preset === '7-days' ? 6 : 29;
+  return { from: startOfDay(subDays(now, days)).toISOString(), to };
 }

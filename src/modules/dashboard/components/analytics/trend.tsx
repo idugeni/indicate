@@ -9,9 +9,9 @@ import type { TugasHarian } from '@/modules/dashboard/models';
 import { COLOR_PUBLISHED, COLOR_FAILED, COLOR_QUEUED, weekdayLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
-const RENTANG = [7, 30, 90] as const;
+const RANGE = [7, 30, 90] as const;
 
-interface BarisDeret {
+interface SeriesRow {
   readonly hari: string;
   readonly label: string;
   readonly diterbitkan: number;
@@ -19,26 +19,26 @@ interface BarisDeret {
   readonly antre: number;
 }
 
-function siapkan(series: readonly TugasHarian[], rentang: number): BarisDeret[] {
-  return series.slice(-rentang).map((titik) => ({
-    hari: titik.hari,
-    label: weekdayLabel(titik.hari),
-    diterbitkan: titik.diterbitkan,
-    gagal: titik.gagal,
-    antre: titik.antre,
+function buildSeries(series: readonly TugasHarian[], range: number): SeriesRow[] {
+  return series.slice(-range).map((point) => ({
+    hari: point.hari,
+    label: weekdayLabel(point.hari),
+    diterbitkan: point.diterbitkan,
+    gagal: point.gagal,
+    antre: point.antre,
   }));
 }
 
 /**
- * Render tren publikasi sebagai area bertumpuk interaktif.
+ * Render publication trends as an interactive stacked area.
  *
- * @param series - Ember harian dari proyeksi analitik (maks 90 hari).
- * @returns Kartu area dengan pengalih rentang 7/30/90 hari.
+ * @param series - Daily buckets from the analytics projection (max 90 days).
+ * @returns Area card with a 7/30/90-day switch.
  */
 export function PublicationTrend({ series }: { readonly series: readonly TugasHarian[] }) {
-  const [rentang, setRentang] = useState<number>(30);
+  const [range, setRange] = useState<number>(30);
   const grad = useId().replace(/:/g, '');
-  const data = siapkan(series, rentang);
+  const data = buildSeries(series, range);
   return (
     <section
       aria-label="Tren publikasi"
@@ -54,21 +54,21 @@ export function PublicationTrend({ series }: { readonly series: readonly TugasHa
           </p>
         </div>
         <div role="group" aria-label="Rentang tren" className="flex items-center gap-1.5">
-          {RENTANG.map((pilihan) => (
+          {RANGE.map((option) => (
             <Button
-              key={pilihan}
+              key={option}
               type="button"
               variant="outline"
               size="xs"
-              onClick={() => setRentang(pilihan)}
-              aria-pressed={rentang === pilihan}
+              onClick={() => setRange(option)}
+              aria-pressed={range === option}
               className={`font-mono text-[11px] tabular-nums ${
-                rentang === pilihan
+                range === option
                   ? 'border-brass/60 bg-bg-raised-2 text-paper'
                   : 'border-hairline text-paper-faint hover:border-hairline-strong hover:text-paper'
               }`}
             >
-              {pilihan}h
+              {option}h
             </Button>
           ))}
         </div>
@@ -106,11 +106,11 @@ export function PublicationTrend({ series }: { readonly series: readonly TugasHa
               content={
                 <ChartTooltipContent
                   labelFormatter={(_, payload) => {
-                    const pertama = payload?.[0]?.payload as BarisDeret | undefined;
-                    return pertama === undefined ? null : weekdayLabel(pertama.hari);
+                    const first = payload?.[0]?.payload as SeriesRow | undefined;
+                    return first === undefined ? null : weekdayLabel(first.hari);
                   }}
-                  formatter={(nilai) =>
-                    typeof nilai === 'number' ? nilai.toLocaleString('id-ID') : String(nilai ?? '')
+                  formatter={(value) =>
+                    typeof value === 'number' ? value.toLocaleString('id-ID') : String(value ?? '')
                   }
                 />
               }
@@ -127,13 +127,13 @@ export function PublicationTrend({ series }: { readonly series: readonly TugasHa
 }
 
 /**
- * Render perbandingan tiga metrik harian sebagai garis.
+ * Render a three-metric daily comparison as lines.
  *
- * @param series - Ember harian dari proyeksi analitik (maks 90 hari).
- * @returns Kartu garis multi-metrik 30 hari terakhir.
+ * @param series - Daily buckets from the analytics projection (max 90 days).
+ * @returns Multi-metric line card for the trailing 30 days.
  */
 export function MetricComparison({ series }: { readonly series: readonly TugasHarian[] }) {
-  const data = siapkan(series, 30);
+  const data = buildSeries(series, 30);
   return (
     <section
       aria-label="Perbandingan metrik"
@@ -164,11 +164,11 @@ export function MetricComparison({ series }: { readonly series: readonly TugasHa
               content={
                 <ChartTooltipContent
                   labelFormatter={(_, payload) => {
-                    const pertama = payload?.[0]?.payload as BarisDeret | undefined;
-                    return pertama === undefined ? null : weekdayLabel(pertama.hari);
+                    const first = payload?.[0]?.payload as SeriesRow | undefined;
+                    return first === undefined ? null : weekdayLabel(first.hari);
                   }}
-                  formatter={(nilai) =>
-                    typeof nilai === 'number' ? nilai.toLocaleString('id-ID') : String(nilai ?? '')
+                  formatter={(value) =>
+                    typeof value === 'number' ? value.toLocaleString('id-ID') : String(value ?? '')
                   }
                 />
               }

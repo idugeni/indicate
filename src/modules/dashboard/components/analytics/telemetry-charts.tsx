@@ -7,63 +7,63 @@ import type { AnalyticsProjection } from '@/modules/dashboard/models';
 import { categoryColor } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
-interface Dimensi {
-  readonly judul: string;
-  readonly warna: string;
-  readonly baris: readonly { readonly key: string; readonly count: number }[];
+interface Dimension {
+  readonly title: string;
+  readonly color: string;
+  readonly rows: readonly { readonly key: string; readonly count: number }[];
 }
 
-const BATAS_BARIS = 10;
+const ROW_LIMIT = 10;
 
-function truncateLabel(nilai: string): string {
-  return nilai.length > 20 ? `${nilai.slice(0, 19)}…` : nilai;
+function truncateLabel(value: string): string {
+  return value.length > 20 ? `${value.slice(0, 19)}…` : value;
 }
 
 /**
- * Render distribusi telemetri jaringan sebagai diagram batang.
+ * Render network telemetry distributions as bar charts.
  *
- * @param data - Proyeksi analitik per organisasi dari endpoint workspace.
- * @returns Grid kartu diagram; null saat seluruh dimensi kosong.
+ * @param data - Per-organization analytics projection from the workspace endpoint.
+ * @returns Card grid; null when every dimension is empty.
  */
 export function TelemetryCharts({ data }: { readonly data: AnalyticsProjection }) {
-  const dimensi: readonly Dimensi[] = [
-    { judul: 'Artikel per wilayah', warna: '#cc9a44', baris: data.articlesByRegion },
-    { judul: 'Artikel per kategori', warna: '#6c93c9', baris: data.articlesByCategory },
-    { judul: 'Artikel per penerbit', warna: '#5fcbb0', baris: data.articlesByPublisher },
-    { judul: 'Tugas per status', warna: '#d8a94e', baris: data.jobsByState },
-    { judul: 'Hasil per situs', warna: '#cc9a44', baris: data.outcomesBySiteAndState },
+  const dimensions: readonly Dimension[] = [
+    { title: 'Artikel per wilayah', color: '#cc9a44', rows: data.articlesByRegion },
+    { title: 'Artikel per kategori', color: '#6c93c9', rows: data.articlesByCategory },
+    { title: 'Artikel per penerbit', color: '#5fcbb0', rows: data.articlesByPublisher },
+    { title: 'Tugas per status', color: '#d8a94e', rows: data.jobsByState },
+    { title: 'Hasil per situs', color: '#cc9a44', rows: data.outcomesBySiteAndState },
   ];
 
-  if (dimensi.every(({ baris }) => baris.length === 0)) return null;
+  if (dimensions.every(({ rows }) => rows.length === 0)) return null;
 
   return (
     <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-      {dimensi.map(({ judul, warna, baris }) => {
-        const teratas = [...baris].sort((a, b) => b.count - a.count).slice(0, BATAS_BARIS);
-        const total = baris.reduce((jumlah, titik) => jumlah + titik.count, 0);
-        const sisa = baris.length - teratas.length;
+      {dimensions.map(({ title, color, rows }) => {
+        const topRows = [...rows].sort((a, b) => b.count - a.count).slice(0, ROW_LIMIT);
+        const total = rows.reduce((count, point) => count + point.count, 0);
+        const restCount = rows.length - topRows.length;
         return (
           <section
-            key={judul}
-            aria-label={judul}
+            key={title}
+            aria-label={title}
             className="flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-hairline bg-bg-raised p-5"
           >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
-                {judul}
+                {title}
               </h2>
               <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
                 {total.toLocaleString('id-ID')} total
               </p>
             </div>
-            {teratas.length === 0 ? (
+            {topRows.length === 0 ? (
               <EmptyState title="Belum ada data." description="Data akan tampil di sini setelah tersedia." />
             ) : (
               <ChartContainer
-                config={{ count: { label: judul, color: warna } }}
+                config={{ count: { label: title, color } }}
                 className="mt-4 max-h-64 w-full"
               >
-                <BarChart data={teratas} layout="vertical" margin={{ left: 8, right: 12 }}>
+                <BarChart data={topRows} layout="vertical" margin={{ left: 8, right: 12 }}>
                   <CartesianGrid horizontal={false} />
                   <YAxis
                     dataKey="key"
@@ -72,29 +72,29 @@ export function TelemetryCharts({ data }: { readonly data: AnalyticsProjection }
                     tickLine={false}
                     axisLine={false}
                     tick={{ fontSize: 11 }}
-                    tickFormatter={(nilai: string) => truncateLabel(nilai)}
+                    tickFormatter={(value: string) => truncateLabel(value)}
                   />
                   <XAxis type="number" hide />
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
-                        formatter={(nilai) =>
-                          typeof nilai === 'number' ? nilai.toLocaleString('id-ID') : String(nilai ?? '')
+                        formatter={(value) =>
+                          typeof value === 'number' ? value.toLocaleString('id-ID') : String(value ?? '')
                         }
                       />
                     }
                   />
                   <Bar dataKey="count" radius={[2, 2, 2, 2]}>
-                    {teratas.map((titik, peringkat) => (
-                      <Cell key={titik.key} fill={categoryColor(peringkat)} />
+                    {topRows.map((point, rank) => (
+                      <Cell key={point.key} fill={categoryColor(rank)} />
                     ))}
                   </Bar>
                 </BarChart>
               </ChartContainer>
             )}
-            {sisa > 0 ? (
+            {restCount > 0 ? (
               <p className="m-0 mt-2 font-mono text-[11px] tabular-nums text-paper-faint">
-                +{sisa} lainnya
+                +{restCount} lainnya
               </p>
             ) : null}
           </section>

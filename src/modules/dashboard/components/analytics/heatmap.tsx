@@ -7,23 +7,23 @@ import type { AktivitasJam, TugasHarian } from '@/modules/dashboard/models';
 import { weekdayLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
-const NAMA_HARI = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as const;
+const DAY_NAMES = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as const;
 
-function skala(nilai: number, maks: number): number {
-  if (nilai <= 0 || maks <= 0) return 0;
-  return 0.22 + 0.78 * (nilai / maks);
+function scale(value: number, max: number): number {
+  if (value <= 0 || max <= 0) return 0;
+  return 0.22 + 0.78 * (value / max);
 }
 
 /**
- * Render peta panas aktivitas per hari dan jam (Asia/Jakarta).
+ * Render an activity heatmap per day and hour (Asia/Jakarta).
  *
- * @param cells - Sel aktivitas nonzero dari proyeksi analitik.
- * @returns Grid 7×24 dengan intensitas warna.
+ * @param cells - Nonzero activity cells from the analytics projection.
+ * @returns 7x24 grid with color intensity.
  */
 export function ActivityHeatmap({ cells }: { readonly cells: readonly AktivitasJam[] }) {
-  const peta = new Map(cells.map((titik) => [`${titik.hari}:${titik.jam}`, titik.jumlah]));
-  const maks = Math.max(...cells.map((titik) => titik.jumlah), 1);
-  const jam = Array.from({ length: 24 }, (_, nilai) => nilai);
+  const cellMap = new Map(cells.map((point) => [`${point.hari}:${point.jam}`, point.jumlah]));
+  const max = Math.max(...cells.map((point) => point.jumlah), 1);
+  const hours = Array.from({ length: 24 }, (_, value) => value);
   return (
     <section
       aria-label="Peta panas"
@@ -38,30 +38,30 @@ export function ActivityHeatmap({ cells }: { readonly cells: readonly AktivitasJ
       <div className="mt-4 space-y-1 overflow-x-auto">
         <div className="grid min-w-[30rem] grid-cols-[3.5rem_repeat(24,minmax(0,1fr))] items-center gap-1">
           <span />
-          {jam.map((nilai) =>
-            nilai % 6 === 0 ? (
-              <span key={nilai} className="text-center font-mono text-[10px] tabular-nums text-paper-faint">
-                {String(nilai).padStart(2, '0')}
+          {hours.map((value) =>
+            value % 6 === 0 ? (
+              <span key={value} className="text-center font-mono text-[10px] tabular-nums text-paper-faint">
+                {String(value).padStart(2, '0')}
               </span>
             ) : (
-              <span key={nilai} />
+              <span key={value} />
             ),
           )}
         </div>
-        {NAMA_HARI.map((nama, hari) => (
-          <div key={nama} className="grid min-w-[30rem] grid-cols-[3.5rem_repeat(24,minmax(0,1fr))] items-center gap-1">
-            <span className="truncate font-sans text-[11px] text-paper-dim">{nama}</span>
-            {jam.map((nilai) => {
-              const jumlah = peta.get(`${hari}:${nilai}`) ?? 0;
+        {DAY_NAMES.map((name, day) => (
+          <div key={name} className="grid min-w-[30rem] grid-cols-[3.5rem_repeat(24,minmax(0,1fr))] items-center gap-1">
+            <span className="truncate font-sans text-[11px] text-paper-dim">{name}</span>
+            {hours.map((value) => {
+              const count = cellMap.get(`${day}:${value}`) ?? 0;
               return (
                 <span
-                  key={nilai}
-                  title={`${nama} ${String(nilai).padStart(2, '0')}:00 — ${jumlah}`}
+                  key={value}
+                  title={`${name} ${String(value).padStart(2, '0')}:00 — ${count}`}
                   className="h-4 w-full rounded-[3px]"
                   style={
-                    jumlah === 0
+                    count === 0
                       ? undefined
-                      : { backgroundColor: '#d8a94e', opacity: skala(jumlah, maks) }
+                      : { backgroundColor: '#d8a94e', opacity: scale(count, max) }
                   }
                 />
               );
@@ -70,32 +70,32 @@ export function ActivityHeatmap({ cells }: { readonly cells: readonly AktivitasJ
         ))}
       </div>
       <p className="m-0 mt-3 font-mono text-[11px] tabular-nums text-paper-faint">
-        Puncak: {maks.toLocaleString('id-ID')} per jam
+        Puncak: {max.toLocaleString('id-ID')} per jam
       </p>
     </section>
   );
 }
 
 /**
- * Render kalender panas aktivitas publikasi harian.
+ * Render a daily publication activity calendar.
  *
- * @param series - Ember harian dari proyeksi analitik.
- * @returns Grid minggu × hari dengan pengalih 30/90 hari.
+ * @param series - Daily buckets from the analytics projection.
+ * @returns Week x day grid with a 30/90-day switch.
  */
 export function ActivityCalendar({ series }: { readonly series: readonly TugasHarian[] }) {
-  const [rentang, setRentang] = useState<number>(90);
-  const potong = series.slice(-rentang);
-  const total = (titik: TugasHarian): number => titik.diterbitkan + titik.gagal + titik.antre;
-  const maks = Math.max(...potong.map(total), 1);
-  const kosongAwal = potong.length === 0 ? 0 : (new Date(`${potong[0]?.hari ?? ''}T00:00:00Z`).getUTCDay() + 6) % 7;
-  const selKosong = Number.isNaN(kosongAwal) ? 0 : kosongAwal;
-  const sel: readonly (TugasHarian | null)[] = [...Array<TugasHarian | null>(selKosong).fill(null), ...potong];
-  const kolom: (TugasHarian | null)[][] = [];
-  sel.forEach((titik, indeks) => {
-    const lajur = Math.floor(indeks / 7);
-    kolom[lajur] = [...(kolom[lajur] ?? []), titik];
+  const [range, setRange] = useState<number>(90);
+  const visible = series.slice(-range);
+  const total = (point: TugasHarian): number => point.diterbitkan + point.gagal + point.antre;
+  const max = Math.max(...visible.map(total), 1);
+  const leadingEmpty = visible.length === 0 ? 0 : (new Date(`${visible[0]?.hari ?? ''}T00:00:00Z`).getUTCDay() + 6) % 7;
+  const leadingCount = Number.isNaN(leadingEmpty) ? 0 : leadingEmpty;
+  const padded: readonly (TugasHarian | null)[] = [...Array<TugasHarian | null>(leadingCount).fill(null), ...visible];
+  const columns: (TugasHarian | null)[][] = [];
+  padded.forEach((point, index) => {
+    const column = Math.floor(index / 7);
+    columns[column] = [...(columns[column] ?? []), point];
   });
-  const totalSemua = potong.reduce((jumlah, titik) => jumlah + total(titik), 0);
+  const totalAll = visible.reduce((count, point) => count + total(point), 0);
   return (
     <section
       aria-label="Kalender aktivitas"
@@ -107,47 +107,47 @@ export function ActivityCalendar({ series }: { readonly series: readonly TugasHa
             Kalender aktivitas
           </h2>
           <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
-            {totalSemua.toLocaleString('id-ID')} tugas dalam rentang
+            {totalAll.toLocaleString('id-ID')} tugas dalam rentang
           </p>
         </div>
         <div role="group" aria-label="Rentang kalender" className="flex items-center gap-1.5">
-          {[30, 90].map((pilihan) => (
+          {[30, 90].map((option) => (
             <Button
-              key={pilihan}
+              key={option}
               type="button"
               variant="outline"
               size="xs"
-              onClick={() => setRentang(pilihan)}
-              aria-pressed={rentang === pilihan}
+              onClick={() => setRange(option)}
+              aria-pressed={range === option}
               className={`font-mono text-[11px] tabular-nums ${
-                rentang === pilihan
+                range === option
                   ? 'border-brass/60 bg-bg-raised-2 text-paper'
                   : 'border-hairline text-paper-faint hover:border-hairline-strong hover:text-paper'
               }`}
             >
-              {pilihan}h
+              {option}h
             </Button>
           ))}
         </div>
       </div>
-      {potong.length === 0 ? (
+      {visible.length === 0 ? (
         <EmptyState title="Belum ada data deret waktu." description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <div className="mt-4 flex gap-1 overflow-x-auto pb-1">
-          {kolom.map((lajur, indeks) => (
-            <div key={indeks} className="flex flex-1 flex-col gap-1">
-              {lajur.map((titik, baris) =>
-                titik === null ? (
-                  <span key={baris} className="h-3.5 w-full rounded-[3px]" />
+          {columns.map((column, index) => (
+            <div key={index} className="flex flex-1 flex-col gap-1">
+              {column.map((point, row) =>
+                point === null ? (
+                  <span key={row} className="h-3.5 w-full rounded-[3px]" />
                 ) : (
                   <span
-                    key={baris}
-                    title={`${weekdayLabel(titik.hari)} — ${total(titik)}`}
+                    key={row}
+                    title={`${weekdayLabel(point.hari)} — ${total(point)}`}
                     className="h-3.5 w-full rounded-[3px] bg-bg-raised-2"
                     style={
-                      total(titik) === 0
+                      total(point) === 0
                         ? undefined
-                        : { backgroundColor: '#5fcbb0', opacity: skala(total(titik), maks) }
+                        : { backgroundColor: '#5fcbb0', opacity: scale(total(point), max) }
                     }
                   />
                 ),

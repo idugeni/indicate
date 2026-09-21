@@ -7,42 +7,42 @@ import type { AnalyticsPoint } from '@/modules/dashboard/models';
 import { truncateLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
-const BATAS_SITUS = 20;
+const SITE_LIMIT = 20;
 
-interface Gelembung {
-  readonly situs: string;
+interface Bubble {
+  readonly site: string;
   readonly label: string;
   readonly total: number;
-  readonly sukses: number;
+  readonly succeeded: number;
 }
 
 /**
- * Render throughput vs tingkat sukses per situs sebagai gelembung.
+ * Render throughput vs success rate per site as bubbles.
  *
- * @param results - Titik `situs:status` dari proyeksi analitik.
- * @returns Kartu sebar: sumbu-x volume, sumbu-y persen sukses, ukuran gelembung volume.
+ * @param results - `site:status` points from the analytics projection.
+ * @returns Scatter card: x-axis volume, y-axis success percent, bubble size volume.
  */
 export function SiteBubbles({ results }: { readonly results: readonly AnalyticsPoint[] }) {
-  const perSitus = new Map<string, { total: number; sukses: number }>();
-  for (const titik of results) {
-    const pisah = titik.key.indexOf(':');
-    if (pisah < 0) continue;
-    const situs = titik.key.slice(0, pisah);
-    const status = titik.key.slice(pisah + 1);
-    const slot = perSitus.get(situs) ?? { total: 0, sukses: 0 };
-    slot.total += titik.count;
-    if (status === 'published') slot.sukses += titik.count;
-    perSitus.set(situs, slot);
+  const bySite = new Map<string, { total: number; succeeded: number }>();
+  for (const point of results) {
+    const separatorIndex = point.key.indexOf(':');
+    if (separatorIndex < 0) continue;
+    const siteId = point.key.slice(0, separatorIndex);
+    const status = point.key.slice(separatorIndex + 1);
+    const slot = bySite.get(siteId) ?? { total: 0, succeeded: 0 };
+    slot.total += point.count;
+    if (status === 'published') slot.succeeded += point.count;
+    bySite.set(siteId, slot);
   }
-  const data: Gelembung[] = [...perSitus]
-    .map(([situs, slot]) => ({
-      situs,
-      label: truncateLabel(situs, 14),
+  const data: Bubble[] = [...bySite]
+    .map(([siteId, slot]) => ({
+      site: siteId,
+      label: truncateLabel(siteId, 14),
       total: slot.total,
-      sukses: slot.total > 0 ? Math.round((slot.sukses / slot.total) * 100) : 0,
+      succeeded: slot.total > 0 ? Math.round((slot.succeeded / slot.total) * 100) : 0,
     }))
-    .sort((kiri, kanan) => kanan.total - kiri.total)
-    .slice(0, BATAS_SITUS);
+    .sort((left, right) => right.total - left.total)
+    .slice(0, SITE_LIMIT);
   return (
     <section
       aria-label="Gelembung situs"
@@ -71,7 +71,7 @@ export function SiteBubbles({ results }: { readonly results: readonly AnalyticsP
             />
             <YAxis
               type="number"
-              dataKey="sukses"
+              dataKey="succeeded"
               name="Sukses"
               domain={[0, 100]}
               tickLine={false}
@@ -84,14 +84,14 @@ export function SiteBubbles({ results }: { readonly results: readonly AnalyticsP
               content={
                 <ChartTooltipContent
                   labelFormatter={(_, payload) => {
-                    const pertama = payload?.[0]?.payload as Gelembung | undefined;
-                    return pertama === undefined ? null : pertama.situs;
+                    const first = payload?.[0]?.payload as Bubble | undefined;
+                    return first === undefined ? null : first.site;
                   }}
-                  formatter={(nilai, nama) => (
+                  formatter={(value, name) => (
                     <span className="font-mono tabular-nums">
-                      {typeof nilai === 'number' ? nilai.toLocaleString('id-ID') : String(nilai ?? '')}
+                      {typeof value === 'number' ? value.toLocaleString('id-ID') : String(value ?? '')}
                       {' '}
-                      {nama === 'sukses' ? '%' : ''}
+                      {name === 'succeeded' ? '%' : ''}
                     </span>
                   )}
                 />

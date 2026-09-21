@@ -19,33 +19,33 @@ const RESULT_COLORS: Record<string, string> = {
   gagal: '#d9705f',
 };
 
-interface Irisan {
-  readonly nama: string;
-  readonly nilai: number;
-  readonly warna: string;
+interface Slice {
+  readonly name: string;
+  readonly value: number;
+  readonly color: string;
 }
 
 /**
- * Render donat distribusi untuk satu dimensi ringkasan.
+ * Render a distribution donut for one summary dimension.
  *
- * @param title - Judul kartu yang tampil.
- * @param irisan - Potongan donat beserta warna token dark.
- * @param emptyText - Teks pengganti saat total nol.
- * @param className - Span bento dari grid induk.
- * @returns Kartu donat dengan legenda angka id-ID.
+ * @param title - Visible card title.
+ * @param slices - Donut slices with dark-token colors.
+ * @param emptyText - Replacement text when the total is zero.
+ * @param className - Parent-grid bento span.
+ * @returns Donut card with an id-ID numeric legend.
  */
 function Donut({
   title,
-  irisan,
+  slices,
   emptyText,
   className,
 }: {
   readonly title: string;
-  readonly irisan: readonly Irisan[];
+  readonly slices: readonly Slice[];
   readonly emptyText: string;
   readonly className?: string;
 }) {
-  const total = irisan.reduce((jumlah, potong) => jumlah + potong.nilai, 0);
+  const total = slices.reduce((count, slice) => count + slice.value, 0);
   return (
     <section
       aria-label={title}
@@ -63,45 +63,45 @@ function Donut({
         <EmptyState title={emptyText} description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <div className="mt-2 flex flex-wrap items-center gap-4">
-          <ChartContainer config={{ nilai: { label: title } }} className="aspect-square w-36 flex-none sm:w-40">
+          <ChartContainer config={{ value: { label: title } }} className="aspect-square w-36 flex-none sm:w-40">
             <PieChart>
               <ChartTooltip
                 content={
                   <ChartTooltipContent
-                    formatter={(nilai) =>
-                      typeof nilai === 'number' ? nilai.toLocaleString('id-ID') : String(nilai ?? '')
+                    formatter={(value) =>
+                      typeof value === 'number' ? value.toLocaleString('id-ID') : String(value ?? '')
                     }
                   />
                 }
               />
               <Pie
-                data={[...irisan]}
-                dataKey="nilai"
-                nameKey="nama"
+                data={[...slices]}
+                dataKey="value"
+                nameKey="name"
                 innerRadius={44}
                 outerRadius={64}
                 paddingAngle={2}
                 strokeWidth={0}
               >
-                {irisan.map((potong) => (
-                  <Cell key={potong.nama} fill={potong.warna} />
+                {slices.map((slice) => (
+                  <Cell key={slice.name} fill={slice.color} />
                 ))}
               </Pie>
             </PieChart>
           </ChartContainer>
           <ul className="m-0 min-w-0 flex-1 list-none space-y-1.5 p-0">
-            {irisan.map((potong) => (
-              <li key={potong.nama} className="flex items-center gap-2">
+            {slices.map((slice) => (
+              <li key={slice.name} className="flex items-center gap-2">
                 <span
                   aria-hidden="true"
                   className="h-2 w-2 flex-none rounded-[2px]"
-                  style={{ backgroundColor: potong.warna }}
+                  style={{ backgroundColor: slice.color }}
                 />
-                <span className="min-w-0 flex-1 truncate font-mono text-[11px] uppercase tracking-wider text-paper-dim" title={potong.nama}>
-                  {potong.nama}
+                <span className="min-w-0 flex-1 truncate font-mono text-[11px] uppercase tracking-wider text-paper-dim" title={slice.name}>
+                  {slice.name}
                 </span>
                 <span className="flex-none font-mono text-xs font-bold tabular-nums text-paper">
-                  {potong.nilai.toLocaleString('id-ID')}
+                  {slice.value.toLocaleString('id-ID')}
                 </span>
               </li>
             ))}
@@ -113,14 +113,14 @@ function Donut({
 }
 
 /**
- * Render visual ringkasan dasbor utama dari snapshot organisasi.
+ * Render the main dashboard summary visuals from the organization snapshot.
  *
- * @param jobs - Cacah tugas penerbitan per status.
- * @param succeeded - Jumlah hasil situs yang sukses.
- * @param failed - Jumlah hasil situs yang gagal.
- * @param active - Jumlah artikel aktif.
- * @param archived - Jumlah artikel yang diarsipkan.
- * @returns Fragmen tiga kartu donat siap tata bento induk.
+ * @param jobs - Publishing task counts by status.
+ * @param succeeded - Successful site outcome count.
+ * @param failed - Failed site outcome count.
+ * @param active - Active article count.
+ * @param archived - Archived article count.
+ * @returns Fragment of three donut cards ready for the parent bento layout.
  */
 export function SummaryCharts({
   jobs,
@@ -141,28 +141,28 @@ export function SummaryCharts({
         title="Distribusi antrean"
         emptyText="Belum ada tugas penerbitan. Tugas antrean akan terisi setelah artikel pertama dijadwalkan."
         className="min-[420px]:col-span-6 lg:col-span-5"
-        irisan={Object.entries(jobs).map(([status, nilai]) => ({
-          nama: status,
-          nilai: Number(nilai),
-          warna: STATUS_COLORS[status] ?? '#8b93a7',
+        slices={Object.entries(jobs).map(([status, value]) => ({
+          name: status,
+          value: Number(value),
+          color: STATUS_COLORS[status] ?? '#8b93a7',
         }))}
       />
       <Donut
         title="Komposisi hasil"
         emptyText="Belum ada hasil penyaluran. Hasil situs akan diringkas di sini setelah antrean pertama berjalan."
         className="min-[420px]:col-span-3 lg:col-span-4"
-        irisan={[
-          { nama: 'berhasil', nilai: succeeded, warna: RESULT_COLORS.berhasil ?? '#5fcbb0' },
-          { nama: 'gagal', nilai: failed, warna: RESULT_COLORS.gagal ?? '#d9705f' },
+        slices={[
+          { name: 'berhasil', value: succeeded, color: RESULT_COLORS.berhasil ?? '#5fcbb0' },
+          { name: 'gagal', value: failed, color: RESULT_COLORS.gagal ?? '#d9705f' },
         ]}
       />
       <Donut
         title="Komposisi artikel"
         emptyText="Belum ada artikel. Tulis naskah perdana dari ruang redaksi."
         className="min-[420px]:col-span-3 lg:col-span-3"
-        irisan={[
-          { nama: 'aktif', nilai: active, warna: '#cc9a44' },
-          { nama: 'arsip', nilai: archived, warna: '#8b93a7' },
+        slices={[
+          { name: 'aktif', value: active, color: '#cc9a44' },
+          { name: 'arsip', value: archived, color: '#8b93a7' },
         ]}
       />
     </>
@@ -170,12 +170,12 @@ export function SummaryCharts({
 }
 
 /**
- * Render cincin tingkat keberhasilan penyaluran.
+ * Render a delivery success-rate ring.
  *
- * @param succeeded - Jumlah hasil situs yang sukses.
- * @param failed - Jumlah hasil situs yang gagal.
- * @param className - Span bento dari grid induk.
- * @returns Kartu radial dengan angka persen di tengah.
+ * @param succeeded - Successful site outcome count.
+ * @param failed - Failed site outcome count.
+ * @param className - Parent-grid bento span.
+ * @returns Radial card with a centered percent figure.
  */
 export function SuccessRate({
   succeeded,
@@ -187,7 +187,7 @@ export function SuccessRate({
   readonly className?: string;
 }) {
   const total = succeeded + failed;
-  const kadar = total > 0 ? Math.round((succeeded / total) * 100) : 0;
+  const rate = total > 0 ? Math.round((succeeded / total) * 100) : 0;
   return (
     <section
       aria-label="Tingkat keberhasilan"
@@ -206,9 +206,9 @@ export function SuccessRate({
       ) : (
         <>
           <div className="relative mx-auto mt-2 w-full max-w-52">
-            <ChartContainer config={{ kadar: { label: 'Keberhasilan', color: '#5fcbb0' } }} className="aspect-square w-full">
+            <ChartContainer config={{ rate: { label: 'Keberhasilan', color: '#5fcbb0' } }} className="aspect-square w-full">
               <RadialBarChart
-                data={[{ nama: 'sukses', kadar }]}
+                data={[{ name: 'sukses', rate }]}
                 startAngle={90}
                 endAngle={-270}
                 innerRadius="74%"
@@ -216,17 +216,17 @@ export function SuccessRate({
               >
                 <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
                 <RadialBar
-                  dataKey="kadar"
+                  dataKey="rate"
                   cornerRadius={8}
-                  fill="var(--color-kadar)"
+                  fill="var(--color-rate)"
                   background={{ fill: '#1c2436' }}
                   angleAxisId={0}
                 />
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      formatter={(nilai) =>
-                        typeof nilai === 'number' ? `${nilai}%` : String(nilai ?? '')
+                      formatter={(value) =>
+                        typeof value === 'number' ? `${value}%` : String(value ?? '')
                       }
                     />
                   }
@@ -235,7 +235,7 @@ export function SuccessRate({
             </ChartContainer>
             <p className="pointer-events-none absolute inset-0 m-0 flex flex-col items-center justify-center">
               <span className="font-mono text-3xl font-bold tabular-nums tracking-tight text-paper">
-                {kadar}
+                {rate}
                 <span className="text-base font-medium text-paper-faint">%</span>
               </span>
               <span className="font-sans text-xs text-paper-faint">sukses</span>

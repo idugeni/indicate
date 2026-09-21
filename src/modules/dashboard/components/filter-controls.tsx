@@ -1,12 +1,19 @@
 'use client';
 
-import { Search, X } from 'lucide-react';
+import { useState } from 'react';
+import { Calendar as CalendarIcon, Search, X } from 'lucide-react';
+import { format } from 'date-fns';
+import { id as localeId } from 'date-fns/locale';
+
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
-import { presetRentang, type PresetRentang } from '@/modules/dashboard/components/shared/dashboard-dates';
+import { presetRange, type RangePreset } from '@/modules/dashboard/components/shared/dashboard-dates';
 
 export interface FilterControlsProps {
   readonly view: View;
@@ -23,14 +30,94 @@ interface ReferenceModel {
 }
 
 /**
- * Merender kontrol filter data.
+ * Align a picked date with native date-input semantics: midnight UTC.
  *
- * @remarks Analytics hanya punya filter rentang tanggal (from/to) sesuai analyticsFilterSchema.
+ * @param date - Local date from the calendar.
+ * @returns ISO UTC start of that day, ready to send as `from`/`to`.
+ */
+function isoDayStart(date: Date): string {
+  return new Date(format(date, 'yyyy-MM-dd')).toISOString();
+}
+
+/**
+ * Render a popover date picker for analytics filters.
+ *
+ * @param id - Trigger ID so the label associates for accessibility and tests.
+ * @param label - Field label text.
+ * @param value - Selected date, or undefined when empty.
+ * @param onChange - Called with the new date; undefined when cleared.
+ * @returns Date field with a shadcn calendar in a popover.
+ */
+function DatePicker({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  readonly id: string;
+  readonly label: string;
+  readonly value: Date | undefined;
+  readonly onChange: (next: Date | undefined) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <Label htmlFor={id} className="font-sans text-xs font-medium text-paper-dim">
+        {label}
+      </Label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          render={
+            <Button
+              id={id}
+              type="button"
+              variant="outline"
+              className="h-9 w-full justify-start gap-2 border-hairline-strong bg-bg px-2.5 font-sans text-xs font-normal text-paper hover:border-paper-faint"
+            >
+              <CalendarIcon className="h-3.5 w-3.5 flex-none text-paper-faint" aria-hidden="true" />
+              <span className="truncate">
+                {value === undefined ? 'Pilih tanggal' : format(value, 'd MMM yyyy', { locale: localeId })}
+              </span>
+            </Button>
+          }
+        />
+        <PopoverContent align="start" className="w-auto p-0">
+          <Calendar
+            mode="single"
+            selected={value}
+            onSelect={(date) => {
+              onChange(date);
+              setOpen(false);
+            }}
+            locale={localeId}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+/**
+ * Render data filter controls.
+ *
+ * @remarks Analytics only has date-range filters (from/to) per analyticsFilterSchema.
  */
 export function FilterControls({ view, data, onApply }: FilterControlsProps) {
+  const [preset, setPreset] = useState<string[]>([]);
+  const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
+  const [toDate, setToDate] = useState<Date | undefined>(undefined);
+
   if (view !== 'editorial' && view !== 'audit' && view !== 'analytics') return null;
 
   const model = data as ReferenceModel | null;
+
+  const applyRange = (start: Date | undefined, end: Date | undefined) => {
+    const params = new URLSearchParams();
+    if (start !== undefined) params.set('from', isoDayStart(start));
+    if (end !== undefined) params.set('to', isoDayStart(end));
+    const queryString = params.toString();
+    onApply(queryString.length > 0 ? `&${queryString}` : '');
+  };
 
   const handleApply = (form: HTMLFormElement) => {
     const params = new URLSearchParams();
@@ -58,18 +145,38 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
     event.preventDefault();
     const form = event.currentTarget.closest('form');
     if (form) form.reset();
+    setPreset([]);
+    setFromDate(undefined);
+    setToDate(undefined);
     onApply('');
   };
 
-  const terapkanPreset = (preset: PresetRentang) => {
-    const rentang = presetRentang(preset);
-    onApply(`&from=${encodeURIComponent(rentang.from)}&to=${encodeURIComponent(rentang.to)}`);
+  const applyPreset = (key: RangePreset) => {
+    const range = presetRange(key);
+    setPreset([key]);
+    setFromDate(new Date(range.from));
+    setToDate(new Date(range.to));
+    onApply(`&from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`);
   };
 
-  const PRESET: readonly { readonly kunci: PresetRentang; readonly label: string }[] = [
-    { kunci: 'hari-ini', label: 'Hari ini' },
-    { kunci: '7-hari', label: '7 hari' },
-    { kunci: '30-hari', label: '30 hari' },
+  const handlePresetSelect = (values: string[]) => {
+    const key = values[values.length - 1];
+    if (key === 'today' || key === '7-days' || key === '30-days') {
+      applyPreset(key);
+      return;
+    }
+    setPreset([]);
+  };
+
+  const handleDateSelect = (setter: (next: Date | undefined) => void) => (next: Date | undefined) => {
+    setPreset([]);
+    setter(next);
+  };
+
+  const PRESET: readonly { readonly key: RangePreset; readonly label: string }[] = [
+    { key: 'today', label: 'Hari ini' },
+    { key: '7-days', label: '7 hari' },
+    { key: '30-days', label: '30 hari' },
   ];
 
   return (
@@ -78,11 +185,15 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
         aria-label={`Filter data untuk ${view}`}
         onSubmit={(event) => {
           event.preventDefault();
+          if (view === 'analytics') {
+            applyRange(fromDate, toDate);
+            return;
+          }
           handleApply(event.currentTarget);
         }}
       >
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className={view === 'audit' ? 'grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-3' : view === 'analytics' ? 'grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-3' : 'grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'}>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className={view === 'audit' ? 'grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-3' : view === 'analytics' ? 'grid flex-1 gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'}>
           {view === 'editorial' ? (
             <>
               <div className="flex flex-col gap-1.5">
@@ -199,55 +310,37 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
 
           {view === 'analytics' ? (
             <>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2 xl:col-span-1">
                 <span id="filter-preset-label" className="font-sans text-xs font-medium text-paper-dim">
                   Rentang cepat
                 </span>
-                <div role="group" aria-labelledby="filter-preset-label" className="flex h-9 items-center gap-1.5">
-                  {PRESET.map(({ kunci, label }) => (
-                    <Button
-                      key={kunci}
-                      type="button"
-                      variant="outline"
-                      size="xs"
-                      onClick={() => terapkanPreset(kunci)}
-                    >
+                <ToggleGroup
+                  variant="outline"
+                  size="sm"
+                  spacing={1}
+                  value={preset}
+                  onValueChange={handlePresetSelect}
+                  aria-labelledby="filter-preset-label"
+                  className="flex-wrap justify-start"
+                >
+                  {PRESET.map(({ key, label }) => (
+                    <ToggleGroupItem key={key} value={key} aria-label={label} className="font-sans text-xs">
                       {label}
-                    </Button>
+                    </ToggleGroupItem>
                   ))}
-                </div>
+                </ToggleGroup>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="filter-from" className="font-sans text-xs font-medium text-paper-dim">
-                  Dari tanggal
-                </Label>
-                <Input
-                  id="filter-from"
-                  name="from"
-                  type="date"
-                  className="h-9 border-hairline-strong bg-bg px-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus-visible:ring-brass"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="filter-to" className="font-sans text-xs font-medium text-paper-dim">
-                  Sampai tanggal
-                </Label>
-                <Input
-                  id="filter-to"
-                  name="to"
-                  type="date"
-                  className="h-9 border-hairline-strong bg-bg px-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus-visible:ring-brass"
-                />
-              </div>
+              <DatePicker id="filter-from" label="Dari tanggal" value={fromDate} onChange={handleDateSelect(setFromDate)} />
+              <DatePicker id="filter-to" label="Sampai tanggal" value={toDate} onChange={handleDateSelect(setToDate)} />
             </>
           ) : null}
           </div>
-          <div className="flex flex-none items-center gap-2">
+          <div className="flex w-full flex-none items-center gap-2 sm:w-auto">
             <Button
               type="submit"
               variant="default"
               size="lg"
+              className="flex-1 sm:flex-none"
             >
               <Search className="h-3 w-3" aria-hidden="true" />
               <span>Terapkan</span>
@@ -258,6 +351,7 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
               size="lg"
               onClick={handleReset}
               aria-label="Bersihkan filter"
+              className="flex-1 sm:flex-none"
             >
               <X className="h-3 w-3" aria-hidden="true" />
             </Button>
