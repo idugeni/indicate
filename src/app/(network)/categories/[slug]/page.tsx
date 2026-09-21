@@ -6,7 +6,7 @@ import RootLoading from '@/app/loading';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 import { normalizeSlugCandidate } from '@/modules/site/slug-allocator';
 
-export const maxDuration = 60;
+export const maxDuration = 25;
 
 type Props = {
   readonly params: Promise<{ slug: string }>;
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return networkMetadata(`/categories/${clean}`, { categorySlug: clean });
 }
 
-/** Cangkang statis untuk validasi instant: params hanya dibaca di dalam Suspense. */
+/** Static shell for instant validation: params are only read inside Suspense. */
 export default function CategoryPage({ params }: Props) {
   return (
     <Suspense fallback={<RootLoading />}>

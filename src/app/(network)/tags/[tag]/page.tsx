@@ -6,7 +6,7 @@ import RootLoading from '@/app/loading';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 import { TAG_MAX_LENGTH, normalizeSlugCandidate } from '@/modules/site/slug-allocator';
 
-export const maxDuration = 60;
+export const maxDuration = 25;
 
 type Props = {
   readonly params: Promise<{ tag: string }>;
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return networkMetadata(`/tags/${clean}`, { tag: clean });
 }
 
-/** Cangkang statis untuk validasi instant: params hanya dibaca di dalam Suspense. */
+/** Static shell for instant validation: params are only read inside Suspense. */
 export default function TagPage({ params }: Props) {
   return (
     <Suspense fallback={<RootLoading />}>

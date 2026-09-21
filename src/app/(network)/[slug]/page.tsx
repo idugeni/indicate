@@ -6,7 +6,7 @@ import RootLoading from '@/app/loading';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 import { isNetworkArticle } from '@/modules/delivery/models';
 
-export const maxDuration = 60;
+export const maxDuration = 25;
 
 type Props = {
   readonly params: Promise<{ slug: string }>;
@@ -22,9 +22,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /**
- * Render cangkang statis artikel.
+ * Render the static article shell.
  *
- * @remarks Params hanya dibaca di dalam Suspense untuk validasi instant. Tetangga tanggal dari daftar penuh bila seksi related tidak mencakupnya.
+ * @remarks Params are only read inside Suspense for instant validation. Date neighbors come from the full list when the related section does not cover them.
  */
 export default function DetailPage({ params }: Props) {
   return (

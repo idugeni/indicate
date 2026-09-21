@@ -3,7 +3,7 @@ import { buildSeoDocument, indexableRobots, tenantFavicon } from '@/modules/site
 import { ListingPage } from '@/modules/site/components/network/network-listing';
 import { resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
-export const maxDuration = 60;
+export const maxDuration = 25;
 
 export async function generateMetadata(): Promise<Metadata> {
   const site = await resolveNetworkSite({}, '/');
@@ -37,7 +37,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-/** Beranda portal: sama dengan `/` host tenant (proxy rewrite), boundary ikut segmen network. */
+/** Portal home: same as the tenant host `/` (proxy rewrite), boundary follows the network segment. */
 export default async function TenantHomePage() {
   const site = await resolveNetworkSite({}, '/');
   return <ListingPage site={site} title={site.settings.name} />;
