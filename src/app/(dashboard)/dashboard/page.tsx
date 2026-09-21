@@ -14,6 +14,7 @@ import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { UuidGenerator } from '@/core/system/uuid-generator';
 import { DashboardWorkspace, type OrganizationOption } from '@/modules/dashboard/components/dashboard-workspace';
+import { Button } from '@/components/ui/button';
 import { DashboardFooter } from '@/modules/dashboard/components/dashboard-footer';
 import { RedeemInviteForm } from '@/modules/dashboard/components/billing/redeem-invite-form';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
@@ -49,12 +50,12 @@ async function DashboardBody() {
       },
     }),
   });
-  const identity = await auth.verifyCookieSession(); if (identity === null) redirect('/sign-in');
+  const identity = await auth.verifyCookieSession(); if (identity === null) redirect('/sign-in?auth=required');
   const displayName = identity.displayName;
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
   const repository = new DrizzleAuthorizationRepository(runtime.db);
-  const discovery = await resolveVerifiedUserOrganizations(identity, repository, new UuidGenerator()); if (!discovery.ok) redirect('/sign-in');
+  const discovery = await resolveVerifiedUserOrganizations(identity, repository, new UuidGenerator()); if (!discovery.ok) redirect('/sign-in?auth=inactive');
   const localUser = discovery.value.localUser;
   const memberships = await repository.findActiveMemberships(
     localUser.id,
@@ -91,18 +92,8 @@ async function DashboardBody() {
             Anda pelanggan baru. Begitu keanggotaan aktif, dasbor redaksi langsung tersedia di halaman ini.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/contact"
-              className="inline-flex items-center justify-center rounded bg-brass px-5 py-2.5 font-sans text-sm font-semibold text-bg transition-colors duration-180 hover:bg-brass-soft"
-            >
-              Hubungi Kami
-            </Link>
-            <Link
-              href="/pricing"
-              className="inline-flex items-center justify-center rounded border border-hairline-strong bg-transparent px-5 py-2.5 font-sans text-sm font-medium text-paper-dim transition-colors duration-180 hover:text-paper"
-            >
-              Lihat Info Harga
-            </Link>
+            <Button variant="default" size="lg" className="px-5" render={<Link href="/contact">Hubungi Kami</Link>} />
+            <Button variant="outline" size="lg" className="px-5" render={<Link href="/pricing">Lihat Info Harga</Link>} />
             <SignOutDialog mode="button" />
           </div>
           <RedeemInviteForm />

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -360,10 +361,10 @@ export function BillingPanel({
               <Label htmlFor="manual-org-id" className="font-sans text-xs font-medium text-paper-dim">
                 ID organisasi
               </Label>
-              <input
+              <Input
                 id="manual-org-id" value={manualOrgId} onChange={(event) => setManualOrgId(event.target.value)} disabled={busy}
                 placeholder="ID organisasi target…" spellCheck={false}
-                className="h-9 border border-hairline-strong bg-bg px-3 font-mono text-xs text-paper"
+                className="font-mono text-xs"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -401,20 +402,20 @@ export function BillingPanel({
               <Label htmlFor="invoice-org-id" className="font-sans text-xs font-medium text-paper-dim">
                 ID organisasi
               </Label>
-              <input
+              <Input
                 id="invoice-org-id" value={invoiceOrgId} onChange={(event) => setInvoiceOrgId(event.target.value)} disabled={busy}
                 placeholder="ID organisasi…" spellCheck={false}
-                className="h-9 border border-hairline-strong bg-bg px-3 font-mono text-xs text-paper"
+                className="font-mono text-xs"
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="invoice-amount" className="font-sans text-xs font-medium text-paper-dim">
                 Nominal (Rp)
               </Label>
-              <input
+              <Input
                 id="invoice-amount" value={invoiceAmount} readOnly disabled={busy}
                 placeholder="550000" inputMode="numeric"
-                className="h-9 border border-hairline-strong bg-bg px-3 font-mono text-xs text-paper"
+                className="font-mono text-xs"
               />
               <p className="m-0 font-sans text-xs text-paper-faint">Rp550.000/bulan — harga tunggal</p>
             </div>
@@ -422,29 +423,29 @@ export function BillingPanel({
               <Label htmlFor="invoice-paid-at" className="font-sans text-xs font-medium text-paper-dim">
                 Tanggal bayar
               </Label>
-              <input
+              <Input
                 id="invoice-paid-at" type="date" value={invoicePaidAt} onChange={(event) => setInvoicePaidAt(event.target.value)} disabled={busy}
-                className="h-9 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+                className="font-sans text-xs"
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="invoice-note" className="font-sans text-xs font-medium text-paper-dim">
                 Catatan (opsional)
               </Label>
-              <input
+              <Input
                 id="invoice-note" value={invoiceNote} onChange={(event) => setInvoiceNote(event.target.value)} disabled={busy}
                 placeholder="Bank, periode, keterangan…"
-                className="h-9 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+                className="font-sans text-xs"
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="invoice-method" className="font-sans text-xs font-medium text-paper-dim">
                 Metode (opsional)
               </Label>
-              <input
+              <Input
                 id="invoice-method" value={invoiceMethod} onChange={(event) => setInvoiceMethod(event.target.value)} disabled={busy}
                 placeholder="Transfer bank" spellCheck={false} maxLength={40}
-                className="h-9 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+                className="font-sans text-xs"
               />
             </div>
           </div>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
@@ -261,12 +262,12 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               </p>
               {report.status === 'received' || report.status === 'under_review' ? (
                 <div className="mt-2 flex flex-col gap-2">
-                  <input
+                  <Input
                     type="text" value={decisionNote[report.id] ?? ''} disabled={busy}
                     onChange={(event) => setDecisionNote((prev) => ({ ...prev, [report.id]: event.target.value }))}
                     placeholder="Catatan penanganan (opsional)"
                     aria-label="Catatan penanganan laporan"
-                    className="h-8 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+                    className="font-sans text-xs"
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
@@ -327,12 +328,12 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">{ticket.details}</p>
               {ticket.status === 'open' || ticket.status === 'in_progress' ? (
                 <div className="mt-2 flex flex-col gap-2">
-                  <input
+                  <Input
                     type="text" value={decisionNote[ticket.ticketNumber] ?? ''} disabled={busy}
                     onChange={(event) => setDecisionNote((prev) => ({ ...prev, [ticket.ticketNumber]: event.target.value }))}
                     placeholder="Catatan penyelesaian (opsional)"
                     aria-label="Catatan penyelesaian tiket"
-                    className="h-8 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+                    className="font-sans text-xs"
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     {(['in_progress', 'fulfilled', 'rejected'] as const).map((status) => (
@@ -361,20 +362,20 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             <Label htmlFor="hold-org-id" className="font-sans text-xs font-medium text-paper-dim">
               ID organisasi
             </Label>
-            <input
+            <Input
               id="hold-org-id" value={holdOrgId} onChange={(event) => setHoldOrgId(event.target.value)} disabled={busy}
               placeholder="ID organisasi…" spellCheck={false}
-              className="h-9 border border-hairline-strong bg-bg px-3 font-mono text-xs text-paper"
+              className="font-mono text-xs"
             />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="hold-reason" className="font-sans text-xs font-medium text-paper-dim">
               Alasan perkara (min. 10 karakter)
             </Label>
-            <input
+            <Input
               id="hold-reason" value={holdReason} onChange={(event) => setHoldReason(event.target.value)} disabled={busy}
               placeholder="Perkara No. … / permintaan aparat …"
-              className="h-9 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+              className="font-sans text-xs"
             />
           </div>
           <div className="flex items-end">
@@ -421,20 +422,20 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             <Label htmlFor="erasure-org-id" className="font-sans text-xs font-medium text-paper-dim">
               ID organisasi
             </Label>
-            <input
+            <Input
               id="erasure-org-id" value={erasureOrgId} onChange={(event) => setErasureOrgId(event.target.value)} disabled={busy}
               placeholder="ID organisasi…" spellCheck={false}
-              className="h-9 border border-hairline-strong bg-bg px-3 font-mono text-xs text-paper"
+              className="font-mono text-xs"
             />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="erasure-reason" className="font-sans text-xs font-medium text-paper-dim">
               Alasan (min. 10 karakter)
             </Label>
-            <input
+            <Input
               id="erasure-reason" value={erasureReason} onChange={(event) => setErasureReason(event.target.value)} disabled={busy}
               placeholder="Alasan penghapusan data…"
-              className="h-9 border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+              className="font-sans text-xs"
             />
           </div>
           <div className="flex items-end">

@@ -226,12 +226,11 @@ export function ProfileForm() {
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
               <span>Simpan Profil</span>
             </Button>
-            <Link
-              href="/update-password"
-              className="inline-flex h-8 items-center rounded border border-hairline-strong px-3.5 font-sans text-xs text-paper-dim transition-colors duration-180 hover:text-paper"
-            >
-              Ganti Kata Sandi
-            </Link>
+            <Button
+              type="button"
+              variant="outline"
+              render={<Link href="/update-password">Ganti Kata Sandi</Link>}
+            />
           </div>
         </form>
       )}
