@@ -8,6 +8,10 @@ import { cn } from "@/ui/cn"
 
 const THEMES = { light: "", dark: ".dark" } as const
 
+const SAFE_CSS_IDENTIFIER = /^[A-Za-z0-9_-]+$/
+const SAFE_CSS_COLOR =
+  /^(?:#[0-9a-fA-F]{3,8}|(?:rgb|rgba|hsl|hsla|oklch|oklab|color)\([^()]*\)|var\(--[A-Za-z0-9_-]+(?:,[^()]*)?\)|[a-zA-Z][a-zA-Z0-9-]*)$/
+
 const INITIAL_DIMENSION = { width: 320, height: 200 } as const
 type TooltipNameType = number | string
 
@@ -81,8 +85,12 @@ function ChartContainer({
 }
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
+  if (!SAFE_CSS_IDENTIFIER.test(id)) {
+    return null
+  }
   const colorConfig = Object.entries(config).filter(
-    ([, config]) => config.theme ?? config.color
+    ([key, itemConfig]) =>
+      SAFE_CSS_IDENTIFIER.test(key) && (itemConfig.theme ?? itemConfig.color)
   )
 
   if (!colorConfig.length) {
@@ -101,7 +109,10 @@ ${colorConfig
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ??
       itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
+    if (!color || !SAFE_CSS_COLOR.test(color)) {
+      return null
+    }
+    return `  --color-${key}: ${color};`
   })
   .join("\n")}
 }

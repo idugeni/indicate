@@ -39,4 +39,30 @@ describe('Wadah bagan', () => {
     );
     expect(container.querySelector('style')).not.toBe(null);
   });
+
+  it('membuang warna jahat dari blok gaya', () => {
+    const { container } = render(
+      <ChartContainer
+        config={{ aman: { label: 'Aman', color: '#123456' }, jahat: { label: 'Jahat', color: 'red; } .x{color:blue' } }}
+      >
+        <p>Isi bagan</p>
+      </ChartContainer>,
+    );
+    const css = container.querySelector('style')?.textContent ?? '';
+    expect(css).toContain('--color-aman: #123456;');
+    expect(css).not.toContain('--color-jahat');
+    expect(css).not.toContain('.x{color:blue');
+  });
+
+  it('melewatkan blok gaya saat id tidak aman', () => {
+    const { container } = render(
+      <ChartContainer
+        id={'a] [data-x'}
+        config={{ kunjungan: { label: 'Kunjungan', color: '#123456' } }}
+      >
+        <p>Isi bagan</p>
+      </ChartContainer>,
+    );
+    expect(container.querySelector('style')).toBe(null);
+  });
 });
