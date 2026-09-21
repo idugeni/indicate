@@ -6,10 +6,10 @@ import { createRef } from 'react';
 
 import { RedEditorialMobileSidebar } from '@/modules/site/components/network/templates/red-editorial/chrome/mobile-sidebar';
 
-const dorong = vi.hoisted(() => vi.fn());
+const pushMock = vi.hoisted(() => vi.fn());
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: dorong }),
+  useRouter: () => ({ push: pushMock }),
 }));
 
 afterEach(() => {
@@ -17,45 +17,45 @@ afterEach(() => {
 });
 
 beforeEach(() => {
-  dorong.mockClear();
+  pushMock.mockClear();
   document.body.style.overflow = '';
 });
 
-function pasang(terbuka: boolean, tutup = vi.fn()) {
-  const rujukan = createRef<HTMLButtonElement>();
+function mount(isOpen: boolean, handleClose = vi.fn()) {
+  const buttonRef = createRef<HTMLButtonElement>();
   render(
-    <RedEditorialMobileSidebar open={terbuka} onClose={tutup} onFocusReturn={vi.fn()} closeRef={rujukan}>
+    <RedEditorialMobileSidebar open={isOpen} onClose={handleClose} onFocusReturn={vi.fn()} closeRef={buttonRef}>
       <Link href="/kanal">Kanal Uji</Link>
     </RedEditorialMobileSidebar>,
   );
-  return tutup;
+  return handleClose;
 }
 
 describe('RedEditorialMobileSidebar', () => {
   it('menyembunyikan konten saat tertutup', () => {
-    pasang(false);
+    mount(false);
     const dialog = screen.getByRole('dialog', { hidden: true });
     expect(dialog.parentElement?.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('menampilkan anak dan menutup lewat tombol tutup', () => {
-    const tutup = pasang(true);
+    const handleClose = mount(true);
     expect(screen.getByRole('link', { name: 'Kanal Uji' })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Tutup menu' }));
-    expect(tutup).toHaveBeenCalledTimes(1);
+    expect(handleClose).toHaveBeenCalledTimes(1);
   });
 
   it('mengirim pencarian dan menavigasi', () => {
-    const tutup = pasang(true);
+    const handleClose = mount(true);
     fireEvent.change(screen.getByLabelText('Cari berita'), { target: { value: 'banjir' } });
     fireEvent.submit(screen.getByRole('search'));
-    expect(dorong).toHaveBeenCalledWith('/search?q=banjir');
-    expect(tutup).toHaveBeenCalled();
+    expect(pushMock).toHaveBeenCalledWith('/search?q=banjir');
+    expect(handleClose).toHaveBeenCalled();
   });
 
   it('menutup lewat Escape', () => {
-    const tutup = pasang(true);
+    const handleClose = mount(true);
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(tutup).toHaveBeenCalledTimes(1);
+    expect(handleClose).toHaveBeenCalledTimes(1);
   });
 });

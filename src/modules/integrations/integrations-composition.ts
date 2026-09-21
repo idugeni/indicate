@@ -28,12 +28,12 @@ import { ResendWebhookService } from '@/modules/integrations/resend-webhook-serv
 import { UuidGenerator } from '@/core/system/uuid-generator';
 
 /**
- * Membangun pemberitahu grup Telegram untuk komposisi yang tidak memakai
- * `createProductionIntegrations` penuh.
+ * Build the Telegram group notifier for compositions that do not use the full
+ * `createProductionIntegrations`.
  *
- * @param config - Konfigurasi runtime (diambil hostname dashboard).
- * @param bootstrap - Konfigurasi bootstrap (diambil koneksi database).
- * @returns Layanan notifikasi best-effort siap injeksi.
+ * @param config - Runtime config (dashboard hostname is read from it).
+ * @param bootstrap - Bootstrap config (database connection is read from it).
+ * @returns Injection-ready best-effort notification service.
  */
 export function createTelegramNotificationService(config: RuntimeConfig, bootstrap: BootstrapConfig) {
   const runtime = getSharedRuntimeDatabase(bootstrap);

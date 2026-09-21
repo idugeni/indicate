@@ -3,22 +3,22 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 /**
- * Jeda rotasi headline tenant; satu sumber untuk 10 template.
+ * Tenant headline rotation interval; single source for all 10 templates.
  */
 export const TICKER_INTERVAL_MS = 5000;
 
 /**
- * Jumlah headline maksimum yang dirotasi ticker.
+ * Maximum number of headlines rotated by the ticker.
  */
 export const TICKER_MAX_ITEMS = 5;
 
 /**
- * Alasan ticker berhenti; `null` berarti berputar.
+ * Reason the ticker is paused; `null` means spinning.
  */
 export type TickerPauseReason = 'single' | 'hover' | 'focus' | 'motion' | 'hidden';
 
 /**
- * Status putaran ticker untuk satu daftar headline.
+ * Ticker rotation state for one headline list.
  */
 export interface TickerRotation {
   readonly index: number;
@@ -50,10 +50,10 @@ function subscribeTabHidden(onChange: () => void): () => void {
 }
 
 /**
- * Label Indonesia untuk alasan jeda ticker.
+ * Indonesian-language label for a ticker pause reason.
  *
- * @param reason - Alasan jeda atau `null` saat berputar.
- * @returns Label siap tampil ke pembaca layar.
+ * @param reason - Pause reason, or `null` while spinning.
+ * @returns Display-ready label for screen readers.
  */
 export function tickerPauseLabel(reason: TickerPauseReason | null): string {
   switch (reason) {
@@ -75,17 +75,17 @@ export function tickerPauseLabel(reason: TickerPauseReason | null): string {
 const SWIPE_PX = 40;
 
 /**
- * Masa abaikan hover emulasi-sentuh setelah `touchend` (iOS menembakkan
- * `mouseenter` setelah ketukan; tanpa ini ticker macet jeda di sentuh).
+ * Grace period ignoring emulated touch-hover after `touchend` (iOS fires
+ * `mouseenter` after a tap; without this the ticker sticks paused on touch).
  */
 const TOUCH_HOVER_GRACE_MS = 700;
 
 /**
- * Putaran headline cerdas: timer satu langkah, jeda hover/fokus/tab/gerakan, geser sentuh.
+ * Smart headline rotation: single-step timer, hover/focus/tab/motion pauses, touch swipe.
  *
- * @param count - Jumlah headline yang dirotasi.
- * @param intervalMs - Jeda antar headline; default `TICKER_INTERVAL_MS`.
- * @returns Indeks aman, status, navigasi, dan props interaksi root.
+ * @param count - Number of headlines being rotated.
+ * @param intervalMs - Delay between headlines; defaults to `TICKER_INTERVAL_MS`.
+ * @returns Safe index, status, navigation, and root interaction props.
  */
 export function useTickerRotation(count: number, intervalMs = TICKER_INTERVAL_MS): TickerRotation {
   const [index, setIndex] = useState(0);

@@ -7,8 +7,8 @@ import { toast } from 'sonner';
 import type { ArticleListItem } from '@/modules/delivery/models';
 
 /**
- * Barisan tombol bagikan: WhatsApp, X, Facebook, Telegram, Email,
- * dan salin tautan (clipboard + toast).
+ * Row of share buttons: WhatsApp, X, Facebook, Telegram, email,
+ * plus copy link (clipboard + toast).
  */
 export function GlassyBlueShareButtons({ article, canonical }: { readonly article: ArticleListItem; readonly canonical: string }) {
   const shareText = encodeURIComponent(`${article.title} ${canonical}`);

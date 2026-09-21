@@ -51,7 +51,7 @@ export class TelegramMappingService {
     try { return { ok: true, value: await this.repository.updateTelegramMapping(actor, { ...parsed.data, now: this.clock.now().toISOString() }) }; } catch (error) { return this.error(actor, 'telegram_mapping.update.denied', error); }
   }
 
-  /** Outbox platform (pending/dead): hanya super_admin/customerAdmin; user biasa dapat list kosong. */
+  /** Platform outbox (pending/dead): super_admin/customerAdmin only; regular users get an empty list. */
   async listOutbox(actor: AuthorizedTenantActorContext): Promise<Result<readonly TelegramOutboxRecord[], PublicErrorEnvelope>> {
     const platform = actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) === true
       || actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.customerAdmin) === true;
@@ -60,7 +60,7 @@ export class TelegramMappingService {
     catch { return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'Telegram outbox is temporarily unavailable.', actor.requestId) } };
   }
 
-  /** Broadcast platform: antrekan satu pesan ke semua mapping aktif (worker mengirim berirama). */
+  /** Platform broadcast: queue one message to every active mapping (the worker sends at a paced rhythm). */
   async broadcast(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<{ readonly enqueued: number }, PublicErrorEnvelope>> {
     const platform = actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) === true
       || actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.customerAdmin) === true;

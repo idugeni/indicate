@@ -35,7 +35,6 @@ export const organizations = pgTable('organizations', {
   name: text('name').notNull(),
   slug: text('slug').notNull(),
   status: recordStatus('status').default('active').notNull(),
-  /** Peran tenant: operator portal vs pelanggan. Lihat ARCHITECTURE.md §4.5. */
   kind: text('kind').default('customer').notNull(),
   customerMetadata: jsonb('customer_metadata').$type<Record<string, unknown>>().default({}).notNull(),
   version: integer('version').default(1).notNull(),
@@ -117,7 +116,7 @@ export const memberships = pgTable('memberships', {
   roleId: uuid('role_id').notNull(),
   status: recordStatus('status').default('active').notNull(),
   version: integer('version').default(1).notNull(),
-  /** Kunci region opsional: NULL berarti semua region (pusat/superadmin). */
+  /** Optional region key: NULL means all regions (central/superadmin). */
   regionId: uuid('region_id'),
   ...timestamps,
 }, (table) => [
@@ -222,7 +221,7 @@ export const apiKeys = pgTable('api_keys', {
   expiresAt: timestamp('expires_at', { withTimezone: true }),
   lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
   version: integer('version').default(1).notNull(),
-  /** Kunci region opsional: NULL berarti semua region. */
+  /** Optional region key: NULL means all regions. */
   regionId: uuid('region_id'),
   ...timestamps,
 }, (table) => [

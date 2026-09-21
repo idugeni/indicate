@@ -7,7 +7,7 @@ import { traceIdsFromHeaders } from '@/core/observability/trace-context';
 type RouteHandler<T extends [Request, ...unknown[]]> = (...args: T) => Promise<Response>;
 
 export interface ApiAccessOptions {
-  /** `errors-only` mematikan `api.access` info per request untuk rute panas; galat tetap dicatat. */
+  /** `errors-only` silences per-request `api.access` info for hot routes; errors are still logged. */
   readonly accessLog?: 'full' | 'errors-only';
 }
 

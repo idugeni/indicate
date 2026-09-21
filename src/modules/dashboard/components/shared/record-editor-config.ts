@@ -6,20 +6,20 @@ import { PUBLISHING_PERMISSION_NAMES } from '@/modules/publishing/permissions';
 import { SOCIAL_FIELD_DEFS, SOCIAL_ORDER } from '@/modules/site/company-contact';
 
 /**
- * Registri konfigurasi editor rekaman generik untuk DataView.
+ * Generic record-editor configuration registry for DataView.
  *
- * Setiap entri memetakan satu collection key dari respons workspace API
- * (`GET /api/dashboard/workspace`) ke aksi update yang sudah tersedia di
- * `TenantBusinessService` beserta definisi field-nya. Bentuk payload
- * mengikuti skema Zod di `@/modules/dashboard/schemas` (selalu membawa
- * `id` + `expectedVersion` untuk optimistic concurrency).
+ * Each entry maps one collection key from the workspace API response
+ * (`GET /api/dashboard/workspace`) to the already-available update action in
+ * `TenantBusinessService` plus its field definitions. Payload shape
+ * follows the Zod schemas in `@/modules/dashboard/schemas` (always carrying
+ * `id` + `expectedVersion` for optimistic concurrency).
  *
- * Koleksi yang sengaja dikecualikan dari tahap ini:
- * - `siteSettings` — muatan JSON berat (colors/seo/navigation), punya form khusus.
- * - `articleSites`, `media`, `jobs`, `targets`, `auditLogs` — read-only atau
- *   dikelola form khusus (EditorialForm/PublishingForm/MediaForm).
- * - Koleksi endpoint integrations (`apiKeys`, `subscription`, `telegramMappings`)
- *   memakai command path berbeda, belum tercakup command workspace di DataView.
+ * Collections deliberately excluded at this stage:
+ * - `siteSettings` — heavy JSON payload (colors/seo/navigation) with a dedicated form.
+ * - `articleSites`, `media`, `jobs`, `targets`, `auditLogs` — read-only or
+ *   managed by dedicated forms (EditorialForm/PublishingForm/MediaForm).
+ * - Integrations endpoint collections (`apiKeys`, `subscription`, `telegramMappings`)
+ *   use a different command path, not yet covered by workspace commands in DataView.
  */
 
 export type EditorFieldKind = 'text' | 'textarea' | 'select' | 'checkbox' | 'checklist' | 'static';
@@ -46,11 +46,11 @@ export interface EditorField {
   readonly required?: boolean;
   readonly placeholder?: string;
   readonly pattern?: string;
-  /** Opsi statis untuk field select. */
+  /** Static options for a select field. */
   readonly options?: readonly EditorOption[];
-  /** Ambil opsi dari koleksi lain dalam respons yang sama (untuk select relasi). */
+  /** Pull options from another collection in the same response (for relation selects). */
   readonly optionSource?: EditorOptionSource;
-  /** Jika true, select boleh kosong yang berarti `null` (relasi opsional). */
+  /** When true, the select may be left empty meaning `null` (optional relation). */
   readonly allowEmpty?: boolean;
   readonly emptyLabel?: string;
 }
@@ -58,7 +58,7 @@ export interface EditorField {
 export interface EditorTransition {
   readonly action: string;
   readonly label: string;
-  /** Status item yang membuat transisi ini relevan; undefined = selalu tampil. */
+  /** Item status that makes this transition relevant; undefined = always shown. */
   readonly whenStatus?: readonly string[];
 }
 
@@ -90,7 +90,7 @@ const PUBLISHER_TYPE_OPTIONS: readonly EditorOption[] = [
   { value: 'independent_publisher', label: 'Penerbit independen' },
 ];
 
-/** Katalog permission yang diakui backend (`isDashboardPermission`): gabungan tenant. */
+/** Permission catalog recognized by the backend (`isDashboardPermission`): combined tenant set. */
 export const ROLE_PERMISSION_OPTIONS: readonly EditorOption[] = Object.freeze(
   [...new Set([...DASHBOARD_PERMISSION_NAMES, ...PUBLISHING_PERMISSION_NAMES, ...INTEGRATIONS_TENANT_PERMISSION_NAMES])].map(
     (name) => ({ value: name, label: name }),
@@ -245,7 +245,7 @@ export function resolveFieldOptions(field: EditorField, lookups: LookupTables): 
   return rows.map((row) => ({ value: String(row.id ?? ''), label: lookupLabel(field.optionSource as EditorOptionSource, row) }));
 }
 
-/** Nilai awal form dari rekaman API (array claimScopes digabung per baris). */
+/** Initial form value from the API record (claimScopes array joined one per line). */
 export function initialFieldValue(field: EditorField, item: Record<string, unknown>): string | boolean | readonly string[] {
   if (field.key.startsWith('contacts.')) {
     const contacts = item.contacts;
@@ -274,8 +274,8 @@ function lines(value: string | boolean | readonly string[] | undefined): readonl
 }
 
 /**
- * Susun payload `*.update` dari nilai form. Field relasi opsional yang
- * dikosongkan dikirim sebagai `null` sesuai skema nullable di backend.
+ * Build the `*.update` payload from form values. Optional relation fields left
+ * empty are sent as `null` per the backend nullable schema.
  */
 export function buildUpdatePayload(
   collectionKey: string,

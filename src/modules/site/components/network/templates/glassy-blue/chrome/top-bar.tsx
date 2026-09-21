@@ -1,10 +1,10 @@
 import type { NetworkSiteData } from '@/modules/delivery/models';
 
 /**
- * Bilah atas terang: tanggal hari ini di kiri, tagline di kanan.
+ * Light top bar: today's date on the left, tagline on the right.
  *
- * @param site - Data situs tenant untuk tagline.
- * @returns Bilah atas server-only di atas header utama.
+ * @param site - Tenant site data for the tagline.
+ * @returns Server-only top bar above the main header.
  */
 export function GlassyBlueTopBar({ site }: { readonly site: NetworkSiteData }) {
   const today = new Intl.DateTimeFormat('id-ID', {

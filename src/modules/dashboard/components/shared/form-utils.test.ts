@@ -26,9 +26,9 @@ describe('slugify', () => {
 
 describe('generateIdempotencyUuid', () => {
   it('menghasilkan uuid acak yang unik', () => {
-    const pertama = generateIdempotencyUuid();
-    const kedua = generateIdempotencyUuid();
-    expect(pertama).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
-    expect(kedua).not.toBe(pertama);
+    const first = generateIdempotencyUuid();
+    const second = generateIdempotencyUuid();
+    expect(first).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    expect(second).not.toBe(first);
   });
 });

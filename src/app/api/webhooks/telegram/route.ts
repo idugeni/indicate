@@ -38,14 +38,14 @@ async function handlePOST(request: Request) {
 }
 
 /**
- * Menerima webhook Telegram.
+ * Receive the Telegram webhook.
  *
- * @remarks Klaim idempoten berjalan sinkron lalu 200 langsung dikembalikan
- * agar di bawah 100ms dan Telegram tidak retry; eksekusi bisnis + balasan
- * chat berjalan di `after()` karena outcome sudah durable + replayable.
- * Duplikat yang datang saat pemrosesan tetap dijawab 409 agar pengirim
- * mengulang sampai outcome tersedia. Balasan tidak pernah melempar
- * (kegagalan tercatat sebagai warn atau masuk outbox).
+ * @remarks The idempotency claim runs synchronously, then 200 is returned immediately
+ * to stay under 100ms so Telegram does not retry; business execution + chat
+ * replies run in `after()` because the outcome is already durable + replayable.
+ * Duplicates arriving mid-processing still get 409 so the sender
+ * retries until the outcome is available. Replies never throw
+ * (failures are logged as warn or land in the outbox).
  */
 export const POST = withApiAccess('POST /api/webhooks/telegram', handlePOST);
 

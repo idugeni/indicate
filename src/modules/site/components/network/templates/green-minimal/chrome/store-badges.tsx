@@ -1,6 +1,6 @@
 import Image from 'next/image';
 
-/** Badge toko aplikasi tanpa tautan: visual merespons hover, klik tanpa aksi. */
+/** Linkless app store badges: visuals respond to hover, clicks are no-ops. */
 export function GreenMinimalStoreBadges() {
   return (
     <p className="m-0 mt-4 flex max-w-64 flex-wrap items-center gap-2">

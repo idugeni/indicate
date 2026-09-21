@@ -18,9 +18,9 @@ describe('Manajemen pelanggan', () => {
 
   it('mengisi slug otomatis dari nama saat blur', () => {
     render(<CustomerManagement command={vi.fn(async () => ({}))} />);
-    const nama = screen.getByPlaceholderText('Pemerintah Kabupaten Wonosobo');
-    fireEvent.change(nama, { target: { value: 'Pemerintah Kabupaten Wonosobo' } });
-    fireEvent.blur(nama);
+    const nameInput = screen.getByPlaceholderText('Pemerintah Kabupaten Wonosobo');
+    fireEvent.change(nameInput, { target: { value: 'Pemerintah Kabupaten Wonosobo' } });
+    fireEvent.blur(nameInput);
     expect((screen.getByPlaceholderText('pemkab-wonosobo') as HTMLInputElement).value).toBe(
       'pemerintah-kabupaten-wonosobo',
     );
@@ -45,10 +45,10 @@ describe('Manajemen pelanggan', () => {
   it('menetapkan admin pertama dan menampilkan pemberitahuan', async () => {
     const command = vi.fn(async () => ({}));
     const { container } = render(<CustomerManagement command={command} />);
-    const formulir = container.querySelectorAll('form')[1] as HTMLFormElement;
-    fireEvent.change(within(formulir).getByPlaceholderText('ID organisasi'), { target: { value: 'org-1' } });
-    fireEvent.change(within(formulir).getByPlaceholderText('admin@organisasi.id'), { target: { value: 'admin@organisasi.id' } });
-    fireEvent.submit(formulir);
+    const form = container.querySelectorAll('form')[1] as HTMLFormElement;
+    fireEvent.change(within(form).getByPlaceholderText('ID organisasi'), { target: { value: 'org-1' } });
+    fireEvent.change(within(form).getByPlaceholderText('admin@organisasi.id'), { target: { value: 'admin@organisasi.id' } });
+    fireEvent.submit(form);
     await waitFor(() =>
       expect(command).toHaveBeenCalledWith(
         'membership.assign-first',

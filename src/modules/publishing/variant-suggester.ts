@@ -51,11 +51,11 @@ function truncateAtWord(value: string, maxLength: number): string {
 }
 
 /**
- * Meringkas body menjadi kutipan deskripsi yang tidak terpotong di tengah kata.
+ * Summarize a body into a description excerpt never cut mid-word.
  *
- * @param body - Body kanonik artikel (boleh mengandung HTML).
- * @param maxLength - Batas panjang dalam karakter unicode; default 180.
- * @returns Kutipan bersih; string kosong bila body tidak memiliki kata.
+ * @param body - Canonical article body (may contain HTML).
+ * @param maxLength - Length limit in unicode characters; defaults to 180.
+ * @returns Clean excerpt; empty string when the body has no words.
  */
 export function excerptForDescription(body: string, maxLength = 180): string {
   const clean = body.replace(/<[^>]*>/gu, ' ').replace(/\s+/gu, ' ').trim();
@@ -64,10 +64,10 @@ export function excerptForDescription(body: string, maxLength = 180): string {
 }
 
 /**
- * Menurunkan label situs yang ramah dibaca dari hostname ternormalisasi.
+ * Derive a human-friendly site label from a normalized hostname.
  *
- * @param normalizedHostname - Hostname ASCII lowercase (mis. `wonosobo.indicate.id`).
- * @returns Label kapital dari label DNS pertama (`Wonosobo`).
+ * @param normalizedHostname - Lowercase ASCII hostname (e.g. `wonosobo.indicate.id`).
+ * @returns Capitalized label from the first DNS label (`Wonosobo`).
  */
 export function deriveSiteLabel(normalizedHostname: string): string {
   const first = normalizedHostname.split('.')[0] ?? '';
@@ -121,14 +121,14 @@ function uniqueDescription(canonical: string, label: string, index: number, used
 }
 
 /**
- * Menyusun override judul/deskripsi unik per portal secara deterministik.
+ * Compose deterministic unique per-portal title/description overrides.
  *
- * @param input.title - Judul kanonik artikel.
- * @param input.description - Deskripsi kanonik (boleh kosong; dipakai sebagai basis).
- * @param input.sites - Target portal beserta label tampilannya.
- * @param input.takenTitles - Judul efektif yang sudah terpakai (varian tayang lama).
- * @param input.takenDescriptions - Deskripsi efektif yang sudah terpakai.
- * @returns Peta siteId ke override siap kirim ke `publication.request`.
+ * @param input.title - Canonical article title.
+ * @param input.description - Canonical description (may be empty; used as the basis).
+ * @param input.sites - Portal targets with their display labels.
+ * @param input.takenTitles - Effective titles already taken (old live variants).
+ * @param input.takenDescriptions - Effective descriptions already taken.
+ * @returns Map of siteId to overrides ready to send to `publication.request`.
  */
 export function suggestPublicationVariants(input: {
   readonly title: string;
@@ -154,12 +154,12 @@ export function suggestPublicationVariants(input: {
 }
 
 /**
- * Mendeteksi duplikasi judul/deskripsi lintas portal untuk satu artikel.
+ * Detect title/description duplication across portals for one article.
  *
- * @param input.canonicalTitle - Judul kanonik artikel dari database.
- * @param input.canonicalDescription - Deskripsi kanonik (fallback excerpt bila kosong).
- * @param input.existing - Varian efektif yang sudah tersimpan per portal.
- * @param input.requestedSiteIds - Portal yang diminta pada request ini.
+ * @param input.canonicalTitle - Canonical article title from the database.
+ * @param input.canonicalDescription - Canonical description (excerpt fallback when empty).
+ * @param input.existing - Effective variants already stored per portal.
+ * @param input.requestedSiteIds - Portals requested on this request.
  * @param input.overrides - Override pada request ini.
  * @returns Masalah duplikasi; kosong berarti aman tayang ke semua portal.
  */

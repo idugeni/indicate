@@ -109,7 +109,7 @@ function SiteSettingsEditor({
       const parsed = parseRecord(colors, 'Warna') as Readonly<Record<string, string>>;
       setColors(JSON.stringify({ ...parsed, templateId: next }, null, 2));
     } catch {
-      /* textarea tidak valid — template tetap tersimpan saat submit */
+      /* Invalid textarea — template still saved on submit */
     }
   };
 

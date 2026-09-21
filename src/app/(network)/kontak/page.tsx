@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return networkMetadata('/kontak', {}, `Kontak ${siteName}`);
 }
 
-/** Saluran resmi tenant dari `socialLinks` situsnya sendiri. */
+/** Tenant official channels from its own site `socialLinks`. */
 export default async function ContactPageRoute() {
   const site = await resolveNetworkSite({}, '/kontak');
   const vars = { domain: site.context.normalizedHostname, siteName: site.settings.seoSiteName ?? site.settings.name };

@@ -4,7 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 
 import { PolicyOverviewSection } from '@/modules/dashboard/components/infrastructure/policy-overview-section';
 
-const RINGKASAN = {
+const SUMMARY = {
   policies: {
     deployment: {
       supabaseProjectRef: 'ref-uji',
@@ -46,7 +46,7 @@ describe('Seksi ringkasan kebijakan', () => {
   });
 
   it('merender ringkasan deployment, publikasi, dan rate limit', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => RINGKASAN })));
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => SUMMARY })));
     render(<PolicyOverviewSection />);
     expect(await screen.findByText('Deployment · v1')).toBeDefined();
     expect(screen.getByText('Publikasi · v2')).toBeDefined();

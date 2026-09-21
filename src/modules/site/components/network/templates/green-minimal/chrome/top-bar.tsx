@@ -3,10 +3,10 @@ import { resolveContactChannels } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 
 /**
- * Bilah atas terang: tanggal hari ini + tagline di kiri, sosmed di kanan.
+ * Light top bar: today's date plus tagline on the left, socials on the right.
  *
- * @param site - Data situs tenant untuk tagline dan kanal sosial.
- * @returns Bilah atas server-only di atas header utama.
+ * @param site - Tenant site data for the tagline and social channels.
+ * @returns Server-only top bar above the main header.
  */
 export function GreenMinimalTopBar({ site }: { readonly site: NetworkSiteData }) {
   const today = new Intl.DateTimeFormat('id-ID', {

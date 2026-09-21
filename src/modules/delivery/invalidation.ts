@@ -25,7 +25,7 @@ export function planInvalidation(mutation: NetworkMutation): InvalidationPlan {
 /**
  * Dispatch claimed invalidation tasks through Next cache and edge purge.
  *
- * @remarks Purge edge sekali per batch (URL unik lintas task): purge per-host per-task memicu thundering-herd ke origin, padahal TTL edge hanya 60 detik. Kegagalan purge tidak menggagalkan task; Next revalidate adalah mekanisme utama, edge pulih sendiri dalam satu TTL. Task beracun tidak menghentikan batch: complete yang gagal dicatat lewat fail, fail yang ikut gagal dihitung stranded.
+ * @remarks One edge purge per batch (unique URLs across tasks): per-host per-task purges would trigger a thundering-herd to the origin, while the edge TTL is only 60 seconds. A purge failure does not fail the task; Next revalidate is the primary mechanism and the edge recovers on its own within one TTL. A poison task does not stop the batch: a failed complete is recorded via fail, and a fail that also fails counts as stranded.
  */
 export class InvalidationDispatcher {
   constructor(private readonly repository: Pick<DeliveryRepository, 'claimInvalidations' | 'completeInvalidation' | 'failInvalidation'>, private readonly nextCache: NextCacheInvalidationPort, private readonly cloudflare: CloudflareAuthorityPort, private readonly retryDelaysSeconds: readonly number[], private readonly maxAttempts: number) {}
@@ -37,7 +37,7 @@ export class InvalidationDispatcher {
       try {
         await this.cloudflare.purgeExactUrls(urls);
       } catch {
-        /* dibiarkan kedaluwarsa oleh edge TTL; task tetap diselesaikan di bawah */
+        /* left to expire via the edge TTL; the task still completes below */
       }
     }
     let completed = 0; let failed = 0; let stranded = 0;

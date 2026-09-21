@@ -5,10 +5,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { RecordEditorForm } from '@/modules/dashboard/components/shared/record-editor-form';
 import { getEditorConfig } from '@/modules/dashboard/components/shared/record-editor-config';
 
-const KONFIG = getEditorConfig('domains');
-if (!KONFIG) throw new Error('konfigurasi editor domain hilang');
+const CONFIG = getEditorConfig('domains');
+if (!CONFIG) throw new Error('konfigurasi editor domain hilang');
 
-const BUTIR = { id: 'd-1', version: 2, normalizedHostname: 'apex.example', status: 'active' };
+const ITEM = { id: 'd-1', version: 2, normalizedHostname: 'apex.example', status: 'active' };
 
 afterEach(() => {
   cleanup();
@@ -18,9 +18,9 @@ describe('Formulir editor rekaman', () => {
   it('merender judul, identitas versi, dan medan', () => {
     render(
       <RecordEditorForm
-        config={KONFIG}
+        config={CONFIG}
         collectionKey="domains"
-        item={BUTIR}
+        item={ITEM}
         lookups={{}}
         onSaved={vi.fn()}
         onCancel={vi.fn()}
@@ -33,61 +33,61 @@ describe('Formulir editor rekaman', () => {
   });
 
   it('mengirim payload normalisasi saat disimpan', async () => {
-    const kirim = vi.fn(async () => ({}));
-    const tersimpan = vi.fn();
+    const submitMock = vi.fn(async () => ({}));
+    const savedMock = vi.fn();
     render(
       <RecordEditorForm
-        config={KONFIG}
+        config={CONFIG}
         collectionKey="domains"
-        item={BUTIR}
+        item={ITEM}
         lookups={{}}
-        onSaved={tersimpan}
+        onSaved={savedMock}
         onCancel={vi.fn()}
-        onSubmit={kirim}
+        onSubmit={submitMock}
       />,
     );
     fireEvent.change(screen.getByLabelText('Nama domain utama'), { target: { value: 'BARU.EXAMPLE' } });
     fireEvent.click(screen.getByRole('button', { name: /simpan perubahan/i }));
     await waitFor(() =>
-      expect(kirim).toHaveBeenCalledWith(
+      expect(submitMock).toHaveBeenCalledWith(
         'domain.update',
         expect.objectContaining({ id: 'd-1', expectedVersion: 2, normalizedHostname: 'baru.example' }),
       ),
     );
-    expect(tersimpan).toHaveBeenCalledTimes(1);
+    expect(savedMock).toHaveBeenCalledTimes(1);
   });
 
   it('tidak memanggil tersimpan saat server mengembalikan null', async () => {
-    const tersimpan = vi.fn();
+    const savedMock = vi.fn();
     render(
       <RecordEditorForm
-        config={KONFIG}
+        config={CONFIG}
         collectionKey="domains"
-        item={BUTIR}
+        item={ITEM}
         lookups={{}}
-        onSaved={tersimpan}
+        onSaved={savedMock}
         onCancel={vi.fn()}
         onSubmit={vi.fn(async () => null)}
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: /simpan perubahan/i }));
-    await waitFor(() => expect(tersimpan).not.toHaveBeenCalled());
+    await waitFor(() => expect(savedMock).not.toHaveBeenCalled());
   });
 
   it('memanggil batal saat tombol batal diklik', () => {
-    const batal = vi.fn();
+    const cancelMock = vi.fn();
     render(
       <RecordEditorForm
-        config={KONFIG}
+        config={CONFIG}
         collectionKey="domains"
-        item={BUTIR}
+        item={ITEM}
         lookups={{}}
         onSaved={vi.fn()}
-        onCancel={batal}
+        onCancel={cancelMock}
         onSubmit={vi.fn(async () => ({}))}
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Batal' }));
-    expect(batal).toHaveBeenCalledTimes(1);
+    expect(cancelMock).toHaveBeenCalledTimes(1);
   });
 });

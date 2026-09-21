@@ -81,7 +81,7 @@ export const roleCreateSchema = z.object({ name: z.string().trim().min(1).max(10
 export const roleUpdateSchema = z.object({ name: z.string().trim().min(1).max(100), tier: roleTierSchema.optional(), active: z.boolean().default(true), permissions: permissionNames, id, expectedVersion }).strict().refine(tierNameConsistent, tierNameMessage);
 export const membershipSchema = z.object({ userId: id, roleId: id, status: lifecycleStatus.default('active'), regionId: id.nullable().default(null), expectedVersion: expectedVersion.optional() }).strict();
 
-/** Undangan tenant sekali pakai: orgId selalu dari aktor (bukan payload); tokenHash dihitung di klien. */
+/** Single-use tenant invitation: orgId always comes from the actor (not the payload); tokenHash is computed on the client. */
 export const invitationCreateSchema = z.object({
   email: z.string().trim().toLowerCase().min(3).max(320),
   roleId: id,

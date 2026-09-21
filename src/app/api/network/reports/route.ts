@@ -72,9 +72,9 @@ async function handlePOST(request: Request) {
 }
 
 /**
- * Terima laporan konten publik per host.
+ * Accept per-host public content reports.
  *
- * @remarks Tetap dinamis per request karena intake laporan publik per-host.
+ * @remarks Stays dynamic per request because of the per-host public report intake.
  */
 export const POST = withApiAccess('POST /api/network/reports', handlePOST);
 export async function GET(request: Request) {

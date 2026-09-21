@@ -7,7 +7,7 @@ export interface MasterTemplatePreset {
   readonly category: 'news' | 'editorial' | 'tech' | 'official' | 'visual' | 'live';
 }
 
-/** Master template layouts: Clean Blue + 9 varian tenant baru. */
+/** Master template layouts: Clean Blue + 9 new tenant variants. */
 export const MASTER_TEMPLATE_PRESETS: readonly MasterTemplatePreset[] = [
   {
     id: 'clean-blue',

@@ -37,7 +37,7 @@ export interface RuntimeConfig {
     readonly uploadTtlSeconds: number;
     readonly readTtlSeconds: number;
     readonly allowedTypes: readonly string[];
-    /** Bucket WORM audit harian; null bila belum dikonfigurasi (export nonaktif). */
+    /** Daily WORM audit bucket; null when unconfigured (export disabled). */
     readonly audit: {
       readonly bucketName: string;
       readonly accessKeyId: string;
@@ -62,11 +62,11 @@ export interface RuntimeConfig {
     readonly webhookSecret: string;
     readonly ownerIds: readonly string[];
   };
-  /** Email transaksional Resend; null bila belum dikonfigurasi (pengirim nonaktif). */
+  /** Resend transactional email; null when unconfigured (sender disabled). */
   readonly email: {
     readonly apiKey: string;
     readonly defaultFrom: string;
-    /** Secret penandatangan webhook Resend; null bila endpoint nonaktif. */
+    /** Resend webhook signing secret; null when the endpoint is disabled. */
     readonly webhookSecret: string | null;
   } | null;
   readonly security: {

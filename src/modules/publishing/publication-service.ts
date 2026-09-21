@@ -93,11 +93,11 @@ export class PublicationService {
   }
 
   /**
-   * Menyusun saran override judul/deskripsi unik per portal tanpa menulis job.
+   * Compose unique per-portal title/description override suggestions without writing a job.
    *
-   * @param actor - Konteks tenant terotorisasi.
-   * @param raw - `{ articleId, siteIds }` yang belum tervalidasi.
-   * @returns Peta siteId ke override siap pakai di `request`.
+   * @param actor - Authorized tenant context.
+   * @param raw - Unvalidated `{ articleId, siteIds }`.
+   * @returns Map of siteId to overrides ready to use in `request`.
    */
   async suggest(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<{ readonly articleId: string; readonly overrides: Readonly<Record<string, PublicationOverride>> }, PublicErrorEnvelope>> {
     const parsed = publicationSuggestSchema.safeParse(raw);

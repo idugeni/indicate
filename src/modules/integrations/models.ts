@@ -14,7 +14,7 @@ export interface ApiKeyRecord {
   readonly expiresAt: string | null;
   readonly lastUsedAt: string | null;
   readonly version: number;
-  /** Kunci region opsional: NULL berarti semua region. */
+  /** Optional region key; NULL means all regions. */
   readonly regionId: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -54,7 +54,7 @@ export interface TelegramIdentity {
   readonly roleId: string;
   readonly telegramUserId: string;
   readonly telegramChatId: string;
-  /** Kunci region membership; NULL berarti semua region. */
+  /** Membership region key; NULL means all regions. */
   readonly regionId: string | null;
   readonly permissions: ReadonlySet<string>;
 }

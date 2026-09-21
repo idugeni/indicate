@@ -101,9 +101,9 @@ export function contentErrorStatus(error: unknown): number {
 }
 
 /**
- * Terapkan perintah konten marketing dan invalidasi cache tayang.
+ * Apply the marketing content command and invalidate the live cache.
  *
- * @remarks Konten marketing di-cache per jam (tag site-content): invalidasi segera agar perubahan admin langsung tayang; kegagalan revalidasi tidak menggagalkan mutasi (penyembuhan via expiry).
+ * @remarks Marketing content is cached hourly (site-content tag): invalidate promptly so admin changes go live at once; revalidation failure does not fail the mutation (healing via expiry).
  */
 async function handlePOST(request: Request) {
   const requestId = resolveRequestId(request);
@@ -138,7 +138,7 @@ async function handlePOST(request: Request) {
       try {
         revalidateTag('site-content', 'max');
       } catch {
-        /* TTL 'hours' menyembuhkan; mutasi admin tetap sukses. */
+        /* The 'hours' TTL heals; admin mutations still succeed. */
       }
       return NextResponse.json({ ok: true });
     } catch (error) {

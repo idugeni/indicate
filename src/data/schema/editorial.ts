@@ -114,7 +114,7 @@ export const articles = pgTable('articles', {
   categoryId: uuid('category_id'),
   authorId: uuid('author_id'),
   leadMediaId: uuid('lead_media_id'),
-  /** URL sampul eksternal (mis. hotlink editorial); dipakai bila tidak ada media R2. */
+  /** External cover URL (e.g. editorial hotlink); used when no R2 media exists. */
   coverImageUrl: text('cover_image_url'),
   slug: text('slug').notNull(),
   title: text('title').notNull(),
@@ -216,7 +216,7 @@ export const media = pgTable('media', {
   sizeBytes: integer('size_bytes').notNull(),
   checksum: text('checksum').notNull(),
   thumbObjectKey: text('thumb_object_key'),
-  /** Kewajiban atribusi UU Hak Cipta (migrasi v76); opsional pra-pengisian. */
+  /** UU Hak Cipta attribution obligation (migration v76); optional pre-fill. */
   licenseSource: text('license_source'),
   attribution: text('attribution'),
   state: mediaState('state').default('reserved').notNull(),
@@ -342,7 +342,7 @@ export const auditLogs = pgTable('audit_logs', {
   after: jsonb('after').$type<Record<string, unknown>>(),
   requestId: text('request_id').notNull(),
   occurredAt: timestamp('occurred_at', { withTimezone: true }).defaultNow().notNull(),
-  /** Rantai hash Fase C (migrasi v74): diisi trigger DB, jangan ditulis aplikasi. */
+  /** Phase C hash chain (migration v74): filled by a DB trigger, never written by the app. */
   seq: bigint('seq', { mode: 'number' }),
   prevHash: text('prev_hash'),
   signature: text('signature'),

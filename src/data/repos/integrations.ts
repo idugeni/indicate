@@ -38,7 +38,7 @@ export function normalizeIntegrationsTimestamp(value: RawTimestamp): string {
 }
 const optionalIso = (value: RawTimestamp | null) => value === null ? null : normalizeIntegrationsTimestamp(value);
 function uniqueViolation(error: unknown): boolean { let current: unknown = error; const seen = new Set<object>(); while (typeof current === 'object' && current !== null && !seen.has(current)) { seen.add(current); if ('code' in current && current.code === '23505') return true; current = 'cause' in current ? current.cause : undefined; } return false; }
-/** Pseudonim satu arah untuk pengenal Telegram pada konteks audit (UU PDP): nilai mentah tidak pernah masuk audit_logs. */
+/** One-way pseudonym for the Telegram identifier in audit context (UU PDP): raw values never enter audit_logs. */
 function pseudonymizeTelegramId(value: string): string {
   return `sha256:${createHash('sha256').update(value, 'utf8').digest('hex')}`;
 }

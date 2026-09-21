@@ -9,7 +9,7 @@ export interface TenantLegalDoc {
 }
 
 /**
- * Tautan silang antar dokumen tenant untuk box Dokumen terkait.
+ * Cross-links between tenant documents for the Related documents box.
  */
 export const TENANT_RELATED_DOCS: readonly { readonly label: string; readonly href: string }[] = [
   { label: 'Kebijakan Privasi', href: '/kebijakan-privasi' },
@@ -18,8 +18,8 @@ export const TENANT_RELATED_DOCS: readonly { readonly label: string; readonly hr
   { label: 'Laporkan Konten', href: '/report' },
 ];
 /**
- * Register dokumen legal tenant: satu master copy untuk semua host,
- * token `{domain}` / `{siteName}` diinterpolasi per request.
+ * Tenant legal document registry: one master copy for all hosts,
+ * with `{domain}` / `{siteName}` tokens interpolated per request.
  */
 export const TENANT_LEGAL_DOCS: Record<'privacy' | 'terms', TenantLegalDoc> = {
   privacy: {

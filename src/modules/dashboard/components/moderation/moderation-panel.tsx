@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
-import { formatRelatif, formatTanggal } from '@/modules/dashboard/components/shared/dashboard-dates';
+import { formatDate, formatRelative } from '@/modules/dashboard/components/shared/dashboard-dates';
 
 interface ReportRow {
   readonly id: string;
@@ -394,7 +394,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               </p>
               <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">{hold.reason}</p>
               <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
-                {hold.id} · {formatTanggal(hold.createdAt)} ({formatRelatif(hold.createdAt)})
+                {hold.id} · {formatDate(hold.createdAt)} ({formatRelative(hold.createdAt)})
               </p>
               {hold.releasedAt === null ? (
                 <div className="mt-2">
@@ -454,8 +454,8 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               </p>
               <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">{row.reason}</p>
               <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
-                {row.id} · {formatTanggal(row.createdAt)} ({formatRelatif(row.createdAt)})
-                {row.completedAt ? ` → ${formatTanggal(row.completedAt)}` : ''}
+                {row.id} · {formatDate(row.createdAt)} ({formatRelative(row.createdAt)})
+                {row.completedAt ? ` → ${formatDate(row.completedAt)}` : ''}
               </p>
             </li>
           ))}

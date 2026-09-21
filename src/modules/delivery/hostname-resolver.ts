@@ -31,7 +31,7 @@ const lookupPerRequest = cache(
 /**
  * Resolve request hostnames into control, site, or error classifications.
  *
- * @remarks Host deployment milik project ini (localhost + *.vercel.app) dipetakan ke dashboard. Pertahanan lapis kedua bila rewrite header di proxy terlewat (pembaca hilir mengutamakan x-forwarded-host yang di Vercel selalu berisi host asli deployment). Host asing lain tetap unknown → 404.
+ * @remarks Deployment hosts owned by this project (localhost + *.vercel.app) map to the dashboard. Second layer of defense when a proxy misses the header rewrite (downstream readers prioritize x-forwarded-host, which on Vercel always carries the original deployment host). Other foreign hosts stay unknown → 404.
  */
 export class HostnameResolver {
   private readonly controls: ReadonlyMap<string, ControlSurface>;

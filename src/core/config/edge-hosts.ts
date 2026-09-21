@@ -20,10 +20,10 @@ export function getControlHosts(environment: NodeJS.ProcessEnv = process.env): C
 }
 
 /**
- * Mengambil endpoint beacon pageview dengan default non-rahasia dalam kode.
+ * Resolve the pageview beacon endpoint with a non-secret in-code default.
  *
- * @param environment - Variabel lingkungan proses; klien memakai `NEXT_PUBLIC_` yang tersedia di browser.
- * @returns URL https absolut; fallback default bila kosong atau bukan https.
+ * @param environment - Process environment variables; clients use the browser-available `NEXT_PUBLIC_` vars.
+ * @returns Absolute https URL; default fallback when empty or not https.
  */
 export function getPageviewEndpoint(environment: NodeJS.ProcessEnv = process.env): string {
   const raw = (environment.NEXT_PUBLIC_PAGEVIEW_ENDPOINT ?? '').trim();

@@ -4,13 +4,13 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import { ModerationPanel } from '@/modules/dashboard/components/moderation/moderation-panel';
 
-function stubModerasi(laporan: unknown[] = []) {
+function stubModeration(reports: unknown[] = []) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
       if (init?.method === 'POST') return { ok: true, json: async () => ({}) };
-      const alamat = String(url);
-      if (alamat.includes('scope=reports')) return { ok: true, json: async () => laporan };
+      const urlString = String(url);
+      if (urlString.includes('scope=reports')) return { ok: true, json: async () => reports };
       return { ok: true, json: async () => [] };
     }),
   );
@@ -23,7 +23,7 @@ afterEach(() => {
 
 describe('Panel moderasi', () => {
   it('merender semua seksi dengan status kosong', async () => {
-    stubModerasi();
+    stubModeration();
     render(<ModerationPanel organizationId="org-1" />);
     expect(screen.getByText('Laporan konten publik')).toBeDefined();
     expect(screen.getByText('Permintaan data baru')).toBeDefined();
@@ -36,7 +36,7 @@ describe('Panel moderasi', () => {
   });
 
   it('menolak permintaan data dengan uraian pendek', async () => {
-    stubModerasi();
+    stubModeration();
     render(<ModerationPanel organizationId="org-1" />);
     await screen.findByText('Belum ada laporan konten.');
     fireEvent.change(screen.getByLabelText('Uraian permintaan data'), { target: { value: 'pendek' } });
@@ -45,7 +45,7 @@ describe('Panel moderasi', () => {
   });
 
   it('menolak penundaan tanpa alasan yang cukup', async () => {
-    stubModerasi();
+    stubModeration();
     render(<ModerationPanel organizationId="org-1" />);
     await screen.findByText('Belum ada laporan konten.');
     fireEvent.click(screen.getByRole('button', { name: 'Tahan hapus' }));
@@ -53,7 +53,7 @@ describe('Panel moderasi', () => {
   });
 
   it('menolak hapus data tanpa isian yang cukup', async () => {
-    stubModerasi();
+    stubModeration();
     render(<ModerationPanel organizationId="org-1" />);
     await screen.findByText('Belum ada laporan konten.');
     fireEvent.click(screen.getByRole('button', { name: 'Minta hapus data' }));
@@ -61,7 +61,7 @@ describe('Panel moderasi', () => {
   });
 
   it('menandai laporan sudah ditindak setelah konfirmasi', async () => {
-    stubModerasi([
+    stubModeration([
       {
         id: 'rep-1',
         orgId: 'org-1',

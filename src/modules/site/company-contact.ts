@@ -1,12 +1,11 @@
 /**
- * Kontak perusahaan bersama untuk seluruh tenant.
+ * Shared company contact for all tenants.
  *
  * @remarks
- * Satu-satunya sumber akun PT Sanca Phena Cakra. Semua template (kini dan
- * nanti) wajib resolve kanal lewat `resolveContactChannels` agar konsisten.
- * Isi URL/email/nomor di bawah sekali — seluruh halaman kontak dan footer
- * tenant mengikutinya. Kunci yang belum diisi dikosongkan dan otomatis
- * disembunyikan dari render.
+ * Single source for the PT Sanca Phena Cakra accounts. All templates (current
+ * and future) must resolve channels via `resolveContactChannels` for consistency.
+ * Fill in each URL/email/number below once — every tenant contact page and footer
+ * follows it. Keys left unfilled stay empty and are hidden from rendering automatically.
  */
 export const COMPANY_NAME = 'PT Sanca Phena Cakra';
 
@@ -54,7 +53,7 @@ const CHANNEL_LABELS: Readonly<Record<string, string>> = {
   mastodon: 'Mastodon',
 };
 
-/** Urutan tampil kanal sosial di semua permukaan. */
+/** Social channel display order across all surfaces. */
 export const SOCIAL_ORDER = [
   'facebook',
   'instagram',
@@ -115,7 +114,7 @@ export interface SocialFieldDef {
   readonly placeholder: string;
 }
 
-/** Definisi field sosmed untuk form dashboard, seurut `SOCIAL_ORDER`. */
+/** Social field definitions for the dashboard form, ordered per `SOCIAL_ORDER`. */
 export const SOCIAL_FIELD_DEFS: readonly SocialFieldDef[] = SOCIAL_ORDER.map((key) => ({
   key,
   label: CHANNEL_LABELS[key] ?? key,
@@ -130,14 +129,14 @@ export interface ContactChannel {
   readonly href: string;
 }
 
-/** Kanal kontak langsung yang tampil sebagai baris utama penuh. */
+/** Direct contact channels rendered as full primary rows. */
 export const PRIMARY_CONTACT_KEYS = ['email', 'telepon', 'whatsapp'] as const;
 
 /**
- * True bila kanal termasuk kontak langsung (baris utama).
+ * True when the channel is a direct contact (primary row).
  *
- * @param key - Kunci kanal (`ContactChannel.key`).
- * @returns True untuk email, telepon, dan WhatsApp.
+ * @param key - Channel key (`ContactChannel.key`).
+ * @returns True for email, phone, and WhatsApp.
  */
 export function isPrimaryContact(key: string): boolean {
   return (PRIMARY_CONTACT_KEYS as readonly string[]).includes(key);
@@ -162,10 +161,10 @@ const CHANNEL_ACTIONS: Readonly<Record<string, string>> = {
 };
 
 /**
- * Kata kerja ajakan per kanal.
+ * Per-channel call-to-action verb.
  *
- * @param key - Kunci kanal (`ContactChannel.key`).
- * @returns Ajakan singkat; `Buka` bila tak dikenal.
+ * @param key - Channel key (`ContactChannel.key`).
+ * @returns Short call-to-action; `Buka` when unknown.
  */
 export function channelAction(key: string): string {
   return CHANNEL_ACTIONS[key] ?? 'Buka';
@@ -181,10 +180,10 @@ const HANDLE_PREFIX_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Teks tampil/handle kanal dari href mentah.
+ * Channel display text/handle from a raw href.
  *
- * @param channel - Kanal kontak siap render.
- * @returns Alamat email, nomor telepon, atau handle `@...` / slug; href asli bila tak terurai.
+ * @param channel - Render-ready contact channel.
+ * @returns Email address, phone number, or `@...` handle/slug; the original href when unparseable.
  */
 export function channelHandle(channel: ContactChannel): string {
   const href = channel.href.trim();
@@ -258,10 +257,10 @@ function labelFor(key: string): string {
 }
 
 /**
- * Resolve kanal kontak tenant: default perusahaan + override per situs.
+ * Resolve tenant contact channels: company defaults plus per-site overrides.
  *
- * @param siteSocials - `socialLinks` situs; nilai non-kosong menang atas default.
- * @returns Kanal terurut siap render; entri kosong dibuang.
+ * @param siteSocials - Site `socialLinks`; non-empty values win over defaults.
+ * @returns Ordered render-ready channels; empty entries are dropped.
  */
 export function resolveContactChannels(
   siteSocials: Readonly<Record<string, string>>,

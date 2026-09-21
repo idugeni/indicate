@@ -5,10 +5,10 @@ const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const MAX_SUFFIX_ATTEMPTS = 1000;
 
 /**
- * Menormalkan kandidat slug ke bentuk kanonik kebab-case.
+ * Normalize a slug candidate into canonical kebab-case.
  *
- * @param input - Teks bebas (mis. judul artikel).
- * @returns Slug lowercase `[a-z0-9-]` maksimal `SLUG_MAX_LENGTH`; `'artikel'` bila kosong.
+ * @param input - Free text (e.g. article title).
+ * @returns Lowercase `[a-z0-9-]` slug up to `SLUG_MAX_LENGTH`; `'artikel'` when empty.
  */
 export function normalizeSlugCandidate(input: string): string {
   const slug = input
@@ -24,13 +24,13 @@ export function normalizeSlugCandidate(input: string): string {
 }
 
 /**
- * Mengalokasikan slug unik dalam satu organisasi.
+ * Allocate a unique slug within one organization.
  *
- * @param existingSlugs - Slug yang sudah terpakai di organisasi.
- * @param base - Slug dasar yang diminta (sudah/belum ternormalisasi).
- * @param maxLength - Batas panjang; default `SLUG_MAX_LENGTH` mengikuti skema.
- * @returns Slug dasar bila bebas, atau dasar ditambah akhiran `-2`, `-3`, dst.
- * @throws {Error} Bila ruang akhiran habis (kegagalan batas yang nyaris mustahil).
+ * @param existingSlugs - Slugs already taken in the organization.
+ * @param base - Requested base slug (normalized or not).
+ * @param maxLength - Length limit; defaults to `SLUG_MAX_LENGTH` per the schema.
+ * @returns Base slug when free, or the base plus a `-2`, `-3`, etc. suffix.
+ * @throws {Error} When suffix space is exhausted (a near-impossible boundary failure).
  * @example
  * ```ts
  * allocateUniqueSlug(['rutan-wonosobo'], 'Rutan Wonosobo');
@@ -51,10 +51,10 @@ export function allocateUniqueSlug(existingSlugs: readonly string[], base: strin
 }
 
 /**
- * Menormalkan satu kandidat tag ke bentuk kanonik kebab-case.
+ * Normalize one tag candidate into canonical kebab-case.
  *
- * @param input - Teks tag bebas (mis. `Harga Emas`).
- * @returns Tag kanonik maksimal `TAG_MAX_LENGTH`, atau `null` bila tanpa alfanumerik.
+ * @param input - Free tag text (e.g. `Harga Emas`).
+ * @returns Canonical tag up to `TAG_MAX_LENGTH`, or `null` when it has no alphanumerics.
  */
 export function normalizeTagCandidate(input: string): string | null {
   if (!/[a-z0-9]/i.test(input)) return null;
@@ -63,11 +63,11 @@ export function normalizeTagCandidate(input: string): string | null {
 }
 
 /**
- * Menormalkan daftar tag mentah ke bentuk kanonik yang stabil untuk query.
+ * Normalize a raw tag list into a stable canonical form for queries.
  *
- * @param input - Elemen mentah (string atau nilai lain).
- * @returns Tag kanonik unik dengan urutan kemunculan pertama.
- * @remarks Non-string diteruskan apa adanya agar validasi skema tetap menolaknya.
+ * @param input - Raw elements (strings or other values).
+ * @returns Unique canonical tags in first-seen order.
+ * @remarks Non-strings pass through untouched so schema validation still rejects them.
  */
 export function normalizeTagList(input: readonly unknown[]): unknown[] {
   const seen = new Set<string>();

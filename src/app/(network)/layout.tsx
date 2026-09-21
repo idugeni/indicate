@@ -1,7 +1,7 @@
 import type { Viewport } from 'next';
 import type { ReactNode } from 'react';
 
-/** Tenant terang: browser chrome ikut terang di semua halaman portal. */
+/** Light tenant: browser chrome stays light on all portal pages. */
 export const viewport: Viewport = {
   themeColor: '#ffffff',
   colorScheme: 'light',

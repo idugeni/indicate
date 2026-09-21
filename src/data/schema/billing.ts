@@ -20,7 +20,7 @@ const timestamps = {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 };
 
-/** Invoice manual era aktivasi manual: dicatat superadmin setelah pembayaran terkonfirmasi. */
+/** Manual invoice from the manual-activation era: recorded by a superadmin after confirmed payment. */
 export const invoices = pgTable('invoices', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
@@ -45,7 +45,7 @@ export const invoices = pgTable('invoices', {
   index('invoices_org_paid_idx').on(table.organizationId, table.paidAt),
 ]);
 
-/** Undangan member sekali pakai (bukan billing; onboarding keanggotaan). */
+/** Single-use member invitation (not billing; membership onboarding). */
 export const orgInvitations = pgTable('org_invitations', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),

@@ -31,7 +31,7 @@ export interface MediaPolicyUpdate {
   readonly expectedVersion: number;
 }
 
-/** Cuplikan read-only kebijakan platform untuk overview UI (tanpa secret). */
+/** Read-only snapshot of platform policies for the UI overview (no secrets). */
 export interface RuntimePoliciesOverview {
   readonly deployment: {
     readonly supabaseProjectRef: string; readonly cloudflareAccountId: string;

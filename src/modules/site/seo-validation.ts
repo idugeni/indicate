@@ -9,13 +9,13 @@ export interface SeoValidationIssue {
 }
 
 /**
- * Menilai satu pasangan judul/deskripsi per tenant terhadap batas thin/duplicate.
+ * Evaluate one per-tenant title/description pair against thin/duplicate limits.
  *
- * @param title - Judul kandidat per tenant.
- * @param description - Deskripsi kandidat per tenant.
- * @param siblingTitles - Judul tenant lain untuk artikel yang sama.
- * @param siblingDescriptions - Deskripsi tenant lain untuk artikel yang sama.
- * @returns Daftar masalah; kosong berarti lolos validasi.
+ * @param title - Per-tenant candidate title.
+ * @param description - Per-tenant candidate description.
+ * @param siblingTitles - Other tenants' titles for the same article.
+ * @param siblingDescriptions - Other tenants' descriptions for the same article.
+ * @returns Issue list; empty means validation passed.
  */
 export function validateTenantMetadata(
   title: string | null | undefined,
@@ -52,10 +52,10 @@ export function validateTenantMetadata(
 }
 
 /**
- * Memeriksa duplikasi judul/deskripsi antar target penerbitan multi-site.
+ * Check title/description duplication across multi-site publishing targets.
  *
- * @param overrides - Peta siteId ke override judul/deskripsi.
- * @returns Daftar masalah duplikasi; kosong berarti setiap target terdiferensiasi.
+ * @param overrides - Map of siteId to title/description overrides.
+ * @returns Duplication issues; empty means every target is differentiated.
  */
 export function findDuplicateOverrides(
   overrides: Readonly<Record<string, { readonly title?: string | undefined; readonly description?: string | undefined }>>,

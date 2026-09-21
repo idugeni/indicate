@@ -18,11 +18,11 @@ export const metadata: Metadata = {
 };
 
 /**
- * Penjaga surface sebagai Suspense island: `requireDashboardSurface()` membaca
- * host request (runtime) sehingga tidak boleh menahan static shell saat
- * prerender. Saat build ia suspend ke fallback; saat request ia resolve diam
- * di host dashboard, atau melempar `notFound()` di surface yang salah.
- * Penegakan utama tetap di proxy (edge, per-request); ini lapis kedua.
+ * Surface guard as a Suspense island: `requireDashboardSurface()` reads
+ * the request host (runtime) so it must not block the static shell during
+ * prerender. At build time it suspends to the fallback; per request it resolves
+ * silently on the dashboard host, or throws `notFound()` on the wrong surface.
+ * Primary enforcement stays in the proxy (edge, per-request); this is the second layer.
  */
 async function SurfaceGuard() {
   await requireDashboardSurface();

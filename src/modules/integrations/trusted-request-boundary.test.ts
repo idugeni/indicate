@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { isSecretEqual, trustedCloudflareSource } from '@/modules/integrations/trusted-request-boundary';
 
-function permintaan(host: string, kepala: Record<string, string> = {}): Request {
-  const headers = new Headers(kepala);
+function makeRequest(host: string, headerEntries: Record<string, string> = {}): Request {
+  const headers = new Headers(headerEntries);
   headers.set('host', host);
   return { headers } as Request;
 }
@@ -28,49 +28,49 @@ describe('isSecretEqual', () => {
 
 describe('trustedCloudflareSource', () => {
   const host = 'kontrol.example';
-  const rahasia = 'asal-cloudflare-kuat';
+  const secret = 'asal-cloudflare-kuat';
 
   it('mengembalikan ip asal saat host dan bukti cocok', () => {
-    const request = permintaan(host, {
-      'x-indicate-cloudflare-origin': rahasia,
+    const request = makeRequest(host, {
+      'x-indicate-cloudflare-origin': secret,
       'cf-connecting-ip': '203.0.113.7',
     });
-    expect(trustedCloudflareSource(request, host, rahasia)).toBe('203.0.113.7');
+    expect(trustedCloudflareSource(request, host, secret)).toBe('203.0.113.7');
   });
 
   it('menolak host yang tidak sesuai ekspektasi', () => {
-    const request = permintaan('asing.example', {
-      'x-indicate-cloudflare-origin': rahasia,
+    const request = makeRequest('asing.example', {
+      'x-indicate-cloudflare-origin': secret,
       'cf-connecting-ip': '203.0.113.7',
     });
-    expect(trustedCloudflareSource(request, host, rahasia)).toBe(null);
+    expect(trustedCloudflareSource(request, host, secret)).toBe(null);
   });
 
   it('menolak bukti origin yang salah atau hilang', () => {
-    const salah = permintaan(host, {
+    const wrong = makeRequest(host, {
       'x-indicate-cloudflare-origin': 'palsu',
       'cf-connecting-ip': '203.0.113.7',
     });
-    expect(trustedCloudflareSource(salah, host, rahasia)).toBe(null);
-    const hilang = permintaan(host, { 'cf-connecting-ip': '203.0.113.7' });
-    expect(trustedCloudflareSource(hilang, host, rahasia)).toBe(null);
+    expect(trustedCloudflareSource(wrong, host, secret)).toBe(null);
+    const missing = makeRequest(host, { 'cf-connecting-ip': '203.0.113.7' });
+    expect(trustedCloudflareSource(missing, host, secret)).toBe(null);
   });
 
   it('menolak ip penghubung yang hilang atau bukan ip', () => {
-    const hilang = permintaan(host, { 'x-indicate-cloudflare-origin': rahasia });
-    expect(trustedCloudflareSource(hilang, host, rahasia)).toBe(null);
-    const bukanIp = permintaan(host, {
-      'x-indicate-cloudflare-origin': rahasia,
+    const missing = makeRequest(host, { 'x-indicate-cloudflare-origin': secret });
+    expect(trustedCloudflareSource(missing, host, secret)).toBe(null);
+    const notIp = makeRequest(host, {
+      'x-indicate-cloudflare-origin': secret,
       'cf-connecting-ip': 'bukan-ip',
     });
-    expect(trustedCloudflareSource(bukanIp, host, rahasia)).toBe(null);
+    expect(trustedCloudflareSource(notIp, host, secret)).toBe(null);
   });
 
   it('menerima ip versi enam yang valid', () => {
-    const request = permintaan(host, {
-      'x-indicate-cloudflare-origin': rahasia,
+    const request = makeRequest(host, {
+      'x-indicate-cloudflare-origin': secret,
       'cf-connecting-ip': '2001:db8::1',
     });
-    expect(trustedCloudflareSource(request, host, rahasia)).toBe('2001:db8::1');
+    expect(trustedCloudflareSource(request, host, secret)).toBe('2001:db8::1');
   });
 });

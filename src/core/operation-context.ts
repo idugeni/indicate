@@ -10,8 +10,8 @@ interface ActorContextBase {
   /** Platform-scoped grants (e.g. platform.customer.admin). Read only by platform guards/services. */
   readonly platformPermissionSet?: ReadonlySet<PermissionName>;
   /**
-   * Kunci region opsional: bila terisi, aktor hanya boleh menyentuh region
-   * tersebut (+ portal apex milik bersama). NULL/undefined berarti semua region.
+   * Optional region lock: when set, the actor may only touch that region
+   * (+ the shared apex portal). NULL/undefined means all regions.
    */
   readonly regionScopeId?: string | null;
   readonly entryPoint: EntryPoint;

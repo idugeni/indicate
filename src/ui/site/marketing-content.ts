@@ -34,16 +34,16 @@ export interface ProofPointItem {
 export const SERVICE_NAME = 'Indicate';
 export const SERVICE_TAGLINE = 'Satu ruang redaksi untuk seluruh jaringan media Anda.';
 /**
- * Logo instansi fallback untuk avatar publisher: dipakai bila publisher belum
- * menyematkan logonya sendiri (`contacts.logoUrl`). Berkasnya WAJIB ada di
- * `public/brand/logo-kemenimipas.png` — sebelum ada, Avatar otomatis
- * menampilkan inisial (shadcn AvatarImage gagal → AvatarFallback).
+ * Fallback agency logo for the publisher avatar: used when the publisher has not
+ * attached its own logo (`contacts.logoUrl`). The file MUST exist at
+ * `public/brand/logo-kemenimipas.png` — until then, Avatar automatically
+ * shows initials (shadcn AvatarImage fails → AvatarFallback).
  */
 export const MINISTRY_FALLBACK_LOGO_URL = '/brand/logo-kemenimipas.png';
 /**
- * Ilustrasi fallback gambar utama berita: dipakai kartu artikel, hero halaman
- * artikel, dan sampul editorial bila artikel tidak punya `imageUrl`.
- * Berkasnya WAJIB ada di `public/assets/article-fallback.webp`.
+ * Fallback illustration for the main news image: used by article cards, article page heroes,
+ * and editorial covers when the article has no `imageUrl`.
+ * The file MUST exist at `public/assets/article-fallback.webp`.
  */
 export const ARTICLE_FALLBACK_IMAGE_URL = '/assets/article-fallback.webp';
 export const SERVICE_SUMMARY =
@@ -317,7 +317,7 @@ export const CONTACT_CHECKLIST: readonly string[] = Object.freeze([
   'Apakah ada konten yang perlu dipindahkan dari sistem lama',
 ]);
 
-/** Tenant live per `docs/DOMAINS.md` (batch Exabytes 2026-09-03). */
+/** Tenant live per `docs/domains.md` (batch Exabytes 2026-09-03). */
 export const LIVE_TENANT_APEX: readonly string[] = Object.freeze([
   'fakta01.my.id',
   'jurnalism.web.id',
@@ -330,7 +330,7 @@ export const LIVE_TENANT_APEX: readonly string[] = Object.freeze([
   'wawasannusa.biz.id',
 ]);
 
-/** Situs wilayah live per `docs/DOMAINS.md` (`wonosobo.*`, tercakup zona apex). */
+/** Situs wilayah live per `docs/domains.md` (`wonosobo.*`, tercakup zona apex). */
 export const LIVE_TENANT_REGIONAL: readonly string[] = Object.freeze([
   'wonosobo.fakta01.my.id',
   'wonosobo.jurnalism.web.id',

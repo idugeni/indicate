@@ -341,7 +341,7 @@ const CLOCK_FORMAT = new Intl.DateTimeFormat('id-ID', {
   second: '2-digit',
 });
 
-/** Wall clock terisolasi: hanya komponen ini yang me-render ulang tiap detik. */
+/** Isolated wall clock: only this component re-renders every second. */
 function LiveClock() {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
@@ -356,9 +356,9 @@ function LiveClock() {
 }
 
 /**
- * Merender ruang kerja dashboard.
+ * Render the dashboard workspace.
  *
- * @remarks Adopt the prefetched RSC snapshot once; live API fetch stays source of truth after. SetState-in-effect: defer ke microtask agar setState tetap async. `avatarUrl` membawa referensi mentah (https langsung, `r2:` di-resolve async oleh DashboardAvatar) agar RSC tidak menunggu presign R2.
+ * @remarks Adopt the prefetched RSC snapshot once; live API fetch stays source of truth after. SetState-in-effect: defer to a microtask so setState stays async. `avatarUrl` carries raw references (direct https, `r2:` resolved async by DashboardAvatar) so RSC never waits on R2 presigning.
  */
 export function DashboardWorkspace({
   displayName,

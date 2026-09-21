@@ -4,7 +4,7 @@ export interface VerifiedAuthIdentity {
   readonly authUserId: string;
   readonly displayName: string;
   readonly avatarUrl: string | null;
-  /** Email terverifikasi Supabase Auth; null untuk identitas non-email. */
+  /** Verified Supabase Auth email; null for non-email identities. */
   readonly email: string | null;
 }
 

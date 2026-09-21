@@ -6,29 +6,29 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/ui/cn';
 
 /**
- * Kelas tema field tenant bersama; gabungkan via `templateFieldClasses()`.
+ * Shared tenant field theme classes; combine via `templateFieldClasses()`.
  *
  * @remarks
- * Sumber tunggal warna `--tpl-*` agar shadcn terlihat eksplisit tanpa duplikasi.
+ * Single source for `--tpl-*` colors so shadcn looks explicit without duplication.
  */
 export const TEMPLATE_FIELD_CLASSES =
   'border-[var(--tpl-ring,#e2e8f0)] bg-[var(--tpl-canvas,#f5f8fd)] text-[var(--tpl-ink,#0f172a)] [color-scheme:var(--tpl-scheme,light)] placeholder:text-[var(--tpl-faint,#94a3b8)] focus-visible:border-[var(--tpl-primary,#1a5fd0)] focus-visible:ring-[var(--tpl-primary-soft,#e8f0fe)] dark:border-[var(--tpl-ring,#e2e8f0)] dark:bg-[var(--tpl-canvas,#f5f8fd)] dark:text-[var(--tpl-ink,#0f172a)] dark:placeholder:text-[var(--tpl-faint,#94a3b8)] dark:focus-visible:border-[var(--tpl-primary,#1a5fd0)] dark:focus-visible:ring-[var(--tpl-primary-soft,#e8f0fe)] dark:disabled:bg-[var(--tpl-canvas,#f5f8fd)]';
 
 /**
- * Terapkan tema field tenant bersama di atas primitif shadcn.
+ * Apply the shared tenant field theme over shadcn primitives.
  *
- * @param className - Kelas bentuk pemanggil yang ditambahkan setelah tema.
- * @returns Kelas tema yang digabung dengan kelas pemanggil.
+ * @param className - Caller shape classes appended after the theme.
+ * @returns Theme classes merged with the caller classes.
  */
 export function templateFieldClasses(className?: string): string {
   return cn(TEMPLATE_FIELD_CLASSES, className);
 }
 
 /**
- * Terapkan tema tombol primer tenant bersama.
+ * Apply the shared tenant primary button theme.
  *
- * @param className - Kelas bentuk pemanggil yang ditambahkan setelah tema.
- * @returns Kelas tema yang digabung dengan kelas pemanggil.
+ * @param className - Caller shape classes appended after the theme.
+ * @returns Theme classes merged with the caller classes.
  */
 export function templateButtonPrimaryClasses(className?: string): string {
   return cn(
@@ -38,10 +38,10 @@ export function templateButtonPrimaryClasses(className?: string): string {
 }
 
 /**
- * Terapkan tema tombol ghost tenant bersama.
+ * Apply the shared tenant ghost button theme.
  *
- * @param className - Kelas bentuk pemanggil yang ditambahkan setelah tema.
- * @returns Kelas tema yang digabung dengan kelas pemanggil.
+ * @param className - Caller shape classes appended after the theme.
+ * @returns Theme classes merged with the caller classes.
  */
 export function templateButtonGhostClasses(className?: string): string {
   return cn(
@@ -51,37 +51,37 @@ export function templateButtonGhostClasses(className?: string): string {
 }
 
 /**
- * Input teks mengikuti tema template aktif via `--tpl-*`.
+ * Text input following the active template theme via `--tpl-*`.
  *
- * @param props - Props input shadcn yang diteruskan.
- * @returns Input kebal root `.dark`; warna dari shell, bentuk dari pemanggil.
+ * @param props - Forwarded shadcn input props.
+ * @returns Input immune to the `.dark` root; colors from the shell, shape from the caller.
  */
 export function TemplateInput({ className, ...props }: ComponentProps<typeof Input>) {
   return <Input {...props} className={templateFieldClasses(className)} />;
 }
 
 /**
- * Textarea mengikuti tema template aktif via `--tpl-*`.
+ * Textarea following the active template theme via `--tpl-*`.
  *
- * @param props - Props textarea shadcn yang diteruskan.
- * @returns Textarea kebal root `.dark`; warna dari shell, bentuk dari pemanggil.
+ * @param props - Forwarded shadcn textarea props.
+ * @returns Textarea immune to the `.dark` root; colors from the shell, shape from the caller.
  */
 export function TemplateTextarea({ className, ...props }: ComponentProps<typeof Textarea>) {
   return <Textarea {...props} className={templateFieldClasses(className)} />;
 }
 
 /**
- * Select native mengikuti tema template aktif via `--tpl-*`.
+ * Native select following the active template theme via `--tpl-*`.
  *
- * @param props - Props select yang diteruskan.
- * @returns Select kebal root `.dark`; warna dari shell, bentuk dari pemanggil.
+ * @param props - Forwarded select props.
+ * @returns Select immune to the `.dark` root; colors from the shell, shape from the caller.
  */
 export function TemplateSelect({ className, ...props }: ComponentProps<'select'>) {
   return <select {...props} className={templateFieldClasses(className)} />;
 }
 
 /**
- * Props tombol template; `className` disengaja string agar bisa digabung via `cn()`.
+ * Template button props; `className` is intentionally a string so it merges via `cn()`.
  */
 export type TemplateButtonProps = Omit<ComponentProps<typeof Button>, 'variant' | 'className'> & {
   readonly variant?: 'primary' | 'ghost';
@@ -89,10 +89,10 @@ export type TemplateButtonProps = Omit<ComponentProps<typeof Button>, 'variant' 
 };
 
 /**
- * Tombol aksi mengikuti tema template aktif via `--tpl-*`.
+ * Action button following the active template theme via `--tpl-*`.
  *
- * @param props - Props button shadcn plus varian `primary`/`ghost`.
- * @returns Tombol kebal root `.dark`; warna dari shell, bentuk dari pemanggil.
+ * @param props - Shadcn button props plus the `primary`/`ghost` variant.
+ * @returns Button immune to the `.dark` root; colors from the shell, shape from the caller.
  */
 export function TemplateButton({ className, variant = 'primary', ...props }: TemplateButtonProps) {
   if (variant === 'ghost') {

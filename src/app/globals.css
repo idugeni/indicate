@@ -223,9 +223,9 @@
     cursor: pointer;
   }
 
-  /* WebView: matikan tap-delay/double-tap-zoom di semua tombol agar gestur
-     pull-refresh tidak disintesis jadi klik hamburger, dan tahan scroll
-     di dalam drawer seluler agar tidak merembet jadi refresh halaman. */
+  /* WebView: disable tap-delay/double-tap-zoom on all buttons so the
+     pull-refresh gesture is not synthesized into a hamburger click, and hold scroll
+     inside the mobile drawer so it does not bleed into a page refresh. */
   button {
     touch-action: manipulation;
   }
@@ -233,8 +233,8 @@
     overscroll-behavior: contain;
   }
 
-  /* Scrollbar ramping enterprise untuk web utama yang terang: gutter
-     paper, thumb pasir yang menjadi brass saat hover. */
+  /* Slim enterprise scrollbar for the light main web: paper
+     gutter, sand thumb turning brass on hover. */
   html {
     scrollbar-width: thin;
     scrollbar-color: #c2bba6 #e9e6d9;
@@ -302,10 +302,10 @@
 }
 
 @layer components {
-  /* Milik route group (network) — artikel, search, kategori — BUKAN halaman
-     publik (site). Lebar aktual halaman (site) adalah Container max-w-6xl
-     (72rem), bukan .public-layout 76rem di bawah. Jangan pakai kelas-kelas
-     ini untuk /services, /pricing, /about, /faq, /contact, /privacy, /terms. */
+  /* Owned by the (network) route group — article, search, category — NOT public
+     (site) pages. The actual (site) page width is Container max-w-6xl
+     (72rem), not .public-layout 76rem below. Do not use these classes
+     for /services, /pricing, /about, /faq, /contact, /privacy, /terms. */
   .network-shell {
     --site-primary: #0b5d4b;
     --site-accent: #e9a23b;
@@ -550,9 +550,9 @@
     font-size: 1.125em;
   }
 
-  /* Pola layout jaringan — dikendalikan data-template
-     pada .network-shell. Hanya struktur/grid/tipografi; warna brand tetap
-     mengalir dari --site-primary / --site-accent per tenant. */
+  /* Network layout pattern — driven by data-template
+     on .network-shell. Structure/grid/typography only; brand colors still
+     flow from --site-primary / --site-accent per tenant. */
   .network-shell[data-template='broadsheet-classic'] .network-brand strong {
     font-family: var(--font-fraunces);
     font-weight: 900;

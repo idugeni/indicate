@@ -134,8 +134,8 @@ export interface PublicationTargetPublisherPort {
 }
 
 /**
- * Konteks tampilan untuk kabar final pekerjaan: judul artikel plus
- * hostname per portal agar pesan grup terbaca tanpa kueri tambahan.
+ * Display context for a job's final news: article title plus
+ * per-portal hostnames so group messages read well without extra queries.
  */
 export interface JobNotificationContext {
   readonly articleTitle: string;
@@ -143,7 +143,7 @@ export interface JobNotificationContext {
 }
 
 /**
- * Kabar final satu pekerjaan penerbitan dalam bentuk data polos.
+ * Final news of one publication job as plain data.
  */
 export interface JobTerminalNotice {
   readonly organizationId: string;
@@ -155,10 +155,10 @@ export interface JobTerminalNotice {
 }
 
 /**
- * Port pemberitahuan grup yang dipanggil worker saat pekerjaan terminal.
+ * Group notification port called by the worker when a job turns terminal.
  *
- * @remarks Implementasi tidak pernah melempar: kegagalan antrean hanya
- * telemetri agar pemrosesan latar tidak gagal karena notifikasi.
+ * @remarks Implementations never throw: queue failures are telemetry only
+ * so background processing never fails because of notifications.
  */
 export interface PublicationTerminalNotifier {
   notifyJobTerminal(input: JobTerminalNotice): Promise<void>;
@@ -173,7 +173,7 @@ export class PublishingConflictError extends Error {
   }
 }
 
-/** Langganan tidak dalam masa aktif tulis. Mutasi ditolak eksplisit (FORBIDDEN). */
+/** Subscription is outside its writable active period. Mutations are explicitly rejected (FORBIDDEN). */
 export class PublishingSubscriptionInactiveError extends Error {
   constructor(
     readonly accessState: string,

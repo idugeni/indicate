@@ -139,8 +139,8 @@ function trailingSlashRedirect(request: NextRequest): NextResponse | null {
   return withSecurityHeaders(redirect);
 }
 /**
- * Slug control-plane yang bocor ke host tenant: yang punya padanan tenant
- * dialihkan permanen, sisanya (murni marketing pusat) ditolak 404.
+ * Control-plane slugs leaking onto tenant hosts: those with a tenant
+ * equivalent redirect permanently, the rest (pure central marketing) get 404.
  */
 const TENANT_ALIASES: Record<string, string> = {
   '/about': '/tentang',
@@ -195,7 +195,7 @@ function isSessionRefreshPath(path: string): boolean {
  *
  * @param request - Incoming edge request.
  * @returns Response for the matched surface.
- * @remarks HSTS is emitted in production only to avoid pinning HTTPS on loopback origins. Trailing-slash redirect skips machine surfaces to keep API, feed, and asset URLs exact. Pembaca hilir mengutamakan x-forwarded-host (page.tsx, not-found.tsx, network-runtime.ts), jadi kedua header harus ditulis ulang — menulis `host` saja tidak berpengaruh di Vercel yang selalu menyetel keduanya. Host deployment Vercel (*.vercel.app) milik project ini diperlakukan sebagai permukaan dashboard: VERCEL_URL per deployment tidak stabil (unik per build), tetapi request *.vercel.app yang sampai ke project ini pasti deployment kita sendiri (routing Vercel per host; preview terkunci SSO dashboard); host asing lain tetap 404. Platform surfaces are IP-allowlisted and origin-proofed fail closed; out-of-range callers get a non-disclosing 404 plus an edge audit record. A platform-only token must never enter dashboard surfaces without an on_behalf ticket proving scoped delegation. Beranda portal (`/`) dirender rute `(network)/tenant-home` agar ikut boundary segmen tenant (loading/error terang); URL kanonis tetap `/`.
+ * @remarks HSTS is emitted in production only to avoid pinning HTTPS on loopback origins. Trailing-slash redirect skips machine surfaces to keep API, feed, and asset URLs exact. Downstream readers prefer x-forwarded-host (page.tsx, not-found.tsx, network-runtime.ts), so both headers must be rewritten — writing `host` alone has no effect on Vercel, which always sets both. Vercel deployment hosts (*.vercel.app) for this project are treated as dashboard surfaces: VERCEL_URL is unstable per deployment (unique per build), but any *.vercel.app request reaching this project is necessarily our own deployment (per-host Vercel routing; previews locked behind dashboard SSO); other foreign hosts still 404. Platform surfaces are IP-allowlisted and origin-proofed fail closed; out-of-range callers get a non-disclosing 404 plus an edge audit record. A platform-only token must never enter dashboard surfaces without an on_behalf ticket proving scoped delegation. The portal homepage (`/`) renders the `(network)/tenant-home` route so it joins the tenant segment boundary (light loading/error); the canonical URL stays `/`.
  */
 export async function proxy(request: NextRequest) {
   const rawHost = request.headers.get('host');

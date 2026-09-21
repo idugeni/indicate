@@ -20,14 +20,14 @@ function stripClassDesignation(upper: string): string {
 }
 
 /**
- * Menyusun saran label atribusi dari nama resmi ("RUTAN KELAS II B WONOSOBO"
- * menjadi "Humas Rutan Wonosobo"); institusi non-kedinasan memakai Title Case
- * apa adanya. Cerminan SQL-nya di
- * `indicate_private.short_attribution_label`; ubah keduanya bila aturan berubah.
+ * Build an attribution label suggestion from the official name ("RUTAN KELAS II B WONOSOBO"
+ * becomes "Humas Rutan Wonosobo"); non-agency institutions use Title Case
+ * as-is. Its SQL mirror lives in
+ * `indicate_private.short_attribution_label`; change both when the rule changes.
  *
- * @param name - Nama resmi publisher apa adanya (kapital/bebas).
- * @param type - Klasifikasi entitas dari form (`government_institution` vs lainnya).
- * @returns Saran label; string kosong bila nama kosong.
+ * @param name - Official publisher name as-is (any casing).
+ * @param type - Entity classification from the form (`government_institution` vs others).
+ * @returns Suggested label; empty string when the name is empty.
  */
 export function suggestAttributionLabel(name: string, type: string): string {
   const short = toTitleCase(stripClassDesignation(name.trim().toUpperCase()));

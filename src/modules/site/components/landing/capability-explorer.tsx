@@ -10,9 +10,9 @@ import { cn } from '@/ui/cn';
 const capabilities = withIcons(CAPABILITIES, CAPABILITY_ICONS);
 
 /**
- * Menampilkan penjelajah kemampuan platform dalam dua kolom interaktif.
+ * Render the interactive two-column platform capability explorer.
  *
- * @returns Section daftar kemampuan dengan panel detail yang berganti.
+ * @returns Capability list section with a swapping detail panel.
  */
 export function CapabilityExplorer() {
   const [active, setActive] = useState(0);

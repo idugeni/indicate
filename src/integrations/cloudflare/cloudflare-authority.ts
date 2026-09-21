@@ -15,7 +15,7 @@ export function canonicalizeNameservers(values: readonly string[]): readonly str
 
 /** Per-zone authority; every operation is scoped to the passed Zone ID.
  *
- * @remarks Rate-limit tertinggal di pesan (observability); retry berbatas ditangani dispatcher invalidasi via failInvalidation, bukan di sini. Exact lookup first, then paginated suffix scan: account ini menampung ratusan zone sehingga satu halaman (per_page=50) tidak pernah cukup.
+ * @remarks Rate-limit details stay in the message (observability); bounded retry is handled by the invalidation dispatcher via failInvalidation, not here. Exact lookup first, then paginated suffix scan: this account holds hundreds of zones so one page (per_page=50) is never enough.
  */
 export class CloudflareAuthorityAdapter implements CloudflareAuthorityPort {
   readonly authority = 'nameservers_dns_wildcard_ssl_proxy_cdn' as const;

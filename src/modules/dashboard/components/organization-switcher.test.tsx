@@ -4,42 +4,42 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
 
-const aksiMock = vi.hoisted(() => vi.fn());
+const actionMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/modules/dashboard/switch-organization-action', () => ({
-  switchActiveOrganization: aksiMock,
+  switchActiveOrganization: actionMock,
 }));
 
-const DAFTAR = [
+const ORGANIZATIONS = [
   { id: 'org-1', name: 'Org Pertama', records: [], permissions: [] },
   { id: 'org-2', name: 'Org Kedua', records: [], permissions: [] },
 ] as never;
 
 afterEach(() => {
   cleanup();
-  aksiMock.mockReset();
+  actionMock.mockReset();
 });
 
 describe('Pengalih organisasi', () => {
   it('merender daftar organisasi dengan pilihan aktif', () => {
-    aksiMock.mockImplementation(async () => ({ status: 'idle' }));
+    actionMock.mockImplementation(async () => ({ status: 'idle' }));
     render(
       <OrganizationSwitcher
-        organizations={DAFTAR}
+        organizations={ORGANIZATIONS}
         activeOrganizationId="org-1"
         selectId="uji-org"
         onSwitchCommitted={vi.fn()}
         onSwitchFailed={vi.fn()}
       />,
     );
-    const pilih = screen.getByRole('combobox') as HTMLSelectElement;
-    expect(pilih.value).toBe('org-1');
+    const select = screen.getByRole('combobox') as HTMLSelectElement;
+    expect(select.value).toBe('org-1');
     expect(screen.getByRole('option', { name: 'Org Pertama' })).toBeDefined();
     expect(screen.getByRole('option', { name: 'Org Kedua' })).toBeDefined();
   });
 
   it('terkunci saat tidak ada organisasi', () => {
-    aksiMock.mockImplementation(async () => ({ status: 'idle' }));
+    actionMock.mockImplementation(async () => ({ status: 'idle' }));
     render(
       <OrganizationSwitcher
         organizations={[]}
@@ -53,14 +53,14 @@ describe('Pengalih organisasi', () => {
   });
 
   it('memberitahu induk saat peralihan disetujui server', async () => {
-    aksiMock.mockImplementation(async (_sebelum: unknown, data: FormData) => ({
+    actionMock.mockImplementation(async (_previous: unknown, data: FormData) => ({
       status: 'ok',
       organizationId: String(data.get('organizationId')),
     }));
     const committed = vi.fn();
     render(
       <OrganizationSwitcher
-        organizations={DAFTAR}
+        organizations={ORGANIZATIONS}
         activeOrganizationId="org-1"
         selectId="uji-org"
         onSwitchCommitted={committed}
@@ -72,18 +72,18 @@ describe('Pengalih organisasi', () => {
   });
 
   it('memberitahu induk saat server menolak peralihan', async () => {
-    aksiMock.mockImplementation(async () => ({ status: 'error', message: 'Peralihan ditolak' }));
-    const gagal = vi.fn();
+    actionMock.mockImplementation(async () => ({ status: 'error', message: 'Peralihan ditolak' }));
+    const onFailed = vi.fn();
     render(
       <OrganizationSwitcher
-        organizations={DAFTAR}
+        organizations={ORGANIZATIONS}
         activeOrganizationId="org-1"
         selectId="uji-org"
         onSwitchCommitted={vi.fn()}
-        onSwitchFailed={gagal}
+        onSwitchFailed={onFailed}
       />,
     );
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'org-2' } });
-    await waitFor(() => expect(gagal).toHaveBeenCalledWith('Peralihan ditolak'));
+    await waitFor(() => expect(onFailed).toHaveBeenCalledWith('Peralihan ditolak'));
   });
 });

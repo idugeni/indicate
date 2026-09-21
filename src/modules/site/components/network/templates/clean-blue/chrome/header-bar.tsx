@@ -11,12 +11,12 @@ const getMountedSnapshot = (): boolean => true;
 const getMountedServerSnapshot = (): boolean => false;
 
 /**
- * Orkestrasi bar header: brand, nav desktop, pemicu cari ikon saja, dan sidebar.
+ * Header bar orchestration: brand, desktop nav, icon-only search trigger, and sidebar.
  *
- * @param brand - Elemen brand situs.
- * @param nav - Navigasi desktop.
- * @param sidebar - Navigasi seluler.
- * @returns Bar header interaktif template.
+ * @param brand - Site brand element.
+ * @param nav - Desktop navigation.
+ * @param sidebar - Mobile navigation.
+ * @returns Interactive template header bar.
  */
 export function CleanBlueHeaderBar({
   brand,

@@ -7,14 +7,14 @@ import { X } from 'lucide-react';
 import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
 
 /**
- * Panel pencarian expandable di bawah header desktop.
+ * Expandable search panel below the desktop header.
  *
- * @param query - Nilai input terkontrol.
- * @param onQueryChange - Handler perubahan input.
- * @param onClose - Handler tutup panel.
- * @param inputRef - Ref untuk autofocus.
- * @param onFocusReturn - Kembalikan fokus ke tombol pemicu saat tutup.
- * @returns Form pencarian in-flow template.
+ * @param query - Controlled input value.
+ * @param onQueryChange - Input change handler.
+ * @param onClose - Panel close handler.
+ * @param inputRef - Ref for autofocus.
+ * @param onFocusReturn - Return focus to the trigger button on close.
+ * @returns In-flow template search form.
  */
 export function PurpleEditorialSearchPanel({
   query,

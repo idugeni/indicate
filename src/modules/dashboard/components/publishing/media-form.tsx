@@ -29,9 +29,9 @@ function heicStem(filename: string): string {
 }
 
 /**
- * Tampilkan formulir unggah media dengan kompresi dan reservasi klien.
+ * Render the media upload form with compression and client-side reservation.
  *
- * @remarks SUPPORTED_MEDIA_TYPES mencerminkan media_policy.allowed_mime_types agar format tak didukung ditolak dengan pesan jelas sebelum reservasi server. Varian thumb bersifat best-effort: kegagalannya tidak menggagalkan aset utama.
+ * @remarks SUPPORTED_MEDIA_TYPES mirrors media_policy.allowed_mime_types so unsupported formats are rejected with a clear message before server reservation. The thumb variant is best-effort: its failure does not fail the main asset.
  */
 export function MediaForm({
   data,

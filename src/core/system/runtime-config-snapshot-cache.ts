@@ -12,7 +12,7 @@ export interface CacheEntry {
   readonly source: 'postgres';
 }
 
-/** Lapis kedua bersama (mis. Redis): kunci mencakup revision sehingga tidak ada bacaan basi. */
+/** Shared second layer (e.g. Redis): keys include the revision so there are no stale reads. */
 export interface SnapshotSharedStore {
   read(environment: string, revision: number): Promise<unknown | null>;
   write(environment: string, revision: number, model: unknown, ttlSeconds: number): Promise<void>;
@@ -27,7 +27,7 @@ export interface SnapshotStatus {
 
 /** Cache runtime config snapshots in process.
  *
- * @remarks PostgreSQL stays the only authority; single-flight refresh, failed refreshes never extend freshness, expiry yields unavailable (never stale). Jalur cepat lintas instance: revision murah + model mentah dari lapis bersama, divalidasi parser yang sama sebelum diadopsi; gagal apa pun → baca penuh. Rejected parse keeps the old entry on its original expiry; never adopt a partial value. Issues carry schema paths plus short codes only, so they are safe for telemetry and turn the next all-or-nothing rejection into a one-line diagnosis instead of `[unknown]`.
+ * @remarks PostgreSQL stays the only authority; single-flight refresh, failed refreshes never extend freshness, expiry yields unavailable (never stale). Fast cross-instance path: cheap revision + raw model from the shared layer, validated by the same parser before adoption; any failure → full read. Rejected parse keeps the old entry on its original expiry; never adopt a partial value. Issues carry schema paths plus short codes only, so they are safe for telemetry and turn the next all-or-nothing rejection into a one-line diagnosis instead of `[unknown]`.
  */
 export class RuntimeConfigSnapshotCache {
   readonly #repository: RuntimeConfigReadRepository;

@@ -592,7 +592,7 @@ export interface FaqGroup {
   readonly items: readonly FaqGridItem[];
 }
 
-/** Kategori fallback untuk FAQ lama yang `category`-nya masih NULL. */
+/** Fallback category for legacy FAQs whose `category` is still NULL. */
 export const DEFAULT_FAQ_CATEGORY = 'Umum';
 
 /** Normalize raw FAQ items (static/DB) to grid form; shared by /faq and /pricing. */

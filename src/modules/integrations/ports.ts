@@ -9,7 +9,7 @@ import type { HealthCheckPort } from '@/core/system/ports';
 export class IntegrationsAccessDeniedError extends Error {}
 export class IntegrationsConflictError extends Error {}
 
-/** Langganan tidak dalam masa aktif tulis. Mutasi ditolak eksplisit (FORBIDDEN). */
+/** Subscription is outside its writable active period. Mutations are explicitly rejected (FORBIDDEN). */
 export class IntegrationsSubscriptionInactiveError extends Error {
   constructor(
     readonly accessState: string,
@@ -174,7 +174,7 @@ export interface EmailContact {
   readonly lastName?: string;
 }
 
-/** Pengiriman email transaksional; null di komposisi saat Resend belum dikonfigurasi. */
+/** Transactional email delivery; null in compositions while Resend is unconfigured. */
 export interface EmailPort {
   send(message: EmailMessage): Promise<{ readonly id: string }>;
   upsertContact(contact: EmailContact): Promise<{ readonly id: string }>;

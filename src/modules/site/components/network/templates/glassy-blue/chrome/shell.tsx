@@ -8,9 +8,9 @@ import { GlassyBlueFooter } from '@/modules/site/components/network/templates/gl
 import { GlassyBlueBackToTop } from '@/modules/site/components/network/templates/glassy-blue/chrome/back-to-top';
 
 /**
- * Cangkang tunggal template: skip-link + header + main + footer + back-to-top
- * SELALU sama di semua halaman (listing, artikel, search, lapor, 404).
- * Satu-satunya cara merakit halaman glassy-blue — perubahan chrome cukup di sini.
+ * Single template shell: skip-link + header + main + footer + back-to-top,
+ * ALWAYS identical on every page (listing, article, search, report, 404).
+ * The only way to assemble a glassy-blue page — chrome changes belong here.
  */
 export function GlassyBlueShell({
   site,

@@ -6,22 +6,22 @@ export interface LegalVariables {
 }
 
 /**
- * Interpolasi token `{domain}` dan `{siteName}` pada copy dokumen legal.
+ * Interpolate `{domain}` and `{siteName}` tokens in legal document copy.
  *
- * @param value - Teks master dari `marketing-content` (tetap tanpa domain literal).
- * @param vars - Domain dan nama situs tenant aktif hasil resolusi hostname.
- * @returns Teks siap render untuk tenant tersebut; tanpa token berarti tanpa perubahan.
+ * @param value - Master text from `marketing-content` (never contains a literal domain).
+ * @param vars - Domain and site name of the active tenant from hostname resolution.
+ * @returns Render-ready text for that tenant; no tokens means no changes.
  */
 export function interpolateLegalText(value: string, vars: LegalVariables): string {
   return value.replaceAll('{domain}', vars.domain).replaceAll('{siteName}', vars.siteName);
 }
 
 /**
- * Terapkan interpolasi domain ke seluruh bagian satu dokumen legal.
+ * Apply domain interpolation to every section of one legal document.
  *
- * @param sections - Bagian master (`TERMS_SECTIONS` / `PRIVACY_SECTIONS`).
- * @param vars - Domain dan nama situs tenant aktif hasil resolusi hostname.
- * @returns Salinan bagian dengan heading dan body terinterpolasi.
+ * @param sections - Master sections (`TERMS_SECTIONS` / `PRIVACY_SECTIONS`).
+ * @param vars - Domain and site name of the active tenant from hostname resolution.
+ * @returns Section copies with interpolated headings and bodies.
  */
 export function resolveLegalSections(
   sections: readonly DocSectionItem[],

@@ -56,8 +56,8 @@ export const viewport: Viewport = {
   colorScheme: 'light',
 };
 
-/** Control-plane `/` (landing). Beranda portal dirender `(network)/tenant-home`
- *  via rewrite proxy agar ikut boundary segmen tenant. */
+/** Control-plane `/` (landing). Portal home renders `(network)/tenant-home`
+ *  via rewrite proxy to follow the tenant segment boundary. */
 export default async function RootPage() {
   const { classification } = await resolveRouteContext();
 

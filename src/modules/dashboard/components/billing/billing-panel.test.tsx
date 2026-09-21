@@ -45,7 +45,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const FAKTUR = [
+const INVOICES = [
   {
     id: 'inv-1',
     organizationId: 'org-1',
@@ -63,7 +63,7 @@ const FAKTUR = [
   },
 ];
 
-const FAKTUR_VOID = [
+const VOIDED_INVOICES = [
   {
     id: 'inv-2',
     organizationId: 'org-1',
@@ -83,7 +83,7 @@ const FAKTUR_VOID = [
 
 describe('Panel langganan', () => {
   it('menampilkan status aktif dan daftar faktur', async () => {
-    stubBilling('active', FAKTUR);
+    stubBilling('active', INVOICES);
     render(<BillingPanel organizationId="org-1" permissions={[]} />);
     expect(await screen.findByText('Aktif')).toBeDefined();
     expect(await screen.findByText(/IND-ORG-2601-0001-AB12/)).toBeDefined();
@@ -147,7 +147,7 @@ describe('Panel langganan', () => {
   });
 
   it('membatalkan faktur lewat envelope billing', async () => {
-    const posts = stubBillingWithCapture('active', FAKTUR);
+    const posts = stubBillingWithCapture('active', INVOICES);
     vi.spyOn(window, 'prompt').mockReturnValue('salah catat');
     render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Batalkan' }));
@@ -158,7 +158,7 @@ describe('Panel langganan', () => {
   });
 
   it('menerbitkan ulang tagihan batal lewat envelope billing', async () => {
-    const posts = stubBillingWithCapture('active', FAKTUR_VOID);
+    const posts = stubBillingWithCapture('active', VOIDED_INVOICES);
     vi.spyOn(window, 'prompt').mockReturnValue('koreksi nomor');
     render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Terbitkan ulang' }));
@@ -169,7 +169,7 @@ describe('Panel langganan', () => {
   });
 
   it('menampilkan unduh pada faktur batal untuk platform', async () => {
-    stubBilling('active', FAKTUR_VOID);
+    stubBilling('active', VOIDED_INVOICES);
     render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
     expect(await screen.findByText(/IND-ORG-2601-0002-CD34/)).toBeDefined();
     expect(screen.getByRole('button', { name: 'Unduh' })).toBeDefined();
@@ -178,7 +178,7 @@ describe('Panel langganan', () => {
   });
 
   it('tetap menampilkan unduh pada faktur batal untuk tenant', async () => {
-    stubBilling('active', FAKTUR_VOID);
+    stubBilling('active', VOIDED_INVOICES);
     render(<BillingPanel organizationId="org-1" permissions={[]} />);
     expect(await screen.findByText(/IND-ORG-2601-0002-CD34/)).toBeDefined();
     expect(screen.getByRole('button', { name: 'Unduh' })).toBeDefined();

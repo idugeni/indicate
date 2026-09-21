@@ -7,9 +7,9 @@ import { rateLimitPolicySchema } from '@/modules/integrations/schemas';
 
 const identityPart = (value: string) => value.replace(/[^A-Za-z0-9:_-]/g, '_').slice(0, 200);
 /**
- * Failure-mode tunggal: seluruh pemanggil (webhook, mutation dasbor, API v1,
- * intake laporan publik) memakai 'closed' — Redis down berarti tolak dengan
- * DEPENDENCY_UNAVAILABLE, bukan lolos.
+ * Single failure mode: all callers (webhooks, dashboard mutations, API v1,
+ * public report intake) use 'closed' — when Redis is down, reject with
+ * DEPENDENCY_UNAVAILABLE instead of letting requests through.
  */
 export class RateLimitService {
   constructor(private readonly port: RateLimitPort, private readonly clock: { now(): Date } = { now: () => new Date() }) {}

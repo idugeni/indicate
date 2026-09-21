@@ -68,9 +68,9 @@ interface DataViewProps {
   readonly currentPage: number;
   readonly onPageChange: (page: number) => void;
   readonly onRefresh: () => void;
-  /** Command dispatcher workspace; jika tidak ada, tabel menjadi read-only. */
+  /** Workspace command dispatcher; when absent, the table becomes read-only. */
   readonly command?: (action: string, payload: unknown) => Promise<unknown>;
-  /** Pindah modul dari dalam konten (aksi cepat, panduan); jika tidak ada, tombol navigasi disembunyikan. */
+  /** Switch modules from inside content (quick actions, guides); when absent, navigation buttons are hidden. */
   readonly onSelectView?: (view: View) => void;
 }
 
@@ -143,7 +143,7 @@ function resolveItemName(item: Record<string, unknown>): string {
 /**
  * Render dashboard data collections.
  *
- * @remarks Koleksi generik dirender lewat tabel TanStack (sortir, seleksi, visibilitas kolom); paginasi tetap milik workspace agar sinkron dengan `?page=`.
+ * @remarks Generic collections render through the TanStack table (sorting, selection, column visibility); pagination stays with the workspace to sync with `?page=`.
  */
 export function DataView({
   view,
@@ -398,9 +398,9 @@ const dashboardFeatures = tableFeatures({
 type DashboardFeatures = typeof dashboardFeatures;
 
 /**
- * Render satu koleksi generik sebagai tabel interaktif.
+ * Render one generic collection as an interactive table.
  *
- * @remarks Sortir, seleksi baris, dan visibilitas kolom milik TanStack; paginasi tetap milik workspace agar sinkron dengan `?page=`.
+ * @remarks Row sorting, selection, and column visibility belong to TanStack; pagination stays with the workspace to sync with `?page=`.
  */
 function CollectionTable({
   collectionKey,
@@ -606,7 +606,7 @@ function CollectionTable({
 
   const runBulk = async (transition: EditorTransition, rows: readonly Row<DashboardFeatures, CollectionItem>[]): Promise<void> => {
     if (command === undefined) return;
-    let berhasil = 0;
+    let succeeded = 0;
     try {
       await toast.promise(
         (async () => {
@@ -615,19 +615,19 @@ function CollectionTable({
               id: row.original.id,
               expectedVersion: Number(row.original.version ?? 1),
             });
-            if (result !== null) berhasil += 1;
+            if (result !== null) succeeded += 1;
           }
-          if (berhasil === 0) throw new Error(`Aksi ${transition.label} gagal untuk semua ${rows.length} baris.`);
-          return berhasil;
+          if (succeeded === 0) throw new Error(`Aksi ${transition.label} gagal untuk semua ${rows.length} baris.`);
+          return succeeded;
         })(),
         {
           loading: `Menjalankan ${transition.label} untuk ${rows.length} baris…`,
-          success: (jumlah) => `${transition.label}: ${jumlah} dari ${rows.length} baris berhasil.`,
+          success: (count) => `${transition.label}: ${count} dari ${rows.length} baris berhasil.`,
           error: (cause) => (cause instanceof Error ? cause.message : `Aksi ${transition.label} gagal.`),
         },
       );
     } catch {
-      /* Toast galat sudah tampil; abaikan penolakan lanjutan. */
+      /* Error toast already shown; ignore follow-up rejections. */
     }
     setEditingId(null);
     setRowSelection({});
@@ -854,11 +854,11 @@ function CollectionTable({
 }
 
 /**
- * Tombol kepala kolom yang mengalihkan arah sortir TanStack.
+ * Column header button toggling the TanStack sort direction.
  *
- * @param label - Nama kolom yang tampil.
- * @param column - Kolom TanStack yang bisa disortir.
- * @returns Tombol sortir dengan ikon arah aktif.
+ * @param label - Displayed column name.
+ * @param column - Sortable TanStack column.
+ * @returns Sort button with active direction icon.
  */
 function SortHeader({
   label,

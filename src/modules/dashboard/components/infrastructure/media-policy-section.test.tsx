@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 import { MediaPolicySection } from '@/modules/dashboard/components/infrastructure/media-policy-section';
 
-const KEBIJAKAN = {
+const POLICY = {
   policy: {
     allowedMimeTypes: ['image/jpeg', 'image/png'],
     maxObjectBytes: 5 * 1024 * 1024,
@@ -29,7 +29,7 @@ describe('Seksi kebijakan media', () => {
   });
 
   it('merender formulir dari kebijakan yang dimuat', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => KEBIJAKAN })));
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => POLICY })));
     render(<MediaPolicySection />);
     expect(await screen.findByText(/Tipe diizinkan: image\/jpeg, image\/png/)).toBeDefined();
     expect(screen.getByLabelText('Ukuran maks berkas (MB)')).toBeDefined();
@@ -38,7 +38,7 @@ describe('Seksi kebijakan media', () => {
   });
 
   it('menolak nilai yang tidak positif tanpa memanggil API', async () => {
-    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => KEBIJAKAN }));
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => POLICY }));
     vi.stubGlobal('fetch', fetchMock);
     render(<MediaPolicySection />);
     await screen.findByRole('button', { name: 'Simpan kebijakan media' });
@@ -52,7 +52,7 @@ describe('Seksi kebijakan media', () => {
   it('menyimpan kebijakan dan menampilkan pemberitahuan', async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (init?.method === 'POST') return { ok: true, json: async () => ({}) };
-      return { ok: true, json: async () => KEBIJAKAN };
+      return { ok: true, json: async () => POLICY };
     });
     vi.stubGlobal('fetch', fetchMock);
     render(<MediaPolicySection />);

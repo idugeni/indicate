@@ -28,10 +28,10 @@ function parseInline(value: string): readonly TextSegment[] {
 }
 
 /**
- * Memecah body artikel menjadi blok render: paragraf, daftar, dan gambar.
+ * Split an article body into render blocks: paragraphs, lists, and figures.
  *
- * @param body - Body kanonik (mendukung `**tebal**`, `*miring*`, `- item`, `[gambar:N]` sebaris sendiri).
- * @returns Blok berurutan; sintaks tak dikenal tampil apa adanya.
+ * @param body - Canonical body (supports `**tebal**`, `*miring*`, `- item`, standalone `[gambar:N]`).
+ * @returns Ordered blocks; unknown syntax renders as-is.
  */
 export function parseArticleBody(body: string): readonly ArticleBlock[] {
   const normalized = body.replace(/\r\n?/gu, '\n');
@@ -61,10 +61,10 @@ export function parseArticleBody(body: string): readonly ArticleBlock[] {
 }
 
 /**
- * Mereduksi body menjadi teks polos untuk excerpt, ringkasan, dan pencarian.
+ * Reduce a body to plain text for excerpts, summaries, and search.
  *
- * @param body - Body kanonik artikel.
- * @returns Teks tanpa markup; penanda gambar dihilangkan.
+ * @param body - Canonical article body.
+ * @returns Text without markup; figure markers are removed.
  */
 export function articleBodyText(body: string): string {
   const parts: string[] = [];

@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 
-/** Palet minimal untuk kontrol tema: cocok struktural dengan tiap `theme.ts` template. */
+/** Minimal palette for theme controls: structurally compatible with each template's `theme.ts`. */
 export interface TemplateTheme {
   readonly primary: string;
   readonly primaryDark: string;
@@ -16,10 +16,10 @@ export interface TemplateTheme {
 }
 
 /**
- * Petakan palet template ke variabel CSS `--tpl-*` untuk kontrol scoped.
+ * Map a template palette to scoped `--tpl-*` CSS variables for controls.
  *
- * @param theme - Palet template (mis. `CLEAN_BLUE`).
- * @returns Objek `style` untuk root shell template; kontrol baca variabelnya.
+ * @param theme - Template palette (e.g. `CLEAN_BLUE`).
+ * @returns `style` object for the template shell root; controls read its variables.
  */
 export function templateThemeStyle(theme: TemplateTheme): CSSProperties {
   return {

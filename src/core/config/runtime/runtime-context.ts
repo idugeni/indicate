@@ -25,7 +25,7 @@ let hydratedPromise: Promise<RuntimeContext> | null = null;
 /**
  * Single-flight server runtime context via the bounded cache.
  *
- * @remarks Prerender build tidak boleh membaca/menulis cache bersama: selain tidak valid untuk runtime, lapis jaringan ekstra bisa menggantung worker build. Rejected hydration clears the single-flight so later requests retry transient faults; the pool is shared process-wide and never closed by callers.
+ * @remarks Build prerender must not read/write the shared cache: besides being invalid for runtime, the extra network layer can hang the build worker. Rejected hydration clears the single-flight so later requests retry transient faults; the pool is shared process-wide and never closed by callers.
  */
 export async function getServerRuntimeContext(): Promise<RuntimeContext> {
   if (hydratedPromise === null) {
@@ -139,7 +139,7 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
 }
 
 /**
- * Fail-closed schema gate (docs/MIGRATIONS.md promotion gate): when a
+ * Fail-closed schema gate (docs/migrations.md promotion gate): when a
  * required_version row exists, the applied ledger must satisfy it or the
  * process refuses to activate. No row means disarmed (pre-production) and
  * behavior is unchanged. Versions are not secrets.

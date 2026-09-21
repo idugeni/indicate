@@ -104,13 +104,13 @@ const plexMono = IBM_Plex_Mono({
 });
 
 /**
- * Brand portal TIDAK di-resolve di root layout: pembacaan host + DB di sini
- * menahan prerender seluruh rute (blocking-prerender-dynamic). Chrome tenant
- * berasal dari shell per-template (`CleanBlueShell` dkk., dipilih dispatcher
- * `network-listing` per Site); shell kontrol tidak butuh brand. Ikon juga
- * TIDAK dideklarasikan di sini: setiap surface (control-plane via metadata
- * layout masing-masing, tenant via `tenantFavicon`) membawa ikonnya sendiri
- * agar tidak ada fallback lintas host.
+ * Portal brand is NOT resolved in the root layout: host + DB reads here
+ * would block prerendering of every route (blocking-prerender-dynamic). Tenant
+ * chrome comes from per-template shells (`CleanBlueShell` et al., picked by the
+ * `network-listing` dispatcher per Site); control shells need no brand. Icons are
+ * also NOT declared here: every surface (control-plane via its own metadata
+ * layout, tenant via `tenantFavicon`) carries its own icons
+ * so no cross-host fallback exists.
  */
 export default function RootLayout({
   children,

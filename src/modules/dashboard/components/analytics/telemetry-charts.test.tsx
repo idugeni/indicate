@@ -24,7 +24,7 @@ afterEach(() => {
   cleanup();
 });
 
-const PROYEKSI: AnalyticsProjection = {
+const PROJECTION: AnalyticsProjection = {
   articlesByRegion: [{ key: 'reg-1', count: 3 }],
   articlesBySite: [],
   articlesByCategory: [{ key: 'kat-1', count: 2 }],
@@ -45,7 +45,7 @@ const PROYEKSI: AnalyticsProjection = {
   arusPenerbit: [{ penerbit: 'p-1', situs: 's-1', hasil: 'published', jumlah: 2 }],
 };
 
-const KOSONG: AnalyticsProjection = {
+const EMPTY: AnalyticsProjection = {
   articlesByRegion: [],
   articlesBySite: [],
   articlesByCategory: [],
@@ -64,14 +64,14 @@ const KOSONG: AnalyticsProjection = {
 
 describe('Diagram telemetri', () => {
   it('merender kartu dimensi yang berisi data', () => {
-    render(<TelemetryCharts data={PROYEKSI} />);
+    render(<TelemetryCharts data={PROJECTION} />);
     expect(screen.getByText('Artikel per wilayah')).toBeDefined();
     expect(screen.getByText('Tugas per status')).toBeDefined();
     expect(screen.getAllByText('Belum ada data.')).toHaveLength(2);
   });
 
   it('mengembalikan null saat seluruh dimensi kosong', () => {
-    const { container } = render(<TelemetryCharts data={KOSONG} />);
+    const { container } = render(<TelemetryCharts data={EMPTY} />);
     expect(container.firstChild).toBe(null);
   });
 });

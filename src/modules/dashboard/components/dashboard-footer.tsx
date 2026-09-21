@@ -1,7 +1,7 @@
 /**
- * Render bilah kaki ruang kerja dashboard yang menempel di bawah kolom konten.
+ * Render the dashboard workspace footer pinned below the content column.
  *
- * @returns Footer sticky di tepi bawah viewport kolom kerja.
+ * @returns Sticky footer at the bottom edge of the workspace column viewport.
  */
 export function DashboardFooter() {
   const year = new Date().getFullYear();

@@ -8,8 +8,8 @@ import { GlassyBlueDesktopNav, GlassyBlueMobileNav } from '@/modules/site/compon
 import { getSiteCategoryNav } from '@/modules/site/components/network/templates/glassy-blue/server/site-nav';
 
 /**
- * Navbar 3 kolom: [brand secukupnya | menu fleksibel | aksi secukupnya].
- * Tengah: Beranda + kategori inline hingga batas, sisanya ke menu "Lainnya".
+ * 3-column navbar: [brand as needed | flexible menu | actions as needed].
+ * Center: Home plus inline categories up to the limit, the rest under the "Lainnya" menu.
  */
 export async function GlassyBlueHeader({ site, path = '/' }: { readonly site: NetworkSiteData; readonly path?: string }) {
   const nav = await getSiteCategoryNav(site, 8);

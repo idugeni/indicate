@@ -25,7 +25,7 @@ vi.mock('@/modules/dashboard/switch-organization-action', () => ({
   switchActiveOrganization: vi.fn(async () => ({ status: 'idle' })),
 }));
 
-const ORGANISASI = [
+const ORGANIZATIONS = [
   {
     id: 'org-1',
     name: 'Org Uji',
@@ -35,7 +35,7 @@ const ORGANISASI = [
   },
 ] as never;
 
-function pasang(): void {
+function setup(): void {
   vi.stubGlobal(
     'fetch',
     vi.fn(async () => ({ ok: true, json: async () => ({}) })),
@@ -57,7 +57,7 @@ function pasang(): void {
 }
 
 beforeEach(() => {
-  pasang();
+  setup();
 });
 
 afterEach(() => {
@@ -67,7 +67,7 @@ afterEach(() => {
 
 describe('Ruang kerja dashboard', () => {
   it('merender merek, nama pengguna, dan ringkasan awal', async () => {
-    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANISASI} />);
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     expect(screen.getByText('Indicate')).toBeDefined();
     expect(screen.getByText('Redaktur Uji')).toBeDefined();
     expect(await screen.findByText('Ringkasan Ekosistem Redaksi')).toBeDefined();
@@ -75,13 +75,13 @@ describe('Ruang kerja dashboard', () => {
   });
 
   it('menciut dan membentangkan sidebar', () => {
-    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANISASI} />);
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     fireEvent.click(screen.getByRole('button', { name: 'Ciutkan sidebar' }));
     expect(screen.getByRole('button', { name: 'Bentangkan sidebar' })).toBeDefined();
   });
 
   it('berganti judul saat modul redaksi dipilih', async () => {
-    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANISASI} />);
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByText('Ringkasan Ekosistem Redaksi');
     fireEvent.click(screen.getByRole('button', { name: 'Tulis Berita' }));
     expect(await screen.findByText('Manajemen Artikel & Konten')).toBeDefined();
@@ -89,7 +89,7 @@ describe('Ruang kerja dashboard', () => {
   });
 
   it('menempelkan footer di bawah dengan label pengelola', async () => {
-    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANISASI} />);
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByText('Ringkasan Ekosistem Redaksi');
     const footer = screen.getByText(/PT Sanca Phena Cakra/).closest('footer');
     expect(footer).not.toBeNull();
@@ -104,7 +104,7 @@ describe('Ruang kerja dashboard', () => {
     render(
       <DashboardWorkspace
         displayName="Redaktur Uji"
-        organizations={ORGANISASI}
+        organizations={ORGANIZATIONS}
         initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1, analytics: { articlesByRegion: [] } } }}
       />,
     );
@@ -120,7 +120,7 @@ describe('Ruang kerja dashboard', () => {
     render(
       <DashboardWorkspace
         displayName="Redaktur Uji"
-        organizations={ORGANISASI}
+        organizations={ORGANIZATIONS}
         initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1 } }}
       />,
     );

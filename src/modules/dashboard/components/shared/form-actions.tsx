@@ -3,15 +3,15 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /**
- * Baris aksi formulir dasbor: tombol kirim primer dan tombol batal sekunder.
+ * Dashboard form action row: primary submit button and secondary cancel button.
  *
- * @param submitLabel - Label tombol kirim saat idle.
- * @param busySubmitLabel - Label tombol kirim saat sibuk; default `submitLabel`.
- * @param cancelLabel - Label tombol batal; default `Batal`.
- * @param onCancel - Handler tombol batal; bila absen, tombol batal disembunyikan.
- * @param disabled - Kunci kedua tombol.
- * @param isBusy - Tampilkan indikator putar pada tombol kirim dan kunci kirim.
- * @returns Baris aksi formulir siap pakai.
+ * @param submitLabel - Submit button label while idle.
+ * @param busySubmitLabel - Submit button label while busy; defaults to `submitLabel`.
+ * @param cancelLabel - Cancel button label; defaults to `Batal`.
+ * @param onCancel - Cancel button handler; when absent, the cancel button is hidden.
+ * @param disabled - Lock both buttons.
+ * @param isBusy - Show a spinner on the submit button and lock submission.
+ * @returns Ready-to-use form action row.
  */
 export function FormActions({
   submitLabel,

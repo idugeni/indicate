@@ -30,8 +30,8 @@ describe('Peringkat teratas', () => {
         ]}
       />,
     );
-    const urutan = screen.getAllByText(/^[abc]$/).map((el) => el.textContent);
-    expect(urutan).toEqual(['b', 'c', 'a']);
+    const order = screen.getAllByText(/^[abc]$/).map((el) => el.textContent);
+    expect(order).toEqual(['b', 'c', 'a']);
   });
 
   it('menampilkan pesan kosong saat nihil', () => {

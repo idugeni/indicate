@@ -11,7 +11,7 @@ interface ErrorPageProps {
   readonly reset: () => void;
 }
 
-/** Galat tenant: terang gaya portal, telemetri dan Ref sama seperti control-plane. */
+/** Tenant error: light portal styling, telemetry and Ref match the control-plane. */
 export default function NetworkErrorPage({ error, reset }: ErrorPageProps) {
   const [clientId] = useState(() => crypto.randomUUID());
   const eventId = error.digest ?? clientId;

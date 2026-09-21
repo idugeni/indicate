@@ -3,13 +3,13 @@
 import { cacheLife } from 'next/cache';
 
 /**
- * Tahun kalender (UTC) untuk footer. Nilai waktu-nyata tidak boleh di-render
- * langsung saat prerender (blocking-prerender-current-time), jadi hasilnya
- * di-cache harian: sama untuk semua pembaca hingga revalidasi.
+ * Calendar year (UTC) for the footer. Real-time values must never render
+ * directly during prerender (blocking-prerender-current-time), so the result
+ * is cached daily: identical for all readers until revalidation.
  *
- * Direktif di level file (bukan inline) agar modul tetap bisa diimpor dari
- * rantai komponen yang juga masuk client bundle (form auth memakai primitif
- * dari auth-ui yang mengimpor BrandPanel).
+ * File-level directive (not inline) so the module stays importable from
+ * component chains that also enter the client bundle (auth forms use primitives
+ * from auth-ui, which imports BrandPanel).
  */
 export async function currentYear(): Promise<number> {
   cacheLife('days');

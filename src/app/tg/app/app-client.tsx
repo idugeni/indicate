@@ -318,7 +318,7 @@ function useLoad<T>(key: string, loader: () => Promise<T>): { data: T | null; er
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loader dibaca versi terbaru via ref; key+tick yang memicu muat ulang
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loader reads the latest version via ref; key+tick trigger the reload
   }, [key, tick]);
   return { data: state.data, error: state.error, reload: () => setTick((value) => value + 1) };
 }

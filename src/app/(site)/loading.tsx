@@ -4,8 +4,8 @@ import { Container } from '@/modules/site/components/layout/content';
 
 /**
  * Site suspense skeleton (page content only; SiteShell comes from the group layout).
- * Full-viewport overlay: Next menahan posisi scroll selama navigasi tertunda, sehingga
- * tanpa overlay pengguna dari posisi bawah hanya melihat skeleton sepotong + footer.
+ * Full-viewport overlay: Next holds the scroll position during pending navigation, so
+ * without the overlay users starting from below only see a partial skeleton + footer.
  */
 export default function SiteLoading() {
   return (

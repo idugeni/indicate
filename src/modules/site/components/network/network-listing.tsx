@@ -199,7 +199,7 @@ export {
 export type { CleanBlueChannelProps };
 
 /**
- * Dispatcher listing tenant antar-template: route tetap, cabang render bertambah via registry.
+ * Cross-template tenant listing dispatcher: fixed routes, render branches grow via the registry.
  */
 export function ListingPage({ site, title, description, path = '/', indexable = true }: ListingProps) {
   switch (normalizeTemplateId(site.settings.colors.templateId)) {
@@ -229,7 +229,7 @@ export function ListingPage({ site, title, description, path = '/', indexable = 
 }
 
 /**
- * Dispatcher loader tenant antar-template: titik yang sudah memegang template aktif merender cincin warnanya sendiri.
+ * Cross-template tenant loader dispatcher: the slot already holding the active template renders its own colored ring.
  */
 export function TemplateLoader({ templateId }: { readonly templateId: unknown }) {
   switch (normalizeTemplateId(templateId)) {
@@ -259,7 +259,7 @@ export function TemplateLoader({ templateId }: { readonly templateId: unknown })
 }
 
 /**
- * Dispatcher artikel tenant antar-template.
+ * Cross-template tenant article dispatcher.
  */
 export function ArticlePage({
   site,
@@ -310,7 +310,7 @@ export interface LegalPageProps {
 }
 
 /**
- * Dispatcher dokumen legal antar-template: route tetap, cabang render bertambah via registry.
+ * Cross-template tenant legal document dispatcher: fixed routes, render branches grow via the registry.
  */
 export function LegalPage(props: LegalPageProps) {
   switch (normalizeTemplateId(props.site.settings.colors.templateId)) {
@@ -347,7 +347,7 @@ export interface AboutPageProps {
 }
 
 /**
- * Dispatcher profil portal antar-template: route tetap, cabang render bertambah via registry.
+ * Cross-template tenant portal profile dispatcher: fixed routes, render branches grow via the registry.
  */
 export function AboutPage(props: AboutPageProps) {
   switch (normalizeTemplateId(props.site.settings.colors.templateId)) {
@@ -384,7 +384,7 @@ export interface ContactPageProps {
 }
 
 /**
- * Dispatcher kontak tenant antar-template: route tetap, cabang render bertambah via registry.
+ * Cross-template tenant contact dispatcher: fixed routes, render branches grow via the registry.
  */
 export function ContactPage(props: ContactPageProps) {
   switch (normalizeTemplateId(props.site.settings.colors.templateId)) {
@@ -419,7 +419,7 @@ export interface SearchPageProps {
 }
 
 /**
- * Dispatcher pencarian tenant antar-template: route tetap, cabang render bertambah via registry.
+ * Cross-template tenant search dispatcher: fixed routes, render branches grow via the registry.
  */
 export function SearchPage(props: SearchPageProps) {
   switch (normalizeTemplateId(props.site.settings.colors.templateId)) {
@@ -454,7 +454,7 @@ export interface ReportPageProps {
 }
 
 /**
- * Dispatcher formulir laporan antar-template: route tetap, cabang render bertambah via registry.
+ * Cross-template tenant report form dispatcher: fixed routes, render branches grow via the registry.
  */
 export function ReportPage(props: ReportPageProps) {
   switch (normalizeTemplateId(props.site.settings.colors.templateId)) {
@@ -484,7 +484,7 @@ export function ReportPage(props: ReportPageProps) {
 }
 
 /**
- * Dispatcher 404 tenant antar-template: route tetap, cabang render bertambah via registry.
+ * Cross-template tenant 404 dispatcher: fixed routes, render branches grow via the registry.
  */
 export function NotFoundPage({ site }: { readonly site: NetworkSiteData }) {
   switch (normalizeTemplateId(site.settings.colors.templateId)) {
@@ -523,8 +523,8 @@ export interface ChannelPageProps {
 }
 
 /**
- * Dispatcher halaman kanal (kategori/tag) antar-template: pita identitas +
- * grid kartu, tanpa hero/ticker beranda.
+ * Cross-template channel page (category/tag) dispatcher: identity ribbon plus
+ * card grid, no homepage hero/ticker.
  */
 export function ChannelPage(props: ChannelPageProps) {
   switch (normalizeTemplateId(props.site.settings.colors.templateId)) {

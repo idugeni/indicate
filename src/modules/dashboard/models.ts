@@ -47,7 +47,7 @@ export interface NavigationItem {
   readonly path: string;
 }
 
-/** Robots per-site mengikuti enum `seo_robots_directive` di database. */
+/** Per-site robots follows the `seo_robots_directive` enum in the database. */
 export type SeoRobotsDirective = 'index,follow' | 'noindex,nofollow';
 
 export interface SiteSettingsRecord extends VersionedRecord {
@@ -77,9 +77,9 @@ export interface RoleRecord extends VersionedRecord {
 }
 
 /**
- * Bentuk serial JSON peran untuk respons API. Domain memakai `Set`,
- * yang hilang saat `NextResponse.json` — DTO ini membawa array agar
- * UI bisa membaca dan mengirim kembali daftar permission apa adanya.
+ * JSON-serializable role shape for API responses. The domain uses `Set`,
+ * which is lost under `NextResponse.json` — this DTO carries an array so the
+ * UI can read and round-trip the permission list as-is.
  */
 export interface RoleListItem extends Omit<RoleRecord, 'permissions'> {
   readonly permissions: readonly string[];
@@ -91,7 +91,7 @@ export interface MembershipRecord extends VersionedRecord {
   readonly avatarUrl: string | null;
   readonly roleId: string;
   readonly status: LifecycleStatus;
-  /** Kunci region; NULL berarti semua region. */
+  /** Region key; NULL means all regions. */
   readonly regionId: string | null;
 }
 
@@ -212,7 +212,7 @@ export interface AuditRecord {
   readonly occurredAt: string;
 }
 
-/** Baris bukti retensi/sweep untuk view audit (nama ramah dibentuk di repo). */
+/** Retention/sweep evidence row for the audit view (friendly name built in the repo). */
 export interface RetentionRunRecord {
   readonly id: string;
   readonly organizationId: string | null;
@@ -224,7 +224,7 @@ export interface RetentionRunRecord {
   readonly finishedAt: string;
 }
 
-/** Baris upaya aktivasi domain untuk view konfigurasi. */
+/** Domain activation attempt row for the configuration view. */
 export interface ActivationAttemptRecord {
   readonly id: string;
   readonly organizationId: string;
@@ -290,7 +290,7 @@ export interface EditorialSummaryRegion {
   readonly status: LifecycleStatus;
 }
 
-/** Ringkasan editorial tanpa body untuk jalur baca ringan (bot, pemilih); mutasi tetap memakai state penuh. */
+/** Bodyless editorial summary for lightweight read paths (bot, picker); mutations still use the full state. */
 export interface EditorialSummaries {
   readonly articles: readonly EditorialSummaryArticle[];
   readonly sites: readonly EditorialSummarySite[];
@@ -317,7 +317,7 @@ export interface DashboardProjection {
   readonly successfulSiteOutcomes: number;
   readonly failedSiteOutcomes: number;
   readonly activeMedia: number;
-  /** Kunci region aktor; NULL berarti semua region. */
+  /** Actor region key; NULL means all regions. */
   readonly regionScope: { readonly id: string; readonly name: string } | null;
 }
 
@@ -326,7 +326,7 @@ export interface AnalyticsPoint {
   readonly count: number;
 }
 
-/** Satu ember harian deret tugas; `hari` format `YYYY-MM-DD` (UTC). */
+/** One daily task-series bucket; `hari` is `YYYY-MM-DD` (UTC). */
 export interface TugasHarian {
   readonly hari: string;
   readonly diterbitkan: number;
@@ -334,7 +334,7 @@ export interface TugasHarian {
   readonly antre: number;
 }
 
-/** Satu ember harian deret penyaluran situs; `hari` format `YYYY-MM-DD` (UTC). */
+/** One daily site-delivery-series bucket; `hari` is `YYYY-MM-DD` (UTC). */
 export interface PenyaluranHarian {
   readonly hari: string;
   readonly diterbitkan: number;
@@ -342,28 +342,28 @@ export interface PenyaluranHarian {
   readonly antre: number;
 }
 
-/** Satu ember harian tayangan; `views` jumlah `view_count` penyaluran hari itu. */
+/** One daily views bucket; `views` sums that day's delivery `view_count`. */
 export interface ViewsHarian {
   readonly hari: string;
   readonly penyaluran: number;
   readonly views: number;
 }
 
-/** Satu titik volume plus tayangan untuk satu dimensi (`key` = ID, label lewat peta label). */
+/** One volume-plus-views point for a single dimension (`key` = ID, label via label map). */
 export interface ViewsPoint {
   readonly key: string;
   readonly count: number;
   readonly views: number;
 }
 
-/** Satu sel peta panas; `hari` 0=Senin..6=Minggu (Asia/Jakarta), `jam` 0..23. */
+/** One heat-map cell; `hari` 0=Monday..6=Sunday (Asia/Jakarta), `jam` 0..23. */
 export interface AktivitasJam {
   readonly hari: number;
   readonly jam: number;
   readonly jumlah: number;
 }
 
-/** Satu peristiwa terbaru untuk lini masa operasional. */
+/** One recent event for the operations timeline. */
 export interface AktivitasTerbaru {
   readonly id: string;
   readonly label: string;
@@ -371,7 +371,7 @@ export interface AktivitasTerbaru {
   readonly at: string;
 }
 
-/** Satu sisi arus penerbit → situs → hasil untuk diagram Sankey. */
+/** One publisher → site → outcome flow leg for the Sankey diagram. */
 export interface ArusPenerbit {
   readonly penerbit: string;
   readonly situs: string;
@@ -379,7 +379,7 @@ export interface ArusPenerbit {
   readonly jumlah: number;
 }
 
-/** Jendela kalender deret (`YYYY-MM-DD`, inklusif, maks 90 hari). */
+/** Series calendar window (`YYYY-MM-DD`, inclusive, max 90 days). */
 export interface JendelaDeret {
   readonly awal: string;
   readonly akhir: string;
@@ -420,7 +420,7 @@ export interface NetworkPublisherClaim {
   readonly claimScopes: readonly string[];
 }
 
-/** Ringkasan read-only satu baris operasional untuk view `operations` (maks 100 per koleksi, desc). */
+/** One-row read-only operations summary for the `operations` view (max 100 per collection, desc). */
 export interface InvalidationTaskSummary {  readonly id: string;
   readonly organizationId: string;
   readonly name: string;
@@ -513,7 +513,7 @@ export interface OperationsProjection {
   readonly webhookReplayClaims: readonly WebhookReplayClaimSummary[];
 }
 
-/** Undangan keanggotaan org aktor (tokenHash tidak pernah keluar DB). */
+/** Actor-org membership invitation (tokenHash never leaves the DB). */
 export interface InvitationSummary {
   readonly id: string;
   readonly organizationId: string;

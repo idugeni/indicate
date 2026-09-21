@@ -18,33 +18,33 @@ export interface CachePurgeTarget {
 
 export interface DashboardRepository {
   read(actor: AuthorizedTenantActorContext, permission: string): Promise<DashboardTenantState>;
-  /** Ringkasan editorial tanpa body (judul + situs + region dalam scope); tanpa memuat state tenan penuh. */
+  /** Bodyless editorial summary (title + sites + in-scope regions); without loading the full tenant state. */
   listEditorialSummaries(actor: AuthorizedTenantActorContext, permission: string): Promise<EditorialSummaries>;
-  /** Cari artikel berdasar judul/isi di sisi database (desc, dibatasi); tanpa memuat state tenan penuh. */
+  /** Search articles by title/body on the database side (desc, bounded); without loading the full tenant state. */
   searchArticleSummaries(actor: AuthorizedTenantActorContext, permission: string, keyword: string, limit: number): Promise<readonly EditorialSummaryArticle[]>;
-  /** Ringkasan hitung untuk view dashboard; tanpa memuat state tenan penuh. */
+  /** Count summary for the dashboard view; without loading the full tenant state. */
   dashboardCounts(actor: AuthorizedTenantActorContext, permission: string): Promise<DashboardProjection>;
-  /** Agregasi analitik (group-by) untuk rentang tanggal; tanpa memuat state tenan penuh. */
+  /** Analytics aggregation (group-by) for a date range; without loading the full tenant state. */
   analyticsSummary(
     actor: AuthorizedTenantActorContext,
     permission: string,
     filter: { readonly from?: string | undefined; readonly to?: string | undefined },
   ): Promise<AnalyticsProjection>;
-  /** Log audit terbaru (desc, dibatasi) sesuai filter; tanpa memuat state tenan penuh. */
+  /** Latest audit log (desc, bounded) matching the filter; without loading the full tenant state. */
   auditLogPage(actor: AuthorizedTenantActorContext, permission: string, filter: AuditFilter): Promise<readonly AuditRecord[]>;
-  /** Bukti runs retensi/sweep (global + org); tanpa memuat state tenan penuh. */
+  /** Retention/sweep run evidence (global + org); without loading the full tenant state. */
   retentionRuns(actor: AuthorizedTenantActorContext, permission: string): Promise<readonly RetentionRunRecord[]>;
-  /** Upaya aktivasi domain (desc, dibatasi); tanpa memuat state tenan penuh. */
+  /** Domain activation attempts (desc, bounded); without loading the full tenant state. */
   activationAttempts(actor: AuthorizedTenantActorContext, permission: string): Promise<readonly ActivationAttemptRecord[]>;
-  /** Membuat undangan anggota sekali pakai untuk org aktor; tanpa memuat state tenan penuh. */
+  /** Create a single-use member invitation for the actor org; without loading the full tenant state. */
   createInvitation(actor: AuthorizedTenantActorContext, permission: string, input: { readonly email: string; readonly roleId: string; readonly tokenHash: string }): Promise<{ readonly id: string }>;
-  /** Daftar undangan org aktor (maks 100, terbaru dulu); tanpa memuat state tenan penuh. */
+  /** List the actor org's invitations (max 100, newest first); without loading the full tenant state. */
   listInvitations(actor: AuthorizedTenantActorContext, permission: string): Promise<readonly InvitationSummary[]>;
-  /** Membatalkan undangan pending milik org aktor. */
+  /** Revoke a pending invitation owned by the actor org. */
   revokeInvitation(actor: AuthorizedTenantActorContext, permission: string, input: { readonly id: string }): Promise<{ readonly id: string }>;
-  /** Ringkasan operasional read-only (desc, dibatasi); tanpa memuat state tenan penuh. */
+  /** Read-only operations summary (desc, bounded); without loading the full tenant state. */
   operationsSummary(actor: AuthorizedTenantActorContext, permission: string): Promise<OperationsProjection>;
-  /** Antre purge cache manual per site (null = semua dalam scope); langsung dieksekusi dispatcher. */
+  /** Enqueue a manual cache purge per site (null = all in scope); executed directly by the dispatcher. */
   enqueueCachePurge(actor: AuthorizedTenantActorContext, permission: string, siteId: string | null): Promise<readonly CachePurgeTarget[]>;
   recordDenied(actor: AuthorizedTenantActorContext, action: string, targetType: string): Promise<void>;
   execute<T>(

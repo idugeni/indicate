@@ -19,8 +19,8 @@ async function handleGET() {
 }
 
 /**
- * Sajikan news sitemap per host.
+ * Serve the per-host news sitemap.
  *
- * @remarks Tetap dinamis per request karena klasifikasi per-host + DB; pengganti force-dynamic.
+ * @remarks Stays dynamic per request because of per-host classification + DB; replacement for force-dynamic.
  */
 export const GET = withApiAccess('GET /news-sitemap.xml', handleGET, { accessLog: 'errors-only' });

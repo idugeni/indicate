@@ -29,7 +29,7 @@ export type TelegramClaim =
 const safeEqual = (left: string, right: string): boolean => { const a = Buffer.from(left); const b = Buffer.from(right); return a.length === b.length && timingSafeEqual(a, b); };
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 
-/** Batas ID pesan dasbor yang diingat per percakapan untuk bersih-bersih /start. */
+/** Dashboard message ID limit remembered per conversation for /start cleanup. */
 const TRACKED_MESSAGE_LIMIT = 20;
 const ENTRY_CAPTION = 'Selamat datang di Bot Resmi Indicate.\n\nKelola redaksi lewat Mini App — tulis artikel, atur situs tayang, dan terbitkan dari satu tempat.';
 const STOP_REPLY = 'Tautan bot dihentikan untuk chat ini. Kirim /start kapan saja untuk mulai lagi.';

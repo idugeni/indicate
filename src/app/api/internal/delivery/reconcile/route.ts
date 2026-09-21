@@ -53,9 +53,9 @@ async function handleGET(request: Request) {
 
 export const POST = withApiAccess('POST /api/internal/delivery/reconcile', handlePOST);
 /**
- * Menjalankan rekonsiliasi penyaluran.
+ * Run delivery reconciliation.
  *
- * @remarks Vercel Cron hanya mengirim GET (dengan header Authorization Bearer CRON_SECRET otomatis bila env CRON_SECRET tersedia); POST dipertahankan untuk pemicu eksternal.
+ * @remarks Vercel Cron only sends GET (with an automatic Authorization Bearer CRON_SECRET header when the CRON_SECRET env is available); POST is kept for external triggers.
  */
 export const GET = withApiAccess('GET /api/internal/delivery/reconcile', handleGET);
 

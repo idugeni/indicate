@@ -199,7 +199,7 @@ export interface BootstrapConfig {
     readonly vercelApiToken: SecretString;
     readonly r2AccessKeyId: SecretString;
     readonly r2SecretAccessKey: SecretString;
-    /** WORM audit bucket (opsional; export audit mati bila null). Kredensial audit scoped terpisah bila diisi. */
+    /** WORM audit bucket (optional; audit export off when null). Separately scoped audit credentials when set. */
     readonly r2AuditBucketName: string | null;
     readonly r2AuditAccessKeyId: SecretString | null;
     readonly r2AuditSecretAccessKey: SecretString | null;
@@ -207,12 +207,12 @@ export interface BootstrapConfig {
     readonly upstashRestToken: SecretString;
     readonly telegramBotToken: SecretString;
     readonly telegramWebhookSecret: SecretString;
-    /** Telegram user ID pemilik Mini App; kosong berarti Mini App nonaktif. */
+    /** Telegram user IDs owning the Mini App; empty means the Mini App is disabled. */
     readonly telegramOwnerIds: readonly string[];
-    /** Pasangan kredensial Resend; null bila email transaksional belum dikonfigurasi. */
+    /** Resend credential pair; null when transactional email is unconfigured. */
     readonly resendApiKey: SecretString | null;
     readonly resendDefaultFrom: string | null;
-    /** Secret penandatangan webhook Resend (Svix); null bila endpoint nonaktif. */
+    /** Resend webhook signing secret (Svix); null when the endpoint is disabled. */
     readonly resendWebhookSecret: SecretString | null;
     readonly genericWebhookSecret: SecretString;
     readonly cronSecret: SecretString;
@@ -280,7 +280,7 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
  *
  * @param environment - Raw environment map to validate.
  * @returns Validated config or stable issues.
- * @remarks No PostgreSQL/provider init; failures expose only allowlisted paths plus stable categories. Single production environment — authority is NODE_ENV (`next start` forces it to production). Namespace milik Vercel (VERCEL_ENV, VERCEL_URL, VERCEL_REGION, ...) disuntik platform saat build/run dan bukan milik kontrak konfigurasi ini. Kunci fungsional VERCEL_API_TOKEN tetap wajib via skema, jadi typo di sana tetap gagal validasi.
+ * @remarks No PostgreSQL/provider init; failures expose only allowlisted paths plus stable categories. Single production environment — authority is NODE_ENV (`next start` forces it to production). Vercel-owned namespace (VERCEL_ENV, VERCEL_URL, VERCEL_REGION, ...) injected by the platform at build/run time and not part of this config contract. The functional VERCEL_API_TOKEN key stays required via schema, so a typo there still fails validation.
  */
 export function validateBootstrapConfig(environment: Record<string, string | undefined>): BootstrapConfigResult {
   const postCutover = environment.NODE_ENV === 'production';

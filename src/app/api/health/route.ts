@@ -25,8 +25,8 @@ async function handleGET() {
 }
 
 /**
- * Mengembalikan status layanan.
+ * Return the service status.
  *
- * @remarks Health membaca snapshot konfigurasi per request: tetap dinamis.
+ * @remarks Health reads the config snapshot per request: stays dynamic.
  */
 export const GET = withApiAccess('GET /api/health', handleGET);

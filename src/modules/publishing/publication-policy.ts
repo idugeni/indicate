@@ -96,11 +96,11 @@ function randomBelow(bound: number): number {
 }
 
 /**
- * Menentukan baseline tayang perdana suatu target portal.
+ * Determine the first-publish baseline for a portal target.
  *
- * @param viewCount - Jumlah tayang tersimpan saat ini.
- * @param hasPublishedBefore - True bila relasi pernah mencapai `published`.
- * @returns Bilangan bertingkat 1.000-12.000 pada publikasi perdana; null bila tidak perlu seeding.
+ * @param viewCount - Currently stored view count.
+ * @param hasPublishedBefore - True when the relation has ever reached `published`.
+ * @returns Tiered number 1,000-12,000 on first publication; null when no seeding is needed.
  */
 export function seedInitialViewCount(viewCount: number, hasPublishedBefore: boolean): number | null {
   if (viewCount !== 0 || hasPublishedBefore) return null;

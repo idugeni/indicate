@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   );
 }
 
-/** Profil portal tenant dari data situsnya sendiri. */
+/** Tenant portal profile from its own site data. */
 export default async function AboutPageRoute() {
   const site = await resolveNetworkSite({}, '/tentang');
   const siteName = site.settings.seoSiteName ?? site.settings.name;

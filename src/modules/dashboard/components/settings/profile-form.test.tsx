@@ -8,7 +8,7 @@ vi.mock('next/link', () => ({
   default: ({ href, children }: { href: string; children: string }) => <a href={href}>{children}</a>,
 }));
 
-const PROFIL = {
+const PROFILE = {
   displayName: 'Redaktur Uji',
   email: 'redaktur@contoh.id',
   bio: 'Bio awal',
@@ -18,12 +18,12 @@ const PROFIL = {
   oauthAvatarUrl: null,
 };
 
-function stubProfil(timpa: unknown = {}) {
+function stubProfile(overrides: unknown = {}) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
       if (init?.method === 'POST') return { ok: true, json: async () => ({}) };
-      return { ok: true, json: async () => ({ ...PROFIL, ...(timpa as object) }) };
+      return { ok: true, json: async () => ({ ...PROFILE, ...(overrides as object) }) };
     }),
   );
 }
@@ -35,7 +35,7 @@ afterEach(() => {
 
 describe('Formulir profil', () => {
   it('menampilkan nama, email, dan tautan ganti sandi', async () => {
-    stubProfil();
+    stubProfile();
     render(<ProfileForm />);
     expect(await screen.findByText('Redaktur Uji')).toBeDefined();
     expect(screen.getByText('redaktur@contoh.id')).toBeDefined();
@@ -46,7 +46,7 @@ describe('Formulir profil', () => {
   it('menyimpan bio lewat API dan menampilkan pemberitahuan', async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (init?.method === 'POST') return { ok: true, json: async () => ({}) };
-      return { ok: true, json: async () => PROFIL };
+      return { ok: true, json: async () => PROFILE };
     });
     vi.stubGlobal('fetch', fetchMock);
     render(<ProfileForm />);
@@ -63,7 +63,7 @@ describe('Formulir profil', () => {
   });
 
   it('menampilkan pemilih berkas saat mode unggah dipilih', async () => {
-    stubProfil();
+    stubProfile();
     const { container } = render(<ProfileForm />);
     await screen.findByText('Redaktur Uji');
     fireEvent.click(screen.getByRole('radio', { name: 'Unggah baru' }));

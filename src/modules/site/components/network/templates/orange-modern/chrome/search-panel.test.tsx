@@ -5,10 +5,10 @@ import { createRef, useRef, useState } from 'react';
 
 import { OrangeModernSearchPanel } from '@/modules/site/components/network/templates/orange-modern/chrome/search-panel';
 
-const dorong = vi.hoisted(() => vi.fn());
+const pushMock = vi.hoisted(() => vi.fn());
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: dorong }),
+  useRouter: () => ({ push: pushMock }),
 }));
 
 afterEach(() => {
@@ -16,44 +16,44 @@ afterEach(() => {
 });
 
 beforeEach(() => {
-  dorong.mockClear();
-  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((tambat) => {
-    tambat(0);
+  pushMock.mockClear();
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((frame) => {
+    frame(0);
     return 0;
   });
 });
 
-function PanelUji({ tutup }: { readonly tutup: () => void }) {
-  const [nilai, setNilai] = useState('');
-  const rujukan = useRef<HTMLInputElement>(null);
+function TestPanel({ onClose }: { readonly onClose: () => void }) {
+  const [value, setValue] = useState('');
+  const fieldRef = useRef<HTMLInputElement>(null);
   return (
     <OrangeModernSearchPanel
-      query={nilai}
-      onQueryChange={setNilai}
-      onClose={tutup}
-      inputRef={rujukan}
+      query={value}
+      onQueryChange={setValue}
+      onClose={onClose}
+      inputRef={fieldRef}
       onFocusReturn={vi.fn()}
     />
   );
 }
 
-function rujukanKosong() {
+function emptyRef() {
   return createRef<HTMLInputElement>();
 }
 
 describe('OrangeModernSearchPanel', () => {
   it('mengetik memperbarui nilai', () => {
-    render(<PanelUji tutup={vi.fn()} />);
-    const masukan = screen.getByLabelText('Cari berita');
-    fireEvent.change(masukan, { target: { value: 'banjir' } });
-    expect((masukan as HTMLInputElement).value).toBe('banjir');
+    render(<TestPanel onClose={vi.fn()} />);
+    const searchInput = screen.getByLabelText('Cari berita');
+    fireEvent.change(searchInput, { target: { value: 'banjir' } });
+    expect((searchInput as HTMLInputElement).value).toBe('banjir');
   });
 
   it('submit mengarahkan dengan query', () => {
-    render(<PanelUji tutup={vi.fn()} />);
+    render(<TestPanel onClose={vi.fn()} />);
     fireEvent.change(screen.getByLabelText('Cari berita'), { target: { value: 'banjir besar' } });
     fireEvent.submit(screen.getByRole('search'));
-    expect(dorong).toHaveBeenCalledWith('/search?q=banjir%20besar');
+    expect(pushMock).toHaveBeenCalledWith('/search?q=banjir%20besar');
   });
 
   it('submit kosong mengarah ke pencarian umum', () => {
@@ -62,20 +62,20 @@ describe('OrangeModernSearchPanel', () => {
         query="   "
         onQueryChange={vi.fn()}
         onClose={vi.fn()}
-        inputRef={rujukanKosong()}
+        inputRef={emptyRef()}
         onFocusReturn={vi.fn()}
       />,
     );
     fireEvent.submit(screen.getByRole('search'));
-    expect(dorong).toHaveBeenCalledWith('/search');
+    expect(pushMock).toHaveBeenCalledWith('/search');
   });
 
   it('menutup lewat Escape dan tombol tutup', () => {
-    const tutup = vi.fn();
-    render(<PanelUji tutup={tutup} />);
+    const onClose = vi.fn();
+    render(<TestPanel onClose={onClose} />);
     fireEvent.keyDown(screen.getByLabelText('Cari berita'), { key: 'Escape' });
-    expect(tutup).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: 'Tutup pencarian' }));
-    expect(tutup).toHaveBeenCalledTimes(2);
+    expect(onClose).toHaveBeenCalledTimes(2);
   });
 });

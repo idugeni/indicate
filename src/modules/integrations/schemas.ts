@@ -27,7 +27,7 @@ export const telegramMappingCreateSchema = z.object({
   consentIpHash: z.string().regex(/^[0-9a-f]{64}$/).nullable().default(null),
 }).strict();
 
-/** Versi teks persetujuan penautan Telegram (PENDING A6 consent trail). */
+/** Telegram link consent text version (PENDING A6 consent trail). */
 export const TELEGRAM_LINK_CONSENT_VERSION = 'telegram-link/1';
 export const telegramMappingUpdateSchema = z.object({
   mappingId: id,

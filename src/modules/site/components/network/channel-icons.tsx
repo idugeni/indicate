@@ -58,10 +58,10 @@ const ICONS: Readonly<Record<string, ComponentType<{ readonly className?: string
 };
 
 /**
- * Ikon kanal kontak bersama untuk semua template.
+ * Shared contact channel icons for all templates.
  *
- * @param name - Kunci kanal (case-insensitive).
- * @returns Komponen ikon; `Rss` untuk sosmed umum, `Link2` untuk lainnya.
+ * @param name - Channel key (case-insensitive).
+ * @returns Icon component; `Rss` for generic social, `Link2` for everything else.
  */
 export function channelIcon(name: string): ComponentType<{ readonly className?: string }> {
   const hit = ICONS[name.toLowerCase()];

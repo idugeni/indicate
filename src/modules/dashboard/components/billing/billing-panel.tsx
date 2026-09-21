@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
-import { formatTanggal } from '@/modules/dashboard/components/shared/dashboard-dates';
+import { formatDate } from '@/modules/dashboard/components/shared/dashboard-dates';
 
 interface InvoiceRow {
   readonly id: string;
@@ -29,7 +29,6 @@ interface InvoiceRow {
 }
 
 const formatIdr = (value: number) => `Rp${new Intl.NumberFormat('id-ID').format(value)}`;
-const formatDate = formatTanggal;
 
 async function api(path: string, init?: RequestInit) {
   const response = await fetch(path, { cache: 'no-store', ...init });
@@ -47,9 +46,9 @@ function stateLabel(state: string | null): string {
 }
 
 /**
- * Tampilkan status langganan dan faktur organisasi.
+ * Render the organization subscription status and invoices.
  *
- * @remarks Defer reload() to a microtask so the setState in effect stays async. Ambil versi berjalan agar update optimistis lolos; tanpa baris langganan, buat baru.
+ * @remarks Defer reload() to a microtask so the setState in effect stays async. Read the running version so optimistic updates pass; without a subscription row, create a new one.
  */
 export function BillingPanel({
   organizationId,

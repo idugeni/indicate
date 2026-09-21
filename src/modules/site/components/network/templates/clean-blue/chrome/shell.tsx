@@ -8,9 +8,9 @@ import { CleanBlueFooter } from '@/modules/site/components/network/templates/cle
 import { CleanBlueBackToTop } from '@/modules/site/components/network/templates/clean-blue/chrome/back-to-top';
 
 /**
- * Cangkang tunggal template: skip-link + header + main + footer + back-to-top
- * SELALU sama di semua halaman (listing, artikel, search, lapor, 404).
- * Satu-satunya cara merakit halaman clean-blue — perubahan chrome cukup di sini.
+ * Single template shell: skip-link + header + main + footer + back-to-top,
+ * ALWAYS identical on every page (listing, article, search, report, 404).
+ * The only way to assemble a clean-blue page — chrome changes belong here.
  */
 export function CleanBlueShell({
   site,

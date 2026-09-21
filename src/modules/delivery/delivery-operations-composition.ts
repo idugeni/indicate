@@ -12,7 +12,7 @@ import { VercelExactDomainAdapter } from '@/integrations/vercel/exact-domain-ada
 /**
  * Compose delivery operations from the server runtime context.
  *
- * @remarks RLS tenant memaksa konteks org; transaksi membuat set_config lokal (auto-revert saat commit) sehingga pool bersama tidak bocor antar-tenant. Site regional (<slug-region>.<apex>) dimiliki zone domain induk: cocokkan sufiks, pilih induk paling spesifik.
+ * @remarks Tenant RLS forces the org context; the transaction sets local set_config (auto-reverts on commit) so the shared pool never leaks across tenants. Regional sites (<slug-region>.<apex>) belong to the parent domain zone: match the suffix, pick the most specific parent.
  */
 export async function deliveryOperationsComposition() {
   const context = await getServerRuntimeContext();

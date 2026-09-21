@@ -214,7 +214,7 @@ async function handleGET(request: Request) {
 /**
  * Flush buffered pageview counts into article view totals plus daily buckets.
  *
- * @remarks Sesi pooled membawa GUC tenant/region request sebelumnya: set_tenant_context menolak org berbeda (conflict) dan region basi menyaring baris keluar, keduanya diam-diam menggugurkan flush. RESET dulu per org di dalam satu transaksi (satu koneksi terjepit), lalu tegakkan konteks flush yang bersih. Tiap chunk menulis dua tabel atomik: view_count lifetime dan upsert article_site_view_days hari ini (hanya baris yang RETURNING, orphan tak masuk bucket harian). Restore INCRBY aman dari duplikasi parsial karena transaksi per org atomik: throw di mana pun membatalkan seluruh chunk org itu sehingga kembalian tepat sebesar yang di-pop; kunci restore diberi EXPIRE 7 hari.
+ * @remarks Pooled sessions carry the previous request's tenant/region GUCs: set_tenant_context rejects a different org (conflict) and a stale region filters rows out, both silently dropping the flush. RESET first per org inside one transaction (one pinned connection), then enforce a clean flush context. Each chunk writes two tables atomically: lifetime view_count and today's article_site_view_days upsert (only RETURNING rows, orphans skip the daily bucket). INCRBY restore is safe from partial duplication because the per-org transaction is atomic: a throw anywhere rolls back that org's whole chunk so the refund equals exactly what was popped; the restore key gets a 7-day EXPIRE.
  */
 export const GET = withApiAccess('GET /api/internal/maintenance/view-flush', handleGET);
 

@@ -51,7 +51,7 @@ export class PublicationWorker {
       await this.notifier.notifyJobTerminal({
         organizationId, jobId, articleTitle: context.articleTitle, finishedAt: status.job.finalizedAt ?? status.job.updatedAt, published, failed,
       });
-    } catch { /* notifikasi best-effort: kegagalan antrean tidak menggagalkan worker */ }
+    } catch { /* best-effort notification: queue failures do not fail the worker */ }
   }
 
   private async returnQueueClaim(queueClaim: QueueClaim, dueAt: Date): Promise<void> {

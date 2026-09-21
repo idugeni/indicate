@@ -22,7 +22,7 @@ function userActor(actor: ActorContext): { readonly id: string; readonly verifie
 export class DrizzleBillingRepository implements BillingRepository {
   constructor(private readonly database: Database) {}
 
-  /** Tanpa tenant: app.actor_id untuk cek platform. */
+  /** Without a tenant: app.actor_id for the platform check. */
   private async billingContext(tx: Transaction, actor: ActorContext): Promise<void> {
     if (actor.actorType !== 'user') throw new BillingAccessDeniedError();
     await tx.execute(sql`SELECT set_config('app.actor_id', ${actor.actorId}, true)`);

@@ -48,12 +48,12 @@ export interface ArticleListItem {
   readonly authorDisplayName: string | null;
   readonly publisherName: string | null;
   readonly attribution: string;
-  /** Logo publisher dari `contacts.logoUrl`; null bila belum disematkan (SEO memakai logo situs). */
+  /** Publisher logo from `contacts.logoUrl`; null when not yet embedded (SEO uses the site logo). */
   readonly publisherLogoUrl: string | null;
   readonly publisherCity: string | null;
-  /** Bio penerbit: `contacts.bio` bila diisi, bila tidak pakai `DEFAULT_PUBLISHER_BIO`. */
+  /** Publisher bio: `contacts.bio` when filled, otherwise `DEFAULT_PUBLISHER_BIO`. */
   readonly publisherBio: string | null;
-  /** Sosmed milik penerbit dari `contacts`; tanpa fallback default perusahaan. */
+  /** Publisher-owned social links from `contacts`; no company-default fallback. */
   readonly publisherSocials: Readonly<Record<string, string>>;
   readonly authorBio: string | null;
   readonly authorAvatarUrl: string | null;
@@ -66,7 +66,7 @@ export interface ArticleListItem {
   readonly viewCount: number;
   readonly imageUrl: string | null;
   readonly thumbnailUrl: string | null;
-  /** Tipe MIME gambar utama bila dari media R2; null untuk hotlink eksternal. */
+  /** Main image MIME type when from R2 media; null for external hotlinks. */
   readonly imageMediaType: string | null;
   readonly imageWidth: number | null;
   readonly imageHeight: number | null;
@@ -74,21 +74,21 @@ export interface ArticleListItem {
 
 export interface NetworkArticle extends ArticleListItem {
   readonly body: string;
-  /** Galeri milik artikel (media aktif bertipe gambar, urut waktu unggah); kosong bila tak ada. */
+  /** Article-owned gallery (active image-type media, ordered by upload time); empty when none. */
   readonly gallery: readonly ArticleGalleryImage[];
 }
 
 /**
- * Guard item daftar ke artikel detail: true bila baris membawa body + galeri penuh.
+ * Guard a list item into a detail article: true when the row carries a full body + gallery.
  *
- * @param item - Item artikel dari proyeksi daftar.
- * @returns True bila item adalah artikel detail penuh.
+ * @param item - Article item from the list projection.
+ * @returns True when the item is a full detail article.
  */
 export function isNetworkArticle(item: ArticleListItem): item is NetworkArticle {
   return 'body' in item && typeof (item as { readonly body?: unknown }).body === 'string';
 }
 
-/** Baris feed RSS: metadata + body penuh tanpa relasi berat. */
+/** RSS feed row: metadata + full body without heavy relations. */
 export interface FeedArticle {
   readonly id: string;
   readonly slug: string;
@@ -107,11 +107,11 @@ export interface ArticleGalleryImage {
 }
 
 /**
- * Bio humas general default untuk seluruh penerbit.
+ * Default general PR bio for all publishers.
  *
  * @remarks
- * Dipakai bila `contacts.bio` penerbit kosong; override per penerbit tetap
- * dimungkinkan lewat `contacts.bio`.
+ * Used when a publisher's `contacts.bio` is empty; per-publisher overrides
+ * remain possible via `contacts.bio`.
  */
 export const DEFAULT_PUBLISHER_BIO =
   'Garda depan pelayanan informasi publik yang menyajikan kabar kegiatan, program kerja, capaian kinerja, dan pengumuman secara akurat, cepat, dan terverifikasi. Setiap materi disusun, ditelaah, dan disunting tim kehumasan sebelum diterbitkan sebagai wujud komitmen terhadap transparansi, akuntabilitas, dan kepercayaan masyarakat. Kritik, saran, serta kebutuhan klarifikasi dilayani melalui kanal kontak resmi yang tersedia.';

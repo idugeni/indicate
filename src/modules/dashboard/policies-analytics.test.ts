@@ -80,60 +80,60 @@ const STATE: DashboardTenantState = {
 
 describe('Deret analitik', () => {
   it('membangun jendela 90 hari dan ember harian', () => {
-    const hasil = buildAnalytics(STATE, {}, '2026-09-18');
-    expect(hasil.jendela).toEqual({ awal: '2026-06-21', akhir: '2026-09-18' });
-    expect(hasil.tugasHarian).toHaveLength(90);
-    expect(hasil.tugasHarian.find((titik) => titik.hari === '2026-09-16')).toEqual({
+    const result = buildAnalytics(STATE, {}, '2026-09-18');
+    expect(result.jendela).toEqual({ awal: '2026-06-21', akhir: '2026-09-18' });
+    expect(result.tugasHarian).toHaveLength(90);
+    expect(result.tugasHarian.find((point) => point.hari === '2026-09-16')).toEqual({
       hari: '2026-09-16', diterbitkan: 1, gagal: 0, antre: 0,
     });
-    expect(hasil.tugasHarian.find((titik) => titik.hari === '2026-09-18')).toEqual({
+    expect(result.tugasHarian.find((point) => point.hari === '2026-09-18')).toEqual({
       hari: '2026-09-18', diterbitkan: 0, gagal: 0, antre: 1,
     });
   });
 
   it('mengelompokkan status artikel dan jam WIB', () => {
-    const hasil = buildAnalytics(STATE, {}, '2026-09-18');
-    expect(hasil.articlesByStatus).toEqual([
+    const result = buildAnalytics(STATE, {}, '2026-09-18');
+    expect(result.articlesByStatus).toEqual([
       { key: 'active', count: 1 },
       { key: 'draft', count: 1 },
     ]);
-    expect(hasil.aktivitasPerJam).toEqual([
+    expect(result.aktivitasPerJam).toEqual([
       { hari: 2, jam: 19, jumlah: 1 },
       { hari: 3, jam: 15, jumlah: 1 },
     ]);
   });
 
   it('menyusun aktivitas terbaru dan arus penerbit', () => {
-    const hasil = buildAnalytics(STATE, {}, '2026-09-18');
-    expect(hasil.aktivitasTerbaru[0]).toMatchObject({ id: 'job:j-2', status: 'queued' });
-    expect(hasil.aktivitasTerbaru.length).toBeLessThanOrEqual(8);
-    expect(hasil.arusPenerbit).toEqual([
+    const result = buildAnalytics(STATE, {}, '2026-09-18');
+    expect(result.aktivitasTerbaru[0]).toMatchObject({ id: 'job:j-2', status: 'queued' });
+    expect(result.aktivitasTerbaru.length).toBeLessThanOrEqual(8);
+    expect(result.arusPenerbit).toEqual([
       { penerbit: 'p-1', situs: 's-1', hasil: 'published', jumlah: 1 },
       { penerbit: 'p-1', situs: 's-2', hasil: 'failed', jumlah: 1 },
     ]);
   });
 
   it('menghormati filter from untuk jendela dan marginal', () => {
-    const hasil = buildAnalytics(STATE, { from: '2026-09-17T00:00:00.000Z' }, '2026-09-18');
-    expect(hasil.jendela).toEqual({ awal: '2026-09-17', akhir: '2026-09-18' });
-    expect(hasil.tugasHarian).toHaveLength(2);
-    expect(hasil.articlesByStatus).toEqual([{ key: 'draft', count: 1 }]);
+    const result = buildAnalytics(STATE, { from: '2026-09-17T00:00:00.000Z' }, '2026-09-18');
+    expect(result.jendela).toEqual({ awal: '2026-09-17', akhir: '2026-09-18' });
+    expect(result.tugasHarian).toHaveLength(2);
+    expect(result.articlesByStatus).toEqual([{ key: 'draft', count: 1 }]);
   });
 
   it('menghitung penyaluran, tayangan, dan peta label dari article_sites', () => {
-    const hasil = buildAnalytics(STATE, {}, '2026-09-18');
-    expect(hasil.penyaluranHarian?.find((titik) => titik.hari === '2026-09-16')).toEqual({
+    const result = buildAnalytics(STATE, {}, '2026-09-18');
+    expect(result.penyaluranHarian?.find((point) => point.hari === '2026-09-16')).toEqual({
       hari: '2026-09-16', diterbitkan: 1, gagal: 0, antre: 0,
     });
-    expect(hasil.penyaluranHarian?.find((titik) => titik.hari === '2026-09-17')).toEqual({
+    expect(result.penyaluranHarian?.find((point) => point.hari === '2026-09-17')).toEqual({
       hari: '2026-09-17', diterbitkan: 0, gagal: 1, antre: 0,
     });
-    expect(hasil.totalViews).toBe(0);
-    expect(hasil.totalPenyaluran).toBe(2);
-    expect(hasil.viewsBySite).toEqual([
+    expect(result.totalViews).toBe(0);
+    expect(result.totalPenyaluran).toBe(2);
+    expect(result.viewsBySite).toEqual([
       { key: 's-1', count: 1, views: 0 },
       { key: 's-2', count: 1, views: 0 },
     ]);
-    expect(hasil.siteLabels).toEqual({ 's-1': 's-1.example', 's-2': 's-2.example' });
+    expect(result.siteLabels).toEqual({ 's-1': 's-1.example', 's-2': 's-2.example' });
   });
 });

@@ -10,7 +10,7 @@ import * as schema from '@/data/schema';
  *
  * @param config - Bootstrap configuration providing the pooled URL.
  * @returns Frozen runtime client, database, and closer.
- * @remarks Maksimal 5 koneksi: satu pool shared per proses × N instance Fluid tetap jauh di bawah pool Supavisor (default 15–30 koneksi server); query publik pendek + Next-cache membuat antrean koneksi tidak pernah dalam. Koneksi didaur ulang tiap 30 mnt agar koneksi basi ke pooler (pernah CONNECT_TIMEOUT massal) diganti proaktif sebelum dipakai request. Fail-fast 15 dtk per statement (GUC Postgres = milidetik, diverifikasi via node_modules/postgres ConnectionParameters + runtime-config docs): query macet (pernah 1× statement timeout 57014 di production) tidak boleh menggantung instance (= memory billing jalan terus) tanpa batas.
+ * @remarks Max 5 connections: one shared pool per process × N Fluid instances stays far below the Supavisor pool (default 15–30 server connections); short public queries + Next cache keep the connection queue shallow. Connections recycle every 30 min so stale pooler connections (once a mass CONNECT_TIMEOUT) are replaced proactively before serving requests. Fail-fast 15s per statement (Postgres GUC = milliseconds, verified via node_modules/postgres ConnectionParameters + runtime-config docs): stuck queries (once 1× statement timeout 57014 in production) must not hang the instance (= memory billing keeps running) without bound.
  */
 export function createRuntimeDatabase(config: BootstrapConfig) {
   const client = postgres(config.database.pooledUrl.reveal(), {

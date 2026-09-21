@@ -34,8 +34,8 @@ describe('getEditorConfig', () => {
   });
 
   it('mendaftarkan transisi arsip dan pulihkan untuk artikel', () => {
-    const transisi = getEditorConfig('articles')?.transitions ?? [];
-    expect(transisi.map((item) => item.action)).toEqual(['article.archive', 'article.restore']);
+    const transitions = getEditorConfig('articles')?.transitions ?? [];
+    expect(transitions.map((item) => item.action)).toEqual(['article.archive', 'article.restore']);
   });
 
   it('mengembalikan undefined untuk koleksi tak dikenal', () => {
@@ -47,14 +47,14 @@ describe('getEditorConfig', () => {
 describe('ROLE_PERMISSION_OPTIONS', () => {
   it('memetakan tiap nama permission tanpa duplikat', () => {
     expect(ROLE_PERMISSION_OPTIONS.length).toBeGreaterThan(0);
-    const nilai = ROLE_PERMISSION_OPTIONS.map((option) => option.value);
-    expect(new Set(nilai).size).toBe(nilai.length);
+    const values = ROLE_PERMISSION_OPTIONS.map((option) => option.value);
+    expect(new Set(values).size).toBe(values.length);
     for (const option of ROLE_PERMISSION_OPTIONS) {
       expect(option.value).toBe(option.label);
     }
-    expect(nilai).toContain('dashboard.read');
-    expect(nilai).toContain('media.manage');
-    expect(nilai).toContain('api_key.read');
+    expect(values).toContain('dashboard.read');
+    expect(values).toContain('media.manage');
+    expect(values).toContain('api_key.read');
   });
 });
 
@@ -74,9 +74,9 @@ describe('resolveFieldOptions', () => {
   });
 
   it('memakai nama tampilan untuk penulis dan hostname untuk domain', () => {
-    const penulis: EditorField = { key: 'authorId', label: 'Penulis', kind: 'select', optionSource: 'authors' };
+    const authorField: EditorField = { key: 'authorId', label: 'Penulis', kind: 'select', optionSource: 'authors' };
     expect(
-      resolveFieldOptions(penulis, { authors: [{ id: 'a1', displayName: 'Nano' }] }),
+      resolveFieldOptions(authorField, { authors: [{ id: 'a1', displayName: 'Nano' }] }),
     ).toEqual([{ value: 'a1', label: 'Nano' }]);
     const domain: EditorField = { key: 'domainId', label: 'Domain', kind: 'select', optionSource: 'domains' };
     expect(
@@ -90,44 +90,44 @@ describe('resolveFieldOptions', () => {
   });
 
   it('mengembalikan daftar kosong tanpa sumber opsi atau lookup', () => {
-    const polos: EditorField = { key: 'name', label: 'Nama', kind: 'text' };
-    expect(resolveFieldOptions(polos, {})).toEqual([]);
-    const relasi: EditorField = { key: 'roleId', label: 'Peran', kind: 'select', optionSource: 'roles' };
-    expect(resolveFieldOptions(relasi, {})).toEqual([]);
+    const plainField: EditorField = { key: 'name', label: 'Nama', kind: 'text' };
+    expect(resolveFieldOptions(plainField, {})).toEqual([]);
+    const relationField: EditorField = { key: 'roleId', label: 'Peran', kind: 'select', optionSource: 'roles' };
+    expect(resolveFieldOptions(relationField, {})).toEqual([]);
   });
 });
 
 describe('initialFieldValue', () => {
   it('mengubah teks, angka, dan kosong menjadi string', () => {
-    const teks: EditorField = { key: 'name', label: 'Nama', kind: 'text' };
-    expect(initialFieldValue(teks, { name: 'Wonosobo' })).toBe('Wonosobo');
-    expect(initialFieldValue(teks, { name: 42 })).toBe('42');
-    expect(initialFieldValue(teks, {})).toBe('');
-    expect(initialFieldValue(teks, { name: null })).toBe('');
+    const textField: EditorField = { key: 'name', label: 'Nama', kind: 'text' };
+    expect(initialFieldValue(textField, { name: 'Wonosobo' })).toBe('Wonosobo');
+    expect(initialFieldValue(textField, { name: 42 })).toBe('42');
+    expect(initialFieldValue(textField, {})).toBe('');
+    expect(initialFieldValue(textField, { name: null })).toBe('');
   });
 
   it('membaca checkbox hanya dari boolean true', () => {
-    const centang: EditorField = { key: 'active', label: 'Aktif', kind: 'checkbox' };
-    expect(initialFieldValue(centang, { active: true })).toBe(true);
-    expect(initialFieldValue(centang, { active: 'ya' })).toBe(false);
-    expect(initialFieldValue(centang, {})).toBe(false);
+    const checkboxField: EditorField = { key: 'active', label: 'Aktif', kind: 'checkbox' };
+    expect(initialFieldValue(checkboxField, { active: true })).toBe(true);
+    expect(initialFieldValue(checkboxField, { active: 'ya' })).toBe(false);
+    expect(initialFieldValue(checkboxField, {})).toBe(false);
   });
 
   it('menyaring checklist dan menggabung array per baris', () => {
-    const daftar: EditorField = { key: 'permissions', label: 'Hak akses', kind: 'checklist' };
-    expect(initialFieldValue(daftar, { permissions: ['a.read', 7, 'b.read'] })).toEqual(['a.read', 'b.read']);
-    expect(initialFieldValue(daftar, {})).toEqual([]);
-    const area: EditorField = { key: 'claimScopes', label: 'Cakupan', kind: 'textarea' };
-    expect(initialFieldValue(area, { claimScopes: ['satu', 'dua'] })).toBe('satu\ndua');
+    const checklistField: EditorField = { key: 'permissions', label: 'Hak akses', kind: 'checklist' };
+    expect(initialFieldValue(checklistField, { permissions: ['a.read', 7, 'b.read'] })).toEqual(['a.read', 'b.read']);
+    expect(initialFieldValue(checklistField, {})).toEqual([]);
+    const textareaField: EditorField = { key: 'claimScopes', label: 'Cakupan', kind: 'textarea' };
+    expect(initialFieldValue(textareaField, { claimScopes: ['satu', 'dua'] })).toBe('satu\ndua');
   });
 
   it('membaca field kontak bertitik dari objek contacts', () => {
-    const kontak: EditorField = { key: 'contacts.facebook', label: 'Facebook', kind: 'text' };
-    expect(initialFieldValue(kontak, { contacts: { facebook: 'https://facebook.com/x' } })).toBe(
+    const contactField: EditorField = { key: 'contacts.facebook', label: 'Facebook', kind: 'text' };
+    expect(initialFieldValue(contactField, { contacts: { facebook: 'https://facebook.com/x' } })).toBe(
       'https://facebook.com/x',
     );
-    expect(initialFieldValue(kontak, {})).toBe('');
-    expect(initialFieldValue(kontak, { contacts: null })).toBe('');
+    expect(initialFieldValue(contactField, {})).toBe('');
+    expect(initialFieldValue(contactField, { contacts: null })).toBe('');
   });
 });
 
@@ -139,16 +139,16 @@ describe('buildUpdatePayload', () => {
   });
 
   it('mengirim null untuk relasi opsional yang dikosongkan', () => {
-    const muatan = buildUpdatePayload(
+    const payload = buildUpdatePayload(
       'sites',
       { id: 's1', version: 1 },
       { domainId: 'd1', regionId: '', normalizedHostname: 'Portal.Example', status: 'active' },
     );
-    expect(muatan).toMatchObject({ domainId: 'd1', regionId: null, normalizedHostname: 'portal.example' });
+    expect(payload).toMatchObject({ domainId: 'd1', regionId: null, normalizedHostname: 'portal.example' });
   });
 
   it('menggabungkan kontak penerbit dan men-null-kan bukti kosong', () => {
-    const muatan = buildUpdatePayload(
+    const payload = buildUpdatePayload(
       'publishers',
       { id: 'p1', version: 4, contacts: { facebook: 'https://facebook.com/lama', x: 'https://x.com/tetap' } },
       {
@@ -161,21 +161,21 @@ describe('buildUpdatePayload', () => {
         'contacts.instagram': 'https://instagram.com/baru',
       },
     );
-    expect(muatan.contacts).toEqual({ x: 'https://x.com/tetap', instagram: 'https://instagram.com/baru' });
-    expect(muatan.evidenceReference).toBe(null);
+    expect(payload.contacts).toEqual({ x: 'https://x.com/tetap', instagram: 'https://instagram.com/baru' });
+    expect(payload.evidenceReference).toBe(null);
   });
 
   it('memecah cakupan klaim afiliasi per baris', () => {
-    const muatan = buildUpdatePayload(
+    const payload = buildUpdatePayload(
       'affiliations',
       { id: 'f1', version: 1 },
       { institutionName: 'Instansi', claimScopes: 'satu\n\n dua \n', evidenceReference: 'ref-1', active: true },
     );
-    expect(muatan).toMatchObject({ claimScopes: ['satu', 'dua'], active: true });
+    expect(payload).toMatchObject({ claimScopes: ['satu', 'dua'], active: true });
   });
 
   it('menyusun muatan artikel, peran, dan keanggotaan', () => {
-    const artikel = buildUpdatePayload(
+    const articlePayload = buildUpdatePayload(
       'articles',
       { id: 'a1', version: 3 },
       {
@@ -190,13 +190,13 @@ describe('buildUpdatePayload', () => {
         status: 'draft',
       },
     );
-    expect(artikel).toMatchObject({ publisherId: null, authorId: null, slug: 'judul-utama', title: 'Judul Utama' });
-    const peran = buildUpdatePayload(
+    expect(articlePayload).toMatchObject({ publisherId: null, authorId: null, slug: 'judul-utama', title: 'Judul Utama' });
+    const rolePayload = buildUpdatePayload(
       'roles',
       { id: 'r1', version: 1 },
       { name: 'Editor', tier: 'user', active: false, permissions: 'a.read\nb.read\n' },
     );
-    expect(peran).toMatchObject({ active: false, permissions: ['a.read', 'b.read'] });
+    expect(rolePayload).toMatchObject({ active: false, permissions: ['a.read', 'b.read'] });
     expect(
       buildUpdatePayload('memberships', { userId: 'u1', version: 5 }, { roleId: 'r1', status: 'active' }),
     ).toEqual({ userId: 'u1', roleId: 'r1', status: 'active', expectedVersion: 5 });

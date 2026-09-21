@@ -12,11 +12,11 @@ function absoluteSiteUrl(context: ResolvedSiteContext, path: string): string {
 }
 
 /**
- * Resolve gambar/aset publik ke URL absolut satu-host milik tenant.
+ * Resolve public images/assets to the tenant's single-host absolute URL.
  *
- * @param context - Konteks hostname tenant yang meminta.
- * @param value - Path relatif atau URL absolut aset.
- * @returns URL absolut; URL eksternal dipertahankan apa adanya agar og:image tidak 404.
+ * @param context - Hostname context of the requesting tenant.
+ * @param value - Relative path or absolute asset URL.
+ * @returns Absolute URL; external URLs are kept as-is so og:image never 404s.
  */
 export function absoluteSiteAssetUrl(context: ResolvedSiteContext, value: string): string {
   if (value.startsWith('/')) return absoluteSiteUrl(context, value);
@@ -42,11 +42,11 @@ function stripHtml(value: string): string {
 }
 
 /**
- * Meringkas body menjadi kutipan deskripsi yang tidak terpotong di tengah kata.
+ * Condense the body into a description excerpt that never cuts mid-word.
  *
- * @param body - Body kanonik artikel (boleh mengandung HTML).
- * @param maxLength - Batas panjang dalam karakter unicode.
- * @returns Kutipan bersih; string kosong bila body tidak memiliki kata.
+ * @param body - Canonical article body (may contain HTML).
+ * @param maxLength - Maximum length in unicode characters.
+ * @returns Clean excerpt; empty string when the body has no words.
  */
 export function excerptForDescription(body: string, maxLength = 180): string {
   const clean = stripHtml(articleBodyText(body));
@@ -109,12 +109,12 @@ export function notFoundMetadata(): Metadata {
 }
 
 /**
- * Judul beranda tenant: nama + tagline situsnya sendiri agar tab dan SERP
- * membawa identitas portal, bukan nama telanjang.
+ * Tenant homepage title: name plus the site's own tagline so tabs and SERPs
+ * carry the portal identity, not a bare name.
  *
- * @param siteName - Nama portal tenant.
- * @param siteDescription - Deskripsi/tagline portal tenant.
- * @returns Judul "Nama — Tagline" terpotong pada batas kata.
+ * @param siteName - Tenant portal name.
+ * @param siteDescription - Tenant portal description/tagline.
+ * @returns "Name — Tagline" title truncated at a word boundary.
  */
 function homeTitle(siteName: string, siteDescription: string): string {
   const chars = Array.from(siteDescription.trim());
@@ -366,7 +366,7 @@ export function serializeSitemap(site: NetworkSiteData): string {
   return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${ns}>${body}</urlset>`;
 }
 
-/** Sitemap Google News: hanya artikel ≤2 hari, maks 1000 URL. */
+/** Google News sitemap: only articles ≤2 days old, max 1000 URLs. */
 export function serializeNewsSitemap(site: NetworkSiteData): string {
   const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
   const items = site.articles

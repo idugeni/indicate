@@ -23,9 +23,9 @@ const VIEWS = [
 ] as const;
 
 /**
- * Selaraskan tab dasbor aktif dengan `?view=` agar tautan bisa dibagikan.
+ * Sync the active dashboard tab with `?view=` so links are shareable.
  *
- * @returns Pasangan nilai `View` dan penyetel yang mendorong riwayat browser.
+ * @returns Pair of `View` value and setter pushing browser history.
  */
 export function useDashboardView(): readonly [View, (next: View) => void] {
   const [view, setViewQuery] = useQueryState(
@@ -39,9 +39,9 @@ export function useDashboardView(): readonly [View, (next: View) => void] {
 }
 
 /**
- * Selaraskan halaman tabel aktif dengan `?page=` agar paginasi bisa dibagikan.
+ * Sync the active table page with `?page=` so pagination is shareable.
  *
- * @returns Pasangan nomor halaman (minimal 1) dan penyetel pengganti riwayat.
+ * @returns Pair of page number (minimum 1) and history-replacing setter.
  */
 export function useDashboardPage(): readonly [number, (next: number) => void] {
   const [page, setPageQuery] = useQueryState(

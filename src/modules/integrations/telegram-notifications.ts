@@ -23,10 +23,10 @@ function formatFinishedAt(value: string): string {
 }
 
 /**
- * Merender pemberitahuan grup untuk draf artikel yang baru dibuat.
+ * Render the group notification for a newly created article draft.
  *
- * @param input - Identitas artikel dan tautan Mini App redaksi.
- * @returns Teks pesan satu gaya, tanpa format khusus.
+ * @param input - Article identity and the editorial Mini App link.
+ * @returns Single-style message text, no special formatting.
  */
 export function composeArticleCreated(input: { readonly articleId: string; readonly title: string; readonly miniAppUrl: string }): string {
   return [
@@ -41,10 +41,10 @@ export function composeArticleCreated(input: { readonly articleId: string; reado
 }
 
 /**
- * Merender pemberitahuan grup untuk pekerjaan penerbitan yang tuntas.
+ * Render the group notification for a completed publication job.
  *
- * @param input - Judul artikel, target tayang, dan waktu selesai.
- * @returns Teks pesan satu gaya, tanpa format khusus.
+ * @param input - Article title, publish targets, and finish time.
+ * @returns Single-style message text, no special formatting.
  */
 export function composeJobPublished(input: {
   readonly title: string;
@@ -67,10 +67,10 @@ export function composeJobPublished(input: {
 }
 
 /**
- * Merender pemberitahuan grup untuk pekerjaan penerbitan yang gagal final.
+ * Render the group notification for a finally-failed publication job.
  *
- * @param input - Judul artikel, portal gagal per kode galat, dan tautan Mini App.
- * @returns Teks pesan satu gaya, tanpa format khusus.
+ * @param input - Article title, portals failed per error code, and the Mini App link.
+ * @returns Single-style message text, no special formatting.
  */
 export function composeJobFailed(input: {
   readonly title: string;
@@ -99,10 +99,10 @@ export function composeJobFailed(input: {
 }
 
 /**
- * Memastikan teks pemberitahuan muat di batas pesan Telegram.
+ * Ensure notification text fits within the Telegram message limit.
  *
- * @param text - Teks hasil komposer.
- * @returns True bila dalam batas kirim Bot API.
+ * @param text - Composer-produced text.
+ * @returns True when within the Bot API send limit.
  */
 export function fitsTelegramLimit(text: string): boolean {
   return text.length <= MESSAGE_MAX_LENGTH;

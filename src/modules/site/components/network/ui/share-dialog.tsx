@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { cn } from '@/ui/cn';
 
 /**
- * Props tombol bagikan template; `className` disengaja string agar bisa digabung via `cn()`.
+ * Template share button props; `className` is intentionally a string so it merges via `cn()`.
  */
 export type TemplateShareButtonProps = {
   readonly slug: string;
@@ -18,10 +18,10 @@ export type TemplateShareButtonProps = {
 };
 
 /**
- * Tombol bagikan progresif: lembar sistem di seluler, dialog kanal di desktop.
+ * Progressive share button: system sheet on mobile, channel dialog on desktop.
  *
- * @param props - Slug dan judul artikel plus kelas bentuk pemanggil.
- * @returns Tombol ikon round plus dialog kanal bertema `--tpl-*`.
+ * @param props - Article slug and title plus caller shape classes.
+ * @returns Round icon button plus a `--tpl-*`-themed channel dialog.
  */
 export function TemplateShareButton({ slug, title, className }: TemplateShareButtonProps) {
   const [open, setOpen] = useState(false);

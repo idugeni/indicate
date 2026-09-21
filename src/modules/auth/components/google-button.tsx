@@ -5,9 +5,9 @@ import { useState } from 'react';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
 
 /**
- * Lanjutkan dengan Google memakai gaya tombol resmi Google Identity.
+ * Continue with Google using the official Google Identity button style.
  *
- * @returns Tombol OAuth Google dengan markah-G empat warna inline.
+ * @returns Google OAuth button with an inline four-color G mark.
  */
 export function GoogleButton() {
   const [busy, setBusy] = useState(false);

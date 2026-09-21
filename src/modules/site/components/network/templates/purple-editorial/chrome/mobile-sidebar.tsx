@@ -10,14 +10,14 @@ import { TemplateButton, TemplateInput } from '@/modules/site/components/network
 import { cn } from '@/ui/cn';
 
 /**
- * Sidebar navigasi seluler dengan pencarian terpadu.
+ * Mobile navigation sidebar with unified search.
  *
- * @param open - Status terbuka sidebar.
- * @param onClose - Handler tutup sidebar.
- * @param onFocusReturn - Kembalikan fokus ke tombol menu saat tutup.
- * @param closeRef - Ref tombol tutup untuk autofocus.
- * @param children - Isi navigasi seluler.
- * @returns Portal sidebar aksesibel.
+ * @param open - Sidebar open state.
+ * @param onClose - Sidebar close handler.
+ * @param onFocusReturn - Return focus to the menu button on close.
+ * @param closeRef - Close button ref for autofocus.
+ * @param children - Mobile navigation content.
+ * @returns Accessible sidebar portal.
  */
 export function PurpleEditorialMobileSidebar({
   open,

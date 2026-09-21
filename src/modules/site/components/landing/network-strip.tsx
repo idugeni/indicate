@@ -15,9 +15,9 @@ const SPEC_ITEMS = Object.freeze([
 ]);
 
 /**
- * Menampilkan dinding logo brand jaringan dalam elemen shadcn.
+ * Render the network brand logo wall in shadcn elements.
  *
- * @returns Strip jaringan berisi papan logo brand profesional.
+ * @returns Network strip containing a professional brand logo board.
  */
 export function NetworkStrip() {
   return (

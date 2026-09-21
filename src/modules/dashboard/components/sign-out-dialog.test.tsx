@@ -27,9 +27,9 @@ describe('Dialog keluar', () => {
     const { container } = render(<SignOutDialog mode="button" />);
     fireEvent.click(screen.getByRole('button', { name: 'Keluar' }));
     await screen.findByText('Keluar dari workspace?');
-    const formulir = document.querySelector('form[action="/auth/sign-out"]') as HTMLFormElement | null;
-    expect(formulir).not.toBe(null);
-    expect(formulir?.getAttribute('method')).toBe('post');
+    const form = document.querySelector('form[action="/auth/sign-out"]') as HTMLFormElement | null;
+    expect(form).not.toBe(null);
+    expect(form?.getAttribute('method')).toBe('post');
     expect(screen.getByRole('button', { name: 'Ya, keluar' })).toBeDefined();
     expect(container).toBeDefined();
   });

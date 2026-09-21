@@ -25,10 +25,10 @@ export interface PageviewKeyIdentity {
 export const VIEW_COUNT_FRESHNESS_NOTE = 'Angka views diperbarui harian.';
 
 /**
- * Serialisasi payload beacon menjadi body JSON; tolak input tak valid di sumber.
+ * Serialize the beacon payload into a JSON body; reject invalid input at the source.
  *
- * @param input - Kandidat payload `{o, s, a}` dari komponen beacon.
- * @returns Body JSON siap kirim, atau null bila tidak lolos skema.
+ * @param input - Candidate `{o, s, a}` payload from the beacon component.
+ * @returns JSON body ready to send, or null when it fails schema validation.
  */
 export function serializePageviewBeacon(input: {
   readonly o: string;
@@ -41,22 +41,22 @@ export function serializePageviewBeacon(input: {
 }
 
 /**
- * Susun kunci counter Redis untuk satu view tervalidasi.
+ * Build the Redis counter key for one validated view.
  *
- * @param environment - Nama environment runtime (mis. `production`).
- * @param beacon - Payload beacon yang sudah lolos skema.
- * @returns Kunci `pv:{environment}:{organizationId}:{siteId}:{articleSiteId}`.
+ * @param environment - Runtime environment name (e.g. `production`).
+ * @param beacon - Beacon payload that already passed schema validation.
+ * @returns Key `pv:{environment}:{organizationId}:{siteId}:{articleSiteId}`.
  */
 export function buildPageviewKey(environment: string, beacon: PageviewBeacon): string {
   return `pv:${environment}:${beacon.o}:${beacon.s}:${beacon.a}`;
 }
 
 /**
- * Tentukan apakah permintaan beacon berasal dari bot/pemindai otomatis.
+ * Determine whether a beacon request comes from a bot/automated crawler.
  *
- * @param userAgent - Nilai header `User-Agent`; null bila tidak ada.
- * @param cf - Sinyal verifikasi Cloudflare yang dinormalisasi dari `request.cf`.
- * @returns True bila terindikasi bot; UA kosong fail-open agar pembaca sah tak hilang.
+ * @param userAgent - `User-Agent` header value; null when absent.
+ * @param cf - Normalized Cloudflare verification signals from `request.cf`.
+ * @returns True when indicated as a bot; empty UA fails open so legitimate readers are never lost.
  */
 export function isBotPageview(userAgent: string | null, cf?: PageviewCfHints | null): boolean {
   if (cf?.verifiedBot === true) return true;
@@ -67,10 +67,10 @@ export function isBotPageview(userAgent: string | null, cf?: PageviewCfHints | n
 }
 
 /**
- * Urai kunci counter Redis; tolak bentuk asing tanpa melempar.
+ * Parse a Redis counter key; reject foreign shapes without throwing.
  *
- * @param key - Kunci kandidat dari hasil SCAN.
- * @returns Identitas tenant atau null bila bukan kunci pageview valid.
+ * @param key - Candidate key from a SCAN result.
+ * @returns Tenant identity, or null when not a valid pageview key.
  */
 export function parsePageviewKey(key: string): PageviewKeyIdentity | null {
   const parts = key.split(':');

@@ -2,7 +2,7 @@
 
 import { TemplateShareButton } from '@/modules/site/components/network/ui/share-dialog';
 
-/** Aksi hero: bagikan progresif (lembar sistem atau dialog kanal). */
+/** Hero actions: progressive share (system sheet or channel dialog). */
 export function CleanBlueHeroActions({ slug, title }: { readonly slug: string; readonly title: string }) {
   const button =
     'flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[var(--tpl-primary,#1a5fd0)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#1a5fd0)]';

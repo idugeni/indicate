@@ -72,10 +72,10 @@ function regionLock(actor: AuthorizedTenantActorContext): string | null {
 }
 
 /**
- * Port pemberitahuan grup yang dipanggil layanan artikel saat draf dibuat.
+ * Group notification port invoked by the article service when a draft is created.
  *
- * @remarks Implementasi tidak pernah melempar: kegagalan antrean hanya
- * telemetri agar penulisan artikel tidak gagal karena notifikasi.
+ * @remarks The implementation never throws: queue failures are only
+ * telemetry so article writes never fail because of notifications.
  */
 export interface ArticleCreatedNotifier {
   notifyArticleCreated(input: { readonly organizationId: string; readonly articleId: string; readonly title: string }): Promise<void>;
@@ -577,7 +577,7 @@ export class TenantBusinessService {
     if (result.ok && this.notifier !== null) {
       try {
         await this.notifier.notifyArticleCreated({ organizationId: actor.organizationId, articleId: result.value.id, title: result.value.title });
-      } catch { /* notifikasi best-effort: kegagalan antrean tidak menggagalkan penulisan */ }
+      } catch { /* best-effort notification: queue failure does not fail the write */ }
     }
     return result;
   }

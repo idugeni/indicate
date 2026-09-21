@@ -32,7 +32,7 @@ export function controlPlaneLlms(host: string): string {
   return lines.join('\n');
 }
 
-/** llms.txt tenant: nama + deskripsi portal, kanal kategori, dan daftar liputan terkini. */
+/** Tenant llms.txt: portal name + description, category channels, and latest coverage list. */
 export function tenantLlms(host: string, siteName: string, description: string, categories: readonly string[], articles: readonly { readonly title: string; readonly slug: string }[]): string {
   const origin = `https://${host}`;
   const lines = [
@@ -93,8 +93,8 @@ async function handleGET() {
 }
 
 /**
- * Sajikan llms.txt per host.
+ * Serve the per-host llms.txt.
  *
- * @remarks Klasifikasi per-host tetap dinamis per request; pengganti force-dynamic.
+ * @remarks Per-host classification stays dynamic per request; replacement for force-dynamic.
  */
 export const GET = withApiAccess('GET /llms.txt', handleGET, { accessLog: 'errors-only' });

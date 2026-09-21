@@ -38,9 +38,9 @@ describe('Pengaturan integrasi', () => {
   });
 
   it('menyalin kunci API dan memberi tahu lewat toast', async () => {
-    const tulis = vi.fn(async () => {});
+    const writeText = vi.fn(async () => {});
     Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: tulis },
+      value: { writeText },
       configurable: true,
     });
     const command = vi.fn(async () => ({ plaintext: 'kunci-rahasia-uji' }));
@@ -53,7 +53,7 @@ describe('Pengaturan integrasi', () => {
     const { toast } = await import('sonner');
     fireEvent.click(screen.getByRole('button', { name: 'Salin kunci API' }));
     await waitFor(() => {
-      expect(tulis).toHaveBeenCalledWith('kunci-rahasia-uji');
+      expect(writeText).toHaveBeenCalledWith('kunci-rahasia-uji');
       expect(toast.success).toHaveBeenCalledWith('Kunci API tersalin.');
     });
   });
@@ -78,9 +78,9 @@ describe('Pengaturan integrasi', () => {
     const command = vi.fn(async () => ({ enqueued: 2 }));
     vi.stubGlobal('confirm', vi.fn(() => true));
     render(<IntegrationSettings command={command} isPlatform />);
-    const area = screen.getByLabelText('Teks pengumuman');
+    const announcementInput = screen.getByLabelText('Teks pengumuman');
     expect((screen.getByRole('button', { name: 'Kirim Pengumuman' }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.change(area, { target: { value: 'Pengumuman penting' } });
+    fireEvent.change(announcementInput, { target: { value: 'Pengumuman penting' } });
     fireEvent.click(screen.getByRole('button', { name: 'Kirim Pengumuman' }));
     await waitFor(() =>
       expect(command).toHaveBeenCalledWith('telegram.broadcast', { text: 'Pengumuman penting' }),

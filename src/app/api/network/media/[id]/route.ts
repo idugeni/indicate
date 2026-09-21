@@ -12,12 +12,12 @@ async function handleGET(request: Request, { params }: { readonly params: Promis
   const requestId = resolveRequestId(request); const { id } = await params; const incoming = await headers(); const result = await (await deliveryComposition()).resolver.classify(incoming.get('x-forwarded-host') ?? incoming.get('host')); if (result.kind !== 'site') return new NextResponse(null, { status: 404, headers: { 'Cache-Control': 'no-store' } }); const context = await getServerRuntimeContext(); const config = context.config; const runtime = getSharedRuntimeDatabase(context.bootstrap); try { const repository = new DrizzlePublishingRepository(runtime.db); const asset = await repository.authorizePublicMedia(result.context, id, requestId); if (asset === null || asset.state !== 'active') return new NextResponse(null, { status: 404, headers: { 'Cache-Control': 'no-store' } }); const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey }); const objectKey = new URL(request.url).searchParams.get('variant') === 'thumb' ? asset.thumbObjectKey : asset.objectKey; if (objectKey === null) return new NextResponse(null, { status: 404, headers: { 'Cache-Control': 'no-store' } }); const authorization = await storage.authorizeExactGet(objectKey, config.r2.readTtlSeconds); const redirectTtlSeconds = Math.max(1, config.r2.readTtlSeconds - 10); return NextResponse.redirect(authorization.url, { status: 307, headers: { 'Cache-Control': `public, max-age=0, s-maxage=${redirectTtlSeconds}, stale-while-revalidate=60`, 'Referrer-Policy': 'no-referrer' } }); } catch { return new NextResponse(null, { status: 404, headers: { 'Cache-Control': 'no-store' } }); } }
 
 /**
- * Sajikan pengalihan media per host.
+ * Serve the per-host media redirect.
  *
- * @remarks Tetap dinamis per request karena otorisasi media per-host + DB; pengganti force-dynamic.
- * TTL 307 diturunkan dari masa berlaku signature (`readTtlSeconds` − margin 10 detik)
- * agar redirect yang ter-cache edge tidak pernah outlive signature R2. SWR 60 detik
- * menahan burst revalidasi serentak; bingkai basi di dalamnya mungkin membawa URL
- * presigned kedaluwarsa hingga revalidasi latar selesai.
+ * @remarks Stays dynamic per request because of per-host media authorization + DB; replacement for force-dynamic.
+ * The 307 TTL derives from the signature lifetime (`readTtlSeconds` − 10s margin)
+ * so an edge-cached redirect never outlives the R2 signature. 60s SWR
+ * absorbs concurrent revalidation bursts; stale frames inside it may carry an
+ * expired presigned URL until background revalidation finishes.
  */
 export const GET = withApiAccess('GET /api/network/media/[id]', handleGET, { accessLog: 'errors-only' });

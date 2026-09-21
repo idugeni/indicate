@@ -6,11 +6,11 @@ import type { JobTerminalNotice } from '@/modules/publishing/ports';
 interface ClockLike { now(): Date }
 
 /**
- * Mengantrekan pemberitahuan event redaksi ke grup Telegram organisasi.
+ * Queue editorial event notifications to the organization's Telegram group.
  *
- * @remarks Best-effort murni: tanpa grup terikat tidak ada pesan, dan setiap
- * kegagalan hanya telemetri — pemanggil (worker, layanan artikel) tidak
- * pernah gagal karena notifikasi.
+ * @remarks Pure best-effort: with no bound group there is no message, and every
+ * failure is telemetry only — callers (worker, article service) never
+ * fail because of notifications.
  */
 export class TelegramNotificationService {
   constructor(
@@ -32,9 +32,9 @@ export class TelegramNotificationService {
   }
 
   /**
-   * Mengantrekan kabar draf artikel baru ke grup organisasi.
+   * Queue news of a new article draft to the organization group.
    *
-   * @param input - Identitas organisasi, artikel, dan korelasi.
+   * @param input - Organization, article, and correlation identity.
    */
   async notifyArticleCreated(input: { readonly organizationId: string; readonly articleId: string; readonly title: string; readonly requestId?: string }): Promise<void> {
     await this.sendToGroups(
@@ -45,9 +45,9 @@ export class TelegramNotificationService {
   }
 
   /**
-   * Mengantrekan kabar final pekerjaan penerbitan ke grup organisasi.
+   * Queue the final news of a publication job to the organization group.
    *
-   * @param input - Hasil final pekerjaan beserta konteks tampilannya.
+   * @param input - Final job result with its display context.
    */
   async notifyJobTerminal(input: JobTerminalNotice & { readonly requestId?: string }): Promise<void> {
     const text = input.failed.length === 0

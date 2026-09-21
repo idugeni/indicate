@@ -8,9 +8,9 @@ import { WarmEditorialFooter } from '@/modules/site/components/network/templates
 import { WarmEditorialBackToTop } from '@/modules/site/components/network/templates/warm-editorial/chrome/back-to-top';
 
 /**
- * Cangkang tunggal template: skip-link + header + main + footer + back-to-top
- * SELALU sama di semua halaman (listing, artikel, search, lapor, 404).
- * Satu-satunya cara merakit halaman warm-editorial — perubahan chrome cukup di sini.
+ * Single template shell: skip-link + header + main + footer + back-to-top,
+ * ALWAYS identical on every page (listing, article, search, report, 404).
+ * The only way to assemble a warm-editorial page — chrome changes belong here.
  */
 export function WarmEditorialShell({
   site,

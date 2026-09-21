@@ -12,7 +12,7 @@ afterEach(() => {
   cleanup();
 });
 
-const DASBOR = {
+const DASHBOARD = {
   activeDomains: 2,
   activeSites: 1,
   activeArticles: 4,
@@ -35,9 +35,9 @@ const DASBOR = {
 
 describe('Tampilan data dasbor', () => {
   it('merender metrik, panduan, antrean, dan kesehatan', { timeout: 30000 }, async () => {
-    const pilih = vi.fn();
+    const handleSelect = vi.fn();
     render(
-      <DataView view="dashboard" data={DASBOR} currentPage={1} onPageChange={vi.fn()} onRefresh={vi.fn()} onSelectView={pilih} />,
+      <DataView view="dashboard" data={DASHBOARD} currentPage={1} onPageChange={vi.fn()} onRefresh={vi.fn()} onSelectView={handleSelect} />,
     );
     expect(screen.getByText('Domain Utama')).toBeDefined();
     expect(screen.getByText('Subdomain')).toBeDefined();
@@ -50,7 +50,7 @@ describe('Tampilan data dasbor', () => {
     expect(await screen.findByText('Komposisi hasil', undefined, { timeout: 30000 })).toBeDefined();
     expect(await screen.findByText('Tren tayangan', undefined, { timeout: 30000 })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /tulis berita/i }));
-    expect(pilih).toHaveBeenCalledWith('editorial');
+    expect(handleSelect).toHaveBeenCalledWith('editorial');
   });
 
   it('menampilkan panduan penuh saat data kosong', { timeout: 30000 }, async () => {
@@ -62,23 +62,23 @@ describe('Tampilan data dasbor', () => {
 
 describe('Tampilan data koleksi', () => {
   it('menampilkan status kosong dan memanggil muat ulang', () => {
-    const muatUlang = vi.fn();
+    const reload = vi.fn();
     render(
-      <DataView view="configuration" data={{}} currentPage={1} onPageChange={vi.fn()} onRefresh={muatUlang} />,
+      <DataView view="configuration" data={{}} currentPage={1} onPageChange={vi.fn()} onRefresh={reload} />,
     );
     expect(screen.getByText('Belum ada data')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /muat ulang data/i }));
-    expect(muatUlang).toHaveBeenCalledTimes(1);
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 
   it('merender tabel situs dengan penomoran halaman', () => {
-    const gantiHalaman = vi.fn();
+    const handlePageChange = vi.fn();
     render(
       <DataView
         view="configuration"
         data={{ sites: [{ id: 's-1', normalizedHostname: 'portal.example', status: 'active', version: 1 }] }}
         currentPage={1}
-        onPageChange={gantiHalaman}
+        onPageChange={handlePageChange}
         onRefresh={vi.fn()}
       />,
     );
@@ -88,8 +88,8 @@ describe('Tampilan data koleksi', () => {
   });
 
   it('berpindah halaman saat koleksi melebihi satu halaman', () => {
-    const gantiHalaman = vi.fn();
-    const banyak = Array.from({ length: 11 }, (_, i) => ({
+    const handlePageChange = vi.fn();
+    const manySites = Array.from({ length: 11 }, (_, i) => ({
       id: `s-${i + 1}`,
       normalizedHostname: `portal-${i + 1}.example`,
       status: 'active',
@@ -98,15 +98,15 @@ describe('Tampilan data koleksi', () => {
     render(
       <DataView
         view="configuration"
-        data={{ sites: banyak }}
+        data={{ sites: manySites }}
         currentPage={1}
-        onPageChange={gantiHalaman}
+        onPageChange={handlePageChange}
         onRefresh={vi.fn()}
       />,
     );
     expect(screen.getByText('1–10 dari 11')).toBeDefined();
     fireEvent.click(screen.getByLabelText('Ke halaman berikutnya'));
-    expect(gantiHalaman).toHaveBeenCalledWith(2);
+    expect(handlePageChange).toHaveBeenCalledWith(2);
   });
 
   it('mengurutkan baris saat kepala nama diklik', () => {
@@ -124,11 +124,11 @@ describe('Tampilan data koleksi', () => {
         onRefresh={vi.fn()}
       />,
     );
-    const sebelum = screen.getAllByText(/portal-[ab]\.example/).map((el) => el.textContent);
-    expect(sebelum).toEqual(['portal-b.example', 'portal-a.example']);
+    const before = screen.getAllByText(/portal-[ab]\.example/).map((el) => el.textContent);
+    expect(before).toEqual(['portal-b.example', 'portal-a.example']);
     fireEvent.click(screen.getByRole('button', { name: 'Urutkan Nama' }));
-    const sesudah = screen.getAllByText(/portal-[ab]\.example/).map((el) => el.textContent);
-    expect(sesudah).toEqual(['portal-a.example', 'portal-b.example']);
+    const after = screen.getAllByText(/portal-[ab]\.example/).map((el) => el.textContent);
+    expect(after).toEqual(['portal-a.example', 'portal-b.example']);
   });
 
   it('menampilkan bilah massal saat baris dipilih', async () => {
