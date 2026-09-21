@@ -60,6 +60,20 @@ describe('Formulir masuk kata sandi', () => {
     expect(refreshMock).toHaveBeenCalledTimes(1);
   });
 
+  it('mengaktifkan kembali tombol saat navigasi dashboard memantul balik', async () => {
+    passwordMock.mockResolvedValueOnce({ error: null });
+    render(<SignInForm />);
+    fireEvent.change(screen.getByLabelText('Alamat email'), { target: { value: 'nama@wartanusantara.net' } });
+    fireEvent.change(screen.getByLabelText('Kata sandi'), { target: { value: 'rahasia123' } });
+    fireEvent.submit(screen.getByLabelText('Alamat email').closest('form') as HTMLFormElement);
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/dashboard'));
+    await waitFor(() =>
+      expect(
+        (screen.getByRole('button', { name: /masuk ke dashboard/i }) as HTMLButtonElement).hasAttribute('disabled'),
+      ).toBe(false),
+    );
+  });
+
   it('menonaktifkan submit dan menahan request sampai turnstile terverifikasi', async () => {
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'kunci-uji';
     render(<SignInForm />);

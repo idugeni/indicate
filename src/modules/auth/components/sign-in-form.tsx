@@ -53,6 +53,7 @@ export function SignInForm() {
       }
       router.push('/dashboard');
       router.refresh();
+      setBusy(false);
     } catch {
       setError('Terjadi gangguan jaringan saat mencoba masuk.');
       resetChallenge();

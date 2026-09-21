@@ -13,17 +13,25 @@ const PANEL_STEPS: readonly { readonly title: string; readonly detail: string }[
   { title: 'Teraudit penuh', detail: 'Setiap aksi tercatat, hanya-tambah.' },
 ]);
 
+const AUTH_ALERTS: Readonly<Record<string, string>> = Object.freeze({
+  unavailable: 'Tautan masuk tidak valid atau kedaluwarsa. Minta kode baru di bawah.',
+  required: 'Sesi Anda berakhir atau belum masuk. Masuk kembali untuk membuka dashboard.',
+  inactive: 'Akun Anda belum aktif. Hubungi administrator organisasi Anda.',
+});
+
 async function SignInAlert({
   searchParams,
 }: {
   readonly searchParams?: Promise<{ readonly auth?: string | string[] }> | undefined;
 }) {
   const params = await searchParams;
-  if (params?.auth !== 'unavailable') return null;
+  const code = Array.isArray(params?.auth) ? params.auth[0] : params?.auth;
+  const message = code === undefined ? undefined : AUTH_ALERTS[code];
+  if (message === undefined) return null;
   return (
     <div className="mt-6">
       <AuthAlert tone="error">
-        Tautan masuk tidak valid atau kedaluwarsa. Minta kode baru di bawah.
+        {message}
       </AuthAlert>
     </div>
   );

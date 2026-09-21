@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { Button } from '@/components/ui/button';
+
 interface TurnstileRenderOptions {
   readonly sitekey: string;
   readonly callback: (token: string) => void;
@@ -108,11 +110,13 @@ export function useTurnstileChallenge() {
  * Renders the Cloudflare Turnstile challenge inside auth forms.
  *
  * @param onToken - Receives the one-time token on success, or null when it expires or fails.
- * @returns The widget element, or nothing when no site key is configured.
+ * @returns The widget element, a reload fallback when the challenge script fails, or nothing when no site key is configured.
  */
 export function TurnstileField({ onToken }: { readonly onToken: (token: string | null) => void }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sitekey = (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '').trim();
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (sitekey === '' || hostRef.current === null) return;
@@ -128,13 +132,36 @@ export function TurnstileField({ onToken }: { readonly onToken: (token: string |
           'error-callback': () => onToken(null),
         });
       })
-      .catch(() => onToken(null));
+      .catch(() => {
+        if (!cancelled) setLoadFailed(true);
+      });
     return () => {
       cancelled = true;
       if (widgetId !== null && window.turnstile !== undefined) window.turnstile.remove(widgetId);
     };
-  }, [sitekey, onToken]);
+  }, [sitekey, attempt, onToken]);
 
   if (sitekey === '') return null;
+  if (loadFailed) {
+    return (
+      <div className="rounded border border-[#e2ded2] bg-white px-4 py-3 text-center" role="alert">
+        <p className="m-0 font-sans text-xs leading-relaxed text-[#4c5b6b]">
+          Verifikasi keamanan gagal dimuat. Izinkan challenges.cloudflare.com atau nonaktifkan pemblokir iklan, lalu muat ulang.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setLoadFailed(false);
+            setAttempt((value) => value + 1);
+          }}
+          className="mt-2"
+        >
+          Muat ulang verifikasi
+        </Button>
+      </div>
+    );
+  }
   return <div ref={hostRef} className="flex justify-center" />;
 }
