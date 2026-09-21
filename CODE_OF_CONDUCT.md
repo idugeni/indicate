@@ -60,4 +60,4 @@ Enforcement follows these graduated steps:
 ## Attribution
 
 Adapted from the [Contributor Covenant v2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct.html).
-Enforcement inspired by the [Contributor Covenant enforcement manual](https://github.com/EthicalSource/contributor_covenant/blob/release/content/version/2/1/enforcement-manual.md).
+Enforcement inspired by the Contributor Covenant enforcement manual (retired upstream).
