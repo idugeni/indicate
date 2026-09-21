@@ -5,7 +5,7 @@ import { Area, AreaChart } from 'recharts';
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { TugasHarian } from '@/modules/dashboard/models';
-import { WARNA_ANTRE, WARNA_GAGAL, WARNA_TERBIT } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { COLOR_QUEUED, COLOR_FAILED, COLOR_PUBLISHED } from '@/modules/dashboard/components/analytics/chart-helpers';
 
 function deltaPersen(kini: number, lalu: number): string {
   if (lalu <= 0) return kini > 0 ? 'baru' : '—';
@@ -81,15 +81,15 @@ export function KpiSparkline({ series }: { readonly series: readonly TugasHarian
   const lalu = series.slice(-14, -7);
   return (
     <div className="grid h-full min-w-0 grid-cols-1 gap-4 min-[420px]:grid-cols-3">
-      <KartuSpark label="Sukses 7 hari" kini={kini} lalu={lalu} warna={WARNA_TERBIT} ambil={(titik) => titik.diterbitkan} />
+      <KartuSpark label="Sukses 7 hari" kini={kini} lalu={lalu} warna={COLOR_PUBLISHED} ambil={(titik) => titik.diterbitkan} />
       <KartuSpark
         label="Tugas 7 hari"
         kini={kini}
         lalu={lalu}
-        warna={WARNA_ANTRE}
+        warna={COLOR_QUEUED}
         ambil={(titik) => titik.diterbitkan + titik.gagal + titik.antre}
       />
-      <KartuSpark label="Gagal 7 hari" kini={kini} lalu={lalu} warna={WARNA_GAGAL} ambil={(titik) => titik.gagal} />
+      <KartuSpark label="Gagal 7 hari" kini={kini} lalu={lalu} warna={COLOR_FAILED} ambil={(titik) => titik.gagal} />
     </div>
   );
 }

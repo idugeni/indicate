@@ -4,7 +4,7 @@ import { Scatter, ScatterChart, XAxis, YAxis, ZAxis } from 'recharts';
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { AnalyticsPoint } from '@/modules/dashboard/models';
-import { potongLabel } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { truncateLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 const BATAS_SITUS = 20;
@@ -19,12 +19,12 @@ interface Gelembung {
 /**
  * Render throughput vs tingkat sukses per situs sebagai gelembung.
  *
- * @param hasil - Titik `situs:status` dari proyeksi analitik.
+ * @param results - Titik `situs:status` dari proyeksi analitik.
  * @returns Kartu sebar: sumbu-x volume, sumbu-y persen sukses, ukuran gelembung volume.
  */
-export function GelembungSitus({ hasil }: { readonly hasil: readonly AnalyticsPoint[] }) {
+export function SiteBubbles({ results }: { readonly results: readonly AnalyticsPoint[] }) {
   const perSitus = new Map<string, { total: number; sukses: number }>();
-  for (const titik of hasil) {
+  for (const titik of results) {
     const pisah = titik.key.indexOf(':');
     if (pisah < 0) continue;
     const situs = titik.key.slice(0, pisah);
@@ -37,7 +37,7 @@ export function GelembungSitus({ hasil }: { readonly hasil: readonly AnalyticsPo
   const data: Gelembung[] = [...perSitus]
     .map(([situs, slot]) => ({
       situs,
-      label: potongLabel(situs, 14),
+      label: truncateLabel(situs, 14),
       total: slot.total,
       sukses: slot.total > 0 ? Math.round((slot.sukses / slot.total) * 100) : 0,
     }))

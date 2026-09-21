@@ -6,7 +6,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { cn } from '@/ui/cn';
 
-const WARNA_STATUS: Record<string, string> = {
+const STATUS_COLORS: Record<string, string> = {
   queued: '#d8a94e',
   processing: '#6c93c9',
   published: '#5fcbb0',
@@ -14,7 +14,7 @@ const WARNA_STATUS: Record<string, string> = {
   retrying: '#cc9a44',
 };
 
-const WARNA_HASIL: Record<string, string> = {
+const RESULT_COLORS: Record<string, string> = {
   berhasil: '#5fcbb0',
   gagal: '#d9705f',
 };
@@ -28,42 +28,42 @@ interface Irisan {
 /**
  * Render donat distribusi untuk satu dimensi ringkasan.
  *
- * @param judul - Judul kartu yang tampil.
+ * @param title - Judul kartu yang tampil.
  * @param irisan - Potongan donat beserta warna token dark.
- * @param kosong - Teks pengganti saat total nol.
+ * @param emptyText - Teks pengganti saat total nol.
  * @param className - Span bento dari grid induk.
  * @returns Kartu donat dengan legenda angka id-ID.
  */
-function Donat({
-  judul,
+function Donut({
+  title,
   irisan,
-  kosong,
+  emptyText,
   className,
 }: {
-  readonly judul: string;
+  readonly title: string;
   readonly irisan: readonly Irisan[];
-  readonly kosong: string;
+  readonly emptyText: string;
   readonly className?: string;
 }) {
   const total = irisan.reduce((jumlah, potong) => jumlah + potong.nilai, 0);
   return (
     <section
-      aria-label={judul}
+      aria-label={title}
       className={cn('flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-hairline bg-bg-raised p-5', className)}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
-          {judul}
+          {title}
         </h2>
         <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
           {total.toLocaleString('id-ID')} total
         </p>
       </div>
       {total === 0 ? (
-        <EmptyState title={kosong} description="Data akan tampil di sini setelah tersedia." />
+        <EmptyState title={emptyText} description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <div className="mt-2 flex flex-wrap items-center gap-4">
-          <ChartContainer config={{ nilai: { label: judul } }} className="aspect-square w-36 flex-none sm:w-40">
+          <ChartContainer config={{ nilai: { label: title } }} className="aspect-square w-36 flex-none sm:w-40">
             <PieChart>
               <ChartTooltip
                 content={
@@ -116,53 +116,53 @@ function Donat({
  * Render visual ringkasan dasbor utama dari snapshot organisasi.
  *
  * @param jobs - Cacah tugas penerbitan per status.
- * @param berhasil - Jumlah hasil situs yang sukses.
- * @param gagal - Jumlah hasil situs yang gagal.
- * @param aktif - Jumlah artikel aktif.
- * @param arsip - Jumlah artikel yang diarsipkan.
+ * @param succeeded - Jumlah hasil situs yang sukses.
+ * @param failed - Jumlah hasil situs yang gagal.
+ * @param active - Jumlah artikel aktif.
+ * @param archived - Jumlah artikel yang diarsipkan.
  * @returns Fragmen tiga kartu donat siap tata bento induk.
  */
 export function SummaryCharts({
   jobs,
-  berhasil,
-  gagal,
-  aktif,
-  arsip,
+  succeeded,
+  failed,
+  active,
+  archived,
 }: {
   readonly jobs: Readonly<Record<string, number>>;
-  readonly berhasil: number;
-  readonly gagal: number;
-  readonly aktif: number;
-  readonly arsip: number;
+  readonly succeeded: number;
+  readonly failed: number;
+  readonly active: number;
+  readonly archived: number;
 }) {
   return (
     <>
-      <Donat
-        judul="Distribusi antrean"
-        kosong="Belum ada tugas penerbitan. Tugas antrean akan terisi setelah artikel pertama dijadwalkan."
+      <Donut
+        title="Distribusi antrean"
+        emptyText="Belum ada tugas penerbitan. Tugas antrean akan terisi setelah artikel pertama dijadwalkan."
         className="min-[420px]:col-span-6 lg:col-span-5"
         irisan={Object.entries(jobs).map(([status, nilai]) => ({
           nama: status,
           nilai: Number(nilai),
-          warna: WARNA_STATUS[status] ?? '#8b93a7',
+          warna: STATUS_COLORS[status] ?? '#8b93a7',
         }))}
       />
-      <Donat
-        judul="Komposisi hasil"
-        kosong="Belum ada hasil penyaluran. Hasil situs akan diringkas di sini setelah antrean pertama berjalan."
+      <Donut
+        title="Komposisi hasil"
+        emptyText="Belum ada hasil penyaluran. Hasil situs akan diringkas di sini setelah antrean pertama berjalan."
         className="min-[420px]:col-span-3 lg:col-span-4"
         irisan={[
-          { nama: 'berhasil', nilai: berhasil, warna: WARNA_HASIL.berhasil ?? '#5fcbb0' },
-          { nama: 'gagal', nilai: gagal, warna: WARNA_HASIL.gagal ?? '#d9705f' },
+          { nama: 'berhasil', nilai: succeeded, warna: RESULT_COLORS.berhasil ?? '#5fcbb0' },
+          { nama: 'gagal', nilai: failed, warna: RESULT_COLORS.gagal ?? '#d9705f' },
         ]}
       />
-      <Donat
-        judul="Komposisi artikel"
-        kosong="Belum ada artikel. Tulis naskah perdana dari ruang redaksi."
+      <Donut
+        title="Komposisi artikel"
+        emptyText="Belum ada artikel. Tulis naskah perdana dari ruang redaksi."
         className="min-[420px]:col-span-3 lg:col-span-3"
         irisan={[
-          { nama: 'aktif', nilai: aktif, warna: '#cc9a44' },
-          { nama: 'arsip', nilai: arsip, warna: '#8b93a7' },
+          { nama: 'aktif', nilai: active, warna: '#cc9a44' },
+          { nama: 'arsip', nilai: archived, warna: '#8b93a7' },
         ]}
       />
     </>
@@ -172,22 +172,22 @@ export function SummaryCharts({
 /**
  * Render cincin tingkat keberhasilan penyaluran.
  *
- * @param berhasil - Jumlah hasil situs yang sukses.
- * @param gagal - Jumlah hasil situs yang gagal.
+ * @param succeeded - Jumlah hasil situs yang sukses.
+ * @param failed - Jumlah hasil situs yang gagal.
  * @param className - Span bento dari grid induk.
  * @returns Kartu radial dengan angka persen di tengah.
  */
-export function TingkatKeberhasilan({
-  berhasil,
-  gagal,
+export function SuccessRate({
+  succeeded,
+  failed,
   className,
 }: {
-  readonly berhasil: number;
-  readonly gagal: number;
+  readonly succeeded: number;
+  readonly failed: number;
   readonly className?: string;
 }) {
-  const total = berhasil + gagal;
-  const kadar = total > 0 ? Math.round((berhasil / total) * 100) : 0;
+  const total = succeeded + failed;
+  const kadar = total > 0 ? Math.round((succeeded / total) * 100) : 0;
   return (
     <section
       aria-label="Tingkat keberhasilan"
@@ -245,13 +245,13 @@ export function TingkatKeberhasilan({
             <div className="flex items-center justify-between">
               <dt className="font-sans text-xs text-paper-dim">Berhasil</dt>
               <dd className="m-0 font-mono text-xs font-bold tabular-nums text-signal">
-                {berhasil.toLocaleString('id-ID')}
+                {succeeded.toLocaleString('id-ID')}
               </dd>
             </div>
             <div className="flex items-center justify-between">
               <dt className="font-sans text-xs text-paper-dim">Gagal</dt>
               <dd className="m-0 font-mono text-xs font-bold tabular-nums text-error">
-                {gagal.toLocaleString('id-ID')}
+                {failed.toLocaleString('id-ID')}
               </dd>
             </div>
           </dl>

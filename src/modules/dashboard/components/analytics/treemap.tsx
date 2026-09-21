@@ -4,7 +4,7 @@ import { Treemap } from 'recharts';
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { AnalyticsPoint } from '@/modules/dashboard/models';
-import { PALET_KATEGORI } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { CATEGORY_PALETTE } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 const BATAS_SEGMEN = 12;
@@ -62,7 +62,7 @@ function IsiSegmen(props: SegmenPohon) {
   if (!Number.isFinite(x) || !Number.isFinite(y) || lebar <= 0 || tinggi <= 0) return null;
   if (props.depth === 0) return null;
   const urutan = Number.isFinite(props.index) ? (props.index as number) : 0;
-  const palet = props.colors !== undefined && props.colors.length > 0 ? props.colors : PALET_KATEGORI;
+  const palet = props.colors !== undefined && props.colors.length > 0 ? props.colors : CATEGORY_PALETTE;
   const fill = palet[((Math.trunc(urutan) % palet.length) + palet.length) % palet.length] ?? '#8b93a7';
   const peringkat = Math.trunc(urutan) + 1;
   const nama = String(props.name ?? '');
@@ -163,34 +163,34 @@ function IsiSegmen(props: SegmenPohon) {
 /**
  * Render distribusi volume sebagai treemap.
  *
- * @param judul - Judul kartu yang tampil.
- * @param baris - Titik dimensi (`key` + `count`).
- * @param kosong - Teks pengganti saat nihil.
+ * @param title - Judul kartu yang tampil.
+ * @param rows - Titik dimensi (`key` + `count`).
+ * @param emptyText - Teks pengganti saat nihil.
  * @returns Kartu treemap 12 segmen teratas.
  */
-export function PetaPohon({
-  judul,
-  baris,
-  kosong,
+export function TreeMap({
+  title,
+  rows,
+  emptyText,
 }: {
-  readonly judul: string;
-  readonly baris: readonly AnalyticsPoint[];
-  readonly kosong: string;
+  readonly title: string;
+  readonly rows: readonly AnalyticsPoint[];
+  readonly emptyText: string;
 }) {
-  const data = [...baris]
+  const data = [...rows]
     .sort((kiri, kanan) => kanan.count - kiri.count)
     .slice(0, BATAS_SEGMEN)
     .map((titik) => ({ name: titik.key, size: titik.count }));
   const total = data.reduce((jumlah, segmen) => jumlah + segmen.size, 0);
   return (
     <section
-      aria-label={judul}
+      aria-label={title}
       className="flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
-            {judul}
+            {title}
           </h2>
           <p className="m-0 mt-0.5 font-sans text-xs text-paper-faint">
             12 teratas berdasar tayangan
@@ -201,14 +201,14 @@ export function PetaPohon({
         </p>
       </div>
       {data.length === 0 ? (
-        <EmptyState title={kosong} description="Data akan tampil di sini setelah tersedia." />
+        <EmptyState title={emptyText} description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <ChartContainer config={{}} className="mt-4 h-64 w-full">
           <Treemap
             data={data}
             dataKey="size"
             stroke="#0e1320"
-            colorPanel={[...PALET_KATEGORI]}
+            colorPanel={[...CATEGORY_PALETTE]}
             isAnimationActive={false}
             content={<IsiSegmen total={total} />}
           >

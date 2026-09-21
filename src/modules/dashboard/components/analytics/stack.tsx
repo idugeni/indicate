@@ -4,7 +4,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { TugasHarian } from '@/modules/dashboard/models';
-import { WARNA_ANTRE, WARNA_GAGAL, WARNA_TERBIT, labelHari } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { COLOR_PUBLISHED, COLOR_FAILED, COLOR_QUEUED, weekdayLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 /**
@@ -13,9 +13,9 @@ import { EmptyState } from '@/modules/dashboard/components/empty-state';
  * @param series - Ember harian dari proyeksi analitik (maks 90 hari).
  * @returns Kartu batang 30 hari terakhir per status tugas.
  */
-export function TugasBertumpuk({ series }: { readonly series: readonly TugasHarian[] }) {
+export function StackedTasks({ series }: { readonly series: readonly TugasHarian[] }) {
   const data = series.slice(-30).map((titik) => ({
-    label: labelHari(titik.hari),
+    label: weekdayLabel(titik.hari),
     Diterbitkan: titik.diterbitkan,
     Gagal: titik.gagal,
     Antre: titik.antre,
@@ -36,9 +36,9 @@ export function TugasBertumpuk({ series }: { readonly series: readonly TugasHari
       ) : (
         <ChartContainer
           config={{
-            Diterbitkan: { label: 'Diterbitkan', color: WARNA_TERBIT },
-            Gagal: { label: 'Gagal', color: WARNA_GAGAL },
-            Antre: { label: 'Antre', color: WARNA_ANTRE },
+            Diterbitkan: { label: 'Diterbitkan', color: COLOR_PUBLISHED },
+            Gagal: { label: 'Gagal', color: COLOR_FAILED },
+            Antre: { label: 'Antre', color: COLOR_QUEUED },
           }}
           className="mt-4 h-64 w-full"
         >

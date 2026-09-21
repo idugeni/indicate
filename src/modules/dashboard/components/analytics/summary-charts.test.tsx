@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 
-import { SummaryCharts, TingkatKeberhasilan } from '@/modules/dashboard/components/analytics/summary-charts';
+import { SummaryCharts, SuccessRate } from '@/modules/dashboard/components/analytics/summary-charts';
 
 vi.stubGlobal(
   'ResizeObserver',
@@ -25,7 +25,7 @@ afterEach(() => {
 
 describe('Visual ringkasan', () => {
   it('merender legenda antrean dan hasil', () => {
-    render(<SummaryCharts jobs={{ queued: 2, published: 1 }} berhasil={4} gagal={1} aktif={7} arsip={2} />);
+    render(<SummaryCharts jobs={{ queued: 2, published: 1 }} succeeded={4} failed={1} active={7} archived={2} />);
     expect(screen.getByText('Distribusi antrean')).toBeDefined();
     expect(screen.getByText('Komposisi hasil')).toBeDefined();
     expect(screen.getByText('Komposisi artikel')).toBeDefined();
@@ -34,7 +34,7 @@ describe('Visual ringkasan', () => {
   });
 
   it('menampilkan pesan kosong saat total nol', () => {
-    render(<SummaryCharts jobs={{}} berhasil={0} gagal={0} aktif={0} arsip={0} />);
+    render(<SummaryCharts jobs={{}} succeeded={0} failed={0} active={0} archived={0} />);
     expect(screen.getByText(/Belum ada tugas penerbitan/)).toBeDefined();
     expect(screen.getByText(/Belum ada hasil penyaluran/)).toBeDefined();
     expect(screen.getByText(/Belum ada artikel/)).toBeDefined();
@@ -43,13 +43,13 @@ describe('Visual ringkasan', () => {
 
 describe('Cincin keberhasilan', () => {
   it('merender kadar persen dari hasil', () => {
-    render(<TingkatKeberhasilan berhasil={3} gagal={1} />);
+    render(<SuccessRate succeeded={3} failed={1} />);
     expect(screen.getByText('Tingkat keberhasilan')).toBeDefined();
     expect(screen.getByText('75')).toBeDefined();
   });
 
   it('menampilkan pesan kosong saat nihil', () => {
-    render(<TingkatKeberhasilan berhasil={0} gagal={0} />);
+    render(<SuccessRate succeeded={0} failed={0} />);
     expect(screen.getByText(/Belum ada hasil penyaluran/)).toBeDefined();
   });
 });

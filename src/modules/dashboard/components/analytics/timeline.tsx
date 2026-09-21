@@ -14,10 +14,10 @@ function nada(status: string): string {
 /**
  * Render lini masa aktivitas operasional terbaru.
  *
- * @param peristiwa - Peristiwa terbaru dari proyeksi analitik (maks 8).
+ * @param events - Peristiwa terbaru dari proyeksi analitik (maks 8).
  * @returns Daftar kronologis dengan waktu relatif id-ID.
  */
-export function LiniMasa({ peristiwa }: { readonly peristiwa: readonly AktivitasTerbaru[] }) {
+export function Timeline({ events }: { readonly events: readonly AktivitasTerbaru[] }) {
   return (
     <section
       aria-label="Lini masa"
@@ -29,13 +29,13 @@ export function LiniMasa({ peristiwa }: { readonly peristiwa: readonly Aktivitas
       <p className="m-0 mt-0.5 font-sans text-xs text-paper-faint">
         Aktivitas operasional terbaru
       </p>
-      {peristiwa.length === 0 ? (
+      {events.length === 0 ? (
         <EmptyState title="Belum ada aktivitas tercatat." description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <ol className="m-0 mt-4 list-none space-y-0 p-0">
-          {peristiwa.map((item, indeks) => (
+          {events.map((item, indeks) => (
             <li key={item.id} className="relative flex gap-3 pb-4 last:pb-0">
-              {indeks < peristiwa.length - 1 ? (
+              {indeks < events.length - 1 ? (
                 <span aria-hidden="true" className="absolute top-5 bottom-0 left-[5px] w-px bg-hairline" />
               ) : null}
               <span aria-hidden="true" className={cn('mt-1.5 h-[11px] w-[11px] flex-none rounded-full border-2 border-bg-raised', nada(item.status))} />

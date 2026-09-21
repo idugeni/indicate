@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import type { AktivitasJam, TugasHarian } from '@/modules/dashboard/models';
-import { labelHari } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { weekdayLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 const NAMA_HARI = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as const;
@@ -17,12 +17,12 @@ function skala(nilai: number, maks: number): number {
 /**
  * Render peta panas aktivitas per hari dan jam (Asia/Jakarta).
  *
- * @param sel - Sel aktivitas nonzero dari proyeksi analitik.
+ * @param cells - Sel aktivitas nonzero dari proyeksi analitik.
  * @returns Grid 7×24 dengan intensitas warna.
  */
-export function PetaPanas({ sel }: { readonly sel: readonly AktivitasJam[] }) {
-  const peta = new Map(sel.map((titik) => [`${titik.hari}:${titik.jam}`, titik.jumlah]));
-  const maks = Math.max(...sel.map((titik) => titik.jumlah), 1);
+export function ActivityHeatmap({ cells }: { readonly cells: readonly AktivitasJam[] }) {
+  const peta = new Map(cells.map((titik) => [`${titik.hari}:${titik.jam}`, titik.jumlah]));
+  const maks = Math.max(...cells.map((titik) => titik.jumlah), 1);
   const jam = Array.from({ length: 24 }, (_, nilai) => nilai);
   return (
     <section
@@ -82,7 +82,7 @@ export function PetaPanas({ sel }: { readonly sel: readonly AktivitasJam[] }) {
  * @param series - Ember harian dari proyeksi analitik.
  * @returns Grid minggu × hari dengan pengalih 30/90 hari.
  */
-export function KalenderPanass({ series }: { readonly series: readonly TugasHarian[] }) {
+export function ActivityCalendar({ series }: { readonly series: readonly TugasHarian[] }) {
   const [rentang, setRentang] = useState<number>(90);
   const potong = series.slice(-rentang);
   const total = (titik: TugasHarian): number => titik.diterbitkan + titik.gagal + titik.antre;
@@ -142,7 +142,7 @@ export function KalenderPanass({ series }: { readonly series: readonly TugasHari
                 ) : (
                   <span
                     key={baris}
-                    title={`${labelHari(titik.hari)} — ${total(titik)}`}
+                    title={`${weekdayLabel(titik.hari)} — ${total(titik)}`}
                     className="h-3.5 w-full rounded-[3px] bg-bg-raised-2"
                     style={
                       total(titik) === 0

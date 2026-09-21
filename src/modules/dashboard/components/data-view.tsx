@@ -49,8 +49,8 @@ import {
 } from '@/modules/dashboard/components/dashboard-skeletons';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
 import type { AnalyticsProjection } from '@/modules/dashboard/models';
-import { GaleriTelemetri } from '@/modules/dashboard/components/analytics/galeri';
-import { BentoUtama } from '@/modules/dashboard/components/analytics/bento-utama';
+import { TelemetryGallery } from '@/modules/dashboard/components/analytics/gallery';
+import { PrimaryBento } from '@/modules/dashboard/components/analytics/primary-bento';
 import { getEditorConfig, type EditorTransition, type LookupTables } from '@/modules/dashboard/components/shared/record-editor-config';
 import { RecordEditorForm } from '@/modules/dashboard/components/shared/record-editor-form';
 import { cn } from '@/ui/cn';
@@ -269,12 +269,12 @@ export function DataView({
           ))}
         </dl>
 
-        <BentoUtama
+        <PrimaryBento
           jobs={jobs ?? {}}
-          berhasil={successfulOutcomes}
-          gagal={failedOutcomes}
-          aktif={activeArticles}
-          arsip={archivedArticles}
+          succeeded={successfulOutcomes}
+          failed={failedOutcomes}
+          active={activeArticles}
+          archived={archivedArticles}
           analytics={analytics}
         />
 
@@ -362,7 +362,7 @@ export function DataView({
     if (Array.isArray(projection.articlesByRegion)) {
       return (
         <div className="space-y-10">
-          <GaleriTelemetri data={projection as AnalyticsProjection} />
+          <TelemetryGallery data={projection as AnalyticsProjection} />
         </div>
       );
     }

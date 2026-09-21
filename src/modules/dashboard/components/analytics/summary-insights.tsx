@@ -11,29 +11,29 @@ function persen(nilai: number, dasar: number): string {
 /**
  * Render corong konversi redaksi dari artikel hingga hasil sukses.
  *
- * @param aktif - Jumlah artikel aktif siap salur.
- * @param tugas - Jumlah tugas antrean penerbitan.
- * @param sukses - Jumlah hasil situs yang sukses.
+ * @param active - Jumlah artikel aktif siap salur.
+ * @param tasks - Jumlah tugas antrean penerbitan.
+ * @param succeeded - Jumlah hasil situs yang sukses.
  * @param className - Span bento dari grid induk.
  * @returns Tiga tahap berurutan dengan laju konversi antar tahap.
  */
-export function FunnelKonversi({
-  aktif,
-  tugas,
-  sukses,
+export function ConversionFunnel({
+  active,
+  tasks,
+  succeeded,
   className,
 }: {
-  readonly aktif: number;
-  readonly tugas: number;
-  readonly sukses: number;
+  readonly active: number;
+  readonly tasks: number;
+  readonly succeeded: number;
   readonly className?: string;
 }) {
   const tahap = [
-    { label: 'Artikel aktif', nilai: aktif, catatan: 'Naskah siap salur' },
-    { label: 'Tugas antrean', nilai: tugas, catatan: `${persen(tugas, aktif)} dari artikel` },
-    { label: 'Hasil sukses', nilai: sukses, catatan: `${persen(sukses, tugas)} dari tugas` },
+    { label: 'Artikel aktif', nilai: active, catatan: 'Naskah siap salur' },
+    { label: 'Tugas antrean', nilai: tasks, catatan: `${persen(tasks, active)} dari artikel` },
+    { label: 'Hasil sukses', nilai: succeeded, catatan: `${persen(succeeded, tasks)} dari tugas` },
   ];
-  const maks = Math.max(aktif, tugas, sukses, 1);
+  const maks = Math.max(active, tasks, succeeded, 1);
   return (
     <section
       aria-label="Corong konversi"
@@ -68,29 +68,29 @@ export function FunnelKonversi({
 /**
  * Render peringkat lima teratas satu dimensi analitik.
  *
- * @param judul - Judul kartu peringkat.
- * @param baris - Titik analitik (`key` + `count`) yang belum terurut.
+ * @param title - Judul kartu peringkat.
+ * @param rows - Titik analitik (`key` + `count`) yang belum terurut.
  * @param className - Span bento dari grid induk.
  * @returns Daftar berperingkat dengan bar proporsional; teks kosong bila nihil.
  */
-export function PeringkatTeratas({
-  judul,
-  baris,
+export function TopRanked({
+  title,
+  rows,
   className,
 }: {
-  readonly judul: string;
-  readonly baris: readonly AnalyticsPoint[];
+  readonly title: string;
+  readonly rows: readonly AnalyticsPoint[];
   readonly className?: string;
 }) {
-  const teratas = [...baris].sort((a, b) => b.count - a.count).slice(0, BATAS_BARIS);
+  const teratas = [...rows].sort((a, b) => b.count - a.count).slice(0, BATAS_BARIS);
   const maks = Math.max(...teratas.map((titik) => titik.count), 1);
   return (
     <section
-      aria-label={judul}
+      aria-label={title}
       className={`flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-hairline bg-bg-raised p-5${className === undefined ? '' : ` ${className}`}`}
     >
       <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
-        {judul}
+        {title}
       </h2>
       {teratas.length === 0 ? (
         <EmptyState title="Belum ada data." description="Data akan tampil di sini setelah tersedia." />

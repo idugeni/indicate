@@ -4,7 +4,7 @@ import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts';
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { AnalyticsProjection } from '@/modules/dashboard/models';
-import { warnaKategori } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { categoryColor } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 interface Dimensi {
@@ -15,7 +15,7 @@ interface Dimensi {
 
 const BATAS_BARIS = 10;
 
-function potongLabel(nilai: string): string {
+function truncateLabel(nilai: string): string {
   return nilai.length > 20 ? `${nilai.slice(0, 19)}…` : nilai;
 }
 
@@ -72,7 +72,7 @@ export function TelemetryCharts({ data }: { readonly data: AnalyticsProjection }
                     tickLine={false}
                     axisLine={false}
                     tick={{ fontSize: 11 }}
-                    tickFormatter={(nilai: string) => potongLabel(nilai)}
+                    tickFormatter={(nilai: string) => truncateLabel(nilai)}
                   />
                   <XAxis type="number" hide />
                   <ChartTooltip
@@ -86,7 +86,7 @@ export function TelemetryCharts({ data }: { readonly data: AnalyticsProjection }
                   />
                   <Bar dataKey="count" radius={[2, 2, 2, 2]}>
                     {teratas.map((titik, peringkat) => (
-                      <Cell key={titik.key} fill={warnaKategori(peringkat)} />
+                      <Cell key={titik.key} fill={categoryColor(peringkat)} />
                     ))}
                   </Bar>
                 </BarChart>

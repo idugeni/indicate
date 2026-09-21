@@ -1,9 +1,9 @@
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
-export const WARNA_TERBIT = '#5fcbb0';
-export const WARNA_GAGAL = '#d9705f';
-export const WARNA_ANTRE = '#d8a94e';
+export const COLOR_PUBLISHED = '#5fcbb0';
+export const COLOR_FAILED = '#d9705f';
+export const COLOR_QUEUED = '#d8a94e';
 
 /**
  * Palet kategorikal 12 warna untuk visual dashboard di atas latar gelap.
@@ -12,9 +12,9 @@ export const WARNA_ANTRE = '#d8a94e';
  * ungu, …) agar segmen bersebelahan selalu kontras. Enam warna pertama
  * mewarisi token dan grafik yang sudah ada; enam sisanya melengkapi hingga
  * 12 kategori tanpa mengulang. Indeks di luar rentang dibungkus modulo
- * lewat `warnaKategori`.
+ * lewat `categoryColor`.
  */
-export const PALET_KATEGORI: readonly string[] = [
+export const CATEGORY_PALETTE: readonly string[] = [
   '#cc9a44',
   '#5fcbb0',
   '#6c93c9',
@@ -32,34 +32,34 @@ export const PALET_KATEGORI: readonly string[] = [
 /**
  * Ambil warna kategori deterministik dari palet berdasarkan indeks.
  *
- * @param indeks - Posisi kategori (peringkat, urutan simpul, dsb).
+ * @param index - Posisi kategori (peringkat, urutan simpul, dsb).
  * @returns Hex palet; indeks negatif atau besar dibungkus modulo.
  */
-export function warnaKategori(indeks: number): string {
-  const palet = PALET_KATEGORI;
-  const posisi = ((Math.trunc(indeks) % palet.length) + palet.length) % palet.length;
-  return palet[posisi] ?? '#8b93a7';
+export function categoryColor(index: number): string {
+  const palette = CATEGORY_PALETTE;
+  const position = ((Math.trunc(index) % palette.length) + palette.length) % palette.length;
+  return palette[position] ?? '#8b93a7';
 }
 
 /**
  * Label sumbu kalender Indonesia dari hari `YYYY-MM-DD` (UTC).
  *
- * @param hari - Hari ISO tanpa jam.
+ * @param day - Hari ISO tanpa jam.
  * @returns Label `d MMM` (id-ID); input tak valid dikembalikan apa adanya.
  */
-export function labelHari(hari: string): string {
-  const tanggal = new Date(`${hari}T00:00:00Z`);
-  if (Number.isNaN(tanggal.getTime())) return hari;
+export function weekdayLabel(day: string): string {
+  const tanggal = new Date(`${day}T00:00:00Z`);
+  if (Number.isNaN(tanggal.getTime())) return day;
   return format(tanggal, 'd MMM', { locale: id });
 }
 
 /**
  * Potong label kategori panjang untuk sumbu dan legenda.
  *
- * @param nilai - Label mentah (mis. ID situs).
- * @param batas - Panjang maksimum sebelum elipsis; default 20.
+ * @param value - Label mentah (mis. ID situs).
+ * @param max - Panjang maksimum sebelum elipsis; default 20.
  * @returns Label terpotong dengan `…` bila melebihi batas.
  */
-export function potongLabel(nilai: string, batas = 20): string {
-  return nilai.length > batas ? `${nilai.slice(0, batas - 1)}…` : nilai;
+export function truncateLabel(value: string, max = 20): string {
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }

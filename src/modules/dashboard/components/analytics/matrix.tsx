@@ -1,7 +1,7 @@
 import type { AnalyticsPoint } from '@/modules/dashboard/models';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
-import { potongLabel } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { truncateLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
 
 const BATAS_SITUS = 8;
 
@@ -22,11 +22,11 @@ function urai(hasil: readonly AnalyticsPoint[]): Map<string, Map<string, number>
 /**
  * Render matriks kesehatan seluruh situs per status hasil.
  *
- * @param hasil - Titik `situs:status` dari proyeksi analitik.
+ * @param results - Titik `situs:status` dari proyeksi analitik.
  * @returns Tabel 8 situs teratas dengan kolom status dinamis.
  */
-export function MatriksStatus({ hasil }: { readonly hasil: readonly AnalyticsPoint[] }) {
-  const matriks = urai(hasil);
+export function StatusMatrix({ results }: { readonly results: readonly AnalyticsPoint[] }) {
+  const matriks = urai(results);
   const situs = [...matriks]
     .map(([nama, baris]) => ({ nama, total: [...baris.values()].reduce((a, b) => a + b, 0) }))
     .sort((kiri, kanan) => kanan.total - kiri.total)
@@ -56,7 +56,7 @@ export function MatriksStatus({ hasil }: { readonly hasil: readonly AnalyticsPoi
                 </TableHead>
                 {status.map((nama) => (
                   <TableHead key={nama} scope="col" className="px-2 py-2 text-right font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">
-                    {potongLabel(nama, 10)}
+                    {truncateLabel(nama, 10)}
                   </TableHead>
                 ))}
                 <TableHead scope="col" className="py-2 pl-2 text-right font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">

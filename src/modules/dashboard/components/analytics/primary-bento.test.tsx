@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 
-import { BarTayanganSitus, BentoUtama, GarisTayangan, GelembungTayangan, TumpukanSitus } from '@/modules/dashboard/components/analytics/bento-utama';
+import { SiteViewsBar, PrimaryBento, ViewsLine, ViewsBubbles, SiteStack } from '@/modules/dashboard/components/analytics/primary-bento';
 import type { AnalyticsProjection } from '@/modules/dashboard/models';
 
 vi.stubGlobal(
@@ -64,14 +64,14 @@ const ANALYTICS: AnalyticsProjection = {
   arusPenerbit: [{ penerbit: 'p-1', situs: 's-1', hasil: 'published', jumlah: 2 }],
 };
 
-describe('Bento utama', () => {
+describe('Primary bento', () => {
   it('merender sebagai satu sel penuh grid induk', () => {
-    const { container } = render(<BentoUtama jobs={{}} berhasil={0} gagal={0} aktif={0} arsip={0} analytics={null} />);
+    const { container } = render(<PrimaryBento jobs={{}} succeeded={0} failed={0} active={0} archived={0} analytics={null} />);
     expect((container.firstChild as HTMLElement | null)?.className ?? '').toContain('col-span-full');
   });
 
   it('merender lima belas jenis visual dalam satu grid', { timeout: 30000 }, () => {
-    render(<BentoUtama jobs={{}} berhasil={2} gagal={0} aktif={2} arsip={0} analytics={ANALYTICS} />);
+    render(<PrimaryBento jobs={{}} succeeded={2} failed={0} active={2} archived={0} analytics={ANALYTICS} />);
     expect(screen.getByText('Sukses 7 hari')).toBeDefined();
     expect(screen.getByText('Distribusi antrean')).toBeDefined();
     expect(screen.getByText('Corong konversi')).toBeDefined();
@@ -92,7 +92,7 @@ describe('Bento utama', () => {
   });
 
   it('menampilkan status kosong tanpa gagal saat analitik null', () => {
-    render(<BentoUtama jobs={{}} berhasil={0} gagal={0} aktif={0} arsip={0} analytics={null} />);
+    render(<PrimaryBento jobs={{}} succeeded={0} failed={0} active={0} archived={0} analytics={null} />);
     expect(screen.getByText('Belum ada data tayangan.')).toBeDefined();
     expect(screen.getByText('Belum ada data tayangan situs.')).toBeDefined();
     expect(screen.getByText('Belum ada data sebar tayangan.')).toBeDefined();
@@ -101,14 +101,14 @@ describe('Bento utama', () => {
   });
 
   it('merender visual tayangan mandiri', () => {
-    render(<GarisTayangan series={ANALYTICS.viewsHarian ?? []} />);
+    render(<ViewsLine series={ANALYTICS.viewsHarian ?? []} />);
     expect(screen.getByText('Tren tayangan')).toBeDefined();
-    const { unmount } = render(<BarTayanganSitus baris={ANALYTICS.viewsBySite ?? []} label={(id) => ANALYTICS.siteLabels?.[id] ?? id} />);
+    const { unmount } = render(<SiteViewsBar rows={ANALYTICS.viewsBySite ?? []} label={(id) => ANALYTICS.siteLabels?.[id] ?? id} />);
     expect(screen.getByText('Tayangan per situs')).toBeDefined();
     unmount();
-    render(<TumpukanSitus hasil={ANALYTICS.outcomesBySiteAndState} label={(id) => ANALYTICS.siteLabels?.[id] ?? id} />);
+    render(<SiteStack results={ANALYTICS.outcomesBySiteAndState} label={(id) => ANALYTICS.siteLabels?.[id] ?? id} />);
     expect(screen.getByText('Komposisi situs')).toBeDefined();
-    render(<GelembungTayangan baris={ANALYTICS.viewsBySite ?? []} label={(id) => ANALYTICS.siteLabels?.[id] ?? id} />);
+    render(<ViewsBubbles rows={ANALYTICS.viewsBySite ?? []} label={(id) => ANALYTICS.siteLabels?.[id] ?? id} />);
     expect(screen.getByText('Gelembung tayangan')).toBeDefined();
   });
 });

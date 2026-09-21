@@ -5,7 +5,7 @@ import type { SankeyNode } from 'recharts/types/util/types';
 
 import { ChartContainer } from '@/components/ui/chart';
 import type { ArusPenerbit } from '@/modules/dashboard/models';
-import { potongLabel, warnaKategori } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { truncateLabel, categoryColor } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 const BATAS_SIMPUL = 6;
@@ -69,7 +69,7 @@ function Simpul(props: { readonly x?: number | undefined; readonly y?: number | 
   const { x = 0, y = 0, width = 0, height = 0, index = 0, payload } = props;
   const depth = payload?.depth ?? 1;
   const nama = payload?.name ?? '';
-  const warna = warnaKategori(index);
+  const warna = categoryColor(index);
   const kanan = depth === 2;
   return (
     <g>
@@ -82,7 +82,7 @@ function Simpul(props: { readonly x?: number | undefined; readonly y?: number | 
         fontSize={11}
         fill="#9fa6b8"
       >
-        {potongLabel(nama, 16)}
+        {truncateLabel(nama, 16)}
       </text>
     </g>
   );
@@ -103,11 +103,11 @@ function IsiSankey({ active, payload }: { readonly active?: boolean; readonly pa
 /**
  * Render arus penerbit → situs → hasil sebagai diagram Sankey.
  *
- * @param arus - Sisi arus dari proyeksi analitik; simpul dibatasi 6 teratas per tingkat.
+ * @param flows - Sisi arus dari proyeksi analitik; simpul dibatasi 6 teratas per tingkat.
  * @returns Kartu Sankey tiga tingkat.
  */
-export function AlurSankey({ arus }: { readonly arus: readonly ArusPenerbit[] }) {
-  if (arus.length === 0) {
+export function SankeyFlow({ flows }: { readonly flows: readonly ArusPenerbit[] }) {
+  if (flows.length === 0) {
     return (
       <section
         aria-label="Alur penerbit"
@@ -120,7 +120,7 @@ export function AlurSankey({ arus }: { readonly arus: readonly ArusPenerbit[] })
       </section>
     );
   }
-  const { nodes, links } = bangun(arus);
+  const { nodes, links } = bangun(flows);
   return (
     <section
       aria-label="Alur penerbit"

@@ -6,23 +6,23 @@ import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Scatter, ScatterCh
 import { Button } from '@/components/ui/button';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { AnalyticsProjection, ViewsHarian, ViewsPoint } from '@/modules/dashboard/models';
-import { labelHari, potongLabel, warnaKategori } from '@/modules/dashboard/components/analytics/bantuan-grafik';
+import { weekdayLabel, truncateLabel, categoryColor } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
-import { KalenderPanass, PetaPanas } from '@/modules/dashboard/components/analytics/panas';
+import { ActivityCalendar, ActivityHeatmap } from '@/modules/dashboard/components/analytics/heatmap';
 import { KpiSparkline } from '@/modules/dashboard/components/analytics/kpi-spark';
-import { LiniMasa } from '@/modules/dashboard/components/analytics/lini-masa';
-import { MatriksStatus } from '@/modules/dashboard/components/analytics/matriks';
-import { PetaPohon } from '@/modules/dashboard/components/analytics/pohon';
-import { AlurSankey } from '@/modules/dashboard/components/analytics/sankey';
-import { FunnelKonversi, PeringkatTeratas } from '@/modules/dashboard/components/analytics/summary-insights';
-import { SummaryCharts, TingkatKeberhasilan } from '@/modules/dashboard/components/analytics/summary-charts';
-import { TrenPublikasi } from '@/modules/dashboard/components/analytics/tren';
+import { Timeline } from '@/modules/dashboard/components/analytics/timeline';
+import { StatusMatrix } from '@/modules/dashboard/components/analytics/matrix';
+import { TreeMap } from '@/modules/dashboard/components/analytics/treemap';
+import { SankeyFlow } from '@/modules/dashboard/components/analytics/sankey';
+import { ConversionFunnel, TopRanked } from '@/modules/dashboard/components/analytics/summary-insights';
+import { SummaryCharts, SuccessRate } from '@/modules/dashboard/components/analytics/summary-charts';
+import { PublicationTrend } from '@/modules/dashboard/components/analytics/trend';
 
 const RENTANG = [7, 30, 90] as const;
 const BATAS_SITUS = 10;
 const BATAS_GELEMBUNG = 20;
 
-const WARNA_TUMPUK: Record<string, string> = {
+const STACK_COLORS: Record<string, string> = {
   published: '#5fcbb0',
   failed: '#d9705f',
   queued: '#d8a94e',
@@ -32,7 +32,7 @@ const WARNA_TUMPUK: Record<string, string> = {
 };
 
 function siapkanGaris(series: readonly ViewsHarian[], rentang: number): readonly { hari: string; label: string; tayangan: number }[] {
-  return series.slice(-rentang).map((titik) => ({ hari: titik.hari, label: labelHari(titik.hari), tayangan: titik.views }));
+  return series.slice(-rentang).map((titik) => ({ hari: titik.hari, label: weekdayLabel(titik.hari), tayangan: titik.views }));
 }
 
 /**
@@ -41,7 +41,7 @@ function siapkanGaris(series: readonly ViewsHarian[], rentang: number): readonly
  * @param series - Ember harian tayangan dari proyeksi analitik (maks 90 hari).
  * @returns Kartu garis tayangan dengan pengalih rentang 7/30/90 hari.
  */
-export function GarisTayangan({ series }: { readonly series: readonly ViewsHarian[] }) {
+export function ViewsLine({ series }: { readonly series: readonly ViewsHarian[] }) {
   const [rentang, setRentang] = useState<number>(30);
   const data = siapkanGaris(series, rentang);
   const total = series.reduce((jumlah, titik) => jumlah + titik.views, 0);
@@ -95,7 +95,7 @@ export function GarisTayangan({ series }: { readonly series: readonly ViewsHaria
                 <ChartTooltipContent
                   labelFormatter={(_, payload) => {
                     const pertama = payload?.[0]?.payload as { hari?: string } | undefined;
-                    return pertama?.hari === undefined ? null : labelHari(pertama.hari);
+                    return pertama?.hari === undefined ? null : weekdayLabel(pertama.hari);
                   }}
                   formatter={(nilai) =>
                     typeof nilai === 'number' ? nilai.toLocaleString('id-ID') : String(nilai ?? '')
@@ -115,16 +115,16 @@ export function GarisTayangan({ series }: { readonly series: readonly ViewsHaria
 /**
  * Render peringkat situs berdasar tayangan sebagai batang horizontal.
  *
- * @param baris - Titik tayangan per situs dari proyeksi analitik.
+ * @param rows - Titik tayangan per situs dari proyeksi analitik.
  * @param label - Pemeta ID situs ke nama tampilan.
  * @returns Kartu batang 10 situs teratas.
  */
-export function BarTayanganSitus({ baris, label }: { readonly baris: readonly ViewsPoint[]; readonly label: (id: string) => string }) {
-  const data = [...baris]
+export function SiteViewsBar({ rows, label }: { readonly rows: readonly ViewsPoint[]; readonly label: (id: string) => string }) {
+  const data = [...rows]
     .sort((kiri, kanan) => kanan.views - kiri.views)
     .slice(0, BATAS_SITUS)
     .map((titik) => ({ nama: label(titik.key), tayangan: titik.views, situs: titik.count }));
-  const total = baris.reduce((jumlah, titik) => jumlah + titik.views, 0);
+  const total = rows.reduce((jumlah, titik) => jumlah + titik.views, 0);
   return (
     <section
       aria-label="Tayangan per situs"
@@ -156,7 +156,7 @@ export function BarTayanganSitus({ baris, label }: { readonly baris: readonly Vi
               tickLine={false}
               axisLine={false}
               tick={{ fontSize: 11 }}
-              tickFormatter={(nilai: string) => potongLabel(nilai)}
+              tickFormatter={(nilai: string) => truncateLabel(nilai)}
             />
             <XAxis type="number" hide />
             <ChartTooltip
@@ -170,7 +170,7 @@ export function BarTayanganSitus({ baris, label }: { readonly baris: readonly Vi
             />
             <Bar dataKey="tayangan" radius={[2, 2, 2, 2]}>
               {data.map((titik, peringkat) => (
-                <Cell key={titik.nama} fill={warnaKategori(peringkat)} />
+                <Cell key={titik.nama} fill={categoryColor(peringkat)} />
               ))}
             </Bar>
           </BarChart>
@@ -183,13 +183,13 @@ export function BarTayanganSitus({ baris, label }: { readonly baris: readonly Vi
 /**
  * Render komposisi penyaluran per situs sebagai batang bertumpuk kategorikal.
  *
- * @param hasil - Titik `situs:status` dari proyeksi analitik.
+ * @param results - Titik `situs:status` dari proyeksi analitik.
  * @param label - Pemeta ID situs ke nama tampilan.
  * @returns Kartu batang 8 situs teratas dengan tumpukan status dinamis.
  */
-export function TumpukanSitus({ hasil, label }: { readonly hasil: readonly { readonly key: string; readonly count: number }[]; readonly label: (id: string) => string }) {
+export function SiteStack({ results, label }: { readonly results: readonly { readonly key: string; readonly count: number }[]; readonly label: (id: string) => string }) {
   const matriks = new Map<string, Map<string, number>>();
-  for (const titik of hasil) {
+  for (const titik of results) {
     const pisah = titik.key.indexOf(':');
     if (pisah < 0) continue;
     const situs = titik.key.slice(0, pisah);
@@ -204,7 +204,7 @@ export function TumpukanSitus({ hasil, label }: { readonly hasil: readonly { rea
     .slice(0, 8);
   const statusList = [...new Set([...matriks.values()].flatMap((baris) => [...baris.keys()]))].sort();
   const data = situsTop.map(({ nama }) => ({
-    situs: potongLabel(label(nama), 14),
+    situs: truncateLabel(label(nama), 14),
     ...Object.fromEntries(statusList.map((status) => [status, matriks.get(nama)?.get(status) ?? 0])),
   }));
   return (
@@ -222,7 +222,7 @@ export function TumpukanSitus({ hasil, label }: { readonly hasil: readonly { rea
         <EmptyState title="Belum ada hasil situs." description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <ChartContainer
-          config={Object.fromEntries(statusList.map((status) => [status, { label: status, color: WARNA_TUMPUK[status] ?? '#8b93a7' }]))}
+          config={Object.fromEntries(statusList.map((status) => [status, { label: status, color: STACK_COLORS[status] ?? '#8b93a7' }]))}
           className="mt-4 h-64 w-full"
         >
           <BarChart data={data} margin={{ left: 0, right: 8, top: 4, bottom: 0 }} barCategoryGap="28%">
@@ -249,7 +249,7 @@ export function TumpukanSitus({ hasil, label }: { readonly hasil: readonly { rea
   );
 }
 
-interface GelembungTayangan {
+interface ViewsBubble {
   readonly nama: string;
   readonly volume: number;
   readonly rata: number;
@@ -259,12 +259,12 @@ interface GelembungTayangan {
 /**
  * Render volume vs rata-rata tayangan per situs sebagai gelembung.
  *
- * @param baris - Titik tayangan per situs dari proyeksi analitik.
+ * @param rows - Titik tayangan per situs dari proyeksi analitik.
  * @param label - Pemeta ID situs ke nama tampilan.
  * @returns Kartu sebar: sumbu-x volume, sumbu-y rata-rata tayangan, ukuran gelembung total.
  */
-export function GelembungTayangan({ baris, label }: { readonly baris: readonly ViewsPoint[]; readonly label: (id: string) => string }) {
-  const data: GelembungTayangan[] = [...baris]
+export function ViewsBubbles({ rows, label }: { readonly rows: readonly ViewsPoint[]; readonly label: (id: string) => string }) {
+  const data: ViewsBubble[] = [...rows]
     .sort((kiri, kanan) => kanan.views - kiri.views)
     .slice(0, BATAS_GELEMBUNG)
     .map((titik) => ({
@@ -314,8 +314,8 @@ export function GelembungTayangan({ baris, label }: { readonly baris: readonly V
               content={
                 <ChartTooltipContent
                   labelFormatter={(_, payload) => {
-                    const pertama = payload?.[0]?.payload as GelembungTayangan | undefined;
-                    return pertama === undefined ? null : potongLabel(pertama.nama, 32);
+                    const pertama = payload?.[0]?.payload as ViewsBubble | undefined;
+                    return pertama === undefined ? null : truncateLabel(pertama.nama, 32);
                   }}
                   formatter={(nilai) =>
                     typeof nilai === 'number' ? nilai.toLocaleString('id-ID') : String(nilai ?? '')
@@ -335,95 +335,95 @@ export function GelembungTayangan({ baris, label }: { readonly baris: readonly V
  * Render dasbor utama sebagai bento enterprise 15 visual.
  *
  * @param jobs - Cacah tugas penerbitan per status untuk donat antrean.
- * @param berhasil - Jumlah hasil situs sukses untuk corong dan radial.
- * @param gagal - Jumlah hasil situs gagal untuk corong dan radial.
- * @param aktif - Jumlah artikel aktif untuk donat dan corong.
- * @param arsip - Jumlah artikel arsip untuk donat artikel.
+ * @param succeeded - Jumlah hasil situs sukses untuk corong dan radial.
+ * @param failed - Jumlah hasil situs gagal untuk corong dan radial.
+ * @param active - Jumlah artikel aktif untuk donat dan corong.
+ * @param archived - Jumlah artikel arsip untuk donat artikel.
  * @param analytics - Proyeksi analitik tenant; null saat endpoint telemetri belum menjawab.
  * @returns Grid bento 12 kolom: KPI, donat, corong, tren, komposisi, panas, alur, dan distribusi.
  */
-export function BentoUtama({
+export function PrimaryBento({
   jobs,
-  berhasil,
-  gagal,
-  aktif,
-  arsip,
+  succeeded,
+  failed,
+  active,
+  archived,
   analytics,
 }: {
   readonly jobs: Readonly<Record<string, number>>;
-  readonly berhasil: number;
-  readonly gagal: number;
-  readonly aktif: number;
-  readonly arsip: number;
+  readonly succeeded: number;
+  readonly failed: number;
+  readonly active: number;
+  readonly archived: number;
   readonly analytics: AnalyticsProjection | null;
 }) {
   const deret = analytics?.penyaluranHarian ?? analytics?.tugasHarian ?? [];
   const tayangan = analytics?.viewsHarian ?? [];
   const hasil = analytics?.outcomesBySiteAndState ?? [];
-  const situs = (id: string): string => analytics?.siteLabels?.[id] ?? potongLabel(id, 18);
+  const situs = (id: string): string => analytics?.siteLabels?.[id] ?? truncateLabel(id, 18);
   const hasilBerlabel = hasil.map((titik) => {
     const pisah = titik.key.indexOf(':');
     if (pisah < 0) return titik;
     return { key: `${situs(titik.key.slice(0, pisah))}:${titik.key.slice(pisah + 1)}`, count: titik.count };
   });
   const berlabel = (baris: readonly { readonly key: string; readonly count: number }[] | undefined, peta: Readonly<Record<string, string>> | undefined) =>
-    (baris ?? []).map((titik) => ({ key: peta?.[titik.key] ?? potongLabel(titik.key, 24), count: titik.count }));
+    (baris ?? []).map((titik) => ({ key: peta?.[titik.key] ?? truncateLabel(titik.key, 24), count: titik.count }));
   const arusBerlabel = (analytics?.arusPenerbit ?? []).map((arus) => ({
-    penerbit: analytics?.publisherLabels?.[arus.penerbit] ?? potongLabel(arus.penerbit, 16),
+    penerbit: analytics?.publisherLabels?.[arus.penerbit] ?? truncateLabel(arus.penerbit, 16),
     situs: situs(arus.situs),
     hasil: arus.hasil,
     jumlah: arus.jumlah,
   }));
   const pohonArtikel = (analytics?.viewsByArticle ?? []).map((titik) => ({
-    key: analytics?.articleLabels?.[titik.key] ?? potongLabel(titik.key, 28),
+    key: analytics?.articleLabels?.[titik.key] ?? truncateLabel(titik.key, 28),
     count: titik.views,
   }));
-  const tugasCorong = analytics?.totalPenyaluran ?? (berhasil + gagal);
+  const tugasCorong = analytics?.totalPenyaluran ?? (succeeded + failed);
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4 min-[420px]:grid-cols-6 lg:grid-cols-12 col-span-full">
       <div className="min-w-0 col-span-full">
         <KpiSparkline series={deret} />
       </div>
-      <SummaryCharts jobs={jobs} berhasil={berhasil} gagal={gagal} aktif={aktif} arsip={arsip} />
-      <FunnelKonversi aktif={aktif} tugas={tugasCorong} sukses={berhasil} className="min-[420px]:col-span-6 lg:col-span-8" />
-      <TingkatKeberhasilan berhasil={berhasil} gagal={gagal} className="min-[420px]:col-span-6 lg:col-span-4" />
+      <SummaryCharts jobs={jobs} succeeded={succeeded} failed={failed} active={active} archived={archived} />
+      <ConversionFunnel active={active} tasks={tugasCorong} succeeded={succeeded} className="min-[420px]:col-span-6 lg:col-span-8" />
+      <SuccessRate succeeded={succeeded} failed={failed} className="min-[420px]:col-span-6 lg:col-span-4" />
       <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-7">
-        <TrenPublikasi series={deret} />
+        <PublicationTrend series={deret} />
       </div>
       <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-5">
-        <GarisTayangan series={tayangan} />
+        <ViewsLine series={tayangan} />
       </div>
       <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-6">
-        <TumpukanSitus hasil={hasil} label={situs} />
+        <SiteStack results={hasil} label={situs} />
       </div>
       <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-6">
-        <BarTayanganSitus baris={analytics?.viewsBySite ?? []} label={situs} />
+        <SiteViewsBar rows={analytics?.viewsBySite ?? []} label={situs} />
       </div>
       <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-7">
-        <PetaPanas sel={analytics?.aktivitasPerJam ?? []} />
+        <ActivityHeatmap cells={analytics?.aktivitasPerJam ?? []} />
       </div>
       <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-5">
-        <KalenderPanass series={deret} />
+        <ActivityCalendar series={deret} />
       </div>
       <div className="min-w-0 col-span-full">
-        <AlurSankey arus={arusBerlabel} />
+        <SankeyFlow flows={arusBerlabel} />
       </div>
       <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-6">
-        <PetaPohon judul="Pohon artikel" baris={pohonArtikel} kosong="Belum ada tayangan artikel." />
+        <TreeMap title="Pohon artikel" rows={pohonArtikel} emptyText="Belum ada tayangan artikel." />
       </div>
       <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-6">
-        <GelembungTayangan baris={analytics?.viewsBySite ?? []} label={situs} />
+        <ViewsBubbles rows={analytics?.viewsBySite ?? []} label={situs} />
       </div>
       <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-7">
-        <MatriksStatus hasil={hasilBerlabel} />
+        <StatusMatrix results={hasilBerlabel} />
       </div>
       <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-5">
-        <LiniMasa peristiwa={analytics?.aktivitasTerbaru ?? []} />
+        <Timeline events={analytics?.aktivitasTerbaru ?? []} />
       </div>
-      <PeringkatTeratas judul="Wilayah teratas" baris={berlabel(analytics?.articlesByRegion, analytics?.regionLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
-      <PeringkatTeratas judul="Kategori teratas" baris={berlabel(analytics?.articlesByCategory, analytics?.categoryLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
-      <PeringkatTeratas judul="Situs teratas" baris={berlabel(analytics?.articlesBySite, analytics?.siteLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
-      <PeringkatTeratas judul="Penerbit teratas" baris={berlabel(analytics?.articlesByPublisher, analytics?.publisherLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
+      <TopRanked title="Wilayah teratas" rows={berlabel(analytics?.articlesByRegion, analytics?.regionLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
+      <TopRanked title="Kategori teratas" rows={berlabel(analytics?.articlesByCategory, analytics?.categoryLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
+      <TopRanked title="Situs teratas" rows={berlabel(analytics?.articlesBySite, analytics?.siteLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
+      <TopRanked title="Penerbit teratas" rows={berlabel(analytics?.articlesByPublisher, analytics?.publisherLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
     </div>
   );
 }
