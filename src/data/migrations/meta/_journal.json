@@ -1009,6 +1009,13 @@
       "when": 1789946840185,
       "tag": "20260920110000_article_site_view_days",
       "breakpoints": true
+    },
+    {
+      "idx": 144,
+      "version": "7",
+      "when": 1789977020594,
+      "tag": "20260921120000_rls_internal_config",
+      "breakpoints": true
     }
   ]
 }

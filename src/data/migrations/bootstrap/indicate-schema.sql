@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (144 migrations):
+-- Reviewed sources, in journal order (145 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -157,6 +157,7 @@
 --   142  20260920090000_dashboard_metric_indexes  ledger sha256:03d1c9876901f91d99345df94b9e4444d48b5256b0210c53c88f2c5e47aa9b26
 --   143  20260920100000_publisher_logo_single_host  ledger sha256:b0776d14e863da4b48fe56209d6c8f2413f2943dfd43b9264c4dc299612cb730
 --   144  20260920110000_article_site_view_days  ledger sha256:6843dc4a2cbdf88860cad4a8a5d23dd1bdbb689fca16ccaaa54d34f16e7dd9af
+--   145  20260921120000_rls_internal_config  ledger sha256:c786ef81105ea8b3789d15426ca55bb712dc5bb51c30c3f908c08f8cba8c8363
 
 BEGIN;
 
@@ -12246,4 +12247,75 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (144, 'article_site_view_days', 'sha256:dbf21bed2a4fa48758f06ed4b70d38f98d5e903603d1b7763918dd5ed796ce87');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6843dc4a2cbdf88860cad4a8a5d23dd1bdbb689fca16ccaaa54d34f16e7dd9af', 1789946840185);
+
+-- ----------------------------------------------------------------------
+-- 20260921120000_rls_internal_config
+-- ----------------------------------------------------------------------
+-- Pin internal configuration tables to the runtime role with default-deny for
+-- every other role. These tables hold deployment-wide policy (rate limits,
+-- media/publication/webhook/cache policy, release manifests), not tenant rows,
+-- so a tenant USING predicate does not apply. A literal USING (false) policy
+-- is intentionally NOT used: the dashboard admin reads these tables directly
+-- as indicate_runtime (see Drizzle runtime-config admin), so denying the
+-- runtime role would break boot and admin reads. Instead FORCE ROW LEVEL
+-- SECURITY plus a sole-accessor policy means indicate_runtime keeps working
+-- while any other role — present or granted in the future — is denied by
+-- default (no policy row matches), and PUBLIC holds no privileges at all.
+ALTER TABLE public.rate_limit_policies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.rate_limit_policies FORCE ROW LEVEL SECURITY;
+CREATE POLICY runtime_accessor ON public.rate_limit_policies FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.rate_limit_policies FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.rate_limit_policies TO indicate_runtime;
+ALTER TABLE public.shared_deployment_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.shared_deployment_config FORCE ROW LEVEL SECURITY;
+CREATE POLICY runtime_accessor ON public.shared_deployment_config FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.shared_deployment_config FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.shared_deployment_config TO indicate_runtime;
+ALTER TABLE public.media_policy ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.media_policy FORCE ROW LEVEL SECURITY;
+CREATE POLICY runtime_accessor ON public.media_policy FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.media_policy FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.media_policy TO indicate_runtime;
+ALTER TABLE public.publication_policy ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.publication_policy FORCE ROW LEVEL SECURITY;
+CREATE POLICY runtime_accessor ON public.publication_policy FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.publication_policy FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.publication_policy TO indicate_runtime;
+ALTER TABLE public.webhook_policy ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.webhook_policy FORCE ROW LEVEL SECURITY;
+CREATE POLICY runtime_accessor ON public.webhook_policy FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.webhook_policy FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.webhook_policy TO indicate_runtime;
+ALTER TABLE public.cache_policy ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cache_policy FORCE ROW LEVEL SECURITY;
+CREATE POLICY runtime_accessor ON public.cache_policy FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.cache_policy FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cache_policy TO indicate_runtime;
+ALTER TABLE public.runtime_config_revisions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.runtime_config_revisions FORCE ROW LEVEL SECURITY;
+CREATE POLICY runtime_accessor ON public.runtime_config_revisions FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.runtime_config_revisions FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.runtime_config_revisions TO indicate_runtime;
+ALTER TABLE public.runtime_config_release_manifests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.runtime_config_release_manifests FORCE ROW LEVEL SECURITY;
+CREATE POLICY runtime_accessor ON public.runtime_config_release_manifests FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.runtime_config_release_manifests FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.runtime_config_release_manifests TO indicate_runtime;
+ALTER TABLE public.runtime_config_release_domain_zones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.runtime_config_release_domain_zones FORCE ROW LEVEL SECURITY;
+CREATE POLICY runtime_accessor ON public.runtime_config_release_domain_zones FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.runtime_config_release_domain_zones FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.runtime_config_release_domain_zones TO indicate_runtime;
+ALTER TABLE public.runtime_config_backfill_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.runtime_config_backfill_runs FORCE ROW LEVEL SECURITY;
+CREATE POLICY runtime_accessor ON public.runtime_config_backfill_runs FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.runtime_config_backfill_runs FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.runtime_config_backfill_runs TO indicate_runtime;
+ALTER TABLE public.runtime_config_parity_evidence ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.runtime_config_parity_evidence FORCE ROW LEVEL SECURITY;
+CREATE POLICY runtime_accessor ON public.runtime_config_parity_evidence FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.runtime_config_parity_evidence FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.runtime_config_parity_evidence TO indicate_runtime;
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c786ef81105ea8b3789d15426ca55bb712dc5bb51c30c3f908c08f8cba8c8363', 1789977020594);
 COMMIT;
