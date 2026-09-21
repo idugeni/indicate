@@ -2,8 +2,11 @@ import 'client-only';
 
 import { createBrowserClient } from '@supabase/ssr';
 
+import { installSupabaseAuthNoiseFilter } from '@/integrations/supabase/supabase-auth-recovery';
+
 /** Shares session with SSR adapter; read each NEXT_PUBLIC_* individually (whole process.env is undefined client-side). */
 export function createBrowserSupabaseClient() {
+  installSupabaseAuthNoiseFilter();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!supabaseUrl || !supabasePublishableKey) {

@@ -25,6 +25,16 @@ async function sendWelcomeEmail(identity: { readonly authUserId: string; readonl
 }
 
 /**
+ * Resolve the OTP verification type for a callback link.
+ *
+ * @param tokenType - Raw `type` query param from the Supabase email link.
+ * @returns Supported verification type; unknown types fall back to email codes.
+ */
+export function resolveTokenKind(tokenType: string | null): 'email' | 'signup' | 'magiclink' | 'recovery' {
+  return tokenType === 'signup' || tokenType === 'magiclink' || tokenType === 'recovery' ? tokenType : 'email';
+}
+
+/**
  * Resolve the post-callback redirect target.
  *
  * @param authType - Auth flow type after email normalization (null for email links).
@@ -50,7 +60,7 @@ export async function GET(request: NextRequest) {
     cookies: withSupabaseCookies(cookieStore),
   });
 
-  const tokenKind = tokenType === 'signup' || tokenType === 'recovery' ? tokenType : 'email';
+  const tokenKind = resolveTokenKind(tokenType);
   const exchanged = code
     ? await auth.exchangeCodeForSession(code)
     : await auth.verifyTokenHash(tokenHash, tokenKind);

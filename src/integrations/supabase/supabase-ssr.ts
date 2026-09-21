@@ -4,6 +4,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { SupabaseAuthPort, VerifiedAuthIdentity } from '@/integrations/supabase/ports';
+import { installSupabaseAuthNoiseFilter, isDeadSessionError, isSupabaseSessionCookieName } from '@/integrations/supabase/supabase-auth-recovery';
 
 export interface SupabaseCookieStore {
   getAll(): readonly { name: string; value: string }[];
@@ -18,7 +19,7 @@ export interface SupabaseCookieWriter {
 export interface SupabaseSsrAuthAdapter extends SupabaseAuthPort {
   verifyCookieSession(): Promise<VerifiedAuthIdentity | null>;
   exchangeCodeForSession(code: string): Promise<boolean>;
-  verifyTokenHash(tokenHash: string, type: 'email' | 'signup' | 'recovery'): Promise<boolean>;
+  verifyTokenHash(tokenHash: string, type: 'email' | 'signup' | 'magiclink' | 'recovery'): Promise<boolean>;
   signOut(): Promise<void>;
 }
 
@@ -55,11 +56,22 @@ function avatarUrlFor(user: { user_metadata?: Record<string, unknown> }): string
   return trimmed;
 }
 
+function clearStaleSessionCookies(cookies: SupabaseCookieStore): void {
+  const stale = cookies.getAll().filter(({ name }) => isSupabaseSessionCookieName(name));
+  if (stale.length === 0) return;
+  try {
+    cookies.setAll(stale.map(({ name }) => ({ name, value: '', options: { maxAge: 0 } })));
+  } catch {
+    /* Cookie writes fail during RSC render; the proxy clears them on the next pass. */
+  }
+}
+
 export function createSupabaseSsrAuthAdapter(input: {
   readonly url: string;
   readonly publishableKey: string;
   readonly cookies: SupabaseCookieStore;
 }): SupabaseSsrAuthAdapter {
+  installSupabaseAuthNoiseFilter();
   const client: SupabaseClient = createServerClient(input.url, input.publishableKey, {
     cookies: {
       getAll: () => [...input.cookies.getAll()],
@@ -69,7 +81,10 @@ export function createSupabaseSsrAuthAdapter(input: {
   return {
     async verifyCookieSession() {
       const { data, error } = await client.auth.getUser();
-      if (error !== null || data.user === null) return null;
+      if (error !== null || data.user === null) {
+        if (isDeadSessionError(error)) clearStaleSessionCookies(input.cookies);
+        return null;
+      }
       return Object.freeze({
         authUserId: data.user.id,
         displayName: displayNameFor(data.user),
@@ -82,7 +97,7 @@ export function createSupabaseSsrAuthAdapter(input: {
       const { error } = await client.auth.exchangeCodeForSession(code);
       return error === null;
     },
-    async verifyTokenHash(tokenHash: string, type: 'email' | 'signup' | 'recovery') {
+    async verifyTokenHash(tokenHash: string, type: 'email' | 'signup' | 'magiclink' | 'recovery') {
       if (!tokenHash) return false;
       const { error } = await client.auth.verifyOtp({ token_hash: tokenHash, type });
       return error === null;
