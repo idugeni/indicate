@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (145 migrations):
+-- Reviewed sources, in journal order (146 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -158,6 +158,7 @@
 --   143  20260920100000_publisher_logo_single_host  ledger sha256:b0776d14e863da4b48fe56209d6c8f2413f2943dfd43b9264c4dc299612cb730
 --   144  20260920110000_article_site_view_days  ledger sha256:6843dc4a2cbdf88860cad4a8a5d23dd1bdbb689fca16ccaaa54d34f16e7dd9af
 --   145  20260921120000_rls_internal_config  ledger sha256:c786ef81105ea8b3789d15426ca55bb712dc5bb51c30c3f908c08f8cba8c8363
+--   146  20260921130000_invoice_amount_manual  ledger sha256:4e395cd32789cb4da3393ee6ef59d61edb1a657f39702f6bba9896b926130cf2
 
 BEGIN;
 
@@ -12318,4 +12319,122 @@ REVOKE ALL ON public.runtime_config_parity_evidence FROM PUBLIC;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.runtime_config_parity_evidence TO indicate_runtime;
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c786ef81105ea8b3789d15426ca55bb712dc5bb51c30c3f908c08f8cba8c8363', 1789977020594);
+
+-- ----------------------------------------------------------------------
+-- 20260921130000_invoice_amount_manual
+-- ----------------------------------------------------------------------
+-- Nominal faktur manual: harga tunggal menjadi bawaan, bukan kunci.
+--
+-- invoice_create (kedua overload) dan invoice_issue sebelumnya menolak nominal
+-- selain 550000; kini menerima bilangan bulat positif (>= 1) sehingga admin
+-- dapat mencatat nominal manual dengan bawaan harga tunggal dari aplikasi.
+-- CHECK invoices_amount_single diganti invoices_amount_positive; arsip lama
+-- (semuanya 550000) tetap lolos check baru. invoice_reissue menyalin nominal
+-- dari faktur asal sehingga tidak berubah.
+ALTER TABLE public.invoices DROP CONSTRAINT IF EXISTS invoices_amount_single;
+ALTER TABLE public.invoices ADD CONSTRAINT invoices_amount_positive CHECK (amount_idr > 0) NOT VALID;
+CREATE OR REPLACE FUNCTION indicate_private.invoice_create(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_amount integer, p_paid_at timestamp with time zone, p_note text, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid(); v_slug text; v_number text;
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  SELECT slug INTO v_slug FROM public.organizations WHERE id = p_organization_id;
+  IF v_slug IS NULL THEN
+    RAISE EXCEPTION 'organization required' USING ERRCODE = '42501';
+  END IF;
+  IF p_amount IS NULL OR p_amount < 1 THEN
+    RAISE EXCEPTION 'amount invalid' USING ERRCODE = '42501';
+  END IF;
+  IF p_paid_at IS NULL THEN
+    RAISE EXCEPTION 'paid_at required' USING ERRCODE = '42501';
+  END IF;
+  v_number := 'IND-'
+    || upper(substr(md5(v_slug), 1, 5))
+    || '-' || to_char(p_paid_at, 'YYMM-')
+    || lpad(nextval('public.invoice_number_seq')::text, 4, '0')
+    || '-' || (SELECT string_agg(substr('ABCDEFGHJKMNPQRSTUVWXYZ23456789', (floor(random() * 31) + 1)::integer, 1), '' ORDER BY s) FROM generate_series(1, 4) AS s);
+  INSERT INTO public.invoices(id, organization_id, number, amount_idr, status, paid_at, billing_note, payment_method, created_by, version, created_at, updated_at)
+  VALUES (v_id, p_organization_id, v_number, p_amount, 'paid', p_paid_at, nullif(p_note, ''), 'Transfer bank', p_actor_id, 1, p_now, p_now);
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'invoice.create', 'invoice', v_id::text, 'succeeded', ARRAY['number','amount','paidAt','paymentMethod'], jsonb_build_object('number', v_number, 'amount', p_amount, 'paidAt', p_paid_at, 'paymentMethod', 'Transfer bank'), p_request_id, p_now);
+  RETURN v_id;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.invoice_create(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_amount integer, p_paid_at timestamp with time zone, p_note text, p_now timestamp with time zone, p_payment_method text DEFAULT 'Transfer bank')
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid(); v_slug text; v_number text; v_method text;
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  SELECT slug INTO v_slug FROM public.organizations WHERE id = p_organization_id;
+  IF v_slug IS NULL THEN
+    RAISE EXCEPTION 'organization required' USING ERRCODE = '42501';
+  END IF;
+  IF p_amount IS NULL OR p_amount < 1 THEN
+    RAISE EXCEPTION 'amount invalid' USING ERRCODE = '42501';
+  END IF;
+  IF p_paid_at IS NULL THEN
+    RAISE EXCEPTION 'paid_at required' USING ERRCODE = '42501';
+  END IF;
+  v_method := COALESCE(NULLIF(p_payment_method, ''), 'Transfer bank');
+  v_number := 'IND-'
+    || upper(substr(md5(v_slug), 1, 5))
+    || '-' || to_char(p_paid_at, 'YYMM-')
+    || lpad(nextval('public.invoice_number_seq')::text, 4, '0')
+    || '-' || (SELECT string_agg(substr('ABCDEFGHJKMNPQRSTUVWXYZ23456789', (floor(random() * 31) + 1)::integer, 1), '' ORDER BY s) FROM generate_series(1, 4) AS s);
+  INSERT INTO public.invoices(id, organization_id, number, amount_idr, status, paid_at, billing_note, payment_method, created_by, version, created_at, updated_at)
+  VALUES (v_id, p_organization_id, v_number, p_amount, 'paid', p_paid_at, nullif(p_note, ''), v_method, p_actor_id, 1, p_now, p_now);
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'invoice.create', 'invoice', v_id::text, 'succeeded', ARRAY['number','amount','paidAt','paymentMethod'], jsonb_build_object('number', v_number, 'amount', p_amount, 'paidAt', p_paid_at, 'paymentMethod', v_method), p_request_id, p_now);
+  RETURN v_id;
+END
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.invoice_issue(p_actor_id uuid, p_request_id text, p_organization_id uuid, p_amount integer, p_due_at timestamp with time zone, p_note text, p_now timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_id uuid := gen_random_uuid(); v_slug text; v_number text;
+BEGIN
+  IF NOT indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RAISE EXCEPTION 'platform permission required' USING ERRCODE = '42501';
+  END IF;
+  SELECT slug INTO v_slug FROM public.organizations WHERE id = p_organization_id;
+  IF v_slug IS NULL THEN
+    RAISE EXCEPTION 'organization required' USING ERRCODE = '42501';
+  END IF;
+  IF p_amount IS NULL OR p_amount < 1 THEN
+    RAISE EXCEPTION 'amount invalid' USING ERRCODE = '42501';
+  END IF;
+  IF p_due_at IS NULL OR p_due_at <= p_now THEN
+    RAISE EXCEPTION 'due_at invalid' USING ERRCODE = '42501';
+  END IF;
+  v_number := 'IND-'
+    || upper(substr(md5(v_slug), 1, 5))
+    || '-' || to_char(p_now, 'YYMM-')
+    || lpad(nextval('public.invoice_number_seq')::text, 4, '0')
+    || '-' || (SELECT string_agg(substr('ABCDEFGHJKMNPQRSTUVWXYZ23456789', (floor(random() * 31) + 1)::integer, 1), '' ORDER BY s) FROM generate_series(1, 4) AS s);
+  INSERT INTO public.invoices(id, organization_id, number, amount_idr, status, paid_at, due_at, billing_note, payment_method, created_by, version, created_at, updated_at)
+  VALUES (v_id, p_organization_id, v_number, p_amount, 'unpaid', NULL, p_due_at, nullif(p_note, ''), 'Transfer bank', p_actor_id, 1, p_now, p_now);
+  INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+  VALUES (p_organization_id, gen_random_uuid(), 'user', p_actor_id::text, 'dashboard', 'invoice.issue', 'invoice', v_id::text, 'succeeded', ARRAY['number','amount','dueAt'], jsonb_build_object('number', v_number, 'amount', p_amount, 'dueAt', p_due_at), p_request_id, p_now);
+  RETURN v_id;
+END
+$function$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (145, 'invoice_amount_manual', 'sha256:c2890287772320e4d87771f54a84c23967426f445dcc56ecd282e313d60bfb00');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4e395cd32789cb4da3393ee6ef59d61edb1a657f39702f6bba9896b926130cf2', 1790037182087);
 COMMIT;
