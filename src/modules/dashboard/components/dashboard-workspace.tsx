@@ -93,8 +93,12 @@ const ContentManager = dynamic(
   () => import('@/modules/dashboard/components/content/content-manager').then((module) => ({ default: module.ContentManager })),
   { loading: () => <DashboardFormSkeleton /> },
 );
-const EditorialForm = dynamic(
-  () => import('@/modules/dashboard/components/editorial/editorial-form').then((module) => ({ default: module.EditorialForm })),
+const ArticleCreateForm = dynamic(
+  () => import('@/modules/dashboard/components/editorial/editorial-form').then((module) => ({ default: module.ArticleCreateForm })),
+  { loading: () => <DashboardFormSkeleton /> },
+);
+const ArticleDistributeForm = dynamic(
+  () => import('@/modules/dashboard/components/editorial/article-distribute-form').then((module) => ({ default: module.ArticleDistributeForm })),
   { loading: () => <DashboardFormSkeleton /> },
 );
 const IntegrationSettings = dynamic(
@@ -871,7 +875,7 @@ export function DashboardWorkspace({
                 className="flex animate-in items-start gap-3 border-l-2 border-error bg-error/[0.06] px-4 py-3 fade-in slide-in-from-top-2 duration-200"
               >
                 <AlertDescription className="flex-1 font-sans text-sm text-paper">{error}</AlertDescription>
-                <AlertAction className="static">
+                <AlertAction>
                   <Button
                     type="button"
                     variant="ghost"
@@ -897,10 +901,9 @@ export function DashboardWorkspace({
             <PanelErrorBoundary key={`forms:${organizationId}:${view}`} name={activeMetadata.title}>
             {view === 'publishers' ? <PublisherForm data={data} command={command} /> : null}
             {view === 'editorial' ? (
-              <EditorialForm
+              <ArticleCreateForm
                 data={data}
                 onSubmit={(payload) => command('article.create', payload)}
-                onAssign={(payload) => command('article.sites.assign', payload)}
                 command={command}
               />
             ) : null}
@@ -927,7 +930,16 @@ export function DashboardWorkspace({
               </Tabs>
             ) : null}
             {view === 'media' ? <MediaForm data={data} command={command} /> : null}
-            {view === 'publishing' ? <PublishingForm data={data} command={command} /> : null}
+            {view === 'publishing' ? (
+              <div className="grid gap-6">
+                <PublishingForm data={data} command={command} />
+                <ArticleDistributeForm
+                  data={data}
+                  onAssign={(payload) => command('article.sites.assign', payload)}
+                  command={command}
+                />
+              </div>
+            ) : null}
             {view === 'settings' ? (
               <Tabs defaultValue="koneksi" className="w-full">
                 <TabsList aria-label="Bagian pengaturan" className="max-w-full overflow-x-auto overflow-y-clip">
