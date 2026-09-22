@@ -87,7 +87,7 @@ export function SignInForm() {
 
         <TurnstileField key={challengeNonce} onToken={onChallengeToken} />
 
-        <AuthSubmit busy={busy} busyLabel="Verifikasi Sesi..." icon={ArrowRight} disabled={turnstilePending}>
+        <AuthSubmit busy={busy} busyLabel="Masuk..." icon={ArrowRight} disabled={turnstilePending}>
           Masuk ke Dashboard
         </AuthSubmit>
       </form>
