@@ -19,6 +19,7 @@ import {
 
 import { domains, memberships, organizations, recordStatus, regions, sites } from '@/data/schema/identity';
 import { seoRobotsDirective } from '@/data/schema/runtime-config';
+import { templatePresets } from '@/data/schema/content';
 
 export const publisherType = pgEnum('publisher_type', [
   'government_institution',
@@ -290,6 +291,8 @@ export const siteSettings = pgTable('site_settings', {
   description: text('description').notNull(),
   tagline: text('tagline'),
   colors: jsonb('colors').$type<Record<string, string>>().default({}).notNull(),
+  /** Generated `colors->>'templateId'` (migration 138); read-only mirror of the template choice. */
+  templateId: text('template_id').generatedAlwaysAs(sql`(colors ->> 'templateId')`),
   socialLinks: jsonb('social_links').$type<Record<string, string>>().default({}).notNull(),
   seo: jsonb('seo').$type<Record<string, unknown>>().default({}).notNull(),
   navigation: jsonb('navigation').$type<readonly Record<string, unknown>[]>().default([]).notNull(),
@@ -310,6 +313,8 @@ export const siteSettings = pgTable('site_settings', {
   foreignKey({ name: 'site_settings_logo_media_fk', columns: [table.organizationId, table.logoMediaId], foreignColumns: [media.organizationId, media.id] }).onDelete('restrict'),
   foreignKey({ name: 'site_settings_favicon_media_fk', columns: [table.organizationId, table.faviconMediaId], foreignColumns: [media.organizationId, media.id] }).onDelete('restrict'),
   foreignKey({ name: 'site_settings_default_media_fk', columns: [table.organizationId, table.defaultMediaId], foreignColumns: [media.organizationId, media.id] }).onDelete('restrict'),
+  foreignKey({ name: 'site_settings_template_id_fk', columns: [table.templateId], foreignColumns: [templatePresets.id] }).onDelete('restrict'),
+  index('site_settings_template_id_idx').on(table.templateId),
   check('site_settings_version_positive', sql`${table.version} > 0`),
   check('site_settings_locale_shape', sql`${table.locale} IS NULL OR ${table.locale} ~ '^[a-z]{2}-[A-Z]{2}$'`),
   check('site_settings_seo_schema_version_bounds', sql`${table.seoSchemaVersion} IS NULL OR (${table.seoSchemaVersion} >= 1 AND ${table.seoSchemaVersion} <= 2147483647)`),

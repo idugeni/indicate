@@ -206,3 +206,83 @@ export const migrationGateEvents = pgTable('migration_gate_events', {
 }, (table) => [
   check('migration_gate_required_version_positive', sql`${table.requiredVersion} > 0`),
 ]);
+
+/**
+ * Formal litigation hold per organization (at most one active).
+ *
+ * @remarks Function-only: RLS enabled+forced with no grant to `indicate_runtime`.
+ * Never query directly; use `indicate_private.hold_create/list/release` RPCs.
+ */
+export const litigationHolds = pgTable('litigation_holds', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  reason: text('reason').notNull(),
+  heldBy: text('held_by').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  releasedAt: timestamp('released_at', { withTimezone: true }),
+  releasedBy: text('released_by'),
+}, (table) => [
+  uniqueIndex('litigation_holds_active_org_unique').on(table.organizationId).where(sql`${table.releasedAt} IS NULL`),
+]);
+
+/**
+ * Operational erasure queue per organization.
+ *
+ * @remarks Function-only: RLS enabled+forced with no grant to `indicate_runtime`.
+ * Never query directly; use `indicate_private.erasure_request_create/list` + `erasure_sweep()` RPCs.
+ */
+export const orgErasureRequests = pgTable('org_erasure_requests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  requestedBy: text('requested_by').notNull(),
+  reason: text('reason').notNull(),
+  status: text('status').default('pending').notNull(),
+  scheduledFor: timestamp('scheduled_for', { withTimezone: true }).notNull(),
+  attempts: integer('attempts').default(0).notNull(),
+  nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  proof: jsonb('proof').$type<Record<string, unknown>>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('org_erasure_requests_due_idx').on(table.status, table.nextAttemptAt),
+]);
+
+/**
+ * Retention sweep evidence log.
+ *
+ * @remarks Function-only: RLS enabled+forced with `retention_function_only` deny policy.
+ * Read via `indicate_private.retention_list()`; written by `retention_sweep()`.
+ * `organizationId` is per-org evidence for `erasure_sweep()` (migration 151);
+ * historic global sweeps keep NULL.
+ */
+export const retentionRuns = pgTable('retention_runs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  category: text('category').notNull(),
+  purgedCount: integer('purged_count').default(0).notNull(),
+  startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
+  finishedAt: timestamp('finished_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  check('retention_runs_count_nonnegative', sql`${table.purgedCount} >= 0`),
+]);
+
+/**
+ * Telegram outbound queue with backoff.
+ *
+ * @remarks Function-only: RLS enabled+forced with no grant to `indicate_runtime`.
+ * Never query directly; use `indicate_private.outbox_enqueue/claim/ack/list*` RPCs.
+ */
+export const telegramOutbox = pgTable('telegram_outbox', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  chatId: text('chat_id').notNull(),
+  text: text('text').notNull(),
+  status: text('status').default('pending').notNull(),
+  attempts: integer('attempts').default(0).notNull(),
+  nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).defaultNow().notNull(),
+  lastError: text('last_error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('telegram_outbox_due_idx').on(table.status, table.nextAttemptAt),
+]);
