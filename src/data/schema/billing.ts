@@ -39,7 +39,7 @@ export const invoices = pgTable('invoices', {
   ...timestamps,
 }, (table) => [
   uniqueIndex('invoices_number_unique').on(table.number),
-  check('invoices_amount_single', sql`${table.amountIdr} = 550000`),
+  check('invoices_amount_positive', sql`${table.amountIdr} > 0`),
   check('invoices_payment_method_bounded', sql`length(${table.paymentMethod}) BETWEEN 1 AND 40`),
   check('invoices_version_positive', sql`${table.version} > 0`),
   index('invoices_org_paid_idx').on(table.organizationId, table.paidAt),

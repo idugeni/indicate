@@ -8,6 +8,7 @@ import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleBillingRepository } from '@/data/repos/billing';
 import { BillingService } from '@/modules/billing/billing-service';
+import { SINGLE_INVOICE_AMOUNT_IDR } from '@/modules/billing/schemas';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
@@ -47,7 +48,7 @@ async function handlePOST(request: Request) {
     if (typeof body.dueAt !== 'string' || (typeof body.billingNote !== 'string' && body.billingNote !== undefined)) return invalid(requestId);
     const issued = await billing.issueInvoice(actor, {
       organizationId: target,
-      amountIdr: 550000,
+      amountIdr: SINGLE_INVOICE_AMOUNT_IDR,
       dueAt: body.dueAt,
       billingNote: typeof body.billingNote === 'string' ? body.billingNote : null,
     });

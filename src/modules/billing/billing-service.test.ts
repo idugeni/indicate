@@ -185,6 +185,21 @@ describe('BillingService tagihan unpaid', () => {
     expect(broken.error.error.code).toBe('INVALID_INPUT');
   });
 
+  it('menerima nominal manual selain harga tunggal', async () => {
+    const { service, repository } = harness();
+    const created = await service.createInvoice(platformActor, { organizationId: ID, amountIdr: 750000, paidAt: '2026-10-20T00:00:00.000Z' });
+    expect(created.ok).toBe(true);
+    expect(repository.createInvoice).toHaveBeenCalledTimes(1);
+    const issued = await service.issueInvoice(platformActor, { organizationId: ID, amountIdr: 750000, dueAt: '2026-10-20T00:00:00.000Z' });
+    expect(issued.ok).toBe(true);
+    expect(repository.issueInvoice).toHaveBeenCalledTimes(1);
+
+    const zero = await service.createInvoice(platformActor, { organizationId: ID, amountIdr: 0, paidAt: '2026-10-20T00:00:00.000Z' });
+    expect(zero.ok).toBe(false);
+    if (zero.ok) throw new Error('expected error');
+    expect(zero.error.error.code).toBe('INVALID_INPUT');
+  });
+
   it('menolak terbitkan tagihan dari non-platform', async () => {
     const { service } = harness();
     const result = await service.issueInvoice(userActor, { organizationId: ID, amountIdr: 550000, dueAt: '2026-10-20T00:00:00.000Z' });

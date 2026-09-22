@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SINGLE_INVOICE_AMOUNT_IDR } from '@/modules/billing/schemas';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { formatDate } from '@/modules/dashboard/components/shared/dashboard-dates';
@@ -63,7 +65,7 @@ export function BillingPanel({
   const [manualOrgId, setManualOrgId] = useState('');
   const [manualStatus, setManualStatus] = useState('active');
   const [invoiceOrgId, setInvoiceOrgId] = useState('');
-  const [invoiceAmount, setInvoiceAmount] = useState('550000');
+  const [invoiceAmount, setInvoiceAmount] = useState(String(SINGLE_INVOICE_AMOUNT_IDR));
   const [invoicePaidAt, setInvoicePaidAt] = useState('');
   const [invoiceNote, setInvoiceNote] = useState('');
   const [invoiceMethod, setInvoiceMethod] = useState('');
@@ -153,7 +155,7 @@ export function BillingPanel({
   const createInvoice = async () => {
     const orgId = invoiceOrgId.trim();
     const amount = Number(invoiceAmount.trim());
-    if (orgId === '' || !Number.isInteger(amount) || amount < 0) {
+    if (orgId === '' || !Number.isInteger(amount) || amount < 1) {
       setError('Isi ID organisasi dan nominal yang valid.');
       return;
     }
@@ -180,7 +182,7 @@ export function BillingPanel({
       });
       setNotice('Faktur tercatat.');
       setInvoiceOrgId('');
-      setInvoiceAmount('550000');
+      setInvoiceAmount(String(SINGLE_INVOICE_AMOUNT_IDR));
       setInvoicePaidAt('');
       setInvoiceNote('');
       setInvoiceMethod('');
@@ -239,8 +241,15 @@ export function BillingPanel({
   const paidTotal = paidInvoices.reduce((sum, invoice) => sum + invoice.amountIdr, 0);
 
   return (
-    <div className="grid grid-cols-1 items-start gap-x-10 gap-y-8 md:grid-cols-2">
-      <section aria-label="Status langganan" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
+    <Tabs defaultValue="ringkasan" className="w-full">
+      <TabsList aria-label="Bagian langganan" className="max-w-full overflow-x-auto">
+        <TabsTrigger value="ringkasan" className="flex-none">Ringkasan</TabsTrigger>
+        <TabsTrigger value="faktur" className="flex-none">Faktur</TabsTrigger>
+        {isPlatform ? <TabsTrigger value="admin" className="flex-none">Admin</TabsTrigger> : null}
+      </TabsList>
+      <TabsContent keepMounted value="ringkasan">
+        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <section aria-label="Status langganan" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Langganan</p>
         <p className="m-0 mt-2 font-sans text-lg font-semibold tracking-tight text-paper">
           {stateLabel(state)}
@@ -273,8 +282,10 @@ export function BillingPanel({
           )}
         </p>
       </section>
-
-      <section aria-label="Faktur saya" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
+        </div>
+      </TabsContent>
+      <TabsContent keepMounted value="faktur">
+        <section aria-label="Faktur saya" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Faktur saya</p>
         <ul className="m-0 mt-2 grid list-none gap-0 p-0">
           {invoices.map((invoice) => (
@@ -351,9 +362,11 @@ export function BillingPanel({
           {invoices.length === 0 ? <li><EmptyState title="Belum ada faktur." description="Data akan tampil di sini setelah tersedia." /></li> : null}
         </ul>
       </section>
-
+      </TabsContent>
       {isPlatform ? (
-        <section aria-label="Ubah status langganan" className="rounded-lg border border-brass/60 bg-bg-raised p-5 sm:p-6 md:col-span-2">
+        <TabsContent keepMounted value="admin">
+          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+            <section aria-label="Ubah status langganan" className="rounded-lg border border-brass/60 bg-bg-raised p-5 sm:p-6">
           <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Ubah status (pembayaran manual di luar sistem)</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -382,16 +395,14 @@ export function BillingPanel({
           </div>
           <div className="mt-3">
             <Button
-              type="button" variant="default" size="lg" onClick={() => void manualSetSubscription()} disabled={busy}
+              type="button" variant="default" size="lg" onClick={() => void manualSetSubscription()} disabled={busy} className="w-full sm:w-auto"
             >
               Terapkan status
             </Button>
           </div>
         </section>
-      ) : null}
 
-      {isPlatform ? (
-        <section aria-label="Catat faktur" className="rounded-lg border border-brass/60 bg-bg-raised p-5 sm:p-6 md:col-span-2">
+        <section aria-label="Catat faktur" className="rounded-lg border border-brass/60 bg-bg-raised p-5 sm:p-6">
           <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Catat faktur (pembayaran manual terkonfirmasi)</p>
           <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
             Nomor faktur dibuat otomatis dan tidak bisa ditebak. Faktur tercatat langsung berstatus lunas.
@@ -412,11 +423,11 @@ export function BillingPanel({
                 Nominal (Rp)
               </Label>
               <Input
-                id="invoice-amount" value={invoiceAmount} readOnly disabled={busy}
-                placeholder="550000" inputMode="numeric"
+                id="invoice-amount" value={invoiceAmount} onChange={(event) => setInvoiceAmount(event.target.value)} disabled={busy}
+                placeholder={String(SINGLE_INVOICE_AMOUNT_IDR)} inputMode="numeric"
                 className="font-mono text-xs"
               />
-              <p className="m-0 font-sans text-xs text-paper-faint">Rp550.000/bulan — harga tunggal</p>
+              <p className="m-0 font-sans text-xs text-paper-faint">{`Bawaan ${formatIdr(SINGLE_INVOICE_AMOUNT_IDR)}/bulan — dapat diubah manual`}</p>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="invoice-paid-at" className="font-sans text-xs font-medium text-paper-dim">
@@ -450,16 +461,18 @@ export function BillingPanel({
           </div>
           <div className="mt-3">
             <Button
-              type="button" variant="default" size="lg" onClick={() => void createInvoice()} disabled={busy}
+              type="button" variant="default" size="lg" onClick={() => void createInvoice()} disabled={busy} className="w-full sm:w-auto"
             >
               Catat faktur
             </Button>
           </div>
         </section>
+          </div>
+        </TabsContent>
       ) : null}
 
       <Dialog open={preview !== null} onOpenChange={(open) => { if (!open) setPreview(null); }}>
-        <DialogContent className="border border-hairline bg-bg-raised">
+        <DialogContent className="max-h-[85vh] overflow-y-auto border border-hairline bg-bg-raised">
           <DialogTitle className="font-sans text-sm font-semibold text-paper">
             {preview === null ? 'Pratinjau faktur' : preview.number}
           </DialogTitle>
@@ -496,7 +509,7 @@ export function BillingPanel({
               </div>
             </dl>
           )}
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button
               type="button"
               variant="default"
@@ -506,12 +519,13 @@ export function BillingPanel({
                 }
               }}
               disabled={busy || preview === null}
+              className="w-full sm:w-auto"
             >
               Unduh dokumen
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </Tabs>
   );
 }

@@ -50,10 +50,7 @@ export default async function HargaPage() {
       </Section>
       <Section title="Jaminan kami" description="Komitmen yang tertulis, bukan sekadar janji." eyebrow="Jaminan" tone="band">
         <FeatureGrid
-          items={withIcons(
-            GUARANTEES.filter((item) => !item.title.includes('Rp')),
-            GUARANTEE_ICONS,
-          )}
+          items={withIcons(GUARANTEES, GUARANTEE_ICONS)}
           columns={2}
         />
       </Section>

@@ -100,7 +100,7 @@ export const VALUE_PROPOSITIONS: readonly FeatureItem[] = Object.freeze([
   {
     title: 'Satu harga pasti',
     description:
-      'Satu harga Rp550.000 per bulan, sudah termasuk PPN: Anda menghubungi kami, membayar manual ke rekening resmi, lalu organisasi Anda diaktifkan dan berjalan terus. Tidak ada biaya tersembunyi.',
+      'Satu harga pasti per bulan, sudah termasuk pajak: Anda menghubungi kami, membayar manual ke rekening resmi, lalu organisasi Anda diaktifkan dan berjalan terus. Tidak ada biaya tersembunyi.',
   },
 ]);
 
@@ -229,7 +229,7 @@ export const WORKFLOW_STEPS: readonly FeatureItem[] = Object.freeze([
   {
     title: 'Bayar per bulan',
     description:
-      'Biaya tetap Rp550.000 per bulan, sudah termasuk PPN. Pembayaran manual ke rekening resmi yang kami informasikan; admin memproses satu pembayaran beserta satu invoice untuk setiap bulan berjalan.',
+      'Biaya tetap per bulan, sudah termasuk pajak; besaran pastinya kami informasikan saat pemesanan. Pembayaran manual ke rekening resmi yang kami informasikan; admin memproses satu pembayaran beserta satu invoice untuk setiap bulan berjalan.',
   },
   {
     title: 'Kami siapkan semuanya',
@@ -260,7 +260,7 @@ export const GUARANTEES: readonly FeatureItem[] = Object.freeze([
       'Tidak ada masa aktif 30 hari dan tidak ada masa tenggang: selama status aktif, seluruh fungsi berjalan penuh.',
   },
   {
-    title: 'Rp550.000 per bulan, sudah termasuk PPN',
+    title: 'Satu harga pasti, sudah termasuk pajak',
     description:
       'Satu nominal pasti setiap bulan: tidak ada tingkatan, tidak ada katalog, dan tidak ada tagihan kejutan di tengah jalan.',
   },
@@ -273,7 +273,7 @@ export const GUARANTEES: readonly FeatureItem[] = Object.freeze([
 
 export const ABOUT_STORY: readonly string[] = Object.freeze([
   'Indicate lahir dari pengalaman mendampingi grup media yang portalnya tumbuh lebih cepat dari timnya. Tiap portal baru berarti pengeluaran baru yang berlipat — padahal yang dibutuhkan redaksi hanya tempat menulis dan tombol terbitkan.',
-  'Kami membalik pendekatannya: satu ruang redaksi untuk seluruh jaringan portal. Nambah portal tidak lagi jadi proyek besar yang mahal. Biaya tetap Rp550.000 per bulan, sudah termasuk PPN, dan domain tetap milik Anda sepenuhnya.',
+  'Kami membalik pendekatannya: satu ruang redaksi untuk seluruh jaringan portal. Nambah portal tidak lagi jadi proyek besar yang mahal. Biaya tetap per bulan, sudah termasuk pajak, dan domain tetap milik Anda sepenuhnya.',
   'Hari ini Indicate melayani redaksi solo hingga grup media — semuanya dengan janji yang sama: Anda terima beres, kami yang mengurus mesinnya.',
 ]);
 
@@ -286,7 +286,7 @@ export const ABOUT_PRINCIPLES: readonly FeatureItem[] = Object.freeze([
   {
     title: 'Satu harga pasti',
     description:
-      'Tidak ada tingkatan dan tidak ada biaya tersembunyi: satu harga Rp550.000 per bulan, sudah termasuk PPN.',
+      'Tidak ada tingkatan dan tidak ada biaya tersembunyi: satu harga pasti per bulan, sudah termasuk pajak.',
   },
   {
     title: 'Milik Anda tetap milik Anda',
@@ -367,11 +367,11 @@ export const TERMS_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   },
   {
     heading: '5. Pemesanan dan pembentukan kontrak',
-    body: 'Alur pemesanan standar adalah: Anda menghubungi kami lewat halaman Kontak, lalu melakukan pembayaran manual sebesar Rp550.000 ke rekening resmi yang kami informasikan. Kontrak terbentuk pada saat organisasi Anda kami aktifkan, bukan pada saat Anda membayar. Kami dapat menolak pemesanan yang melewati batas kapasitas operasional, memuat domain yang bermasalah secara hukum, atau terindikasi penipuan, dengan pengembalian dana penuh atas pembayaran yang sudah diterima untuk pemesanan yang ditolak tersebut. Untuk kebutuhan khusus, ruang lingkup tambahan dituangkan dalam kesepakatan tertulis yang berlaku melengkapi Ketentuan ini kecuali dinyatakan sebaliknya secara tertulis.',
+    body: 'Alur pemesanan standar adalah: Anda menghubungi kami lewat halaman Kontak, lalu melakukan pembayaran manual sebesar nominal yang disepakati ke rekening resmi yang kami informasikan. Kontrak terbentuk pada saat organisasi Anda kami aktifkan, bukan pada saat Anda membayar. Kami dapat menolak pemesanan yang melewati batas kapasitas operasional, memuat domain yang bermasalah secara hukum, atau terindikasi penipuan, dengan pengembalian dana penuh atas pembayaran yang sudah diterima untuk pemesanan yang ditolak tersebut. Untuk kebutuhan khusus, ruang lingkup tambahan dituangkan dalam kesepakatan tertulis yang berlaku melengkapi Ketentuan ini kecuali dinyatakan sebaliknya secara tertulis.',
   },
   {
     heading: '6. Biaya, pajak, dan transparansi',
-    body: 'Biaya layanan adalah Rp550.000 per bulan dan sudah termasuk PPN. Admin memproses satu pembayaran manual beserta satu invoice untuk setiap bulan berjalan; langganan sendiri tidak memiliki jangka waktu dan tetap aktif sampai admin membatalkannya. Biaya perbankan mengikuti ketentuan bank yang digunakan, serta biaya registrar domain dibayarkan langsung oleh Anda kepada registrar pilihan Anda. Apabila terjadi kesalahan penulisan nominal yang nyata dan tidak wajar, kami akan memberi tahu Anda sebelum aktivasi dan memberi pilihan untuk melanjutkan dengan angka yang benar atau menerima pengembalian dana penuh. Status langganan selalu dapat diperiksa dari dasbor organisasi Anda demi keterbukaan penuh. Kebijakan refund: pemesanan yang ditolak mendapat pengembalian penuh; refund pasca-aktivasi hanya atas persetujuan platform dan diproses paling lambat 14 hari kerja ke rekening asal; penghentian sukarela tidak dihitung pro-rata; arsip penagihan tersedia di dasbor, sedangkan dokumen pajak resmi diterbitkan atas nama PT SANCA PHENA CAKRA mengikuti ketentuan perpajakan yang berlaku pada saat transaksi.',
+    body: 'Biaya layanan adalah harga tunggal per bulan dan sudah termasuk pajak; besaran pastinya disepakati tertulis sebelum aktivasi. Admin memproses satu pembayaran manual beserta satu invoice untuk setiap bulan berjalan; langganan sendiri tidak memiliki jangka waktu dan tetap aktif sampai admin membatalkannya. Biaya perbankan mengikuti ketentuan bank yang digunakan, serta biaya registrar domain dibayarkan langsung oleh Anda kepada registrar pilihan Anda. Apabila terjadi kesalahan penulisan nominal yang nyata dan tidak wajar pada penawaran, kami akan memberi tahu Anda sebelum aktivasi dan memberi pilihan untuk melanjutkan dengan angka yang benar atau menerima pengembalian dana penuh. Status langganan selalu dapat diperiksa dari dasbor organisasi Anda demi keterbukaan penuh. Kebijakan refund: pemesanan yang ditolak mendapat pengembalian penuh; refund pasca-aktivasi hanya atas persetujuan platform dan diproses paling lambat 14 hari kerja ke rekening asal; penghentian sukarela tidak dihitung pro-rata; arsip penagihan tersedia di dasbor, sedangkan dokumen pajak resmi diterbitkan atas nama PT SANCA PHENA CAKRA mengikuti ketentuan perpajakan yang berlaku pada saat transaksi.',
   },
   {
     heading: '7. Pembayaran dan verifikasi',

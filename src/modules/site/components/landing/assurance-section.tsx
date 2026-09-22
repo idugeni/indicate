@@ -15,7 +15,7 @@ export function AssuranceSection({ channels }: { readonly channels: readonly Fea
             id="kepastian-heading"
             className="m-0 mt-4 font-serif text-3xl leading-[1.05] font-medium tracking-tight text-balance sm:text-[2.75rem]"
           >
-            Rp550.000 per bulan. <em className="text-[#8a5f1c]">Sudah termasuk PPN.</em>
+            Satu harga pasti. <em className="text-[#8a5f1c]">Sudah termasuk pajak.</em>
           </h2>
           <ol className="m-0 mt-10 grid list-none gap-0 border-t border-[#1a2430]/15 p-0">
             {GUARANTEES.map((item, index) => (
@@ -53,7 +53,7 @@ export function AssuranceSection({ channels }: { readonly channels: readonly Fea
           <div className={cn('rounded-lg p-7 sm:p-8 lg:sticky lg:top-28', GLASS_HIGHLIGHTED)}>
             <p className="m-0 font-mono text-[11px] tracking-[0.14em] text-[#8a5f1c] uppercase">Berapa biayanya?</p>
             <p className="m-0 mt-3 font-serif text-[1.65rem] leading-[1.15] font-medium tracking-tight">
-              Satu harga pasti Rp550.000 per bulan, sudah termasuk PPN.
+              Satu harga pasti per bulan, sudah termasuk pajak.
             </p>
             <p className="m-0 mt-4 text-sm leading-relaxed text-[#4c5b6b]">
               Tidak ada tingkatan, tidak ada katalog, tidak ada kuota fitur yang dikunci. Pembayaran manual via
