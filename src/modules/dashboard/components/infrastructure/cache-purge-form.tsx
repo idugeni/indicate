@@ -71,7 +71,8 @@ export function CachePurgeForm({
   };
 
   return (
-    <SectionCard icon={RefreshCw} title="Bersihkan Cache" eyebrow="Perbarui tampilan">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <SectionCard icon={RefreshCw} title="Bersihkan Cache" eyebrow="Perbarui tampilan">
       <form onSubmit={handleSubmit} className="space-y-3.5">
         {notice ? <FormNotice tone={notice.tone}>{notice.message}</FormNotice> : null}
         <div className="space-y-1.5">
@@ -116,7 +117,7 @@ export function CachePurgeForm({
             type="submit"
             variant="default"
             disabled={isPurging || (isBulk && !confirmBulk)}
-            className="w-full"
+            className="w-full sm:w-auto"
           >
             {isPurging ? <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
             <span>{isPurging ? 'Mengirim…' : 'Bersihkan Sekarang'}</span>
@@ -145,5 +146,14 @@ export function CachePurgeForm({
         </AlertDialogContent>
       </AlertDialog>
     </SectionCard>
+      <aside aria-label="Panduan cache" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
+        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Cara kerja</p>
+        <ul className="m-0 mt-2 list-disc space-y-1.5 pl-5 font-sans text-xs leading-relaxed text-paper-dim">
+          <li>Target tunggal menyegarkan satu situs tanpa antre massal.</li>
+          <li>Pembersihan massal dibatasi 2 menit per organisasi.</li>
+          <li>Setiap permintaan tercatat di Riwayat Keamanan.</li>
+        </ul>
+      </aside>
+    </div>
   );
 }

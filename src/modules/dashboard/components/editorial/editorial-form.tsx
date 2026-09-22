@@ -356,6 +356,7 @@ export function EditorialForm({
               type="submit"
               variant="default"
               disabled={isSubmitting}
+              className="w-full sm:w-auto"
             >
               {isSubmitting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />

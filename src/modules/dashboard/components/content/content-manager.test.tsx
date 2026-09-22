@@ -22,9 +22,9 @@ describe('Pengelola konten dinamis', () => {
   it('merender tab jenis konten dan tombol muat ulang', async () => {
     stubContent(EMPTY);
     render(<ContentManager />);
-    expect(screen.getByRole('button', { name: 'Testimoni' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'FAQ' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Etalase Media' })).toBeDefined();
+    expect(screen.getByRole('tab', { name: 'Testimoni' })).toBeDefined();
+    expect(screen.getByRole('tab', { name: 'FAQ' })).toBeDefined();
+    expect(screen.getByRole('tab', { name: 'Etalase Media' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Muat ulang' })).toBeDefined();
     expect(await screen.findByText(/Perubahan tayang segera setelah disimpan/)).toBeDefined();
   });
@@ -33,9 +33,9 @@ describe('Pengelola konten dinamis', () => {
     stubContent(EMPTY);
     render(<ContentManager />);
     await screen.findByText(/Perubahan tayang segera setelah disimpan/);
-    fireEvent.click(screen.getByRole('button', { name: 'FAQ' }));
-    expect(screen.getByRole('button', { name: 'FAQ' }).getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByRole('button', { name: 'Testimoni' }).getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(screen.getByRole('tab', { name: 'FAQ' }));
+    expect(screen.getByRole('tab', { name: 'FAQ' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'Testimoni' }).getAttribute('aria-selected')).toBe('false');
   });
 
   it('menampilkan baris testimoni beserta tombol simpan', async () => {

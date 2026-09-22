@@ -304,18 +304,19 @@ export function PublishingForm({
             <Label htmlFor={statusJobInputId} className="font-mono text-xs text-paper-dim">
               ID Pengiriman
             </Label>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 id={statusJobInputId}
                 name="statusJobId"
                 disabled={isStatusBusy}
                 placeholder="ID dari hasil pengiriman"
-                className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
+                className="h-8 min-w-0 flex-1 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
               />
               <Button
                 type="submit"
                 variant="outline"
                 disabled={isStatusBusy}
+                className="w-full sm:w-auto"
               >
                 {isStatusBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
                 <span>Muat</span>

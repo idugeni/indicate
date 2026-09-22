@@ -47,11 +47,11 @@ export function StatusMatrix({ results }: { readonly results: readonly Analytics
         <EmptyState title="Belum ada hasil situs." description="Data akan tampil di sini setelah tersedia." />
       ) : (
         <div className="mt-4 overflow-x-auto">
-          <Table className="w-full text-sm">
+          <Table className="w-full min-w-max text-sm">
             <caption className="sr-only">Kesehatan situs per status hasil</caption>
             <TableHeader>
               <TableRow className="border-b border-hairline hover:bg-transparent">
-                <TableHead scope="col" className="py-2 pr-3 text-left font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">
+                <TableHead scope="col" className="sticky left-0 bg-bg-raised py-2 pr-3 text-left font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">
                   Situs
                 </TableHead>
                 {status.map((name) => (
@@ -69,7 +69,7 @@ export function StatusMatrix({ results }: { readonly results: readonly Analytics
                 const row = matrix.get(name) ?? new Map<string, number>();
                 return (
                   <TableRow key={name} className="border-b border-hairline/60 last:border-0 hover:bg-transparent">
-                    <th scope="row" title={name} className="max-w-44 py-2.5 pr-3 text-left font-sans text-[13px] font-medium break-all text-paper">
+                    <th scope="row" title={name} className="sticky left-0 max-w-44 bg-bg-raised py-2.5 pr-3 text-left font-sans text-[13px] font-medium break-all text-paper">
                       {name}
                     </th>
                     {status.map((state) => {

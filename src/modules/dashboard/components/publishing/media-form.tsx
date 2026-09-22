@@ -189,7 +189,7 @@ export function MediaForm({
   };
 
   return (
-    <div>
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <SectionCard icon={UploadCloud} title="Unggah media" eyebrow="Unggah berkas">
 
         <form onSubmit={handleUpload} className="space-y-3.5">
@@ -275,7 +275,7 @@ export function MediaForm({
               type="submit"
               variant="default"
               disabled={isUploading}
-              className="w-full"
+              className="w-full sm:w-auto"
             >
               {isUploading ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -287,6 +287,14 @@ export function MediaForm({
           </div>
         </form>
       </SectionCard>
+      <aside aria-label="Panduan media" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
+        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Format & kepemilikan</p>
+        <ul className="m-0 mt-2 list-disc space-y-1.5 pl-5 font-sans text-xs leading-relaxed text-paper-dim">
+          <li>JPEG, PNG, WebP, AVIF, ICO, HEIC (dikonversi otomatis).</li>
+          <li>Pilih kepemilikan organisasi, artikel, atau situs.</li>
+          <li>ID gambar hasil unggahan dipakai di varian penerbitan.</li>
+        </ul>
+      </aside>
     </div>
   );
 }

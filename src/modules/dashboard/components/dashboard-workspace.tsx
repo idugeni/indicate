@@ -843,10 +843,10 @@ export function DashboardWorkspace({
           </SheetContent>
         </Sheet>
 
-          <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
             <div
               key={`${organizationId}:${view}`}
-              className="mx-auto w-full max-w-6xl animate-in fade-in slide-in-from-bottom-2 duration-300"
+              className="mx-auto w-full max-w-7xl animate-in fade-in slide-in-from-bottom-2 duration-300"
             >
             <header className="flex flex-wrap items-start justify-between gap-4">
               <div className="max-w-2xl">
@@ -904,29 +904,46 @@ export function DashboardWorkspace({
             ) : null}
             {view === 'configuration' ? (
               <Tabs defaultValue="domain" className="w-full">
-                <TabsList aria-label="Bagian infrastruktur">
-                  <TabsTrigger value="domain">Domain & Wilayah</TabsTrigger>
-                  <TabsTrigger value="brand">SEO & Brand</TabsTrigger>
-                  <TabsTrigger value="cache">Cache</TabsTrigger>
-                  <TabsTrigger value="access">Akses</TabsTrigger>
+                <TabsList aria-label="Bagian infrastruktur" className="max-w-full overflow-x-auto">
+                  <TabsTrigger value="domain" className="flex-none">Domain & Wilayah</TabsTrigger>
+                  <TabsTrigger value="brand" className="flex-none">SEO & Brand</TabsTrigger>
+                  <TabsTrigger value="cache" className="flex-none">Cache</TabsTrigger>
+                  <TabsTrigger value="access" className="flex-none">Akses</TabsTrigger>
                 </TabsList>
-                <TabsContent value="domain">
+                <TabsContent keepMounted value="domain">
                   <ConfigurationPanel data={data} command={command} />
                 </TabsContent>
-                <TabsContent value="brand">
+                <TabsContent keepMounted value="brand">
                   <SiteSettingsForm data={data} command={command} />
                 </TabsContent>
-                <TabsContent value="cache">
+                <TabsContent keepMounted value="cache">
                   <CachePurgeForm data={data} command={command} />
                 </TabsContent>
-                <TabsContent value="access">
+                <TabsContent keepMounted value="access">
                   <AccessManagementForm data={data} command={command} organizationId={organizationId} />
                 </TabsContent>
               </Tabs>
             ) : null}
             {view === 'media' ? <MediaForm data={data} command={command} /> : null}
             {view === 'publishing' ? <PublishingForm data={data} command={command} /> : null}
-            {view === 'settings' ? <><IntegrationSettings command={command} isPlatform={activePermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin) || activePermissions.has(INTEGRATIONS_PERMISSIONS.customerAdmin)} email={selectEmailStatus(data)} /><ProfileForm /><LoginMethodsForm /></> : null}
+            {view === 'settings' ? (
+              <Tabs defaultValue="koneksi" className="w-full">
+                <TabsList aria-label="Bagian pengaturan" className="max-w-full overflow-x-auto">
+                  <TabsTrigger value="koneksi" className="flex-none">Koneksi</TabsTrigger>
+                  <TabsTrigger value="profil" className="flex-none">Profil</TabsTrigger>
+                  <TabsTrigger value="login" className="flex-none">Login</TabsTrigger>
+                </TabsList>
+                <TabsContent keepMounted value="koneksi">
+                  <IntegrationSettings command={command} isPlatform={activePermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin) || activePermissions.has(INTEGRATIONS_PERMISSIONS.customerAdmin)} email={selectEmailStatus(data)} />
+                </TabsContent>
+                <TabsContent keepMounted value="profil">
+                  <ProfileForm />
+                </TabsContent>
+                <TabsContent keepMounted value="login">
+                  <LoginMethodsForm />
+                </TabsContent>
+              </Tabs>
+            ) : null}
             {view === 'billing' ? <BillingPanel organizationId={organizationId} permissions={[...activePermissions]} /> : null}
             {view === 'moderation' ? <ModerationPanel organizationId={organizationId} /> : null}
             {view === 'customers' ? <CustomerManagement command={command} /> : null}

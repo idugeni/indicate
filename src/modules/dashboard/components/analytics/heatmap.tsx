@@ -37,7 +37,7 @@ export function ActivityHeatmap({ cells }: { readonly cells: readonly AktivitasJ
       </p>
       <div className="mt-4 space-y-1 overflow-x-auto">
         <div className="grid min-w-[30rem] grid-cols-[3.5rem_repeat(24,minmax(0,1fr))] items-center gap-1">
-          <span />
+          <span className="sticky left-0 bg-bg-raised" />
           {hours.map((value) =>
             value % 6 === 0 ? (
               <span key={value} className="text-center font-mono text-[10px] tabular-nums text-paper-faint">
@@ -50,7 +50,7 @@ export function ActivityHeatmap({ cells }: { readonly cells: readonly AktivitasJ
         </div>
         {DAY_NAMES.map((name, day) => (
           <div key={name} className="grid min-w-[30rem] grid-cols-[3.5rem_repeat(24,minmax(0,1fr))] items-center gap-1">
-            <span className="truncate font-sans text-[11px] text-paper-dim">{name}</span>
+            <span className="sticky left-0 truncate bg-bg-raised pr-1 font-sans text-[11px] text-paper-dim">{name}</span>
             {hours.map((value) => {
               const count = cellMap.get(`${day}:${value}`) ?? 0;
               return (

@@ -10,6 +10,7 @@ import { MetricComparison, PublicationTrend } from '@/modules/dashboard/componen
 import { TreeMap } from '@/modules/dashboard/components/analytics/treemap';
 import { TelemetryCharts } from '@/modules/dashboard/components/analytics/telemetry-charts';
 import { StackedTasks } from '@/modules/dashboard/components/analytics/stack';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { truncateLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
 import type { AnalyticsPoint, AnalyticsProjection, ArusPenerbit } from '@/modules/dashboard/models';
 
@@ -56,29 +57,53 @@ export function TelemetryGallery({ data }: { readonly data: AnalyticsProjection 
     arusPenerbit: labeledFlows,
   };
   return (
-    <div className="space-y-6">
-      <PublicationTrend series={series} />
-      <KpiSparkline series={series} />
-      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-        <MetricComparison series={series} />
-        <StackedTasks series={series} />
-      </div>
-      <ActivityHeatmap cells={data.aktivitasPerJam ?? []} />
-      <ActivityCalendar series={series} />
-      <SankeyFlow flows={labeledFlows} />
-      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-        <TreeMap title="Pohon penerbit" rows={labeledProjection.articlesByPublisher} emptyText="Belum ada data penerbit." />
-        <SiteBubbles results={labeledOutcomes} />
-      </div>
-      <div className="grid min-w-0 gap-4 lg:grid-cols-12">
-        <div className="min-w-0 lg:col-span-7">
-          <StatusMatrix results={labeledOutcomes} />
+    <Tabs defaultValue="ringkasan" className="w-full">
+      <TabsList aria-label="Bagian analitik" className="max-w-full overflow-x-auto">
+        <TabsTrigger value="ringkasan" className="flex-none">Ringkasan</TabsTrigger>
+        <TabsTrigger value="tren" className="flex-none">Tren</TabsTrigger>
+        <TabsTrigger value="distribusi" className="flex-none">Distribusi</TabsTrigger>
+        <TabsTrigger value="aktivitas" className="flex-none">Aktivitas</TabsTrigger>
+      </TabsList>
+      <TabsContent keepMounted value="ringkasan">
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-12">
+          <div className="min-w-0 sm:col-span-2 lg:col-span-12">
+            <KpiSparkline series={series} />
+          </div>
+          <div className="min-w-0 sm:col-span-2 lg:col-span-12">
+            <PublicationTrend series={series} />
+          </div>
         </div>
-        <div className="min-w-0 lg:col-span-5">
-          <Timeline events={data.aktivitasTerbaru ?? []} />
+      </TabsContent>
+      <TabsContent keepMounted value="tren">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+          <MetricComparison series={series} />
+          <StackedTasks series={series} />
         </div>
-      </div>
-      <TelemetryCharts data={labeledProjection} />
-    </div>
+      </TabsContent>
+      <TabsContent keepMounted value="distribusi">
+        <div className="space-y-6">
+          <SankeyFlow flows={labeledFlows} />
+          <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+            <TreeMap title="Pohon penerbit" rows={labeledProjection.articlesByPublisher} emptyText="Belum ada data penerbit." />
+            <SiteBubbles results={labeledOutcomes} />
+          </div>
+          <div className="grid min-w-0 gap-4 lg:grid-cols-12">
+            <div className="min-w-0 sm:col-span-1 lg:col-span-7">
+              <StatusMatrix results={labeledOutcomes} />
+            </div>
+            <div className="min-w-0 sm:col-span-1 lg:col-span-5">
+              <Timeline events={data.aktivitasTerbaru ?? []} />
+            </div>
+          </div>
+          <TelemetryCharts data={labeledProjection} />
+        </div>
+      </TabsContent>
+      <TabsContent keepMounted value="aktivitas">
+        <div className="space-y-6">
+          <ActivityHeatmap cells={data.aktivitasPerJam ?? []} />
+          <ActivityCalendar series={series} />
+        </div>
+      </TabsContent>
+    </Tabs>
   );
 }

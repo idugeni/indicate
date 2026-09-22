@@ -380,50 +380,50 @@ export function PrimaryBento({
   }));
   const funnelTasks = analytics?.totalPenyaluran ?? (succeeded + failed);
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-4 min-[420px]:grid-cols-6 lg:grid-cols-12 col-span-full">
-      <div className="min-w-0 col-span-full">
+    <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12 col-span-full">
+      <div className="min-w-0 col-span-full sm:col-span-2 lg:col-span-12">
         <KpiSparkline series={series} />
       </div>
       <SummaryCharts jobs={jobs} succeeded={succeeded} failed={failed} active={active} archived={archived} />
-      <ConversionFunnel active={active} tasks={funnelTasks} succeeded={succeeded} className="min-[420px]:col-span-6 lg:col-span-8" />
-      <SuccessRate succeeded={succeeded} failed={failed} className="min-[420px]:col-span-6 lg:col-span-4" />
-      <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-7">
+      <ConversionFunnel active={active} tasks={funnelTasks} succeeded={succeeded} className="sm:col-span-2 lg:col-span-8" />
+      <SuccessRate succeeded={succeeded} failed={failed} className="sm:col-span-2 lg:col-span-4" />
+      <div className="min-w-0 sm:col-span-2 lg:col-span-7">
         <PublicationTrend series={series} />
       </div>
-      <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-5">
+      <div className="min-w-0 sm:col-span-2 lg:col-span-5">
         <ViewsLine series={views} />
       </div>
-      <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-6">
+      <div className="min-w-0 sm:col-span-1 lg:col-span-6">
         <SiteStack results={outcomes} label={siteName} />
       </div>
-      <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-6">
+      <div className="min-w-0 sm:col-span-1 lg:col-span-6">
         <SiteViewsBar rows={analytics?.viewsBySite ?? []} label={siteName} />
       </div>
-      <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-7">
+      <div className="min-w-0 sm:col-span-2 lg:col-span-7">
         <ActivityHeatmap cells={analytics?.aktivitasPerJam ?? []} />
       </div>
-      <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-5">
+      <div className="min-w-0 sm:col-span-2 lg:col-span-5">
         <ActivityCalendar series={series} />
       </div>
-      <div className="min-w-0 col-span-full">
+      <div className="min-w-0 col-span-full sm:col-span-2 lg:col-span-12">
         <SankeyFlow flows={labeledFlows} />
       </div>
-      <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-6">
+      <div className="min-w-0 sm:col-span-1 lg:col-span-6">
         <TreeMap title="Pohon artikel" rows={articleTree} emptyText="Belum ada tayangan artikel." />
       </div>
-      <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-6">
+      <div className="min-w-0 sm:col-span-1 lg:col-span-6">
         <ViewsBubbles rows={analytics?.viewsBySite ?? []} label={siteName} />
       </div>
-      <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-7">
+      <div className="min-w-0 sm:col-span-1 lg:col-span-7">
         <StatusMatrix results={labeledOutcomes} />
       </div>
-      <div className="min-w-0 min-[420px]:col-span-6 lg:col-span-5">
+      <div className="min-w-0 sm:col-span-1 lg:col-span-5">
         <Timeline events={analytics?.aktivitasTerbaru ?? []} />
       </div>
-      <TopRanked title="Wilayah teratas" rows={withLabels(analytics?.articlesByRegion, analytics?.regionLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
-      <TopRanked title="Kategori teratas" rows={withLabels(analytics?.articlesByCategory, analytics?.categoryLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
-      <TopRanked title="Situs teratas" rows={withLabels(analytics?.articlesBySite, analytics?.siteLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
-      <TopRanked title="Penerbit teratas" rows={withLabels(analytics?.articlesByPublisher, analytics?.publisherLabels)} className="min-[420px]:col-span-3 lg:col-span-3" />
+      <TopRanked title="Wilayah teratas" rows={withLabels(analytics?.articlesByRegion, analytics?.regionLabels)} className="sm:col-span-1 lg:col-span-3" />
+      <TopRanked title="Kategori teratas" rows={withLabels(analytics?.articlesByCategory, analytics?.categoryLabels)} className="sm:col-span-1 lg:col-span-3" />
+      <TopRanked title="Situs teratas" rows={withLabels(analytics?.articlesBySite, analytics?.siteLabels)} className="sm:col-span-1 lg:col-span-3" />
+      <TopRanked title="Penerbit teratas" rows={withLabels(analytics?.articlesByPublisher, analytics?.publisherLabels)} className="sm:col-span-1 lg:col-span-3" />
     </div>
   );
 }

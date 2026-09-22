@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type FieldKind = 'text' | 'textarea' | 'number' | 'checkbox' | 'json' | 'color';
 interface FieldDef { readonly key: string; readonly label: string; readonly kind: FieldKind; readonly required?: boolean }
@@ -143,75 +144,83 @@ export function ContentManager() {
     }
   }, [reload]);
 
-  const def = TYPES.find((t) => t.kind === activeKind) ?? TYPES[0]!;
-  const rows: readonly Row[] = (bundle === null ? [] : bundle[BUNDLE_KEY[def.kind]!] ?? []);
-  const getDraft = (idKey: string, row: Row): Row => drafts[`${def.kind}:${String(row[idKey])}`] ?? row;
-  const setDraft = (idKey: string, row: Row, key: string, value: string | boolean) => {
-    const id = `${def.kind}:${String(row[idKey])}`;
+  const rowsFor = (kind: string): readonly Row[] => {
+    const type = TYPES.find((t) => t.kind === kind) ?? TYPES[0]!;
+    return bundle === null ? [] : (bundle[BUNDLE_KEY[type.kind]!] ?? []);
+  };
+  const getDraftFor = (kind: string, idKey: string, row: Row): Row =>
+    drafts[`${kind}:${String(row[idKey])}`] ?? row;
+  const setDraftFor = (kind: string, idKey: string, row: Row, key: string, value: string | boolean) => {
+    const id = `${kind}:${String(row[idKey])}`;
     setDrafts((prev) => ({ ...prev, [id]: { ...(prev[id] ?? row), [key]: value } }));
   };
 
-  const saveRow = (row: Row) => {
-    const current = getDraft(def.idKey, row);
+  const saveRowFor = (type: TypeDef, row: Row) => {
+    const current = getDraftFor(type.kind, type.idKey, row);
     const payload: Record<string, unknown> = {};
-    for (const field of def.fields) payload[field.key] = fromFieldValue(field, toFieldValue(field, current));
-    void post(`${def.kind}.save`, { row: payload });
+    for (const field of type.fields) payload[field.key] = fromFieldValue(field, toFieldValue(field, current));
+    void post(`${type.kind}.save`, { row: payload });
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-hairline">
-        {TYPES.map((t) => (
-          <button
-            key={t.kind} type="button" onClick={() => setActiveKind(t.kind)}
-            aria-pressed={activeKind === t.kind}
-            className={`border-b-2 pb-2 font-sans text-xs transition-colors duration-180 ${activeKind === t.kind ? 'border-brass font-semibold text-paper' : 'border-transparent text-paper-faint hover:text-paper'}`}
-          >
-            {t.label}
-          </button>
-        ))}
-        <Button type="button" variant="ghost" size="xs" onClick={() => void reload()} disabled={busy} className="ml-auto text-paper-dim hover:text-paper">
+    <Tabs value={activeKind} onValueChange={setActiveKind} className="w-full space-y-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <TabsList aria-label="Jenis konten website" className="max-w-full flex-1 overflow-x-auto">
+          {TYPES.map((t) => (
+            <TabsTrigger key={t.kind} value={t.kind} className="flex-none">
+              {t.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <Button type="button" variant="ghost" size="xs" onClick={() => void reload()} disabled={busy} className="flex-none text-paper-dim hover:text-paper">
           <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Muat ulang
         </Button>
       </div>
       {error ? <FormNotice tone="error">{error}</FormNotice> : null}
       {notice ? <FormNotice tone="success">{notice}</FormNotice> : null}
-      <div className="grid gap-4">
-        {rows.map((row) => {
-          const current = getDraft(def.idKey, row);
-          return (
-            <section key={String(row[def.idKey])} aria-label={String(row[def.idKey])} className="rounded-lg border border-hairline bg-bg-raised p-4 sm:p-5">
-              <p className="m-0 font-mono text-xs tabular-nums text-paper-dim">{String(row[def.idKey])}</p>
-              <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                {def.fields.map((field) => (
-                  <Label key={field.key} className={field.kind === 'textarea' ? 'block sm:col-span-2' : 'block'}>
-                    <span className="mb-1.5 block font-sans text-xs font-medium text-paper-dim">{field.label}</span>
-                    {field.kind === 'checkbox' ? (
-                      <Checkbox checked={toFieldValue(field, current) === true} onCheckedChange={(checked) => setDraft(def.idKey, row, field.key, checked)} />
-                    ) : field.kind === 'textarea' ? (
-                      <Textarea value={String(toFieldValue(field, current))} onChange={(e) => setDraft(def.idKey, row, field.key, e.target.value)} rows={3} className="font-sans text-xs" />
-                    ) : (
-                      <Input type={field.kind === 'color' ? 'text' : field.kind} value={String(toFieldValue(field, current) ?? '')} onChange={(e) => setDraft(def.idKey, row, field.key, e.target.value)} className="font-sans text-xs" />
-                    )}
-                  </Label>
-                ))}
-              </div>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Button type="button" variant="default" disabled={busy} onClick={() => saveRow(row)}>
-                  Simpan
-                </Button>
-                <Button type="button" variant="outline" disabled={busy} onClick={() => post('row.delete', { kind: def.kind, id: String(row[def.idKey]) })}>
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Hapus
-                </Button>
-              </div>
-            </section>
-          );
-        })}
-      </div>
+      {TYPES.map((t) => {
+        const typeRows = rowsFor(t.kind);
+        return (
+          <TabsContent keepMounted key={t.kind} value={t.kind} className="mt-0">
+            <div className="grid gap-4 md:grid-cols-2">
+              {typeRows.map((row) => {
+                const current = getDraftFor(t.kind, t.idKey, row);
+                return (
+                  <section key={String(row[t.idKey])} aria-label={String(row[t.idKey])} className="rounded-lg border border-hairline bg-bg-raised p-4 sm:p-5">
+                    <p className="m-0 truncate font-mono text-xs tabular-nums text-paper-dim">{String(row[t.idKey])}</p>
+                    <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                      {t.fields.map((field) => (
+                        <Label key={field.key} className={field.kind === 'textarea' ? 'block sm:col-span-2' : 'block'}>
+                          <span className="mb-1.5 block font-sans text-xs font-medium text-paper-dim">{field.label}</span>
+                          {field.kind === 'checkbox' ? (
+                            <Checkbox checked={toFieldValue(field, current) === true} onCheckedChange={(checked) => setDraftFor(t.kind, t.idKey, row, field.key, checked)} />
+                          ) : field.kind === 'textarea' ? (
+                            <Textarea value={String(toFieldValue(field, current))} onChange={(e) => setDraftFor(t.kind, t.idKey, row, field.key, e.target.value)} rows={3} className="font-sans text-xs" />
+                          ) : (
+                            <Input type={field.kind === 'color' ? 'text' : field.kind} value={String(toFieldValue(field, current) ?? '')} onChange={(e) => setDraftFor(t.kind, t.idKey, row, field.key, e.target.value)} className="font-sans text-xs" />
+                          )}
+                        </Label>
+                      ))}
+                    </div>
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <Button type="button" variant="default" disabled={busy} onClick={() => saveRowFor(t, row)} className="w-full sm:w-auto">
+                        Simpan
+                      </Button>
+                      <Button type="button" variant="outline" disabled={busy} onClick={() => post('row.delete', { kind: t.kind, id: String(row[t.idKey]) })} className="w-full sm:w-auto">
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Hapus
+                      </Button>
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          </TabsContent>
+        );
+      })}
       <p className="m-0 font-sans text-xs text-paper-faint">
         Ubah ID untuk menduplikasi sebagai baris baru. Perubahan tayang segera setelah disimpan.
       </p>
-    </div>
+    </Tabs>
   );
 }
 

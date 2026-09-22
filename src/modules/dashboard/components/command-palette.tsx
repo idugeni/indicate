@@ -124,7 +124,7 @@ export function CommandPalette({ showTrigger = true }: { readonly showTrigger?: 
       ) : null}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-xl overflow-hidden rounded border border-hairline bg-bg-raised p-0 shadow-none">
+        <DialogContent className="max-h-[85vh] w-[calc(100vw-2rem)] overflow-y-auto rounded border border-hairline bg-bg-raised p-0 shadow-none sm:max-w-xl">
           <DialogTitle className="sr-only">Navigasi Perintah Redaksi</DialogTitle>
 
           <Command

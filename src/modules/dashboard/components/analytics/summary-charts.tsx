@@ -140,7 +140,7 @@ export function SummaryCharts({
       <Donut
         title="Distribusi antrean"
         emptyText="Belum ada tugas penerbitan. Tugas antrean akan terisi setelah artikel pertama dijadwalkan."
-        className="min-[420px]:col-span-6 lg:col-span-5"
+        className="sm:col-span-2 lg:col-span-5"
         slices={Object.entries(jobs).map(([status, value]) => ({
           name: status,
           value: Number(value),
@@ -150,7 +150,7 @@ export function SummaryCharts({
       <Donut
         title="Komposisi hasil"
         emptyText="Belum ada hasil penyaluran. Hasil situs akan diringkas di sini setelah antrean pertama berjalan."
-        className="min-[420px]:col-span-3 lg:col-span-4"
+        className="sm:col-span-1 lg:col-span-4"
         slices={[
           { name: 'berhasil', value: succeeded, color: RESULT_COLORS.berhasil ?? '#5fcbb0' },
           { name: 'gagal', value: failed, color: RESULT_COLORS.gagal ?? '#d9705f' },
@@ -159,7 +159,7 @@ export function SummaryCharts({
       <Donut
         title="Komposisi artikel"
         emptyText="Belum ada artikel. Tulis naskah perdana dari ruang redaksi."
-        className="min-[420px]:col-span-3 lg:col-span-3"
+        className="sm:col-span-1 lg:col-span-3"
         slices={[
           { name: 'aktif', value: active, color: '#cc9a44' },
           { name: 'arsip', value: archived, color: '#8b93a7' },

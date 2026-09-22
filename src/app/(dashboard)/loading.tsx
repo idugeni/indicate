@@ -36,8 +36,8 @@ export default function DashboardLoading() {
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto w-full max-w-6xl">
+        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
+          <div className="mx-auto w-full max-w-7xl">
             <div aria-hidden="true">
               <Skeleton className="h-3 w-32 bg-bg-raised-2" />
               <Skeleton className="mt-2 h-6 w-64 bg-bg-raised-2" />

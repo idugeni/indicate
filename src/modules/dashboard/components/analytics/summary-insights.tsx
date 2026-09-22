@@ -44,7 +44,7 @@ export function ConversionFunnel({
       </h2>
       <ol className="m-0 mt-4 list-none space-y-4 p-0">
         {stages.map((item) => (
-          <li key={item.label} className="grid min-w-0 grid-cols-[minmax(0,9rem)_minmax(0,1fr)_auto] items-center gap-3">
+          <li key={item.label} className="grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)_auto] sm:gap-3">
             <div className="min-w-0">
               <p className="m-0 truncate font-sans text-[13px] font-medium text-paper">{item.label}</p>
               <p className="m-0 truncate font-sans text-xs text-paper-faint">{item.note}</p>

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
@@ -240,8 +241,14 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
   };
 
   return (
-    <div className="grid grid-cols-1 items-start gap-x-10 gap-y-8 md:grid-cols-2">
-      <section aria-label="Laporan konten" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6 md:col-span-2">
+    <Tabs defaultValue="laporan" className="w-full">
+      <TabsList aria-label="Bagian moderasi" className="max-w-full overflow-x-auto">
+        <TabsTrigger value="laporan" className="flex-none">Laporan</TabsTrigger>
+        <TabsTrigger value="privasi" className="flex-none">Privasi</TabsTrigger>
+        <TabsTrigger value="retensi" className="flex-none">Retensi</TabsTrigger>
+      </TabsList>
+      <TabsContent keepMounted value="laporan">
+        <section aria-label="Laporan konten" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Laporan konten publik</p>
         <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
           SLA peninjauan 1x24 jam (Ketentuan §14). Tindakan penarikan dilakukan lewat alur unpublish yang sudah ada,
@@ -288,8 +295,10 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
           {reports.length === 0 ? <li><EmptyState title="Belum ada laporan konten." description="Data akan tampil di sini setelah tersedia." /></li> : null}
         </ul>
       </section>
-
-      <section aria-label="Permintaan data" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
+      </TabsContent>
+      <TabsContent keepMounted value="privasi">
+        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+          <section aria-label="Permintaan data" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Permintaan data baru</p>
         <div className="mt-3 flex flex-col gap-2">
           <NativeSelect
@@ -310,7 +319,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             className="font-sans text-xs"
           />
           <Button
-            type="button" variant="default" size="lg" onClick={submitPrivacy} disabled={busy}
+            type="button" variant="default" size="lg" onClick={submitPrivacy} disabled={busy} className="w-full sm:w-auto"
           >
             Kirim permintaan
           </Button>
@@ -351,8 +360,11 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
           {privacy.length === 0 ? <li><EmptyState title="Belum ada tiket permintaan data." description="Data akan tampil di sini setelah tersedia." /></li> : null}
         </ul>
       </section>
-
-      <section aria-label="Tunda hapus resmi" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6 md:col-span-2">
+        </div>
+      </TabsContent>
+      <TabsContent keepMounted value="retensi">
+        <div className="grid grid-cols-1 items-start gap-4">
+          <section aria-label="Tunda hapus resmi" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Tunda hapus resmi</p>
         <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
           Organisasi yang ditunda dilewatkan pembersihan retensi dan penghapusan sampai penundaan dilepas. Satu penundaan aktif per organisasi.
@@ -380,7 +392,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
           </div>
           <div className="flex items-end">
             <Button
-              type="button" variant="default" size="lg" onClick={() => void createHold()} disabled={busy}
+              type="button" variant="default" size="lg" onClick={() => void createHold()} disabled={busy} className="w-full sm:w-auto"
             >
               Tahan hapus
             </Button>
@@ -411,7 +423,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
         </ul>
       </section>
 
-      <section aria-label="Hapus data organisasi" className="rounded-lg border border-error/60 bg-bg-raised p-5 sm:p-6 md:col-span-2">
+      <section aria-label="Hapus data organisasi" className="rounded-lg border border-error/60 bg-bg-raised p-5 sm:p-6">
         <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Hapus data organisasi</p>
         <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
           Hapus permanen data operasional + samarkan data pribadi anggota. Arsip legal (audit, faktur, order,
@@ -440,7 +452,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
           </div>
           <div className="flex items-end">
             <Button
-              type="button" variant="destructive" size="lg" onClick={() => void requestErasure()} disabled={busy}
+              type="button" variant="destructive" size="lg" onClick={() => void requestErasure()} disabled={busy} className="w-full sm:w-auto"
             >
               Minta hapus data
             </Button>
@@ -462,6 +474,8 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
           {erasures.length === 0 ? <li><EmptyState title="Belum ada permintaan hapus data." description="Data akan tampil di sini setelah tersedia." /></li> : null}
         </ul>
       </section>
-    </div>
+        </div>
+      </TabsContent>
+    </Tabs>
   );
 }

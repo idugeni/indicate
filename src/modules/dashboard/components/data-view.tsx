@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Archive, ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Check, CircleCheck, CircleX, Copy, Eye, FileText, Globe, Images, Inbox, LayoutGrid, ListChecks, MoreVertical, Network, Pencil, PenLine, RefreshCw, RotateCcw, SearchX, Send, SlidersHorizontal } from 'lucide-react';
 import { flexRender, useTable } from '@tanstack/react-table';
 import {
@@ -200,7 +200,7 @@ export function DataView({
     ];
 
     return (
-      <div className="grid min-w-0 grid-cols-1 gap-4 min-[420px]:grid-cols-6 lg:grid-cols-12">
+      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
         {completedSteps < setupSteps.length ? (
           <section
             aria-label="Panduan mulai cepat"
@@ -253,9 +253,9 @@ export function DataView({
           </section>
         ) : null}
 
-        <dl className="col-span-full grid min-w-0 grid-cols-1 gap-4 min-[420px]:grid-cols-12 lg:grid-cols-4">
+        <dl className="col-span-full grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {metrics.map(({ key, label, value, icon: Icon }) => (
-            <div key={key} className="min-w-0 overflow-hidden rounded-lg border border-hairline bg-bg-raised p-5 transition-colors duration-150 min-[420px]:col-span-6 hover:border-hairline-strong lg:col-span-1">
+            <div key={key} className="min-w-0 overflow-hidden rounded-lg border border-hairline bg-bg-raised p-5 transition-colors duration-150 hover:border-hairline-strong">
               <dt className="flex min-w-0 items-center gap-1.5 font-sans text-xs font-medium text-paper-dim">
                 <Icon className="h-3.5 w-3.5 flex-none text-brass" aria-hidden="true" />
                 <span className="min-w-0 flex-1 break-words leading-snug">
@@ -479,14 +479,14 @@ function CollectionTable({
         cell: ({ row }) => {
           const name = resolveItemName(row.original);
           return (
-            <>
-              <div className="font-sans font-medium text-paper">
+            <div className="min-w-0">
+              <div className="max-w-44 truncate font-sans font-medium text-paper sm:max-w-none">
                 {name}
               </div>
-              <div className="mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
+              <div className="mt-0.5 max-w-44 truncate font-mono text-[11px] tabular-nums text-paper-faint sm:max-w-none">
                 {row.id}
               </div>
-            </>
+            </div>
           );
         },
       },
@@ -574,6 +574,13 @@ function CollectionTable({
   });
 
   const totalItems = rawItems.length;
+  const visibleColumnCount = table.getVisibleLeafColumns().length;
+  const editingItem =
+    editingId === null
+      ? null
+      : (memoData.find(
+          (entry, index) => String(entry.id ?? `${collectionKey}-${index}`) === editingId,
+        ) ?? null);
   const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
   const safePage = Math.min(Math.max(1, currentPage), totalPages);
   const startIndex = (safePage - 1) * PAGE_SIZE;
@@ -736,69 +743,80 @@ function CollectionTable({
           }
         />
       ) : (
-        <div className="overflow-x-auto">
-          <Table className="w-full text-sm">
-            <caption className="sr-only">
-              {formattedTitle}: {totalItems.toLocaleString('id-ID')} data, halaman {safePage} dari {totalPages}
-            </caption>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="border-b border-hairline hover:bg-transparent">
-                  {headerGroup.headers.map((header) => (
-                    <TableHead
-                      key={header.id}
-                      className={
-                        header.column.id === 'actions'
-                          ? 'w-12 text-right font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint'
-                          : 'font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint'
-                      }
-                    >
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {pageRows.map((row) => {
-                const item = row.original;
-                const itemId = row.id;
-                const isEditing = editingId === itemId;
-                return (
-                  <Fragment key={itemId}>
-                    <TableRow className="border-b border-hairline/60 transition-colors duration-180 hover:bg-bg-raised-2">
+        <>
+          <div className="overflow-x-auto">
+            <Table className="w-full text-sm">
+              <caption className="sr-only">
+                {formattedTitle}: {totalItems.toLocaleString('id-ID')} data, halaman {safePage} dari {totalPages}
+              </caption>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id} className="border-b border-hairline hover:bg-transparent">
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        className={
+                          header.column.id === 'actions'
+                            ? 'w-12 text-right font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint'
+                            : header.column.id === 'status'
+                              ? 'hidden font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint sm:table-cell'
+                              : 'font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint'
+                        }
+                      >
+                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {pageRows.map((row) => {
+                  const itemId = row.id;
+                  return (
+                    <TableRow key={itemId} className="border-b border-hairline/60 transition-colors duration-180 hover:bg-bg-raised-2">
                       {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className={cell.column.id === 'actions' ? 'py-3 text-right' : 'py-3'}>
+                        <TableCell
+                          key={cell.id}
+                          className={
+                            cell.column.id === 'actions'
+                              ? 'py-3 text-right'
+                              : cell.column.id === 'status'
+                                ? 'hidden py-3 sm:table-cell'
+                                : 'py-3'
+                          }
+                        >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}
                     </TableRow>
-                    {isEditing && editorConfig !== undefined ? (
-                      <TableRow className="border-b border-hairline/60 hover:bg-transparent">
-                        <TableCell colSpan={4} className="p-0">
-                          <RecordEditorForm
-                            config={editorConfig}
-                            collectionKey={collectionKey}
-                            item={item}
-                            lookups={lookups}
-                            onSaved={() => {
-                              setEditingId(null);
-                              onRefresh();
-                            }}
-                            onCancel={() => setEditingId(null)}
-                            onSubmit={async (action, payload) =>
-                              command === undefined ? null : command(action, payload)
-                            }
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ) : null}
-                  </Fragment>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+          {editingItem !== null && editorConfig !== undefined ? (
+            <div
+              key={`editor-${editingId}`}
+              className="mt-3 overflow-hidden rounded-lg border border-hairline bg-bg"
+              data-visible-columns={visibleColumnCount}
+            >
+              <RecordEditorForm
+                config={editorConfig}
+                collectionKey={collectionKey}
+                item={editingItem}
+                lookups={lookups}
+                onSaved={() => {
+                  setEditingId(null);
+                  onRefresh();
+                }}
+                onCancel={() => setEditingId(null)}
+                onSubmit={async (action, payload) =>
+                  command === undefined ? null : command(action, payload)
+                }
+              />
+            </div>
+          ) : null}
+        </>
       )}
 
       {totalItems > 0 ? (

@@ -80,7 +80,7 @@ export function KpiSparkline({ series }: { readonly series: readonly TugasHarian
   const current = series.slice(-7);
   const previous = series.slice(-14, -7);
   return (
-    <div className="grid h-full min-w-0 grid-cols-1 gap-4 min-[420px]:grid-cols-3">
+    <div className="grid h-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-3">
       <SparkCard label="Sukses 7 hari" current={current} previous={previous} color={COLOR_PUBLISHED} pick={(point) => point.diterbitkan} />
       <SparkCard
         label="Tugas 7 hari"

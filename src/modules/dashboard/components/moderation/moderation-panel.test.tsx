@@ -25,12 +25,17 @@ describe('Panel moderasi', () => {
   it('merender semua seksi dengan status kosong', async () => {
     stubModeration();
     render(<ModerationPanel organizationId="org-1" />);
+    expect(screen.getByRole('tab', { name: 'Laporan' })).toBeDefined();
+    expect(screen.getByRole('tab', { name: 'Privasi' })).toBeDefined();
+    expect(screen.getByRole('tab', { name: 'Retensi' })).toBeDefined();
     expect(screen.getByText('Laporan konten publik')).toBeDefined();
+    expect(await screen.findByText('Belum ada laporan konten.')).toBeDefined();
+    fireEvent.click(screen.getByRole('tab', { name: 'Privasi' }));
     expect(screen.getByText('Permintaan data baru')).toBeDefined();
     expect(screen.getByText('Tiket permintaan (SLA 30 hari)')).toBeDefined();
+    fireEvent.click(screen.getByRole('tab', { name: 'Retensi' }));
     expect(screen.getByText('Tunda hapus resmi')).toBeDefined();
     expect(screen.getByText('Hapus data organisasi')).toBeDefined();
-    expect(await screen.findByText('Belum ada laporan konten.')).toBeDefined();
     expect(await screen.findByText('Belum ada penundaan.')).toBeDefined();
     expect(await screen.findByText('Belum ada permintaan hapus data.')).toBeDefined();
   });
@@ -39,6 +44,7 @@ describe('Panel moderasi', () => {
     stubModeration();
     render(<ModerationPanel organizationId="org-1" />);
     await screen.findByText('Belum ada laporan konten.');
+    fireEvent.click(screen.getByRole('tab', { name: 'Privasi' }));
     fireEvent.change(screen.getByLabelText('Uraian permintaan data'), { target: { value: 'pendek' } });
     fireEvent.click(screen.getByRole('button', { name: 'Kirim permintaan' }));
     expect(await screen.findByText('Uraian permintaan minimal 10 karakter.')).toBeDefined();
@@ -48,6 +54,7 @@ describe('Panel moderasi', () => {
     stubModeration();
     render(<ModerationPanel organizationId="org-1" />);
     await screen.findByText('Belum ada laporan konten.');
+    fireEvent.click(screen.getByRole('tab', { name: 'Retensi' }));
     fireEvent.click(screen.getByRole('button', { name: 'Tahan hapus' }));
     expect(await screen.findByText('Isi ID organisasi dan alasan penundaan (min. 10 karakter).')).toBeDefined();
   });
@@ -56,6 +63,7 @@ describe('Panel moderasi', () => {
     stubModeration();
     render(<ModerationPanel organizationId="org-1" />);
     await screen.findByText('Belum ada laporan konten.');
+    fireEvent.click(screen.getByRole('tab', { name: 'Retensi' }));
     fireEvent.click(screen.getByRole('button', { name: 'Minta hapus data' }));
     expect(await screen.findByText('Isi ID organisasi dan alasan hapus data (min. 10 karakter).')).toBeDefined();
   });

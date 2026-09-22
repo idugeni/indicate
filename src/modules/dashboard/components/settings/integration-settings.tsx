@@ -318,21 +318,21 @@ export function IntegrationSettings({
             <p className="m-0 mt-1 font-sans text-xs text-paper-dim">
               Satu surel percobaan ke alamat mana pun. Hanya admin platform.
             </p>
-            <div className="mt-2 flex gap-2">
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
               <Input
                 value={testEmail}
                 onChange={(event) => setTestEmail(event.target.value)}
                 disabled={isTestingEmail}
                 placeholder="nama@domain.id"
                 aria-label="Alamat surel uji"
-                className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+                className="h-8 min-w-0 flex-1 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
               />
               <Button
                 type="button"
                 variant="default"
                 onClick={handleTestEmail}
                 disabled={isTestingEmail || testEmail.trim().length === 0}
-                className="flex-none"
+                className="w-full sm:w-auto sm:flex-none"
               >
                 {isTestingEmail ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
