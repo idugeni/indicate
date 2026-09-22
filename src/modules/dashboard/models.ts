@@ -1,5 +1,5 @@
 export type LifecycleStatus = 'active' | 'inactive' | 'archived';
-export type ArticleStatus = 'draft' | 'active' | 'archived';
+export type ArticleStatus = 'draft' | 'in_review' | 'scheduled' | 'active' | 'archived';
 export type PublishingState = 'queued' | 'processing' | 'published' | 'failed' | 'retrying' | 'unpublished';
 export type PublisherType =
   | 'government_institution'
@@ -149,11 +149,15 @@ export interface ArticleRecord extends VersionedRecord {
   readonly authorId: string | null;
   readonly slug: string;
   readonly title: string;
+  readonly dek: string | null;
+  readonly excerpt: string | null;
+  readonly canonicalUrl: string | null;
   readonly body: string;
   readonly source: string;
   readonly tags: readonly string[];
   readonly status: ArticleStatus;
   readonly publishedAt: string | null;
+  readonly scheduledAt: string | null;
   readonly archivedAt: string | null;
 }
 
@@ -327,7 +331,7 @@ export interface AnalyticsPoint {
 }
 
 /** One daily task-series bucket; `hari` is `YYYY-MM-DD` (UTC). */
-export interface TugasHarian {
+export interface TaskDay {
   readonly hari: string;
   readonly diterbitkan: number;
   readonly gagal: number;
@@ -335,7 +339,7 @@ export interface TugasHarian {
 }
 
 /** One daily site-delivery-series bucket; `hari` is `YYYY-MM-DD` (UTC). */
-export interface PenyaluranHarian {
+export interface DeliveryDay {
   readonly hari: string;
   readonly diterbitkan: number;
   readonly gagal: number;
@@ -343,7 +347,7 @@ export interface PenyaluranHarian {
 }
 
 /** One daily views bucket; `views` sums that day's delivery `view_count`. */
-export interface ViewsHarian {
+export interface ViewDay {
   readonly hari: string;
   readonly penyaluran: number;
   readonly views: number;
@@ -357,14 +361,14 @@ export interface ViewsPoint {
 }
 
 /** One heat-map cell; `hari` 0=Monday..6=Sunday (Asia/Jakarta), `jam` 0..23. */
-export interface AktivitasJam {
+export interface ActivityHour {
   readonly hari: number;
   readonly jam: number;
   readonly jumlah: number;
 }
 
 /** One recent event for the operations timeline. */
-export interface AktivitasTerbaru {
+export interface RecentActivity {
   readonly id: string;
   readonly label: string;
   readonly status: string;
@@ -372,7 +376,7 @@ export interface AktivitasTerbaru {
 }
 
 /** One publisher → site → outcome flow leg for the Sankey diagram. */
-export interface ArusPenerbit {
+export interface PublisherFlow {
   readonly penerbit: string;
   readonly situs: string;
   readonly hasil: string;
@@ -380,7 +384,7 @@ export interface ArusPenerbit {
 }
 
 /** Series calendar window (`YYYY-MM-DD`, inclusive, max 90 days). */
-export interface JendelaDeret {
+export interface DateWindow {
   readonly awal: string;
   readonly akhir: string;
 }
@@ -395,13 +399,13 @@ export interface AnalyticsProjection {
   readonly jobsBySiteRegionAndState: readonly AnalyticsPoint[];
   readonly outcomesBySiteAndState: readonly AnalyticsPoint[];
   readonly outcomesBySiteRegionAndState: readonly AnalyticsPoint[];
-  readonly jendela: JendelaDeret;
-  readonly tugasHarian: readonly TugasHarian[];
-  readonly aktivitasPerJam: readonly AktivitasJam[];
-  readonly aktivitasTerbaru: readonly AktivitasTerbaru[];
-  readonly arusPenerbit: readonly ArusPenerbit[];
-  readonly penyaluranHarian?: readonly PenyaluranHarian[];
-  readonly viewsHarian?: readonly ViewsHarian[];
+  readonly jendela: DateWindow;
+  readonly tugasHarian: readonly TaskDay[];
+  readonly aktivitasPerJam: readonly ActivityHour[];
+  readonly aktivitasTerbaru: readonly RecentActivity[];
+  readonly arusPenerbit: readonly PublisherFlow[];
+  readonly penyaluranHarian?: readonly DeliveryDay[];
+  readonly viewsHarian?: readonly ViewDay[];
   readonly viewsBySite?: readonly ViewsPoint[];
   readonly viewsByArticle?: readonly ViewsPoint[];
   readonly totalViews?: number;

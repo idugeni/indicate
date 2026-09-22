@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import type { AktivitasJam, TugasHarian } from '@/modules/dashboard/models';
+import type { ActivityHour, TaskDay } from '@/modules/dashboard/models';
 import { weekdayLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
@@ -20,7 +20,7 @@ function scale(value: number, max: number): number {
  * @param cells - Nonzero activity cells from the analytics projection.
  * @returns 7x24 grid with color intensity.
  */
-export function ActivityHeatmap({ cells }: { readonly cells: readonly AktivitasJam[] }) {
+export function ActivityHeatmap({ cells }: { readonly cells: readonly ActivityHour[] }) {
   const cellMap = new Map(cells.map((point) => [`${point.hari}:${point.jam}`, point.jumlah]));
   const max = Math.max(...cells.map((point) => point.jumlah), 1);
   const hours = Array.from({ length: 24 }, (_, value) => value);
@@ -82,15 +82,15 @@ export function ActivityHeatmap({ cells }: { readonly cells: readonly AktivitasJ
  * @param series - Daily buckets from the analytics projection.
  * @returns Week x day grid with a 30/90-day switch.
  */
-export function ActivityCalendar({ series }: { readonly series: readonly TugasHarian[] }) {
+export function ActivityCalendar({ series }: { readonly series: readonly TaskDay[] }) {
   const [range, setRange] = useState<number>(90);
   const visible = series.slice(-range);
-  const total = (point: TugasHarian): number => point.diterbitkan + point.gagal + point.antre;
+  const total = (point: TaskDay): number => point.diterbitkan + point.gagal + point.antre;
   const max = Math.max(...visible.map(total), 1);
   const leadingEmpty = visible.length === 0 ? 0 : (new Date(`${visible[0]?.hari ?? ''}T00:00:00Z`).getUTCDay() + 6) % 7;
   const leadingCount = Number.isNaN(leadingEmpty) ? 0 : leadingEmpty;
-  const padded: readonly (TugasHarian | null)[] = [...Array<TugasHarian | null>(leadingCount).fill(null), ...visible];
-  const columns: (TugasHarian | null)[][] = [];
+  const padded: readonly (TaskDay | null)[] = [...Array<TaskDay | null>(leadingCount).fill(null), ...visible];
+  const columns: (TaskDay | null)[][] = [];
   padded.forEach((point, index) => {
     const column = Math.floor(index / 7);
     columns[column] = [...(columns[column] ?? []), point];

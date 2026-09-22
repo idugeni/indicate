@@ -4,7 +4,7 @@ import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { Area, AreaChart } from 'recharts';
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import type { TugasHarian } from '@/modules/dashboard/models';
+import type { TaskDay } from '@/modules/dashboard/models';
 import { COLOR_QUEUED, COLOR_FAILED, COLOR_PUBLISHED } from '@/modules/dashboard/components/analytics/chart-helpers';
 
 function deltaPercent(current: number, previous: number): string {
@@ -31,10 +31,10 @@ function SparkCard({
   pick,
 }: {
   readonly label: string;
-  readonly current: readonly TugasHarian[];
-  readonly previous: readonly TugasHarian[];
+  readonly current: readonly TaskDay[];
+  readonly previous: readonly TaskDay[];
   readonly color: string;
-  readonly pick: (point: TugasHarian) => number;
+  readonly pick: (point: TaskDay) => number;
 }) {
   const currentTotal = current.reduce((count, point) => count + pick(point), 0);
   const previousTotal = previous.reduce((count, point) => count + pick(point), 0);
@@ -76,7 +76,7 @@ function SparkCard({
  * @param series - Daily buckets from the analytics projection.
  * @returns KPI grid for success, tasks, and failures.
  */
-export function KpiSparkline({ series }: { readonly series: readonly TugasHarian[] }) {
+export function KpiSparkline({ series }: { readonly series: readonly TaskDay[] }) {
   const current = series.slice(-7);
   const previous = series.slice(-14, -7);
   return (

@@ -571,7 +571,7 @@ export class TenantBusinessService {
       this.requireArticleReferences(transaction.state, value);
       requireLockedRegionValue(actor, value.regionId);
       const slug = allocateUniqueSlug(transaction.state.articles.map(({ slug }) => slug), value.slug);
-      const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, publishedAt: null, archivedAt: null };
+      const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, dek: value.dek ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null };
       transaction.state.articles.push(record); this.audit(transaction, 'article.create', 'article', record.id, null, record); return record;
     }});
     if (result.ok && this.notifier !== null) {
@@ -589,7 +589,7 @@ export class TenantBusinessService {
       requireArticleInScope(transaction.state.articles, before.id, actor);
       requireLockedRegionValue(actor, value.regionId);
       if (value.slug !== before.slug && transaction.state.articles.some(({ id, slug }) => id !== value.id && slug === value.slug)) throw new DashboardConflictError();
-      const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: value.categoryId, authorId: value.authorId, slug: value.slug, title: value.title, body: value.body, source: value.source, tags: [...value.tags], status: value.status, version: before.version + 1, updatedAt: now };
+      const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: value.categoryId, authorId: value.authorId, slug: value.slug, title: value.title, dek: value.dek ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, body: value.body, source: value.source, tags: [...value.tags], status: value.status, scheduledAt: value.scheduledAt ?? null, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.articles, after); this.audit(transaction, 'article.update', 'article', after.id, before, after); return after;
     }});
   }

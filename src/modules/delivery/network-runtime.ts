@@ -173,6 +173,19 @@ function tenantHiddenMeta(
   };
 }
 /**
+ * Map a document robots directive to Next metadata.
+ *
+ * @param robots - Document-level directive from the SEO builder.
+ * @returns Next robots object; nosnippet appends the matching flag.
+ */
+function robotsForDocument(robots: 'index, follow' | 'noindex, nofollow' | 'noindex, nofollow, nosnippet'): Metadata['robots'] {
+  if (robots === 'index, follow') return indexableRobots();
+  const base = nonIndexableRobots();
+  if (robots === 'noindex, nofollow, nosnippet' && typeof base === 'object' && base !== null) return { ...base, nosnippet: true };
+  return base;
+}
+
+/**
  * Build tenant metadata for the given path and query.
  *
  * @remarks Titles use the absolute form so the control-plane '| Indicate' template (src/app/layout.tsx) is never appended.
@@ -297,7 +310,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
       canonical: seo.canonical,
       languages: { 'id-ID': seo.canonical },
     },
-    robots: indexableRobots(),
+    robots: robotsForDocument(seo.robots),
     ...tenantFavicon(site.settings.faviconUrl),
     openGraph: {
       title: seo.openGraph.title,
@@ -314,14 +327,12 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
             modifiedTime: article.updatedAt,
             authors: [article.authorDisplayName ?? article.authorName ?? article.attribution],
             section: article.categoryName ?? undefined,
+            tags: article.tags.length === 0 ? undefined : [...article.tags],
           }),
     },
-    twitter: {
-      card: 'summary_large_image',
-      title: seo.openGraph.title,
-      description: seo.openGraph.description,
-      images: [seo.openGraph.image],
-    },
+    twitter: seo.twitter
+      ? { card: seo.twitter.card, title: seo.twitter.title, description: seo.twitter.description, images: [seo.twitter.image] }
+      : undefined,
     ...(article === undefined
       ? {}
       : {

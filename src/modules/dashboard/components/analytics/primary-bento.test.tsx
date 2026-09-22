@@ -60,7 +60,7 @@ const ANALYTICS: AnalyticsProjection = {
   regionLabels: { 'r-1': 'Jawa' },
   articleLabels: { 'a-1': 'Kabar' },
   aktivitasPerJam: [{ hari: 2, jam: 19, jumlah: 2 }],
-  aktivitasTerbaru: [{ id: 'hasil:x', label: 'Kabar', status: 'published', at: '2026-09-18T09:00:00.000Z' }],
+  aktivitasTerbaru: [{ id: 'outcome:x', label: 'Kabar', status: 'published', at: '2026-09-18T09:00:00.000Z' }],
   arusPenerbit: [{ penerbit: 'p-1', situs: 's-1', hasil: 'published', jumlah: 2 }],
 };
 

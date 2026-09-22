@@ -5,7 +5,7 @@ import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Scatter, ScatterCh
 
 import { Button } from '@/components/ui/button';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import type { AnalyticsProjection, ViewsHarian, ViewsPoint } from '@/modules/dashboard/models';
+import type { AnalyticsProjection, ViewDay, ViewsPoint } from '@/modules/dashboard/models';
 import { weekdayLabel, truncateLabel, categoryColor } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { ActivityCalendar, ActivityHeatmap } from '@/modules/dashboard/components/analytics/heatmap';
@@ -31,7 +31,7 @@ const STACK_COLORS: Record<string, string> = {
   unpublished: '#8b93a7',
 };
 
-function buildLineSeries(series: readonly ViewsHarian[], range: number): readonly { hari: string; label: string; views: number }[] {
+function buildLineSeries(series: readonly ViewDay[], range: number): readonly { hari: string; label: string; views: number }[] {
   return series.slice(-range).map((point) => ({ hari: point.hari, label: weekdayLabel(point.hari), views: point.views }));
 }
 
@@ -41,7 +41,7 @@ function buildLineSeries(series: readonly ViewsHarian[], range: number): readonl
  * @param series - Daily view buckets from the analytics projection (max 90 days).
  * @returns View line card with a 7/30/90-day switch.
  */
-export function ViewsLine({ series }: { readonly series: readonly ViewsHarian[] }) {
+export function ViewsLine({ series }: { readonly series: readonly ViewDay[] }) {
   const [range, setRange] = useState<number>(30);
   const data = buildLineSeries(series, range);
   const total = series.reduce((count, point) => count + point.views, 0);

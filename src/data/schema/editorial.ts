@@ -30,7 +30,7 @@ export const publisherType = pgEnum('publisher_type', [
   'independent_publisher',
 ]);
 export const publisherVerificationStatus = pgEnum('publisher_verification_status', ['unverified', 'pending', 'verified', 'rejected']);
-export const articleStatus = pgEnum('article_status', ['draft', 'active', 'archived']);
+export const articleStatus = pgEnum('article_status', ['draft', 'in_review', 'scheduled', 'active', 'archived']);
 export const publishingState = pgEnum('publishing_state', ['queued', 'processing', 'published', 'failed', 'retrying', 'unpublished']);
 export const mediaState = pgEnum('media_state', ['reserved', 'active', 'rejected', 'archived']);
 export const reportStatus = pgEnum('report_status', ['received', 'under_review', 'action_taken', 'rejected']);
@@ -118,11 +118,19 @@ export const articles = pgTable('articles', {
   coverImageUrl: text('cover_image_url'),
   slug: text('slug').notNull(),
   title: text('title').notNull(),
+  /** Optional subheadline shown under the headline. */
+  dek: text('dek'),
+  /** Optional explicit excerpt; falls back to a body-derived excerpt. */
+  excerpt: text('excerpt'),
+  /** Optional canonical URL override; defaults to the tenant article URL. */
+  canonicalUrl: text('canonical_url'),
   body: text('body').notNull(),
   source: text('source').notNull(),
   tags: text('tags').array().default(sql`ARRAY[]::text[]`).notNull(),
   status: articleStatus('status').default('draft').notNull(),
   publishedAt: timestamp('published_at', { withTimezone: true }),
+  /** Optional embargo/scheduled date; enforced by the publishing scheduler. */
+  scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
   version: integer('version').default(1).notNull(),
   ...timestamps,
@@ -139,6 +147,31 @@ export const articles = pgTable('articles', {
   index('articles_organization_category_idx').on(table.organizationId, table.categoryId),
   index('articles_organization_lead_media_idx').on(table.organizationId, table.leadMediaId).where(sql`${table.leadMediaId} IS NOT NULL`),
   check('articles_version_positive', sql`${table.version} > 0`),
+]);
+
+/**
+ * Immutable content snapshots for diffing and rollback.
+ *
+ * @remarks One row per saved content version; written by the dashboard commit path on create and on content changes.
+ */
+export const articleRevisions = pgTable('article_revisions', {
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
+  id: uuid('id').notNull().defaultRandom(),
+  articleId: uuid('article_id').notNull(),
+  revisionNumber: integer('revision_number').notNull(),
+  title: text('title').notNull(),
+  dek: text('dek'),
+  body: text('body').notNull(),
+  snapshot: jsonb('snapshot').$type<Record<string, unknown>>().default({}).notNull(),
+  createdBy: text('created_by').notNull(),
+  ...timestamps,
+}, (table) => [
+  primaryKey({ name: 'article_revisions_pk', columns: [table.organizationId, table.id] }),
+  unique('article_revisions_id_unique').on(table.id),
+  unique('article_revisions_organization_article_number_unique').on(table.organizationId, table.articleId, table.revisionNumber),
+  foreignKey({ name: 'article_revisions_article_fk', columns: [table.organizationId, table.articleId], foreignColumns: [articles.organizationId, articles.id] }).onDelete('restrict'),
+  index('article_revisions_organization_article_idx').on(table.organizationId, table.articleId, table.revisionNumber),
+  check('article_revisions_number_positive', sql`${table.revisionNumber} > 0`),
 ]);
 
 export const articleSites = pgTable('article_sites', {

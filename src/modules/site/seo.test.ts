@@ -104,6 +104,27 @@ describe('buildSeoDocument', () => {
     expect(document.jsonLd.some((node) => node['@type'] === 'NewsArticle')).toBe(true);
   });
 
+  it('menyertakan Twitter Card dan tag artikel OpenGraph', () => {
+    const article = makeNetworkArticle({ title: 'Judul Utama', description: 'Deskripsi artikel yang cukup panjang.', tags: ['wonosobo', 'apbd'], categoryName: 'Politik' });
+    const site = makeNetworkSite([article]);
+    const document = buildSeoDocument(site, { path: '/berita-utama', article });
+    expect(document.twitter).toMatchObject({ card: 'summary_large_image', title: document.title });
+    expect(document.openGraph?.article).toMatchObject({ section: 'Politik', tags: ['wonosobo', 'apbd'] });
+    expect(document.openGraph?.article?.publishedTime).toBe(article.publishedAt);
+  });
+
+  it('menghormati override kanonis dan robots per artikel', () => {
+    const article = makeNetworkArticle({ canonicalUrl: 'https://sindikasi.example/asal', robotsDirective: 'noindex, nofollow' });
+    const site = makeNetworkSite([article]);
+    const document = buildSeoDocument(site, { path: '/berita-utama', article });
+    expect(document.canonical).toBe('https://sindikasi.example/asal');
+    expect(document.robots).toBe('noindex, nofollow');
+    const overridden = buildSeoDocument(site, { path: '/berita-utama', article, robotsOverride: 'noindex, nofollow, nosnippet' });
+    expect(overridden.robots).toBe('noindex, nofollow, nosnippet');
+    const invalid = buildSeoDocument(site, { path: '/berita-utama', article: makeNetworkArticle({ canonicalUrl: 'javascript:alert(1)' }) });
+    expect(invalid.canonical).toBe('https://portal.example/berita-utama');
+  });
+
   it('memperkaya Organization dan AboutPage untuk halaman tentang', () => {
     const article = makeNetworkArticle({
       publisherName: 'Humas Uji',

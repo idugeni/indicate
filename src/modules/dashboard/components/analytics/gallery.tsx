@@ -12,7 +12,7 @@ import { TelemetryCharts } from '@/modules/dashboard/components/analytics/teleme
 import { StackedTasks } from '@/modules/dashboard/components/analytics/stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { truncateLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
-import type { AnalyticsPoint, AnalyticsProjection, ArusPenerbit } from '@/modules/dashboard/models';
+import type { AnalyticsPoint, AnalyticsProjection, PublisherFlow } from '@/modules/dashboard/models';
 
 /**
  * Resolve dimension IDs to human-readable labels using the projection label maps.
@@ -42,7 +42,7 @@ export function TelemetryGallery({ data }: { readonly data: AnalyticsProjection 
     if (separatorIndex < 0) return point;
     return { key: `${siteName(point.key.slice(0, separatorIndex))}:${point.key.slice(separatorIndex + 1)}`, count: point.count };
   });
-  const labeledFlows: readonly ArusPenerbit[] = (data.arusPenerbit ?? []).map((flow) => ({
+  const labeledFlows: readonly PublisherFlow[] = (data.arusPenerbit ?? []).map((flow) => ({
     penerbit: data.publisherLabels?.[flow.penerbit] ?? truncateLabel(flow.penerbit, 16),
     situs: siteName(flow.situs),
     hasil: flow.hasil,

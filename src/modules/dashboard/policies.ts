@@ -1,22 +1,22 @@
 import type {
-  AktivitasJam,
-  AktivitasTerbaru,
+  ActivityHour,
+  RecentActivity,
   AnalyticsPoint,
   AnalyticsProjection,
-  ArusPenerbit,
+  PublisherFlow,
   ArticleFilter,
   ArticleRecord,
   AuditFilter,
   AuditRecord,
   DashboardProjection,
-  JendelaDeret,
+  DateWindow,
   OfficialAffiliationRecord,
   NetworkPublisherClaim,
-  PenyaluranHarian,
+  DeliveryDay,
   PublisherRecord,
   DashboardTenantState,
-  TugasHarian,
-  ViewsHarian,
+  TaskDay,
+  ViewDay,
   ViewsPoint,
 } from '@/modules/dashboard/models';
 
@@ -47,7 +47,7 @@ function listDays(start: string, end: string): string[] {
   return days;
 }
 
-function isInWindow(iso: string, window: JendelaDeret): boolean {
+function isInWindow(iso: string, window: DateWindow): boolean {
   const day = iso.slice(0, 10);
   return day >= window.awal && day <= window.akhir;
 }
@@ -180,9 +180,9 @@ export function buildAnalytics(
   const end = filter.to === undefined ? referenceDay : filter.to.slice(0, 10);
   const defaultStart = filter.from === undefined ? subtractDays(end, MAX_SERIES_DAYS - 1) : filter.from.slice(0, 10);
   const clampedStart = subtractDays(end, MAX_SERIES_DAYS - 1) > defaultStart ? subtractDays(end, MAX_SERIES_DAYS - 1) : defaultStart;
-  const window: JendelaDeret = clampedStart > end ? { awal: end, akhir: end } : { awal: clampedStart, akhir: end };
+  const window: DateWindow = clampedStart > end ? { awal: end, akhir: end } : { awal: clampedStart, akhir: end };
 
-  const tugasHarian: TugasHarian[] = listDays(window.awal, window.akhir).map((day) => {
+  const dailyTasks: TaskDay[] = listDays(window.awal, window.akhir).map((day) => {
     const daily = tenantJobs.filter(({ occurredAt }) => isInWindow(occurredAt, window) && occurredAt.slice(0, 10) === day);
     return {
       hari: day,
@@ -202,24 +202,24 @@ export function buildAnalytics(
     const key = `${day}:${hour}`;
     hourCounts.set(key, (hourCounts.get(key) ?? 0) + 1);
   }
-  const aktivitasPerJam: AktivitasJam[] = [...hourCounts]
+  const hourlyActivity: ActivityHour[] = [...hourCounts]
     .sort(([left], [right]) => (left < right ? -1 : 1))
     .map(([key, count]) => {
       const [day, hour] = key.split(':').map(Number);
       return { hari: day ?? 0, jam: hour ?? 0, jumlah: count };
     });
 
-  const events: AktivitasTerbaru[] = [
+  const events: RecentActivity[] = [
     ...tenantJobs.map((job) => ({ id: `job:${job.id}`, label: titleOf(job.articleId), status: job.state, at: job.occurredAt })),
     ...outcomeAssignments.map((assignment) => ({
-      id: `hasil:${assignment.id}`,
+      id: `outcome:${assignment.id}`,
       label: titleOf(assignment.articleId),
       status: assignment.state,
       at: assignment.stateOccurredAt,
     })),
-    ...tenantArticles.map((article) => ({ id: `artikel:${article.id}`, label: article.title, status: article.status, at: article.createdAt })),
+    ...tenantArticles.map((article) => ({ id: `article:${article.id}`, label: article.title, status: article.status, at: article.createdAt })),
   ];
-  const aktivitasTerbaru: AktivitasTerbaru[] = [...events]
+  const recentActivity: RecentActivity[] = [...events]
     .sort((left, right) => (left.at < right.at ? 1 : left.at > right.at ? -1 : 0))
     .slice(0, 8);
 
@@ -230,14 +230,14 @@ export function buildAnalytics(
     const key = JSON.stringify([article.publisherId, assignment.siteId, assignment.state]);
     flowCounts.set(key, (flowCounts.get(key) ?? 0) + 1);
   }
-  const arusPenerbit: ArusPenerbit[] = [...flowCounts]
+  const publisherFlows: PublisherFlow[] = [...flowCounts]
     .map(([key, count]) => {
       const [publisher, site, outcome] = JSON.parse(key) as [string, string, string];
       return { penerbit: publisher, situs: site, hasil: outcome, jumlah: count };
     })
     .sort((left, right) => right.jumlah - left.jumlah);
 
-  const penyaluranHarian: PenyaluranHarian[] = listDays(window.awal, window.akhir).map((day) => {
+  const deliveryDays: DeliveryDay[] = listDays(window.awal, window.akhir).map((day) => {
     const daily = outcomeAssignments.filter(({ stateOccurredAt }) => isInWindow(stateOccurredAt, window) && stateOccurredAt.slice(0, 10) === day);
     return {
       hari: day,
@@ -247,7 +247,7 @@ export function buildAnalytics(
     };
   });
 
-  const viewsHarian: ViewsHarian[] = listDays(window.awal, window.akhir).map((day) => {
+  const viewDays: ViewDay[] = listDays(window.awal, window.akhir).map((day) => {
     const daily = outcomeAssignments.filter(({ stateOccurredAt }) => isInWindow(stateOccurredAt, window) && stateOccurredAt.slice(0, 10) === day);
     return {
       hari: day,
@@ -297,12 +297,12 @@ export function buildAnalytics(
     outcomesBySiteAndState: group(outcomeAssignments.map(({ siteId, state: value }) => `${siteId}:${value}`)),
     outcomesBySiteRegionAndState: group(outcomeDimensions),
     jendela: window,
-    tugasHarian,
-    aktivitasPerJam,
-    aktivitasTerbaru,
-    arusPenerbit,
-    penyaluranHarian,
-    viewsHarian,
+    tugasHarian: dailyTasks,
+    aktivitasPerJam: hourlyActivity,
+    aktivitasTerbaru: recentActivity,
+    arusPenerbit: publisherFlows,
+    penyaluranHarian: deliveryDays,
+    viewsHarian: viewDays,
     viewsBySite,
     viewsByArticle,
     totalViews: outcomeAssignments.reduce((total, delivery) => total + delivery.viewCount, 0),

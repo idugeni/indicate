@@ -119,10 +119,14 @@ export const articleCreateSchema = z.object({
   authorId: id.nullable().default(null),
   slug: articleSlug,
   title: z.string().trim().min(1).max(300),
+  dek: z.string().trim().min(1).max(300).nullish(),
+  excerpt: z.string().trim().min(1).max(500).nullish(),
+  canonicalUrl: z.string().trim().max(2000).nullish(),
   body: z.string().trim().min(1).max(200_000),
   source: z.string().trim().min(1).max(500),
   tags: z.preprocess((value) => (Array.isArray(value) ? normalizeTagList(value) : value), z.array(z.string().trim().min(1).max(60)).max(TAG_MAX_COUNT)).default([]),
-  status: z.enum(['draft', 'active']).default('draft'),
+  status: z.enum(['draft', 'in_review', 'scheduled', 'active']).default('draft'),
+  scheduledAt: z.iso.datetime().nullish(),
 }).strict();
 export const articleUpdateSchema = articleCreateSchema.extend({ id, expectedVersion });
 export const articleTransitionSchema = z.object({ id, expectedVersion }).strict();

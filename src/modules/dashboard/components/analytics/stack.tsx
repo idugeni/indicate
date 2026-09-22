@@ -3,7 +3,7 @@
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import type { TugasHarian } from '@/modules/dashboard/models';
+import type { TaskDay } from '@/modules/dashboard/models';
 import { COLOR_PUBLISHED, COLOR_FAILED, COLOR_QUEUED, weekdayLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
@@ -13,7 +13,7 @@ import { EmptyState } from '@/modules/dashboard/components/empty-state';
  * @param series - Daily buckets from the analytics projection (max 90 days).
  * @returns Bar card for the trailing 30 days by task status.
  */
-export function StackedTasks({ series }: { readonly series: readonly TugasHarian[] }) {
+export function StackedTasks({ series }: { readonly series: readonly TaskDay[] }) {
   const data = series.slice(-30).map((point) => ({
     label: weekdayLabel(point.hari),
     Diterbitkan: point.diterbitkan,

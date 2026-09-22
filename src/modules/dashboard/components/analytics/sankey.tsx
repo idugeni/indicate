@@ -4,7 +4,7 @@ import { Sankey, Tooltip } from 'recharts';
 import type { SankeyNode } from 'recharts/types/util/types';
 
 import { ChartContainer } from '@/components/ui/chart';
-import type { ArusPenerbit } from '@/modules/dashboard/models';
+import type { PublisherFlow } from '@/modules/dashboard/models';
 import { truncateLabel, categoryColor } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
@@ -16,7 +16,7 @@ interface FlowLink {
   readonly value: number;
 }
 
-function countBy(flows: readonly ArusPenerbit[], pick: (row: ArusPenerbit) => string): Map<string, number> {
+function countBy(flows: readonly PublisherFlow[], pick: (row: PublisherFlow) => string): Map<string, number> {
   const total = new Map<string, number>();
   for (const row of flows) {
     const key = pick(row);
@@ -33,7 +33,7 @@ function remainder(total: Map<string, number>, top: readonly string[]): number {
   return [...total].filter(([key]) => !top.includes(key)).reduce((count, [, value]) => count + value, 0);
 }
 
-function buildGraph(flows: readonly ArusPenerbit[]): { nodes: { name: string }[]; links: FlowLink[] } {
+function buildGraph(flows: readonly PublisherFlow[]): { nodes: { name: string }[]; links: FlowLink[] } {
   const publisherTotals = countBy(flows, (row) => row.penerbit);
   const siteTotals = countBy(flows, (row) => row.situs);
   const topPublishers = topN(publisherTotals);
@@ -106,7 +106,7 @@ function SankeyTooltip({ active, payload }: { readonly active?: boolean; readonl
  * @param flows - Flow edges from the analytics projection; nodes capped at top 6 per level.
  * @returns Three-level Sankey card.
  */
-export function SankeyFlow({ flows }: { readonly flows: readonly ArusPenerbit[] }) {
+export function SankeyFlow({ flows }: { readonly flows: readonly PublisherFlow[] }) {
   if (flows.length === 0) {
     return (
       <section

@@ -2,11 +2,11 @@ import { and, desc, eq, gt, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { AktivitasJam, AktivitasTerbaru, AnalyticsProjection, ArusPenerbit, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, JendelaDeret, OperationsProjection, RetentionRunRecord, TugasHarian } from '@/modules/dashboard/models';
+import type { ActivityHour, RecentActivity, AnalyticsProjection, PublisherFlow, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, DateWindow, OperationsProjection, RetentionRunRecord, TaskDay } from '@/modules/dashboard/models';
 import { DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
 import { redact } from '@/core/security/redaction';
 import {
-  apiKeys, articleSites, articles, auditLogs, authors, cacheBypasses, categories, domainActivationAttempts, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks, officialAffiliations, organizations,
+  apiKeys, articleRevisions, articleSites, articles, auditLogs, authors, cacheBypasses, categories, domainActivationAttempts, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks, officialAffiliations, organizations,
   permissions, publicationTransitionReceipts, publishers, publishingJobs, publishingJobTargets, regions, rolePermissions, roles, sites, siteSettings, telegramConversations, telegramIdentityMappings, users, webhookReplayClaims,
 } from '@/data/schema';
 import type * as schema from '@/data/schema';
@@ -42,7 +42,7 @@ function listDays(start: string, end: string): string[] {
   return days;
 }
 
-function resolveWindow(filter: { readonly from?: string | undefined; readonly to?: string | undefined }): JendelaDeret {
+function resolveWindow(filter: { readonly from?: string | undefined; readonly to?: string | undefined }): DateWindow {
   const today = new Date().toISOString().slice(0, 10);
   const end = filter.to === undefined ? today : filter.to.slice(0, 10);
   const defaultStart = filter.from === undefined ? subtractDays(end, 89) : filter.from.slice(0, 10);
@@ -129,7 +129,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       affiliations: affiliationRows.map((row) => ({ id: row.id, organizationId, publisherId: row.publisherId, siteId: row.siteId, institutionName: row.institutionName, claimScopes: row.claimScopes, evidenceReference: row.evidenceReference, active: row.active, verifiedAt: optionalIso(row.verifiedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       categories: categoryRows.map((row) => ({ id: row.id, organizationId, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       authors: authorRows.map((row) => ({ id: row.id, organizationId, displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
-      articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, slug: row.slug, title: row.title, body: row.body, source: row.source, tags: [...row.tags], status: row.status, publishedAt: optionalIso(row.publishedAt), archivedAt: optionalIso(row.archivedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+      articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, slug: row.slug, title: row.title, dek: row.dek, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, source: row.source, tags: [...row.tags], status: row.status, publishedAt: optionalIso(row.publishedAt), scheduledAt: optionalIso(row.scheduledAt), archivedAt: optionalIso(row.archivedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       articleSites: assignmentRows.map((row) => ({ id: row.id, organizationId, articleId: row.articleId, siteId: row.siteId, state: row.state, stateOccurredAt: iso(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: optionalIso(row.publishedAt), active: row.active, viewCount: row.viewCount, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       media: mediaRows.map((row) => ({ id: row.id, organizationId, state: row.state })),
       publishingJobs: jobRows.map((row) => ({ id: row.id, organizationId, articleId: row.articleId, state: row.state, createdAt: iso(row.createdAt), occurredAt: iso(row.finalizedAt ?? row.updatedAt) })),
@@ -330,21 +330,21 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         else if (row.state === 'queued' || row.state === 'processing' || row.state === 'retrying') slot.antre += row.count;
         perDay.set(row.day, slot);
       }
-      const tugasHarian: TugasHarian[] = listDays(window.awal, window.akhir).map((day) => ({
+      const dailyTasks: TaskDay[] = listDays(window.awal, window.akhir).map((day) => ({
         hari: day,
         ...(perDay.get(day) ?? { diterbitkan: 0, gagal: 0, antre: 0 }),
       }));
-      const aktivitasPerJam: AktivitasJam[] = [...hourRows]
+      const hourlyActivity: ActivityHour[] = [...hourRows]
         .sort((left, right) => left.day - right.day || left.jam - right.jam)
         .map(({ day, jam, count }) => ({ hari: day, jam, jumlah: count }));
-      const aktivitasTerbaru: AktivitasTerbaru[] = [
+      const recentActivity: RecentActivity[] = [
         ...newTasks.map((row) => ({ id: `job:${row.id}`, label: row.label, status: row.status, at: isoOf(row.at) })),
-        ...newOutcomes.map((row) => ({ id: `hasil:${row.id}`, label: row.label, status: row.status, at: isoOf(row.at) })),
-        ...newArticles.map((row) => ({ id: `artikel:${row.id}`, label: row.label, status: row.status, at: isoOf(row.at) })),
+        ...newOutcomes.map((row) => ({ id: `outcome:${row.id}`, label: row.label, status: row.status, at: isoOf(row.at) })),
+        ...newArticles.map((row) => ({ id: `article:${row.id}`, label: row.label, status: row.status, at: isoOf(row.at) })),
       ]
         .sort((left, right) => (left.at < right.at ? 1 : left.at > right.at ? -1 : 0))
         .slice(0, 8);
-      const arusPenerbit: ArusPenerbit[] = [...flowRows]
+      const publisherFlows: PublisherFlow[] = [...flowRows]
         .sort((left, right) => right.count - left.count)
         .map(({ publisher, site, outcome, count }) => ({ penerbit: publisher, situs: site, hasil: outcome, jumlah: count }));
       const deliveriesPerDay = new Map<string, { diterbitkan: number; gagal: number; antre: number }>();
@@ -355,13 +355,13 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         else if (row.state === 'queued' || row.state === 'processing' || row.state === 'retrying' || row.state === 'unpublished') slot.antre += row.count;
         deliveriesPerDay.set(row.day, slot);
       }
-      const penyaluranHarian = listDays(window.awal, window.akhir).map((day) => ({
+      const deliveryDays = listDays(window.awal, window.akhir).map((day) => ({
         hari: day,
         ...(deliveriesPerDay.get(day) ?? { diterbitkan: 0, gagal: 0, antre: 0 }),
       }));
       const deliveryCountsPerDay = new Map(viewRows.map((row) => [row.day, row.penyaluran] as const));
       const viewsSumPerDay = new Map(dailyViewRows.map((row) => [row.day, row.views] as const));
-      const viewsHarian = listDays(window.awal, window.akhir).map((day) => ({
+      const viewDays = listDays(window.awal, window.akhir).map((day) => ({
         hari: day,
         penyaluran: deliveryCountsPerDay.get(day) ?? 0,
         views: viewsSumPerDay.get(day) ?? 0,
@@ -388,12 +388,12 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         outcomesBySiteAndState: points(outcomesBySite),
         outcomesBySiteRegionAndState: dimensionPoints(outcomeDimensions),
         jendela: window,
-        tugasHarian,
-        aktivitasPerJam,
-        aktivitasTerbaru,
-        arusPenerbit,
-        penyaluranHarian,
-        viewsHarian,
+        tugasHarian: dailyTasks,
+        aktivitasPerJam: hourlyActivity,
+        aktivitasTerbaru: recentActivity,
+        arusPenerbit: publisherFlows,
+        penyaluranHarian: deliveryDays,
+        viewsHarian: viewDays,
         viewsBySite: [...siteViewRows]
           .sort((left, right) => right.views - left.views)
           .map((row) => ({ key: row.id, count: row.count, views: row.views })),
@@ -775,7 +775,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         appendAudit: (event) => pendingAudits.push({ ...event, id: crypto.randomUUID(), organizationId: actor.organizationId, actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, requestId: actor.requestId, occurredAt: new Date().toISOString(), before: event.before === null ? null : redact(event.before) as Record<string, unknown>, after: event.after === null ? null : redact(event.after) as Record<string, unknown> }),
       };
       const result = await operation(dashboardTransaction);
-      await this.persist(transaction, before, state, pendingAudits);
+      await this.persist(transaction, actor.actorId, before, state, pendingAudits);
       return result;
     });
   }
@@ -788,7 +788,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     throw new DashboardSubscriptionInactiveError(state ?? 'none');
   }
 
-  private async persist(transaction: Transaction, before: DashboardTenantState, state: MutableTenantState, pendingAudits: readonly AuditRecord[]): Promise<void> {
+  private async persist(transaction: Transaction, actorId: string, before: DashboardTenantState, state: MutableTenantState, pendingAudits: readonly AuditRecord[]): Promise<void> {
     for (const row of state.domains) await transaction.insert(domains).values({ organizationId: state.organizationId, id: row.id, normalizedHostname: row.normalizedHostname, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [domains.organizationId, domains.id], set: { normalizedHostname: row.normalizedHostname, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
     for (const row of state.regions) await transaction.insert(regions).values({ organizationId: state.organizationId, id: row.id, externalKey: row.externalKey, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [regions.organizationId, regions.id], set: { externalKey: row.externalKey, name: row.name, slug: row.slug, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
     for (const row of state.sites) await transaction.insert(sites).values({ organizationId: state.organizationId, id: row.id, domainId: row.domainId, regionId: row.regionId, normalizedHostname: row.normalizedHostname, status: row.status, activationState: row.activationState, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [sites.organizationId, sites.id], set: { domainId: row.domainId, regionId: row.regionId, normalizedHostname: row.normalizedHostname, status: row.status, activationState: row.activationState, version: row.version, updatedAt: new Date(row.updatedAt) } });
@@ -838,10 +838,21 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     for (const row of state.affiliations) await transaction.insert(officialAffiliations).values({ organizationId: state.organizationId, id: row.id, publisherId: row.publisherId, siteId: row.siteId, institutionName: row.institutionName, claimScopes: [...row.claimScopes], evidenceReference: row.evidenceReference, active: row.active, verifiedAt: row.verifiedAt === null ? null : new Date(row.verifiedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [officialAffiliations.organizationId, officialAffiliations.id], set: { institutionName: row.institutionName, claimScopes: [...row.claimScopes], evidenceReference: row.evidenceReference, active: row.active, verifiedAt: row.verifiedAt === null ? null : new Date(row.verifiedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
     for (const row of state.categories) await transaction.insert(categories).values({ organizationId: state.organizationId, id: row.id, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [categories.organizationId, categories.id], set: { name: row.name, slug: row.slug, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
     for (const row of state.authors) await transaction.insert(authors).values({ organizationId: state.organizationId, id: row.id, displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [authors.organizationId, authors.id], set: { displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
-    for (const row of state.articles) await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, slug: row.slug, title: row.title, body: row.body, source: row.source, tags: [...row.tags], status: row.status, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, slug: row.slug, title: row.title, body: row.body, source: row.source, tags: [...row.tags], status: row.status, archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
+    for (const row of state.articles) await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, slug: row.slug, title: row.title, dek: row.dek, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, source: row.source, tags: [...row.tags], status: row.status, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, slug: row.slug, title: row.title, dek: row.dek, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, source: row.source, tags: [...row.tags], status: row.status, scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
+    await this.recordArticleRevisions(transaction, actorId, before, state);
     for (const row of state.articleSites) await transaction.insert(articleSites).values({ organizationId: state.organizationId, id: row.id, articleId: row.articleId, siteId: row.siteId, state: row.state, stateOccurredAt: new Date(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), active: row.active, viewCount: row.viewCount, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articleSites.organizationId, articleSites.id], set: { state: row.state, stateOccurredAt: new Date(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), active: row.active, viewCount: row.viewCount, version: row.version, updatedAt: new Date(row.updatedAt) } });
     await this.enqueueDeliveryInvalidations(transaction, before, state);
     if (pendingAudits.length > 0) await transaction.insert(auditLogs).values(pendingAudits.map((row) => ({ organizationId: row.organizationId, id: row.id, actorType: row.actorType, actorId: row.actorId, entryPoint: row.entryPoint, action: row.action, targetType: row.targetType, targetId: row.targetId, outcome: row.outcome, changedFields: [...row.changedFields], before: row.before, after: row.after, requestId: row.requestId, occurredAt: new Date(row.occurredAt) })));
+  }
+
+  private async recordArticleRevisions(transaction: Transaction, actorId: string, before: DashboardTenantState, state: MutableTenantState): Promise<void> {
+    for (const row of state.articles) {
+      const prior = before.articles.find((item) => item.id === row.id);
+      if (prior !== undefined && prior.title === row.title && prior.dek === row.dek && prior.body === row.body) continue;
+      const latest = await transaction.select({ revisionNumber: articleRevisions.revisionNumber }).from(articleRevisions).where(and(eq(articleRevisions.organizationId, state.organizationId), eq(articleRevisions.articleId, row.id))).orderBy(desc(articleRevisions.revisionNumber)).limit(1);
+      const revisionNumber = (latest[0]?.revisionNumber ?? 0) + 1;
+      await transaction.insert(articleRevisions).values({ organizationId: state.organizationId, id: crypto.randomUUID(), articleId: row.id, revisionNumber, title: row.title, dek: row.dek, body: row.body, snapshot: { slug: row.slug, excerpt: row.excerpt, source: row.source, tags: [...row.tags], status: row.status, version: row.version }, createdBy: actorId, createdAt: new Date(row.updatedAt), updatedAt: new Date(row.updatedAt) });
+    }
   }
 
   private async enqueueDeliveryInvalidations(transaction: Transaction, before: DashboardTenantState, state: MutableTenantState): Promise<void> {

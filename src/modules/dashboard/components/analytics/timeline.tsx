@@ -1,6 +1,6 @@
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { formatRelative, formatDateTime } from '@/modules/dashboard/components/shared/dashboard-dates';
-import type { AktivitasTerbaru } from '@/modules/dashboard/models';
+import type { RecentActivity } from '@/modules/dashboard/models';
 import { cn } from '@/ui/cn';
 
 function tone(status: string): string {
@@ -17,7 +17,7 @@ function tone(status: string): string {
  * @param events - Latest events from the analytics projection (max 8).
  * @returns Chronological list with Indonesian relative times.
  */
-export function Timeline({ events }: { readonly events: readonly AktivitasTerbaru[] }) {
+export function Timeline({ events }: { readonly events: readonly RecentActivity[] }) {
   return (
     <section
       aria-label="Lini masa"

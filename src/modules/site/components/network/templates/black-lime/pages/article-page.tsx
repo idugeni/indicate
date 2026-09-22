@@ -46,6 +46,7 @@ export function BlackLimeArticle({
         articleSiteId={article.articleSiteId}
       />
       <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
+        <article>
           <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 font-sans text-xs text-[#a3ad9a]">
             <Link href="/" className="transition-colors hover:text-[#c5f82a]">
               Beranda
@@ -62,6 +63,7 @@ export function BlackLimeArticle({
             <span className="min-w-0 flex-1 truncate text-[#f2f5e9]" aria-current="page">{article.title}</span>
           </nav>
 
+          <header>
           {article.categoryName === null ? null : (
             <p className="m-0 mt-6 flex items-center gap-2 font-sans text-sm font-semibold text-[#c5f82a]">
               <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#c5f82a]" />
@@ -72,7 +74,7 @@ export function BlackLimeArticle({
             {article.title}
           </h1>
           <p className="m-0 mt-4 block w-full border-l-[3px] border-[#c5f82a] pl-4 font-sans text-[19px] font-medium leading-[1.7] text-[#a3ad9a]">
-            {article.description}
+            {article.dek ?? article.description}
           </p>
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#131711] p-4 shadow-sm ring-1 ring-[#242b1f]/60 sm:px-5">
@@ -99,6 +101,7 @@ export function BlackLimeArticle({
             </p>
             <BlackLimeShareButtons article={article} canonical={canonical} />
           </div>
+          </header>
 
           {article.independent ? (
             <p className="m-0 mt-4 flex items-start gap-1.5 font-sans text-xs leading-relaxed text-[#a3ad9a]">
@@ -109,7 +112,7 @@ export function BlackLimeArticle({
             </p>
           ) : null}
 
-          <div className="mt-6 overflow-hidden rounded-2xl shadow-sm">
+          <figure className="m-0 mt-6 overflow-hidden rounded-2xl shadow-sm">
             <Image
               unoptimized={!isLocalImageSrc(src)}
               src={src}
@@ -120,7 +123,8 @@ export function BlackLimeArticle({
               height={article.imageHeight ?? 675}
               sizes="(max-width: 768px) 100vw, 768px"
             />
-          </div>
+            <figcaption className="sr-only">{article.title}</figcaption>
+          </figure>
 
           <div className="mt-8 space-y-6">
             <ArticleBodyView
@@ -128,7 +132,7 @@ export function BlackLimeArticle({
               images={gallery}
               paragraphClassName="text-justify font-sans text-[17px] leading-[1.85] text-[#f2f5e9]"
               listClassName="space-y-2 pl-6 font-sans text-[17px] leading-[1.85] text-[#f2f5e9] [list-style:disc]"
-              renderFigure={(image) => (
+              renderFigure={(image, _index, caption) => (
                 <figure className="m-0 overflow-hidden rounded-2xl shadow-sm">
                   <Image
                     unoptimized={!isLocalImageSrc(image.url)}
@@ -139,6 +143,7 @@ export function BlackLimeArticle({
                     height={675}
                     sizes="(max-width: 768px) 100vw, 768px"
                   />
+                  {caption === null ? null : <figcaption className="px-6 pb-4 text-center font-sans text-sm opacity-80">{caption}</figcaption>}
                 </figure>
               )}
             />
@@ -158,7 +163,7 @@ export function BlackLimeArticle({
             </div>
           ) : null}
 
-          <div className="mt-8 rounded-2xl bg-[#131711] p-5 shadow-sm ring-1 ring-[#242b1f]/60 sm:p-6">
+          <footer className="mt-8 rounded-2xl bg-[#131711] p-5 shadow-sm ring-1 ring-[#242b1f]/60 sm:p-6">
             <div className="flex items-center gap-4">
               {article.publisherLogoUrl ? (
                 <Image
@@ -235,7 +240,9 @@ export function BlackLimeArticle({
                 </dd>
               </div>
             </dl>
-          </div>
+          </footer>
+
+          </article>
 
           {related.length > 0 ? (
             <div className="mt-10">

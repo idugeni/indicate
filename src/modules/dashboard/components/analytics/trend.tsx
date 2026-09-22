@@ -5,7 +5,7 @@ import { Area, AreaChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from 'r
 
 import { Button } from '@/components/ui/button';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import type { TugasHarian } from '@/modules/dashboard/models';
+import type { TaskDay } from '@/modules/dashboard/models';
 import { COLOR_PUBLISHED, COLOR_FAILED, COLOR_QUEUED, weekdayLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
@@ -19,7 +19,7 @@ interface SeriesRow {
   readonly antre: number;
 }
 
-function buildSeries(series: readonly TugasHarian[], range: number): SeriesRow[] {
+function buildSeries(series: readonly TaskDay[], range: number): SeriesRow[] {
   return series.slice(-range).map((point) => ({
     hari: point.hari,
     label: weekdayLabel(point.hari),
@@ -35,7 +35,7 @@ function buildSeries(series: readonly TugasHarian[], range: number): SeriesRow[]
  * @param series - Daily buckets from the analytics projection (max 90 days).
  * @returns Area card with a 7/30/90-day switch.
  */
-export function PublicationTrend({ series }: { readonly series: readonly TugasHarian[] }) {
+export function PublicationTrend({ series }: { readonly series: readonly TaskDay[] }) {
   const [range, setRange] = useState<number>(30);
   const grad = useId().replace(/:/g, '');
   const data = buildSeries(series, range);
@@ -132,7 +132,7 @@ export function PublicationTrend({ series }: { readonly series: readonly TugasHa
  * @param series - Daily buckets from the analytics projection (max 90 days).
  * @returns Multi-metric line card for the trailing 30 days.
  */
-export function MetricComparison({ series }: { readonly series: readonly TugasHarian[] }) {
+export function MetricComparison({ series }: { readonly series: readonly TaskDay[] }) {
   const data = buildSeries(series, 30);
   return (
     <section

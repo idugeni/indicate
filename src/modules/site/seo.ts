@@ -58,12 +58,15 @@ export function excerptForDescription(body: string, maxLength = 180): string {
   return slice.trimEnd();
 }
 
+export type RobotsDirective = 'index, follow' | 'noindex, nofollow' | 'noindex, nofollow, nosnippet';
+
 export interface SeoDocument {
   readonly title: string;
   readonly description: string;
   readonly canonical: string | null;
-  readonly robots: 'index, follow' | 'noindex, nofollow';
-  readonly openGraph: Readonly<{ title: string; description: string; url: string; siteName: string; type: 'website' | 'article'; image: string }> | null;
+  readonly robots: RobotsDirective;
+  readonly openGraph: Readonly<{ title: string; description: string; url: string; siteName: string; type: 'website' | 'article'; image: string; article?: Readonly<{ publishedTime: string; modifiedTime: string; section?: string; tags?: readonly string[]; authors?: readonly string[] }> }> | null;
+  readonly twitter: Readonly<{ card: 'summary_large_image'; title: string; description: string; image: string }> | null;
   readonly jsonLd: readonly Readonly<Record<string, unknown>>[];
 }
 
@@ -125,15 +128,30 @@ function homeTitle(siteName: string, siteDescription: string): string {
   return chars.length <= 48 ? `${siteName} - ${siteDescription.trim()}` : `${siteName} - ${tagline}`;
 }
 
-export function buildSeoDocument(site: NetworkSiteData, options: { readonly path: string; readonly article?: NetworkArticle; readonly indexable?: boolean; readonly titleOverride?: string; readonly descriptionOverride?: string }): SeoDocument {
+/**
+ * Resolve the canonical URL, honoring an editorial override.
+ *
+ * @param site - Tenant site data for the default hostname.
+ * @param path - Default in-tenant path.
+ * @param article - Article carrying an optional absolute canonical override.
+ * @returns Override when it is an absolute http(s) URL; otherwise the tenant URL.
+ */
+function resolveArticleCanonical(site: NetworkSiteData, path: string, article: NetworkArticle | undefined): string {
+  const override = article?.canonicalUrl?.trim() ?? '';
+  if (/^https?:\/\/[^/]+/u.test(override)) return override;
+  return absoluteSiteUrl(site.context, path);
+}
+
+export function buildSeoDocument(site: NetworkSiteData, options: { readonly path: string; readonly article?: NetworkArticle; readonly indexable?: boolean; readonly titleOverride?: string; readonly descriptionOverride?: string; readonly robotsOverride?: RobotsDirective }): SeoDocument {
   const indexable = options.indexable ?? true;
   const article = options.article;
+  const robots: RobotsDirective = options.robotsOverride ?? article?.robotsDirective ?? 'index, follow';
   const siteName = site.settings.seoSiteName || site.settings.name;
   const siteDescription = site.settings.seoDefaultDescription || site.settings.description;
   const title = options.titleOverride ?? (article === undefined ? (site.settings.seoDefaultTitle || (site.settings.tagline === null ? homeTitle(siteName, siteDescription) : `${siteName} - ${site.settings.tagline}`)) : `${article.title} - ${siteName}`);
   const description = options.descriptionOverride ?? article?.description ?? siteDescription;
-  if (!indexable) return { title, description, canonical: null, robots: 'noindex, nofollow', openGraph: null, jsonLd: [] };
-  const canonical = absoluteSiteUrl(site.context, options.path);
+  if (!indexable) return { title, description, canonical: null, robots: 'noindex, nofollow', openGraph: null, twitter: null, jsonLd: [] };
+  const canonical = resolveArticleCanonical(site, options.path, article);
   const image = absoluteSiteAssetUrl(site.context, article?.imageUrl ?? site.settings.defaultImageUrl);
   const rawLogo = site.settings.logoUrl ?? MINISTRY_FALLBACK_LOGO_URL;
   const logo = absoluteSiteAssetUrl(site.context, rawLogo);
@@ -186,7 +204,26 @@ export function buildSeoDocument(site: NetworkSiteData, options: { readonly path
     });
     jsonLd.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Beranda', item: absoluteSiteUrl(site.context, '/') }, ...(article.categoryName === null || article.categorySlug === null ? [] : [{ '@type': 'ListItem', position: 2, name: article.categoryName, item: absoluteSiteUrl(site.context, `/categories/${article.categorySlug}`) }]), { '@type': 'ListItem', position: article.categoryName === null ? 2 : 3, name: article.title, item: canonical }] });
   }
-  return { title, description, canonical, robots: 'index, follow', openGraph: { title, description, url: canonical, siteName, type: article === undefined ? 'website' : 'article', image }, jsonLd };
+  const authorName = article === undefined ? undefined : (article.authorDisplayName ?? article.authorName ?? article.attribution);
+  return {
+    title, description, canonical, robots,
+    openGraph: {
+      title, description, url: canonical, siteName, type: article === undefined ? 'website' : 'article', image,
+      ...(article === undefined
+        ? {}
+        : {
+            article: {
+              publishedTime: article.publishedAt,
+              modifiedTime: article.updatedAt,
+              ...(article.categoryName === null ? {} : { section: article.categoryName }),
+              ...(article.tags.length === 0 ? {} : { tags: article.tags }),
+              ...(authorName === undefined ? {} : { authors: [authorName] }),
+            },
+          }),
+    },
+    twitter: { card: 'summary_large_image', title, description, image },
+    jsonLd,
+  };
 }
 
 export interface WebSiteSchema {
