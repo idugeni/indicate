@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (146 migrations):
+-- Reviewed sources, in journal order (147 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -158,7 +158,8 @@
 --   143  20260920100000_publisher_logo_single_host  ledger sha256:b0776d14e863da4b48fe56209d6c8f2413f2943dfd43b9264c4dc299612cb730
 --   144  20260920110000_article_site_view_days  ledger sha256:6843dc4a2cbdf88860cad4a8a5d23dd1bdbb689fca16ccaaa54d34f16e7dd9af
 --   145  20260921120000_rls_internal_config  ledger sha256:c786ef81105ea8b3789d15426ca55bb712dc5bb51c30c3f908c08f8cba8c8363
---   146  20260921130000_invoice_amount_manual  ledger sha256:4e395cd32789cb4da3393ee6ef59d61edb1a657f39702f6bba9896b926130cf2
+--   146  20260921130000_invoice_amount_manual  ledger sha256:a85233831af991411fc5c88b8b9b142b0be783b51a991dec501ec36ccb369920
+--   147  20260921140000_article_editorial_fields  ledger sha256:2881cbcdf206cbc5cf5fc9b11f3c29c2265f64b52a61c77221f4a72773bf96db
 
 BEGIN;
 
@@ -12436,5 +12437,59 @@ $function$;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (145, 'invoice_amount_manual', 'sha256:c2890287772320e4d87771f54a84c23967426f445dcc56ecd282e313d60bfb00');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4e395cd32789cb4da3393ee6ef59d61edb1a657f39702f6bba9896b926130cf2', 1790037182087);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a85233831af991411fc5c88b8b9b142b0be783b51a991dec501ec36ccb369920', 1790037182087);
+
+-- ----------------------------------------------------------------------
+-- 20260921140000_article_editorial_fields
+-- ----------------------------------------------------------------------
+-- Editorial P0/P1: dek, excerpt, canonical override, scheduled_at, status in_review/scheduled, article_revisions.
+--
+-- Kolom baru semuanya nullable sehingga backfill tidak diperlukan; arsip lama
+-- memakai fallback runtime (dek/excerpt dari body, kanonis dari hostname+slug).
+-- article_status bertambah 'in_review' dan 'scheduled' untuk alur review dan
+-- jadwal terbit (penegakan jadwal oleh scheduler penerbitan, bukan migrasi ini).
+-- article_revisions menyimpan snapshot isi per penyimpanan untuk diff/rollback;
+-- ditulis jalur commit dasbor saat create dan saat konten berubah.
+-- RLS + grant mengikuti pola article_site_view_days.
+-- CATATAN APLIKASI: ALTER TYPE ... ADD VALUE tidak boleh di dalam blok
+-- transaksi; terapkan berkas ini pernyataan-per-pernyataan (psql -f tanpa
+-- -1, atau editor SQL Supabase), sesuai urutan journal.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TYPE public.article_status ADD VALUE 'in_review';
+ALTER TYPE public.article_status ADD VALUE 'scheduled';
+ALTER TABLE public.articles ADD COLUMN dek text;
+ALTER TABLE public.articles ADD COLUMN excerpt text;
+ALTER TABLE public.articles ADD COLUMN canonical_url text;
+ALTER TABLE public.articles ADD COLUMN scheduled_at timestamp with time zone;
+CREATE TABLE IF NOT EXISTS public.article_revisions (
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE RESTRICT,
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  article_id uuid NOT NULL,
+  revision_number integer NOT NULL,
+  title text NOT NULL,
+  dek text,
+  body text NOT NULL,
+  snapshot jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_by text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT article_revisions_pk PRIMARY KEY (organization_id, id),
+  CONSTRAINT article_revisions_id_unique UNIQUE (id),
+  CONSTRAINT article_revisions_organization_article_number_unique UNIQUE (organization_id, article_id, revision_number),
+  CONSTRAINT article_revisions_number_positive CHECK (revision_number > 0)
+);
+CREATE INDEX IF NOT EXISTS article_revisions_organization_article_idx
+  ON public.article_revisions USING btree (organization_id, article_id, revision_number);
+ALTER TABLE public.article_revisions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.article_revisions FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON public.article_revisions;
+CREATE POLICY tenant_isolation ON public.article_revisions
+  USING (organization_id = indicate_private.current_organization_id())
+  WITH CHECK (organization_id = indicate_private.current_organization_id());
+GRANT SELECT, INSERT ON public.article_revisions TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (146, 'article_editorial_fields', 'sha256:b515681c5509093c1e6dace69cea95a3451810ecc81860138063407fa3070246');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2881cbcdf206cbc5cf5fc9b11f3c29c2265f64b52a61c77221f4a72773bf96db', 1790039524606);
 COMMIT;
