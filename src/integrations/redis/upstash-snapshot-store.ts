@@ -20,14 +20,14 @@ export class UpstashSnapshotStore {
 
   async read(environment: string, revision: number): Promise<unknown | null> {
     try {
-      return await this.readKey(`${this.namespace}:snapshot:${environment}:v${revision}`);
+      return await this.readKey(`snapshot:${environment}:v${revision}`);
     } catch {
       return null;
     }
   }
 
   async write(environment: string, revision: number, model: unknown, ttlSeconds: number): Promise<void> {
-    await this.writeKey(`${this.namespace}:snapshot:${environment}:v${revision}`, model, ttlSeconds);
+    await this.writeKey(`snapshot:${environment}:v${revision}`, model, ttlSeconds);
   }
 
   /**
