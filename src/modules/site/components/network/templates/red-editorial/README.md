@@ -11,7 +11,7 @@ template — semua lewat registry di `network-listing.tsx`.
 - `chrome/` — rangka permanen: shell, header, search-panel, mobile-sidebar,
   nav-menu, footer, store-badges, back-to-top.
 - `ui/` — primitif: container, status-line, empty, author-avatar,
-  article-meta, section-heading, loader.
+  section-heading, loader.
 - `seo/` — JSON-LD mandiri.
 - `cards/` — hero, ticker, picks, pick-card, load-more, newsletter,
   hero-actions, share-buttons, view-beacon.
