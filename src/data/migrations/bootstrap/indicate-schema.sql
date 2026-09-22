@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (151 migrations):
+-- Reviewed sources, in journal order (153 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -164,6 +164,8 @@
 --   149  20260922010000_publisher_verification_evidence  ledger sha256:6ba561a9b520f7eb0253bcabd346b9471e449c376e590d06a486f1f733012fa5
 --   150  20260922020000_publisher_verification_evidence_rework  ledger sha256:f183751ed58091e15142f9cba63e1b0759231fbc764f321040c5eaf309191367
 --   151  20260922030000_publisher_verification_evidence_scoped  ledger sha256:ddec465909aaebe73d4df6749b0c87b84430bb99bbd6cc66853512fb9e203a32
+--   152  20260922040000_retention_runs_organization  ledger sha256:c8d73727677b0e4223b4c1603a78c18fe23e042c35fdb85afffbc873ec109009
+--   153  20260922050000_retention_runs_organization_idx  ledger sha256:8300ea22baecd3476641c50ec17c1196cd5267050f6ddb5e82b8bde889f448d0
 
 BEGIN;
 
@@ -12568,4 +12570,38 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (150, 'publisher_verification_evidence_scoped', 'sha256:a0e5414ffb0981f69339fb3d34ed015d18a7d41096e2a955649a4a53cf72b623');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ddec465909aaebe73d4df6749b0c87b84430bb99bbd6cc66853512fb9e203a32', 1790053561883);
+
+-- ----------------------------------------------------------------------
+-- 20260922040000_retention_runs_organization
+-- ----------------------------------------------------------------------
+-- Retention evidence per organization for org-erasure proof.
+--
+-- `erasure_sweep()` inserts `retention_runs.organization_id`, but the table
+-- has no such column (live proof 2026-09-22: id, category, purged_count,
+-- started_at, finished_at), so the org-erasure evidence insert fails.
+-- Expand phase: add a nullable column plus FK; existing rows keep NULL
+-- (historic sweeps are global, not per-org), so no backfill is required.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.retention_runs ADD COLUMN organization_id uuid REFERENCES public.organizations(id) ON DELETE CASCADE;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (151, 'retention_runs_organization', 'sha256:a153ec7a1778444b010ca498714ac37a7f4142db829be0463312fbd97fcbf33e');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c8d73727677b0e4223b4c1603a78c18fe23e042c35fdb85afffbc873ec109009', 1790084212471);
+
+-- ----------------------------------------------------------------------
+-- 20260922050000_retention_runs_organization_idx
+-- ----------------------------------------------------------------------
+-- Cover the retention evidence organization FK for per-org lookups.
+--
+-- The performance advisor flags `retention_runs_organization_id_fkey`
+-- (migration 151) without a covering index. The table is tiny and
+-- function-only, but per-org evidence reads should not seq-scan.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE INDEX retention_runs_organization_idx ON public.retention_runs (organization_id);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (152, 'retention_runs_organization_idx', 'sha256:a4ee25332ee95056b5eb4d7f118e6aebbe09eac1ec86781ddccc1d8b2dde0ba3');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('8300ea22baecd3476641c50ec17c1196cd5267050f6ddb5e82b8bde889f448d0', 1790084212472);
 COMMIT;
