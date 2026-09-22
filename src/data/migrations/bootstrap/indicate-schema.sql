@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (154 migrations):
+-- Reviewed sources, in journal order (155 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -167,6 +167,7 @@
 --   152  20260922040000_retention_runs_organization  ledger sha256:c8d73727677b0e4223b4c1603a78c18fe23e042c35fdb85afffbc873ec109009
 --   153  20260922050000_retention_runs_organization_idx  ledger sha256:8300ea22baecd3476641c50ec17c1196cd5267050f6ddb5e82b8bde889f448d0
 --   154  20260922060000_article_categories  ledger sha256:39d11a166629bc95c5c0a85147dc5dd798fe17069005eda7947265f6a940d860
+--   155  20260923000000_article_categories_org_fk  ledger sha256:add66418580f198720c735cfb1bf6404dedf493ab5eeeb59170e1f3346e94b5e
 
 BEGIN;
 
@@ -12634,4 +12635,20 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (153, 'article_categories', 'sha256:91d1edefe00c893b468d17f1f8411f6788ef965348d84eea370f5a5396ebd15c');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('39d11a166629bc95c5c0a85147dc5dd798fe17069005eda7947265f6a940d860', 1790084212473);
+
+-- ----------------------------------------------------------------------
+-- 20260923000000_article_categories_org_fk
+-- ----------------------------------------------------------------------
+-- Direct organization guard for multi-category assignments, matching the
+-- sibling `article_sites` convention. The composite FKs already guarantee the
+-- organization transitively; this single-column FK fails closed on
+-- organization removal instead of relying on that transitivity.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.article_categories
+  ADD CONSTRAINT article_categories_organization_fk FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE RESTRICT;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (154, 'article_categories_org_fk', 'sha256:377d0691ab0a9c6f9e6a14a46048d7f7c04df63cdf88e596006e006a1af13327');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('add66418580f198720c735cfb1bf6404dedf493ab5eeeb59170e1f3346e94b5e', 1790100191422);
 COMMIT;
