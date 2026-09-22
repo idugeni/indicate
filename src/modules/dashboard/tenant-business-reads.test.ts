@@ -104,6 +104,27 @@ describe('TenantBusinessService editorial reads', () => {
     const missing = await service.getPublisherClaim(actor, ID2, ID2);
     expect(missing.ok).toBe(false);
   });
+
+  it('mencatat penyebab baca editorial gagal tanpa membocorkannya', async () => {
+    const failure = Object.assign(new Error('connection timeout'), { code: 'ETIMEDOUT' });
+    const { service } = harness({ repo: { read: vi.fn(async () => { throw failure; }) } });
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => { lines.push(String(args[0])); });
+    try {
+      const result = await service.listEditorial(actor, {});
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('expected failure');
+      expect(result.error.error.code).toBe('INTERNAL_ERROR');
+      expect(JSON.stringify(result.error)).not.toContain('ETIMEDOUT');
+      const logged = lines.find((line) => line.includes('dashboard.query.failed'));
+      expect(logged).toBeDefined();
+      const record = JSON.parse(logged as string) as { requestId?: unknown; context?: { code?: unknown } };
+      expect(record.requestId).toBe('req-1');
+      expect(record.context?.code).toBe('ETIMEDOUT');
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });
 
 describe('TenantBusinessService updates', () => {

@@ -17,6 +17,7 @@ import {
   DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction,
 } from '@/modules/dashboard/ports';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
+import { logEvent } from '@/core/observability/logger';
 import type { Result } from '@/core/result';
 import {
   affiliationSchema, affiliationUpdateSchema, analyticsFilterSchema, articleCreateSchema, articleFilterSchema, articleTransitionSchema, articleUpdateSchema, assignmentSchema,
@@ -173,6 +174,17 @@ export class TenantBusinessService {
       return { ok: true, value: project(await this.repository.read(actor, permission)) };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, action, targetType);
+      logEvent('error', {
+        event: 'dashboard.query.failed',
+        requestId: actor.requestId,
+        context: {
+          action,
+          targetType,
+          permission,
+          name: error instanceof Error ? error.name : 'UnknownError',
+          ...(error instanceof Error && 'code' in error && typeof error.code === 'string' ? { code: error.code } : {}),
+        },
+      });
       return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
     }
   }
