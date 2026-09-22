@@ -29,6 +29,7 @@ const COLLECTIONS = [
   'categories',
   'authors',
   'articles',
+  'articleCategories',
   'articleSites',
   'media',
 ] as const;

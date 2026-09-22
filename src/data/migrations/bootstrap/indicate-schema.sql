@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (153 migrations):
+-- Reviewed sources, in journal order (154 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -166,6 +166,7 @@
 --   151  20260922030000_publisher_verification_evidence_scoped  ledger sha256:ddec465909aaebe73d4df6749b0c87b84430bb99bbd6cc66853512fb9e203a32
 --   152  20260922040000_retention_runs_organization  ledger sha256:c8d73727677b0e4223b4c1603a78c18fe23e042c35fdb85afffbc873ec109009
 --   153  20260922050000_retention_runs_organization_idx  ledger sha256:8300ea22baecd3476641c50ec17c1196cd5267050f6ddb5e82b8bde889f448d0
+--   154  20260922060000_article_categories  ledger sha256:39d11a166629bc95c5c0a85147dc5dd798fe17069005eda7947265f6a940d860
 
 BEGIN;
 
@@ -12604,4 +12605,33 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (152, 'retention_runs_organization_idx', 'sha256:a4ee25332ee95056b5eb4d7f118e6aebbe09eac1ec86781ddccc1d8b2dde0ba3');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('8300ea22baecd3476641c50ec17c1196cd5267050f6ddb5e82b8bde889f448d0', 1790084212472);
+
+-- ----------------------------------------------------------------------
+-- 20260922060000_article_categories
+-- ----------------------------------------------------------------------
+-- Multi-category assignments: one article may belong to several categories.
+--
+-- `articles.category_id` stays the primary category (delivery, SEO, and
+-- filters keep reading it), while this join table carries the full ordered
+-- set. Position 1 mirrors the primary category. Existing assignments are
+-- backfilled from `articles.category_id`, so no article loses its category.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE TABLE public.article_categories (
+  organization_id uuid NOT NULL,
+  article_id uuid NOT NULL,
+  category_id uuid NOT NULL,
+  position integer NOT NULL,
+  CONSTRAINT article_categories_position_positive CHECK (position >= 1),
+  PRIMARY KEY (organization_id, article_id, category_id),
+  FOREIGN KEY (organization_id, article_id) REFERENCES public.articles(organization_id, id) ON DELETE CASCADE,
+  FOREIGN KEY (organization_id, category_id) REFERENCES public.categories(organization_id, id) ON DELETE RESTRICT
+);
+CREATE INDEX article_categories_category_idx ON public.article_categories (organization_id, category_id);
+INSERT INTO public.article_categories (organization_id, article_id, category_id, position)
+SELECT organization_id, id, category_id, 1 FROM public.articles WHERE category_id IS NOT NULL;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (153, 'article_categories', 'sha256:91d1edefe00c893b468d17f1f8411f6788ef965348d84eea370f5a5396ebd15c');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('39d11a166629bc95c5c0a85147dc5dd798fe17069005eda7947265f6a940d860', 1790084212473);
 COMMIT;

@@ -19,7 +19,7 @@ function article(
 ) {
   return {
     id, organizationId: ORG, regionId: 'r-1', publisherId: partial.publisherId, categoryId: null,
-    authorId: null, slug: id, title: partial.title, dek: null, excerpt: null, canonicalUrl: null,
+    categoryIds: [], authorId: null, leadMediaId: null, coverImageUrl: null, slug: id, title: partial.title, dek: null, excerpt: null, canonicalUrl: null,
     body: 'isi', bodyJson: null, source: 'redaksi', tags: [],
     status: partial.status, publishedAt: null, scheduledAt: null, archivedAt: null, version: 1,
     createdAt: partial.createdAt, updatedAt: partial.createdAt,
@@ -66,6 +66,7 @@ const STATE: DashboardTenantState = {
     assignment('as-1', { articleId: 'a-1', siteId: 's-1', state: 'published', at: '2026-09-16T12:00:00.000Z' }),
     assignment('as-2', { articleId: 'a-1', siteId: 's-2', state: 'failed', at: '2026-09-17T08:00:00.000Z' }),
   ],
+  articleCategories: [],
   media: [],
   publishingJobs: [
     job('j-1', { articleId: 'a-1', state: 'published', at: '2026-09-16T12:00:00.000Z' }),

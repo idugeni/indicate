@@ -604,8 +604,10 @@ export class TenantBusinessService {
       this.requireArticleReferences(transaction.state, value);
       requireLockedRegionValue(actor, value.regionId);
       const slug = allocateUniqueSlug(transaction.state.articles.map(({ slug }) => slug), value.slug);
-      const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, dek: value.dek ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, bodyJson: requireValidBodyJson(value.bodyJson), scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null };
-      transaction.state.articles.push(record); this.audit(transaction, 'article.create', 'article', record.id, null, record); return record;
+      const distinctCategoryIds = [...new Set(value.categoryIds ?? [])];
+      const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId ?? null, null, 'leadMediaId');
+      const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, leadMediaId, coverImageUrl: value.coverImageUrl ?? null, dek: value.dek ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, bodyJson: requireValidBodyJson(value.bodyJson), scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null };
+      transaction.state.articles.push(record); this.syncArticleCategories(transaction.state, record.id, distinctCategoryIds); this.audit(transaction, 'article.create', 'article', record.id, null, record); return record;
     }});
     if (result.ok && this.notifier !== null) {
       try {
@@ -622,8 +624,13 @@ export class TenantBusinessService {
       requireArticleInScope(transaction.state.articles, before.id, actor);
       requireLockedRegionValue(actor, value.regionId);
       if (value.slug !== before.slug && transaction.state.articles.some(({ id, slug }) => id !== value.id && slug === value.slug)) throw new DashboardConflictError();
-      const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: value.categoryId, authorId: value.authorId, slug: value.slug, title: value.title, dek: value.dek ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, body: value.body, bodyJson: value.bodyJson === undefined ? before.bodyJson : requireValidBodyJson(value.bodyJson), source: value.source, tags: [...value.tags], status: value.status, scheduledAt: value.scheduledAt ?? null, version: before.version + 1, updatedAt: now };
-      replaceById(transaction.state.articles, after); this.audit(transaction, 'article.update', 'article', after.id, before, after); return after;
+      const existingCategoryIds = transaction.state.articleCategories.filter((row) => row.articleId === value.id).sort((a, b) => a.position - b.position).map((row) => row.categoryId);
+      const distinctCategoryIds = value.categoryIds === undefined
+        ? (value.categoryId === before.categoryId ? existingCategoryIds : (value.categoryId === null ? [] : [value.categoryId]))
+        : [...new Set(value.categoryIds)];
+      const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId, before.leadMediaId ?? null, 'leadMediaId');
+      const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, authorId: value.authorId, leadMediaId, coverImageUrl: value.coverImageUrl === undefined ? before.coverImageUrl : (value.coverImageUrl ?? null), slug: value.slug, title: value.title, dek: value.dek ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, body: value.body, bodyJson: value.bodyJson === undefined ? before.bodyJson : requireValidBodyJson(value.bodyJson), source: value.source, tags: [...value.tags], status: value.status, scheduledAt: value.scheduledAt ?? null, version: before.version + 1, updatedAt: now };
+      replaceById(transaction.state.articles, after); this.syncArticleCategories(transaction.state, after.id, distinctCategoryIds); this.audit(transaction, 'article.update', 'article', after.id, before, after); return after;
     }});
   }
 
@@ -640,11 +647,22 @@ export class TenantBusinessService {
     }
   }
 
-  private requireArticleReferences(state: MutableTenantState, value: { regionId: string; publisherId: string | null; categoryId: string | null; authorId: string | null }): void {
+  private requireArticleReferences(state: MutableTenantState, value: { regionId: string; publisherId: string | null; categoryId: string | null; categoryIds?: readonly string[] | undefined; authorId: string | null }): void {
     if (requireRecord(state.regions, value.regionId).status !== 'active') throw new DashboardAccessDeniedError();
     if (value.publisherId !== null && requireRecord(state.publishers, value.publisherId).status !== 'active') throw new DashboardAccessDeniedError();
     if (value.categoryId !== null && requireRecord(state.categories, value.categoryId).status !== 'active') throw new DashboardAccessDeniedError();
+    for (const categoryId of value.categoryIds ?? []) {
+      if (requireRecord(state.categories, categoryId).status !== 'active') throw new DashboardAccessDeniedError();
+    }
     if (value.authorId !== null && requireRecord(state.authors, value.authorId).status !== 'active') throw new DashboardAccessDeniedError();
+  }
+
+  private syncArticleCategories(state: MutableTenantState, articleId: string, categoryIds: readonly string[]): void {
+    const distinct = [...new Set(categoryIds)];
+    state.articleCategories = state.articleCategories.filter((row) => row.articleId !== articleId);
+    distinct.forEach((categoryId, index) => {
+      state.articleCategories.push({ articleId, categoryId, position: index + 1 });
+    });
   }
 
   archiveArticle(actor: AuthorizedTenantActorContext, raw: unknown) { return this.transitionArticle(actor, raw, 'archived'); }

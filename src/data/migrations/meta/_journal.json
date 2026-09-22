@@ -1072,6 +1072,13 @@
       "when": 1790084212472,
       "tag": "20260922050000_retention_runs_organization_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 153,
+      "version": "7",
+      "when": 1790084212473,
+      "tag": "20260922060000_article_categories",
+      "breakpoints": true
     }
   ]
 }

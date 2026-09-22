@@ -153,6 +153,24 @@ export const articles = pgTable('articles', {
 ]);
 
 /**
+ * Ordered multi-category assignments; position 1 mirrors the primary `articles.category_id`.
+ *
+ * @remarks Delivery, SEO, and filters keep reading the primary column; this table carries the full set.
+ */
+export const articleCategories = pgTable('article_categories', {
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
+  articleId: uuid('article_id').notNull(),
+  categoryId: uuid('category_id').notNull(),
+  position: integer('position').notNull(),
+}, (table) => [
+  primaryKey({ name: 'article_categories_pk', columns: [table.organizationId, table.articleId, table.categoryId] }),
+  foreignKey({ name: 'article_categories_article_fk', columns: [table.organizationId, table.articleId], foreignColumns: [articles.organizationId, articles.id] }).onDelete('cascade'),
+  foreignKey({ name: 'article_categories_category_fk', columns: [table.organizationId, table.categoryId], foreignColumns: [categories.organizationId, categories.id] }).onDelete('restrict'),
+  index('article_categories_category_idx').on(table.organizationId, table.categoryId),
+  check('article_categories_position_positive', sql`${table.position} >= 1`),
+]);
+
+/**
  * Immutable content snapshots for diffing and rollback.
  *
  * @remarks One row per saved content version; written by the dashboard commit path on create and on content changes.

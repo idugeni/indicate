@@ -20,7 +20,7 @@ const actor = {
 
 const COLLECTIONS = [
   'domains', 'regions', 'sites', 'siteSettings', 'roles', 'memberships', 'telegramMappings',
-  'publishers', 'affiliations', 'categories', 'authors', 'articles', 'articleSites', 'media',
+  'publishers', 'affiliations', 'categories', 'authors', 'articles', 'articleCategories', 'articleSites', 'media',
 ] as const;
 
 const editorialState = {

@@ -116,7 +116,11 @@ export const articleCreateSchema = z.object({
   regionId: id,
   publisherId: id.nullable().default(null),
   categoryId: id.nullable().default(null),
+  /** Ordered category set; first entry is the primary `categoryId` mirror. Omitted on update preserves existing rows. */
+  categoryIds: z.array(id).max(10).optional(),
   authorId: id.nullable().default(null),
+  leadMediaId: id.nullable().optional(),
+  coverImageUrl: z.string().trim().max(2000).nullish(),
   slug: articleSlug,
   title: z.string().trim().min(1).max(300),
   dek: z.string().trim().min(1).max(300).nullish(),

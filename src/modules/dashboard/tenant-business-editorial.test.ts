@@ -4,6 +4,11 @@ import { TenantBusinessService } from '@/modules/dashboard/tenant-business-servi
 
 const ID = '0199a2b3-4c5d-7e8f-9012-3456789abcde';
 const ID2 = '0199a2b3-4c5d-7e8f-9012-3456789abcdf';
+const CAT1 = '0199a2b3-4c5d-7e8f-9012-3456789abce0';
+const CAT2 = '0199a2b3-4c5d-7e8f-9012-3456789abce1';
+const CAT3 = '0199a2b3-4c5d-7e8f-9012-3456789abce2';
+const MED1 = '0199a2b3-4c5d-7e8f-9012-3456789abce3';
+const MED2 = '0199a2b3-4c5d-7e8f-9012-3456789abce4';
 const NOW = new Date('2026-09-18T14:00:00.000Z');
 
 const actor = {
@@ -18,7 +23,7 @@ const actor = {
 
 const COLLECTIONS = [
   'domains', 'regions', 'sites', 'siteSettings', 'roles', 'memberships', 'telegramMappings',
-  'publishers', 'affiliations', 'categories', 'authors', 'articles', 'articleSites', 'media',
+  'publishers', 'affiliations', 'categories', 'authors', 'articles', 'articleCategories', 'articleSites', 'media',
 ] as const;
 
 function harness(collections: Record<string, readonly unknown[]> = {}) {
@@ -232,6 +237,95 @@ describe('TenantBusinessService affiliations memberships articles', () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');
     expect(result.error.error.code).toBe('CONFLICT');
+  });
+
+  it('membuat artikel dengan multi-kategori dan sampul', async () => {
+    const { service, state } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+      categories: [
+        { id: CAT1, status: 'active' },
+        { id: CAT2, status: 'active' },
+      ],
+      media: [{ id: MED1, organizationId: 'org-1', state: 'active' }],
+      articles: [],
+    });
+    const result = await service.createArticle(actor, {
+      regionId: ID2,
+      slug: 'berita-multi',
+      title: 'Judul Artikel Yang Cukup Panjang',
+      body: 'Isi artikel yang cukup panjang untuk lolos validasi.',
+      source: 'Humas',
+      categoryIds: [CAT1, CAT2, CAT1],
+      leadMediaId: MED1,
+      coverImageUrl: 'https://sumber.example/sampul.jpg',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.categoryId).toBe(CAT1);
+    expect(result.value.categoryIds).toEqual([CAT1, CAT2]);
+    expect(result.value.leadMediaId).toBe(MED1);
+    expect((state.articleCategories as { articleId: string; categoryId: string; position: number }[])).toEqual([
+      { articleId: ID, categoryId: CAT1, position: 1 },
+      { articleId: ID, categoryId: CAT2, position: 2 },
+    ]);
+  });
+
+  it('menolak kategori dan media tak aktif saat buat artikel', async () => {
+    const { service } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+      categories: [{ id: CAT3, status: 'archived' }],
+      media: [{ id: MED2, organizationId: 'org-1', state: 'rejected' }],
+      articles: [],
+    });
+    const badCategory = await service.createArticle(actor, {
+      regionId: ID2, slug: 'tolak-kategori', title: 'Judul Artikel Yang Cukup Panjang',
+      body: 'Isi artikel yang cukup panjang untuk lolos validasi.', source: 'Humas', categoryIds: [CAT3],
+    });
+    expect(badCategory.ok).toBe(false);
+    const badMedia = await service.createArticle(actor, {
+      regionId: ID2, slug: 'tolak-media', title: 'Judul Artikel Yang Cukup Panjang',
+      body: 'Isi artikel yang cukup panjang untuk lolos validasi.', source: 'Humas', leadMediaId: MED2,
+    });
+    expect(badMedia.ok).toBe(false);
+  });
+
+  it('mempertahankan kategori lama saat update lawas tanpa categoryIds', async () => {
+    const article = { id: ID, organizationId: 'org-1', regionId: ID2, slug: 'lama', title: 'T', body: 'B', source: 'S', tags: [], status: 'draft', version: 1, publisherId: null, categoryId: CAT1, authorId: null, leadMediaId: null, coverImageUrl: null };
+    const { service, state } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+      categories: [{ id: CAT1, status: 'active' }],
+      articles: [article],
+      articleCategories: [{ articleId: ID, categoryId: CAT1, position: 1 }],
+    });
+    const result = await service.updateArticle(actor, {
+      id: ID, expectedVersion: 1, regionId: ID2, publisherId: null, categoryId: CAT1,
+      authorId: null, slug: 'lama', title: 'Judul Baru Yang Cukup Panjang',
+      body: 'Isi baru yang cukup panjang untuk lolos validasi.', source: 'Humas', tags: [], status: 'draft',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.categoryIds).toEqual([CAT1]);
+    expect((state.articleCategories as { categoryId: string }[]).map((row) => row.categoryId)).toEqual([CAT1]);
+  });
+
+  it('mengganti set kategori saat update membawa categoryIds', async () => {
+    const article = { id: ID, organizationId: 'org-1', regionId: ID2, slug: 'lama', title: 'T', body: 'B', source: 'S', tags: [], status: 'draft', version: 1, publisherId: null, categoryId: CAT1, authorId: null, leadMediaId: null, coverImageUrl: null };
+    const { service, state } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+      categories: [{ id: CAT1, status: 'active' }, { id: CAT2, status: 'active' }],
+      articles: [article],
+      articleCategories: [{ articleId: ID, categoryId: CAT1, position: 1 }],
+    });
+    const result = await service.updateArticle(actor, {
+      id: ID, expectedVersion: 1, regionId: ID2, publisherId: null, categoryId: CAT1, categoryIds: [CAT2],
+      authorId: null, slug: 'lama', title: 'Judul Baru Yang Cukup Panjang',
+      body: 'Isi baru yang cukup panjang untuk lolos validasi.', source: 'Humas', tags: [], status: 'draft',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.categoryId).toBe(CAT2);
+    expect(result.value.categoryIds).toEqual([CAT2]);
+    expect((state.articleCategories as { categoryId: string }[]).map((row) => row.categoryId)).toEqual([CAT2]);
   });
 
   it('menyimpan bodyJson valid dan menolak dokumen berbahaya', async () => {

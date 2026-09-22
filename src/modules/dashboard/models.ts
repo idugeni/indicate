@@ -149,7 +149,11 @@ export interface ArticleRecord extends VersionedRecord {
   readonly regionId: string;
   readonly publisherId: string | null;
   readonly categoryId: string | null;
+  /** Ordered category set; first entry mirrors the primary `categoryId`. */
+  readonly categoryIds: readonly string[];
   readonly authorId: string | null;
+  readonly leadMediaId: string | null;
+  readonly coverImageUrl: string | null;
   readonly slug: string;
   readonly title: string;
   readonly dek: string | null;
@@ -164,6 +168,12 @@ export interface ArticleRecord extends VersionedRecord {
   readonly publishedAt: string | null;
   readonly scheduledAt: string | null;
   readonly archivedAt: string | null;
+}
+
+export interface ArticleCategoryRecord {
+  readonly articleId: string;
+  readonly categoryId: string;
+  readonly position: number;
 }
 
 export interface ArticleSiteRecord extends VersionedRecord {
@@ -261,6 +271,7 @@ export interface DashboardTenantState {
   readonly categories: readonly CategoryRecord[];
   readonly authors: readonly AuthorRecord[];
   readonly articles: readonly ArticleRecord[];
+  readonly articleCategories: readonly ArticleCategoryRecord[];
   readonly articleSites: readonly ArticleSiteRecord[];
   readonly media: readonly MediaSummary[];
   readonly publishingJobs: readonly PublishingJobSummary[];
