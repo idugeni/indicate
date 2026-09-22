@@ -106,7 +106,12 @@ describe('TenantBusinessService editorial reads', () => {
   });
 
   it('mencatat penyebab baca editorial gagal tanpa membocorkannya', async () => {
-    const failure = Object.assign(new Error('connection timeout'), { code: 'ETIMEDOUT' });
+    const failure = Object.assign(new Error('connection timeout'), {
+      code: 'ETIMEDOUT',
+      table: 'articles',
+      column: 'category_id',
+      constraint: 'articles_category_fk',
+    });
     const { service } = harness({ repo: { read: vi.fn(async () => { throw failure; }) } });
     const lines: string[] = [];
     const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => { lines.push(String(args[0])); });
@@ -118,9 +123,15 @@ describe('TenantBusinessService editorial reads', () => {
       expect(JSON.stringify(result.error)).not.toContain('ETIMEDOUT');
       const logged = lines.find((line) => line.includes('dashboard.query.failed'));
       expect(logged).toBeDefined();
-      const record = JSON.parse(logged as string) as { requestId?: unknown; context?: { code?: unknown } };
+      const record = JSON.parse(logged as string) as {
+        requestId?: unknown;
+        context?: { code?: unknown; table?: unknown; column?: unknown; constraint?: unknown };
+      };
       expect(record.requestId).toBe('req-1');
       expect(record.context?.code).toBe('ETIMEDOUT');
+      expect(record.context?.table).toBe('articles');
+      expect(record.context?.column).toBe('category_id');
+      expect(record.context?.constraint).toBe('articles_category_fk');
     } finally {
       spy.mockRestore();
     }

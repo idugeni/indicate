@@ -59,6 +59,23 @@ function defined<T extends object>(value: T): T {
   return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as T;
 }
 
+/**
+ * Ambil metadata driver yang aman-log dari error database.
+ *
+ * @param error - Error yang ditangkap dari lapisan repositori.
+ * @returns Hanya kolom metadata murni (`code`, `table`, `column`,
+ * `constraint`); pesan, detail, dan argumen query tidak pernah ikut agar PII
+ * tidak bocor ke telemetry.
+ */
+function driverErrorContext(error: Error): { readonly [key: string]: string } {
+  const fields: Record<string, string> = {};
+  for (const key of ['code', 'table', 'column', 'constraint'] as const) {
+    const value = (error as unknown as Record<string, unknown>)[key];
+    if (typeof value === 'string' && value !== '') fields[key] = value;
+  }
+  return fields;
+}
+
 function requireRecord<T extends { readonly id: string }>(values: readonly T[], id: string): T {
   const value = values.find((candidate) => candidate.id === id);
   if (value === undefined) throw new DashboardAccessDeniedError();
@@ -182,7 +199,7 @@ export class TenantBusinessService {
           targetType,
           permission,
           name: error instanceof Error ? error.name : 'UnknownError',
-          ...(error instanceof Error && 'code' in error && typeof error.code === 'string' ? { code: error.code } : {}),
+          ...(error instanceof Error ? driverErrorContext(error) : {}),
         },
       });
       return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
