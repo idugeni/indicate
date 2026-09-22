@@ -12,6 +12,7 @@ import {
 } from '@/modules/dashboard/policies';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import { allocateUniqueSlug } from '@/modules/site/slug-allocator';
+import { validateTipTapDoc } from '@/modules/site/tiptap-document';
 import {
   DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction,
 } from '@/modules/dashboard/ports';
@@ -102,6 +103,34 @@ function requireArticleInScope(articles: readonly ArticleRecord[], articleId: st
 function requireLockedRegionValue(actor: AuthorizedTenantActorContext, regionId: string): void {
   const lock = regionLock(actor);
   if (lock !== null && regionId !== lock) throw new DashboardAccessDeniedError();
+}
+
+function requireValidBodyJson(value: unknown): Record<string, unknown> | null {
+  if (value === undefined || value === null) return null;
+  const result = validateTipTapDoc(value);
+  if (!result.ok) throw new DashboardValidationError({ bodyJson: [`Dokumen teks kaya tidak valid (${result.reason}).`] });
+  return result.doc as unknown as Record<string, unknown>;
+}
+
+function normalizeHostnameCandidate(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/gu, '');
+}
+
+function requirePublisherNameAvailable(
+  state: { readonly sites: readonly { readonly normalizedHostname: string }[]; readonly domains: readonly { readonly normalizedHostname: string }[] },
+  name: string,
+): void {
+  const folded = normalizeHostnameCandidate(name);
+  if (folded === '') return;
+  const matches = (hostname: string): boolean => {
+    const clean = hostname.toLowerCase().trim();
+    if (normalizeHostnameCandidate(clean) === folded) return true;
+    return false;
+  };
+  const domainLabels = state.domains.map((domain) => domain.normalizedHostname.toLowerCase().trim().split('.')[0] ?? '');
+  if (state.sites.some((site) => matches(site.normalizedHostname)) || state.domains.some((domain) => matches(domain.normalizedHostname)) || domainLabels.some((label) => label !== '' && normalizeHostnameCandidate(label) === folded)) {
+    throw new DashboardValidationError({ name: ['Nama menyerupai domain/situs tenant; gunakan nama institusi resmi.'] });
+  }
 }
 
 function siteInScope(site: { readonly regionId: string | null }, lock: string | null): boolean {
@@ -241,7 +270,7 @@ export class TenantBusinessService {
     return this.mutate({ actor, raw, schema: domainCreateSchema, permission: DASHBOARD_PERMISSIONS.domainManage, action: 'domain.create', targetType: 'domain', execute: (transaction, value, now) => {
       requireUnrestrictedRegion(actor);
       if (transaction.state.domains.some(({ normalizedHostname }) => normalizedHostname === value.normalizedHostname)) throw new DashboardConflictError();
-      const record: DomainRecord = { ...this.base(actor, now), ...value };
+      const record: DomainRecord = { ...this.base(actor, now), ...value, cloudflareZoneId: null, routingVersion: 1 };
       transaction.state.domains.push(record); this.audit(transaction, 'domain.create', 'domain', record.id, null, record); return record;
     }});
   }
@@ -415,6 +444,7 @@ export class TenantBusinessService {
 
   createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: publisherCreateSchema, permission: DASHBOARD_PERMISSIONS.publisherManage, action: 'publisher.create', targetType: 'publisher', execute: (transaction, value, now) => {
+      requirePublisherNameAvailable(transaction.state, value.name);
       const record: PublisherRecord = { ...this.base(actor, now), ...value, verificationStatus: 'unverified', submittedBy: null, submittedAt: null, verifiedBy: null, verifiedAt: null, rejectionReason: null, status: 'active' };
       transaction.state.publishers.push(record); this.audit(transaction, 'publisher.create', 'publisher', record.id, null, record); return record;
     }});
@@ -423,6 +453,7 @@ export class TenantBusinessService {
   updatePublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: publisherUpdateSchema, permission: DASHBOARD_PERMISSIONS.publisherManage, action: 'publisher.update', targetType: 'publisher', execute: (transaction, value, now) => {
       const before = requireRecord(transaction.state.publishers, value.id); requireVersion(before, value.expectedVersion);
+      if (value.name !== before.name) requirePublisherNameAvailable(transaction.state, value.name);
       const identityChanged = before.name !== value.name || before.type !== value.type || before.attributionLabel !== value.attributionLabel
         || JSON.stringify(before.contacts) !== JSON.stringify(value.contacts) || before.evidenceReference !== value.evidenceReference;
       const after: PublisherRecord = { ...before, ...value, verificationStatus: identityChanged && before.verificationStatus === 'verified' ? 'unverified' : before.verificationStatus, verifiedBy: identityChanged ? null : before.verifiedBy, verifiedAt: identityChanged ? null : before.verifiedAt, version: before.version + 1, updatedAt: now };
@@ -557,9 +588,11 @@ export class TenantBusinessService {
       const articleIds = new Set(articles.map(({ id }) => id));
       const siteIds = new Set(sites.map(({ id }) => id));
       const scopeRegion = lock === null ? null : regions.find(({ id }) => id === lock);
+      const referencedDomainIds = new Set(sites.map((site) => site.domainId).filter((domainId): domainId is string => typeof domainId === 'string'));
       return {
         articles, categories: state.categories, authors: state.authors,
-        publishers: state.publishers.map(({ id, name, attributionLabel }) => ({ id, name, attributionLabel })), regions, sites,
+        publishers: state.publishers.map(({ id, name, attributionLabel, status }) => ({ id, name, attributionLabel, status })), regions, sites,
+        domains: (state.domains ?? []).filter((domain) => referencedDomainIds.has(domain.id)).map(({ id, normalizedHostname }) => ({ id, normalizedHostname })),
         articleSites: state.articleSites.filter(({ articleId, siteId }) => articleIds.has(articleId) || siteIds.has(siteId)),
         regionScope: scopeRegion === undefined || scopeRegion === null ? null : { id: scopeRegion.id, name: scopeRegion.name },
       };
@@ -571,7 +604,7 @@ export class TenantBusinessService {
       this.requireArticleReferences(transaction.state, value);
       requireLockedRegionValue(actor, value.regionId);
       const slug = allocateUniqueSlug(transaction.state.articles.map(({ slug }) => slug), value.slug);
-      const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, dek: value.dek ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null };
+      const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, dek: value.dek ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, bodyJson: requireValidBodyJson(value.bodyJson), scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null };
       transaction.state.articles.push(record); this.audit(transaction, 'article.create', 'article', record.id, null, record); return record;
     }});
     if (result.ok && this.notifier !== null) {
@@ -589,7 +622,7 @@ export class TenantBusinessService {
       requireArticleInScope(transaction.state.articles, before.id, actor);
       requireLockedRegionValue(actor, value.regionId);
       if (value.slug !== before.slug && transaction.state.articles.some(({ id, slug }) => id !== value.id && slug === value.slug)) throw new DashboardConflictError();
-      const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: value.categoryId, authorId: value.authorId, slug: value.slug, title: value.title, dek: value.dek ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, body: value.body, source: value.source, tags: [...value.tags], status: value.status, scheduledAt: value.scheduledAt ?? null, version: before.version + 1, updatedAt: now };
+      const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: value.categoryId, authorId: value.authorId, slug: value.slug, title: value.title, dek: value.dek ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, body: value.body, bodyJson: value.bodyJson === undefined ? before.bodyJson : requireValidBodyJson(value.bodyJson), source: value.source, tags: [...value.tags], status: value.status, scheduledAt: value.scheduledAt ?? null, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.articles, after); this.audit(transaction, 'article.update', 'article', after.id, before, after); return after;
     }});
   }

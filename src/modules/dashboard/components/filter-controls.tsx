@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
@@ -192,62 +192,61 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
           handleApply(event.currentTarget);
         }}
       >
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className={view === 'audit' ? 'grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-3' : view === 'analytics' ? 'grid flex-1 gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'}>
+        <div className={view === 'editorial' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]' : view === 'analytics' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto]' : 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]'}>
           {view === 'editorial' ? (
             <>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="filter-region" className="font-sans text-xs font-medium text-paper-dim">
                   Wilayah
                 </Label>
-                <NativeSelect
+                <DashboardSelect
                   id="filter-region"
                   name="regionId"
-                  className="w-full"
+                  placeholder="Semua wilayah"
                 >
-                  <NativeSelectOption value="">Semua wilayah</NativeSelectOption>
+                  <DashboardSelectItem value="">Semua wilayah</DashboardSelectItem>
                   {model?.regions?.map((item) => (
-                    <NativeSelectOption key={item.id} value={item.id}>
+                    <DashboardSelectItem key={item.id} value={item.id}>
                       {item.name}
-                    </NativeSelectOption>
+                    </DashboardSelectItem>
                   ))}
-                </NativeSelect>
+                </DashboardSelect>
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="filter-site" className="font-sans text-xs font-medium text-paper-dim">
                   Situs
                 </Label>
-                <NativeSelect
+                <DashboardSelect
                   id="filter-site"
                   name="siteId"
-                  className="w-full"
+                  placeholder="Semua situs"
                 >
-                  <NativeSelectOption value="">Semua situs</NativeSelectOption>
+                  <DashboardSelectItem value="">Semua situs</DashboardSelectItem>
                   {model?.sites?.map((item) => (
-                    <NativeSelectOption key={item.id} value={item.id}>
+                    <DashboardSelectItem key={item.id} value={item.id}>
                       {item.normalizedHostname}
-                    </NativeSelectOption>
+                    </DashboardSelectItem>
                   ))}
-                </NativeSelect>
+                </DashboardSelect>
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="filter-category" className="font-sans text-xs font-medium text-paper-dim">
                   Kategori
                 </Label>
-                <NativeSelect
+                <DashboardSelect
                   id="filter-category"
                   name="categoryId"
-                  className="w-full"
+                  placeholder="Semua kategori"
                 >
-                  <NativeSelectOption value="">Semua kategori</NativeSelectOption>
+                  <DashboardSelectItem value="">Semua kategori</DashboardSelectItem>
                   {model?.categories?.map((item) => (
-                    <NativeSelectOption key={item.id} value={item.id}>
+                    <DashboardSelectItem key={item.id} value={item.id}>
                       {item.name}
-                    </NativeSelectOption>
+                    </DashboardSelectItem>
                   ))}
-                </NativeSelect>
+                </DashboardSelect>
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -294,37 +293,37 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
                 <Label htmlFor="filter-outcome" className="font-sans text-xs font-medium text-paper-dim">
                   Hasil
                 </Label>
-                <NativeSelect
+                <DashboardSelect
                   id="filter-outcome"
                   name="outcome"
-                  className="w-full"
+                  placeholder="Semua hasil"
                 >
-                  <NativeSelectOption value="">Semua hasil</NativeSelectOption>
-                  <NativeSelectOption value="succeeded">Berhasil</NativeSelectOption>
-                  <NativeSelectOption value="denied">Ditolak</NativeSelectOption>
-                  <NativeSelectOption value="failed">Gagal</NativeSelectOption>
-                </NativeSelect>
+                  <DashboardSelectItem value="">Semua hasil</DashboardSelectItem>
+                  <DashboardSelectItem value="succeeded">Berhasil</DashboardSelectItem>
+                  <DashboardSelectItem value="denied">Ditolak</DashboardSelectItem>
+                  <DashboardSelectItem value="failed">Gagal</DashboardSelectItem>
+                </DashboardSelect>
               </div>
             </>
           ) : null}
 
           {view === 'analytics' ? (
             <>
-              <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2 xl:col-span-1">
+              <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
                 <span id="filter-preset-label" className="font-sans text-xs font-medium text-paper-dim">
                   Rentang cepat
                 </span>
                 <ToggleGroup
                   variant="outline"
-                  size="sm"
+                  size="lg"
                   spacing={1}
                   value={preset}
                   onValueChange={handlePresetSelect}
                   aria-labelledby="filter-preset-label"
-                  className="flex-wrap justify-start"
+                  className="w-full flex-wrap justify-start"
                 >
                   {PRESET.map(({ key, label }) => (
-                    <ToggleGroupItem key={key} value={key} aria-label={label} className="font-sans text-xs">
+                    <ToggleGroupItem key={key} value={key} aria-label={label} className="flex-1 font-sans text-xs">
                       {label}
                     </ToggleGroupItem>
                   ))}
@@ -334,13 +333,12 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
               <DatePicker id="filter-to" label="Sampai tanggal" value={toDate} onChange={handleDateSelect(setToDate)} />
             </>
           ) : null}
-          </div>
-          <div className="flex w-full flex-none items-center gap-2 sm:w-auto">
+          <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-1">
             <Button
               type="submit"
               variant="default"
               size="lg"
-              className="flex-1 sm:flex-none"
+              className="flex-1 lg:flex-none"
             >
               <Search className="h-3 w-3" aria-hidden="true" />
               <span>Terapkan</span>
@@ -351,7 +349,7 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
               size="lg"
               onClick={handleReset}
               aria-label="Bersihkan filter"
-              className="flex-1 sm:flex-none"
+              className="flex-1 lg:flex-none"
             >
               <X className="h-3 w-3" aria-hidden="true" />
             </Button>

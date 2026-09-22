@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { PublisherForm } from '@/modules/dashboard/components/editorial/publisher-form';
 
@@ -18,11 +19,13 @@ function setup(command: (action: string, payload: unknown) => Promise<unknown>) 
 }
 
 describe('PublisherForm attribution suggestion', () => {
-  it('mengisi label atribusi saat nama blur', () => {
+  it('mengisi label atribusi saat nama blur', async () => {
+    const user = userEvent.setup();
     setup(vi.fn(async () => undefined));
     const name = screen.getByPlaceholderText(/radar jawa tengah sentral/i);
     fireEvent.change(name, { target: { value: 'RUTAN KELAS II B WONOSOBO' } });
-    fireEvent.change(screen.getByLabelText(/jenis penerbit/i), { target: { value: 'government_institution' } });
+    await user.click(screen.getByLabelText(/jenis penerbit/i));
+    await user.click(await screen.findByRole('option', { name: 'Institusi / Lembaga Kedinasan' }));
     fireEvent.blur(name);
     expect((screen.getByPlaceholderText(/redaksi wonosobo news/i) as HTMLInputElement).value).toBe('Humas Rutan Wonosobo');
   });
@@ -54,10 +57,11 @@ describe('PublisherForm submit', () => {
   });
 
   it('memverifikasi penerbit terpilih dengan versinya', async () => {
+    const user = userEvent.setup();
     const command = vi.fn(async () => ({ id: 'pub-1' }));
     setup(command);
-    const decision = screen.getByLabelText('Keputusan');
-    fireEvent.change(decision, { target: { value: 'publisher.approve' } });
+    await user.click(screen.getByLabelText('Keputusan'));
+    await user.click(await screen.findByRole('option', { name: 'Setujui & Verifikasi' }));
     fireEvent.click(screen.getByRole('button', { name: /terapkan keputusan/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'publisher.approve',

@@ -165,7 +165,7 @@ export function ContentManager() {
   return (
     <Tabs value={activeKind} onValueChange={setActiveKind} className="w-full space-y-6">
       <div className="flex flex-wrap items-center gap-2">
-        <TabsList aria-label="Jenis konten website" className="max-w-full flex-1 overflow-x-auto">
+        <TabsList aria-label="Jenis konten website" className="max-w-full flex-1 overflow-x-auto overflow-y-clip">
           {TYPES.map((t) => (
             <TabsTrigger key={t.kind} value={t.kind} className="flex-none">
               {t.label}

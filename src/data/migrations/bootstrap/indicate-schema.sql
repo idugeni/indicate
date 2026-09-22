@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (147 migrations):
+-- Reviewed sources, in journal order (151 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -160,6 +160,10 @@
 --   145  20260921120000_rls_internal_config  ledger sha256:c786ef81105ea8b3789d15426ca55bb712dc5bb51c30c3f908c08f8cba8c8363
 --   146  20260921130000_invoice_amount_manual  ledger sha256:a85233831af991411fc5c88b8b9b142b0be783b51a991dec501ec36ccb369920
 --   147  20260921140000_article_editorial_fields  ledger sha256:2881cbcdf206cbc5cf5fc9b11f3c29c2265f64b52a61c77221f4a72773bf96db
+--   148  20260922000000_article_body_json  ledger sha256:dbdd8783a227df74128cebbd173b6b02617d9a844e97c3ea9f917aa9a0d9bedb
+--   149  20260922010000_publisher_verification_evidence  ledger sha256:6ba561a9b520f7eb0253bcabd346b9471e449c376e590d06a486f1f733012fa5
+--   150  20260922020000_publisher_verification_evidence_rework  ledger sha256:f183751ed58091e15142f9cba63e1b0759231fbc764f321040c5eaf309191367
+--   151  20260922030000_publisher_verification_evidence_scoped  ledger sha256:ddec465909aaebe73d4df6749b0c87b84430bb99bbd6cc66853512fb9e203a32
 
 BEGIN;
 
@@ -12492,4 +12496,76 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (146, 'article_editorial_fields', 'sha256:b515681c5509093c1e6dace69cea95a3451810ecc81860138063407fa3070246');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2881cbcdf206cbc5cf5fc9b11f3c29c2265f64b52a61c77221f4a72773bf96db', 1790039524606);
+
+-- ----------------------------------------------------------------------
+-- 20260922000000_article_body_json
+-- ----------------------------------------------------------------------
+-- TipTap structured content (expand phase): nullable body_json beside legacy body.
+--
+-- articles.body_json stores the TipTap document JSON; article_revisions.body_json
+-- snapshots it per content save. Both columns stay nullable so no backfill is
+-- required: existing plain-text articles keep body_json NULL and render through
+-- the legacy markup path (ArticleBodyView), while new saves dual-write the
+-- legacy body column (plain-text derivation) for search, excerpts, and RSS.
+-- Dropping or backfilling body is a later contract release, not this migration.
+-- RLS and grants follow the parent tables (no new policy needed for columns).
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.articles ADD COLUMN body_json jsonb;
+ALTER TABLE public.article_revisions ADD COLUMN body_json jsonb;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (147, 'article_body_json', 'sha256:5488332ef5dc84138cc1f76b70e9dc10ac6f4fab007ca5230f72fb252fca0ffb');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('dbdd8783a227df74128cebbd173b6b02617d9a844e97c3ea9f917aa9a0d9bedb', 1790041899931);
+
+-- ----------------------------------------------------------------------
+-- 20260922010000_publisher_verification_evidence
+-- ----------------------------------------------------------------------
+-- Verification invariant at the database level: a verified publisher must cite evidence.
+--
+-- Mirrors the application rule in TenantBusinessService.publisherDecision, which
+-- rejects submit/approve without an evidence reference. Declared NOT VALID so
+-- this migration applies cleanly while legacy rows are remediated; run
+-- VALIDATE CONSTRAINT after archiving unverified-evidence rows, then drop the
+-- NOT VALID marker in a follow-up migration. New and updated rows are checked
+-- immediately regardless of the marker.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.publishers ADD CONSTRAINT publishers_verified_requires_evidence CHECK (verification_status <> 'verified' OR evidence_reference IS NOT NULL) NOT VALID;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (148, 'publisher_verification_evidence', 'sha256:115d5c0eea5602a078db3c4e913f1b9b14d91f798b21103e280a5d07a94808e7');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6ba561a9b520f7eb0253bcabd346b9471e449c376e590d06a486f1f733012fa5', 1790051392222);
+
+-- ----------------------------------------------------------------------
+-- 20260922020000_publisher_verification_evidence_rework
+-- ----------------------------------------------------------------------
+-- Drop the unscoped verification check: it evaluates rewritten legacy rows and
+-- blocks unrelated mutations until remediation finishes. Replaced by a
+-- status-scoped variant in a later migration once brand-publisher rows are
+-- archived. Forward-only; re-adding a check never replays old violations.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.publishers DROP CONSTRAINT IF EXISTS publishers_verified_requires_evidence;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (149, 'publisher_verification_evidence_rework', 'sha256:c00672c0691a5a11e5ed66fbafea4399bd65a1223ef9c798ab1f631a6d82c7d3');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f183751ed58091e15142f9cba63e1b0759231fbc764f321040c5eaf309191367', 1790053515810);
+
+-- ----------------------------------------------------------------------
+-- 20260922030000_publisher_verification_evidence_scoped
+-- ----------------------------------------------------------------------
+-- Verification invariant scoped to usable publishers: active + verified rows must cite evidence.
+--
+-- Archived rows are inert (hidden from creation, blocked for new articles, excluded
+-- from public delivery joins) and keep their history untouched, so they are
+-- exempt. Apply only after brand-publisher remediation; the check validates
+-- existing rows on creation.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.publishers ADD CONSTRAINT publishers_verified_requires_evidence CHECK (status <> 'active' OR verification_status <> 'verified' OR evidence_reference IS NOT NULL);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (150, 'publisher_verification_evidence_scoped', 'sha256:a0e5414ffb0981f69339fb3d34ed015d18a7d41096e2a955649a4a53cf72b623');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ddec465909aaebe73d4df6749b0c87b84430bb99bbd6cc66853512fb9e203a32', 1790053561883);
 COMMIT;

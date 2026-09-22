@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SINGLE_INVOICE_AMOUNT_IDR } from '@/modules/billing/schemas';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
@@ -242,7 +242,7 @@ export function BillingPanel({
 
   return (
     <Tabs defaultValue="ringkasan" className="w-full">
-      <TabsList aria-label="Bagian langganan" className="max-w-full overflow-x-auto">
+      <TabsList aria-label="Bagian langganan" className="max-w-full overflow-x-auto overflow-y-clip">
         <TabsTrigger value="ringkasan" className="flex-none">Ringkasan</TabsTrigger>
         <TabsTrigger value="faktur" className="flex-none">Faktur</TabsTrigger>
         {isPlatform ? <TabsTrigger value="admin" className="flex-none">Admin</TabsTrigger> : null}
@@ -383,14 +383,15 @@ export function BillingPanel({
               <Label htmlFor="manual-status" className="font-sans text-xs font-medium text-paper-dim">
                 Status
               </Label>
-              <NativeSelect
-                id="manual-status" value={manualStatus} onChange={(event) => setManualStatus(event.target.value)} disabled={busy}
-                className="w-full"
+              <DashboardSelect
+                id="manual-status" value={manualStatus} disabled={busy}
+                placeholder="Pilih status"
+                onValueChange={(next) => { if (next !== null) setManualStatus(next); }}
               >
-                <NativeSelectOption value="active">Aktif (bisa dipakai)</NativeSelectOption>
-                <NativeSelectOption value="suspended">Ditangguhkan</NativeSelectOption>
-                <NativeSelectOption value="cancelled">Dibatalkan</NativeSelectOption>
-              </NativeSelect>
+                <DashboardSelectItem value="active">Aktif (bisa dipakai)</DashboardSelectItem>
+                <DashboardSelectItem value="suspended">Ditangguhkan</DashboardSelectItem>
+                <DashboardSelectItem value="cancelled">Dibatalkan</DashboardSelectItem>
+              </DashboardSelect>
             </div>
           </div>
           <div className="mt-3">

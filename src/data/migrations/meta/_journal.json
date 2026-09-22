@@ -1030,6 +1030,34 @@
       "when": 1790039524606,
       "tag": "20260921140000_article_editorial_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 147,
+      "version": "7",
+      "when": 1790041899931,
+      "tag": "20260922000000_article_body_json",
+      "breakpoints": true
+    },
+    {
+      "idx": 148,
+      "version": "7",
+      "when": 1790051392222,
+      "tag": "20260922010000_publisher_verification_evidence",
+      "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1790053515810,
+      "tag": "20260922020000_publisher_verification_evidence_rework",
+      "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "7",
+      "when": 1790053561883,
+      "tag": "20260922030000_publisher_verification_evidence_scoped",
+      "breakpoints": true
     }
   ]
 }

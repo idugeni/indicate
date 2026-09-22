@@ -3,10 +3,9 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag, Info } from 'lucide-react';
 
 import { buildSeoDocument } from '@/modules/site/seo';
-import { parseArticleBody } from '@/modules/site/article-markup';
 import { resolvePublisherChannels } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
-import { ArticleBodyView } from '@/modules/site/components/article-body-view';
+import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
 import { SoftBlueJsonLd } from '@/modules/site/components/network/templates/soft-blue/seo/json-ld';
 import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-blue/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/soft-blue/ui/author-avatar';
@@ -35,7 +34,6 @@ export function SoftBlueArticle({
   const reading = readingMinutes(article);
   const bylineName = article.attribution;
   const canonical = `https://${site.context.normalizedHostname}/${article.slug}`;
-  const blocks = parseArticleBody(article.body);
   const publisherChannels = resolvePublisherChannels(article.publisherSocials);
   const gallery = article.gallery.map((image, position) => ({ url: image.url, alt: `${article.title} (gambar ${position + 1})` }));
 
@@ -128,8 +126,9 @@ export function SoftBlueArticle({
           </figure>
 
           <div className="mt-8 space-y-6">
-            <ArticleBodyView
-              blocks={blocks}
+            <ArticleRichBodyView
+              body={article.body}
+              bodyJson={article.bodyJson}
               images={gallery}
               paragraphClassName="text-justify font-sans text-[17px] leading-[1.85] text-slate-800"
               listClassName="space-y-2 pl-6 font-sans text-[17px] leading-[1.85] text-slate-800 [list-style:disc]"

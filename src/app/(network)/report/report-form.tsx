@@ -2,6 +2,12 @@
 
 import { useState } from 'react';
 
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+
 const CATEGORIES = [
   { value: 'copyright', label: 'Pelanggaran hak cipta' },
   { value: 'defamation', label: 'Pencemaran nama baik' },
@@ -50,41 +56,47 @@ export function ReportForm({ articleSlug }: { readonly articleSlug: string | nul
       {articleSlug ? (
         <p className="m-0 font-mono text-xs text-paper-faint">Artikel: /{articleSlug}</p>
       ) : null}
-      <label className="block font-sans text-xs text-paper-dim">
+      <Label className="block font-sans text-xs text-paper-dim">
         Kontak Anda (surel/nomor, untuk klarifikasi)
-        <input
+        <Input
           type="text" value={contact} disabled={busy} maxLength={320}
           onChange={(event) => setContact(event.target.value)}
-          className="mt-1 block h-9 w-full border border-hairline-strong bg-bg px-3 font-sans text-sm text-paper"
+          className="mt-1 h-9 border-hairline-strong bg-bg font-sans text-sm text-paper"
         />
-      </label>
-      <label className="block font-sans text-xs text-paper-dim">
+      </Label>
+      <Label className="block font-sans text-xs text-paper-dim">
         Kategori pelanggaran
-        <select
-          value={category} disabled={busy}
-          onChange={(event) => setCategory(event.target.value)}
-          className="mt-1 block h-9 w-full border border-hairline-strong bg-bg px-3 font-sans text-sm text-paper"
+        <Select
+          value={category}
+          disabled={busy}
+          items={Object.fromEntries(CATEGORIES.map((option) => [option.value, option.label]))}
+          onValueChange={(value) => { if (value !== null) setCategory(value); }}
         >
-          {CATEGORIES.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
-      </label>
-      <label className="block font-sans text-xs text-paper-dim">
+          <SelectTrigger className="mt-1 h-9 w-full border-hairline-strong bg-bg font-sans text-sm text-paper">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CATEGORIES.map((option) => (
+              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Label>
+      <Label className="block font-sans text-xs text-paper-dim">
         Uraian spesifik (bagian mana yang melanggar dan mengapa)
-        <textarea
+        <Textarea
           value={details} disabled={busy} rows={5} maxLength={4000}
           onChange={(event) => setDetails(event.target.value)}
-          className="mt-1 block w-full border border-hairline-strong bg-bg px-3 py-2 font-sans text-sm text-paper"
+          className="mt-1 border-hairline-strong bg-bg font-sans text-sm text-paper"
         />
-      </label>
+      </Label>
       {error ? <p className="m-0 font-sans text-xs text-error">{error}</p> : null}
-      <button
+      <Button
         type="button" onClick={submit} disabled={busy}
-        className="h-9 bg-brass px-4 font-sans text-xs font-semibold text-bg hover:bg-brass-soft disabled:opacity-50"
+        className="h-9 bg-brass font-sans text-xs font-semibold text-bg hover:bg-brass-soft"
       >
         {busy ? 'Mengirim…' : 'Kirim laporan'}
-      </button>
+      </Button>
     </div>
   );
 }

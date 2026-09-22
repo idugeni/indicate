@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { MediaForm } from '@/modules/dashboard/components/publishing/media-form';
 
@@ -32,10 +33,12 @@ describe('Formulir unggah media', () => {
     expect(command).not.toHaveBeenCalled();
   });
 
-  it('menampilkan opsi pemilik dari artikel dan situs', () => {
+  it('menampilkan opsi pemilik dari artikel dan situs', async () => {
+    const user = userEvent.setup();
     render(<MediaForm data={DATA} command={vi.fn(async () => ({}))} />);
-    expect(screen.getByRole('option', { name: 'Organisasi' })).toBeDefined();
-    expect(screen.getByRole('option', { name: 'Artikel: art-1' })).toBeDefined();
-    expect(screen.getByRole('option', { name: 'Situs: portal.example' })).toBeDefined();
+    await user.click(screen.getByLabelText('Pemilik'));
+    expect(await screen.findByRole('option', { name: 'Organisasi' })).toBeDefined();
+    expect(await screen.findByRole('option', { name: 'Artikel: art-1' })).toBeDefined();
+    expect(await screen.findByRole('option', { name: 'Situs: portal.example' })).toBeDefined();
   });
 });

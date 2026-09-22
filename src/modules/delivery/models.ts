@@ -80,6 +80,8 @@ export interface ArticleListItem {
 
 export interface NetworkArticle extends ArticleListItem {
   readonly body: string;
+  /** Structured TipTap JSON; null for legacy plain-text articles. */
+  readonly bodyJson?: unknown | null;
   /** Article-owned gallery (active image-type media, ordered by upload time); empty when none. */
   readonly gallery: readonly ArticleGalleryImage[];
 }

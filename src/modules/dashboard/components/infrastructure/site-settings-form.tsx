@@ -6,7 +6,7 @@ import { Loader2, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { Textarea } from '@/components/ui/textarea';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
@@ -271,17 +271,17 @@ function SiteSettingsEditor({
           <Label htmlFor={robotsId} className="font-mono text-xs text-paper-dim">
             Izin mesin pencari
           </Label>
-          <NativeSelect
+          <DashboardSelect
             id={robotsId}
             value={robots}
             disabled={isSaving}
-            onChange={(event) => setRobots(event.target.value)}
-            className="w-full"
+            placeholder="Ikut bawaan (tampil di hasil cari)"
+            onValueChange={(next) => setRobots(next ?? '')}
           >
-            <NativeSelectOption value="">Ikut bawaan (tampil di hasil cari)</NativeSelectOption>
-            <NativeSelectOption value="index,follow">index,follow</NativeSelectOption>
-            <NativeSelectOption value="noindex,nofollow">noindex,nofollow</NativeSelectOption>
-          </NativeSelect>
+            <DashboardSelectItem value="">Ikut bawaan (tampil di hasil cari)</DashboardSelectItem>
+            <DashboardSelectItem value="index,follow">index,follow</DashboardSelectItem>
+            <DashboardSelectItem value="noindex,nofollow">noindex,nofollow</DashboardSelectItem>
+          </DashboardSelect>
         </div>
       </div>
 
@@ -376,22 +376,22 @@ function SiteSettingsEditor({
           <Label htmlFor={templateId} className="font-mono text-xs text-paper-dim">
             Tampilan situs (template)
           </Label>
-          <NativeSelect
+          <DashboardSelect
             id={templateId}
             value={template}
             disabled={isSaving}
-            onChange={(event) => handleTemplateChange(event.target.value)}
-            className="w-full"
+            placeholder="Pilih template…"
+            onValueChange={(next) => { if (next !== null) handleTemplateChange(next); }}
           >
             {MASTER_TEMPLATE_PRESETS.map((preset) => (
-              <NativeSelectOption key={preset.id} value={preset.id}>
+              <DashboardSelectItem key={preset.id} value={preset.id}>
                 {preset.name}
-              </NativeSelectOption>
+              </DashboardSelectItem>
             ))}
-            <NativeSelectOption value="" disabled>
+            <DashboardSelectItem value="" disabled>
               Pilih template…
-            </NativeSelectOption>
-          </NativeSelect>
+            </DashboardSelectItem>
+          </DashboardSelect>
           <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">
             {MASTER_TEMPLATE_PRESETS.find((preset) => preset.id === template)?.description}
           </p>
@@ -499,18 +499,18 @@ export function SiteSettingsForm({
           <Label htmlFor={siteSelectId} className="font-mono text-xs text-paper-dim">
             Pilih situs
           </Label>
-          <NativeSelect
+          <DashboardSelect
             id={siteSelectId}
             value={activeSiteId}
-            onChange={(event) => setSiteId(event.target.value)}
-            className="w-full"
+            placeholder="Pilih situs"
+            onValueChange={(next) => { if (next !== null) setSiteId(next); }}
           >
             {sites.map((site) => (
-              <NativeSelectOption key={site.id} value={site.id}>
+              <DashboardSelectItem key={site.id} value={site.id}>
                 {site.normalizedHostname}
-              </NativeSelectOption>
+              </DashboardSelectItem>
             ))}
-          </NativeSelect>
+          </DashboardSelect>
         </div>
 
         {activeSite === undefined ? (

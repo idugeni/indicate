@@ -5,7 +5,7 @@ import { Loader2, Plus, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { createInviteSecret, formatInviteCode, hashInviteCode } from '@/modules/dashboard/components/shared/invite-code';
@@ -136,16 +136,16 @@ export function CustomerManagement({
             <Label htmlFor={`${slugInputId}-status`} className="font-mono text-xs text-paper-dim">
               Status Awal (aktivasi manual setelah bayar)
             </Label>
-            <NativeSelect
+            <DashboardSelect
               id={`${slugInputId}-status`}
               name="status"
               disabled={isCreatingCustomer}
               defaultValue="suspended"
-              className="w-full"
+              placeholder="Pilih status awal"
             >
-              <NativeSelectOption value="active">Aktif — langsung berjalan</NativeSelectOption>
-              <NativeSelectOption value="suspended">Ditangguhkan — aktifkan belakangan</NativeSelectOption>
-            </NativeSelect>
+              <DashboardSelectItem value="active">Aktif — langsung berjalan</DashboardSelectItem>
+              <DashboardSelectItem value="suspended">Ditangguhkan — aktifkan belakangan</DashboardSelectItem>
+            </DashboardSelect>
           </div>
 
           <div className="pt-2">

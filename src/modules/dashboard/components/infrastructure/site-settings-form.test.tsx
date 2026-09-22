@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { SiteSettingsForm } from '@/modules/dashboard/components/infrastructure/site-settings-form';
 
@@ -32,10 +33,12 @@ describe('Formulir pengaturan situs', () => {
   });
 
   it('menyimpan pengaturan situs lewat command', async () => {
+    const user = userEvent.setup();
     const command = vi.fn(async () => ({}));
     const { container } = render(<SiteSettingsForm data={DATA} command={command} />);
     fireEvent.change(screen.getByLabelText('Nama situs'), { target: { value: 'Portal Contoh' } });
-    fireEvent.change(screen.getByLabelText('Tampilan situs (template)'), { target: { value: 'clean-blue' } });
+    await user.click(screen.getByLabelText('Tampilan situs (template)'));
+    await user.click(await screen.findByRole('option', { name: 'Clean Blue Editorial' }));
     fireEvent.submit(container.querySelector('form') as HTMLFormElement);
     await waitFor(() =>
       expect(command).toHaveBeenCalledWith(

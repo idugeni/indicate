@@ -4,6 +4,7 @@ import { Cell, Pie, PieChart, PolarAngleAxis, RadialBar, RadialBarChart } from '
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
+import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
 import { cn } from '@/ui/cn';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -97,9 +98,11 @@ function Donut({
                   className="h-2 w-2 flex-none rounded-[2px]"
                   style={{ backgroundColor: slice.color }}
                 />
-                <span className="min-w-0 flex-1 truncate font-mono text-[11px] uppercase tracking-wider text-paper-dim" title={slice.name}>
-                  {slice.name}
-                </span>
+                <ChartTip tip={slice.name}>
+                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] uppercase tracking-wider text-paper-dim">
+                    {slice.name}
+                  </span>
+                </ChartTip>
                 <span className="flex-none font-mono text-xs font-bold tabular-nums text-paper">
                   {slice.value.toLocaleString('id-ID')}
                 </span>
@@ -205,7 +208,7 @@ export function SuccessRate({
         <EmptyState title="Belum ada hasil penyaluran." description="Cincin terisi setelah antrean pertama berjalan." />
       ) : (
         <>
-          <div className="relative mx-auto mt-2 w-full max-w-52">
+          <div className="relative mx-auto mt-2 w-full min-w-0 max-w-52">
             <ChartContainer config={{ rate: { label: 'Keberhasilan', color: '#5fcbb0' } }} className="aspect-square w-full">
               <RadialBarChart
                 data={[{ name: 'sukses', rate }]}

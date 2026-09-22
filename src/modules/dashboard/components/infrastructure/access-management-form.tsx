@@ -3,9 +3,10 @@
 import { useId, useState, useTransition, type FormEvent } from 'react';
 import { KeyRound, Loader2, Plus, Send, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { createInviteSecret, formatInviteCode, hashInviteCode } from '@/modules/dashboard/components/shared/invite-code';
@@ -63,6 +64,7 @@ export function AccessManagementForm({
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [inviteNotice, setInviteNotice] = useState<string | null>(null);
   const [rolePermissions, setRolePermissions] = useState<readonly string[]>([]);
+  const [roleActive, setRoleActive] = useState(true);
 
   const handleCreateRole = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -73,12 +75,13 @@ export function AccessManagementForm({
       const result = await command('role.create', {
         name: String(formData.get('name') ?? '').trim(),
         tier: formData.get('tier'),
-        active: formData.get('active') === 'on',
+        active: roleActive,
         permissions: [...rolePermissions],
       });
       if (result !== null) {
         form.reset();
         setRolePermissions([]);
+        setRoleActive(true);
       }
     });
   };
@@ -165,19 +168,25 @@ export function AccessManagementForm({
               <Label htmlFor={roleTierId} className="font-mono text-xs text-paper-dim">
                 Tingkat
               </Label>
-              <NativeSelect
+              <DashboardSelect
                 id={roleTierId}
                 name="tier"
                 disabled={isCreatingRole}
                 defaultValue="user"
-                className="w-full"
+                placeholder="Pilih tingkat"
               >
-                <NativeSelectOption value="user">Anggota</NativeSelectOption>
-                <NativeSelectOption value="admin">Admin</NativeSelectOption>
-              </NativeSelect>
+                <DashboardSelectItem value="user">Anggota</DashboardSelectItem>
+                <DashboardSelectItem value="admin">Admin</DashboardSelectItem>
+              </DashboardSelect>
             </div>
             <Label htmlFor={`${roleNameId}-active`} className="flex cursor-pointer items-end gap-2 pb-2">
-              <input id={`${roleNameId}-active`} name="active" type="checkbox" defaultChecked disabled={isCreatingRole} className="h-4 w-4 accent-brass" />
+              <Checkbox
+                id={`${roleNameId}-active`}
+                checked={roleActive}
+                onCheckedChange={(checked) => setRoleActive(checked === true)}
+                disabled={isCreatingRole}
+                className="border-hairline-strong data-checked:border-brass data-checked:bg-brass data-checked:text-bg"
+              />
               <span className="font-sans text-xs text-paper-dim">Peran aktif</span>
             </Label>
           </div>
@@ -211,19 +220,19 @@ export function AccessManagementForm({
             <Label htmlFor={memberSelectId} className="font-mono text-xs text-paper-dim">
               Anggota terdaftar
             </Label>
-            <NativeSelect
+            <DashboardSelect
               id={memberSelectId}
               name="userId"
               disabled={isSavingMembership}
-              className="w-full"
+              placeholder="— pilih anggota —"
             >
-              <NativeSelectOption value="">— pilih anggota —</NativeSelectOption>
+              <DashboardSelectItem value="">— pilih anggota —</DashboardSelectItem>
               {model?.memberships?.map((member) => (
-                <NativeSelectOption key={member.userId} value={member.userId}>
+                <DashboardSelectItem key={member.userId} value={member.userId}>
                   {member.displayName} · {member.userId}
-                </NativeSelectOption>
+                </DashboardSelectItem>
               ))}
-            </NativeSelect>
+            </DashboardSelect>
           </div>
 
           <div className="space-y-1.5">
@@ -244,35 +253,35 @@ export function AccessManagementForm({
               <Label htmlFor={memberRoleId} className="font-mono text-xs text-paper-dim">
                 Peran target
               </Label>
-              <NativeSelect
+              <DashboardSelect
                 id={memberRoleId}
                 name="roleId"
                 required
                 disabled={isSavingMembership}
-                className="w-full"
+                placeholder="Pilih peran"
               >
                 {model?.roles?.map((role) => (
-                  <NativeSelectOption key={role.id} value={role.id}>
+                  <DashboardSelectItem key={role.id} value={role.id}>
                     {role.name}
-                  </NativeSelectOption>
+                  </DashboardSelectItem>
                 ))}
-              </NativeSelect>
+              </DashboardSelect>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor={memberStatusId} className="font-mono text-xs text-paper-dim">
                 Status
               </Label>
-              <NativeSelect
+              <DashboardSelect
                 id={memberStatusId}
                 name="status"
                 disabled={isSavingMembership}
                 defaultValue="active"
-                className="w-full"
+                placeholder="Pilih status"
               >
-                <NativeSelectOption value="active">Aktif</NativeSelectOption>
-                <NativeSelectOption value="inactive">Nonaktif</NativeSelectOption>
-                <NativeSelectOption value="archived">Diarsipkan</NativeSelectOption>
-              </NativeSelect>
+                <DashboardSelectItem value="active">Aktif</DashboardSelectItem>
+                <DashboardSelectItem value="inactive">Nonaktif</DashboardSelectItem>
+                <DashboardSelectItem value="archived">Diarsipkan</DashboardSelectItem>
+              </DashboardSelect>
             </div>
           </div>
 
@@ -317,22 +326,22 @@ export function AccessManagementForm({
             <Label htmlFor={inviteRoleIdInput} className="font-mono text-xs text-paper-dim">
               Peran target
             </Label>
-            <NativeSelect
+            <DashboardSelect
               id={inviteRoleIdInput}
               name="roleId"
               required
               disabled={isInviting}
               value={inviteRoleId}
-              onChange={(event) => setInviteRoleId(event.target.value)}
-              className="w-full"
+              placeholder="— pilih peran —"
+              onValueChange={(next) => setInviteRoleId(next ?? '')}
             >
-              <NativeSelectOption value="">— pilih peran —</NativeSelectOption>
+              <DashboardSelectItem value="">— pilih peran —</DashboardSelectItem>
               {model?.roles?.map((role) => (
-                <NativeSelectOption key={role.id} value={role.id}>
+                <DashboardSelectItem key={role.id} value={role.id}>
                   {role.name}
-                </NativeSelectOption>
+                </DashboardSelectItem>
               ))}
-            </NativeSelect>
+            </DashboardSelect>
           </div>
 
           {inviteNotice ? <FormNotice tone="muted">{inviteNotice}</FormNotice> : null}

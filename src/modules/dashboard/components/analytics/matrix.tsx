@@ -1,5 +1,6 @@
 import type { AnalyticsPoint } from '@/modules/dashboard/models';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { truncateLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
 
@@ -69,9 +70,11 @@ export function StatusMatrix({ results }: { readonly results: readonly Analytics
                 const row = matrix.get(name) ?? new Map<string, number>();
                 return (
                   <TableRow key={name} className="border-b border-hairline/60 last:border-0 hover:bg-transparent">
-                    <th scope="row" title={name} className="sticky left-0 max-w-44 bg-bg-raised py-2.5 pr-3 text-left font-sans text-[13px] font-medium break-all text-paper">
-                      {name}
-                    </th>
+                    <ChartTip tip={name}>
+                      <th scope="row" className="sticky left-0 max-w-44 bg-bg-raised py-2.5 pr-3 text-left font-sans text-[13px] font-medium break-all text-paper">
+                        {name}
+                      </th>
+                    </ChartTip>
                     {status.map((state) => {
                       const value = row.get(state) ?? 0;
                       return (

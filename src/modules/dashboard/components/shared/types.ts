@@ -7,6 +7,7 @@ export interface PublisherEntity {
   readonly evidenceReference: string | null;
   readonly version: number;
   readonly verificationStatus: string;
+  readonly status?: string;
 }
 
 export interface SiteEntity {

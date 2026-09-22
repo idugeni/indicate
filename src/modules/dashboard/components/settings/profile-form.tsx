@@ -8,7 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
@@ -158,17 +159,17 @@ export function ProfileForm() {
               <Label htmlFor={localeId} className="font-mono text-xs text-paper-dim">
                 Bahasa
               </Label>
-              <NativeSelect
+              <DashboardSelect
                 id={localeId}
                 value={locale}
-                onChange={(event) => setLocale(event.target.value)}
                 disabled={busy}
-                className="w-full"
+                placeholder="— bawaan —"
+                onValueChange={(next) => setLocale(next ?? '')}
               >
-                <NativeSelectOption value="">— bawaan —</NativeSelectOption>
-                <NativeSelectOption value="id-ID">id-ID</NativeSelectOption>
-                <NativeSelectOption value="en-US">en-US</NativeSelectOption>
-              </NativeSelect>
+                <DashboardSelectItem value="">— bawaan —</DashboardSelectItem>
+                <DashboardSelectItem value="id-ID">id-ID</DashboardSelectItem>
+                <DashboardSelectItem value="en-US">en-US</DashboardSelectItem>
+              </DashboardSelect>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor={timezoneId} className="font-mono text-xs text-paper-dim">
@@ -186,22 +187,31 @@ export function ProfileForm() {
           </div>
 
           <div className="space-y-1.5">
-            <span className="font-mono text-xs text-paper-dim">Foto profil</span>
-            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Foto profil">
+            <span id={`${avatarId}-label`} className="font-mono text-xs text-paper-dim">Foto profil</span>
+            <RadioGroup
+              value={avatarMode}
+              onValueChange={(value) => { if (value === 'keep' || value === 'upload' || value === 'oauth' || value === 'remove') setAvatarMode(value); }}
+              aria-labelledby={`${avatarId}-label`}
+              className="flex flex-wrap gap-2"
+              disabled={busy}
+            >
               {(['keep', 'upload', 'oauth', 'remove'] as const).map((mode) => (
-                <button
+                <span
                   key={mode}
-                  type="button"
-                  role="radio"
-                  aria-checked={avatarMode === mode}
-                  onClick={() => setAvatarMode(mode)}
-                  disabled={busy || (mode === 'oauth' && profile.oauthAvatarUrl === null)}
-                  className={`rounded border px-2.5 py-1.5 font-sans text-xs transition-colors duration-180 disabled:opacity-40 ${avatarMode === mode ? 'border-brass text-paper' : 'border-hairline-strong text-paper-dim hover:text-paper'}`}
+                  className={`flex cursor-pointer items-center gap-2 rounded border px-2.5 py-1.5 font-sans text-xs transition-colors duration-180 ${avatarMode === mode ? 'border-brass text-paper' : 'border-hairline-strong text-paper-dim hover:text-paper'}`}
+                  onClick={() => { if (!busy && !(mode === 'oauth' && profile.oauthAvatarUrl === null)) setAvatarMode(mode); }}
                 >
-                  {mode === 'keep' ? 'Pertahankan' : mode === 'upload' ? 'Unggah baru' : mode === 'oauth' ? 'Foto dari Google' : 'Hapus'}
-                </button>
+                  <RadioGroupItem
+                    id={`${avatarId}-${mode}`}
+                    value={mode}
+                    disabled={busy || (mode === 'oauth' && profile.oauthAvatarUrl === null)}
+                    aria-label={mode === 'keep' ? 'Pertahankan' : mode === 'upload' ? 'Unggah baru' : mode === 'oauth' ? 'Foto dari Google' : 'Hapus'}
+                    className="border-hairline-strong data-checked:border-brass"
+                  />
+                  <span>{mode === 'keep' ? 'Pertahankan' : mode === 'upload' ? 'Unggah baru' : mode === 'oauth' ? 'Foto dari Google' : 'Hapus'}</span>
+                </span>
               ))}
-            </div>
+            </RadioGroup>
             {avatarMode === 'upload' ? (
               <Input
                 id={avatarId}

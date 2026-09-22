@@ -550,6 +550,79 @@
     font-size: 1.125em;
   }
 
+  .tiptap-canvas {
+    caret-color: var(--brass-soft);
+  }
+
+  .tiptap-canvas > :first-child {
+    margin-top: 0;
+  }
+
+  .tiptap-canvas p,
+  .tiptap-canvas h2,
+  .tiptap-canvas h3,
+  .tiptap-canvas blockquote,
+  .tiptap-canvas ul,
+  .tiptap-canvas ol,
+  .tiptap-canvas pre {
+    margin: 0 0 0.75rem;
+  }
+
+  .tiptap-canvas h2 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--paper);
+  }
+
+  .tiptap-canvas h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--paper);
+  }
+
+  .tiptap-canvas blockquote {
+    border-left: 3px solid var(--brass-dim);
+    padding-left: 0.75rem;
+    color: var(--paper-dim);
+  }
+
+  .tiptap-canvas ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+  }
+
+  .tiptap-canvas ol {
+    list-style: decimal;
+    padding-left: 1.25rem;
+  }
+
+  .tiptap-canvas a {
+    color: var(--brass-soft);
+    text-decoration: underline;
+  }
+
+  .tiptap-canvas img {
+    border-radius: 0.5rem;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .tiptap-canvas pre {
+    background: var(--bg-raised-2);
+    border: 1px solid var(--hairline);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    overflow-x: auto;
+  }
+
+  .tiptap-canvas p.is-empty::before {
+    content: attr(data-placeholder);
+    color: var(--paper-faint);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+
   /* Network layout pattern — driven by data-template
      on .network-shell. Structure/grid/typography only; brand colors still
      flow from --site-primary / --site-accent per tenant. */

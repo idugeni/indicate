@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
 
@@ -21,7 +22,8 @@ afterEach(() => {
 });
 
 describe('Pengalih organisasi', () => {
-  it('merender daftar organisasi dengan pilihan aktif', () => {
+  it('merender daftar organisasi dengan pilihan aktif', async () => {
+    const user = userEvent.setup();
     actionMock.mockImplementation(async () => ({ status: 'idle' }));
     render(
       <OrganizationSwitcher
@@ -32,10 +34,11 @@ describe('Pengalih organisasi', () => {
         onSwitchFailed={vi.fn()}
       />,
     );
-    const select = screen.getByRole('combobox') as HTMLSelectElement;
-    expect(select.value).toBe('org-1');
-    expect(screen.getByRole('option', { name: 'Org Pertama' })).toBeDefined();
-    expect(screen.getByRole('option', { name: 'Org Kedua' })).toBeDefined();
+    const trigger = screen.getByRole('combobox');
+    expect(trigger.textContent).toContain('Org Pertama');
+    await user.click(trigger);
+    expect(await screen.findByRole('option', { name: 'Org Pertama' })).toBeDefined();
+    expect(await screen.findByRole('option', { name: 'Org Kedua' })).toBeDefined();
   });
 
   it('terkunci saat tidak ada organisasi', () => {
@@ -49,10 +52,11 @@ describe('Pengalih organisasi', () => {
         onSwitchFailed={vi.fn()}
       />,
     );
-    expect((screen.getByRole('combobox') as HTMLSelectElement).disabled).toBe(true);
+    expect(screen.getByRole('combobox').hasAttribute('disabled')).toBe(true);
   });
 
   it('memberitahu induk saat peralihan disetujui server', async () => {
+    const user = userEvent.setup();
     actionMock.mockImplementation(async (_previous: unknown, data: FormData) => ({
       status: 'ok',
       organizationId: String(data.get('organizationId')),
@@ -67,11 +71,13 @@ describe('Pengalih organisasi', () => {
         onSwitchFailed={vi.fn()}
       />,
     );
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'org-2' } });
+    await user.click(screen.getByRole('combobox'));
+    await user.click(await screen.findByRole('option', { name: 'Org Kedua' }));
     await waitFor(() => expect(committed).toHaveBeenCalledWith('org-2'));
   });
 
   it('memberitahu induk saat server menolak peralihan', async () => {
+    const user = userEvent.setup();
     actionMock.mockImplementation(async () => ({ status: 'error', message: 'Peralihan ditolak' }));
     const onFailed = vi.fn();
     render(
@@ -83,7 +89,8 @@ describe('Pengalih organisasi', () => {
         onSwitchFailed={onFailed}
       />,
     );
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'org-2' } });
+    await user.click(screen.getByRole('combobox'));
+    await user.click(await screen.findByRole('option', { name: 'Org Kedua' }));
     await waitFor(() => expect(onFailed).toHaveBeenCalledWith('Peralihan ditolak'));
   });
 });

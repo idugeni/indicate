@@ -125,6 +125,8 @@ export const articles = pgTable('articles', {
   /** Optional canonical URL override; defaults to the tenant article URL. */
   canonicalUrl: text('canonical_url'),
   body: text('body').notNull(),
+  /** Structured TipTap JSON (expand phase: nullable, legacy `body` stays canonical for search/RSS). */
+  bodyJson: jsonb('body_json').$type<Record<string, unknown> | null>(),
   source: text('source').notNull(),
   tags: text('tags').array().default(sql`ARRAY[]::text[]`).notNull(),
   status: articleStatus('status').default('draft').notNull(),
@@ -162,6 +164,8 @@ export const articleRevisions = pgTable('article_revisions', {
   title: text('title').notNull(),
   dek: text('dek'),
   body: text('body').notNull(),
+  /** Structured TipTap JSON snapshot mirroring `articles.body_json`. */
+  bodyJson: jsonb('body_json').$type<Record<string, unknown> | null>(),
   snapshot: jsonb('snapshot').$type<Record<string, unknown>>().default({}).notNull(),
   createdBy: text('created_by').notNull(),
   ...timestamps,

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -242,7 +242,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
 
   return (
     <Tabs defaultValue="laporan" className="w-full">
-      <TabsList aria-label="Bagian moderasi" className="max-w-full overflow-x-auto">
+      <TabsList aria-label="Bagian moderasi" className="max-w-full overflow-x-auto overflow-y-clip">
         <TabsTrigger value="laporan" className="flex-none">Laporan</TabsTrigger>
         <TabsTrigger value="privasi" className="flex-none">Privasi</TabsTrigger>
         <TabsTrigger value="retensi" className="flex-none">Retensi</TabsTrigger>
@@ -301,17 +301,18 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
           <section aria-label="Permintaan data" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Permintaan data baru</p>
         <div className="mt-3 flex flex-col gap-2">
-          <NativeSelect
-            value={privacyType} onChange={(event) => setPrivacyType(event.target.value)} disabled={busy}
-            aria-label="Jenis permintaan data"
-            className="w-full"
+          <DashboardSelect
+            value={privacyType} disabled={busy}
+            placeholder="Pilih jenis permintaan"
+            onValueChange={(next) => { if (next !== null) setPrivacyType(next); }}
+            ariaLabel="Jenis permintaan data"
           >
-            <NativeSelectOption value="access">Akses / salinan data</NativeSelectOption>
-            <NativeSelectOption value="correction">Koreksi data</NativeSelectOption>
-            <NativeSelectOption value="deletion">Penghapusan data</NativeSelectOption>
-            <NativeSelectOption value="portability">Portabilitas data</NativeSelectOption>
-            <NativeSelectOption value="restriction">Pembatasan pemrosesan</NativeSelectOption>
-          </NativeSelect>
+            <DashboardSelectItem value="access">Akses / salinan data</DashboardSelectItem>
+            <DashboardSelectItem value="correction">Koreksi data</DashboardSelectItem>
+            <DashboardSelectItem value="deletion">Penghapusan data</DashboardSelectItem>
+            <DashboardSelectItem value="portability">Portabilitas data</DashboardSelectItem>
+            <DashboardSelectItem value="restriction">Pembatasan pemrosesan</DashboardSelectItem>
+          </DashboardSelect>
           <Textarea
             value={privacyDetails} onChange={(event) => setPrivacyDetails(event.target.value)} disabled={busy}
             placeholder="Uraian spesifik permintaan (min. 10 karakter)"

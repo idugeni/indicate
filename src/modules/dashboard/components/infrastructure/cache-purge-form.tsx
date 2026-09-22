@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 
@@ -79,20 +79,20 @@ export function CachePurgeForm({
           <Label htmlFor={siteSelectId} className="font-mono text-xs text-paper-dim">
             Target
           </Label>
-          <NativeSelect
+          <DashboardSelect
             id={siteSelectId}
             value={siteId}
             disabled={isPurging}
-            onChange={(event) => { setSiteId(event.target.value); setConfirmBulk(false); }}
-            className="w-full"
+            placeholder="Semua situs"
+            onValueChange={(next) => { setSiteId(next ?? ''); setConfirmBulk(false); }}
           >
-            <NativeSelectOption value="">Semua situs</NativeSelectOption>
+            <DashboardSelectItem value="">Semua situs</DashboardSelectItem>
             {sites.map((site) => (
-              <NativeSelectOption key={site.id} value={site.id}>
+              <DashboardSelectItem key={site.id} value={site.id}>
                 {site.normalizedHostname}
-              </NativeSelectOption>
+              </DashboardSelectItem>
             ))}
-          </NativeSelect>
+          </DashboardSelect>
           <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">
             Memperbarui tampilan {targetLabel} di semua server. Tercatat di Riwayat Keamanan dan terlihat di Tugas Latar Belakang.
             {isBulk ? ` Pembersihan massal menyegarkan ${sites.length} situs sekaligus dan dibatasi 2 menit per organisasi.` : null}

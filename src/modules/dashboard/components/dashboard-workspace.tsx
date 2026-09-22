@@ -229,8 +229,9 @@ function DashboardNavList({
                   <Tooltip key={item.view}>
                     <TooltipTrigger
                       render={
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
                           aria-current={isActive ? 'page' : undefined}
                           aria-label={item.label}
                           onClick={() => onSelect(item.view)}
@@ -244,7 +245,7 @@ function DashboardNavList({
                             className={`h-4 w-4 flex-none ${isActive ? 'text-paper' : 'text-paper-faint'}`}
                             aria-hidden="true"
                           />
-                        </button>
+                        </Button>
                       }
                     />
                     <TooltipContent side="right" className={DASHBOARD_TOOLTIP_CONTENT}>
@@ -255,15 +256,16 @@ function DashboardNavList({
               }
 
               return (
-                <button
+                <Button
                   key={item.view}
                   type="button"
+                  variant="ghost"
                   aria-current={isActive ? 'page' : undefined}
                   onClick={() => onSelect(item.view)}
-                  className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left font-sans text-[13px] transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
+                  className={`flex w-full items-center justify-start gap-2.5 rounded-md px-2.5 py-1.5 text-left font-sans text-[13px] font-normal transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
                     isActive
                       ? 'bg-bg-raised-3 font-medium text-paper'
-                      : 'font-normal text-paper-dim hover:bg-bg-raised-2 hover:text-paper'
+                      : 'text-paper-dim hover:bg-bg-raised-2 hover:text-paper'
                   }`}
                 >
                   <Icon
@@ -276,7 +278,7 @@ function DashboardNavList({
                       {typeof item.badge === 'object' ? item.badge.label : item.badge}
                     </span>
                   ) : null}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -890,7 +892,7 @@ export function DashboardWorkspace({
               </p>
             ) : null}
 
-            <FilterControls view={view} data={data} onApply={setFilterQuery} />
+            {view === 'editorial' ? null : <FilterControls view={view} data={data} onApply={setFilterQuery} />}
 
             <PanelErrorBoundary key={`forms:${organizationId}:${view}`} name={activeMetadata.title}>
             {view === 'publishers' ? <PublisherForm data={data} command={command} /> : null}
@@ -899,12 +901,12 @@ export function DashboardWorkspace({
                 data={data}
                 onSubmit={(payload) => command('article.create', payload)}
                 onAssign={(payload) => command('article.sites.assign', payload)}
-                onSetViews={(payload) => command('article.sites.views.set', payload)}
+                command={command}
               />
             ) : null}
             {view === 'configuration' ? (
               <Tabs defaultValue="domain" className="w-full">
-                <TabsList aria-label="Bagian infrastruktur" className="max-w-full overflow-x-auto">
+                <TabsList aria-label="Bagian infrastruktur" className="max-w-full overflow-x-auto overflow-y-clip">
                   <TabsTrigger value="domain" className="flex-none">Domain & Wilayah</TabsTrigger>
                   <TabsTrigger value="brand" className="flex-none">SEO & Brand</TabsTrigger>
                   <TabsTrigger value="cache" className="flex-none">Cache</TabsTrigger>
@@ -928,7 +930,7 @@ export function DashboardWorkspace({
             {view === 'publishing' ? <PublishingForm data={data} command={command} /> : null}
             {view === 'settings' ? (
               <Tabs defaultValue="koneksi" className="w-full">
-                <TabsList aria-label="Bagian pengaturan" className="max-w-full overflow-x-auto">
+                <TabsList aria-label="Bagian pengaturan" className="max-w-full overflow-x-auto overflow-y-clip">
                   <TabsTrigger value="koneksi" className="flex-none">Koneksi</TabsTrigger>
                   <TabsTrigger value="profil" className="flex-none">Profil</TabsTrigger>
                   <TabsTrigger value="login" className="flex-none">Login</TabsTrigger>
@@ -950,7 +952,7 @@ export function DashboardWorkspace({
             {view === 'content' ? <ContentManager /> : null}
             </PanelErrorBoundary>
 
-            {view === 'billing' || view === 'moderation' ? null : busy && !data ? (
+            {view === 'billing' || view === 'moderation' || view === 'editorial' ? null : busy && !data ? (
               view === 'dashboard' ? <DashboardContentSkeleton /> : <DashboardCollectionsSkeleton />
             ) : (
               <PanelErrorBoundary key={`data:${organizationId}:${view}`} name={`${activeMetadata.title} — data`}>

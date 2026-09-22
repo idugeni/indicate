@@ -25,6 +25,9 @@ export interface VersionedRecord {
 export interface DomainRecord extends VersionedRecord {
   readonly normalizedHostname: string;
   readonly status: LifecycleStatus;
+  /** Cloudflare zone id; null until the domain is linked (required before activation by DB guard). */
+  readonly cloudflareZoneId: string | null;
+  readonly routingVersion: number;
 }
 
 export interface RegionRecord extends VersionedRecord {
@@ -153,6 +156,8 @@ export interface ArticleRecord extends VersionedRecord {
   readonly excerpt: string | null;
   readonly canonicalUrl: string | null;
   readonly body: string;
+  /** Structured TipTap JSON; null for legacy plain-text articles. */
+  readonly bodyJson: unknown | null;
   readonly source: string;
   readonly tags: readonly string[];
   readonly status: ArticleStatus;

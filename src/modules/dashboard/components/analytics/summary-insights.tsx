@@ -1,4 +1,5 @@
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
+import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
 import type { AnalyticsPoint } from '@/modules/dashboard/models';
 
 const ROW_LIMIT = 5;
@@ -102,9 +103,11 @@ export function TopRanked({
                 {rank + 1}
               </span>
               <div className="min-w-0">
-                <p className="m-0 truncate font-sans text-[13px] text-paper" title={point.key}>
-                  {point.key}
-                </p>
+                <ChartTip tip={point.key}>
+                  <p className="m-0 truncate font-sans text-[13px] text-paper">
+                    {point.key}
+                  </p>
+                </ChartTip>
                 <span className="mt-1 block h-1 min-w-0 overflow-hidden rounded-full bg-bg-raised-2" role="presentation">
                   <span
                     className="block h-full rounded-full bg-signal transition-[width] duration-500 ease-out"

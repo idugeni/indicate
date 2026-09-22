@@ -27,7 +27,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
+import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
 import {
   Pagination,
   PaginationContent,
@@ -262,9 +264,11 @@ export function DataView({
                   {label}
                 </span>
               </dt>
-              <dd className="m-0 mt-1.5 truncate font-mono text-2xl font-bold tabular-nums tracking-tight text-paper" title={value.toLocaleString('id-ID')}>
-                {value.toLocaleString('id-ID')}
-              </dd>
+              <ChartTip tip={value.toLocaleString('id-ID')}>
+                <dd className="m-0 mt-1.5 truncate font-mono text-2xl font-bold tabular-nums tracking-tight text-paper">
+                  {value.toLocaleString('id-ID')}
+                </dd>
+              </ChartTip>
             </div>
           ))}
         </dl>
@@ -282,11 +286,12 @@ export function DataView({
           <section aria-label="Aksi cepat" className="col-span-full">
             <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {quickActions.map(({ target, label, description, icon: Icon }) => (
-                <button
+                <Button
                   key={target}
                   type="button"
+                  variant="ghost"
                   onClick={() => onSelectView(target)}
-                  className="group flex min-w-0 items-center gap-3 rounded-lg border border-hairline bg-bg-raised p-4 text-left transition-all duration-150 hover:border-hairline-strong active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
+                  className="group flex min-w-0 items-center justify-start gap-3 rounded-lg border border-hairline bg-bg-raised p-4 text-left transition-all duration-150 hover:border-hairline-strong active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
                 >
                   <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md bg-bg-raised-2 text-brass transition-colors duration-150 group-hover:bg-bg-raised-3">
                     <Icon className="h-4 w-4" aria-hidden="true" />
@@ -296,7 +301,7 @@ export function DataView({
                     <span className="block truncate font-sans text-xs text-paper-faint">{description}</span>
                   </span>
                   <ArrowRight className="h-4 w-4 flex-none text-paper-faint opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-paper group-hover:opacity-100" aria-hidden="true" />
-                </button>
+                </Button>
               ))}
             </div>
           </section>
@@ -511,13 +516,21 @@ function CollectionTable({
           );
           return (
             <DropdownMenu>
-              <DropdownMenuTrigger
-                className="inline-flex h-7 w-7 items-center justify-center text-paper-faint transition-colors duration-180 hover:bg-bg-raised-2 hover:text-paper focus:outline-none"
-                aria-label={`Aksi untuk ${name}`}
-                title={`Aksi untuk ${name}`}
-              >
-                <MoreVertical className="h-4 w-4" aria-hidden="true" />
-              </DropdownMenuTrigger>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <DropdownMenuTrigger
+                      className="inline-flex h-7 w-7 items-center justify-center text-paper-faint transition-colors duration-180 hover:bg-bg-raised-2 hover:text-paper focus:outline-none"
+                      aria-label={`Aksi untuk ${name}`}
+                    >
+                      <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                    </DropdownMenuTrigger>
+                  }
+                />
+                <TooltipContent className="border border-hairline bg-bg-raised font-sans text-xs text-paper">
+                  {`Aksi untuk ${name}`}
+                </TooltipContent>
+              </Tooltip>
               <DropdownMenuContent
                 align="end"
                 className="border border-hairline bg-bg-raised p-1 font-sans text-xs shadow-none"

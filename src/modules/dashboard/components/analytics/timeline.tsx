@@ -1,5 +1,6 @@
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { formatRelative, formatDateTime } from '@/modules/dashboard/components/shared/dashboard-dates';
+import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
 import type { RecentActivity } from '@/modules/dashboard/models';
 import { cn } from '@/ui/cn';
 
@@ -40,14 +41,18 @@ export function Timeline({ events }: { readonly events: readonly RecentActivity[
               ) : null}
               <span aria-hidden="true" className={cn('mt-1.5 h-[11px] w-[11px] flex-none rounded-full border-2 border-bg-raised', tone(item.status))} />
               <div className="min-w-0 flex-1">
-                <p className="m-0 truncate font-sans text-[13px] font-medium text-paper" title={item.label}>
-                  {item.label}
-                </p>
-                <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint" title={formatDateTime(item.at)}>
-                  <span className="uppercase tracking-wider">{item.status}</span>
-                  {' · '}
-                  {formatRelative(item.at)}
-                </p>
+                <ChartTip tip={item.label}>
+                  <p className="m-0 truncate font-sans text-[13px] font-medium text-paper">
+                    {item.label}
+                  </p>
+                </ChartTip>
+                <ChartTip tip={formatDateTime(item.at)}>
+                  <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
+                    <span className="uppercase tracking-wider">{item.status}</span>
+                    {' · '}
+                    {formatRelative(item.at)}
+                  </p>
+                </ChartTip>
               </div>
             </li>
           ))}

@@ -47,6 +47,7 @@
     "perf": "npm run perf:listing-payload && npm run perf:seal-coldstart",
     "db:bootstrap": "node scripts/db-bootstrap.mjs",
     "db:bootstrap:check": "node scripts/db-bootstrap.mjs --check",
+    "hygiene:publishers": "node scripts/db-publisher-hygiene.mjs",
     "audit:production": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
@@ -57,6 +58,12 @@
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",
     "@tanstack/react-table": "^9.2.4",
+    "@tiptap/extension-image": "^3.31.3",
+    "@tiptap/extension-link": "^3.31.3",
+    "@tiptap/extension-placeholder": "^3.31.3",
+    "@tiptap/extension-youtube": "^3.31.3",
+    "@tiptap/react": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3",
     "@upstash/redis": "^1.39.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",

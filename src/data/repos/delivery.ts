@@ -5,6 +5,7 @@ import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type { ActivationAttempt, FeedArticle, InvalidationPlan, InvalidationTask, NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
 import { DEFAULT_PUBLISHER_BIO } from '@/modules/delivery/models';
 import { articleBodyText } from '@/modules/site/article-markup';
+import { isTipTapDoc, tiptapToText } from '@/modules/site/tiptap-document';
 import { pickPublisherSocials } from '@/modules/site/company-contact';
 import { DeliveryConflictError, DeliveryResourceUnavailableError, type DeliveryRepository, type PublicBundle } from '@/modules/delivery/ports';
 import { articleSites, articles, auditLogs, authors, cacheBypasses, categories, domainActivationAttempts, domains, invalidationTasks, media, officialAffiliations, publishers, regions, sites, siteSettings } from '@/data/schema';
@@ -159,13 +160,15 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         .where(and(...conditions)).orderBy(sql`${articleSites.publishedAt} DESC`).limit(query.articleSlug !== undefined ? 2 : query.search !== undefined ? 20 : 100);
       const detailTarget = query.articleSlug === undefined ? undefined : rows[0];
       let detailBody: string | null = null;
+      let detailBodyJson: unknown | null = null;
       let detailGallery: readonly { readonly url: string; readonly thumbnailUrl: string | null }[] = [];
       if (detailTarget !== undefined) {
-        const bodyRows = await transaction.select({ body: articles.body })
+        const bodyRows = await transaction.select({ body: articles.body, bodyJson: articles.bodyJson })
           .from(articles)
           .where(and(eq(articles.organizationId, context.organizationId), eq(articles.id, detailTarget.id), eq(articles.status, 'active')))
           .limit(1);
         detailBody = bodyRows[0]?.body ?? null;
+        detailBodyJson = (bodyRows[0]?.bodyJson ?? null) as unknown | null;
         const galleryRows = await transaction.select({ id: media.id, thumbObjectKey: media.thumbObjectKey })
           .from(media)
           .where(and(eq(media.organizationId, context.organizationId), eq(media.articleId, detailTarget.id), eq(media.state, 'active'), sql`${media.mediaType} LIKE 'image/%'`))
@@ -178,7 +181,12 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       const settings = shell.settings;
       return {
         ...shell,
-        articles: rows.filter((row) => row.publishedAt !== null).map((row) => ({ id: row.id, slug: row.slug, title: row.customTitle ?? row.title, dek: row.dek, canonicalUrl: row.canonicalUrl, robotsDirective: null, description: row.customDescription ?? row.excerpt ?? excerptForDescription(articleBodyText(row.bodyExcerpt ?? ''), 180), ...(detailTarget !== undefined && detailBody !== null && row.id === detailTarget.id ? { body: detailBody, gallery: detailGallery } : {}), tags: [...row.tags], regionId: row.regionId, categoryId: row.categoryId, categorySlug: row.categorySlug, categoryName: row.categoryName, authorName: row.authorName, authorDisplayName: row.authorDisplayName, authorBio: row.authorBio, authorAvatarUrl: row.authorAvatarUrl, publisherName: row.publisherName, attribution: row.attribution ?? row.publisherName ?? settings.name, publisherLogoUrl: row.publisherLogoUrl, publisherCity: row.publisherCity, publisherBio: row.publisherBio ?? DEFAULT_PUBLISHER_BIO, publisherSocials: pickPublisherSocials((row.publisherContacts ?? {}) as Readonly<Record<string, unknown>>), publisherVerified: row.publisherVerification === 'verified', independent: row.publisherType === 'independent_publisher', officialInstitution: row.publisherVerification === 'verified' ? row.affiliationInstitution : null, publishedAt: iso(row.publishedAt!), updatedAt: iso(row.updatedAt), articleSiteId: row.articleSiteId, viewCount: row.viewCount, imageMediaType: row.customImageMediaId !== null ? row.customMediaType : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaType : null, imageUrl: row.customImageMediaId !== null ? absoluteMediaUrl(context, row.customImageMediaId) : row.leadMediaId !== null && row.mediaState === 'active' ? absoluteMediaUrl(context, row.leadMediaId) : row.coverImageUrl, thumbnailUrl: row.customImageMediaId !== null ? (row.customThumbKey === null ? null : `${absoluteMediaUrl(context, row.customImageMediaId)}?variant=thumb`) : row.leadMediaId !== null && row.mediaState === 'active' ? (row.leadThumbKey === null ? null : `${absoluteMediaUrl(context, row.leadMediaId)}?variant=thumb`) : null, imageWidth: null, imageHeight: null })),
+        articles: rows.filter((row) => row.publishedAt !== null).map((row) => {
+          const isDetail = detailTarget !== undefined && detailBody !== null && row.id === detailTarget.id;
+          const richText = isDetail && isTipTapDoc(detailBodyJson) ? tiptapToText(detailBodyJson) : '';
+          const description = row.customDescription ?? row.excerpt ?? (richText !== '' ? excerptForDescription(richText, 180) : excerptForDescription(articleBodyText(row.bodyExcerpt ?? ''), 180));
+          return { id: row.id, slug: row.slug, title: row.customTitle ?? row.title, dek: row.dek, canonicalUrl: row.canonicalUrl, robotsDirective: null, description, ...(isDetail ? { body: detailBody, bodyJson: isTipTapDoc(detailBodyJson) ? detailBodyJson : null, gallery: detailGallery } : {}), tags: [...row.tags], regionId: row.regionId, categoryId: row.categoryId, categorySlug: row.categorySlug, categoryName: row.categoryName, authorName: row.authorName, authorDisplayName: row.authorDisplayName, authorBio: row.authorBio, authorAvatarUrl: row.authorAvatarUrl, publisherName: row.publisherName, attribution: row.attribution ?? row.publisherName ?? settings.name, publisherLogoUrl: row.publisherLogoUrl, publisherCity: row.publisherCity, publisherBio: row.publisherBio ?? DEFAULT_PUBLISHER_BIO, publisherSocials: pickPublisherSocials((row.publisherContacts ?? {}) as Readonly<Record<string, unknown>>), publisherVerified: row.publisherVerification === 'verified', independent: row.publisherType === 'independent_publisher', officialInstitution: row.publisherVerification === 'verified' ? row.affiliationInstitution : null, publishedAt: iso(row.publishedAt!), updatedAt: iso(row.updatedAt), articleSiteId: row.articleSiteId, viewCount: row.viewCount, imageMediaType: row.customImageMediaId !== null ? row.customMediaType : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaType : null, imageUrl: row.customImageMediaId !== null ? absoluteMediaUrl(context, row.customImageMediaId) : row.leadMediaId !== null && row.mediaState === 'active' ? absoluteMediaUrl(context, row.leadMediaId) : row.coverImageUrl, thumbnailUrl: row.customImageMediaId !== null ? (row.customThumbKey === null ? null : `${absoluteMediaUrl(context, row.customImageMediaId)}?variant=thumb`) : row.leadMediaId !== null && row.mediaState === 'active' ? (row.leadThumbKey === null ? null : `${absoluteMediaUrl(context, row.leadMediaId)}?variant=thumb`) : null, imageWidth: null, imageHeight: null };
+        }),
       };
   }
 

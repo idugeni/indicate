@@ -108,6 +108,34 @@ describe('TenantBusinessService publishers', () => {
     if (!archived.ok) throw new Error('expected ok');
     expect(archived.value.status).toBe('archived');
   });
+
+  it('menolak nama penerbit yang menyerupai domain tenant', async () => {
+    const { service } = harness({
+      domains: [{ id: ID2, normalizedHostname: 'fakta01.my.id' }],
+      sites: [{ id: ID2, organizationId: 'org-1', domainId: ID2, normalizedHostname: 'wonosobo.fakta01.my.id', status: 'active' }],
+    });
+    for (const name of ['Fakta01', 'fakta01.my.id', 'WONOSOBO.FAKTA01.MY.ID']) {
+      const refused = await service.createPublisher(actor, { ...publisherInput, name });
+      expect(refused.ok).toBe(false);
+      if (refused.ok) throw new Error(`expected error for ${name}`);
+      expect(refused.error.error.code).toBe('INVALID_INPUT');
+    }
+    const allowed = await service.createPublisher(actor, { ...publisherInput, name: 'Humas Fakta01' });
+    expect(allowed.ok).toBe(true);
+  });
+
+  it('mengizinkan sunting non-nama pada baris lama bernama domain', async () => {
+    const legacy = { ...verifiedPublisher, name: 'Fakta01' };
+    const { service } = harness({
+      domains: [{ id: ID2, normalizedHostname: 'fakta01.my.id' }],
+      sites: [{ id: ID2, organizationId: 'org-1', domainId: ID2, normalizedHostname: 'wonosobo.fakta01.my.id', status: 'active' }],
+      publishers: [legacy],
+    });
+    const kept = await service.updatePublisher(actor, { ...publisherInput, id: ID, expectedVersion: 1, name: 'Fakta01', attributionLabel: 'Redaksi Baru' });
+    expect(kept.ok).toBe(true);
+    const renamed = await service.updatePublisher(actor, { ...publisherInput, id: ID, expectedVersion: 1, name: 'fakta01.my.id' });
+    expect(renamed.ok).toBe(false);
+  });
 });
 
 describe('TenantBusinessService affiliations memberships articles', () => {
@@ -204,5 +232,38 @@ describe('TenantBusinessService affiliations memberships articles', () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');
     expect(result.error.error.code).toBe('CONFLICT');
+  });
+
+  it('menyimpan bodyJson valid dan menolak dokumen berbahaya', async () => {
+    const { service, state } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+      articles: [],
+    });
+    const richDoc = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Berita kaya.' }] }] };
+    const created = await service.createArticle(actor, {
+      regionId: ID2,
+      slug: 'berita-kaya',
+      title: 'Judul Artikel Yang Cukup Panjang',
+      body: 'Isi artikel yang cukup panjang untuk lolos validasi.',
+      bodyJson: richDoc,
+      source: 'Humas',
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) throw new Error('expected ok');
+    expect(created.value.bodyJson).toEqual(richDoc);
+    expect((state.articles as { bodyJson: unknown }[])[0]?.bodyJson).toEqual(richDoc);
+
+    const badDoc = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x', marks: [{ type: 'link', attrs: { href: 'javascript:alert(1)' } }] }] }] };
+    const refused = await service.createArticle(actor, {
+      regionId: ID2,
+      slug: 'berita-jahat',
+      title: 'Judul Artikel Yang Cukup Panjang',
+      body: 'Isi artikel yang cukup panjang untuk lolos validasi.',
+      bodyJson: badDoc,
+      source: 'Humas',
+    });
+    expect(refused.ok).toBe(false);
+    if (refused.ok) throw new Error('expected error');
+    expect(refused.error.error.code).toBe('INVALID_INPUT');
   });
 });

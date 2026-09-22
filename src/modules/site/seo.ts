@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { FeedArticle, NetworkArticle, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
 import { deriveAboutPublisher } from '@/modules/site/about-profile';
 import { articleBodyText } from '@/modules/site/article-markup';
+import { isTipTapDoc, tiptapToText } from '@/modules/site/tiptap-document';
 import { MINISTRY_FALLBACK_LOGO_URL } from '@/ui/site/marketing-content';
 
 function absoluteSiteUrl(context: ResolvedSiteContext, path: string): string {
@@ -189,7 +190,8 @@ export function buildSeoDocument(site: NetworkSiteData, options: { readonly path
     jsonLd.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Beranda', item: absoluteSiteUrl(site.context, '/') }, { '@type': 'ListItem', position: 2, name: title, item: canonical }] });
   }
   if (article !== undefined) {
-    const wordCount = stripHtml(article.body).split(/\s+/u).filter(Boolean).length;
+    const richText = 'bodyJson' in article && isTipTapDoc(article.bodyJson) ? tiptapToText(article.bodyJson) : '';
+    const wordCount = (richText !== '' ? richText : stripHtml(article.body)).split(/\s+/u).filter(Boolean).length;
     jsonLd.push({
       '@context': 'https://schema.org', '@type': 'NewsArticle', '@id': `${canonical}#article`, headline: article.title, description: article.description,
       datePublished: article.publishedAt, dateModified: article.updatedAt, mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },

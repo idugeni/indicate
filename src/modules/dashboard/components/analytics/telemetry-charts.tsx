@@ -61,7 +61,7 @@ export function TelemetryCharts({ data }: { readonly data: AnalyticsProjection }
             ) : (
               <ChartContainer
                 config={{ count: { label: title, color } }}
-                className="mt-4 max-h-64 w-full"
+                className="mt-4 h-64 w-full"
               >
                 <BarChart data={topRows} layout="vertical" margin={{ left: 8, right: 12 }}>
                   <CartesianGrid horizontal={false} />

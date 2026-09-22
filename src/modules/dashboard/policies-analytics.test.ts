@@ -20,7 +20,7 @@ function article(
   return {
     id, organizationId: ORG, regionId: 'r-1', publisherId: partial.publisherId, categoryId: null,
     authorId: null, slug: id, title: partial.title, dek: null, excerpt: null, canonicalUrl: null,
-    body: 'isi', source: 'redaksi', tags: [],
+    body: 'isi', bodyJson: null, source: 'redaksi', tags: [],
     status: partial.status, publishedAt: null, scheduledAt: null, archivedAt: null, version: 1,
     createdAt: partial.createdAt, updatedAt: partial.createdAt,
   } as const;

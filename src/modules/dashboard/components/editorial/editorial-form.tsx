@@ -12,14 +12,15 @@ import {
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { Textarea } from '@/components/ui/textarea';
 import type {
-  AuthorEntity,
   ArticleEntity,
   CategoryEntity,
+  DomainEntity,
   PublisherEntity,
   RegionEntity,
   SiteEntity,
@@ -28,47 +29,52 @@ import { slugify } from '@/modules/dashboard/components/shared/form-utils';
 import { parseArticleBody } from '@/modules/site/article-markup';
 import { TAG_MAX_COUNT, normalizeTagList } from '@/modules/site/slug-allocator';
 import { ArticleBodyView } from '@/modules/site/components/article-body-view';
+import { TipTapBodyView } from '@/modules/site/components/tiptap-body-view';
+import { isTipTapDoc, type TipTapDoc } from '@/modules/site/tiptap-document';
+import { RichTextEditor } from '@/modules/dashboard/components/editorial/rich-text-editor';
 
 export function EditorialForm({
   data,
   onSubmit,
   onAssign,
-  onSetViews,
+  command,
 }: {
   readonly data: unknown;
   readonly onSubmit: (payload: unknown) => Promise<unknown>;
   readonly onAssign: (payload: unknown) => Promise<unknown>;
-  readonly onSetViews: (payload: unknown) => Promise<unknown>;
+  readonly command?: (action: string, payload: unknown) => Promise<unknown>;
 }) {
   const model = data as {
     readonly regions?: readonly RegionEntity[];
     readonly publishers?: readonly PublisherEntity[];
     readonly categories?: readonly CategoryEntity[];
-    readonly authors?: readonly AuthorEntity[];
     readonly sites?: readonly SiteEntity[];
+    readonly domains?: readonly DomainEntity[];
     readonly articles?: readonly ArticleEntity[];
+    readonly articleSites?: readonly { readonly articleId: string; readonly siteId: string }[];
   } | null;
 
   const regionSelectId = useId();
   const publisherSelectId = useId();
   const categorySelectId = useId();
-  const authorSelectId = useId();
   const slugInputId = useId();
   const titleInputId = useId();
   const sourceInputId = useId();
   const tagsInputId = useId();
   const bodyInputId = useId();
   const assignArticleSelectId = useId();
-  const viewsArticleSelectId = useId();
-  const viewsSiteSelectId = useId();
-  const viewsCountInputId = useId();
+  const seedCountInputId = useId();
 
   const [slug, setSlug] = useState('');
   const [bodyDraft, setBodyDraft] = useState('');
+  /** Domain groups excluded from distribution; empty means every domain is selected (default all). */
+  const [assignExcluded, setAssignExcluded] = useState<readonly string[]>([]);
+  const [bodyJsonDraft, setBodyJsonDraft] = useState<TipTapDoc | null>(null);
+  const [richResetKey, setRichResetKey] = useState(0);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [isSubmitting, startSubmitTransition] = useTransition();
   const [isAssigning, startAssignTransition] = useTransition();
-  const [isSettingViews, startViewsTransition] = useTransition();
+  const [isSeeding, startSeedTransition] = useTransition();
 
   const insertMarkup = (before: string, after = '') => {
     const element = bodyRef.current;
@@ -92,6 +98,38 @@ export function EditorialForm({
   const previewImages = previewBlocks.flatMap((block) =>
     block.kind === 'figure' ? [{ url: '', alt: `Gambar ${block.index} (pratinjau — asli tampil setelah diunggah di tab Media)` }] : [],
   );
+  const assignSites = model?.sites ?? [];
+  const assignDomains = model?.domains ?? [];
+  const assignGroups = [
+    ...assignDomains
+      .map((domain) => ({ id: domain.id, label: domain.normalizedHostname, sites: assignSites.filter((site) => site.domainId === domain.id) }))
+      .filter((group) => group.sites.length > 0),
+    ...(assignSites.some((site) => site.domainId === undefined || site.domainId === null || !assignDomains.some((domain) => domain.id === site.domainId))
+      ? [{
+        id: '__tanpa-domain__',
+        label: 'Lainnya',
+        sites: assignSites.filter((site) => site.domainId === undefined || site.domainId === null || !assignDomains.some((domain) => domain.id === site.domainId)),
+      }]
+      : []),
+  ];
+  const isAssignGroupChecked = (id: string) => !assignExcluded.includes(id);
+  const toggleAssignGroup = (id: string) => {
+    setAssignExcluded((prev) => (prev.includes(id) ? prev.filter((excluded) => excluded !== id) : [...prev, id]));
+  };
+  /** Archived publishers stay visible in governance views but are hidden from article creation. */
+  const isCreatablePublisher = (status: string | undefined) => status === undefined || status === 'active';
+  /** One article picker drives both distribution and view seeding; defaults to the first article. */
+  const [assignArticleId, setAssignArticleId] = useState<string | null>(null);
+  const assignArticleValue = assignArticleId ?? model?.articles?.[0]?.id ?? '';
+  /** Seeding only touches sites where the target article is already assigned. */
+  const seedSiteIds = (model?.articleSites ?? []).filter((row) => row.articleId === assignArticleValue).map((row) => row.siteId);
+  const richDoc = bodyJsonDraft !== null && isTipTapDoc(bodyJsonDraft) && (bodyJsonDraft.content ?? []).length > 0 ? bodyJsonDraft : null;
+
+  const handleRichChange = (change: { readonly doc: TipTapDoc; readonly text: string }) => {
+    const empty = change.text.trim() === '' && (change.doc.content ?? []).every((node) => node.type === 'paragraph' && (node.content ?? []).length === 0);
+    setBodyJsonDraft(empty ? null : change.doc);
+    if (bodyDraft.trim() === '' && change.text.trim() !== '') setBodyDraft(change.text.slice(0, 200_000));
+  };
 
   const handleTitleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     if (!slug) {
@@ -110,10 +148,11 @@ export function EditorialForm({
         regionId: formData.get('regionId'),
         publisherId: formData.get('publisherId') || null,
         categoryId: formData.get('categoryId') || null,
-        authorId: formData.get('authorId') || null,
+        authorId: null,
         slug: payloadSlug,
         title: String(formData.get('title') ?? '').trim(),
         body: String(formData.get('body') ?? '').trim(),
+        bodyJson: bodyJsonDraft,
         source: String(formData.get('source') ?? '').trim(),
         tags: normalizeTagList(String(formData.get('tags') ?? '').split(',')).slice(0, TAG_MAX_COUNT),
         status: 'draft',
@@ -124,6 +163,8 @@ export function EditorialForm({
       form.reset();
       setSlug('');
       setBodyDraft('');
+      setBodyJsonDraft(null);
+      setRichResetKey((key) => key + 1);
     });
   };
 
@@ -140,17 +181,28 @@ export function EditorialForm({
     });
   };
 
-  const handleSetViews = (event: FormEvent<HTMLFormElement>) => {
+  const handleSeedViews = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
 
-    startViewsTransition(async () => {
-      await onSetViews({
-        articleId: formData.get('viewsArticleId'),
-        siteId: formData.get('viewsSiteId'),
-        viewCount: Number(formData.get('viewCount') ?? 0),
-      });
+    if (command === undefined) {
+      toast.error('Penyaluran tidak tersedia di pratinjau.');
+      return;
+    }
+    if (assignArticleValue === '' || seedSiteIds.length === 0) {
+      toast.error('Salurkan artikel ke situs dulu sebelum mengisi jumlah tayang.');
+      return;
+    }
+    const viewCount = Number(formData.get('viewCount') ?? 0);
+    startSeedTransition(async () => {
+      let succeeded = 0;
+      for (const siteId of seedSiteIds) {
+        const result = await command('article.sites.views.set', { articleId: assignArticleValue, siteId, viewCount });
+        if (result !== null) succeeded += 1;
+      }
+      if (succeeded === 0) toast.error('Gagal menyimpan jumlah tayang.');
+      else toast.success(`Jumlah tayang tersimpan untuk ${succeeded} situs.`);
       form.reset();
     });
   };
@@ -165,79 +217,58 @@ export function EditorialForm({
               <Label htmlFor={regionSelectId} className="font-mono text-xs text-paper-dim">
                 Wilayah
               </Label>
-              <NativeSelect
+              <DashboardSelect
                 id={regionSelectId}
                 name="regionId"
                 required
                 disabled={isSubmitting}
-                className="w-full"
+                placeholder="Pilih wilayah"
               >
                 {model?.regions?.map((r) => (
-                  <NativeSelectOption key={r.id} value={r.id}>
+                  <DashboardSelectItem key={r.id} value={r.id}>
                     {r.name}
-                  </NativeSelectOption>
+                  </DashboardSelectItem>
                 ))}
-              </NativeSelect>
+              </DashboardSelect>
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor={publisherSelectId} className="font-mono text-xs text-paper-dim">
                 Penerbit
               </Label>
-              <NativeSelect
+              <DashboardSelect
                 id={publisherSelectId}
                 name="publisherId"
                 disabled={isSubmitting}
-                className="w-full"
+                placeholder="Mandiri (tanpa penerbit)"
               >
-                <NativeSelectOption value="">Mandiri (tanpa penerbit)</NativeSelectOption>
-                {model?.publishers?.map((p) => (
-                  <NativeSelectOption key={p.id} value={p.id}>
+                <DashboardSelectItem value="">Mandiri (tanpa penerbit)</DashboardSelectItem>
+                {model?.publishers?.filter((p) => isCreatablePublisher(p.status)).map((p) => (
+                  <DashboardSelectItem key={p.id} value={p.id}>
                     {p.name}
-                  </NativeSelectOption>
+                  </DashboardSelectItem>
                 ))}
-              </NativeSelect>
+              </DashboardSelect>
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor={categorySelectId} className="font-mono text-xs text-paper-dim">
-                Kategori
-              </Label>
-              <NativeSelect
-                id={categorySelectId}
-                name="categoryId"
-                disabled={isSubmitting}
-                className="w-full"
-              >
-                <NativeSelectOption value="">Umum / Tanpa Kategori</NativeSelectOption>
-                {model?.categories?.map((c) => (
-                  <NativeSelectOption key={c.id} value={c.id}>
-                    {c.name}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor={authorSelectId} className="font-mono text-xs text-paper-dim">
-                Penulis
-              </Label>
-              <NativeSelect
-                id={authorSelectId}
-                name="authorId"
-                disabled={isSubmitting}
-                className="w-full"
-              >
-                <NativeSelectOption value="">Redaksi Bersama</NativeSelectOption>
-                {model?.authors?.map((a) => (
-                  <NativeSelectOption key={a.id} value={a.id}>
-                    {a.displayName}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={categorySelectId} className="font-mono text-xs text-paper-dim">
+              Kategori
+            </Label>
+            <DashboardSelect
+              id={categorySelectId}
+              name="categoryId"
+              disabled={isSubmitting}
+              placeholder="Umum / Tanpa Kategori"
+            >
+              <DashboardSelectItem value="">Umum / Tanpa Kategori</DashboardSelectItem>
+              {model?.categories?.map((c) => (
+                <DashboardSelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </DashboardSelectItem>
+              ))}
+            </DashboardSelect>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -305,6 +336,22 @@ export function EditorialForm({
           </div>
 
           <div className="space-y-1.5">
+            <span id={`${bodyInputId}-rich-label`} className="block font-mono text-xs text-paper-dim">
+              Konten Kaya (opsional)
+            </span>
+            <RichTextEditor
+              key={richResetKey}
+              onDocChange={handleRichChange}
+              command={command ?? (async () => { throw new Error('Unggahan media tidak tersedia di pratinjau.'); })}
+              labelledBy={`${bodyInputId}-rich-label`}
+              disabled={isSubmitting}
+            />
+            <p className="m-0 font-mono text-[11px] text-paper-faint">
+              Editor kaya menyimpan struktur JSON; teksnya mengisi kolom biasa otomatis bila masih kosong.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
             <Label htmlFor={bodyInputId} className="font-mono text-xs text-paper-dim">
               Isi Artikel Lengkap
             </Label>
@@ -336,16 +383,24 @@ export function EditorialForm({
             <p className="m-0 font-mono text-[11px] text-paper-faint">
               Baris kosong = paragraf baru. [gambar:N] memakai gambar ke-N dari halaman Media.
             </p>
-            {bodyDraft.trim() !== '' ? (
+            {bodyDraft.trim() !== '' || richDoc !== null ? (
               <div className="rounded border border-hairline bg-bg-raised p-3">
                 <p className="m-0 mb-2 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Pratinjau</p>
                 <div className="space-y-3">
-                  <ArticleBodyView
-                    blocks={previewBlocks}
-                    images={previewImages}
-                    paragraphClassName="font-sans text-xs leading-relaxed text-paper"
-                    listClassName="space-y-1 pl-5 font-sans text-xs leading-relaxed text-paper [list-style:disc]"
-                  />
+                  {richDoc !== null ? (
+                    <TipTapBodyView
+                      doc={richDoc}
+                      paragraphClassName="font-sans text-xs leading-relaxed text-paper"
+                      listClassName="space-y-1 pl-5 font-sans text-xs leading-relaxed text-paper [list-style:disc]"
+                    />
+                  ) : (
+                    <ArticleBodyView
+                      blocks={previewBlocks}
+                      images={previewImages}
+                      paragraphClassName="font-sans text-xs leading-relaxed text-paper"
+                      listClassName="space-y-1 pl-5 font-sans text-xs leading-relaxed text-paper [list-style:disc]"
+                    />
+                  )}
                 </div>
               </div>
             ) : null}
@@ -369,52 +424,78 @@ export function EditorialForm({
         </form>
       </SectionCard>
 
-      <SectionCard icon={Layers} title="Penyaluran Artikel" eyebrow="Pilih situs tujuan">
+      <SectionCard icon={Layers} title="Penyaluran Artikel" eyebrow="Pilih domain tujuan">
 
         <form onSubmit={handleAssignSites} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor={assignArticleSelectId} className="font-mono text-xs text-paper-dim">
               Pilih Artikel Target
             </Label>
-            <NativeSelect
+            <DashboardSelect
               id={assignArticleSelectId}
               name="articleId"
+              value={assignArticleValue}
+              onValueChange={(next) => { if (next !== null) setAssignArticleId(next); }}
               disabled={isAssigning}
-              className="w-full"
+              placeholder="Pilih artikel"
             >
               {model?.articles?.map((a) => (
-                <NativeSelectOption key={a.id} value={a.id}>
+                <DashboardSelectItem key={a.id} value={a.id}>
                   {a.title}
-                </NativeSelectOption>
+                </DashboardSelectItem>
               ))}
-            </NativeSelect>
+            </DashboardSelect>
           </div>
 
           <div className="space-y-2">
             <span className="block font-mono text-xs text-paper-dim">
-              Situs Tujuan
+              Domain Tujuan (default: semua)
             </span>
+            <p className="m-0 font-mono text-[11px] text-paper-faint">
+              Memilih domain menyalurkan ke seluruh situs (subdomain) di bawahnya.
+            </p>
             <div className="max-h-60 space-y-1.5 overflow-y-auto rounded border border-hairline bg-bg p-3">
-              {model?.sites?.length === 0 ? (
+              {assignSites.length === 0 ? (
                 <EmptyState title="Belum ada situs aktif." description="Data akan tampil di sini setelah tersedia." />
               ) : (
-                model?.sites?.map((site) => (
-                  <Label
-                    key={site.id}
-                    className="flex cursor-pointer items-center gap-2.5 rounded p-1.5 transition-colors duration-180 hover:bg-bg-raised-2"
-                  >
-                    <input
-                      type="checkbox"
-                      name="siteIds"
-                      value={site.id}
-                      disabled={isAssigning}
-                      className="h-3.5 w-3.5 rounded border-hairline bg-bg text-brass accent-brass focus:ring-0"
-                    />
-                    <span className="font-mono text-xs text-paper">
-                      {site.normalizedHostname}
-                    </span>
-                  </Label>
-                ))
+                assignGroups.map((group) => {
+                  const checked = isAssignGroupChecked(group.id);
+                  return (
+                    <div key={group.id} className="rounded transition-colors duration-180 hover:bg-bg-raised-2">
+                      <Label
+                        htmlFor={`assign-domain-${group.id}`}
+                        className="flex cursor-pointer items-center gap-2.5 rounded p-1.5"
+                      >
+                        <Checkbox
+                          id={`assign-domain-${group.id}`}
+                          checked={checked}
+                          onCheckedChange={() => toggleAssignGroup(group.id)}
+                          disabled={isAssigning}
+                          className="border-hairline-strong data-checked:border-brass data-checked:bg-brass data-checked:text-bg"
+                        />
+                        {checked ? group.sites.map((site) => <input key={site.id} type="hidden" name="siteIds" value={site.id} />) : null}
+                        <span className="font-mono text-xs text-paper">
+                          {group.label}
+                        </span>
+                        <span aria-hidden="true" className="ml-auto font-mono text-[11px] tabular-nums text-paper-faint">
+                          {group.sites.length} situs
+                        </span>
+                      </Label>
+                      <details className="ml-9 pb-1.5">
+                        <summary className="cursor-pointer font-mono text-[11px] text-paper-faint hover:text-paper">
+                          Lihat situs
+                        </summary>
+                        <ul className="m-0 mt-1 list-none space-y-0.5 p-0">
+                          {group.sites.map((site) => (
+                            <li key={site.id} className="font-mono text-[11px] text-paper-dim">
+                              {site.normalizedHostname}
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
@@ -436,73 +517,34 @@ export function EditorialForm({
           </div>
         </form>
 
-        <form onSubmit={handleSetViews} className="mt-5 space-y-3 border-t border-hairline pt-5">
-          <p className="m-0 font-mono text-xs text-paper-dim">
-            Jumlah tayangan awal terisi otomatis; tayangan asli bertambah di atas angka ini.
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor={viewsArticleSelectId} className="font-mono text-xs text-paper-dim">
-                Artikel
-              </Label>
-              <NativeSelect
-                id={viewsArticleSelectId}
-                name="viewsArticleId"
-                disabled={isSettingViews}
-                className="w-full"
-              >
-                {model?.articles?.map((a) => (
-                  <NativeSelectOption key={a.id} value={a.id}>
-                    {a.title}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor={viewsSiteSelectId} className="font-mono text-xs text-paper-dim">
-                Situs
-              </Label>
-              <NativeSelect
-                id={viewsSiteSelectId}
-                name="viewsSiteId"
-                disabled={isSettingViews}
-                className="w-full"
-              >
-                {model?.sites?.map((site) => (
-                  <NativeSelectOption key={site.id} value={site.id}>
-                    {site.normalizedHostname}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor={viewsCountInputId} className="font-mono text-xs text-paper-dim">
-              Jumlah tayang
+        <form onSubmit={handleSeedViews} className="mt-5 flex flex-wrap items-end gap-2 border-t border-hairline pt-5">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Label htmlFor={seedCountInputId} className="font-mono text-xs text-paper-dim">
+              Jumlah tayang {seedSiteIds.length > 0 ? `(${seedSiteIds.length} situs tersalurkan)` : '(belum tersalurkan)'}
             </Label>
             <Input
-              id={viewsCountInputId}
+              id={seedCountInputId}
               name="viewCount"
               type="number"
               min={0}
               max={1000000000}
               defaultValue={0}
-              disabled={isSettingViews}
+              disabled={isSeeding || seedSiteIds.length === 0}
               className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
             />
           </div>
           <Button
             type="submit"
             variant="outline"
-            disabled={isSettingViews}
-            className="w-full"
+            disabled={isSeeding || seedSiteIds.length === 0}
+            className="flex-none"
           >
-            {isSettingViews ? (
+            {isSeeding ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
             ) : (
               <Check className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
             )}
-            <span>Simpan Jumlah Tayangan</span>
+            <span>Simpan</span>
           </Button>
         </form>
       </SectionCard>

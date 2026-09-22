@@ -123,6 +123,8 @@ export const articleCreateSchema = z.object({
   excerpt: z.string().trim().min(1).max(500).nullish(),
   canonicalUrl: z.string().trim().max(2000).nullish(),
   body: z.string().trim().min(1).max(200_000),
+  /** Optional TipTap JSON; strictly validated in the service, legacy `body` stays required for search/RSS. */
+  bodyJson: z.unknown().nullish(),
   source: z.string().trim().min(1).max(500),
   tags: z.preprocess((value) => (Array.isArray(value) ? normalizeTagList(value) : value), z.array(z.string().trim().min(1).max(60)).max(TAG_MAX_COUNT)).default([]),
   status: z.enum(['draft', 'in_review', 'scheduled', 'active']).default('draft'),

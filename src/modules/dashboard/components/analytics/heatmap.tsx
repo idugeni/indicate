@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
 import type { ActivityHour, TaskDay } from '@/modules/dashboard/models';
 import { weekdayLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
@@ -54,16 +55,16 @@ export function ActivityHeatmap({ cells }: { readonly cells: readonly ActivityHo
             {hours.map((value) => {
               const count = cellMap.get(`${day}:${value}`) ?? 0;
               return (
-                <span
-                  key={value}
-                  title={`${name} ${String(value).padStart(2, '0')}:00 — ${count}`}
-                  className="h-4 w-full rounded-[3px]"
-                  style={
-                    count === 0
-                      ? undefined
-                      : { backgroundColor: '#d8a94e', opacity: scale(count, max) }
-                  }
-                />
+                <ChartTip key={value} tip={`${name} ${String(value).padStart(2, '0')}:00 — ${count}`}>
+                  <span
+                    className="h-4 w-full rounded-[3px]"
+                    style={
+                      count === 0
+                        ? undefined
+                        : { backgroundColor: '#d8a94e', opacity: scale(count, max) }
+                    }
+                  />
+                </ChartTip>
               );
             })}
           </div>
@@ -140,16 +141,16 @@ export function ActivityCalendar({ series }: { readonly series: readonly TaskDay
                 point === null ? (
                   <span key={row} className="h-3.5 w-full rounded-[3px]" />
                 ) : (
-                  <span
-                    key={row}
-                    title={`${weekdayLabel(point.hari)} — ${total(point)}`}
-                    className="h-3.5 w-full rounded-[3px] bg-bg-raised-2"
-                    style={
-                      total(point) === 0
-                        ? undefined
-                        : { backgroundColor: '#5fcbb0', opacity: scale(total(point), max) }
-                    }
-                  />
+                  <ChartTip key={row} tip={`${weekdayLabel(point.hari)} — ${total(point)}`}>
+                    <span
+                      className="h-3.5 w-full rounded-[3px] bg-bg-raised-2"
+                      style={
+                        total(point) === 0
+                          ? undefined
+                          : { backgroundColor: '#5fcbb0', opacity: scale(total(point), max) }
+                      }
+                    />
+                  </ChartTip>
                 ),
               )}
             </div>

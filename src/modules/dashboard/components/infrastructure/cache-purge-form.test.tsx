@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { CachePurgeForm } from '@/modules/dashboard/components/infrastructure/cache-purge-form';
 
@@ -44,9 +45,11 @@ describe('CachePurgeForm bulk guard', () => {
 
 describe('CachePurgeForm single site', () => {
   it('mengirim siteId tanpa konfirmasi massal', async () => {
+    const user = userEvent.setup();
     const command = vi.fn(async () => ({ sites: [{ hostname: 'portal.example' }] }));
     setup(command);
-    fireEvent.change(screen.getByLabelText('Target'), { target: { value: 'site-1' } });
+    await user.click(screen.getByLabelText('Target'));
+    await user.click(await screen.findByRole('option', { name: 'portal.example' }));
     expect(screen.queryByRole('checkbox')).toBe(null);
 
     fireEvent.click(screen.getByRole('button', { name: /bersihkan sekarang/i }));
@@ -54,11 +57,14 @@ describe('CachePurgeForm single site', () => {
     expect(await screen.findByText(/Permintaan dikirim untuk/)).toBeDefined();
   });
 
-  it('mereset centang saat target berubah', () => {
+  it('mereset centang saat target berubah', async () => {
+    const user = userEvent.setup();
     setup(vi.fn(async () => ({ sites: [] })));
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText('Target'), { target: { value: 'site-1' } });
-    fireEvent.change(screen.getByLabelText('Target'), { target: { value: '' } });
+    await user.click(screen.getByLabelText('Target'));
+    await user.click(await screen.findByRole('option', { name: 'portal.example' }));
+    await user.click(screen.getByLabelText('Target'));
+    await user.click(await screen.findByRole('option', { name: 'Semua situs' }));
     expect(screen.getByRole('button', { name: /bersihkan sekarang/i }).hasAttribute('disabled')).toBe(true);
   });
 });

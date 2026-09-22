@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import type { DomainEntity, RegionEntity, SiteEntity } from '@/modules/dashboard/components/shared/types';
 import { MediaPolicySection } from '@/modules/dashboard/components/infrastructure/media-policy-section';
 import { PolicyOverviewSection } from '@/modules/dashboard/components/infrastructure/policy-overview-section';
@@ -201,37 +201,38 @@ export function ConfigurationPanel({
             <Label htmlFor={siteDomainSelectId} className="font-sans text-xs font-medium text-paper-dim">
               Domain
             </Label>
-            <NativeSelect
+            <DashboardSelect
               id={siteDomainSelectId}
               name="domainId"
               disabled={isAddingSite}
-              className="w-full"
+              defaultValue={model?.domains?.[0]?.id ?? ''}
+              placeholder="Pilih domain"
             >
               {model?.domains?.map((item) => (
-                <NativeSelectOption key={item.id} value={item.id}>
+                <DashboardSelectItem key={item.id} value={item.id}>
                   {item.normalizedHostname}
-                </NativeSelectOption>
+                </DashboardSelectItem>
               ))}
-            </NativeSelect>
+            </DashboardSelect>
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor={siteRegionSelectId} className="font-sans text-xs font-medium text-paper-dim">
               Wilayah
             </Label>
-            <NativeSelect
+            <DashboardSelect
               id={siteRegionSelectId}
               name="regionId"
               disabled={isAddingSite}
-              className="w-full"
+              placeholder="Domain utama (tanpa wilayah)"
             >
-              <NativeSelectOption value="">Domain utama (tanpa wilayah)</NativeSelectOption>
+              <DashboardSelectItem value="">Domain utama (tanpa wilayah)</DashboardSelectItem>
               {model?.regions?.map((item) => (
-                <NativeSelectOption key={item.id} value={item.id}>
+                <DashboardSelectItem key={item.id} value={item.id}>
                   {item.name}
-                </NativeSelectOption>
+                </DashboardSelectItem>
               ))}
-            </NativeSelect>
+            </DashboardSelect>
           </div>
 
           <div className="space-y-1.5">

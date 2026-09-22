@@ -6,7 +6,7 @@ import {
   switchActiveOrganization,
   type SwitchOrganizationState,
 } from '@/modules/dashboard/switch-organization-action';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import type { OrganizationOption } from '@/modules/dashboard/components/dashboard-types';
 
 const INITIAL_STATE: SwitchOrganizationState = Object.freeze({ status: 'idle' });
@@ -39,9 +39,8 @@ export function OrganizationSwitcher({
     }
   }, [state, activeOrganizationId, onSwitchCommitted, onSwitchFailed, setOptimisticId]);
 
-  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const next = event.target.value;
-    if (next === '' || next === optimisticId || isPending) return;
+  const handleChange = (next: string | null) => {
+    if (next === null || next === '' || next === optimisticId || isPending) return;
     setOptimisticId(next);
     const formData = new FormData();
     formData.set('organizationId', next);
@@ -50,19 +49,19 @@ export function OrganizationSwitcher({
 
   return (
     <>
-      <NativeSelect
+      <DashboardSelect
         id={selectId}
         value={optimisticId}
         disabled={isPending || organizations.length === 0}
-        onChange={handleChange}
-        aria-busy={isPending}
+        placeholder="Pilih organisasi"
+        onValueChange={handleChange}
       >
         {organizations.map((org) => (
-          <NativeSelectOption key={org.id} value={org.id}>
+          <DashboardSelectItem key={org.id} value={org.id}>
             {org.name}
-          </NativeSelectOption>
+          </DashboardSelectItem>
         ))}
-      </NativeSelect>
+      </DashboardSelect>
       <span aria-live="polite" className="sr-only">
         {isPending ? 'Beralih organisasi…' : ''}
       </span>

@@ -146,7 +146,7 @@ export function SiteViewsBar({ rows, label }: { readonly rows: readonly ViewsPoi
       {data.length === 0 ? (
         <EmptyState title="Belum ada data tayangan situs." description="Data akan tampil di sini setelah tersedia." />
       ) : (
-        <ChartContainer config={{ views: { label: 'Tayangan', color: '#6c93c9' } }} className="mt-4 max-h-64 w-full">
+        <ChartContainer config={{ views: { label: 'Tayangan', color: '#6c93c9' } }} className="mt-4 h-64 w-full">
           <BarChart data={data} layout="vertical" margin={{ left: 8, right: 12 }}>
             <CartesianGrid horizontal={false} />
             <YAxis

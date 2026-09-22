@@ -6,7 +6,7 @@ import { SectionCard } from '@/modules/dashboard/components/shared/section-card'
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { formatBytes, prepareImageUpload } from '@/modules/publishing/compress-image';
 
 const SUPPORTED_MEDIA_TYPES = new Set([
@@ -227,40 +227,41 @@ export function MediaForm({
               <Label htmlFor={ownerKindSelectId} className="font-mono text-xs text-paper-dim">
                 Kepemilikan
               </Label>
-              <NativeSelect
+              <DashboardSelect
                 id={ownerKindSelectId}
                 name="ownerKind"
                 disabled={isUploading}
-                className="w-full"
+                defaultValue="organization"
+                placeholder="Pilih kepemilikan"
               >
-                <NativeSelectOption value="organization">Organisasi (umum)</NativeSelectOption>
-                <NativeSelectOption value="article">Artikel tertentu</NativeSelectOption>
-                <NativeSelectOption value="site">Situs tertentu</NativeSelectOption>
-              </NativeSelect>
+                <DashboardSelectItem value="organization">Organisasi (umum)</DashboardSelectItem>
+                <DashboardSelectItem value="article">Artikel tertentu</DashboardSelectItem>
+                <DashboardSelectItem value="site">Situs tertentu</DashboardSelectItem>
+              </DashboardSelect>
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor={ownerSelectId} className="font-mono text-xs text-paper-dim">
                 Pemilik
               </Label>
-              <NativeSelect
+              <DashboardSelect
                 id={ownerSelectId}
                 name="ownerId"
                 disabled={isUploading}
-                className="w-full"
+                placeholder="Organisasi"
               >
-                <NativeSelectOption value="">Organisasi</NativeSelectOption>
+                <DashboardSelectItem value="">Organisasi</DashboardSelectItem>
                 {model?.articles?.map((item) => (
-                  <NativeSelectOption key={item.id} value={item.id}>
+                  <DashboardSelectItem key={item.id} value={item.id}>
                     Artikel: {item.id}
-                  </NativeSelectOption>
+                  </DashboardSelectItem>
                 ))}
                 {model?.sites?.map((item) => (
-                  <NativeSelectOption key={item.id} value={item.id}>
+                  <DashboardSelectItem key={item.id} value={item.id}>
                     Situs: {item.normalizedHostname}
-                  </NativeSelectOption>
+                  </DashboardSelectItem>
                 ))}
-              </NativeSelect>
+              </DashboardSelect>
             </div>
           </div>
 

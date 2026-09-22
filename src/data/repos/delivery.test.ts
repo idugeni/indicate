@@ -114,7 +114,7 @@ function harness(handlers: {
             selectLog.push({ keys });
             const only = (...wanted: readonly string[]) =>
               wanted.length === keys.length && wanted.every((key) => keys.includes(key));
-            if (only('body')) return chainable(body);
+            if (only('body') || only('body', 'bodyJson')) return chainable(body);
             if (only('id', 'thumbObjectKey')) return chainable(gallery);
             if (keys.includes('logoMediaId')) return chainable(settings);
             if (keys.includes('bodyExcerpt')) return chainable(articles);
@@ -162,6 +162,21 @@ describe('readSite projection', () => {
     if (item !== undefined && isNetworkArticle(item)) {
       expectTypeOf(item).toEqualTypeOf<NetworkArticle>();
     }
+  });
+
+  it('detail artikel kaya membawa bodyJson dan deskripsi dari teks terstruktur', async () => {
+    const richDoc = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Berita kaya terstruktur untuk deskripsi.' }] }] };
+    const { repository } = harness({
+      articles: [articleRow({ customDescription: null, excerpt: null, bodyExcerpt: null })],
+      body: [{ body: 'Teks warisan.', bodyJson: richDoc }],
+      gallery: [{ id: 'g1', thumbObjectKey: null }],
+    });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, { articleSlug: 'berita-utama' });
+    const item = site?.articles[0];
+    expect(item).toBeDefined();
+    expect(item).toHaveProperty('body', 'Teks warisan.');
+    expect(item).toHaveProperty('bodyJson', richDoc);
+    expect(item?.description).toContain('Berita kaya terstruktur');
   });
 
   it('customDescription null jatuh ke excerpt 600 karakter kepala', async () => {

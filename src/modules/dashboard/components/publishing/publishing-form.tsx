@@ -6,9 +6,10 @@ import { Loader2, Send, Sparkles } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { generateIdempotencyUuid } from '@/modules/dashboard/components/shared/form-utils';
 import type { PublicationStatusProjection, PublishingState } from '@/modules/publishing/models';
 
@@ -73,11 +74,16 @@ export function PublishingForm({
   const [statusError, setStatusError] = useState<string | null>(null);
   const [isStatusBusy, startStatusTransition] = useTransition();
   const [suggested, setSuggested] = useState<Readonly<Record<string, { readonly title: string; readonly description: string; readonly imageMediaId: string }>>>({});
+  const [selectedSiteIds, setSelectedSiteIds] = useState<readonly string[]>([]);
   const [isSuggesting, startSuggestTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleGenerateKey = () => {
     setIdempotencyKey(generateIdempotencyUuid());
+  };
+
+  const toggleSite = (siteId: string) => {
+    setSelectedSiteIds((prev) => (prev.includes(siteId) ? prev.filter((id) => id !== siteId) : [...prev, siteId]));
   };
 
   const hostnames = new Map((model?.sites ?? []).map((site) => [site.id, site.normalizedHostname]));
@@ -161,19 +167,20 @@ export function PublishingForm({
             <Label htmlFor={articleSelectId} className="font-mono text-xs text-paper-dim">
               Pilih Artikel
             </Label>
-            <NativeSelect
+            <DashboardSelect
               id={articleSelectId}
               name="articleId"
               disabled={isPublishing}
-              onChange={() => setSuggested({})}
-              className="w-full"
+              defaultValue={model?.articles?.[0]?.id ?? ''}
+              placeholder="Pilih artikel"
+              onValueChange={() => setSuggested({})}
             >
               {model?.articles?.map((item) => (
-                <NativeSelectOption key={item.id} value={item.id}>
+                <DashboardSelectItem key={item.id} value={item.id}>
                   {item.title ? `${item.title} (${item.slug ?? item.id})` : item.id}
-                </NativeSelectOption>
+                </DashboardSelectItem>
               ))}
-            </NativeSelect>
+            </DashboardSelect>
           </div>
 
           <div className="space-y-2">
@@ -187,16 +194,21 @@ export function PublishingForm({
                 model?.sites?.map((item) => (
                   <details key={item.id} className="py-1">
                     <summary className="flex cursor-pointer list-none items-center gap-2.5 py-1.5">
-                      <input
-                        type="checkbox"
-                        name="siteIds"
-                        value={item.id}
+                      <Checkbox
+                        id={`publish-site-${item.id}`}
+                        checked={selectedSiteIds.includes(item.id)}
+                        onCheckedChange={() => toggleSite(item.id)}
                         disabled={isPublishing}
-                        className="h-3.5 w-3.5 border-hairline bg-bg text-brass accent-brass focus:ring-0"
+                        aria-label={`Pilih ${item.normalizedHostname}`}
+                        className="border-hairline-strong data-checked:border-brass data-checked:bg-brass data-checked:text-bg"
                       />
-                      <span className="font-mono text-xs text-paper">
+                      {selectedSiteIds.includes(item.id) ? <input type="hidden" name="siteIds" value={item.id} /> : null}
+                      <Label
+                        htmlFor={`publish-site-${item.id}`}
+                        className="cursor-pointer font-mono text-xs font-normal text-paper"
+                      >
                         {item.normalizedHostname}
-                      </span>
+                      </Label>
                       <span className="font-sans text-[11px] text-paper-faint">varian opsional</span>
                     </summary>
                     <div className="space-y-1.5 py-2 pl-6 pr-1">

@@ -75,6 +75,27 @@ describe('TenantBusinessService editorial reads', () => {
     expect(claim.ok).toBe(true);
   });
 
+  it('menyertakan domain rujukan untuk pengelompokan penyaluran', async () => {
+    const { service } = harness({
+      repo: {
+        read: vi.fn(async () => ({
+          ...editorialState,
+          domains: [
+            { id: ID, organizationId: 'org-1', normalizedHostname: 'fakta01.my.id' },
+            { id: ID2, organizationId: 'org-1', normalizedHostname: 'lain.id' },
+          ],
+          sites: [
+            { id: ID2, organizationId: 'org-1', domainId: ID, regionId: null, normalizedHostname: 'wonosobo.fakta01.my.id', status: 'active' },
+          ],
+        })),
+      },
+    });
+    const editorial = await service.listEditorial(actor, {});
+    expect(editorial.ok).toBe(true);
+    if (!editorial.ok) throw new Error('expected ok');
+    expect(editorial.value.domains).toEqual([{ id: ID, normalizedHostname: 'fakta01.my.id' }]);
+  });
+
   it('menolak filter editorial rusak dan klaim asing', async () => {
     const { service } = harness();
     const broken = await service.listEditorial(actor, { regionId: 'bukan-uuid' });

@@ -4,7 +4,7 @@ import { useId, useState, useTransition, type FormEvent } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { Textarea } from '@/components/ui/textarea';
 import {
   buildUpdatePayload,
@@ -110,21 +110,21 @@ export function RecordEditorForm({
             return (
               <Label key={field.key} htmlFor={inputId} className="block">
                 <span className="mb-1.5 block font-sans text-xs font-medium text-paper-dim">{field.label}</span>
-                <NativeSelect
+                <DashboardSelect
                   id={inputId}
                   value={typeof value === 'string' ? value : ''}
                   required={field.required}
                   disabled={isSaving}
-                  onChange={(event) => setValue(field.key, event.target.value)}
-                  className="w-full"
+                  placeholder={field.emptyLabel ?? field.placeholder ?? field.label}
+                  onValueChange={(next) => setValue(field.key, next ?? '')}
                 >
-                  {field.allowEmpty ? <NativeSelectOption value="">{field.emptyLabel ?? 'Tanpa relasi'}</NativeSelectOption> : null}
+                  {field.allowEmpty ? <DashboardSelectItem value="">{field.emptyLabel ?? 'Tanpa relasi'}</DashboardSelectItem> : null}
                   {resolveFieldOptions(field, lookups).map((option) => (
-                    <NativeSelectOption key={option.value} value={option.value}>
+                    <DashboardSelectItem key={option.value} value={option.value}>
                       {option.label}
-                    </NativeSelectOption>
+                    </DashboardSelectItem>
                   ))}
-                </NativeSelect>
+                </DashboardSelect>
               </Label>
             );
           }

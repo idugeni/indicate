@@ -85,7 +85,8 @@ describe('Ruang kerja dashboard', () => {
     await screen.findByText('Ringkasan Ekosistem Redaksi');
     fireEvent.click(screen.getByRole('button', { name: 'Tulis Berita' }));
     expect(await screen.findByText('Manajemen Artikel & Konten')).toBeDefined();
-    expect(await screen.findByText('Belum ada data')).toBeDefined();
+    expect(await screen.findByText('Artikel Baru')).toBeDefined();
+    expect(screen.queryByText('Belum ada data')).toBeNull();
   });
 
   it('menempelkan footer di bawah dengan label pengelola', async () => {

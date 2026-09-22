@@ -12,7 +12,7 @@ import { suggestAttributionLabel } from '@/modules/dashboard/components/editoria
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import type { PublisherEntity, SiteEntity } from '@/modules/dashboard/components/shared/types';
 
 const VERIFICATION_STATUS_LABELS: Readonly<Record<string, string>> = {
@@ -47,6 +47,7 @@ export function PublisherForm({
   const [isCreating, startCreateTransition] = useTransition();
   const [isVerifying, startVerifyTransition] = useTransition();
   const lastSuggestedAttribution = useRef('');
+  const createFormRef = useRef<HTMLFormElement | null>(null);
 
   const refreshAttributionSuggestion = (form: HTMLFormElement) => {
     const nameInput = form.elements.namedItem('name');
@@ -54,7 +55,7 @@ export function PublisherForm({
     const attributionInput = form.elements.namedItem('attributionLabel');
     if (
       !(nameInput instanceof HTMLInputElement) ||
-      !(typeInput instanceof HTMLSelectElement) ||
+      (!(typeInput instanceof HTMLSelectElement) && !(typeInput instanceof HTMLInputElement)) ||
       !(attributionInput instanceof HTMLInputElement)
     ) {
       return;
@@ -109,7 +110,7 @@ export function PublisherForm({
     <div className="grid gap-6 lg:grid-cols-2">
       <SectionCard icon={Plus} title="Penerbit baru" eyebrow="Registrasi">
 
-        <form onSubmit={handleCreate} className="space-y-3.5">
+        <form ref={createFormRef} onSubmit={handleCreate} className="space-y-3.5">
           <div className="space-y-1.5">
             <Label htmlFor={createNameId} className="font-mono text-xs text-paper-dim">
               Nama Resmi Media / Lembaga
@@ -131,19 +132,21 @@ export function PublisherForm({
             <Label htmlFor={createTypeId} className="font-mono text-xs text-paper-dim">
               Jenis Penerbit
             </Label>
-            <NativeSelect
+            <DashboardSelect
               id={createTypeId}
               name="type"
               disabled={isCreating}
-              onChange={(event) => {
-                if (event.currentTarget.form !== null) refreshAttributionSuggestion(event.currentTarget.form);
+              defaultValue="independent_publisher"
+              placeholder="Pilih jenis penerbit"
+              onValueChange={() => {
+                const form = createFormRef.current;
+                if (form !== null) refreshAttributionSuggestion(form);
               }}
-              className="w-full"
             >
-              <NativeSelectOption value="independent_publisher">Penerbit Independen Regional</NativeSelectOption>
-              <NativeSelectOption value="government_institution">Institusi / Lembaga Kedinasan</NativeSelectOption>
-              <NativeSelectOption value="company">Badan Usaha / Korporasi Media</NativeSelectOption>
-            </NativeSelect>
+              <DashboardSelectItem value="independent_publisher">Penerbit Independen Regional</DashboardSelectItem>
+              <DashboardSelectItem value="government_institution">Institusi / Lembaga Kedinasan</DashboardSelectItem>
+              <DashboardSelectItem value="company">Badan Usaha / Korporasi Media</DashboardSelectItem>
+            </DashboardSelect>
           </div>
 
           <div className="space-y-1.5">
@@ -198,35 +201,37 @@ export function PublisherForm({
             <Label htmlFor={verifyPubId} className="font-mono text-xs text-paper-dim">
               Pilih Penerbit
             </Label>
-            <NativeSelect
+            <DashboardSelect
               id={verifyPubId}
               name="publisherId"
               disabled={isVerifying}
-              className="w-full"
+              defaultValue={model?.publishers?.[0]?.id ?? ''}
+              placeholder="Pilih penerbit"
             >
               {model?.publishers?.map((item) => (
-                <NativeSelectOption key={item.id} value={item.id}>
+                <DashboardSelectItem key={item.id} value={item.id}>
                   {item.name} · [{VERIFICATION_STATUS_LABELS[item.verificationStatus] ?? item.verificationStatus}]
-                </NativeSelectOption>
+                </DashboardSelectItem>
               ))}
-            </NativeSelect>
+            </DashboardSelect>
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor={verifyDecisionId} className="font-mono text-xs text-paper-dim">
               Keputusan
             </Label>
-            <NativeSelect
+            <DashboardSelect
               id={verifyDecisionId}
               name="decision"
               disabled={isVerifying}
-              className="w-full"
+              defaultValue="publisher.submit"
+              placeholder="Pilih keputusan"
             >
-              <NativeSelectOption value="publisher.submit">Kirim untuk Verifikasi</NativeSelectOption>
-              <NativeSelectOption value="publisher.approve">Setujui & Verifikasi</NativeSelectOption>
-              <NativeSelectOption value="publisher.reject">Tolak</NativeSelectOption>
-              <NativeSelectOption value="publisher.archive">Arsipkan</NativeSelectOption>
-            </NativeSelect>
+              <DashboardSelectItem value="publisher.submit">Kirim untuk Verifikasi</DashboardSelectItem>
+              <DashboardSelectItem value="publisher.approve">Setujui & Verifikasi</DashboardSelectItem>
+              <DashboardSelectItem value="publisher.reject">Tolak</DashboardSelectItem>
+              <DashboardSelectItem value="publisher.archive">Arsipkan</DashboardSelectItem>
+            </DashboardSelect>
           </div>
 
           <div className="space-y-1.5">
