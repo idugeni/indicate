@@ -42,12 +42,54 @@ function useChart() {
   return context
 }
 
+function useChartDimensions(node: HTMLDivElement | null) {
+  const [hasDimensions, setHasDimensions] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!node) {
+      return
+    }
+    const update = (width: number, height: number) => {
+      setHasDimensions(width > 0 && height > 0)
+    }
+    const measure = () => {
+      const rect = node.getBoundingClientRect()
+      update(rect.width || node.clientWidth, rect.height || node.clientHeight)
+    }
+    measure()
+    if (typeof ResizeObserver === "undefined") {
+      return
+    }
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry) {
+        measure()
+        return
+      }
+      const width = entry.contentRect.width || node.clientWidth
+      const height = entry.contentRect.height || node.clientHeight
+      if (width > 0 && height > 0) {
+        update(width, height)
+      } else {
+        measure()
+      }
+    })
+    observer.observe(node)
+    return () => {
+      observer.disconnect()
+    }
+  }, [node])
+
+  return hasDimensions
+}
+
 function ChartContainer({
   id,
   className,
   children,
   config,
   initialDimension = INITIAL_DIMENSION,
+  ref,
   ...props
 }: React.ComponentProps<"div"> & {
   config: ChartConfig
@@ -61,10 +103,15 @@ function ChartContainer({
 }) {
   const uniqueId = React.useId()
   const chartId = `chart-${id ?? uniqueId.replace(/:/g, "")}`
+  const [node, setNode] = React.useState<HTMLDivElement | null>(null)
+  const hasDimensions = useChartDimensions(node)
+
+  React.useImperativeHandle(ref, () => node as HTMLDivElement, [node])
 
   return (
     <ChartContext.Provider value={{ config }}>
       <div
+        ref={setNode}
         data-slot="chart"
         data-chart={chartId}
         className={cn(
@@ -74,12 +121,21 @@ function ChartContainer({
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
-        <RechartsPrimitive.ResponsiveContainer
-          initialDimension={initialDimension}
-          minWidth={0}
-        >
-          {children}
-        </RechartsPrimitive.ResponsiveContainer>
+        {hasDimensions ? (
+          <RechartsPrimitive.ResponsiveContainer
+            initialDimension={initialDimension}
+            debounce={50}
+            minWidth={0}
+          >
+            {children}
+          </RechartsPrimitive.ResponsiveContainer>
+        ) : (
+          <div
+            data-slot="chart-placeholder"
+            aria-hidden="true"
+            className="w-full flex-1 animate-pulse rounded-md bg-muted/40"
+          />
+        )}
       </div>
     </ChartContext.Provider>
   )

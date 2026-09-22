@@ -1,20 +1,48 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from '@testing-library/react';
 
 import { ChartContainer } from '@/components/ui/chart';
 
-vi.stubGlobal(
-  'ResizeObserver',
-  class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  },
-);
+function mockDimensions(width: number, height: number) {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      callback: ResizeObserverCallback;
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+      observe() {
+        this.callback(
+          [{ contentRect: { width, height } } as ResizeObserverEntry],
+          this as unknown as ResizeObserver,
+        );
+      }
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+    width,
+    height,
+    top: 0,
+    left: 0,
+    bottom: height,
+    right: width,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  } as DOMRect);
+}
+
+beforeEach(() => {
+  mockDimensions(320, 200);
+});
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe('Wadah bagan', () => {
@@ -29,6 +57,18 @@ describe('Wadah bagan', () => {
       container.querySelector('[data-slot="chart"]')?.getAttribute('data-chart'),
     ).not.toBe(null);
     expect(container.querySelector('.recharts-responsive-container')).not.toBe(null);
+    expect(container.querySelector('[data-slot="chart-placeholder"]')).toBe(null);
+  });
+
+  it('menunda wadah responsif saat dimensi nol', () => {
+    mockDimensions(0, 0);
+    const { container } = render(
+      <ChartContainer config={{}}>
+        <p>Isi bagan</p>
+      </ChartContainer>,
+    );
+    expect(container.querySelector('[data-slot="chart-placeholder"]')).not.toBe(null);
+    expect(container.querySelector('.recharts-responsive-container')).toBe(null);
   });
 
   it('merender gaya saat konfigurasi berwarna', () => {
