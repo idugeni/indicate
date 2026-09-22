@@ -11,7 +11,7 @@ export function OrangeModernQuotePanel({ siteName, quote }: { readonly siteName:
   return (
     <aside
       aria-label="Perspektif redaksi"
-      className="relative flex min-h-80 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#ea580c] via-[#c2410c] to-[#7c2d12] p-7 text-white shadow-sm"
+      className="relative flex min-h-80 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#ea580c] via-[#c2410c] to-[#7c2d12] p-7 text-white shadow-sm lg:sticky lg:top-20"
     >
       <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/15" />
       <div aria-hidden="true" className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-black/15" />

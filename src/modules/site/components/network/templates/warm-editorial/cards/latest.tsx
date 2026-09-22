@@ -11,7 +11,7 @@ export function WarmEditorialQuotePanel({ siteName, quote }: { readonly siteName
   return (
     <aside
       aria-label="Perspektif redaksi"
-      className="relative flex min-h-80 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#fae7d7] via-[#f3c9a5] to-[#b4532a] p-7 shadow-sm"
+      className="relative flex min-h-80 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#fae7d7] via-[#f3c9a5] to-[#b4532a] p-7 shadow-sm lg:sticky lg:top-20"
     >
       <div className="relative">
         <p className="m-0 flex items-center gap-2 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#8a3c1d]">

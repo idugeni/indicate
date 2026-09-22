@@ -11,7 +11,7 @@ export function PurpleEditorialQuotePanel({ siteName, quote }: { readonly siteNa
   return (
     <aside
       aria-label="Perspektif redaksi"
-      className="relative flex min-h-80 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#7c3aed] via-[#a855f7] to-[#ec4899] p-7 text-white shadow-sm"
+      className="relative flex min-h-80 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#7c3aed] via-[#a855f7] to-[#ec4899] p-7 text-white shadow-sm lg:sticky lg:top-20"
     >
       <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/15" />
       <div aria-hidden="true" className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-white/10" />

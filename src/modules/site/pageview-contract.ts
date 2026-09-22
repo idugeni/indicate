@@ -22,8 +22,6 @@ export interface PageviewKeyIdentity {
   readonly articleSiteId: string;
 }
 
-export const VIEW_COUNT_FRESHNESS_NOTE = 'Angka views diperbarui harian.';
-
 /**
  * Serialize the beacon payload into a JSON body; reject invalid input at the source.
  *

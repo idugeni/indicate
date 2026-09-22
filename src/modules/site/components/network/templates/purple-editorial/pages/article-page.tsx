@@ -15,7 +15,6 @@ import { PurpleEditorialViewBeacon } from '@/modules/site/components/network/tem
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { PurpleEditorialPicks } from '@/modules/site/components/network/templates/purple-editorial/cards/picks';
 import { articleImage, authorDisplayName, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/purple-editorial/lib/format';
-import { VIEW_COUNT_FRESHNESS_NOTE } from '@/modules/site/pageview-contract';
 
 export function PurpleEditorialArticle({
   site,
@@ -60,7 +59,7 @@ export function PurpleEditorialArticle({
                 <ChevronRight className="h-3 w-3" aria-hidden="true" />
               </>
             ) : null}
-            <span className="max-w-xs truncate text-slate-900" aria-current="page">{article.title}</span>
+            <span className="min-w-0 flex-1 truncate text-slate-900" aria-current="page">{article.title}</span>
           </nav>
 
           {article.categoryName === null ? null : (
@@ -91,7 +90,7 @@ export function PurpleEditorialArticle({
                   <span aria-hidden="true">·</span>
                   <span>{reading} menit baca</span>
                   <span aria-hidden="true">·</span>
-                  <span className="inline-flex items-center gap-1" title={VIEW_COUNT_FRESHNESS_NOTE}>
+                  <span className="inline-flex items-center gap-1">
                     <Eye className="h-3 w-3" aria-hidden="true" />
                     {formatFullViews(article.viewCount)}
                   </span>
@@ -230,7 +229,7 @@ export function PurpleEditorialArticle({
               </div>
               <div className="bg-white px-3 py-2.5 text-center">
                 <dt className="font-sans text-[10px] uppercase tracking-wider text-slate-400">Dibaca</dt>
-                <dd className="m-0 mt-0.5 inline-flex items-center justify-center gap-1 font-sans text-xs font-bold tabular-nums text-slate-800" title={VIEW_COUNT_FRESHNESS_NOTE}>
+                <dd className="m-0 mt-0.5 inline-flex items-center justify-center gap-1 font-sans text-xs font-bold tabular-nums text-slate-800">
                   <Eye className="h-3 w-3 text-slate-400" aria-hidden="true" />
                   {formatFullViews(article.viewCount)}
                 </dd>

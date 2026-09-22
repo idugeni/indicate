@@ -48,7 +48,7 @@ export function RedEditorialPicks({
           ))}
         </div>
 
-        <aside aria-label="Paling banyak dibaca" className="min-w-0 space-y-6">
+        <aside aria-label="Paling banyak dibaca" className="min-w-0 space-y-6 self-start lg:sticky lg:top-20">
           <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#ecd3d3]/70">
             <p className="m-0 flex items-center gap-2 text-sm font-bold text-[#230d0d]">
               <TrendingUp className="h-4 w-4 text-[#b91c1c]" aria-hidden="true" />

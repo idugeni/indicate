@@ -48,7 +48,7 @@ export function DarkNavyListing({ site, title, description, path, indexable }: L
                 articles={latest}
                 description={description ?? 'Informasi terkini dari berbagai daerah dan dunia.'}
               />
-              <div className="grid min-w-0 gap-6">
+              <div className="grid min-w-0 gap-6 lg:sticky lg:top-20">
                 <DarkNavyMostRead articles={mostRead} />
                 <DarkNavyNewsletter compact />
               </div>

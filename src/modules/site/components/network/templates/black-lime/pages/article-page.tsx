@@ -15,7 +15,6 @@ import { BlackLimeViewBeacon } from '@/modules/site/components/network/templates
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimePicks } from '@/modules/site/components/network/templates/black-lime/cards/picks';
 import { articleImage, authorDisplayName, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/black-lime/lib/format';
-import { VIEW_COUNT_FRESHNESS_NOTE } from '@/modules/site/pageview-contract';
 
 export function BlackLimeArticle({
   site,
@@ -60,7 +59,7 @@ export function BlackLimeArticle({
                 <ChevronRight className="h-3 w-3" aria-hidden="true" />
               </>
             ) : null}
-            <span className="max-w-xs truncate text-[#f2f5e9]" aria-current="page">{article.title}</span>
+            <span className="min-w-0 flex-1 truncate text-[#f2f5e9]" aria-current="page">{article.title}</span>
           </nav>
 
           {article.categoryName === null ? null : (
@@ -91,7 +90,7 @@ export function BlackLimeArticle({
                   <span aria-hidden="true">·</span>
                   <span>{reading} menit baca</span>
                   <span aria-hidden="true">·</span>
-                  <span className="inline-flex items-center gap-1" title={VIEW_COUNT_FRESHNESS_NOTE}>
+                  <span className="inline-flex items-center gap-1">
                     <Eye className="h-3 w-3" aria-hidden="true" />
                     {formatFullViews(article.viewCount)}
                   </span>
@@ -230,7 +229,7 @@ export function BlackLimeArticle({
               </div>
               <div className="bg-[#131711] px-3 py-2.5 text-center">
                 <dt className="font-sans text-[10px] uppercase tracking-wider text-[#646b5e]">Dibaca</dt>
-                <dd className="m-0 mt-0.5 inline-flex items-center justify-center gap-1 font-sans text-xs font-bold tabular-nums text-[#f2f5e9]" title={VIEW_COUNT_FRESHNESS_NOTE}>
+                <dd className="m-0 mt-0.5 inline-flex items-center justify-center gap-1 font-sans text-xs font-bold tabular-nums text-[#f2f5e9]">
                   <Eye className="h-3 w-3 text-[#646b5e]" aria-hidden="true" />
                   {formatFullViews(article.viewCount)}
                 </dd>

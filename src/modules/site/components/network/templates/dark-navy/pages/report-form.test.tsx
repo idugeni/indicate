@@ -35,7 +35,12 @@ describe('DarkNavyReportForm submit', () => {
     vi.stubGlobal('fetch', fetch);
     setup();
     fireEvent.change(screen.getByLabelText(/kontak anda/i), { target: { value: 'warga@example.test' } });
-    fireEvent.change(screen.getByLabelText(/kategori pelanggaran/i), { target: { value: 'misinformation' } });
+    const trigger = screen.getByRole('combobox', { name: /kategori pelanggaran/i });
+    fireEvent.click(trigger);
+    const option = await screen.findByRole('option', { name: 'Misinformasi / hoaks' });
+    fireEvent.pointerDown(option);
+    fireEvent.click(option);
+    expect(trigger.textContent).toMatch(/misinformasi \/ hoaks/i);
     fireEvent.change(screen.getByLabelText(/uraian spesifik/i), { target: { value: 'Paragraf kedua memuat klaim tanpa sumber yang jelas.' } });
     fireEvent.click(screen.getByRole('button', { name: /kirim laporan/i }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(
@@ -53,6 +58,6 @@ describe('DarkNavyReportForm submit', () => {
     fireEvent.change(screen.getByLabelText(/kontak anda/i), { target: { value: 'warga@example.test' } });
     fireEvent.change(screen.getByLabelText(/uraian spesifik/i), { target: { value: 'Uraian yang cukup panjang untuk validasi.' } });
     fireEvent.click(screen.getByRole('button', { name: /kirim laporan/i }));
-    expect(await screen.findByText(/laporan gagal dikirim/i)).toBeDefined();
+    expect(await screen.findByText(/terlalu banyak laporan/i)).toBeDefined();
   });
 });
