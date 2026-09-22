@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (155 migrations):
+-- Reviewed sources, in journal order (156 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -168,6 +168,7 @@
 --   153  20260922050000_retention_runs_organization_idx  ledger sha256:8300ea22baecd3476641c50ec17c1196cd5267050f6ddb5e82b8bde889f448d0
 --   154  20260922060000_article_categories  ledger sha256:39d11a166629bc95c5c0a85147dc5dd798fe17069005eda7947265f6a940d860
 --   155  20260923000000_article_categories_org_fk  ledger sha256:add66418580f198720c735cfb1bf6404dedf493ab5eeeb59170e1f3346e94b5e
+--   156  20260923010000_article_categories_rls  ledger sha256:70ac69c492761112e9954be5c482c372900c1184b46e8b9fd25b2dc1883a577c
 
 BEGIN;
 
@@ -12651,4 +12652,25 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (154, 'article_categories_org_fk', 'sha256:377d0691ab0a9c6f9e6a14a46048d7f7c04df63cdf88e596006e006a1af13327');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('add66418580f198720c735cfb1bf6404dedf493ab5eeeb59170e1f3346e94b5e', 1790100191422);
+
+-- ----------------------------------------------------------------------
+-- 20260923010000_article_categories_rls
+-- ----------------------------------------------------------------------
+-- Tenant isolation for multi-category assignments: RLS plus runtime grants
+-- plus org-scoped policies mirroring `categories` (this table carries no
+-- region column, so policies check the organization only). Without this,
+-- `indicate_runtime` holds zero privileges here and every dashboard read
+-- touching assignments fails closed with permission denied.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.article_categories ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.article_categories TO indicate_runtime;
+CREATE POLICY tenant_isolation_select ON public.article_categories FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()));
+CREATE POLICY tenant_isolation_insert ON public.article_categories FOR INSERT TO indicate_runtime WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()));
+CREATE POLICY tenant_isolation_update ON public.article_categories FOR UPDATE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id())) WITH CHECK (organization_id = (SELECT indicate_private.current_organization_id()));
+CREATE POLICY tenant_isolation_delete ON public.article_categories FOR DELETE TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()));
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (155, 'article_categories_rls', 'sha256:b14e51c7efcf237ad19e7a19be21897cb181267fdf732c1633fbdcba5984ab2f');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('70ac69c492761112e9954be5c482c372900c1184b46e8b9fd25b2dc1883a577c', 1790101158363);
 COMMIT;
