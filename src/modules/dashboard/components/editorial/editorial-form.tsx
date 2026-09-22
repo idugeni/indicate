@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useRef, useState, useTransition, type FormEvent } from 'react';
+import { useId, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import {
   Check,
@@ -15,7 +15,9 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
+import { rankTags } from '@/modules/dashboard/components/shared/suggestion-cache';
+import { TagCombobox } from '@/modules/dashboard/components/shared/tag-combobox';
 import { Textarea } from '@/components/ui/textarea';
 import type {
   ArticleEntity,
@@ -116,8 +118,14 @@ export function EditorialForm({
   const toggleAssignGroup = (id: string) => {
     setAssignExcluded((prev) => (prev.includes(id) ? prev.filter((excluded) => excluded !== id) : [...prev, id]));
   };
-  /** Archived publishers stay visible in governance views but are hidden from article creation. */
-  const isCreatablePublisher = (status: string | undefined) => status === undefined || status === 'active';
+  const regionOptions = useMemo(() => (model?.regions ?? []).map((r) => ({ value: r.id, label: r.name })), [model?.regions]);
+  const publisherOptions = useMemo(
+    () => (model?.publishers ?? []).filter((p) => p.status === undefined || p.status === 'active').map((p) => ({ value: p.id, label: p.name })),
+    [model?.publishers],
+  );
+  const categoryOptions = useMemo(() => (model?.categories ?? []).map((c) => ({ value: c.id, label: c.name })), [model?.categories]);
+  const articleOptions = useMemo(() => (model?.articles ?? []).map((a) => ({ value: a.id, label: a.title })), [model?.articles]);
+  const tagSuggestions = useMemo(() => rankTags(model?.articles ?? []), [model?.articles]);
   /** One article picker drives both distribution and view seeding; defaults to the first article. */
   const [assignArticleId, setAssignArticleId] = useState<string | null>(null);
   const assignArticleValue = assignArticleId ?? model?.articles?.[0]?.id ?? '';
@@ -217,38 +225,29 @@ export function EditorialForm({
               <Label htmlFor={regionSelectId} className="font-mono text-xs text-paper-dim">
                 Wilayah
               </Label>
-              <DashboardSelect
+              <SearchCombobox
                 id={regionSelectId}
                 name="regionId"
                 required
                 disabled={isSubmitting}
                 placeholder="Pilih wilayah"
-              >
-                {model?.regions?.map((r) => (
-                  <DashboardSelectItem key={r.id} value={r.id}>
-                    {r.name}
-                  </DashboardSelectItem>
-                ))}
-              </DashboardSelect>
+                options={regionOptions}
+              />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor={publisherSelectId} className="font-mono text-xs text-paper-dim">
                 Penerbit
               </Label>
-              <DashboardSelect
+              <SearchCombobox
                 id={publisherSelectId}
                 name="publisherId"
                 disabled={isSubmitting}
                 placeholder="Mandiri (tanpa penerbit)"
-              >
-                <DashboardSelectItem value="">Mandiri (tanpa penerbit)</DashboardSelectItem>
-                {model?.publishers?.filter((p) => isCreatablePublisher(p.status)).map((p) => (
-                  <DashboardSelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </DashboardSelectItem>
-                ))}
-              </DashboardSelect>
+                allowEmpty
+                emptyLabel="Mandiri (tanpa penerbit)"
+                options={publisherOptions}
+              />
             </div>
           </div>
 
@@ -256,19 +255,15 @@ export function EditorialForm({
             <Label htmlFor={categorySelectId} className="font-mono text-xs text-paper-dim">
               Kategori
             </Label>
-            <DashboardSelect
+            <SearchCombobox
               id={categorySelectId}
               name="categoryId"
               disabled={isSubmitting}
               placeholder="Umum / Tanpa Kategori"
-            >
-              <DashboardSelectItem value="">Umum / Tanpa Kategori</DashboardSelectItem>
-              {model?.categories?.map((c) => (
-                <DashboardSelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </DashboardSelectItem>
-              ))}
-            </DashboardSelect>
+              allowEmpty
+              emptyLabel="Umum / Tanpa Kategori"
+              options={categoryOptions}
+            />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -326,12 +321,17 @@ export function EditorialForm({
             <Label htmlFor={tagsInputId} className="font-mono text-xs text-paper-dim">
               Topik (koma, maks. 10)
             </Label>
-            <Input
+            <TagCombobox
               id={tagsInputId}
               name="tags"
               disabled={isSubmitting}
               placeholder="cth: wonosobo, pertanian, apbd"
-              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              suggestions={tagSuggestions}
+              maxItems={TAG_MAX_COUNT}
+              normalizeValue={(raw) => {
+                const first = normalizeTagList([raw])[0];
+                return typeof first === 'string' ? first : '';
+              }}
             />
           </div>
 
@@ -431,20 +431,15 @@ export function EditorialForm({
             <Label htmlFor={assignArticleSelectId} className="font-mono text-xs text-paper-dim">
               Pilih Artikel Target
             </Label>
-            <DashboardSelect
+            <SearchCombobox
               id={assignArticleSelectId}
               name="articleId"
               value={assignArticleValue}
               onValueChange={(next) => { if (next !== null) setAssignArticleId(next); }}
               disabled={isAssigning}
               placeholder="Pilih artikel"
-            >
-              {model?.articles?.map((a) => (
-                <DashboardSelectItem key={a.id} value={a.id}>
-                  {a.title}
-                </DashboardSelectItem>
-              ))}
-            </DashboardSelect>
+              options={articleOptions}
+            />
           </div>
 
           <div className="space-y-2">

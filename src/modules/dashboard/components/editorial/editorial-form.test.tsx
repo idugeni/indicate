@@ -57,6 +57,38 @@ describe('Formulir redaksi', () => {
     expect(await screen.findByRole('option', { name: 'Penerbit Uji' })).toBeDefined();
   });
 
+  it('menyaring penerbit saat diketik dan mengirim id terpilih', async () => {
+    const user = userEvent.setup();
+    const { submit, container } = setup({});
+    await user.click(screen.getByLabelText('Penerbit'));
+    await user.type(screen.getByLabelText('Penerbit'), 'uji');
+    await waitFor(() => expect(screen.queryByRole('option', { name: 'Mandiri (tanpa penerbit)' })).toBeNull());
+    await user.keyboard('{Enter}');
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Sumber'), { target: { value: 'Rilis Resmi' } });
+    fireEvent.change(screen.getByLabelText(/Isi Artikel Lengkap/), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledWith(expect.objectContaining({ publisherId: 'p-1' })),
+    );
+  });
+
+  it('menambah topik lewat saran tag dan mengirimkannya', async () => {
+    const user = userEvent.setup();
+    const { submit, container } = setup({});
+    const tagsInput = screen.getByLabelText(/Topik \(koma, maks\. 10\)/);
+    await user.click(tagsInput);
+    await user.type(tagsInput, 'wonosobo');
+    await user.keyboard('{Enter}');
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Sumber'), { target: { value: 'Rilis Resmi' } });
+    fireEvent.change(screen.getByLabelText(/Isi Artikel Lengkap/), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledWith(expect.objectContaining({ tags: ['wonosobo'] })),
+    );
+  });
+
   it('mengisi slug otomatis dari judul saat blur', () => {
     setup({});
     const titleInput = screen.getByLabelText('Judul Artikel');

@@ -54,6 +54,8 @@ export interface ArticleEntity {
   readonly title: string;
   readonly body: string;
   readonly source: string;
+  /** Normalized topic tags; absent in projections that omit them. */
+  readonly tags?: readonly string[];
   readonly version: number;
   readonly status: string;
 }

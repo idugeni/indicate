@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useRef, useState, useTransition, type FormEvent } from 'react';
+import { useId, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Send, Sparkles } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { generateIdempotencyUuid } from '@/modules/dashboard/components/shared/form-utils';
 import type { PublicationStatusProjection, PublishingState } from '@/modules/publishing/models';
 
@@ -77,6 +77,10 @@ export function PublishingForm({
   const [selectedSiteIds, setSelectedSiteIds] = useState<readonly string[]>([]);
   const [isSuggesting, startSuggestTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  const articleOptions = useMemo(
+    () => (model?.articles ?? []).map((item) => ({ value: item.id, label: item.title ? `${item.title} (${item.slug ?? item.id})` : item.id })),
+    [model?.articles],
+  );
 
   const handleGenerateKey = () => {
     setIdempotencyKey(generateIdempotencyUuid());
@@ -167,20 +171,15 @@ export function PublishingForm({
             <Label htmlFor={articleSelectId} className="font-mono text-xs text-paper-dim">
               Pilih Artikel
             </Label>
-            <DashboardSelect
+            <SearchCombobox
               id={articleSelectId}
               name="articleId"
               disabled={isPublishing}
               defaultValue={model?.articles?.[0]?.id ?? ''}
               placeholder="Pilih artikel"
+              options={articleOptions}
               onValueChange={() => setSuggested({})}
-            >
-              {model?.articles?.map((item) => (
-                <DashboardSelectItem key={item.id} value={item.id}>
-                  {item.title ? `${item.title} (${item.slug ?? item.id})` : item.id}
-                </DashboardSelectItem>
-              ))}
-            </DashboardSelect>
+            />
           </div>
 
           <div className="space-y-2">
