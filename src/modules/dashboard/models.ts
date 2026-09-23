@@ -35,6 +35,8 @@ export interface RegionRecord extends VersionedRecord {
   readonly name: string;
   readonly slug: string;
   readonly status: LifecycleStatus;
+  readonly kind: 'region' | 'city';
+  readonly parentRegionId: string | null;
 }
 
 export interface SiteRecord extends VersionedRecord {
@@ -185,6 +187,9 @@ export interface ArticleSiteRecord extends VersionedRecord {
   readonly publishedAt: string | null;
   readonly active: boolean;
   readonly viewCount: number;
+  readonly assignmentSource: 'manual' | 'auto';
+  readonly expandedFromSiteId: string | null;
+  readonly customCanonicalUrl: string | null;
 }
 
 export interface MediaSummary {

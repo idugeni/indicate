@@ -207,6 +207,15 @@ describe('readSite projection', () => {
     expect(item).toHaveProperty('imageHeight', null);
   });
 
+  it('mewarisi kanonis primer pada baris turunan cascade', async () => {
+    const { repository } = harness({
+      articles: [articleRow({ customCanonicalUrl: 'https://portal.test/berita-utama' })],
+    });
+    const item = (await repository.loadNetworkSite({ ...CONTEXT }, {}))?.articles[0];
+    expect(item).toBeDefined();
+    expect(item).toHaveProperty('canonicalUrl', 'https://portal.test/berita-utama');
+  });
+
   it('customDescription null jatuh ke excerpt 600 karakter kepala', async () => {
     const head = `${'kata '.repeat(150)}<b>rusak`;
     const { repository } = harness({

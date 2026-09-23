@@ -32,6 +32,8 @@ export function ConfigurationPanel({
   const domainInputId = useId();
   const regionNameId = useId();
   const regionSlugId = useId();
+  const regionKindSelectId = useId();
+  const regionParentSelectId = useId();
   const siteDomainSelectId = useId();
   const siteRegionSelectId = useId();
   const siteHostnameInputId = useId();
@@ -61,11 +63,14 @@ export function ConfigurationPanel({
     const slug = String(formData.get('slug') ?? '').trim().toLowerCase();
 
     startRegionTransition(async () => {
+      const parentRegionId = String(formData.get('parentRegionId') ?? '').trim();
       await command('region.create', {
         externalKey: slug,
         name: String(formData.get('name') ?? '').trim(),
         slug,
         status: 'active',
+        kind: String(formData.get('kind') ?? 'region'),
+        parentRegionId: parentRegionId === '' ? null : parentRegionId,
       });
       form.reset();
     });
@@ -168,6 +173,41 @@ export function ConfigurationPanel({
               pattern="[a-z0-9-]+"
               className="h-9 border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus-visible:ring-brass"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor={regionKindSelectId} className="font-sans text-xs font-medium text-paper-dim">
+              Tingkatan
+            </Label>
+            <DashboardSelect
+              id={regionKindSelectId}
+              name="kind"
+              disabled={isAddingRegion}
+              defaultValue="region"
+              placeholder="Pilih tingkatan"
+            >
+              <DashboardSelectItem value="region">Wilayah (region)</DashboardSelectItem>
+              <DashboardSelectItem value="city">Kota (di bawah region)</DashboardSelectItem>
+            </DashboardSelect>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor={regionParentSelectId} className="font-sans text-xs font-medium text-paper-dim">
+              Induk (khusus kota)
+            </Label>
+            <DashboardSelect
+              id={regionParentSelectId}
+              name="parentRegionId"
+              disabled={isAddingRegion}
+              placeholder="Tanpa induk (wilayah)"
+            >
+              <DashboardSelectItem value="">Tanpa induk (wilayah)</DashboardSelectItem>
+              {(model?.regions ?? []).map((item) => (
+                <DashboardSelectItem key={item.id} value={item.id}>
+                  {item.name}
+                </DashboardSelectItem>
+              ))}
+            </DashboardSelect>
           </div>
 
           <Button

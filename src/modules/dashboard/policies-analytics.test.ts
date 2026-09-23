@@ -33,6 +33,7 @@ function assignment(
   return {
     id, organizationId: ORG, articleId: partial.articleId, siteId: partial.siteId, state: partial.state,
     stateOccurredAt: partial.at, publishedUrl: null, publishedAt: null, active: true, viewCount: 0,
+    assignmentSource: 'manual' as const, expandedFromSiteId: null, customCanonicalUrl: null,
     version: 1, createdAt: partial.at, updatedAt: partial.at,
   } as const;
 }

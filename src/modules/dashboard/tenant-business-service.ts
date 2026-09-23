@@ -12,6 +12,7 @@ import {
 } from '@/modules/dashboard/policies';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import { allocateUniqueSlug } from '@/modules/site/slug-allocator';
+import { expandCascadeSites } from '@/modules/site/site-cascade';
 import { validateTipTapDoc } from '@/modules/site/tiptap-document';
 import {
   DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction,
@@ -318,6 +319,9 @@ export class TenantBusinessService {
     return this.mutate({ actor, raw, schema: regionCreateSchema, permission: DASHBOARD_PERMISSIONS.regionManage, action: 'region.create', targetType: 'region', execute: (transaction, value, now) => {
       requireUnrestrictedRegion(actor);
       if (transaction.state.regions.some(({ slug, externalKey }) => slug === value.slug || externalKey === value.externalKey)) throw new DashboardConflictError();
+      const parent = value.parentRegionId === null ? null : requireRecord(transaction.state.regions, value.parentRegionId);
+      if ((value.kind === 'city') === (parent === null)) throw new DashboardValidationError({ parentRegionId: ['Kota wajib berinduk ke satu region; region tidak berinduk.'] });
+      if (parent !== null && (parent.kind !== 'region' || parent.status === 'archived')) throw new DashboardValidationError({ parentRegionId: ['Induk kota harus region aktif.'] });
       const record: RegionRecord = { ...this.base(actor, now), ...value };
       transaction.state.regions.push(record); this.audit(transaction, 'region.create', 'region', record.id, null, record); return record;
     }});
@@ -327,7 +331,13 @@ export class TenantBusinessService {
     return this.mutate({ actor, raw, schema: regionUpdateSchema, permission: DASHBOARD_PERMISSIONS.regionManage, action: 'region.update', targetType: 'region', execute: (transaction, value, now) => {
       requireUnrestrictedRegion(actor);
       const before = requireRecord(transaction.state.regions, value.id); requireVersion(before, value.expectedVersion);
-      const after: RegionRecord = { ...before, externalKey: value.externalKey, name: value.name, slug: value.slug, status: value.status, version: before.version + 1, updatedAt: now };
+      const kind = value.kind ?? before.kind ?? 'region';
+      const parentRegionId = (value.parentRegionId ?? before.parentRegionId) ?? null;
+      const parent = parentRegionId === null ? null : requireRecord(transaction.state.regions, parentRegionId);
+      if ((kind === 'city') === (parent === null)) throw new DashboardValidationError({ parentRegionId: ['Kota wajib berinduk ke satu region; region tidak berinduk.'] });
+      if (parent !== null && (parent.id === before.id || parent.kind !== 'region' || parent.status === 'archived')) throw new DashboardValidationError({ parentRegionId: ['Induk kota harus region aktif yang berbeda.'] });
+      if (before.kind === 'region' && kind === 'city' && transaction.state.regions.some((region) => region.parentRegionId === before.id)) throw new DashboardConflictError();
+      const after: RegionRecord = { ...before, externalKey: value.externalKey, name: value.name, slug: value.slug, status: value.status, kind, parentRegionId, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.regions, after); this.audit(transaction, 'region.update', 'region', after.id, before, after); return after;
     }});
   }
@@ -710,20 +720,43 @@ export class TenantBusinessService {
       const article = requireArticleInScope(transaction.state.articles, value.articleId, actor);
       if (article.organizationId !== actor.organizationId) throw new DashboardAccessDeniedError();
       const distinct = [...new Set(value.siteIds)];
-      const targetSites = distinct.map((siteId) => requireSiteInScope(transaction.state.sites, siteId, actor));
-      if (targetSites.some(({ organizationId, status }) => organizationId !== actor.organizationId || status !== 'active')) throw new DashboardAccessDeniedError();
+      const requested = distinct.map((siteId) => requireSiteInScope(transaction.state.sites, siteId, actor));
+      if (requested.some(({ organizationId, status }) => organizationId !== actor.organizationId || status !== 'active')) throw new DashboardAccessDeniedError();
+      const expansion = expandCascadeSites(transaction.state.sites, transaction.state.regions, distinct, article.slug);
+      const expanded = expansion.targets.map((target) => ({ ...target, site: requireSiteInScope(transaction.state.sites, target.siteId, actor) }));
+      if (expanded.some(({ site }) => site.organizationId !== actor.organizationId || site.status !== 'active')) throw new DashboardAccessDeniedError();
       const before = transaction.state.articleSites.filter(({ articleId, active }) => articleId === article.id && active);
       for (let index = 0; index < transaction.state.articleSites.length; index += 1) {
         const assignment = transaction.state.articleSites[index]!;
         if (assignment.articleId === article.id) transaction.state.articleSites[index] = { ...assignment, active: false };
       }
-      for (const site of targetSites) {
-        const existing = transaction.state.articleSites.find(({ articleId, siteId }) => articleId === article.id && siteId === site.id);
-        if (existing === undefined) transaction.state.articleSites.push({ ...this.base(actor, now), articleId: article.id, siteId: site.id, state: 'queued', stateOccurredAt: now, publishedUrl: null, publishedAt: null, active: true, viewCount: 0 });
-        else Object.assign(existing, { active: true, version: existing.version + 1, updatedAt: now });
+      const expandedFrom: Record<string, string> = {};
+      for (const target of expanded) {
+        const existing = transaction.state.articleSites.find(({ articleId, siteId }) => articleId === article.id && siteId === target.siteId);
+        if (target.originSiteId !== null) expandedFrom[target.siteId] = target.originSiteId;
+        if (existing === undefined) {
+          transaction.state.articleSites.push({
+            ...this.base(actor, now),
+            articleId: article.id,
+            siteId: target.siteId,
+            state: 'queued',
+            stateOccurredAt: now,
+            publishedUrl: null,
+            publishedAt: null,
+            active: true,
+            viewCount: 0,
+            assignmentSource: target.originSiteId === null ? 'manual' : 'auto',
+            expandedFromSiteId: target.originSiteId,
+            customCanonicalUrl: target.originSiteId === null ? null : target.canonicalUrl,
+          });
+        } else if (target.originSiteId === null) {
+          Object.assign(existing, { active: true, assignmentSource: 'manual' as const, expandedFromSiteId: null, version: existing.version + 1, updatedAt: now });
+        } else {
+          Object.assign(existing, { active: true, assignmentSource: 'auto' as const, expandedFromSiteId: target.originSiteId, customCanonicalUrl: target.canonicalUrl, version: existing.version + 1, updatedAt: now });
+        }
       }
       const after = transaction.state.articleSites.filter(({ articleId, active }) => articleId === article.id && active);
-      this.audit(transaction, 'article.sites.assign', 'article', article.id, { siteIds: before.map(({ siteId }) => siteId).sort() }, { siteIds: after.map(({ siteId }) => siteId).sort() });
+      this.audit(transaction, 'article.sites.assign', 'article', article.id, { siteIds: before.map(({ siteId }) => siteId).sort() }, { siteIds: after.map(({ siteId }) => siteId).sort(), expanded: expandedFrom });
       return after;
     }});
   }

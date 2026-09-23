@@ -156,7 +156,7 @@ export function ArticleDistributeForm({
             Domain Tujuan (default: semua)
           </span>
           <p className="m-0 font-mono text-[11px] text-paper-faint">
-            Memilih domain menyalurkan ke seluruh situs (subdomain) di bawahnya.
+            Memilih domain menyalurkan ke seluruh situs (subdomain) di bawahnya. Situs kota otomatis ikut menyalurkan region induk dan portal utama.
           </p>
           <div className="max-h-60 space-y-1.5 overflow-y-auto rounded border border-hairline bg-bg p-3">
             {assignSites.length === 0 ? (

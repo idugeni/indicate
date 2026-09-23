@@ -26,6 +26,8 @@ export interface RegionEntity {
   readonly externalKey?: string;
   readonly version?: number;
   readonly status?: string;
+  readonly kind?: string;
+  readonly parentRegionId?: string | null;
 }
 
 export interface CategoryEntity {

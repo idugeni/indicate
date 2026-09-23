@@ -198,4 +198,82 @@ describe('TenantBusinessService articles assignments', () => {
     if (result.ok) throw new Error('expected error');
     expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
   });
+
+  it('membuat kota berinduk dan menolak induk tak valid', async () => {
+    const REGION = '0199a2b3-4c5d-7e8f-9012-3456789abc01';
+    const CITY = '0199a2b3-4c5d-7e8f-9012-3456789abc02';
+    const region = { id: REGION, organizationId: 'org-1', slug: 'wonosobo', externalKey: 'w', name: 'Wonosobo', status: 'active', kind: 'region', parentRegionId: null, version: 1 };
+    const { service, state } = harness({ regions: [region] });
+    const city = await service.createRegion(actor, { externalKey: 'k', name: 'Kota', slug: 'kota', kind: 'city', parentRegionId: REGION });
+    expect(city.ok).toBe(true);
+    expect((state.regions as { kind: string }[]).find((item) => item.kind === 'city')).toBeDefined();
+
+    const orphan = await service.createRegion(actor, { externalKey: 'o', name: 'Yatim', slug: 'yatim', kind: 'city', parentRegionId: null });
+    expect(orphan.ok).toBe(false);
+
+    const nested = await service.createRegion(actor, { externalKey: 'n', name: 'Sarang', slug: 'sarang', kind: 'city', parentRegionId: CITY });
+    expect(nested.ok).toBe(false);
+
+    const regionAsCity = await service.createRegion(actor, { externalKey: 'r', name: 'Biasa', slug: 'biasa', kind: 'region', parentRegionId: REGION });
+    expect(regionAsCity.ok).toBe(false);
+  });
+
+  it('meluaskan assignment kota ke region dan apex dengan kanonis primer', async () => {
+    const APEX = '0199a2b3-4c5d-7e8f-9012-3456789abc11';
+    const REGION_SITE = '0199a2b3-4c5d-7e8f-9012-3456789abc12';
+    const CITY_SITE = '0199a2b3-4c5d-7e8f-9012-3456789abc13';
+    const R = '0199a2b3-4c5d-7e8f-9012-3456789abc21';
+    const C = '0199a2b3-4c5d-7e8f-9012-3456789abc22';
+    const article = { ...baseArticle, slug: 'berita-utama' };
+    const sites = [
+      { id: APEX, organizationId: 'org-1', domainId: 'd-1', regionId: null, normalizedHostname: 'portal.test', status: 'active' },
+      { id: REGION_SITE, organizationId: 'org-1', domainId: 'd-1', regionId: R, normalizedHostname: 'wonosobo.portal.test', status: 'active' },
+      { id: CITY_SITE, organizationId: 'org-1', domainId: 'd-1', regionId: C, normalizedHostname: 'kota.portal.test', status: 'active' },
+    ];
+    const regions = [
+      { id: R, organizationId: 'org-1', slug: 'wonosobo', externalKey: 'w', name: 'Wonosobo', status: 'active', kind: 'region', parentRegionId: null, version: 1 },
+      { id: C, organizationId: 'org-1', slug: 'kota', externalKey: 'k', name: 'Kota', status: 'active', kind: 'city', parentRegionId: R, version: 1 },
+    ];
+    const { service, state } = harness({ articles: [article], sites, regions, articleSites: [] });
+    const result = await service.assignArticleSites(actor, { articleId: ID, siteIds: [CITY_SITE] });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.map((row) => (row as { siteId: string }).siteId).sort()).toEqual([APEX, CITY_SITE, REGION_SITE].sort());
+    const rows = state.articleSites as { siteId: string; assignmentSource: string; expandedFromSiteId: string | null; customCanonicalUrl: string | null }[];
+    expect(rows.find((row) => row.siteId === CITY_SITE)).toMatchObject({ assignmentSource: 'manual', expandedFromSiteId: null, customCanonicalUrl: null });
+    expect(rows.find((row) => row.siteId === REGION_SITE)).toMatchObject({
+      assignmentSource: 'auto',
+      expandedFromSiteId: CITY_SITE,
+      customCanonicalUrl: 'https://portal.test/berita-utama',
+    });
+    expect(rows.find((row) => row.siteId === APEX)).toMatchObject({
+      assignmentSource: 'auto',
+      expandedFromSiteId: CITY_SITE,
+      customCanonicalUrl: 'https://portal.test/berita-utama',
+    });
+  });
+
+  it('menciutkan turunan saat asal dicabut', async () => {
+    const APEX = '0199a2b3-4c5d-7e8f-9012-3456789abc11';
+    const CITY_SITE = '0199a2b3-4c5d-7e8f-9012-3456789abc13';
+    const R = '0199a2b3-4c5d-7e8f-9012-3456789abc21';
+    const C = '0199a2b3-4c5d-7e8f-9012-3456789abc22';
+    const article = { ...baseArticle, slug: 'berita-utama' };
+    const sites = [
+      { id: APEX, organizationId: 'org-1', domainId: 'd-1', regionId: null, normalizedHostname: 'portal.test', status: 'active' },
+      { id: CITY_SITE, organizationId: 'org-1', domainId: 'd-1', regionId: C, normalizedHostname: 'kota.portal.test', status: 'active' },
+    ];
+    const regions = [
+      { id: R, organizationId: 'org-1', slug: 'wonosobo', externalKey: 'w', name: 'Wonosobo', status: 'active', kind: 'region', parentRegionId: null, version: 1 },
+      { id: C, organizationId: 'org-1', slug: 'kota', externalKey: 'k', name: 'Kota', status: 'active', kind: 'city', parentRegionId: R, version: 1 },
+    ];
+    const { service, state } = harness({ articles: [article], sites, regions, articleSites: [] });
+    const first = await service.assignArticleSites(actor, { articleId: ID, siteIds: [CITY_SITE] });
+    expect(first.ok).toBe(true);
+    const second = await service.assignArticleSites(actor, { articleId: ID, siteIds: [] });
+    expect(second.ok).toBe(true);
+    if (!second.ok) throw new Error('expected ok');
+    expect(second.value).toHaveLength(0);
+    expect((state.articleSites as { active: boolean }[]).every((row) => row.active === false)).toBe(true);
+  });
 });
