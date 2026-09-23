@@ -264,6 +264,14 @@ export function ArticleCreateForm({
     }
     setUploadingFeatured(true);
     setFeaturedStatus('Menyiapkan penyimpanan...');
+    let dimensions: { readonly widthPx: number; readonly heightPx: number } | undefined;
+    try {
+      const bitmap = await createImageBitmap(file);
+      if (bitmap.width > 0 && bitmap.height > 0) dimensions = { widthPx: bitmap.width, heightPx: bitmap.height };
+      bitmap.close();
+    } catch {
+      dimensions = undefined;
+    }
     try {
       const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
       const bytes = new Uint8Array(digest);
@@ -295,7 +303,7 @@ export function ArticleCreateForm({
         return;
       }
       setFeaturedStatus('Menyelesaikan pemeriksaan berkas...');
-      const completed = (await command('media.complete', { reservationId: reserved.reservationId })) as { readonly id?: unknown } | null;
+      const completed = (await command('media.complete', { reservationId: reserved.reservationId, ...(dimensions === undefined ? {} : dimensions) })) as { readonly id?: unknown } | null;
       const mediaId = typeof completed?.id === 'string' ? completed.id : null;
       if (mediaId === null) {
         setFeaturedStatus('Pemeriksaan berkas gagal. Coba unggah ulang.');

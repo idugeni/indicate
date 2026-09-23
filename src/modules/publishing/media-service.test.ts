@@ -181,6 +181,21 @@ describe('MediaService completeUpload', () => {
     expect(result.ok).toBe(true);
     expect(repository.activateMedia).toHaveBeenCalledTimes(1);
   });
+
+  it('meneruskan dimensi alami ke aktivasi dan menolak pasangan timpang', async () => {
+    const { service, repository } = harness(
+      { readReservation: async () => reservation },
+      { headExact: async () => ({ contentType: 'image/jpeg', contentLength: 1_000, checksum: CHECKSUM }) },
+    );
+    const activateMedia = repository.activateMedia as unknown as ReturnType<typeof vi.fn>;
+    const result = await service.completeUpload(actor, { reservationId: ARTICLE, widthPx: 1200, heightPx: 675 });
+    expect(result.ok).toBe(true);
+    expect(activateMedia).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ widthPx: 1200, heightPx: 675 }));
+    const lopsided = await service.completeUpload(actor, { reservationId: ARTICLE, widthPx: 1200 });
+    expect(lopsided.ok).toBe(false);
+    if (lopsided.ok) throw new Error('expected error');
+    expect(lopsided.error.error.code).toBe('INVALID_INPUT');
+  });
 });
 
 describe('MediaService read archive', () => {

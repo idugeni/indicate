@@ -39,7 +39,7 @@ export function mapReservation(row: ReservationRow): MediaReservationRecord {
 
 export function mapMedia(row: MediaRow): MediaAssetRecord {
   if (row.state === 'reserved') throw new PublishingConflictError();
-  return { id: row.id, organizationId: row.organizationId, objectKey: row.objectKey, purpose: row.purpose, mediaType: row.mediaType, sizeBytes: row.sizeBytes, checksum: row.checksum, thumbObjectKey: row.thumbObjectKey ?? null, owner: mapOwnerFromRow(row), state: row.state, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) };
+  return { id: row.id, organizationId: row.organizationId, objectKey: row.objectKey, purpose: row.purpose, mediaType: row.mediaType, sizeBytes: row.sizeBytes, checksum: row.checksum, thumbObjectKey: row.thumbObjectKey ?? null, widthPx: row.widthPx ?? null, heightPx: row.heightPx ?? null, owner: mapOwnerFromRow(row), state: row.state, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) };
 }
 
 export function mapJob(row: JobRow): PublicationJobRecord {

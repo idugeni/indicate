@@ -30,7 +30,9 @@ export const mediaCompletionSchema = z.object({
     sizeBytes: z.number().int().positive(),
     checksum: checksumField,
   }).strict().optional(),
-}).strict();
+  widthPx: z.number().int().min(1).max(30000).optional(),
+  heightPx: z.number().int().min(1).max(30000).optional(),
+}).strict().refine((value) => (value.widthPx === undefined) === (value.heightPx === undefined), 'widthPx and heightPx must travel together');
 export const mediaReadSchema = z.object({ mediaId: z.uuid() }).strict();
 export const mediaArchiveSchema = z.object({ mediaId: z.uuid(), expectedVersion: z.number().int().positive() }).strict();
 

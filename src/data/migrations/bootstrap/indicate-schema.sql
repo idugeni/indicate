@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (160 migrations):
+-- Reviewed sources, in journal order (161 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -173,6 +173,7 @@
 --   158  20260923030000_site_settings_description_strip_tagline  ledger sha256:d6df429cb436b83f48a967b725825a81e9cbc3de2d342d9b2f4fc27fa27c4d4f
 --   159  20260923050935_drop_article_dek  ledger sha256:e218c9b6fbe9349ff7c81485ffeddbd2cb5cd6b549fc9f2bf10a6faeb8a571aa
 --   160  20260923060000_media_scoped_object_keys  ledger sha256:706cb1cf62a9e4fd89fd1fcf23af857057e6a9b142d76d9cb2bb3a1445148efd
+--   161  20260923150140_media_dimensions  ledger sha256:864877367951c3f3fcc49476c232c35d84a5b4866fbb4f052681fbe837a61ae8
 
 BEGIN;
 
@@ -12783,4 +12784,22 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (159, 'media_scoped_object_keys', 'sha256:071a82ac10bc2e46b13120a93bad25b398e4f87a747251b67dd95cd16e893744');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('706cb1cf62a9e4fd89fd1fcf23af857057e6a9b142d76d9cb2bb3a1445148efd', 1790143000000);
+
+-- ----------------------------------------------------------------------
+-- 20260923150140_media_dimensions
+-- ----------------------------------------------------------------------
+-- Natural image dimensions for social cards: width/height travel with the
+-- stored bytes from upload completion, so Open Graph and Twitter tags can
+-- state real dimensions instead of a hardcoded 1200x630. Nullable for
+-- legacy rows whose dimensions were never captured; consumers fall back
+-- to the default when either side is missing.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.media ADD COLUMN width_px integer;
+ALTER TABLE public.media ADD COLUMN height_px integer;
+ALTER TABLE public.media ADD CONSTRAINT media_dimensions_positive CHECK (width_px IS NULL AND height_px IS NULL OR (width_px IS NOT NULL AND height_px IS NOT NULL AND width_px > 0 AND height_px > 0 AND width_px <= 30000 AND height_px <= 30000));
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (160, 'media_dimensions', 'sha256:dbd5ce658a304baf5ba899486304bffe4f16337dee3a33eaf448eba8d09821e1');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('864877367951c3f3fcc49476c232c35d84a5b4866fbb4f052681fbe837a61ae8', 1790175700885);
 COMMIT;

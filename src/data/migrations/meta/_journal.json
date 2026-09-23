@@ -1121,6 +1121,13 @@
       "when": 1790143000000,
       "tag": "20260923060000_media_scoped_object_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 160,
+      "version": "7",
+      "when": 1790175700885,
+      "tag": "20260923150140_media_dimensions",
+      "breakpoints": true
     }
   ]
 }

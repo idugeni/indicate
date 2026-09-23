@@ -18,6 +18,8 @@ function media(overrides: Partial<MediaAssetRecord> = {}): MediaAssetRecord {
     sizeBytes: 1024,
     checksum: 'abc',
     thumbObjectKey: null,
+    widthPx: null,
+    heightPx: null,
     owner: { kind: 'article', articleId: 'a1' },
     state: 'active',
     version: 1,

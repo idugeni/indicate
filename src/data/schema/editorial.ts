@@ -269,6 +269,9 @@ export const media = pgTable('media', {
   sizeBytes: integer('size_bytes').notNull(),
   checksum: text('checksum').notNull(),
   thumbObjectKey: text('thumb_object_key'),
+  /** Natural pixel dimensions of the stored bytes; null when never captured (legacy rows). */
+  widthPx: integer('width_px'),
+  heightPx: integer('height_px'),
   /** UU Hak Cipta attribution obligation (migration v76); optional pre-fill. */
   licenseSource: text('license_source'),
   attribution: text('attribution'),
@@ -291,6 +294,7 @@ export const media = pgTable('media', {
     OR (${table.organizationAsset} AND (${table.objectKey} LIKE 'assets/%' OR ${table.objectKey} LIKE ('o/' || ${table.organizationId}::text || '/p/%/organization/%')))
   )`),
   check('media_size_positive', sql`${table.sizeBytes} > 0 AND ${table.version} > 0`),
+  check('media_dimensions_positive', sql`(${table.widthPx} IS NULL AND ${table.heightPx} IS NULL) OR (${table.widthPx} IS NOT NULL AND ${table.heightPx} IS NOT NULL AND ${table.widthPx} > 0 AND ${table.heightPx} > 0 AND ${table.widthPx} <= 30000 AND ${table.heightPx} <= 30000)`),
   index('media_organization_state_idx').on(table.organizationId, table.state),
   index('media_organization_purpose_state_idx').on(table.organizationId, table.purpose, table.state),
 ]);

@@ -62,7 +62,11 @@ export async function uploadEditorImage(
     const thumbResponse = await fetchFn(thumbAuth.url, { method: 'PUT', headers: thumbAuth.requiredHeaders, body: prepared.thumb.blob });
     if (thumbResponse.ok) thumbPayload = { sizeBytes: prepared.thumb.sizeBytes, checksum: prepared.thumb.checksum };
   }
-  const completed = (await command('media.complete', thumbPayload === undefined ? { reservationId: reserved.reservationId } : { reservationId: reserved.reservationId, thumb: thumbPayload })) as CompletedMedia | null;
+  const dimensions =
+    prepared.width !== null && prepared.height !== null && Number.isInteger(prepared.width) && Number.isInteger(prepared.height) && prepared.width > 0 && prepared.height > 0
+      ? { widthPx: prepared.width, heightPx: prepared.height }
+      : undefined;
+  const completed = (await command('media.complete', { reservationId: reserved.reservationId, ...(thumbPayload === undefined ? {} : { thumb: thumbPayload }), ...(dimensions === undefined ? {} : dimensions) })) as CompletedMedia | null;
   const mediaId = completed?.id;
   if (typeof mediaId !== 'string' || mediaId === '') throw new Error('Pemeriksaan berkas gagal. Coba unggah ulang.');
   const storedSrc = `/api/network/media/${mediaId}`;

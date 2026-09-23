@@ -28,6 +28,8 @@ export interface ActivateMediaInput {
   readonly sizeBytes: number;
   readonly checksum: string;
   readonly thumbObjectKey: string | null;
+  readonly widthPx: number | null;
+  readonly heightPx: number | null;
   readonly now: string;
 }
 

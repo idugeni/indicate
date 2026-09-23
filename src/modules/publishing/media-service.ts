@@ -126,7 +126,7 @@ export class MediaService {
           thumbObjectKey = candidate;
         }
       }
-      return { ok: true, value: await this.repository.activateMedia(actor, { reservationId: reservation.id, mediaId: this.identifiers.create(), mediaType: metadata.contentType, sizeBytes: metadata.contentLength, checksum: metadata.checksum, thumbObjectKey, now: this.clock.now().toISOString() }) };
+      return { ok: true, value: await this.repository.activateMedia(actor, { reservationId: reservation.id, mediaId: this.identifiers.create(), mediaType: metadata.contentType, sizeBytes: metadata.contentLength, checksum: metadata.checksum, thumbObjectKey, widthPx: parsed.data.widthPx ?? null, heightPx: parsed.data.heightPx ?? null, now: this.clock.now().toISOString() }) };
     } catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'media.upload.complete.denied', 'media');
       if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat mengunggah media.', actor.requestId) };

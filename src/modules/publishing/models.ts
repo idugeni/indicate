@@ -34,6 +34,8 @@ export interface MediaAssetRecord {
   readonly sizeBytes: number;
   readonly checksum: string;
   readonly thumbObjectKey: string | null;
+  readonly widthPx: number | null;
+  readonly heightPx: number | null;
   readonly owner: MediaOwner;
   readonly state: 'active' | 'rejected' | 'archived';
   readonly version: number;

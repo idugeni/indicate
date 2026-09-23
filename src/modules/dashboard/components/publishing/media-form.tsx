@@ -175,7 +175,11 @@ export function MediaForm({
         }
 
         setUploadStatus('Menyelesaikan pemeriksaan berkas...');
-        const completed = await command('media.complete', thumbPayload === undefined ? { reservationId: reserved.reservationId } : { reservationId: reserved.reservationId, thumb: thumbPayload });
+        const dimensions =
+          prepared.width !== null && prepared.height !== null && Number.isInteger(prepared.width) && Number.isInteger(prepared.height) && prepared.width > 0 && prepared.height > 0
+            ? { widthPx: prepared.width, heightPx: prepared.height }
+            : undefined;
+        const completed = await command('media.complete', { reservationId: reserved.reservationId, ...(thumbPayload === undefined ? {} : { thumb: thumbPayload }), ...(dimensions === undefined ? {} : dimensions) });
         if (completed === null) {
           setUploadStatus('Pemeriksaan berkas gagal. Coba unggah ulang.');
           return;
