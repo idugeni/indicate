@@ -164,6 +164,17 @@ export interface PublicationTerminalNotifier {
   notifyJobTerminal(input: JobTerminalNotice): Promise<void>;
 }
 
+/**
+ * Warms freshly published URLs so the first social scrape hits hot caches.
+ *
+ * @remarks Implementations never throw and bound every fetch with a timeout:
+ * prewarming is opportunistic telemetry-grade work that must never delay or
+ * fail the worker. Crawlers still get correct (if slower) responses on a miss.
+ */
+export interface PublicationSharePrewarmPort {
+  prewarm(urls: readonly string[]): Promise<void>;
+}
+
 export class PublishingAccessDeniedError extends Error {
   constructor() { super('Publishing tenant resource unavailable'); }
 }

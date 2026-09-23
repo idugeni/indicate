@@ -1,6 +1,6 @@
 import type { ObjectStoragePort } from '@/integrations/storage/ports';
 import type { PublicationTargetPublisherPort } from '@/modules/publishing/ports';
-import type { PublicationTerminalNotifier } from '@/modules/publishing/ports';
+import type { PublicationTerminalNotifier, PublicationSharePrewarmPort } from '@/modules/publishing/ports';
 import type { RedisCoordinationPort, QueueClaim } from '@/integrations/redis/ports';
 import { PublishingConflictError, type PublishingRepository, type TargetTransitionInput } from '@/modules/publishing/ports';
 import { retryDelaySeconds, type RetryPolicy } from '@/modules/publishing/publication-policy';
@@ -29,6 +29,7 @@ export class PublicationWorker {
     private readonly policy: WorkerPolicy,
     private readonly clock: ClockLike = { now: () => new Date() },
     private readonly notifier: PublicationTerminalNotifier | null = null,
+    private readonly prewarmer: PublicationSharePrewarmPort | null = null,
   ) {}
 
   private async commitTransition(claim: WorkerClaim, input: TargetTransitionInput): Promise<PublicationStatusProjection> {
@@ -62,6 +63,7 @@ export class PublicationWorker {
   async run(workerId: string): Promise<WorkerRunSummary> {
     const started = this.clock.now(); const deadline = started.getTime() + this.policy.functionDeadlineSeconds * 1_000;
     let claimed = 0; let processed = 0; let remainingBudget = Math.max(1, this.policy.batchSize);
+    const warmedUrls = new Set<string>();
     const queueClaims = await this.queue.claimDue(started, Math.max(1, this.policy.batchSize), this.policy.leaseSeconds);
     for (const queueClaim of queueClaims) {
       const ref = parseLogicalId(queueClaim.logicalId);
@@ -84,6 +86,7 @@ export class PublicationWorker {
             catch (error) { outcome = { kind: 'retryable_failure' as const, code: String(sanitizeError(error).name ?? 'dependency_failure') }; }
             if (outcome.kind === 'published') {
               await this.commitTransition(claim, { targetId: target.id, toState: 'published', publishedUrl: outcome.url, now: this.clock.now().toISOString() });
+              warmedUrls.add(outcome.url);
               touched = true;
             } else if (outcome.kind === 'retryable_failure') {
               const delay = retryDelaySeconds(this.policy, current.attempt);
@@ -112,6 +115,11 @@ export class PublicationWorker {
       await this.queue.acknowledge(queueClaim);
       if (status !== null) await this.queue.mirrorState(ref.organizationId, ref.jobId, status.job.state, 3_600);
       if (touched && status !== null && status.result !== null) await this.notifyTerminal(ref.organizationId, ref.jobId, status);
+    }
+    if (warmedUrls.size > 0) {
+      try {
+        await this.prewarmer?.prewarm([...warmedUrls]);
+      } catch { /* best-effort: crawlers still get correct responses on a miss */ }
     }
     return { claimed, processed, reconciled: 0, cleaned: 0 };
   }

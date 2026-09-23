@@ -155,6 +155,79 @@ describe('PublicationWorker run', () => {
     await worker.run('w-1');
     expect(notifier.notifyJobTerminal).not.toHaveBeenCalled();
   });
+
+  it('memanaskan url terbit dan bertahan saat pemanas gagal', async () => {
+    const claim: QueueClaim = { logicalId: 'org-1:job-1', claimToken: 't-1', leaseExpiresAt: new Date() };
+    const queue = queueStub([claim]);
+    const workerClaim: WorkerClaim = { organizationId: 'org-1', jobId: 'job-1', workerId: 'w-1', fencingToken: 1, leaseExpiresAt: new Date().toISOString() };
+    const target: PublicationTargetRecord = {
+      id: 'tgt-1', organizationId: 'org-1', jobId: 'job-1', articleSiteId: 'as-1', siteId: 'site-1', state: 'queued',
+      attempt: 1, fencingToken: 1, nextAttemptAt: '2026-09-18T00:00:00.000Z', startedAt: null, finishedAt: null,
+      publishedUrl: null, publishedAt: null, sanitizedError: null,
+    };
+    const terminal: PublicationStatusProjection = {
+      job: jobRecord({ state: 'published', finalizedAt: '2026-09-19T11:00:00.000Z' }),
+      targets: [{ ...target, state: 'published', publishedUrl: 'https://portal.test/a' }],
+      result: { finalState: 'published', successfulCount: 1, urls: ['https://portal.test/a'] },
+    };
+    const served = { done: false };
+    const repository = repositoryStub({
+      claimJob: async () => workerClaim,
+      runnableTargets: async () => {
+        if (served.done) return [];
+        served.done = true;
+        return [target];
+      },
+      transitionTarget: (async () => ({ status: terminal, receiptId: 'rc-1' })) as never,
+      getPublication: async () => terminal,
+    });
+    const prewarmer = { prewarm: vi.fn(async () => undefined) };
+    const worker = new PublicationWorker(repository, queue, PUBLISHER, STORAGE, POLICY, undefined, undefined, prewarmer);
+    await expect(worker.run('w-1')).resolves.toEqual({ claimed: 1, processed: 1, reconciled: 0, cleaned: 0 });
+    expect(prewarmer.prewarm).toHaveBeenCalledWith(['https://portal.example/a']);
+  });
+
+  it('melewatkan pemanas saat tidak ada target terbit', async () => {
+    const claim: QueueClaim = { logicalId: 'org-1:job-1', claimToken: 't-1', leaseExpiresAt: new Date() };
+    const queue = queueStub([claim]);
+    const workerClaim: WorkerClaim = { organizationId: 'org-1', jobId: 'job-1', workerId: 'w-1', fencingToken: 1, leaseExpiresAt: new Date().toISOString() };
+    const repository = repositoryStub({ claimJob: async () => workerClaim });
+    const prewarmer = { prewarm: vi.fn(async () => undefined) };
+    const worker = new PublicationWorker(repository, queue, PUBLISHER, STORAGE, POLICY, undefined, undefined, prewarmer);
+    await worker.run('w-1');
+    expect(prewarmer.prewarm).not.toHaveBeenCalled();
+  });
+
+  it('tetap selesai saat pemanas melempar', async () => {
+    const claim: QueueClaim = { logicalId: 'org-1:job-1', claimToken: 't-1', leaseExpiresAt: new Date() };
+    const queue = queueStub([claim]);
+    const workerClaim: WorkerClaim = { organizationId: 'org-1', jobId: 'job-1', workerId: 'w-1', fencingToken: 1, leaseExpiresAt: new Date().toISOString() };
+    const target: PublicationTargetRecord = {
+      id: 'tgt-1', organizationId: 'org-1', jobId: 'job-1', articleSiteId: 'as-1', siteId: 'site-1', state: 'queued',
+      attempt: 1, fencingToken: 1, nextAttemptAt: '2026-09-18T00:00:00.000Z', startedAt: null, finishedAt: null,
+      publishedUrl: null, publishedAt: null, sanitizedError: null,
+    };
+    const terminal: PublicationStatusProjection = {
+      job: jobRecord({ state: 'published', finalizedAt: '2026-09-19T11:00:00.000Z' }),
+      targets: [{ ...target, state: 'published', publishedUrl: 'https://portal.test/a' }],
+      result: { finalState: 'published', successfulCount: 1, urls: ['https://portal.test/a'] },
+    };
+    const served = { done: false };
+    const repository = repositoryStub({
+      claimJob: async () => workerClaim,
+      runnableTargets: async () => {
+        if (served.done) return [];
+        served.done = true;
+        return [target];
+      },
+      transitionTarget: (async () => ({ status: terminal, receiptId: 'rc-1' })) as never,
+      getPublication: async () => terminal,
+    });
+    const prewarmer = { prewarm: vi.fn(async () => { throw new Error('jaringan putus'); }) };
+    const worker = new PublicationWorker(repository, queue, PUBLISHER, STORAGE, POLICY, undefined, undefined, prewarmer);
+    await expect(worker.run('w-1')).resolves.toEqual({ claimed: 1, processed: 1, reconciled: 0, cleaned: 0 });
+    expect(prewarmer.prewarm).toHaveBeenCalledWith(['https://portal.example/a']);
+  });
 });
 
 describe('PublicationWorker reconcile', () => {
