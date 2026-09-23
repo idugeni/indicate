@@ -14,7 +14,6 @@ import { cn } from '@/ui/cn';
 export type TemplateShareButtonProps = {
   readonly slug: string;
   readonly title: string;
-  readonly url?: string | undefined;
   readonly className?: string | undefined;
 };
 
@@ -22,15 +21,14 @@ export type TemplateShareButtonProps = {
  * Share button opening the channel dialog on every platform.
  *
  * @param props - Article slug and title plus caller shape classes.
- * @param props.url - Canonical URL override; defaults to origin plus slug.
  * @returns Round icon button plus a `--tpl-*`-themed channel dialog.
  */
-export function TemplateShareButton({ slug, title, url, className }: TemplateShareButtonProps) {
+export function TemplateShareButton({ slug, title, className }: TemplateShareButtonProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const canonical = url ?? (typeof window === 'undefined' ? `/${slug}` : `${window.location.origin}/${slug}`);
-  const shareText = encodeURIComponent(`${title} ${canonical}`);
+  const url = typeof window === 'undefined' ? `/${slug}` : `${window.location.origin}/${slug}`;
+  const shareText = encodeURIComponent(`${title} ${url}`);
 
   const openShare = () => {
     setCopied(false);
@@ -39,7 +37,7 @@ export function TemplateShareButton({ slug, title, url, className }: TemplateSha
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(canonical);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       toast.success('Tautan tersalin');
     } catch {
@@ -60,12 +58,12 @@ export function TemplateShareButton({ slug, title, url, className }: TemplateSha
     },
     {
       label: 'Facebook',
-      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(canonical)}`,
+      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
       Icon: FaFacebookF,
     },
     {
       label: 'Telegram',
-      href: `https://t.me/share/url?url=${encodeURIComponent(canonical)}&text=${encodeURIComponent(title)}`,
+      href: `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`,
       Icon: FaTelegram,
     },
     {
@@ -102,16 +100,16 @@ export function TemplateShareButton({ slug, title, url, className }: TemplateSha
               {title}
             </DialogDescription>
           </div>
-          <ul className="m-0 grid list-none grid-cols-5 gap-2 p-0">
+          <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0 sm:grid-cols-5">
             {channels.map(({ label, href, Icon }) => (
-              <li key={label} className="m-0 p-0">
+              <li key={label} className="m-0 min-w-0 p-0">
                 <a
                   href={href}
                   target={href.startsWith('mailto:') ? undefined : '_blank'}
                   rel={href.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
                   aria-label={`Bagikan ke ${label}`}
                   title={`Bagikan ke ${label}`}
-                  className="flex flex-col items-center gap-1.5 rounded-xl px-1 py-3 font-sans text-[11px] font-semibold text-[var(--tpl-muted,#475569)] transition-colors hover:bg-[var(--tpl-primary-soft,#e8f0fe)] hover:text-[var(--tpl-primary,#1a5fd0)]"
+                  className="flex min-w-0 flex-col items-center gap-1.5 rounded-xl px-1 py-3 font-sans text-[11px] font-semibold text-[var(--tpl-muted,#475569)] transition-colors hover:bg-[var(--tpl-primary-soft,#e8f0fe)] hover:text-[var(--tpl-primary,#1a5fd0)]"
                 >
                   <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--tpl-primary,#1a5fd0)] text-[var(--tpl-on-primary,#ffffff)]">
                     <Icon className="h-4 w-4" aria-hidden="true" />
@@ -132,7 +130,7 @@ export function TemplateShareButton({ slug, title, url, className }: TemplateSha
             ) : (
               <Link2 className="h-4 w-4 flex-none text-[var(--tpl-faint,#94a3b8)]" aria-hidden="true" />
             )}
-            <span className="min-w-0 flex-1 truncate">{copied ? 'Tautan tersalin!' : canonical}</span>
+            <span className="min-w-0 flex-1 truncate">{copied ? 'Tautan tersalin!' : url}</span>
           </button>
         </DialogContent>
       </Dialog>
