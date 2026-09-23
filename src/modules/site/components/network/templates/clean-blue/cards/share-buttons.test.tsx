@@ -19,23 +19,32 @@ beforeEach(() => {
     value: { writeText: tulis },
     configurable: true,
   });
+  Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
 });
 
 const artikel = makeNetworkArticle({ id: 'a9', slug: 'berita-utama', title: 'Judul Uji Coba' });
 const kanonis = 'https://portal.contoh/berita-utama';
 
 describe('CleanBlueShareButtons', () => {
-  it('menampilkan tautan ke semua kanal', () => {
+  it('membuka dialog kanal alih-alih tautan langsung', async () => {
     render(<CleanBlueShareButtons article={artikel} canonical={kanonis} />);
+    expect(screen.queryByRole('link', { name: 'Bagikan ke WhatsApp' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Bagikan artikel' }));
+    expect(await screen.findByRole('dialog')).toBeDefined();
     expect(screen.getByRole('link', { name: 'Bagikan ke WhatsApp' }).getAttribute('href')).toContain('wa.me');
+    expect(screen.getByRole('link', { name: 'Bagikan ke WhatsApp' }).getAttribute('href')).toContain(
+      encodeURIComponent(kanonis),
+    );
     expect(screen.getByRole('link', { name: 'Bagikan ke X' }).getAttribute('href')).toContain('x.com');
     expect(screen.getByRole('link', { name: 'Bagikan ke Facebook' }).getAttribute('href')).toContain('facebook.com');
     expect(screen.getByRole('link', { name: 'Bagikan ke Telegram' }).getAttribute('href')).toContain('t.me');
-    expect(screen.getByRole('link', { name: 'Bagikan via Email' }).getAttribute('href')).toContain('mailto:');
+    expect(screen.getByRole('link', { name: 'Bagikan ke Email' }).getAttribute('href')).toContain('mailto:');
   });
 
-  it('menyalin tautan dan menampilkan status tersalin', async () => {
+  it('menyalin tautan kanonis dari dialog', async () => {
     render(<CleanBlueShareButtons article={artikel} canonical={kanonis} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Bagikan artikel' }));
+    await screen.findByRole('dialog');
     fireEvent.click(screen.getByRole('button', { name: 'Salin tautan artikel' }));
     const { toast } = await import('sonner');
     await vi.waitFor(() => {

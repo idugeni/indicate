@@ -14,6 +14,7 @@ import { cn } from '@/ui/cn';
 export type TemplateShareButtonProps = {
   readonly slug: string;
   readonly title: string;
+  readonly url?: string | undefined;
   readonly className?: string | undefined;
 };
 
@@ -21,19 +22,20 @@ export type TemplateShareButtonProps = {
  * Progressive share button: system sheet on mobile, channel dialog on desktop.
  *
  * @param props - Article slug and title plus caller shape classes.
+ * @param props.url - Canonical URL override; defaults to origin plus slug.
  * @returns Round icon button plus a `--tpl-*`-themed channel dialog.
  */
-export function TemplateShareButton({ slug, title, className }: TemplateShareButtonProps) {
+export function TemplateShareButton({ slug, title, url, className }: TemplateShareButtonProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const url = typeof window === 'undefined' ? `/${slug}` : `${window.location.origin}/${slug}`;
-  const shareText = encodeURIComponent(`${title} ${url}`);
+  const canonical = url ?? (typeof window === 'undefined' ? `/${slug}` : `${window.location.origin}/${slug}`);
+  const shareText = encodeURIComponent(`${title} ${canonical}`);
 
   const openShare = async () => {
     if (typeof navigator.share === 'function') {
       try {
-        await navigator.share({ title, text: title, url });
+        await navigator.share({ title, text: title, url: canonical });
         return;
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
@@ -45,7 +47,7 @@ export function TemplateShareButton({ slug, title, className }: TemplateShareBut
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(canonical);
       setCopied(true);
       toast.success('Tautan tersalin');
     } catch {
@@ -66,12 +68,12 @@ export function TemplateShareButton({ slug, title, className }: TemplateShareBut
     },
     {
       label: 'Facebook',
-      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(canonical)}`,
       Icon: FaFacebookF,
     },
     {
       label: 'Telegram',
-      href: `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`,
+      href: `https://t.me/share/url?url=${encodeURIComponent(canonical)}&text=${encodeURIComponent(title)}`,
       Icon: FaTelegram,
     },
     {
@@ -138,7 +140,7 @@ export function TemplateShareButton({ slug, title, className }: TemplateShareBut
             ) : (
               <Link2 className="h-4 w-4 flex-none text-[var(--tpl-faint,#94a3b8)]" aria-hidden="true" />
             )}
-            <span className="min-w-0 flex-1 truncate">{copied ? 'Tautan tersalin!' : url}</span>
+            <span className="min-w-0 flex-1 truncate">{copied ? 'Tautan tersalin!' : canonical}</span>
           </button>
         </DialogContent>
       </Dialog>
