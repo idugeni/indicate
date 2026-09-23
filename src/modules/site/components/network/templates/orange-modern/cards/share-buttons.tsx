@@ -7,8 +7,9 @@ import { toast } from 'sonner';
 import type { ArticleListItem } from '@/modules/delivery/models';
 
 /**
- * Row of share buttons: WhatsApp, X, Facebook, Telegram, email,
- * plus copy link (clipboard + toast).
+ * Row of share buttons: filled WhatsApp primary, brand-tinted X/Facebook/
+ * Telegram outlines that fill on hover, neutral email, plus copy link
+ * (clipboard + toast).
  */
 export function OrangeModernShareButtons({ article, canonical }: { readonly article: ArticleListItem; readonly canonical: string }) {
   const shareText = encodeURIComponent(`${article.title} ${canonical}`);
@@ -24,6 +25,11 @@ export function OrangeModernShareButtons({ article, canonical }: { readonly arti
 
   const round =
     'flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[var(--tpl-primary,#ea580c)]';
+  const channel =
+    'flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-slate-200 transition-colors hover:text-white hover:ring-transparent';
+  const xChannel = `${channel} text-black hover:bg-black`;
+  const facebookChannel = `${channel} text-[#1877F2] hover:bg-[#1877F2]`;
+  const telegramChannel = `${channel} text-[#229ED9] hover:bg-[#229ED9]`;
 
   return (
     <p className="m-0 flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto sm:justify-start" aria-label="Bagikan artikel">
@@ -41,7 +47,7 @@ export function OrangeModernShareButtons({ article, canonical }: { readonly arti
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Bagikan ke X"
-        className={round}
+        className={xChannel}
       >
         <FaXTwitter className="h-4 w-4" aria-hidden="true" />
       </a>
@@ -50,7 +56,7 @@ export function OrangeModernShareButtons({ article, canonical }: { readonly arti
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Bagikan ke Facebook"
-        className={round}
+        className={facebookChannel}
       >
         <FaFacebookF className="h-4 w-4" aria-hidden="true" />
       </a>
@@ -59,7 +65,7 @@ export function OrangeModernShareButtons({ article, canonical }: { readonly arti
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Bagikan ke Telegram"
-        className={round}
+        className={telegramChannel}
       >
         <FaTelegram className="h-4 w-4" aria-hidden="true" />
       </a>

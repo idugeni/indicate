@@ -50,26 +50,31 @@ export function TemplateShareButton({ slug, title, className }: TemplateShareBut
       label: 'WhatsApp',
       href: `https://wa.me/?text=${shareText}`,
       Icon: FaWhatsapp,
+      circle: 'bg-[#25D366] group-hover:bg-[#1DA851]',
     },
     {
       label: 'X',
       href: `https://x.com/intent/post?text=${shareText}`,
       Icon: FaXTwitter,
+      circle: 'bg-black ring-1 ring-white/30 group-hover:bg-[#333333]',
     },
     {
       label: 'Facebook',
       href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
       Icon: FaFacebookF,
+      circle: 'bg-[#1877F2] group-hover:bg-[#1466C3]',
     },
     {
       label: 'Telegram',
       href: `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`,
       Icon: FaTelegram,
+      circle: 'bg-[#229ED9] group-hover:bg-[#1B8ABF]',
     },
     {
       label: 'Email',
       href: `mailto:?subject=${encodeURIComponent(title)}&body=${shareText}`,
       Icon: Mail,
+      circle: 'bg-[#64748B] group-hover:bg-[#475569]',
     },
   ] as const;
 
@@ -101,7 +106,7 @@ export function TemplateShareButton({ slug, title, className }: TemplateShareBut
             </DialogDescription>
           </div>
           <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0 sm:grid-cols-5">
-            {channels.map(({ label, href, Icon }) => (
+            {channels.map(({ label, href, Icon, circle }) => (
               <li key={label} className="m-0 min-w-0 p-0">
                 <a
                   href={href}
@@ -109,9 +114,9 @@ export function TemplateShareButton({ slug, title, className }: TemplateShareBut
                   rel={href.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
                   aria-label={`Bagikan ke ${label}`}
                   title={`Bagikan ke ${label}`}
-                  className="flex min-w-0 flex-col items-center gap-1.5 rounded-xl px-1 py-3 font-sans text-[11px] font-semibold text-[var(--tpl-muted,#475569)] transition-colors hover:bg-[var(--tpl-primary-soft,#e8f0fe)] hover:text-[var(--tpl-primary,#1a5fd0)]"
+                  className="group flex min-w-0 flex-col items-center gap-1.5 rounded-xl px-1 py-3 font-sans text-[11px] font-semibold text-[var(--tpl-muted,#475569)] transition-colors hover:bg-[var(--tpl-primary-soft,#e8f0fe)] hover:text-[var(--tpl-primary,#1a5fd0)]"
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--tpl-primary,#1a5fd0)] text-[var(--tpl-on-primary,#ffffff)]">
+                  <span className={`flex h-10 w-10 items-center justify-center rounded-full text-white transition-colors ${circle}`}>
                     <Icon className="h-4 w-4" aria-hidden="true" />
                   </span>
                   {label}
