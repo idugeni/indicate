@@ -179,6 +179,34 @@ describe('readSite projection', () => {
     expect(item?.description).toContain('Berita kaya terstruktur');
   });
 
+  it('memetakan dimensi alami sampul unggahan', async () => {
+    const { repository } = harness({
+      articles: [
+        articleRow({
+          leadMediaId: 'm-1',
+          leadMediaType: 'image/webp',
+          leadMediaWidth: 1200,
+          leadMediaHeight: 675,
+          mediaState: 'active',
+          coverImageUrl: null,
+        }),
+      ],
+    });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
+    const item = site?.articles[0];
+    expect(item).toBeDefined();
+    expect(item).toHaveProperty('imageWidth', 1200);
+    expect(item).toHaveProperty('imageHeight', 675);
+  });
+
+  it('mengosongkan dimensi saat sampul berupa hotlink luar', async () => {
+    const { repository } = harness({});
+    const item = (await repository.loadNetworkSite({ ...CONTEXT }, {}))?.articles[0];
+    expect(item).toBeDefined();
+    expect(item).toHaveProperty('imageWidth', null);
+    expect(item).toHaveProperty('imageHeight', null);
+  });
+
   it('customDescription null jatuh ke excerpt 600 karakter kepala', async () => {
     const head = `${'kata '.repeat(150)}<b>rusak`;
     const { repository } = harness({
