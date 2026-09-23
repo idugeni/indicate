@@ -401,11 +401,13 @@ Publisher changes that invalidate identity/evidence return verification to a sta
 
 ### 9.7 Media model
 
-A Media record uses exactly one ownership mode: Article owner, Site owner, or Organization asset. Database checks enforce owner-compatible prefixes:
+A Media record uses exactly one ownership mode: Article owner, Site owner, or Organization asset. Database checks enforce owner-compatible prefixes for both layouts:
 
-- `articles/{articleId}/`;
-- `sites/{siteId}/`;
-- `assets/`.
+- legacy: `articles/{articleId}/`, `sites/{siteId}/`, `assets/`;
+- scoped (new reserves): `o/{organizationId}/p/{purpose}/y={YYYY}/m={MM}/{owner}/{day}-{stem}-{token16}.{ext}`
+  with `{owner}` = `article/{articleId}`, `site/{siteId}`, or `organization` and `purpose` from the canonical enum
+  (`article-inline`, `article-cover`, `article-image`, `site-logo`, `site-favicon`, `site-default`, `organization-asset`).
+  Thumbnails append `-thumb` before the extension and are derived server-side.
 
 `media_key_reservations.object_key` is globally unique. Reservation records remain as used/occupied tombstones so keys are never recycled. An R2 object cannot become public merely because a reservation or object exists; active metadata and authorization graph checks are required.
 

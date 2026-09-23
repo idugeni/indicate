@@ -43,7 +43,7 @@ export async function uploadEditorImage(
     mediaType: prepared.mediaType,
     sizeBytes: prepared.sizeBytes,
     checksum: prepared.checksum,
-    purpose: 'inline_article',
+    purpose: 'article-inline',
     owner,
     ...(thumbSpec === null ? {} : { thumb: thumbSpec }),
   })) as ReservationResponse | null;

@@ -1,6 +1,29 @@
+import { randomBytes } from 'node:crypto';
+
 import type { MediaOwner } from '@/modules/publishing/models';
 
 const EXTENSION_PATTERN = /(?:\.([a-z0-9]{1,10}))$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const MEDIA_PURPOSES = [
+  'article-inline',
+  'article-cover',
+  'article-image',
+  'site-logo',
+  'site-favicon',
+  'site-default',
+  'organization-asset',
+] as const;
+
+export type MediaPurpose = (typeof MEDIA_PURPOSES)[number];
+
+const LEGACY_PURPOSE_MAP: Readonly<Record<string, MediaPurpose>> = {
+  inline_article: 'article-inline',
+  article_image: 'article-image',
+  hero_banner: 'article-cover',
+  logo: 'site-logo',
+  favicon: 'site-favicon',
+};
 
 function sanitizeMediaFilename(filename: string): string {
   const basename = filename.replaceAll('\\', '/').split('/').at(-1) ?? 'file';
@@ -15,6 +38,37 @@ export function objectKeyPrefix(owner: MediaOwner): string {
   if (owner.kind === 'article') return `articles/${owner.articleId}/`;
   if (owner.kind === 'site') return `sites/${owner.siteId}/`;
   return 'assets/';
+}
+
+/**
+ * Generate a 16-character collision token for new scoped object keys.
+ *
+ * @returns 16 lowercase hex characters carrying 64 bits of entropy.
+ */
+export function createCollisionToken(): string {
+  return randomBytes(8).toString('hex');
+}
+
+/**
+ * Normalize a legacy or free-form purpose to the canonical purpose enum.
+ *
+ * @param purpose - Raw purpose from reservation input or stored rows.
+ * @returns Canonical purpose; falls back to `organization-asset` for unknown values.
+ */
+export function normalizePurpose(purpose: string): MediaPurpose {
+  const normalized = purpose.trim().toLowerCase().replace(/_/g, '-');
+  if ((MEDIA_PURPOSES as readonly string[]).includes(normalized)) return normalized as MediaPurpose;
+  return LEGACY_PURPOSE_MAP[purpose] ?? LEGACY_PURPOSE_MAP[normalized] ?? 'organization-asset';
+}
+
+/**
+ * Detect whether an object key uses the legacy flat layout.
+ *
+ * @param key - Stored R2 object key.
+ * @returns True for `assets/`, `articles/`, or `sites/` prefixed keys.
+ */
+export function isLegacyMediaKey(key: string): boolean {
+  return key.startsWith('assets/') || key.startsWith('articles/') || key.startsWith('sites/');
 }
 
 /**
@@ -37,4 +91,41 @@ export function buildStructuredObjectKey(owner: MediaOwner, filename: string, co
   const stem = extension === undefined ? sanitized : sanitized.slice(0, -(extension.length + 1));
   const suffix = extension === undefined ? '' : `.${extension}`;
   return `${objectKeyPrefix(owner)}${stem}-${normalizedToken}${suffix}`;
+}
+
+/**
+ * Build the tenant-scoped object key for new uploads.
+ *
+ * @param input - Owner, organization, canonical purpose, filename, 16-char token, and timestamp.
+ * @returns Scoped key shaped as `o/{org}/p/{purpose}/y=/m=/{owner}/{day}-{stem}-{token}.{ext}`.
+ * @throws {Error} When organization, purpose, owner, or token fails validation.
+ */
+export function buildScopedObjectKey(input: {
+  readonly owner: MediaOwner;
+  readonly organizationId: string;
+  readonly purpose: MediaPurpose;
+  readonly filename: string;
+  readonly collisionToken: string;
+  readonly now: Date;
+}): string {
+  if (!UUID_PATTERN.test(input.organizationId)) throw new Error('Organization id must be a UUID.');
+  if (!(MEDIA_PURPOSES as readonly string[]).includes(input.purpose)) throw new Error('Unknown media purpose.');
+  const normalizedToken = input.collisionToken.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16);
+  if (normalizedToken.length !== 16) throw new Error('Collision token must resolve to exactly 16 safe characters.');
+  const sanitized = sanitizeMediaFilename(input.filename);
+  const extension = EXTENSION_PATTERN.exec(sanitized)?.[1];
+  const stem = extension === undefined ? sanitized : sanitized.slice(0, -(extension.length + 1));
+  const suffix = extension === undefined ? '' : `.${extension}`;
+  const year = input.now.getUTCFullYear();
+  const month = String(input.now.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(input.now.getUTCDate()).padStart(2, '0');
+  const ownerSegment =
+    input.owner.kind === 'article'
+      ? `article/${input.owner.articleId}`
+      : input.owner.kind === 'site'
+        ? `site/${input.owner.siteId}`
+        : 'organization';
+  if (input.owner.kind === 'article' && !UUID_PATTERN.test(input.owner.articleId)) throw new Error('Article id must be a UUID.');
+  if (input.owner.kind === 'site' && !UUID_PATTERN.test(input.owner.siteId)) throw new Error('Site id must be a UUID.');
+  return `o/${input.organizationId}/p/${input.purpose}/y=${year}/m=${month}/${ownerSegment}/${day}-${stem}-${normalizedToken}${suffix}`;
 }

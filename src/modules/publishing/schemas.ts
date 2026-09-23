@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { MEDIA_PURPOSES } from '@/modules/publishing/object-key';
+
 const mediaOwnerSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('article'), articleId: z.uuid() }).strict(),
   z.object({ kind: z.literal('site'), siteId: z.uuid() }).strict(),
@@ -13,7 +15,7 @@ export const mediaReservationSchema = z.object({
   mediaType: z.string().trim().min(1).max(100),
   sizeBytes: z.number().int().positive(),
   checksum: checksumField,
-  purpose: z.string().trim().min(1).max(100),
+  purpose: z.enum(MEDIA_PURPOSES),
   owner: mediaOwnerSchema,
   thumb: z.object({
     mediaType: z.string().trim().min(1).max(100),

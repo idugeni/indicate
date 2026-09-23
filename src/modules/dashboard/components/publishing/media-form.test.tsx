@@ -27,7 +27,6 @@ describe('Formulir unggah media', () => {
   it('menolak submit tanpa berkas yang valid', async () => {
     const command = vi.fn(async () => ({}));
     const { container } = render(<MediaForm data={DATA} command={command} />);
-    fireEvent.change(screen.getByLabelText(/Tujuan Penggunaan/), { target: { value: 'hero_banner' } });
     fireEvent.submit(container.querySelector('form') as HTMLFormElement);
     expect(await screen.findByText('Silakan pilih berkas media yang valid.')).toBeDefined();
     expect(command).not.toHaveBeenCalled();

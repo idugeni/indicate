@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { formatBytes, prepareImageUpload } from '@/modules/publishing/compress-image';
+import { MEDIA_PURPOSES } from '@/modules/publishing/object-key';
 
 const SUPPORTED_MEDIA_TYPES = new Set([
   'image/jpeg',
@@ -212,14 +213,20 @@ export function MediaForm({
             <Label htmlFor={purposeInputId} className="font-mono text-xs text-paper-dim">
               Tujuan Penggunaan
             </Label>
-            <Input
+            <DashboardSelect
               id={purposeInputId}
               name="purpose"
               required
               disabled={isUploading}
-              placeholder="hero_banner, logo, atau inline_article"
-              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
-            />
+              defaultValue="organization-asset"
+              placeholder="Pilih tujuan"
+            >
+              {MEDIA_PURPOSES.map((purpose) => (
+                <DashboardSelectItem key={purpose} value={purpose}>
+                  {purpose}
+                </DashboardSelectItem>
+              ))}
+            </DashboardSelect>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">

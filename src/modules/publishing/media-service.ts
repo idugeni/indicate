@@ -1,5 +1,5 @@
 import type { AuthorizedTenantActorContext, HostnameContext } from '@/core/operation-context';
-import { buildStructuredObjectKey, buildThumbObjectKey } from '@/modules/publishing/object-key';
+import { buildScopedObjectKey, buildThumbObjectKey } from '@/modules/publishing/object-key';
 import type { MediaAssetRecord } from '@/modules/publishing/models';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import type { ExactObjectAuthorization, ObjectStoragePort } from '@/integrations/storage/ports';
@@ -60,7 +60,15 @@ export class MediaService {
     try {
       for (let attempt = 0; attempt < attempts; attempt += 1) {
         const now = this.clock.now(); const reservationId = this.identifiers.create();
-        const key = buildStructuredObjectKey(value.owner, value.filename, this.identifiers.create());
+        const collisionToken = this.identifiers.create().toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16);
+        const key = buildScopedObjectKey({
+          owner: value.owner,
+          organizationId: actor.organizationId,
+          purpose: value.purpose,
+          filename: value.filename,
+          collisionToken,
+          now,
+        });
         const result = await this.repository.reserveMediaCandidate(actor, {
           reservationId, objectKey: key, owner: value.owner, purpose: value.purpose, expectedMediaType: value.mediaType,
           expectedSizeBytes: value.sizeBytes, expectedChecksum: value.checksum,

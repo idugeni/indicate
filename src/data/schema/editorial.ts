@@ -286,12 +286,13 @@ export const media = pgTable('media', {
   foreignKey({ name: 'media_site_fk', columns: [table.organizationId, table.siteId], foreignColumns: [sites.organizationId, sites.id] }).onDelete('restrict'),
   check('media_exactly_one_owner', sql`num_nonnulls(${table.articleId}, ${table.siteId}) + CASE WHEN ${table.organizationAsset} THEN 1 ELSE 0 END = 1`),
   check('media_owner_prefix', sql`(
-    (${table.articleId} IS NOT NULL AND ${table.objectKey} LIKE ('articles/' || ${table.articleId}::text || '/%'))
-    OR (${table.siteId} IS NOT NULL AND ${table.objectKey} LIKE ('sites/' || ${table.siteId}::text || '/%'))
-    OR (${table.organizationAsset} AND ${table.objectKey} LIKE 'assets/%')
+    (${table.articleId} IS NOT NULL AND (${table.objectKey} LIKE ('articles/' || ${table.articleId}::text || '/%') OR ${table.objectKey} LIKE ('o/' || ${table.organizationId}::text || '/p/%/article/' || ${table.articleId}::text || '/%')))
+    OR (${table.siteId} IS NOT NULL AND (${table.objectKey} LIKE ('sites/' || ${table.siteId}::text || '/%') OR ${table.objectKey} LIKE ('o/' || ${table.organizationId}::text || '/p/%/site/' || ${table.siteId}::text || '/%')))
+    OR (${table.organizationAsset} AND (${table.objectKey} LIKE 'assets/%' OR ${table.objectKey} LIKE ('o/' || ${table.organizationId}::text || '/p/%/organization/%')))
   )`),
   check('media_size_positive', sql`${table.sizeBytes} > 0 AND ${table.version} > 0`),
   index('media_organization_state_idx').on(table.organizationId, table.state),
+  index('media_organization_purpose_state_idx').on(table.organizationId, table.purpose, table.state),
 ]);
 
 /**
@@ -356,9 +357,9 @@ export const mediaKeyReservations = pgTable('media_key_reservations', {
   foreignKey({ name: 'media_key_reservations_site_fk', columns: [table.organizationId, table.siteId], foreignColumns: [sites.organizationId, sites.id] }).onDelete('restrict'),
   check('media_key_reservation_exactly_one_owner', sql`num_nonnulls(${table.articleId}, ${table.siteId}) + CASE WHEN ${table.organizationAsset} THEN 1 ELSE 0 END = 1`),
   check('media_key_reservation_owner_prefix', sql`(
-    (${table.articleId} IS NOT NULL AND ${table.objectKey} LIKE ('articles/' || ${table.articleId}::text || '/%'))
-    OR (${table.siteId} IS NOT NULL AND ${table.objectKey} LIKE ('sites/' || ${table.siteId}::text || '/%'))
-    OR (${table.organizationAsset} AND ${table.objectKey} LIKE 'assets/%')
+    (${table.articleId} IS NOT NULL AND (${table.objectKey} LIKE ('articles/' || ${table.articleId}::text || '/%') OR ${table.objectKey} LIKE ('o/' || ${table.organizationId}::text || '/p/%/article/' || ${table.articleId}::text || '/%')))
+    OR (${table.siteId} IS NOT NULL AND (${table.objectKey} LIKE ('sites/' || ${table.siteId}::text || '/%') OR ${table.objectKey} LIKE ('o/' || ${table.organizationId}::text || '/p/%/site/' || ${table.siteId}::text || '/%')))
+    OR (${table.organizationAsset} AND (${table.objectKey} LIKE 'assets/%' OR ${table.objectKey} LIKE ('o/' || ${table.organizationId}::text || '/p/%/organization/%')))
   )`),
   check('media_key_reservation_size_positive', sql`${table.expectedSizeBytes} > 0`),
   check('media_key_reservation_sha256_checksum', sql`${table.expectedChecksum} ~ '^[A-Za-z0-9+/]{43}=$'`),

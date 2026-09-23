@@ -274,7 +274,7 @@ export function ArticleCreateForm({
         mediaType: file.type,
         sizeBytes: file.size,
         checksum: btoa(binary),
-        purpose: 'featured',
+        purpose: 'article-cover',
         owner: { kind: 'organization' },
       })) as {
         readonly reservationId?: string;

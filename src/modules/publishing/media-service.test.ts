@@ -11,11 +11,12 @@ const NOW = new Date('2026-09-18T14:00:00.000Z');
 const CHECKSUM = `${'A'.repeat(43)}=`;
 const ARTICLE = '0199a2b3-4c5d-7e8f-9012-3456789abcde';
 const MEDIA = '0199a2b3-4c5d-7e8f-9012-3456789abcdf';
+const ORG = '0199a2b3-4c5d-7e8f-9012-3456789abc00';
 
 const actor = {
   actorType: 'telegram',
   actorId: 'mapping-1',
-  organizationId: 'org-1',
+  organizationId: ORG,
   permissionSet: new Set<string>(),
   entryPoint: 'telegram',
   requestId: 'req-1',
@@ -207,7 +208,7 @@ describe('MediaService read archive', () => {
     expect(broken.ok).toBe(false);
 
     const pub = await service.authorizePublicRead(
-      { normalizedHostname: 'fakta01.my.id', organizationId: 'org-1', domainId: 'd-1', siteId: 's-1', regionId: null, routingVersion: 1 },
+      { normalizedHostname: 'fakta01.my.id', organizationId: ORG, domainId: 'd-1', siteId: 's-1', regionId: null, routingVersion: 1 },
       MEDIA,
       'req-1',
     );

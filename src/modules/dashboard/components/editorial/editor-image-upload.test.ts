@@ -31,7 +31,7 @@ describe('uploadEditorImage', () => {
     const result = await uploadEditorImage(file, { kind: 'organization' }, command, { prepare: mockPrepare as never, fetchFn: fetchFn as never });
     expect(result.storedSrc).toBe('/api/network/media/0199a2b3-4c5d-7e8f-9012-3456789abcde');
     expect(result.previewUrl).toBe('https://r2.example/preview');
-    expect(command).toHaveBeenCalledWith('media.reserve', expect.objectContaining({ purpose: 'inline_article' }));
+    expect(command).toHaveBeenCalledWith('media.reserve', expect.objectContaining({ purpose: 'article-inline' }));
   });
 
   it('gagal jelas saat reservasi tidak lengkap', async () => {
