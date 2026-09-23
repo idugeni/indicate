@@ -19,7 +19,7 @@ export type TemplateShareButtonProps = {
 };
 
 /**
- * Progressive share button: system sheet on mobile, channel dialog on desktop.
+ * Share button opening the channel dialog on every platform.
  *
  * @param props - Article slug and title plus caller shape classes.
  * @param props.url - Canonical URL override; defaults to origin plus slug.
@@ -32,15 +32,7 @@ export function TemplateShareButton({ slug, title, url, className }: TemplateSha
   const canonical = url ?? (typeof window === 'undefined' ? `/${slug}` : `${window.location.origin}/${slug}`);
   const shareText = encodeURIComponent(`${title} ${canonical}`);
 
-  const openShare = async () => {
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({ title, text: title, url: canonical });
-        return;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-      }
-    }
+  const openShare = () => {
     setCopied(false);
     setOpen(true);
   };
@@ -87,7 +79,7 @@ export function TemplateShareButton({ slug, title, url, className }: TemplateSha
     <>
       <button
         type="button"
-        onClick={() => void openShare()}
+        onClick={openShare}
         aria-label="Bagikan artikel"
         title="Bagikan artikel"
         className={className}

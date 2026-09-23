@@ -5,7 +5,7 @@ import { TemplateShareButton } from '@/modules/site/components/network/ui/share-
 import type { ArticleListItem } from '@/modules/delivery/models';
 
 /**
- * Single share trigger opening the channel dialog (system sheet on mobile).
+ * Single share trigger opening the channel dialog.
  */
 export function WarmEditorialShareButtons({ article, canonical }: { readonly article: ArticleListItem; readonly canonical: string }) {
   return (

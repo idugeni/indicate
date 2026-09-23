@@ -21,18 +21,14 @@ beforeEach(() => {
 });
 
 describe('TemplateShareButton', () => {
-  it('memakai lembar sistem saat Web Share API tersedia', async () => {
+  it('selalu membuka dialog kanal walau Web Share API tersedia', async () => {
     const bagikan = vi.fn(async () => {});
     Object.defineProperty(navigator, 'share', { value: bagikan, configurable: true });
     try {
       render(<TemplateShareButton slug="berita-x" title="Judul X" className="tombol" />);
       fireEvent.click(screen.getByRole('button', { name: 'Bagikan artikel' }));
-      await vi.waitFor(() => {
-        expect(bagikan).toHaveBeenCalledWith(
-          expect.objectContaining({ title: 'Judul X' }),
-        );
-      });
-      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(await screen.findByRole('dialog')).toBeDefined();
+      expect(bagikan).not.toHaveBeenCalled();
     } finally {
       Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
     }
