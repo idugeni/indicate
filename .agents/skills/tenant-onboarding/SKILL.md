@@ -32,6 +32,18 @@ Satu domain = satu Site apex + `site_settings`. Region = Site regional (`region_
 5. Region: TIDAK ADA langkah. Pastikan tetap `NULL`.
 6. SEO: tulis `description` + `seo_default_description` unik (aturan copy di atas) dengan audit + invalidasi `site.settings.update` serupa.
 
+## Baseline Cloudflare per zona tenant (pola baku — 2026-09-23, terverifikasi 36/36 zona)
+
+Setiap domain apex = satu zona Cloudflare (paket Free) dengan konfigurasi IDENTIK di bawah. Regional satu-label (`wonosobo.*`) tercakup wildcard + Universal SSL, tanpa zona sendiri. Terapkan blok ini utuh saat menambah domain; divergensi antar-zona adalah bug.
+
+1. **DNS:** CNAME apex + CNAME wildcard (`*`), keduanya proxied, target hostname Vercel (`*.vercel-dns-*.com`). CAA `issue` + `issuewild` (letsencrypt.org, pki.goog). TXT: SPF `v=spf1 -all`, DMARC `v=DMARC1; p=reject; sp=reject`, DKIM wildcard (`*._domainkey`).
+2. **TLS:** SSL `strict`, min TLS `1.2`, Always HTTPS `on`, Universal SSL aktif. DNSSEC: `pending` di semua zona (keputusan registrar, bukan kode — jangan kejar dari sini).
+3. **WAF custom (`http_request_firewall_custom`), urutan PENTING:** (1) `Allow social preview crawlers` — skip remaining custom rules untuk UA `facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|TelegramBot|Slackbot|Discordbot`; (2) `Challenge WP/env/git probes` — managed_challenge untuk path `wp-login.php|xmlrpc.php|/.env|/.git/`. Skip rule WAJIB pertama agar lolos AI Crawl Control.
+4. **Cache (`http_request_cache_settings`):** bypass untuk private/auth/mutasi; edge-cache halaman publik 60 dtk (tanpa query); feeds + brand-mark override 600 dtk.
+5. **Rate limit (`http_ratelimit`):** API/auth 20 per 10 dtk per IP → block.
+6. **Bots:** `fight_mode` on, `ai_bots_protection` block, `crawler_protection` enabled. Jangan matikan untuk crawler sosial — pengecualiannya lewat skip rule (3), bukan dengan melonggarkan global.
+7. **Vercel:** asosiasi exact setiap hostname (apex + regional) ke satu proyek; verifikasi `verified`, tanpa orphan.
+
 ## Verifikasi wajib (fix tanpa verifikasi = belum selesai)
 
 - DB: media `active`, settings tertaut, regional `NULL`, tasks `pending`, audit lengkap.
