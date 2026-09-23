@@ -171,7 +171,7 @@
 --   156  20260923010000_article_categories_rls  ledger sha256:70ac69c492761112e9954be5c482c372900c1184b46e8b9fd25b2dc1883a577c
 --   157  20260923020000_article_site_unpublish_transition  ledger sha256:8ba4a0abb4fdf98cf0f3da715ac1f2456590958a1b328bad427737afa54f847f
 --   158  20260923030000_site_settings_description_strip_tagline  ledger sha256:d6df429cb436b83f48a967b725825a81e9cbc3de2d342d9b2f4fc27fa27c4d4f
---   159  20260923050935_drop_article_dek  ledger sha256:314b3149aca1c5b58ed4f0a547c62690e72a58bfe1e8f7c60e88b160e36d684c
+--   159  20260923050935_drop_article_dek  ledger sha256:e218c9b6fbe9349ff7c81485ffeddbd2cb5cd6b549fc9f2bf10a6faeb8a571aa
 
 BEGIN;
 
@@ -12751,5 +12751,5 @@ ALTER TABLE public.article_revisions DROP COLUMN dek;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (158, 'drop_article_dek', 'sha256:b8533345456d584baff327174b22be91e8850c48c02a0df6688057975d34a981');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('314b3149aca1c5b58ed4f0a547c62690e72a58bfe1e8f7c60e88b160e36d684c', 1790140199279);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e218c9b6fbe9349ff7c81485ffeddbd2cb5cd6b549fc9f2bf10a6faeb8a571aa', 1790140199279);
 COMMIT;
