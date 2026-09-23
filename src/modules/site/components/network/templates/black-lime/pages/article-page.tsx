@@ -101,14 +101,12 @@ export function BlackLimeArticle({
           </div>
           </header>
 
-          {article.independent ? (
-            <p className="m-0 mt-4 flex items-start gap-1.5 font-sans text-xs leading-relaxed text-[#a3ad9a]">
-              <Info className="mt-0.5 h-3.5 w-3.5 flex-none" aria-hidden="true" />
-              <span>
-                Artikel ini merupakan konten yang dibuat oleh pengguna. Seluruh isi, informasi, dan opini yang terdapat di dalamnya menjadi tanggung jawab {authorDisplayName(article)} dan tidak mewakili pandangan resmi redaksi {site.settings.name}.
-              </span>
-            </p>
-          ) : null}
+          <p className="m-0 mt-4 flex items-start gap-1.5 font-sans text-xs leading-relaxed text-[#a3ad9a]">
+            <Info className="mt-0.5 h-3.5 w-3.5 flex-none" aria-hidden="true" />
+            <span>
+              Artikel ini merupakan konten yang dibuat oleh pengguna. Seluruh isi, informasi, dan opini yang terdapat di dalamnya menjadi tanggung jawab {authorDisplayName(article)} dan tidak mewakili pandangan resmi redaksi {site.settings.name}.
+            </span>
+          </p>
 
           <figure className="m-0 mt-6 overflow-hidden rounded-2xl shadow-sm">
             <Image
