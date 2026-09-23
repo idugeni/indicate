@@ -101,12 +101,15 @@ export function BlackLimeArticle({
           </div>
           </header>
 
-          <p className="m-0 mt-4 flex items-start gap-1.5 font-sans text-xs leading-relaxed text-[#a3ad9a]">
-            <Info className="mt-0.5 h-3.5 w-3.5 flex-none" aria-hidden="true" />
-            <span>
+          <aside aria-label="Catatan editorial" className="mt-6 border-l-[3px] border-[#c5f82a] pl-4">
+            <p className="m-0 flex items-center gap-1.5 font-sans text-sm font-bold text-[#c5f82a]">
+              <Info className="h-4 w-4 flex-none" aria-hidden="true" />
+              Catatan Editorial
+            </p>
+            <p className="m-0 mt-1.5 font-sans text-[13px] leading-relaxed text-[#a3ad9a]">
               Artikel ini merupakan konten yang dibuat oleh pengguna. Seluruh isi, informasi, dan opini yang terdapat di dalamnya menjadi tanggung jawab {authorDisplayName(article)} dan tidak mewakili pandangan resmi redaksi {site.settings.name}.
-            </span>
-          </p>
+            </p>
+          </aside>
 
           <figure className="m-0 mt-6 overflow-hidden rounded-2xl shadow-sm">
             <Image
