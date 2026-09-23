@@ -44,11 +44,29 @@ describe('validateBootstrapConfig gagal', () => {
     }
   });
 
-  it('menolak pasangan resend yang tidak lengkap', () => {
+  it('menolak pasangan resend yang tidak lengkap', async () => {
+    const { validateBootstrapConfig } = await import('@/core/config/bootstrap/bootstrap-schema');
     const result = validateBootstrapConfig({ ...validEnv(), RESEND_API_KEY: 'resend-key-123' });
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.issues.some((issue) => issue.category === 'resend_email_incomplete')).toBe(true);
+    }
+  });
+
+  it('menerima pasangan bucket publik dan menolak yang timpang', () => {
+    const pair = validateBootstrapConfig({
+      ...validEnv(),
+      R2_PUBLIC_BUCKET_NAME: 'indicate-media-public',
+      R2_PUBLIC_HOST: 'media.indicate.web.id',
+    });
+    expect(pair.success).toBe(true);
+    if (!pair.success) return;
+    expect(pair.config.credentials.r2PublicBucketName).toBe('indicate-media-public');
+    expect(pair.config.credentials.r2PublicHost).toBe('media.indicate.web.id');
+    const lopsided = validateBootstrapConfig({ ...validEnv(), R2_PUBLIC_BUCKET_NAME: 'indicate-media-public' });
+    expect(lopsided.success).toBe(false);
+    if (!lopsided.success) {
+      expect(lopsided.issues.some((issue) => issue.category === 'r2_public_incomplete')).toBe(true);
     }
   });
 

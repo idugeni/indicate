@@ -57,7 +57,7 @@ async function handlePOST(request: Request) {
     const repository = new DrizzleAuthorizationRepository(runtime.db);
     const local = await resolveVerifiedLocalUser(identity, repository, new UuidGenerator());
     if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
-    const storage = new R2ObjectStorageAdapter({ accountId: context.config.r2.accountId, bucketName: context.config.r2.bucketName, accessKeyId: context.config.r2.accessKeyId, secretAccessKey: context.config.r2.secretAccessKey });
+    const storage = new R2ObjectStorageAdapter({ accountId: context.config.r2.accountId, bucketName: context.config.r2.bucketName, publicBucketName: context.config.r2.publicBucketName, accessKeyId: context.config.r2.accessKeyId, secretAccessKey: context.config.r2.secretAccessKey });
     if (parsed.data.action === 'request-upload') {
       const allowedTypes = context.config.r2.allowedTypes;
       const ext = (AVATAR_EXTENSIONS as Readonly<Record<string, string>>)[parsed.data.contentType];

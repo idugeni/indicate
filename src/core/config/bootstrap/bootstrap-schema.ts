@@ -52,6 +52,8 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'R2_AUDIT_BUCKET_NAME',
   'R2_AUDIT_ACCESS_KEY_ID',
   'R2_AUDIT_SECRET_ACCESS_KEY',
+  'R2_PUBLIC_BUCKET_NAME',
+  'R2_PUBLIC_HOST',
   'UPSTASH_REDIS_REST_URL',
   'UPSTASH_REDIS_REST_TOKEN',
   'TELEGRAM_BOT_TOKEN',
@@ -105,6 +107,8 @@ const bootstrapSchema = z
     R2_AUDIT_BUCKET_NAME: z.string().regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/).optional(),
     R2_AUDIT_ACCESS_KEY_ID: secretSchema.optional(),
     R2_AUDIT_SECRET_ACCESS_KEY: secretSchema.optional(),
+    R2_PUBLIC_BUCKET_NAME: z.string().regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/).optional(),
+    R2_PUBLIC_HOST: hostnameSchema.optional(),
     UPSTASH_REDIS_REST_URL: httpsUrlSchema,
     UPSTASH_REDIS_REST_TOKEN: secretSchema,
     TELEGRAM_BOT_TOKEN: secretSchema,
@@ -143,6 +147,13 @@ const bootstrapSchema = z
         code: 'custom',
         path: [value.RESEND_API_KEY === undefined ? 'RESEND_API_KEY' : 'RESEND_DEFAULT_FROM'],
         message: 'resend_email_incomplete',
+      });
+    }
+    if ((value.R2_PUBLIC_BUCKET_NAME === undefined) !== (value.R2_PUBLIC_HOST === undefined)) {
+      context.addIssue({
+        code: 'custom',
+        path: [value.R2_PUBLIC_BUCKET_NAME === undefined ? 'R2_PUBLIC_BUCKET_NAME' : 'R2_PUBLIC_HOST'],
+        message: 'r2_public_incomplete',
       });
     }
     const controlHosts = [value.DASHBOARD_HOST, value.API_HOST, value.WEBHOOK_HOST];
@@ -203,6 +214,9 @@ export interface BootstrapConfig {
     readonly r2AuditBucketName: string | null;
     readonly r2AuditAccessKeyId: SecretString | null;
     readonly r2AuditSecretAccessKey: SecretString | null;
+    /** Public media bucket + host (optional pair; direct public URLs off when null). */
+    readonly r2PublicBucketName: string | null;
+    readonly r2PublicHost: string | null;
     readonly upstashRestUrl: string;
     readonly upstashRestToken: SecretString;
     readonly telegramBotToken: SecretString;
@@ -262,6 +276,8 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       r2AuditBucketName: value.R2_AUDIT_BUCKET_NAME ?? null,
       r2AuditAccessKeyId: value.R2_AUDIT_ACCESS_KEY_ID === undefined ? null : SecretString.fromPlain(value.R2_AUDIT_ACCESS_KEY_ID),
       r2AuditSecretAccessKey: value.R2_AUDIT_SECRET_ACCESS_KEY === undefined ? null : SecretString.fromPlain(value.R2_AUDIT_SECRET_ACCESS_KEY),
+      r2PublicBucketName: value.R2_PUBLIC_BUCKET_NAME ?? null,
+      r2PublicHost: value.R2_PUBLIC_HOST ?? null,
       upstashRestUrl: value.UPSTASH_REDIS_REST_URL,
       upstashRestToken: SecretString.fromPlain(value.UPSTASH_REDIS_REST_TOKEN),
       telegramBotToken: SecretString.fromPlain(value.TELEGRAM_BOT_TOKEN),

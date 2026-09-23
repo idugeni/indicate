@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (162 migrations):
+-- Reviewed sources, in journal order (163 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -175,6 +175,7 @@
 --   160  20260923060000_media_scoped_object_keys  ledger sha256:706cb1cf62a9e4fd89fd1fcf23af857057e6a9b142d76d9cb2bb3a1445148efd
 --   161  20260923150140_media_dimensions  ledger sha256:864877367951c3f3fcc49476c232c35d84a5b4866fbb4f052681fbe837a61ae8
 --   162  20260923155015_cascade_hierarchy  ledger sha256:2a35dc9d06af8a15c362acc4e962213e07e2bcf1a13b52b08359eeb9c309896d
+--   163  20260923170017_media_public_prefix  ledger sha256:cda647367f2caff941ca6ca1a940b563aaffeb29a95722b5dfea2f6a872c2ad9
 
 BEGIN;
 
@@ -12830,4 +12831,32 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (161, 'cascade_hierarchy', 'sha256:fecb170088d911cf9c8624593d585da2b92cc5afaae74c067fb9a69cbec40012');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2a35dc9d06af8a15c362acc4e962213e07e2bcf1a13b52b08359eeb9c309896d', 1790178615993);
+
+-- ----------------------------------------------------------------------
+-- 20260923170017_media_public_prefix
+-- ----------------------------------------------------------------------
+-- Public-bucket key prefix: `pub/`-scoped keys live in the public R2 bucket
+-- (same tenant layout beneath the prefix) while legacy and `o/` keys stay
+-- private. Amends both owner-prefix checks without weakening them: the
+-- organization scoping is preserved inside the public branch.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.media DROP CONSTRAINT media_owner_prefix;
+ALTER TABLE public.media ADD CONSTRAINT media_owner_prefix CHECK ((
+  (article_id IS NOT NULL AND (object_key LIKE ('articles/' || article_id::text || '/%') OR object_key LIKE ('o/' || organization_id::text || '/p/%/article/' || article_id::text || '/%')))
+  OR (site_id IS NOT NULL AND (object_key LIKE ('sites/' || site_id::text || '/%') OR object_key LIKE ('o/' || organization_id::text || '/p/%/site/' || site_id::text || '/%')))
+  OR (organization_asset AND (object_key LIKE 'assets/%' OR object_key LIKE ('o/' || organization_id::text || '/p/%/organization/%')))
+  OR (object_key LIKE ('pub/o/' || organization_id::text || '/%'))
+));
+ALTER TABLE public.media_key_reservations DROP CONSTRAINT media_key_reservation_owner_prefix;
+ALTER TABLE public.media_key_reservations ADD CONSTRAINT media_key_reservation_owner_prefix CHECK ((
+  (article_id IS NOT NULL AND (object_key LIKE ('articles/' || article_id::text || '/%') OR object_key LIKE ('o/' || organization_id::text || '/p/%/article/' || article_id::text || '/%')))
+  OR (site_id IS NOT NULL AND (object_key LIKE ('sites/' || site_id::text || '/%') OR object_key LIKE ('o/' || organization_id::text || '/p/%/site/' || site_id::text || '/%')))
+  OR (organization_asset AND (object_key LIKE 'assets/%' OR object_key LIKE ('o/' || organization_id::text || '/p/%/organization/%')))
+  OR (object_key LIKE ('pub/o/' || organization_id::text || '/%'))
+));
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (162, 'media_public_prefix', 'sha256:71e0a1b284efde6cbdbb26d521c4f6369eeb3aa2de5dc12de1cd7a6a5f444f9e');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('cda647367f2caff941ca6ca1a940b563aaffeb29a95722b5dfea2f6a872c2ad9', 1790182817674);
 COMMIT;

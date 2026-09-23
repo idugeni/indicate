@@ -35,7 +35,7 @@ async function handleGET(request: Request) {
   try {
     const repository = new DrizzlePublishingRepository(runtime.db);
     const queue = new UpstashPublicationQueueAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace, resourceId: config.redis.resourceId });
-    const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey });
+    const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, publicBucketName: config.r2.publicBucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey });
     const worker = new PublicationWorker(repository, queue, new DrizzlePublicationTargetPublisher(runtime.db), storage, { maxAttempts: config.publishing.maxAttempts, delaysSeconds: config.publishing.retryDelaysSeconds, leaseSeconds: config.publishing.leaseSeconds, batchSize: config.publishing.batchSize, functionDeadlineSeconds: config.publishing.functionDeadlineSeconds }, undefined, createTelegramNotificationService(config, context.bootstrap), new HttpSharePrewarm());
     const mode = new URL(request.url).searchParams.get('mode') ?? 'work';
     if (mode !== 'work' && mode !== 'reconcile') return NextResponse.json(createPublicError('INVALID_INPUT', 'Unknown worker mode.', requestId), { status: 400 });

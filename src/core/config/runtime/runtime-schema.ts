@@ -37,6 +37,9 @@ export interface RuntimeConfig {
     readonly uploadTtlSeconds: number;
     readonly readTtlSeconds: number;
     readonly allowedTypes: readonly string[];
+    /** Public media bucket + host; null when unconfigured (route URLs stay authoritative). */
+    readonly publicBucketName: string | null;
+    readonly publicHost: string | null;
     /** Daily WORM audit bucket; null when unconfigured (export disabled). */
     readonly audit: {
       readonly bucketName: string;

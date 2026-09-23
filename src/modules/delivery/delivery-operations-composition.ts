@@ -18,7 +18,7 @@ export async function deliveryOperationsComposition() {
   const context = await getServerRuntimeContext();
   const config = context.config;
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
-  const repository = new DrizzleDeliveryRepository(runtime.db, config.seo.defaultAssetUrl);
+  const repository = new DrizzleDeliveryRepository(runtime.db, config.seo.defaultAssetUrl, config.r2.publicHost);
   const cloudflare = new CloudflareAuthorityAdapter(config.cloudflare.accountId, config.cloudflare.apiToken, config.vercel.productionTarget);
   const vercel = new VercelExactDomainAdapter(config.vercel.projectId, config.vercel.teamId, config.vercel.apiToken);
   const zoneResolver: DomainZoneResolver = {

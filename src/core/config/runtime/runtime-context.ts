@@ -70,6 +70,8 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
       bucketName: shared.r2BucketName,
       accessKeyId: bootstrap.credentials.r2AccessKeyId.reveal(),
       secretAccessKey: bootstrap.credentials.r2SecretAccessKey.reveal(),
+      publicBucketName: bootstrap.credentials.r2PublicBucketName,
+      publicHost: bootstrap.credentials.r2PublicHost,
       maxBytes: policies.media.maxObjectBytes,
       uploadTtlSeconds: policies.media.uploadAuthorizationSeconds,
       readTtlSeconds: policies.media.readAuthorizationSeconds,

@@ -16,7 +16,7 @@ function repository(config: RuntimeConfig, bootstrap: BootstrapConfig): Delivery
   if (isPlaceholder) {
     throw new Error('delivery_repository_unconfigured');
   }
-  globalThis.indicateDeliveryRepository = new DrizzleDeliveryRepository(getSharedRuntimeDatabase(bootstrap).db, config.seo.defaultAssetUrl);
+  globalThis.indicateDeliveryRepository = new DrizzleDeliveryRepository(getSharedRuntimeDatabase(bootstrap).db, config.seo.defaultAssetUrl, config.r2.publicHost);
   return globalThis.indicateDeliveryRepository;
 }
 export async function deliveryComposition() {

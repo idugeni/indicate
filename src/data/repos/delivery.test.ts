@@ -96,6 +96,7 @@ function harness(handlers: {
   readonly body?: readonly unknown[];
   readonly gallery?: readonly unknown[];
   readonly feed?: readonly unknown[];
+  readonly publicHost?: string | null;
 }) {
   const selectLog: SelectLog[] = [];
   const settings = handlers.settings ?? [SETTINGS_ROW];
@@ -126,7 +127,7 @@ function harness(handlers: {
     },
   );
   const database = { transaction: async (callback: (tx: unknown) => unknown) => callback(transaction) };
-  const repository = new DrizzleDeliveryRepository(database as never, 'https://portal.example/brand/default.jpg');
+  const repository = new DrizzleDeliveryRepository(database as never, 'https://portal.example/brand/default.jpg', handlers.publicHost ?? null);
   return { repository, selectLog };
 }
 
@@ -214,6 +215,44 @@ describe('readSite projection', () => {
     const item = (await repository.loadNetworkSite({ ...CONTEXT }, {}))?.articles[0];
     expect(item).toBeDefined();
     expect(item).toHaveProperty('canonicalUrl', 'https://portal.test/berita-utama');
+  });
+
+  it('memakai url publik langsung untuk sampul pub', async () => {
+    const { repository } = harness({
+      publicHost: 'media.indicate.web.id',
+      articles: [
+        articleRow({
+          leadMediaId: 'm-1',
+          leadMediaType: 'image/webp',
+          leadObjectKey: 'pub/o/o1/p/article-cover/y=2026/foto-abcdef1234567890.webp',
+          mediaState: 'active',
+          coverImageUrl: null,
+        }),
+      ],
+    });
+    const item = (await repository.loadNetworkSite({ ...CONTEXT }, {}))?.articles[0];
+    expect(item).toBeDefined();
+    expect(item).toHaveProperty(
+      'imageUrl',
+      'https://media.indicate.web.id/pub/o/o1/p/article-cover/y=2026/foto-abcdef1234567890.webp',
+    );
+  });
+
+  it('kembali ke route bertanda saat host publik tak dikonfigurasi', async () => {
+    const { repository } = harness({
+      articles: [
+        articleRow({
+          leadMediaId: 'm-1',
+          leadMediaType: 'image/webp',
+          leadObjectKey: 'pub/o/o1/p/article-cover/y=2026/foto-abcdef1234567890.webp',
+          mediaState: 'active',
+          coverImageUrl: null,
+        }),
+      ],
+    });
+    const item = (await repository.loadNetworkSite({ ...CONTEXT }, {}))?.articles[0];
+    expect(item).toBeDefined();
+    expect(item).toHaveProperty('imageUrl', 'https://portal.example/api/network/media/m-1');
   });
 
   it('customDescription null jatuh ke excerpt 600 karakter kepala', async () => {

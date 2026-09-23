@@ -63,6 +63,7 @@ async function handleGET(request: Request, context: { readonly params: Promise<{
     if (!result.ok) return new Response('Not Found', { status: 404 });
     const storage = new R2ObjectStorageAdapter({
       accountId: serverContext.config.r2.accountId, bucketName: serverContext.config.r2.bucketName,
+      publicBucketName: serverContext.config.r2.publicBucketName,
       accessKeyId: serverContext.config.r2.accessKeyId, secretAccessKey: serverContext.config.r2.secretAccessKey,
     });
     try {

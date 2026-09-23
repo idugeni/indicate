@@ -1,5 +1,5 @@
 import type { AuthorizedTenantActorContext, HostnameContext } from '@/core/operation-context';
-import { buildScopedObjectKey, buildThumbObjectKey } from '@/modules/publishing/object-key';
+import { buildScopedObjectKey, buildThumbObjectKey, isPublicPurpose } from '@/modules/publishing/object-key';
 import type { MediaAssetRecord } from '@/modules/publishing/models';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import type { ExactObjectAuthorization, ObjectStoragePort } from '@/integrations/storage/ports';
@@ -68,6 +68,7 @@ export class MediaService {
           filename: value.filename,
           collisionToken,
           now,
+          visibility: isPublicPurpose(value.purpose) ? 'public' : 'private',
         });
         const result = await this.repository.reserveMediaCandidate(actor, {
           reservationId, objectKey: key, owner: value.owner, purpose: value.purpose, expectedMediaType: value.mediaType,

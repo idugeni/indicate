@@ -100,6 +100,23 @@ describe('MediaService reserveUpload', () => {
     expect(storage.authorizeExactPut).toHaveBeenCalledTimes(1);
   });
 
+  it('memberi prefix publik untuk purpose artikel dan privat untuk lainnya', async () => {
+    const seen: string[] = [];
+    const capture = {
+      reserveMediaCandidate: vi.fn(async (_actor: unknown, input: { objectKey: string }) => {
+        seen.push(input.objectKey);
+        return { kind: 'reserved', reservation: { id: 'res-9' } };
+      }),
+    };
+    const { service } = harness(capture as Record<string, unknown>);
+    const cover = await service.reserveUpload(actor, { ...upload, purpose: 'article-cover' });
+    expect(cover.ok).toBe(true);
+    const logo = await service.reserveUpload(actor, { ...upload, purpose: 'site-logo', owner: { kind: 'organization' } });
+    expect(logo.ok).toBe(true);
+    expect(seen[0]).toMatch(/^pub\//);
+    expect(seen[1]).not.toMatch(/^pub\//);
+  });
+
   it('melewati kandidat occupied lalu berhasil', async () => {
     let calls = 0;
     const { service, repository } = harness({

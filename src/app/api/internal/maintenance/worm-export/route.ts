@@ -39,6 +39,7 @@ async function handleGET(request: Request) {
   const storage = new R2ObjectStorageAdapter({
     accountId: context.config.r2.accountId,
     bucketName: audit.bucketName,
+    publicBucketName: null,
     accessKeyId: audit.accessKeyId,
     secretAccessKey: audit.secretAccessKey,
   });

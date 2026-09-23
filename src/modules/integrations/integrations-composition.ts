@@ -43,7 +43,7 @@ export function createTelegramNotificationService(config: RuntimeConfig, bootstr
 export function createProductionIntegrations(config: RuntimeConfig, bootstrap: BootstrapConfig) {
   const runtime = getSharedRuntimeDatabase(bootstrap); const identifiers = new UuidGenerator();
   const repository = new DrizzleIntegrationsRepository(runtime.db); const dashboard = new DrizzleDashboardRepository(runtime.db); const publishing = new DrizzlePublishingRepository(runtime.db);
-  const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey });
+  const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, publicBucketName: config.r2.publicBucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey });
   const queue = new UpstashPublicationQueueAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace, resourceId: config.redis.resourceId });
   const telegram = new TelegramBotApiAdapter(config.telegram.botToken, config.r2.maxBytes);
   const telegramNotifications = new TelegramNotificationService(repository, `https://${config.hosts.dashboard}/tg/app`);

@@ -40,7 +40,7 @@ async function handleGET(request: Request) {
   const local = await resolveVerifiedLocalUser(identity, new DrizzleAuthorizationRepository(runtime.db), new UuidGenerator());
   if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   try {
-    const storage = new R2ObjectStorageAdapter({ accountId: context.config.r2.accountId, bucketName: context.config.r2.bucketName, accessKeyId: context.config.r2.accessKeyId, secretAccessKey: context.config.r2.secretAccessKey });
+    const storage = new R2ObjectStorageAdapter({ accountId: context.config.r2.accountId, bucketName: context.config.r2.bucketName, publicBucketName: context.config.r2.publicBucketName, accessKeyId: context.config.r2.accessKeyId, secretAccessKey: context.config.r2.secretAccessKey });
     const authorization = await storage.authorizeExactGet(parsed.data.ref.slice('r2:'.length), context.config.r2.readTtlSeconds);
     return NextResponse.json({ url: authorization.url });
   } catch {

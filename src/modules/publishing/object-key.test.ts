@@ -6,6 +6,8 @@ import {
   buildThumbObjectKey,
   createCollisionToken,
   isLegacyMediaKey,
+  isPublicObjectKey,
+  isPublicPurpose,
   normalizePurpose,
   objectKeyPrefix,
 } from '@/modules/publishing/object-key';
@@ -22,6 +24,43 @@ describe('buildThumbObjectKey', () => {
   it('menyisipkan infix thumb sebelum ekstensi', () => {
     expect(buildThumbObjectKey('articles/a-1/foto-abcd1234.jpg')).toBe('articles/a-1/foto-abcd1234-thumb.jpg');
     expect(buildThumbObjectKey('assets/file')).toBe('assets/file-thumb');
+  });
+
+  it('mempertahankan prefix publik pada thumb', () => {
+    expect(buildThumbObjectKey('pub/o/org/p/article-cover/y=2026/m=09/organization/23-foto-abcdef1234567890.webp')).toBe(
+      'pub/o/org/p/article-cover/y=2026/m=09/organization/23-foto-abcdef1234567890-thumb.webp',
+    );
+  });
+});
+
+describe('visibilitas publik', () => {
+  it('membedakan purpose artikel dari privat', () => {
+    expect(isPublicPurpose('article-cover')).toBe(true);
+    expect(isPublicPurpose('article-image')).toBe(true);
+    expect(isPublicPurpose('site-logo')).toBe(false);
+    expect(isPublicPurpose('organization-asset')).toBe(false);
+    expect(isPublicPurpose('tak-dikenal')).toBe(false);
+  });
+
+  it('membedakan key publik dari privat', () => {
+    expect(isPublicObjectKey('pub/o/org/p/article-cover/y=2026/f.webp')).toBe(true);
+    expect(isPublicObjectKey('o/org/p/article-cover/y=2026/f.webp')).toBe(false);
+    expect(isPublicObjectKey('articles/a-1/f.webp')).toBe(false);
+    expect(isPublicObjectKey('')).toBe(false);
+  });
+
+  it('memberi prefix pub untuk visibilitas publik', () => {
+    const key = buildScopedObjectKey({
+      owner: { kind: 'organization' },
+      organizationId: '0199a2b3-4c5d-7e8f-9012-3456789abc00',
+      purpose: 'article-cover',
+      filename: 'sampul.jpg',
+      collisionToken: 'k9m2qx7v4a1b8c3d',
+      now: new Date('2026-09-23T10:00:00.000Z'),
+      visibility: 'public',
+    });
+    expect(key.startsWith('pub/o/')).toBe(true);
+    expect(isPublicObjectKey(key)).toBe(true);
   });
 });
 
