@@ -175,6 +175,7 @@ export const regions = pgTable('regions', {
   unique('regions_organization_external_key_unique').on(table.organizationId, table.externalKey),
   unique('regions_organization_slug_unique').on(table.organizationId, table.slug),
   index('regions_organization_status_idx').on(table.organizationId, table.status),
+  index('regions_parent_idx').on(table.organizationId, table.parentRegionId),
   foreignKey({ name: 'regions_parent_fk', columns: [table.organizationId, table.parentRegionId], foreignColumns: [table.organizationId, table.id] }).onDelete('restrict'),
   check('regions_slug_format', sql`${table.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'`),
   check('regions_kind_parent_consistent', sql`(${table.kind} = 'city') = (${table.parentRegionId} IS NOT NULL)`),

@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (163 migrations):
+-- Reviewed sources, in journal order (164 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -176,6 +176,7 @@
 --   161  20260923150140_media_dimensions  ledger sha256:864877367951c3f3fcc49476c232c35d84a5b4866fbb4f052681fbe837a61ae8
 --   162  20260923155015_cascade_hierarchy  ledger sha256:2a35dc9d06af8a15c362acc4e962213e07e2bcf1a13b52b08359eeb9c309896d
 --   163  20260923170017_media_public_prefix  ledger sha256:cda647367f2caff941ca6ca1a940b563aaffeb29a95722b5dfea2f6a872c2ad9
+--   164  20260923172152_cascade_fk_covering_indexes  ledger sha256:cbb46d566bf3b67bfe6eac22f990a891b5448e2849d6da20b46c7b19631631ac
 
 BEGIN;
 
@@ -12859,4 +12860,20 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (162, 'media_public_prefix', 'sha256:71e0a1b284efde6cbdbb26d521c4f6369eeb3aa2de5dc12de1cd7a6a5f444f9e');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('cda647367f2caff941ca6ca1a940b563aaffeb29a95722b5dfea2f6a872c2ad9', 1790182817674);
+
+-- ----------------------------------------------------------------------
+-- 20260923172152_cascade_fk_covering_indexes
+-- ----------------------------------------------------------------------
+-- Covering indexes for the cascade self-referencing FKs (advisor 0001).
+-- `article_sites_expanded_from_fk` and `regions_parent_fk` are composite
+-- (organization_id, fk) without a covering index; both are small, so plain
+-- CREATE INDEX is safe without CONCURRENTLY.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE INDEX "article_sites_expanded_from_idx" ON "article_sites" USING btree ("organization_id","expanded_from_site_id");
+CREATE INDEX "regions_parent_idx" ON "regions" USING btree ("organization_id","parent_region_id");
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (163, 'cascade_fk_covering_indexes', 'sha256:fbfb1da44e997b513c9c216484fcab9c343c20d413afd494bb7532194601d500');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('cbb46d566bf3b67bfe6eac22f990a891b5448e2849d6da20b46c7b19631631ac', 1790184112822);
 COMMIT;

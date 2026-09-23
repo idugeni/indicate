@@ -1142,6 +1142,13 @@
       "when": 1790182817674,
       "tag": "20260923170017_media_public_prefix",
       "breakpoints": true
+    },
+    {
+      "idx": 163,
+      "version": "7",
+      "when": 1790184112822,
+      "tag": "20260923172152_cascade_fk_covering_indexes",
+      "breakpoints": true
     }
   ]
 }
