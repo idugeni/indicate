@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (161 migrations):
+-- Reviewed sources, in journal order (162 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -174,6 +174,7 @@
 --   159  20260923050935_drop_article_dek  ledger sha256:e218c9b6fbe9349ff7c81485ffeddbd2cb5cd6b549fc9f2bf10a6faeb8a571aa
 --   160  20260923060000_media_scoped_object_keys  ledger sha256:706cb1cf62a9e4fd89fd1fcf23af857057e6a9b142d76d9cb2bb3a1445148efd
 --   161  20260923150140_media_dimensions  ledger sha256:864877367951c3f3fcc49476c232c35d84a5b4866fbb4f052681fbe837a61ae8
+--   162  20260923155015_cascade_hierarchy  ledger sha256:2a35dc9d06af8a15c362acc4e962213e07e2bcf1a13b52b08359eeb9c309896d
 
 BEGIN;
 
@@ -12802,4 +12803,31 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (160, 'media_dimensions', 'sha256:dbd5ce658a304baf5ba899486304bffe4f16337dee3a33eaf448eba8d09821e1');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('864877367951c3f3fcc49476c232c35d84a5b4866fbb4f052681fbe837a61ae8', 1790175700885);
+
+-- ----------------------------------------------------------------------
+-- 20260923155015_cascade_hierarchy
+-- ----------------------------------------------------------------------
+-- City hierarchy for cascade publishing. Regions gain a kind plus an optional
+-- parent region: a city shares the one-label subdomain contract
+-- (`{slug}.{apex}`), and org-scoped slug uniqueness keeps city and region
+-- slugs collision-free by construction, so no resolver, trigger, DNS, or
+-- certificate changes are needed. Assignment rows record their origin so
+-- automatic cascade stays auditable and recomputable; cascaded copies may
+-- carry an inherited canonical URL to consolidate search equity.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE TYPE public.region_kind AS ENUM ('region', 'city');
+ALTER TABLE public.regions ADD COLUMN kind public.region_kind NOT NULL DEFAULT 'region';
+ALTER TABLE public.regions ADD COLUMN parent_region_id uuid;
+ALTER TABLE public.regions ADD CONSTRAINT regions_parent_fk FOREIGN KEY (organization_id, parent_region_id) REFERENCES public.regions(organization_id, id) ON DELETE RESTRICT;
+ALTER TABLE public.regions ADD CONSTRAINT regions_kind_parent_consistent CHECK ((kind = 'city') = (parent_region_id IS NOT NULL));
+ALTER TABLE public.article_sites ADD COLUMN assignment_source text NOT NULL DEFAULT 'manual';
+ALTER TABLE public.article_sites ADD CONSTRAINT article_sites_assignment_source_values CHECK (assignment_source IN ('manual', 'auto'));
+ALTER TABLE public.article_sites ADD COLUMN expanded_from_site_id uuid;
+ALTER TABLE public.article_sites ADD CONSTRAINT article_sites_expanded_from_fk FOREIGN KEY (organization_id, expanded_from_site_id) REFERENCES public.sites(organization_id, id) ON DELETE RESTRICT;
+ALTER TABLE public.article_sites ADD COLUMN custom_canonical_url text;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (161, 'cascade_hierarchy', 'sha256:fecb170088d911cf9c8624593d585da2b92cc5afaae74c067fb9a69cbec40012');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2a35dc9d06af8a15c362acc4e962213e07e2bcf1a13b52b08359eeb9c309896d', 1790178615993);
 COMMIT;

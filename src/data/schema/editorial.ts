@@ -211,6 +211,9 @@ export const articleSites = pgTable('article_sites', {
   customDescription: text('custom_description'),
   customImageMediaId: uuid('custom_image_media_id'),
   viewCount: integer('view_count').default(0).notNull(),
+  assignmentSource: text('assignment_source').default('manual').notNull(),
+  expandedFromSiteId: uuid('expanded_from_site_id'),
+  customCanonicalUrl: text('custom_canonical_url'),
   ...timestamps,
 }, (table) => [
   primaryKey({ name: 'article_sites_pk', columns: [table.organizationId, table.id] }),
@@ -218,6 +221,7 @@ export const articleSites = pgTable('article_sites', {
   unique('article_sites_organization_article_site_unique').on(table.organizationId, table.articleId, table.siteId),
   foreignKey({ name: 'article_sites_article_fk', columns: [table.organizationId, table.articleId], foreignColumns: [articles.organizationId, articles.id] }).onDelete('restrict'),
   foreignKey({ name: 'article_sites_site_fk', columns: [table.organizationId, table.siteId], foreignColumns: [sites.organizationId, sites.id] }).onDelete('restrict'),
+  foreignKey({ name: 'article_sites_expanded_from_fk', columns: [table.organizationId, table.expandedFromSiteId], foreignColumns: [sites.organizationId, sites.id] }).onDelete('restrict'),
   index('article_sites_site_state_date_idx').on(table.organizationId, table.siteId, table.state, table.publishedAt),
   index('article_sites_outcome_date_idx').on(table.organizationId, table.siteId, table.state, table.stateOccurredAt),
   index('article_sites_organization_state_idx').on(table.organizationId, table.state),
@@ -226,6 +230,8 @@ export const articleSites = pgTable('article_sites', {
   check('article_sites_custom_title_shape', sql`${table.customTitle} IS NULL OR (char_length(${table.customTitle}) BETWEEN 10 AND 160)`),
   check('article_sites_custom_description_shape', sql`${table.customDescription} IS NULL OR (char_length(${table.customDescription}) BETWEEN 50 AND 500)`),
   check('article_sites_published_outcome', sql`${table.state} <> 'published' OR (${table.publishedUrl} IS NOT NULL AND ${table.publishedAt} IS NOT NULL)`),
+  check('article_sites_assignment_source_values', sql`${table.assignmentSource} IN ('manual', 'auto')`),
+  check('article_sites_expanded_from_consistent', sql`(${table.assignmentSource} = 'auto') = (${table.expandedFromSiteId} IS NOT NULL)`),
 ]);
 
 export const articleSiteViewDays = pgTable('article_site_view_days', {

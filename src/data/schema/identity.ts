@@ -17,6 +17,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 export const recordStatus = pgEnum('record_status', ['active', 'inactive', 'archived']);
+export const regionKind = pgEnum('region_kind', ['region', 'city']);
 export const roleTier = pgEnum('role_tier', ['admin', 'user', 'superadmin']);
 export const permissionScope = pgEnum('permission_scope', ['organization', 'platform']);
 export const subscriptionStatus = pgEnum('subscription_status', ['trialing', 'active', 'past_due', 'suspended', 'cancelled']);
@@ -164,6 +165,8 @@ export const regions = pgTable('regions', {
   name: text('name').notNull(),
   slug: text('slug').notNull(),
   status: recordStatus('status').default('active').notNull(),
+  kind: regionKind('kind').default('region').notNull(),
+  parentRegionId: uuid('parent_region_id'),
   version: integer('version').default(1).notNull(),
   ...timestamps,
 }, (table) => [
@@ -172,7 +175,9 @@ export const regions = pgTable('regions', {
   unique('regions_organization_external_key_unique').on(table.organizationId, table.externalKey),
   unique('regions_organization_slug_unique').on(table.organizationId, table.slug),
   index('regions_organization_status_idx').on(table.organizationId, table.status),
+  foreignKey({ name: 'regions_parent_fk', columns: [table.organizationId, table.parentRegionId], foreignColumns: [table.organizationId, table.id] }).onDelete('restrict'),
   check('regions_slug_format', sql`${table.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'`),
+  check('regions_kind_parent_consistent', sql`(${table.kind} = 'city') = (${table.parentRegionId} IS NOT NULL)`),
 ]);
 
 export const sites = pgTable('sites', {
