@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (159 migrations):
+-- Reviewed sources, in journal order (160 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -172,6 +172,7 @@
 --   157  20260923020000_article_site_unpublish_transition  ledger sha256:8ba4a0abb4fdf98cf0f3da715ac1f2456590958a1b328bad427737afa54f847f
 --   158  20260923030000_site_settings_description_strip_tagline  ledger sha256:d6df429cb436b83f48a967b725825a81e9cbc3de2d342d9b2f4fc27fa27c4d4f
 --   159  20260923050935_drop_article_dek  ledger sha256:e218c9b6fbe9349ff7c81485ffeddbd2cb5cd6b549fc9f2bf10a6faeb8a571aa
+--   160  20260923060000_media_scoped_object_keys  ledger sha256:706cb1cf62a9e4fd89fd1fcf23af857057e6a9b142d76d9cb2bb3a1445148efd
 
 BEGIN;
 
@@ -12752,4 +12753,34 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (158, 'drop_article_dek', 'sha256:b8533345456d584baff327174b22be91e8850c48c02a0df6688057975d34a981');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e218c9b6fbe9349ff7c81485ffeddbd2cb5cd6b549fc9f2bf10a6faeb8a571aa', 1790140199279);
+
+-- ----------------------------------------------------------------------
+-- 20260923060000_media_scoped_object_keys
+-- ----------------------------------------------------------------------
+-- Expand media keys to tenant-scoped layout alongside legacy flat keys.
+-- New format: o/{organization_id}/p/{purpose}/y={YYYY}/m={MM}/{owner}/{day}-{stem}-{token16}.{ext}
+-- Dual-read: legacy assets/, articles/, sites/ keys remain valid; new reserves
+-- must start with o/{organization_id}/ and carry the matching owner segment.
+-- Backfill scope: active media plus non-expired reservations only; expired or
+-- rejected rows are left to natural cleanup. Thumb keys inherit the base key.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.media DROP CONSTRAINT media_owner_prefix;
+ALTER TABLE public.media ADD CONSTRAINT media_owner_prefix CHECK ((
+  (article_id IS NOT NULL AND (object_key LIKE ('articles/' || article_id::text || '/%') OR object_key LIKE ('o/' || organization_id::text || '/p/%/article/' || article_id::text || '/%')))
+  OR (site_id IS NOT NULL AND (object_key LIKE ('sites/' || site_id::text || '/%') OR object_key LIKE ('o/' || organization_id::text || '/p/%/site/' || site_id::text || '/%')))
+  OR (organization_asset AND (object_key LIKE 'assets/%' OR object_key LIKE ('o/' || organization_id::text || '/p/%/organization/%')))
+));
+ALTER TABLE public.media_key_reservations DROP CONSTRAINT media_key_reservation_owner_prefix;
+ALTER TABLE public.media_key_reservations ADD CONSTRAINT media_key_reservation_owner_prefix CHECK ((
+  (article_id IS NOT NULL AND (object_key LIKE ('articles/' || article_id::text || '/%') OR object_key LIKE ('o/' || organization_id::text || '/p/%/article/' || article_id::text || '/%')))
+  OR (site_id IS NOT NULL AND (object_key LIKE ('sites/' || site_id::text || '/%') OR object_key LIKE ('o/' || organization_id::text || '/p/%/site/' || site_id::text || '/%')))
+  OR (organization_asset AND (object_key LIKE 'assets/%' OR object_key LIKE ('o/' || organization_id::text || '/p/%/organization/%')))
+));
+CREATE INDEX IF NOT EXISTS media_organization_purpose_state_idx ON public.media USING btree (organization_id, purpose, state);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (159, 'media_scoped_object_keys', 'sha256:071a82ac10bc2e46b13120a93bad25b398e4f87a747251b67dd95cd16e893744');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('706cb1cf62a9e4fd89fd1fcf23af857057e6a9b142d76d9cb2bb3a1445148efd', 1790143000000);
 COMMIT;
