@@ -1,15 +1,20 @@
 'use client';
 
-import { useId, useMemo, useRef, useState, useTransition, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, useTransition, type ChangeEvent, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import {
   Building2,
+  CaseSensitive,
+  Clock,
+  Image as ImageIcon,
   ImagePlus,
   Link2,
   Loader2,
+  Pilcrow,
   Plus,
   Send,
-  Tags,
+  Share2,
+  Type,
 } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { Button } from '@/components/ui/button';
@@ -28,11 +33,9 @@ import type {
   RegionEntity,
 } from '@/modules/dashboard/components/shared/types';
 import { findMatchingCategoryId, slugify } from '@/modules/dashboard/components/shared/form-utils';
-import { parseArticleBody } from '@/modules/site/article-markup';
 import { TAG_MAX_COUNT, normalizeTagList } from '@/modules/site/slug-allocator';
-import { ArticleBodyView } from '@/modules/site/components/article-body-view';
-import { TipTapBodyView } from '@/modules/site/components/tiptap-body-view';
-import { isTipTapDoc, type TipTapDoc } from '@/modules/site/tiptap-document';
+import type { TipTapDoc, TipTapNode } from '@/modules/site/tiptap-document';
+import { ArticlePreview } from '@/modules/dashboard/components/editorial/article-preview';
 import { RichTextEditor } from '@/modules/dashboard/components/editorial/rich-text-editor';
 
 const STATUS_OPTIONS = [
@@ -41,6 +44,13 @@ const STATUS_OPTIONS = [
   { value: 'scheduled', label: 'Terjadwal' },
   { value: 'active', label: 'Terbit Langsung' },
 ] as const;
+
+const SUBMIT_LABELS: Record<string, string> = {
+  draft: 'Simpan Draf',
+  in_review: 'Simpan untuk Reviu',
+  scheduled: 'Jadwalkan Terbit',
+  active: 'Terbitkan Langsung',
+};
 
 /**
  * Tulis satu artikel kanonis baru dengan tata CMS dua kolom.
@@ -78,7 +88,6 @@ export function ArticleCreateForm({
   const canonicalInputId = useId();
   const tagsInputId = useId();
   const excerptInputId = useId();
-  const dekInputId = useId();
   const bodyInputId = useId();
   const categoryInputId = useId();
   const featuredFileId = useId();
@@ -91,37 +100,64 @@ export function ArticleCreateForm({
   const [extraCategories, setExtraCategories] = useState<readonly CategoryEntity[]>([]);
   const [featuredId, setFeaturedId] = useState<string | null>(null);
   const [featuredName, setFeaturedName] = useState('');
+  const [featuredPreviewUrl, setFeaturedPreviewUrl] = useState<string | null>(null);
   const [featuredStatus, setFeaturedStatus] = useState<string | null>(null);
   const [uploadingFeatured, setUploadingFeatured] = useState(false);
   const [coverUrl, setCoverUrl] = useState('');
-  const [bodyDraft, setBodyDraft] = useState('');
+  const [titleText, setTitleText] = useState('');
+  const [descriptionText, setDescriptionText] = useState('');
+  const [mode, setMode] = useState<'tulis' | 'pratinjau' | 'sumber'>('tulis');
+  const [bodyText, setBodyText] = useState('');
   const [bodyJsonDraft, setBodyJsonDraft] = useState<TipTapDoc | null>(null);
   const [richResetKey, setRichResetKey] = useState(0);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [isSubmitting, startSubmitTransition] = useTransition();
+  const editorStats = useMemo(() => {
+    const trimmed = bodyText.trim();
+    const words = trimmed === '' ? 0 : trimmed.split(/\s+/u).length;
+    let paragraphs = 0;
+    let images = 0;
+    let embeds = 0;
+    const visit = (node: TipTapNode): string => {
+      let text = node.text ?? '';
+      for (const child of node.content ?? []) text += visit(child);
+      return text;
+    };
+    for (const node of bodyJsonDraft?.content ?? []) {
+      if (node.type === 'image') {
+        images += 1;
+      } else if (node.type === 'youtube' || node.type === 'video' || node.type === 'twitter' || node.type === 'instagram' || node.type === 'tiktok' || node.type === 'facebook' || node.type === 'drive') {
+        embeds += 1;
+      } else if (node.type === 'bulletList' || node.type === 'orderedList') {
+        for (const item of node.content ?? []) {
+          if (visit(item).trim() !== '') paragraphs += 1;
+        }
+      } else if (visit(node).trim() !== '') {
+        paragraphs += 1;
+      }
+    }
+    return {
+      words,
+      characters: bodyText.length,
+      paragraphs,
+      images,
+      embeds,
+      minutes: words === 0 ? 0 : Math.max(1, Math.ceil(words / 200)),
+    };
+  }, [bodyText, bodyJsonDraft]);
+  const statItems = [
+    { icon: Type, label: 'kata', value: editorStats.words },
+    { icon: CaseSensitive, label: 'karakter', value: editorStats.characters },
+    { icon: Pilcrow, label: 'paragraf', value: editorStats.paragraphs },
+    { icon: ImageIcon, label: 'gambar', value: editorStats.images },
+    { icon: Share2, label: 'sematan', value: editorStats.embeds },
+    { icon: Clock, label: 'mnt baca', value: editorStats.minutes },
+  ];
 
-  const insertMarkup = (before: string, after = '') => {
-    const element = bodyRef.current;
-    if (element === null) return;
-    const { selectionStart: start, selectionEnd: end, value } = element;
-    const next = `${value.slice(0, start)}${before}${value.slice(start, end)}${after}${value.slice(end)}`;
-    setBodyDraft(next);
-    const cursor = start + before.length;
-    requestAnimationFrame(() => {
-      element.focus();
-      element.setSelectionRange(cursor, end + before.length);
-    });
+  const handleRichChange = (change: { readonly doc: TipTapDoc; readonly text: string }) => {
+    const empty = change.text.trim() === '' && (change.doc.content ?? []).every((node) => node.type === 'paragraph' && (node.content ?? []).length === 0);
+    setBodyJsonDraft(empty ? null : change.doc);
+    setBodyText(change.text);
   };
-
-  const insertFigureMarker = () => {
-    const existing = parseArticleBody(bodyDraft).filter((block) => block.kind === 'figure').length;
-    insertMarkup(`\n[gambar:${existing + 1}]\n`);
-  };
-
-  const previewBlocks = parseArticleBody(bodyDraft);
-  const previewImages = previewBlocks.flatMap((block) =>
-    block.kind === 'figure' ? [{ url: '', alt: `Gambar ${block.index} (pratinjau — asli tampil setelah diunggah di tab Media)` }] : [],
-  );
   const regionOptions = useMemo(() => (model?.regions ?? []).map((r) => ({ value: r.id, label: r.name })), [model?.regions]);
   const publisherOptions = useMemo(
     () => (model?.publishers ?? []).filter((p) => p.status === undefined || p.status === 'active').map((p) => ({ value: p.id, label: p.name })),
@@ -139,14 +175,41 @@ export function ArticleCreateForm({
     () => (model?.authors ?? []).filter((a) => a.status === undefined || a.status === 'active').map((a) => ({ value: a.id, label: a.displayName })),
     [model?.authors],
   );
-  const tagSuggestions = useMemo(() => rankTags(model?.articles ?? []), [model?.articles]);
-  const richDoc = bodyJsonDraft !== null && isTipTapDoc(bodyJsonDraft) && (bodyJsonDraft.content ?? []).length > 0 ? bodyJsonDraft : null;
+  const activeAuthors = useMemo(
+    () => (model?.authors ?? []).filter((a) => a.status === undefined || a.status === 'active'),
+    [model?.authors],
+  );
+  const defaultAuthorId = useMemo(
+    () => activeAuthors.find((a) => a.displayName === 'Redaksi')?.id ?? activeAuthors[0]?.id ?? null,
+    [activeAuthors],
+  );
+  const [publisherId, setPublisherId] = useState<string | null>(null);
+  const [authorId, setAuthorId] = useState<string | null>(null);
+  const touchedAuthor = useRef(false);
 
-  const handleRichChange = (change: { readonly doc: TipTapDoc; readonly text: string }) => {
-    const empty = change.text.trim() === '' && (change.doc.content ?? []).every((node) => node.type === 'paragraph' && (node.content ?? []).length === 0);
-    setBodyJsonDraft(empty ? null : change.doc);
-    if (bodyDraft.trim() === '' && change.text.trim() !== '') setBodyDraft(change.text.slice(0, 200_000));
+  useEffect(() => {
+    if (!touchedAuthor.current && publisherId === null && authorId === null && defaultAuthorId !== null) {
+      setAuthorId(defaultAuthorId);
+    }
+  }, [publisherId, authorId, defaultAuthorId]);
+
+  const selectedPublisher = useMemo(
+    () => (model?.publishers ?? []).find((p) => p.id === publisherId) ?? null,
+    [model?.publishers, publisherId],
+  );
+  const selectedAuthor = activeAuthors.find((a) => a.id === authorId) ?? null;
+
+  const handlePublisherChange = (next: string | null) => {
+    const id = next === null || next === '' ? null : next;
+    setPublisherId(id);
+    if (id !== null) setAuthorId(null);
+    else if (!touchedAuthor.current) setAuthorId(defaultAuthorId);
   };
+  const handleAuthorChange = (next: string | null) => {
+    touchedAuthor.current = true;
+    setAuthorId(next === null || next === '' ? null : next);
+  };
+  const tagSuggestions = useMemo(() => rankTags(model?.articles ?? []), [model?.articles]);
 
   const handleTitleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     if (!slug) {
@@ -240,6 +303,13 @@ export function ArticleCreateForm({
       }
       setFeaturedId(mediaId);
       setFeaturedName(file.name);
+      const storedSrc = `/api/network/media/${mediaId}`;
+      try {
+        const read = (await command('media.read', { mediaId })) as { readonly url?: unknown } | null;
+        setFeaturedPreviewUrl(typeof read?.url === 'string' && read.url !== '' ? read.url : storedSrc);
+      } catch {
+        setFeaturedPreviewUrl(storedSrc);
+      }
       setFeaturedStatus(null);
     } finally {
       setUploadingFeatured(false);
@@ -259,9 +329,15 @@ export function ArticleCreateForm({
       toast.error('Isi jadwal terbit dulu untuk status Terjadwal.');
       return;
     }
+    const trimmedBody = bodyText.trim();
+    if (trimmedBody === '') {
+      toast.error('Isi artikel masih kosong. Tulis dulu di tab Tulis.');
+      return;
+    }
 
     startSubmitTransition(async () => {
       const payloadSlug = String(formData.get('slug') ?? '').trim();
+      const description = optional('excerpt');
       const created = (await onSubmit({
         regionId: formData.get('regionId'),
         publisherId: formData.get('publisherId') || null,
@@ -270,11 +346,10 @@ export function ArticleCreateForm({
         leadMediaId: formData.get('leadMediaId') || null,
         slug: payloadSlug,
         title: String(formData.get('title') ?? '').trim(),
-        dek: optional('dek'),
-        excerpt: optional('excerpt'),
+        excerpt: description,
         canonicalUrl: optional('canonicalUrl'),
         coverImageUrl: optional('coverImageUrl'),
-        body: String(formData.get('body') ?? '').trim(),
+        body: trimmedBody.slice(0, 200_000),
         bodyJson: bodyJsonDraft,
         source: String(formData.get('source') ?? '').trim(),
         tags: normalizeTagList(String(formData.get('tags') ?? '').split(',')).slice(0, TAG_MAX_COUNT),
@@ -288,11 +363,18 @@ export function ArticleCreateForm({
       setSlug('');
       setStatus('draft');
       setCategoryIds([]);
+      setPublisherId(null);
+      touchedAuthor.current = false;
+      setAuthorId(defaultAuthorId);
+      setTitleText('');
+      setDescriptionText('');
+      setMode('tulis');
+      setBodyText('');
       setFeaturedId(null);
       setFeaturedName('');
+      setFeaturedPreviewUrl(null);
       setFeaturedStatus(null);
       setCoverUrl('');
-      setBodyDraft('');
       setBodyJsonDraft(null);
       setRichResetKey((key) => key + 1);
     });
@@ -313,6 +395,7 @@ export function ArticleCreateForm({
                 required
                 disabled={isSubmitting}
                 onBlur={handleTitleBlur}
+                onChange={(e) => setTitleText(e.target.value)}
                 placeholder="Masukkan tajuk berita resmi..."
                 className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
               />
@@ -339,101 +422,91 @@ export function ArticleCreateForm({
             </div>
 
             <div className="space-y-1.5">
-              <span id={`${bodyInputId}-rich-label`} className="block font-mono text-xs text-paper-dim">
-                Konten Kaya (opsional)
-              </span>
-              <RichTextEditor
-                key={richResetKey}
-                onDocChange={handleRichChange}
-                command={command ?? (async () => { throw new Error('Unggahan media tidak tersedia di pratinjau.'); })}
-                labelledBy={`${bodyInputId}-rich-label`}
-                disabled={isSubmitting}
-              />
-              <p className="m-0 font-mono text-[11px] text-paper-faint">
-                Editor kaya menyimpan struktur JSON; teksnya mengisi kolom biasa otomatis bila masih kosong.
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor={bodyInputId} className="font-mono text-xs text-paper-dim">
-                Isi Artikel Lengkap
-              </Label>
-              <div className="flex flex-wrap gap-1.5">
-                <Button type="button" variant="outline" size="xs" title="Tebal (**teks**)" onClick={() => insertMarkup('**', '**')} disabled={isSubmitting}>
-                  Tebal
-                </Button>
-                <Button type="button" variant="outline" size="xs" title="Miring (*teks*)" onClick={() => insertMarkup('*', '*')} disabled={isSubmitting}>
-                  Miring
-                </Button>
-                <Button type="button" variant="outline" size="xs" title="Daftar (- item)" onClick={() => insertMarkup('\n- ')} disabled={isSubmitting}>
-                  Daftar
-                </Button>
-                <Button type="button" variant="outline" size="xs" title="Sisip gambar ([gambar:N])" onClick={insertFigureMarker} disabled={isSubmitting}>
-                  Gambar
-                </Button>
-              </div>
-              <Textarea
-                id={bodyInputId}
-                name="body"
-                required
-                ref={bodyRef}
-                value={bodyDraft}
-                onChange={(e) => setBodyDraft(e.target.value)}
-                disabled={isSubmitting}
-                placeholder="Tuliskan materi berita di sini... (**tebal**, *miring*, - daftar, [gambar:1])"
-                className="min-h-[140px] rounded border border-hairline-strong bg-bg p-3 font-sans text-xs leading-relaxed text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
-              />
-              <p className="m-0 font-mono text-[11px] text-paper-faint">
-                Baris kosong = paragraf baru. [gambar:N] memakai gambar ke-N dari halaman Media.
-              </p>
-              {bodyDraft.trim() !== '' || richDoc !== null ? (
-                <div className="rounded border border-hairline bg-bg-raised p-3">
-                  <p className="m-0 mb-2 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Pratinjau</p>
-                  <div className="space-y-3">
-                    {richDoc !== null ? (
-                      <TipTapBodyView
-                        doc={richDoc}
-                        paragraphClassName="font-sans text-xs leading-relaxed text-paper"
-                        listClassName="space-y-1 pl-5 font-sans text-xs leading-relaxed text-paper [list-style:disc]"
-                      />
-                    ) : (
-                      <ArticleBodyView
-                        blocks={previewBlocks}
-                        images={previewImages}
-                        paragraphClassName="font-sans text-xs leading-relaxed text-paper"
-                        listClassName="space-y-1 pl-5 font-sans text-xs leading-relaxed text-paper [list-style:disc]"
-                      />
-                    )}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="space-y-1.5">
               <Label htmlFor={excerptInputId} className="font-mono text-xs text-paper-dim">
-                Ringkasan (opsional)
+                Deskripsi (opsional)
               </Label>
               <Textarea
                 id={excerptInputId}
                 name="excerpt"
                 disabled={isSubmitting}
-                placeholder="Satu-dua kalimat inti berita untuk kartu listing dan SEO..."
+                onChange={(e) => setDescriptionText(e.target.value)}
+                placeholder="Satu-dua kalimat inti berita..."
                 className="min-h-[64px] rounded border border-hairline-strong bg-bg p-3 font-sans text-xs leading-relaxed text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
               />
+              <p className="m-0 font-mono text-[11px] text-paper-faint">
+                Tampil di bawah judul, kartu listing, dan SEO. Kosongkan untuk dibuat otomatis dari isi.
+              </p>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor={dekInputId} className="font-mono text-xs text-paper-dim">
-                Subheadline (opsional)
-              </Label>
-              <Input
-                id={dekInputId}
-                name="dek"
-                disabled={isSubmitting}
-                placeholder="Anak judul di bawah headline..."
-                className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
-              />
+              <div className="flex items-center justify-between gap-2">
+                <span id={`${bodyInputId}-label`} className="block font-mono text-xs text-paper-dim">
+                  Isi Artikel
+                </span>
+                <div role="tablist" aria-label="Mode editor" className="flex gap-1 rounded-md border border-hairline bg-bg-raised p-0.5">
+                  {(
+                    [
+                      { value: 'tulis', label: 'Tulis' },
+                      { value: 'pratinjau', label: 'Pratinjau' },
+                      { value: 'sumber', label: 'Sumber' },
+                    ] as const
+                  ).map((tab) => (
+                    <Button
+                      key={tab.value}
+                      type="button"
+                      role="tab"
+                      aria-selected={mode === tab.value}
+                      variant={mode === tab.value ? 'default' : 'ghost'}
+                      size="xs"
+                      onClick={() => setMode(tab.value)}
+                      disabled={isSubmitting}
+                    >
+                      <span>{tab.label}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              {mode === 'tulis' ? (
+                <RichTextEditor
+                  key={richResetKey}
+                  onDocChange={handleRichChange}
+                  command={command ?? (async () => { throw new Error('Unggahan media tidak tersedia di pratinjau.'); })}
+                  labelledBy={`${bodyInputId}-label`}
+                  disabled={isSubmitting}
+                />
+              ) : mode === 'pratinjau' ? (
+                <ArticlePreview
+                  title={titleText}
+                  description={descriptionText}
+                  doc={bodyJsonDraft}
+                  command={command ?? (async () => null)}
+                />
+              ) : (
+                <div className="space-y-1.5">
+                  <p className="m-0 font-mono text-[11px] text-paper-faint">
+                    Teks polos yang tersimpan untuk arsip dan RSS — hanya baca, diubah lewat tab Tulis.
+                  </p>
+                  <pre className="m-0 max-h-64 overflow-auto rounded border border-hairline bg-bg-raised p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-paper-dim">
+                    {bodyText.trim() === '' ? '— belum ada isi —' : bodyText}
+                  </pre>
+                  <p className="m-0 font-mono text-[11px] text-paper-faint">
+                    Struktur JSON {bodyJsonDraft === null ? 'kosong' : 'valid'} · {bodyText.length} karakter tersimpan.
+                  </p>
+                </div>
+              )}
+              <div aria-label="Statistik naskah" className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-hairline bg-bg-raised px-3 py-2">
+                {statItems.map((stat) => (
+                  <span key={stat.label} className="inline-flex items-center gap-1.5 font-mono text-[11px] text-paper-dim">
+                    <stat.icon className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
+                    {stat.value} {stat.label}
+                  </span>
+                ))}
+              </div>
+              <p className="m-0 font-mono text-[11px] text-paper-faint">
+                Tulis seperti dokumen biasa — tombol Gambar menyisipkan foto otomatis ke media. Teks polos untuk arsip dan RSS dibuat otomatis.
+              </p>
             </div>
+
           </div>
         </SectionCard>
 
@@ -484,7 +557,7 @@ export function ArticleCreateForm({
                   ) : (
                     <Send className="h-3.5 w-3.5" aria-hidden="true" />
                   )}
-                  <span>{status === 'draft' ? 'Simpan Draf' : 'Simpan Artikel'}</span>
+                  <span>{SUBMIT_LABELS[status] ?? 'Simpan Artikel'}</span>
                 </Button>
               </div>
             </div>
@@ -518,6 +591,8 @@ export function ArticleCreateForm({
                   allowEmpty
                   emptyLabel="Mandiri (tanpa penerbit)"
                   options={publisherOptions}
+                  value={publisherId ?? ''}
+                  onValueChange={handlePublisherChange}
                 />
               </div>
 
@@ -546,11 +621,38 @@ export function ArticleCreateForm({
                 <SearchCombobox
                   id={authorSelectId}
                   name="authorId"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || publisherId !== null}
                   placeholder="Tanpa penulis"
                   allowEmpty
                   emptyLabel="Tanpa penulis"
                   options={authorOptions}
+                  value={authorId ?? ''}
+                  onValueChange={handleAuthorChange}
+                />
+                <p className="m-0 font-mono text-[11px] text-paper-faint">
+                  {selectedAuthor !== null
+                    ? `Yang tampil: ${selectedAuthor.byline}.`
+                    : selectedPublisher !== null
+                      ? `Yang tampil: ${selectedPublisher.attributionLabel} (mengikuti penerbit).`
+                      : 'Tanpa penulis dan penerbit: mengikuti nama situs.'}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor={tagsInputId} className="font-mono text-xs text-paper-dim">
+                  Topik (koma, maks. 10)
+                </Label>
+                <TagCombobox
+                  id={tagsInputId}
+                  name="tags"
+                  disabled={isSubmitting}
+                  placeholder="cth: wonosobo, pertanian, apbd"
+                  suggestions={tagSuggestions}
+                  maxItems={TAG_MAX_COUNT}
+                  normalizeValue={(raw) => {
+                    const first = normalizeTagList([raw])[0];
+                    return typeof first === 'string' ? first : '';
+                  }}
                 />
               </div>
             </div>
@@ -563,20 +665,29 @@ export function ArticleCreateForm({
                   Unggah sampul
                 </span>
                 {featuredId !== null ? (
-                  <div className="flex items-center gap-2 rounded border border-hairline bg-bg p-2">
-                    <input type="hidden" name="leadMediaId" value={featuredId} />
-                    <span className="min-w-0 flex-1 truncate font-mono text-xs text-paper">
-                      {featuredName}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => { setFeaturedId(null); setFeaturedName(''); }}
-                      disabled={isSubmitting || uploadingFeatured}
-                    >
-                      <span>Hapus</span>
-                    </Button>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 rounded border border-hairline bg-bg p-2">
+                      <input type="hidden" name="leadMediaId" value={featuredId} />
+                      <span className="min-w-0 flex-1 truncate font-mono text-xs text-paper">
+                        {featuredName}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => { setFeaturedId(null); setFeaturedName(''); setFeaturedPreviewUrl(null); }}
+                        disabled={isSubmitting || uploadingFeatured}
+                      >
+                        <span>Hapus</span>
+                      </Button>
+                    </div>
+                    {featuredPreviewUrl !== null ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={featuredPreviewUrl} alt={`Pratinjau ${featuredName}`} className="max-h-40 w-full rounded border border-hairline object-cover" />
+                    ) : null}
+                    <p className="m-0 break-all font-mono text-[11px] text-paper-faint">
+                      {`/api/network/media/${featuredId}`}
+                    </p>
                   </div>
                 ) : (
                   <Button
@@ -625,26 +736,6 @@ export function ArticleCreateForm({
                   Gambar terunggah diutamakan; URL dipakai bila tidak ada unggahan.
                 </p>
               </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard icon={Tags} title="Topik" eyebrow="Maksimal 10">
-            <div className="space-y-1.5">
-              <Label htmlFor={tagsInputId} className="font-mono text-xs text-paper-dim">
-                Topik (koma, maks. 10)
-              </Label>
-              <TagCombobox
-                id={tagsInputId}
-                name="tags"
-                disabled={isSubmitting}
-                placeholder="cth: wonosobo, pertanian, apbd"
-                suggestions={tagSuggestions}
-                maxItems={TAG_MAX_COUNT}
-                normalizeValue={(raw) => {
-                  const first = normalizeTagList([raw])[0];
-                  return typeof first === 'string' ? first : '';
-                }}
-              />
             </div>
           </SectionCard>
 
