@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag, Info } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag } from 'lucide-react';
 
 import { buildSeoDocument } from '@/modules/site/seo';
 import { resolvePublisherChannels } from '@/modules/site/company-contact';
@@ -102,11 +102,7 @@ export function PurpleEditorialArticle({
           </header>
 
           <aside aria-label="Catatan editorial" className="mt-6 border-l-[3px] border-[#7c3aed] pl-4">
-            <p className="m-0 flex items-center gap-1.5 font-sans text-sm font-bold text-[#7c3aed]">
-              <Info className="h-4 w-4 flex-none" aria-hidden="true" />
-              Catatan Editorial
-            </p>
-            <p className="m-0 mt-1.5 font-sans text-[13px] leading-relaxed text-slate-500">
+            <p className="m-0 font-sans text-[13px] leading-relaxed text-slate-500">
               Artikel ini merupakan konten yang dibuat oleh pengguna. Seluruh isi, informasi, dan opini yang terdapat di dalamnya menjadi tanggung jawab {authorDisplayName(article)} dan tidak mewakili pandangan resmi redaksi {site.settings.name}.
             </p>
           </aside>
