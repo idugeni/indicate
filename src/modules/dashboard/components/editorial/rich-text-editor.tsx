@@ -12,7 +12,8 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { MediaOwner } from '@/modules/publishing/models';
-import { extractYouTubeId, isSafeLinkUrl, isTipTapDoc, type TipTapDoc } from '@/modules/site/tiptap-document';
+import { detectDriveEmbed, detectSocialEmbed, extractYouTubeId, isSafeLinkUrl, isTipTapDoc, type TipTapDoc } from '@/modules/site/tiptap-document';
+import { DriveEmbed, FacebookEmbed, InstagramEmbed, TikTokEmbed, TwitterEmbed } from '@/modules/dashboard/components/editorial/embed-nodes';
 import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
 
 export interface RichTextDocChange {
@@ -72,6 +73,7 @@ export function RichTextEditor({
   const toolbarId = useId();
   const linkInputId = useId();
   const youtubeInputId = useId();
+  const socialInputId = useId();
   const captionInputId = useId();
   const fileInputId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -84,6 +86,8 @@ export function RichTextEditor({
   const [linkOpen, setLinkOpen] = useState(false);
   const [youtubeDraft, setYoutubeDraft] = useState('');
   const [youtubeOpen, setYoutubeOpen] = useState(false);
+  const [socialDraft, setSocialDraft] = useState('');
+  const [socialOpen, setSocialOpen] = useState(false);
   const [captionDraft, setCaptionDraft] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -97,6 +101,11 @@ export function RichTextEditor({
         Link.configure({ openOnClick: false, autolink: true, defaultProtocol: 'https', HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
         Image.configure({ allowBase64: false }),
         Youtube.configure({ controls: true, nocookie: true, modestBranding: true, allowFullscreen: true }),
+        TwitterEmbed,
+        InstagramEmbed,
+        TikTokEmbed,
+        FacebookEmbed,
+        DriveEmbed,
         Placeholder.configure({ placeholder: 'Tuliskan materi berita di sini…', showOnlyWhenEditable: true }),
       ],
       content: isTipTapDoc(initialDoc) ? (initialDoc as unknown as Record<string, unknown>) : { type: 'doc', content: [{ type: 'paragraph' }] },
@@ -177,6 +186,23 @@ export function RichTextEditor({
     setStatus(null);
   }
 
+  function applySocial(): void {
+    if (editor === null) return;
+    const detected = detectSocialEmbed(socialDraft) ?? detectDriveEmbed(socialDraft);
+    if (detected === null) {
+      setStatus('Tautan tidak valid: tempel URL YouTube, X, Instagram, TikTok, Facebook, atau Google Drive.');
+      return;
+    }
+    if (detected.type === 'youtube') {
+      editor.chain().focus().setYoutubeVideo({ src: detected.url }).run();
+    } else {
+      editor.chain().focus().insertContent({ type: detected.type, attrs: { src: detected.url } }).run();
+    }
+    setSocialOpen(false);
+    setSocialDraft('');
+    setStatus('Sematan tersisip.');
+  }
+
   const busy = disabled || uploading || editor === null;
   const toggle = (label: string, active: boolean, run: () => void, title: string) => (
     <Button key={label} type="button" variant="outline" size="xs" aria-pressed={active} title={title} aria-label={label} disabled={busy} onClick={run}>
@@ -227,6 +253,17 @@ export function RichTextEditor({
               onClick={() => setYoutubeOpen((open) => !open)}
             >
               YouTube
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              aria-label="Sematan sosial"
+              title="Sematkan YouTube, X, Instagram, TikTok, Facebook, atau Google Drive"
+              disabled={busy}
+              onClick={() => setSocialOpen((open) => !open)}
+            >
+              Sosial
             </Button>
             <Button type="button" variant="outline" size="xs" aria-label="Urungkan" title="Urungkan (Ctrl+Z)" disabled={busy || !editor.can().undo()} onClick={() => editor.chain().focus().undo().run()}>
               Urung
@@ -283,6 +320,31 @@ export function RichTextEditor({
             className="h-7 min-w-0 flex-1 font-mono text-xs"
           />
           <Button type="button" variant="outline" size="xs" disabled={busy} onClick={applyYoutube}>
+            Sematkan
+          </Button>
+        </div>
+      ) : null}
+
+      {socialOpen ? (
+        <div className="flex flex-wrap items-center gap-2 border-b border-hairline bg-bg-raised-2 p-2">
+          <label htmlFor={socialInputId} className="font-mono text-[11px] text-paper-dim">
+            URL postingan sosial
+          </label>
+          <Input
+            id={socialInputId}
+            value={socialDraft}
+            onChange={(event) => setSocialDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                applySocial();
+              }
+            }}
+            placeholder="youtube.com • x.com • instagram.com • tiktok.com • facebook.com • drive.google.com"
+            disabled={busy}
+            className="h-7 min-w-0 flex-1 font-mono text-xs"
+          />
+          <Button type="button" variant="outline" size="xs" disabled={busy} onClick={applySocial}>
             Sematkan
           </Button>
         </div>

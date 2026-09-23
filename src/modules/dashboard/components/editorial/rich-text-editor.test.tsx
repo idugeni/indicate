@@ -16,6 +16,7 @@ describe('RichTextEditor', () => {
     expect(screen.getByRole('button', { name: 'H2' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Unggah gambar' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Sematan YouTube' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Sematan sosial' })).toBeDefined();
     expect(screen.getByLabelText('Keterangan gambar berikutnya (opsional)')).toBeDefined();
     expect(screen.getByRole('status')).toBeDefined();
   });

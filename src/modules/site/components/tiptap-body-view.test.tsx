@@ -67,6 +67,44 @@ describe('TipTapBodyView', () => {
     expect(link).not.toBe(null);
   });
 
+  it('merender sematan sosial sebagai kartu tautan tanpa iframe', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        { type: 'twitter', attrs: { src: 'https://x.com/i/status/1234567890123456789' } },
+        { type: 'instagram', attrs: { src: 'https://www.instagram.com/p/C8AbC123dEf' } },
+        { type: 'tiktok', attrs: { src: 'https://www.tiktok.com/@redaksi/video/7234567890123456789' } },
+        { type: 'facebook', attrs: { src: 'https://www.facebook.com/lapassmg/posts/1234567890123456' } },
+        { type: 'twitter', attrs: { src: 'https://evil.example/x/1' } },
+      ],
+    };
+    const { container } = render(<TipTapBodyView doc={doc} paragraphClassName={PARAGRAPH} listClassName={LIST} />);
+    expect(container.querySelectorAll('iframe')).toHaveLength(0);
+    expect(container.querySelector('a[href="https://x.com/i/status/1234567890123456789"]')).not.toBe(null);
+    expect(container.querySelector('a[href="https://www.instagram.com/p/C8AbC123dEf"]')).not.toBe(null);
+    expect(container.querySelector('a[href="https://www.tiktok.com/@redaksi/video/7234567890123456789"]')).not.toBe(null);
+    expect(container.querySelector('a[href="https://www.facebook.com/lapassmg/posts/1234567890123456"]')).not.toBe(null);
+    expect(container.querySelector('a[href="https://evil.example/x/1"]')).toBe(null);
+  });
+
+  it('merender sematan Google Drive sebagai kartu tautan tanpa iframe', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        { type: 'drive', attrs: { src: 'https://drive.google.com/file/d/1AbC2dEfGhIjKlMnOpQrStUvWx/view' } },
+        { type: 'drive', attrs: { src: 'https://drive.google.com/drive/folders/1AbC2dEfGhIjKlMnOpQrStUvWx' } },
+        { type: 'drive', attrs: { src: 'https://drive.google.com/drive/home' } },
+      ],
+    };
+    const { container } = render(<TipTapBodyView doc={doc} paragraphClassName={PARAGRAPH} listClassName={LIST} />);
+    expect(container.querySelectorAll('iframe')).toHaveLength(0);
+    expect(container.querySelector('a[href="https://drive.google.com/file/d/1AbC2dEfGhIjKlMnOpQrStUvWx/view"]')).not.toBe(null);
+    expect(container.querySelector('a[href="https://drive.google.com/drive/folders/1AbC2dEfGhIjKlMnOpQrStUvWx"]')).not.toBe(null);
+    expect(container.querySelector('a[href="https://drive.google.com/drive/home"]')).toBe(null);
+    expect(container.textContent).toContain('File Google Drive');
+    expect(container.textContent).toContain('Folder Google Drive');
+  });
+
   it('merender nothing untuk dokumen tidak valid', () => {
     const { container } = render(<TipTapBodyView doc={{ type: 'paragraph' }} paragraphClassName={PARAGRAPH} listClassName={LIST} />);
     expect(container.textContent).toBe('');

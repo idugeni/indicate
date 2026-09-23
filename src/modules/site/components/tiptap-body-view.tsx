@@ -1,8 +1,8 @@
 import Image from 'next/image';
 import type { ReactNode } from 'react';
-import { Play } from 'lucide-react';
+import { AtSign, Camera, ClipboardList, FileText, FolderOpen, HardDrive, Music2, Play, Presentation, Table, ThumbsUp, type LucideIcon } from 'lucide-react';
 
-import { extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, isTipTapDoc, resolveMediaSrc, type TipTapNode } from '@/modules/site/tiptap-document';
+import { extractDriveUrl, extractFacebookUrl, extractInstagramUrl, extractTikTokUrl, extractTweetUrl, extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, isTipTapDoc, resolveMediaSrc, type TipTapNode } from '@/modules/site/tiptap-document';
 
 function renderTextNode(node: TipTapNode, key: string): ReactNode {
   const text = typeof node.text === 'string' ? node.text : '';
@@ -52,6 +52,59 @@ function YouTubeCard({ videoId }: { readonly videoId: string }) {
       </a>
     </span>
   );
+}
+
+const SOCIAL_META: Record<'twitter' | 'instagram' | 'tiktok' | 'facebook', { readonly label: string; readonly Icon: LucideIcon }> = {
+  twitter: { label: 'Postingan X', Icon: AtSign },
+  instagram: { label: 'Postingan Instagram', Icon: Camera },
+  tiktok: { label: 'Video TikTok', Icon: Music2 },
+  facebook: { label: 'Postingan Facebook', Icon: ThumbsUp },
+};
+
+function driveMeta(href: string): { readonly label: string; readonly Icon: LucideIcon } {
+  if (href.includes('/drive/folders/')) return { label: 'Folder Google Drive', Icon: FolderOpen };
+  if (href.includes('docs.google.com/spreadsheets')) return { label: 'Spreadsheet Google', Icon: Table };
+  if (href.includes('docs.google.com/presentation')) return { label: 'Presentasi Google', Icon: Presentation };
+  if (href.includes('docs.google.com/forms')) return { label: 'Formulir Google', Icon: ClipboardList };
+  if (href.includes('docs.google.com/document')) return { label: 'Dokumen Google Docs', Icon: FileText };
+  return { label: 'File Google Drive', Icon: HardDrive };
+}
+
+function EmbedCard({ label, href, Icon }: { readonly label: string; readonly href: string; readonly Icon: LucideIcon }) {
+  const detail = href.replace(/^https:\/\//u, '').slice(0, 80);
+  return (
+    <span className="block overflow-hidden rounded-2xl">
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Lihat ${label} asli`}
+        className="group flex items-center gap-4 rounded-2xl bg-slate-100 p-4 transition-colors hover:bg-slate-200"
+      >
+        <span aria-hidden="true" className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-slate-900 text-white transition-transform group-hover:scale-105">
+          <Icon className="h-5 w-5" />
+        </span>
+        <span className="min-w-0">
+          <span className="block font-sans text-sm font-semibold text-slate-900">{label}</span>
+          <span className="block truncate font-mono text-xs text-slate-500">{detail}</span>
+        </span>
+      </a>
+    </span>
+  );
+}
+
+function SocialEmbedCard({ platform, href }: { readonly platform: keyof typeof SOCIAL_META; readonly href: string }) {
+  const meta = SOCIAL_META[platform];
+  return <EmbedCard label={meta.label} href={href} Icon={meta.Icon} />;
+}
+
+function isCanonicalSocialSrc(platform: keyof typeof SOCIAL_META, src: string): boolean {
+  const canonical =
+    platform === 'twitter' ? extractTweetUrl(src)
+    : platform === 'instagram' ? extractInstagramUrl(src)
+    : platform === 'tiktok' ? extractTikTokUrl(src)
+    : extractFacebookUrl(src);
+  return canonical !== null && canonical === src;
 }
 
 function renderNodes(nodes: readonly TipTapNode[], keyPrefix: string, context: RenderContext): ReactNode {
@@ -125,6 +178,17 @@ function renderNode(node: TipTapNode, key: string, context: RenderContext): Reac
     const videoId = extractYouTubeId(candidate);
     if (videoId === null) return null;
     return <YouTubeCard key={key} videoId={videoId} />;
+  }
+  if (node.type === 'twitter' || node.type === 'instagram' || node.type === 'tiktok' || node.type === 'facebook') {
+    const src = typeof node.attrs?.src === 'string' ? node.attrs.src : '';
+    if (!isCanonicalSocialSrc(node.type, src)) return null;
+    return <SocialEmbedCard key={key} platform={node.type} href={src} />;
+  }
+  if (node.type === 'drive') {
+    const src = typeof node.attrs?.src === 'string' ? node.attrs.src : '';
+    if (extractDriveUrl(src) !== src) return null;
+    const meta = driveMeta(src);
+    return <EmbedCard key={key} label={meta.label} href={src} Icon={meta.Icon} />;
   }
   return null;
 }

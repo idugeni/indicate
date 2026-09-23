@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, tiptapToLegacyBody, tiptapToText, validateTipTapDoc } from '@/modules/site/tiptap-document';
+import { detectDriveEmbed, detectSocialEmbed, extractDriveUrl, extractFacebookUrl, extractInstagramUrl, extractTikTokUrl, extractTweetUrl, extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, tiptapToLegacyBody, tiptapToText, validateTipTapDoc } from '@/modules/site/tiptap-document';
 
 describe('isSafeLinkUrl', () => {
   it('menerima path relatif dan https publik', () => {
@@ -45,6 +45,107 @@ describe('extractYouTubeId', () => {
   });
 });
 
+describe('social embed extractors', () => {
+  it('menormalkan URL X ke bentuk kanonis', () => {
+    expect(extractTweetUrl('https://x.com/redaksi/status/1234567890123456789')).toBe(
+      'https://x.com/i/status/1234567890123456789',
+    );
+    expect(extractTweetUrl('https://twitter.com/redaksi/status/1234567890123456789')).toBe(
+      'https://x.com/i/status/1234567890123456789',
+    );
+    expect(extractTweetUrl('1234567890123456789')).toBe('https://x.com/i/status/1234567890123456789');
+  });
+
+  it('menormalkan URL Instagram ke bentuk kanonis', () => {
+    expect(extractInstagramUrl('https://www.instagram.com/p/C8AbC123dEf/')).toBe(
+      'https://www.instagram.com/p/C8AbC123dEf',
+    );
+    expect(extractInstagramUrl('https://www.instagram.com/reels/C8AbC123dEf/')).toBe(
+      'https://www.instagram.com/reel/C8AbC123dEf',
+    );
+  });
+
+  it('menerima URL tonton dan semat TikTok', () => {
+    expect(extractTikTokUrl('https://www.tiktok.com/@redaksi/video/7234567890123456789')).toBe(
+      'https://www.tiktok.com/@redaksi/video/7234567890123456789',
+    );
+    expect(extractTikTokUrl('https://www.tiktok.com/embed/v2/7234567890123456789')).toBe(
+      'https://www.tiktok.com/embed/v2/7234567890123456789',
+    );
+  });
+
+  it('menerima URL postingan Facebook', () => {
+    expect(extractFacebookUrl('https://www.facebook.com/lapassmg/posts/1234567890123456')).toBe(
+      'https://www.facebook.com/lapassmg/posts/1234567890123456',
+    );
+    expect(extractFacebookUrl('https://www.facebook.com/watch/?v=1234567890123456')).toBe(
+      'https://www.facebook.com/watch/?v=1234567890123456',
+    );
+  });
+
+  it('menolak tautan pendek dan host asing', () => {
+    expect(extractTweetUrl('https://evil.example/redaksi/status/1234567890123456789')).toBe(null);
+    expect(extractInstagramUrl('https://www.instagram.com/')).toBe(null);
+    expect(extractTikTokUrl('https://vm.tiktok.com/AbC123/')).toBe(null);
+    expect(extractFacebookUrl('https://fb.watch/AbC123/')).toBe(null);
+  });
+
+  it('mendeteksi platform dari tempelan URL', () => {
+    expect(detectSocialEmbed('https://youtu.be/dQw4w9WgXcQ')).toEqual({
+      type: 'youtube',
+      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    });
+    expect(detectSocialEmbed('https://x.com/redaksi/status/1234567890123456789')).toEqual({
+      type: 'twitter',
+      url: 'https://x.com/i/status/1234567890123456789',
+    });
+    expect(detectSocialEmbed('https://www.instagram.com/p/C8AbC123dEf/')).toEqual({
+      type: 'instagram',
+      url: 'https://www.instagram.com/p/C8AbC123dEf',
+    });
+    expect(detectSocialEmbed('https://www.tiktok.com/@redaksi/video/7234567890123456789')).toEqual({
+      type: 'tiktok',
+      url: 'https://www.tiktok.com/@redaksi/video/7234567890123456789',
+    });
+    expect(detectSocialEmbed('https://www.facebook.com/lapassmg/posts/1234567890123456')).toEqual({
+      type: 'facebook',
+      url: 'https://www.facebook.com/lapassmg/posts/1234567890123456',
+    });
+    expect(detectSocialEmbed('https://evil.example/x')).toBe(null);
+  });
+});
+
+describe('extractDriveUrl', () => {
+  it('menerima berkas, folder, dan editor Docs', () => {
+    expect(extractDriveUrl('https://drive.google.com/file/d/1AbC2dEfGhIjKlMnOpQrStUvWx/view?usp=sharing')).toBe(
+      'https://drive.google.com/file/d/1AbC2dEfGhIjKlMnOpQrStUvWx/view?usp=sharing',
+    );
+    expect(extractDriveUrl('https://drive.google.com/drive/folders/1AbC2dEfGhIjKlMnOpQrStUvWx')).toBe(
+      'https://drive.google.com/drive/folders/1AbC2dEfGhIjKlMnOpQrStUvWx',
+    );
+    expect(extractDriveUrl('https://docs.google.com/document/d/1AbC2dEfGhIjKlMnOpQrStUvWx/edit')).toBe(
+      'https://docs.google.com/document/d/1AbC2dEfGhIjKlMnOpQrStUvWx/edit',
+    );
+    expect(extractDriveUrl('https://docs.google.com/spreadsheets/d/1AbC2dEfGhIjKlMnOpQrStUvWx/edit#gid=0')).toBe(
+      'https://docs.google.com/spreadsheets/d/1AbC2dEfGhIjKlMnOpQrStUvWx/edit#gid=0',
+    );
+  });
+
+  it('menolak beranda drive dan host asing', () => {
+    expect(extractDriveUrl('https://drive.google.com/drive/home')).toBe(null);
+    expect(extractDriveUrl('https://evil.example/file/d/1AbC2dEfGhIjKlMnOpQrStUvWx/view')).toBe(null);
+    expect(extractDriveUrl('http://drive.google.com/file/d/1AbC2dEfGhIjKlMnOpQrStUvWx/view')).toBe(null);
+  });
+
+  it('mendeteksi sematan drive lewat panel editor', () => {
+    expect(detectDriveEmbed('https://drive.google.com/file/d/1AbC2dEfGhIjKlMnOpQrStUvWx/view')).toEqual({
+      type: 'drive',
+      url: 'https://drive.google.com/file/d/1AbC2dEfGhIjKlMnOpQrStUvWx/view',
+    });
+    expect(detectDriveEmbed('https://evil.example/x')).toBe(null);
+  });
+});
+
 describe('validateTipTapDoc', () => {
   it('menerima dokumen editorial minimal', () => {
     const doc = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Halo dunia' }] }] };
@@ -56,6 +157,31 @@ describe('validateTipTapDoc', () => {
     expect(validateTipTapDoc({ type: 'paragraph' }).ok).toBe(false);
     const badLink = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x', marks: [{ type: 'link', attrs: { href: 'javascript:alert(1)' } }] }] }] };
     expect(validateTipTapDoc(badLink).ok).toBe(false);
+  });
+
+  it('menerima sematan sosial kanonis dan menolak src asing', () => {
+    const good = {
+      type: 'doc',
+      content: [
+        { type: 'twitter', attrs: { src: 'https://x.com/i/status/1234567890123456789' } },
+        { type: 'instagram', attrs: { src: 'https://www.instagram.com/p/C8AbC123dEf' } },
+        { type: 'tiktok', attrs: { src: 'https://www.tiktok.com/@redaksi/video/7234567890123456789' } },
+        { type: 'facebook', attrs: { src: 'https://www.facebook.com/lapassmg/posts/1234567890123456' } },
+      ],
+    };
+    expect(validateTipTapDoc(good).ok).toBe(true);
+    expect(
+      validateTipTapDoc({ type: 'doc', content: [{ type: 'twitter', attrs: { src: 'https://evil.example/x/1' } }] }).ok,
+    ).toBe(false);
+    expect(
+      validateTipTapDoc({ type: 'doc', content: [{ type: 'instagram', attrs: { src: 'https://twitter.com/x' } }] }).ok,
+    ).toBe(false);
+    expect(
+      validateTipTapDoc({ type: 'doc', content: [{ type: 'drive', attrs: { src: 'https://drive.google.com/file/d/1AbC2dEfGhIjKlMnOpQrStUvWx/view' } }] }).ok,
+    ).toBe(true);
+    expect(
+      validateTipTapDoc({ type: 'doc', content: [{ type: 'drive', attrs: { src: 'https://drive.google.com/drive/home' } }] }).ok,
+    ).toBe(false);
   });
 });
 
