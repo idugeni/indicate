@@ -92,7 +92,7 @@ export function TemplateShareButton({ slug, title, className }: TemplateShareBut
             '[&_button[data-slot=dialog-close]]:text-[var(--tpl-faint,#94a3b8)] [&_button[data-slot=dialog-close]]:hover:text-[var(--tpl-ink,#0f172a)]',
           )}
         >
-          <div className="flex flex-col gap-1.5">
+          <div className="flex min-w-0 flex-col gap-1.5">
             <DialogTitle className="font-sans text-base font-extrabold tracking-tight">
               Bagikan artikel
             </DialogTitle>
@@ -123,7 +123,7 @@ export function TemplateShareButton({ slug, title, className }: TemplateShareBut
             type="button"
             onClick={() => void copy()}
             aria-label="Salin tautan artikel"
-            className="flex w-full items-center gap-2.5 rounded-xl border border-[var(--tpl-ring,#e2e8f0)] bg-[var(--tpl-canvas,#f5f8fd)] px-3.5 py-2.5 text-left font-sans text-[13px] transition-colors hover:border-[var(--tpl-primary,#1a5fd0)] dark:border-[var(--tpl-ring,#e2e8f0)] dark:bg-[var(--tpl-canvas,#f5f8fd)]"
+            className="flex w-full min-w-0 items-center gap-2.5 rounded-xl border border-[var(--tpl-ring,#e2e8f0)] bg-[var(--tpl-canvas,#f5f8fd)] px-3.5 py-2.5 text-left font-sans text-[13px] transition-colors hover:border-[var(--tpl-primary,#1a5fd0)] dark:border-[var(--tpl-ring,#e2e8f0)] dark:bg-[var(--tpl-canvas,#f5f8fd)]"
           >
             {copied ? (
               <Check className="h-4 w-4 flex-none text-[var(--tpl-primary,#1a5fd0)]" aria-hidden="true" />
