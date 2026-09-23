@@ -23,7 +23,6 @@ describe('tickerPauseLabel', () => {
     expect(tickerPauseLabel('single')).toBe('satu headline');
     expect(tickerPauseLabel('hover')).toBe('jeda saat disentuh');
     expect(tickerPauseLabel('focus')).toBe('jeda saat fokus');
-    expect(tickerPauseLabel('motion')).toBe('gerakan dikurangi');
     expect(tickerPauseLabel('hidden')).toBe('tab tersembunyi');
   });
 });
@@ -116,5 +115,25 @@ describe('useTickerRotation', () => {
     expect(result.current.index).toBe(1);
     expect(document.activeElement).toBe(tombol);
     tombol.remove();
+  });
+
+  it('tetap berputar saat gerakan dikurangi', () => {
+    Object.defineProperty(window, 'matchMedia', {
+      value: () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }),
+      configurable: true,
+      writable: true,
+    });
+    vi.useFakeTimers();
+    try {
+      const { result } = renderHook(() => useTickerRotation(3));
+      expect(result.current.reduceMotion).toBe(true);
+      expect(result.current.running).toBe(true);
+      act(() => {
+        vi.advanceTimersByTime(TICKER_INTERVAL_MS);
+      });
+      expect(result.current.index).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

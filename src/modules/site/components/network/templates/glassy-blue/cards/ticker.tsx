@@ -25,7 +25,7 @@ export function GlassyBlueTicker({ articles }: { readonly articles: readonly Art
       <span role="status" className="sr-only">
         {running ? 'Memutar headline terkini' : `Jeda: ${tickerPauseLabel(reason)}`}
       </span>
-      {items.length > 1 && running ? (
+      {items.length > 1 && running && !reduceMotion ? (
         <span aria-hidden="true" className="pointer-events-none absolute inset-x-4 bottom-1 h-[2px] overflow-hidden rounded-full sm:inset-x-24">
           <span
             key={cycle}
@@ -36,7 +36,7 @@ export function GlassyBlueTicker({ articles }: { readonly articles: readonly Art
       ) : null}
       <span className="flex-none self-start rounded-full bg-[var(--tpl-primary,#1f7cff)] px-3.5 py-1.5 font-sans text-xs font-bold tracking-wide text-white sm:self-auto">
         <span className="flex items-center gap-1.5">
-          <span aria-hidden="true" className={running ? 'ticker-live-dot' : 'h-1.5 w-1.5 rounded-full bg-white/60'} />
+          <span aria-hidden="true" className={running && !reduceMotion ? 'ticker-live-dot' : 'h-1.5 w-1.5 rounded-full bg-white/60'} />
           TERKINI
         </span>
       </span>

@@ -14,8 +14,11 @@ export const TICKER_MAX_ITEMS = 5;
 
 /**
  * Reason the ticker is paused; `null` means spinning.
+ *
+ * @remarks Reduced motion never pauses: headlines keep rotating while
+ * entry, progress, and pulse animations stay suppressed.
  */
-export type TickerPauseReason = 'single' | 'hover' | 'focus' | 'motion' | 'hidden';
+export type TickerPauseReason = 'single' | 'hover' | 'focus' | 'hidden';
 
 /**
  * Ticker rotation state for one headline list.
@@ -63,8 +66,6 @@ export function tickerPauseLabel(reason: TickerPauseReason | null): string {
       return 'jeda saat disentuh';
     case 'focus':
       return 'jeda saat fokus';
-    case 'motion':
-      return 'gerakan dikurangi';
     case 'hidden':
       return 'tab tersembunyi';
     default:
@@ -81,11 +82,14 @@ const SWIPE_PX = 40;
 const TOUCH_HOVER_GRACE_MS = 700;
 
 /**
- * Smart headline rotation: single-step timer, hover/focus/tab/motion pauses, touch swipe.
+ * Smart headline rotation: single-step timer, hover/focus/tab pauses, touch swipe.
  *
  * @param count - Number of headlines being rotated.
  * @param intervalMs - Delay between headlines; defaults to `TICKER_INTERVAL_MS`.
  * @returns Safe index, status, navigation, and root interaction props.
+ * @remarks Reduced motion does not pause rotation; it only signals
+ * components to swap headlines instantly without entry, progress, or
+ * pulse animations.
  */
 export function useTickerRotation(count: number, intervalMs = TICKER_INTERVAL_MS): TickerRotation {
   const [index, setIndex] = useState(0);
@@ -108,11 +112,9 @@ export function useTickerRotation(count: number, intervalMs = TICKER_INTERVAL_MS
         ? 'hover'
         : focused
           ? 'focus'
-          : reduceMotion
-            ? 'motion'
-            : tabHidden
-              ? 'hidden'
-              : null;
+          : tabHidden
+            ? 'hidden'
+            : null;
   const running = reason === null;
 
   useEffect(() => {
