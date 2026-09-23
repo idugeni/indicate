@@ -72,7 +72,7 @@ export function DarkNavyArticle({
             {article.title}
           </h1>
           <p className="m-0 mt-4 block w-full border-l-[3px] border-[#2f7bff] pl-4 font-sans text-[19px] font-medium leading-[1.7] text-[#9aa9c4]">
-            {article.dek ?? article.description}
+            {article.description}
           </p>
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#0e1a33] p-4 shadow-sm ring-1 ring-[#1b2c4f]/60 sm:px-5">

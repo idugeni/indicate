@@ -188,8 +188,7 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
       { key: 'authorId', label: 'Penulis', kind: 'select', optionSource: 'authors', allowEmpty: true, emptyLabel: 'Tanpa penulis' },
       { key: 'source', label: 'Sumber', kind: 'text', required: true },
       { key: 'status', label: 'Status', kind: 'select', required: true, options: ARTICLE_STATUS_OPTIONS },
-      { key: 'dek', label: 'Subjudul (opsional)', kind: 'text', placeholder: 'Satu kalimat penegas judul' },
-      { key: 'excerpt', label: 'Cuplikan (opsional)', kind: 'textarea', placeholder: 'Ringkasan ≤ 500 karakter; kosong = dari isi' },
+      { key: 'excerpt', label: 'Deskripsi (opsional)', kind: 'textarea', placeholder: 'Ringkasan ≤ 500 karakter; kosong = dari isi' },
       { key: 'canonicalUrl', label: 'URL kanonis (opsional)', kind: 'text', placeholder: 'https://…' },
       { key: 'scheduledAt', label: 'Jadwal terbit (ISO, opsional)', kind: 'text', placeholder: '2026-10-01T07:00:00.000Z' },
       { key: 'body', label: 'Isi Artikel', kind: 'textarea', required: true },
@@ -341,7 +340,7 @@ export function buildUpdatePayload(
       return {
         id, expectedVersion, regionId: text('regionId'), publisherId: nullableId('publisherId'),
         categoryId: nullableId('categoryId'), authorId: nullableId('authorId'), slug: lower('slug'),
-        title: text('title'), dek: optionalText('dek'), excerpt: optionalText('excerpt'),
+        title: text('title'), excerpt: optionalText('excerpt'),
         canonicalUrl: optionalText('canonicalUrl'), body: String(values.body ?? '').trim(), source: text('source'),
         status: text('status'), scheduledAt: optionalText('scheduledAt'),
       };

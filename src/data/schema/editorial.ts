@@ -119,8 +119,6 @@ export const articles = pgTable('articles', {
   coverImageUrl: text('cover_image_url'),
   slug: text('slug').notNull(),
   title: text('title').notNull(),
-  /** Optional subheadline shown under the headline. */
-  dek: text('dek'),
   /** Optional explicit excerpt; falls back to a body-derived excerpt. */
   excerpt: text('excerpt'),
   /** Optional canonical URL override; defaults to the tenant article URL. */
@@ -181,7 +179,6 @@ export const articleRevisions = pgTable('article_revisions', {
   articleId: uuid('article_id').notNull(),
   revisionNumber: integer('revision_number').notNull(),
   title: text('title').notNull(),
-  dek: text('dek'),
   body: text('body').notNull(),
   /** Structured TipTap JSON snapshot mirroring `articles.body_json`. */
   bodyJson: jsonb('body_json').$type<Record<string, unknown> | null>(),

@@ -72,7 +72,7 @@ export function BlackLimeArticle({
             {article.title}
           </h1>
           <p className="m-0 mt-4 block w-full border-l-[3px] border-[#c5f82a] pl-4 font-sans text-[19px] font-medium leading-[1.7] text-[#a3ad9a]">
-            {article.dek ?? article.description}
+            {article.description}
           </p>
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#131711] p-4 shadow-sm ring-1 ring-[#242b1f]/60 sm:px-5">

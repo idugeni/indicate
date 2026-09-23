@@ -156,7 +156,6 @@ export interface ArticleRecord extends VersionedRecord {
   readonly coverImageUrl: string | null;
   readonly slug: string;
   readonly title: string;
-  readonly dek: string | null;
   readonly excerpt: string | null;
   readonly canonicalUrl: string | null;
   readonly body: string;

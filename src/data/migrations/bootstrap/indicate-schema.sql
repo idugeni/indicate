@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (158 migrations):
+-- Reviewed sources, in journal order (159 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -171,6 +171,7 @@
 --   156  20260923010000_article_categories_rls  ledger sha256:70ac69c492761112e9954be5c482c372900c1184b46e8b9fd25b2dc1883a577c
 --   157  20260923020000_article_site_unpublish_transition  ledger sha256:8ba4a0abb4fdf98cf0f3da715ac1f2456590958a1b328bad427737afa54f847f
 --   158  20260923030000_site_settings_description_strip_tagline  ledger sha256:d6df429cb436b83f48a967b725825a81e9cbc3de2d342d9b2f4fc27fa27c4d4f
+--   159  20260923050935_drop_article_dek  ledger sha256:314b3149aca1c5b58ed4f0a547c62690e72a58bfe1e8f7c60e88b160e36d684c
 
 BEGIN;
 
@@ -12735,4 +12736,20 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (157, 'site_settings_description_strip_tagline', 'sha256:1a6053696d751e354ee092087ca20563cbb7808b13bed824fa958b8fb4ca1199');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('d6df429cb436b83f48a967b725825a81e9cbc3de2d342d9b2f4fc27fa27c4d4f', 1790129544272);
+
+-- ----------------------------------------------------------------------
+-- 20260923050935_drop_article_dek
+-- ----------------------------------------------------------------------
+-- Hapus kolom dek (subheadline) dari articles dan article_revisions.
+--
+-- Deskripsi tunggal (excerpt) kini mengisi slot bawah judul, listing, dan SEO;
+-- kolom dek selalu NULL di seluruh baris sehingga DROP aman tanpa backfill.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.articles DROP COLUMN dek;
+ALTER TABLE public.article_revisions DROP COLUMN dek;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (158, 'drop_article_dek', 'sha256:b8533345456d584baff327174b22be91e8850c48c02a0df6688057975d34a981');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('314b3149aca1c5b58ed4f0a547c62690e72a58bfe1e8f7c60e88b160e36d684c', 1790140199279);
 COMMIT;

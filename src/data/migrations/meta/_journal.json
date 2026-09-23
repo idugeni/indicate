@@ -1107,6 +1107,13 @@
       "when": 1790129544272,
       "tag": "20260923030000_site_settings_description_strip_tagline",
       "breakpoints": true
+    },
+    {
+      "idx": 158,
+      "version": "7",
+      "when": 1790140199279,
+      "tag": "20260923050935_drop_article_dek",
+      "breakpoints": true
     }
   ]
 }

@@ -40,8 +40,6 @@ export interface ArticleListItem {
   readonly slug: string;
   readonly title: string;
   readonly description: string;
-  /** Optional editorial subheadline; falls back to description when null. */
-  readonly dek?: string | null;
   /** Optional canonical URL override; falls back to the tenant article URL. */
   readonly canonicalUrl?: string | null;
   /** Optional per-article robots override (`noindex`, `nosnippet`); null follows site default. */

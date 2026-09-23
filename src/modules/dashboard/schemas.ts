@@ -123,7 +123,6 @@ export const articleCreateSchema = z.object({
   coverImageUrl: z.string().trim().max(2000).nullish(),
   slug: articleSlug,
   title: z.string().trim().min(1).max(300),
-  dek: z.string().trim().min(1).max(300).nullish(),
   excerpt: z.string().trim().min(1).max(500).nullish(),
   canonicalUrl: z.string().trim().max(2000).nullish(),
   body: z.string().trim().min(1).max(200_000),
