@@ -3,6 +3,7 @@ import { FINGERPRINT_VERSION, publicationFingerprint, retryDelaySeconds, type Re
 import type { PublicationOverride, PublicationStatusProjection } from '@/modules/publishing/models';
 import type { ArticleVariantContext } from '@/modules/publishing/ports';
 import { deriveSiteLabel, excerptForDescription, findCrossSiteDuplicates, suggestPublicationVariants } from '@/modules/publishing/variant-suggester';
+import { cascadeFamilyKey, expandCascadeSites } from '@/modules/site/site-cascade';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import type { RedisCoordinationPort } from '@/integrations/redis/ports';
 import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type PublicationJobSummary, type PublishingRepository } from '@/modules/publishing/ports';
@@ -31,6 +32,7 @@ export class PublicationService {
     context: ArticleVariantContext,
     siteIds: readonly string[],
     overrides: Readonly<Record<string, PublicationOverride>>,
+    families?: Readonly<Record<string, string>> | undefined,
   ): readonly { field: string; code: string }[] {
     const renderable = context.variants.filter((variant) =>
       variant.active && (variant.state === 'queued' || variant.state === 'processing' || variant.state === 'retrying' || variant.state === 'published'));
@@ -40,7 +42,57 @@ export class PublicationService {
       existing: renderable.map((variant) => ({ siteId: variant.siteId, customTitle: variant.customTitle, customDescription: variant.customDescription })),
       requestedSiteIds: siteIds,
       overrides,
+      families,
     });
+  }
+
+  private cascadeFamilies(
+    context: ArticleVariantContext,
+    derived: Readonly<Record<string, string>>,
+  ): Record<string, string> {
+    const families: Record<string, string> = {};
+    const origins = new Set(Object.values(derived));
+    for (const variant of context.variants) {
+      if (derived[variant.siteId] !== undefined) {
+        families[variant.siteId] = `auto:${derived[variant.siteId] as string}`;
+      } else if (origins.has(variant.siteId)) {
+        families[variant.siteId] = `auto:${variant.siteId}`;
+      } else {
+        families[variant.siteId] = cascadeFamilyKey(variant.siteId, variant.assignmentSource, variant.expandedFromSiteId);
+      }
+    }
+    for (const [siteId, originSiteId] of Object.entries(derived)) families[siteId] = `auto:${originSiteId}`;
+    return families;
+  }
+
+  private expandRequest(
+    context: ArticleVariantContext,
+    manualSiteIds: readonly string[],
+  ): { readonly siteIds: readonly string[]; readonly derived: Readonly<Record<string, string>>; readonly canonicals: Readonly<Record<string, string>> } {
+    const scope = context.variants.map((variant) => ({
+      id: variant.siteId,
+      domainId: variant.domainId,
+      regionId: variant.regionId,
+      normalizedHostname: variant.normalizedHostname,
+      status: 'active' as const,
+    }));
+    const known = new Set(scope.map((site) => site.id));
+    const expansion = expandCascadeSites(
+      scope,
+      context.regions,
+      manualSiteIds.filter((siteId) => known.has(siteId)),
+      context.slug,
+    );
+    const siteIds = [...new Set([...manualSiteIds, ...expansion.targets.map((target) => target.siteId)])].sort();
+    const derived: Record<string, string> = {};
+    const canonicals: Record<string, string> = {};
+    for (const target of expansion.targets) {
+      if (target.originSiteId !== null && target.canonicalUrl !== null) {
+        derived[target.siteId] = target.originSiteId;
+        canonicals[target.siteId] = target.canonicalUrl;
+      }
+    }
+    return { siteIds, derived, canonicals };
   }
 
   private duplicateVariantError(actor: AuthorizedTenantActorContext) {
@@ -50,13 +102,13 @@ export class PublicationService {
   async request(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<PublicationStatusProjection, PublicErrorEnvelope>> {
     const parsed = publicationRequestSchema.safeParse(raw);
     if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the publication request.', actor.requestId) };
-    const siteIds = [...new Set(parsed.data.siteIds)].sort();
+    const manualSiteIds = [...new Set(parsed.data.siteIds)].sort();
     const overrides = parsed.data.overrides;
     for (const siteId of Object.keys(overrides)) {
-      if (!siteIds.includes(siteId)) return { ok: false, error: createPublicError('INVALID_INPUT', 'Overrides must reference a requested site.', actor.requestId) };
+      if (!manualSiteIds.includes(siteId)) return { ok: false, error: createPublicError('INVALID_INPUT', 'Overrides must reference a requested site.', actor.requestId) };
     }
-    if (siteIds.length > 1) {
-      for (const siteId of siteIds) {
+    if (manualSiteIds.length > 1) {
+      for (const siteId of manualSiteIds) {
         const override = overrides[siteId];
         if (override?.title === undefined || override.description === undefined) {
           return { ok: false, error: createPublicError('INVALID_INPUT', 'Multi-site publish requires a distinct custom title and description per site.', actor.requestId) };
@@ -66,18 +118,21 @@ export class PublicationService {
         return { ok: false, error: createPublicError('INVALID_INPUT', 'Each site needs a distinct title and description; duplicates were found.', actor.requestId) };
       }
     }
-    const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds, options: parsed.data.options, overrides });
     const now = this.clock.now();
     try {
       const variantContext = await this.repository.getArticleVariantContext(actor, parsed.data.articleId);
       if (variantContext === null) return this.denied(actor, 'publication.request.denied');
-      if (this.crossSiteDuplicates(variantContext, siteIds, overrides).length > 0) {
+      const expanded = this.expandRequest(variantContext, manualSiteIds);
+      const families = this.cascadeFamilies(variantContext, expanded.derived);
+      const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds: expanded.siteIds, options: parsed.data.options, overrides });
+      if (this.crossSiteDuplicates(variantContext, expanded.siteIds, overrides, families).length > 0) {
         return { ok: false, error: this.duplicateVariantError(actor) };
       }
       const accepted = await this.repository.acceptPublication(actor, {
-        jobId: this.identifiers.create(), organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds,
+        jobId: this.identifiers.create(), organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds: [...expanded.siteIds],
         idempotencyKey: parsed.data.idempotencyKey, fingerprint, fingerprintVersion: FINGERPRINT_VERSION,
-        options: parsed.data.options, overrides, now: now.toISOString(), targetIds: siteIds.map(() => this.identifiers.create()), articleSiteIds: siteIds.map(() => this.identifiers.create()),
+        options: parsed.data.options, overrides, cascade: expanded.derived, canonicals: expanded.canonicals,
+        now: now.toISOString(), targetIds: expanded.siteIds.map(() => this.identifiers.create()), articleSiteIds: expanded.siteIds.map(() => this.identifiers.create()),
       });
       if (accepted.kind === 'conflict') return { ok: false, error: createPublicError('IDEMPOTENCY_CONFLICT', 'The idempotency key is already associated with another request.', actor.requestId) };
       if (accepted.kind === 'created') await this.scheduleDispatch(actor, accepted.job.id, now);
@@ -192,13 +247,13 @@ export class PublicationService {
   async requestBulk(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<readonly PublicationStatusProjection[], PublicErrorEnvelope>> {
     const parsed = publicationBulkRequestSchema.safeParse(raw);
     if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the bulk publication request.', actor.requestId) };
-    const siteIds = [...new Set(parsed.data.siteIds)].sort();
+    const manualSiteIds = [...new Set(parsed.data.siteIds)].sort();
     const overrides = parsed.data.overrides;
     for (const siteId of Object.keys(overrides)) {
-      if (!siteIds.includes(siteId)) return { ok: false, error: createPublicError('INVALID_INPUT', 'Overrides must reference a requested site.', actor.requestId) };
+      if (!manualSiteIds.includes(siteId)) return { ok: false, error: createPublicError('INVALID_INPUT', 'Overrides must reference a requested site.', actor.requestId) };
     }
-    if (siteIds.length > 1) {
-      for (const siteId of siteIds) {
+    if (manualSiteIds.length > 1) {
+      for (const siteId of manualSiteIds) {
         const override = overrides[siteId];
         if (override?.title === undefined || override.description === undefined) {
           return { ok: false, error: createPublicError('INVALID_INPUT', 'Multi-site publish requires a distinct custom title and description per site.', actor.requestId) };
@@ -215,14 +270,17 @@ export class PublicationService {
       for (const articleId of articleIds) {
         const variantContext = await this.repository.getArticleVariantContext(actor, articleId);
         if (variantContext === null) return this.denied(actor, 'publication.request.denied');
-        if (this.crossSiteDuplicates(variantContext, siteIds, overrides).length > 0) {
+        const expanded = this.expandRequest(variantContext, manualSiteIds);
+        const families = this.cascadeFamilies(variantContext, expanded.derived);
+        if (this.crossSiteDuplicates(variantContext, expanded.siteIds, overrides, families).length > 0) {
           return { ok: false, error: this.duplicateVariantError(actor) };
         }
-        const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId, siteIds, options: parsed.data.options, overrides });
+        const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId, siteIds: expanded.siteIds, options: parsed.data.options, overrides });
         const accepted = await this.repository.acceptPublication(actor, {
-          jobId: this.identifiers.create(), organizationId: actor.organizationId, articleId, siteIds,
+          jobId: this.identifiers.create(), organizationId: actor.organizationId, articleId, siteIds: [...expanded.siteIds],
           idempotencyKey: `${parsed.data.idempotencyKey}:${articleId}`, fingerprint, fingerprintVersion: FINGERPRINT_VERSION,
-          options: parsed.data.options, overrides, now: now.toISOString(), targetIds: siteIds.map(() => this.identifiers.create()), articleSiteIds: siteIds.map(() => this.identifiers.create()),
+          options: parsed.data.options, overrides, cascade: expanded.derived, canonicals: expanded.canonicals,
+          now: now.toISOString(), targetIds: expanded.siteIds.map(() => this.identifiers.create()), articleSiteIds: expanded.siteIds.map(() => this.identifiers.create()),
         });
         if (accepted.kind === 'conflict') return { ok: false, error: createPublicError('IDEMPOTENCY_CONFLICT', `The idempotency key is already associated with another request for article ${articleId}.`, actor.requestId) };
         if (accepted.kind === 'created') await this.scheduleDispatch(actor, accepted.job.id, now);

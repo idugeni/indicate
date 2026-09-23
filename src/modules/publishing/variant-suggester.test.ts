@@ -81,4 +81,26 @@ describe('findCrossSiteDuplicates', () => {
     });
     expect(issues).toContainEqual({ field: 'title', code: 'duplicate' });
   });
+
+  it('mengecualikan keluarga cascade yang berbagi kanonis', () => {
+    const issues = findCrossSiteDuplicates({
+      ...canonical,
+      existing: [],
+      requestedSiteIds: ['city', 'region', 'apex'],
+      overrides: {},
+      families: { city: 'auto:city', region: 'auto:city', apex: 'auto:city' },
+    });
+    expect(issues).toEqual([]);
+  });
+
+  it('tetap mendeteksi duplikat lintas keluarga', () => {
+    const issues = findCrossSiteDuplicates({
+      ...canonical,
+      existing: [{ siteId: 'other', customTitle: 'Judul Kanonik', customDescription: null }],
+      requestedSiteIds: ['new'],
+      overrides: {},
+      families: { other: 'manual:other', new: 'manual:new' },
+    });
+    expect(issues).toContainEqual({ field: 'title', code: 'duplicate' });
+  });
 });

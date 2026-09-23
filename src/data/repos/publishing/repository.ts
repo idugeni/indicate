@@ -9,7 +9,8 @@ import type {
   TransitionReceiptRecord, WorkerClaim,
 } from '@/modules/publishing/models';
 import { aggregateJobState, isAllowedTargetTransition, projectPublicationResult, seedInitialViewCount } from '@/modules/publishing/publication-policy';
-import { excerptForDescription } from '@/modules/publishing/variant-suggester';
+import { cascadeFamilyKey } from '@/modules/site/site-cascade';
+import { duplicateIssuesForFamilies, excerptForDescription } from '@/modules/publishing/variant-suggester';
 import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
 import {
   PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type AcceptPublicationInput, type AcceptPublicationResult,
@@ -244,31 +245,40 @@ export class DrizzlePublishingRepository implements PublishingRepository {
     canonicalDescription: string,
     siteIds: readonly string[],
     overrides: Readonly<Record<string, { readonly title?: string | undefined; readonly description?: string | undefined }>>,
+    cascade: Readonly<Record<string, string>>,
   ): Promise<void> {
     const rows = await transaction.select({
       siteId: articleSites.siteId, customTitle: articleSites.customTitle, customDescription: articleSites.customDescription,
-      active: articleSites.active, state: articleSites.state,
+      active: articleSites.active, state: articleSites.state, assignmentSource: articleSites.assignmentSource,
+      expandedFromSiteId: articleSites.expandedFromSiteId,
     }).from(articleSites).where(and(eq(articleSites.organizationId, organizationId), eq(articleSites.articleId, articleId)));
-    const titles = new Map<string, number>();
-    const descriptions = new Map<string, number>();
-    const count = (bucket: Map<string, number>, value: string) => {
-      const folded = value.trim().toLowerCase();
-      if (folded.length > 0) bucket.set(folded, (bucket.get(folded) ?? 0) + 1);
+    const familyOf = (siteId: string, source: 'manual' | 'auto' | null, expandedFrom: string | null): string => {
+      const current = cascade[siteId];
+      if (current !== undefined) return `auto:${current}`;
+      if (Object.values(cascade).includes(siteId)) return `auto:${siteId}`;
+      return cascadeFamilyKey(siteId, source, expandedFrom);
     };
-    const effective = new Map<string, { title: string; description: string }>();
+    const effective = new Map<string, { family: string; title: string; description: string }>();
     for (const row of rows) {
       if (!row.active || (row.state !== 'queued' && row.state !== 'processing' && row.state !== 'retrying' && row.state !== 'published')) continue;
-      effective.set(row.siteId, { title: row.customTitle ?? canonicalTitle, description: row.customDescription ?? canonicalDescription });
+      effective.set(row.siteId, {
+        family: familyOf(row.siteId, row.assignmentSource as 'manual' | 'auto' | null, row.expandedFromSiteId),
+        title: row.customTitle ?? canonicalTitle,
+        description: row.customDescription ?? canonicalDescription,
+      });
     }
     for (const siteId of siteIds) {
       const prior = effective.get(siteId);
       effective.set(siteId, {
+        family: familyOf(siteId, null, null),
         title: overrides[siteId]?.title ?? prior?.title ?? canonicalTitle,
         description: overrides[siteId]?.description ?? prior?.description ?? canonicalDescription,
       });
     }
-    for (const value of effective.values()) { count(titles, value.title); count(descriptions, value.description); }
-    if ([...titles.values()].some((total) => total > 1) || [...descriptions.values()].some((total) => total > 1)) {
+    const issues = duplicateIssuesForFamilies(
+      [...effective.values()].map((value) => ({ family: value.family, title: value.title, description: value.description })),
+    );
+    if (issues.length > 0) {
       throw new PublishingConflictError('duplicate_variant');
     }
   }
@@ -276,28 +286,37 @@ export class DrizzlePublishingRepository implements PublishingRepository {
   async getArticleVariantContext(actor: AuthorizedTenantActorContext, articleId: string): Promise<ArticleVariantContext | null> {
     return this.database.transaction(async (transaction) => {
       await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.publishingRequest);
-      const articleRows = await transaction.select({ id: articles.id, title: articles.title, body: articles.body })
+      const articleRows = await transaction.select({ id: articles.id, title: articles.title, slug: articles.slug, body: articles.body })
         .from(articles).where(and(eq(articles.organizationId, actor.organizationId), eq(articles.id, articleId))).limit(1);
       const article = articleRows[0];
       if (article === undefined) return null;
-      const siteRows = await transaction.select({ id: sites.id, hostname: sites.normalizedHostname })
+      const regionRows = await transaction.select({ id: regions.id, kind: regions.kind, parentRegionId: regions.parentRegionId, status: regions.status })
+        .from(regions).where(eq(regions.organizationId, actor.organizationId));
+      const siteRows = await transaction.select({ id: sites.id, hostname: sites.normalizedHostname, regionId: sites.regionId, domainId: sites.domainId })
         .from(sites).where(and(eq(sites.organizationId, actor.organizationId), eq(sites.status, 'active')));
       const variantRows = await transaction.select({
         siteId: articleSites.siteId, customTitle: articleSites.customTitle, customDescription: articleSites.customDescription,
-        active: articleSites.active, state: articleSites.state,
+        active: articleSites.active, state: articleSites.state, assignmentSource: articleSites.assignmentSource,
+        expandedFromSiteId: articleSites.expandedFromSiteId,
       }).from(articleSites).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.articleId, articleId)));
       const bySite = new Map(variantRows.map((row) => [row.siteId, row] as const));
       return {
         articleId: article.id,
         title: article.title,
+        slug: article.slug,
         body: article.body,
+        regions: regionRows.map((row) => ({ id: row.id, kind: row.kind as 'region' | 'city', parentRegionId: row.parentRegionId, status: row.status })),
         variants: siteRows.map((site) => ({
           siteId: site.id,
           normalizedHostname: site.hostname,
+          regionId: site.regionId,
+          domainId: site.domainId,
           customTitle: bySite.get(site.id)?.customTitle ?? null,
           customDescription: bySite.get(site.id)?.customDescription ?? null,
           active: bySite.get(site.id)?.active ?? false,
           state: bySite.get(site.id)?.state ?? 'unpublished',
+          assignmentSource: (bySite.get(site.id)?.assignmentSource ?? 'manual') as 'manual' | 'auto',
+          expandedFromSiteId: bySite.get(site.id)?.expandedFromSiteId ?? null,
         })),
       };
     });
@@ -318,25 +337,27 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         const siteRows = await transaction.select({ id: sites.id, regionId: sites.regionId }).from(sites).where(and(eq(sites.organizationId, actor.organizationId), inArray(sites.id, distinctSites), eq(sites.status, 'active')));
         if (siteRows.length !== distinctSites.length) throw new PublishingAccessDeniedError();
         if (lock !== null && siteRows.some(({ regionId }) => regionId !== null && regionId !== lock)) throw new PublishingAccessDeniedError();
-        await this.rejectCrossSiteDuplicates(transaction, actor.organizationId, input.articleId, articleRows[0]!.title, excerptForDescription(articleRows[0]!.body), distinctSites, input.overrides);
+        await this.rejectCrossSiteDuplicates(transaction, actor.organizationId, input.articleId, articleRows[0]!.title, excerptForDescription(articleRows[0]!.body), distinctSites, input.overrides, input.cascade ?? {});
         const jobRows = await transaction.insert(publishingJobs).values({ organizationId: actor.organizationId, id: input.jobId, articleId: input.articleId, idempotencyKey: input.idempotencyKey, fingerprint: input.fingerprint, fingerprintVersion: input.fingerprintVersion, state: 'queued', options: input.options as Record<string, unknown>, dispatchStatus: 'pending', nextDispatchAt: new Date(input.now), createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning();
         for (let index = 0; index < distinctSites.length; index += 1) {
           const siteId = distinctSites[index]!;
           const override = input.overrides[siteId];
+          const originSiteId = input.cascade?.[siteId] ?? null;
+          const canonicalUrl = originSiteId === null ? null : (input.canonicals?.[siteId] ?? null);
           const existingRelation = await transaction.select().from(articleSites).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.articleId, input.articleId), eq(articleSites.siteId, siteId))).limit(1).for('update');
           let relation = existingRelation[0];
           if (relation === undefined) {
-            relation = (await transaction.insert(articleSites).values({ organizationId: actor.organizationId, id: input.articleSiteIds[index]!, articleId: input.articleId, siteId, state: 'queued', stateOccurredAt: new Date(input.now), active: true, customTitle: override?.title ?? null, customDescription: override?.description ?? null, customImageMediaId: override?.imageMediaId ?? null, createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning())[0]!;
+            relation = (await transaction.insert(articleSites).values({ organizationId: actor.organizationId, id: input.articleSiteIds[index]!, articleId: input.articleId, siteId, state: 'queued', stateOccurredAt: new Date(input.now), active: true, customTitle: override?.title ?? null, customDescription: override?.description ?? null, customImageMediaId: override?.imageMediaId ?? null, assignmentSource: originSiteId === null ? 'manual' : 'auto', expandedFromSiteId: originSiteId, customCanonicalUrl: canonicalUrl, createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning())[0]!;
           } else if (relation.state !== 'published' && relation.state !== 'failed' && relation.state !== 'unpublished') {
             throw new PublishingConflictError();
           }
           await transaction.insert(publishingJobTargets).values({ organizationId: actor.organizationId, id: input.targetIds[index]!, jobId: input.jobId, articleSiteId: relation.id, state: 'queued', nextAttemptAt: new Date(input.now), publishedUrl: null, publishedAt: null, createdAt: new Date(input.now), updatedAt: new Date(input.now) });
           if (existingRelation[0] !== undefined) {
-            const updated = await transaction.update(articleSites).set({ state: 'queued', stateOccurredAt: new Date(input.now), publishedUrl: null, publishedAt: null, sanitizedFailure: null, active: true, customTitle: override?.title ?? null, customDescription: override?.description ?? null, customImageMediaId: override?.imageMediaId ?? null, version: relation.version + 1, updatedAt: new Date(input.now) }).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.id, relation.id), eq(articleSites.version, relation.version))).returning();
+            const updated = await transaction.update(articleSites).set({ state: 'queued', stateOccurredAt: new Date(input.now), publishedUrl: null, publishedAt: null, sanitizedFailure: null, active: true, customTitle: override?.title ?? null, customDescription: override?.description ?? null, customImageMediaId: override?.imageMediaId ?? null, assignmentSource: originSiteId === null ? 'manual' : 'auto', expandedFromSiteId: originSiteId, ...(originSiteId === null ? {} : { customCanonicalUrl: canonicalUrl }), version: relation.version + 1, updatedAt: new Date(input.now) }).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.id, relation.id), eq(articleSites.version, relation.version))).returning();
             if (updated.length !== 1) throw new PublishingConflictError();
           }
         }
-        await this.audit(transaction, actor, 'publication.request', 'publishing_job', input.jobId, { articleId: input.articleId, siteIds: distinctSites }, new Date(input.now));
+        await this.audit(transaction, actor, 'publication.request', 'publishing_job', input.jobId, { articleId: input.articleId, siteIds: distinctSites, ...(input.cascade === undefined || Object.keys(input.cascade).length === 0 ? {} : { cascade: input.cascade }) }, new Date(input.now));
         return { kind: 'created' as const, job: mapJob(jobRows[0]!) };
       });
     } catch (error) {

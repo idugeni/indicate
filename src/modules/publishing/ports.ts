@@ -43,6 +43,10 @@ export interface AcceptPublicationInput {
   readonly fingerprintVersion: number;
   readonly options: PublicationOptions;
   readonly overrides: Readonly<Record<string, PublicationOverride>>;
+  /** Derived site → manual origin for cascade expansion; absent means fully manual. */
+  readonly cascade?: Readonly<Record<string, string>> | undefined;
+  /** Inherited canonical URL per derived site; manual rows keep existing values. */
+  readonly canonicals?: Readonly<Record<string, string>> | undefined;
   readonly now: string;
   readonly targetIds: readonly string[];
   readonly articleSiteIds: readonly string[];
@@ -70,16 +74,29 @@ export interface TargetTransitionInput {
 export interface ArticleVariantSite {
   readonly siteId: string;
   readonly normalizedHostname: string;
+  readonly regionId: string | null;
+  readonly domainId: string;
   readonly customTitle: string | null;
   readonly customDescription: string | null;
   readonly active: boolean;
   readonly state: PublishingState;
+  readonly assignmentSource: 'manual' | 'auto';
+  readonly expandedFromSiteId: string | null;
+}
+
+export interface CascadeRegionEntry {
+  readonly id: string;
+  readonly kind: 'region' | 'city';
+  readonly parentRegionId: string | null;
+  readonly status: string;
 }
 
 export interface ArticleVariantContext {
   readonly articleId: string;
   readonly title: string;
+  readonly slug: string;
   readonly body: string;
+  readonly regions: readonly CascadeRegionEntry[];
   readonly variants: readonly ArticleVariantSite[];
 }
 

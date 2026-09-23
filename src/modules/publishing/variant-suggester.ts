@@ -154,6 +154,37 @@ export function suggestPublicationVariants(input: {
 }
 
 /**
+ * Count title/description duplication with cascade families collapsed.
+ *
+ * @param entries - Effective content per site with its duplicate-counting family.
+ * @returns Duplicate issues; content repeated only inside one family is safe.
+ */
+export function duplicateIssuesForFamilies(
+  entries: readonly { readonly family: string; readonly title: string; readonly description: string }[],
+): readonly SeoValidationIssue[] {
+  const issues: SeoValidationIssue[] = [];
+  const seenTitles = new Map<string, Set<string>>();
+  const seenDescriptions = new Map<string, Set<string>>();
+  for (const entry of entries) {
+    const title = fold(entry.title);
+    const description = fold(entry.description);
+    if (title.length > 0) {
+      const holders = seenTitles.get(title) ?? new Set<string>();
+      holders.add(entry.family);
+      seenTitles.set(title, holders);
+    }
+    if (description.length > 0) {
+      const holders = seenDescriptions.get(description) ?? new Set<string>();
+      holders.add(entry.family);
+      seenDescriptions.set(description, holders);
+    }
+  }
+  if ([...seenTitles.values()].some((holders) => holders.size > 1)) issues.push({ field: 'title', code: 'duplicate' });
+  if ([...seenDescriptions.values()].some((holders) => holders.size > 1)) issues.push({ field: 'description', code: 'duplicate' });
+  return issues;
+}
+
+/**
  * Detect title/description duplication across portals for one article.
  *
  * @param input.canonicalTitle - Canonical article title from the database.
@@ -161,6 +192,8 @@ export function suggestPublicationVariants(input: {
  * @param input.existing - Effective variants already stored per portal.
  * @param input.requestedSiteIds - Portals requested on this request.
  * @param input.overrides - Override pada request ini.
+ * @param input.families - Optional cascade family per site; sites sharing a
+ * family never count as duplicates of each other (they share one canonical).
  * @returns Masalah duplikasi; kosong berarti aman tayang ke semua portal.
  */
 export function findCrossSiteDuplicates(input: {
@@ -169,8 +202,8 @@ export function findCrossSiteDuplicates(input: {
   readonly existing: readonly ExistingSiteVariant[];
   readonly requestedSiteIds: readonly string[];
   readonly overrides: Readonly<Record<string, PublicationOverride>>;
+  readonly families?: Readonly<Record<string, string>> | undefined;
 }): readonly SeoValidationIssue[] {
-  const issues: SeoValidationIssue[] = [];
   const effective = new Map<string, { title: string; description: string }>();
   for (const variant of input.existing) {
     effective.set(variant.siteId, {
@@ -186,15 +219,7 @@ export function findCrossSiteDuplicates(input: {
       description: override?.description ?? prior?.description ?? input.canonicalDescription,
     });
   }
-  const seenTitles = new Map<string, number>();
-  const seenDescriptions = new Map<string, number>();
-  for (const value of effective.values()) {
-    const title = fold(value.title);
-    const description = fold(value.description);
-    if (title.length > 0) seenTitles.set(title, (seenTitles.get(title) ?? 0) + 1);
-    if (description.length > 0) seenDescriptions.set(description, (seenDescriptions.get(description) ?? 0) + 1);
-  }
-  if ([...seenTitles.values()].some((count) => count > 1)) issues.push({ field: 'title', code: 'duplicate' });
-  if ([...seenDescriptions.values()].some((count) => count > 1)) issues.push({ field: 'description', code: 'duplicate' });
-  return issues;
+  return duplicateIssuesForFamilies(
+    [...effective].map(([siteId, value]) => ({ family: input.families?.[siteId] ?? siteId, title: value.title, description: value.description })),
+  );
 }

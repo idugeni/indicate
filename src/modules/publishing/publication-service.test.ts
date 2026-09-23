@@ -32,7 +32,9 @@ const statusProjection = (jobId: string) => ({
 const variantContext = {
   articleId: ARTICLE,
   title: 'Judul Kanonik Artikel',
+  slug: 'judul-kanonik-artikel',
   body: 'Isi artikel yang cukup panjang untuk diekstrak menjadi deskripsi kanonik oleh layanan publikasi.',
+  regions: [],
   variants: [],
 };
 
@@ -198,6 +200,70 @@ describe('PublicationService request validation', () => {
     });
     expect(result.ok).toBe(true);
     expect(repository.acceptPublication).toHaveBeenCalledTimes(1);
+  });
+
+  it('meluaskan permintaan kota ke region dan apex dengan kanonis primer', async () => {
+    const city = '0199a2b3-4c5d-7e8f-9012-3456789abc11';
+    const region = '0199a2b3-4c5d-7e8f-9012-3456789abc12';
+    const apex = '0199a2b3-4c5d-7e8f-9012-3456789abc13';
+    const context = {
+      ...variantContext,
+      variants: [
+        { siteId: apex, normalizedHostname: 'portal.test', regionId: null, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', assignmentSource: 'auto', expandedFromSiteId: city },
+        { siteId: region, normalizedHostname: 'wonosobo.portal.test', regionId: 'r-1', domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', assignmentSource: 'auto', expandedFromSiteId: city },
+        { siteId: city, normalizedHostname: 'kota.portal.test', regionId: 'c-1', domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', assignmentSource: 'manual', expandedFromSiteId: null },
+      ],
+      regions: [
+        { id: 'r-1', kind: 'region', parentRegionId: null, status: 'active' },
+        { id: 'c-1', kind: 'city', parentRegionId: 'r-1', status: 'active' },
+      ],
+    };
+    const { service, repository } = harness({ getArticleVariantContext: async () => context });
+    const result = await service.request(actor, { ...singleRequest, siteIds: [city] });
+    expect(result.ok).toBe(true);
+    expect(repository.acceptPublication).toHaveBeenCalledWith(
+      actor,
+      expect.objectContaining({
+        siteIds: [city, region, apex],
+        cascade: { [apex]: city, [region]: city },
+        canonicals: {
+          [apex]: 'https://portal.test/judul-kanonik-artikel',
+          [region]: 'https://portal.test/judul-kanonik-artikel',
+        },
+      }),
+    );
+  });
+
+  it('mengecualikan keluarga cascade dari aturan duplikat', async () => {
+    const city = '0199a2b3-4c5d-7e8f-9012-3456789abc11';
+    const apex = '0199a2b3-4c5d-7e8f-9012-3456789abc13';
+    const context = {
+      ...variantContext,
+      variants: [
+        { siteId: apex, normalizedHostname: 'portal.test', regionId: null, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'published', assignmentSource: 'auto', expandedFromSiteId: city },
+        { siteId: city, normalizedHostname: 'kota.portal.test', regionId: 'c-1', domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'published', assignmentSource: 'manual', expandedFromSiteId: null },
+      ],
+      regions: [{ id: 'c-1', kind: 'city', parentRegionId: 'r-1', status: 'active' }],
+    };
+    const { service, repository } = harness({ getArticleVariantContext: async () => context });
+    const result = await service.request(actor, { ...singleRequest, siteIds: [city] });
+    expect(result.ok).toBe(true);
+    expect(repository.acceptPublication).toHaveBeenCalledTimes(1);
+  });
+
+  it('tetap menolak duplikat lintas keluarga manual', async () => {
+    const context = {
+      ...variantContext,
+      variants: [
+        { siteId: SITE_A, normalizedHostname: 'a.test', regionId: null, domainId: 'd-1', customTitle: 'Judul Kanonik Artikel', customDescription: null, active: true, state: 'published', assignmentSource: 'manual', expandedFromSiteId: null },
+      ],
+      regions: [],
+    };
+    const { service } = harness({ getArticleVariantContext: async () => context });
+    const result = await service.request(actor, { ...singleRequest, siteIds: [SITE_B] });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
   });
 });
 
