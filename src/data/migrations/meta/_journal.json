@@ -1093,6 +1093,13 @@
       "when": 1790101158363,
       "tag": "20260923010000_article_categories_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 156,
+      "version": "7",
+      "when": 1790101798000,
+      "tag": "20260923020000_article_site_unpublish_transition",
+      "breakpoints": true
     }
   ]
 }
