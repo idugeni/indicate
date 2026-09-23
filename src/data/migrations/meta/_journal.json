@@ -1100,6 +1100,13 @@
       "when": 1790101798000,
       "tag": "20260923020000_article_site_unpublish_transition",
       "breakpoints": true
+    },
+    {
+      "idx": 157,
+      "version": "7",
+      "when": 1790129544272,
+      "tag": "20260923030000_site_settings_description_strip_tagline",
+      "breakpoints": true
     }
   ]
 }
