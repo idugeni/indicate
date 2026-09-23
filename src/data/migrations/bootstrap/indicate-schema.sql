@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (156 migrations):
+-- Reviewed sources, in journal order (157 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -169,6 +169,7 @@
 --   154  20260922060000_article_categories  ledger sha256:39d11a166629bc95c5c0a85147dc5dd798fe17069005eda7947265f6a940d860
 --   155  20260923000000_article_categories_org_fk  ledger sha256:add66418580f198720c735cfb1bf6404dedf493ab5eeeb59170e1f3346e94b5e
 --   156  20260923010000_article_categories_rls  ledger sha256:70ac69c492761112e9954be5c482c372900c1184b46e8b9fd25b2dc1883a577c
+--   157  20260923020000_article_site_unpublish_transition  ledger sha256:8ba4a0abb4fdf98cf0f3da715ac1f2456590958a1b328bad427737afa54f847f
 
 BEGIN;
 
@@ -12673,4 +12674,42 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (155, 'article_categories_rls', 'sha256:b14e51c7efcf237ad19e7a19be21897cb181267fdf732c1633fbdcba5984ab2f');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('70ac69c492761112e9954be5c482c372900c1184b46e8b9fd25b2dc1883a577c', 1790101158363);
+
+-- ----------------------------------------------------------------------
+-- 20260923020000_article_site_unpublish_transition
+-- ----------------------------------------------------------------------
+-- Allow withdrawal of published article-site assignments: the dashboard/API
+-- `publication.unpublish` path sets `article_sites` from `published` to
+-- `unpublished` directly, which the current-projection guard rejects, so
+-- every live unpublish fails closed. Permit exactly that terminal step;
+-- all other transitions stay unchanged.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE OR REPLACE FUNCTION indicate_private.enforce_article_site_transition()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NEW.state = OLD.state THEN RETURN NEW; END IF;
+  IF (
+    (OLD.state = 'queued' AND NEW.state = 'processing') OR
+    (OLD.state = 'processing' AND NEW.state IN ('published', 'retrying', 'failed')) OR
+    (OLD.state = 'retrying' AND NEW.state IN ('processing', 'failed')) OR
+    (OLD.state = 'published' AND NEW.state = 'unpublished')
+  ) THEN RETURN NEW; END IF;
+  IF OLD.state IN ('published', 'failed') AND NEW.state = 'queued' AND EXISTS (
+    SELECT 1 FROM public.publishing_job_targets AS target
+    INNER JOIN public.publishing_jobs AS job
+      ON job.organization_id = target.organization_id AND job.id = target.job_id
+    WHERE target.organization_id = OLD.organization_id AND target.article_site_id = OLD.id
+      AND target.state = 'queued' AND job.state = 'queued'
+  ) THEN RETURN NEW; END IF;
+  RAISE EXCEPTION 'invalid article site current-projection transition' USING ERRCODE = '23514';
+END;
+$function$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (156, 'article_site_unpublish_transition', 'sha256:8a44a4612f72a0830541157fdf332edadd265f31df7a0a4ac9583edea3ac4a39');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('8ba4a0abb4fdf98cf0f3da715ac1f2456590958a1b328bad427737afa54f847f', 1790101798000);
 COMMIT;
