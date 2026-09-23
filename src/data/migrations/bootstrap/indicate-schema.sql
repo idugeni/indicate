@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (157 migrations):
+-- Reviewed sources, in journal order (158 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -170,6 +170,7 @@
 --   155  20260923000000_article_categories_org_fk  ledger sha256:add66418580f198720c735cfb1bf6404dedf493ab5eeeb59170e1f3346e94b5e
 --   156  20260923010000_article_categories_rls  ledger sha256:70ac69c492761112e9954be5c482c372900c1184b46e8b9fd25b2dc1883a577c
 --   157  20260923020000_article_site_unpublish_transition  ledger sha256:8ba4a0abb4fdf98cf0f3da715ac1f2456590958a1b328bad427737afa54f847f
+--   158  20260923030000_site_settings_description_strip_tagline  ledger sha256:d6df429cb436b83f48a967b725825a81e9cbc3de2d342d9b2f4fc27fa27c4d4f
 
 BEGIN;
 
@@ -12712,4 +12713,26 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (156, 'article_site_unpublish_transition', 'sha256:8a44a4612f72a0830541157fdf332edadd265f31df7a0a4ac9583edea3ac4a39');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('8ba4a0abb4fdf98cf0f3da715ac1f2456590958a1b328bad427737afa54f847f', 1790101798000);
+
+-- ----------------------------------------------------------------------
+-- 20260923030000_site_settings_description_strip_tagline
+-- ----------------------------------------------------------------------
+-- Bersihkan duplikasi tagline di depan deskripsi site.
+-- Kolom tagline lahir belakangan (migrasi 118); backfill mengisi tagline dari
+-- awalan deskripsi tanpa memotong deskripsi, sehingga footer menampilkan
+-- tagline dua kali. Migrasi ini memotong awalan tagline + pemisah dari
+-- deskripsi; idempoten (WHERE hanya menyentuh baris yang masih berawalan tagline).
+ALTER TABLE public.site_settings DISABLE TRIGGER site_settings_active_site_guard;
+UPDATE public.site_settings
+SET description = btrim(ltrim(substring(description from char_length(tagline) + 1), ' .,;:!?-' || chr(8211) || chr(8212) || '|/')),
+    updated_at = now()
+WHERE tagline IS NOT NULL
+  AND btrim(tagline) <> ''
+  AND starts_with(description, tagline)
+  AND btrim(ltrim(substring(description from char_length(tagline) + 1), ' .,;:!?-' || chr(8211) || chr(8212) || '|/')) <> '';
+ALTER TABLE public.site_settings ENABLE TRIGGER site_settings_active_site_guard;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (157, 'site_settings_description_strip_tagline', 'sha256:1a6053696d751e354ee092087ca20563cbb7808b13bed824fa958b8fb4ca1199');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('d6df429cb436b83f48a967b725825a81e9cbc3de2d342d9b2f4fc27fa27c4d4f', 1790129544272);
 COMMIT;
