@@ -44,7 +44,10 @@ export function createProductionIntegrations(config: RuntimeConfig, bootstrap: B
     apiKeys: new ApiKeyService(repository, identifiers), customer: new CustomerService(repository, identifiers),
     rateLimits: new RateLimitService(new UpstashRateLimitAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })),
     webhooks: new WebhookService(repository, { generic: config.security.genericWebhookSecret }, config.security.webhookFreshnessSeconds, config.security.webhookReplayTtlSeconds),
-    spendWebhooks: new VercelSpendWebhookService(repository, config.vercel.teamId),
+    spendWebhooks:
+      config.vercel.spendWebhookSecret === null
+        ? null
+        : new VercelSpendWebhookService(repository, config.vercel.teamId, config.vercel.spendWebhookSecret),
     email,
     emailWebhooks,
     emailWelcome: new EmailWelcomeService(email),

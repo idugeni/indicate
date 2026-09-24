@@ -22,8 +22,10 @@ async function handlePOST(request: Request) {
   const limiter = production.rateLimits;
   const limited = await limiter.enforce(limiter.publicKey('vercel-spend-webhook', sourceIdentity), { ...config.rateLimits.webhook, failureMode: 'closed' }, requestId);
   if (!limited.ok) return NextResponse.json(limited.error, { status: status(limited.error), headers: { 'Retry-After': limited.error.error.fields?.retryAfterSeconds?.[0] ?? '1' } });
+  const spendWebhooks = production.spendWebhooks;
+  if (spendWebhooks === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 503 });
   const rawBody = await request.text();
-  const result = await production.spendWebhooks.process(rawBody, requestId);
+  const result = await spendWebhooks.process(rawBody, request.headers.get('x-vercel-signature'), requestId);
   return result.ok ? NextResponse.json({ data: result.value, requestId }) : NextResponse.json(result.error, { status: status(result.error) });
 }
 

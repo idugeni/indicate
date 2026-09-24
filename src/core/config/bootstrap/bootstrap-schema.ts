@@ -47,6 +47,7 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'CLOUDFLARE_API_TOKEN',
   'CLOUDFLARE_ORIGIN_SECRET',
   'VERCEL_API_TOKEN',
+  'VERCEL_SPEND_WEBHOOK_SECRET',
   'R2_ACCESS_KEY_ID',
   'R2_SECRET_ACCESS_KEY',
   'R2_AUDIT_BUCKET_NAME',
@@ -109,6 +110,7 @@ const bootstrapSchema = z
     CLOUDFLARE_API_TOKEN: secretSchema,
     CLOUDFLARE_ORIGIN_SECRET: secretSchema,
     VERCEL_API_TOKEN: secretSchema,
+    VERCEL_SPEND_WEBHOOK_SECRET: secretSchema.optional(),
     R2_ACCESS_KEY_ID: secretSchema,
     R2_SECRET_ACCESS_KEY: secretSchema,
     R2_AUDIT_BUCKET_NAME: z.string().regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/).optional(),
@@ -229,6 +231,8 @@ export interface BootstrapConfig {
     readonly cloudflareApiToken: SecretString;
     readonly cloudflareOriginSecret: SecretString;
     readonly vercelApiToken: SecretString;
+    /** Vercel Spend Management webhook signing secret; null when the endpoint is disabled. */
+    readonly vercelSpendWebhookSecret: SecretString | null;
     readonly r2AccessKeyId: SecretString;
     readonly r2SecretAccessKey: SecretString;
     /** WORM audit bucket (optional; audit export off when null). Separately scoped audit credentials when set. */
@@ -297,6 +301,7 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       cloudflareApiToken: SecretString.fromPlain(value.CLOUDFLARE_API_TOKEN),
       cloudflareOriginSecret: SecretString.fromPlain(value.CLOUDFLARE_ORIGIN_SECRET),
       vercelApiToken: SecretString.fromPlain(value.VERCEL_API_TOKEN),
+      vercelSpendWebhookSecret: value.VERCEL_SPEND_WEBHOOK_SECRET === undefined ? null : SecretString.fromPlain(value.VERCEL_SPEND_WEBHOOK_SECRET),
       r2AccessKeyId: SecretString.fromPlain(value.R2_ACCESS_KEY_ID),
       r2SecretAccessKey: SecretString.fromPlain(value.R2_SECRET_ACCESS_KEY),
       r2AuditBucketName: value.R2_AUDIT_BUCKET_NAME ?? null,
