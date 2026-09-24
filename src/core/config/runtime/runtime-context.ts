@@ -65,6 +65,7 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
       apiToken: bootstrap.credentials.vercelApiToken.reveal(),
       productionTarget: shared.vercelProductionTargetHostname,
       spendWebhookSecret: bootstrap.credentials.vercelSpendWebhookSecret?.reveal() ?? null,
+      deployWebhookSecret: bootstrap.credentials.vercelDeployWebhookSecret?.reveal() ?? null,
     }),
     r2: Object.freeze({
       accountId: shared.r2AccountId,

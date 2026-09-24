@@ -29,6 +29,8 @@ export interface RuntimeConfig {
     readonly productionTarget: string;
     /** Spend webhook signing secret; null when the endpoint is disabled. */
     readonly spendWebhookSecret: string | null;
+    /** Deployment webhook signing secret; null when the endpoint is disabled. */
+    readonly deployWebhookSecret: string | null;
   };
   readonly r2: {
     readonly accountId: string;

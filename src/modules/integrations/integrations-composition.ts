@@ -22,6 +22,7 @@ import { createResendEventVerifier } from '@/integrations/email/resend-webhook-v
 import { EmailWelcomeService } from '@/modules/integrations/email-welcome-service';
 import { ResendWebhookService } from '@/modules/integrations/resend-webhook-service';
 import { VercelSpendWebhookService } from '@/modules/integrations/vercel-spend-webhook-service';
+import { VercelDeployWebhookService } from '@/modules/integrations/vercel-deploy-webhook-service';
 import { UuidGenerator } from '@/core/system/uuid-generator';
 
 export function createProductionIntegrations(config: RuntimeConfig, bootstrap: BootstrapConfig) {
@@ -48,6 +49,10 @@ export function createProductionIntegrations(config: RuntimeConfig, bootstrap: B
       config.vercel.spendWebhookSecret === null
         ? null
         : new VercelSpendWebhookService(repository, config.vercel.teamId, config.vercel.spendWebhookSecret),
+    deployWebhooks:
+      config.vercel.deployWebhookSecret === null
+        ? null
+        : new VercelDeployWebhookService(repository, config.vercel.projectId, config.vercel.deployWebhookSecret),
     email,
     emailWebhooks,
     emailWelcome: new EmailWelcomeService(email),
