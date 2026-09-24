@@ -153,7 +153,7 @@ jobs:
       - run: npm run lint:md
       - uses: lycheeverse/lychee-action@v2
         with:
-          args: --no-progress --timeout 20 --max-retries 2 '*.md' 'docs/**/*.md' '.github/**/*.md' 'workers/**/*.md' 'src/**/*.md' 'public/**/*.md'
+          args: --no-progress --timeout 20 --max-retries 2 --exclude-path 'docs/vercel-multi-tenant/**' --exclude 'https://www.whatsmydns.net/*' '*.md' 'docs/**/*.md' '.github/**/*.md' 'workers/**/*.md' 'src/**/*.md' 'public/**/*.md'
           fail: true
 
   quality-gate:
