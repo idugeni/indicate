@@ -101,10 +101,21 @@ function auditEdgeDeny(request: NextRequest, event: string): void {
   }));
 }
 
+/** Inbound tenant headers are never trusted: resolution derives from host. */
+function stripTenantHeaders(headers: Headers): void {
+  const condemned: string[] = [];
+  headers.forEach((_value, name) => {
+    if (name.toLowerCase().startsWith('x-tenant-')) condemned.push(name);
+  });
+  for (const name of condemned) headers.delete(name);
+}
+
 /** Carries stable x-request-id + W3C traceparent downstream; echoes the id so edge → route → DB records join. */
 function nextWithCorrelation(request: NextRequest, mutate?: (headers: Headers) => void): NextResponse {
   const requestHeaders = new Headers(request.headers);
+  stripTenantHeaders(requestHeaders);
   if (mutate !== undefined) mutate(requestHeaders);
+  stripTenantHeaders(requestHeaders);
   const { requestId } = ensureRequestId(requestHeaders);
   requestHeaders.set(REQUEST_ID_HEADER, requestId);
   requestHeaders.set(TRACEPARENT_HEADER, ensureTraceContext(requestHeaders).headerValue);
@@ -256,6 +267,7 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = '/tenant-home';
     const requestHeaders = new Headers(request.headers);
+    stripTenantHeaders(requestHeaders);
     const { requestId } = ensureRequestId(requestHeaders);
     requestHeaders.set(REQUEST_ID_HEADER, requestId);
     requestHeaders.set(TRACEPARENT_HEADER, ensureTraceContext(requestHeaders).headerValue);
