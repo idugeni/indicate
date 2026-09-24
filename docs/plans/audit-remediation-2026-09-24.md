@@ -67,6 +67,11 @@ maks 72 karakter, tanpa titik, tanpa emoji), selalu `git commit -s`,
   Catatan: random-subdomain masih 525 sampai sertifikat wildcard terbit — butuh
   "Enable Vercel DNS" per apex di dashboard (owner-assisted), lalu `dbOnlyRegionalOnboarding`
   boleh dinyalakan.
+  Realisasi 2026-09-25: dashboard tidak diperlukan — `vercel certs issue --challenge-only`
+  memberi TXT `_acme-challenge`, pasang TXT di Cloudflare, `vercel certs issue` selesaikan.
+  Pilot penamerdeka: cert terbit, `wonosobo` 200, host liar → halaman 404 bermerek
+  (noindex, tanpa bocor konten tenant). Batch 35 apex berjalan dengan pola sama.
+  Perpanjangan (~90 hari) butuh challenge baru atau delegasi NS + Enable Vercel DNS.
 - [x] 2.4. Onboarding kota baru menjadi DB-only: lewati asosiasi exact untuk subdomain
   satu-label di apex ber-wildcard (`domain-provisioning-service.ts`), tetap probe + audit.
   Update skill `tenant-onboarding`. Verifikasi: 1 regional fiktif menjadi live dengan 0 API call Vercel.
@@ -133,10 +138,10 @@ maks 72 karakter, tanpa titik, tanpa emoji), selalu `git commit -s`,
 - [x] 6.1. Ukur bundle dispatcher (`network-listing.tsx:4-103`) sebelum refactor (trace build).
   Bila signifikan, `next/dynamic` per-template; bila kecil, catat keputusan.
   Bukti: esbuild trace graf server 1.53 MB (article-page ×10 ≈ 170 KB agregat);
-  dispatcher server-side — `next/dynamic` ditunda sampai bukti client-bundle
-  (build lokal terblokir pre-existing: `.env` memuat kunci tak dikenal
-  `GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN`, `RESEND_SMTP_PASS` yang ditolak
-  skema bootstrap; perlu keputusan allowlist vs hapus).
+  dispatcher server-side — `next/dynamic` ditunda sampai bukti client-bundle.
+  Realisasi 2026-09-25: allowlist `GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN` +
+  `RESEND_SMTP_PASS` di skema bootstrap (`.env` lokal kini lolos validasi) dan
+  `npm run build` hijau penuh — pemblokir render/LCP lokal teratasi.
 - [x] 6.2. `unoptimized` tanpa syarat + 1 baris komentar maksud di kartu hero/article;
   petakan hex marketing ke token `globals.css` (atau catat tema terang disengaja di `design.md`).
   Bukti: 20 file hero/article `unoptimized` + komentar; `docs/templates.md` catat tema terang.
@@ -146,8 +151,13 @@ maks 72 karakter, tanpa titik, tanpa emoji), selalu `git commit -s`,
   kirim email uji Resend di staging.
   Bukti parsial 2026-09-24: `db-bootstrap --check` hijau (172 migrasi); R2 182 key
   diinventaris, HEAD 3/3 OK, tanpa orphan wajib-hapus; email uji Resend terkirim
-  ke owner. Terbuka: render browser LCP/CLS (terblokir `.env` di atas),
+  ke owner. Terbuka: render browser LCP/CLS,
   metrik prod pasca-wildcard, sampling penuh 131 zona, Search Console.
+  Audit Resend 2026-09-25: aplikasi memakai `RESEND_API_KEY` (HTTP API) +
+  `RESEND_DEFAULT_FROM` untuk email transaksional; Supabase Auth memakai
+  `RESEND_SMTP_PASS` via `smtp.resend.com` (`supabase/config.toml [auth.email.smtp]`,
+  pengirim `noreply@indicate.website`); domain verified `indicate.website` +
+  `safenca.id`. Tidak ada pengirim lain.
 
 ## Kriteria selesai total
 
