@@ -49,6 +49,52 @@ describe('HostnameResolver tanpa DB', () => {
   });
 });
 
+describe('HostnameResolver dengan read-model', () => {
+  it('melayani hit tanpa DB dan mengisi balik saat miss', async () => {
+    const find = vi.fn(async () => [SITE]);
+    const written = new Map<string, readonly ResolvedSiteContext[]>();
+    const cachePort = {
+      readHost: vi.fn(async () => undefined),
+      writeHost: vi.fn(async (hostname: string, matches: readonly ResolvedSiteContext[]) => { written.set(hostname, matches); }),
+      deleteHost: vi.fn(async () => {}),
+    };
+    const resolver = new HostnameResolver({ findActiveSitesByExactHostname: find }, HOSTS, cachePort);
+    expect(await resolver.classify('berita.example')).toEqual({ kind: 'site', context: SITE });
+    expect(find).toHaveBeenCalledTimes(1);
+    expect(written.get('berita.example')).toEqual([SITE]);
+  });
+
+  it('melewati DB saat cache hit dan 404 cepat untuk unknown', async () => {
+    const find = vi.fn(async () => { throw new Error('must not hit db'); });
+    const cachePort = {
+      readHost: vi.fn(async (hostname: string) => (hostname === 'berita.example' ? [SITE] : [])),
+      writeHost: vi.fn(async () => {}),
+      deleteHost: vi.fn(async () => {}),
+    };
+    const resolver = new HostnameResolver({ findActiveSitesByExactHostname: find }, HOSTS, cachePort);
+    expect(await resolver.classify('berita.example')).toEqual({ kind: 'site', context: SITE });
+    expect(await resolver.classify('asing.example')).toEqual({
+      kind: 'unknown',
+      hostname: 'asing.example',
+      status: 404,
+      robots: 'noindex, nofollow',
+    });
+    expect(find).not.toHaveBeenCalled();
+  });
+
+  it('jatuh ke DB saat cache korup', async () => {
+    const find = vi.fn(async () => [SITE]);
+    const cachePort = {
+      readHost: vi.fn(async () => undefined),
+      writeHost: vi.fn(async () => {}),
+      deleteHost: vi.fn(async () => {}),
+    };
+    const resolver = new HostnameResolver({ findActiveSitesByExactHostname: find }, HOSTS, cachePort);
+    expect(await resolver.classify('berita.example')).toEqual({ kind: 'site', context: SITE });
+    expect(find).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('hasReservedHostnameConflict', () => {
   it('mendeteksi hostname yang sudah dicadangkan', () => {
     expect(hasReservedHostnameConflict('dash.example', new Set(['dash.example']))).toBe(true);

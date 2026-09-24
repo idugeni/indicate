@@ -8,6 +8,7 @@ import type { VercelHostingPort } from '@/integrations/vercel/ports';
 import { normalizeRequestHostname } from '@/core/hostname/normalize-request-hostname';
 import { hasReservedHostnameConflict } from '@/modules/delivery/hostname-resolver';
 import { planInvalidation } from '@/modules/delivery/invalidation';
+import type { HostnameCachePort } from '@/integrations/redis/hostname-read-model';
 
 export class DeliveryOperationPendingError extends Error {
   constructor() { super('Delivery operation persisted for retry'); }
@@ -27,6 +28,7 @@ export class DomainProvisioningService {
     private readonly zoneResolver: DomainZoneResolver,
     private readonly retryDelaysSeconds: readonly number[] = [30, 120, 600],
     private readonly maxAttempts = 4,
+    private readonly hostnameCache?: HostnameCachePort,
   ) {}
 
   async activate(actor: AuthorizedTenantActorContext, siteId: string, rawHostname: string, now = new Date(), rawPreviousHostname: string | null = null): Promise<ResolvedSiteContext> {
@@ -68,7 +70,9 @@ export class DomainProvisioningService {
         attempt = await this.repository.updateActivation(actor, attempt.id, 'probe_verified', { noindex: true, attemptId: attempt.id }, now.toISOString());
       }
       if (attempt.activationState !== 'probe_verified') throw new Error('CONFIGURATION_INVALID');
-      return await this.repository.completeActivation(actor, attempt.id, planInvalidation({ kind: 'hostname', organizationId: actor.organizationId, siteId: attempt.siteId, previousHostname: attempt.previousHostname, currentHostname: attempt.hostname }), now.toISOString());
+      const context = await this.repository.completeActivation(actor, attempt.id, planInvalidation({ kind: 'hostname', organizationId: actor.organizationId, siteId: attempt.siteId, previousHostname: attempt.previousHostname, currentHostname: attempt.hostname }), now.toISOString());
+      if (this.hostnameCache !== undefined) await this.hostnameCache.writeHost(context.normalizedHostname, [context]);
+      return context;
     } catch (error) {
       if (attempt.status !== 'completed' && attempt.activationState !== 'failed') {
         await this.persistFailure(actor, attempt, error, now);
@@ -89,6 +93,7 @@ export class DomainProvisioningService {
     try {
       await this.vercel.removeExactDomain(attempt.hostname);
       await this.repository.completeDeactivation(actor, attempt.id, now.toISOString());
+      if (this.hostnameCache !== undefined) await this.hostnameCache.deleteHost(attempt.hostname);
     } catch (error) {
       await this.persistFailure(actor, attempt, error, now);
       throw new DeliveryOperationPendingError();

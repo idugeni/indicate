@@ -9,6 +9,8 @@ import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleDeliveryRepository } from '@/data/repos/delivery';
 import { HttpsPendingHostnameProbe } from '@/core/hostname/pending-hostname-probe';
 import { VercelExactDomainAdapter } from '@/integrations/vercel/exact-domain-adapter';
+import { UpstashSnapshotStore } from '@/integrations/redis/upstash-snapshot-store';
+import { UpstashHostnameCache } from '@/integrations/redis/upstash-hostname-cache';
 
 /**
  * Compose delivery operations from the server runtime context.
@@ -39,7 +41,10 @@ export async function deliveryOperationsComposition() {
       });
     },
   };
-  const provisioning = new DomainProvisioningService(repository, cloudflare, vercel, new HttpsPendingHostnameProbe(), config.hosts.reserved, zoneResolver, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts);
+  const provisioning = new DomainProvisioningService(repository, cloudflare, vercel, new HttpsPendingHostnameProbe(), config.hosts.reserved, zoneResolver, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts,
+    process.env.NEXT_PHASE === 'phase-production-build'
+      ? undefined
+      : new UpstashHostnameCache(new UpstashSnapshotStore({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })));
   const invalidation = new InvalidationDispatcher(repository, new NextCacheInvalidationAdapter(), cloudflare, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts, new SocialWarmer(config.social?.facebookAppToken ?? null));
   return { config, runtime, repository, provisioning, invalidation };
 }

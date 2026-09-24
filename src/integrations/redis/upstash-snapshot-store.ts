@@ -87,4 +87,17 @@ export class UpstashSnapshotStore {
       /* best-effort: write failure does not fail the refresh */
     }
   }
+
+  /**
+   * Delete a namespaced key after invalidation.
+   *
+   * @param key - Key suffix appended to the store namespace.
+   */
+  async deleteKey(key: string): Promise<void> {
+    try {
+      await this.redis.del(`${this.namespace}:${key}`);
+    } catch {
+      /* best-effort: delete failure does not fail the mutation */
+    }
+  }
 }

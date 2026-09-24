@@ -8,8 +8,22 @@ import { NextNetworkSiteCache } from '@/modules/delivery/network-site-cache-adap
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleDeliveryRepository } from '@/data/repos/delivery';
 import type { DeliveryRepository } from '@/modules/delivery/ports';
+import { UpstashSnapshotStore } from '@/integrations/redis/upstash-snapshot-store';
+import { UpstashHostnameCache } from '@/integrations/redis/upstash-hostname-cache';
+import type { HostnameCachePort } from '@/integrations/redis/hostname-read-model';
 
-declare global { var indicateDeliveryRepository: DeliveryRepository | undefined; }
+declare global { var indicateDeliveryRepository: DeliveryRepository | undefined; var indicateHostnameCache: HostnameCachePort | null | undefined; }
+function hostnameCache(config: RuntimeConfig): HostnameCachePort | undefined {
+  if (process.env.NEXT_PHASE === 'phase-production-build') return undefined;
+  if (globalThis.indicateHostnameCache !== undefined) return globalThis.indicateHostnameCache ?? undefined;
+  try {
+    const store = new UpstashSnapshotStore({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace });
+    globalThis.indicateHostnameCache = new UpstashHostnameCache(store);
+  } catch {
+    globalThis.indicateHostnameCache = null;
+  }
+  return globalThis.indicateHostnameCache ?? undefined;
+}
 function repository(config: RuntimeConfig, bootstrap: BootstrapConfig): DeliveryRepository {
   if (globalThis.indicateDeliveryRepository !== undefined) return globalThis.indicateDeliveryRepository;
   const isPlaceholder = config.supabase.pooledDatabaseUrl.includes('abcdefghijklmnop') || config.supabase.pooledDatabaseUrl.includes('replace-password');
@@ -23,5 +37,5 @@ export async function deliveryComposition() {
   const context = await getServerRuntimeContext();
   const config = context.config;
   const repo = repository(config, context.bootstrap);
-  return { resolver: new HostnameResolver(repo, config.hosts), content: new NetworkContentService(repo, new NextNetworkSiteCache(config.cache.defaultTtlSeconds)), repository: repo, config };
+  return { resolver: new HostnameResolver(repo, config.hosts, hostnameCache(config)), content: new NetworkContentService(repo, new NextNetworkSiteCache(config.cache.defaultTtlSeconds)), repository: repo, config };
 }

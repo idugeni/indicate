@@ -6,6 +6,7 @@ import { unstable_cache } from 'next/cache';
 import type { ControlSurface, RequestClassification, ResolvedSiteContext } from '@/modules/delivery/models';
 import type { DeliveryRepository } from '@/modules/delivery/ports';
 import { normalizeRequestHostname } from '@/core/hostname/normalize-request-hostname';
+import type { HostnameCachePort } from '@/integrations/redis/hostname-read-model';
 
 export interface ControlPlaneHosts {
   readonly dashboard: string;
@@ -35,8 +36,18 @@ const lookupPerRequest = cache(
  */
 export class HostnameResolver {
   private readonly controls: ReadonlyMap<string, ControlSurface>;
-  constructor(private readonly repository: Pick<DeliveryRepository, 'findActiveSitesByExactHostname'>, hosts: ControlPlaneHosts) {
+  constructor(
+    private readonly repository: Pick<DeliveryRepository, 'findActiveSitesByExactHostname'>,
+    hosts: ControlPlaneHosts,
+    private readonly hostnameCache?: HostnameCachePort,
+  ) {
     this.controls = new Map([[hosts.dashboard, 'dashboard'], [hosts.api, 'api'], [hosts.webhook, 'webhook']]);
+  }
+
+  private classifyMatches(hostname: string, matches: readonly ResolvedSiteContext[]): RequestClassification {
+    if (matches.length === 0) return { kind: 'unknown', hostname, status: 404, robots: 'noindex, nofollow' };
+    if (matches.length !== 1) return { kind: 'ambiguous', hostname, status: 500, robots: 'noindex, nofollow' };
+    return { kind: 'site', context: matches[0]! };
   }
 
   async classify(rawHost: string | null | undefined): Promise<RequestClassification> {
@@ -49,10 +60,13 @@ export class HostnameResolver {
     }
     const surface = this.controls.get(hostname);
     if (surface !== undefined) return { kind: 'control', hostname, surface };
+    if (this.hostnameCache !== undefined) {
+      const cached = await this.hostnameCache.readHost(hostname);
+      if (cached !== undefined) return this.classifyMatches(hostname, cached);
+    }
     const matches = await lookupPerRequest(this.repository, hostname);
-    if (matches.length === 0) return { kind: 'unknown', hostname, status: 404, robots: 'noindex, nofollow' };
-    if (matches.length !== 1) return { kind: 'ambiguous', hostname, status: 500, robots: 'noindex, nofollow' };
-    return { kind: 'site', context: matches[0]! };
+    if (this.hostnameCache !== undefined) await this.hostnameCache.writeHost(hostname, matches);
+    return this.classifyMatches(hostname, matches);
   }
 }
 
