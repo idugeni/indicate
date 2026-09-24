@@ -154,6 +154,17 @@ reconciler `scope=invalidation` (20+6 completed, 0 failed, antre habis),
 meta description SEO, tagline, logo (`alt="JejakKebenaran"`), favicon
 (307) — lengkap seperti tenant lain.
 
+## Backfill logo gatrapublik.web.id (2026-09-24) — SELESAI
+
+`gatrapublik.web.id` lolos dari batch logo 25/25 (settings `logo_media_id`
+`NULL`, halaman + `/logo.png` + manifest tenant 404/Indicate). Diperbaiki
+via protokol penuh: master gradient G 512x512 (9187 byte) → PUT R2
+tenant-scoped terverifikasi HEAD → 1 transaksi DB (reservasi → media
+`active` 512x512 → reservasi `used` → settings v4→v5 → task
+`media.activated` → 3 audit `ops:brand-gatrapublik-logo`, chain utuh).
+Stale edge-404 dibersihkan via purge exact-URL (task reconciler menyusul,
+idempoten). Verifikasi: `/logo.png` 200, manifest tenant, `/` 200.
+
 ## Backlog (belum punya site)
 
 59 org customer (UPT Jateng): langganan active, member active, 0 site. Estimasi kebutuhan: 59 slot bila 1 hostname/org → total ±85/250, aman.
