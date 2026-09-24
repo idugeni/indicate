@@ -90,6 +90,22 @@ describe('validateBootstrapConfig gagal', () => {
     expect(invalid.success).toBe(false);
   });
 
+  it('menerima kredensial google oauth dan smtp resend opsional', () => {
+    const valid = validateBootstrapConfig({
+      ...validEnv(),
+      GOOGLE_CLIENT_ID: '123456789012-abcdefghijklmnopqrstuvwx.apps.googleusercontent.com',
+      GOOGLE_CLIENT_SECRET: 'GOCSPX-contohsecretcukupanjang',
+      GOOGLE_REFRESH_TOKEN: 'refresh-token-contoh-yang-cukup-panjang',
+      RESEND_SMTP_PASS: 're_contohsecretcukupanjang1234',
+    });
+    expect(valid.success).toBe(true);
+    if (!valid.success) return;
+    expect(valid.config.credentials.googleClientId).toContain('.apps.googleusercontent.com');
+    expect(valid.config.credentials.resendSmtpPass).not.toBe(null);
+    const badClient = validateBootstrapConfig({ ...validEnv(), GOOGLE_CLIENT_ID: 'bukan-client-id' });
+    expect(badClient.success).toBe(false);
+  });
+
   it('menerima FB_APP_TOKEN format app-id pipe app-secret', () => {
     const result = validateBootstrapConfig({ ...validEnv(), FB_APP_TOKEN: '1234567890123456|AbCdEfGhIjKlMnOpQrStUvWx' });
     expect(result.success).toBe(true);

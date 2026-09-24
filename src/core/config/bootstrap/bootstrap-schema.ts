@@ -59,6 +59,10 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'RESEND_API_KEY',
   'RESEND_DEFAULT_FROM',
   'RESEND_WEBHOOK_SECRET',
+  'RESEND_SMTP_PASS',
+  'GOOGLE_CLIENT_ID',
+  'GOOGLE_CLIENT_SECRET',
+  'GOOGLE_REFRESH_TOKEN',
   'GENERIC_WEBHOOK_SECRET',
   'CRON_SECRET',
   'GOOGLE_SITE_VERIFICATION',
@@ -117,12 +121,19 @@ const bootstrapSchema = z
     RESEND_API_KEY: secretSchema.optional(),
     RESEND_DEFAULT_FROM: z.string().min(3).max(320).optional(),
     RESEND_WEBHOOK_SECRET: secretSchema.optional(),
+    RESEND_SMTP_PASS: secretSchema.optional(),
     GENERIC_WEBHOOK_SECRET: secretSchema,
     CRON_SECRET: secretSchema,
     GOOGLE_SITE_VERIFICATION: z
       .string()
       .regex(/^[A-Za-z0-9_-]{8,128}$/)
       .optional(),
+    GOOGLE_CLIENT_ID: z
+      .string()
+      .regex(/^[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/)
+      .optional(),
+    GOOGLE_CLIENT_SECRET: secretSchema.optional(),
+    GOOGLE_REFRESH_TOKEN: secretSchema.optional(),
     FB_APP_TOKEN: facebookAppTokenSchema.optional(),
   })
   .superRefine((value, context) => {
@@ -232,6 +243,12 @@ export interface BootstrapConfig {
     /** Resend credential pair; null when transactional email is unconfigured. */
     readonly resendApiKey: SecretString | null;
     readonly resendDefaultFrom: string | null;
+    /** Resend SMTP password for Supabase Auth mailer; null when auth email uses another provider. */
+    readonly resendSmtpPass: SecretString | null;
+    /** Google OAuth client for owner tooling; null when unused. */
+    readonly googleClientId: string | null;
+    readonly googleClientSecret: SecretString | null;
+    readonly googleRefreshToken: SecretString | null;
     /** Resend webhook signing secret (Svix); null when the endpoint is disabled. */
     readonly resendWebhookSecret: SecretString | null;
     readonly genericWebhookSecret: SecretString;
@@ -291,6 +308,10 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       upstashRestToken: SecretString.fromPlain(value.UPSTASH_REDIS_REST_TOKEN),
       resendApiKey: value.RESEND_API_KEY === undefined ? null : SecretString.fromPlain(value.RESEND_API_KEY),
       resendDefaultFrom: value.RESEND_DEFAULT_FROM ?? null,
+      resendSmtpPass: value.RESEND_SMTP_PASS === undefined ? null : SecretString.fromPlain(value.RESEND_SMTP_PASS),
+      googleClientId: value.GOOGLE_CLIENT_ID ?? null,
+      googleClientSecret: value.GOOGLE_CLIENT_SECRET === undefined ? null : SecretString.fromPlain(value.GOOGLE_CLIENT_SECRET),
+      googleRefreshToken: value.GOOGLE_REFRESH_TOKEN === undefined ? null : SecretString.fromPlain(value.GOOGLE_REFRESH_TOKEN),
       resendWebhookSecret: value.RESEND_WEBHOOK_SECRET === undefined ? null : SecretString.fromPlain(value.RESEND_WEBHOOK_SECRET),
       genericWebhookSecret: SecretString.fromPlain(value.GENERIC_WEBHOOK_SECRET),
       cronSecret: SecretString.fromPlain(value.CRON_SECRET),
