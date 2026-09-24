@@ -208,3 +208,14 @@ idempoten). Verifikasi: `/logo.png` 200, manifest tenant, `/` 200.
 ## Backlog (belum punya site)
 
 59 org customer (UPT Jateng): langganan active, member active, 0 site. Estimasi kebutuhan: 59 slot bila 1 hostname/org → total ±85/250, aman.
+
+## Kesiapan aktivasi 70 stok (matriks 2026-09-25)
+
+106/106 domain di `docs/domains.md` punya zona Cloudflare. 36 sudah tenant penuh
+(CF + exact + wildcard + DB). 70 stok (`jejakwacana.my.id` s.d. `wartaria.biz.id`,
+plus `indicate.web.id` lama) berstatus: zona CF ada, Vercel belum, DB belum.
+Langkah per domain saat ditunjuk owner: tambah exact Vercel (auto-verified,
+terbukti), tambah wildcard + cert via alur `certs issue` (terbukti),
+terapkan skip-rule WAF #1 (zona stok masih 1-rule), lalu onboarding DB
+(brand/SEO/template unik per playbook `tenant-onboarding`). Regional
+satu-label di bawah apex ber-wildcard + cert = DB-only, 0 API call Vercel.
