@@ -1,10 +1,11 @@
 import Image from 'next/image';
+// Unconditional: tenant images never use the Vercel optimizer (cost).
 import Link from 'next/link';
 import { ArrowRight, MapPin } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/warm-editorial/ui/article-meta';
-import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/warm-editorial/lib/format';
+import { articleImage, readingMinutes } from '@/modules/site/components/network/templates/warm-editorial/lib/format';
 import { WarmEditorialHeroActions } from '@/modules/site/components/network/templates/warm-editorial/cards/hero-actions';
 
 export function WarmEditorialHero({ article }: { readonly article: ArticleListItem }) {
@@ -50,7 +51,7 @@ export function WarmEditorialHero({ article }: { readonly article: ArticleListIt
         className="relative order-2 block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
       >
         <Image
-          unoptimized={!isLocalImageSrc(src)}
+          unoptimized
           src={src}
           alt=""
           priority

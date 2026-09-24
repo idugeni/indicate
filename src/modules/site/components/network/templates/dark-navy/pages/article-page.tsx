@@ -1,4 +1,5 @@
 import Image from 'next/image';
+// Unconditional: tenant images never use the Vercel optimizer (cost).
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag } from 'lucide-react';
 
@@ -15,7 +16,7 @@ import { DarkNavyShareButtons } from '@/modules/site/components/network/template
 import { DarkNavyViewBeacon } from '@/modules/site/components/network/templates/dark-navy/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { DarkNavyPicks } from '@/modules/site/components/network/templates/dark-navy/cards/picks';
-import { articleImage, authorDisplayName, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/dark-navy/lib/format';
+import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/templates/dark-navy/lib/format';
 
 export function DarkNavyArticle({
   site,
@@ -247,7 +248,7 @@ export function DarkNavyArticle({
                     className="group flex h-full items-start gap-3 rounded-2xl bg-[#0e1a33] p-4 shadow-sm ring-1 ring-[#1b2c4f]/60 transition-all hover:shadow-md hover:ring-[#2f7bff]/50 sm:p-5"
                   >
                     <Image
-                      unoptimized={!isLocalImageSrc(articleImage(newer))}
+                      unoptimized
                       src={articleImage(newer)}
                       alt=""
                       aria-hidden="true"
@@ -277,7 +278,7 @@ export function DarkNavyArticle({
                     className="group flex h-full flex-row-reverse items-start gap-3 rounded-2xl bg-[#0e1a33] p-4 text-right shadow-sm ring-1 ring-[#1b2c4f]/60 transition-all hover:shadow-md hover:ring-[#2f7bff]/50 sm:p-5"
                   >
                     <Image
-                      unoptimized={!isLocalImageSrc(articleImage(older))}
+                      unoptimized
                       src={articleImage(older)}
                       alt=""
                       aria-hidden="true"

@@ -1,4 +1,5 @@
 import Image from 'next/image';
+// Unconditional: tenant images never use the Vercel optimizer (cost).
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag } from 'lucide-react';
 
@@ -15,7 +16,7 @@ import { BlackLimeShareButtons } from '@/modules/site/components/network/templat
 import { BlackLimeViewBeacon } from '@/modules/site/components/network/templates/black-lime/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimePicks } from '@/modules/site/components/network/templates/black-lime/cards/picks';
-import { articleImage, authorDisplayName, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/black-lime/lib/format';
+import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/templates/black-lime/lib/format';
 
 export function BlackLimeArticle({
   site,
@@ -247,7 +248,7 @@ export function BlackLimeArticle({
                     className="group flex h-full items-start gap-3 rounded-2xl bg-[#131711] p-4 shadow-sm ring-1 ring-[#242b1f]/60 transition-all hover:shadow-md hover:ring-[#c5f82a]/50 sm:p-5"
                   >
                     <Image
-                      unoptimized={!isLocalImageSrc(articleImage(newer))}
+                      unoptimized
                       src={articleImage(newer)}
                       alt=""
                       aria-hidden="true"
@@ -277,7 +278,7 @@ export function BlackLimeArticle({
                     className="group flex h-full flex-row-reverse items-start gap-3 rounded-2xl bg-[#131711] p-4 text-right shadow-sm ring-1 ring-[#242b1f]/60 transition-all hover:shadow-md hover:ring-[#c5f82a]/50 sm:p-5"
                   >
                     <Image
-                      unoptimized={!isLocalImageSrc(articleImage(older))}
+                      unoptimized
                       src={articleImage(older)}
                       alt=""
                       aria-hidden="true"

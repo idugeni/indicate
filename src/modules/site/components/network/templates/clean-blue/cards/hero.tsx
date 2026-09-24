@@ -1,10 +1,11 @@
 import Image from 'next/image';
+// Unconditional: tenant images never use the Vercel optimizer (cost).
 import Link from 'next/link';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/clean-blue/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/clean-blue/ui/author-avatar';
-import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/lib/format';
+import { articleImage, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/lib/format';
 import { CleanBlueHeroActions } from '@/modules/site/components/network/templates/clean-blue/cards/hero-actions';
 
 export function CleanBlueHero({ article }: { readonly article: ArticleListItem }) {
@@ -20,7 +21,7 @@ export function CleanBlueHero({ article }: { readonly article: ArticleListItem }
         className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
       >
         <Image
-          unoptimized={!isLocalImageSrc(src)}
+          unoptimized
           src={src}
           alt=""
           priority

@@ -1,11 +1,12 @@
 import Image from 'next/image';
+// Unconditional: tenant images never use the Vercel optimizer (cost).
 import Link from 'next/link';
 import { ArrowRight, MapPin } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/green-minimal/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/green-minimal/ui/author-avatar';
-import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/green-minimal/lib/format';
+import { articleImage, readingMinutes } from '@/modules/site/components/network/templates/green-minimal/lib/format';
 
 export function GreenMinimalHero({ article }: { readonly article: ArticleListItem }) {
   const src = articleImage(article);
@@ -60,7 +61,7 @@ export function GreenMinimalHero({ article }: { readonly article: ArticleListIte
           className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
         >
           <Image
-            unoptimized={!isLocalImageSrc(src)}
+            unoptimized
             src={src}
             alt=""
             priority

@@ -16,7 +16,7 @@ Acuan kanonis per zona + checklist zona baru + ritme tinjauan.
 | TLS | `min_tls_version=1.2`, `tls_1_3=zrt`, `always_use_https=on`, `automatic_https_rewrites=on` | — |
 | Bot | `enable_js=true`, `fight_mode=true`, `ai_bots_protection=disabled`, `crawler_protection=enabled` | AI-block dimatikan sadar 2026-09-23 (tendang crawler sosial campuran, kasus facebookexternalhit 403; proteksi konten via hak cipta/ToS) |
 | Page Shield | `enabled=true` | — |
-| WAF kustom | `tenant probes` (managed_challenge WP/env/git) | Maks 5 rule di Free; terpakai 1 |
+| WAF kustom | `tenant probes` (skip crawler sosial #1, managed_challenge WP/env/git #2) | Maks 5 rule di Free; terpakai 2 (rollout 36/36 zona tenant 2026-09-24) |
 | Rate limit | `tenant api guard` (20/10 dtk per IP, blokir 429) | Maks 1 rule di Free; sudah penuh |
 | Edge cache | `Indicate edge cache` (bypass privat/auth, halaman 60 dtk, feed 600 dtk, brand bytes 1 thn) | Tidak dipasang di `safenca.id` (path app berbeda) |
 | Browser cache TTL | `0` (hormati origin) | — |
@@ -45,7 +45,7 @@ Acuan kanonis per zona + checklist zona baru + ritme tinjauan.
 1. Zona `active`, nameserver Cloudflare terdelegasi.
 2. `ssl=strict`, `ssl_automatic_mode=auto`, `always_use_https=on`, TLS 1.2+.
 3. Bot Fight Mode + crawler enabled, AI block OFF (keputusan sadar 2026-09-23); Page Shield on.
-4. Ruleset `tenant probes` + `tenant api guard` (cek sisa kuota Free).
+4. Ruleset `tenant probes` (2-rule: skip crawler sosial #1 + challenge #2) + `tenant api guard` (cek sisa kuota Free).
 5. Ruleset `Indicate edge cache` (kecuali app non-Indicate).
 6. `browser_cache_ttl=0`; apex + wildcard proxied; CAA 4 record.
 7. Email: hardening non-kirim default; aktifkan Routing/Resend hanya bila ditunjuk.

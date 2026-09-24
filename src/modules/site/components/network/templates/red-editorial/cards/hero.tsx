@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+// Unconditional: tenant images never use the Vercel optimizer (cost).
 import Link from 'next/link';
 import { ArrowRight, MapPin } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { RedEditorialHeroActions } from '@/modules/site/components/network/templates/red-editorial/cards/hero-actions';
-import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/red-editorial/lib/format';
+import { articleImage, formatFullViews, formatDate, readingMinutes } from '@/modules/site/components/network/templates/red-editorial/lib/format';
 
 const ROTATE_MS = 6000;
 
@@ -113,7 +114,7 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
           className="block overflow-hidden rounded-2xl shadow-md transition-shadow duration-200 hover:shadow-lg"
         >
           <Image
-            unoptimized={!isLocalImageSrc(src)}
+            unoptimized
             src={src}
             alt=""
             priority={index === 0}

@@ -1,11 +1,12 @@
 import Image from 'next/image';
+// Unconditional: tenant images never use the Vercel optimizer (cost).
 import Link from 'next/link';
 import { ArrowRight, ArrowUpRight, MapPin } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/black-lime/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/black-lime/ui/author-avatar';
-import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/black-lime/lib/format';
+import { articleImage, readingMinutes } from '@/modules/site/components/network/templates/black-lime/lib/format';
 
 export function BlackLimeHero({ article }: { readonly article: ArticleListItem }) {
   const src = articleImage(article);
@@ -69,7 +70,7 @@ export function BlackLimeHero({ article }: { readonly article: ArticleListItem }
           className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
         >
           <Image
-            unoptimized={!isLocalImageSrc(src)}
+            unoptimized
             src={src}
             alt=""
             priority

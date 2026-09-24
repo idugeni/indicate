@@ -1,4 +1,5 @@
 import Image from 'next/image';
+// Unconditional: tenant images never use the Vercel optimizer (cost).
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag } from 'lucide-react';
 
@@ -16,7 +17,7 @@ import { SoftBlueShareButtons } from '@/modules/site/components/network/template
 import { SoftBlueViewBeacon } from '@/modules/site/components/network/templates/soft-blue/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBluePicks } from '@/modules/site/components/network/templates/soft-blue/cards/picks';
-import { articleImage, authorDisplayName, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/soft-blue/lib/format';
+import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/templates/soft-blue/lib/format';
 
 export function SoftBlueArticle({
   site,
@@ -248,7 +249,7 @@ export function SoftBlueArticle({
                     className="group flex h-full items-start gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 transition-all hover:shadow-md hover:ring-[#2563eb]/50 sm:p-5"
                   >
                     <Image
-                      unoptimized={!isLocalImageSrc(articleImage(newer))}
+                      unoptimized
                       src={articleImage(newer)}
                       alt=""
                       aria-hidden="true"
@@ -278,7 +279,7 @@ export function SoftBlueArticle({
                     className="group flex h-full flex-row-reverse items-start gap-3 rounded-2xl bg-white p-4 text-right shadow-sm ring-1 ring-slate-200/60 transition-all hover:shadow-md hover:ring-[#2563eb]/50 sm:p-5"
                   >
                     <Image
-                      unoptimized={!isLocalImageSrc(articleImage(older))}
+                      unoptimized
                       src={articleImage(older)}
                       alt=""
                       aria-hidden="true"

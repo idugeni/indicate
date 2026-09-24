@@ -67,7 +67,7 @@ hormat `prefers-reduced-motion`, semua indikator bisa diklik.
 
 Aturan: impor lintas direktori wajib `@/`; tanpa barrel `index.ts`
 (mengikuti konvensi modul `site`); kontrol form/table-tema lewat
-`network/ui/` bersama — `templateThemeStyle()` di root shell +
+`network/ui/` bersama - `templateThemeStyle()` di root shell +
 `TemplateInput`/`TemplateTextarea`/`TemplateSelect`/`TemplateButton`
 yang membaca variabel `--tpl-*`. Jangan pakai `Input`/`Button`/
 `Textarea` shadcn langsung maupun elemen form native tanpa gaya:
@@ -75,6 +75,13 @@ semua warna datang dari variabel tema (kebal root `<html
 class="dark">` permanen), bentuk dari pemanggil. Pengecualian sadar:
 titik indikator carousel/ticker (tanpa padanan shadcn) dan daftar
 buka-tutup `<select>` bawaan OS.
+
+Palet marketing tiap template (`theme.ts`: clean-blue `#1a5fd0`,
+red-editorial `#b91c1c`, dst.) disengaja terang dan mandiri — bukan
+remap ke token dashboard gelap (`globals.css` `--bg`/`--brass`/`--paper`).
+Gambar tenant memakai `unoptimized` tanpa syarat di kartu hero/article
+(plus saklar global `images.unoptimized` di `next.config.ts`): nol biaya
+transformasi Vercel.
 
 ## Tiga registry (wajib kompak)
 

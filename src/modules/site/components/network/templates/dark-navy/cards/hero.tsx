@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+// Unconditional: tenant images never use the Vercel optimizer (cost).
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/dark-navy/lib/format';
+import { articleImage, formatFullViews, formatDate, readingMinutes } from '@/modules/site/components/network/templates/dark-navy/lib/format';
 
 const ROTATE_MS = 6000;
 
@@ -37,7 +38,7 @@ export function DarkNavyHero({ articles }: { readonly articles: readonly Article
       onBlur={() => setPaused(false)}
     >
       <Image
-        unoptimized={!isLocalImageSrc(src)}
+        unoptimized
         src={src}
         alt={article.title}
         priority={index === 0}
