@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
+import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
 
 interface DeploymentOverview {
   readonly supabaseProjectRef: string;
@@ -59,8 +61,10 @@ function DefinitionList({ entries }: { readonly entries: readonly (readonly [str
       {entries.map(([term, value]) => (
         <div key={term} className="min-w-0">
           <dt className="font-mono text-[11px] uppercase tracking-wider text-paper-faint">{term}</dt>
-          <dd className="m-0 mt-0.5 truncate font-mono text-xs tabular-nums text-paper" title={value}>
-            {value}
+          <dd className="m-0 mt-0.5 min-w-0">
+            <ChartTip tip={value}>
+              <span className="block truncate font-mono text-xs tabular-nums text-paper">{value}</span>
+            </ChartTip>
           </dd>
         </div>
       ))}
@@ -132,7 +136,7 @@ export function PolicyOverviewSection() {
         Hanya baca · perubahan lewat migrasi atau panel masing-masing.
       </p>
 
-      {error ? <p className="m-0 mt-4 font-mono text-xs text-error">{error}</p> : null}
+      {error ? <FormNotice tone="error">{error}</FormNotice> : null}
       {policies === null ? (
         <p className="m-0 mt-4 font-mono text-xs text-paper-faint">{isLoading ? 'Memuat…' : 'Menunggu data kebijakan.'}</p>
       ) : (

@@ -10,6 +10,8 @@ const VIEWS = [
   'configuration',
   'publishers',
   'editorial',
+  'taxonomy',
+  'articles',
   'media',
   'publishing',
   'analytics',

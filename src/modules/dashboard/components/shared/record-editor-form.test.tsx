@@ -28,7 +28,7 @@ describe('Formulir editor rekaman', () => {
       />,
     );
     expect(screen.getByText('Ubah domain')).toBeDefined();
-    expect(screen.getByText('ID d-1 · versi 2')).toBeDefined();
+    expect(screen.getByText('versi 2')).toBeDefined();
     expect((screen.getByLabelText('Nama domain utama') as HTMLInputElement).value).toBe('apex.example');
   });
 

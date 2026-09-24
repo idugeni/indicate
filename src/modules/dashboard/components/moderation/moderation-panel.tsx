@@ -403,11 +403,11 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
           {holds.map((hold) => (
             <li key={hold.id} className="border-b border-hairline py-3">
               <p className="m-0 font-sans text-sm font-medium text-paper">
-                {hold.releasedAt === null ? 'Aktif' : 'Dilepas'} · {hold.orgId}
+                {hold.releasedAt === null ? 'Aktif' : 'Dilepas'}
               </p>
               <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">{hold.reason}</p>
               <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
-                {hold.id} · {formatDate(hold.createdAt)} ({formatRelative(hold.createdAt)})
+                {formatDate(hold.createdAt)} ({formatRelative(hold.createdAt)})
               </p>
               {hold.releasedAt === null ? (
                 <div className="mt-2">
@@ -463,11 +463,11 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
           {erasures.map((row) => (
             <li key={row.id} className="border-b border-hairline py-3">
               <p className="m-0 font-sans text-sm font-medium text-paper">
-                {row.status} · {row.orgId}
+                {row.status}
               </p>
               <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">{row.reason}</p>
               <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
-                {row.id} · {formatDate(row.createdAt)} ({formatRelative(row.createdAt)})
+                {formatDate(row.createdAt)} ({formatRelative(row.createdAt)})
                 {row.completedAt ? ` → ${formatDate(row.completedAt)}` : ''}
               </p>
             </li>

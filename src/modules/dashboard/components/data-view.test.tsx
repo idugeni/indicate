@@ -160,7 +160,7 @@ describe('Tampilan data koleksi', () => {
         onRefresh={vi.fn()}
       />,
     );
-    expect(screen.getByText('active')).toBeDefined();
+    expect(screen.getAllByText('active')).toHaveLength(2);
     fireEvent.click(screen.getByRole('button', { name: 'Alihkan kolom tabel' }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Status' }));
     expect(screen.queryByText('active')).toBe(null);

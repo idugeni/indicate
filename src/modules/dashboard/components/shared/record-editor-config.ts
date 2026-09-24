@@ -212,7 +212,7 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
     updateAction: 'membership.update',
     title: 'Ubah keanggotaan',
     fields: [
-      { key: 'userId', label: 'ID pengguna', kind: 'static' },
+      { key: 'displayName', label: 'Pengguna', kind: 'static' },
       { key: 'roleId', label: 'Peran', kind: 'select', required: true, optionSource: 'roles' },
       { key: 'status', label: 'Status', kind: 'select', required: true, options: LIFECYCLE_OPTIONS },
     ],

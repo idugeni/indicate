@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
 import type { ActivityHour, TaskDay } from '@/modules/dashboard/models';
 import { weekdayLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
@@ -111,28 +111,31 @@ export function ActivityCalendar({ series }: { readonly series: readonly TaskDay
             {totalAll.toLocaleString('id-ID')} tugas dalam rentang
           </p>
         </div>
-        <div role="group" aria-label="Rentang kalender" className="flex items-center gap-1.5">
+        <ToggleGroup
+          variant="outline"
+          size="sm"
+          spacing={1}
+          value={[String(range)]}
+          onValueChange={(values) => {
+            const next = values[values.length - 1];
+            if (next !== undefined) setRange(Number(next));
+          }}
+          aria-label="Rentang kalender"
+        >
           {[30, 90].map((option) => (
-            <Button
+            <ToggleGroupItem
               key={option}
-              type="button"
-              variant="outline"
-              size="xs"
-              onClick={() => setRange(option)}
-              aria-pressed={range === option}
-              className={`font-mono text-[11px] tabular-nums ${
-                range === option
-                  ? 'border-brass/60 bg-bg-raised-2 text-paper'
-                  : 'border-hairline text-paper-faint hover:border-hairline-strong hover:text-paper'
-              }`}
+              value={String(option)}
+              aria-label={`${option} hari`}
+              className="font-mono text-[11px] tabular-nums aria-pressed:border-brass/60 aria-pressed:text-paper"
             >
               {option}h
-            </Button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
       </div>
       {visible.length === 0 ? (
-        <EmptyState title="Belum ada data deret waktu." description="Data akan tampil di sini setelah tersedia." />
+        <EmptyState title="Belum ada data deret waktu." description="Data akan tampil di sini setelah tersedia." className="mt-4" />
       ) : (
         <div className="mt-4 flex gap-1 overflow-x-auto pb-1">
           {columns.map((column, index) => (

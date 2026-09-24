@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { MediaForm } from '@/modules/dashboard/components/publishing/media-form';
 
 const DATA = {
-  articles: [{ id: 'art-1' }],
+  articles: [{ id: 'art-1', title: 'Banjir Wonosobo' }],
   sites: [{ id: 's-1', normalizedHostname: 'portal.example' }],
 };
 
@@ -37,7 +37,7 @@ describe('Formulir unggah media', () => {
     render(<MediaForm data={DATA} command={vi.fn(async () => ({}))} />);
     await user.click(screen.getByLabelText('Pemilik'));
     expect(await screen.findByRole('option', { name: 'Organisasi' })).toBeDefined();
-    expect(await screen.findByRole('option', { name: 'Artikel: art-1' })).toBeDefined();
+    expect(await screen.findByRole('option', { name: 'Artikel: Banjir Wonosobo' })).toBeDefined();
     expect(await screen.findByRole('option', { name: 'Situs: portal.example' })).toBeDefined();
   });
 });

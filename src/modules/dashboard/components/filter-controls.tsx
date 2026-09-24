@@ -10,6 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
@@ -182,6 +183,7 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
   return (
     <section aria-label={`Filter data untuk ${view}`} className="rounded-lg border border-hairline bg-bg-raised p-4 sm:p-5">
       <form
+        noValidate
         aria-label={`Filter data untuk ${view}`}
         onSubmit={(event) => {
           event.preventDefault();
@@ -199,54 +201,42 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
                 <Label htmlFor="filter-region" className="font-sans text-xs font-medium text-paper-dim">
                   Wilayah
                 </Label>
-                <DashboardSelect
+                <SearchCombobox
                   id="filter-region"
                   name="regionId"
                   placeholder="Semua wilayah"
-                >
-                  <DashboardSelectItem value="">Semua wilayah</DashboardSelectItem>
-                  {model?.regions?.map((item) => (
-                    <DashboardSelectItem key={item.id} value={item.id}>
-                      {item.name}
-                    </DashboardSelectItem>
-                  ))}
-                </DashboardSelect>
+                  allowEmpty
+                  emptyLabel="Semua wilayah"
+                  options={(model?.regions ?? []).map((item) => ({ value: item.id, label: item.name }))}
+                />
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="filter-site" className="font-sans text-xs font-medium text-paper-dim">
                   Situs
                 </Label>
-                <DashboardSelect
+                <SearchCombobox
                   id="filter-site"
                   name="siteId"
                   placeholder="Semua situs"
-                >
-                  <DashboardSelectItem value="">Semua situs</DashboardSelectItem>
-                  {model?.sites?.map((item) => (
-                    <DashboardSelectItem key={item.id} value={item.id}>
-                      {item.normalizedHostname}
-                    </DashboardSelectItem>
-                  ))}
-                </DashboardSelect>
+                  allowEmpty
+                  emptyLabel="Semua situs"
+                  options={(model?.sites ?? []).map((item) => ({ value: item.id, label: item.normalizedHostname }))}
+                />
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="filter-category" className="font-sans text-xs font-medium text-paper-dim">
                   Kategori
                 </Label>
-                <DashboardSelect
+                <SearchCombobox
                   id="filter-category"
                   name="categoryId"
                   placeholder="Semua kategori"
-                >
-                  <DashboardSelectItem value="">Semua kategori</DashboardSelectItem>
-                  {model?.categories?.map((item) => (
-                    <DashboardSelectItem key={item.id} value={item.id}>
-                      {item.name}
-                    </DashboardSelectItem>
-                  ))}
-                </DashboardSelect>
+                  allowEmpty
+                  emptyLabel="Semua kategori"
+                  options={(model?.categories ?? []).map((item) => ({ value: item.id, label: item.name }))}
+                />
               </div>
 
               <div className="flex flex-col gap-1.5">

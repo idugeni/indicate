@@ -34,8 +34,8 @@ describe('Pengalih organisasi', () => {
         onSwitchFailed={vi.fn()}
       />,
     );
-    const trigger = screen.getByRole('combobox');
-    expect(trigger.textContent).toContain('Org Pertama');
+    const trigger = screen.getByRole('combobox') as HTMLInputElement;
+    expect(trigger.value).toContain('Org Pertama');
     await user.click(trigger);
     expect(await screen.findByRole('option', { name: 'Org Pertama' })).toBeDefined();
     expect(await screen.findByRole('option', { name: 'Org Kedua' })).toBeDefined();

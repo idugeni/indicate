@@ -78,7 +78,7 @@ export function CategoryCombobox({
 
   const nameOf = useMemo(() => {
     const map = new Map(categories.map((c) => [c.id, c.name] as const));
-    return (categoryId: string): string => map.get(categoryId) ?? `${categoryId.slice(0, 8)}…`;
+    return (categoryId: string): string => map.get(categoryId) ?? 'Kategori dihapus';
   }, [categories]);
 
   const pool = useMemo(

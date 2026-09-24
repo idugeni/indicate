@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
 export function FormNotice({
   tone,
   children,
@@ -9,21 +11,21 @@ export function FormNotice({
 }) {
   if (tone === 'error') {
     return (
-      <p role="alert" className="font-sans text-xs text-error">
-        {children}
-      </p>
+      <Alert variant="destructive" className="border-error/60 bg-error/[0.06]">
+        <AlertDescription className="font-sans text-xs text-error">{children}</AlertDescription>
+      </Alert>
     );
   }
   if (tone === 'success') {
     return (
-      <p role="status" className="font-sans text-xs text-signal">
-        {children}
-      </p>
+      <Alert role="status" className="border-signal/50 bg-signal/[0.06]">
+        <AlertDescription className="font-sans text-xs text-signal">{children}</AlertDescription>
+      </Alert>
     );
   }
   return (
-    <p role="status" className="m-0 font-sans text-xs text-paper-dim">
-      {children}
-    </p>
+    <Alert role="status" className="border-hairline bg-bg">
+      <AlertDescription className="font-sans text-xs text-paper-dim">{children}</AlertDescription>
+    </Alert>
   );
 }

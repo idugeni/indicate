@@ -6,7 +6,7 @@ import {
   switchActiveOrganization,
   type SwitchOrganizationState,
 } from '@/modules/dashboard/switch-organization-action';
-import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import type { OrganizationOption } from '@/modules/dashboard/components/dashboard-types';
 
 const INITIAL_STATE: SwitchOrganizationState = Object.freeze({ status: 'idle' });
@@ -49,19 +49,14 @@ export function OrganizationSwitcher({
 
   return (
     <>
-      <DashboardSelect
+      <SearchCombobox
         id={selectId}
         value={optimisticId}
         disabled={isPending || organizations.length === 0}
         placeholder="Pilih organisasi"
+        options={organizations.map((org) => ({ value: org.id, label: org.name }))}
         onValueChange={handleChange}
-      >
-        {organizations.map((org) => (
-          <DashboardSelectItem key={org.id} value={org.id}>
-            {org.name}
-          </DashboardSelectItem>
-        ))}
-      </DashboardSelect>
+      />
       <span aria-live="polite" className="sr-only">
         {isPending ? 'Beralih organisasi…' : ''}
       </span>

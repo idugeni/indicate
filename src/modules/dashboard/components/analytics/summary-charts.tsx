@@ -61,7 +61,7 @@ function Donut({
         </p>
       </div>
       {total === 0 ? (
-        <EmptyState title={emptyText} description="Data akan tampil di sini setelah tersedia." />
+        <EmptyState title={emptyText} description="Data akan tampil di sini setelah tersedia." className="mt-2" />
       ) : (
         <div className="mt-2 flex flex-wrap items-center gap-4">
           <ChartContainer config={{ value: { label: title } }} className="aspect-square w-36 flex-none sm:w-40">
@@ -205,7 +205,7 @@ export function SuccessRate({
         </p>
       </div>
       {total === 0 ? (
-        <EmptyState title="Belum ada hasil penyaluran." description="Cincin terisi setelah antrean pertama berjalan." />
+        <EmptyState title="Belum ada hasil penyaluran." description="Cincin terisi setelah antrean pertama berjalan." className="mt-2" />
       ) : (
         <>
           <div className="relative mx-auto mt-2 w-full min-w-0 max-w-52">

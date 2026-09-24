@@ -201,7 +201,7 @@ export function TreeMap({
         </p>
       </div>
       {data.length === 0 ? (
-        <EmptyState title={emptyText} description="Data akan tampil di sini setelah tersedia." />
+        <EmptyState title={emptyText} description="Data akan tampil di sini setelah tersedia." className="mt-4" />
       ) : (
         <ChartContainer config={{}} className="mt-4 h-64 w-full">
           <Treemap

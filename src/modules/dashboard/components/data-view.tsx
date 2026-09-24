@@ -17,11 +17,13 @@ import {
   type SortingState,
 } from '@tanstack/table-core';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -55,7 +57,7 @@ import { TelemetryGallery } from '@/modules/dashboard/components/analytics/galle
 import { PrimaryBento } from '@/modules/dashboard/components/analytics/primary-bento';
 import { getEditorConfig, type EditorTransition, type LookupTables } from '@/modules/dashboard/components/shared/record-editor-config';
 import { RecordEditorForm } from '@/modules/dashboard/components/shared/record-editor-form';
-import { cn } from '@/ui/cn';
+import { Progress } from '@/components/ui/progress';
 
 const PAGE_SIZE = 10;
 
@@ -103,27 +105,19 @@ function resolveStatus(rawStatus: unknown): { readonly label: string; readonly t
   }
 }
 
-const STATUS_DOT: Record<StatusTone, string> = {
-  ok: 'bg-signal',
-  bad: 'bg-error',
-  busy: 'bg-warning',
-  idle: 'bg-paper-faint',
-};
-
-const STATUS_TEXT: Record<StatusTone, string> = {
-  ok: 'text-signal',
-  bad: 'text-error',
-  busy: 'text-warning',
-  idle: 'text-paper-dim',
+const STATUS_BADGE_TONE: Record<StatusTone, string> = {
+  ok: 'border-signal/40 text-signal',
+  bad: 'border-error/40 text-error',
+  busy: 'border-warning/40 text-warning',
+  idle: 'border-hairline-strong text-paper-dim',
 };
 
 function StatusMark({ status }: { readonly status: string }) {
   const meta = resolveStatus(status);
   return (
-    <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider">
-      <span className={cn('h-1.5 w-1.5', STATUS_DOT[meta.tone])} aria-hidden="true" />
-      <span className={STATUS_TEXT[meta.tone]}>{meta.label}</span>
-    </span>
+    <Badge variant="outline" className={`font-mono text-[10px] uppercase tracking-wider ${STATUS_BADGE_TONE[meta.tone]}`}>
+      {meta.label}
+    </Badge>
   );
 }
 
@@ -139,7 +133,7 @@ function resolveItemName(item: Record<string, unknown>): string {
 
   return typeof possibleName === 'string' && possibleName.trim()
     ? possibleName.trim()
-    : String(item.id ?? 'Data');
+    : 'Tanpa nama';
 }
 
 /**
@@ -217,12 +211,7 @@ export function DataView({
                 {completedSteps} dari {setupSteps.length} selesai
               </p>
             </div>
-            <div className="mt-3 h-1 overflow-hidden rounded-full bg-bg-raised-2" role="presentation">
-              <div
-                className="h-full rounded-full bg-brass transition-[width] duration-500 ease-out"
-                style={{ width: `${(completedSteps / setupSteps.length) * 100}%` }}
-              />
-            </div>
+            <Progress value={(completedSteps / setupSteps.length) * 100} aria-label="Kemajuan panduan mulai cepat" className="mt-3 min-w-0" />
             <ul className="m-0 mt-2 list-none p-0">
               {setupSteps.map((step) => (
                 <li key={step.key} className="flex items-center gap-3 border-b border-hairline/60 py-2.5 last:border-0 last:pb-0">
@@ -291,14 +280,14 @@ export function DataView({
                   type="button"
                   variant="ghost"
                   onClick={() => onSelectView(target)}
-                  className="group flex min-w-0 items-center justify-start gap-3 rounded-lg border border-hairline bg-bg-raised p-4 text-left transition-all duration-150 hover:border-hairline-strong active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
+                  className="group flex h-auto min-w-0 items-center justify-start gap-3 rounded-lg border border-hairline bg-bg-raised p-4 text-left transition-all duration-150 hover:border-hairline-strong active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
                 >
                   <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md bg-bg-raised-2 text-brass transition-colors duration-150 group-hover:bg-bg-raised-3">
                     <Icon className="h-4 w-4" aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-sans text-[13px] font-medium text-paper">{label}</span>
-                    <span className="block truncate font-sans text-xs text-paper-faint">{description}</span>
+                    <span className="block truncate font-sans text-[13px] font-medium leading-snug text-paper">{label}</span>
+                    <span className="mt-0.5 block truncate font-sans text-xs leading-relaxed text-paper-faint">{description}</span>
                   </span>
                   <ArrowRight className="h-4 w-4 flex-none text-paper-faint opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-paper group-hover:opacity-100" aria-hidden="true" />
                 </Button>
@@ -373,8 +362,10 @@ export function DataView({
     }
   }
 
+  const useColumns = view === 'publishers' && collections.length > 1;
+
   return (
-    <div className="space-y-10">
+    <div className={useColumns ? 'grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3' : 'space-y-10'}>
       {collections.map(([collectionKey, rawItems]) => (
         <CollectionTable
           key={collectionKey}
@@ -385,6 +376,7 @@ export function DataView({
           onPageChange={onPageChange}
           onRefresh={onRefresh}
           command={command}
+          compact={useColumns}
         />
       ))}
     </div>
@@ -415,6 +407,7 @@ function CollectionTable({
   onPageChange,
   onRefresh,
   command,
+  compact = false,
 }: {
   readonly collectionKey: string;
   readonly rawItems: readonly CollectionItem[];
@@ -423,6 +416,7 @@ function CollectionTable({
   readonly onPageChange: (page: number) => void;
   readonly onRefresh: () => void;
   readonly command: ((action: string, payload: unknown) => Promise<unknown>) | undefined;
+  readonly compact?: boolean;
 }) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -481,16 +475,20 @@ function CollectionTable({
         id: 'name',
         accessorFn: (item) => resolveItemName(item),
         header: ({ column }) => <SortHeader label="Nama" column={column} />,
-        cell: ({ row }) => {
+        cell: ({ row, table: cellTable }) => {
           const name = resolveItemName(row.original);
+          const status = String(row.original.status ?? row.original.state ?? row.original.verificationStatus ?? '');
+          const statusColumnVisible = cellTable.getColumn('status')?.getIsVisible() ?? true;
           return (
             <div className="min-w-0">
-              <div className="max-w-44 truncate font-sans font-medium text-paper sm:max-w-none">
+              <div className="truncate font-sans font-medium text-paper">
                 {name}
               </div>
-              <div className="mt-0.5 max-w-44 truncate font-mono text-[11px] tabular-nums text-paper-faint sm:max-w-none">
-                {row.id}
-              </div>
+              {status === '' || !statusColumnVisible ? null : (
+                <div className="mt-0.5 sm:hidden">
+                  <StatusMark status={status} />
+                </div>
+              )}
             </div>
           );
         },
@@ -535,6 +533,7 @@ function CollectionTable({
                 align="end"
                 className="border border-hairline bg-bg-raised p-1 font-sans text-xs shadow-none"
               >
+                <DropdownMenuGroup>
                 <DropdownMenuLabel className="px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-paper-faint">
                   Opsi data
                 </DropdownMenuLabel>
@@ -573,6 +572,7 @@ function CollectionTable({
                     ))}
                   </>
                 ) : null}
+                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           );
@@ -655,8 +655,8 @@ function CollectionTable({
   };
 
   return (
-    <section key={collectionKey} aria-label={formattedTitle} className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-3">
+    <section key={collectionKey} aria-label={formattedTitle} className={compact ? 'min-w-0 rounded-lg border border-hairline bg-bg-raised p-4' : 'min-w-0 rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6'}>
+      <div className={compact ? 'flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-2.5' : 'flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-3'}>
         <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
           {formattedTitle}
         </h2>
@@ -757,8 +757,8 @@ function CollectionTable({
         />
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <Table className="w-full text-sm">
+          <div className="min-w-0">
+            <Table className="w-full table-fixed text-sm">
               <caption className="sr-only">
                 {formattedTitle}: {totalItems.toLocaleString('id-ID')} data, halaman {safePage} dari {totalPages}
               </caption>
@@ -769,11 +769,13 @@ function CollectionTable({
                       <TableHead
                         key={header.id}
                         className={
-                          header.column.id === 'actions'
-                            ? 'w-12 text-right font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint'
-                            : header.column.id === 'status'
-                              ? 'hidden font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint sm:table-cell'
-                              : 'font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint'
+                          header.column.id === 'select'
+                            ? 'w-8'
+                            : header.column.id === 'actions'
+                              ? 'w-12 text-right font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint'
+                              : header.column.id === 'status'
+                                ? 'hidden font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint sm:table-cell sm:w-28'
+                                : 'font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint'
                         }
                       >
                         {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
@@ -791,11 +793,13 @@ function CollectionTable({
                         <TableCell
                           key={cell.id}
                           className={
-                            cell.column.id === 'actions'
-                              ? 'py-3 text-right'
-                              : cell.column.id === 'status'
-                                ? 'hidden py-3 sm:table-cell'
-                                : 'py-3'
+                            cell.column.id === 'select'
+                              ? compact ? 'w-8 py-2.5' : 'w-8 py-3'
+                              : cell.column.id === 'actions'
+                                ? compact ? 'w-12 py-2.5 text-right' : 'w-12 py-3 text-right'
+                                : cell.column.id === 'status'
+                                  ? compact ? 'hidden py-2.5 sm:table-cell sm:w-28' : 'hidden py-3 sm:table-cell sm:w-28'
+                                  : compact ? 'min-w-0 py-2.5' : 'min-w-0 py-3'
                           }
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}

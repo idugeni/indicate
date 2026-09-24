@@ -116,7 +116,10 @@ export function SankeyFlow({ flows }: { readonly flows: readonly PublisherFlow[]
         <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
           Alur penerbit
         </h2>
-        <EmptyState title="Belum ada arus penerbit." description="Data akan tampil di sini setelah tersedia." />
+        <p className="m-0 mt-0.5 font-sans text-xs text-paper-faint">
+          Artikel mengalir dari penerbit ke situs hingga hasil
+        </p>
+        <EmptyState title="Belum ada arus penerbit." description="Data akan tampil di sini setelah tersedia." className="mt-4" />
       </section>
     );
   }

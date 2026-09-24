@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Scatter, ScatterChart, XAxis, YAxis, ZAxis } from 'recharts';
 
-import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { AnalyticsProjection, ViewDay, ViewsPoint } from '@/modules/dashboard/models';
 import { weekdayLabel, truncateLabel, categoryColor } from '@/modules/dashboard/components/analytics/chart-helpers';
@@ -59,28 +59,31 @@ export function ViewsLine({ series }: { readonly series: readonly ViewDay[] }) {
             {total.toLocaleString('id-ID')} tayangan dalam rentang
           </p>
         </div>
-        <div role="group" aria-label="Rentang tayangan" className="flex items-center gap-1.5">
+        <ToggleGroup
+          variant="outline"
+          size="sm"
+          spacing={1}
+          value={[String(range)]}
+          onValueChange={(values) => {
+            const next = values[values.length - 1];
+            if (next !== undefined) setRange(Number(next));
+          }}
+          aria-label="Rentang tayangan"
+        >
           {RANGE.map((option) => (
-            <Button
+            <ToggleGroupItem
               key={option}
-              type="button"
-              variant="outline"
-              size="xs"
-              onClick={() => setRange(option)}
-              aria-pressed={range === option}
-              className={`font-mono text-[11px] tabular-nums ${
-                range === option
-                  ? 'border-brass/60 bg-bg-raised-2 text-paper'
-                  : 'border-hairline text-paper-faint hover:border-hairline-strong hover:text-paper'
-              }`}
+              value={String(option)}
+              aria-label={`${option} hari`}
+              className="font-mono text-[11px] tabular-nums aria-pressed:border-brass/60 aria-pressed:text-paper"
             >
               {option}h
-            </Button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
       </div>
       {data.length === 0 ? (
-        <EmptyState title="Belum ada data tayangan." description="Data akan tampil di sini setelah tersedia." />
+        <EmptyState title="Belum ada data tayangan." description="Data akan tampil di sini setelah tersedia." className="mt-4" />
       ) : (
         <ChartContainer
           config={{ views: { label: 'Tayangan', color: '#cc9a44' } }}
@@ -144,7 +147,7 @@ export function SiteViewsBar({ rows, label }: { readonly rows: readonly ViewsPoi
         </p>
       </div>
       {data.length === 0 ? (
-        <EmptyState title="Belum ada data tayangan situs." description="Data akan tampil di sini setelah tersedia." />
+        <EmptyState title="Belum ada data tayangan situs." description="Data akan tampil di sini setelah tersedia." className="mt-4" />
       ) : (
         <ChartContainer config={{ views: { label: 'Tayangan', color: '#6c93c9' } }} className="mt-4 h-64 w-full">
           <BarChart data={data} layout="vertical" margin={{ left: 8, right: 12 }}>
@@ -219,7 +222,7 @@ export function SiteStack({ results, label }: { readonly results: readonly { rea
         Penyaluran 8 situs teratas per status
       </p>
       {data.length === 0 ? (
-        <EmptyState title="Belum ada hasil situs." description="Data akan tampil di sini setelah tersedia." />
+        <EmptyState title="Belum ada hasil situs." description="Data akan tampil di sini setelah tersedia." className="mt-4" />
       ) : (
         <ChartContainer
           config={Object.fromEntries(statusList.map((status) => [status, { label: status, color: STACK_COLORS[status] ?? '#8b93a7' }]))}
@@ -285,7 +288,7 @@ export function ViewsBubbles({ rows, label }: { readonly rows: readonly ViewsPoi
         Volume vs rata-rata tayangan per situs
       </p>
       {data.length === 0 ? (
-        <EmptyState title="Belum ada data sebar tayangan." description="Data akan tampil di sini setelah tersedia." />
+        <EmptyState title="Belum ada data sebar tayangan." description="Data akan tampil di sini setelah tersedia." className="mt-4" />
       ) : (
         <ChartContainer config={{ total: { label: 'Tayangan', color: '#5fcbb0' } }} className="mt-4 h-64 w-full">
           <ScatterChart margin={{ left: 0, right: 12, top: 8, bottom: 0 }}>

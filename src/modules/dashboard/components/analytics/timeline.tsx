@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { formatRelative, formatDateTime } from '@/modules/dashboard/components/shared/dashboard-dates';
 import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
@@ -10,6 +11,14 @@ function tone(status: string): string {
   if (state === 'failed' || state === 'error' || state === 'rejected' || state === 'suspended') return 'bg-error';
   if (state === 'queued' || state === 'processing' || state === 'retrying' || state === 'pending') return 'bg-warning';
   return 'bg-paper-faint';
+}
+
+function badgeTone(status: string): string {
+  const state = status.toLowerCase();
+  if (state === 'published' || state === 'success' || state === 'active' || state === 'verified') return 'border-signal/40 text-signal';
+  if (state === 'failed' || state === 'error' || state === 'rejected' || state === 'suspended') return 'border-error/40 text-error';
+  if (state === 'queued' || state === 'processing' || state === 'retrying' || state === 'pending') return 'border-warning/40 text-warning';
+  return 'border-hairline-strong text-paper-dim';
 }
 
 /**
@@ -31,7 +40,7 @@ export function Timeline({ events }: { readonly events: readonly RecentActivity[
         Aktivitas operasional terbaru
       </p>
       {events.length === 0 ? (
-        <EmptyState title="Belum ada aktivitas tercatat." description="Data akan tampil di sini setelah tersedia." />
+        <EmptyState title="Belum ada aktivitas tercatat." description="Data akan tampil di sini setelah tersedia." className="mt-4" />
       ) : (
         <ol className="m-0 mt-4 list-none space-y-0 p-0">
           {events.map((item, index) => (
@@ -47,9 +56,10 @@ export function Timeline({ events }: { readonly events: readonly RecentActivity[
                   </p>
                 </ChartTip>
                 <ChartTip tip={formatDateTime(item.at)}>
-                  <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
-                    <span className="uppercase tracking-wider">{item.status}</span>
-                    {' · '}
+                  <p className="m-0 mt-0.5 flex flex-wrap items-center gap-1.5 font-mono text-[11px] tabular-nums text-paper-faint">
+                    <Badge variant="outline" className={`uppercase tracking-wider ${badgeTone(item.status)}`}>
+                      {item.status}
+                    </Badge>
                     {formatRelative(item.at)}
                   </p>
                 </ChartTip>

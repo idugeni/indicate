@@ -45,7 +45,7 @@ export function StatusMatrix({ results }: { readonly results: readonly Analytics
         Kesehatan situs teratas per status hasil
       </p>
       {sites.length === 0 ? (
-        <EmptyState title="Belum ada hasil situs." description="Data akan tampil di sini setelah tersedia." />
+        <EmptyState title="Belum ada hasil situs." description="Data akan tampil di sini setelah tersedia." className="mt-4" />
       ) : (
         <div className="mt-4 overflow-x-auto">
           <Table className="w-full min-w-max text-sm">
@@ -71,9 +71,9 @@ export function StatusMatrix({ results }: { readonly results: readonly Analytics
                 return (
                   <TableRow key={name} className="border-b border-hairline/60 last:border-0 hover:bg-transparent">
                     <ChartTip tip={name}>
-                      <th scope="row" className="sticky left-0 max-w-44 bg-bg-raised py-2.5 pr-3 text-left font-sans text-[13px] font-medium break-all text-paper">
+                      <TableHead scope="row" className="sticky left-0 max-w-44 bg-bg-raised py-2.5 pr-3 text-left font-sans text-[13px] font-medium break-all whitespace-normal text-paper">
                         {name}
-                      </th>
+                      </TableHead>
                     </ChartTip>
                     {status.map((state) => {
                       const value = row.get(state) ?? 0;

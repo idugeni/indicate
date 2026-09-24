@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { formatBytes, prepareImageUpload } from '@/modules/publishing/compress-image';
 import { MEDIA_PURPOSES } from '@/modules/publishing/object-key';
 
@@ -42,7 +43,7 @@ export function MediaForm({
   readonly command: (action: string, payload: unknown) => Promise<unknown>;
 }) {
   const model = data as {
-    readonly articles?: readonly { readonly id: string }[];
+    readonly articles?: readonly { readonly id: string; readonly title?: string }[];
     readonly sites?: readonly { readonly id: string; readonly normalizedHostname: string }[];
   } | null;
 
@@ -197,7 +198,7 @@ export function MediaForm({
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <SectionCard icon={UploadCloud} title="Unggah media" eyebrow="Unggah berkas">
 
-        <form onSubmit={handleUpload} className="space-y-3.5">
+        <form noValidate onSubmit={handleUpload} className="space-y-3.5">
           <div className="space-y-1.5">
             <Label htmlFor={fileInputId} className="font-mono text-xs text-paper-dim">
               Pilih Berkas Gambar (JPEG, PNG, WebP, AVIF, ICO, HEIC)
@@ -255,24 +256,18 @@ export function MediaForm({
               <Label htmlFor={ownerSelectId} className="font-mono text-xs text-paper-dim">
                 Pemilik
               </Label>
-              <DashboardSelect
+              <SearchCombobox
                 id={ownerSelectId}
                 name="ownerId"
                 disabled={isUploading}
                 placeholder="Organisasi"
-              >
-                <DashboardSelectItem value="">Organisasi</DashboardSelectItem>
-                {model?.articles?.map((item) => (
-                  <DashboardSelectItem key={item.id} value={item.id}>
-                    Artikel: {item.id}
-                  </DashboardSelectItem>
-                ))}
-                {model?.sites?.map((item) => (
-                  <DashboardSelectItem key={item.id} value={item.id}>
-                    Situs: {item.normalizedHostname}
-                  </DashboardSelectItem>
-                ))}
-              </DashboardSelect>
+                allowEmpty
+                emptyLabel="Organisasi"
+                options={[
+                  ...(model?.articles ?? []).map((item) => ({ value: item.id, label: `Artikel: ${item.title ?? 'Tanpa judul'}` })),
+                  ...(model?.sites ?? []).map((item) => ({ value: item.id, label: `Situs: ${item.normalizedHostname}` })),
+                ]}
+              />
             </div>
           </div>
 

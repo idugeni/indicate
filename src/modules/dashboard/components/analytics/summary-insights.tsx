@@ -1,4 +1,5 @@
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
+import { Progress } from '@/components/ui/progress';
 import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
 import type { AnalyticsPoint } from '@/modules/dashboard/models';
 
@@ -50,12 +51,7 @@ export function ConversionFunnel({
               <p className="m-0 truncate font-sans text-[13px] font-medium text-paper">{item.label}</p>
               <p className="m-0 truncate font-sans text-xs text-paper-faint">{item.note}</p>
             </div>
-            <span className="h-2 min-w-0 overflow-hidden rounded-full bg-bg-raised-2" role="presentation">
-              <span
-                className="block h-full rounded-full bg-brass transition-[width] duration-500 ease-out"
-                style={{ width: `${Math.max((item.value / max) * 100, 2)}%` }}
-              />
-            </span>
+            <Progress value={(item.value / max) * 100} aria-label={`${item.label} ${item.value.toLocaleString('id-ID')}`} className="min-w-0" />
             <span className="flex-none font-mono text-sm font-bold tabular-nums text-paper">
               {item.value.toLocaleString('id-ID')}
             </span>
@@ -94,7 +90,7 @@ export function TopRanked({
         {title}
       </h2>
       {topRows.length === 0 ? (
-        <EmptyState title="Belum ada data." description="Data akan tampil di sini setelah tersedia." />
+        <EmptyState title="Belum ada data." description="Data akan tampil di sini setelah tersedia." className="mt-3" />
       ) : (
         <ol className="m-0 mt-3 list-none space-y-2.5 p-0">
           {topRows.map((point, rank) => (
@@ -108,12 +104,7 @@ export function TopRanked({
                     {point.key}
                   </p>
                 </ChartTip>
-                <span className="mt-1 block h-1 min-w-0 overflow-hidden rounded-full bg-bg-raised-2" role="presentation">
-                  <span
-                    className="block h-full rounded-full bg-signal transition-[width] duration-500 ease-out"
-                    style={{ width: `${Math.max((point.count / max) * 100, 2)}%` }}
-                  />
-                </span>
+                <Progress value={(point.count / max) * 100} aria-label={`${point.key} ${point.count.toLocaleString('id-ID')}`} className="mt-1 min-w-0" />
               </div>
               <span className="flex-none font-mono text-xs font-bold tabular-nums text-paper">
                 {point.count.toLocaleString('id-ID')}
