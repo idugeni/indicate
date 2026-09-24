@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (171 migrations):
+-- Reviewed sources, in journal order (172 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -184,6 +184,7 @@
 --   169  20260925000000_media_gallery_editorial  ledger sha256:7bd75caf534758c645fadab19f4e93be19dda8fc79b01a42ca36ff053f6d1c68
 --   170  20260925010000_rls_policy_runtime_role  ledger sha256:8904304380fa8d9855948533bda026e0bba00433fac691cabfd121de97bb0747
 --   171  20260925020000_fix_guratfakta_zone_id  ledger sha256:072a1bab22435658aebd684b66b11ba4b1c1f70be55e103fc4959ae33e64ea2f
+--   172  20260925030000_retention_runs_drop_telegram_history  ledger sha256:cc49a726552d4ca7fea0a35fea71f829c048276ea928d8968814211c6266f1ae
 
 BEGIN;
 
@@ -13301,4 +13302,22 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (170, 'fix_guratfakta_zone_id', 'sha256:dcf7c10b133d738d2608fd30eb343fa0c607a6d3c6079e77372634845a2121de');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('072a1bab22435658aebd684b66b11ba4b1c1f70be55e103fc4959ae33e64ea2f', 1790340000000);
+
+-- ----------------------------------------------------------------------
+-- 20260925030000_retention_runs_drop_telegram_history
+-- ----------------------------------------------------------------------
+-- Drop orphan retention history for removed Telegram categories.
+--
+-- retention_sweep no longer emits telegram_conversations/telegram_outbox
+-- since the Telegram removal release, but historical retention_runs rows
+-- keep those labels. Delete the 24 orphan rows so monitoring reads clean.
+-- audit_logs rows are never touched: insert-only by design with daily WORM
+-- export (see docs/migrations.md).
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+DELETE FROM public.retention_runs WHERE category IN ('telegram_conversations', 'telegram_outbox');
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (171, 'retention_runs_drop_telegram_history', 'sha256:0215c9b14f7d30af9c00812abf33c05dc8108071ba40359d7678f46693ea4b3a');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('cc49a726552d4ca7fea0a35fea71f829c048276ea928d8968814211c6266f1ae', 1790343600000);
 COMMIT;

@@ -1198,6 +1198,13 @@
       "when": 1790340000000,
       "tag": "20260925020000_fix_guratfakta_zone_id",
       "breakpoints": true
+    },
+    {
+      "idx": 171,
+      "version": "7",
+      "when": 1790343600000,
+      "tag": "20260925030000_retention_runs_drop_telegram_history",
+      "breakpoints": true
     }
   ]
 }

@@ -6,7 +6,8 @@
 > **Related:** [active domains](active-domains.md) · [cloudflare baseline](cloudflare-baseline.md)
 
 Hanya domain terkait Indicate yang dicatat di sini — proyek-proyek lain
-milik pemilik sengaja tidak dimasukkan.
+milik pemilik sengaja tidak dimasukkan. Total zona live di akun Cloudflare
+adalah 131 (36 zona Indicate + zona proyek lain milik pemilik).
 
 Tenant live di DB: **20 site = 10 apex + 10 regional** (`wonosobo.*`).
 Domain utama: `indicate.website` (bukan tenant; migrasi dari `indicate.web.id` 2026-09-24, dual-serve).
