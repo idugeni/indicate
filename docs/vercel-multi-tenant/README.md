@@ -24,7 +24,7 @@ Indicate memakai pola yang sama: satu codebase + satu deployment Vercel melayani
 ## Catatan relevan untuk Indicate
 
 - Wildcard `*.apex` wajib nameserver Vercel (atau delegasi `_acme-challenge` ke Vercel bila DNS eksternal) — lihat `configuring-domains.md`.
-- Pro = custom domain Unlimited dengan soft limit 100.000/project; Hobby = 50 — lihat `limits.md` dan `reference.md`. Project `indicate` saat ini tepat 50 domain di team Pro `safenca`, jadi penolakan di angka 50 kontradiktif dengan docs ini.
+- Pro = custom domain Unlimited dengan soft limit 100.000/project; Hobby = 50 — lihat `limits.md` dan `reference.md`. Project `indicate` di team Pro `safenca` kini 222 domain (118 exact + 104 wildcard), 0 unverified — penolakan limit masa trial sudah basi.
 - Rate limit API: add 100/jam, verify 50/jam, remove 100/jam per team.
 - Preview URL multi-tenant (`tenant---branch`) dan custom SSL = Enterprise only.
 - Header `x-tenant-*` wajib di-strip/di-overwrite di proxy agar tidak bisa dipalsukan client — pola ini sudah dipakai `src/proxy.ts`.

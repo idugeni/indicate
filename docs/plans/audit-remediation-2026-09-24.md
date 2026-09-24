@@ -1,11 +1,9 @@
 # Rencana implementasi total hasil audit 2026-09-24
 
-> Status: in-progress — Fase 0, 1, 2.1, 2.4 (code), 3, 4.1, 4.2, 4.3, 4.4 (docs),
-> 5, 6.2 selesai dan ter-commit 2026-09-24/25. Pilot wildcard 1 apex verified;
-> 35 apex menyusul batch yang sama.
-> Koreksi hitung: realita live = **36 apex** (bukan 26), 10 regional exact, 3 kontrol,
-> dan 1 vercel.app = 50 slot awal; pasca-wildcard = **86 domain verified** (50 + 36 `*.apex`).
-> Sertifikat wildcard menunggu "Enable Vercel DNS" per apex di dashboard (owner-assisted).
+> Status: selesai — semua fase code + infra tereksekusi 2026-09-24/27.
+> Realita final: **222 domain Vercel verified** (118 exact + 104 wildcard),
+> cert wildcard 104/104 live, WAF 2-rule 104/104 zona, live DB v171,
+> `dbOnlyRegionalOnboarding` ON, tagihan billed ~$0.
 > Sumber temuan: audit 6 sub-agent 2026-09-24 (multi-tenant, database, keamanan, UI/perf, infra, SEO).
 > Kondisi terkunci: Vercel Pro riil (bukan trial), Cloudflare tetap di depan (proxy + WAF + cache),
 > Supabase Postgres otoritatif, Upstash Redis akselerasi.
@@ -155,8 +153,9 @@ maks 72 karakter, tanpa titik, tanpa emoji), selalu `git commit -s`,
   (dark-navy): LCP 988 ms, CLS 0.00, CrUX belum ada (situs baru); belum ada artikel
   published di tenant mana pun sehingga trace halaman artikel menunggu konten perdana.
   Tagihan 24–26 Sep: billed ~$0, efektif $3.58 (proporsional, tanpa lonjakan
-  pasca-wildcard). Terbuka: metrik prod jangka panjang, sampling penuh 131 zona,
-  Search Console (butuh akun Google owner; plumbing meta tag sudah ada).
+  pasca-wildcard). Terbuka: metrik prod jangka panjang, Search Console
+  (butuh akun Google owner; plumbing meta tag sudah ada), trace halaman artikel
+  (menunggu artikel published perdana).
   Audit Resend 2026-09-25: aplikasi memakai `RESEND_API_KEY` (HTTP API) +
   `RESEND_DEFAULT_FROM` untuk email transaksional; Supabase Auth memakai
   `RESEND_SMTP_PASS` via `smtp.resend.com` (`supabase/config.toml [auth.email.smtp]`,
@@ -165,7 +164,7 @@ maks 72 karakter, tanpa titik, tanpa emoji), selalu `git commit -s`,
 
 ## Kriteria selesai total
 
-Kuota terbukti hilang, 52 domain verified, wildcard route + 404 liar benar, Redis read-model live,
+Kuota terbukti hilang, 222 domain verified, wildcard route + 404 liar benar, Redis read-model live,
 dashboard tanpa full-scan/N+1, semua Medium security hijau, WAF 2-rule di semua zona,
 sitemap kanonis, tree bersih, `typecheck` + `lint` + `lint:md` + test hijau.
 Tanpa wildcard global; tanpa migrasi NS.

@@ -65,6 +65,12 @@ Sisa 0 slot; penambahan berikutnya tetap butuh penaikan limit
 (`project_domain_limit_reached`, "maximum allowed number of domains
 (50) ... contact sales").
 
+Update 2026-09-27: blokir di atas basi total — Pro riil unlimited terbukti
+(uji tambah-hapus domain), lalu 36 wildcard tenant + 68 stok (exact +
+wildcard + cert, HTTPS acak 104/104 halaman 404 bermerek, WAF 2-rule
+104/104 zona). Project kini **222 domain, 0 unverified** (118 exact +
+104 wildcard). Tidak ada penolakan limit di seluruh operasi.
+
 ## Fokus Wonosobo
 
 Region `wonosobo` (org Pengelola Platform) — 10/10 subdomain aktif, template mengikuti apex masing-masing. Tidak ditemukan domain nonaktif di DB, Vercel, maupun HTTP: tidak ada yang perlu diaktivasi.
@@ -207,7 +213,7 @@ idempoten). Verifikasi: `/logo.png` 200, manifest tenant, `/` 200.
 
 ## Backlog (belum punya site)
 
-59 org customer (UPT Jateng): langganan active, member active, 0 site. Estimasi kebutuhan: 59 slot bila 1 hostname/org → total ±85/250, aman.
+59 org customer (UPT Jateng): langganan active, member active, 0 site. Estimasi kebutuhan: 59 slot bila 1 hostname/org → total ±281 dari 100 ribu, aman.
 
 ## Kesiapan aktivasi 70 stok (matriks 2026-09-25)
 
