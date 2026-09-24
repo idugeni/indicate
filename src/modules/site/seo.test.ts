@@ -73,8 +73,8 @@ describe('absoluteSiteAssetUrl', () => {
   });
 
   it('me-re-anchor aset publik bersama ke hostname situs', () => {
-    expect(absoluteSiteAssetUrl(context, 'https://indicate.web.id/brand/logo-kemenimipas.png')).toBe(
-      'https://portal.example/brand/logo-kemenimipas.png',
+    expect(absoluteSiteAssetUrl(context, 'https://indicate.web.id/brand/indicate-mark.svg')).toBe(
+      'https://portal.example/brand/indicate-mark.svg',
     );
   });
 });

@@ -1163,6 +1163,20 @@
       "when": 1790217027905,
       "tag": "20260924023027_article_site_robots_directive",
       "breakpoints": true
+    },
+    {
+      "idx": 166,
+      "version": "7",
+      "when": 1790246186779,
+      "tag": "20260924030000_public_directory",
+      "breakpoints": true
+    },
+    {
+      "idx": 167,
+      "version": "7",
+      "when": 1790250500393,
+      "tag": "20260924040000_publisher_logo_r2_backfill",
+      "breakpoints": true
     }
   ]
 }
