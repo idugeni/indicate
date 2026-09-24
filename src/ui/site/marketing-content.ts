@@ -34,13 +34,6 @@ export interface ProofPointItem {
 export const SERVICE_NAME = 'Indicate';
 export const SERVICE_TAGLINE = 'Satu ruang redaksi untuk seluruh jaringan media Anda.';
 /**
- * Fallback agency logo for the publisher avatar: used when the publisher has not
- * attached its own logo (`contacts.logoUrl`). The file MUST exist at
- * `public/brand/logo-kemenimipas.png` — until then, Avatar automatically
- * shows initials (shadcn AvatarImage fails → AvatarFallback).
- */
-export const MINISTRY_FALLBACK_LOGO_URL = '/brand/logo-kemenimipas.png';
-/**
  * Fallback illustration for the main news image: used by article cards, article page heroes,
  * and editorial covers when the article has no `imageUrl`.
  * The file MUST exist at `public/assets/article-fallback.webp`.
@@ -52,6 +45,8 @@ export const SERVICE_SUMMARY =
 export const SITE_ROUTES: readonly NavigationLink[] = Object.freeze([
   { href: '/services', label: 'Layanan' },
   { href: '/pricing', label: 'Harga' },
+  { href: '/network', label: 'Jaringan' },
+  { href: '/partners', label: 'Partner' },
   { href: '/about', label: 'Tentang' },
   { href: '/faq', label: 'FAQ' },
   { href: '/contact', label: 'Kontak' },

@@ -11,7 +11,6 @@ import {
   LEGAL_ROUTES,
   LIVE_TENANT_APEX,
   LIVE_TENANT_REGIONAL,
-  MINISTRY_FALLBACK_LOGO_URL,
   PRIVACY_SECTIONS,
   PROOF_POINTS,
   SERVICE_NAME,
@@ -26,8 +25,8 @@ import {
 } from '@/ui/site/marketing-content';
 
 describe('navigasi layanan', () => {
-  it('mendaftarkan lima rute situs dengan href unik berawalan garis miring', () => {
-    expect(SITE_ROUTES.map((rute) => rute.href)).toEqual(['/services', '/pricing', '/about', '/faq', '/contact']);
+  it('mendaftarkan tujuh rute situs dengan href unik berawalan garis miring', () => {
+    expect(SITE_ROUTES.map((rute) => rute.href)).toEqual(['/services', '/pricing', '/network', '/partners', '/about', '/faq', '/contact']);
     for (const rute of SITE_ROUTES) {
       expect(rute.label.length).toBeGreaterThan(0);
     }
@@ -50,7 +49,6 @@ describe('konten pemasaran', () => {
   });
 
   it('memakai URL fallback aset lokal', () => {
-    expect(MINISTRY_FALLBACK_LOGO_URL.startsWith('/')).toBe(true);
     expect(ARTICLE_FALLBACK_IMAGE_URL.startsWith('/')).toBe(true);
   });
 

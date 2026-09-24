@@ -3,7 +3,6 @@ import type { FeedArticle, NetworkArticle, NetworkSiteData, ResolvedSiteContext 
 import { deriveAboutPublisher } from '@/modules/site/about-profile';
 import { articleBodyText } from '@/modules/site/article-markup';
 import { isTipTapDoc, tiptapToText } from '@/modules/site/tiptap-document';
-import { MINISTRY_FALLBACK_LOGO_URL } from '@/ui/site/marketing-content';
 
 function absoluteSiteUrl(context: ResolvedSiteContext, path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -162,8 +161,7 @@ export function buildSeoDocument(site: NetworkSiteData, options: { readonly path
   if (!indexable) return { title, description, canonical: null, robots: 'noindex, nofollow', openGraph: null, twitter: null, jsonLd: [] };
   const canonical = resolveArticleCanonical(site, options.path, article);
   const image = absoluteSiteAssetUrl(site.context, article?.imageUrl ?? site.settings.defaultImageUrl);
-  const rawLogo = site.settings.logoUrl ?? MINISTRY_FALLBACK_LOGO_URL;
-  const logo = absoluteSiteAssetUrl(site.context, rawLogo);
+  const logo = absoluteSiteAssetUrl(site.context, site.settings.logoUrl);
   const publisherLogo = article?.publisherLogoUrl === null || article?.publisherLogoUrl === undefined
     ? logo
     : absoluteSiteAssetUrl(site.context, article.publisherLogoUrl);
