@@ -14,6 +14,9 @@ Zona baru `active` 2026-09-24 (NS terdelegasi via API Vercel): 16 DNS, TLS stric
 R2 `media` (ownership active, SSL pending), Resend verify berjalan.
 HTTP: apex baru 200 halaman unknown-host bermerek + `noindex` (status pra-cutover yang benar;
 env+deploy baru belum dialihkan); `api.` 404 dan `pv.` SSL pending — normal pra-cutover.
+Cutover selesai 2026-09-24: deploy `ab3a9c2` READY (kode+env baru), apex baru 200 dashboard
+asli, `api.` 200, redirect 308 lama-ke-baru terverifikasi (`/tentang?x=1` utuh).
+Supabase redirect baru ditambahkan manual; Site URL lama diganti saat pensiun.
 Terblokir saat ini: kuota Vercel 50/50 (tambah domain baru menunggu Pro riil/limit naik)
 dan zona Cloudflare baru belum dibuat (tanpa tool create-zone di MCP; via dashboard),
 lalu NS registrar. Email ikut pindah (Resend sending domain + Supabase Auth + 13 template).
