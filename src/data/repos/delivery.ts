@@ -116,7 +116,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
   }
 
   private async readSettings(transaction: Transaction, context: ResolvedSiteContext) {
-      const settingsRows = await transaction.select({ name: siteSettings.name, description: siteSettings.description, tagline: siteSettings.tagline, seoDefaultTitle: siteSettings.seoDefaultTitle, seoDefaultDescription: siteSettings.seoDefaultDescription, seoOpenGraphSiteName: siteSettings.seoOpenGraphSiteName, locale: siteSettings.locale, colors: siteSettings.colors, socialLinks: siteSettings.socialLinks, seo: siteSettings.seo, navigation: siteSettings.navigation, logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId, defaultMediaId: siteSettings.defaultMediaId, regionName: regions.name })
+      const settingsRows = await transaction.select({ name: siteSettings.name, description: siteSettings.description, tagline: siteSettings.tagline, seoDefaultTitle: siteSettings.seoDefaultTitle, seoDefaultDescription: siteSettings.seoDefaultDescription, seoOpenGraphSiteName: siteSettings.seoOpenGraphSiteName, locale: siteSettings.locale, colors: siteSettings.colors, socialLinks: siteSettings.socialLinks, seo: siteSettings.seo, navigation: siteSettings.navigation, logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId, defaultMediaId: siteSettings.defaultMediaId, regionName: regions.name, siteCreatedAt: sites.createdAt })
         .from(sites)
         .innerJoin(domains, and(eq(domains.organizationId, sites.organizationId), eq(domains.id, sites.domainId), eq(domains.status, 'active')))
         .leftJoin(regions, and(eq(regions.organizationId, sites.organizationId), eq(regions.id, sites.regionId)))
@@ -140,6 +140,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       return {
         context,
         regionName: settings.regionName,
+        siteCreatedAt: iso(settings.siteCreatedAt),
         settings: {
           name: settings.name, description: settings.description, tagline: settings.tagline,
           seoDefaultTitle: settings.seoDefaultTitle, seoDefaultDescription: settings.seoDefaultDescription,

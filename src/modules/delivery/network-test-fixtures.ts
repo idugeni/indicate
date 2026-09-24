@@ -56,6 +56,7 @@ export function makeNetworkSite(
       contentVersion: 1,
     },
     regionName: null,
+    siteCreatedAt: '2026-09-01T00:00:00.000Z',
     settings: {
       name: 'Portal',
       description: 'Deskripsi portal.',

@@ -199,6 +199,41 @@ describe('serializers', () => {
     expect(news).toContain('/baru');
     expect(news).not.toContain('/lama');
   });
+
+  it('memakai url kanonis override di sitemap dan news sitemap', () => {
+    const canonical = makeNetworkArticle({
+      slug: 'berita-cascade',
+      canonicalUrl: 'https://portal-apex.example/berita-cascade',
+      publishedAt: new Date(Date.now() - 3_600_000).toISOString(),
+      updatedAt: '2026-09-14T10:00:00.000Z',
+    });
+    const sitemap = serializeSitemap(makeNetworkSite([canonical]));
+    expect(sitemap).toContain('https://portal-apex.example/berita-cascade');
+    expect(sitemap).not.toContain('https://portal.example/berita-cascade');
+    const news = serializeNewsSitemap(makeNetworkSite([canonical]));
+    expect(news).toContain('https://portal-apex.example/berita-cascade');
+  });
+
+  it('mengeluarkan artikel noindex dari kedua sitemap', () => {
+    const hidden = makeNetworkArticle({
+      slug: 'tersembunyi',
+      robotsDirective: 'noindex, nofollow',
+      publishedAt: new Date(Date.now() - 3_600_000).toISOString(),
+      updatedAt: '2026-09-14T10:00:00.000Z',
+    });
+    const sitemap = serializeSitemap(makeNetworkSite([hidden]));
+    expect(sitemap).not.toContain('/tersembunyi');
+    const news = serializeNewsSitemap(makeNetworkSite([hidden]));
+    expect(news).not.toContain('/tersembunyi');
+  });
+
+  it('menstabilkan lastmod situs kosong ke createdAt situs', () => {
+    const empty = makeNetworkSite([]);
+    const first = serializeSitemap(empty);
+    const second = serializeSitemap(empty);
+    expect(first).toBe(second);
+    expect(first).toContain('2026-09-01T00:00:00.000Z');
+  });
 });
 
 describe('metadata helpers', () => {

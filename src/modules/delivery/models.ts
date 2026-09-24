@@ -137,6 +137,7 @@ export interface NetworkSiteData {
   readonly regionName: string | null;
   readonly settings: PublicSiteSettings;
   readonly articles: readonly ArticleListItem[];
+  readonly siteCreatedAt: string;
 }
 
 export interface NetworkContentQuery {

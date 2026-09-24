@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { FeedArticle, NetworkArticle, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
+import { isNetworkArticle } from '@/modules/delivery/models';
 import { deriveAboutPublisher } from '@/modules/site/about-profile';
 import { articleBodyText } from '@/modules/site/article-markup';
 import { isTipTapDoc, tiptapToText } from '@/modules/site/tiptap-document';
@@ -144,7 +145,7 @@ function homeTitle(siteName: string, siteDescription: string): string {
  * @param article - Article carrying an optional absolute canonical override.
  * @returns Override when it is an absolute http(s) URL; otherwise the tenant URL.
  */
-function resolveArticleCanonical(site: NetworkSiteData, path: string, article: NetworkArticle | undefined): string {
+export function resolveArticleCanonical(site: NetworkSiteData, path: string, article: NetworkArticle | undefined): string {
   const override = article?.canonicalUrl?.trim() ?? '';
   if (/^https?:\/\/[^/]+/u.test(override)) return override;
   return absoluteSiteUrl(site.context, path);
@@ -370,34 +371,35 @@ function toLastmod(value: string, fallback: string): string {
 }
 
 export function serializeSitemap(site: NetworkSiteData): string {
-  const now = new Date().toISOString();
-  const homepageLastmod = site.articles.reduce<string>(
+  const stable = site.siteCreatedAt;
+  const indexable = site.articles.filter((article) => article.robotsDirective?.startsWith('noindex') !== true);
+  const homepageLastmod = indexable.reduce<string>(
     (latest, article) => (article.updatedAt > latest ? article.updatedAt : latest),
-    now,
+    stable,
   );
   const entries: SitemapEntry[] = [
-    { loc: absoluteSiteUrl(site.context, '/'), lastmod: toLastmod(homepageLastmod, now), changefreq: 'daily', priority: '1.0' },
-    { loc: absoluteSiteUrl(site.context, '/kebijakan-privasi'), lastmod: toLastmod(homepageLastmod, now), changefreq: 'monthly', priority: '0.3' },
-    { loc: absoluteSiteUrl(site.context, '/syarat-ketentuan'), lastmod: toLastmod(homepageLastmod, now), changefreq: 'monthly', priority: '0.3' },
-    { loc: absoluteSiteUrl(site.context, '/tentang'), lastmod: toLastmod(homepageLastmod, now), changefreq: 'monthly', priority: '0.3' },
-    { loc: absoluteSiteUrl(site.context, '/kontak'), lastmod: toLastmod(homepageLastmod, now), changefreq: 'monthly', priority: '0.3' },
+    { loc: absoluteSiteUrl(site.context, '/'), lastmod: toLastmod(homepageLastmod, stable), changefreq: 'daily', priority: '1.0' },
+    { loc: absoluteSiteUrl(site.context, '/kebijakan-privasi'), lastmod: toLastmod(homepageLastmod, stable), changefreq: 'monthly', priority: '0.3' },
+    { loc: absoluteSiteUrl(site.context, '/syarat-ketentuan'), lastmod: toLastmod(homepageLastmod, stable), changefreq: 'monthly', priority: '0.3' },
+    { loc: absoluteSiteUrl(site.context, '/tentang'), lastmod: toLastmod(homepageLastmod, stable), changefreq: 'monthly', priority: '0.3' },
+    { loc: absoluteSiteUrl(site.context, '/kontak'), lastmod: toLastmod(homepageLastmod, stable), changefreq: 'monthly', priority: '0.3' },
   ];
   const seenCategories = new Set<string>();
-  for (const article of site.articles) {
+  for (const article of indexable) {
     if (article.categorySlug !== null && !seenCategories.has(article.categorySlug)) {
       seenCategories.add(article.categorySlug);
       entries.push({
         loc: absoluteSiteUrl(site.context, `/categories/${article.categorySlug}`),
-        lastmod: toLastmod(article.updatedAt, now),
+        lastmod: toLastmod(article.updatedAt, stable),
         changefreq: 'daily',
         priority: '0.7',
       });
     }
   }
-  for (const article of site.articles) {
+  for (const article of indexable) {
     entries.push({
-      loc: absoluteSiteUrl(site.context, `/${article.slug}`),
-      lastmod: toLastmod(article.updatedAt, now),
+      loc: resolveArticleCanonical(site, `/${article.slug}`, isNetworkArticle(article) ? article : undefined),
+      lastmod: toLastmod(article.updatedAt, stable),
       changefreq: 'weekly',
       priority: '0.8',
       ...(article.imageUrl === null
@@ -420,6 +422,7 @@ export function serializeSitemap(site: NetworkSiteData): string {
 export function serializeNewsSitemap(site: NetworkSiteData): string {
   const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
   const items = site.articles
+    .filter((article) => article.robotsDirective?.startsWith('noindex') !== true)
     .filter((article) => {
       const time = new Date(article.publishedAt).getTime();
       return !Number.isNaN(time) && time >= cutoff;
@@ -428,7 +431,7 @@ export function serializeNewsSitemap(site: NetworkSiteData): string {
   const body = items
     .map(
       (article) =>
-        `<url><loc>${xml(absoluteSiteUrl(site.context, `/${article.slug}`))}</loc><news:news><news:publication><news:name>${xml(site.settings.seoSiteName || site.settings.name)}</news:name><news:language>id</news:language></news:publication><news:publication_date>${xml(new Date(article.publishedAt).toISOString())}</news:publication_date><news:title>${xml(article.title)}</news:title></news:news></url>`,
+        `<url><loc>${xml(resolveArticleCanonical(site, `/${article.slug}`, isNetworkArticle(article) ? article : undefined))}</loc><news:news><news:publication><news:name>${xml(site.settings.seoSiteName || site.settings.name)}</news:name><news:language>id</news:language></news:publication><news:publication_date>${xml(new Date(article.publishedAt).toISOString())}</news:publication_date><news:title>${xml(article.title)}</news:title></news:news></url>`,
     )
     .join('');
   return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${body}</urlset>`;
