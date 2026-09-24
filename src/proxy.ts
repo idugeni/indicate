@@ -139,7 +139,7 @@ const TENANT_ALIASES: Record<string, string> = {
   '/privacy': '/kebijakan-privasi',
   '/terms': '/syarat-ketentuan',
 };
-const TENANT_GONE = new Set(['/services', '/pricing', '/faq']);
+const TENANT_GONE = new Set(['/services', '/pricing', '/network', '/partners', '/faq']);
 /**
  * Control surfaces that must never render on tenant hostnames.
  *

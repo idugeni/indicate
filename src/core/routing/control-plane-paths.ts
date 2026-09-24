@@ -2,6 +2,8 @@
 export const SERVICE_PATHS: readonly string[] = Object.freeze([
   '/services',
   '/pricing',
+  '/network',
+  '/partners',
   '/about',
   '/faq',
   '/contact',

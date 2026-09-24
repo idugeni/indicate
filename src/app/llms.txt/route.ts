@@ -19,6 +19,8 @@ export function controlPlaneLlms(host: string): string {
     '## Layanan',
     `- [Layanan](${origin}/services): cakupan penerbitan, alur 5 langkah, dan jaminan tertulis.`,
     `- [Harga](${origin}/pricing): pembelian lewat kontak langsung tanpa katalog paket, beserta FAQ.`,
+    `- [Jaringan](${origin}/network): direktori seluruh portal berita aktif di jaringan Indicate.`,
+    `- [Partner](${origin}/partners): organisasi pelanggan yang berlangganan aktif.`,
     `- [Tentang](${origin}/about): cerita, fakta operasional, dan prinsip Indicate.`,
     `- [FAQ](${origin}/faq): jawaban pembelian, langganan manual, domain, bantuan, dan pelaporan konten.`,
     `- [Kontak](${origin}/contact): kanal surel, WhatsApp, dan Telegram.`,

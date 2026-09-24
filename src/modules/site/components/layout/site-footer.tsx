@@ -26,6 +26,8 @@ const FOOTER_COLUMNS: readonly FooterColumn[] = Object.freeze([
     label: 'Tautan footer platform',
     links: Object.freeze([
       { href: '/services', label: 'Layanan Penerbitan' },
+      { href: '/network', label: 'Jaringan Portal' },
+      { href: '/partners', label: 'Partner Berlangganan' },
       { href: '/pricing', label: 'Harga' },
       { href: '/faq', label: 'Pusat Bantuan' },
     ]),
