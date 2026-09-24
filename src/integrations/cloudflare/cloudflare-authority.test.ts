@@ -66,6 +66,43 @@ describe('zoneForHostname pagination', () => {
   });
 });
 
+describe('ensureCrawlerSkipRule', () => {
+  const challenge = {
+    id: 'rule-2',
+    action: 'managed_challenge',
+    description: 'Challenge WP/env/git probes',
+    enabled: true,
+    expression: '(http.request.uri.path contains "wp-login.php")',
+  };
+
+  function rulesetHarness(rules: readonly Record<string, unknown>[]) {
+    const calls: Call[] = [];
+    const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      return jsonResponse({ description: 'tenant probes', rules });
+    });
+    const adapter = new CloudflareAuthorityAdapter('acct', 'token', 'target.example', async () => [], fetcher as unknown as typeof fetch);
+    return { adapter, calls };
+  }
+
+  it('lewati bila skip sudah pertama', async () => {
+    const skip = { id: 'rule-1', action: 'skip', description: 'Allow social preview crawlers', enabled: true, expression: 'x' };
+    const { adapter, calls } = rulesetHarness([skip, challenge]);
+    await adapter.ensureCrawlerSkipRule('z1');
+    expect(calls.filter((call) => call.init?.method === 'PUT')).toHaveLength(0);
+  });
+
+  it('sisipkan skip di depan tanpa menghapus challenge', async () => {
+    const { adapter, calls } = rulesetHarness([challenge]);
+    await adapter.ensureCrawlerSkipRule('z1');
+    const puts = calls.filter((call) => call.init?.method === 'PUT');
+    expect(puts).toHaveLength(1);
+    const body = JSON.parse(String(puts[0]?.init?.body)) as { rules: { action: string; description: string }[] };
+    expect(body.rules.map((rule) => rule.action)).toEqual(['skip', 'managed_challenge']);
+    expect(body.rules[0]?.description).toBe('Allow social preview crawlers');
+  });
+});
+
 describe('purgeExactUrls batching', () => {
   it('memecah file per 30 URL dan tidak pernah memakai purge_everything', async () => {
     const { adapter, calls } = harness([zone('z1', 'fakta01.my.id')], []);

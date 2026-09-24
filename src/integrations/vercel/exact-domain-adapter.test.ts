@@ -48,3 +48,21 @@ describe('VercelExactDomainAdapter rate limit', () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('VercelExactDomainAdapter wildcard certs', () => {
+  it('membaca daftar cert dan tantangan order', async () => {
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.includes('/v3/certs?limit')) {
+        return jsonResponse({ certs: [{ cns: ['*.uji.example'], expiresAt: 123 }, { cns: 'bukan-array' }] }, 200);
+      }
+      return jsonResponse({ challengesToResolve: [{ domain: '_acme-challenge.uji.example', value: 'tantangan-1' }] }, 200);
+    });
+    const adapter = new VercelExactDomainAdapter('prj_1', 'team_1', 'token', fetcher as unknown as typeof fetch);
+    expect(await adapter.listWildcardCerts()).toEqual([{ cns: ['*.uji.example'], expiresAt: 123 }]);
+    expect(await adapter.startWildcardCertOrder(['*.uji.example'])).toEqual([
+      { domain: '_acme-challenge.uji.example', value: 'tantangan-1' },
+    ]);
+    await adapter.finalizeWildcardCertOrder(['*.uji.example']);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+});

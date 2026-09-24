@@ -9,6 +9,24 @@ interface SslSetting { readonly value: string }
 
 const MAX_PURGE_FILES_PER_REQUEST = 30;
 
+/** Social preview crawlers bypass the probe challenge; must stay the first custom WAF rule. */
+export const CRAWLER_SKIP_EXPRESSION =
+  '(lower(http.user_agent) contains "facebookexternalhit") or (lower(http.user_agent) contains "twitterbot") or (lower(http.user_agent) contains "linkedinbot") or (lower(http.user_agent) contains "whatsapp") or (lower(http.user_agent) contains "telegrambot") or (lower(http.user_agent) contains "slackbot") or (lower(http.user_agent) contains "discordbot")';
+
+interface FirewallRule {
+  readonly id?: string;
+  readonly action: string;
+  readonly action_parameters?: Readonly<Record<string, unknown>>;
+  readonly description?: string;
+  readonly enabled?: boolean;
+  readonly expression: string;
+}
+
+interface FirewallEntrypoint {
+  readonly description?: string;
+  readonly rules: FirewallRule[];
+}
+
 export function canonicalizeNameservers(values: readonly string[]): readonly string[] {
   return [...new Set(values.map((value) => value.toLowerCase().replace(/\.$/u, '')))].sort();
 }
@@ -97,6 +115,31 @@ export class CloudflareAuthorityAdapter implements CloudflareAuthorityPort {
     const zone = await this.zoneForHostname(hostname);
     const records = await this.call<{ id: string; name: string; content: string }[]>(`/zones/${zone.id}/dns_records?type=TXT&name=${encodeURIComponent(name)}`);
     for (const record of records) if (record.name === name && record.content === value) await this.call(`/zones/${zone.id}/dns_records/${record.id}`, { method: 'DELETE' });
+  }
+
+  /**
+   * Ensures the crawler skip rule heads the zone custom WAF ruleset.
+   *
+   * @param cloudflareZoneId - Owning zone ID.
+   */
+  async ensureCrawlerSkipRule(cloudflareZoneId: string): Promise<void> {
+    const entrypoint = await this.call<FirewallEntrypoint>(`/zones/${cloudflareZoneId}/rulesets/phases/http_request_firewall_custom/entrypoint`);
+    if (entrypoint.rules.length > 0 && entrypoint.rules[0]?.action === 'skip') return;
+    const rules: FirewallRule[] = [
+      { action: 'skip', action_parameters: { ruleset: 'current' }, description: 'Allow social preview crawlers', enabled: true, expression: CRAWLER_SKIP_EXPRESSION },
+      ...entrypoint.rules.map((rule) => ({
+        ...(rule.id === undefined ? {} : { id: rule.id }),
+        action: rule.action,
+        ...(rule.action_parameters === undefined ? {} : { action_parameters: { ...rule.action_parameters } }),
+        ...(rule.description === undefined ? {} : { description: rule.description }),
+        enabled: rule.enabled ?? true,
+        expression: rule.expression,
+      })),
+    ];
+    await this.call(`/zones/${cloudflareZoneId}/rulesets/phases/http_request_firewall_custom/entrypoint`, {
+      method: 'PUT',
+      body: JSON.stringify({ description: entrypoint.description ?? 'tenant probes', rules }),
+    });
   }
 
   private readonly zoneCache = new Map<string, Zone>();

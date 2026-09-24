@@ -62,6 +62,7 @@ export class DomainProvisioningService {
         if (owned === null) throw new Error('DEPENDENCY_UNAVAILABLE');
         const verification = await this.cloudflare.verifyDomainZone({ domainId: owned.domainId, normalizedHostname: attempt.hostname, cloudflareZoneId: owned.cloudflareZoneId });
         if (!verification.verified || verification.category !== 'verified') throw new Error('DEPENDENCY_UNAVAILABLE');
+        await this.cloudflare.ensureCrawlerSkipRule(owned.cloudflareZoneId);
         attempt = await this.repository.updateActivation(actor, attempt.id, 'cloudflare_verified', { authority: this.cloudflare.authority, publicDelegation: true, zoneId: owned.cloudflareZoneId, apexHostname: owned.apexHostname }, now.toISOString());
       }
       if (attempt.activationState === 'cloudflare_verified') {

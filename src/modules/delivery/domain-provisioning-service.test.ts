@@ -31,7 +31,7 @@ function harness(options: { readonly claims?: readonly Record<string, unknown>[]
     completeActivation: vi.fn(),
     deactivateSite: vi.fn(),
   };
-  const cloudflare = { verifyDomainZone: vi.fn(), ensureExactVerificationTxt: vi.fn(), removeExactVerificationTxt: vi.fn() };
+  const cloudflare = { verifyDomainZone: vi.fn(), ensureExactVerificationTxt: vi.fn(), removeExactVerificationTxt: vi.fn(), ensureCrawlerSkipRule: vi.fn() };
   const vercel = {
     associateExactDomain: vi.fn(),
     verifyExactDomain: vi.fn(),
@@ -129,7 +129,7 @@ describe('DomainProvisioningService db-only regional', () => {
       completeActivation: vi.fn(async () => ({ normalizedHostname: 'kota.fakta01.my.id' })),
       failActivation: vi.fn(async () => undefined),
     };
-    const cloudflare = { verifyDomainZone: vi.fn(async () => ({ verified: true, category: 'verified' })), ensureExactVerificationTxt: vi.fn(), removeExactVerificationTxt: vi.fn() };
+    const cloudflare = { verifyDomainZone: vi.fn(async () => ({ verified: true, category: 'verified' })), ensureExactVerificationTxt: vi.fn(), removeExactVerificationTxt: vi.fn(), ensureCrawlerSkipRule: vi.fn() };
     const vercel = { associateExactDomain: vi.fn(), verifyExactDomain: vi.fn(), removeExactDomain: vi.fn() };
     const probe = { verifyPendingHostname: vi.fn(async () => true) };
     const zone = { resolve: vi.fn(async () => ({ domainId: 'd1', cloudflareZoneId: 'z1', apexHostname: 'fakta01.my.id' })) };
@@ -145,15 +145,16 @@ describe('DomainProvisioningService db-only regional', () => {
       undefined,
       true,
     );
-    return { repository, vercel, probe, service };
+    return { repository, vercel, probe, cloudflare, service };
   }
 
   it('melewati asosiasi exact untuk subdomain satu label tanpa api call vercel', async () => {
-    const { service, vercel, repository } = dbOnlyHarness();
+    const { service, vercel, repository, cloudflare } = dbOnlyHarness();
     const pending = attempt({ operation: 'activate', activationState: 'pending', hostname: 'kota.fakta01.my.id', externalStatus: {} });
     await service.resume(actor, pending as never, NOW);
     expect(vercel.associateExactDomain).not.toHaveBeenCalled();
     expect(vercel.verifyExactDomain).not.toHaveBeenCalled();
+    expect(cloudflare.ensureCrawlerSkipRule).toHaveBeenCalledWith('z1');
     expect(repository.completeActivation).toHaveBeenCalledTimes(1);
   });
 

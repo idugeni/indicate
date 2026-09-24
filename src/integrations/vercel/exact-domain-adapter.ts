@@ -1,5 +1,5 @@
 import 'server-only';
-import type { ExactDomainAssociationResult, VercelHostingPort } from '@/integrations/vercel/ports';
+import type { ExactDomainAssociationResult, VercelHostingPort, WildcardCertChallenge, WildcardCertSummary } from '@/integrations/vercel/ports';
 
 const INLINE_RETRY_MAX_ATTEMPTS = 3;
 const INLINE_RETRY_MAX_DELAY_MS = 5_000;
@@ -52,4 +52,48 @@ export class VercelExactDomainAdapter implements VercelHostingPort {
   async associateExactDomain(hostname: string): Promise<ExactDomainAssociationResult> { this.requireExact(hostname); try { return this.result(hostname, await this.call(`/v10/projects/${this.projectId}/domains`, { method: 'POST', body: JSON.stringify({ name: hostname }) })); } catch { return this.inspectExactDomain(hostname); } }
   async removeExactDomain(hostname: string) { this.requireExact(hostname); const path = `/v9/projects/${this.projectId}/domains/${encodeURIComponent(hostname)}`; const response = await this.fetcher(`https://api.vercel.com${path}?teamId=${encodeURIComponent(this.teamId)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/json' } }); if (response.status === 404) return; if (response.status === 429) { const retryAfter = Math.min(Math.max(parseRetryAfterSeconds(response.headers.get('retry-after')) ?? 1, 0), RATE_LIMIT_CLAMP_SECONDS); throw new Error(`vercel_rate_limited:retry_after_${retryAfter}`); } if (!response.ok) throw new Error('vercel_unavailable'); }
   async verifyExactDomain(hostname: string) { this.requireExact(hostname); const body = await this.call(`/v9/projects/${this.projectId}/domains/${encodeURIComponent(hostname)}/verify`, { method: 'POST' }); return body.name === hostname && body.verified === true; }
+
+  /**
+   * Lists project wildcard certificates with expiry.
+   *
+   * @returns Summaries of `*.apex` certificates (CN list + expiry epoch ms).
+   */
+  async listWildcardCerts(): Promise<readonly WildcardCertSummary[]> {
+    const body = await this.call('/v3/certs?limit=100');
+    const certs = Array.isArray(body.certs) ? body.certs : [];
+    const out: WildcardCertSummary[] = [];
+    for (const entry of certs) {
+      if (typeof entry !== 'object' || entry === null) continue;
+      const record = entry as { cns?: unknown; expiresAt?: unknown };
+      if (!Array.isArray(record.cns) || typeof record.expiresAt !== 'number') continue;
+      out.push({ cns: record.cns.filter((cn): cn is string => typeof cn === 'string'), expiresAt: record.expiresAt });
+    }
+    return out;
+  }
+
+  /**
+   * Starts a wildcard certificate order, surfacing DNS challenges.
+   *
+   * @param domains - Wildcard domains (e.g. `*.apex`).
+   * @returns Pending TXT challenges to place at `_acme-challenge`.
+   */
+  async startWildcardCertOrder(domains: readonly string[]): Promise<readonly WildcardCertChallenge[]> {
+    const body = await this.call('/v3/certs', { method: 'PATCH', body: JSON.stringify({ op: 'startOrder', domains: [...domains] }) });
+    const challenges = Array.isArray(body.challengesToResolve) ? body.challengesToResolve : [];
+    return challenges
+      .filter((challenge): challenge is { domain: string; value: string } =>
+        typeof challenge === 'object' && challenge !== null &&
+        typeof (challenge as { domain?: unknown }).domain === 'string' &&
+        typeof (challenge as { value?: unknown }).value === 'string')
+      .map((challenge) => ({ domain: challenge.domain, value: challenge.value }));
+  }
+
+  /**
+   * Finalizes a wildcard certificate order after challenges propagate.
+   *
+   * @param domains - Wildcard domains from the started order.
+   */
+  async finalizeWildcardCertOrder(domains: readonly string[]): Promise<void> {
+    await this.call('/v3/certs', { method: 'PATCH', body: JSON.stringify({ op: 'finalizeOrder', domains: [...domains] }) });
+  }
 }

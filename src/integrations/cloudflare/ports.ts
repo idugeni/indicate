@@ -33,6 +33,8 @@ export interface CloudflareAuthorityPort extends HealthCheckPort {
   }): Promise<CloudflareDomainVerification>;
   ensureExactVerificationTxt(hostname: string, name: string, value: string): Promise<void>;
   removeExactVerificationTxt(hostname: string, name: string, value: string): Promise<void>;
+  /** Idempotently ensures the social-crawler skip rule is first in the custom WAF ruleset. */
+  ensureCrawlerSkipRule(cloudflareZoneId: string): Promise<void>;
   purgeExactUrls(urls: readonly string[]): Promise<void>;
   purgeHostname(hostname: string): Promise<void>;
 }
