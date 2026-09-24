@@ -21,7 +21,7 @@ function clientStub() {
 
 const BASE = {
   accountId: 'acct-1',
-  bucketName: 'indicate-media',
+  bucketName: 'indicate-media-private',
   publicBucketName: 'indicate-media-public',
   accessKeyId: 'key-id',
   secretAccessKey: 'secret-key',
@@ -37,7 +37,7 @@ describe('R2ObjectStorageAdapter dual bucket', () => {
     expect(sent.map((entry) => entry.bucket)).toEqual([
       'indicate-media-public',
       'indicate-media-public',
-      'indicate-media',
+      'indicate-media-private',
     ]);
   });
 
@@ -45,7 +45,7 @@ describe('R2ObjectStorageAdapter dual bucket', () => {
     const { client, sent } = clientStub();
     const adapter = new R2ObjectStorageAdapter({ ...BASE, publicBucketName: null }, client as unknown as S3Client);
     await expect(adapter.headExact('pub/o/org/p/article-cover/y=2026/f.webp')).resolves.toBe(null);
-    expect(sent.map((entry) => entry.bucket)).toEqual(['indicate-media']);
+    expect(sent.map((entry) => entry.bucket)).toEqual(['indicate-media-private']);
   });
 
   it('menandatangani unggahan publik ke bucket publik dengan cache-control', async () => {
@@ -78,7 +78,7 @@ describe('R2ObjectStorageAdapter dual bucket', () => {
       'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
       900,
     );
-    expect(authorization.url).toContain('indicate-media');
+    expect(authorization.url).toContain('indicate-media-private');
     expect(authorization.requiredHeaders).not.toHaveProperty('cache-control');
   });
 });
