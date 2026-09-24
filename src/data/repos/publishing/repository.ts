@@ -20,7 +20,7 @@ import {
 import { redact } from '@/core/security/redaction';
 import {
   articleSites, articles, auditLogs, categories, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks,
-  organizations, permissions, publicationTransitionReceipts, publishingJobs, publishingJobTargets, regions, rolePermissions,
+  organizations, permissions, publicationTransitionReceipts, publishers, publishingJobs, publishingJobTargets, regions, rolePermissions,
   roles, sites, siteSettings,
 } from '@/data/schema';
 import type * as schema from '@/data/schema';
@@ -227,6 +227,12 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         if (parent !== undefined) inheritedMediaIds = [parent.logoMediaId, parent.faviconMediaId, parent.defaultMediaId].filter((value): value is string => value !== null);
       }
       const asset = mapMedia(mediaRows[0]);
+      if (asset.owner.kind === 'organization') {
+        const refs = await transaction.select({ id: publishers.id }).from(publishers)
+          .where(and(eq(publishers.organizationId, context.organizationId), eq(publishers.status, 'active'), sql`${publishers.contacts}->>'logoUrl' LIKE '%/' || ${mediaId}`)).limit(1);
+        if (refs.length === 0) return null;
+        return asset;
+      }
       const site = { id: siteRows[0].site.id, organizationId: context.organizationId, active: true, normalizedHostname: siteRows[0].site.normalizedHostname, settingsMediaIds: [...new Set([...ownMediaIds, ...inheritedMediaIds])] };
       const articleRefs = asset.owner.kind !== 'article' ? [] : (await transaction.select({ id: articles.id, status: articles.status }).from(articles).where(and(eq(articles.organizationId, context.organizationId), eq(articles.id, asset.owner.articleId))).limit(1))
         .map((row) => ({ id: row.id, organizationId: context.organizationId, active: row.status === 'active', leadMediaId: null, title: '', slug: '' }));
