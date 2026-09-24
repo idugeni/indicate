@@ -4,11 +4,14 @@ import {
   articleCreateSchema,
   assignmentSchema,
   categoryCreateSchema,
+  categoryDeleteSchema,
   invitationCreateSchema,
   membershipSchema,
   roleCreateSchema,
   siteCachePurgeSchema,
   siteSettingsSchema,
+  tagRemoveSchema,
+  tagRenameSchema,
 } from '@/modules/dashboard/schemas';
 
 const ID = '0199a2b3-4c5d-7e8f-9012-3456789abcde';
@@ -82,6 +85,30 @@ describe('categoryCreateSchema', () => {
     if (!parsed.success) throw new Error('expected ok');
     expect(parsed.data.slug).toBe('politik-ekonomi');
     expect(parsed.data.name).toBe('Politik & Ekonomi');
+  });
+});
+
+describe('taxonomy mutation schemas', () => {
+  it('mewajibkan id dan versi pada hapus kategori', () => {
+    expect(categoryDeleteSchema.safeParse({ id: ID, expectedVersion: 1 }).success).toBe(true);
+    expect(categoryDeleteSchema.safeParse({ id: ID }).success).toBe(false);
+  });
+
+  it('mengkanonik tag dan menolak asal-tujuan sama', () => {
+    const parsed = tagRenameSchema.safeParse({ from: 'Harga Emas', to: 'Logam Mulia' });
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) throw new Error('expected ok');
+    expect(parsed.data).toEqual({ from: 'harga-emas', to: 'logam-mulia' });
+    expect(tagRenameSchema.safeParse({ from: 'politik', to: 'Politik' }).success).toBe(false);
+    expect(tagRenameSchema.safeParse({ from: '!!!', to: 'politik' }).success).toBe(false);
+  });
+
+  it('mengkanonik tag hapus dan menolak kosong', () => {
+    const parsed = tagRemoveSchema.safeParse({ tag: 'Harga Emas' });
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) throw new Error('expected ok');
+    expect(parsed.data).toEqual({ tag: 'harga-emas' });
+    expect(tagRemoveSchema.safeParse({ tag: '   ' }).success).toBe(false);
   });
 });
 

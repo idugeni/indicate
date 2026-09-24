@@ -14,11 +14,13 @@ import {
   LayoutDashboard,
   Megaphone,
   Menu,
+  Newspaper,
   PanelLeft,
   RefreshCw,
   Settings,
   Share2,
   ShieldAlert,
+  Tags,
   Users,
   X,
 } from 'lucide-react';
@@ -122,6 +124,14 @@ const PublisherForm = dynamic(
   () => import('@/modules/dashboard/components/editorial/publisher-form').then((module) => ({ default: module.PublisherForm })),
   { loading: () => <DashboardFormSkeleton /> },
 );
+const TaxonomyManager = dynamic(
+  () => import('@/modules/dashboard/components/editorial/taxonomy-manager').then((module) => ({ default: module.TaxonomyManager })),
+  { loading: () => <DashboardFormSkeleton /> },
+);
+const ArticleArchive = dynamic(
+  () => import('@/modules/dashboard/components/editorial/article-archive').then((module) => ({ default: module.ArticleArchive })),
+  { loading: () => <DashboardFormSkeleton /> },
+);
 const PublishingForm = dynamic(
   () => import('@/modules/dashboard/components/publishing/publishing-form').then((module) => ({ default: module.PublishingForm })),
   { loading: () => <DashboardFormSkeleton /> },
@@ -165,6 +175,8 @@ const NAV_GROUPS: readonly NavGroup[] = [
     title: 'Redaksi & Konten',
     items: [
       { view: 'editorial', label: 'Tulis Berita', icon: FileText },
+      { view: 'articles', label: 'Arsip Berita', icon: Newspaper },
+      { view: 'taxonomy', label: 'Kategori & Tag', icon: Tags },
       { view: 'publishers', label: 'Daftar Penerbit', icon: Users },
       { view: 'media', label: 'Media', icon: FolderKanban },
     ],
@@ -867,7 +879,7 @@ export function DashboardWorkspace({
               </div>
             </header>
 
-            <div className="space-y-6 pt-6">
+            <div className={view === 'publishers' ? 'space-y-4 pt-4' : 'space-y-6 pt-6'}>
             {error ? (
               <Alert
                 variant="destructive"
@@ -906,6 +918,8 @@ export function DashboardWorkspace({
                 command={command}
               />
             ) : null}
+            {view === 'taxonomy' ? <TaxonomyManager data={data} command={command} /> : null}
+            {view === 'articles' ? <ArticleArchive data={data} /> : null}
             {view === 'configuration' ? (
               <Tabs defaultValue="domain" className="w-full">
                 <TabsList aria-label="Bagian infrastruktur" className="max-w-full overflow-x-auto overflow-y-clip">
@@ -963,7 +977,7 @@ export function DashboardWorkspace({
             {view === 'content' ? <ContentManager /> : null}
             </PanelErrorBoundary>
 
-            {view === 'billing' || view === 'moderation' || view === 'editorial' ? null : busy && !data ? (
+            {view === 'billing' || view === 'moderation' || view === 'editorial' || view === 'articles' || view === 'taxonomy' ? null : busy && !data ? (
               view === 'dashboard' ? <DashboardContentSkeleton /> : <DashboardCollectionsSkeleton />
             ) : (
               <PanelErrorBoundary key={`data:${organizationId}:${view}`} name={`${activeMetadata.title} — data`}>

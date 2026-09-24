@@ -24,7 +24,7 @@ import type { Result } from '@/core/result';
 const organizationSchema = z.uuid();
 const querySchema = z.object({
   organizationId: organizationSchema,
-  view: z.enum(['dashboard', 'configuration', 'publishers', 'editorial', 'analytics', 'audit', 'operations']),
+  view: z.enum(['dashboard', 'configuration', 'publishers', 'editorial', 'taxonomy', 'articles', 'analytics', 'audit', 'operations']),
   regionId: organizationSchema.optional(), siteId: organizationSchema.optional(), categoryId: organizationSchema.optional(), publisherId: organizationSchema.optional(), authorId: organizationSchema.optional(),
   publicationState: z.enum(['queued', 'processing', 'published', 'failed', 'retrying', 'unpublished']).optional(), search: z.string().max(300).optional(),
   actorId: z.string().max(200).optional(), action: z.string().max(200).optional(), targetType: z.string().max(100).optional(), outcome: z.enum(['succeeded', 'denied', 'failed']).optional(),
@@ -101,6 +101,8 @@ async function handleGET(request: Request) {
       : parsed.data.view === 'configuration' ? await service.listConfiguration(actor)
       : parsed.data.view === 'publishers' ? await service.listPublishers(actor)
       : parsed.data.view === 'editorial' ? await service.listEditorial(actor, editorialFilter)
+      : parsed.data.view === 'taxonomy' ? await service.listTaxonomy(actor)
+      : parsed.data.view === 'articles' ? await service.listEditorial(actor, {})
       : parsed.data.view === 'analytics'
         ? actor.actorType === 'user'
           ? await fetchCachedAnalytics(actor, rangeFilter)
@@ -123,7 +125,7 @@ async function handlePOST(request: Request) {
       'site.create': (payload) => service.createSite(actor, payload), 'site.update': (payload) => service.updateSite(actor, payload), 'site.settings.update': (payload) => service.saveSiteSettings(actor, payload), 'site.cache.purge': (payload) => service.purgeSiteCache(actor, payload),
       'role.create': (payload) => service.createRole(actor, payload), 'role.update': (payload) => service.updateRole(actor, payload), 'membership.update': (payload) => service.saveMembership(actor, payload),
       'invitation.create': (payload) => service.createInvitation(actor, payload), 'invitation.revoke': (payload) => service.revokeInvitation(actor, payload),      'publisher.create': (payload) => service.createPublisher(actor, payload), 'publisher.update': (payload) => service.updatePublisher(actor, payload), 'publisher.submit': (payload) => service.submitPublisher(actor, payload), 'publisher.approve': (payload) => service.approvePublisher(actor, payload), 'publisher.reject': (payload) => service.rejectPublisher(actor, payload), 'publisher.archive': (payload) => service.archivePublisher(actor, payload), 'affiliation.create': (payload) => service.createAffiliation(actor, payload), 'affiliation.update': (payload) => service.updateAffiliation(actor, payload),
-      'category.create': (payload) => service.createCategory(actor, payload), 'category.update': (payload) => service.updateCategory(actor, payload), 'author.create': (payload) => service.createAuthor(actor, payload), 'author.update': (payload) => service.updateAuthor(actor, payload),
+      'category.create': (payload) => service.createCategory(actor, payload), 'category.update': (payload) => service.updateCategory(actor, payload), 'category.delete': (payload) => service.deleteCategory(actor, payload), 'tag.rename': (payload) => service.renameTag(actor, payload), 'tag.remove': (payload) => service.removeTag(actor, payload), 'author.create': (payload) => service.createAuthor(actor, payload), 'author.update': (payload) => service.updateAuthor(actor, payload),
       'article.create': (payload) => service.createArticle(actor, payload), 'article.update': (payload) => service.updateArticle(actor, payload), 'article.archive': (payload) => service.archiveArticle(actor, payload), 'article.restore': (payload) => service.restoreArticle(actor, payload), 'article.sites.assign': (payload) => service.assignArticleSites(actor, payload), 'article.sites.views.set': (payload) => service.setArticleSiteViews(actor, payload),
     };
     const action = actions[parsed.data.action]; if (action === undefined) return NextResponse.json(createPublicError('INVALID_INPUT', 'Unknown command.', requestId), { status: 400 });

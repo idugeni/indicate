@@ -2,7 +2,7 @@ import type { z } from 'zod';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type {
-  ActivationAttemptRecord, AnalyticsProjection, ArticleFilter, ArticleRecord, AuditFilter, AuditRecord, AuthorRecord, CategoryRecord,
+  ActivationAttemptRecord, AnalyticsProjection, ArticleFilter, ArticleRecord, ArticleSiteRecord, AuditFilter, AuditRecord, AuthorRecord, CategoryRecord,
   DashboardProjection, DomainRecord, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, MembershipRecord, OfficialAffiliationRecord, OperationsProjection, PublisherRecord, NetworkPublisherClaim,
   RegionRecord, RetentionRunRecord, RoleListItem, RoleRecord, SiteRecord, SiteSettingsRecord, DashboardTenantState,
 } from '@/modules/dashboard/models';
@@ -22,10 +22,10 @@ import { logEvent } from '@/core/observability/logger';
 import type { Result } from '@/core/result';
 import {
   affiliationSchema, affiliationUpdateSchema, analyticsFilterSchema, articleCreateSchema, articleFilterSchema, articleTransitionSchema, articleUpdateSchema, assignmentSchema,
-  auditFilterSchema, authorCreateSchema, authorUpdateSchema, categoryCreateSchema, categoryUpdateSchema,
+  auditFilterSchema, authorCreateSchema, authorUpdateSchema, categoryCreateSchema, categoryDeleteSchema, categoryUpdateSchema,
   domainCreateSchema, domainUpdateSchema, invitationCreateSchema, invitationRevokeSchema, isKnownTemplateId, membershipSchema, publisherCreateSchema, publisherDecisionSchema,
   publisherUpdateSchema, regionCreateSchema, regionUpdateSchema, roleCreateSchema, roleUpdateSchema,
-  siteCreateSchema, siteSettingsSchema, siteUpdateSchema, siteViewsSchema, siteCachePurgeSchema,
+  siteCreateSchema, siteSettingsSchema, siteUpdateSchema, siteViewsSchema, siteCachePurgeSchema, tagRemoveSchema, tagRenameSchema,
 } from '@/modules/dashboard/schemas';
 
 interface ClockLike { now(): Date }
@@ -566,6 +566,79 @@ export class TenantBusinessService {
     }});
   }
 
+  deleteCategory(actor: AuthorizedTenantActorContext, raw: unknown) {
+    return this.mutate({ actor, raw, schema: categoryDeleteSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'category.delete', targetType: 'category', execute: (transaction, value, now) => {
+      const before = requireRecord(transaction.state.categories, value.id); requireVersion(before, value.expectedVersion);
+      const lock = regionLock(actor);
+      const detached = transaction.state.articles.filter((article) => article.categoryIds.includes(value.id) || article.categoryId === value.id);
+      for (const article of detached) {
+        if (!articleInScope(article, lock)) throw new DashboardAccessDeniedError();
+      }
+      for (const article of detached) {
+        const categoryIds = article.categoryIds.filter((categoryId) => categoryId !== value.id);
+        const after: ArticleRecord = { ...article, categoryId: categoryIds[0] ?? null, categoryIds, version: article.version + 1, updatedAt: now };
+        replaceById(transaction.state.articles, after); this.syncArticleCategories(transaction.state, after.id, categoryIds); this.audit(transaction, 'category.delete', 'article', after.id, article, after);
+      }
+      transaction.state.categories = transaction.state.categories.filter(({ id }) => id !== value.id);
+      this.audit(transaction, 'category.delete', 'category', before.id, before, null); return { id: before.id, detached: detached.length };
+    }});
+  }
+
+  renameTag(actor: AuthorizedTenantActorContext, raw: unknown) {
+    return this.mutate({ actor, raw, schema: tagRenameSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'tag.rename', targetType: 'article', execute: (transaction, value, now) => {
+      const lock = regionLock(actor);
+      const affected = transaction.state.articles.filter((article) => article.tags.includes(value.from));
+      for (const article of affected) {
+        if (!articleInScope(article, lock)) throw new DashboardAccessDeniedError();
+      }
+      for (const article of affected) {
+        const tags = [...new Set(article.tags.map((tag) => (tag === value.from ? value.to : tag)))];
+        const after: ArticleRecord = { ...article, tags, version: article.version + 1, updatedAt: now };
+        replaceById(transaction.state.articles, after); this.audit(transaction, 'tag.rename', 'article', after.id, article, after);
+      }
+      return { from: value.from, to: value.to, affected: affected.length };
+    }});
+  }
+
+  removeTag(actor: AuthorizedTenantActorContext, raw: unknown) {
+    return this.mutate({ actor, raw, schema: tagRemoveSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'tag.remove', targetType: 'article', execute: (transaction, value, now) => {
+      const lock = regionLock(actor);
+      const affected = transaction.state.articles.filter((article) => article.tags.includes(value.tag));
+      for (const article of affected) {
+        if (!articleInScope(article, lock)) throw new DashboardAccessDeniedError();
+      }
+      for (const article of affected) {
+        const after: ArticleRecord = { ...article, tags: article.tags.filter((tag) => tag !== value.tag), version: article.version + 1, updatedAt: now };
+        replaceById(transaction.state.articles, after); this.audit(transaction, 'tag.remove', 'article', after.id, article, after);
+      }
+      return { tag: value.tag, affected: affected.length };
+    }});
+  }
+
+  listTaxonomy(actor: AuthorizedTenantActorContext) {
+    return this.query(actor, DASHBOARD_PERMISSIONS.articleRead, 'taxonomy.list', 'taxonomy', (state) => {
+      const lock = regionLock(actor);
+      const articles = state.articles.filter((article) => articleInScope(article, lock));
+      const categoryCounts = new Map<string, number>();
+      for (const article of articles) {
+        for (const categoryId of new Set([article.categoryId, ...article.categoryIds])) {
+          if (categoryId === null) continue;
+          categoryCounts.set(categoryId, (categoryCounts.get(categoryId) ?? 0) + 1);
+        }
+      }
+      const tagCounts = new Map<string, number>();
+      for (const article of articles) {
+        for (const tag of new Set(article.tags)) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+      }
+      return {
+        categories: state.categories.map((category) => ({ ...category, articleCount: categoryCounts.get(category.id) ?? 0 })),
+        tags: [...tagCounts.entries()]
+          .map(([tag, count]) => ({ tag, count }))
+          .sort((left, right) => right.count - left.count || left.tag.localeCompare(right.tag)),
+      };
+    });
+  }
+
   createAuthor(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: authorCreateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'author.create', targetType: 'author', execute: (transaction, value, now) => {
       const record: AuthorRecord = { ...this.base(actor, now), ...value }; transaction.state.authors.push(record); this.audit(transaction, 'author.create', 'author', record.id, null, record); return record;
@@ -638,7 +711,16 @@ export class TenantBusinessService {
       const distinctCategoryIds = [...new Set(value.categoryIds ?? [])];
       const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId ?? null, null, 'leadMediaId');
       const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, leadMediaId, coverImageUrl: value.coverImageUrl ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, bodyJson: requireValidBodyJson(value.bodyJson), scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null };
-      transaction.state.articles.push(record); this.syncArticleCategories(transaction.state, record.id, distinctCategoryIds); this.audit(transaction, 'article.create', 'article', record.id, null, record); return record;
+      transaction.state.articles.push(record); this.syncArticleCategories(transaction.state, record.id, distinctCategoryIds); this.audit(transaction, 'article.create', 'article', record.id, null, record);
+      const lock = regionLock(actor);
+      const autoSiteIds = transaction.state.sites
+        .filter((site) => site.organizationId === actor.organizationId && site.status === 'active' && site.activationState === 'active' && siteInScope(site, lock))
+        .map(({ id }) => id);
+      if (autoSiteIds.length > 0) {
+        const { after, expandedFrom } = this.applySiteAssignment(transaction.state, record, autoSiteIds, actor, now);
+        this.audit(transaction, 'article.sites.assign', 'article', record.id, { siteIds: [] as string[] }, { siteIds: after.map(({ siteId }) => siteId).sort(), expanded: expandedFrom });
+      }
+      return record;
     }});
     if (result.ok && this.notifier !== null) {
       try {
@@ -711,46 +793,57 @@ export class TenantBusinessService {
     return this.mutate({ actor, raw, schema: assignmentSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.sites.assign', targetType: 'article', execute: (transaction, value, now) => {
       const article = requireArticleInScope(transaction.state.articles, value.articleId, actor);
       if (article.organizationId !== actor.organizationId) throw new DashboardAccessDeniedError();
-      const distinct = [...new Set(value.siteIds)];
-      const requested = distinct.map((siteId) => requireSiteInScope(transaction.state.sites, siteId, actor));
-      if (requested.some(({ organizationId, status }) => organizationId !== actor.organizationId || status !== 'active')) throw new DashboardAccessDeniedError();
-      const expansion = expandCascadeSites(transaction.state.sites, transaction.state.regions, distinct, article.slug);
-      const expanded = expansion.targets.map((target) => ({ ...target, site: requireSiteInScope(transaction.state.sites, target.siteId, actor) }));
-      if (expanded.some(({ site }) => site.organizationId !== actor.organizationId || site.status !== 'active')) throw new DashboardAccessDeniedError();
       const before = transaction.state.articleSites.filter(({ articleId, active }) => articleId === article.id && active);
-      for (let index = 0; index < transaction.state.articleSites.length; index += 1) {
-        const assignment = transaction.state.articleSites[index]!;
-        if (assignment.articleId === article.id) transaction.state.articleSites[index] = { ...assignment, active: false };
-      }
-      const expandedFrom: Record<string, string> = {};
-      for (const target of expanded) {
-        const existing = transaction.state.articleSites.find(({ articleId, siteId }) => articleId === article.id && siteId === target.siteId);
-        if (target.originSiteId !== null) expandedFrom[target.siteId] = target.originSiteId;
-        if (existing === undefined) {
-          transaction.state.articleSites.push({
-            ...this.base(actor, now),
-            articleId: article.id,
-            siteId: target.siteId,
-            state: 'queued',
-            stateOccurredAt: now,
-            publishedUrl: null,
-            publishedAt: null,
-            active: true,
-            viewCount: 0,
-            assignmentSource: target.originSiteId === null ? 'manual' : 'auto',
-            expandedFromSiteId: target.originSiteId,
-            customCanonicalUrl: target.originSiteId === null ? null : target.canonicalUrl,
-          });
-        } else if (target.originSiteId === null) {
-          Object.assign(existing, { active: true, assignmentSource: 'manual' as const, expandedFromSiteId: null, version: existing.version + 1, updatedAt: now });
-        } else {
-          Object.assign(existing, { active: true, assignmentSource: 'auto' as const, expandedFromSiteId: target.originSiteId, customCanonicalUrl: target.canonicalUrl, version: existing.version + 1, updatedAt: now });
-        }
-      }
-      const after = transaction.state.articleSites.filter(({ articleId, active }) => articleId === article.id && active);
+      const { after, expandedFrom } = this.applySiteAssignment(transaction.state, article, value.siteIds, actor, now);
       this.audit(transaction, 'article.sites.assign', 'article', article.id, { siteIds: before.map(({ siteId }) => siteId).sort() }, { siteIds: after.map(({ siteId }) => siteId).sort(), expanded: expandedFrom });
       return after;
     }});
+  }
+
+  private applySiteAssignment(
+    state: MutableTenantState,
+    article: ArticleRecord,
+    siteIds: readonly string[],
+    actor: AuthorizedTenantActorContext,
+    now: string,
+  ): { after: readonly ArticleSiteRecord[]; expandedFrom: Record<string, string> } {
+    const distinct = [...new Set(siteIds)];
+    const requested = distinct.map((siteId) => requireSiteInScope(state.sites, siteId, actor));
+    if (requested.some(({ organizationId, status }) => organizationId !== actor.organizationId || status !== 'active')) throw new DashboardAccessDeniedError();
+    const expansion = expandCascadeSites(state.sites, state.regions, distinct, article.slug);
+    const expanded = expansion.targets.map((target) => ({ ...target, site: requireSiteInScope(state.sites, target.siteId, actor) }));
+    if (expanded.some(({ site }) => site.organizationId !== actor.organizationId || site.status !== 'active')) throw new DashboardAccessDeniedError();
+    for (let index = 0; index < state.articleSites.length; index += 1) {
+      const assignment = state.articleSites[index]!;
+      if (assignment.articleId === article.id) state.articleSites[index] = { ...assignment, active: false };
+    }
+    const expandedFrom: Record<string, string> = {};
+    for (const target of expanded) {
+      const existing = state.articleSites.find(({ articleId, siteId }) => articleId === article.id && siteId === target.siteId);
+      if (target.originSiteId !== null) expandedFrom[target.siteId] = target.originSiteId;
+      if (existing === undefined) {
+        state.articleSites.push({
+          ...this.base(actor, now),
+          articleId: article.id,
+          siteId: target.siteId,
+          state: 'queued',
+          stateOccurredAt: now,
+          publishedUrl: null,
+          publishedAt: null,
+          active: true,
+          viewCount: 0,
+          assignmentSource: target.originSiteId === null ? 'manual' : 'auto',
+          expandedFromSiteId: target.originSiteId,
+          customCanonicalUrl: target.originSiteId === null ? null : target.canonicalUrl,
+        });
+      } else if (target.originSiteId === null) {
+        Object.assign(existing, { active: true, assignmentSource: 'manual' as const, expandedFromSiteId: null, version: existing.version + 1, updatedAt: now });
+      } else {
+        Object.assign(existing, { active: true, assignmentSource: 'auto' as const, expandedFromSiteId: target.originSiteId, customCanonicalUrl: target.canonicalUrl, version: existing.version + 1, updatedAt: now });
+      }
+    }
+    const after = state.articleSites.filter(({ articleId, active }) => articleId === article.id && active);
+    return { after, expandedFrom };
   }
 
   setArticleSiteViews(actor: AuthorizedTenantActorContext, raw: unknown) {

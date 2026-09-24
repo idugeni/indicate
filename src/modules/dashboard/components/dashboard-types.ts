@@ -9,6 +9,8 @@ export type View =
   | 'configuration'
   | 'publishers'
   | 'editorial'
+  | 'taxonomy'
+  | 'articles'
   | 'media'
   | 'publishing'
   | 'analytics'
@@ -77,6 +79,16 @@ export const VIEW_METADATA_REGISTRY: Record<View, ViewMetadata> = {
     title: 'Manajemen Artikel & Konten',
     eyebrow: 'Ruang Kerja Redaksi',
     description: 'Tulis dan kelola berita sebelum dikirim ke situs.',
+  },
+  taxonomy: {
+    title: 'Kelola Kategori & Tag',
+    eyebrow: 'Taksonomi Redaksi',
+    description: 'Atur kanal kategori dan rapikan tag topik di semua artikel.',
+  },
+  articles: {
+    title: 'Arsip Berita Lintas Portal',
+    eyebrow: 'Semua Portal',
+    description: 'Jelajahi seluruh artikel jaringan dengan cari, saring, dan halaman.',
   },
   publishing: {
     title: 'Antrean Penerbitan',

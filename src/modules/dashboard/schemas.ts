@@ -7,7 +7,7 @@ import {
   SEO_TITLE_MAX,
   SEO_TITLE_MIN,
 } from '@/modules/site/seo-validation';
-import { TAG_MAX_COUNT, normalizeSlugCandidate, normalizeTagList } from '@/modules/site/slug-allocator';
+import { TAG_MAX_COUNT, normalizeSlugCandidate, normalizeTagCandidate, normalizeTagList } from '@/modules/site/slug-allocator';
 import { MASTER_TEMPLATE_PRESETS } from '@/ui/themes';
 
 const TEMPLATE_IDS = new Set(MASTER_TEMPLATE_PRESETS.map((preset) => preset.id));
@@ -111,6 +111,15 @@ export const affiliationUpdateSchema = affiliationSchema.omit({ publisherId: tru
 
 export const categoryCreateSchema = z.object({ name: z.string().trim().min(1).max(120), slug, status: lifecycleStatus.default('active') }).strict();
 export const categoryUpdateSchema = categoryCreateSchema.extend({ id, expectedVersion });
+export const categoryDeleteSchema = z.object({ id, expectedVersion }).strict();
+/** Canonical kebab-case tag; raw input normalizes first so `Harga Emas` matches `harga-emas`. */
+const canonicalTag = z.preprocess(
+  (value) => (typeof value === 'string' ? normalizeTagCandidate(value) : value),
+  z.string().trim().min(1).max(60),
+);
+export const tagRenameSchema = z.object({ from: canonicalTag, to: canonicalTag }).strict()
+  .refine((value) => value.from !== value.to, 'Tag asal dan tujuan harus berbeda.');
+export const tagRemoveSchema = z.object({ tag: canonicalTag }).strict();
 export const authorCreateSchema = z.object({ displayName: z.string().trim().min(1).max(160), byline: z.string().trim().min(1).max(200), status: lifecycleStatus.default('active') }).strict();
 export const authorUpdateSchema = authorCreateSchema.extend({ id, expectedVersion });
 export const articleCreateSchema = z.object({

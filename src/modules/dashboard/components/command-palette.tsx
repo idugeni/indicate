@@ -15,15 +15,18 @@ import {
   KeyRound,
   LayoutDashboard,
   Megaphone,
+  Newspaper,
   RefreshCw,
   Search,
   Settings,
   Share2,
   ShieldAlert,
+  Tags,
   Users,
   X,
 } from 'lucide-react';
 
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,6 +46,8 @@ interface CommandAction {
 const COMMAND_ACTIONS: readonly CommandAction[] = [
   { id: 'overview', label: 'Beranda', category: 'Redaksi', href: '/dashboard', icon: LayoutDashboard },
   { id: 'editorial', label: 'Manajemen Artikel & Konten', category: 'Redaksi', href: '/dashboard?view=editorial', icon: FileText },
+  { id: 'articles', label: 'Arsip Berita Lintas Portal', category: 'Redaksi', href: '/dashboard?view=articles', icon: Newspaper },
+  { id: 'taxonomy', label: 'Kelola Kategori & Tag', category: 'Redaksi', href: '/dashboard?view=taxonomy', icon: Tags },
   { id: 'publishing', label: 'Antrean Penerbitan', category: 'Redaksi', href: '/dashboard?view=publishing', icon: Share2 },
   { id: 'media', label: 'Media', category: 'Redaksi', href: '/dashboard?view=media', icon: FolderKanban },
   { id: 'content', label: 'Konten Website', category: 'Redaksi', href: '/dashboard?view=content', icon: Megaphone },
@@ -110,17 +115,25 @@ export function CommandPalette({ showTrigger = true }: { readonly showTrigger?: 
   return (
     <>
       {showTrigger ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          onClick={() => setOpen(true)}
-          aria-haspopup="dialog"
-          aria-label="Buka navigasi cepat"
-          title="Navigasi cepat (Ctrl+K)"
-        >
-          <Search className="h-4 w-4 text-brass" aria-hidden="true" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setOpen(true)}
+                aria-haspopup="dialog"
+                aria-label="Buka navigasi cepat"
+              >
+                <Search className="h-4 w-4 text-brass" aria-hidden="true" />
+              </Button>
+            }
+          />
+          <TooltipContent className="border border-hairline bg-bg-raised p-2 font-mono text-xs text-paper">
+            Navigasi cepat (Ctrl+K)
+          </TooltipContent>
+        </Tooltip>
       ) : null}
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -193,9 +206,9 @@ export function CommandPalette({ showTrigger = true }: { readonly showTrigger?: 
                     </div>
 
                     <div className="flex flex-none items-center gap-2">
-                      <span className="rounded border border-hairline bg-bg px-1.5 py-0.5 font-mono text-[10px] text-paper-faint">
+                      <Badge variant="outline" className="border-hairline bg-bg px-1.5 py-0.5 font-mono text-[10px] text-paper-faint">
                         {cmd.category}
-                      </span>
+                      </Badge>
                       <CornerDownLeft className="h-3 w-3 text-brass opacity-0 group-data-[selected=true]/cmd-item:opacity-100" aria-hidden="true" />
                     </div>
                   </Command.Item>
