@@ -25,6 +25,16 @@ import {
 } from '@/data/schema';
 import type * as schema from '@/data/schema';
 import { completeInvalidationValues } from '@/data/repos/shared/delivery-invalidation-values';
+
+/**
+ * Escapes LIKE wildcards so bound identifiers match literally.
+ *
+ * @param value - Raw identifier interpolated into a LIKE pattern.
+ * @returns Value with backslash, percent, and underscore escaped.
+ */
+export function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
 import {
   isUniqueViolation,
   mapCleanup,
@@ -256,7 +266,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       const asset = mapMedia(mediaRows[0]);
       if (asset.owner.kind === 'organization') {
         const refs = await transaction.select({ id: publishers.id }).from(publishers)
-          .where(and(eq(publishers.organizationId, context.organizationId), eq(publishers.status, 'active'), sql`${publishers.contacts}->>'logoUrl' LIKE '%/' || ${mediaId}`)).limit(1);
+          .where(and(eq(publishers.organizationId, context.organizationId), eq(publishers.status, 'active'), sql`${publishers.contacts}->>'logoUrl' LIKE '%/' || ${escapeLikePattern(mediaId)} ESCAPE '\\'`)).limit(1);
         if (refs.length > 0) return asset;
         if (asset.mediaType.startsWith('image/') && (asset.purpose === 'article-inline' || asset.purpose === 'article-cover')
           && await this.isOrgArticleMediaVisible(transaction, context, mediaId)) return asset;
@@ -285,7 +295,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
     if (override.length > 0) return true;
     const inline = await transaction.select({ id: articles.id }).from(articles)
       .innerJoin(articleSites, and(eq(articleSites.organizationId, articles.organizationId), eq(articleSites.articleId, articles.id)))
-      .where(and(liveArticle, publishedCopy, sql`${articles.bodyJson}::text LIKE ${`%media:${mediaId}%`}`)).limit(1);
+      .where(and(liveArticle, publishedCopy, sql`${articles.bodyJson}::text LIKE ${`%media:${escapeLikePattern(mediaId)}%`} ESCAPE '\\'`)).limit(1);
     return inline.length > 0;
   }
 
