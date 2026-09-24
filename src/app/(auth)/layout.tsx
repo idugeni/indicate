@@ -1,12 +1,11 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+import { controlPlaneIcons } from '@/ui/site/metadata-guard';
+
 export const metadata: Metadata = {
   title: 'Masuk',
-  icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-icon.png',
-  },
+  ...controlPlaneIcons(),
   robots: {
     index: false,
     follow: false,

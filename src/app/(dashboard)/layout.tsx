@@ -1,13 +1,11 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { DashboardProviders } from '@/app/(dashboard)/dashboard-providers';
+import { controlPlaneIcons } from '@/ui/site/metadata-guard';
 
 export const metadata: Metadata = {
   title: 'Dashboard',
-  icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-icon.png',
-  },
+  ...controlPlaneIcons(),
   robots: {
     index: false,
     follow: false,

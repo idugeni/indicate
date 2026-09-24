@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { indexableRobots } from '@/modules/site/seo';
+import { controlPlaneIcons } from '@/ui/site/metadata-guard';
 import { SERVICE_SUMMARY } from '@/ui/site/marketing-content';
 import { LandingPage } from '@/modules/site/components/landing-page';
 import { deliveryComposition } from '@/modules/delivery';
@@ -23,10 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
       return {
         description: SERVICE_SUMMARY,
         robots: indexableRobots(),
-        icons: {
-          icon: '/favicon.ico',
-          apple: '/apple-icon.png',
-        },
+        ...controlPlaneIcons(),
         twitter: { card: 'summary_large_image' },
       };
     }

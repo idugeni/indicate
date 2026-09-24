@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { siteMetadata } from '@/ui/site/metadata-guard';
+import { controlPlaneIcons, siteMetadata } from '@/ui/site/metadata-guard';
 
 const originalEnv = { ...process.env };
 
@@ -14,8 +14,20 @@ afterEach(() => {
   process.env = { ...originalEnv };
 });
 
-describe('siteMetadata', () => {
-  it('membangun kanonis, robots, dan kartu sosial dari origin control-plane', () => {
+describe('controlPlaneIcons', () => {
+  it('menyediakan sumber icon resolusi tinggi untuk crawler', () => {
+    const metadata = controlPlaneIcons();
+    const icons = metadata.icons;
+    if (typeof icons !== 'object' || icons === null || icons instanceof URL || Array.isArray(icons) || !('icon' in icons)) {
+      throw new Error('icons hilang');
+    }
+    expect(icons.icon).toContainEqual({ url: '/favicon.ico', sizes: '48x48' });
+    expect(icons.icon).toContainEqual({ url: '/apple-icon.png', sizes: '512x512', type: 'image/png' });
+    expect(icons.apple).toBe('/apple-icon.png');
+  });
+});
+
+describe('siteMetadata', () => {  it('membangun kanonis, robots, dan kartu sosial dari origin control-plane', () => {
     const metadata = siteMetadata('Layanan', 'Deskripsi layanan.', '/services');
     expect(metadata.title).toBe('Layanan');
     expect(metadata.description).toBe('Deskripsi layanan.');
@@ -39,5 +51,15 @@ describe('siteMetadata', () => {
   it('memangkas garis miring akhir pada site url', () => {
     const metadata = siteMetadata('Harga', 'Deskripsi harga.', '/pricing');
     expect(metadata.alternates?.canonical).toBe('https://dasbor.example/pricing');
+  });
+
+  it('memakai kartu OG per-halaman saat imagePath diisi', () => {
+    const metadata = siteMetadata('Layanan', 'Deskripsi layanan.', '/services', '/services/opengraph-image');
+    expect(metadata.openGraph).toMatchObject({
+      images: [{ url: 'https://dasbor.example/services/opengraph-image' }],
+    });
+    expect(metadata.twitter).toMatchObject({
+      images: ['https://dasbor.example/services/opengraph-image'],
+    });
   });
 });

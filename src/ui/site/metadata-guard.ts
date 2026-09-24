@@ -26,10 +26,39 @@ function controlPlaneOrigin(): string {
   }
 }
 
-export function siteMetadata(title: string, description: string, path: string): Metadata {
+/**
+ * Shared control-plane icons: the ICO covers legacy browsers while the 512px
+ * PNG gives crawlers (Google recommends larger than 48x48) a high-resolution
+ * source under `rel="icon"` itself, not only `apple-touch-icon`.
+ *
+ * @returns Icons metadata shared by every control-plane surface.
+ */
+export function controlPlaneIcons(): Pick<Metadata, 'icons'> {
+  return {
+    icons: {
+      icon: [
+        { url: '/favicon.ico', sizes: '48x48' },
+        { url: '/apple-icon.png', sizes: '512x512', type: 'image/png' },
+      ],
+      apple: '/apple-icon.png',
+    },
+  };
+}
+
+/**
+ * Build canonical control-plane metadata for a marketing page.
+ *
+ * @param title - Short page title without brand suffix.
+ * @param description - Page description reused for Open Graph and Twitter.
+ * @param path - Canonical path starting with `/`.
+ * @param imagePath - OG image path starting with `/`; defaults to the shared root card.
+ * @returns Metadata with canonical URL, indexable robots, and social cards.
+ */
+export function siteMetadata(title: string, description: string, path: string, imagePath = '/opengraph-image'): Metadata {
   const origin = controlPlaneOrigin();
   const canonical = `${origin}${path}`;
   const pageTitle = `${title} | ${SERVICE_NAME}`;
+  const imageUrl = `${origin}${imagePath}`;
   return {
     title,
     description,
@@ -47,7 +76,7 @@ export function siteMetadata(title: string, description: string, path: string): 
       description,
       images: [
         {
-          url: `${origin}/opengraph-image`,
+          url: imageUrl,
           width: 1200,
           height: 630,
           alt: pageTitle,
@@ -58,7 +87,7 @@ export function siteMetadata(title: string, description: string, path: string): 
       card: 'summary_large_image',
       title: pageTitle,
       description,
-      images: [`${origin}/opengraph-image`],
+      images: [imageUrl],
     },
   };
 }

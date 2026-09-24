@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Suspense } from 'react';
 import type { Viewport } from 'next';
 import { SiteShell } from '@/modules/site/components/layout/site-shell';
-import { requireDashboardSurface } from '@/ui/site/metadata-guard';
+import { controlPlaneIcons, requireDashboardSurface } from '@/ui/site/metadata-guard';
 
 export const viewport: Viewport = {
   themeColor: '#f4f2ec',
@@ -11,10 +11,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-icon.png',
-  },
+  ...controlPlaneIcons(),
 };
 
 /**
