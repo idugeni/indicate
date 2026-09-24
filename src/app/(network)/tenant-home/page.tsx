@@ -1,6 +1,8 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { buildSeoDocument, indexableRobots, tenantFavicon } from '@/modules/site/seo';
 import { ListingPage } from '@/modules/site/components/network/network-listing';
+import RootLoading from '@/app/loading';
 import { resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 export const maxDuration = 25;
@@ -37,8 +39,20 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-/** Portal home: same as the tenant host `/` (proxy rewrite), boundary follows the network segment. */
-export default async function TenantHomePage() {
+/**
+ * Render the static portal shell.
+ *
+ * @remarks Hostname is only read inside Suspense for instant validation, matching the sibling network routes.
+ */
+export default function TenantHomePage() {
+  return (
+    <Suspense fallback={<RootLoading />}>
+      <TenantHomeContent />
+    </Suspense>
+  );
+}
+
+async function TenantHomeContent() {
   const site = await resolveNetworkSite({}, '/');
   return <ListingPage site={site} title={site.settings.name} />;
 }
