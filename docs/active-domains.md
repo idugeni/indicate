@@ -12,6 +12,11 @@ apex/`www` lama (preserve path+query); `api`/`webhook`/`media`/`pv` lama dual-se
 Terblokir saat ini: kuota Vercel 50/50 (tambah domain baru menunggu Pro riil/limit naik)
 dan zona Cloudflare baru belum dibuat (tanpa tool create-zone di MCP; via dashboard),
 lalu NS registrar. Email ikut pindah (Resend sending domain + Supabase Auth + 13 template).
+Resend domain `indicate.website` sudah dibuat 2026-09-24
+(ID `f2cd59b7-faa2-47ab-a696-34bb1bafe514`, us-east-1, sending enabled / receiving disabled,
+tracking off; status `not_started`). Record DNS pending (pasang setelah zona CF aktif):
+`resend._domainkey` TXT DKIM, `send` MX `feedback-smtp.us-east-1.amazonses.com` (10),
+`send` TXT `v=spf1 include:amazonses.com ~all`, `rsend` CNAME `send.forge.rmta.net`.
 > **Related:** [domains](domains.md) · [cloudflare baseline](cloudflare-baseline.md) · [release checklist](release-checklist.md)
 
 ## Kuota Vercel
