@@ -4,6 +4,9 @@
 <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">Anda diundang bergabung ke workspace Indicate.&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;</div>
 <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td align="center" style="padding:32px 16px;">
 <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#ffffff" style="max-width:600px;background-color:#ffffff;border:1px solid #e2ded2;border-radius:8px;">
+<tr><td align="center" style="padding:0;text-align:center;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td height="4" bgcolor="#8a5f1c" style="background-color:#8a5f1c;font-size:0;line-height:0;border-radius:8px 8px 0 0;">&nbsp;</td></tr></table>
+</td></tr>
 <tr><td align="center" style="padding:32px 32px 0 32px;text-align:center;">
 <img src="https://indicate.website/brand/indicate-landscape.png" width="220" border="0" alt="Indicate — Publishing infrastructure" style="display:block;width:220px;max-width:100%;height:auto;border:0;margin:0 auto;">
 </td></tr>
@@ -14,14 +17,19 @@
 <p style="margin:0 0 10px 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:16px;letter-spacing:2px;color:#8a5f1c;">UNDANGAN</p>
 <p style="margin:0 0 12px 0;font-family:Georgia,'Times New Roman',serif;font-size:26px;line-height:34px;color:#1a2430;">Bergabung ke workspace Indicate</p>
 {{ with .Data }}{{ if .full_name }}<p style="margin:0 0 12px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:24px;color:#3d4451;">Halo {{ .full_name }},</p>{{ end }}{{ end }}
-<p style="margin:0 0 12px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:24px;color:#3d4451;">Anda diundang untuk mengelola jaringan portal berita dalam satu ruang redaksi terpusat dengan akun <strong>{{ .Email }}</strong>. Klik tombol berikut untuk menerima undangan dan mengaktifkan akun.</p>
+<p style="margin:0 0 12px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:24px;color:#3d4451;">Anda diundang untuk mengelola jaringan portal berita dalam satu ruang redaksi terpusat. Akun undangan ini memakai alamat di bawah.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin:16px 0 8px 0;"><tr><td align="center" bgcolor="#f8f7f2" style="background-color:#f8f7f2;border:1px solid #e2ded2;border-radius:6px;padding:16px;">
+<p style="margin:0 0 4px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;letter-spacing:2px;color:#5f6b7a;">AKUN UNDANGAN</p>
+<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;line-height:22px;color:#1a2430;word-break:break-all;">{{ .Email }}</p>
+</td></tr></table>
 <table align="center" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin:20px auto 8px auto;"><tr><td bgcolor="#1a2430" style="background-color:#1a2430;border-radius:6px;">
 <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{{ .ConfirmationURL }}" style="width:200px;height:44px;" arcsize="14%" fillcolor="#1a2430" stroke="f"><v:textbox inset="0,0,0,0"><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">Terima undangan</center></v:textbox></v:roundrect><![endif]-->
 <!--[if !mso]><!-- --><a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:13px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;line-height:20px;color:#ffffff;text-decoration:none;">Terima undangan</a><!--<![endif]-->
 </td></tr></table>
 <p style="margin:12px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:#5f6b7a;">Tombol tidak berfungsi? Salin tautan ini ke peramban:<br><a href="{{ .ConfirmationURL }}" style="color:#8a5f1c;word-break:break-all;">{{ .ConfirmationURL }}</a></p>
 {{ if .RedirectTo }}<p style="margin:12px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:#5f6b7a;">Setelah menerima, Anda akan diarahkan ke:<br><span style="word-break:break-all;">{{ .RedirectTo }}</span></p>{{ end }}
-<p style="margin:12px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:#5f6b7a;">Abaikan email ini bila Anda tidak mengenal pengundangnya. Jelajahi platform lebih dulu di <a href="{{ .SiteURL }}" style="color:#8a5f1c;">{{ .SiteURL }}</a>.</p>
+<p style="margin:16px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:#5f6b7a;">Setelah klik: akun aktif, Anda masuk ke workspace, dan peran Anda ditentukan administrator. Jelajahi platform lebih dulu di <a href="{{ .SiteURL }}" style="color:#8a5f1c;">{{ .SiteURL }}</a>.</p>
+<p style="margin:12px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:#5f6b7a;">Abaikan email ini bila Anda tidak mengenal pengundangnya. Pastikan pengirimnya <strong>noreply@indicate.website</strong>.</p>
 </td></tr>
 <tr><td align="center" style="padding:8px 32px 32px 32px;text-align:center;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td height="1" bgcolor="#e2ded2" style="background-color:#e2ded2;font-size:0;line-height:0;">&nbsp;</td></tr></table>
