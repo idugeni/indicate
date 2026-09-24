@@ -20,6 +20,9 @@ Supabase redirect baru ditambahkan manual; Site URL lama diganti saat pensiun.
 Pensiun 2026-09-25: DB nol referensi host lama (articles cover/body/canonical +
 publishing targets 0); `.env` lokal pengirim baru; asosiasi Vercel `api.`/`webhook.` lama
 dilepas (51 domain; apex lama dipertahankan untuk redirect); DNS/route lama tetap dual-serve.
+2026-09-26: apex lama memicu warning "Invalid Configuration" di dashboard Vercel
+(DNS proxied Cloudflare); asosiasi dilepas sekalian (redirect 100% di edge CF,
+terverifikasi tetap 308) — project kini 50 domain.
 Template email Auth live disinkron via `supabase config push` (13 konten + admin_email baru).
 Gap SMTP 2026-09-25: key lama terikat domain lama (Resend 400); dibuat key baru
 `sending_access` domain baru, dipasang di `.env`, Vercel, dan SMTP Auth; uji API + recovery OK.
