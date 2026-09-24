@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { DomainProvisioningService } from '@/modules/delivery/domain-provisioning-service';
+import { DomainProvisioningService, isSingleLabelSubdomain } from '@/modules/delivery/domain-provisioning-service';
 
 const NOW = new Date('2026-09-18T14:00:00.000Z');
 
@@ -72,8 +72,7 @@ describe('DomainProvisioningService reconcile', () => {
   });
 });
 
-describe('DomainProvisioningService guards', () => {
-  it('menolak aktivasi dari aktor terkunci region', async () => {
+describe('DomainProvisioningService guards', () => {  it('menolak aktivasi dari aktor terkunci region', async () => {
     const { service } = harness();
     const locked = {
       actorType: 'user',
@@ -104,5 +103,64 @@ describe('DomainProvisioningService guards', () => {
     await expect(service.resumeDeactivation(actor, attempt({ activationState: 'pending' }) as never, NOW)).rejects.toThrow(
       'CONFIGURATION_INVALID',
     );
+  });
+});
+
+describe('DomainProvisioningService db-only regional', () => {
+  it('mengenali subdomain satu label', () => {
+    expect(isSingleLabelSubdomain('kota.fakta01.my.id', 'fakta01.my.id')).toBe(true);
+    expect(isSingleLabelSubdomain('fakta01.my.id', 'fakta01.my.id')).toBe(false);
+    expect(isSingleLabelSubdomain('a.b.fakta01.my.id', 'fakta01.my.id')).toBe(false);
+    expect(isSingleLabelSubdomain('lain.example.id', 'fakta01.my.id')).toBe(false);
+  });
+
+  const actor = {
+    actorType: 'system',
+    actorId: 'delivery:attempt-1',
+    organizationId: 'org-1',
+    permissionSet: new Set(['sites.manage']),
+    entryPoint: 'reconciler',
+    requestId: 'req-1',
+  } as const;
+
+  function dbOnlyHarness() {
+    const repository = {
+      updateActivation: vi.fn(async (_a: unknown, _id: string, state: string) => attempt({ activationState: state, externalStatus: { apexHostname: 'fakta01.my.id' } })),
+      completeActivation: vi.fn(async () => ({ normalizedHostname: 'kota.fakta01.my.id' })),
+      failActivation: vi.fn(async () => undefined),
+    };
+    const cloudflare = { verifyDomainZone: vi.fn(async () => ({ verified: true, category: 'verified' })), ensureExactVerificationTxt: vi.fn(), removeExactVerificationTxt: vi.fn() };
+    const vercel = { associateExactDomain: vi.fn(), verifyExactDomain: vi.fn(), removeExactDomain: vi.fn() };
+    const probe = { verifyPendingHostname: vi.fn(async () => true) };
+    const zone = { resolve: vi.fn(async () => ({ domainId: 'd1', cloudflareZoneId: 'z1', apexHostname: 'fakta01.my.id' })) };
+    const service = new DomainProvisioningService(
+      repository as never,
+      cloudflare as never,
+      vercel as never,
+      probe as never,
+      new Set(['dashboard.example']),
+      zone as never,
+      [30, 120, 600],
+      4,
+      undefined,
+      true,
+    );
+    return { repository, vercel, probe, service };
+  }
+
+  it('melewati asosiasi exact untuk subdomain satu label tanpa api call vercel', async () => {
+    const { service, vercel, repository } = dbOnlyHarness();
+    const pending = attempt({ operation: 'activate', activationState: 'pending', hostname: 'kota.fakta01.my.id', externalStatus: {} });
+    await service.resume(actor, pending as never, NOW);
+    expect(vercel.associateExactDomain).not.toHaveBeenCalled();
+    expect(vercel.verifyExactDomain).not.toHaveBeenCalled();
+    expect(repository.completeActivation).toHaveBeenCalledTimes(1);
+  });
+
+  it('tetap memakai exact untuk apex dan multi-label', async () => {
+    const { service, vercel } = dbOnlyHarness();
+    const apexAttempt = attempt({ operation: 'activate', activationState: 'cloudflare_verified', hostname: 'fakta01.my.id', externalStatus: { apexHostname: 'fakta01.my.id' } });
+    await expect(service.resume(actor, apexAttempt as never, NOW)).rejects.toThrow();
+    expect(vercel.associateExactDomain).toHaveBeenCalledWith('fakta01.my.id');
   });
 });

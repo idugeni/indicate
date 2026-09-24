@@ -28,8 +28,8 @@ export async function deliveryOperationsComposition() {
     async resolve(hostname, organizationId) {
       return runtime.client.begin(async (transaction) => {
         await transaction`SELECT indicate_private.set_tenant_context(${organizationId}::uuid, 'system:zone-resolver', ${crypto.randomUUID()})`;
-        const rows = await transaction<{ id: string; cloudflare_zone_id: string | null }[]>`
-          SELECT id, cloudflare_zone_id FROM public.domains
+        const rows = await transaction<{ id: string; cloudflare_zone_id: string | null; normalized_hostname: string }[]>`
+          SELECT id, cloudflare_zone_id, normalized_hostname FROM public.domains
           WHERE (${hostname} = normalized_hostname OR ${hostname} LIKE '%.' || normalized_hostname)
             AND status = 'active' AND cloudflare_zone_id IS NOT NULL
           ORDER BY length(normalized_hostname) DESC
@@ -37,7 +37,7 @@ export async function deliveryOperationsComposition() {
         `;
         const row = rows[0];
         if (row === undefined || row.cloudflare_zone_id === null) return null;
-        return { domainId: row.id, cloudflareZoneId: row.cloudflare_zone_id };
+        return { domainId: row.id, cloudflareZoneId: row.cloudflare_zone_id, apexHostname: row.normalized_hostname };
       });
     },
   };

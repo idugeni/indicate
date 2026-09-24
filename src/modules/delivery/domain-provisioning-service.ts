@@ -15,7 +15,19 @@ export class DeliveryOperationPendingError extends Error {
 }
 
 export interface DomainZoneResolver {
-  resolve(hostname: string, organizationId: string): Promise<{ domainId: string; cloudflareZoneId: string } | null>;
+  resolve(hostname: string, organizationId: string): Promise<{ domainId: string; cloudflareZoneId: string; apexHostname: string } | null>;
+}
+
+/**
+ * Single-label subdomain check for wildcard inheritance.
+ *
+ * @param hostname - Candidate regional hostname.
+ * @param apex - Owning apex hostname.
+ * @returns True when hostname is exactly one label under the apex.
+ */
+export function isSingleLabelSubdomain(hostname: string, apex: string): boolean {
+  if (hostname.length <= apex.length + 1 || !hostname.endsWith(`.${apex}`)) return false;
+  return !hostname.slice(0, -(apex.length + 1)).includes('.');
 }
 
 export class DomainProvisioningService {
@@ -29,6 +41,7 @@ export class DomainProvisioningService {
     private readonly retryDelaysSeconds: readonly number[] = [30, 120, 600],
     private readonly maxAttempts = 4,
     private readonly hostnameCache?: HostnameCachePort,
+    private readonly dbOnlyRegionalOnboarding = false,
   ) {}
 
   async activate(actor: AuthorizedTenantActorContext, siteId: string, rawHostname: string, now = new Date(), rawPreviousHostname: string | null = null): Promise<ResolvedSiteContext> {
@@ -49,21 +62,26 @@ export class DomainProvisioningService {
         if (owned === null) throw new Error('DEPENDENCY_UNAVAILABLE');
         const verification = await this.cloudflare.verifyDomainZone({ domainId: owned.domainId, normalizedHostname: attempt.hostname, cloudflareZoneId: owned.cloudflareZoneId });
         if (!verification.verified || verification.category !== 'verified') throw new Error('DEPENDENCY_UNAVAILABLE');
-        attempt = await this.repository.updateActivation(actor, attempt.id, 'cloudflare_verified', { authority: this.cloudflare.authority, publicDelegation: true, zoneId: owned.cloudflareZoneId }, now.toISOString());
+        attempt = await this.repository.updateActivation(actor, attempt.id, 'cloudflare_verified', { authority: this.cloudflare.authority, publicDelegation: true, zoneId: owned.cloudflareZoneId, apexHostname: owned.apexHostname }, now.toISOString());
       }
       if (attempt.activationState === 'cloudflare_verified') {
-        const association = await this.vercel.associateExactDomain(attempt.hostname);
-        let verified = association.verified;
-        if (association.verificationChallenge !== undefined && !verified) {
-          const challenge = association.verificationChallenge;
-          await this.cloudflare.ensureExactVerificationTxt(attempt.hostname, challenge.name, challenge.value);
-          verified = await this.vercel.verifyExactDomain(attempt.hostname);
-          if (verified) await this.cloudflare.removeExactVerificationTxt(attempt.hostname, challenge.name, challenge.value);
-        } else if (association.associated) {
-          verified = verified && await this.vercel.verifyExactDomain(attempt.hostname);
+        const apex = typeof attempt.externalStatus.apexHostname === 'string' ? attempt.externalStatus.apexHostname : null;
+        if (this.dbOnlyRegionalOnboarding && apex !== null && isSingleLabelSubdomain(attempt.hostname, apex)) {
+          attempt = await this.repository.updateActivation(actor, attempt.id, 'vercel_associated', { exactDomain: false, wildcardInherited: true, apex }, now.toISOString());
+        } else {
+          const association = await this.vercel.associateExactDomain(attempt.hostname);
+          let verified = association.verified;
+          if (association.verificationChallenge !== undefined && !verified) {
+            const challenge = association.verificationChallenge;
+            await this.cloudflare.ensureExactVerificationTxt(attempt.hostname, challenge.name, challenge.value);
+            verified = await this.vercel.verifyExactDomain(attempt.hostname);
+            if (verified) await this.cloudflare.removeExactVerificationTxt(attempt.hostname, challenge.name, challenge.value);
+          } else if (association.associated) {
+            verified = verified && await this.vercel.verifyExactDomain(attempt.hostname);
+          }
+          if (!association.associated || !verified) throw new Error('DEPENDENCY_UNAVAILABLE');
+          attempt = await this.repository.updateActivation(actor, attempt.id, 'vercel_associated', { exactDomain: true, verified: true, responsibility: this.vercel.responsibility }, now.toISOString());
         }
-        if (!association.associated || !verified) throw new Error('DEPENDENCY_UNAVAILABLE');
-        attempt = await this.repository.updateActivation(actor, attempt.id, 'vercel_associated', { exactDomain: true, verified: true, responsibility: this.vercel.responsibility }, now.toISOString());
       }
       if (attempt.activationState === 'vercel_associated') {
         if (!await this.probe.verifyPendingHostname(attempt.hostname, attempt.id, actor.requestId)) throw new Error('DEPENDENCY_UNAVAILABLE');

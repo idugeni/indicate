@@ -42,7 +42,7 @@ Setiap domain apex = satu zona Cloudflare (paket Free) dengan konfigurasi IDENTI
 4. **Cache (`http_request_cache_settings`):** bypass untuk private/auth/mutasi; edge-cache halaman publik 60 dtk (tanpa query); feeds override 600 dtk; brand bytes (`/icon.png`, `/apple-touch-icon.png`, `/logo.png`, `/manifest.webmanifest`, tanpa query) override 1 tahun immutable.
 5. **Rate limit (`http_ratelimit`):** API/auth 20 per 10 dtk per IP → block.
 6. **Bots:** `fight_mode` on, `ai_bots_protection` **disabled**, `crawler_protection` enabled. Keputusan sadar 2026-09-23: AI-block paket Free menendang crawler sosial campuran (kasus facebookexternalhit 403, terbukti via pilot) dan TIDAK bisa di-skip per-UA — proteksi konten mengandalkan hak cipta/ToS. Jangan nyalakan AI-block tanpa pengecualian yang terbukti jalan.
-7. **Vercel:** asosiasi exact setiap hostname (apex + regional) ke satu proyek; verifikasi `verified`, tanpa orphan.
+7. **Vercel:** asosiasi exact setiap hostname apex ke satu proyek; verifikasi `verified`, tanpa orphan. Regional satu-label (`wonosobo.*`) DB-only tanpa asosiasi exact setelah wildcard `*.apex` terasosiasi: saga aktivasi melewati langkah Vercel (`exactDomain: false`, `wildcardInherited: true` di `external_status`), tetap probe + audit (`DomainProvisioningService`, flag `dbOnlyRegionalOnboarding`).
 
 ## Verifikasi wajib (fix tanpa verifikasi = belum selesai)
 
@@ -54,6 +54,6 @@ Setiap domain apex = satu zona Cloudflare (paket Free) dengan konfigurasi IDENTI
 
 - Biaya favicon/logo: 1 upload per domain, 0 per region. Ganti file induk = cascade otomatis ke semua region.
 - Staleness terbatas: task invalidasi per site apex; halaman regional ter-cache edge bisa tertinggal hingga TTL/dispatcher (puluhan detik–menit).
-- Batas: tidak ada enforcement kuota domain/site di DB (`subscriptions` status-only, tanpa tabel kuota); tiap hostname butuh asosiasi exact Vercel via saga aktivasi (DNS regional satu-label sudah tercakup wildcard Cloudflare + Universal SSL).
+- Batas: tidak ada enforcement kuota domain/site di DB (`subscriptions` status-only, tanpa tabel kuota); hostname apex butuh asosiasi exact Vercel via saga aktivasi, regional satu-label DB-only setelah wildcard per-apex (DNS regional satu-label sudah tercakup wildcard Cloudflare + Universal SSL).
 - +1 query PK (settings induk) per request regional — negligible.
 - Larangan umum tetap berlaku: jangan cetak secret, jangan tebak endpoint (cek OpenAPI/MCP), skrip sekali-pakai di luar repo (temp dir), repo hanya diubah bila kode yang diperbaiki.
