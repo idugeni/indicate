@@ -257,8 +257,10 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       if (asset.owner.kind === 'organization') {
         const refs = await transaction.select({ id: publishers.id }).from(publishers)
           .where(and(eq(publishers.organizationId, context.organizationId), eq(publishers.status, 'active'), sql`${publishers.contacts}->>'logoUrl' LIKE '%/' || ${mediaId}`)).limit(1);
-        if (refs.length === 0) return null;
-        return asset;
+        if (refs.length > 0) return asset;
+        if (asset.mediaType.startsWith('image/') && (asset.purpose === 'article-inline' || asset.purpose === 'article-cover')
+          && await this.isOrgArticleMediaVisible(transaction, context, mediaId)) return asset;
+        return null;
       }
       const site = { id: siteRows[0].site.id, organizationId: context.organizationId, active: true, normalizedHostname: siteRows[0].site.normalizedHostname, settingsMediaIds: [...new Set([...ownMediaIds, ...inheritedMediaIds])] };
       const articleRefs = asset.owner.kind !== 'article' ? [] : (await transaction.select({ id: articles.id, status: articles.status }).from(articles).where(and(eq(articles.organizationId, context.organizationId), eq(articles.id, asset.owner.articleId))).limit(1))
@@ -268,6 +270,23 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       if (!canPublicAccessMedia({ context, media: asset, site, articles: articleRefs, articleSites: refs })) return null;
       return asset;
     });
+  }
+
+  private async isOrgArticleMediaVisible(transaction: Transaction, context: HostnameContext, mediaId: string): Promise<boolean> {
+    const publishedCopy = and(eq(articleSites.organizationId, context.organizationId), eq(articleSites.siteId, context.siteId), eq(articleSites.active, true), eq(articleSites.state, 'published'));
+    const liveArticle = and(eq(articles.organizationId, context.organizationId), eq(articles.status, 'active'));
+    const lead = await transaction.select({ id: articles.id }).from(articles)
+      .innerJoin(articleSites, and(eq(articleSites.organizationId, articles.organizationId), eq(articleSites.articleId, articles.id)))
+      .where(and(liveArticle, publishedCopy, eq(articles.leadMediaId, mediaId))).limit(1);
+    if (lead.length > 0) return true;
+    const override = await transaction.select({ id: articleSites.id }).from(articleSites)
+      .innerJoin(articles, and(eq(articles.organizationId, articleSites.organizationId), eq(articles.id, articleSites.articleId)))
+      .where(and(liveArticle, publishedCopy, eq(articleSites.customImageMediaId, mediaId))).limit(1);
+    if (override.length > 0) return true;
+    const inline = await transaction.select({ id: articles.id }).from(articles)
+      .innerJoin(articleSites, and(eq(articleSites.organizationId, articles.organizationId), eq(articleSites.articleId, articles.id)))
+      .where(and(liveArticle, publishedCopy, sql`${articles.bodyJson}::text LIKE ${`%media:${mediaId}%`}`)).limit(1);
+    return inline.length > 0;
   }
 
   private async rejectCrossSiteDuplicates(

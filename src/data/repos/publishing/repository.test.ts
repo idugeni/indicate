@@ -44,8 +44,8 @@ function siteRow() {
   };
 }
 
-function harness(selects: { readonly media: readonly unknown[]; readonly publishers: readonly unknown[] }) {
-  const queue: readonly (readonly unknown[])[] = [selects.media, [siteRow()], [], selects.publishers];
+function harness(selects: { readonly media: readonly unknown[]; readonly publishers: readonly unknown[]; readonly extra?: readonly (readonly unknown[])[] }) {
+  const queue: readonly (readonly unknown[])[] = [selects.media, [siteRow()], [], selects.publishers, ...(selects.extra ?? [])];
   let cursor = 0;
   const chainable: Record<string, (...args: readonly unknown[]) => unknown> = {};
   const terminal = async () => [...(queue[Math.min(cursor++, queue.length - 1)] ?? [])];
@@ -74,5 +74,27 @@ describe('authorizePublicMedia organization assets', () => {
   it('menolak media yang tidak ada', async () => {
     const repository = harness({ media: [], publishers: [{ id: 'p1' }] });
     await expect(repository.authorizePublicMedia({ ...CONTEXT }, 'm-missing', 'req-1')).resolves.toBe(null);
+  });
+});
+
+describe('authorizePublicMedia organization article images', () => {
+  it('mengizinkan inline organisasi yang disematkan artikel tayang', async () => {
+    const repository = harness({ media: [{ ...mediaRow(), purpose: 'article-inline', mediaType: 'image/jpeg' }], publishers: [], extra: [[], [], [{ id: 'a1' }]] });
+    expect((await repository.authorizePublicMedia({ ...CONTEXT }, 'm-org', 'req-1'))?.id).toBe('m-org');
+  });
+
+  it('menolak inline organisasi tanpa rujukan tayang', async () => {
+    const repository = harness({ media: [{ ...mediaRow(), purpose: 'article-inline', mediaType: 'image/jpeg' }], publishers: [], extra: [[], [], []] });
+    await expect(repository.authorizePublicMedia({ ...CONTEXT }, 'm-org', 'req-1')).resolves.toBe(null);
+  });
+
+  it('mengizinkan sampul organisasi yang menjadi lead artikel tayang', async () => {
+    const repository = harness({ media: [{ ...mediaRow(), purpose: 'article-cover', mediaType: 'image/jpeg' }], publishers: [], extra: [[{ id: 'a1' }]] });
+    expect((await repository.authorizePublicMedia({ ...CONTEXT }, 'm-org', 'req-1'))?.id).toBe('m-org');
+  });
+
+  it('menolak media organisasi bukan gambar walau dirujuk', async () => {
+    const repository = harness({ media: [{ ...mediaRow(), purpose: 'article-inline', mediaType: 'application/pdf' }], publishers: [], extra: [[], [], [{ id: 'a1' }]] });
+    await expect(repository.authorizePublicMedia({ ...CONTEXT }, 'm-org', 'req-1')).resolves.toBe(null);
   });
 });

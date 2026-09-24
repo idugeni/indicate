@@ -862,7 +862,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         .from(media)
         .where(and(eq(media.organizationId, state.organizationId), inArray(media.id, [...position.keys()]), eq(media.state, 'active'), sql`${media.mediaType} LIKE 'image/%'`));
       for (const row of rows) {
-        if (row.articleId !== article.id) continue;
+        if (row.articleId !== article.id && row.articleId !== null) continue;
         const patch = editorial.get(row.id);
         if (patch === undefined) continue;
         const nextAlt = row.altText ?? patch.alt;

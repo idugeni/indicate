@@ -5,7 +5,7 @@ import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type { ActivationAttempt, FeedArticle, InvalidationPlan, InvalidationTask, NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
 import { DEFAULT_PUBLISHER_BIO } from '@/modules/delivery/models';
 import { articleBodyText } from '@/modules/site/article-markup';
-import { isTipTapDoc, tiptapToText } from '@/modules/site/tiptap-document';
+import { isTipTapDoc, extractTipTapImages, tiptapToText } from '@/modules/site/tiptap-document';
 import { pickPublisherSocials } from '@/modules/site/company-contact';
 import { isPublicObjectKey } from '@/modules/publishing/object-key';
 import { DeliveryConflictError, DeliveryResourceUnavailableError, type DeliveryRepository, type PublicBundle } from '@/modules/delivery/ports';
@@ -50,6 +50,11 @@ function robotsDirectiveFor(value: 'index,follow' | 'noindex,nofollow' | null): 
 function publicMediaUrl(publicHost: string | null, objectKey: string | null): string | null {
   if (publicHost === null || objectKey === null || !isPublicObjectKey(objectKey)) return null;
   return `https://${publicHost}/${objectKey}`;
+}
+
+function galleryScope(articleId: string, referencedIds: readonly string[]) {
+  if (referencedIds.length === 0) return eq(media.articleId, articleId);
+  return or(eq(media.articleId, articleId), and(sql`${media.articleId} IS NULL`, inArray(media.id, [...referencedIds])));
 }
 
 /**
@@ -212,16 +217,16 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           .limit(1);
         detailBody = bodyRows[0]?.body ?? null;
         detailBodyJson = (bodyRows[0]?.bodyJson ?? null) as unknown | null;
-        const galleryRows = await transaction.select({ id: media.id, objectKey: media.objectKey, thumbObjectKey: media.thumbObjectKey })
+        const galleryRows = await transaction.select({ id: media.id, objectKey: media.objectKey, thumbObjectKey: media.thumbObjectKey, altText: media.altText, caption: media.caption, widthPx: media.widthPx, heightPx: media.heightPx, mediaType: media.mediaType, sortOrder: media.sortOrder })
           .from(media)
-          .where(and(eq(media.organizationId, context.organizationId), eq(media.articleId, detailTarget.id), eq(media.state, 'active'), sql`${media.mediaType} LIKE 'image/%'`))
-          .orderBy(media.createdAt);
+          .where(and(eq(media.organizationId, context.organizationId), eq(media.state, 'active'), sql`${media.mediaType} LIKE 'image/%'`, galleryScope(detailTarget.id, isTipTapDoc(detailBodyJson) ? extractTipTapImages(detailBodyJson).map((image) => image.mediaId) : [])))
+          .orderBy(media.sortOrder, media.createdAt);
         detailGallery = galleryRows.map((galleryRow) => {
           const url = publicMediaUrl(this.publicHost, galleryRow.objectKey) ?? absoluteMediaUrl(context, galleryRow.id);
           const thumbUrl = galleryRow.thumbObjectKey === null
             ? null
             : (publicMediaUrl(this.publicHost, galleryRow.thumbObjectKey) ?? `${absoluteMediaUrl(context, galleryRow.id)}?variant=thumb`);
-          return { url, thumbnailUrl: thumbUrl };
+          return { id: galleryRow.id, url, thumbnailUrl: thumbUrl, alt: galleryRow.altText, caption: galleryRow.caption, width: galleryRow.widthPx, height: galleryRow.heightPx, mediaType: galleryRow.mediaType };
         });
       }
       const settings = shell.settings;

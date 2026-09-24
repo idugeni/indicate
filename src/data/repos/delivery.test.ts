@@ -222,6 +222,41 @@ describe('readSite projection', () => {
     expect(item).toBeDefined();
     expect(item).toHaveProperty('imageWidth', 1200);
     expect(item).toHaveProperty('imageHeight', 675);
+    expect(item).toHaveProperty('imageFocalX', 30);
+    expect(item).toHaveProperty('imageFocalY', 70);
+  });
+
+  it('memproyeksikan galeri dengan alt, caption, dan dimensi', async () => {
+    const { repository } = harness({
+      body: [{ body: 'Isi penuh artikel untuk halaman detail.' }],
+      gallery: [{ id: 'g1', objectKey: 'o/o1/p/article-inline/y=2026/m=09/article/a1/14-g1-0123456789abcdef.webp', thumbObjectKey: null, altText: 'Pasar pagi', caption: 'Suasana pasar', widthPx: 1200, heightPx: 675, mediaType: 'image/webp', sortOrder: 2 }],
+    });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, { articleSlug: 'berita-utama' });
+    const item = site?.articles[0];
+    expect(item).toBeDefined();
+    if (item !== undefined && isNetworkArticle(item)) {
+      expect(item.gallery).toHaveLength(1);
+      expect(item.gallery[0]).toMatchObject({ id: 'g1', alt: 'Pasar pagi', caption: 'Suasana pasar', width: 1200, height: 675, mediaType: 'image/webp' });
+    } else {
+      throw new Error('expected detail article with gallery');
+    }
+  });
+
+  it('memetakan galeri organisasi lewat jalur referensi bodyJson', async () => {
+    const doc = { type: 'doc', content: [{ type: 'image', attrs: { src: 'media:0199a2b3-4c5d-7e8f-9012-3456789abcde', alt: 'Potret' } }] };
+    const { repository } = harness({
+      body: [{ body: 'Lihat potret.', bodyJson: doc }],
+      gallery: [{ id: '0199a2b3-4c5d-7e8f-9012-3456789abcde', objectKey: 'o/o1/p/article-inline/y=2026/m=09/organization/14-g-0123456789abcdef.webp', thumbObjectKey: null, altText: null, caption: null, widthPx: 800, heightPx: 600, mediaType: 'image/webp', sortOrder: 0 }],
+    });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, { articleSlug: 'berita-utama' });
+    const item = site?.articles[0];
+    expect(item).toBeDefined();
+    if (item !== undefined && isNetworkArticle(item)) {
+      expect(item.gallery).toHaveLength(1);
+      expect(item.gallery[0]).toMatchObject({ id: '0199a2b3-4c5d-7e8f-9012-3456789abcde', alt: null, width: 800, height: 600 });
+    } else {
+      throw new Error('expected detail article with gallery');
+    }
   });
 
   it('mengosongkan dimensi saat sampul berupa hotlink luar', async () => {
