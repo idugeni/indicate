@@ -20,6 +20,7 @@ Supabase redirect baru ditambahkan manual; Site URL lama diganti saat pensiun.
 Pensiun 2026-09-25: DB nol referensi host lama (articles cover/body/canonical +
 publishing targets 0); `.env` lokal pengirim baru; asosiasi Vercel `api.`/`webhook.` lama
 dilepas (51 domain; apex lama dipertahankan untuk redirect); DNS/route lama tetap dual-serve.
+Template email Auth live disinkron via `supabase config push` (13 konten + admin_email baru).
 Terblokir saat ini: kuota Vercel 50/50 (tambah domain baru menunggu Pro riil/limit naik)
 dan zona Cloudflare baru belum dibuat (tanpa tool create-zone di MCP; via dashboard),
 lalu NS registrar. Email ikut pindah (Resend sending domain + Supabase Auth + 13 template).
