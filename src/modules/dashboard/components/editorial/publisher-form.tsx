@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useRef, useTransition, type FormEvent } from 'react';
+import { toast } from 'sonner';
 import {
   Check,
   Loader2,
@@ -8,6 +9,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { suggestAttributionLabel } from '@/modules/dashboard/components/editorial/publisher-attribution';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,12 +75,22 @@ export function PublisherForm({
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
+    const name = String(formData.get('name') ?? '').trim();
+    const attributionLabel = String(formData.get('attributionLabel') ?? '').trim();
+    if (name === '') {
+      toast.error('Isi nama penerbit dulu.');
+      return;
+    }
+    if (attributionLabel === '') {
+      toast.error('Isi label atribusi dulu.');
+      return;
+    }
 
     startCreateTransition(async () => {
       await command('publisher.create', {
-        name: String(formData.get('name') ?? '').trim(),
+        name,
         type: formData.get('type'),
-        attributionLabel: String(formData.get('attributionLabel') ?? '').trim(),
+        attributionLabel,
         contacts: {},
         evidenceReference: String(formData.get('evidenceReference') ?? '').trim() || null,
       });
@@ -93,7 +105,16 @@ export function PublisherForm({
     const publisherId = String(formData.get('publisherId'));
     const publisher = model?.publishers?.find((p) => p.id === publisherId);
 
-    if (!publisher) return;
+    if (!publisher) {
+      toast.error('Pilih penerbit dulu.');
+      return;
+    }
+    const decision = String(formData.get('decision'));
+    const reason = String(formData.get('reason') ?? '').trim();
+    if (decision === 'publisher.reject' && reason === '') {
+      toast.error('Alasan wajib diisi bila menolak.');
+      return;
+    }
 
     startVerifyTransition(async () => {
       await command(String(formData.get('decision')), {
@@ -107,10 +128,10 @@ export function PublisherForm({
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid items-start gap-4 md:grid-cols-2">
       <SectionCard icon={Plus} title="Penerbit baru" eyebrow="Registrasi">
 
-        <form ref={createFormRef} onSubmit={handleCreate} className="space-y-3.5">
+        <form ref={createFormRef} noValidate onSubmit={handleCreate} className="space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor={createNameId} className="font-mono text-xs text-paper-dim">
               Nama Resmi Media / Lembaga
@@ -196,24 +217,19 @@ export function PublisherForm({
 
       <SectionCard icon={ShieldCheck} title="Verifikasi & status" eyebrow="Tata kelola">
 
-        <form onSubmit={handleVerify} className="space-y-3.5">
+        <form noValidate onSubmit={handleVerify} className="space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor={verifyPubId} className="font-mono text-xs text-paper-dim">
               Pilih Penerbit
             </Label>
-            <DashboardSelect
+            <SearchCombobox
               id={verifyPubId}
               name="publisherId"
               disabled={isVerifying}
               defaultValue={model?.publishers?.[0]?.id ?? ''}
               placeholder="Pilih penerbit"
-            >
-              {model?.publishers?.map((item) => (
-                <DashboardSelectItem key={item.id} value={item.id}>
-                  {item.name} · [{VERIFICATION_STATUS_LABELS[item.verificationStatus] ?? item.verificationStatus}]
-                </DashboardSelectItem>
-              ))}
-            </DashboardSelect>
+              options={(model?.publishers ?? []).map((item) => ({ value: item.id, label: `${item.name} · [${VERIFICATION_STATUS_LABELS[item.verificationStatus] ?? item.verificationStatus}]` }))}
+            />
           </div>
 
           <div className="space-y-1.5">

@@ -109,4 +109,32 @@ describe('TipTapBodyView', () => {
     const { container } = render(<TipTapBodyView doc={{ type: 'paragraph' }} paragraphClassName={PARAGRAPH} listClassName={LIST} />);
     expect(container.textContent).toBe('');
   });
+
+  it('merender tabel, perataan, stabilo, dan warna teks', () => {
+    const cell = (text: string) => ({ type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] });
+    const doc = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', attrs: { textAlign: 'center' }, content: [{ type: 'text', text: 'Tengah' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Stabilo', marks: [{ type: 'highlight' }] }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Merah', marks: [{ type: 'textStyle', attrs: { color: '#b91c1c' } }] }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Nakal', marks: [{ type: 'textStyle', attrs: { color: 'red;evil' } }] }] },
+        {
+          type: 'table',
+          content: [
+            { type: 'tableRow', content: [{ type: 'tableHeader', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'A' }] }] }, cell('B')] },
+            { type: 'tableRow', content: [cell('1'), cell('2')] },
+          ],
+        },
+      ],
+    };
+    const { container } = render(<TipTapBodyView doc={doc} paragraphClassName={PARAGRAPH} listClassName={LIST} />);
+    expect(container.querySelector('p[style*="text-align: center"]')).not.toBe(null);
+    expect(container.querySelector('mark')?.textContent).toBe('Stabilo');
+    expect(container.querySelector('span[style*="color: rgb(185, 28, 28)"]')).not.toBe(null);
+    expect(container.querySelector('table')).not.toBe(null);
+    expect(container.querySelectorAll('th')).toHaveLength(1);
+    expect(container.querySelectorAll('td')).toHaveLength(3);
+    expect(container.textContent).toContain('Nakal');
+  });
 });

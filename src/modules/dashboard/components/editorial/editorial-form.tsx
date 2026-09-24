@@ -3,7 +3,6 @@
 import { useEffect, useId, useMemo, useRef, useState, useTransition, type ChangeEvent, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import {
-  Building2,
   CaseSensitive,
   Clock,
   Image as ImageIcon,
@@ -11,15 +10,18 @@ import {
   Link2,
   Loader2,
   Pilcrow,
-  Plus,
   Send,
   Share2,
+  SlidersHorizontal,
   Type,
 } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { Button } from '@/components/ui/button';
+import { Field, FieldDescription } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CategoryCombobox } from '@/modules/dashboard/components/shared/category-combobox';
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { rankTags } from '@/modules/dashboard/components/shared/suggestion-cache';
@@ -52,13 +54,63 @@ const SUBMIT_LABELS: Record<string, string> = {
   active: 'Terbitkan Langsung',
 };
 
+const MODE_TABS = [
+  { value: 'tulis', label: 'Tulis', tip: 'Tulis dan format isi artikel di editor' },
+  { value: 'pratinjau', label: 'Pratinjau', tip: 'Lihat tampilan artikel seperti di situs' },
+  { value: 'sumber', label: 'Sumber', tip: 'Lihat teks polos arsip dan RSS (hanya baca)' },
+] as const;
+
+const MODE_HINTS: Record<'tulis' | 'pratinjau' | 'sumber', string> = {
+  tulis: 'Tulis dan format isi di editor — inilah yang tersimpan saat Simpan.',
+  pratinjau: 'Tampilan artikel seperti di situs. Kembali ke Tulis untuk mengubah.',
+  sumber: 'Teks polos yang dibuat otomatis untuk arsip dan RSS — hanya baca.',
+};
+
 /**
- * Tulis satu artikel kanonis baru dengan tata CMS dua kolom.
+ * Bilah ukur panjang metadata terhadap rentang tampil idealnya.
+ *
+ * @param label - Nama medan (Judul/Deskripsi).
+ * @param length - Panjang karakter saat ini.
+ * @param idealMin - Batas bawah rentang ideal.
+ * @param idealMax - Batas atas rentang ideal.
+ * @param cap - Skala penuh bilah.
+ * @returns Label, bilah dengan pita zona ideal, dan hitungan.
+ */
+function SeoMeter({
+  label,
+  length,
+  idealMin,
+  idealMax,
+  cap,
+}: {
+  readonly label: string;
+  readonly length: number;
+  readonly idealMin: number;
+  readonly idealMax: number;
+  readonly cap: number;
+}) {
+  const tone = length === 0 ? 'bg-hairline-strong' : length < idealMin ? 'bg-brass' : length <= idealMax ? 'bg-signal' : 'bg-error';
+  return (
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="font-mono text-[11px] text-paper-dim">{label}</span>
+        <span className="font-mono text-[11px] tabular-nums text-paper-faint">{length}</span>
+      </div>
+      <div aria-hidden="true" className="relative h-1.5 overflow-hidden rounded-full bg-bg-raised-2">
+        <div className="absolute inset-y-0 rounded-full bg-signal/25" style={{ left: `${(idealMin / cap) * 100}%`, width: `${((idealMax - idealMin) / cap) * 100}%` }} />
+        <div className={`absolute inset-y-0 left-0 rounded-full ${tone}`} style={{ width: `${Math.min(100, (length / cap) * 100)}%` }} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Tulis satu artikel kanonis baru dengan tata composer dua kolom.
  *
  * @param data - Opsi wilayah, penerbit, kategori, penulis, dan artikel existing untuk saran tag.
  * @param onSubmit - Menyimpan `article.create`; media upload memakai command opsional.
  * @param command - Perintah workspace untuk unggah media editor kaya; tanpa ini unggahan gagal eksplisit.
- * @returns Kolom kiri naskah + sidebar kanan (terbitkan, atribusi, topik, sumber).
+ * @returns Kanvas artikel terbuka + inspektor lengket (status, SEO, atribusi, sampul, sumber).
  */
 export function ArticleCreateForm({
   data,
@@ -94,6 +146,7 @@ export function ArticleCreateForm({
   const coverUrlInputId = useId();
 
   const [slug, setSlug] = useState('');
+  const [slugTouched, setSlugTouched] = useState(false);
   const [status, setStatus] = useState<string>('draft');
   /** Checked category ids in order; first entry is the primary category. */
   const [categoryIds, setCategoryIds] = useState<readonly string[]>([]);
@@ -211,10 +264,14 @@ export function ArticleCreateForm({
   };
   const tagSuggestions = useMemo(() => rankTags(model?.articles ?? []), [model?.articles]);
 
-  const handleTitleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    if (!slug) {
-      setSlug(slugify(e.target.value));
-    }
+  const handleTitleChange = (value: string) => {
+    setTitleText(value);
+    if (!slugTouched) setSlug(slugify(value));
+  };
+
+  const handleSlugChange = (value: string) => {
+    setSlugTouched(true);
+    setSlug(value);
   };
 
   const handleCreateCategory = async (rawName: string): Promise<string | null> => {
@@ -333,6 +390,28 @@ export function ArticleCreateForm({
       return trimmed === '' ? undefined : trimmed;
     };
     const rawSchedule = String(formData.get('scheduledAt') ?? '');
+    const title = String(formData.get('title') ?? '').trim();
+    if (title === '') {
+      toast.error('Isi judul artikel dulu.');
+      return;
+    }
+    const slugValue = String(formData.get('slug') ?? '').trim();
+    if (slugValue === '') {
+      toast.error('Isi slug URL dulu.');
+      return;
+    }
+    if (!/^[a-z0-9-]+$/.test(slugValue)) {
+      toast.error('Slug hanya boleh huruf kecil, angka, dan strip.');
+      return;
+    }
+    if (String(formData.get('regionId') ?? '').trim() === '') {
+      toast.error('Pilih wilayah dulu.');
+      return;
+    }
+    if (String(formData.get('source') ?? '').trim() === '') {
+      toast.error('Isi sumber dulu.');
+      return;
+    }
     if (status === 'scheduled' && rawSchedule === '') {
       toast.error('Isi jadwal terbit dulu untuk status Terjadwal.');
       return;
@@ -369,6 +448,7 @@ export function ArticleCreateForm({
       }
       form.reset();
       setSlug('');
+      setSlugTouched(false);
       setStatus('draft');
       setCategoryIds([]);
       setPublisherId(null);
@@ -389,11 +469,56 @@ export function ArticleCreateForm({
   };
 
   return (
-    <form onSubmit={handleCreateArticle}>
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <SectionCard icon={Plus} title="Artikel Baru" eyebrow="Tulis sekali">
-          <div className="space-y-3.5">
-            <div className="space-y-1.5">
+    <form noValidate onSubmit={handleCreateArticle}>
+      <div className="sticky top-3 z-10 mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-hairline bg-bg/95 px-4 py-2.5 shadow-lg backdrop-blur">
+        <SearchCombobox
+          id={statusSelectId}
+          name="status"
+          required
+          disabled={isSubmitting}
+          placeholder="Pilih status"
+          value={status}
+          onValueChange={(next) => { if (next !== null) setStatus(next); }}
+          options={[...STATUS_OPTIONS]}
+          ariaLabel="Status artikel"
+        />
+        {status === 'scheduled' ? (
+          <Input
+            id={scheduleInputId}
+            name="scheduledAt"
+            type="datetime-local"
+            required
+            disabled={isSubmitting}
+            aria-label="Jadwal terbit"
+            className="h-8 w-auto rounded border-hairline-strong bg-bg px-2 font-mono text-xs text-paper focus-visible:ring-brass"
+          />
+        ) : null}
+        <span className="flex items-center gap-1.5" title={`Judul ${titleText.length}/60 · Deskripsi ${descriptionText.length}/160`}>
+          <span
+            aria-hidden="true"
+            className={`h-2 w-2 rounded-full ${titleText.length === 0 ? 'bg-hairline-strong' : titleText.length <= 60 ? 'bg-signal' : titleText.length <= 100 ? 'bg-brass' : 'bg-error'}`}
+          />
+          <span
+            aria-hidden="true"
+            className={`h-2 w-2 rounded-full ${descriptionText.length === 0 ? 'bg-hairline-strong' : descriptionText.length < 120 ? 'bg-brass' : descriptionText.length <= 160 ? 'bg-signal' : 'bg-error'}`}
+          />
+          <span className="font-mono text-[11px] tabular-nums text-paper-faint">{editorStats.words} kata</span>
+        </span>
+        <span className="flex-1" />
+        <Button type="submit" variant="default" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+          ) : (
+            <Send className="h-3.5 w-3.5" aria-hidden="true" />
+          )}
+          <span>{SUBMIT_LABELS[status] ?? 'Simpan Artikel'}</span>
+        </Button>
+      </div>
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-10 rounded-lg border border-hairline bg-bg-raised p-5 sm:p-8">
+          <div className="space-y-6">
+            <p className="m-0 font-sans text-xl font-bold tracking-tight text-paper sm:text-2xl">Artikel baru</p>
+            <Field>
               <Label htmlFor={titleInputId} className="font-mono text-xs text-paper-dim">
                 Judul Artikel
               </Label>
@@ -402,37 +527,57 @@ export function ArticleCreateForm({
                 name="title"
                 required
                 disabled={isSubmitting}
-                onBlur={handleTitleBlur}
-                onChange={(e) => setTitleText(e.target.value)}
-                placeholder="Masukkan tajuk berita resmi..."
-                className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+                onChange={(e) => handleTitleChange(e.target.value)}
+                placeholder="Tulis tajuk berita di sini…"
+                className="h-11 rounded-lg border-hairline-strong bg-bg px-3.5 font-serif text-lg font-semibold tracking-tight text-paper transition-colors duration-180 placeholder:font-sans placeholder:text-sm placeholder:font-normal hover:border-hairline focus-visible:border-brass focus-visible:ring-brass"
               />
-            </div>
-
-            <div className="space-y-1.5">
+              <div className="flex items-baseline justify-between gap-2">
+                <FieldDescription className="font-mono text-[11px] text-paper-faint">
+                  ±60 karakter tampil penuh sebagai judul di hasil cari; selebihnya bisa terpotong mengikuti lebar layar.
+                </FieldDescription>
+                <span
+                  aria-live="polite"
+                  className={`flex-none font-mono text-[11px] tabular-nums ${titleText.length === 0 ? 'text-paper-faint' : titleText.length <= 60 ? 'text-signal' : titleText.length <= 100 ? 'text-brass' : 'text-error'}`}
+                >
+                  {titleText.length}/60
+                </span>
+              </div>
+            </Field>
+            <Field>
               <Label htmlFor={slugInputId} className="font-mono text-xs text-paper-dim">
                 Slug URL
               </Label>
-              <Input
-                id={slugInputId}
-                name="slug"
-                required
-                disabled={isSubmitting}
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                pattern="[a-z0-9-]+"
-                placeholder="judul-artikel-terkini"
-                className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
-              />
-              <p className="m-0 font-mono text-[11px] text-paper-faint">
-                Nama pendek alamat artikel (huruf kecil, tanpa spasi). Bila sudah dipakai, akhiran -2, -3 ditambahkan otomatis.
-              </p>
-            </div>
+              <div className="relative">
+                <Link2 className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-paper-faint" aria-hidden="true" />
+                <Input
+                  id={slugInputId}
+                  name="slug"
+                  required
+                  disabled={isSubmitting}
+                  value={slug}
+                  onChange={(e) => handleSlugChange(e.target.value)}
+                  pattern="[a-z0-9-]+"
+                  placeholder="judul-artikel-terkini"
+                  className="h-8 rounded border-hairline-strong bg-bg pr-2.5 pl-8 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+                />
+              </div>
+              <FieldDescription className="font-mono text-[11px] text-paper-faint">
+                Mengikuti judul otomatis sampai Anda ubah manual. Bila sudah dipakai, akhiran -2, -3 ditambahkan otomatis.
+              </FieldDescription>
+            </Field>
 
-            <div className="space-y-1.5">
-              <Label htmlFor={excerptInputId} className="font-mono text-xs text-paper-dim">
-                Deskripsi (opsional)
-              </Label>
+            <Field className="border-t border-hairline pt-8">
+              <div className="flex items-baseline justify-between gap-2">
+                <Label htmlFor={excerptInputId} className="font-mono text-xs text-paper-dim">
+                  Deskripsi
+                </Label>
+                <span
+                  aria-live="polite"
+                  className={`font-mono text-[11px] tabular-nums ${descriptionText.length === 0 ? 'text-paper-faint' : descriptionText.length < 120 ? 'text-brass' : descriptionText.length <= 160 ? 'text-signal' : 'text-error'}`}
+                >
+                  {descriptionText.length === 0 ? 'auto' : `${descriptionText.length}/160`}
+                </span>
+              </div>
               <Textarea
                 id={excerptInputId}
                 name="excerpt"
@@ -441,39 +586,57 @@ export function ArticleCreateForm({
                 placeholder="Satu-dua kalimat inti berita..."
                 className="min-h-[64px] rounded border border-hairline-strong bg-bg p-3 font-sans text-xs leading-relaxed text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
               />
-              <p className="m-0 font-mono text-[11px] text-paper-faint">
-                Tampil di bawah judul, kartu listing, dan SEO. Kosongkan untuk dibuat otomatis dari isi.
-              </p>
-            </div>
+              <FieldDescription className="font-mono text-[11px] text-paper-faint">
+                Jadi meta description, cuplikan kartu listing, og:description, dan deskripsi RSS. Tulis 120–160 karakter
+                kalimat lengkap yang memuat topik — Google bisa memotong selebihnya atau mengganti dengan isi halaman
+                bila kueri tidak cocok. Kosongkan untuk dibuat otomatis dari isi.
+              </FieldDescription>
+              <div aria-label="Pratinjau hasil cari" className="rounded-md border border-hairline bg-bg-raised px-3 py-2.5">
+                <p className="m-0 truncate font-sans text-sm font-medium text-brass">
+                  {titleText.trim() === '' ? 'Judul artikel tampil di sini' : titleText.trim()}
+                </p>
+                <p className="m-0 truncate font-mono text-[11px] text-paper-faint">
+                  portalcontoh.id/{slug.trim() === '' ? 'slug-artikel' : slug.trim()}
+                </p>
+                <p className="m-0 mt-1 line-clamp-2 font-sans text-xs leading-relaxed text-paper-dim">
+                  {descriptionText.trim() === '' ? 'Deskripsi terisi otomatis dari kalimat awal isi bila dikosongkan.' : descriptionText.trim()}
+                </p>
+              </div>
+            </Field>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2 border-t border-hairline pt-8">
               <div className="flex items-center justify-between gap-2">
-                <span id={`${bodyInputId}-label`} className="block font-mono text-xs text-paper-dim">
+                <span id={`${bodyInputId}-label`} className="block font-mono text-[11px] uppercase tracking-wider text-paper-dim">
                   Isi Artikel
                 </span>
                 <div role="tablist" aria-label="Mode editor" className="flex gap-1 rounded-md border border-hairline bg-bg-raised p-0.5">
-                  {(
-                    [
-                      { value: 'tulis', label: 'Tulis' },
-                      { value: 'pratinjau', label: 'Pratinjau' },
-                      { value: 'sumber', label: 'Sumber' },
-                    ] as const
-                  ).map((tab) => (
-                    <Button
-                      key={tab.value}
-                      type="button"
-                      role="tab"
-                      aria-selected={mode === tab.value}
-                      variant={mode === tab.value ? 'default' : 'ghost'}
-                      size="xs"
-                      onClick={() => setMode(tab.value)}
-                      disabled={isSubmitting}
-                    >
-                      <span>{tab.label}</span>
-                    </Button>
+                  {MODE_TABS.map((tab) => (
+                    <Tooltip key={tab.value}>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            type="button"
+                            role="tab"
+                            aria-selected={mode === tab.value}
+                            variant={mode === tab.value ? 'default' : 'ghost'}
+                            size="xs"
+                            onClick={() => setMode(tab.value)}
+                            disabled={isSubmitting}
+                          >
+                            <span>{tab.label}</span>
+                          </Button>
+                        }
+                      />
+                      <TooltipContent side="top" className="border border-hairline bg-bg-raised p-2 font-mono text-xs text-paper">
+                        {tab.tip}
+                      </TooltipContent>
+                    </Tooltip>
                   ))}
                 </div>
               </div>
+              <p className="m-0 pb-2 font-mono text-[11px] text-paper-faint" role="note">
+                {MODE_HINTS[mode]}
+              </p>
               {mode === 'tulis' ? (
                 <RichTextEditor
                   key={richResetKey}
@@ -486,14 +649,12 @@ export function ArticleCreateForm({
                 <ArticlePreview
                   title={titleText}
                   description={descriptionText}
+                  coverImageUrl={featuredPreviewUrl ?? (coverUrl.trim() === '' ? null : coverUrl.trim())}
                   doc={bodyJsonDraft}
                   command={command ?? (async () => null)}
                 />
               ) : (
                 <div className="space-y-1.5">
-                  <p className="m-0 font-mono text-[11px] text-paper-faint">
-                    Teks polos yang tersimpan untuk arsip dan RSS — hanya baca, diubah lewat tab Tulis.
-                  </p>
                   <pre className="m-0 max-h-64 overflow-auto rounded border border-hairline bg-bg-raised p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-paper-dim">
                     {bodyText.trim() === '' ? '— belum ada isi —' : bodyText}
                   </pre>
@@ -502,7 +663,7 @@ export function ArticleCreateForm({
                   </p>
                 </div>
               )}
-              <div aria-label="Statistik naskah" className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-hairline bg-bg-raised px-3 py-2">
+              <div aria-label="Statistik artikel" className="flex flex-wrap items-center justify-between gap-x-5 gap-y-1.5 rounded-lg border border-hairline bg-bg-raised px-4 py-2.5">
                 {statItems.map((stat) => (
                   <span key={stat.label} className="inline-flex items-center gap-1.5 font-mono text-[11px] text-paper-dim">
                     <stat.icon className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
@@ -514,65 +675,26 @@ export function ArticleCreateForm({
                 Tulis seperti dokumen biasa — tombol Gambar menyisipkan foto otomatis ke media. Teks polos untuk arsip dan RSS dibuat otomatis.
               </p>
             </div>
-
           </div>
-        </SectionCard>
+        </div>
 
-        <div className="grid content-start gap-6">
-          <SectionCard icon={Send} title="Terbitkan" eyebrow="Status naskah">
-            <div className="space-y-3.5">
-              <div className="space-y-1.5">
-                <Label htmlFor={statusSelectId} className="font-mono text-xs text-paper-dim">
-                  Status
-                </Label>
-                <SearchCombobox
-                  id={statusSelectId}
-                  name="status"
-                  required
-                  disabled={isSubmitting}
-                  placeholder="Pilih status"
-                  value={status}
-                  onValueChange={(next) => { if (next !== null) setStatus(next); }}
-                  options={[...STATUS_OPTIONS]}
-                />
-              </div>
-
-              {status === 'scheduled' ? (
-                <div className="space-y-1.5">
-                  <Label htmlFor={scheduleInputId} className="font-mono text-xs text-paper-dim">
-                    Jadwal terbit
-                  </Label>
-                  <Input
-                    id={scheduleInputId}
-                    name="scheduledAt"
-                    type="datetime-local"
-                    required
-                    disabled={isSubmitting}
-                    className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
-                  />
+        <div className="grid content-start gap-6 lg:sticky lg:top-[72px]">
+          <SectionCard icon={SlidersHorizontal} title="Inspektor artikel" eyebrow="Periksa">
+            <div className="space-y-5">
+              <section aria-label="Optimasi hasil cari" className="space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <span aria-hidden="true" className="h-3 w-0.5 rounded-full bg-brass" />
+                  <p className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper">Hasil cari</p>
                 </div>
-              ) : null}
-
-              <div className="pt-1">
-                <Button
-                  type="submit"
-                  variant="default"
-                  disabled={isSubmitting}
-                  className="w-full"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Send className="h-3.5 w-3.5" aria-hidden="true" />
-                  )}
-                  <span>{SUBMIT_LABELS[status] ?? 'Simpan Artikel'}</span>
-                </Button>
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard icon={Building2} title="Atribusi" eyebrow="Konteks redaksi">
-            <div className="space-y-3.5">
+                <SeoMeter label="Judul · ideal 50–60" length={titleText.length} idealMin={50} idealMax={60} cap={100} />
+                <SeoMeter label="Deskripsi · ideal 120–160" length={descriptionText.length} idealMin={120} idealMax={160} cap={200} />
+              </section>
+              <Separator />
+              <section aria-label="Atribusi" className="space-y-3.5">
+                <div className="flex items-center gap-2">
+                  <span aria-hidden="true" className="h-3 w-0.5 rounded-full bg-brass" />
+                  <p className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper">Atribusi</p>
+                </div>
               <div className="space-y-1.5">
                 <Label htmlFor={regionSelectId} className="font-mono text-xs text-paper-dim">
                   Wilayah
@@ -586,6 +708,8 @@ export function ArticleCreateForm({
                   options={regionOptions}
                 />
               </div>
+
+              <Separator />
 
               <div className="space-y-1.5">
                 <Label htmlFor={publisherSelectId} className="font-mono text-xs text-paper-dim">
@@ -604,6 +728,8 @@ export function ArticleCreateForm({
                 />
               </div>
 
+              <Separator />
+
               <div className="space-y-1.5">
                 <Label htmlFor={categoryInputId} className="font-mono text-xs text-paper-dim">
                   Kategori {categoryIds.length > 0 ? `(${categoryIds.length} dipilih)` : '(belum ada)'}
@@ -621,6 +747,8 @@ export function ArticleCreateForm({
                   placeholder="Ketik nama kategori..."
                 />
               </div>
+
+              <Separator />
 
               <div className="space-y-1.5">
                 <Label htmlFor={authorSelectId} className="font-mono text-xs text-paper-dim">
@@ -646,6 +774,8 @@ export function ArticleCreateForm({
                 </p>
               </div>
 
+              <Separator />
+
               <div className="space-y-1.5">
                 <Label htmlFor={tagsInputId} className="font-mono text-xs text-paper-dim">
                   Topik (koma, maks. 10)
@@ -663,11 +793,13 @@ export function ArticleCreateForm({
                   }}
                 />
               </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard icon={ImagePlus} title="Gambar Unggulan" eyebrow="Sampul artikel">
-            <div className="space-y-3.5">
+              </section>
+              <Separator />
+              <section aria-label="Sampul" className="space-y-3.5">
+                <div className="flex items-center gap-2">
+                  <span aria-hidden="true" className="h-3 w-0.5 rounded-full bg-brass" />
+                  <p className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper">Sampul</p>
+                </div>
               <div className="space-y-1.5">
                 <span className="block font-mono text-xs text-paper-dim">
                   Unggah sampul
@@ -723,6 +855,8 @@ export function ArticleCreateForm({
                 ) : null}
               </div>
 
+              <Separator />
+
               <div className="space-y-1.5">
                 <Label htmlFor={coverUrlInputId} className="font-mono text-xs text-paper-dim">
                   atau URL gambar luar (opsional)
@@ -744,11 +878,13 @@ export function ArticleCreateForm({
                   Gambar terunggah diutamakan; URL dipakai bila tidak ada unggahan.
                 </p>
               </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard icon={Link2} title="Sumber" eyebrow="Atribusi materi">
-            <div className="space-y-3.5">
+              </section>
+              <Separator />
+              <section aria-label="Sumber" className="space-y-3.5">
+                <div className="flex items-center gap-2">
+                  <span aria-hidden="true" className="h-3 w-0.5 rounded-full bg-brass" />
+                  <p className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper">Sumber</p>
+                </div>
               <div className="space-y-1.5">
                 <Label htmlFor={sourceInputId} className="font-mono text-xs text-paper-dim">
                   Sumber
@@ -763,6 +899,8 @@ export function ArticleCreateForm({
                 />
               </div>
 
+              <Separator />
+
               <div className="space-y-1.5">
                 <Label htmlFor={canonicalInputId} className="font-mono text-xs text-paper-dim">
                   URL Kanonis (opsional)
@@ -775,6 +913,7 @@ export function ArticleCreateForm({
                   className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
                 />
               </div>
+              </section>
             </div>
           </SectionCard>
         </div>

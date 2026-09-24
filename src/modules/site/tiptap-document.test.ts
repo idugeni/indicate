@@ -159,6 +159,37 @@ describe('validateTipTapDoc', () => {
     expect(validateTipTapDoc(badLink).ok).toBe(false);
   });
 
+  it('menerima tabel, perataan, stabilo, dan warna teks valid', () => {
+    const cell = (text: string) => ({ type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] });
+    const doc = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', attrs: { textAlign: 'center' }, content: [{ type: 'text', text: 'Tengah' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Stabilo', marks: [{ type: 'highlight' }] }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Warna', marks: [{ type: 'textStyle', attrs: { color: '#b91c1c' } }] }] },
+        {
+          type: 'table',
+          content: [
+            { type: 'tableRow', content: [{ type: 'tableHeader', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'A' }] }] }, cell('B')] },
+            { type: 'tableRow', content: [cell('1'), cell('2')] },
+          ],
+        },
+      ],
+    };
+    expect(validateTipTapDoc(doc).ok).toBe(true);
+  });
+
+  it('menolak tabel, perataan, dan warna tak valid', () => {
+    const cell = (text: string) => ({ type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] });
+    expect(validateTipTapDoc({ type: 'doc', content: [{ type: 'table', content: [] }] }).ok).toBe(false);
+    expect(validateTipTapDoc({ type: 'doc', content: [{ type: 'table', content: [{ type: 'paragraph' }] }] }).ok).toBe(false);
+    expect(validateTipTapDoc({ type: 'doc', content: [{ type: 'paragraph', attrs: { textAlign: 'diagonal' }, content: [] }] }).ok).toBe(false);
+    const badColor = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x', marks: [{ type: 'textStyle', attrs: { color: 'red;evil' } }] }] }] };
+    expect(validateTipTapDoc(badColor).ok).toBe(false);
+    const wide = { type: 'tableRow', content: Array.from({ length: 13 }, (_, index) => cell(String(index))) };
+    expect(validateTipTapDoc({ type: 'doc', content: [{ type: 'table', content: [wide] }] }).ok).toBe(false);
+  });
+
   it('menerima sematan sosial kanonis dan menolak src asing', () => {
     const good = {
       type: 'doc',

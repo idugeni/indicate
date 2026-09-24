@@ -19,7 +19,11 @@ function renderTextNode(node: TipTapNode, key: string): ReactNode {
     else if (mark.type === 'strike') content = <s>{content}</s>;
     else if (mark.type === 'code') content = <code>{content}</code>;
     else if (mark.type === 'underline') content = <u>{content}</u>;
-    else if (mark.type === 'link') {
+    else if (mark.type === 'highlight') content = <mark>{content}</mark>;
+    else if (mark.type === 'textStyle') {
+      const color = typeof mark.attrs?.color === 'string' ? mark.attrs.color : '';
+      if (/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/iu.test(color)) content = <span style={{ color }}>{content}</span>;
+    } else if (mark.type === 'link') {
       const href = typeof mark.attrs?.href === 'string' ? mark.attrs.href : '';
       if (!isSafeLinkUrl(href)) continue;
       content = (
@@ -30,6 +34,11 @@ function renderTextNode(node: TipTapNode, key: string): ReactNode {
     }
   }
   return <span key={key}>{content}</span>;
+}
+
+function textAlignOf(node: TipTapNode): 'left' | 'center' | 'right' | 'justify' | undefined {
+  const align = node.attrs?.textAlign;
+  return align === 'left' || align === 'center' || align === 'right' || align === 'justify' ? align : undefined;
 }
 
 function YouTubeCard({ videoId }: { readonly videoId: string }) {
@@ -123,13 +132,20 @@ function renderNode(node: TipTapNode, key: string, context: RenderContext): Reac
   if (node.type === 'hardBreak') return <br key={key} />;
   if (node.type === 'horizontalRule') return <hr key={key} />;
   if (node.type === 'paragraph') {
-    return <p key={key} className={context.paragraphClassName}>{renderNodes(node.content ?? [], key, context)}</p>;
+    const align = textAlignOf(node);
+    return (
+      <p key={key} className={context.paragraphClassName} style={align === undefined ? undefined : { textAlign: align }}>
+        {renderNodes(node.content ?? [], key, context)}
+      </p>
+    );
   }
   if (node.type === 'heading') {
     const level = typeof node.attrs?.level === 'number' ? node.attrs.level : 2;
     const children = renderNodes(node.content ?? [], key, context);
-    if (level <= 2) return <h2 key={key} className={context.headingClassName}>{children}</h2>;
-    return <h3 key={key} className={context.headingClassName}>{children}</h3>;
+    const align = textAlignOf(node);
+    const style = align === undefined ? undefined : { textAlign: align as 'left' | 'center' | 'right' | 'justify' };
+    if (level <= 2) return <h2 key={key} className={context.headingClassName} style={style}>{children}</h2>;
+    return <h3 key={key} className={context.headingClassName} style={style}>{children}</h3>;
   }
   if (node.type === 'blockquote') {
     return <blockquote key={key} className={context.quoteClassName}>{renderNodes(node.content ?? [], key, context)}</blockquote>;
@@ -150,6 +166,32 @@ function renderNode(node: TipTapNode, key: string, context: RenderContext): Reac
   }
   if (node.type === 'listItem') {
     return <li key={key}>{renderNodes(node.content ?? [], key, context)}</li>;
+  }
+  if (node.type === 'table') {
+    return (
+      <span key={key} className="block overflow-x-auto">
+        <table className="w-full border-collapse font-sans text-sm">
+          <tbody>{renderNodes(node.content ?? [], key, context)}</tbody>
+        </table>
+      </span>
+    );
+  }
+  if (node.type === 'tableRow') {
+    return <tr key={key}>{renderNodes(node.content ?? [], key, context)}</tr>;
+  }
+  if (node.type === 'tableHeader') {
+    return (
+      <th key={key} className="border border-hairline bg-bg-raised-2 px-3 py-1.5 text-left font-semibold">
+        {renderNodes(node.content ?? [], key, context)}
+      </th>
+    );
+  }
+  if (node.type === 'tableCell') {
+    return (
+      <td key={key} className="border border-hairline px-3 py-1.5">
+        {renderNodes(node.content ?? [], key, context)}
+      </td>
+    );
   }
   if (node.type === 'codeBlock') {
     const code = (node.content ?? []).map((child) => (child.type === 'text' && typeof child.text === 'string' ? child.text : '')).join('');

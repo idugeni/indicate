@@ -34,6 +34,10 @@ const ALLOWED_NODES = new Set([
   'codeBlock',
   'horizontalRule',
   'hardBreak',
+  'table',
+  'tableRow',
+  'tableHeader',
+  'tableCell',
   'text',
   'image',
   'youtube',
@@ -45,7 +49,12 @@ const ALLOWED_NODES = new Set([
   'drive',
 ]);
 
-const ALLOWED_MARKS = new Set(['bold', 'italic', 'strike', 'code', 'underline', 'link']);
+const ALLOWED_MARKS = new Set(['bold', 'italic', 'strike', 'code', 'underline', 'link', 'highlight', 'textStyle']);
+
+const COLOR_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/iu;
+const TEXT_ALIGN_VALUES = new Set(['left', 'center', 'right', 'justify']);
+const TABLE_MAX_ROWS = 30;
+const TABLE_MAX_COLS = 12;
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -401,12 +410,34 @@ export function validateTipTapDoc(value: unknown): { readonly ok: true; readonly
           const href = isRecord(mark.attrs) ? mark.attrs.href : undefined;
           if (!isSafeLinkUrl(href)) return 'unsafe-link';
         }
+        if (mark.type === 'textStyle') {
+          const color = isRecord(mark.attrs) ? mark.attrs.color : undefined;
+          if (color !== undefined && (typeof color !== 'string' || !COLOR_PATTERN.test(color))) return 'invalid-text-color';
+        }
       }
       return null;
     }
     if (node.type === 'heading') {
       const level = isRecord(node.attrs) ? node.attrs.level : undefined;
       if (level !== 1 && level !== 2 && level !== 3 && level !== 4 && level !== 5 && level !== 6) return 'invalid-heading-level';
+      const align = isRecord(node.attrs) ? node.attrs.textAlign : undefined;
+      if (align !== undefined && (typeof align !== 'string' || !TEXT_ALIGN_VALUES.has(align))) return 'invalid-text-align';
+    }
+    if (node.type === 'paragraph') {
+      const align = isRecord(node.attrs) ? node.attrs.textAlign : undefined;
+      if (align !== undefined && (typeof align !== 'string' || !TEXT_ALIGN_VALUES.has(align))) return 'invalid-text-align';
+    }
+    if (node.type === 'table') {
+      const children = node.content ?? [];
+      if (children.length === 0 || children.length > TABLE_MAX_ROWS) return 'invalid-table-size';
+      for (const row of children) {
+        if (row.type !== 'tableRow') return 'invalid-table-shape';
+        const cells = row.content ?? [];
+        if (cells.length === 0 || cells.length > TABLE_MAX_COLS) return 'invalid-table-size';
+        for (const cell of cells) {
+          if (cell.type !== 'tableCell' && cell.type !== 'tableHeader') return 'invalid-table-shape';
+        }
+      }
     }
     if (node.type === 'image') {
       const src = isRecord(node.attrs) ? node.attrs.src : undefined;

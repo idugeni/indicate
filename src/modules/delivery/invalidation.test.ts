@@ -181,4 +181,48 @@ describe('InvalidationDispatcher', () => {
     await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
     expect(socialWarm.warmArticle).not.toHaveBeenCalled();
   });
+
+  it('memanaskan batch secara paralel dalam satu dispatch', async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const repository = {
+      claimInvalidations: vi.fn(async () => [{ ...task('task-1', []), tags: ['site:site-1', 'host:tenant.example', 'article:a-1', 'article:a-2', 'article:a-3'] }]),
+      completeInvalidation: vi.fn(async () => {}),
+      failInvalidation: vi.fn(async () => {}),
+    };
+    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
+    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
+    const socialWarm = {
+      warmArticle: vi.fn(async () => {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await new Promise((resolve) => { setTimeout(resolve, 20); });
+        inFlight -= 1;
+        return { pageOk: true, imageOk: true, facebookOk: true };
+      }),
+    };
+    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
+    expect(socialWarm.warmArticle).toHaveBeenCalledTimes(3);
+    expect(maxInFlight).toBeGreaterThan(1);
+  });
+
+  it('hanya memanaskan url unik sekali per dispatch', async () => {
+    const warmed: string[] = [];
+    const tags = ['site:site-1', 'host:tenant.example', 'article:slug-a'];
+    const repository = {
+      claimInvalidations: vi.fn(async () => [
+        { ...task('task-1', []), tags },
+        { ...task('task-2', []), tags },
+      ]),
+      completeInvalidation: vi.fn(async () => {}),
+      failInvalidation: vi.fn(async () => {}),
+    };
+    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
+    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
+    const socialWarm = { warmArticle: vi.fn(async (url: string) => { warmed.push(url); return { pageOk: true, imageOk: true, facebookOk: true }; }) };
+    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 2, failed: 0, stranded: 0 });
+    expect(warmed).toEqual(['https://tenant.example/slug-a']);
+  });
 });

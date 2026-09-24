@@ -90,10 +90,15 @@ export function ArticleDistributeForm({
       toast.error('Pilih artikel target dulu sebelum menyalurkan.');
       return;
     }
+    const siteIds = formData.getAll('siteIds');
+    if (siteIds.length === 0) {
+      toast.error('Pilih minimal satu situs tujuan.');
+      return;
+    }
     startAssignTransition(async () => {
       await onAssign({
         articleId: formData.get('articleId'),
-        siteIds: formData.getAll('siteIds'),
+        siteIds,
       });
     });
   };
@@ -112,6 +117,10 @@ export function ArticleDistributeForm({
       return;
     }
     const viewCount = Number(formData.get('viewCount') ?? 0);
+    if (!Number.isFinite(viewCount) || viewCount < 0 || viewCount > 1_000_000_000) {
+      toast.error('Jumlah tayang harus angka 0 sampai 1.000.000.000.');
+      return;
+    }
     startSeedTransition(async () => {
       let succeeded = 0;
       for (const siteId of seedSiteIds) {
@@ -126,7 +135,7 @@ export function ArticleDistributeForm({
 
   return (
     <SectionCard icon={Layers} title="Penyaluran Artikel" eyebrow="Pilih domain tujuan">
-      <form onSubmit={handleAssignSites} className="space-y-4">
+      <form noValidate onSubmit={handleAssignSites} className="space-y-4">
         {articleId === undefined ? (
           <div className="space-y-1.5">
             <Label htmlFor={assignArticleSelectId} className="font-mono text-xs text-paper-dim">
@@ -221,7 +230,7 @@ export function ArticleDistributeForm({
         </div>
       </form>
 
-      <form onSubmit={handleSeedViews} className="mt-5 flex flex-wrap items-end gap-2 border-t border-hairline pt-5">
+      <form noValidate onSubmit={handleSeedViews} className="mt-5 flex flex-wrap items-end gap-2 border-t border-hairline pt-5">
         <div className="min-w-0 flex-1 space-y-1.5">
           <Label htmlFor={seedCountInputId} className="font-mono text-xs text-paper-dim">
             Jumlah tayang {seedSiteIds.length > 0 ? `(${seedSiteIds.length} situs tersalurkan)` : '(belum tersalurkan)'}

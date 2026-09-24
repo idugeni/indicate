@@ -41,24 +41,10 @@ export function planInvalidation(mutation: NetworkMutation): InvalidationPlan {
 /**
  * Dispatch claimed invalidation tasks through Next cache and edge purge.
  *
- * @remarks One edge purge per batch (unique URLs across tasks): per-host per-task purges would trigger a thundering-herd to the origin, while the edge TTL is only 60 seconds. A purge failure does not fail the task; Next revalidate is the primary mechanism and the edge recovers on its own within one TTL. A poison task does not stop the batch: a failed complete is recorded via fail, and a fail that also fails counts as stranded.
+ * @remarks One edge purge per batch (unique URLs across tasks): per-host per-task purges would trigger a thundering-herd to the origin, while the edge TTL is only 60 seconds. A purge failure does not fail the task; Next revalidate is the primary mechanism and the edge recovers on its own within one TTL. A poison task does not stop the batch: a failed complete is recorded via fail, and a fail that also fails counts as stranded. Social warming is one parallel best-effort batch per dispatch (unique article URLs, capped): sequential per-URL fetches could outlive the function budget, while tasks are already complete before warming so a warm failure never affects the summary.
  */
 export class InvalidationDispatcher {
   constructor(private readonly repository: Pick<DeliveryRepository, 'claimInvalidations' | 'completeInvalidation' | 'failInvalidation'>, private readonly nextCache: NextCacheInvalidationPort, private readonly cloudflare: CloudflareAuthorityPort, private readonly retryDelaysSeconds: readonly number[], private readonly maxAttempts: number, private readonly socialWarm: Pick<SocialWarmer, 'warmArticle'> | null = null) {}
-
-  private async warmArticles(tags: readonly string[], warmed: number): Promise<number> {
-    let count = warmed;
-    for (const url of articleWarmUrls(tags)) {
-      if (count >= MAX_WARM_URLS_PER_DISPATCH) break;
-      count += 1;
-      try {
-        await this.socialWarm?.warmArticle(url);
-      } catch {
-        /* best-effort only; warming never fails the completed task */
-      }
-    }
-    return count;
-  }
 
   async dispatch(now: Date, limit: number): Promise<{ completed: number; failed: number; stranded: number }> {
     const tasks = await this.repository.claimInvalidations(now.toISOString(), limit);
@@ -70,14 +56,24 @@ export class InvalidationDispatcher {
         /* left to expire via the edge TTL; the task still completes below */
       }
     }
-    let completed = 0; let failed = 0; let stranded = 0; let warmed = 0;
+    const warmer = this.socialWarm;
+    let completed = 0; let failed = 0; let stranded = 0;
+    const warmQueue: string[] = [];
+    const queuedWarm = new Set<string>();
     for (const task of tasks) {
       let step = 'revalidate';
       try {
         await this.nextCache.revalidateTags(task.tags); await this.nextCache.revalidatePaths(task.paths);
         step = 'complete';
         await this.repository.completeInvalidation(task, now.toISOString()); completed += 1;
-        if (this.socialWarm !== null) warmed = await this.warmArticles(task.tags, warmed);
+        if (warmer !== null) {
+          for (const url of articleWarmUrls(task.tags)) {
+            if (warmQueue.length >= MAX_WARM_URLS_PER_DISPATCH) break;
+            if (queuedWarm.has(url)) continue;
+            queuedWarm.add(url);
+            warmQueue.push(url);
+          }
+        }
       } catch {
         try {
           const terminal = task.attempts + 1 >= this.maxAttempts;
@@ -87,6 +83,9 @@ export class InvalidationDispatcher {
           stranded += 1;
         }
       }
+    }
+    if (warmer !== null && warmQueue.length > 0) {
+      await Promise.allSettled(warmQueue.map((url) => warmer.warmArticle(url)));
     }
     return { completed, failed, stranded };
   }

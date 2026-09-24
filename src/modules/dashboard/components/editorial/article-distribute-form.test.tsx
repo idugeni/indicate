@@ -68,9 +68,7 @@ describe('Formulir penyaluran artikel', () => {
     await selectArticle();
     fireEvent.click(screen.getByRole('checkbox', { name: 'fakta01.my.id' }));
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
-    await waitFor(() =>
-      expect(assign).toHaveBeenCalledWith({ articleId: 'art-1', siteIds: [] }),
-    );
+    await waitFor(() => expect(assign).not.toHaveBeenCalled());
   });
 
   it('mengunci ke artikel prop tanpa pemilih', async () => {

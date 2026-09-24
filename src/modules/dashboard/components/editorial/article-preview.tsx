@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { TipTapBodyView } from '@/modules/site/components/tiptap-body-view';
 import { isTipTapDoc, type TipTapDoc } from '@/modules/site/tiptap-document';
 
@@ -35,6 +38,7 @@ function rewriteMediaSrc(doc: TipTapDoc, mapping: ReadonlyMap<string, string>): 
  *
  * @param title - Draft headline; a placeholder shows when empty.
  * @param description - Draft description shown under the headline; omitted when empty.
+ * @param coverImageUrl - Draft cover image URL; omitted when null.
  * @param doc - Draft TipTap JSON; an empty state shows when absent.
  * @param command - Dashboard dispatcher for `media.read` preview URLs.
  * @returns Article-styled preview; durable media refs resolve quietly with fallback.
@@ -42,11 +46,13 @@ function rewriteMediaSrc(doc: TipTapDoc, mapping: ReadonlyMap<string, string>): 
 export function ArticlePreview({
   title,
   description,
+  coverImageUrl = null,
   doc,
   command,
 }: {
   readonly title: string;
   readonly description: string;
+  readonly coverImageUrl?: string | null;
   readonly doc: TipTapDoc | null;
   readonly command: CommandFn;
 }) {
@@ -82,35 +88,40 @@ export function ArticlePreview({
 
   if (doc === null) {
     return (
-      <p className="m-0 rounded border border-dashed border-hairline-strong p-6 text-center font-sans text-xs text-paper-faint">
-        Belum ada isi — tulis dulu di tab Tulis.
-      </p>
+      <EmptyState title="Belum ada isi" description="Tulis dulu di tab Tulis." />
     );
   }
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-end gap-1" role="group" aria-label="Lebar pratinjau">
-        {(
-          [
-            { value: 'desktop', label: 'Desktop' },
-            { value: 'ponsel', label: 'Ponsel' },
-          ] as const
-        ).map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={device === option.value}
-            onClick={() => setDevice(option.value)}
-            className={`rounded-md px-2 py-1 font-mono text-[11px] transition-colors duration-180 ${
-              device === option.value
-                ? 'bg-bg-raised-2 text-paper'
-                : 'text-paper-faint hover:text-paper-dim'
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-end">
+        <ToggleGroup
+          variant="outline"
+          size="sm"
+          spacing={1}
+          value={[device]}
+          onValueChange={(values) => {
+            const next = values[values.length - 1];
+            if (next === 'desktop' || next === 'ponsel') setDevice(next);
+          }}
+          aria-label="Lebar pratinjau"
+        >
+          {(
+            [
+              { value: 'desktop', label: 'Desktop' },
+              { value: 'ponsel', label: 'Ponsel' },
+            ] as const
+          ).map((option) => (
+            <ToggleGroupItem
+              key={option.value}
+              value={option.value}
+              aria-label={`Pratinjau ${option.label}`}
+              className="font-mono text-[11px] tabular-nums"
+            >
+              {option.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
       </div>
       <article
         className={`space-y-3 rounded border border-hairline bg-bg-raised p-4 sm:p-5 ${
@@ -120,6 +131,9 @@ export function ArticlePreview({
         <h1 className="m-0 font-sans text-xl font-extrabold leading-snug tracking-tight text-paper">
           {title.trim() === '' ? 'Tanpa judul' : title}
         </h1>
+        {coverImageUrl === null || coverImageUrl === '' ? null : (
+          <Image unoptimized src={coverImageUrl} alt="" width={1200} height={675} sizes="(max-width: 768px) 100vw, 768px" className="aspect-video w-full rounded-md border border-hairline object-cover" />
+        )}
         {description.trim() === '' ? null : (
           <p className="m-0 border-l-2 border-brass pl-3 font-sans text-sm leading-relaxed text-paper-dim">{description}</p>
         )}
