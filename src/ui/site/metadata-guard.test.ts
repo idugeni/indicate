@@ -36,16 +36,16 @@ describe('siteMetadata', () => {  it('membangun kanonis, robots, dan kartu sosia
     expect(metadata.robots).toMatchObject({ index: true, follow: true });
     const openGraph = metadata.openGraph;
     if (typeof openGraph !== 'object' || openGraph === null) throw new Error('openGraph hilang');
-    expect(openGraph.url).toBe('https://dasbor.example/services');
-    expect(openGraph.title).toBe('Layanan | Indicate');
-    expect(openGraph.images).toEqual([
-      { url: 'https://dasbor.example/opengraph-image', width: 1200, height: 630, alt: 'Layanan | Indicate' },
-    ]);
+    expect(metadata.openGraph).toMatchObject({
+      url: 'https://dasbor.example/services',
+      title: 'Layanan | Indicate',
+    });
+    expect(metadata.openGraph).not.toHaveProperty('images');
     expect(metadata.twitter).toMatchObject({
       card: 'summary_large_image',
       title: 'Layanan | Indicate',
-      images: ['https://dasbor.example/opengraph-image'],
     });
+    expect(metadata.twitter).not.toHaveProperty('images');
   });
 
   it('memangkas garis miring akhir pada site url', () => {
@@ -53,13 +53,9 @@ describe('siteMetadata', () => {  it('membangun kanonis, robots, dan kartu sosia
     expect(metadata.alternates?.canonical).toBe('https://dasbor.example/pricing');
   });
 
-  it('memakai kartu OG per-halaman saat imagePath diisi', () => {
-    const metadata = siteMetadata('Layanan', 'Deskripsi layanan.', '/services', '/services/opengraph-image');
-    expect(metadata.openGraph).toMatchObject({
-      images: [{ url: 'https://dasbor.example/services/opengraph-image' }],
-    });
-    expect(metadata.twitter).toMatchObject({
-      images: ['https://dasbor.example/services/opengraph-image'],
-    });
+  it('menyerahkan gambar sosial ke file opengraph-image per-segmen', () => {
+    const metadata = siteMetadata('Layanan', 'Deskripsi layanan.', '/services');
+    expect(metadata.openGraph).not.toHaveProperty('images');
+    expect(metadata.twitter).not.toHaveProperty('images');
   });
 });

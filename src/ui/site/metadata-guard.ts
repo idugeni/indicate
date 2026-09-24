@@ -51,14 +51,16 @@ export function controlPlaneIcons(): Pick<Metadata, 'icons'> {
  * @param title - Short page title without brand suffix.
  * @param description - Page description reused for Open Graph and Twitter.
  * @param path - Canonical path starting with `/`.
- * @param imagePath - OG image path starting with `/`; defaults to the shared root card.
  * @returns Metadata with canonical URL, indexable robots, and social cards.
+ * @remarks Social images are intentionally unset: the colocated
+ * `opengraph-image.tsx` file supplies the per-page card automatically
+ * (nested generated images carry a Next-assigned hash suffix, so hardcoding
+ * the URL would 404). Segments without their own file inherit the root card.
  */
-export function siteMetadata(title: string, description: string, path: string, imagePath = '/opengraph-image'): Metadata {
+export function siteMetadata(title: string, description: string, path: string): Metadata {
   const origin = controlPlaneOrigin();
   const canonical = `${origin}${path}`;
   const pageTitle = `${title} | ${SERVICE_NAME}`;
-  const imageUrl = `${origin}${imagePath}`;
   return {
     title,
     description,
@@ -74,20 +76,11 @@ export function siteMetadata(title: string, description: string, path: string, i
       siteName: SERVICE_NAME,
       title: pageTitle,
       description,
-      images: [
-        {
-          url: imageUrl,
-          width: 1200,
-          height: 630,
-          alt: pageTitle,
-        },
-      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: pageTitle,
       description,
-      images: [imageUrl],
     },
   };
 }
