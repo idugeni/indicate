@@ -119,6 +119,14 @@ export class MediaService {
         await this.repository.rejectMedia(actor, reservation.id, 'uploaded_metadata_mismatch', this.clock.now().toISOString());
         return { ok: false, error: createPublicError('INVALID_INPUT', 'Uploaded object metadata does not match the authorization.', actor.requestId) };
       }
+      if (reservation.purpose === 'site-favicon') {
+        const width = parsed.data.widthPx;
+        const height = parsed.data.heightPx;
+        if (width === undefined || height === undefined || width !== height || width < 48) {
+          await this.repository.rejectMedia(actor, reservation.id, 'favicon_dimensions_invalid', this.clock.now().toISOString());
+          return { ok: false, error: createPublicError('INVALID_INPUT', 'Favicon must be a square image of at least 48 pixels.', actor.requestId) };
+        }
+      }
       let thumbObjectKey: string | null = null;
       if (parsed.data.thumb !== undefined) {
         const candidate = buildThumbObjectKey(reservation.objectKey);

@@ -102,9 +102,17 @@ export function nonIndexableRobots(): Metadata['robots'] {
   };
 }
 
-/** Tenant favicon fragment; empty when the site sets no custom icon. */
-export function tenantFavicon(faviconUrl: string | null | undefined): Pick<Metadata, 'icons'> {
-  return faviconUrl === null || faviconUrl === undefined || faviconUrl === '' ? {} : { icons: { icon: faviconUrl, apple: faviconUrl, shortcut: faviconUrl } };
+/** Tenant brand icons served as stable same-host bytes (never signed redirects). */
+export function tenantFavicon(faviconUrl: string | null | undefined): Pick<Metadata, 'icons' | 'manifest'> {
+  if (faviconUrl === null || faviconUrl === undefined || faviconUrl === '') return {};
+  return {
+    icons: {
+      icon: [{ url: '/icon.png', sizes: '512x512', type: 'image/png' }],
+      apple: '/apple-touch-icon.png',
+      shortcut: '/icon.png',
+    },
+    manifest: '/manifest.webmanifest',
+  };
 }
 
 /** Uniform metadata for missing network content (unknown slug, empty id). */
@@ -333,6 +341,10 @@ export function serializeRobots(site: {
     ...custom,
     'Allow: /',
     'Allow: /categories/',
+    'Allow: /icon.png',
+    'Allow: /apple-touch-icon.png',
+    'Allow: /manifest.webmanifest',
+    'Allow: /favicon.ico',
     'Disallow: /search',
     'Disallow: /api/',
     'Disallow: /dashboard',

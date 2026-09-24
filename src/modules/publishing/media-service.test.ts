@@ -213,6 +213,23 @@ describe('MediaService completeUpload', () => {
     if (lopsided.ok) throw new Error('expected error');
     expect(lopsided.error.error.code).toBe('INVALID_INPUT');
   });
+
+  it('menolak favicon tak persegi atau di bawah 48px', async () => {
+    const faviconReservation = { ...reservation, purpose: 'site-favicon' };
+    const { service, repository } = harness(
+      { readReservation: async () => faviconReservation },
+      { headExact: async () => ({ contentType: 'image/jpeg', contentLength: 1_000, checksum: CHECKSUM }) },
+    );
+    const small = await service.completeUpload(actor, { reservationId: ARTICLE, widthPx: 32, heightPx: 32 });
+    expect(small.ok).toBe(false);
+    const wide = await service.completeUpload(actor, { reservationId: ARTICLE, widthPx: 512, heightPx: 256 });
+    expect(wide.ok).toBe(false);
+    const missing = await service.completeUpload(actor, { reservationId: ARTICLE });
+    expect(missing.ok).toBe(false);
+    expect(repository.rejectMedia).toHaveBeenCalledTimes(3);
+    const square = await service.completeUpload(actor, { reservationId: ARTICLE, widthPx: 512, heightPx: 512 });
+    expect(square.ok).toBe(true);
+  });
 });
 
 describe('MediaService read archive', () => {

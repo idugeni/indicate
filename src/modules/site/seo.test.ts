@@ -175,6 +175,9 @@ describe('serializers', () => {
     const robots = serializeRobots({ context: site.context, settings: { robots: ['Disallow: /rahasia'] } });
     expect(robots).toContain('Disallow: /search');
     expect(robots).toContain('Disallow: /rahasia');
+    expect(robots).toContain('Allow: /icon.png');
+    expect(robots).toContain('Allow: /apple-touch-icon.png');
+    expect(robots).toContain('Allow: /manifest.webmanifest');
     expect(robots).toContain('Sitemap: https://portal.example/sitemap.xml');
   });
 
@@ -201,7 +204,12 @@ describe('metadata helpers', () => {
   it('mengatur favicon, 404, dan robots', () => {
     expect(tenantFavicon(null)).toEqual({});
     expect(tenantFavicon('https://portal.example/icon.svg')).toEqual({
-      icons: { icon: 'https://portal.example/icon.svg', apple: 'https://portal.example/icon.svg', shortcut: 'https://portal.example/icon.svg' },
+      icons: {
+        icon: [{ url: '/icon.png', sizes: '512x512', type: 'image/png' }],
+        apple: '/apple-touch-icon.png',
+        shortcut: '/icon.png',
+      },
+      manifest: '/manifest.webmanifest',
     });
     expect(notFoundMetadata().title).toBe('Not Found');
     expect(indexableRobots()).toMatchObject({ index: true, follow: true });

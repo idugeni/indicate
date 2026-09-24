@@ -1,4 +1,4 @@
-const BASE_PATHS = ['/', '/kebijakan-privasi', '/syarat-ketentuan', '/tentang', '/kontak', '/search', '/robots.txt', '/sitemap.xml', '/rss.xml', '/llms.txt', '/news-sitemap.xml', '/tenant-home', '/report'] as const;
+const BASE_PATHS = ['/', '/kebijakan-privasi', '/syarat-ketentuan', '/tentang', '/kontak', '/search', '/robots.txt', '/sitemap.xml', '/rss.xml', '/llms.txt', '/news-sitemap.xml', '/tenant-home', '/report', '/icon.png', '/apple-touch-icon.png', '/manifest.webmanifest'] as const;
 
 export interface CompleteInvalidationInput {
   readonly organizationId: string;
@@ -18,7 +18,7 @@ export interface CompleteInvalidationInput {
  *
  * @param input - Invalidation input carrying hostnames, slugs, and media IDs.
  * @returns Pending invalidation row values with deduped tags, paths, and URLs.
- * @remarks Media bytes are never cached, but their edge-cached 307 redirects are: purge the media route (full + thumb twin) through exact-URL purge only. They stay out of `paths` because Next path revalidation is unreliable for query-string route variants. Sibling hostnames (`<region>.<apex>`) ride the same task so one dispatch busts regional copies sharing apex brand.
+ * @remarks Article bytes behind signed redirects purge through exact-URL purge only: the edge-cached 307s stay out of `paths` because Next path revalidation is unreliable for query-string route variants. Brand bytes (`/icon.png` et al.) are directly cached immutable responses, so they ride `paths` like any page. Sibling hostnames (`<region>.<apex>`) ride the same task so one dispatch busts regional copies sharing apex brand.
  */
 export function completeInvalidationValues(input: CompleteInvalidationInput) {
   const hostnames = [...new Set([input.previousHostname ?? null, input.currentHostname ?? null, ...(input.siblingHostnames ?? [])].filter((value): value is string => value !== null))];
