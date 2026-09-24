@@ -27,12 +27,14 @@ Acuan kanonis per zona + checklist zona baru + ritme tinjauan.
 
 ## Pengecualian tercatat
 
-- `indicate.website` (zona baru, 2026-09-24): peta penuh dari `indicate.web.id` dengan nama baru —
-  CNAME apex + wildcard proxied ke target Vercel yang sama, CNAME `www`, A `pv` (Worker pageview)
-  route Worker, CNAME `media` ke R2 publik, CNAME `rsend`, MX Email Routing + `send` SES,
-  CAA issue/issuewild × letsencrypt+pki.goog, SPF/DMARC/DKIM (+DKIM Resend), WAF 2-rule,
-  edge cache, guard 20/10 dtk. Status: zona belum dibuat (MCP tanpa tool create-zone;
-  buat via dashboard Cloudflare → Add domain, lalu ganti NS di registrar).
+- `indicate.website` (zona baru 2026-09-24, ID `1a10a4c1…`, status `pending`): dibuat via API
+  dengan token `.env`; NS `joan/kanye.ns.cloudflare.com` — tinggal ganti NS di registrar.
+  Terpasang: 16 DNS (apex+wildcard+www CNAME proxied ke target Vercel yang sama, A `pv`,
+  CNAME `media`/`rsend`, CAA ×4, SPF `-all`, DMARC, DKIM-null, DKIM Resend, MX+SPF `send`),
+  TLS strict/1.2/always-https/rewrite/cache-TTL-0, 5 ruleset (WAF 2-rule **termasuk skip crawler
+  sosial sebagai #1**, rate guard, edge cache 3-rule, origin proof webhook baru,
+  www-ke-apex 301), Bot Fight Mode. Menyusul pasca-aktif: Page Shield, Email Routing + MX,
+  Worker route `pv`, custom domain R2 `media`, verifikasi Resend.
 - `indicate.web.id`: + record `www`, `pv` (Worker pageview), Email Routing + Resend aktif. Redirect Rule `www_to_apex_301` (fase `http_request_dynamic_redirect`, ruleset `www to apex redirect`): `www.indicate.web.id` ke `https://indicate.web.id` + path, 301, preserve query — pengganti redirect domain Vercel `www` yang dilepas 2026-09-20 untuk slot kuota project. Setelah cutover: tambah Redirect Rule `apex_to_website_308` (`http.host eq "indicate.web.id"` ke `concat("https://indicate.website", http.request.uri.path)`, 308, preserve query); `api`/`webhook`/`media`/`pv` lama dual-serve sampai traffic lama habis.
 - 9 tenant: DMARC + SPF + DKIM-null; tanpa Email Routing/Resend.
 - `safenca.id`: tanpa `Indicate edge cache`, tanpa wildcard; Email Routing + Resend aktif.
