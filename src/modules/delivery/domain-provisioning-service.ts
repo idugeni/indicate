@@ -111,8 +111,12 @@ export class DomainProvisioningService {
 
   private async persistFailure(actor: AuthorizedTenantActorContext, attempt: ActivationAttempt, error: unknown, now: Date): Promise<void> {
     const terminal = attempt.attempts + 1 >= this.maxAttempts;
-    const seconds = this.retryDelaysSeconds[Math.min(attempt.attempts, this.retryDelaysSeconds.length - 1)] ?? 60;
+    const rateLimited = error instanceof Error ? /retry_after_(\d+)/u.exec(error.message)?.[1] : undefined;
+    const baseSeconds = rateLimited === undefined
+      ? (this.retryDelaysSeconds[Math.min(attempt.attempts, this.retryDelaysSeconds.length - 1)] ?? 60)
+      : Math.min(Math.max(Number(rateLimited), 1), 3600);
+    const jittered = Math.max(1, Math.round(baseSeconds * (0.9 + Math.random() * 0.2)));
     const code = error instanceof Error && error.message === 'CONFIGURATION_INVALID' ? 'configuration_invalid' : 'dependency_unavailable';
-    await this.repository.failActivation(actor, attempt.id, { code, activationState: attempt.activationState }, new Date(now.getTime() + seconds * 1_000).toISOString(), terminal, now.toISOString());
+    await this.repository.failActivation(actor, attempt.id, { code, activationState: attempt.activationState }, new Date(now.getTime() + jittered * 1_000).toISOString(), terminal, now.toISOString());
   }
 }
