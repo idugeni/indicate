@@ -151,8 +151,12 @@ maks 72 karakter, tanpa titik, tanpa emoji), selalu `git commit -s`,
   kirim email uji Resend di staging.
   Bukti parsial 2026-09-24: `db-bootstrap --check` hijau (172 migrasi); R2 182 key
   diinventaris, HEAD 3/3 OK, tanpa orphan wajib-hapus; email uji Resend terkirim
-  ke owner. Terbuka: render browser LCP/CLS,
-  metrik prod pasca-wildcard, sampling penuh 131 zona, Search Console.
+  ke owner. Bukti 2026-09-25: trace chrome-devtools homepage prod `fakta01.my.id`
+  (dark-navy): LCP 988 ms, CLS 0.00, CrUX belum ada (situs baru); belum ada artikel
+  published di tenant mana pun sehingga trace halaman artikel menunggu konten perdana.
+  Tagihan 24–26 Sep: billed ~$0, efektif $3.58 (proporsional, tanpa lonjakan
+  pasca-wildcard). Terbuka: metrik prod jangka panjang, sampling penuh 131 zona,
+  Search Console (butuh akun Google owner; plumbing meta tag sudah ada).
   Audit Resend 2026-09-25: aplikasi memakai `RESEND_API_KEY` (HTTP API) +
   `RESEND_DEFAULT_FROM` untuk email transaksional; Supabase Auth memakai
   `RESEND_SMTP_PASS` via `smtp.resend.com` (`supabase/config.toml [auth.email.smtp]`,
