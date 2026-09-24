@@ -401,12 +401,15 @@ A Media record uses exactly one ownership mode: Article owner, Site owner, or Or
 - legacy: `articles/{articleId}/`, `sites/{siteId}/`, `assets/`;
 - scoped (new reserves): `o/{organizationId}/p/{purpose}/y={YYYY}/m={MM}/{owner}/{day}-{stem}-{token16}.{ext}`
   with `{owner}` = `article/{articleId}`, `site/{siteId}`, or `organization` and `purpose` from the canonical enum
-  (`article-inline`, `article-cover`, `article-image`, `site-logo`, `site-favicon`, `site-default`, `organization-asset`).
+  (`article-inline`, `article-cover`, `site-logo`, `site-favicon`, `site-default`, `organization-asset`).
+  Covers are `article-cover`; body images are `article-inline` (the retired `article-image` purpose backfills to it).
+  Gallery editorial fields (`alt_text`, `caption`, `sort_order`, `focal_x`/`focal_y`) travel on the media row;
+  article saves sync them from TipTap image nodes in document order (fill nulls, never overwrite).
   Thumbnails append `-thumb` before the extension and are derived server-side.
 
 `media_key_reservations.object_key` is globally unique. Reservation records remain as used/occupied tombstones so keys are never recycled. An R2 object cannot become public merely because a reservation or object exists; active metadata and authorization graph checks are required.
 
-Public routing: purposes `article-cover`/`article-image` reserve keys under `pub/` (same tenant layout beneath the prefix) and live in the public bucket, served direct with immutable cache; all other purposes stay in the private bucket behind the signed media route. Delivery falls back to the signed route whenever the public host is unconfigured, so brand assets (`site-logo`, `site-favicon`) never depend on public serving.
+Public routing: purpose `article-cover` reserves keys under `pub/` (same tenant layout beneath the prefix) and lives in the public bucket, served direct with immutable cache; all other purposes stay in the private bucket behind the signed media route. Delivery falls back to the signed route whenever the public host is unconfigured, so brand assets (`site-logo`, `site-favicon`) never depend on public serving. Featured selection is deterministic per copy: `custom_image_media_id` (validated active `article-cover` image at accept time), else the article `lead_media_id` (validated the same way at article write), else the external `cover_image_url` hotlink. TipTap body images resolve by media id, never by gallery position. Organization-owned article images (`article-inline`, `article-cover`) are publicly visible only through a published copy on that host: publisher `logoUrl` reference, `lead_media_id`/`custom_image_media_id` cover link, or a `media:{id}` embed in a published article body; the gallery unions article-owned rows with referenced organization-owned rows ordered by `sort_order`.
 
 ### 9.8 Publishing model
 
