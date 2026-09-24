@@ -75,16 +75,6 @@
       "type": "http",
       "url": "https://mcp.resend.com/mcp"
     },
-    "telegram": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@iqai/mcp-telegram"
-      ],
-      "env": {
-        "SAMPLING_ENABLED": "false"
-      }
-    },
     "upstash-redis": {
       "command": "npx",
       "args": [

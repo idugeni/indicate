@@ -99,28 +99,11 @@
         "type": "remote",
         "url": "https://mcp.resend.com/mcp"
       },
-      "telegram": {
-        // Token TIDAK ditulis di sini. @iqai/mcp-telegram membawa dotenvx:
-        // saat spawn dengan cwd = workspace, ia memuat TELEGRAM_BOT_TOKEN
-        // dari .env project ini (git-ignored). Jangan set token di sini —
-        // string kosong dari substitusi env justru menutupi fallback .env.
-        "type": "local",
-        "command": [
-          "cmd",
-          "/c",
-          "npx",
-          "-y",
-          "@iqai/mcp-telegram"
-        ],
-        "environment": {
-          "SAMPLING_ENABLED": "false"
-        }
-      },
       "upstash-redis": {
         // Kredensial TIDAK ditulis di sini. dotenvx memuat .env project
-        // (git-ignored) saat spawn dengan cwd = workspace, pola yang sama
-        // dengan dotenvx bawaan @iqai/mcp-telegram. {env:...} tidak dipakai
-        // karena hanya membaca process environment OpenCode, bukan file .env.
+        // (git-ignored) saat spawn dengan cwd = workspace. {env:...} tidak
+        // dipakai karena hanya membaca process environment OpenCode,
+        // bukan file .env.
         "type": "local",
         "command": [
           "cmd",
