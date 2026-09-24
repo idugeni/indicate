@@ -255,6 +255,22 @@ describe('readSite projection', () => {
     expect(item).toHaveProperty('imageUrl', 'https://portal.example/api/network/media/m-1');
   });
 
+  it('memproyeksikan override robots per kopi', async () => {
+    const { repository } = harness({
+      articles: [articleRow({ robotsDirective: 'noindex,nofollow' })],
+    });
+    const item = (await repository.loadNetworkSite({ ...CONTEXT }, {}))?.articles[0];
+    expect(item).toBeDefined();
+    expect(item).toHaveProperty('robotsDirective', 'noindex, nofollow');
+  });
+
+  it('mewarisi default situs saat robots kopi null', async () => {
+    const { repository } = harness({ articles: [articleRow({ robotsDirective: null })] });
+    const item = (await repository.loadNetworkSite({ ...CONTEXT }, {}))?.articles[0];
+    expect(item).toBeDefined();
+    expect(item).toHaveProperty('robotsDirective', null);
+  });
+
   it('customDescription null jatuh ke excerpt 600 karakter kepala', async () => {
     const head = `${'kata '.repeat(150)}<b>rusak`;
     const { repository } = harness({

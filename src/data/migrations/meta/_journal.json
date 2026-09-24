@@ -1156,6 +1156,13 @@
       "when": 1790194800000,
       "tag": "20260924010000_telegram_removal",
       "breakpoints": true
+    },
+    {
+      "idx": 165,
+      "version": "7",
+      "when": 1790217027905,
+      "tag": "20260924023027_article_site_robots_directive",
+      "breakpoints": true
     }
   ]
 }

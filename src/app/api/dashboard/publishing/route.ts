@@ -94,6 +94,7 @@ async function handlePOST(request: Request) {
       'publication.suggest': (payload) => context.publication.suggest(context.actor, payload),
       'publication.retry': (payload) => context.publication.retry(context.actor, payload),
       'publication.unpublish': (payload) => context.publication.unpublish(context.actor, payload),
+      'publication.setSiteRobots': (payload) => context.publication.setSiteRobots(context.actor, payload),
       'publication.status': (payload) => context.publication.status(context.actor, payload),
     };
     const action = actions[parsed.data.action]; if (action === undefined) return NextResponse.json(createPublicError('INVALID_INPUT', 'Unknown Publishing command.', requestId), { status: 400 });

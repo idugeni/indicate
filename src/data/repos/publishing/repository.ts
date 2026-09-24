@@ -14,7 +14,7 @@ import { duplicateIssuesForFamilies, excerptForDescription } from '@/modules/pub
 import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
 import {
   PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type AcceptPublicationInput, type AcceptPublicationResult,
-  type ActivateMediaInput, type ArticleVariantContext, type JobNotificationContext, type PublicationTargetSelection, type ReserveMediaCandidate, type ReservationCandidateResult, type PublishingRepository,
+  type ActivateMediaInput, type ArticleSiteRobotsInput, type ArticleSiteRobotsResult, type ArticleVariantContext, type JobNotificationContext, type PublicationTargetSelection, type ReserveMediaCandidate, type ReservationCandidateResult, type PublishingRepository,
   type TargetTransitionInput,
 } from '@/modules/publishing/ports';
 import { redact } from '@/core/security/redaction';
@@ -432,6 +432,24 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       const refreshed = await transaction.select().from(publishingJobs).where(and(eq(publishingJobs.organizationId, actor.organizationId), eq(publishingJobs.id, job.id))).limit(1);
       await this.audit(transaction, actor, 'publication.unpublish', 'publishing_job', job.id, { targetIds: published.map(({ target }) => target.id) }, now);
       return this.statusTx(transaction, refreshed[0]!);
+    });
+  }
+
+  /** Flip the per-copy robots override; NULL inherits the site default. Delivery projects it on the next read and caches are purged. */
+  async setArticleSiteRobots(actor: AuthorizedTenantActorContext, input: ArticleSiteRobotsInput): Promise<ArticleSiteRobotsResult> {
+    return this.database.transaction(async (transaction) => {
+      await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.publishingRequest); await this.enforceWritableSubscription(transaction, actor);
+      const now = new Date(input.now);
+      const rows = await transaction.select({ site: articleSites, regionId: articles.regionId }).from(articleSites)
+        .innerJoin(articles, and(eq(articles.organizationId, articleSites.organizationId), eq(articles.id, articleSites.articleId)))
+        .where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.id, input.articleSiteId))).for('update').limit(1);
+      const row = rows[0]; if (row === undefined) throw new PublishingAccessDeniedError();
+      if (actor.regionScopeId !== undefined && actor.regionScopeId !== null && row.regionId !== actor.regionScopeId) throw new PublishingAccessDeniedError();
+      const updated = await transaction.update(articleSites).set({ seoRobotsDirective: input.directive, version: sql`${articleSites.version} + 1`, updatedAt: now })
+        .where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.id, input.articleSiteId))).returning({ version: articleSites.version });
+      await this.enqueuePublicInvalidation(transaction, actor.organizationId, row.site.siteId, 'article.robots.updated', now, row.site.articleId);
+      await this.audit(transaction, actor, 'publication.siteRobots', 'article_site', input.articleSiteId, { directive: input.directive }, now);
+      return { articleSiteId: input.articleSiteId, directive: input.directive, version: updated[0]!.version };
     });
   }
 

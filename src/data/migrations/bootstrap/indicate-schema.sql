@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (165 migrations):
+-- Reviewed sources, in journal order (166 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -178,6 +178,7 @@
 --   163  20260923170017_media_public_prefix  ledger sha256:cda647367f2caff941ca6ca1a940b563aaffeb29a95722b5dfea2f6a872c2ad9
 --   164  20260923172152_cascade_fk_covering_indexes  ledger sha256:cbb46d566bf3b67bfe6eac22f990a891b5448e2849d6da20b46c7b19631631ac
 --   165  20260924010000_telegram_removal  ledger sha256:c95176ab1f761d9439c62caa97f51289e1213b7f7a2f88f4989deae9a9871531
+--   166  20260924023027_article_site_robots_directive  ledger sha256:1f6c3a7fccc3532bc2bfcee8efadadd6a6284adba8e545b29b43809f13c7e2a8
 
 BEGIN;
 
@@ -13094,4 +13095,20 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (164, 'telegram_removal', 'sha256:9c8570433fae0b5e8c8e9bc995367668c3f268492457c56bcaadb94c64543798');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c95176ab1f761d9439c62caa97f51289e1213b7f7a2f88f4989deae9a9871531', 1790194800000);
+
+-- ----------------------------------------------------------------------
+-- 20260924023027_article_site_robots_directive
+-- ----------------------------------------------------------------------
+-- Per-copy robots kill-switch: `article_sites.seo_robots_directive` overrides the
+-- site default for a single cascade copy (NULL inherits). Reuses the shared
+-- `seo_robots_directive` enum so the vocabulary stays identical to
+-- `site_settings.seo_robots_directive`. Delivery projects it onto the SEO
+-- document; the renderer already honors per-article directives.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.article_sites ADD COLUMN seo_robots_directive seo_robots_directive;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (165, 'article_site_robots_directive', 'sha256:5a65d89520a3b324d3136e751aefc44a4937d06311cce800137ac61bc6c2b769');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('1f6c3a7fccc3532bc2bfcee8efadadd6a6284adba8e545b29b43809f13c7e2a8', 1790217027905);
 COMMIT;

@@ -214,6 +214,8 @@ export const articleSites = pgTable('article_sites', {
   assignmentSource: text('assignment_source').default('manual').notNull(),
   expandedFromSiteId: uuid('expanded_from_site_id'),
   customCanonicalUrl: text('custom_canonical_url'),
+  /** Per-copy robots override (NULL inherits the site default). */
+  seoRobotsDirective: seoRobotsDirective('seo_robots_directive'),
   ...timestamps,
 }, (table) => [
   primaryKey({ name: 'article_sites_pk', columns: [table.organizationId, table.id] }),

@@ -108,6 +108,25 @@ export function PublishingForm({
     });
   };
 
+  const flipTargetRobots = (articleSiteId: string, directive: 'index' | 'noindex', jobId: string) => {
+    const effect = directive === 'noindex' ? 'menyembunyikan kopi ini dari mesin pencari' : 'menampilkan kembali kopi ini di mesin pencari';
+    if (!window.confirm(`Ubah indeksasi kopi ini? Tindakan akan ${effect}.`)) return;
+    setStatusError(null);
+    startStatusTransition(async () => {
+      try {
+        const result = (await command('publication.setSiteRobots', { articleSiteId, directive })) as { readonly articleSiteId?: string } | null;
+        if (result?.articleSiteId === undefined) {
+          setStatusError('Perubahan indeksasi tidak dapat disimpan.');
+          return;
+        }
+        toast.success(directive === 'noindex' ? 'Kopi diset noindex.' : 'Kopi diset index.');
+        refreshStatus(jobId, 'publication.status', { jobId });
+      } catch {
+        setStatusError('Perubahan indeksasi tidak dapat disimpan.');
+      }
+    });
+  };
+
   const handleSuggest = () => {
     const form = formRef.current;
     if (form === null) return;
@@ -355,6 +374,28 @@ export function PublishingForm({
                     {target.publishedUrl !== null ? ` · ${target.publishedUrl}` : ''}
                     {target.sanitizedError !== null ? ` · ${errorCode(target.sanitizedError)}` : ''}
                   </p>
+                  {target.state === 'published' ? (
+                    <div className="mt-1.5 flex gap-1.5">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isStatusBusy}
+                        onClick={() => flipTargetRobots(target.articleSiteId, 'index', jobStatus.job.id)}
+                        className="h-6 px-2 font-mono text-[11px]"
+                      >
+                        Indeks
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isStatusBusy}
+                        onClick={() => flipTargetRobots(target.articleSiteId, 'noindex', jobStatus.job.id)}
+                        className="h-6 px-2 font-mono text-[11px]"
+                      >
+                        Nonindeks
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>

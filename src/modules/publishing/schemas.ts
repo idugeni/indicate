@@ -62,6 +62,11 @@ export const publicationTargetSelectionSchema = z.object({
   targetIds: z.array(z.uuid()).min(1).max(100).optional(),
 }).strict();
 
+export const publicationSiteRobotsSchema = z.object({
+  articleSiteId: z.uuid(),
+  directive: z.enum(['index', 'noindex']),
+}).strict();
+
 export const publicationBulkRequestSchema = z.object({
   articleIds: z.array(z.uuid()).min(1).max(20),
   siteIds: z.array(z.uuid()).min(1).max(100),

@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 
 import { PublishingForm } from '@/modules/dashboard/components/publishing/publishing-form';
 
-vi.mock('sonner', () => ({ toast: { warning: vi.fn(), info: vi.fn(), promise: vi.fn((task: Promise<unknown>) => task) } }));
+vi.mock('sonner', () => ({ toast: { warning: vi.fn(), info: vi.fn(), success: vi.fn(), promise: vi.fn((task: Promise<unknown>) => task) } }));
 
 afterEach(() => {
   cleanup();
@@ -23,8 +23,8 @@ const DATA = {
 const STATUS = {
   job: { id: 'job-1', state: 'queued' },
   targets: [
-    { id: 't-1', siteId: 'site-1', state: 'published', attempt: 1, publishedUrl: 'https://portal.example/judul-utama', sanitizedError: null },
-    { id: 't-2', siteId: 'site-2', state: 'failed', attempt: 2, publishedUrl: null, sanitizedError: { code: 'boom' } },
+    { id: 't-1', siteId: 'site-1', articleSiteId: 'as-1', state: 'published', attempt: 1, publishedUrl: 'https://portal.example/judul-utama', sanitizedError: null },
+    { id: 't-2', siteId: 'site-2', articleSiteId: 'as-2', state: 'failed', attempt: 2, publishedUrl: null, sanitizedError: { code: 'boom' } },
   ],
 };
 
@@ -123,5 +123,25 @@ describe('PublishingForm suggest and status', () => {
     fireEvent.change(screen.getByPlaceholderText(/id dari hasil pengiriman/i), { target: { value: 'job-1' } });
     fireEvent.click(screen.getByRole('button', { name: /^muat$/i }));
     expect(await screen.findByText(/tidak dapat dimuat/)).toBeDefined();
+  });
+
+  it('mengubah indeksasi kopi tayang hanya setelah konfirmasi', async () => {
+    const user = userEvent.setup();
+    const command = vi.fn(async (action: string) => {
+      if (action === 'publication.setSiteRobots') return { articleSiteId: 'as-1', directive: 'noindex,nofollow', version: 2 };
+      return STATUS;
+    });
+    setup(command);
+    await user.type(screen.getByPlaceholderText(/id dari hasil pengiriman/i), 'job-1');
+    await user.click(screen.getByRole('button', { name: /^muat$/i }));
+    expect(await screen.findByText(/job-1/)).toBeDefined();
+
+    vi.stubGlobal('confirm', vi.fn(() => false));
+    await user.click(screen.getByRole('button', { name: /^nonindeks$/i }));
+    expect(command).not.toHaveBeenCalledWith('publication.setSiteRobots', expect.anything());
+
+    vi.stubGlobal('confirm', vi.fn(() => true));
+    await user.click(screen.getByRole('button', { name: /^nonindeks$/i }));
+    await waitFor(() => expect(command).toHaveBeenCalledWith('publication.setSiteRobots', { articleSiteId: 'as-1', directive: 'noindex' }), { timeout: 5000 });
   });
 });

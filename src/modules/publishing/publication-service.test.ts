@@ -45,6 +45,7 @@ function harness(overrides: {
   getPublication?: (...args: unknown[]) => Promise<unknown>;
   retryTargets?: (...args: unknown[]) => Promise<unknown>;
   unpublishTargets?: (...args: unknown[]) => Promise<unknown>;
+  setArticleSiteRobots?: (...args: unknown[]) => Promise<unknown>;
   schedule?: (...args: unknown[]) => Promise<unknown>;
 } = {}) {
   let counter = 0;
@@ -59,6 +60,7 @@ function harness(overrides: {
     getPublication: vi.fn(overrides.getPublication ?? (async () => statusProjection('job-1'))),
     retryTargets: vi.fn(overrides.retryTargets ?? (async () => statusProjection('job-1'))),
     unpublishTargets: vi.fn(overrides.unpublishTargets ?? (async () => statusProjection('job-1'))),
+    setArticleSiteRobots: vi.fn(overrides.setArticleSiteRobots ?? (async () => ({ articleSiteId: 'as-1', directive: 'noindex,nofollow', version: 2 }))),
     recordDispatchScheduled: vi.fn(async () => undefined),
     recordDispatchFailure: vi.fn(async () => undefined),
   };
@@ -136,8 +138,57 @@ describe('PublicationService listJobs', () => {
   });
 });
 
-describe('PublicationService request validation', () => {
-  it('menolak payload mentah yang tidak valid', async () => {
+describe('PublicationService setSiteRobots', () => {
+  const ARTICLE_SITE = '0199a2b3-4c5d-7e8f-9012-3456789abce2';
+
+  it('memetakan noindex ke enum penyimpanan dan mengembalikan versi', async () => {
+    const { service, repository } = harness();
+    const result = await service.setSiteRobots(actor, { articleSiteId: ARTICLE_SITE, directive: 'noindex' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value).toEqual({ articleSiteId: 'as-1', directive: 'noindex,nofollow', version: 2 });
+    expect(repository.setArticleSiteRobots).toHaveBeenCalledWith(
+      actor,
+      { articleSiteId: ARTICLE_SITE, directive: 'noindex,nofollow', now: '2026-09-18T14:00:00.000Z' },
+    );
+  });
+
+  it('memetakan index ke enum penyimpanan', async () => {
+    const { service, repository } = harness({
+      setArticleSiteRobots: async () => ({ articleSiteId: 'as-1', directive: 'index,follow', version: 3 }),
+    });
+    const result = await service.setSiteRobots(actor, { articleSiteId: ARTICLE_SITE, directive: 'index' });
+    expect(result.ok).toBe(true);
+    expect(repository.setArticleSiteRobots).toHaveBeenCalledWith(
+      actor,
+      { articleSiteId: ARTICLE_SITE, directive: 'index,follow', now: '2026-09-18T14:00:00.000Z' },
+    );
+  });
+
+  it('menolak payload yang tidak valid', async () => {
+    const { service, repository } = harness();
+    const result = await service.setSiteRobots(actor, { articleSiteId: 'bukan-uuid', directive: 'noindex' });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
+    expect(repository.setArticleSiteRobots).not.toHaveBeenCalled();
+  });
+
+  it('memetakan penolakan akses ke denial non-disclosing', async () => {
+    const { service, repository } = harness({
+      setArticleSiteRobots: async () => {
+        throw new PublishingAccessDeniedError();
+      },
+    });
+    const result = await service.setSiteRobots(actor, { articleSiteId: ARTICLE_SITE, directive: 'noindex' });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+    expect(repository.recordDenial).toHaveBeenCalled();
+  });
+});
+
+describe('PublicationService request validation', () => {  it('menolak payload mentah yang tidak valid', async () => {
     const { service, repository } = harness();
     const result = await service.request(actor, {});
     expect(result.ok).toBe(false);

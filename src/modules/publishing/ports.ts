@@ -106,6 +106,20 @@ export interface PublicationTargetSelection {
   readonly now: string;
 }
 
+export type ArticleSiteRobotsDirective = 'index,follow' | 'noindex,nofollow';
+
+export interface ArticleSiteRobotsInput {
+  readonly articleSiteId: string;
+  readonly directive: ArticleSiteRobotsDirective;
+  readonly now: string;
+}
+
+export interface ArticleSiteRobotsResult {
+  readonly articleSiteId: string;
+  readonly directive: ArticleSiteRobotsDirective;
+  readonly version: number;
+}
+
 export interface PublishingRepository {
   reserveMediaCandidate(actor: AuthorizedTenantActorContext, input: ReserveMediaCandidate): Promise<ReservationCandidateResult>;
   markReservationOccupied(actor: AuthorizedTenantActorContext, reservationId: string, now: string): Promise<void>;
@@ -122,6 +136,7 @@ export interface PublishingRepository {
   getArticleVariantContext(actor: AuthorizedTenantActorContext, articleId: string): Promise<ArticleVariantContext | null>;
   retryTargets(actor: AuthorizedTenantActorContext, input: PublicationTargetSelection): Promise<PublicationStatusProjection>;
   unpublishTargets(actor: AuthorizedTenantActorContext, input: PublicationTargetSelection): Promise<PublicationStatusProjection>;
+  setArticleSiteRobots(actor: AuthorizedTenantActorContext, input: ArticleSiteRobotsInput): Promise<ArticleSiteRobotsResult>;
   recordDispatchScheduled(organizationId: string, jobId: string, now: string, claimToken?: string): Promise<void>;
   recordDispatchFailure(organizationId: string, jobId: string, retryable: boolean, nextAt: string, now: string, claimToken?: string): Promise<void>;
   getPublication(actor: AuthorizedTenantActorContext, jobId: string): Promise<PublicationStatusProjection | null>;

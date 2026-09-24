@@ -6,10 +6,10 @@ import { deriveSiteLabel, excerptForDescription, findCrossSiteDuplicates, sugges
 import { cascadeFamilyKey, expandCascadeSites } from '@/modules/site/site-cascade';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import type { RedisCoordinationPort } from '@/integrations/redis/ports';
-import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type PublicationJobSummary, type PublishingRepository } from '@/modules/publishing/ports';
+import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type ArticleSiteRobotsResult, type PublicationJobSummary, type PublishingRepository } from '@/modules/publishing/ports';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
-import { publicationRequestSchema, publicationBulkRequestSchema, publicationStatusSchema, publicationSuggestSchema, publicationTargetSelectionSchema } from '@/modules/publishing/schemas';
+import { publicationRequestSchema, publicationBulkRequestSchema, publicationSiteRobotsSchema, publicationStatusSchema, publicationSuggestSchema, publicationTargetSelectionSchema } from '@/modules/publishing/schemas';
 import { findDuplicateOverrides } from '@/modules/site/seo-validation';
 
 interface ClockLike { now(): Date }
@@ -241,6 +241,23 @@ export class PublicationService {
       if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat menarik publikasi.', actor.requestId) };
       if (error instanceof PublishingConflictError) return { ok: false, error: createPublicError('INVALID_STATE_TRANSITION', 'The job is currently leased by a worker. Try again shortly.', actor.requestId) };
       return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The unpublish request could not be completed.', actor.requestId) };
+    }
+  }
+
+  async setSiteRobots(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<ArticleSiteRobotsResult, PublicErrorEnvelope>> {
+    const parsed = publicationSiteRobotsSchema.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the robots request.', actor.requestId) };
+    try {
+      const result = await this.repository.setArticleSiteRobots(actor, {
+        articleSiteId: parsed.data.articleSiteId,
+        directive: parsed.data.directive === 'noindex' ? 'noindex,nofollow' : 'index,follow',
+        now: this.clock.now().toISOString(),
+      });
+      return { ok: true, value: result };
+    } catch (error) {
+      if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'publication.setSiteRobots.denied');
+      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat mengatur indeksasi.', actor.requestId) };
+      return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The robots request could not be completed.', actor.requestId) };
     }
   }
 
