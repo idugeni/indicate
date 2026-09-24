@@ -21,6 +21,7 @@ import { createResendEmailApiAdapter } from '@/integrations/email/resend-email-a
 import { createResendEventVerifier } from '@/integrations/email/resend-webhook-verify';
 import { EmailWelcomeService } from '@/modules/integrations/email-welcome-service';
 import { ResendWebhookService } from '@/modules/integrations/resend-webhook-service';
+import { VercelSpendWebhookService } from '@/modules/integrations/vercel-spend-webhook-service';
 import { UuidGenerator } from '@/core/system/uuid-generator';
 
 export function createProductionIntegrations(config: RuntimeConfig, bootstrap: BootstrapConfig) {
@@ -43,6 +44,7 @@ export function createProductionIntegrations(config: RuntimeConfig, bootstrap: B
     apiKeys: new ApiKeyService(repository, identifiers), customer: new CustomerService(repository, identifiers),
     rateLimits: new RateLimitService(new UpstashRateLimitAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })),
     webhooks: new WebhookService(repository, { generic: config.security.genericWebhookSecret }, config.security.webhookFreshnessSeconds, config.security.webhookReplayTtlSeconds),
+    spendWebhooks: new VercelSpendWebhookService(repository, config.vercel.teamId),
     email,
     emailWebhooks,
     emailWelcome: new EmailWelcomeService(email),
