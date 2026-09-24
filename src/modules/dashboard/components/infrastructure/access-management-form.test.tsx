@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { AccessManagementForm } from '@/modules/dashboard/components/infrastructure/access-management-form';
 
@@ -47,12 +48,16 @@ describe('Formulir manajemen akses', () => {
   });
 
   it('menerapkan penetapan anggota lewat command', async () => {
+    const user = userEvent.setup();
     const command = vi.fn(async () => ({}));
     const { container } = render(
       <AccessManagementForm data={DATA} command={command} organizationId="org-1" />,
     );
     fireEvent.change(screen.getByLabelText(/ID pengguna baru/), { target: { value: 'u-9' } });
-    fireEvent.submit(container.querySelectorAll('form')[1] as HTMLFormElement);
+    const membershipForm = container.querySelectorAll('form')[1] as HTMLFormElement;
+    await user.click(within(membershipForm).getByLabelText('Peran target'));
+    await user.click(await screen.findByRole('option', { name: 'Editor' }));
+    fireEvent.submit(membershipForm);
     await waitFor(() =>
       expect(command).toHaveBeenCalledWith(
         'membership.update',

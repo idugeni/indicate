@@ -26,8 +26,14 @@ export function SignInForm() {
     setBusy(true);
     setError(null);
 
-    if (!email || !password) {
+    if (!email.trim() || !password) {
       setError('Harap isi alamat email dan kata sandi Anda.');
+      setBusy(false);
+      return;
+    }
+    const target = email.trim();
+    if (!target.includes('@')) {
+      setError('Masukkan alamat email yang valid.');
       setBusy(false);
       return;
     }
@@ -41,7 +47,7 @@ export function SignInForm() {
     try {
       const supabase = createBrowserSupabaseClient();
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: target,
         password,
         ...(captchaToken === null ? {} : { options: { captchaToken } }),
       });
@@ -65,7 +71,7 @@ export function SignInForm() {
     <>
       {error ? <AuthAlert tone="error">{error}</AuthAlert> : null}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form noValidate onSubmit={handleSubmit} className="space-y-5">
         <div>
           <AuthLabel htmlFor="email">
             Alamat email

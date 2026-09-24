@@ -126,7 +126,7 @@ export function OtpSignInForm() {
     return (
       <>
         {error ? <AuthAlert tone="error">{error}</AuthAlert> : null}
-        <form onSubmit={(event) => void handleRequest(event)} className="space-y-5">
+        <form noValidate onSubmit={(event) => void handleRequest(event)} className="space-y-5">
           <div>
             <AuthLabel htmlFor="otp-email">Alamat email</AuthLabel>
             <Input
@@ -160,6 +160,7 @@ export function OtpSignInForm() {
         </p>
       </div>
       <form
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
           if (code.length === CODE_LENGTH) void handleVerify(code);

@@ -1,12 +1,14 @@
 'use client';
 
 import { useId, useState, useTransition, type FormEvent } from 'react';
+import { toast } from 'sonner';
 import { KeyRound, Loader2, Plus, Send, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { createInviteSecret, formatInviteCode, hashInviteCode } from '@/modules/dashboard/components/shared/invite-code';
@@ -70,10 +72,15 @@ export function AccessManagementForm({
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
+    const name = String(formData.get('name') ?? '').trim();
+    if (name === '') {
+      toast.error('Isi nama peran dulu.');
+      return;
+    }
 
     startRoleTransition(async () => {
       const result = await command('role.create', {
-        name: String(formData.get('name') ?? '').trim(),
+        name,
         tier: formData.get('tier'),
         active: roleActive,
         permissions: [...rolePermissions],
@@ -99,6 +106,10 @@ export function AccessManagementForm({
         const roleId = inviteRoleId.trim();
         if (email === '' || roleId === '') {
           setInviteNotice('Isi email dan peran target dulu.');
+          return;
+        }
+        if (!email.includes('@')) {
+          setInviteNotice('Masukkan alamat email yang valid.');
           return;
         }
         const secret = await createInviteSecret();
@@ -131,7 +142,15 @@ export function AccessManagementForm({
     const typedUserId = String(formData.get('newUserId') ?? '').trim();
     const selectedUserId = String(formData.get('userId') ?? '').trim();
     const userId = typedUserId !== '' ? typedUserId : selectedUserId;
-    if (userId === '') return;
+    const roleId = String(formData.get('roleId') ?? '').trim();
+    if (userId === '') {
+      toast.error('Pilih atau isi pengguna dulu.');
+      return;
+    }
+    if (roleId === '') {
+      toast.error('Pilih peran dulu.');
+      return;
+    }
     const existing = model?.memberships?.find((member) => member.userId === userId);
 
     startMembershipTransition(async () => {
@@ -148,7 +167,7 @@ export function AccessManagementForm({
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <SectionCard icon={KeyRound} title="Peran baru" eyebrow="Hak akses">
-        <form onSubmit={handleCreateRole} className="space-y-3.5">
+        <form noValidate onSubmit={handleCreateRole} className="space-y-3.5">
           <div className="space-y-1.5">
             <Label htmlFor={roleNameId} className="font-mono text-xs text-paper-dim">
               Nama peran
@@ -215,24 +234,20 @@ export function AccessManagementForm({
       </SectionCard>
 
       <SectionCard icon={UserPlus} title="Penetapan anggota" eyebrow="Peran & status">
-        <form onSubmit={handleSaveMembership} className="space-y-3.5">
+        <form noValidate onSubmit={handleSaveMembership} className="space-y-3.5">
           <div className="space-y-1.5">
             <Label htmlFor={memberSelectId} className="font-mono text-xs text-paper-dim">
               Anggota terdaftar
             </Label>
-            <DashboardSelect
+            <SearchCombobox
               id={memberSelectId}
               name="userId"
               disabled={isSavingMembership}
               placeholder="— pilih anggota —"
-            >
-              <DashboardSelectItem value="">— pilih anggota —</DashboardSelectItem>
-              {model?.memberships?.map((member) => (
-                <DashboardSelectItem key={member.userId} value={member.userId}>
-                  {member.displayName} · {member.userId}
-                </DashboardSelectItem>
-              ))}
-            </DashboardSelect>
+              allowEmpty
+              emptyLabel="— pilih anggota —"
+              options={(model?.memberships ?? []).map((member) => ({ value: member.userId, label: `${member.displayName} · ${member.userId}` }))}
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -253,19 +268,16 @@ export function AccessManagementForm({
               <Label htmlFor={memberRoleId} className="font-mono text-xs text-paper-dim">
                 Peran target
               </Label>
-              <DashboardSelect
+              <SearchCombobox
                 id={memberRoleId}
                 name="roleId"
                 required
                 disabled={isSavingMembership}
                 placeholder="Pilih peran"
-              >
-                {model?.roles?.map((role) => (
-                  <DashboardSelectItem key={role.id} value={role.id}>
-                    {role.name}
-                  </DashboardSelectItem>
-                ))}
-              </DashboardSelect>
+                allowEmpty
+                emptyLabel="— pilih peran —"
+                options={(model?.roles ?? []).map((role) => ({ value: role.id, label: role.name }))}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor={memberStatusId} className="font-mono text-xs text-paper-dim">
@@ -304,7 +316,7 @@ export function AccessManagementForm({
       </SectionCard>
 
       <SectionCard icon={Send} title="Undang anggota" eyebrow="Undangan sekali pakai">
-        <form onSubmit={handleCreateInvite} className="space-y-3.5">
+        <form noValidate onSubmit={handleCreateInvite} className="space-y-3.5">
           <div className="space-y-1.5">
             <Label htmlFor={inviteEmailId} className="font-mono text-xs text-paper-dim">
               Email calon anggota
@@ -326,22 +338,18 @@ export function AccessManagementForm({
             <Label htmlFor={inviteRoleIdInput} className="font-mono text-xs text-paper-dim">
               Peran target
             </Label>
-            <DashboardSelect
+            <SearchCombobox
               id={inviteRoleIdInput}
               name="roleId"
               required
               disabled={isInviting}
               value={inviteRoleId}
               placeholder="— pilih peran —"
+              allowEmpty
+              emptyLabel="— pilih peran —"
+              options={(model?.roles ?? []).map((role) => ({ value: role.id, label: role.name }))}
               onValueChange={(next) => setInviteRoleId(next ?? '')}
-            >
-              <DashboardSelectItem value="">— pilih peran —</DashboardSelectItem>
-              {model?.roles?.map((role) => (
-                <DashboardSelectItem key={role.id} value={role.id}>
-                  {role.name}
-                </DashboardSelectItem>
-              ))}
-            </DashboardSelect>
+            />
           </div>
 
           {inviteNotice ? <FormNotice tone="muted">{inviteNotice}</FormNotice> : null}

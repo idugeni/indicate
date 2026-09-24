@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { Loader2, Send, Sparkles } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
+import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -23,28 +25,18 @@ const STATE_LABELS: Readonly<Record<PublishingState, string>> = {
 };
 
 function TargetStateBadge({ state }: { readonly state: PublishingState }) {
-  const dot =
+  const tone =
     state === 'published'
-      ? 'bg-signal'
+      ? 'border-signal/40 text-signal'
       : state === 'failed'
-        ? 'bg-error'
+        ? 'border-error/40 text-error'
         : state === 'unpublished'
-          ? 'bg-paper-faint'
-          : 'bg-warning';
-  const text =
-    state === 'published'
-      ? 'text-signal'
-      : state === 'failed'
-        ? 'text-error'
-        : state === 'unpublished'
-          ? 'text-paper-faint'
-          : 'text-warning';
-  const label = STATE_LABELS[state];
+          ? 'border-hairline-strong text-paper-faint'
+          : 'border-warning/40 text-warning';
   return (
-    <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider">
-      <span className={`h-1.5 w-1.5 ${dot}`} aria-hidden="true" />
-      <span className={text}>{label}</span>
-    </span>
+    <Badge variant="outline" className={`font-mono text-[10px] uppercase tracking-wider ${tone}`}>
+      {STATE_LABELS[state]}
+    </Badge>
   );
 }
 
@@ -78,7 +70,7 @@ export function PublishingForm({
   const [isSuggesting, startSuggestTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const articleOptions = useMemo(
-    () => (model?.articles ?? []).map((item) => ({ value: item.id, label: item.title ? `${item.title} (${item.slug ?? item.id})` : item.id })),
+    () => (model?.articles ?? []).map((item) => ({ value: item.id, label: item.title ? `${item.title}${item.slug ? ` (${item.slug})` : ''}` : (item.slug ?? 'Tanpa judul') })),
     [model?.articles],
   );
 
@@ -155,7 +147,12 @@ export function PublishingForm({
     event.preventDefault();
     const form = event.currentTarget;
     const values = new FormData(form);
+    const articleId = String(values.get('articleId') ?? '');
     const siteIds = values.getAll('siteIds').map(String);
+    if (articleId === '' || siteIds.length === 0) {
+      toast.warning('Pilih artikel dan minimal satu situs dulu sebelum menerbitkan.');
+      return;
+    }
     const overrides: Record<string, { title?: string; description?: string; imageMediaId?: string }> = {};
     for (const siteId of siteIds) {
       const title = (suggested[siteId]?.title ?? '').trim();
@@ -168,7 +165,7 @@ export function PublishingForm({
 
     startPublishTransition(async () => {
       const result = (await command('publication.request', {
-        articleId: values.get('articleId'),
+        articleId,
         siteIds,
         idempotencyKey: values.get('idempotencyKey'),
         options: { mode: 'immediate' },
@@ -185,7 +182,7 @@ export function PublishingForm({
     <div className="grid min-w-0 gap-4 lg:grid-cols-2">
       <SectionCard icon={Send} title="Terbitkan ke Situs" eyebrow="Penerbitan">
 
-        <form ref={formRef} onSubmit={handlePublish} className="space-y-4">
+        <form ref={formRef} noValidate onSubmit={handlePublish} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor={articleSelectId} className="font-mono text-xs text-paper-dim">
               Pilih Artikel
@@ -323,6 +320,7 @@ export function PublishingForm({
 
       <SectionCard icon={Send} title="Status Pengiriman" eyebrow="Per situs">
         <form
+          noValidate
           className="space-y-3"
           onSubmit={(event) => {
             event.preventDefault();
@@ -355,7 +353,7 @@ export function PublishingForm({
           </div>
         </form>
 
-        {statusError !== null ? <p className="m-0 mt-3 font-mono text-xs text-error">{statusError}</p> : null}
+        {statusError !== null ? <FormNotice tone="error">{statusError}</FormNotice> : null}
 
         {jobStatus !== null ? (
           <div className="mt-3 space-y-3">
@@ -366,7 +364,7 @@ export function PublishingForm({
               {jobStatus.targets.map((target) => (
                 <div key={target.id} className="py-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate font-mono text-xs text-paper">{hostnames.get(target.siteId) ?? target.siteId}</span>
+                    <span className="truncate font-mono text-xs text-paper">{hostnames.get(target.siteId) ?? 'Situs tidak dikenal'}</span>
                     <TargetStateBadge state={target.state} />
                   </div>
                   <p className="m-0 mt-1 font-mono text-[11px] tabular-nums text-paper-faint">

@@ -53,14 +53,24 @@ export function IntegrationSettings({
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
+    const name = String(formData.get('name') ?? '').trim();
+    const scopes = String(formData.get('scopes') ?? '')
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean);
+    if (name === '') {
+      toast.error('Isi nama kunci dulu.');
+      return;
+    }
+    if (scopes.length === 0) {
+      toast.error('Isi minimal satu cakupan dulu.');
+      return;
+    }
 
     startIssueTransition(async () => {
       const result = (await command('api-key.issue', {
-        name: String(formData.get('name') ?? '').trim(),
-        scopes: String(formData.get('scopes') ?? '')
-          .split(',')
-          .map((v) => v.trim())
-          .filter(Boolean),
+        name,
+        scopes,
         expiresAt: null,
       })) as { readonly plaintext?: string } | null;
 
@@ -82,7 +92,7 @@ export function IntegrationSettings({
     <div className="grid gap-6 lg:grid-cols-2">
       <SectionCard icon={KeyRound} title="Kunci API" eyebrow="Token akses">
 
-        <form onSubmit={handleIssueKey} className="space-y-3.5">
+        <form noValidate onSubmit={handleIssueKey} className="space-y-3.5">
           <div className="space-y-1.5">
             <Label htmlFor={apiKeyNameId} className="font-mono text-xs text-paper-dim">
               Nama Kunci

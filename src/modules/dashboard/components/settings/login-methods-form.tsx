@@ -86,7 +86,7 @@ export function LoginMethodsForm() {
       </p>
 
       {!hasEmail ? (
-        <form onSubmit={handleSetPassword} className="mt-4 space-y-3">
+        <form noValidate onSubmit={handleSetPassword} className="mt-4 space-y-3">
           <p className="m-0 font-sans text-xs text-paper-dim">
             Anda masuk dengan Google. Buat kata sandi agar email ini juga bisa masuk langsung.
           </p>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState, useTransition, type FormEvent } from 'react';
+import { toast } from 'sonner';
 import { Loader2, Plus, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,11 +36,25 @@ export function CustomerManagement({
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
+    const name = String(formData.get('name') ?? '').trim();
+    const slug = String(formData.get('slug') ?? '').trim();
+    if (name === '') {
+      toast.error('Isi nama organisasi dulu.');
+      return;
+    }
+    if (slug === '') {
+      toast.error('Isi slug organisasi dulu.');
+      return;
+    }
+    if (!/^[a-z0-9-]+$/.test(slug)) {
+      toast.error('Slug organisasi hanya boleh huruf kecil, angka, dan strip.');
+      return;
+    }
 
     startCustomerTransition(async () => {
       await command('customer.create', {
-        name: String(formData.get('name') ?? '').trim(),
-        slug: String(formData.get('slug') ?? '').trim(),
+        name,
+        slug,
         customerMetadata: {},
         subscription: {
           status: String(formData.get('status') ?? 'suspended'),
@@ -53,9 +68,19 @@ export function CustomerManagement({
   const handleAssignFirstAdmin = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setAssignNotice(null);
+    const orgId = assignOrgId.trim();
+    const target = assignEmail.trim();
+    if (orgId === '') {
+      setAssignNotice('Pilih organisasi dulu.');
+      return;
+    }
+    if (!target.includes('@')) {
+      setAssignNotice('Masukkan alamat email yang valid.');
+      return;
+    }
     startAssignTransition(async () => {
       try {
-        await command('membership.assign-first', { organizationId: assignOrgId.trim(), userEmail: assignEmail.trim() });
+        await command('membership.assign-first', { organizationId: orgId, userEmail: target });
         setAssignNotice('Admin pertama berhasil ditetapkan.');
         setAssignEmail('');
       } catch {
@@ -75,16 +100,29 @@ export function CustomerManagement({
     event.preventDefault();
     setInviteNotice(null);
     setInviteCode(null);
+    const orgId = inviteOrgId.trim();
+    const roleId = inviteRoleId.trim();
+    const email = inviteEmail.trim().toLowerCase();
+    if (orgId === '') {
+      setInviteNotice('Pilih organisasi dulu.');
+      return;
+    }
+    if (roleId === '') {
+      setInviteNotice('Pilih peran dulu.');
+      return;
+    }
+    if (!email.includes('@')) {
+      setInviteNotice('Masukkan alamat email yang valid.');
+      return;
+    }
     startInviteTransition(async () => {
       try {
         const secret = await createInviteSecret();
-        const orgId = inviteOrgId.trim();
-        const email = inviteEmail.trim().toLowerCase();
         const tokenHash = await hashInviteCode(orgId, email, secret);
         const response = await fetch('/api/dashboard/billing', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'invite.create', payload: { orgId, roleId: inviteRoleId.trim(), email, tokenHash } }),
+          body: JSON.stringify({ action: 'invite.create', payload: { orgId, roleId, email, tokenHash } }),
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         setInviteCode(formatInviteCode(orgId, email, secret));
@@ -99,7 +137,7 @@ export function CustomerManagement({
     <div className="grid w-full grid-cols-1 items-start gap-4 lg:grid-cols-3">
       <SectionCard icon={Users} title="Organisasi Baru" eyebrow="Registrasi akun">
 
-        <form onSubmit={handleCreateCustomer} className="space-y-3.5">
+        <form noValidate onSubmit={handleCreateCustomer} className="space-y-3.5">
           <div className="space-y-1.5">
             <Label htmlFor={nameInputId} className="font-mono text-xs text-paper-dim">
               Nama Organisasi / Lembaga
@@ -168,7 +206,7 @@ export function CustomerManagement({
 
       <SectionCard icon={Users} title="Admin pertama" eyebrow="Pengguna harus sudah masuk sekali agar terdaftar">
 
-        <form onSubmit={handleAssignFirstAdmin} className="space-y-3.5">
+        <form noValidate onSubmit={handleAssignFirstAdmin} className="space-y-3.5">
           <div className="space-y-1.5">
             <Label htmlFor={`${slugInputId}-org`} className="font-mono text-xs text-paper-dim">
               ID Organisasi
@@ -222,7 +260,7 @@ export function CustomerManagement({
 
       <SectionCard icon={Plus} title="Undangan organisasi" eyebrow="24 jam · sekali pakai">
 
-        <form onSubmit={handleCreateInvite} className="space-y-3.5">
+        <form noValidate onSubmit={handleCreateInvite} className="space-y-3.5">
           <div className="space-y-1.5">
             <Label htmlFor={`${slugInputId}-invite-org`} className="font-mono text-xs text-paper-dim">
               ID Organisasi

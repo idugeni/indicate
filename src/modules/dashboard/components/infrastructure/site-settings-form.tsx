@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { Textarea } from '@/components/ui/textarea';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
@@ -116,6 +117,10 @@ function SiteSettingsEditor({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    if (name.trim() === '') {
+      setError('Isi nama situs terlebih dahulu.');
+      return;
+    }
     if (template === '') {
       setError('Pilih template situs terlebih dahulu.');
       return;
@@ -160,7 +165,7 @@ function SiteSettingsEditor({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3.5">
+    <form noValidate onSubmit={handleSubmit} className="space-y-3.5">
       {error ? <FormNotice tone="error">{error}</FormNotice> : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -499,18 +504,13 @@ export function SiteSettingsForm({
           <Label htmlFor={siteSelectId} className="font-mono text-xs text-paper-dim">
             Pilih situs
           </Label>
-          <DashboardSelect
+          <SearchCombobox
             id={siteSelectId}
             value={activeSiteId}
             placeholder="Pilih situs"
+            options={sites.map((site) => ({ value: site.id, label: site.normalizedHostname }))}
             onValueChange={(next) => { if (next !== null) setSiteId(next); }}
-          >
-            {sites.map((site) => (
-              <DashboardSelectItem key={site.id} value={site.id}>
-                {site.normalizedHostname}
-              </DashboardSelectItem>
-            ))}
-          </DashboardSelect>
+          />
         </div>
 
         {activeSite === undefined ? (

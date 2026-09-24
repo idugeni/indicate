@@ -1,10 +1,11 @@
 'use client';
 
 import { useId, useState, useTransition, type FormEvent } from 'react';
+import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { Textarea } from '@/components/ui/textarea';
 import {
   buildUpdatePayload,
@@ -48,6 +49,27 @@ export function RecordEditorForm({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    for (const field of config.fields) {
+      if (field.kind !== 'text' && field.kind !== 'textarea' && field.kind !== 'select') continue;
+      const raw = values[field.key];
+      const text = typeof raw === 'string' ? raw.trim() : '';
+      if (field.required === true && text === '') {
+        toast.error(`Isi ${field.label} dulu.`);
+        return;
+      }
+      if (text !== '' && typeof field.pattern === 'string' && field.pattern !== '') {
+        let valid = true;
+        try {
+          valid = new RegExp(`^(?:${field.pattern})$`).test(text);
+        } catch {
+          valid = true;
+        }
+        if (!valid) {
+          toast.error(`${field.label} tidak sesuai format.`);
+          return;
+        }
+      }
+    }
     const payload = buildUpdatePayload(collectionKey, item, values);
     startSaveTransition(async () => {
       const result = await onSubmit(config.updateAction, payload);
@@ -56,11 +78,11 @@ export function RecordEditorForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} aria-label={config.title} className="space-y-4 border-t border-hairline bg-bg px-4 py-4 sm:px-5">
+    <form noValidate onSubmit={handleSubmit} aria-label={config.title} className="space-y-4 border-t border-hairline bg-bg px-4 py-4 sm:px-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="m-0 font-sans text-xs font-semibold text-paper">{config.title}</p>
         <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
-          ID {String(item.id ?? '—')} · versi {Number.isFinite(version) ? version : 1}
+          versi {Number.isFinite(version) ? version : 1}
         </p>
       </div>
 
@@ -110,21 +132,17 @@ export function RecordEditorForm({
             return (
               <Label key={field.key} htmlFor={inputId} className="block">
                 <span className="mb-1.5 block font-sans text-xs font-medium text-paper-dim">{field.label}</span>
-                <DashboardSelect
+                <SearchCombobox
                   id={inputId}
                   value={typeof value === 'string' ? value : ''}
                   required={field.required}
                   disabled={isSaving}
                   placeholder={field.emptyLabel ?? field.placeholder ?? field.label}
+                  options={resolveFieldOptions(field, lookups)}
+                  allowEmpty={field.allowEmpty}
+                  emptyLabel={field.emptyLabel}
                   onValueChange={(next) => setValue(field.key, next ?? '')}
-                >
-                  {field.allowEmpty ? <DashboardSelectItem value="">{field.emptyLabel ?? 'Tanpa relasi'}</DashboardSelectItem> : null}
-                  {resolveFieldOptions(field, lookups).map((option) => (
-                    <DashboardSelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </DashboardSelectItem>
-                  ))}
-                </DashboardSelect>
+                />
               </Label>
             );
           }

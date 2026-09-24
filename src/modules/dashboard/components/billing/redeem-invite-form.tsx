@@ -38,7 +38,7 @@ export function RedeemInviteForm() {
   };
 
   return (
-    <form onSubmit={redeem} className="mt-6 w-full max-w-xl rounded-lg border border-hairline bg-bg-raised p-5 text-left sm:p-6">
+    <form noValidate onSubmit={redeem} className="mt-6 w-full max-w-xl rounded-lg border border-hairline bg-bg-raised p-5 text-left sm:p-6">
       <p className="m-0 font-sans text-sm font-semibold text-paper">Punya kode undangan?</p>
       <Input
         value={code}

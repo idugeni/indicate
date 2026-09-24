@@ -60,7 +60,7 @@ export function UpdatePasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form noValidate onSubmit={handleSubmit} className="space-y-5">
       {error ? <AuthAlert tone="error">{error}</AuthAlert> : null}
 
       <div>

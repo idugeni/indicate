@@ -124,7 +124,7 @@ export function ProfileForm() {
       {profile === null ? (
         <p className="m-0 font-mono text-xs text-paper-faint">{error ?? 'Memuat…'}</p>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-3.5">
+        <form noValidate onSubmit={handleSubmit} className="space-y-3.5">
           <div className="flex items-center gap-3">
             <Avatar className="h-11 w-11 flex-none border border-hairline">
               {profile.avatarUrl ? <AvatarImage src={profile.avatarUrl} alt="" /> : null}

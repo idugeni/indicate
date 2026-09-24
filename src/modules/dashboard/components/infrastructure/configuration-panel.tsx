@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useTransition, type FormEvent } from 'react';
+import { toast } from 'sonner';
 import {
   FolderPlus,
   Globe,
@@ -12,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import type { DomainEntity, RegionEntity, SiteEntity } from '@/modules/dashboard/components/shared/types';
 import { MediaPolicySection } from '@/modules/dashboard/components/infrastructure/media-policy-section';
 import { PolicyOverviewSection } from '@/modules/dashboard/components/infrastructure/policy-overview-section';
@@ -46,10 +48,15 @@ export function ConfigurationPanel({
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
+    const hostname = String(formData.get('hostname') ?? '').trim().toLowerCase();
+    if (hostname === '') {
+      toast.error('Isi nama domain dulu.');
+      return;
+    }
 
     startDomainTransition(async () => {
       await command('domain.create', {
-        normalizedHostname: String(formData.get('hostname') ?? '').trim().toLowerCase(),
+        normalizedHostname: hostname,
         status: 'inactive',
       });
       form.reset();
@@ -60,13 +67,26 @@ export function ConfigurationPanel({
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
+    const name = String(formData.get('name') ?? '').trim();
     const slug = String(formData.get('slug') ?? '').trim().toLowerCase();
+    if (name === '') {
+      toast.error('Isi nama wilayah dulu.');
+      return;
+    }
+    if (slug === '') {
+      toast.error('Isi kode wilayah dulu.');
+      return;
+    }
+    if (!/^[a-z0-9-]+$/.test(slug)) {
+      toast.error('Kode wilayah hanya boleh huruf kecil, angka, dan strip.');
+      return;
+    }
 
     startRegionTransition(async () => {
       const parentRegionId = String(formData.get('parentRegionId') ?? '').trim();
       await command('region.create', {
         externalKey: slug,
-        name: String(formData.get('name') ?? '').trim(),
+        name,
         slug,
         status: 'active',
         kind: String(formData.get('kind') ?? 'region'),
@@ -80,12 +100,22 @@ export function ConfigurationPanel({
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
+    const domainId = String(formData.get('domainId') ?? '').trim();
+    const hostname = String(formData.get('hostname') ?? '').trim().toLowerCase();
+    if (domainId === '') {
+      toast.error('Pilih domain dulu.');
+      return;
+    }
+    if (hostname === '') {
+      toast.error('Isi nama host situs dulu.');
+      return;
+    }
 
     startSiteTransition(async () => {
       await command('site.create', {
-        domainId: formData.get('domainId'),
+        domainId,
         regionId: formData.get('regionId') || null,
-        normalizedHostname: String(formData.get('hostname') ?? '').trim().toLowerCase(),
+        normalizedHostname: hostname,
         status: 'inactive',
       });
       form.reset();
@@ -104,7 +134,7 @@ export function ConfigurationPanel({
           </h3>
         </div>
 
-        <form onSubmit={handleDomainSubmit} className="mt-4 space-y-3.5">
+        <form noValidate onSubmit={handleDomainSubmit} className="mt-4 space-y-3.5">
           <div className="space-y-1.5">
             <Label htmlFor={domainInputId} className="font-sans text-xs font-medium text-paper-dim">
               Nama domain utama
@@ -145,7 +175,7 @@ export function ConfigurationPanel({
           </h3>
         </div>
 
-        <form onSubmit={handleRegionSubmit} className="mt-4 space-y-3.5">
+        <form noValidate onSubmit={handleRegionSubmit} className="mt-4 space-y-3.5">
           <div className="space-y-1.5">
             <Label htmlFor={regionNameId} className="font-sans text-xs font-medium text-paper-dim">
               Nama wilayah
@@ -195,19 +225,15 @@ export function ConfigurationPanel({
             <Label htmlFor={regionParentSelectId} className="font-sans text-xs font-medium text-paper-dim">
               Induk (khusus kota)
             </Label>
-            <DashboardSelect
+            <SearchCombobox
               id={regionParentSelectId}
               name="parentRegionId"
               disabled={isAddingRegion}
               placeholder="Tanpa induk (wilayah)"
-            >
-              <DashboardSelectItem value="">Tanpa induk (wilayah)</DashboardSelectItem>
-              {(model?.regions ?? []).map((item) => (
-                <DashboardSelectItem key={item.id} value={item.id}>
-                  {item.name}
-                </DashboardSelectItem>
-              ))}
-            </DashboardSelect>
+              allowEmpty
+              emptyLabel="Tanpa induk (wilayah)"
+              options={(model?.regions ?? []).map((item) => ({ value: item.id, label: item.name }))}
+            />
           </div>
 
           <Button
@@ -236,43 +262,34 @@ export function ConfigurationPanel({
           </h3>
         </div>
 
-        <form onSubmit={handleSiteSubmit} className="mt-4 space-y-3.5">
+        <form noValidate onSubmit={handleSiteSubmit} className="mt-4 space-y-3.5">
           <div className="space-y-1.5">
             <Label htmlFor={siteDomainSelectId} className="font-sans text-xs font-medium text-paper-dim">
               Domain
             </Label>
-            <DashboardSelect
+            <SearchCombobox
               id={siteDomainSelectId}
               name="domainId"
               disabled={isAddingSite}
               defaultValue={model?.domains?.[0]?.id ?? ''}
               placeholder="Pilih domain"
-            >
-              {model?.domains?.map((item) => (
-                <DashboardSelectItem key={item.id} value={item.id}>
-                  {item.normalizedHostname}
-                </DashboardSelectItem>
-              ))}
-            </DashboardSelect>
+              options={(model?.domains ?? []).map((item) => ({ value: item.id, label: item.normalizedHostname }))}
+            />
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor={siteRegionSelectId} className="font-sans text-xs font-medium text-paper-dim">
               Wilayah
             </Label>
-            <DashboardSelect
+            <SearchCombobox
               id={siteRegionSelectId}
               name="regionId"
               disabled={isAddingSite}
               placeholder="Domain utama (tanpa wilayah)"
-            >
-              <DashboardSelectItem value="">Domain utama (tanpa wilayah)</DashboardSelectItem>
-              {model?.regions?.map((item) => (
-                <DashboardSelectItem key={item.id} value={item.id}>
-                  {item.name}
-                </DashboardSelectItem>
-              ))}
-            </DashboardSelect>
+              allowEmpty
+              emptyLabel="Domain utama (tanpa wilayah)"
+              options={(model?.regions ?? []).map((item) => ({ value: item.id, label: item.name }))}
+            />
           </div>
 
           <div className="space-y-1.5">

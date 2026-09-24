@@ -25,8 +25,14 @@ export function SignUpForm() {
     event.preventDefault();
     setBusy(true);
     setError(null);
-    if (!displayName.trim() || !email || password.length < 8) {
+    if (!displayName.trim() || !email.trim() || password.length < 8) {
       setError('Lengkapi nama, email, dan kata sandi minimal 8 karakter.');
+      setBusy(false);
+      return;
+    }
+    const target = email.trim();
+    if (!target.includes('@')) {
+      setError('Masukkan alamat email yang valid.');
       setBusy(false);
       return;
     }
@@ -40,7 +46,7 @@ export function SignUpForm() {
       const supabase = createBrowserSupabaseClient();
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
       const { error } = await supabase.auth.signUp({
-        email,
+        email: target,
         password,
         options: {
           data: { display_name: displayName.trim() },
@@ -74,7 +80,7 @@ export function SignUpForm() {
           </p>
         </AuthAlert>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form noValidate onSubmit={handleSubmit} className="space-y-5">
           {error ? <AuthAlert tone="error">{error}</AuthAlert> : null}
 
           <div>

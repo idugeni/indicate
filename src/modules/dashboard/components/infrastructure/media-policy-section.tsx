@@ -5,6 +5,7 @@ import { Gauge, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 
 interface MediaPolicy {
   readonly allowedMimeTypes: readonly string[];
@@ -121,7 +122,7 @@ export function MediaPolicySection() {
       {policy === null ? (
         <p className="m-0 mt-4 font-mono text-xs text-paper-faint">{isLoading ? 'Memuat…' : 'Menunggu data kebijakan.'}</p>
       ) : (
-        <form onSubmit={handleSave} className="mt-4 space-y-3.5">
+        <form noValidate onSubmit={handleSave} className="mt-4 space-y-3.5">
           <p className="m-0 font-mono text-[11px] text-paper-faint">
             Tipe diizinkan: {policy.allowedMimeTypes.join(', ')} · Maks saat ini: {(policy.maxObjectBytes / BYTES_PER_MB).toLocaleString('id-ID', { maximumFractionDigits: 1 })} MB
           </p>
@@ -176,12 +177,8 @@ export function MediaPolicySection() {
             </div>
           </div>
 
-          {notice ? (
-            <div className="rounded border border-hairline bg-bg p-2.5 font-mono text-xs text-signal">{notice}</div>
-          ) : null}
-          {error ? (
-            <div className="rounded border border-hairline bg-bg p-2.5 font-mono text-xs text-error">{error}</div>
-          ) : null}
+          {notice ? <FormNotice tone="success">{notice}</FormNotice> : null}
+          {error ? <FormNotice tone="error">{error}</FormNotice> : null}
 
           <Button
             type="submit"

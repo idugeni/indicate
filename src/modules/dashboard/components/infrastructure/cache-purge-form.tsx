@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 
@@ -73,26 +73,22 @@ export function CachePurgeForm({
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <SectionCard icon={RefreshCw} title="Bersihkan Cache" eyebrow="Perbarui tampilan">
-      <form onSubmit={handleSubmit} className="space-y-3.5">
+      <form noValidate onSubmit={handleSubmit} className="space-y-3.5">
         {notice ? <FormNotice tone={notice.tone}>{notice.message}</FormNotice> : null}
         <div className="space-y-1.5">
           <Label htmlFor={siteSelectId} className="font-mono text-xs text-paper-dim">
             Target
           </Label>
-          <DashboardSelect
+          <SearchCombobox
             id={siteSelectId}
             value={siteId}
             disabled={isPurging}
             placeholder="Semua situs"
+            allowEmpty
+            emptyLabel="Semua situs"
+            options={sites.map((site) => ({ value: site.id, label: site.normalizedHostname }))}
             onValueChange={(next) => { setSiteId(next ?? ''); setConfirmBulk(false); }}
-          >
-            <DashboardSelectItem value="">Semua situs</DashboardSelectItem>
-            {sites.map((site) => (
-              <DashboardSelectItem key={site.id} value={site.id}>
-                {site.normalizedHostname}
-              </DashboardSelectItem>
-            ))}
-          </DashboardSelect>
+          />
           <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">
             Memperbarui tampilan {targetLabel} di semua server. Tercatat di Riwayat Keamanan dan terlihat di Tugas Latar Belakang.
             {isBulk ? ` Pembersihan massal menyegarkan ${sites.length} situs sekaligus dan dibatasi 2 menit per organisasi.` : null}

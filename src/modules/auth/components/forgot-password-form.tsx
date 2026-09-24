@@ -21,8 +21,14 @@ export function ForgotPasswordForm() {
     event.preventDefault();
     setBusy(true);
     setError(null);
-    if (!email) {
+    if (!email.trim()) {
       setError('Masukkan alamat email Anda.');
+      setBusy(false);
+      return;
+    }
+    const target = email.trim();
+    if (!target.includes('@')) {
+      setError('Masukkan alamat email yang valid.');
       setBusy(false);
       return;
     }
@@ -35,7 +41,7 @@ export function ForgotPasswordForm() {
     try {
       const supabase = createBrowserSupabaseClient();
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(target, {
         redirectTo: `${siteUrl}/auth/callback?next=%2Fupdate-password`,
         ...(captchaToken === null ? {} : { captchaToken }),
       });
@@ -67,7 +73,7 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form noValidate onSubmit={handleSubmit} className="space-y-5">
       {error ? <AuthAlert tone="error">{error}</AuthAlert> : null}
 
       <div>
