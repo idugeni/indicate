@@ -141,7 +141,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           seoSiteName: settings.seoOpenGraphSiteName, locale: settings.locale,
           colors: settings.colors, socialLinks: settings.socialLinks,
           navigation: settings.navigation.map((item) => ({ label: String(item.label ?? ''), path: String(item.path ?? '/') })),
-          logoUrl: absoluteMediaUrl(context, logoMediaId),
+          logoUrl: `https://${context.normalizedHostname}/logo.png`,
           faviconUrl: faviconMediaId === null ? null : absoluteMediaUrl(context, faviconMediaId),
           defaultImageUrl: settings.defaultMediaId === null ? absoluteDefaultAssetUrl(context, this.defaultImageUrl) : absoluteMediaUrl(context, settings.defaultMediaId),
           robots: Array.isArray(settings.seo.robots) ? settings.seo.robots.map(String) : [],
@@ -161,6 +161,24 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       const shell = await this.readSettings(transaction, context);
       if (shell === null) return null;
       return { ...shell, articles: [] };
+    });
+  }
+
+  async resolveBrandMediaId(context: ResolvedSiteContext, kind: 'logo' | 'favicon'): Promise<string | null> {
+    return this.database.transaction(async (transaction) => {
+      await this.publicTenant(transaction, context);
+      const column = kind === 'logo' ? siteSettings.logoMediaId : siteSettings.faviconMediaId;
+      const rows = await transaction.select({ mediaId: column })
+        .from(sites)
+        .innerJoin(siteSettings, and(eq(siteSettings.organizationId, sites.organizationId), eq(siteSettings.siteId, sites.id)))
+        .where(and(eq(sites.organizationId, context.organizationId), eq(sites.id, context.siteId))).limit(1);
+      const own = rows[0]?.mediaId ?? null;
+      if (own !== null || context.regionId === null) return own;
+      const parent = await transaction.select({ mediaId: column })
+        .from(sites)
+        .innerJoin(siteSettings, and(eq(siteSettings.organizationId, sites.organizationId), eq(siteSettings.siteId, sites.id)))
+        .where(and(eq(sites.organizationId, context.organizationId), eq(sites.domainId, context.domainId), sql`${sites.regionId} IS NULL`)).limit(1);
+      return parent[0]?.mediaId ?? null;
     });
   }
 

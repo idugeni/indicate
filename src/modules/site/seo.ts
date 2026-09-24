@@ -343,6 +343,7 @@ export function serializeRobots(site: {
     'Allow: /categories/',
     'Allow: /icon.png',
     'Allow: /apple-touch-icon.png',
+    'Allow: /logo.png',
     'Allow: /manifest.webmanifest',
     'Allow: /favicon.ico',
     'Disallow: /search',

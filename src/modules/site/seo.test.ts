@@ -177,6 +177,7 @@ describe('serializers', () => {
     expect(robots).toContain('Disallow: /rahasia');
     expect(robots).toContain('Allow: /icon.png');
     expect(robots).toContain('Allow: /apple-touch-icon.png');
+    expect(robots).toContain('Allow: /logo.png');
     expect(robots).toContain('Allow: /manifest.webmanifest');
     expect(robots).toContain('Sitemap: https://portal.example/sitemap.xml');
   });

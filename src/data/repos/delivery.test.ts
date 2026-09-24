@@ -96,6 +96,7 @@ function harness(handlers: {
   readonly body?: readonly unknown[];
   readonly gallery?: readonly unknown[];
   readonly feed?: readonly unknown[];
+  readonly brand?: readonly unknown[] | readonly (readonly unknown[])[];
   readonly publicHost?: string | null;
 }) {
   const selectLog: SelectLog[] = [];
@@ -104,6 +105,12 @@ function harness(handlers: {
   const body = handlers.body ?? [];
   const gallery = handlers.gallery ?? [];
   const feed = handlers.feed ?? [];
+  const brandSets = (
+    handlers.brand === undefined || handlers.brand.length === 0 || Array.isArray(handlers.brand[0])
+      ? (handlers.brand ?? [[{ mediaId: 'm-brand' }]]) as readonly (readonly unknown[])[]
+      : [handlers.brand] as readonly (readonly unknown[])[]
+  );
+  let brandCursor = 0;
   const transaction = new Proxy(
     {},
     {
@@ -117,6 +124,11 @@ function harness(handlers: {
               wanted.length === keys.length && wanted.every((key) => keys.includes(key));
             if (only('body') || only('body', 'bodyJson')) return chainable(body);
             if (only('id', 'thumbObjectKey')) return chainable(gallery);
+            if (only('mediaId')) {
+              const set = brandSets[Math.min(brandCursor, brandSets.length - 1)] ?? [];
+              brandCursor += 1;
+              return chainable(set);
+            }
             if (keys.includes('logoMediaId')) return chainable(settings);
             if (keys.includes('bodyExcerpt')) return chainable(articles);
             if (keys.includes('body') && keys.includes('slug')) return chainable(feed);
@@ -299,6 +311,23 @@ describe('loadSiteShell', () => {
   it('null bila settings situs tidak ada', async () => {
     const { repository } = harness({ settings: [] });
     await expect(repository.loadSiteShell({ ...CONTEXT })).resolves.toBe(null);
+  });
+});
+
+describe('resolveBrandMediaId', () => {
+  it('mengembalikan id media milik situs', async () => {
+    const { repository } = harness({ brand: [{ mediaId: 'logo-1' }] });
+    await expect(repository.resolveBrandMediaId({ ...CONTEXT }, 'logo')).resolves.toBe('logo-1');
+  });
+
+  it('mewarisi apex untuk regional bila milik null', async () => {
+    const { repository } = harness({ brand: [[{ mediaId: null }], [{ mediaId: 'apex-logo' }]] });
+    await expect(repository.resolveBrandMediaId({ ...CONTEXT, regionId: 'r1' }, 'logo')).resolves.toBe('apex-logo');
+  });
+
+  it('null bila tak ada media', async () => {
+    const { repository } = harness({ brand: [] });
+    await expect(repository.resolveBrandMediaId({ ...CONTEXT }, 'favicon')).resolves.toBe(null);
   });
 });
 

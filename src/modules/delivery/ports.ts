@@ -36,6 +36,14 @@ export interface DeliveryRepository {
   loadNetworkFeed(context: ResolvedSiteContext, limit?: number): Promise<readonly FeedArticle[]>;
   /** Article-less settings shell for branded 404s. */
   loadSiteShell(context: ResolvedSiteContext): Promise<NetworkSiteData | null>;
+  /**
+   * Resolve the active brand media id (logo or favicon) for stable same-host byte routes.
+   *
+   * @param context - Resolved tenant hostname context.
+   * @param kind - Brand slot to resolve.
+   * @returns Media id honoring regional apex inheritance, or null when unset.
+   */
+  resolveBrandMediaId(context: ResolvedSiteContext, kind: 'logo' | 'favicon'): Promise<string | null>;
   /** Tenant custom robots (seo settings column, no articles) for /robots.txt. */
   loadSiteRobots(context: ResolvedSiteContext): Promise<readonly string[] | null>;
   /** Active org category list (lightweight, for the identical nav on every page). */

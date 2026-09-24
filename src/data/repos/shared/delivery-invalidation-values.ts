@@ -1,4 +1,4 @@
-const BASE_PATHS = ['/', '/kebijakan-privasi', '/syarat-ketentuan', '/tentang', '/kontak', '/search', '/robots.txt', '/sitemap.xml', '/rss.xml', '/llms.txt', '/news-sitemap.xml', '/tenant-home', '/report', '/icon.png', '/apple-touch-icon.png', '/manifest.webmanifest'] as const;
+const BASE_PATHS = ['/', '/kebijakan-privasi', '/syarat-ketentuan', '/tentang', '/kontak', '/search', '/robots.txt', '/sitemap.xml', '/rss.xml', '/llms.txt', '/news-sitemap.xml', '/tenant-home', '/report', '/icon.png', '/apple-touch-icon.png', '/logo.png', '/manifest.webmanifest'] as const;
 
 export interface CompleteInvalidationInput {
   readonly organizationId: string;
