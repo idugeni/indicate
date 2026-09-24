@@ -54,9 +54,11 @@ Cloudflare Redirect Rule `www_to_apex_301`
 http.request.uri.path)`, 301, preserve query; ruleset
 `www to apex redirect`, fase `http_request_dynamic_redirect`,
 terverifikasi live `/` dan `/tentang?x=1`), lalu domain dilepas dari Vercel.
-Cutover 2026-09-25: rule www langsung 308 ke `indicate.website` (satu hop);
+Cutover 2026-09-24: rule www langsung 308 ke `indicate.website` (satu hop);
 apex lama 308 ganda Cloudflare + Vercel (`redirect: indicate.website`, 308).
 Domain bawaan `*.vercel.app` tetap mapping dashboard + SSO (bukan redirect).
+Burnt-earth 2026-09-25: domain R2 `media.indicate.web.id` dicabut (bucket hanya baru,
+DNS ikut hilang otomatis; email lama yang memuat logo lama ikut rusak, disetujui owner).
 Sisa 0 slot; penambahan berikutnya tetap butuh penaikan limit
 (`project_domain_limit_reached`, "maximum allowed number of domains
 (50) ... contact sales").
