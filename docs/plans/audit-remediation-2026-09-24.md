@@ -170,10 +170,10 @@ dashboard tanpa full-scan/N+1, semua Medium security hijau, WAF 2-rule di semua 
 sitemap kanonis, tree bersih, `typecheck` + `lint` + `lint:md` + test hijau.
 Tanpa wildcard global; tanpa migrasi NS.
 
-Realisasi 2026-09-24/25: kuota hilang (uji + hapus); **86/86 verified** (36 wildcard,
-sertifikat menunggu Enable Vercel DNS); Redis read-model live (hit tanpa DB, 404 cepat,
-invalidasi aktivasi/deaktivasi); dashboard proyeksi kolom + N+1 batch + repeatable-read + purge batch; security 3.1–3.5 hijau (3.6 tertunda tercatat, 3.7 bukti); WAF 2-rule 36/36;
-sitemap kanonis + noindex + lastmod stabil; live DB v171; `typecheck` + `lint` + `lint:md` + test (369 dashboard, 91 delivery, 27 seo/schemas) hijau; 17 commit `Signed-off-by`.
-Sisa owner-assisted: Enable Vercel DNS per apex (cert wildcard) + nyalakan
-`dbOnlyRegionalOnboarding`; `.env` kunci tak dikenal; render browser LCP/CLS;
-metrik prod; Search Console.
+Realisasi 2026-09-24/25: kuota hilang (uji + hapus); awal 86/86 verified (36 wildcard,
+cert via alur CLI tanpa dashboard); Redis read-model live (hit tanpa DB, 404 cepat,
+invalidasi aktivasi/deaktivasi); dashboard proyeksi kolom + N+1 batch + repeatable-read + purge batch; security 3.1–3.5 hijau (3.6 tertunda tercatat, 3.7 bukti); sitemap kanonis + noindex + lastmod stabil; live DB v171; `typecheck` + `lint` + `lint:md` + test hijau.
+Realisasi malam: 70 stok ikut exact + wildcard + cert → final **222/222 verified**
+(104 wildcard), HTTPS acak 104/104 halaman 404 bermerek, WAF 2-rule 104/104 zona;
+24 zona stok kosong mendapat baseline DNS penuh. `dbOnlyRegionalOnboarding` ON.
+Sisa: metrik prod jangka panjang, Search Console.
