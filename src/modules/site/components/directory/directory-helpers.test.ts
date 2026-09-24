@@ -1,17 +1,24 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  accentEdgeStyle,
   accentForHostname,
+  ALL_PARTNER_FAMILIES,
   cityOf,
   DIRECTORY_ACCENTS,
+  DIRECTORY_PATTERNS,
   familyOf,
   filterPartners,
   filterSites,
   groupPartners,
   groupRegionalByCity,
   parentHostname,
+  patternForHostname,
   splitSites,
   splitWordmark,
+  WORDMARK_PATTERNS,
+  wordmarkColors,
+  wordmarkPatternForHostname,
 } from '@/modules/site/components/directory/directory-helpers';
 import type { NetworkSiteRow, PartnerRow } from '@/modules/content/site-content';
 
@@ -30,6 +37,62 @@ describe('accentForHostname', () => {
   it('memilih aksen deterministik dari palet direktori', () => {
     expect(DIRECTORY_ACCENTS).toContain(accentForHostname('fakta01.my.id'));
     expect(accentForHostname('fakta01.my.id')).toBe(accentForHostname('fakta01.my.id'));
+  });
+
+  it('memakai palet dua belas warna', () => {
+    expect(DIRECTORY_ACCENTS).toHaveLength(12);
+  });
+});
+
+describe('patternForHostname', () => {
+  it('memilih pola deterministik dari pola direktori', () => {
+    expect(DIRECTORY_PATTERNS).toContain(patternForHostname('fakta01.my.id'));
+    expect(patternForHostname('fakta01.my.id')).toBe(patternForHostname('fakta01.my.id'));
+  });
+
+  it('memakai empat pola tepi aksen', () => {
+    expect(DIRECTORY_PATTERNS).toEqual(['solid', 'gradient', 'stripes', 'duotone']);
+  });
+});
+
+describe('accentEdgeStyle', () => {
+  it('memetakan setiap pola ke gaya tepi berbeda', () => {
+    const styles = DIRECTORY_PATTERNS.map((pattern) => accentEdgeStyle('#b88d3a', pattern));
+    expect(new Set(styles.map((style) => JSON.stringify(style))).size).toBe(DIRECTORY_PATTERNS.length);
+  });
+
+  it('jatuh ke solid untuk pola tak dikenal', () => {
+    expect(accentEdgeStyle('#b88d3a', 'unknown')).toEqual({ backgroundColor: '#b88d3a' });
+  });
+});
+
+describe('wordmarkPatternForHostname', () => {
+  it('memilih skema pewarnaan deterministik dari lima pola', () => {
+    expect(WORDMARK_PATTERNS).toContain(wordmarkPatternForHostname('fakta01.my.id'));
+    expect(wordmarkPatternForHostname('fakta01.my.id')).toBe(wordmarkPatternForHostname('fakta01.my.id'));
+  });
+
+  it('memakai lima skema pewarnaan kata', () => {
+    expect(WORDMARK_PATTERNS).toEqual(['head', 'tail', 'full', 'bookend', 'alternate']);
+  });
+});
+
+describe('wordmarkColors', () => {
+  it('mengembalikan satu warna per token', () => {
+    expect(wordmarkColors(3, '#b88d3a', 'head')).toHaveLength(3);
+    expect(wordmarkColors(1, '#b88d3a', 'full')).toEqual(['#b88d3a']);
+  });
+
+  it('menempatkan aksen sesuai skema', () => {
+    expect(wordmarkColors(2, '#b88d3a', 'head')[0]).toBe('#b88d3a');
+    expect(wordmarkColors(2, '#b88d3a', 'tail')[1]).toBe('#b88d3a');
+    expect(wordmarkColors(2, '#b88d3a', 'full')).toEqual(['#b88d3a', '#b88d3a']);
+    expect(wordmarkColors(3, '#b88d3a', 'bookend')).toEqual(['#b88d3a', '#5f6b7a', '#b88d3a']);
+    expect(wordmarkColors(3, '#b88d3a', 'alternate')[1]).toBe('#1a2430');
+  });
+
+  it('jatuh ke skema head untuk pola tak dikenal', () => {
+    expect(wordmarkColors(2, '#b88d3a', 'unknown')[0]).toBe('#b88d3a');
   });
 });
 
@@ -90,21 +153,29 @@ describe('familyOf', () => {
   it('menurunkan keluarga institusi dari awalan nama', () => {
     expect(familyOf('RUTAN KELAS II B DEMAK')).toBe('RUTAN');
     expect(familyOf('LPKA KELAS I KUTOARJO')).toBe('LPKA');
-    expect(familyOf('Yayasan Komunitas')).toBe('LAINNYA');
+    expect(familyOf('Mitra Contoh')).toBe('MITRA');
   });
 });
 
 describe('groupPartners', () => {
-  it('mengelompokkan keluarga dengan urutan tetap', () => {
+  it('mengelompokkan keluarga sesuai urutan kemunculan', () => {
     const groups = groupPartners(PARTNERS);
     expect(groups.map((group) => group.family)).toEqual(['LAPAS', 'RUTAN', 'BAPAS']);
     expect(groups[0]?.items).toHaveLength(1);
+  });
+
+  it('menampung keluarga baru tanpa daftar keras', () => {
+    const groups = groupPartners([
+      ...PARTNERS,
+      { name: 'Mitra Contoh', slug: 'mitra-contoh' },
+    ]);
+    expect(groups.map((group) => group.family)).toContain('MITRA');
   });
 });
 
 describe('filterPartners', () => {
   it('menyaring lewat query dan keluarga', () => {
-    expect(filterPartners(PARTNERS, 'semarang', 'SEMUA')).toHaveLength(2);
+    expect(filterPartners(PARTNERS, 'semarang', ALL_PARTNER_FAMILIES)).toHaveLength(2);
     expect(filterPartners(PARTNERS, '', 'RUTAN').map((partner) => partner.slug)).toEqual(['rutan-kelas-ii-b-demak']);
   });
 });

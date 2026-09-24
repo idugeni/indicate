@@ -563,8 +563,16 @@ export interface StatBandItem {
 }
 
 export function StatBand({ items }: { readonly items: readonly StatBandItem[] }) {
+  const columns =
+    items.length <= 1
+      ? 'grid-cols-1 lg:grid-cols-1'
+      : items.length === 2
+        ? 'grid-cols-2 lg:grid-cols-2'
+        : items.length === 3
+          ? 'grid-cols-2 lg:grid-cols-3'
+          : 'grid-cols-2 lg:grid-cols-4';
   return (
-    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[3px] border border-[#1a2430] bg-[#f4f2ec]/20 lg:grid-cols-4">
+    <dl className={cn('grid gap-px overflow-hidden rounded-[3px] border border-[#1a2430] bg-[#f4f2ec]/20', columns)}>
       {items.map((item) => (
         <div key={item.label} className="bg-[#1a2430] p-6 sm:p-8">
           <span aria-hidden="true" className="mb-4 block h-0.5 w-8 bg-[#b88d3a]" />

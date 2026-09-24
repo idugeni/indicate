@@ -1,22 +1,20 @@
 import type { Metadata } from 'next';
+import { BadgeCheck } from 'lucide-react';
 
 import { siteMetadata } from '@/ui/site/metadata-guard';
 import { getPartnerOrganizations } from '@/modules/content/site-content';
-import { groupPartners } from '@/modules/site/components/directory/directory-helpers';
 import { PartnersExplorer } from '@/modules/site/components/directory/partners-explorer';
 import {
   HeaderPrimaryCta,
   HeaderSecondaryCta,
   PrimaryCta,
-  Prose,
   SecondaryCta,
   Section,
-  StatBand,
 } from '@/modules/site/components/layout/content';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
 const DESCRIPTION =
-  'Organisasi pelanggan dengan langganan aktif di Indicate — puluhan unit pelaksana teknis yang mempercayakan publikasi dan arsipnya kepada satu ruang redaksi.';
+  'Organisasi pelanggan dengan langganan aktif di Indicate — berbagai institusi yang mempercayakan publikasi dan arsipnya kepada satu ruang redaksi.';
 
 export function generateMetadata(): Metadata {
   return siteMetadata('Partner', DESCRIPTION, '/partners');
@@ -49,13 +47,11 @@ function PartnersJsonLd({ partners }: { readonly partners: readonly { readonly n
 
 export default async function PartnerPage() {
   const partners = await getPartnerOrganizations();
-  const groups = groupPartners(partners);
-  const countOf = (family: string): string => String(groups.find((group) => group.family === family)?.items.length ?? 0);
 
   return (
     <PublicPage
       eyebrow="Partner"
-      title="Dipercaya puluhan unit kerja"
+      title="Dipercaya berbagai institusi"
       description={DESCRIPTION}
       meta={[`${partners.length} partner aktif`, 'Langganan terverifikasi', 'Diperbarui per jam']}
       trail={[{ href: '/', label: 'Beranda' }]}
@@ -68,29 +64,30 @@ export default async function PartnerPage() {
     >
       <PartnersJsonLd partners={partners} />
       <PartnersExplorer partners={partners} />
-      <Section title="Partner dalam angka" eyebrow="Fakta" tone="band">
-        <StatBand
-          items={[
-            { value: String(partners.length), label: 'Total partner aktif' },
-            { value: countOf('LAPAS'), label: 'Lapas' },
-            { value: countOf('RUTAN'), label: 'Rutan' },
-            { value: `${countOf('BAPAS')} + ${countOf('LPKA')}`, label: 'Bapas + LPKA' },
-          ]}
-        />
-      </Section>
       <Section title="Menjadi partner" eyebrow="Bergabung" tone="raised">
-        <Prose>
-          <p className="m-0 font-sans text-lg leading-8 text-[#1a2430]">
-            Satu harga pasti per bulan, sudah termasuk pajak. Hubungi kami, bayar manual ke rekening resmi, dan organisasi Anda aktif maksimal 1x24 jam.
-          </p>
-          <ul className="m-0 grid max-w-3xl list-disc gap-3 pl-5">
-            <li>Daftar ini hanya memuat organisasi dengan status aktif dan langganan aktif.</li>
-            <li>Unit yang ditangguhkan atau dibatalkan otomatis hilang dari daftar ini.</li>
-            <li>Detail biaya dan alur pembelian ada di halaman harga.</li>
-            <li>Butuh portal baru untuk unit Anda? Sampaikan lewat kontak — penyiapan dibantu tim sampai jalan.</li>
-          </ul>
-        </Prose>
-        <p className="m-0 mt-6 flex flex-wrap gap-3">
+        <p className="m-0 font-serif text-2xl leading-snug tracking-tight text-[#1a2430]">
+          Satu harga pasti per bulan, sudah termasuk pajak. Hubungi kami, bayar manual ke rekening resmi, dan
+          organisasi Anda aktif maksimal 1x24 jam.
+        </p>
+        <ul className="m-0 mt-8 grid list-none gap-3 p-0 sm:grid-cols-2">
+          {[
+            'Daftar ini hanya memuat organisasi dengan status aktif dan langganan aktif.',
+            'Unit yang ditangguhkan atau dibatalkan otomatis hilang dari daftar ini.',
+            'Detail biaya dan alur pembelian ada di halaman harga.',
+            'Butuh portal baru untuk unit Anda? Sampaikan lewat kontak — penyiapan dibantu tim sampai jalan.',
+          ].map((item) => (
+            <li
+              key={item}
+              className="flex items-start gap-3 rounded-[3px] border border-[#e2ded2] bg-white px-4 py-3.5"
+            >
+              <span aria-hidden="true" className="flex h-7 w-7 flex-none items-center justify-center rounded-[3px] border border-[#b88d3a]/40 bg-[#b88d3a]/[0.08] text-[#8a5f1c]">
+                <BadgeCheck className="h-4 w-4" />
+              </span>
+              <span className="font-sans text-sm leading-relaxed text-[#4c5b6b]">{item}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="m-0 mt-8 flex flex-wrap gap-3">
           <PrimaryCta href="/pricing">Lihat Harga</PrimaryCta>
           <SecondaryCta href="/contact">Hubungi Kami</SecondaryCta>
         </p>

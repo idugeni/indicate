@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowUpRight, MapPin, Search } from 'lucide-react';
 import type { NetworkSiteRow } from '@/modules/content/site-content';
-import { accentForHostname, filterSites, groupRegionalByCity } from '@/modules/site/components/directory/directory-helpers';
+import { accentEdgeStyle, accentForHostname, filterSites, groupRegionalByCity, patternForHostname, wordmarkPatternForHostname } from '@/modules/site/components/directory/directory-helpers';
 import { Wordmark } from '@/modules/site/components/directory/wordmark';
 import { cn } from '@/ui/cn';
 
@@ -100,7 +100,7 @@ export function NetworkExplorer({ sites }: { readonly sites: readonly NetworkSit
                   const accent = accentForHostname(site.hostname);
                   return (
                     <li key={site.hostname} className="group relative flex bg-white transition-colors duration-180 hover:bg-[#faf9f5]">
-                      <span aria-hidden="true" className="w-1 flex-none" style={{ backgroundColor: accent }} />
+                      <span aria-hidden="true" className="w-1 flex-none" style={accentEdgeStyle(accent, patternForHostname(site.hostname))} />
                       <a
                         href={`https://${site.hostname}`}
                         target="_blank"
@@ -109,7 +109,7 @@ export function NetworkExplorer({ sites }: { readonly sites: readonly NetworkSit
                         className="relative flex flex-1 flex-col gap-2 p-6 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-[#b88d3a] xl:p-7"
                       >
                         <span className="pr-8 text-2xl md:text-3xl xl:text-[1.65rem]">
-                          <Wordmark name={site.siteName} accent={accent} />
+                          <Wordmark name={site.siteName} accent={accent} pattern={wordmarkPatternForHostname(site.hostname)} />
                         </span>
                         {site.tagline !== null && site.tagline.trim() !== '' ? (
                           <span className="block font-sans text-[13px] font-semibold" style={{ color: accent }}>
@@ -139,13 +139,15 @@ export function NetworkExplorer({ sites }: { readonly sites: readonly NetworkSit
                   {cityGroups.length} kota
                 </span>
               </div>
-              <ul className="m-0 mt-6 grid list-none gap-3 p-0 sm:grid-cols-2">
-                {cityGroups.map((group) => (
+              <ul className="m-0 mt-6 grid list-none gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3">
+                {cityGroups.map((group) => {
+                  const cityAccent = accentForHostname(group.city);
+                  return (
                   <li
                     key={group.city}
                     className="flex items-center gap-4 rounded-[3px] border border-[#e2ded2] bg-white px-5 py-4 sm:px-6"
                   >
-                    <span aria-hidden="true" className="flex h-9 w-9 flex-none items-center justify-center rounded-[3px] border border-[#b88d3a]/40 bg-[#b88d3a]/[0.08] text-[#8a5f1c]">
+                    <span aria-hidden="true" className="flex h-9 w-9 flex-none items-center justify-center rounded-[3px] border" style={{ borderColor: `${cityAccent}66`, backgroundColor: `${cityAccent}14`, color: cityAccent }}>
                       <MapPin className="h-4 w-4" />
                     </span>
                     <span className="grid min-w-0 flex-1">
@@ -157,7 +159,8 @@ export function NetworkExplorer({ sites }: { readonly sites: readonly NetworkSit
                       </span>
                     </span>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </div>
           ) : null}

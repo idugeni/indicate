@@ -1,6 +1,108 @@
 import type { NetworkSiteRow, PartnerRow } from '@/modules/content/site-content';
 
-export const DIRECTORY_ACCENTS: readonly string[] = Object.freeze(['#b88d3a', '#2f4a3e', '#27435f', '#7c3030']);
+export const DIRECTORY_ACCENTS: readonly string[] = Object.freeze([
+  '#b88d3a',
+  '#2f4a3e',
+  '#27435f',
+  '#7c3030',
+  '#1f7cff',
+  '#b4532a',
+  '#4b3f66',
+  '#2e5b3f',
+  '#0f766e',
+  '#c2410c',
+  '#4338ca',
+  '#be123c',
+]);
+
+export const DIRECTORY_PATTERNS: readonly string[] = Object.freeze(['solid', 'gradient', 'stripes', 'duotone']);
+
+export const WORDMARK_PATTERNS: readonly string[] = Object.freeze(['head', 'tail', 'full', 'bookend', 'alternate']);
+
+/**
+ * Pick a deterministic wordmark coloring scheme for a hostname.
+ *
+ * @param hostname - Portal hostname used as the hash seed.
+ * @returns One of the five wordmark pattern keys.
+ */
+export function wordmarkPatternForHostname(hostname: string): string {
+  let hash = 13;
+  for (let index = 0; index < hostname.length; index += 1) {
+    hash = (hash * 31 + hostname.charCodeAt(index)) >>> 0;
+  }
+  return WORDMARK_PATTERNS[Math.floor(hash / (DIRECTORY_ACCENTS.length * DIRECTORY_PATTERNS.length)) % WORDMARK_PATTERNS.length] ?? WORDMARK_PATTERNS[0] ?? 'head';
+}
+
+const WORDMARK_INK = '#1a2430';
+const WORDMARK_MID = '#5f6b7a';
+
+/**
+ * Resolve one color per wordmark token for a coloring scheme.
+ *
+ * @param tokenCount - Number of word tokens to color.
+ * @param accent - Per-portal accent hex.
+ * @param pattern - Pattern key from `wordmarkPatternForHostname`.
+ * @returns Frozen color per token in order.
+ */
+export function wordmarkColors(tokenCount: number, accent: string, pattern: string): readonly string[] {
+  const colors: string[] = [];
+  for (let index = 0; index < tokenCount; index += 1) {
+    const first = index === 0;
+    const last = index === tokenCount - 1;
+    switch (pattern) {
+      case 'tail':
+        colors.push(first && !last ? WORDMARK_INK : last ? accent : WORDMARK_MID);
+        break;
+      case 'full':
+        colors.push(accent);
+        break;
+      case 'bookend':
+        colors.push(first || last ? accent : WORDMARK_MID);
+        break;
+      case 'alternate':
+        colors.push(index % 2 === 0 ? accent : WORDMARK_INK);
+        break;
+      default:
+        colors.push(first ? accent : last ? WORDMARK_INK : WORDMARK_MID);
+        break;
+    }
+  }
+  return Object.freeze(colors);
+}
+
+/**
+ * Pick a deterministic decorative pattern for a hostname.
+ *
+ * @param hostname - Portal hostname used as the hash seed.
+ * @returns One of the four directory pattern keys.
+ */
+export function patternForHostname(hostname: string): string {
+  let hash = 7;
+  for (let index = 0; index < hostname.length; index += 1) {
+    hash = (hash * 31 + hostname.charCodeAt(index)) >>> 0;
+  }
+  return DIRECTORY_PATTERNS[Math.floor(hash / DIRECTORY_ACCENTS.length) % DIRECTORY_PATTERNS.length] ?? DIRECTORY_PATTERNS[0] ?? 'solid';
+}
+
+/**
+ * Render the accent edge for a directory card.
+ *
+ * @param accent - Per-portal accent hex.
+ * @param pattern - Pattern key from `patternForHostname`.
+ * @returns Inline style for the accent edge element.
+ */
+export function accentEdgeStyle(accent: string, pattern: string): Readonly<Record<string, string>> {
+  switch (pattern) {
+    case 'gradient':
+      return { background: `linear-gradient(180deg, ${accent} 0%, #1a2430 135%)` };
+    case 'stripes':
+      return { background: `repeating-linear-gradient(135deg, ${accent} 0 6px, rgba(26,36,48,0.3) 6px 8px)` };
+    case 'duotone':
+      return { background: `linear-gradient(180deg, ${accent} 0 55%, #1a2430 55% 100%)` };
+    default:
+      return { backgroundColor: accent };
+  }
+}
 
 /**
  * Pick a deterministic accent from the showcase palette for a hostname.
@@ -119,21 +221,22 @@ export function splitWordmark(name: string): readonly string[] {
   return Object.freeze(tokens.length === 0 ? [name] : tokens);
 }
 
-export const PARTNER_FAMILIES: readonly string[] = Object.freeze(['LAPAS', 'RUTAN', 'BAPAS', 'LPKA']);
+/** Scope value keeping every family in `filterPartners`. */
+export const ALL_PARTNER_FAMILIES = 'SEMUA';
 
 /**
  * Derive the institution family from a partner name prefix.
  *
  * @param name - Organization name as stored (e.g. `RUTAN KELAS II B DEMAK`).
- * @returns Family key, or `LAINNYA` when no known prefix matches.
+ * @returns Uppercase head token; `LAINNYA` when the name is blank.
  */
 export function familyOf(name: string): string {
   const head = name.trim().split(/\s+/)[0]?.toUpperCase() ?? '';
-  return PARTNER_FAMILIES.includes(head) ? head : 'LAINNYA';
+  return head === '' ? 'LAINNYA' : head;
 }
 
 /**
- * Group partners by institution family, families in fixed order.
+ * Group partners by institution family in first-seen order.
  *
  * @param partners - Partners ordered by name.
  * @returns Non-empty groups with counts preserved in display order.
@@ -142,18 +245,17 @@ export function groupPartners(partners: readonly PartnerRow[]): readonly {
   readonly family: string;
   readonly items: readonly PartnerRow[];
 }[] {
-  const order = [...PARTNER_FAMILIES, 'LAINNYA'];
+  const order: string[] = [];
   const buckets = new Map<string, PartnerRow[]>();
   for (const partner of partners) {
     const family = familyOf(partner.name);
     const bucket = buckets.get(family);
-    if (bucket === undefined) buckets.set(family, [partner]);
-    else bucket.push(partner);
+    if (bucket === undefined) {
+      order.push(family);
+      buckets.set(family, [partner]);
+    } else bucket.push(partner);
   }
-  return Object.freeze(order.flatMap((family) => {
-    const items = buckets.get(family);
-    return items === undefined ? [] : [{ family, items: Object.freeze([...items]) }];
-  }));
+  return Object.freeze(order.map((family) => ({ family, items: Object.freeze([...(buckets.get(family) ?? [])]) })));
 }
 
 /**
@@ -171,7 +273,7 @@ export function filterPartners(
 ): readonly PartnerRow[] {
   const needle = query.trim().toLowerCase();
   return partners.filter((partner) => {
-    if (family !== 'SEMUA' && familyOf(partner.name) !== family) return false;
+    if (family !== ALL_PARTNER_FAMILIES && familyOf(partner.name) !== family) return false;
     if (needle === '') return true;
     return `${partner.name} ${partner.slug}`.toLowerCase().includes(needle);
   });
