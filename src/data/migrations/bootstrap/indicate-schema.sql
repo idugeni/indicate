@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (166 migrations):
+-- Reviewed sources, in journal order (168 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -179,6 +179,8 @@
 --   164  20260923172152_cascade_fk_covering_indexes  ledger sha256:cbb46d566bf3b67bfe6eac22f990a891b5448e2849d6da20b46c7b19631631ac
 --   165  20260924010000_telegram_removal  ledger sha256:c95176ab1f761d9439c62caa97f51289e1213b7f7a2f88f4989deae9a9871531
 --   166  20260924023027_article_site_robots_directive  ledger sha256:1f6c3a7fccc3532bc2bfcee8efadadd6a6284adba8e545b29b43809f13c7e2a8
+--   167  20260924030000_public_directory  ledger sha256:46fab2aa92bd6314226dfc41d8af84f4c55b063575b8695fd324aec654f590bb
+--   168  20260924040000_publisher_logo_r2_backfill  ledger sha256:82ab65b7d6a954ab39c7c7d5301c64ba07ec03f10212a32d7e8d67af69a86ad3
 
 BEGIN;
 
@@ -13111,4 +13113,113 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (165, 'article_site_robots_directive', 'sha256:5a65d89520a3b324d3136e751aefc44a4937d06311cce800137ac61bc6c2b769');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('1f6c3a7fccc3532bc2bfcee8efadadd6a6284adba8e545b29b43809f13c7e2a8', 1790217027905);
+
+-- ----------------------------------------------------------------------
+-- 20260924030000_public_directory
+-- ----------------------------------------------------------------------
+-- Public directory readers: fixed-shape, safe-field-only listings for the
+-- control-plane `/network` (portal jaringan) and `/partners` (organisasi
+-- pelanggan aktif) pages. SECURITY DEFINER so the tenant-scoped
+-- `indicate_runtime` role can enumerate exactly the public fields without
+-- direct table access; no PII, no credential-bearing columns, no IDs.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE OR REPLACE FUNCTION indicate_private.list_public_network_sites()
+RETURNS TABLE (
+  hostname text,
+  site_name text,
+  description text,
+  tagline text,
+  is_regional boolean
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT s.normalized_hostname,
+         ss.name,
+         ss.description,
+         ss.tagline,
+         (s.region_id IS NOT NULL OR s.normalized_hostname LIKE '%.%.%.%')
+    FROM public.sites AS s
+    JOIN public.site_settings AS ss
+      ON ss.organization_id = s.organization_id AND ss.site_id = s.id
+   WHERE s.status = 'active'
+     AND s.activation_state = 'active'
+   ORDER BY s.normalized_hostname;
+$$;
+REVOKE ALL ON FUNCTION indicate_private.list_public_network_sites() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.list_public_network_sites() TO indicate_runtime;
+CREATE OR REPLACE FUNCTION indicate_private.list_public_partners()
+RETURNS TABLE (
+  name text,
+  slug text
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT o.name, o.slug
+    FROM public.organizations AS o
+    JOIN public.subscriptions AS sub ON sub.organization_id = o.id
+   WHERE o.status = 'active'
+     AND o.kind = 'customer'
+     AND sub.status = 'active'
+   ORDER BY o.name;
+$$;
+REVOKE ALL ON FUNCTION indicate_private.list_public_partners() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.list_public_partners() TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (166, 'public_directory', 'sha256:8f9ca870588b15409d5dabb648ccef3f982dac6c5ce7fb454f024b108e01c220');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('46fab2aa92bd6314226dfc41d8af84f4c55b063575b8695fd324aec654f590bb', 1790246186779);
+
+-- ----------------------------------------------------------------------
+-- 20260924040000_publisher_logo_r2_backfill
+-- ----------------------------------------------------------------------
+-- Backfill publisher Kemenimipas logos from static /brand file to per-org R2.
+--
+-- 39 active publishers still reference `/brand/logo-kemenimipas.png` while the
+-- per-org R2 bytes already exist at
+-- `o/{org}/p/organization-asset/y=2026/m=09/organization/24-logo-kemenimipas.png`
+-- (216122 bytes, image/png, 512x512). Link each orphan org with a
+-- reservation (used) + media (active, organization-asset) row, then point
+-- publishers.contacts.logoUrl at `/api/network/media/{id}` so
+-- authorizePublicMedia serves it per-host. Idempotent: only touches rows
+-- still on the static path; ON CONFLICT DO NOTHING on object_key.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+WITH targets AS (
+  SELECT p.organization_id, p.id AS publisher_id
+  FROM public.publishers AS p
+  WHERE p.status = 'active' AND (p.contacts ->> 'logoUrl') = '/brand/logo-kemenimipas.png'
+), keys AS (
+  SELECT organization_id, publisher_id,
+    ('o/' || organization_id::text || '/p/organization-asset/y=2026/m=09/organization/24-logo-kemenimipas.png') AS object_key
+  FROM targets
+), res AS (
+  INSERT INTO public.media_key_reservations (organization_id, id, object_key, purpose, article_id, site_id, organization_asset, expected_media_type, expected_size_bytes, expected_checksum, status, expires_at, created_at, updated_at)
+  SELECT k.organization_id, gen_random_uuid(), k.object_key, 'organization-asset', NULL, NULL, true, 'image/png', 216122, 'TgbiZvGpUj2/Tjt5SFMgelZlb0t2dM8B/fXXxgqFm78=', 'used', now() + interval '30 days', now(), now()
+  FROM keys AS k
+  ON CONFLICT (object_key) DO NOTHING
+  RETURNING organization_id, object_key
+), ins_media AS (
+  INSERT INTO public.media (organization_id, id, object_key, purpose, media_type, size_bytes, checksum, thumb_object_key, width_px, height_px, license_source, attribution, state, article_id, site_id, organization_asset, version, created_at, updated_at)
+  SELECT k.organization_id, gen_random_uuid(), k.object_key, 'organization-asset', 'image/png', 216122, '4e06e266f1a9523dbf4e3b794853207a56656f4b7674cf01fdf5d7c60a859bbf', NULL, 512, 512, NULL, NULL, 'active', NULL, NULL, true, 1, now(), now()
+  FROM keys AS k
+  ON CONFLICT (object_key) DO NOTHING
+  RETURNING organization_id, id, object_key
+)
+UPDATE public.publishers AS p
+SET contacts = p.contacts || jsonb_build_object('logoUrl', '/api/network/media/' || m.id::text), updated_at = now()
+FROM ins_media AS m
+WHERE p.organization_id = m.organization_id
+  AND p.status = 'active'
+  AND (p.contacts ->> 'logoUrl') = '/brand/logo-kemenimipas.png';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (167, 'publisher_logo_r2_backfill', 'sha256:3132225e69530f74d05fc77ae0a0124bd7a9287c475a1b986404d8ccb41a68e2');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('82ab65b7d6a954ab39c7c7d5301c64ba07ec03f10212a32d7e8d67af69a86ad3', 1790250500393);
 COMMIT;
