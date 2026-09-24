@@ -44,7 +44,8 @@ export async function deliveryOperationsComposition() {
   const provisioning = new DomainProvisioningService(repository, cloudflare, vercel, new HttpsPendingHostnameProbe(), config.hosts.reserved, zoneResolver, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts,
     process.env.NEXT_PHASE === 'phase-production-build'
       ? undefined
-      : new UpstashHostnameCache(new UpstashSnapshotStore({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })));
+      : new UpstashHostnameCache(new UpstashSnapshotStore({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })),
+    process.env.NEXT_PHASE !== 'phase-production-build');
   const invalidation = new InvalidationDispatcher(repository, new NextCacheInvalidationAdapter(), cloudflare, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts, new SocialWarmer(config.social?.facebookAppToken ?? null));
   return { config, runtime, repository, provisioning, invalidation };
 }
