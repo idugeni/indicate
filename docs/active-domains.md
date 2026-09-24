@@ -71,9 +71,9 @@ wildcard + cert, HTTPS acak 104/104 halaman 404 bermerek, WAF 2-rule
 104/104 zona). Project kini **222 domain, 0 unverified** (118 exact +
 104 wildcard). Tidak ada penolakan limit di seluruh operasi.
 
-## Fokus Wonosobo
+## Fokus Wonosobo (kota)
 
-Region `wonosobo` (org Pengelola Platform) — 10/10 subdomain aktif, template mengikuti apex masing-masing. Tidak ditemukan domain nonaktif di DB, Vercel, maupun HTTP: tidak ada yang perlu diaktivasi.
+Kota `wonosobo` (kind=`city` di bawah region Jawa Tengah, org Pengelola Platform) — 10/10 subdomain aktif, template mengikuti apex masing-masing. Tidak ditemukan domain nonaktif di DB, Vercel, maupun HTTP: tidak ada yang perlu diaktivasi.
 
 | Hostname | Site | Template | DB | Vercel | HTTP |
 |---|---|---|---|---|---|

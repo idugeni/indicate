@@ -93,7 +93,8 @@ tabrakan antar-provinsi kelak ditambah provinsi (`banjar-jabar`).
 | Wonosobo | Kab. | `wonosobo` ✅ live |
 
 Jumlah: 31 subdomain × 9 domain = **279 hostname** Jateng penuh
-(hari ini 9 live, semua `wonosobo.*`).
+(hari ini 10 live, semua `wonosobo.*`; Wonosobo resmi kind=`city` di bawah
+region Jawa Tengah per migrasi v172 — preseden untuk 30 kab/kota sisanya).
 
 ## Catatan pemetaan
 

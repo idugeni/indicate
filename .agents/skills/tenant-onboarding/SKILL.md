@@ -5,7 +5,7 @@ description: Playbook for adding tenants (domains, regional sites, brand, SEO) t
 
 # Tenant Onboarding (pola baku — 2026-09-25)
 
-Satu domain = satu Site apex + `site_settings`. Region = Site regional (`region_id` terisi) di bawah domain yang sama. Semua operasi tenant ter-scope tepat satu `organizationId`. Transport hostname wildcard-per-apex: regional satu-label tidak butuh asosiasi Vercel.
+Satu domain = satu Site apex + `site_settings`. Site regional (`region_id` terisi; kind `city` untuk kab/kota, `region` untuk provinsi) di bawah domain yang sama. Semua operasi tenant ter-scope tepat satu `organizationId`. Transport hostname wildcard-per-apex: regional satu-label tidak butuh asosiasi Vercel.
 
 ## Prinsip yang tidak boleh dilanggar
 
@@ -66,6 +66,6 @@ Setiap domain apex = satu zona Cloudflare (paket Free) dengan konfigurasi IDENTI
 - Biaya favicon/logo: 1 upload per domain, 0 per region. Ganti file induk = cascade otomatis ke semua region.
 - Biaya Vercel: domain + sertifikat wildcard gratis di Pro; satu-satunya meterai adalah traffic. Gambar `unoptimized` tanpa syarat (nol biaya transformasi).
 - Staleness terbatas: task invalidasi per site apex; halaman regional ter-cache edge bisa tertinggal hingga TTL/dispatcher (puluhan detik–menit). Read-model Redis: hit 1 jam, miss 1 menit.
-- Batas: tidak ada enforcement kuota domain/site di DB (`subscriptions` status-only, tanpa tabel kuota); hostname apex butuh asosiasi exact + wildcard + cert Vercel via saga/CLI, regional satu-label DB-only (DNS regional satu-label sudah tercakup wildcard Cloudflare + Universal SSL). Soft-cap Pro 100 ribu domain — slot 86 saat ini negligible.
+- Batas: tidak ada enforcement kuota domain/site di DB (`subscriptions` status-only, tanpa tabel kuota); hostname apex butuh asosiasi exact + wildcard + cert Vercel via saga/CLI, regional satu-label DB-only (DNS regional satu-label sudah tercakup wildcard Cloudflare + Universal SSL). Soft-cap Pro 100 ribu domain — slot 222 saat ini negligible.
 - Sertifikat wildcard ~90 hari: tanpa delegasi NS + Enable Vercel DNS, perpanjangan butuh challenge TXT baru per apex. Jadwalkan pengingat atau kejar delegasi permanen.
 - Larangan umum tetap berlaku: jangan cetak secret, jangan tebak endpoint (cek OpenAPI/MCP), skrip sekali-pakai di luar repo (temp dir), repo hanya diubah bila kode yang diperbaiki.

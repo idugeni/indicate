@@ -1205,6 +1205,13 @@
       "when": 1790343600000,
       "tag": "20260925030000_retention_runs_drop_telegram_history",
       "breakpoints": true
+    },
+    {
+      "idx": 172,
+      "version": "7",
+      "when": 1790347200000,
+      "tag": "20260925040000_wonosobo_city_under_jawa_tengah",
+      "breakpoints": true
     }
   ]
 }

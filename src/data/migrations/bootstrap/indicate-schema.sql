@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (172 migrations):
+-- Reviewed sources, in journal order (173 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -185,6 +185,7 @@
 --   170  20260925010000_rls_policy_runtime_role  ledger sha256:8904304380fa8d9855948533bda026e0bba00433fac691cabfd121de97bb0747
 --   171  20260925020000_fix_guratfakta_zone_id  ledger sha256:072a1bab22435658aebd684b66b11ba4b1c1f70be55e103fc4959ae33e64ea2f
 --   172  20260925030000_retention_runs_drop_telegram_history  ledger sha256:cc49a726552d4ca7fea0a35fea71f829c048276ea928d8968814211c6266f1ae
+--   173  20260925040000_wonosobo_city_under_jawa_tengah  ledger sha256:aa4eabaf82039d7dddb91fe784229a4b911b23c87f782700872863567cac1864
 
 BEGIN;
 
@@ -13320,4 +13321,33 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (171, 'retention_runs_drop_telegram_history', 'sha256:0215c9b14f7d30af9c00812abf33c05dc8108071ba40359d7678f46693ea4b3a');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('cc49a726552d4ca7fea0a35fea71f829c048276ea928d8968814211c6266f1ae', 1790343600000);
+
+-- ----------------------------------------------------------------------
+-- 20260925040000_wonosobo_city_under_jawa_tengah
+-- ----------------------------------------------------------------------
+-- Promote Wonosobo from region to city under a Jawa Tengah parent.
+--
+-- Kabupaten Wonosobo is administratively city-level; the single live region
+-- row carried kind='region' only because no parent existed. Code requires
+-- cities to have exactly one parent (dashboard validation + DB check
+-- regions_kind_parent_consistent), so this inserts the Jawa Tengah parent
+-- first, then repoints Wonosobo. Site rows keep their region_id (same row
+-- id), so resolution, RLS scoping, and routing are untouched; city publishes
+-- additionally report an informational unresolved region copy until parent
+-- region sites exist (see site-cascade).
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+INSERT INTO public.regions(organization_id, id, external_key, name, slug, status, kind, parent_region_id, version, created_at, updated_at)
+SELECT organization_id, gen_random_uuid(), 'jawa-tengah', 'Jawa Tengah', 'jawa-tengah', 'active', 'region', NULL, 1, now(), now()
+FROM public.regions WHERE slug = 'wonosobo' AND kind = 'region'
+ON CONFLICT (organization_id, external_key) DO NOTHING;
+UPDATE public.regions AS child SET kind = 'city', parent_region_id = parent.id, version = child.version + 1, updated_at = now()
+FROM public.regions AS parent
+WHERE child.slug = 'wonosobo' AND child.kind = 'region'
+AND parent.slug = 'jawa-tengah' AND parent.kind = 'region'
+AND parent.organization_id = child.organization_id;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (172, 'wonosobo_city_under_jawa_tengah', 'sha256:8f3a8728e976121d79602ec113f7d24e71c567b8d6943925894e9e67faef8018');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('aa4eabaf82039d7dddb91fe784229a4b911b23c87f782700872863567cac1864', 1790347200000);
 COMMIT;
