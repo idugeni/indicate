@@ -5,7 +5,7 @@ import { authorized } from '@/app/api/internal/delivery/reconcile/route';
 function requestWith(auth: string | null): Request {
   const headers = new Headers();
   if (auth !== null) headers.set('authorization', auth);
-  return new Request('https://indicate.web.id/api/internal/delivery/reconcile', { headers });
+  return new Request('https://indicate.website/api/internal/delivery/reconcile', { headers });
 }
 
 describe('authorized', () => {

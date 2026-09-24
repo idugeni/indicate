@@ -4,26 +4,26 @@ import { controlPlaneLlms, tenantLlms } from '@/app/llms.txt/route';
 
 describe('controlPlaneLlms', () => {
   it('memakai URL absolut dan daftar layanan', () => {
-    const body = controlPlaneLlms('indicate.web.id');
+    const body = controlPlaneLlms('indicate.website');
     expect(body).toContain('# Indicate');
-    expect(body).toContain('(https://indicate.web.id/pricing)');
+    expect(body).toContain('(https://indicate.website/pricing)');
     expect(body).toContain('## Legalitas');
   });
 
   it('menyematkan direktori portal dan partner aktif', () => {
     const body = controlPlaneLlms(
-      'indicate.web.id',
+      'indicate.website',
       [{ name: 'Portal Uji', hostname: 'portaluji.web.id' }],
       [{ name: 'Mitra Contoh' }],
     );
-    expect(body).toContain('## Jaringan (https://indicate.web.id/network)');
+    expect(body).toContain('## Jaringan (https://indicate.website/network)');
     expect(body).toContain('- [Portal Uji](https://portaluji.web.id)');
     expect(body).toContain('## Partner');
     expect(body).toContain('- Mitra Contoh');
   });
 
   it('melewatkan seksi direktori saat data kosong', () => {
-    const body = controlPlaneLlms('indicate.web.id');
+    const body = controlPlaneLlms('indicate.website');
     expect(body).not.toContain('## Jaringan');
     expect(body).not.toContain('## Partner');
   });

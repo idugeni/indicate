@@ -80,7 +80,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '*.indicate.web.id',
+        hostname: '*.indicate.website',
       },
     ],
   },

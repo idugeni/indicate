@@ -158,11 +158,11 @@ enabled = true
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "https://indicate.web.id"
+site_url = "https://indicate.website"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://indicate.web.id/auth/callback"]
+additional_redirect_urls = ["https://indicate.website/auth/callback"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -277,7 +277,7 @@ host = "smtp.resend.com"
 port = 465
 user = "resend"
 pass = "env(RESEND_SMTP_PASS)"
-admin_email = "noreply@indicate.web.id"
+admin_email = "noreply@indicate.website"
 sender_name = "Indicate"
 
 # Uncomment to customize email template

@@ -14,7 +14,7 @@ function successContacts(id = 'contact-id') {
   };
 }
 
-const DEFAULT_FROM = 'Indicate <noreply@indicate.web.id>';
+const DEFAULT_FROM = 'Indicate <noreply@indicate.website>';
 
 describe('ResendEmailApiAdapter', () => {
   it('defaults the sender address', async () => {
@@ -35,11 +35,11 @@ describe('ResendEmailApiAdapter', () => {
       to: ['reader@example.com'],
       subject: 'Hello',
       html: '<p>Hi</p>',
-      from: 'News <news@indicate.web.id>',
+      from: 'News <news@indicate.website>',
       idempotencyKey: 'welcome/reader-1',
     });
     expect(sender).toHaveBeenCalledWith(
-      { from: 'News <news@indicate.web.id>', to: ['reader@example.com'], subject: 'Hello', html: '<p>Hi</p>' },
+      { from: 'News <news@indicate.website>', to: ['reader@example.com'], subject: 'Hello', html: '<p>Hi</p>' },
       { idempotencyKey: 'welcome/reader-1' },
     );
   });

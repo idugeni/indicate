@@ -5,7 +5,7 @@ import { authorized } from '@/app/api/internal/maintenance/worm-export/route';
 function requestWith(auth: string | null): Request {
   const headers = new Headers();
   if (auth !== null) headers.set('authorization', auth);
-  return new Request('https://indicate.web.id/api/internal/maintenance/worm-export', { headers });
+  return new Request('https://indicate.website/api/internal/maintenance/worm-export', { headers });
 }
 
 describe('authorized worm-export', () => {

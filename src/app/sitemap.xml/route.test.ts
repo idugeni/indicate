@@ -5,21 +5,21 @@ import { controlPlaneSitemap } from '@/app/sitemap.xml/route';
 
 describe('controlPlaneSitemap', () => {
   it('memuat root dan seluruh service path sebagai URL absolut', () => {
-    const body = controlPlaneSitemap('indicate.web.id');
-    expect(body).toContain('<loc>https://indicate.web.id/</loc>');
+    const body = controlPlaneSitemap('indicate.website');
+    expect(body).toContain('<loc>https://indicate.website/</loc>');
     for (const path of SERVICE_PATHS) {
-      expect(body).toContain(`<loc>https://indicate.web.id${path}</loc>`);
+      expect(body).toContain(`<loc>https://indicate.website${path}</loc>`);
     }
   });
 
   it('memberi prioritas tertinggi pada beranda', () => {
-    const body = controlPlaneSitemap('indicate.web.id');
+    const body = controlPlaneSitemap('indicate.website');
     expect(body).toContain('<changefreq>daily</changefreq><priority>1.0</priority>');
     expect(body).toContain('<changefreq>weekly</changefreq><priority>0.7</priority>');
   });
 
   it('membungkus entri dalam urlset sitemap yang valid', () => {
-    const body = controlPlaneSitemap('indicate.web.id');
+    const body = controlPlaneSitemap('indicate.website');
     expect(body.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
     expect(body).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
     expect(body.trimEnd().endsWith('</urlset>')).toBe(true);

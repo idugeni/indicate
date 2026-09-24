@@ -116,10 +116,10 @@ describe('proxy tenant surfaces', () => {
   });
 
   it('menolak host docs lama sebagai unknown', async () => {
-    const root = await proxy(request('docs.indicate.web.id', '/'));
+    const root = await proxy(request('docs.indicate.website', '/'));
     expect(root.status).toBe(200);
     expect(root.headers.get('x-middleware-rewrite')).toContain('/tenant-home');
-    expect((await proxy(request('docs.indicate.web.id', '/sign-in'))).status).toBe(404);
+    expect((await proxy(request('docs.indicate.website', '/sign-in'))).status).toBe(404);
   });
 
   it('membuka health di host kontrol, menolak di tenant', async () => {
@@ -131,7 +131,7 @@ describe('proxy tenant surfaces', () => {
   it('menolak /docs dari mana saja', async () => {
     expect((await proxy(request('portal.example', '/docs/panduan'))).status).toBe(404);
     expect((await proxy(request(HOSTS.api, '/docs'))).status).toBe(404);
-    expect((await proxy(request('docs.indicate.web.id', '/docs/panduan'))).status).toBe(404);
+    expect((await proxy(request('docs.indicate.website', '/docs/panduan'))).status).toBe(404);
   });
 
   it('mengizinkan skrip dan bingkai Turnstile serta font invoice', async () => {

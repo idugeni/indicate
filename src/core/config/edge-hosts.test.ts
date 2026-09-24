@@ -5,9 +5,9 @@ import { getControlHosts, getPageviewEndpoint, isProductionEdge, parseMvpRootHos
 describe('getControlHosts', () => {
   it('memakai default indicate saat env kosong', () => {
     expect(getControlHosts({ NODE_ENV: 'test' } as NodeJS.ProcessEnv)).toEqual({
-      dashboard: 'indicate.web.id',
-      api: 'api.indicate.web.id',
-      webhook: 'webhook.indicate.web.id',
+      dashboard: 'indicate.website',
+      api: 'api.indicate.website',
+      webhook: 'webhook.indicate.website',
     });
   });
 
@@ -24,8 +24,8 @@ describe('getPageviewEndpoint', () => {
   });
 
   it('jatuh ke default saat kosong atau bukan https', () => {
-    expect(getPageviewEndpoint({ NODE_ENV: 'test' } as NodeJS.ProcessEnv)).toBe('https://pv.indicate.web.id/v');
-    expect(getPageviewEndpoint({ NODE_ENV: 'test', NEXT_PUBLIC_PAGEVIEW_ENDPOINT: 'http://pv.example/v' } as NodeJS.ProcessEnv)).toBe('https://pv.indicate.web.id/v');
+    expect(getPageviewEndpoint({ NODE_ENV: 'test' } as NodeJS.ProcessEnv)).toBe('https://pv.indicate.website/v');
+    expect(getPageviewEndpoint({ NODE_ENV: 'test', NEXT_PUBLIC_PAGEVIEW_ENDPOINT: 'http://pv.example/v' } as NodeJS.ProcessEnv)).toBe('https://pv.indicate.website/v');
   });
 });
 

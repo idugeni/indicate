@@ -21,7 +21,7 @@ const BROWSER_UA =
 function postBeacon(userAgent: string | null, body: string): Request {
   const headers = new Headers();
   if (userAgent !== null) headers.set('user-agent', userAgent);
-  return new Request('https://pv.indicate.web.id/v', { method: 'POST', headers, body });
+  return new Request('https://pv.indicate.website/v', { method: 'POST', headers, body });
 }
 
 afterEach(() => {
@@ -30,7 +30,7 @@ afterEach(() => {
 
 describe('pageview worker', () => {
   it('tolak method/path lain dengan 404', async () => {
-    const response = await worker.fetch(new Request('https://pv.indicate.web.id/', { method: 'GET' }), { ...ENV });
+    const response = await worker.fetch(new Request('https://pv.indicate.website/', { method: 'GET' }), { ...ENV });
     expect(response.status).toBe(404);
   });
 
@@ -68,7 +68,7 @@ describe('pageview worker', () => {
   it('jawab preflight OPTIONS dengan 204 + CORS tanpa menyentuh Upstash', async () => {
     const upstream = vi.fn(async () => new Response(null, { status: 200 }));
     vi.stubGlobal('fetch', upstream);
-    const response = await worker.fetch(new Request('https://pv.indicate.web.id/v', { method: 'OPTIONS' }), { ...ENV });
+    const response = await worker.fetch(new Request('https://pv.indicate.website/v', { method: 'OPTIONS' }), { ...ENV });
     expect(response.status).toBe(204);
     expect(response.headers.get('access-control-allow-origin')).toBe('*');
     expect(response.headers.get('access-control-allow-methods')).toContain('POST');

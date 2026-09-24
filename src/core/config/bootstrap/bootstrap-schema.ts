@@ -86,16 +86,16 @@ const httpsUrlSchema = z.url().refine((value) => value.startsWith('https://'), '
 const bootstrapSchema = z
   .object({
     NODE_ENV: z.enum(BOOTSTRAP_ENVIRONMENTS).default('development'),
-    DASHBOARD_HOST: hostnameSchema.default('indicate.web.id'),
-    API_HOST: hostnameSchema.default('api.indicate.web.id'),
-    WEBHOOK_HOST: hostnameSchema.default('webhook.indicate.web.id'),
+    DASHBOARD_HOST: hostnameSchema.default('indicate.website'),
+    API_HOST: hostnameSchema.default('api.indicate.website'),
+    WEBHOOK_HOST: hostnameSchema.default('webhook.indicate.website'),
 
     NEXT_PUBLIC_SUPABASE_URL: httpsUrlSchema,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(8).optional(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(8).optional(),
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
     DEFAULT_LOCALE: z.string().regex(/^[a-z]{2}-[A-Z]{2}$/).default('id-ID'),
-    SITE_DEFAULT_ASSET_URL: httpsUrlSchema.default('https://indicate.web.id/assets/default.png'),
+    SITE_DEFAULT_ASSET_URL: httpsUrlSchema.default('https://indicate.website/assets/default.png'),
     SUPABASE_PROJECT_REF: z.string().regex(/^[a-z0-9]{8,32}$/).optional(),
     DATABASE_POOL_URL: z.url({ protocol: /^postgresql$/ }),
     DATABASE_DIRECT_URL: z.url({ protocol: /^postgresql$/ }),

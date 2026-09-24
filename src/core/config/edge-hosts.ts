@@ -1,9 +1,9 @@
 /** Edge-safe hostname defaults/parsing for `proxy.ts` + `next.config.ts`; full validation lives in `runtime-schema.ts`. */
 
-const DEFAULT_DASHBOARD_HOST = 'indicate.web.id';
-const DEFAULT_API_HOST = 'api.indicate.web.id';
-const DEFAULT_WEBHOOK_HOST = 'webhook.indicate.web.id';
-const DEFAULT_PAGEVIEW_ENDPOINT = 'https://pv.indicate.web.id/v';
+const DEFAULT_DASHBOARD_HOST = 'indicate.website';
+const DEFAULT_API_HOST = 'api.indicate.website';
+const DEFAULT_WEBHOOK_HOST = 'webhook.indicate.website';
+const DEFAULT_PAGEVIEW_ENDPOINT = 'https://pv.indicate.website/v';
 
 export interface ControlHosts {
   readonly dashboard: string;

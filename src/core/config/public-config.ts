@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const publicConfigSchema = z.object({
-  NEXT_PUBLIC_SITE_URL: z.url().default('https://indicate.web.id'),
+  NEXT_PUBLIC_SITE_URL: z.url().default('https://indicate.website'),
   NEXT_PUBLIC_SUPABASE_URL: z.url().refine((value) => value.startsWith('https://'), 'https_required'),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(8),
 });

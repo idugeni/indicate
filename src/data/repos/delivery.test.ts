@@ -278,7 +278,7 @@ describe('readSite projection', () => {
 
   it('memakai url publik langsung untuk sampul pub', async () => {
     const { repository } = harness({
-      publicHost: 'media.indicate.web.id',
+      publicHost: 'media.indicate.website',
       articles: [
         articleRow({
           leadMediaId: 'm-1',
@@ -293,7 +293,7 @@ describe('readSite projection', () => {
     expect(item).toBeDefined();
     expect(item).toHaveProperty(
       'imageUrl',
-      'https://media.indicate.web.id/pub/o/o1/p/article-cover/y=2026/foto-abcdef1234567890.webp',
+      'https://media.indicate.website/pub/o/o1/p/article-cover/y=2026/foto-abcdef1234567890.webp',
     );
   });
 

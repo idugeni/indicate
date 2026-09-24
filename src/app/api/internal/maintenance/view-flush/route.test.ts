@@ -5,7 +5,7 @@ import { authorized, collectPoppedDeltas } from '@/app/api/internal/maintenance/
 function requestWith(auth: string | null): Request {
   const headers = new Headers();
   if (auth !== null) headers.set('authorization', auth);
-  return new Request('https://indicate.web.id/api/internal/maintenance/view-flush', { headers });
+  return new Request('https://indicate.website/api/internal/maintenance/view-flush', { headers });
 }
 
 describe('authorized view-flush', () => {

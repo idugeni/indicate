@@ -1,6 +1,6 @@
 # Pageview Worker (terversioning)
 
-Penerima beacon `POST https://pv.indicate.web.id/v`, pengganti worker tak
+Penerima beacon `POST https://pv.indicate.website/v`, pengganti worker tak
 berversi yang berjalan saat ini. Satu-satunya sumber kontrak adalah
 `src/modules/site/pageview-contract.ts` — worker, beacon, dan flush
 membacanya bersama; jangan duplikasi skema di sini.
@@ -19,7 +19,7 @@ membacanya bersama; jangan duplikasi skema di sini.
 
 - Script `indicate-pageview` live di
   `https://indicate-pageview.officialelsa21516.workers.dev` (staging, tanpa route).
-- Route `pv.indicate.web.id/*` (id `5d29d0e9a264458abce0b0090a55d356`)
+- Route `pv.indicate.website/*` (id `5d29d0e9a264458abce0b0090a55d356`)
   dipindah atomik dari `pv-beacon` ke `indicate-pageview`; paritas
   production terverifikasi (GET `/` → 404, POST `/v` valid → 204 + counter
   Redis `1`, key uji dibersihkan).
@@ -46,11 +46,11 @@ curl -X POST https://indicate-pageview.<subdomain>.workers.dev/v \
 # harap 204; cek key pv:production:... muncul di Redis; DEL setelah uji
 ```
 
-## Takeover `pv.indicate.web.id` (butuh kredensial Cloudflare owner)
+## Takeover `pv.indicate.website` (butuh kredensial Cloudflare owner)
 
 1. Pastikan uji staging hijau dan key production terbaca cron `view-flush`.
 2. Dashboard Cloudflare → Workers → `indicate-pageview` → Settings →
-   Domains & Routes → tambah Custom Domain `pv.indicate.web.id`.
+   Domains & Routes → tambah Custom Domain `pv.indicate.website`.
    Ini memindahkan domain dari worker lama — **jangan hapus worker lama**
    sebelum 1× siklus flush harian terverifikasi.
 3. Rollback: kembalikan Custom Domain ke worker lama dari halaman yang sama.
@@ -59,5 +59,5 @@ curl -X POST https://indicate-pageview.<subdomain>.workers.dev/v \
 
 Beacon anonim tidak bisa membawa secret, jadi penguatan di edge, bukan
 tanda tangan: validasi UUID + batas 1 KB sudah di kode. Tambahkan di
-dashboard zona `indicate.web.id` → Security → Rate Limiting satu rule
-untuk hostname `pv.indicate.web.id` (mis. batas wajar per IP per menit).
+dashboard zona `indicate.website` → Security → Rate Limiting satu rule
+untuk hostname `pv.indicate.website` (mis. batas wajar per IP per menit).

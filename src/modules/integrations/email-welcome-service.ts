@@ -39,7 +39,7 @@ export function buildWelcomeEmail(displayName: string): WelcomeContent {
     '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-top:24px;padding-bottom:24px;">',
     '<table width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="max-width:600px;background-color:#ffffff;">',
     '<tr><td bgcolor="#1e1b4b" style="background-color:#1e1b4b;padding-top:28px;padding-bottom:28px;padding-left:32px;padding-right:32px;">',
-    '<img src="https://indicate.web.id/apple-icon.png" width="48" height="48" border="0" alt="Indicate" style="display:block;width:48px;height:48px;border:0;">',
+    '<img src="https://indicate.website/apple-icon.png" width="48" height="48" border="0" alt="Indicate" style="display:block;width:48px;height:48px;border:0;">',
     '<p style="margin:12px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:22px;line-height:30px;color:#ffffff;">Indicate</p>',
     '<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:#c7d2fe;">Platform Penerbitan Jaringan Media</p>',
     '</td></tr>',

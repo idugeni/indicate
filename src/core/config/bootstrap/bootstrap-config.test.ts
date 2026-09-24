@@ -48,7 +48,7 @@ describe('getBootstrapConfig', () => {
     ]) delete process.env[key];
     for (const [key, value] of Object.entries(VALID)) vi.stubEnv(key, value);
     const first = getBootstrapConfig();
-    expect(first.controlHosts.api).toBe('api.indicate.web.id');
+    expect(first.controlHosts.api).toBe('api.indicate.website');
     expect(getBootstrapConfig()).toBe(first);
   });
 });

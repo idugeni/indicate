@@ -19,11 +19,11 @@ export const viewport: Viewport = {
 function resolveMetadataBase(): URL {
   const raw =
     process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-    `https://${(process.env.DASHBOARD_HOST ?? 'indicate.web.id').toLowerCase()}`;
+    `https://${(process.env.DASHBOARD_HOST ?? 'indicate.website').toLowerCase()}`;
   try {
     return new URL(raw);
   } catch {
-    return new URL('https://indicate.web.id');
+    return new URL('https://indicate.website');
   }
 }
 

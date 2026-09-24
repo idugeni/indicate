@@ -25,7 +25,7 @@ describe('validateBootstrapConfig sukses', () => {
     const result = validateBootstrapConfig(validEnv());
     expect(result.success).toBe(true);
     if (!result.success) return;
-    expect(result.config.controlHosts.dashboard).toBe('indicate.web.id');
+    expect(result.config.controlHosts.dashboard).toBe('indicate.website');
     expect(result.config.database.directUrl.reveal()).toBe('postgresql://user:pass@localhost:5432/indicate');
     expect(result.config.credentials.resendApiKey).toBe(null);
   });
@@ -35,7 +35,7 @@ describe('validateBootstrapConfig gagal', () => {
   it('menolak secret pendek dan host duplikat', () => {
     const short = validateBootstrapConfig({ ...validEnv(), CRON_SECRET: 'pendek' });
     expect(short.success).toBe(false);
-    const duplicated = validateBootstrapConfig({ ...validEnv(), API_HOST: 'indicate.web.id' });
+    const duplicated = validateBootstrapConfig({ ...validEnv(), API_HOST: 'indicate.website' });
     expect(duplicated.success).toBe(false);
     if (!duplicated.success) {
       expect(duplicated.issues.some((issue) => issue.category === 'control_hosts_must_be_distinct')).toBe(true);
@@ -55,12 +55,12 @@ describe('validateBootstrapConfig gagal', () => {
     const pair = validateBootstrapConfig({
       ...validEnv(),
       R2_PUBLIC_BUCKET_NAME: 'indicate-media-public',
-      R2_PUBLIC_HOST: 'media.indicate.web.id',
+      R2_PUBLIC_HOST: 'media.indicate.website',
     });
     expect(pair.success).toBe(true);
     if (!pair.success) return;
     expect(pair.config.credentials.r2PublicBucketName).toBe('indicate-media-public');
-    expect(pair.config.credentials.r2PublicHost).toBe('media.indicate.web.id');
+    expect(pair.config.credentials.r2PublicHost).toBe('media.indicate.website');
     const lopsided = validateBootstrapConfig({ ...validEnv(), R2_PUBLIC_BUCKET_NAME: 'indicate-media-public' });
     expect(lopsided.success).toBe(false);
     if (!lopsided.success) {

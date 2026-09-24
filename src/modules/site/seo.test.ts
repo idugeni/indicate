@@ -73,7 +73,7 @@ describe('absoluteSiteAssetUrl', () => {
   });
 
   it('me-re-anchor aset publik bersama ke hostname situs', () => {
-    expect(absoluteSiteAssetUrl(context, 'https://indicate.web.id/brand/indicate-mark.svg')).toBe(
+    expect(absoluteSiteAssetUrl(context, 'https://indicate.website/brand/indicate-mark.svg')).toBe(
       'https://portal.example/brand/indicate-mark.svg',
     );
   });

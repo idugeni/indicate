@@ -254,7 +254,7 @@ export function invoiceDocument(invoice: InvoiceRecord, seals: InvoiceSeals): st
       <td style="width: 50%; padding-right: 12px;">
         <div class="label">Layanan / Produk Terdaftar</div>
         <div class="product-name">INDICATE</div>
-        <div class="product-sub">indicate.web.id</div>
+        <div class="product-sub">indicate.website</div>
         <p class="product-desc">Infrastruktur Publikasi Digital Terpusat</p>
       </td>
       <td style="width: 50%; padding-left: 12px;">
