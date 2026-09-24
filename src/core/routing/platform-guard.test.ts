@@ -36,15 +36,19 @@ describe('hasPlatformOriginProof', () => {
 });
 
 describe('isPlatformRequestAllowed', () => {
-  it('menolak ip spoof di depan rantai x-forwarded-for', () => {
+  it('menolak tanpa cf-connecting-ip walau x-forwarded-for cocok', () => {
     const allowlist = parsePlatformAllowedIps('10.9.9.9');
     const spoofed = headersOf({ 'x-forwarded-for': '10.9.9.9, 198.51.100.2' });
     expect(isPlatformRequestAllowed({ headers: spoofed, allowlist })).toBe(false);
   });
 
-  it('mengizinkan ip allowlist dari entri terakhir', () => {
+  it('mengizinkan ip allowlist dari cf-connecting-ip', () => {
     const allowlist = parsePlatformAllowedIps('198.51.100.0/24');
-    const headers = headersOf({ 'x-forwarded-for': '10.9.9.9, 198.51.100.2' });
+    const headers = headersOf({ 'cf-connecting-ip': '198.51.100.2', 'x-forwarded-for': '10.9.9.9' });
     expect(isPlatformRequestAllowed({ headers, allowlist })).toBe(true);
+  });
+
+  it('menolak entri CIDR IPv6 dengan error eksplisit', () => {
+    expect(() => parsePlatformAllowedIps('::1/128')).toThrow(/ipv6/i);
   });
 });

@@ -25,10 +25,16 @@ export function isDashboardPath(pathname: string): boolean {
 
 export function parsePlatformAllowedIps(value: string | undefined): readonly string[] {
   if (value === undefined) return [];
-  return value
+  const entries = value
     .split(',')
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
+  for (const entry of entries) {
+    if (entry.includes(':') && entry.includes('/')) {
+      throw new Error('platform_allowlist_ipv6_cidr_unsupported: use an exact IPv6 address');
+    }
+  }
+  return entries;
 }
 
 function isLoopbackIp(ip: string): boolean {
@@ -78,6 +84,18 @@ export function extractClientIp(headers: Headers): string | null {
   const realIp = headers.get('x-real-ip');
   if (realIp !== null && realIp.trim().length > 0) return realIp.trim();
   return null;
+}
+
+/**
+ * Strict client IP for platform surfaces: only the Cloudflare edge header.
+ *
+ * @param headers - Incoming request headers.
+ * @returns The edge-provided IP, or null when the request did not pass Cloudflare.
+ */
+export function extractPlatformIp(headers: Headers): string | null {
+  const connecting = headers.get('cf-connecting-ip')?.trim();
+  if (connecting === undefined || connecting === '') return null;
+  return connecting;
 }
 
 function secretEqual(left: string, right: string): boolean {
@@ -136,7 +154,7 @@ export function isPlatformRequestAllowed(input: {
   readonly headers: Headers;
   readonly allowlist: readonly string[];
 }): boolean {
-  const ip = extractClientIp(input.headers);
+  const ip = extractPlatformIp(input.headers);
   if (ip === null) return false;
   if (isLoopbackIp(ip)) return isIpAllowlisted(ip, input.allowlist);
   return isIpAllowlisted(ip, input.allowlist);
