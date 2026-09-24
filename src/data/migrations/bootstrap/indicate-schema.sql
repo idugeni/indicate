@@ -177,7 +177,7 @@
 --   162  20260923155015_cascade_hierarchy  ledger sha256:2a35dc9d06af8a15c362acc4e962213e07e2bcf1a13b52b08359eeb9c309896d
 --   163  20260923170017_media_public_prefix  ledger sha256:cda647367f2caff941ca6ca1a940b563aaffeb29a95722b5dfea2f6a872c2ad9
 --   164  20260923172152_cascade_fk_covering_indexes  ledger sha256:cbb46d566bf3b67bfe6eac22f990a891b5448e2849d6da20b46c7b19631631ac
---   165  20260924010000_telegram_removal  ledger sha256:575f68841377de1dff8af2abddd890725b937a8146d17c503ce5fe63ebfbd482
+--   165  20260924010000_telegram_removal  ledger sha256:c95176ab1f761d9439c62caa97f51289e1213b7f7a2f88f4989deae9a9871531
 
 BEGIN;
 
@@ -13093,5 +13093,5 @@ $function$;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (164, 'telegram_removal', 'sha256:9c8570433fae0b5e8c8e9bc995367668c3f268492457c56bcaadb94c64543798');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('575f68841377de1dff8af2abddd890725b937a8146d17c503ce5fe63ebfbd482', 1790194800000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c95176ab1f761d9439c62caa97f51289e1213b7f7a2f88f4989deae9a9871531', 1790194800000);
 COMMIT;
