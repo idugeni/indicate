@@ -50,3 +50,6 @@ supabase/.temp/
 # Sabuk ganda: tolak semua varian .env, kecuali kontrak contoh
 .env*
 !.env.example
+
+# Data scraping lokal (tidak di-commit)
+kemenimipas/
