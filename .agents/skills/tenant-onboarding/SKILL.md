@@ -39,7 +39,7 @@ Setiap domain apex = satu zona Cloudflare (paket Free) dengan konfigurasi IDENTI
 1. **DNS:** CNAME apex + CNAME wildcard (`*`), keduanya proxied, target hostname Vercel (`*.vercel-dns-*.com`). CAA `issue` + `issuewild` (letsencrypt.org, pki.goog). TXT: SPF `v=spf1 -all`, DMARC `v=DMARC1; p=reject; sp=reject`, DKIM wildcard (`*._domainkey`).
 2. **TLS:** SSL `strict`, min TLS `1.2`, Always HTTPS `on`, Universal SSL aktif. DNSSEC: `pending` di semua zona (keputusan registrar, bukan kode — jangan kejar dari sini).
 3. **WAF custom (`http_request_firewall_custom`), urutan PENTING:** (1) `Allow social preview crawlers` — skip remaining custom rules untuk UA `facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|TelegramBot|Slackbot|Discordbot`; (2) `Challenge WP/env/git probes` — managed_challenge untuk path `wp-login.php|xmlrpc.php|/.env|/.git/`. Skip rule WAJIB pertama agar lolos AI Crawl Control.
-4. **Cache (`http_request_cache_settings`):** bypass untuk private/auth/mutasi; edge-cache halaman publik 60 dtk (tanpa query); feeds + brand-mark override 600 dtk.
+4. **Cache (`http_request_cache_settings`):** bypass untuk private/auth/mutasi; edge-cache halaman publik 60 dtk (tanpa query); feeds override 600 dtk; brand bytes (`/icon.png`, `/apple-touch-icon.png`, `/logo.png`, `/manifest.webmanifest`, tanpa query) override 1 tahun immutable.
 5. **Rate limit (`http_ratelimit`):** API/auth 20 per 10 dtk per IP → block.
 6. **Bots:** `fight_mode` on, `ai_bots_protection` **disabled**, `crawler_protection` enabled. Keputusan sadar 2026-09-23: AI-block paket Free menendang crawler sosial campuran (kasus facebookexternalhit 403, terbukti via pilot) dan TIDAK bisa di-skip per-UA — proteksi konten mengandalkan hak cipta/ToS. Jangan nyalakan AI-block tanpa pengecualian yang terbukti jalan.
 7. **Vercel:** asosiasi exact setiap hostname (apex + regional) ke satu proyek; verifikasi `verified`, tanpa orphan.
@@ -48,7 +48,7 @@ Setiap domain apex = satu zona Cloudflare (paket Free) dengan konfigurasi IDENTI
 
 - DB: media `active`, settings tertaut, regional `NULL`, tasks `pending`, audit lengkap.
 - R2: HEAD tiap key cocok ukuran; tidak ada yatim.
-- HTTP (dev server + override header `Host`): `GET /api/network/media/{id}` → 307 untuk SEMUA hostname apex DAN regional; ikuti satu redirect hingga byte (`image/png`, panjang cocok). Cek `<meta name="description">` + `og:description` di HTML untuk SEO.
+- HTTP (dev server + override header `Host`): `GET /api/network/media/{id}` → 307 untuk SEMUA hostname apex DAN regional; ikuti satu redirect hingga byte (`image/png`, panjang cocok). `GET /icon.png`, `/apple-touch-icon.png`, `/logo.png` → 200 bytes immutable stabil (bukan redirect); `GET /manifest.webmanifest` → manifest tenant. Cek `<meta name="description">` + `og:description` di HTML untuk SEO.
 
 ## Catatan skala (ribuan domain × N region)
 

@@ -18,7 +18,7 @@ Acuan kanonis per zona + checklist zona baru + ritme tinjauan.
 | Page Shield | `enabled=true` | — |
 | WAF kustom | `tenant probes` (managed_challenge WP/env/git) | Maks 5 rule di Free; terpakai 1 |
 | Rate limit | `tenant api guard` (20/10 dtk per IP, blokir 429) | Maks 1 rule di Free; sudah penuh |
-| Edge cache | `Indicate edge cache` (bypass privat/auth, halaman 60 dtk, feed 600 dtk) | Tidak dipasang di `safenca.id` (path app berbeda) |
+| Edge cache | `Indicate edge cache` (bypass privat/auth, halaman 60 dtk, feed 600 dtk, brand bytes 1 thn) | Tidak dipasang di `safenca.id` (path app berbeda) |
 | Browser cache TTL | `0` (hormati origin) | — |
 | DNS inti | Apex + wildcard CNAME proxied ke target Vercel; CAA issue/issuewild × pki.goog/letsencrypt.org | — |
 | Email non-kirim | SPF `v=spf1 -all`, DMARC reject + rua, DKIM-null `*._domainkey` | 94 bank; pengecualian di bawah |
