@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="public/brand/indicate-landscape.svg" alt="Indicate" width="320" />
+</p>
+
+<p align="center">
   <strong>Satu ruang redaksi untuk seluruh jaringan media Anda.</strong><br />
   Indicate menyatukan pengelolaan banyak portal berita ke dalam satu dasbor terpusat. Redaksi menulis satu kali, lalu menerbitkannya ke situs mana pun yang dipilih — dengan data masing-masing pelanggan yang terjaga dan terpisah.
 </p>
