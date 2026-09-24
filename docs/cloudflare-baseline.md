@@ -14,7 +14,7 @@ Acuan kanonis per zona + checklist zona baru + ritme tinjauan.
 | Status zona | `active` | Via `GET /zones` |
 | SSL | `strict` + `ssl_automatic_mode=auto` | Full strict ke origin Vercel |
 | TLS | `min_tls_version=1.2`, `tls_1_3=zrt`, `always_use_https=on`, `automatic_https_rewrites=on` | — |
-| Bot | `enable_js=true`, `fight_mode=true`, `ai_bots_protection=block`, `crawler_protection=enabled` | — |
+| Bot | `enable_js=true`, `fight_mode=true`, `ai_bots_protection=disabled`, `crawler_protection=enabled` | AI-block dimatikan sadar 2026-09-23 (tendang crawler sosial campuran, kasus facebookexternalhit 403; proteksi konten via hak cipta/ToS) |
 | Page Shield | `enabled=true` | — |
 | WAF kustom | `tenant probes` (managed_challenge WP/env/git) | Maks 5 rule di Free; terpakai 1 |
 | Rate limit | `tenant api guard` (20/10 dtk per IP, blokir 429) | Maks 1 rule di Free; sudah penuh |
@@ -22,12 +22,18 @@ Acuan kanonis per zona + checklist zona baru + ritme tinjauan.
 | Browser cache TTL | `0` (hormati origin) | — |
 | DNS inti | Apex + wildcard CNAME proxied ke target Vercel; CAA issue/issuewild × pki.goog/letsencrypt.org | — |
 | Email non-kirim | SPF `v=spf1 -all`, DMARC reject + rua, DKIM-null `*._domainkey` | 94 bank; pengecualian di bawah |
-| Email kirim+terima | Email Routing + Resend sending domain + DMARC Management | `indicate.web.id`, `safenca.id` |
+| Email kirim+terima | Email Routing + Resend sending domain + DMARC Management | `indicate.website` (migrasi dari `indicate.web.id` 2026-09-24), `safenca.id` |
 | DNSSEC | `pending` → `active` setelah DS di registrar | Di luar API; lihat tabel DS di bawah |
 
 ## Pengecualian tercatat
 
-- `indicate.web.id`: + record `www`, `pv` (Worker pageview), Email Routing + Resend aktif. Redirect Rule `www_to_apex_301` (fase `http_request_dynamic_redirect`, ruleset `www to apex redirect`): `www.indicate.web.id` → `https://indicate.web.id` + path, 301, preserve query — pengganti redirect domain Vercel `www` yang dilepas 2026-09-20 untuk slot kuota project.
+- `indicate.website` (zona baru, 2026-09-24): peta penuh dari `indicate.web.id` dengan nama baru —
+  CNAME apex + wildcard proxied ke target Vercel yang sama, CNAME `www`, A `pv` (Worker pageview)
+  route Worker, CNAME `media` ke R2 publik, CNAME `rsend`, MX Email Routing + `send` SES,
+  CAA issue/issuewild × letsencrypt+pki.goog, SPF/DMARC/DKIM (+DKIM Resend), WAF 2-rule,
+  edge cache, guard 20/10 dtk. Status: zona belum dibuat (MCP tanpa tool create-zone;
+  buat via dashboard Cloudflare → Add domain, lalu ganti NS di registrar).
+- `indicate.web.id`: + record `www`, `pv` (Worker pageview), Email Routing + Resend aktif. Redirect Rule `www_to_apex_301` (fase `http_request_dynamic_redirect`, ruleset `www to apex redirect`): `www.indicate.web.id` ke `https://indicate.web.id` + path, 301, preserve query — pengganti redirect domain Vercel `www` yang dilepas 2026-09-20 untuk slot kuota project. Setelah cutover: tambah Redirect Rule `apex_to_website_308` (`http.host eq "indicate.web.id"` ke `concat("https://indicate.website", http.request.uri.path)`, 308, preserve query); `api`/`webhook`/`media`/`pv` lama dual-serve sampai traffic lama habis.
 - 9 tenant: DMARC + SPF + DKIM-null; tanpa Email Routing/Resend.
 - `safenca.id`: tanpa `Indicate edge cache`, tanpa wildcard; Email Routing + Resend aktif.
 - 94 bank: tanpa TXT kirim/terima selain hardening; tanpa record `www`/`pv`.
@@ -36,7 +42,7 @@ Acuan kanonis per zona + checklist zona baru + ritme tinjauan.
 
 1. Zona `active`, nameserver Cloudflare terdelegasi.
 2. `ssl=strict`, `ssl_automatic_mode=auto`, `always_use_https=on`, TLS 1.2+.
-3. Bot Fight Mode + AI block + crawler enabled; Page Shield on.
+3. Bot Fight Mode + crawler enabled, AI block OFF (keputusan sadar 2026-09-23); Page Shield on.
 4. Ruleset `tenant probes` + `tenant api guard` (cek sisa kuota Free).
 5. Ruleset `Indicate edge cache` (kecuali app non-Indicate).
 6. `browser_cache_ttl=0`; apex + wildcard proxied; CAA 4 record.

@@ -56,7 +56,7 @@ Pakai `scripts/qa/preview-headers.mjs` dengan URL production
 
 ```powershell
 $env:TENANT_URL="https://wonosobo.fakta01.my.id"
-$env:DASHBOARD_URL="https://indicate.web.id"
+$env:DASHBOARD_URL="https://indicate.website"
 node scripts/qa/preview-headers.mjs
 ```
 

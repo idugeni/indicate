@@ -23,6 +23,8 @@
 | [domains](domains.md) | Living | Indicate-related domain inventory. |
 | [active domains](active-domains.md) | Living ledger | Activation/deactivation ledger; update on every change. |
 | [ops lessons](ops-lessons.md) | Living | Incident-derived procedures (tenant context, Supavisor sessions). |
+| [plans/audit remediation 2026-09-24](plans/audit-remediation-2026-09-24.md) | Approved-plan | Full 6-phase remediation plan from the 2026-09-24 six-area audit. |
+| [vercel multi-tenant archive](vercel-multi-tenant/README.md) | Archive 2026-09-24 | Verbatim Vercel multi-tenant platform docs (9 pages) for internal reference. Upstream wins on conflict. |
 
 ## Legal and per-tenant records
 

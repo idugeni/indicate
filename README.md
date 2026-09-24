@@ -8,10 +8,10 @@
 </p>
 
 <p align="center">
-  <a href="https://indicate.web.id/contact"><strong>Jadwalkan diskusi</strong></a> ·
-  <a href="https://indicate.web.id/services">Lihat layanan</a> ·
-  <a href="https://indicate.web.id/pricing">Harga</a> ·
-  <a href="https://indicate.web.id/faq">FAQ</a>
+  <a href="https://indicate.website/contact"><strong>Jadwalkan diskusi</strong></a> ·
+  <a href="https://indicate.website/services">Lihat layanan</a> ·
+  <a href="https://indicate.website/pricing">Harga</a> ·
+  <a href="https://indicate.website/faq">FAQ</a>
 </p>
 
 ## Kenapa Indicate
@@ -70,8 +70,8 @@ Hari ini Indicate melayani redaksi solo hingga grup media — semuanya dengan ja
 <p align="center">
   <strong>Konsolidasikan seluruh jaringan redaksi Anda.</strong><br />
   Sampaikan jumlah domain dan unit yang direncanakan — tim kami menyusun arsitektur penyiapan beserta estimasinya, tanpa mengganggu operasi redaksi yang berjalan.<br /><br />
-  <a href="https://indicate.web.id/contact"><strong>Jadwalkan diskusi arsitektur</strong></a> ·
-  <a href="https://indicate.web.id/services">Lihat layanan</a>
+  <a href="https://indicate.website/contact"><strong>Jadwalkan diskusi arsitektur</strong></a> ·
+  <a href="https://indicate.website/services">Lihat layanan</a>
 </p>
 
 ## License

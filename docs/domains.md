@@ -9,7 +9,7 @@ Hanya domain terkait Indicate yang dicatat di sini — proyek-proyek lain
 milik pemilik sengaja tidak dimasukkan.
 
 Tenant live di DB: **20 site = 10 apex + 10 regional** (`wonosobo.*`).
-Domain utama: `indicate.web.id` (bukan tenant).
+Domain utama: `indicate.website` (bukan tenant; migrasi dari `indicate.web.id` 2026-09-24, dual-serve).
 
 ## A. IDWebHost — batch 2026-09-16 + domain utama
 
@@ -127,7 +127,8 @@ MCP 2026-09-18, baseline diselaraskan maksimal mengikuti
 | validitas.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | wargamerdeka.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
 | wartaria.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | — |
-| indicate.web.id | 2026-08-30 | 2027-08-30 | Aktif | active | BUKAN tenant (domain utama) |
+| indicate.web.id | 2026-08-30 | 2027-08-30 | Aktif | active | BUKAN tenant (domain utama lama; redirect 308 ke utama baru, dual-serve sejak 2026-09-24) |
+| indicate.website | 2026-09-24 | — | Aktif | pending (zona belum dibuat; NS registrar belum diganti) | BUKAN tenant (domain utama baru) |
 
 ## B. Tenant live (Exabytes, batch 2026-09-03)
 

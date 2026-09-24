@@ -2,7 +2,16 @@
 
 > **Status:** Living ledger — perbarui setiap ada aktivasi/penonaktifan domain.
 > **Owner:** Platform team.
-> **Last verified:** 2026-09-20 (surface `docs.indicate.web.id` dihapus dari kode + domain Vercel dilepas; DB + Vercel MCP).
+> **Last verified:** 2026-09-24 (mulai migrasi `indicate.web.id` → `indicate.website`, dual-serve; kode + config + test + docs dialihkan ke host baru; zona CF baru + asosiasi Vercel + alih env menyusul).
+
+## Migrasi domain utama (2026-09-24, dual-serve)
+
+Baru: `indicate.website` (+ `api.`, `webhook.`, `media.`, `pv.`, `www.`). Lama
+(`indicate.web.id` + sub) tetap hidup sampai cutover: redirect 308 Cloudflare untuk
+apex/`www` lama (preserve path+query); `api`/`webhook`/`media`/`pv` lama dual-serve.
+Terblokir saat ini: kuota Vercel 50/50 (tambah domain baru menunggu Pro riil/limit naik)
+dan zona Cloudflare baru belum dibuat (tanpa tool create-zone di MCP; via dashboard),
+lalu NS registrar. Email ikut pindah (Resend sending domain + Supabase Auth + 13 template).
 > **Related:** [domains](domains.md) · [cloudflare baseline](cloudflare-baseline.md) · [release checklist](release-checklist.md)
 
 ## Kuota Vercel

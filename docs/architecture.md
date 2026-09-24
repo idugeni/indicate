@@ -82,7 +82,7 @@ The architecture generates regional hostnames only in the one-label form `{regio
 
 Validated Runtime Configuration reserves:
 
-- `indicate.web.id` for Dashboard and authentication callbacks;
+- `indicate.website` for Dashboard and authentication callbacks;
 - configured API hostname(s) for versioned API routes;
 - configured webhook hostname(s) for named webhook routes;
 - the Vercel production URL plus `CRON_SECRET` for internal cron routes.
