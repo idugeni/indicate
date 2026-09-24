@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, type CSSProperties } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Mail, MessageCircle, Send } from 'lucide-react';
@@ -9,7 +9,7 @@ import {
   type NavigationLink,
 } from '@/ui/site/marketing-content';
 import { getContactChannels, type FeatureItem } from '@/modules/content/site-content';
-import { SOCIAL_ORDER, resolveContactChannels } from '@/modules/site/company-contact';
+import { SOCIAL_ORDER, resolveContactChannels, socialBrandColor, socialBrandForeground } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { currentYear } from '@/modules/site/current-year';
 import { Container, PrimaryCta, SecondaryCta } from '@/modules/site/components/layout/content';
@@ -55,7 +55,6 @@ const FOOTER_COLUMNS: readonly FooterColumn[] = Object.freeze([
     links: Object.freeze([
       { href: '/sign-in', label: 'Masuk Dashboard' },
       { href: '/sign-up', label: 'Buat Akun' },
-      { href: '/rss.xml', label: 'RSS' },
     ]),
   },
 ]);
@@ -132,24 +131,6 @@ function SiteFooterView({ year, channels }: { readonly year: number | null; read
               @safenca_id
             </a>
           </address>
-          <p className="m-0 flex flex-wrap items-center gap-2 pt-2">
-            {socials.map((channel) => {
-              const Icon = channelIcon(channel.key);
-              return (
-                <a
-                  key={channel.key}
-                  href={channel.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Indicate di ${channel.label}`}
-                  title={channel.label}
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-[#4c5b6b] ring-1 ring-[#e2ded2] transition-colors duration-180 hover:text-[#1a2430]"
-                >
-                  <Icon className="h-4 w-4" aria-hidden="true" />
-                </a>
-              );
-            })}
-          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
@@ -172,6 +153,28 @@ function SiteFooterView({ year, channels }: { readonly year: number | null; read
           ))}
         </div>
       </Container>
+
+      <div className="border-t border-[#e2ded2]">
+        <Container className="flex flex-wrap items-center justify-center gap-2 py-6">
+          {socials.map((channel) => {
+            const Icon = channelIcon(channel.key);
+            return (
+              <a
+                key={channel.key}
+                href={channel.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Indicate di ${channel.label}`}
+                title={channel.label}
+                style={{ '--social-brand': socialBrandColor(channel.key), '--social-fg': socialBrandForeground(channel.key) } as CSSProperties}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-[#4c5b6b] ring-1 ring-[#e2ded2] transition-colors duration-180 hover:bg-[var(--social-brand)] hover:text-[var(--social-fg)] hover:ring-transparent"
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+              </a>
+            );
+          })}
+        </Container>
+      </div>
 
       <div aria-hidden="true" className="overflow-hidden border-t border-[#e2ded2] select-none">
         <p className="m-0 text-center font-sans text-[20vw] leading-[0.85] font-bold tracking-tight text-[#1a2430] lg:text-[12rem]">

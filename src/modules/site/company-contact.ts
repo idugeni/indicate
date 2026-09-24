@@ -24,8 +24,55 @@ const COMPANY_SOCIALS: Readonly<Record<string, string>> = {
   linkedin: 'https://linkedin.com/company/safenca-id',
 };
 
-const CHANNEL_LABELS: Readonly<Record<string, string>> = {
-  email: 'Email',
+/** Official brand colors per social platform for hover/fill treatments. */
+export const SOCIAL_BRAND_COLORS: Readonly<Record<string, string>> = {
+  facebook: '#1877F2',
+  instagram: '#C13584',
+  x: '#000000',
+  youtube: '#FF0000',
+  tiktok: '#010101',
+  telegram: '#229ED9',
+  whatsapp: '#25D366',
+  linkedin: '#0A66C2',
+  threads: '#000000',
+  bluesky: '#0285FF',
+  snapchat: '#FFFC00',
+  pinterest: '#E60023',
+  reddit: '#FF4500',
+  discord: '#5865F2',
+  twitch: '#9146FF',
+  spotify: '#1DB954',
+  medium: '#000000',
+  vimeo: '#1AB7EA',
+  dailymotion: '#00AAFF',
+  github: '#181717',
+  line: '#06C755',
+  quora: '#B92B27',
+  tumblr: '#36465D',
+  mastodon: '#6364FF',
+};
+
+/**
+ * Brand background for a social channel.
+ *
+ * @param key - Channel key (`ContactChannel.key`).
+ * @returns Official brand hex; ink when unknown.
+ */
+export function socialBrandColor(key: string): string {
+  return SOCIAL_BRAND_COLORS[key] ?? '#1a2430';
+}
+
+/**
+ * Glyph color over a social brand background.
+ *
+ * @param key - Channel key (`ContactChannel.key`).
+ * @returns Ink on bright yellow (Snapchat), white everywhere else.
+ */
+export function socialBrandForeground(key: string): string {
+  return key === 'snapchat' ? '#1a2430' : '#ffffff';
+}
+
+const CHANNEL_LABELS: Readonly<Record<string, string>> = {  email: 'Email',
   telepon: 'Telepon',
   facebook: 'Facebook',
   instagram: 'Instagram',
