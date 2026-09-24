@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { indexableRobots } from '@/modules/site/seo';
 import { controlPlaneIcons } from '@/ui/site/metadata-guard';
+import { resolveGoogleSiteVerification } from '@/core/config/google-verification';
 import { SERVICE_SUMMARY } from '@/ui/site/marketing-content';
 import { LandingPage } from '@/modules/site/components/landing-page';
 import { deliveryComposition } from '@/modules/delivery';
@@ -21,9 +22,11 @@ export async function generateMetadata(): Promise<Metadata> {
 
   if (classification.kind === 'control') {
     if (classification.surface === 'dashboard') {
+      const google = resolveGoogleSiteVerification();
       return {
         description: SERVICE_SUMMARY,
         robots: indexableRobots(),
+        ...(google === undefined ? {} : { verification: { google } }),
         ...controlPlaneIcons(),
         twitter: { card: 'summary_large_image' },
       };

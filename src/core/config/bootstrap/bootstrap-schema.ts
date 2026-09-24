@@ -25,6 +25,7 @@ const INDICATE_NAMESPACE_PREFIXES = [
   'RESEND_',
   'GENERIC_',
   'CRON_',
+  'GOOGLE_',
   'DEFAULT_',
   'SITE_',
   'APP_',
@@ -60,6 +61,7 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'RESEND_WEBHOOK_SECRET',
   'GENERIC_WEBHOOK_SECRET',
   'CRON_SECRET',
+  'GOOGLE_SITE_VERIFICATION',
   'FB_APP_TOKEN',
   'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
 ]);
@@ -117,6 +119,10 @@ const bootstrapSchema = z
     RESEND_WEBHOOK_SECRET: secretSchema.optional(),
     GENERIC_WEBHOOK_SECRET: secretSchema,
     CRON_SECRET: secretSchema,
+    GOOGLE_SITE_VERIFICATION: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{8,128}$/)
+      .optional(),
     FB_APP_TOKEN: facebookAppTokenSchema.optional(),
   })
   .superRefine((value, context) => {
@@ -196,6 +202,7 @@ export interface BootstrapConfig {
   readonly seo: Readonly<{
     readonly defaultLocale: string;
     readonly defaultAssetUrl: string;
+    readonly googleSiteVerification: string | null;
   }>;
   readonly supabase: Readonly<{
     readonly projectRef?: string;
@@ -258,6 +265,7 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
     seo: Object.freeze({
       defaultLocale: value.DEFAULT_LOCALE,
       defaultAssetUrl: value.SITE_DEFAULT_ASSET_URL,
+      googleSiteVerification: value.GOOGLE_SITE_VERIFICATION ?? null,
     }),
     supabase: Object.freeze({
       projectRef,

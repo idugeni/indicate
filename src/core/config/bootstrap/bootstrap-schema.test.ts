@@ -81,6 +81,15 @@ describe('validateBootstrapConfig gagal', () => {
     expect(result.success).toBe(true);
   });
 
+  it('menerima GOOGLE_SITE_VERIFICATION opsional dan menolak format salah', () => {
+    const valid = validateBootstrapConfig({ ...validEnv(), GOOGLE_SITE_VERIFICATION: 'dBw4xYz_9-ABCdef1234567890abcDEF' });
+    expect(valid.success).toBe(true);
+    if (!valid.success) return;
+    expect(valid.config.seo.googleSiteVerification).toBe('dBw4xYz_9-ABCdef1234567890abcDEF');
+    const invalid = validateBootstrapConfig({ ...validEnv(), GOOGLE_SITE_VERIFICATION: 'pendek' });
+    expect(invalid.success).toBe(false);
+  });
+
   it('menerima FB_APP_TOKEN format app-id pipe app-secret', () => {
     const result = validateBootstrapConfig({ ...validEnv(), FB_APP_TOKEN: '1234567890123456|AbCdEfGhIjKlMnOpQrStUvWx' });
     expect(result.success).toBe(true);

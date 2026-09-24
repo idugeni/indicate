@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 
 import { getPublicConfig } from '@/core/config/public-config';
 import { getBootstrapConfig } from '@/core/config/bootstrap/bootstrap-config';
+import { resolveGoogleSiteVerification } from '@/core/config/google-verification';
 import { deliveryComposition } from '@/modules/delivery';
 import { indexableRobots } from '@/modules/site/seo';
 import { SERVICE_NAME } from '@/ui/site/marketing-content';
@@ -61,9 +62,11 @@ export function siteMetadata(title: string, description: string, path: string): 
   const origin = controlPlaneOrigin();
   const canonical = `${origin}${path}`;
   const pageTitle = `${title} | ${SERVICE_NAME}`;
+  const google = resolveGoogleSiteVerification();
   return {
     title,
     description,
+    ...(google === undefined ? {} : { verification: { google } }),
     alternates: {
       canonical,
       languages: { 'id-ID': canonical },
