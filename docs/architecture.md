@@ -76,7 +76,7 @@ Each managed root domain remains a Cloudflare zone using Cloudflare nameservers.
 - edge TLS and CDN behavior;
 - Full (strict) HTTPS from Cloudflare to the certificate-valid Vercel origin.
 
-The architecture generates regional hostnames only in the one-label form `{regionSlug}.{rootDomain}` unless a separately reviewed certificate strategy is approved. Vercel wildcard-domain registration is prohibited because it would conflict with the Cloudflare-only authority invariant. Each active Site hostname is associated exactly with the one Vercel project.
+The architecture generates regional hostnames only in the one-label form `{regionSlug}.{rootDomain}`. Each apex carries a Vercel wildcard (`*.apex`, certificate via DNS challenge) so single-label regionals need no exact association — they activate DB-only. Each active apex hostname is associated exactly with the one Vercel project; regional exact entries for already-live sites are kept as redundancy.
 
 ### 4.2 Control-plane hostnames
 
@@ -419,7 +419,7 @@ Public routing: purpose `article-cover` reserves keys under `pub/` (same tenant 
 
 ### 9.9 Syndication cascade and per-copy robots
 
-Cities are `regions` rows with `kind = 'city'` pointing at a parent region — never separate tables or hostnames. Publishing expands at write time into explicit `article_sites` rows (`manual`/`auto` + origin + inherited canonical): a city publish fans out to region + main tenant, a region publish to the main tenant. Every cascade copy declares the primary's canonical URL, so hundred-tenant syndication consolidates instead of duplicating.
+Cities are `regions` rows with `kind = 'city'` pointing at a parent region — never separate tables. No city-kind rows or city hostnames are live yet (live: 1 `region` row, Wonosobo; 10 `{regionSlug}.{apex}` sites): whether kab/kota portals get their own hostnames or publish as cascade copies into existing portals is an owner decision pending per `docs/tenants/upt-jateng.md`. Publishing expands at write time into explicit `article_sites` rows (`manual`/`auto` + origin + inherited canonical): a city publish fans out to region + main tenant, a region publish to the main tenant. Every cascade copy declares the primary's canonical URL, so hundred-tenant syndication consolidates instead of duplicating.
 
 `article_sites.seo_robots_directive` (same enum as site settings, NULL = inherit) is the per-copy kill-switch for Search Console canonical disputes: dashboard action `publication.setSiteRobots` flips one copy with audit + cache invalidation, without touching siblings. Control-plane icons come from the single `controlPlaneIcons()` helper so crawler-facing `<link rel="icon">` always carries a >48px source alongside the ICO.
 
@@ -766,8 +766,8 @@ The following are discouraged by default but allowed with owner approval and a b
 
 The following operational confirmations remain required at the applicable implementation or promotion stage:
 
-1. **Exact-domain operations:** confirm that every active Site will be individually associated with the one Vercel project while Cloudflare retains nameserver/DNS authority.
-2. **Provider capacity:** confirm the Vercel plan supports the projected exact-domain count, cron frequency, execution duration, and the unbounded domain-plus-regional-Site scale target.
+1. **Domain operations:** confirm that every active apex Site is associated exactly with the one Vercel project plus a wildcard with issued certificate, while Cloudflare retains nameserver/DNS authority. Regionals stay DB-only.
+2. **Provider capacity:** confirm the Vercel plan supports the projected domain count (exact + wildcard, both free on Pro; only traffic is metered), cron frequency, execution duration, and the unbounded domain-plus-regional-Site scale target.
 3. **TLS convention:** confirm one-label regional hostnames fit Cloudflare certificate coverage and that Full (strict) origin validation succeeds.
 4. **Numeric runtime bounds:** approve retry attempts/delays, lease durations, worker batch/deadline, media limits, signed URL TTLs, cache TTLs, rate limits, webhook freshness, and replay retention.
 5. **Credential ownership:** approve least-privilege roles, storage, rotation, and incident ownership for Cloudflare, Vercel, Supabase runtime/migration, R2, Upstash, webhook, and cron secrets.

@@ -109,10 +109,9 @@ wajib kecuali alur pindah ke PR.
 
 ## 5. Fakta kapasitas (terverifikasi API, bukan asumsi)
 
-Limit domain Vercel adalah **50 per project** (`project_domain_limit_reached`),
-bukan 250. Setiap hostname (apex maupun regional) makan 1 slot dan butuh
-asosiasi exact — wildcard Cloudflare tidak menggantikan slot Vercel.
-Target CNAME project stabil (`58a0c0dd872d3769.vercel-dns-017.com`,
+Limit domain Vercel adalah Pro unlimited (soft-cap 100 ribu; kuota Hobby 50
+sudah ditinggalkan saat upgrade). Setiap apex makan 1 slot exact + 1 slot
+wildcard; regional satu-label DB-only tanpa slot. Target CNAME project stabil (`58a0c0dd872d3769.vercel-dns-017.com`,
 proxied) dipakai ulang untuk semua zona.
 
 ## 6. Ledger md adalah definition-of-done
