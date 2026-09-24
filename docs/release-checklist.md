@@ -10,7 +10,8 @@ Pelengkap `docs/production-readiness-runbook.md` (readiness + rollback) dan
 rilis: pra-rilis → promosi → smoke test → pemantauan bertahap → rollback.
 
 Topologi tidak berubah saat rilis: satu project Vercel `indicate` (`sin1`),
-satu database Supabase, satu bucket R2 privat, satu resource Upstash Redis.
+satu database Supabase, dua bucket R2 media (privat + publik) + bucket audit
+WORM opsional, satu resource Upstash Redis.
 
 ## 1. Pra-rilis
 

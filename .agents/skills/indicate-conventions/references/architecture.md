@@ -10,7 +10,7 @@ Source of truth: the codebase (`src/core/config/bootstrap/bootstrap-schema.ts`, 
 | Vercel project | Hosting + exact custom-domain association | No nameserver delegation, DNS authority, or wildcard registration |
 | Supabase project | PostgreSQL 17 + Auth | No per-tenant project or database |
 | Cloudflare | Nameservers, DNS, wildcard records, edge TLS proxy, CDN, R2, cache purge | Authority never transferred to Vercel |
-| R2 bucket (private) | Media objects via S3-compatible API | No public bucket, list grants, or per-tenant buckets (a separate optional audit/WORM bucket may exist for exports) |
+| R2 buckets (private + public) | Media objects via S3-compatible API; `article-cover`/`article-image` under `pub/` route to the public bucket served direct via `media.indicate.web.id`, everything else stays private behind signed routes | No list grants or per-tenant buckets (a separate optional audit/WORM bucket may exist for exports); one app credential must cover both media buckets |
 | Upstash Redis | Dispatch, leases, rate limits, idempotency acceleration, invalidation | Recoverable projection, never durable authority |
 
 ## Dependency direction

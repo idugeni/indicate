@@ -15,6 +15,10 @@ Indicate uses forward-only Drizzle PostgreSQL migrations in `src/data/migrations
 4. Verify through the pooled runtime path: start the application and confirm `GET /api/health` reports a valid configuration and the expected Postgres snapshot version. The `migration_gate_events.required_version` check is advisory in relaxed mode — the health handler surfaces the version but does not block activation.
 5. Run the quality gate before promotion when practical; a failed check warns but does not hard-block promotion without owner sign-off.
 
+## Claiming a ledger version (multi-session rule)
+
+`indicate_schema_migrations.version` is shared across parallel sessions: before numbering a new migration, read the `_journal.json` tail AND live `max(version)` — a double-claimed version (v164, Sep 2026) only surfaces at apply time. New file checksum = SHA-256 over LF-normalized bytes with the checksum literal zeroed; verify with the match check before `db:bootstrap`, then regen + `db:bootstrap:check`.
+
 ## Evolution and rollback
 
 Schema changes follow expand, backfill, verify, and contract across compatible releases by default. Existing columns or tables should not be dropped in the same release that stops writing them, but exceptions are allowed in development with reviewer approval. (Known exception, do not repeat without approval: `20260903021500_delivery_activation_enums.sql` dropped `domain_activation_attempts.phase` without a paired contract release.) Application rollback targets the last schema-compatible deployment; irreversible database changes are corrected with a new forward migration. Failed migrations prevent activation and should not be hidden by changing migration metadata manually outside development.

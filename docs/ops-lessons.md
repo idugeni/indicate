@@ -55,7 +55,57 @@ ukuran + tipe) → dalam satu transaksi DB: reservasi ×2 → media ×2
 aktif → reservasi → `used` → settings (+versi, taut media) → task
 `media.activated` → audit (2 reserve + 2 activate + 1 settings-update,
 aktor `system`, `request_id ops:<batch>`). Bersihkan objek yatim
-(data tanpa baris media).
+(data tanpa baris media). Catatan: reservasi baru memakai key tenant-scoped
+(`o/{org}/p/...`, artikel ke prefix `pub/`); format `sites/{siteId}/...`
+di atas adalah tata letak legacy yang tetap valid.
+
+## 7. Favicon tenant vs Google: robots + stabilitas URL
+
+Insiden: favicon tenant tidak tampil di hasil pencarian (ikon generik).
+Dua lapis penyebab, keduanya terverifikasi live:
+
+1. `robots.txt` tenant memuat `Disallow: /api/`, sedangkan URL favicon
+   adalah `/api/network/media/{id}` — Googlebot-Image patuh robots lalu
+   menyerah. Syarat Google: Googlebot-Image wajib bisa merayapi file ikon.
+2. Rute media menjawab 307 ke presigned URL berumur 300 detik yang
+   berganti tiap fetch — melanggar syarat "URL favicon harus stabil".
+
+Aturan: aset brand yang pada dasarnya publik (favicon, logo) wajib URL
+stabil ber-cache panjang tanpa signature; jangan pernah menaruh URL
+bertanda-tangan di `<link rel="icon">`. Dimensi favicon wajib square ≥48px
+terverifikasi (kolom `media.width_px/height_px`), bukan asumsi.
+
+## 8. Skop token R2 mengikat per bucket
+
+Kredensial S3 R2 (`R2_ACCESS_KEY_ID`) bisa terkunci ke bucket tertentu.
+Adapter memakai SATU kredensial untuk KEDUA bucket media (routing by
+prefix `pub/`, health check `HeadBucket` keduanya), jadi setiap bucket
+baru (publik/privat) wajib ditambahkan ke skop token SEBELUM flip
+config — kalau tidak, upload 403 dan flip merusak serving media.
+Pengelolaan skop hanya via dashboard (tidak ada API publik).
+Urutannya: tambah skop → salin + verifikasi ETag → flip
+`shared_deployment_config` → uji baca-tulis → hapus bucket lama.
+
+## 9. Proteksi branch vs direct push solo
+
+`required_status_checks` pada proteksi branch MENOLAK direct push
+("Required status check is expected") — check hanya bisa hijau untuk
+merge, urutannya mustahil untuk push. Untuk alur solo push-langsung:
+proteksi = tanpa force-push + tanpa hapus branch + enforce admin SAJA;
+gate tetap jalan tiap push sebagai penanda. Jangan pasang status-check
+wajib kecuali alur pindah ke PR.
+
+## 10. Pagination MCP + klaim versi migrasi lintas sesi
+
+- MCP `cloudflare-api` list R2 me-return 20 objek per halaman TANPA
+  cursor terekspos — untuk inventarisasi penuh pakai REST langsung
+  dengan cursor, atau `wrangler r2 object get/put/delete` (otentikasi
+  `CLOUDFLARE_API_TOKEN` dari `.env`, binary-safe; MCP string body
+  merusak biner). Di Windows, spawn `wrangler` butuh `shell: true`.
+- Nomor versi ledger (`indicate_schema_migrations.version`) adalah
+  sumber daya bersama antar sesi paralel. Sebelum menulis migrasi:
+  baca tail `_journal.json` DAN `max(version)` live — tabrakan pernah
+  terjadi (v164 ganda) dan hanya ketahuan saat apply.
 
 ## 5. Fakta kapasitas (terverifikasi API, bukan asumsi)
 

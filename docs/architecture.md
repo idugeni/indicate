@@ -406,11 +406,19 @@ A Media record uses exactly one ownership mode: Article owner, Site owner, or Or
 
 `media_key_reservations.object_key` is globally unique. Reservation records remain as used/occupied tombstones so keys are never recycled. An R2 object cannot become public merely because a reservation or object exists; active metadata and authorization graph checks are required.
 
+Public routing: purposes `article-cover`/`article-image` reserve keys under `pub/` (same tenant layout beneath the prefix) and live in the public bucket, served direct with immutable cache; all other purposes stay in the private bucket behind the signed media route. Delivery falls back to the signed route whenever the public host is unconfigured, so brand assets (`site-logo`, `site-favicon`) never depend on public serving.
+
 ### 9.8 Publishing model
 
 `publishing_jobs` contains Organization, Article, Idempotency Key, fingerprint/version, state, canonical options, dispatch status/attempts/next due time, worker lease/fence, and final timestamps. `(organization_id, idempotency_key)` is unique.
 
 `publishing_job_targets` links the job to Article Site records, preserving execution history, state snapshot, attempt, fencing, retry timing, and sanitized errors. A partial unique constraint permits only one active nonterminal target owner per Article Site. `publication_transition_receipts` makes incomplete acknowledgements recoverable and idempotent.
+
+### 9.9 Syndication cascade and per-copy robots
+
+Cities are `regions` rows with `kind = 'city'` pointing at a parent region — never separate tables or hostnames. Publishing expands at write time into explicit `article_sites` rows (`manual`/`auto` + origin + inherited canonical): a city publish fans out to region + main tenant, a region publish to the main tenant. Every cascade copy declares the primary's canonical URL, so hundred-tenant syndication consolidates instead of duplicating.
+
+`article_sites.seo_robots_directive` (same enum as site settings, NULL = inherit) is the per-copy kill-switch for Search Console canonical disputes: dashboard action `publication.setSiteRobots` flips one copy with audit + cache invalidation, without touching siblings. Control-plane icons come from the single `controlPlaneIcons()` helper so crawler-facing `<link rel="icon">` always carries a >48px source alongside the ICO.
 
 ## 10. Authentication and authorization
 
@@ -667,7 +675,7 @@ One server-only Zod contract validates at build/promotion and process startup:
 - Supabase public Auth values, privileged server Auth value, pooled runtime DB URL, and direct migration DB URL;
 - Cloudflare zone IDs, expected nameservers, least-privilege DNS/cache token, proxy and SSL expectations;
 - Vercel project identifiers, token, and production target;
-- R2 account, single bucket, credentials, media limits, and signed authorization TTLs;
+- R2 account, private + public buckets (`R2_PUBLIC_BUCKET_NAME`/`R2_PUBLIC_HOST` pair, both covered by the single app credential), media limits, and signed authorization TTLs;
 - Upstash endpoint/token, one environment namespace, queue/lease limits, rate policies;
 - publication batches, safety deadline, bounded attempt/delay schedules, and reconciliation interval;
 - cron secret, redaction policy version, cache versions/TTLs, default locale, and fallback assets.
