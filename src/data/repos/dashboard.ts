@@ -60,6 +60,24 @@ const MANUAL_PURGE_BULK_COOLDOWN_SECONDS = 120;
 export class DrizzleDashboardRepository implements DashboardRepository {
   constructor(private readonly database: Database) {}
 
+  private async repeatableRead<T>(work: () => Promise<T>): Promise<T> {
+    let last: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await work();
+      } catch (error) {
+        const code = typeof error === 'object' && error !== null && 'code' in error
+          ? String((error as { code: unknown }).code)
+          : '';
+        const message = error instanceof Error ? error.message : '';
+        const serializable = code === '40001' || /could not serialize/i.test(message);
+        if (!serializable || attempt === 2) throw error;
+        last = error;
+      }
+    }
+    throw last;
+  }
+
   private async establishContext(transaction: Transaction, actor: AuthorizedTenantActorContext): Promise<void> {
     await transaction.execute(sql`SELECT indicate_private.set_tenant_context(${actor.organizationId}::uuid, ${actor.actorId}, ${actor.requestId})`);
     await transaction.execute(sql`SELECT indicate_private.set_region_context(${actor.regionScopeId ?? null}::uuid)`);
@@ -97,21 +115,23 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       transaction.select().from(media).where(eq(media.organizationId, organizationId)), transaction.select().from(publishingJobs).where(eq(publishingJobs.organizationId, organizationId)),
       transaction.select().from(publishingJobTargets).where(eq(publishingJobTargets.organizationId, organizationId)),
     ]);
-    const profileRows = await Promise.all(
-      membershipRows.map((membership) =>
-        transaction.execute<{ display_name: string | null; avatar_url: string | null }>(sql`
-        SELECT display_name, avatar_url FROM indicate_private.lookup_user_profile(${membership.userId}::uuid)
-      `),
-      ),
-    );
+    const membershipIds = membershipRows.map((membership) => membership.userId);
     const membershipProfiles = new Map<string, { displayName: string; avatarUrl: string | null }>();
-    membershipRows.forEach((membership, index) => {
-      const profile = profileRows[index]?.[0];
-      // Lookup bound to verified-user: non-user actors (api_key) lack
-      // that context so it is always empty — use userId as a neutral label
-      // (already exposed in the same payload) instead of failing the read.
-      membershipProfiles.set(membership.userId, { displayName: profile?.display_name ?? membership.userId, avatarUrl: profile?.avatar_url ?? null });
-    });
+    if (membershipIds.length > 0) {
+      const profileRows = await transaction.execute<{ user_id: string; display_name: string | null; avatar_url: string | null }>(sql`
+        SELECT u AS user_id, profile.display_name, profile.avatar_url
+        FROM unnest(${membershipIds}::uuid[]) AS u
+        LEFT JOIN LATERAL indicate_private.lookup_user_profile(u) AS profile ON true
+      `);
+      const byId = new Map(profileRows.map((row) => [row.user_id, row]));
+      for (const membership of membershipRows) {
+        const profile = byId.get(membership.userId);
+        // Lookup bound to verified-user: non-user actors (api_key) lack
+        // that context so it is always empty — use userId as a neutral label
+        // (already exposed in the same payload) instead of failing the read.
+        membershipProfiles.set(membership.userId, { displayName: profile?.display_name ?? membership.userId, avatarUrl: profile?.avatar_url ?? null });
+      }
+    }
     const permissionsByRole = new Map<string, Set<string>>();
     for (const grant of grantRows) {
       const set = permissionsByRole.get(grant.roleId) ?? new Set<string>(); set.add(grant.permission); permissionsByRole.set(grant.roleId, set);
@@ -142,7 +162,8 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     permission: string,
     filter: { readonly from?: string | undefined; readonly to?: string | undefined },
   ): Promise<AnalyticsProjection> {
-    return this.database.transaction(async (transaction) => {
+    return this.repeatableRead(() => this.database.transaction(async (transaction) => {
+      await transaction.execute(sql`SET TRANSACTION ISOLATION LEVEL REPEATABLE READ`);
       await this.establishContext(transaction, actor);
       await this.authorize(transaction, actor, permission);
       const organization = await transaction.select({ id: organizations.id }).from(organizations).where(and(eq(organizations.id, actor.organizationId), eq(organizations.status, 'active'))).limit(1);
@@ -408,7 +429,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         regionLabels,
         articleLabels,
       });
-    });
+    }));
   }
 
   async auditLogPage(actor: AuthorizedTenantActorContext, permission: string, filter: AuditFilter): Promise<readonly AuditRecord[]> {
@@ -631,9 +652,16 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const targets = siteId === null ? rows.filter((row) => inScope(row.regionId)) : rows.filter((row) => row.id === siteId && inScope(row.regionId));
       if (siteId !== null && targets.length !== 1) throw new DashboardAccessDeniedError();
       const now = new Date();
-      for (const target of targets) {
-        await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId: actor.organizationId, siteId: target.id, currentHostname: target.hostname, reason: 'manual-purge', now }));
-        await transaction.insert(auditLogs).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, action: 'site.cache.purge', targetType: 'site', targetId: target.id, outcome: 'succeeded', changedFields: ['cache'], before: null, after: { hostname: target.hostname }, requestId: actor.requestId, occurredAt: now });
+      if (targets.length > 0) {
+        await transaction.insert(invalidationTasks).values(targets.map((target) =>
+          completeInvalidationValues({ organizationId: actor.organizationId, siteId: target.id, currentHostname: target.hostname, reason: 'manual-purge', now }),
+        ));
+        await transaction.insert(auditLogs).values(targets.map((target) => ({
+          organizationId: actor.organizationId, id: crypto.randomUUID(), actorType: actor.actorType, actorId: actor.actorId,
+          entryPoint: actor.entryPoint, action: 'site.cache.purge' as const, targetType: 'site' as const, targetId: target.id,
+          outcome: 'succeeded' as const, changedFields: ['cache'], before: null, after: { hostname: target.hostname },
+          requestId: actor.requestId, occurredAt: now,
+        })));
       }
       return Object.freeze(targets.map((target) => ({ siteId: target.id, hostname: target.hostname })));
     });
@@ -756,13 +784,18 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const before = await this.load(transaction, actor.organizationId);
       const state = structuredClone(before) as MutableTenantState;
       const pendingAudits: AuditRecord[] = [];
+      const displayNameCache = new Map<string, string | null>();
       const dashboardTransaction: DashboardTransaction = {
         state,
         resolveUserDisplayName: async (userId) => {
+          const cached = displayNameCache.get(userId);
+          if (cached !== undefined) return cached;
           const rows = await transaction.execute<{ display_name: string | null }>(sql`
             SELECT display_name FROM indicate_private.lookup_user_profile(${userId}::uuid)
           `);
-          return rows[0]?.display_name ?? null;
+          const name = rows[0]?.display_name ?? null;
+          displayNameCache.set(userId, name);
+          return name;
         },
         appendAudit: (event) => pendingAudits.push({ ...event, id: crypto.randomUUID(), organizationId: actor.organizationId, actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, requestId: actor.requestId, occurredAt: new Date().toISOString(), before: event.before === null ? null : redact(event.before) as Record<string, unknown>, after: event.after === null ? null : redact(event.after) as Record<string, unknown> }),
       };
