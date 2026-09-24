@@ -1177,6 +1177,13 @@
       "when": 1790250500393,
       "tag": "20260924040000_publisher_logo_r2_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 168,
+      "version": "7",
+      "when": 1790332800000,
+      "tag": "20260925000000_media_gallery_editorial",
+      "breakpoints": true
     }
   ]
 }

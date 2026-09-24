@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (168 migrations):
+-- Reviewed sources, in journal order (169 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -181,6 +181,7 @@
 --   166  20260924023027_article_site_robots_directive  ledger sha256:1f6c3a7fccc3532bc2bfcee8efadadd6a6284adba8e545b29b43809f13c7e2a8
 --   167  20260924030000_public_directory  ledger sha256:46fab2aa92bd6314226dfc41d8af84f4c55b063575b8695fd324aec654f590bb
 --   168  20260924040000_publisher_logo_r2_backfill  ledger sha256:82ab65b7d6a954ab39c7c7d5301c64ba07ec03f10212a32d7e8d67af69a86ad3
+--   169  20260925000000_media_gallery_editorial  ledger sha256:7bd75caf534758c645fadab19f4e93be19dda8fc79b01a42ca36ff053f6d1c68
 
 BEGIN;
 
@@ -13222,4 +13223,38 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (167, 'publisher_logo_r2_backfill', 'sha256:3132225e69530f74d05fc77ae0a0124bd7a9287c475a1b986404d8ccb41a68e2');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('82ab65b7d6a954ab39c7c7d5301c64ba07ec03f10212a32d7e8d67af69a86ad3', 1790250500393);
+
+-- ----------------------------------------------------------------------
+-- 20260925000000_media_gallery_editorial
+-- ----------------------------------------------------------------------
+-- Enterprise gallery + featured editorial fields for article media.
+--
+-- Gallery was `{url, thumbnailUrl}` ordered by upload time with synthesized
+-- alt text; TipTap inline images already resolve by media id. This expands
+-- `public.media` with durable editorial metadata so delivery can project a
+-- real gallery contract without schema churn later:
+-- `alt_text` (<=300), `caption` (<=500), `sort_order` (manual reorder,
+-- defaults to upload order), and `focal_x`/`focal_y` (0-100 crop focus for
+-- the featured cover, travel together, null means center).
+-- Also consolidates the dead `article-image` purpose into `article-inline`:
+-- covers are `article-cover` (public), body images are `article-inline`
+-- (private, served by id). Object keys are untouched; only the purpose
+-- column is normalized so old rows keep serving.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.media ADD COLUMN alt_text text;
+ALTER TABLE public.media ADD COLUMN caption text;
+ALTER TABLE public.media ADD COLUMN sort_order integer DEFAULT 0 NOT NULL;
+ALTER TABLE public.media ADD COLUMN focal_x integer;
+ALTER TABLE public.media ADD COLUMN focal_y integer;
+ALTER TABLE public.media ADD CONSTRAINT media_alt_text_length CHECK (alt_text IS NULL OR (char_length(alt_text) BETWEEN 1 AND 300));
+ALTER TABLE public.media ADD CONSTRAINT media_caption_length CHECK (caption IS NULL OR (char_length(caption) BETWEEN 1 AND 500));
+ALTER TABLE public.media ADD CONSTRAINT media_focal_bounds CHECK ((focal_x IS NULL AND focal_y IS NULL) OR (focal_x IS NOT NULL AND focal_y IS NOT NULL AND focal_x >= 0 AND focal_x <= 100 AND focal_y >= 0 AND focal_y <= 100));
+UPDATE public.media SET purpose = 'article-inline' WHERE purpose = 'article-image';
+UPDATE public.media_key_reservations SET purpose = 'article-inline' WHERE purpose = 'article-image';
+CREATE INDEX IF NOT EXISTS media_organization_article_gallery_idx ON public.media (organization_id, article_id, sort_order, created_at) WHERE state = 'active';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (168, 'media_gallery_editorial', 'sha256:ce37b0e615fe15069fc28b65a6b95df7e7e258b8dd9d027f1193abf86a2958bf');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7bd75caf534758c645fadab19f4e93be19dda8fc79b01a42ca36ff053f6d1c68', 1790332800000);
 COMMIT;

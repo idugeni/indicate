@@ -6,6 +6,8 @@ import { buildSeoDocument } from '@/modules/site/seo';
 import { resolvePublisherChannels } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
+import { ArticleGallery } from '@/modules/site/components/article-gallery';
+import { EditorialImage } from '@/modules/site/components/editorial-image';
 import { PurpleEditorialJsonLd } from '@/modules/site/components/network/templates/purple-editorial/seo/json-ld';
 import { PurpleEditorialShell } from '@/modules/site/components/network/templates/purple-editorial/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/purple-editorial/ui/author-avatar';
@@ -29,12 +31,11 @@ export function PurpleEditorialArticle({
   readonly older?: ArticleListItem | null;
 }) {
   const seo = buildSeoDocument(site, { path: `/${article.slug}`, article });
-  const src = articleImage(article);
+  const featuredSrc = article.imageUrl ?? article.thumbnailUrl ?? '/assets/article-fallback.webp';
   const reading = readingMinutes(article);
   const bylineName = article.attribution;
   const canonical = `https://${site.context.normalizedHostname}/${article.slug}`;
   const publisherChannels = resolvePublisherChannels(article.publisherSocials);
-  const gallery = article.gallery.map((image, position) => ({ url: image.url, alt: `${article.title} (gambar ${position + 1})` }));
 
   return (
     <PurpleEditorialShell site={site} path={`/${article.slug}`}>
@@ -107,43 +108,29 @@ export function PurpleEditorialArticle({
             </p>
           </aside>
 
-          <figure className="m-0 mt-6 overflow-hidden rounded-2xl shadow-sm">
-            <Image
-              unoptimized={!isLocalImageSrc(src)}
-              src={src}
-              alt={article.title}
-              priority
-              className="aspect-video w-full object-cover"
-              width={article.imageWidth ?? 1200}
-              height={article.imageHeight ?? 675}
-              sizes="(max-width: 768px) 100vw, 768px"
-            />
-            <figcaption className="sr-only">{article.title}</figcaption>
-          </figure>
+          <EditorialImage
+            src={featuredSrc}
+            thumbSrc={article.thumbnailUrl}
+            alt={article.title}
+            caption={article.title}
+            captionClassName="sr-only"
+            width={article.imageWidth}
+            height={article.imageHeight}
+            focalX={article.imageFocalX}
+            focalY={article.imageFocalY}
+            eager
+            figureClassName="m-0 mt-6 overflow-hidden rounded-2xl shadow-sm"
+          />
 
           <div className="mt-8 space-y-6">
             <ArticleRichBodyView
               body={article.body}
               bodyJson={article.bodyJson}
-              images={gallery}
               paragraphClassName="text-justify font-sans text-[17px] leading-[1.85] text-slate-800"
               listClassName="space-y-2 pl-6 font-sans text-[17px] leading-[1.85] text-slate-800 [list-style:disc]"
-              renderFigure={(image, _index, caption) => (
-                <figure className="m-0 overflow-hidden rounded-2xl shadow-sm">
-                  <Image
-                    unoptimized={!isLocalImageSrc(image.url)}
-                    src={image.url}
-                    alt={image.alt}
-                    className="aspect-video w-full object-cover"
-                    width={1200}
-                    height={675}
-                    sizes="(max-width: 768px) 100vw, 768px"
-                  />
-                  {caption === null ? null : <figcaption className="px-6 pb-4 text-center font-sans text-sm opacity-80">{caption}</figcaption>}
-                </figure>
-              )}
             />
           </div>
+          <ArticleGallery images={article.gallery} title={article.title} />
 
           {article.tags.length > 0 ? (
             <div className="mt-8 flex flex-wrap items-center gap-2" aria-label="Topik artikel">

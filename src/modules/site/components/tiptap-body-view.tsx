@@ -1,8 +1,8 @@
-import Image from 'next/image';
 import type { ReactNode } from 'react';
 import { AtSign, Camera, ClipboardList, FileText, FolderOpen, HardDrive, Music2, Play, Presentation, Table, ThumbsUp, type LucideIcon } from 'lucide-react';
 
 import { extractDriveUrl, extractFacebookUrl, extractInstagramUrl, extractTikTokUrl, extractTweetUrl, extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, isTipTapDoc, resolveMediaSrc, type TipTapNode } from '@/modules/site/tiptap-document';
+import { EditorialImage } from '@/modules/site/components/editorial-image';
 
 function renderTextNode(node: TipTapNode, key: string): ReactNode {
   const text = typeof node.text === 'string' ? node.text : '';
@@ -203,15 +203,12 @@ function renderNode(node: TipTapNode, key: string, context: RenderContext): Reac
   }
   if (node.type === 'image') {
     const rawSrc = typeof node.attrs?.src === 'string' ? node.attrs.src : '';
-    if (!isSafeMediaSrc(rawSrc)) return <p key={key} className={context.paragraphClassName}>[gambar]</p>;
+    if (!isSafeMediaSrc(rawSrc)) return null;
     const src = resolveMediaSrc(rawSrc);
-    const alt = typeof node.attrs?.alt === 'string' ? node.attrs.alt : '';
+    const rawAlt = typeof node.attrs?.alt === 'string' ? node.attrs.alt : '';
     const caption = typeof node.attrs?.title === 'string' && node.attrs.title.trim() !== '' ? node.attrs.title : typeof node.attrs?.caption === 'string' && node.attrs.caption.trim() !== '' ? node.attrs.caption : null;
     return (
-      <figure key={key} className="m-0 overflow-hidden rounded-2xl shadow-sm">
-        <Image unoptimized src={src} alt={alt} className="aspect-video w-full object-cover" width={1200} height={675} sizes="(max-width: 768px) 100vw, 768px" />
-        {caption === null ? <figcaption className="sr-only">{alt === '' ? 'Gambar artikel' : alt}</figcaption> : <figcaption className="px-6 pb-4 text-center font-sans text-sm opacity-80">{caption}</figcaption>}
-      </figure>
+      <EditorialImage key={key} src={src} alt={rawAlt === '' ? 'Gambar artikel' : rawAlt} caption={caption} />
     );
   }
   if (node.type === 'youtube' || node.type === 'video') {

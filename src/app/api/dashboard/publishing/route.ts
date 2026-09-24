@@ -88,6 +88,7 @@ async function handlePOST(request: Request) {
       'media.reserve': (payload) => context.media.reserveUpload(context.actor, payload),
       'media.complete': (payload) => context.media.completeUpload(context.actor, payload),
       'media.archive': (payload) => context.media.archive(context.actor, payload),
+      'media.update': (payload) => context.media.updateMetadata(context.actor, payload),
       'media.read': (payload) => context.media.authorizeTenantRead(context.actor, payload),
       'publication.request': (payload) => context.publication.request(context.actor, payload),
       'publication.requestBulk': (payload) => context.publication.requestBulk(context.actor, payload),

@@ -284,6 +284,15 @@ export const media = pgTable('media', {
   /** UU Hak Cipta attribution obligation (migration v76); optional pre-fill. */
   licenseSource: text('license_source'),
   attribution: text('attribution'),
+  /** Gallery editorial: accessible alt (<=300) shown when bytes fail; null falls back to the article title. */
+  altText: text('alt_text'),
+  /** Gallery editorial: caption under the figure (<=500); null hides the caption line. */
+  caption: text('caption'),
+  /** Gallery order within one article; ties break by upload time. */
+  sortOrder: integer('sort_order').default(0).notNull(),
+  /** Featured crop focus as 0-100 percentages; both null means center. */
+  focalX: integer('focal_x'),
+  focalY: integer('focal_y'),
   state: mediaState('state').default('reserved').notNull(),
   articleId: uuid('article_id'),
   siteId: uuid('site_id'),
@@ -304,8 +313,12 @@ export const media = pgTable('media', {
   )`),
   check('media_size_positive', sql`${table.sizeBytes} > 0 AND ${table.version} > 0`),
   check('media_dimensions_positive', sql`(${table.widthPx} IS NULL AND ${table.heightPx} IS NULL) OR (${table.widthPx} IS NOT NULL AND ${table.heightPx} IS NOT NULL AND ${table.widthPx} > 0 AND ${table.heightPx} > 0 AND ${table.widthPx} <= 30000 AND ${table.heightPx} <= 30000)`),
+  check('media_alt_text_length', sql`${table.altText} IS NULL OR (char_length(${table.altText}) BETWEEN 1 AND 300)`),
+  check('media_caption_length', sql`${table.caption} IS NULL OR (char_length(${table.caption}) BETWEEN 1 AND 500)`),
+  check('media_focal_bounds', sql`(${table.focalX} IS NULL AND ${table.focalY} IS NULL) OR (${table.focalX} IS NOT NULL AND ${table.focalY} IS NOT NULL AND ${table.focalX} >= 0 AND ${table.focalX} <= 100 AND ${table.focalY} >= 0 AND ${table.focalY} <= 100)`),
   index('media_organization_state_idx').on(table.organizationId, table.state),
   index('media_organization_purpose_state_idx').on(table.organizationId, table.purpose, table.state),
+  index('media_organization_article_gallery_idx').on(table.organizationId, table.articleId, table.sortOrder, table.createdAt),
 ]);
 
 /**

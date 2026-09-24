@@ -58,6 +58,11 @@ function articleRow(overrides: Record<string, unknown> = {}) {
     updatedAt: new Date('2026-09-14T10:00:00.000Z'),
     leadMediaId: null,
     leadMediaType: null,
+    leadObjectKey: null,
+    leadMediaWidth: null,
+    leadMediaHeight: null,
+    leadMediaFocalX: null,
+    leadMediaFocalY: null,
     coverImageUrl: 'https://portal.example/cover.jpg',
     mediaState: null,
     leadThumbKey: null,
@@ -66,6 +71,11 @@ function articleRow(overrides: Record<string, unknown> = {}) {
     bodyExcerpt: null,
     customImageMediaId: null,
     customMediaType: null,
+    customObjectKey: null,
+    customMediaWidth: null,
+    customMediaHeight: null,
+    customMediaFocalX: null,
+    customMediaFocalY: null,
     customThumbKey: null,
     affiliationInstitution: null,
     articleSiteId: 'as1',
@@ -123,7 +133,7 @@ function harness(handlers: {
             const only = (...wanted: readonly string[]) =>
               wanted.length === keys.length && wanted.every((key) => keys.includes(key));
             if (only('body') || only('body', 'bodyJson')) return chainable(body);
-            if (only('id', 'thumbObjectKey')) return chainable(gallery);
+            if (keys.includes('sortOrder')) return chainable(gallery);
             if (only('mediaId')) {
               const set = brandSets[Math.min(brandCursor, brandSets.length - 1)] ?? [];
               brandCursor += 1;
@@ -151,7 +161,7 @@ describe('readSite projection', () => {
     const articleKeys = selectLog.filter((entry) => entry.keys.includes('bodyExcerpt')).map((entry) => entry.keys);
     expect(articleKeys).toHaveLength(1);
     expect(articleKeys[0]).not.toContain('body');
-    expect(selectLog.filter((entry) => entry.keys.includes('id') && entry.keys.includes('thumbObjectKey'))).toHaveLength(0);
+    expect(selectLog.filter((entry) => entry.keys.includes('sortOrder'))).toHaveLength(0);
     expect(selectLog).toHaveLength(2);
     const item = site?.articles[0];
     expect(item).toBeDefined();
@@ -163,7 +173,7 @@ describe('readSite projection', () => {
   it('detail artikel tunggal membawa body penuh dan galeri', async () => {
     const { repository, selectLog } = harness({
       body: [{ body: 'Isi penuh artikel untuk halaman detail.' }],
-      gallery: [{ id: 'g1', thumbObjectKey: null }],
+      gallery: [{ id: 'g1', objectKey: 'o/o1/p/article-inline/y=2026/m=09/article/a1/14-g1-0123456789abcdef.webp', thumbObjectKey: null, altText: 'Pasar pagi', caption: 'Suasana pasar', widthPx: 1200, heightPx: 675, mediaType: 'image/webp', sortOrder: 0 }],
     });
     const site = await repository.loadNetworkSite({ ...CONTEXT }, { articleSlug: 'berita-utama' });
     const item = site?.articles[0];
@@ -182,7 +192,7 @@ describe('readSite projection', () => {
     const { repository } = harness({
       articles: [articleRow({ customDescription: null, excerpt: null, bodyExcerpt: null })],
       body: [{ body: 'Teks warisan.', bodyJson: richDoc }],
-      gallery: [{ id: 'g1', thumbObjectKey: null }],
+      gallery: [{ id: 'g1', objectKey: 'o/o1/p/article-inline/y=2026/m=09/article/a1/14-g1-0123456789abcdef.webp', thumbObjectKey: null, altText: 'Pasar pagi', caption: 'Suasana pasar', widthPx: 1200, heightPx: 675, mediaType: 'image/webp', sortOrder: 0 }],
     });
     const site = await repository.loadNetworkSite({ ...CONTEXT }, { articleSlug: 'berita-utama' });
     const item = site?.articles[0];
@@ -200,6 +210,8 @@ describe('readSite projection', () => {
           leadMediaType: 'image/webp',
           leadMediaWidth: 1200,
           leadMediaHeight: 675,
+          leadMediaFocalX: 30,
+          leadMediaFocalY: 70,
           mediaState: 'active',
           coverImageUrl: null,
         }),

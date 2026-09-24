@@ -8,7 +8,6 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 export const MEDIA_PURPOSES = [
   'article-inline',
   'article-cover',
-  'article-image',
   'site-logo',
   'site-favicon',
   'site-default',
@@ -19,7 +18,7 @@ export type MediaPurpose = (typeof MEDIA_PURPOSES)[number];
 
 const LEGACY_PURPOSE_MAP: Readonly<Record<string, MediaPurpose>> = {
   inline_article: 'article-inline',
-  article_image: 'article-image',
+  article_image: 'article-inline',
   hero_banner: 'article-cover',
   logo: 'site-logo',
   favicon: 'site-favicon',
@@ -29,10 +28,10 @@ const LEGACY_PURPOSE_MAP: Readonly<Record<string, MediaPurpose>> = {
 export const PUBLIC_OBJECT_KEY_PREFIX = 'pub/';
 
 /**
- * Purposes served as public bytes (article surfaces) rather than through
+ * Purposes served as public bytes (featured covers) rather than through
  * signed private URLs. Everything else stays in the private bucket.
  */
-export const PUBLIC_MEDIA_PURPOSES: readonly MediaPurpose[] = ['article-cover', 'article-image'];
+export const PUBLIC_MEDIA_PURPOSES: readonly MediaPurpose[] = ['article-cover'];
 
 /**
  * Decide whether a purpose is served from the public bucket.

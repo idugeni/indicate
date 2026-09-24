@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { detectDriveEmbed, detectSocialEmbed, extractDriveUrl, extractFacebookUrl, extractInstagramUrl, extractTikTokUrl, extractTweetUrl, extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, tiptapToLegacyBody, tiptapToText, validateTipTapDoc } from '@/modules/site/tiptap-document';
+import { detectDriveEmbed, detectSocialEmbed, extractDriveUrl, extractFacebookUrl, extractInstagramUrl, extractTikTokUrl, extractTweetUrl, extractTipTapImages, extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, tiptapToLegacyBody, tiptapToText, validateTipTapDoc } from '@/modules/site/tiptap-document';
 
 describe('isSafeLinkUrl', () => {
   it('menerima path relatif dan https publik', () => {
@@ -229,5 +229,26 @@ describe('tiptapToText', () => {
     };
     expect(tiptapToText(doc)).toBe('Judul Halo dunia');
     expect(tiptapToLegacyBody(doc)).toBe('## Judul\n\nHalo dunia');
+  });
+});
+
+describe('extractTipTapImages', () => {
+  it('mengekstrak referensi media berurutan dokumen dengan alt dan caption', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Pembuka' }] },
+        { type: 'image', attrs: { src: 'media:0199a2b3-4c5d-7e8f-9012-3456789abcde', alt: 'Pasar pagi', title: 'Suasana pasar' } },
+        { type: 'image', attrs: { src: 'media:0199a2b3-4c5d-7e8f-9012-3456789abcdf' } },
+        { type: 'image', attrs: { src: 'javascript:alert(1)', alt: 'jahat' } },
+        { type: 'image', attrs: { src: 'https://cdn.example/x.jpg', alt: 'luar' } },
+      ],
+    };
+    expect(extractTipTapImages(doc)).toEqual([
+      { mediaId: '0199a2b3-4c5d-7e8f-9012-3456789abcde', alt: 'Pasar pagi', caption: 'Suasana pasar' },
+      { mediaId: '0199a2b3-4c5d-7e8f-9012-3456789abcdf', alt: null, caption: null },
+    ]);
+    expect(extractTipTapImages({ type: 'paragraph' })).toEqual([]);
+    expect(extractTipTapImages(null)).toEqual([]);
   });
 });

@@ -186,6 +186,8 @@ export interface MediaSummary {
   readonly id: string;
   readonly organizationId: string;
   readonly state: 'reserved' | 'active' | 'rejected' | 'archived';
+  readonly purpose: string;
+  readonly mediaType: string;
 }
 
 export interface PublishingJobSummary {

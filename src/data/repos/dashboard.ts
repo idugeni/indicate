@@ -1,7 +1,8 @@
-import { and, desc, eq, gt, isNotNull, isNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
+import { extractTipTapImages } from '@/modules/site/tiptap-document';
 import type { ActivityHour, RecentActivity, AnalyticsProjection, PublisherFlow, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, DateWindow, OperationsProjection, RetentionRunRecord, TaskDay } from '@/modules/dashboard/models';
 import { DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
 import { redact } from '@/core/security/redaction';
@@ -130,7 +131,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, categoryIds: articleCategoryRows.filter((link) => link.articleId === row.id).sort((a, b) => a.position - b.position).map((link) => link.categoryId), authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as unknown | null, source: row.source, tags: [...row.tags], status: row.status, publishedAt: optionalIso(row.publishedAt), scheduledAt: optionalIso(row.scheduledAt), archivedAt: optionalIso(row.archivedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       articleCategories: articleCategoryRows.map((row) => ({ articleId: row.articleId, categoryId: row.categoryId, position: row.position })),
       articleSites: assignmentRows.map((row) => ({ id: row.id, organizationId, articleId: row.articleId, siteId: row.siteId, state: row.state, stateOccurredAt: iso(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: optionalIso(row.publishedAt), active: row.active, viewCount: row.viewCount, assignmentSource: row.assignmentSource as 'manual' | 'auto', expandedFromSiteId: row.expandedFromSiteId, customCanonicalUrl: row.customCanonicalUrl, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
-      media: mediaRows.map((row) => ({ id: row.id, organizationId, state: row.state })),
+      media: mediaRows.map((row) => ({ id: row.id, organizationId, state: row.state, purpose: row.purpose, mediaType: row.mediaType })),
       publishingJobs: jobRows.map((row) => ({ id: row.id, organizationId, articleId: row.articleId, state: row.state, createdAt: iso(row.createdAt), occurredAt: iso(row.finalizedAt ?? row.updatedAt) })),
       publishingJobTargets: targetRows.map((row) => ({ id: row.id, organizationId, jobId: row.jobId, articleSiteId: row.articleSiteId, state: row.state, occurredAt: iso(row.finishedAt ?? row.updatedAt) })),
     };
@@ -829,6 +830,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     for (const row of state.articleCategories) await transaction.insert(articleCategories).values({ organizationId: state.organizationId, articleId: row.articleId, categoryId: row.categoryId, position: row.position }).onConflictDoNothing();
     for (const row of state.articles) await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
     await this.recordArticleRevisions(transaction, actorId, before, state);
+    await this.syncArticleGalleryMetadata(transaction, state);
     for (const row of state.articleSites) await transaction.insert(articleSites).values({ organizationId: state.organizationId, id: row.id, articleId: row.articleId, siteId: row.siteId, state: row.state, stateOccurredAt: new Date(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), active: row.active, viewCount: row.viewCount, assignmentSource: row.assignmentSource, expandedFromSiteId: row.expandedFromSiteId, customCanonicalUrl: row.customCanonicalUrl, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articleSites.organizationId, articleSites.id], set: { state: row.state, stateOccurredAt: new Date(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), active: row.active, viewCount: row.viewCount, assignmentSource: row.assignmentSource, expandedFromSiteId: row.expandedFromSiteId, customCanonicalUrl: row.customCanonicalUrl, version: row.version, updatedAt: new Date(row.updatedAt) } });
     await this.enqueueDeliveryInvalidations(transaction, before, state);
     if (pendingAudits.length > 0) await transaction.insert(auditLogs).values(pendingAudits.map((row) => ({ organizationId: row.organizationId, id: row.id, actorType: row.actorType, actorId: row.actorId, entryPoint: row.entryPoint, action: row.action, targetType: row.targetType, targetId: row.targetId, outcome: row.outcome, changedFields: [...row.changedFields], before: row.before, after: row.after, requestId: row.requestId, occurredAt: new Date(row.occurredAt) })));
@@ -841,6 +843,35 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const latest = await transaction.select({ revisionNumber: articleRevisions.revisionNumber }).from(articleRevisions).where(and(eq(articleRevisions.organizationId, state.organizationId), eq(articleRevisions.articleId, row.id))).orderBy(desc(articleRevisions.revisionNumber)).limit(1);
       const revisionNumber = (latest[0]?.revisionNumber ?? 0) + 1;
       await transaction.insert(articleRevisions).values({ organizationId: state.organizationId, id: crypto.randomUUID(), articleId: row.id, revisionNumber, title: row.title, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, snapshot: { slug: row.slug, excerpt: row.excerpt, source: row.source, tags: [...row.tags], status: row.status, version: row.version }, createdBy: actorId, createdAt: new Date(row.updatedAt), updatedAt: new Date(row.updatedAt) });
+    }
+  }
+
+  private async syncArticleGalleryMetadata(transaction: Transaction, state: MutableTenantState): Promise<void> {
+    for (const article of state.articles) {
+      if (article.bodyJson === null || article.bodyJson === undefined) continue;
+      const refs = extractTipTapImages(article.bodyJson);
+      if (refs.length === 0) continue;
+      const position = new Map<string, number>();
+      const editorial = new Map<string, { readonly alt: string | null; readonly caption: string | null }>();
+      refs.forEach((ref, index) => {
+        if (position.has(ref.mediaId)) return;
+        position.set(ref.mediaId, index);
+        editorial.set(ref.mediaId, { alt: ref.alt, caption: ref.caption });
+      });
+      const rows = await transaction.select({ id: media.id, articleId: media.articleId, altText: media.altText, caption: media.caption, sortOrder: media.sortOrder })
+        .from(media)
+        .where(and(eq(media.organizationId, state.organizationId), inArray(media.id, [...position.keys()]), eq(media.state, 'active'), sql`${media.mediaType} LIKE 'image/%'`));
+      for (const row of rows) {
+        if (row.articleId !== article.id) continue;
+        const patch = editorial.get(row.id);
+        if (patch === undefined) continue;
+        const nextAlt = row.altText ?? patch.alt;
+        const nextCaption = row.caption ?? patch.caption;
+        const nextOrder = position.get(row.id) ?? row.sortOrder;
+        if (nextAlt === row.altText && nextCaption === row.caption && nextOrder === row.sortOrder) continue;
+        await transaction.update(media).set({ altText: nextAlt, caption: nextCaption, sortOrder: nextOrder, updatedAt: new Date() })
+          .where(and(eq(media.organizationId, state.organizationId), eq(media.id, row.id)));
+      }
     }
   }
 

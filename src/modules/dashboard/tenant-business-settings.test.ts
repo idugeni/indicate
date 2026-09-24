@@ -55,7 +55,15 @@ describe('TenantBusinessService saveSiteSettings', () => {
   });
 
   it('menolak media tidak aktif', async () => {
-    const { service } = harness({ sites: [site], media: [{ id: ID2, state: 'rejected' }] });
+    const { service } = harness({ sites: [site], media: [{ id: ID2, state: 'rejected', purpose: 'site-logo', mediaType: 'image/png' }] });
+    const result = await service.saveSiteSettings(actor, { ...settingsInput, logoMediaId: ID2 });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
+  });
+
+  it('menolak logo dengan purpose selain site-logo', async () => {
+    const { service } = harness({ sites: [site], media: [{ id: ID2, state: 'active', purpose: 'article-cover', mediaType: 'image/jpeg' }] });
     const result = await service.saveSiteSettings(actor, { ...settingsInput, logoMediaId: ID2 });
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');

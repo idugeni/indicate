@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useMemo, useRef, useState, useTransition, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, useTransition, type ChangeEvent, type FormEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { toast } from 'sonner';
 import {
   CaseSensitive,
@@ -156,6 +156,11 @@ export function ArticleCreateForm({
   const [featuredPreviewUrl, setFeaturedPreviewUrl] = useState<string | null>(null);
   const [featuredStatus, setFeaturedStatus] = useState<string | null>(null);
   const [uploadingFeatured, setUploadingFeatured] = useState(false);
+  const [featuredVersion, setFeaturedVersion] = useState<number | null>(null);
+  const [featuredAlt, setFeaturedAlt] = useState('');
+  const [featuredCaption, setFeaturedCaption] = useState('');
+  const [featuredFocal, setFeaturedFocal] = useState<{ readonly x: number; readonly y: number } | null>(null);
+  const [savingFeaturedMeta, setSavingFeaturedMeta] = useState(false);
   const [coverUrl, setCoverUrl] = useState('');
   const [titleText, setTitleText] = useState('');
   const [descriptionText, setDescriptionText] = useState('');
@@ -360,7 +365,7 @@ export function ArticleCreateForm({
         return;
       }
       setFeaturedStatus('Menyelesaikan pemeriksaan berkas...');
-      const completed = (await command('media.complete', { reservationId: reserved.reservationId, ...(dimensions === undefined ? {} : dimensions) })) as { readonly id?: unknown } | null;
+      const completed = (await command('media.complete', { reservationId: reserved.reservationId, ...(dimensions === undefined ? {} : dimensions) })) as { readonly id?: unknown; readonly version?: unknown } | null;
       const mediaId = typeof completed?.id === 'string' ? completed.id : null;
       if (mediaId === null) {
         setFeaturedStatus('Pemeriksaan berkas gagal. Coba unggah ulang.');
@@ -368,6 +373,10 @@ export function ArticleCreateForm({
       }
       setFeaturedId(mediaId);
       setFeaturedName(file.name);
+      setFeaturedVersion(typeof completed?.version === 'number' ? completed.version : 1);
+      setFeaturedAlt('');
+      setFeaturedCaption('');
+      setFeaturedFocal(null);
       const storedSrc = `/api/network/media/${mediaId}`;
       try {
         const read = (await command('media.read', { mediaId })) as { readonly url?: unknown } | null;
@@ -379,6 +388,40 @@ export function ArticleCreateForm({
     } finally {
       setUploadingFeatured(false);
     }
+  };
+
+  const saveFeaturedMeta = async (patch: { readonly altText?: string | null; readonly caption?: string | null; readonly focalX?: number | null; readonly focalY?: number | null }) => {
+    if (command === undefined || featuredId === null || featuredVersion === null) {
+      toast.error('Simpan metadata sampul tidak tersedia.');
+      return;
+    }
+    setSavingFeaturedMeta(true);
+    try {
+      const updated = (await command('media.update', { mediaId: featuredId, expectedVersion: featuredVersion, ...patch })) as { readonly version?: unknown } | null;
+      setFeaturedVersion(typeof updated?.version === 'number' ? updated.version : featuredVersion + 1);
+      toast.success('Metadata sampul disimpan.');
+    } catch {
+      toast.error('Gagal menyimpan metadata sampul. Coba lagi.');
+    } finally {
+      setSavingFeaturedMeta(false);
+    }
+  };
+
+  const handleFeaturedMetaSave = () => {
+    const alt = featuredAlt.trim();
+    const caption = featuredCaption.trim();
+    void saveFeaturedMeta({ altText: alt === '' ? null : alt, caption: caption === '' ? null : caption });
+  };
+
+  const handleFocalPick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const x = Math.min(100, Math.max(0, Math.round(((event.clientX - rect.left) / rect.width) * 100)));
+    const y = Math.min(100, Math.max(0, Math.round(((event.clientY - rect.top) / rect.height) * 100)));
+    setFeaturedFocal({ x, y });
+    const alt = featuredAlt.trim();
+    const caption = featuredCaption.trim();
+    void saveFeaturedMeta({ altText: alt === '' ? null : alt, caption: caption === '' ? null : caption, focalX: x, focalY: y });
   };
 
   const handleCreateArticle = (event: FormEvent<HTMLFormElement>) => {
@@ -462,6 +505,10 @@ export function ArticleCreateForm({
       setFeaturedName('');
       setFeaturedPreviewUrl(null);
       setFeaturedStatus(null);
+      setFeaturedVersion(null);
+      setFeaturedAlt('');
+      setFeaturedCaption('');
+      setFeaturedFocal(null);
       setCoverUrl('');
       setBodyJsonDraft(null);
       setRichResetKey((key) => key + 1);
@@ -815,16 +862,80 @@ export function ArticleCreateForm({
                         type="button"
                         variant="ghost"
                         size="xs"
-                        onClick={() => { setFeaturedId(null); setFeaturedName(''); setFeaturedPreviewUrl(null); }}
+                        onClick={() => { setFeaturedId(null); setFeaturedName(''); setFeaturedPreviewUrl(null); setFeaturedVersion(null); setFeaturedAlt(''); setFeaturedCaption(''); setFeaturedFocal(null); }}
                         disabled={isSubmitting || uploadingFeatured}
                       >
                         <span>Hapus</span>
                       </Button>
                     </div>
                     {featuredPreviewUrl !== null ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={featuredPreviewUrl} alt={`Pratinjau ${featuredName}`} className="max-h-40 w-full rounded border border-hairline object-cover" />
+                      <div className="space-y-1.5">
+                        <button
+                          type="button"
+                          onClick={handleFocalPick}
+                          disabled={isSubmitting || uploadingFeatured || savingFeaturedMeta}
+                          aria-label="Pilih titik fokus sampul"
+                          title="Klik untuk menentukan titik fokus crop"
+                          className="relative block w-full cursor-crosshair overflow-hidden rounded border border-hairline"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element -- dashboard preview only; public delivery uses EditorialImage */}
+                          <img
+                            src={featuredPreviewUrl}
+                            alt={`Pratinjau ${featuredName}`}
+                            className="max-h-40 w-full object-cover"
+                            {...(featuredFocal === null ? {} : { style: { objectPosition: `${featuredFocal.x}% ${featuredFocal.y}%` } })}
+                          />
+                          {featuredFocal === null ? null : (
+                            <span
+                              aria-hidden="true"
+                              className="absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-brass/80"
+                              style={{ left: `${featuredFocal.x}%`, top: `${featuredFocal.y}%` }}
+                            />
+                          )}
+                        </button>
+                        <p className="m-0 font-mono text-[11px] text-paper-faint">
+                          {featuredFocal === null ? 'Klik pratinjau untuk menentukan titik fokus crop.' : `Fokus ${featuredFocal.x}%, ${featuredFocal.y}% — klik lagi untuk mengubah.`}
+                        </p>
+                      </div>
                     ) : null}
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`${featuredFileId}-alt`} className="font-mono text-xs text-paper-dim">
+                        Teks alt sampul
+                      </Label>
+                      <Input
+                        id={`${featuredFileId}-alt`}
+                        value={featuredAlt}
+                        onChange={(e) => setFeaturedAlt(e.target.value)}
+                        disabled={isSubmitting || uploadingFeatured || savingFeaturedMeta}
+                        placeholder="cth: Suasana pasar pagi"
+                        maxLength={300}
+                        className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`${featuredFileId}-caption`} className="font-mono text-xs text-paper-dim">
+                        Keterangan sampul (opsional)
+                      </Label>
+                      <Input
+                        id={`${featuredFileId}-caption`}
+                        value={featuredCaption}
+                        onChange={(e) => setFeaturedCaption(e.target.value)}
+                        disabled={isSubmitting || uploadingFeatured || savingFeaturedMeta}
+                        placeholder="cth: Suasana pasar pagi di Wonosobo"
+                        maxLength={500}
+                        className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={handleFeaturedMetaSave}
+                      disabled={isSubmitting || uploadingFeatured || savingFeaturedMeta}
+                      className="w-full"
+                    >
+                      <span>{savingFeaturedMeta ? 'Menyimpan...' : 'Simpan metadata sampul'}</span>
+                    </Button>
                     <p className="m-0 break-all font-mono text-[11px] text-paper-faint">
                       {`/api/network/media/${featuredId}`}
                     </p>

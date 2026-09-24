@@ -34,6 +34,8 @@ export function makeNetworkArticle(overrides: Partial<NetworkArticle> = {}): Net
     imageMediaType: null,
     imageWidth: null,
     imageHeight: null,
+    imageFocalX: null,
+    imageFocalY: null,
     gallery: [],
     ...overrides,
   };

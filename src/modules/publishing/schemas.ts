@@ -32,9 +32,28 @@ export const mediaCompletionSchema = z.object({
   }).strict().optional(),
   widthPx: z.number().int().min(1).max(30000).optional(),
   heightPx: z.number().int().min(1).max(30000).optional(),
-}).strict().refine((value) => (value.widthPx === undefined) === (value.heightPx === undefined), 'widthPx and heightPx must travel together');
+  altText: z.string().trim().min(1).max(300).optional(),
+  caption: z.string().trim().min(1).max(500).optional(),
+  sortOrder: z.number().int().min(0).max(1000000).optional(),
+  focalX: z.number().int().min(0).max(100).optional(),
+  focalY: z.number().int().min(0).max(100).optional(),
+}).strict()
+  .refine((value) => (value.widthPx === undefined) === (value.heightPx === undefined), 'widthPx and heightPx must travel together')
+  .refine((value) => (value.focalX === undefined) === (value.focalY === undefined), 'focalX and focalY must travel together');
 export const mediaReadSchema = z.object({ mediaId: z.uuid() }).strict();
 export const mediaArchiveSchema = z.object({ mediaId: z.uuid(), expectedVersion: z.number().int().positive() }).strict();
+export const mediaMetadataSchema = z.object({
+  mediaId: z.uuid(),
+  expectedVersion: z.number().int().positive(),
+  altText: z.string().trim().min(1).max(300).nullish(),
+  caption: z.string().trim().min(1).max(500).nullish(),
+  sortOrder: z.number().int().min(0).max(1000000).optional(),
+  focalX: z.number().int().min(0).max(100).nullish(),
+  focalY: z.number().int().min(0).max(100).nullish(),
+}).strict().refine((value) => {
+  const mode = (side: number | null | undefined) => side === undefined ? 'keep' : side === null ? 'clear' : 'set';
+  return mode(value.focalX) === mode(value.focalY);
+}, 'focalX and focalY must travel together');
 
 const publicationOptionsSchema = z.record(z.string().min(1).max(100), z.json()).default({});
 const publicationOverrideSchema = z.object({

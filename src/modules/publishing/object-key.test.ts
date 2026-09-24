@@ -36,7 +36,7 @@ describe('buildThumbObjectKey', () => {
 describe('visibilitas publik', () => {
   it('membedakan purpose artikel dari privat', () => {
     expect(isPublicPurpose('article-cover')).toBe(true);
-    expect(isPublicPurpose('article-image')).toBe(true);
+    expect(isPublicPurpose('article-inline')).toBe(false);
     expect(isPublicPurpose('site-logo')).toBe(false);
     expect(isPublicPurpose('organization-asset')).toBe(false);
     expect(isPublicPurpose('tak-dikenal')).toBe(false);
@@ -98,13 +98,13 @@ describe('buildScopedObjectKey', () => {
     const key = buildScopedObjectKey({
       owner: { kind: 'article', articleId: article },
       organizationId: org,
-      purpose: 'article-image',
+      purpose: 'article-inline',
       filename: 'foto.jpg',
       collisionToken: '0123456789abcdef',
       now,
     });
-    expect(key).toBe(`o/${org}/p/article-image/y=2026/m=09/article/${article}/23-foto-0123456789abcdef.jpg`);
-    expect(buildThumbObjectKey(key)).toBe(`o/${org}/p/article-image/y=2026/m=09/article/${article}/23-foto-0123456789abcdef-thumb.jpg`);
+    expect(key).toBe(`o/${org}/p/article-inline/y=2026/m=09/article/${article}/23-foto-0123456789abcdef.jpg`);
+    expect(buildThumbObjectKey(key)).toBe(`o/${org}/p/article-inline/y=2026/m=09/article/${article}/23-foto-0123456789abcdef-thumb.jpg`);
   });
 
   it('menolak token selain 16 karakter dan organisasi bukan uuid', () => {
@@ -134,7 +134,7 @@ describe('buildScopedObjectKey', () => {
 describe('purpose helpers', () => {
   it('menormalkan purpose legacy dan mendeteksi key lama', () => {
     expect(normalizePurpose('inline_article')).toBe('article-inline');
-    expect(normalizePurpose('article-image')).toBe('article-image');
+    expect(normalizePurpose('article_image')).toBe('article-inline');
     expect(normalizePurpose('acak')).toBe('organization-asset');
     expect(createCollisionToken()).toMatch(/^[0-9a-f]{16}$/);
     expect(isLegacyMediaKey('assets/foto-abc.jpg')).toBe(true);

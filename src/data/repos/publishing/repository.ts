@@ -15,7 +15,7 @@ import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
 import {
   PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type AcceptPublicationInput, type AcceptPublicationResult,
   type ActivateMediaInput, type ArticleSiteRobotsInput, type ArticleSiteRobotsResult, type ArticleVariantContext, type JobNotificationContext, type PublicationTargetSelection, type ReserveMediaCandidate, type ReservationCandidateResult, type PublishingRepository,
-  type TargetTransitionInput,
+  type TargetTransitionInput, type UpdateMediaMetadataInput,
 } from '@/modules/publishing/ports';
 import { redact } from '@/core/security/redaction';
 import {
@@ -152,7 +152,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       const reservations = await transaction.select().from(mediaKeyReservations).where(and(eq(mediaKeyReservations.organizationId, actor.organizationId), eq(mediaKeyReservations.id, input.reservationId), eq(mediaKeyReservations.status, 'reserved'), gt(mediaKeyReservations.expiresAt, sql`clock_timestamp()`))).limit(1).for('update');
       const reservation = reservations[0]; if (reservation === undefined) throw new PublishingAccessDeniedError();
       if (reservation.organizationAsset && actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new PublishingAccessDeniedError();
-      const rows = await transaction.insert(media).values({ organizationId: actor.organizationId, id: input.mediaId, objectKey: reservation.objectKey, purpose: reservation.purpose, mediaType: input.mediaType, sizeBytes: input.sizeBytes, checksum: input.checksum, thumbObjectKey: input.thumbObjectKey, widthPx: input.widthPx, heightPx: input.heightPx, ...getOwnerColumns(mapOwnerFromRow(reservation)), state: 'active', createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning();
+      const rows = await transaction.insert(media).values({ organizationId: actor.organizationId, id: input.mediaId, objectKey: reservation.objectKey, purpose: reservation.purpose, mediaType: input.mediaType, sizeBytes: input.sizeBytes, checksum: input.checksum, thumbObjectKey: input.thumbObjectKey, widthPx: input.widthPx, heightPx: input.heightPx, altText: input.altText, caption: input.caption, sortOrder: input.sortOrder ?? 0, focalX: input.focalX, focalY: input.focalY, ...getOwnerColumns(mapOwnerFromRow(reservation)), state: 'active', createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning();
       await transaction.update(mediaKeyReservations).set({ status: 'used', updatedAt: new Date(input.now) }).where(and(eq(mediaKeyReservations.organizationId, actor.organizationId), eq(mediaKeyReservations.id, reservation.id)));
       const affected = reservation.siteId !== null ? [reservation.siteId] : reservation.articleId !== null ? (await transaction.select({ siteId: articleSites.siteId }).from(articleSites).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.articleId, reservation.articleId), eq(articleSites.active, true)))).map(({ siteId }) => siteId) : [];
       for (const siteId of new Set(affected)) await this.enqueuePublicInvalidation(transaction, actor.organizationId, siteId, 'media.activated', new Date(input.now), reservation.articleId ?? undefined, input.mediaId);
@@ -188,6 +188,33 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         .where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.active, true), eq(articleSites.state, 'published'), eq(articles.status, 'active'), articleReference));
       for (const siteId of new Set([...settingsRefs, ...articleRefs].map(({ siteId }) => siteId))) await this.enqueuePublicInvalidation(transaction, actor.organizationId, siteId, 'media.archived', new Date(now), existing.articleId ?? undefined, mediaId);
       await this.audit(transaction, actor, 'media.archive', 'media', mediaId, { state: 'archived' }, new Date(now));
+      return mapMedia(rows[0]!);
+    });
+  }
+  async updateMediaMetadata(actor: AuthorizedTenantActorContext, input: UpdateMediaMetadataInput): Promise<MediaAssetRecord> {
+    return this.database.transaction(async (transaction) => {
+      await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.mediaManage); await this.enforceWritableSubscription(transaction, actor);
+      const existingRows = await transaction.select().from(media).where(and(eq(media.organizationId, actor.organizationId), eq(media.id, input.mediaId))).limit(1).for('update');
+      const existing = existingRows[0]; if (existing === undefined || existing.state !== 'active') throw new PublishingAccessDeniedError();
+      if (existing.organizationAsset && actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new PublishingAccessDeniedError();
+      if (existing.version !== input.expectedVersion) throw new PublishingConflictError();
+      const rows = await transaction.update(media).set({
+        ...(input.altText === undefined ? {} : { altText: input.altText }),
+        ...(input.caption === undefined ? {} : { caption: input.caption }),
+        ...(input.sortOrder === undefined ? {} : { sortOrder: input.sortOrder }),
+        ...(input.focalX === undefined || input.focalY === undefined ? {} : { focalX: input.focalX, focalY: input.focalY }),
+        version: existing.version + 1, updatedAt: new Date(input.now),
+      }).where(and(eq(media.organizationId, actor.organizationId), eq(media.id, input.mediaId), eq(media.version, existing.version), eq(media.state, 'active'))).returning();
+      if (rows.length !== 1) throw new PublishingConflictError();
+      const settingsRefs = await transaction.select({ siteId: siteSettings.siteId }).from(siteSettings).where(and(eq(siteSettings.organizationId, actor.organizationId), or(eq(siteSettings.logoMediaId, input.mediaId), eq(siteSettings.faviconMediaId, input.mediaId), eq(siteSettings.defaultMediaId, input.mediaId))));
+      const articleReference = existing.articleId === null
+        ? eq(articles.leadMediaId, input.mediaId)
+        : or(eq(articles.id, existing.articleId), eq(articles.leadMediaId, input.mediaId));
+      const articleRefs = await transaction.select({ siteId: articleSites.siteId }).from(articleSites)
+        .innerJoin(articles, and(eq(articles.organizationId, articleSites.organizationId), eq(articles.id, articleSites.articleId)))
+        .where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.active, true), eq(articleSites.state, 'published'), eq(articles.status, 'active'), articleReference));
+      for (const siteId of new Set([...settingsRefs, ...articleRefs].map(({ siteId }) => siteId))) await this.enqueuePublicInvalidation(transaction, actor.organizationId, siteId, 'media.metadata.updated', new Date(input.now), existing.articleId ?? undefined, input.mediaId);
+      await this.audit(transaction, actor, 'media.metadata.update', 'media', input.mediaId, { altText: input.altText ?? undefined, caption: input.caption ?? undefined, sortOrder: input.sortOrder, focalX: input.focalX ?? undefined, focalY: input.focalY ?? undefined }, new Date(input.now));
       return mapMedia(rows[0]!);
     });
   }
@@ -343,6 +370,12 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         const siteRows = await transaction.select({ id: sites.id, regionId: sites.regionId }).from(sites).where(and(eq(sites.organizationId, actor.organizationId), inArray(sites.id, distinctSites), eq(sites.status, 'active')));
         if (siteRows.length !== distinctSites.length) throw new PublishingAccessDeniedError();
         if (lock !== null && siteRows.some(({ regionId }) => regionId !== null && regionId !== lock)) throw new PublishingAccessDeniedError();
+        const overrideImageIds = [...new Set(Object.values(input.overrides ?? {}).map((override) => override.imageMediaId).filter((value): value is string => typeof value === 'string' && value !== ''))];
+        if (overrideImageIds.length > 0) {
+          const coverRows = await transaction.select({ id: media.id }).from(media)
+            .where(and(eq(media.organizationId, actor.organizationId), inArray(media.id, overrideImageIds), eq(media.state, 'active'), eq(media.purpose, 'article-cover'), sql`${media.mediaType} LIKE 'image/%'`));
+          if (coverRows.length !== overrideImageIds.length) throw new PublishingAccessDeniedError();
+        }
         await this.rejectCrossSiteDuplicates(transaction, actor.organizationId, input.articleId, articleRows[0]!.title, excerptForDescription(articleRows[0]!.body), distinctSites, input.overrides, input.cascade ?? {});
         const jobRows = await transaction.insert(publishingJobs).values({ organizationId: actor.organizationId, id: input.jobId, articleId: input.articleId, idempotencyKey: input.idempotencyKey, fingerprint: input.fingerprint, fingerprintVersion: input.fingerprintVersion, state: 'queued', options: input.options as Record<string, unknown>, dispatchStatus: 'pending', nextDispatchAt: new Date(input.now), createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning();
         for (let index = 0; index < distinctSites.length; index += 1) {

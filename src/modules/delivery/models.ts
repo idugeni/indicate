@@ -74,6 +74,9 @@ export interface ArticleListItem {
   readonly imageMediaType: string | null;
   readonly imageWidth: number | null;
   readonly imageHeight: number | null;
+  /** Featured crop focus (0-100); null means center. */
+  readonly imageFocalX: number | null;
+  readonly imageFocalY: number | null;
 }
 
 export interface NetworkArticle extends ArticleListItem {
@@ -108,8 +111,15 @@ export interface FeedArticle {
 }
 
 export interface ArticleGalleryImage {
+  readonly id: string;
   readonly url: string;
   readonly thumbnailUrl: string | null;
+  /** Durable alt text; null falls back to the article title at render time. */
+  readonly alt: string | null;
+  readonly caption: string | null;
+  readonly width: number | null;
+  readonly height: number | null;
+  readonly mediaType: string;
 }
 
 /**

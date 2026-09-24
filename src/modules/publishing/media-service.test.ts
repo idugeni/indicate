@@ -29,7 +29,7 @@ const upload = {
   mediaType: 'image/jpeg',
   sizeBytes: 1_000,
   checksum: CHECKSUM,
-  purpose: 'article-image',
+  purpose: 'article-inline',
   owner: { kind: 'article', articleId: ARTICLE },
 };
 
@@ -214,6 +214,21 @@ describe('MediaService completeUpload', () => {
     expect(lopsided.error.error.code).toBe('INVALID_INPUT');
   });
 
+  it('meneruskan metadata editorial dan menolak focal timpang', async () => {
+    const { service, repository } = harness(
+      { readReservation: async () => reservation },
+      { headExact: async () => ({ contentType: 'image/jpeg', contentLength: 1_000, checksum: CHECKSUM }) },
+    );
+    const activateMedia = repository.activateMedia as unknown as ReturnType<typeof vi.fn>;
+    const result = await service.completeUpload(actor, { reservationId: ARTICLE, widthPx: 1200, heightPx: 675, altText: 'Pasar pagi', caption: 'Suasana pasar', focalX: 30, focalY: 70, sortOrder: 2 });
+    expect(result.ok).toBe(true);
+    expect(activateMedia).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ altText: 'Pasar pagi', caption: 'Suasana pasar', focalX: 30, focalY: 70, sortOrder: 2 }));
+    const lopsidedFocal = await service.completeUpload(actor, { reservationId: ARTICLE, focalX: 30 });
+    expect(lopsidedFocal.ok).toBe(false);
+    if (lopsidedFocal.ok) throw new Error('expected error');
+    expect(lopsidedFocal.error.error.code).toBe('INVALID_INPUT');
+  });
+
   it('menolak favicon tak persegi atau di bawah 48px', async () => {
     const faviconReservation = { ...reservation, purpose: 'site-favicon' };
     const { service, repository } = harness(
@@ -278,5 +293,49 @@ describe('MediaService read archive', () => {
     expect(conflict.ok).toBe(false);
     if (conflict.ok) throw new Error('expected error');
     expect(conflict.error.error.code).toBe('CONFLICT');
+  });
+});
+
+describe('MediaService updateMetadata', () => {
+  it('meneruskan metadata editorial ke repo', async () => {
+    const updateMediaMetadata = vi.fn(async () => ({ id: MEDIA, version: 2 }));
+    const { service } = harness({ updateMediaMetadata });
+    const result = await service.updateMetadata(actor, { mediaId: MEDIA, expectedVersion: 1, altText: 'Pasar pagi', caption: 'Suasana pasar', focalX: 30, focalY: 70, sortOrder: 2 });
+    expect(result.ok).toBe(true);
+    expect(updateMediaMetadata).toHaveBeenCalledWith(actor, expect.objectContaining({ mediaId: MEDIA, expectedVersion: 1, altText: 'Pasar pagi', caption: 'Suasana pasar', focalX: 30, focalY: 70, sortOrder: 2 }));
+  });
+
+  it('menolak focal timpang dan versi tak valid', async () => {
+    const { service } = harness({ updateMediaMetadata: vi.fn(async () => ({ id: MEDIA })) });
+    const lopsided = await service.updateMetadata(actor, { mediaId: MEDIA, expectedVersion: 1, focalX: 30 });
+    expect(lopsided.ok).toBe(false);
+    if (lopsided.ok) throw new Error('expected error');
+    expect(lopsided.error.error.code).toBe('INVALID_INPUT');
+    const badVersion = await service.updateMetadata(actor, { mediaId: MEDIA, expectedVersion: 0 });
+    expect(badVersion.ok).toBe(false);
+    if (badVersion.ok) throw new Error('expected error');
+    expect(badVersion.error.error.code).toBe('INVALID_INPUT');
+  });
+
+  it('memetakan konflik versi dan denial akses', async () => {
+    const conflictHarness = harness({
+      updateMediaMetadata: async () => {
+        throw new PublishingConflictError();
+      },
+    });
+    const conflict = await conflictHarness.service.updateMetadata(actor, { mediaId: MEDIA, expectedVersion: 1 });
+    expect(conflict.ok).toBe(false);
+    if (conflict.ok) throw new Error('expected error');
+    expect(conflict.error.error.code).toBe('CONFLICT');
+
+    const deniedHarness = harness({
+      updateMediaMetadata: async () => {
+        throw new PublishingAccessDeniedError();
+      },
+    });
+    const denied = await deniedHarness.service.updateMetadata(actor, { mediaId: MEDIA, expectedVersion: 1 });
+    expect(denied.ok).toBe(false);
+    if (denied.ok) throw new Error('expected error');
+    expect(denied.error.error.code).toBe('RESOURCE_UNAVAILABLE');
   });
 });

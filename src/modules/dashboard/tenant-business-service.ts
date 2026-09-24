@@ -362,11 +362,12 @@ export class TenantBusinessService {
     }});
   }
 
-  private requireActiveMedia(transaction: DashboardTransaction, next: string | null | undefined, current: string | null, field: string): string | null {
+  private requireActiveMedia(transaction: DashboardTransaction, next: string | null | undefined, current: string | null, field: string, expectedPurpose?: string): string | null {
     if (next === undefined) return current;
     if (next === null) return null;
     const media = transaction.state.media.find(({ id }) => id === next);
-    if (media === undefined || media.state !== 'active') throw new DashboardValidationError({ [field]: ['Media tidak ditemukan atau belum aktif.'] });
+    if (media === undefined || media.state !== 'active' || !media.mediaType.startsWith('image/')) throw new DashboardValidationError({ [field]: ['Media tidak ditemukan atau belum aktif.'] });
+    if (expectedPurpose !== undefined && media.purpose !== expectedPurpose) throw new DashboardValidationError({ [field]: ['Media tidak ditemukan atau belum aktif.'] });
     return next;
   }
 
@@ -376,9 +377,9 @@ export class TenantBusinessService {
       const before = transaction.state.siteSettings.find(({ siteId }) => siteId === value.siteId);
       if (before === undefined && !isKnownTemplateId(value.colors?.templateId)) throw new DashboardValidationError({ colors: ['templateId wajib diisi dari daftar template terdaftar.'] });
       if (before !== undefined && value.expectedVersion !== undefined) requireVersion(before, value.expectedVersion);
-      const logoMediaId = this.requireActiveMedia(transaction, value.logoMediaId, before?.logoMediaId ?? null, 'logoMediaId');
-      const faviconMediaId = this.requireActiveMedia(transaction, value.faviconMediaId, before?.faviconMediaId ?? null, 'faviconMediaId');
-      const defaultMediaId = this.requireActiveMedia(transaction, value.defaultMediaId, before?.defaultMediaId ?? null, 'defaultMediaId');
+      const logoMediaId = this.requireActiveMedia(transaction, value.logoMediaId, before?.logoMediaId ?? null, 'logoMediaId', 'site-logo');
+      const faviconMediaId = this.requireActiveMedia(transaction, value.faviconMediaId, before?.faviconMediaId ?? null, 'faviconMediaId', 'site-favicon');
+      const defaultMediaId = this.requireActiveMedia(transaction, value.defaultMediaId, before?.defaultMediaId ?? null, 'defaultMediaId', 'site-default');
       const tagline = value.tagline === undefined ? (before?.tagline ?? null) : value.tagline;
       const seoDefaultTitle = value.seoDefaultTitle === undefined ? (before?.seoDefaultTitle ?? null) : value.seoDefaultTitle;
       const seoDefaultDescription = value.seoDefaultDescription === undefined ? (before?.seoDefaultDescription ?? null) : value.seoDefaultDescription;
@@ -709,7 +710,7 @@ export class TenantBusinessService {
       requireLockedRegionValue(actor, value.regionId);
       const slug = allocateUniqueSlug(transaction.state.articles.map(({ slug }) => slug), value.slug);
       const distinctCategoryIds = [...new Set(value.categoryIds ?? [])];
-      const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId ?? null, null, 'leadMediaId');
+      const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId ?? null, null, 'leadMediaId', 'article-cover');
       const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, leadMediaId, coverImageUrl: value.coverImageUrl ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, bodyJson: requireValidBodyJson(value.bodyJson), scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null };
       transaction.state.articles.push(record); this.syncArticleCategories(transaction.state, record.id, distinctCategoryIds); this.audit(transaction, 'article.create', 'article', record.id, null, record);
       const lock = regionLock(actor);
@@ -741,7 +742,7 @@ export class TenantBusinessService {
       const distinctCategoryIds = value.categoryIds === undefined
         ? (value.categoryId === before.categoryId ? existingCategoryIds : (value.categoryId === null ? [] : [value.categoryId]))
         : [...new Set(value.categoryIds)];
-      const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId, before.leadMediaId ?? null, 'leadMediaId');
+      const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId, before.leadMediaId ?? null, 'leadMediaId', 'article-cover');
       const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, authorId: value.authorId, leadMediaId, coverImageUrl: value.coverImageUrl === undefined ? before.coverImageUrl : (value.coverImageUrl ?? null), slug: value.slug, title: value.title, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, body: value.body, bodyJson: value.bodyJson === undefined ? before.bodyJson : requireValidBodyJson(value.bodyJson), source: value.source, tags: [...value.tags], status: value.status, scheduledAt: value.scheduledAt ?? null, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.articles, after); this.syncArticleCategories(transaction.state, after.id, distinctCategoryIds); this.audit(transaction, 'article.update', 'article', after.id, before, after); return after;
     }});

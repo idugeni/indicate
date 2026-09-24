@@ -7,7 +7,7 @@ import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscri
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import { sanitizeError } from '@/core/security/redaction';
 import type { Result } from '@/core/result';
-import { mediaArchiveSchema, mediaCompletionSchema, mediaReadSchema, mediaReservationSchema } from '@/modules/publishing/schemas';
+import { mediaArchiveSchema, mediaCompletionSchema, mediaMetadataSchema, mediaReadSchema, mediaReservationSchema } from '@/modules/publishing/schemas';
 
 interface ClockLike { now(): Date }
 export interface MediaPolicy {
@@ -135,7 +135,7 @@ export class MediaService {
           thumbObjectKey = candidate;
         }
       }
-      return { ok: true, value: await this.repository.activateMedia(actor, { reservationId: reservation.id, mediaId: this.identifiers.create(), mediaType: metadata.contentType, sizeBytes: metadata.contentLength, checksum: metadata.checksum, thumbObjectKey, widthPx: parsed.data.widthPx ?? null, heightPx: parsed.data.heightPx ?? null, now: this.clock.now().toISOString() }) };
+      return { ok: true, value: await this.repository.activateMedia(actor, { reservationId: reservation.id, mediaId: this.identifiers.create(), mediaType: metadata.contentType, sizeBytes: metadata.contentLength, checksum: metadata.checksum, thumbObjectKey, widthPx: parsed.data.widthPx ?? null, heightPx: parsed.data.heightPx ?? null, altText: parsed.data.altText ?? null, caption: parsed.data.caption ?? null, sortOrder: parsed.data.sortOrder ?? null, focalX: parsed.data.focalX ?? null, focalY: parsed.data.focalY ?? null, now: this.clock.now().toISOString() }) };
     } catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'media.upload.complete.denied', 'media');
       if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat mengunggah media.', actor.requestId) };
@@ -169,6 +169,17 @@ export class MediaService {
     catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'media.archive.denied', 'media');
       if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat mengarsipkan media.', actor.requestId) };
+      if (error instanceof PublishingConflictError) return { ok: false, error: createPublicError('CONFLICT', 'The media record was changed by another operation.', actor.requestId) };
+      return this.failure(actor);
+    }
+  }
+
+  async updateMetadata(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<MediaAssetRecord, PublicErrorEnvelope>> {
+    const parsed = mediaMetadataSchema.safeParse(raw); if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Invalid media metadata request.', actor.requestId) };
+    try { return { ok: true, value: await this.repository.updateMediaMetadata(actor, { ...parsed.data, now: this.clock.now().toISOString() }) }; }
+    catch (error) {
+      if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'media.metadata.denied', 'media');
+      if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat mengubah metadata media.', actor.requestId) };
       if (error instanceof PublishingConflictError) return { ok: false, error: createPublicError('CONFLICT', 'The media record was changed by another operation.', actor.requestId) };
       return this.failure(actor);
     }

@@ -245,7 +245,7 @@ describe('TenantBusinessService affiliations memberships articles', () => {
         { id: CAT1, status: 'active' },
         { id: CAT2, status: 'active' },
       ],
-      media: [{ id: MED1, organizationId: 'org-1', state: 'active' }],
+      media: [{ id: MED1, organizationId: 'org-1', state: 'active', purpose: 'article-cover', mediaType: 'image/jpeg' }],
       articles: [],
     });
     const result = await service.createArticle(actor, {
@@ -273,7 +273,7 @@ describe('TenantBusinessService affiliations memberships articles', () => {
     const { service } = harness({
       regions: [{ id: ID2, status: 'active' }],
       categories: [{ id: CAT3, status: 'archived' }],
-      media: [{ id: MED2, organizationId: 'org-1', state: 'rejected' }],
+      media: [{ id: MED2, organizationId: 'org-1', state: 'rejected', purpose: 'article-cover', mediaType: 'image/jpeg' }],
       articles: [],
     });
     const badCategory = await service.createArticle(actor, {
@@ -286,6 +286,21 @@ describe('TenantBusinessService affiliations memberships articles', () => {
       body: 'Isi artikel yang cukup panjang untuk lolos validasi.', source: 'Humas', leadMediaId: MED2,
     });
     expect(badMedia.ok).toBe(false);
+  });
+
+  it('menolak sampul dengan purpose selain article-cover', async () => {
+    const { service } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+      media: [{ id: MED1, organizationId: 'org-1', state: 'active', purpose: 'article-inline', mediaType: 'image/jpeg' }],
+      articles: [],
+    });
+    const result = await service.createArticle(actor, {
+      regionId: ID2, slug: 'tolak-purpose', title: 'Judul Artikel Yang Cukup Panjang',
+      body: 'Isi artikel yang cukup panjang untuk lolos validasi.', source: 'Humas', leadMediaId: MED1,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
   });
 
   it('mempertahankan kategori lama saat update lawas tanpa categoryIds', async () => {

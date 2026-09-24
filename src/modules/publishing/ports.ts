@@ -30,6 +30,22 @@ export interface ActivateMediaInput {
   readonly thumbObjectKey: string | null;
   readonly widthPx: number | null;
   readonly heightPx: number | null;
+  readonly altText: string | null;
+  readonly caption: string | null;
+  readonly sortOrder: number | null;
+  readonly focalX: number | null;
+  readonly focalY: number | null;
+  readonly now: string;
+}
+
+export interface UpdateMediaMetadataInput {
+  readonly mediaId: string;
+  readonly expectedVersion: number;
+  readonly altText?: string | null | undefined;
+  readonly caption?: string | null | undefined;
+  readonly sortOrder?: number | undefined;
+  readonly focalX?: number | null | undefined;
+  readonly focalY?: number | null | undefined;
   readonly now: string;
 }
 
@@ -127,6 +143,7 @@ export interface PublishingRepository {
   activateMedia(actor: AuthorizedTenantActorContext, input: ActivateMediaInput): Promise<MediaAssetRecord>;
   rejectMedia(actor: AuthorizedTenantActorContext, reservationId: string, reason: string, now: string): Promise<void>;
   archiveMedia(actor: AuthorizedTenantActorContext, mediaId: string, expectedVersion: number, now: string): Promise<MediaAssetRecord>;
+  updateMediaMetadata(actor: AuthorizedTenantActorContext, input: UpdateMediaMetadataInput): Promise<MediaAssetRecord>;
   listMedia(actor: AuthorizedTenantActorContext): Promise<readonly MediaAssetRecord[]>;
   authorizeTenantMedia(actor: AuthorizedTenantActorContext, mediaId: string): Promise<MediaAssetRecord | null>;
   authorizePublicMedia(context: HostnameContext, mediaId: string, requestId: string): Promise<MediaAssetRecord | null>;

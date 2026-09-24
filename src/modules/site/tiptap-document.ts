@@ -481,6 +481,32 @@ export function validateTipTapDoc(value: unknown): { readonly ok: true; readonly
   return { ok: true, doc: { type: 'doc', content } };
 }
 
+/**
+ * Extract inline image references from a TipTap document in document order.
+ *
+ * @param doc - Validated or untrusted TipTap JSON; invalid input yields an empty list.
+ * @returns Ordered `{ mediaId, alt, caption }` triples for `media:<uuid>` image sources; unsafe sources are skipped.
+ */
+export function extractTipTapImages(doc: unknown): readonly { readonly mediaId: string; readonly alt: string | null; readonly caption: string | null }[] {
+  if (!isTipTapDoc(doc)) return [];
+  const images: { readonly mediaId: string; readonly alt: string | null; readonly caption: string | null }[] = [];
+  const visit = (node: TipTapNode): void => {
+    if (node.type === 'image') {
+      const src = isRecord(node.attrs) && typeof node.attrs.src === 'string' ? node.attrs.src.trim() : '';
+      if (src.startsWith('media:') && UUID_PATTERN.test(src.slice('media:'.length)) && isSafeMediaSrc(src)) {
+        const alt = isRecord(node.attrs) && typeof node.attrs.alt === 'string' && node.attrs.alt.trim() !== '' ? node.attrs.alt.trim().slice(0, 300) : null;
+        const title = isRecord(node.attrs) ? (node.attrs.title ?? node.attrs.caption) : undefined;
+        const caption = typeof title === 'string' && title.trim() !== '' ? title.trim().slice(0, 500) : null;
+        images.push({ mediaId: src.slice('media:'.length), alt, caption });
+      }
+      return;
+    }
+    for (const child of node.content ?? []) visit(child);
+  };
+  for (const child of doc.content ?? []) visit(child);
+  return images;
+}
+
 function nodeText(node: TipTapNode, parts: string[]): void {
   if (node.type === 'text') {
     if (typeof node.text === 'string') parts.push(node.text);

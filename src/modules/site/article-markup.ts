@@ -1,8 +1,3 @@
-export const FIGURE_MARKER_PATTERN = /^\[gambar:(\d+)\]$/u;
-export const FIGURE_EXTENDED_PATTERN = /^\[gambar:(\d+)(?:\|([^\]|]*))?(?:\|([^\]]*))?\]$/u;
-export const YOUTUBE_MARKER_PATTERN = /^\[youtube:([A-Za-z0-9_-]{11})\]$/u;
-
-const YOUTUBE_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/u;
 const LINK_PATTERN = /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/gu;
 
 export interface TextSegment {
@@ -16,9 +11,7 @@ export type ArticleBlock =
   | { readonly kind: 'paragraph'; readonly segments: readonly TextSegment[] }
   | { readonly kind: 'heading'; readonly level: 2 | 3; readonly segments: readonly TextSegment[] }
   | { readonly kind: 'quote'; readonly segments: readonly TextSegment[] }
-  | { readonly kind: 'list'; readonly items: readonly (readonly TextSegment[])[] }
-  | { readonly kind: 'figure'; readonly index: number; readonly alt: string; readonly caption: string }
-  | { readonly kind: 'youtube'; readonly videoId: string };
+  | { readonly kind: 'list'; readonly items: readonly (readonly TextSegment[])[] };
 
 function parseInline(value: string): readonly TextSegment[] {
   const segments: TextSegment[] = [];
@@ -50,18 +43,10 @@ function parseInlineWithLinks(value: string): readonly TextSegment[] {
   return segments;
 }
 
-function parseFigureMarker(line: string): ArticleBlock | null {
-  const marker = FIGURE_EXTENDED_PATTERN.exec(line);
-  if (marker === null) return null;
-  const index = Number.parseInt(marker[1] ?? '', 10);
-  if (!Number.isSafeInteger(index) || index < 1) return null;
-  return { kind: 'figure', index, alt: (marker[2] ?? '').trim(), caption: (marker[3] ?? '').trim() };
-}
-
 /**
- * Split an article body into render blocks: headings, paragraphs, quotes, lists, figures, and embeds.
+ * Split a plain-text body into render blocks: headings, paragraphs, quotes, and lists.
  *
- * @param body - Canonical body (supports `**tebal**`, `*miring*`, `[teks](https://…)`, `## H2`, `### H3`, `> kutipan`, `- item`, standalone `[gambar:N|alt|caption]` and `[youtube:VIDEO_ID]`).
+ * @param body - Plain-text body (supports `**tebal**`, `*miring*`, `[teks](https://…)`, `## H2`, `### H3`, `> kutipan`, `- item`). Images and embeds live in TipTap JSON; bracket markers are rendered as-is.
  * @returns Ordered blocks; unknown syntax renders as-is.
  */
 export function parseArticleBody(body: string): readonly ArticleBlock[] {
@@ -73,16 +58,6 @@ export function parseArticleBody(body: string): readonly ArticleBlock[] {
     if (lines.length === 0) continue;
     if (lines.length === 1) {
       const first = lines[0]!;
-      const figure = parseFigureMarker(first);
-      if (figure !== null) {
-        blocks.push(figure);
-        continue;
-      }
-      const youtube = YOUTUBE_MARKER_PATTERN.exec(first);
-      if (youtube !== null && YOUTUBE_ID_PATTERN.test(youtube[1] ?? '')) {
-        blocks.push({ kind: 'youtube', videoId: youtube[1]! });
-        continue;
-      }
       if (first.startsWith('### ')) {
         const segments = parseInlineWithLinks(first.slice(4).trim());
         if (segments.length > 0) blocks.push({ kind: 'heading', level: 3, segments });
@@ -112,13 +87,12 @@ export function parseArticleBody(body: string): readonly ArticleBlock[] {
 /**
  * Reduce a body to plain text for excerpts, summaries, and search.
  *
- * @param body - Canonical article body.
- * @returns Text without markup; figures and embeds are removed.
+ * @param body - Plain-text article body.
+ * @returns Text without markup.
  */
 export function articleBodyText(body: string): string {
   const parts: string[] = [];
   for (const block of parseArticleBody(body)) {
-    if (block.kind === 'figure' || block.kind === 'youtube') continue;
     if (block.kind === 'list') {
       for (const item of block.items) parts.push(item.map((segment) => segment.text).join(''));
       continue;

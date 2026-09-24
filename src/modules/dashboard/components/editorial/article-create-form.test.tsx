@@ -315,6 +315,58 @@ describe('Formulir tulis artikel', () => {
     }
   });
 
+  it('menyimpan metadata sampul lewat media.update', async () => {
+    const putMock = vi.fn(async () => ({ ok: true }));
+    vi.stubGlobal('fetch', putMock);
+    try {
+      const submit = vi.fn(async () => null);
+      const cmd = vi.fn(async (action: string) => {
+        if (action === 'media.reserve') return { reservationId: 'res-1', authorization: { url: 'https://r2.example/put', requiredHeaders: { Authorization: 'sig' } } };
+        if (action === 'media.complete') return { id: 'm-1', version: 1 };
+        if (action === 'media.update') return { id: 'm-1', version: 2 };
+        if (action === 'media.read') return { url: 'https://r2.example/preview' };
+        return {};
+      });
+      const { container } = render(<ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} />);
+      const file = new File(['isi-gambar'], 'sampul.png', { type: 'image/png' });
+      const input = container.querySelector('input[data-testid="featured-file-input"]') as HTMLInputElement;
+      fireEvent.change(input, { target: { files: [file] } });
+      await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.complete', { reservationId: 'res-1' }));
+      fireEvent.change(screen.getByLabelText('Teks alt sampul'), { target: { value: 'Pasar pagi' } });
+      fireEvent.change(screen.getByLabelText(/Keterangan sampul/), { target: { value: 'Suasana pasar' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Simpan metadata sampul' }));
+      await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.update', { mediaId: 'm-1', expectedVersion: 1, altText: 'Pasar pagi', caption: 'Suasana pasar' }));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('memilih titik fokus sampul dari klik pratinjau', async () => {
+    const putMock = vi.fn(async () => ({ ok: true }));
+    vi.stubGlobal('fetch', putMock);
+    try {
+      const submit = vi.fn(async () => null);
+      const cmd = vi.fn(async (action: string) => {
+        if (action === 'media.reserve') return { reservationId: 'res-1', authorization: { url: 'https://r2.example/put', requiredHeaders: { Authorization: 'sig' } } };
+        if (action === 'media.complete') return { id: 'm-1', version: 1 };
+        if (action === 'media.update') return { id: 'm-1', version: 2 };
+        if (action === 'media.read') return { url: 'https://r2.example/preview' };
+        return {};
+      });
+      const { container } = render(<ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} />);
+      const file = new File(['isi-gambar'], 'sampul.png', { type: 'image/png' });
+      const input = container.querySelector('input[data-testid="featured-file-input"]') as HTMLInputElement;
+      fireEvent.change(input, { target: { files: [file] } });
+      await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.complete', { reservationId: 'res-1' }));
+      const picker = await screen.findByRole('button', { name: 'Pilih titik fokus sampul' });
+      vi.spyOn(picker, 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0, width: 200, height: 100, x: 0, y: 0, right: 200, bottom: 100, toJSON: () => ({}) } as DOMRect);
+      fireEvent.click(picker, { clientX: 60, clientY: 25 });
+      await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.update', expect.objectContaining({ mediaId: 'm-1', expectedVersion: 1, focalX: 30, focalY: 25 })));
+      expect(await screen.findByText('Fokus 30%, 25% — klik lagi untuk mengubah.')).toBeDefined();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it('mengganti label tombol simpan mengikuti status', async () => {
     const user = userEvent.setup();
     setup({});
