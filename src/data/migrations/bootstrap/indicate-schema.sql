@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (170 migrations):
+-- Reviewed sources, in journal order (171 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -183,6 +183,7 @@
 --   168  20260924040000_publisher_logo_r2_backfill  ledger sha256:82ab65b7d6a954ab39c7c7d5301c64ba07ec03f10212a32d7e8d67af69a86ad3
 --   169  20260925000000_media_gallery_editorial  ledger sha256:7bd75caf534758c645fadab19f4e93be19dda8fc79b01a42ca36ff053f6d1c68
 --   170  20260925010000_rls_policy_runtime_role  ledger sha256:8904304380fa8d9855948533bda026e0bba00433fac691cabfd121de97bb0747
+--   171  20260925020000_fix_guratfakta_zone_id  ledger sha256:072a1bab22435658aebd684b66b11ba4b1c1f70be55e103fc4959ae33e64ea2f
 
 BEGIN;
 
@@ -13284,4 +13285,20 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (169, 'rls_policy_runtime_role', 'sha256:14cceb9abc54307e07fc1db361e9993d1b9e03d53feadf5ccc7490b5f5668f64');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('8904304380fa8d9855948533bda026e0bba00433fac691cabfd121de97bb0747', 1790336400000);
+
+-- ----------------------------------------------------------------------
+-- 20260925020000_fix_guratfakta_zone_id
+-- ----------------------------------------------------------------------
+-- Correct stale Cloudflare zone id for guratfakta.my.id.
+--
+-- Live zone is 332bddc96a12921de893d5892fa4ee6d; the stored value pointed at
+-- a non-existent zone, so zone-scoped authority calls and WAF rollouts miss
+-- it. Single-row metadata correction, no schema change.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+UPDATE public.domains SET cloudflare_zone_id = '332bddc96a12921de893d5892fa4ee6d', updated_at = now() WHERE normalized_hostname = 'guratfakta.my.id';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (170, 'fix_guratfakta_zone_id', 'sha256:dcf7c10b133d738d2608fd30eb343fa0c607a6d3c6079e77372634845a2121de');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('072a1bab22435658aebd684b66b11ba4b1c1f70be55e103fc4959ae33e64ea2f', 1790340000000);
 COMMIT;
