@@ -59,6 +59,8 @@ apex lama 308 ganda Cloudflare + Vercel (`redirect: indicate.website`, 308).
 Domain bawaan `*.vercel.app` tetap mapping dashboard + SSO (bukan redirect).
 Burnt-earth 2026-09-25: domain R2 `media.indicate.web.id` dicabut (bucket hanya baru,
 DNS ikut hilang otomatis; email lama yang memuat logo lama ikut rusak, disetujui owner).
+Bersih total 2026-09-26: route Worker + DNS `pv` lama dihapus; allow-list Auth live
+hanya callback baru.
 Sisa 0 slot; penambahan berikutnya tetap butuh penaikan limit
 (`project_domain_limit_reached`, "maximum allowed number of domains
 (50) ... contact sales").
