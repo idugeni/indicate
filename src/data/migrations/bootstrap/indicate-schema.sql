@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (169 migrations):
+-- Reviewed sources, in journal order (170 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -182,6 +182,7 @@
 --   167  20260924030000_public_directory  ledger sha256:46fab2aa92bd6314226dfc41d8af84f4c55b063575b8695fd324aec654f590bb
 --   168  20260924040000_publisher_logo_r2_backfill  ledger sha256:82ab65b7d6a954ab39c7c7d5301c64ba07ec03f10212a32d7e8d67af69a86ad3
 --   169  20260925000000_media_gallery_editorial  ledger sha256:7bd75caf534758c645fadab19f4e93be19dda8fc79b01a42ca36ff053f6d1c68
+--   170  20260925010000_rls_policy_runtime_role  ledger sha256:8904304380fa8d9855948533bda026e0bba00433fac691cabfd121de97bb0747
 
 BEGIN;
 
@@ -13257,4 +13258,30 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (168, 'media_gallery_editorial', 'sha256:ce37b0e615fe15069fc28b65a6b95df7e7e258b8dd9d027f1193abf86a2958bf');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7bd75caf534758c645fadab19f4e93be19dda8fc79b01a42ca36ff053f6d1c68', 1790332800000);
+
+-- ----------------------------------------------------------------------
+-- 20260925010000_rls_policy_runtime_role
+-- ----------------------------------------------------------------------
+-- Restrict tenant RLS policies to runtime role.
+--
+-- CREATE POLICY without TO defaults to PUBLIC. Two tenant tables missed the
+-- TO indicate_runtime clause while every sibling policy targets the runtime
+-- role, leaving a broader policy subject than intended even though FORCE RLS
+-- plus the organization guard still applies. Recreate both with the explicit
+-- role. cron.job and cron.job_run_details keep their extension-default PUBLIC
+-- policies and are intentionally untouched.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+DROP POLICY IF EXISTS tenant_isolation ON public.article_revisions;
+CREATE POLICY tenant_isolation ON public.article_revisions TO indicate_runtime
+  USING (organization_id = indicate_private.current_organization_id())
+  WITH CHECK (organization_id = indicate_private.current_organization_id());
+DROP POLICY IF EXISTS tenant_isolation ON public.article_site_view_days;
+CREATE POLICY tenant_isolation ON public.article_site_view_days TO indicate_runtime
+  USING (organization_id = indicate_private.current_organization_id() AND ((SELECT indicate_private.current_region_id()) IS NULL OR EXISTS (SELECT 1 FROM public.sites s WHERE s.organization_id = article_site_view_days.organization_id AND s.id = article_site_view_days.site_id AND (s.region_id IS NULL OR s.region_id = (SELECT indicate_private.current_region_id())))))
+  WITH CHECK (organization_id = indicate_private.current_organization_id());
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (169, 'rls_policy_runtime_role', 'sha256:14cceb9abc54307e07fc1db361e9993d1b9e03d53feadf5ccc7490b5f5668f64');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('8904304380fa8d9855948533bda026e0bba00433fac691cabfd121de97bb0747', 1790336400000);
 COMMIT;
