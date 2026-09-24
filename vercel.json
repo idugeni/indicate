@@ -7,14 +7,6 @@
       "schedule": "0 1 * * *"
     },
     {
-      "path": "/api/internal/maintenance/outbox-drain",
-      "schedule": "0 23 * * *"
-    },
-    {
-      "path": "/api/internal/maintenance/telegram-commands",
-      "schedule": "0 6 * * *"
-    },
-    {
       "path": "/api/internal/publishing?mode=work",
       "schedule": "0 2 * * *"
     },

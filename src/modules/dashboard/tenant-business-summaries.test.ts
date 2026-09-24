@@ -25,7 +25,6 @@ const tenantState = {
   siteSettings: [],
   roles: [],
   memberships: [],
-  telegramMappings: [],
 };
 
 function harness(repoOverrides: Record<string, unknown> = {}) {

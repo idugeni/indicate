@@ -23,7 +23,6 @@ const COLLECTIONS = [
   'siteSettings',
   'roles',
   'memberships',
-  'telegramMappings',
   'publishers',
   'affiliations',
   'categories',

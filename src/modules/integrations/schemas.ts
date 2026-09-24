@@ -19,30 +19,6 @@ export const apiKeyRotateSchema = z.object({
 }).strict();
 export const apiKeyRevokeSchema = z.object({ apiKeyId: id, expectedVersion }).strict();
 
-export const telegramMappingCreateSchema = z.object({
-  userId: id,
-  roleId: id,
-  telegramUserId: z.string().trim().min(1).max(100),
-  telegramChatId: z.string().trim().min(1).max(100),
-  consentIpHash: z.string().regex(/^[0-9a-f]{64}$/).nullable().default(null),
-}).strict();
-
-/** Telegram link consent text version (PENDING A6 consent trail). */
-export const TELEGRAM_LINK_CONSENT_VERSION = 'telegram-link/1';
-export const telegramMappingUpdateSchema = z.object({
-  mappingId: id,
-  expectedVersion,
-  userId: id,
-  roleId: id,
-  telegramUserId: z.string().trim().min(1).max(100),
-  telegramChatId: z.string().trim().min(1).max(100),
-  status: z.enum(['active', 'inactive', 'archived']),
-}).strict();
-
-export const telegramBroadcastSchema = z.object({
-  text: z.string().trim().min(1).max(4000),
-}).strict();
-
 /** Manual activation writes only; no plans, no periods. */
 const subscriptionWriteStatus = z.enum(['active', 'suspended', 'cancelled']);
 
@@ -74,39 +50,6 @@ export const genericWebhookHeadersSchema = z.object({
   timestamp: z.coerce.number().int().nonnegative(),
   signature: z.string().regex(/^sha256=[a-f0-9]{64}$/),
 }).strict();
-
-const telegramDocumentSchema = z.object({
-  file_id: z.string().min(1).max(255),
-  file_name: z.string().min(1).max(255).optional(),
-  mime_type: z.string().min(1).max(100).optional(),
-  file_size: z.number().int().positive().optional(),
-}).passthrough();
-const telegramPhotoSchema = z.object({
-  file_id: z.string().min(1).max(255),
-  file_size: z.number().int().positive().optional(),
-}).passthrough();
-const telegramCallbackQuerySchema = z.object({
-  id: z.string().min(1).max(255),
-  from: z.object({ id: z.union([z.number().int(), z.string().regex(/^-?\d+$/)]) }).passthrough(),
-  message: z.object({
-    message_id: z.union([z.number().int(), z.string().regex(/^\d+$/)]),
-    date: z.number().int().nonnegative(),
-    chat: z.object({ id: z.union([z.number().int(), z.string().regex(/^-?\d+$/)]) }).passthrough(),
-  }).passthrough().optional(),
-  data: z.string().min(1).max(256).optional(),
-}).passthrough();
-export const telegramUpdateSchema = z.object({
-  update_id: z.union([z.number().int().nonnegative(), z.string().regex(/^\d+$/)]),
-  message: z.object({
-    date: z.number().int().nonnegative(),
-    from: z.object({ id: z.union([z.number().int(), z.string().regex(/^-?\d+$/)]) }).passthrough(),
-    chat: z.object({ id: z.union([z.number().int(), z.string().regex(/^-?\d+$/)]) }).passthrough(),
-    text: z.string().max(20_000).optional(),
-    document: telegramDocumentSchema.optional(),
-    photo: z.array(telegramPhotoSchema).optional(),
-  }).passthrough().optional(),
-  callback_query: telegramCallbackQuerySchema.optional(),
-}).passthrough().refine((value) => value.message !== undefined || value.callback_query !== undefined);
 
 export const rateLimitPolicySchema = z.object({
   allowance: z.number().int().min(1).max(10_000),

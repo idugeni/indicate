@@ -287,7 +287,6 @@ export class TenantBusinessService {
         sites: (siteState?.sites ?? []).filter((site) => siteInScope(site, lock)),
         siteSettings: (siteState?.siteSettings ?? []).filter((settings) => (siteState?.sites ?? []).some((site) => site.id === settings.siteId && siteInScope(site, lock))),
         roles: (roleManage?.roles ?? []).map(roleJson), memberships: membershipState?.memberships ?? [],
-        telegramMappings: membershipState?.telegramMappings ?? [],
         activationAttempts, invitations,
         regionScope: scopeRegion === undefined || scopeRegion === null ? null : { id: scopeRegion.id, name: scopeRegion.name },
       } };
@@ -451,13 +450,6 @@ export class TenantBusinessService {
       if (value.regionId !== null) requireRecord(transaction.state.regions, value.regionId);
       const before = transaction.state.memberships.find(({ userId }) => userId === value.userId);
       if (before !== undefined && value.expectedVersion !== undefined) requireVersion(before, value.expectedVersion);
-      for (let index = 0; index < transaction.state.telegramMappings.length; index += 1) {
-        const mapping = transaction.state.telegramMappings[index]!;
-        const diverges = value.status !== 'active' || mapping.roleId !== value.roleId || (before !== undefined && before.regionId !== value.regionId);
-        if (mapping.userId === value.userId && mapping.status === 'active' && diverges) {
-          transaction.state.telegramMappings[index] = { ...mapping, status: 'inactive', updatedAt: now };
-        }
-      }
       const persistedDisplayName = before?.displayName ?? await transaction.resolveUserDisplayName(value.userId);
       if (persistedDisplayName === null) throw new DashboardAccessDeniedError();
       const after: MembershipRecord = before === undefined

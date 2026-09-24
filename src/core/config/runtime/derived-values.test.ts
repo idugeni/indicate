@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { TELEGRAM_WEBHOOK_PATH, deriveRedisNamespace, deriveTelegramWebhookUrl } from '@/core/config/runtime/derived-values';
-
-describe('deriveTelegramWebhookUrl', () => {
-  it('menggabung host webhook dengan path tetap', () => {
-    expect(deriveTelegramWebhookUrl('webhook.indicate.web.id')).toBe(`https://webhook.indicate.web.id${TELEGRAM_WEBHOOK_PATH}`);
-  });
-});
+import { deriveRedisNamespace } from '@/core/config/runtime/derived-values';
 
 describe('deriveRedisNamespace', () => {
   it('mempartisi kunci per environment dan versi cache', () => {

@@ -258,26 +258,3 @@ export const privacyRequests = pgTable('privacy_requests', {
   index('privacy_requests_org_status_idx').on(table.organizationId, table.status),
   index('privacy_requests_requester_idx').on(table.requesterUserId),
 ]);
-
-export const telegramIdentityMappings = pgTable('telegram_identity_mappings', {
-  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
-  id: uuid('id').notNull(),
-  telegramUserId: text('telegram_user_id').notNull(),
-  telegramChatId: text('telegram_chat_id').notNull(),
-  userId: uuid('user_id').notNull(),
-  roleId: uuid('role_id').notNull(),
-  status: recordStatus('status').default('active').notNull(),
-  version: integer('version').default(1).notNull(),
-  consentedAt: timestamp('consented_at', { withTimezone: true }),
-  consentTextVersion: text('consent_text_version'),
-  ipHash: text('ip_hash'),
-  ...timestamps,
-}, (table) => [
-  primaryKey({ name: 'telegram_identity_mappings_pk', columns: [table.organizationId, table.id] }),
-  unique('telegram_identity_org_user_chat_unique').on(table.organizationId, table.telegramUserId, table.telegramChatId),
-  foreignKey({ name: 'telegram_identity_membership_fk', columns: [table.organizationId, table.userId], foreignColumns: [memberships.organizationId, memberships.userId] }).onDelete('cascade'),
-  foreignKey({ name: 'telegram_identity_role_fk', columns: [table.organizationId, table.roleId], foreignColumns: [roles.organizationId, roles.id] }).onDelete('restrict'),
-  index('telegram_identity_status_idx').on(table.organizationId, table.status),
-  check('telegram_identity_mappings_version_positive', sql`${table.version} > 0`),
-  check('telegram_identity_mappings_ip_hash', sql`${table.ipHash} IS NULL OR ${table.ipHash} ~ '^[0-9a-f]{64}$'`),
-]);

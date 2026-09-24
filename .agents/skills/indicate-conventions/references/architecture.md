@@ -22,16 +22,16 @@ src/app/ → src/modules/ → src/core/ + ports ← src/integrations/
 
 ## Directory map
 
-- `src/app/` — routing only. Route groups `(site)` (Dashboard host landing), `(network)` (tenant public content), `(auth)`, `(dashboard)` (editorial Dashboard), `api/` (health, v1, dashboard, internal, leads, network, webhooks), plus `domain-pending/`, `tg/`, and machine-readable surfaces (`llms.txt/`, `robots.txt/`, `rss.xml/`, `sitemap.xml/`, `news-sitemap.xml/`). No underscore composition roots; services wire directly in route handlers via shared modules.
+- `src/app/` — routing only. Route groups `(site)` (Dashboard host landing), `(network)` (tenant public content), `(auth)`, `(dashboard)` (editorial Dashboard), `api/` (health, v1, dashboard, internal, leads, network, webhooks), plus `domain-pending/` and machine-readable surfaces (`llms.txt/`, `robots.txt/`, `rss.xml/`, `sitemap.xml/`, `news-sitemap.xml/`). No underscore composition roots; services wire directly in route handlers via shared modules.
 - `src/modules/<capability>/` — `audit`, `auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `moderation`, `persisted-config`, `publishing`, `site`. Only `dashboard`, `delivery`, and `integrations` expose a barrel `index.ts`; import other modules by file path.
-- `src/integrations/<provider>/` — `supabase`, `storage` (R2 adapter), `redis`, `telegram`, `cloudflare` (API v4: zones, purge_cache, SSL), `vercel` (exact-domain API), `email` (Resend). Server-only.
+- `src/integrations/<provider>/` — `supabase`, `storage` (R2 adapter), `redis`, `cloudflare` (API v4: zones, purge_cache, SSL), `vercel` (exact-domain API), `email` (Resend). Server-only.
 - `src/core/` — `config/` (runtime schema, public config, runtime context, persisted parser, bootstrap), errors, operation context, hostname normalization, observability, routing, security, system, transactions.
 - `src/data/` — `schema/`, `client.ts` (singleton; pooled URL runtime, direct URL migrations), `repos/`, `migrations/`.
 - `src/components/ui/` — shadcn/ui; `src/ui/` — `cn` helper alias.
 
 ## Key behavioral rules
 
-- Adapters (Dashboard, API, Telegram, background, reconciliation) invoke shared application services; no tenant SQL or duplicated business rules in adapters.
+- Adapters (Dashboard, API, background, reconciliation) invoke shared application services; no tenant SQL or duplicated business rules in adapters.
 - Record durable intent in Postgres first; external effects after, resumable/bounded/idempotent.
 - Publication acceptance is transactional and Organization-scoped by Idempotency Key + canonical Request Fingerprint.
 - Next.js 16 conventions: `src/proxy.ts` for hostname routing, `instrumentation.ts` registers runtime context, `typedEnv` enabled.

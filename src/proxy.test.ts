@@ -61,7 +61,7 @@ describe('proxy control surfaces', () => {
   it('meneruskan path yang sah per host', async () => {
     expect((await proxy(request(HOSTS.dashboard, '/dashboard'))).status).toBe(200);
     expect((await proxy(request(HOSTS.api, '/api/v1/commands'))).status).toBe(200);
-    expect((await proxy(request(HOSTS.webhook, '/api/webhooks/telegram'))).status).toBe(200);
+    expect((await proxy(request(HOSTS.webhook, '/api/webhooks/resend'))).status).toBe(200);
   });
 });
 
@@ -96,17 +96,10 @@ describe('proxy tenant surfaces', () => {
     expect(response.headers.get('x-frame-options')).toBe('DENY');
   });
 
-  it('membuka CSP Mini App Telegram di /tg/app', async () => {
-    const response = await proxy(request(HOSTS.dashboard, '/tg/app'));
-    expect(response.status).toBe(200);
-    expect(response.headers.get('content-security-policy')).toContain('https://telegram.org');
-    expect(response.headers.get('x-frame-options')).toBeNull();
-  });
-
-  it('mengunci framing di luar Mini App', async () => {
+  it('mengunci framing di semua permukaan', async () => {
     const response = await proxy(request('portal.example', '/berita-utama'));
     expect(response.headers.get('x-frame-options')).toBe('DENY');
-    expect(response.headers.get('content-security-policy')).not.toContain('https://telegram.org');
+    expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'none'");
   });
 
   it('melewatkan rute media melalui matcher edge', async () => {
@@ -116,9 +109,7 @@ describe('proxy tenant surfaces', () => {
     expect(matcher.test('/api/v1/commands')).toBe(true);
   });
 
-  it('menolak permukaan auth dan Mini App di host tenant', async () => {
-    expect((await proxy(request('portal.example', '/tg/app'))).status).toBe(404);
-    expect((await proxy(request('portal.example', '/api/tg/app/session'))).status).toBe(404);
+  it('menolak permukaan auth di host tenant', async () => {
     expect((await proxy(request('portal.example', '/sign-up'))).status).toBe(404);
     expect((await proxy(request('portal.example', '/forgot-password'))).status).toBe(404);
     expect((await proxy(request('portal.example', '/update-password'))).status).toBe(404);

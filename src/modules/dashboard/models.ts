@@ -100,16 +100,6 @@ export interface MembershipRecord extends VersionedRecord {
   readonly regionId: string | null;
 }
 
-export interface TelegramIdentityMappingSummary {
-  readonly id: string;
-  readonly organizationId: string;
-  readonly userId: string;
-  readonly roleId: string;
-  readonly status: LifecycleStatus;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
-
 export interface PublisherRecord extends VersionedRecord {
   readonly name: string;
   readonly type: PublisherType;
@@ -221,9 +211,9 @@ export interface PublishingJobTargetSummary {
 export interface AuditRecord {
   readonly id: string;
   readonly organizationId: string;
-  readonly actorType: 'user' | 'api_key' | 'telegram' | 'system';
+  readonly actorType: 'user' | 'api_key' | 'system';
   readonly actorId: string;
-  readonly entryPoint: 'dashboard' | 'api' | 'telegram' | 'worker' | 'reconciler';
+  readonly entryPoint: 'dashboard' | 'api' | 'worker' | 'reconciler';
   readonly action: string;
   readonly targetType: string;
   readonly targetId: string | null;
@@ -269,7 +259,6 @@ export interface DashboardTenantState {
   readonly siteSettings: readonly SiteSettingsRecord[];
   readonly roles: readonly RoleRecord[];
   readonly memberships: readonly MembershipRecord[];
-  readonly telegramMappings: readonly TelegramIdentityMappingSummary[];
   readonly publishers: readonly PublisherRecord[];
   readonly affiliations: readonly OfficialAffiliationRecord[];
   readonly categories: readonly CategoryRecord[];
@@ -487,16 +476,6 @@ export interface CacheBypassSummary {
   readonly updatedAt: string;
 }
 
-export interface TelegramConversationSummary {
-  readonly id: string;
-  readonly organizationId: string;
-  readonly name: string;
-  readonly status: string;
-  readonly step: string;
-  readonly expiresAt: string;
-  readonly updatedAt: string;
-}
-
 export interface TransitionReceiptSummary {
   readonly id: string;
   readonly organizationId: string;
@@ -516,23 +495,11 @@ export interface WebhookReplayClaimSummary {
   readonly expiresAt: string;
 }
 
-export interface TelegramOutboxSummary {
-  readonly id: string;
-  readonly organizationId: string;
-  readonly name: string;
-  readonly status: string;
-  readonly attempts: number;
-  readonly nextAttemptAt: string;
-  readonly createdAt: string;
-}
-
 export interface OperationsProjection {
   readonly invalidationTasks: readonly InvalidationTaskSummary[];
   readonly objectCleanupTasks: readonly ObjectCleanupTaskSummary[];
   readonly mediaKeyReservations: readonly MediaKeyReservationSummary[];
   readonly cacheBypasses: readonly CacheBypassSummary[];
-  readonly telegramConversations: readonly TelegramConversationSummary[];
-  readonly telegramOutbox: readonly TelegramOutboxSummary[];
   readonly transitionReceipts: readonly TransitionReceiptSummary[];
   readonly webhookReplayClaims: readonly WebhookReplayClaimSummary[];
 }

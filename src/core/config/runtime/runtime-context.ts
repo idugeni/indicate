@@ -97,11 +97,6 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
       batchSize: policies.publication.batchSize,
       functionDeadlineSeconds: policies.publication.functionDeadlineSeconds,
     }),
-    telegram: Object.freeze({
-      botToken: bootstrap.credentials.telegramBotToken.reveal(),
-      webhookSecret: bootstrap.credentials.telegramWebhookSecret.reveal(),
-      ownerIds: bootstrap.credentials.telegramOwnerIds,
-    }),
     email:
       bootstrap.credentials.resendApiKey === null || bootstrap.credentials.resendDefaultFrom === null
         ? null

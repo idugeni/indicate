@@ -14,8 +14,6 @@ const VALID = {
   R2_SECRET_ACCESS_KEY: 'r2-secret-123',
   UPSTASH_REDIS_REST_URL: 'https://redis.example',
   UPSTASH_REDIS_REST_TOKEN: 'upstash-token-123',
-  TELEGRAM_BOT_TOKEN: 'telegram-token-123',
-  TELEGRAM_WEBHOOK_SECRET: 'webhook-secret-123',
   GENERIC_WEBHOOK_SECRET: 'generic-secret-123',
   CRON_SECRET: 'cron-secret-123',
 };

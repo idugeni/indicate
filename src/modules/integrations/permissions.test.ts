@@ -10,7 +10,6 @@ describe('INTEGRATIONS_PERMISSIONS', () => {
   it('memetakan kunci integrasi ke string permission kanonik', () => {
     expect(INTEGRATIONS_PERMISSIONS.apiKeyRead).toBe('api_key.read');
     expect(INTEGRATIONS_PERMISSIONS.apiKeyManage).toBe('api_key.manage');
-    expect(INTEGRATIONS_PERMISSIONS.telegramManage).toBe('telegram.manage');
     expect(INTEGRATIONS_PERMISSIONS.subscriptionRead).toBe('subscription.read');
     expect(INTEGRATIONS_PERMISSIONS.subscriptionManage).toBe('subscription.manage');
     expect(INTEGRATIONS_PERMISSIONS.superAdmin).toBe('platform.super_admin');
@@ -22,10 +21,9 @@ describe('INTEGRATIONS_PERMISSIONS', () => {
 });
 
 describe('INTEGRATIONS_TENANT_PERMISSION_NAMES', () => {
-  it('hanya berisi lima permission tenant tanpa grant platform', () => {
-    expect([...INTEGRATIONS_TENANT_PERMISSION_NAMES]).toHaveLength(5);
+  it('hanya berisi empat permission tenant tanpa grant platform', () => {
+    expect([...INTEGRATIONS_TENANT_PERMISSION_NAMES]).toHaveLength(4);
     expect(INTEGRATIONS_TENANT_PERMISSION_NAMES).toContain('api_key.read');
-    expect(INTEGRATIONS_TENANT_PERMISSION_NAMES).toContain('telegram.manage');
     expect(INTEGRATIONS_TENANT_PERMISSION_NAMES).not.toContain('platform.super_admin');
     expect(INTEGRATIONS_TENANT_PERMISSION_NAMES).not.toContain('platform.customer.admin');
   });

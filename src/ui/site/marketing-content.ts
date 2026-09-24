@@ -88,9 +88,9 @@ export const VALUE_PROPOSITIONS: readonly FeatureItem[] = Object.freeze([
       'Setiap pembacaan dan perubahan terikat pada satu organisasi. Pengunjung diarahkan ke satu situs berdasarkan nama host yang sama persis, tanpa kecocokan sebagian dan tanpa situs cadangan.',
   },
   {
-    title: 'Alur kerja dari mana saja',
+    title: 'Satu aturan di semua pintu',
     description:
-      'Dasbor web dan bot Telegram memakai aturan bisnis yang sama, sehingga izin dan hasilnya tidak berbeda antar pintu masuk.',
+      'Dasbor web dan API memakai aturan bisnis yang sama, sehingga izin dan hasilnya tidak berbeda antar pintu masuk.',
   },
   {
     title: 'Domain tetap milik Anda',
@@ -179,13 +179,13 @@ export const CAPABILITIES: readonly FeatureItem[] = Object.freeze([
     ],
   },
   {
-    title: 'Kerja dari Telegram',
+    title: 'Kerja dari dasbor terpusat',
     description:
-      'Wartawan bisa mengirim berita lewat chat Telegram. Hanya nomor yang sudah didaftarkan yang diterima; sisanya ditolak otomatis.',
+      'Wartawan menulis dan mengirim berita dari satu dasbor web. Hanya peran terdaftar yang diterima; sisanya ditolak otomatis.',
     points: [
-      'Kirim berita lewat chat dari nomor terdaftar',
-      'Nomor tak dikenal ditolak otomatis',
-      'Aturan bisnis sama dengan dasbor web',
+      'Tulis dan kirim berita dari satu dasbor',
+      'Peran tak dikenal ditolak otomatis',
+      'Aturan bisnis sama dengan API',
     ],
   },
   {
@@ -239,7 +239,7 @@ export const WORKFLOW_STEPS: readonly FeatureItem[] = Object.freeze([
   {
     title: 'Susun redaksi',
     description:
-      'Tambahkan anggota beserta perannya, hubungkan nomor Telegram bila diperlukan, dan tentukan penjenamaan tiap situs.',
+      'Tambahkan anggota beserta perannya, dan tentukan penjenamaan tiap situs.',
   },
   {
     title: 'Terbitkan dan pantau',
@@ -313,7 +313,7 @@ export const ABOUT_PRINCIPLES: readonly FeatureItem[] = Object.freeze([
 export const CONTACT_CHECKLIST: readonly string[] = Object.freeze([
   'Jumlah domain induk dan daftar wilayah yang direncanakan',
   'Perkiraan jumlah anggota redaksi beserta perannya',
-  'Apakah wartawan perlu kirim berita via Telegram',
+  'Apakah perlu kunci API untuk integrasi sistem internal',
   'Apakah ada konten yang perlu dipindahkan dari sistem lama',
 ]);
 
@@ -486,7 +486,7 @@ export const PRIVACY_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   },
   {
     heading: '10. Jejak audit dan log keamanan',
-    body: 'Aktivitas sensitif — seperti perubahan peran anggota, persetujuan order, perubahan konfigurasi situs dan domain, penerbitan dan penarikan artikel, serta akses administratif — dicatat pada jejak audit yang bersifat hanya-tambah: dapat disisipkan dan dibaca untuk pertanggungjawaban, tetapi tidak dapat diubah atau dihapus melalui Layanan, bahkan oleh administrator. Catatan audit sengaja tidak memuat nilai rahasia seperti kata sandi, token, atau kunci; apabila nilai sensitif terdeteksi dalam masukan, sistem menyanitasi sebelum pencatatan. Pengenal Telegram pada konteks audit hanya disimpan sebagai pseudonim hash satu arah, bukan nilai mentah. Setiap baris audit dirantai secara kriptografis (hash + HMAC dengan kunci terpisah, stempel jam database) dan integritas rantai diverifikasi otomatis setiap malam; hasilnya menjadi bukti jadwal retensi pada Bagian 13. Log teknis untuk keamanan dan diagnosis (misalnya kegagalan masuk, galat aplikasi, dan peristiwa batas laju) disimpan terpisah dengan masa simpan pendek dan akses terbatas pada personel siaga, serta ditinjau hanya untuk investigasi insiden. Jejak audit dipertahankan lebih lama daripada log teknis karena fungsinya sebagai bukti pertanggungjawaban, sesuai jadwal retensi pada Bagian 13, dan dapat diberikan kepada auditor atau aparat penegak hukum yang sah apabila diwajibkan hukum.',
+    body: 'Aktivitas sensitif — seperti perubahan peran anggota, persetujuan order, perubahan konfigurasi situs dan domain, penerbitan dan penarikan artikel, serta akses administratif — dicatat pada jejak audit yang bersifat hanya-tambah: dapat disisipkan dan dibaca untuk pertanggungjawaban, tetapi tidak dapat diubah atau dihapus melalui Layanan, bahkan oleh administrator. Catatan audit sengaja tidak memuat nilai rahasia seperti kata sandi, token, atau kunci; apabila nilai sensitif terdeteksi dalam masukan, sistem menyanitasi sebelum pencatatan. Setiap baris audit dirantai secara kriptografis (hash + HMAC dengan kunci terpisah, stempel jam database) dan integritas rantai diverifikasi otomatis setiap malam; hasilnya menjadi bukti jadwal retensi pada Bagian 13. Log teknis untuk keamanan dan diagnosis (misalnya kegagalan masuk, galat aplikasi, dan peristiwa batas laju) disimpan terpisah dengan masa simpan pendek dan akses terbatas pada personel siaga, serta ditinjau hanya untuk investigasi insiden. Jejak audit dipertahankan lebih lama daripada log teknis karena fungsinya sebagai bukti pertanggungjawaban, sesuai jadwal retensi pada Bagian 13, dan dapat diberikan kepada auditor atau aparat penegak hukum yang sah apabila diwajibkan hukum.',
   },
   {
     heading: '11. Subprosesor dan penyedia infrastruktur',
@@ -498,7 +498,7 @@ export const PRIVACY_SECTIONS: readonly DocSectionItem[] = Object.freeze([
   },
   {
     heading: '13. Masa retensi dan jadwal penghapusan',
-    body: 'Kami menyimpan data tidak lebih lama dari yang diperlukan untuk tujuannya, lalu menghapus atau menganonimkan. Jadwal baku kami adalah: data akun dan konten aktif dipertahankan selama langganan berjalan; setelah penghentian, data operasional (artikel, media, konfigurasi, keanggotaan) dihapus dalam tenggat wajar paling lama 90 hari sejak seluruh kewajiban selesai, kecuali Anda meminta penghapusan lebih cepat yang akan kami prioritaskan; salinan cadangan terenkripsi bergulir dan akan terhapus menurut siklus rotasi cadangan tanpa pemulihan selektif per artikel; arsip penagihan disimpan hingga 10 tahun untuk memenuhi kewajiban perpajakan dan pembuktian keuangan; jejak audit keamanan disimpan hingga 5 tahun sebagai bukti pertanggungjawaban; log teknis berumur pendek disimpan 30–90 hari lalu diagregasi atau dihapus; dan tiket dukungan disimpan hingga 2 tahun untuk pengendalian mutu. Data kedaluwarsa bantu (undangan basi, klaim replay kedaluwarsa, tugas cleanup selesai, percakapan Telegram kedaluwarsa) disapu otomatis setiap malam dan setiap penyapuan dicatat sebagai bukti. Apabila hukum mewajibkan penyimpanan lebih lama untuk perkara tertentu (litigation hold), penghapusan ditunda sebatas yang diwajibkan dan dilanjutkan segera setelah dasarnya berakhir.',
+    body: 'Kami menyimpan data tidak lebih lama dari yang diperlukan untuk tujuannya, lalu menghapus atau menganonimkan. Jadwal baku kami adalah: data akun dan konten aktif dipertahankan selama langganan berjalan; setelah penghentian, data operasional (artikel, media, konfigurasi, keanggotaan) dihapus dalam tenggat wajar paling lama 90 hari sejak seluruh kewajiban selesai, kecuali Anda meminta penghapusan lebih cepat yang akan kami prioritaskan; salinan cadangan terenkripsi bergulir dan akan terhapus menurut siklus rotasi cadangan tanpa pemulihan selektif per artikel; arsip penagihan disimpan hingga 10 tahun untuk memenuhi kewajiban perpajakan dan pembuktian keuangan; jejak audit keamanan disimpan hingga 5 tahun sebagai bukti pertanggungjawaban; log teknis berumur pendek disimpan 30–90 hari lalu diagregasi atau dihapus; dan tiket dukungan disimpan hingga 2 tahun untuk pengendalian mutu. Data kedaluwarsa bantu (undangan basi, klaim replay kedaluwarsa, tugas cleanup selesai) disapu otomatis setiap malam dan setiap penyapuan dicatat sebagai bukti. Apabila hukum mewajibkan penyimpanan lebih lama untuk perkara tertentu (litigation hold), penghapusan ditunda sebatas yang diwajibkan dan dilanjutkan segera setelah dasarnya berakhir.',
   },
   {
     heading: '14. Hak Anda sebagai subjek data menurut UU PDP',

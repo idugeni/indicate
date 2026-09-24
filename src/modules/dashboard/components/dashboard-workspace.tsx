@@ -327,7 +327,6 @@ function resolveApiEndpoint(target: View | string): 'publishing' | 'integrations
     target === 'settings' ||
     target === 'customers' ||
     target.startsWith('api-key.') ||
-    target.startsWith('telegram-mapping.') ||
     target.startsWith('customer.') ||
     target.startsWith('email.') ||
     target.startsWith('subscription.')

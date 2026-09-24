@@ -7,7 +7,7 @@ import { DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimite
 import { redact } from '@/core/security/redaction';
 import {
   apiKeys, articleCategories, articleRevisions, articleSites, articles, auditLogs, authors, cacheBypasses, categories, domainActivationAttempts, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks, officialAffiliations, organizations,
-  permissions, publicationTransitionReceipts, publishers, publishingJobs, publishingJobTargets, regions, rolePermissions, roles, sites, siteSettings, telegramConversations, telegramIdentityMappings, users, webhookReplayClaims,
+  permissions, publicationTransitionReceipts, publishers, publishingJobs, publishingJobTargets, regions, rolePermissions, roles, sites, siteSettings, users, webhookReplayClaims,
 } from '@/data/schema';
 import type * as schema from '@/data/schema';
 import { completeInvalidationValues } from '@/data/repos/shared/delivery-invalidation-values';
@@ -84,13 +84,12 @@ export class DrizzleDashboardRepository implements DashboardRepository {
   private async load(transaction: Transaction, organizationId: string): Promise<DashboardTenantState> {
     const organization = await transaction.select().from(organizations).where(and(eq(organizations.id, organizationId), eq(organizations.status, 'active'))).limit(1);
     if (organization[0] === undefined) throw new DashboardAccessDeniedError();
-    const [domainRows, regionRows, siteRows, settingsRows, roleRows, grantRows, membershipRows, telegramMappingRows, publisherRows, affiliationRows, categoryRows, authorRows, articleRows, articleCategoryRows, assignmentRows, mediaRows, jobRows, targetRows] = await Promise.all([
+    const [domainRows, regionRows, siteRows, settingsRows, roleRows, grantRows, membershipRows, publisherRows, affiliationRows, categoryRows, authorRows, articleRows, articleCategoryRows, assignmentRows, mediaRows, jobRows, targetRows] = await Promise.all([
       transaction.select().from(domains).where(eq(domains.organizationId, organizationId)), transaction.select().from(regions).where(eq(regions.organizationId, organizationId)),
       transaction.select().from(sites).where(eq(sites.organizationId, organizationId)), transaction.select().from(siteSettings).where(eq(siteSettings.organizationId, organizationId)),
       transaction.select().from(roles).where(eq(roles.organizationId, organizationId)),
       transaction.select({ roleId: rolePermissions.roleId, permission: permissions.name }).from(rolePermissions).innerJoin(permissions, and(eq(permissions.id, rolePermissions.permissionId), eq(permissions.organizationId, organizationId), eq(permissions.scope, 'organization'))).where(eq(rolePermissions.organizationId, organizationId)),
       transaction.select().from(memberships).where(eq(memberships.organizationId, organizationId)),
-      transaction.select().from(telegramIdentityMappings).where(eq(telegramIdentityMappings.organizationId, organizationId)),
       transaction.select().from(publishers).where(eq(publishers.organizationId, organizationId)), transaction.select().from(officialAffiliations).where(eq(officialAffiliations.organizationId, organizationId)),
       transaction.select().from(categories).where(eq(categories.organizationId, organizationId)), transaction.select().from(authors).where(eq(authors.organizationId, organizationId)),
       transaction.select().from(articles).where(eq(articles.organizationId, organizationId)), transaction.select().from(articleCategories).where(eq(articleCategories.organizationId, organizationId)), transaction.select().from(articleSites).where(eq(articleSites.organizationId, organizationId)),
@@ -107,7 +106,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     const membershipProfiles = new Map<string, { displayName: string; avatarUrl: string | null }>();
     membershipRows.forEach((membership, index) => {
       const profile = profileRows[index]?.[0];
-      // Lookup bound to verified-user: non-user actors (telegram/api_key) lack
+      // Lookup bound to verified-user: non-user actors (api_key) lack
       // that context so it is always empty — use userId as a neutral label
       // (already exposed in the same payload) instead of failing the read.
       membershipProfiles.set(membership.userId, { displayName: profile?.display_name ?? membership.userId, avatarUrl: profile?.avatar_url ?? null });
@@ -124,7 +123,6 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       siteSettings: settingsRows.map((row) => ({ id: row.siteId, organizationId, siteId: row.siteId, name: row.name, description: row.description, tagline: row.tagline, seoDefaultTitle: row.seoDefaultTitle, seoDefaultDescription: row.seoDefaultDescription, seoOpenGraphSiteName: row.seoOpenGraphSiteName, locale: row.locale, seoRobotsDirective: row.seoRobotsDirective, colors: row.colors, socialLinks: row.socialLinks, seo: row.seo, navigation: row.navigation.map((item) => ({ label: String(item.label ?? ''), path: String(item.path ?? '/') })), logoMediaId: row.logoMediaId, faviconMediaId: row.faviconMediaId, defaultMediaId: row.defaultMediaId, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       roles: roleRows.map((row) => ({ id: row.id, organizationId, name: row.name, tier: row.tier, active: row.active, permissions: permissionsByRole.get(row.id) ?? new Set(), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       memberships: membershipRows.map((membership) => ({ id: membership.userId, organizationId, userId: membership.userId, displayName: membershipProfiles.get(membership.userId)!.displayName, avatarUrl: membershipProfiles.get(membership.userId)!.avatarUrl, roleId: membership.roleId, status: membership.status, regionId: membership.regionId, version: membership.version, createdAt: iso(membership.createdAt), updatedAt: iso(membership.updatedAt) })),
-      telegramMappings: telegramMappingRows.map((mapping) => ({ id: mapping.id, organizationId, userId: mapping.userId, roleId: mapping.roleId, status: mapping.status, createdAt: iso(mapping.createdAt), updatedAt: iso(mapping.updatedAt) })),
       publishers: publisherRows.map((row) => ({ id: row.id, organizationId, name: row.name, type: row.type, attributionLabel: row.attributionLabel, contacts: Object.fromEntries(Object.entries(row.contacts).map(([key, value]) => [key, String(value)])), evidenceReference: row.evidenceReference, verificationStatus: row.verificationStatus, submittedBy: row.submittedBy, submittedAt: optionalIso(row.submittedAt), verifiedBy: row.verifiedBy, verifiedAt: optionalIso(row.verifiedAt), rejectionReason: row.rejectionReason, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       affiliations: affiliationRows.map((row) => ({ id: row.id, organizationId, publisherId: row.publisherId, siteId: row.siteId, institutionName: row.institutionName, claimScopes: row.claimScopes, evidenceReference: row.evidenceReference, active: row.active, verifiedAt: optionalIso(row.verifiedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       categories: categoryRows.map((row) => ({ id: row.id, organizationId, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
@@ -596,15 +594,11 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const organization = await transaction.select({ id: organizations.id }).from(organizations).where(and(eq(organizations.id, actor.organizationId), eq(organizations.status, 'active'))).limit(1);
       if (organization.length !== 1) throw new DashboardAccessDeniedError();
       const organizationId = actor.organizationId;
-      const [invalidationRows, cleanupRows, reservationRows, bypassRows, conversationRows, outboxRows, receiptRows, replayRows] = await Promise.all([
+      const [invalidationRows, cleanupRows, reservationRows, bypassRows, receiptRows, replayRows] = await Promise.all([
         transaction.select().from(invalidationTasks).where(eq(invalidationTasks.organizationId, organizationId)).orderBy(desc(invalidationTasks.updatedAt)).limit(100),
         transaction.select().from(objectCleanupTasks).where(eq(objectCleanupTasks.organizationId, organizationId)).orderBy(desc(objectCleanupTasks.updatedAt)).limit(100),
         transaction.select().from(mediaKeyReservations).where(eq(mediaKeyReservations.organizationId, organizationId)).orderBy(desc(mediaKeyReservations.updatedAt)).limit(100),
         transaction.select().from(cacheBypasses).where(eq(cacheBypasses.organizationId, organizationId)).orderBy(desc(cacheBypasses.updatedAt)).limit(100),
-        transaction.select().from(telegramConversations).where(eq(telegramConversations.organizationId, organizationId)).orderBy(desc(telegramConversations.updatedAt)).limit(100),
-        transaction.execute<{
-          id: string; chat_id: string; status: string; attempts: number; next_attempt_at: Date; created_at: Date;
-        }>(sql`SELECT * FROM indicate_private.outbox_list(${actor.actorId}::uuid, ${organizationId}::uuid)`),
         transaction.select().from(publicationTransitionReceipts).where(eq(publicationTransitionReceipts.organizationId, organizationId)).orderBy(desc(publicationTransitionReceipts.createdAt)).limit(100),
         transaction.select().from(webhookReplayClaims).where(eq(webhookReplayClaims.organizationId, organizationId)).orderBy(desc(webhookReplayClaims.receivedAt)).limit(100),
       ]);
@@ -613,8 +607,6 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         objectCleanupTasks: cleanupRows.map((row) => ({ id: row.id, organizationId, name: row.objectKey, status: row.status, reason: row.reason, attempts: row.attempts, nextAttemptAt: row.nextAttemptAt.toISOString(), updatedAt: row.updatedAt.toISOString() })),
         mediaKeyReservations: reservationRows.map((row) => ({ id: row.id, organizationId, name: row.objectKey, status: row.status, purpose: row.purpose, expiresAt: row.expiresAt.toISOString(), updatedAt: row.updatedAt.toISOString() })),
         cacheBypasses: bypassRows.map((row) => ({ id: row.siteId, organizationId, name: row.siteId, status: row.bypass ? 'bypass' : 'cache', siteId: row.siteId, reason: row.reason, updatedAt: row.updatedAt.toISOString() })),
-        telegramConversations: conversationRows.map((row) => ({ id: `${row.telegramChatId}:${row.telegramUserId}`, organizationId, name: `chat ${row.telegramChatId}`, status: 'active', step: row.step, expiresAt: row.expiresAt.toISOString(), updatedAt: row.updatedAt.toISOString() })),
-        telegramOutbox: outboxRows.map((row) => ({ id: row.id, organizationId, name: `chat ${row.chat_id}`, status: row.status, attempts: row.attempts, nextAttemptAt: row.next_attempt_at.toISOString(), createdAt: row.created_at.toISOString() })),
         transitionReceipts: receiptRows.map((row) => ({ id: row.id, organizationId, name: `${row.fromState} → ${row.toState}`, status: row.acknowledgedAt === null ? 'pending' : 'acknowledged', jobId: row.jobId, occurredAt: row.createdAt.toISOString() })),
         webhookReplayClaims: replayRows.map((row) => ({ id: `${row.source}:${row.replayId}`, organizationId, name: `${row.source} · ${row.replayId}`, status: row.status, attemptCount: row.attemptCount, receivedAt: (row.receivedAt instanceof Date ? row.receivedAt : new Date(row.receivedAt)).toISOString(), expiresAt: (row.expiresAt instanceof Date ? row.expiresAt : new Date(row.expiresAt)).toISOString() })),
       });
@@ -748,9 +740,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         ? (await transaction.select({ id: users.id }).from(users).where(eq(users.id, actor.actorId)).limit(1)).length === 1
         : actor.actorType === 'api_key'
           ? (await transaction.select({ id: apiKeys.id }).from(apiKeys).where(and(eq(apiKeys.organizationId, actor.organizationId), eq(apiKeys.id, actor.actorId), eq(apiKeys.status, 'active'), or(isNull(apiKeys.expiresAt), gt(apiKeys.expiresAt, new Date())))).limit(1)).length === 1
-          : actor.actorType === 'telegram'
-            ? (await transaction.select({ id: telegramIdentityMappings.id }).from(telegramIdentityMappings).where(and(eq(telegramIdentityMappings.organizationId, actor.organizationId), eq(telegramIdentityMappings.id, actor.actorId), eq(telegramIdentityMappings.status, 'active'))).limit(1)).length === 1
-            : (await transaction.select({ id: publishingJobs.id }).from(publishingJobs).where(and(eq(publishingJobs.organizationId, actor.organizationId), eq(publishingJobs.id, actor.actorId), eq(publishingJobs.dispatchStatus, 'leased'), isNotNull(publishingJobs.leaseOwner), gt(publishingJobs.leaseExpiresAt, new Date()))).limit(1)).length === 1;
+          : (await transaction.select({ id: publishingJobs.id }).from(publishingJobs).where(and(eq(publishingJobs.organizationId, actor.organizationId), eq(publishingJobs.id, actor.actorId), eq(publishingJobs.dispatchStatus, 'leased'), isNotNull(publishingJobs.leaseOwner), gt(publishingJobs.leaseExpiresAt, new Date()))).limit(1)).length === 1;
       if (!attributable) return;
       await transaction.insert(auditLogs).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, action, targetType, outcome: 'denied', changedFields: [], requestId: actor.requestId });
     });
@@ -811,19 +801,6 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       if (selected.some((permission) => permission === undefined)) throw new DashboardAccessDeniedError();
       await transaction.delete(rolePermissions).where(and(eq(rolePermissions.organizationId, state.organizationId), eq(rolePermissions.roleId, row.id)));
       if (selected.length > 0) await transaction.insert(rolePermissions).values(selected.map((permission) => ({ organizationId: state.organizationId, roleId: row.id, permissionId: permission!.id })));
-    }
-    for (const row of state.telegramMappings) {
-      const prior = before.telegramMappings.find(({ id }) => id === row.id);
-      if (prior === undefined) throw new DashboardAccessDeniedError();
-      if (prior.status === row.status) continue;
-      const changed = await transaction.update(telegramIdentityMappings).set({ status: row.status, updatedAt: new Date(row.updatedAt) }).where(and(
-        eq(telegramIdentityMappings.organizationId, state.organizationId),
-        eq(telegramIdentityMappings.id, row.id),
-        eq(telegramIdentityMappings.userId, row.userId),
-        eq(telegramIdentityMappings.roleId, row.roleId),
-        eq(telegramIdentityMappings.status, prior.status),
-      )).returning({ id: telegramIdentityMappings.id });
-      if (changed.length !== 1) throw new DashboardConflictError();
     }
     for (const row of state.memberships) {
       const prior = before.memberships.find(({ userId }) => userId === row.userId);

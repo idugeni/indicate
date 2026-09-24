@@ -22,7 +22,6 @@ const INDICATE_NAMESPACE_PREFIXES = [
   'VERCEL_',
   'R2_',
   'UPSTASH_',
-  'TELEGRAM_',
   'RESEND_',
   'GENERIC_',
   'CRON_',
@@ -56,9 +55,6 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'R2_PUBLIC_HOST',
   'UPSTASH_REDIS_REST_URL',
   'UPSTASH_REDIS_REST_TOKEN',
-  'TELEGRAM_BOT_TOKEN',
-  'TELEGRAM_WEBHOOK_SECRET',
-  'TELEGRAM_OWNER_IDS',
   'RESEND_API_KEY',
   'RESEND_DEFAULT_FROM',
   'RESEND_WEBHOOK_SECRET',
@@ -111,9 +107,6 @@ const bootstrapSchema = z
     R2_PUBLIC_HOST: hostnameSchema.optional(),
     UPSTASH_REDIS_REST_URL: httpsUrlSchema,
     UPSTASH_REDIS_REST_TOKEN: secretSchema,
-    TELEGRAM_BOT_TOKEN: secretSchema,
-    TELEGRAM_WEBHOOK_SECRET: secretSchema,
-    TELEGRAM_OWNER_IDS: z.string().regex(/^\d+(,\d+)*$/).optional(),
     RESEND_API_KEY: secretSchema.optional(),
     RESEND_DEFAULT_FROM: z.string().min(3).max(320).optional(),
     RESEND_WEBHOOK_SECRET: secretSchema.optional(),
@@ -126,8 +119,6 @@ const bootstrapSchema = z
         ['CLOUDFLARE_API_TOKEN', value.CLOUDFLARE_API_TOKEN],
         ['CLOUDFLARE_ORIGIN_SECRET', value.CLOUDFLARE_ORIGIN_SECRET],
         ['VERCEL_API_TOKEN', value.VERCEL_API_TOKEN],
-        ['TELEGRAM_BOT_TOKEN', value.TELEGRAM_BOT_TOKEN],
-        ['TELEGRAM_WEBHOOK_SECRET', value.TELEGRAM_WEBHOOK_SECRET],
         ['GENERIC_WEBHOOK_SECRET', value.GENERIC_WEBHOOK_SECRET],
         ['CRON_SECRET', value.CRON_SECRET],
       ] as const) {
@@ -219,10 +210,6 @@ export interface BootstrapConfig {
     readonly r2PublicHost: string | null;
     readonly upstashRestUrl: string;
     readonly upstashRestToken: SecretString;
-    readonly telegramBotToken: SecretString;
-    readonly telegramWebhookSecret: SecretString;
-    /** Telegram user IDs owning the Mini App; empty means the Mini App is disabled. */
-    readonly telegramOwnerIds: readonly string[];
     /** Resend credential pair; null when transactional email is unconfigured. */
     readonly resendApiKey: SecretString | null;
     readonly resendDefaultFrom: string | null;
@@ -280,9 +267,6 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       r2PublicHost: value.R2_PUBLIC_HOST ?? null,
       upstashRestUrl: value.UPSTASH_REDIS_REST_URL,
       upstashRestToken: SecretString.fromPlain(value.UPSTASH_REDIS_REST_TOKEN),
-      telegramBotToken: SecretString.fromPlain(value.TELEGRAM_BOT_TOKEN),
-      telegramWebhookSecret: SecretString.fromPlain(value.TELEGRAM_WEBHOOK_SECRET),
-      telegramOwnerIds: Object.freeze(value.TELEGRAM_OWNER_IDS === undefined ? [] : value.TELEGRAM_OWNER_IDS.split(',')),
       resendApiKey: value.RESEND_API_KEY === undefined ? null : SecretString.fromPlain(value.RESEND_API_KEY),
       resendDefaultFrom: value.RESEND_DEFAULT_FROM ?? null,
       resendWebhookSecret: value.RESEND_WEBHOOK_SECRET === undefined ? null : SecretString.fromPlain(value.RESEND_WEBHOOK_SECRET),

@@ -16,25 +16,9 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { articleSites, articles, publishingState, taskStatus } from '@/data/schema/editorial';
-import { organizations, telegramIdentityMappings } from '@/data/schema/identity';
+import { organizations } from '@/data/schema/identity';
 
 export const dispatchStatus = pgEnum('dispatch_status', ['pending', 'scheduled', 'leased', 'acknowledged', 'failed']);
-export const telegramConversationStep = pgEnum('telegram_conversation_step', [
-  'idle',
-  'article_region',
-  'article_title',
-  'article_body',
-  'article_source',
-  'article_slug',
-  'article_sites',
-  'article_image',
-  'publication_status',
-  'publish_pick_site',
-  'suggest_sites',
-  'site_pick',
-  'article_edit',
-  'article_edit_confirm',
-]);
 export const replayClaimStatus = pgEnum('replay_claim_status', ['claimed', 'processed', 'rejected']);
 export const seedRunStatus = pgEnum('seed_run_status', ['running', 'completed', 'failed']);
 
@@ -156,21 +140,6 @@ export const webhookReplayClaims = pgTable('webhook_replay_claims', {
   check('webhook_replay_claims_pending_terminal', sql`${table.pendingStatus} IS NULL OR ${table.pendingStatus} IN ('processed', 'rejected')`),
 ]);
 
-export const telegramConversations = pgTable('telegram_conversations', {
-  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
-  mappingId: uuid('mapping_id').notNull(),
-  telegramUserId: text('telegram_user_id').notNull(),
-  telegramChatId: text('telegram_chat_id').notNull(),
-  step: telegramConversationStep('step').notNull(),
-  data: jsonb('data').$type<Record<string, unknown>>().default({}).notNull(),
-  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  ...timestamps,
-}, (table) => [
-  primaryKey({ name: 'telegram_conversations_pk', columns: [table.organizationId, table.telegramChatId, table.telegramUserId] }),
-  foreignKey({ name: 'telegram_conversations_mapping_fk', columns: [table.organizationId, table.mappingId], foreignColumns: [telegramIdentityMappings.organizationId, telegramIdentityMappings.id] }).onDelete('cascade'),
-  index('telegram_conversations_expiry_idx').on(table.expiresAt),
-]);
-
 export const seedRuns = pgTable('seed_runs', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
   id: uuid('id').notNull(),
@@ -266,23 +235,3 @@ export const retentionRuns = pgTable('retention_runs', {
   check('retention_runs_count_nonnegative', sql`${table.purgedCount} >= 0`),
 ]);
 
-/**
- * Telegram outbound queue with backoff.
- *
- * @remarks Function-only: RLS enabled+forced with no grant to `indicate_runtime`.
- * Never query directly; use `indicate_private.outbox_enqueue/claim/ack/list*` RPCs.
- */
-export const telegramOutbox = pgTable('telegram_outbox', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
-  chatId: text('chat_id').notNull(),
-  text: text('text').notNull(),
-  status: text('status').default('pending').notNull(),
-  attempts: integer('attempts').default(0).notNull(),
-  nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).defaultNow().notNull(),
-  lastError: text('last_error'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [
-  index('telegram_outbox_due_idx').on(table.status, table.nextAttemptAt),
-]);

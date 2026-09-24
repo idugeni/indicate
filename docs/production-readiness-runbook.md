@@ -16,7 +16,7 @@ Cloudflare must remain authoritative for nameservers, DNS, wildcard records, edg
 1. Run `npm run typecheck` and `npm run lint` — warnings should be zero, but non-zero output warns rather than blocks in relaxed mode.
 2. Apply all reviewed forward migrations using the direct migration credential, in the order recorded by Drizzle's `src/data/migrations/meta/_journal.json`. The schema gate compares the applied schema against `migration_gate_events.required_version` during runtime-context initialization (`registerServerRuntime`); a mismatch warns rather than blocks activation in relaxed mode.
 3. Configure least-privilege production credentials through server-only environment values. Include both the Cloudflare management-plane credential used to inspect R2 privacy and the R2 S3 access-key/secret credentials used by the media data plane and read-only `HeadBucket` readiness probe. Do not place credentials in command arguments, logs, fixtures, reports, or repository files.
-4. Confirm the Telegram webhook and every exact Site hostname are already configured. The readiness sequence is read-only.
+4. Confirm every exact Site hostname is already configured. The readiness sequence is read-only.
 
 ## Owner-gated items (dashboard/provider actions no agent can perform)
 
@@ -31,7 +31,6 @@ No readiness automation ships in this tree; perform each check below manually in
 - Supabase Auth health and PostgreSQL connectivity;
 - the configured R2 bucket’s S3 `HeadBucket` data-plane health using the production media access-key/secret credentials, absence of public custom domains, and disabled managed public domain;
 - Upstash connectivity;
-- Telegram Bot API health and an exact configured webhook URL;
 - a production-bounded cron secret without printing it;
 - the one-shared-resource topology contract;
 - Cloudflare-assigned and publicly delegated nameservers for every configured root domain (enumerated live, never a fixed count);
@@ -40,7 +39,7 @@ No readiness automation ships in this tree; perform each check below manually in
 - verified exact-domain association with the one Vercel project for every configured Site;
 - exact active, Organization-coherent database mappings for every configured Site;
 - Cache Components efficacy and isolation: publish/unpublish on one Site completes its `invalidation_tasks` (dispatcher: Next tags + paths + Cloudflare purge + Redis bump) and the change is visible on that Site's portal within the `minutes` cacheLife bound, while an unrelated Site's portal shows no change and no cross-host content;
-- deferred delivery health: Telegram webhook replies arrive after the 200 response (no response held by Bot API latency); only `warn`-level `telegram.reply.deferred_failed` lines — never response failures — are acceptable evidence of downstream slowness;
+- deferred delivery health: background replies complete after the 200 response; only `warn`-level deferred-failure lines — never response failures — are acceptable evidence of downstream slowness;
 - instant navigation smoke: client transitions between control-plane pages and portal listing/detail complete without full reload or layout shift; the header pending dot appears only on genuinely slow transitions;
 - structured data: NewsArticle/Breadcrumb/Organization/WebSite JSON-LD per portal template passes Rich Results/Schema validation with no cross-tenant canonical or URL;
 - platform currency: Vercel project Node.js is 24 (repo pins 24 via `.nvmrc`); the `CRON_SECRET` env equals the configured cron secret (Vercel Cron auto-sends it as Bearer auth) and both internal cron routes (`/api/internal/publishing` GET, `/api/internal/delivery/reconcile` GET/POST) respond authenticated-only; the daily `/api/health` keep-alive cron from `vercel.json` is registered (prevents Supabase Free auto-pause — do not remove while on the Free plan);

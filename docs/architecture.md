@@ -30,7 +30,7 @@ Every tenant operation carries one immutable Organization context derived from a
 7. Publication acceptance is transactional and Organization-scoped by Idempotency Key plus canonical Request Fingerprint.
 8. Public rendering, URL generation, SEO, media access, analytics attribution, and cache identity derive from the same Hostname Context.
 9. Security-sensitive database changes and required Audit Logs commit atomically. Secrets and internal diagnostics never enter public errors or audit context.
-10. Dashboard, API, Telegram, background, and reconciliation adapters invoke shared application services rather than issuing tenant SQL or reimplementing business rules.
+10. Dashboard, API, background, and reconciliation adapters invoke shared application services rather than issuing tenant SQL or reimplementing business rules.
 11. External effects occur only after durable intent is recorded and are resumable, bounded, and idempotent.
 12. Implementation follows the recommended seven-stage sequence as a guideline; a failed Quality Gate is a warning, not a hard block on the next stage (relaxed 2026-09-14).
 
@@ -41,7 +41,6 @@ flowchart LR
     Reader[Readers and crawlers] --> CF[Cloudflare authoritative DNS\nproxy TLS and CDN]
     CMSUser[Dashboard users] --> CF
     APIClient[API clients] --> CF
-    Telegram[Telegram Bot API] --> CF
     CF --> App[One Next.js App Router application\none Vercel project]
     Cron[Vercel Cron] --> App
     App --> Auth[Supabase Auth\nsame Supabase project]
@@ -50,7 +49,6 @@ flowchart LR
     App --> Redis[(One Upstash Redis resource)]
     App --> VercelDomains[Vercel exact-domain API]
     App --> CloudflareAPI[Cloudflare DNS and cache APIs]
-    App --> Telegram
 ```
 
 ### Managed-resource responsibilities
@@ -86,7 +84,7 @@ Validated Runtime Configuration reserves:
 
 - `indicate.web.id` for Dashboard and authentication callbacks;
 - configured API hostname(s) for versioned API routes;
-- configured webhook/Telegram hostname(s) for named webhook routes;
+- configured webhook hostname(s) for named webhook routes;
 - the Vercel production URL plus `CRON_SECRET` for internal cron routes.
 
 Control-plane matching precedes public Site lookup. A Domain, Site, wildcard, or seed candidate that normalizes to a reserved hostname is rejected before public activation.
@@ -171,7 +169,7 @@ src/
 ├── data/         # Single canonical database home (schema, repos, migrations, client.ts)
 ├── core/         # Shared kernel: config/, errors, operation-context, result, hostname, observability,
 │                 # routing, security, system, transactions
-├── integrations/ # Provider adapters: supabase, storage (R2), redis (Upstash), telegram, cloudflare, vercel
+├── integrations/ # Provider adapters: supabase, storage (R2), redis (Upstash), cloudflare, vercel
 └── ui/           # Shared client-safe UI utilities: cn, themes, hooks, site helpers
 ```
 
@@ -180,7 +178,7 @@ Rules:
 - Domain and pure policy modules import no framework or provider clients.
 - Application services receive a verified context, validated command, and injected ports; they do not read request globals.
 - Infrastructure adapters are server-only and map provider responses to domain-safe types.
-- Dashboard, API, Telegram, cron, and public adapters authenticate/resolve context, validate input, invoke one use case, and map typed outcomes.
+- Dashboard, API, cron, and public adapters authenticate/resolve context, validate input, invoke one use case, and map typed outcomes.
 - Adapters cannot issue tenant SQL directly.
 - Provider SDK types cannot cross into domain or application interfaces.
 - Client bundles receive only explicitly public Supabase Auth configuration and no privileged credentials.
@@ -189,11 +187,11 @@ Rules:
 
 ```ts
 interface ActorContext {
-  actorType: 'user' | 'api_key' | 'telegram' | 'system';
+  actorType: 'user' | 'api_key' | 'system';
   actorId: string;
   organizationId: string | null;
   permissionSet: ReadonlySet<PermissionName>;
-  entryPoint: 'dashboard' | 'api' | 'telegram' | 'worker' | 'reconciler';
+  entryPoint: 'dashboard' | 'api' | 'worker' | 'reconciler';
   requestId: string;
 }
 
@@ -211,7 +209,6 @@ interface HostnameContext {
 
 - a verified Supabase session plus active local Membership;
 - an active API Key lookup, hash verification, scope, and ownership;
-- an authenticated Telegram webhook plus active identity mapping;
 - a worker’s atomically claimed durable job;
 - an exact active public Hostname Context.
 
@@ -219,7 +216,7 @@ An operation with missing or conflicting tenant/public context is rejected befor
 
 ## 7. Primary application flows
 
-### 7.1 Dashboard, API, and Telegram mutation flow
+### 7.1 Dashboard and API mutation flow
 
 ```mermaid
 sequenceDiagram
@@ -230,7 +227,7 @@ sequenceDiagram
     participant D as PostgreSQL transaction
     participant C as Side-effect coordinator
 
-    A->>I: session, API key, or authenticated Telegram mapping
+    A->>I: session or API key
     I-->>A: verified ActorContext
     A->>Z: untrusted command
     Z-->>A: typed command or field errors
@@ -242,7 +239,7 @@ sequenceDiagram
     S-->>A: typed sanitized result
 ```
 
-Validation, permission, tenant ownership, optimistic version, mutation, and required Audit Log precede success. Telegram owns conversational state and transport formatting only; it maps to the same service commands and schemas as Dashboard/API.
+Validation, permission, tenant ownership, optimistic version, mutation, and required Audit Log precede success.
 
 ### 7.2 Public rendering flow
 
@@ -258,7 +255,7 @@ Validation, permission, tenant ownership, optimistic version, mutation, and requ
 
 ```mermaid
 sequenceDiagram
-    participant T as Dashboard API or Telegram
+    participant T as Dashboard API
     participant P as Publication Service
     participant DB as PostgreSQL
     participant R as Upstash Redis
@@ -285,7 +282,7 @@ sequenceDiagram
 
 | Service | Core responsibility | Principal guarantees |
 |---|---|---|
-| AuthorizationService | Membership/Role/Permission, API Key, Telegram, platform authorization | Active exact scope; non-disclosing denial |
+| AuthorizationService | Membership/Role/Permission, API Key, platform authorization | Active exact scope; non-disclosing denial |
 | OrganizationService | customer, subscription, Membership, Role commands | Platform permission separation and audit atomicity |
 | DomainProvisioningService | hostname activation/deactivation | Cloudflare authority, exact Vercel association, resumable saga |
 | SiteService | Site and Site Settings lifecycle | Same-organization Domain/Region/media and optimistic versioning |
@@ -336,7 +333,7 @@ and stays.
 Core identity and authorization:
 
 - `users`, `organizations`, `memberships`, `roles`, `permissions`, `role_permissions`;
-- `api_keys`, `subscriptions`, `telegram_identity_mappings`.
+- `api_keys`, `subscriptions`.
 
 Domain and site:
 
@@ -364,7 +361,6 @@ Every tenant parent has a composite Organization/ID key. Composite foreign keys 
 
 - Membership User, Role, and Organization agree;
 - Role Permissions use a Role from the same Organization and a compatible tenant or platform Permission;
-- Telegram mapping User, Role, Membership, and Organization agree;
 - Site Domain and optional Region belong to the Site’s Organization;
 - Article Region and optional Publisher, Category, Author, and lead Media belong to the Article’s Organization;
 - Article Site references an Article and Site from one Organization;
@@ -380,7 +376,6 @@ Service validation returns one non-disclosing denial for absent, unauthorized, a
 - Roles are unique by Organization/name.
 - Platform permissions are explicit records and are never inferred from tenant roles.
 - API Key lookup IDs are unique; persisted values contain lookup metadata, per-key salt, one-way derived hash, status, scopes, expiry, and predecessor references, never plaintext.
-- Telegram identities are uniquely mapped under the defined Organization/source identity and require an active coherent Membership.
 
 ### 9.5 Domain and site constraints
 
@@ -426,10 +421,6 @@ Supabase SSR cookie validation resolves the external Auth identity to one local 
 ### API keys
 
 Key format separates a non-secret lookup identifier from a high-entropy secret. Issuance returns plaintext once. Persistence stores a random salt and slow one-way derived verification value. Authentication uses constant-time comparison, active/expiry checks, Organization ownership, and scope checks. Rotation inserts a replacement and revokes its predecessor in one audited transaction.
-
-### Telegram
-
-Telegram requests validate the configured secret header, bounded update freshness, and atomic replay claim before identity mapping. The mapping must resolve to an active coherent User/Membership/Role in one Organization. Telegram then invokes shared Zod schemas and Business Services.
 
 ### Workers
 
@@ -623,7 +614,7 @@ Denied requests record enough context for security review without disclosing a f
 
 ## 17. Error and transaction model
 
-Domain/application code returns typed outcomes. Only adapters map them to HTTP, Dashboard, or Telegram presentation.
+Domain/application code returns typed outcomes. Only adapters map them to HTTP or Dashboard presentation.
 
 ```ts
 type AppErrorCode =
@@ -648,7 +639,7 @@ Transaction rules:
 1. Validate and authorize before mutation.
 2. Place same-database changes and required audits in one short transaction.
 3. Use unique constraints, row locks, expected versions, and fencing predicates for concurrency.
-4. Do not hold database transactions across Cloudflare, Vercel, R2, Redis, or Telegram calls.
+4. Do not hold database transactions across Cloudflare, Vercel, R2, or Redis calls.
 5. Record durable intent first, perform external effects second, and reconcile incomplete effects.
 6. A transition is acknowledged only after state and audit commit.
 7. Sanitize provider errors at the infrastructure boundary.
@@ -664,7 +655,6 @@ Transaction rules:
 | R2 metadata mismatch | Reservation rejected; no Media activation | Cleanup task and new reservation on retry |
 | Cloudflare/Vercel activation phase fails | Site remains pending/inactive and non-indexable | Resume from persisted activation phase |
 | Cache purge/revalidation fails | Site bypass marker and pending task | Bounded retry, then broader Site-hostname purge |
-| Telegram reply fails after committed mutation | Mutation/audit remain committed | Replay returns persisted logical outcome; optional bounded reply retry |
 | Audit insert fails | Whole security-sensitive transaction rolls back | Retry full command under same idempotency/version rules |
 | Migration fails | Release is not promoted | Correct with forward migration or compatible rollback |
 | Seed mutation fails | Entire seed transaction rolls back | Report sanitized failure and rerun same configuration |
@@ -680,7 +670,6 @@ One server-only Zod contract validates at build/promotion and process startup:
 - R2 account, single bucket, credentials, media limits, and signed authorization TTLs;
 - Upstash endpoint/token, one environment namespace, queue/lease limits, rate policies;
 - publication batches, safety deadline, bounded attempt/delay schedules, and reconciliation interval;
-- Telegram bot token, secret header, webhook URL, freshness and replay windows;
 - cron secret, redaction policy version, cache versions/TTLs, default locale, and fallback assets.
 
 Secrets exist only in Vercel server environment values and least-privilege provider credentials. `NEXT_PUBLIC_*` is limited to explicitly public Supabase browser configuration. Validation errors report field path and category but never value. Persisted configuration snapshots store non-secret versions and fingerprints only.
@@ -713,7 +702,7 @@ Additional Central Java regions use the same data path without source changes.
 3. Validate Runtime Configuration and provider connectivity without tenant mutation.
 4. Apply reviewed Drizzle migrations with the direct migration credential and verify schema version.
 5. Deploy the one application to the one Vercel project without changing production traffic.
-6. Validate Supabase Auth/database, private R2, Upstash, Telegram webhook, cron secret, Cloudflare authority/routes/proxy/TLS, and every active Site’s exact Vercel association.
+6. Validate Supabase Auth/database, private R2, Upstash, cron secret, Cloudflare authority/routes/proxy/TLS, and every active Site’s exact Vercel association.
 7. Run smoke checks across control-plane hosts and every active root domain and region.
 8. Promote only if all checks pass.
 
@@ -741,7 +730,7 @@ Implementation may begin without waiting for document approval (approval recorde
 3. **Major Dashboard — Business and Dashboard:** shared services, Dashboard modules, Publisher Registry, canonical Articles, filtering, Basic Analytics, Audit Logs.
 4. **Major Publishing — Media and publication:** private R2 media, durable jobs, Upstash dispatch, idempotency, leases/fencing, bounded retries, results.
 5. **Major Delivery — Public delivery:** Cloudflare/Vercel exact-domain activation, hostname resolver, shared public templates, SEO, cache/invalidation.
-6. **Major Integrations — External entry points:** Telegram, API Keys, rate limiting, replay defense, customer/subscription administration.
+6. **Major Integrations — External entry points:** API Keys, rate limiting, replay defense, customer/subscription administration.
 7. **Major Release — Production readiness:** automated validation across all active root domains and regions, starting with Wonosobo, Magelang, and Semarang.
 
 Each stage ideally follows the prior stage's Quality Gate, but stages may overlap or reorder with a brief recorded rationale. No prior approval required in relaxed mode.
@@ -770,6 +759,6 @@ The following operational confirmations remain required at the applicable implem
 2. **Provider capacity:** confirm the Vercel plan supports the projected exact-domain count, cron frequency, execution duration, and the unbounded domain-plus-regional-Site scale target.
 3. **TLS convention:** confirm one-label regional hostnames fit Cloudflare certificate coverage and that Full (strict) origin validation succeeds.
 4. **Numeric runtime bounds:** approve retry attempts/delays, lease durations, worker batch/deadline, media limits, signed URL TTLs, cache TTLs, rate limits, webhook freshness, and replay retention.
-5. **Credential ownership:** approve least-privilege roles, storage, rotation, and incident ownership for Cloudflare, Vercel, Supabase runtime/migration, R2, Upstash, Telegram, webhook, and cron secrets.
+5. **Credential ownership:** approve least-privilege roles, storage, rotation, and incident ownership for Cloudflare, Vercel, Supabase runtime/migration, R2, Upstash, webhook, and cron secrets.
 6. **Database defenses:** confirm the composite-foreign-key, transaction-local context, RLS defense-in-depth, append-only audit grants/trigger, and transaction-pooler approach.
 7. **Recovery objectives:** approve operational alerting and response expectations for pending activation, dispatch gaps, expired leases, invalidation bypass, and cleanup backlogs.

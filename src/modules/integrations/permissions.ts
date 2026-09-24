@@ -1,7 +1,6 @@
 export const INTEGRATIONS_PERMISSIONS = Object.freeze({
   apiKeyRead: 'api_key.read',
   apiKeyManage: 'api_key.manage',
-  telegramManage: 'telegram.manage',
   subscriptionRead: 'subscription.read',
   subscriptionManage: 'subscription.manage',
   /** Canonical platform grant (replaces customerAdmin). */
@@ -19,7 +18,6 @@ export const INTEGRATIONS_PERMISSIONS = Object.freeze({
 export const INTEGRATIONS_TENANT_PERMISSION_NAMES = Object.freeze([
   INTEGRATIONS_PERMISSIONS.apiKeyRead,
   INTEGRATIONS_PERMISSIONS.apiKeyManage,
-  INTEGRATIONS_PERMISSIONS.telegramManage,
   INTEGRATIONS_PERMISSIONS.subscriptionRead,
   INTEGRATIONS_PERMISSIONS.subscriptionManage,
 ] as const);

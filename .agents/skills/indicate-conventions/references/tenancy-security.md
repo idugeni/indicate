@@ -6,7 +6,7 @@ Control-plane matching precedes public Site lookup. A candidate that normalizes 
 
 - Dashboard host (`indicate.web.id`) → control-plane pages, auth callbacks.
 - API host → versioned v1 API surface.
-- Webhook host → named webhook routes (Telegram, generic), guarded by `trustedCloudflareSource` + origin secret.
+- Webhook host → named webhook routes (generic), guarded by `trustedCloudflareSource` + origin secret.
 - Public tenant hosts → exact-match resolution to one Site. Regional hostnames take the one-label form `{regionSlug}.{rootDomain}`.
 
 ## Tenant isolation rules

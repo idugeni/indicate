@@ -1,10 +1,8 @@
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type {
-  ApiKeyRecord, CustomerProjection, StoredApiKey, SubscriptionRecord, TelegramConversation, TelegramIdentity, TelegramIdentityOption, TelegramInlineKeyboard, TelegramMappingRecord, WebhookReplayClaim,
+  ApiKeyRecord, CustomerProjection, StoredApiKey, SubscriptionRecord, WebhookReplayClaim,
 } from '@/modules/integrations/models';
 import type { RateLimitDecision, RateLimitPolicy } from '@/modules/integrations/models';
-import type { ExactObjectAuthorization } from '@/integrations/storage/ports';
-import type { HealthCheckPort } from '@/core/system/ports';
 
 export class IntegrationsAccessDeniedError extends Error {}
 export class IntegrationsConflictError extends Error {}
@@ -43,21 +41,6 @@ export interface IntegrationsRepository {
   findApiKeyByLookupId(lookupId: string): Promise<StoredApiKey | null>;
   recordApiKeyUse(organizationId: string, id: string, now: string): Promise<void>;
 
-  resolveTelegramIdentity(telegramUserId: string, telegramChatId: string): Promise<TelegramIdentity | null>;
-  listTelegramIdentities(telegramUserId: string, telegramChatId: string): Promise<readonly TelegramIdentityOption[]>;
-  listTelegramMappings(actor: AuthorizedTenantActorContext): Promise<readonly TelegramMappingRecord[]>;
-  createTelegramMapping(actor: AuthorizedTenantActorContext, input: { readonly id: string; readonly userId: string; readonly roleId: string; readonly telegramUserId: string; readonly telegramChatId: string; readonly consentedAt: string | null; readonly consentTextVersion: string | null; readonly ipHash: string | null; readonly now: string }): Promise<TelegramMappingRecord>;
-  updateTelegramMapping(actor: AuthorizedTenantActorContext, input: { readonly mappingId: string; readonly expectedVersion: number; readonly userId: string; readonly roleId: string; readonly telegramUserId: string; readonly telegramChatId: string; readonly status: TelegramMappingRecord['status']; readonly now: string }): Promise<TelegramMappingRecord>;
-  readTelegramConversation(identity: TelegramIdentity): Promise<TelegramConversation | null>;
-  saveTelegramConversation(identity: TelegramIdentity, conversation: TelegramConversation): Promise<void>;
-  clearTelegramConversation(identity: TelegramIdentity): Promise<void>;
-  enqueueOutboxMessage(input: { readonly organizationId: string | null; readonly chatId: string; readonly text: string; readonly now: string }): Promise<{ readonly id: string }>;
-  listOrganizationGroupChats(organizationId: string): Promise<readonly string[]>;
-  claimOutboxMessages(now: string, limit: number): Promise<readonly TelegramOutboxRecord[]>;
-  ackOutboxMessage(input: { readonly id: string; readonly ok: boolean; readonly retryAfterSeconds: number | null; readonly error: string | null; readonly now: string }): Promise<void>;
-  listBroadcastTargets(actorId: string): Promise<readonly { readonly organizationId: string; readonly chatId: string }[]>;
-  listOutboxMessages(actorId: string): Promise<readonly TelegramOutboxRecord[]>;
-
   claimReplay(input: ReplayClaimInput): Promise<ReplayClaimResult>;
   bindReplayIdentity(source: string, replayId: string, bodyDigest: string, claimToken: string, organizationId: string, identityBindingDigest: string): Promise<WebhookReplayClaim>;
   prepareReplayOutcome(source: string, replayId: string, bodyDigest: string, claimToken: string, status: 'processed' | 'rejected', outcome: Readonly<Record<string, unknown>>, now: string): Promise<WebhookReplayClaim>;
@@ -77,80 +60,6 @@ export interface IntegrationsRepository {
 
 export interface RateLimitPort {
   consume(key: string, policy: RateLimitPolicy, now: Date): Promise<RateLimitDecision>;
-}
-
-export interface TelegramMessage {
-  readonly chatId: string;
-  readonly text: string;
-  readonly keyboard?: TelegramInlineKeyboard;
-}
-
-export interface TelegramPhotoMessage {
-  readonly chatId: string;
-  readonly photoUrl: string;
-  readonly caption: string;
-  readonly keyboard?: TelegramInlineKeyboard;
-}
-
-export interface TelegramCallbackAnswer {
-  readonly callbackId: string;
-  readonly text?: string;
-}
-
-export interface TelegramEditMessage {
-  readonly chatId: string;
-  readonly messageId: string;
-  readonly text: string;
-  readonly keyboard?: TelegramInlineKeyboard;
-}
-
-export interface TelegramBotCommand {
-  readonly command: string;
-  readonly description: string;
-}
-
-/** Receipt of a newly sent Bot API message, used to track dashboard messages. */
-export interface TelegramSentReceipt {
-  readonly messageId: string;
-}
-
-export class TelegramRateLimitedError extends Error {
-  constructor(readonly retryAfterSeconds: number | null) {
-    super('Telegram rate limited.');
-  }
-}
-
-export interface TelegramOutboxRecord {
-  readonly id: string;
-  readonly organizationId: string | null;
-  readonly chatId: string;
-  readonly text: string;
-  readonly status: 'pending' | 'sending' | 'sent' | 'dead';
-  readonly attempts: number;
-}
-
-export interface TelegramPort extends HealthCheckPort {
-  send(message: TelegramMessage): Promise<TelegramSentReceipt>;
-  sendPhoto(message: TelegramPhotoMessage): Promise<TelegramSentReceipt>;
-  answerCallback(answer: TelegramCallbackAnswer): Promise<void>;
-  editMessage(message: TelegramEditMessage): Promise<void>;
-  deleteMessage(message: { readonly chatId: string; readonly messageId: string }): Promise<void>;
-  setMyCommands(commands: readonly TelegramBotCommand[]): Promise<void>;
-}
-
-export interface PreparedTelegramMedia {
-  readonly bytes: ArrayBuffer;
-  readonly sizeBytes: number;
-  readonly checksumSha256: string;
-}
-
-export interface TelegramMediaTransferPort {
-  prepare(input: { readonly fileId: string; readonly expectedSize: number }): Promise<PreparedTelegramMedia>;
-  transfer(input: {
-    readonly media: PreparedTelegramMedia;
-    readonly authorization: ExactObjectAuthorization;
-    readonly mediaType: string;
-  }): Promise<void>;
 }
 
 export interface EmailMessage {

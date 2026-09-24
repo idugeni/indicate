@@ -22,7 +22,7 @@ const actor = {
 } as const;
 
 const COLLECTIONS = [
-  'domains', 'regions', 'sites', 'siteSettings', 'roles', 'memberships', 'telegramMappings',
+  'domains', 'regions', 'sites', 'siteSettings', 'roles', 'memberships',
   'publishers', 'affiliations', 'categories', 'authors', 'articles', 'articleCategories', 'articleSites', 'media',
 ] as const;
 
@@ -161,16 +161,15 @@ describe('TenantBusinessService affiliations memberships articles', () => {
     expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
   });
 
-  it('menyimpan membership dan menonaktifkan mapping divergen', async () => {
+  it('menyimpan membership', async () => {
     const { service, state } = harness({
       roles: [{ id: ID2 }],
       regions: [],
       memberships: [],
-      telegramMappings: [{ userId: ID, roleId: 'role-lama', status: 'active', regionId: null }],
     });
     const result = await service.saveMembership(actor, { userId: ID, roleId: ID2, status: 'active' });
     expect(result.ok).toBe(true);
-    expect((state.telegramMappings as { status: string }[])[0]?.status).toBe('inactive');
+    expect((state.memberships as { userId: string }[]).some((membership) => membership.userId === ID)).toBe(true);
   });
 
   it('membuat artikel dengan slug unik', async () => {

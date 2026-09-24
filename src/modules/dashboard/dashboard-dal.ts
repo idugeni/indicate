@@ -7,7 +7,6 @@ import { getBootstrapConfig } from '@/core/config/bootstrap/bootstrap-config';
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
 import type { LocalUserIdentity, MembershipAuthorization } from '@/modules/auth/rbac';
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
-import { createTelegramNotificationService } from '@/modules/integrations/integrations-composition';
 import type { AnalyticsProjection, DashboardSnapshot, DashboardProjection } from '@/modules/dashboard/models';
 import { analyticsFilterSchema } from '@/modules/dashboard/schemas';
 import { createPublicError, type PublicErrorEnvelope } from '@/core/errors';
@@ -169,7 +168,7 @@ async function mergePageviewBuffer(organizationId: string, projection: Analytics
 async function loadDashboardProjectionFromDatabase(input: ProjectionInput): Promise<DashboardProjection> {
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
-  const service = new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator(), undefined, createTelegramNotificationService(context.config, context.bootstrap));
+  const service = new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator(), undefined, undefined);
   const actor: AuthorizedTenantActorContext = {
     actorType: 'user',
     actorId: input.actorId,
@@ -208,7 +207,7 @@ function loadDashboardProjection(input: ProjectionInput): Promise<DashboardProje
 async function loadAnalyticsProjectionFromDatabase(input: AnalyticsInput): Promise<AnalyticsProjection> {
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
-  const service = new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator(), undefined, createTelegramNotificationService(context.config, context.bootstrap));
+  const service = new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator(), undefined, undefined);
   const actor: AuthorizedTenantActorContext = {
     actorType: 'user',
     actorId: input.actorId,

@@ -1,5 +1,5 @@
-export type ActorType = 'user' | 'api_key' | 'telegram' | 'system';
-export type EntryPoint = 'dashboard' | 'api' | 'telegram' | 'worker' | 'reconciler';
+export type ActorType = 'user' | 'api_key' | 'system';
+export type EntryPoint = 'dashboard' | 'api' | 'worker' | 'reconciler';
 export type PermissionName = string;
 
 interface ActorContextBase {

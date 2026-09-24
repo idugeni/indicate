@@ -22,7 +22,7 @@ body:
       options:
         - Dashboard (control-plane host)
         - API (API host)
-        - Webhook / Telegram (webhook host)
+        - Webhook (webhook host)
         - Public tenant site (exact hostname)
         - Build / typecheck / lint / migration tooling
     validations:

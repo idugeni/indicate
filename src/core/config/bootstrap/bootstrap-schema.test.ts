@@ -15,8 +15,6 @@ function validEnv(): Record<string, string | undefined> {
     R2_SECRET_ACCESS_KEY: 'r2-secret-123',
     UPSTASH_REDIS_REST_URL: 'https://redis.example',
     UPSTASH_REDIS_REST_TOKEN: 'upstash-token-123',
-    TELEGRAM_BOT_TOKEN: 'telegram-token-123',
-    TELEGRAM_WEBHOOK_SECRET: 'webhook-secret-123',
     GENERIC_WEBHOOK_SECRET: 'generic-secret-123',
     CRON_SECRET: 'cron-secret-123',
   };
@@ -71,13 +69,13 @@ describe('validateBootstrapConfig gagal', () => {
   });
 
   it('menolak kunci namespace tak dikenal saat production', () => {
-    const result = validateBootstrapConfig({ ...validEnv(), NODE_ENV: 'production', TELEGRAM_BOT_TOKEN: undefined, TELEGRAM_BOT_TOKEN_X: 'x' } as Record<string, string | undefined>);
+    const result = validateBootstrapConfig({ ...validEnv(), NODE_ENV: 'production', R2_FOO: 'x' } as Record<string, string | undefined>);
     expect(result.success).toBe(false);
   });
 
   it('mengizinkan production tanpa turnstile site key', () => {
     const secrets = Object.fromEntries(
-      ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ORIGIN_SECRET', 'VERCEL_API_TOKEN', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_WEBHOOK_SECRET', 'GENERIC_WEBHOOK_SECRET', 'CRON_SECRET'].map((name) => [name, 'kredensial-produksi-yang-cukup-panjang']),
+      ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ORIGIN_SECRET', 'VERCEL_API_TOKEN', 'GENERIC_WEBHOOK_SECRET', 'CRON_SECRET'].map((name) => [name, 'kredensial-produksi-yang-cukup-panjang']),
     );
     const result = validateBootstrapConfig({ ...validEnv(), ...secrets, NODE_ENV: 'production' });
     expect(result.success).toBe(true);

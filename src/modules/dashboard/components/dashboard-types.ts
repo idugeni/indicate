@@ -111,12 +111,12 @@ export const VIEW_METADATA_REGISTRY: Record<View, ViewMetadata> = {
   operations: {
     title: 'Tugas Latar Belakang',
     eyebrow: 'Tugas Mesin',
-    description: 'Pekerjaan mesin di belakang layar: pembersihan, pengiriman Telegram, dan antrean sistem.',
+    description: 'Pekerjaan mesin di belakang layar: pembersihan dan antrean sistem.',
   },
   settings: {
     title: 'Koneksi & Kunci Akses',
     eyebrow: 'Kunci & Koneksi',
-    description: 'Kunci akses, koneksi Telegram, dan surel.',
+    description: 'Kunci akses dan surel.',
   },
   customers: {
     title: 'Kelola Pelanggan',

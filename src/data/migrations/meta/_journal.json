@@ -1149,6 +1149,13 @@
       "when": 1790184112822,
       "tag": "20260923172152_cascade_fk_covering_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 164,
+      "version": "7",
+      "when": 1790194800000,
+      "tag": "20260924010000_telegram_removal",
+      "breakpoints": true
     }
   ]
 }

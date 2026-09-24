@@ -723,7 +723,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         reservations: reservationRows.map(mapReservation).filter((row) => ownerVisible(row.owner)), media: mediaRows.filter((row) => row.state !== 'reserved').map(mapMedia).filter((asset) => ownerVisible(asset.owner)), cleanupTasks: cleanupRows.map(mapCleanup),
         invalidationIntents: invalidationRows.filter((row) => visibleSiteIds.has(row.siteId)).map((row) => ({ id: row.id, organizationId, siteId: row.siteId, reason: row.reason, tags: row.tags, status: row.status })),
         jobs: visibleJobs.map(mapJob), targets: targetRows.filter(({ target }) => visibleJobIds.has(target.jobId)).map(({ target, siteId }) => mapTarget({ ...target, siteId })), transitionReceipts: receiptRows.map(mapReceipt),
-        auditLogs: auditRows.map((row) => ({ id: row.id, organizationId, actorType: row.actorType, actorId: row.actorId, entryPoint: row.entryPoint, action: row.action, targetType: row.targetType, targetId: row.targetId, outcome: row.outcome, changedFields: row.changedFields, before: row.before ?? null, after: row.after ?? null, requestId: row.requestId, occurredAt: iso(row.occurredAt) })),
+        auditLogs: auditRows.flatMap((row) => row.actorType === 'telegram' || row.entryPoint === 'telegram' ? [] : [{ id: row.id, organizationId, actorType: row.actorType, actorId: row.actorId, entryPoint: row.entryPoint, action: row.action, targetType: row.targetType, targetId: row.targetId, outcome: row.outcome, changedFields: row.changedFields, before: row.before ?? null, after: row.after ?? null, requestId: row.requestId, occurredAt: iso(row.occurredAt) }]),
       };
     });
   }

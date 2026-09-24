@@ -6,16 +6,13 @@ import {
   KeyRound,
   Loader2,
   Mail,
-  Plus,
   Sparkles,
-  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 
 export interface EmailStatus {
   readonly configured: boolean;
@@ -36,17 +33,9 @@ export function IntegrationSettings({
 
   const apiKeyNameId = useId();
   const apiKeyScopesId = useId();
-  const tgUserId = useId();
-  const tgRoleId = useId();
-  const tgTgUserId = useId();
-  const tgChatId = useId();
 
   const [isIssuing, startIssueTransition] = useTransition();
-  const [isCreatingMapping, startMappingTransition] = useTransition();
-  const [isBroadcasting, startBroadcastTransition] = useTransition();
   const [isTestingEmail, startEmailTestTransition] = useTransition();
-  const [broadcastText, setBroadcastText] = useState('');
-  const [broadcastNotice, setBroadcastNotice] = useState<string | null>(null);
   const [testEmail, setTestEmail] = useState('');
   const [testNotice, setTestNotice] = useState<string | null>(null);
 
@@ -81,34 +70,6 @@ export function IntegrationSettings({
       }
     });
   };
-  const handleCreateMapping = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-
-    startMappingTransition(async () => {
-      await command('telegram-mapping.create', {
-        userId: String(formData.get('userId') ?? '').trim(),
-        roleId: String(formData.get('roleId') ?? '').trim(),
-        telegramUserId: String(formData.get('telegramUserId') ?? '').trim(),
-        telegramChatId: String(formData.get('telegramChatId') ?? '').trim(),
-      });
-      form.reset();
-    });
-  };
-
-  const handleBroadcast = () => {
-    if (broadcastText.trim().length === 0) return;
-    if (!window.confirm('Kirim pengumuman ke SEMUA kanal Telegram aktif? Pesan diantrekan dan dikirim bertahap oleh sistem.')) return;
-    startBroadcastTransition(async () => {
-      const result = (await command('telegram.broadcast', { text: broadcastText.trim() })) as { readonly enqueued?: number } | null;
-      if (result !== null) {
-        setBroadcastNotice(`Pengumuman diantrekan ke ${result.enqueued ?? 0} kanal.`);
-        setBroadcastText('');
-      }
-    });
-  };
-
   const handleTestEmail = () => {
     if (testEmail.trim().length === 0) return;
     startEmailTestTransition(async () => {
@@ -186,115 +147,6 @@ export function IntegrationSettings({
             </div>
           ) : null}
         </form>
-      </SectionCard>
-
-      <SectionCard icon={Users} title="Telegram" eyebrow="Notifikasi">
-
-        <form onSubmit={handleCreateMapping} className="space-y-3.5">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor={tgUserId} className="font-mono text-xs text-paper-dim">
-                ID Pengguna
-              </Label>
-              <Input
-                id={tgUserId}
-                name="userId"
-                required
-                disabled={isCreatingMapping}
-                placeholder="usr_01h..."
-                className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor={tgRoleId} className="font-mono text-xs text-paper-dim">
-                ID Peran
-              </Label>
-              <Input
-                id={tgRoleId}
-                name="roleId"
-                required
-                disabled={isCreatingMapping}
-                placeholder="role_editor"
-                className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor={tgTgUserId} className="font-mono text-xs text-paper-dim">
-                Telegram User ID
-              </Label>
-              <Input
-                id={tgTgUserId}
-                name="telegramUserId"
-                required
-                disabled={isCreatingMapping}
-                placeholder="109283746"
-                className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor={tgChatId} className="font-mono text-xs text-paper-dim">
-                Telegram Chat ID
-              </Label>
-              <Input
-                id={tgChatId}
-                name="telegramChatId"
-                required
-                disabled={isCreatingMapping}
-                placeholder="-100987654321"
-                className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
-              />
-            </div>
-          </div>
-
-          <Button
-            type="submit"
-            variant="outline"
-            disabled={isCreatingMapping}
-            className="w-full"
-          >
-            {isCreatingMapping ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-            ) : (
-              <Plus className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
-            )}
-            <span>Tautkan Telegram</span>
-          </Button>
-        </form>
-        {isPlatform ? (
-          <div className="mt-5 border-t border-hairline pt-5">
-            <p className="m-0 font-sans text-sm font-semibold text-paper">Broadcast platform</p>
-            <p className="m-0 mt-1 font-sans text-xs text-paper-dim">
-              Satu pesan ke semua kanal aktif. Diantrekan, dikirim bertahap oleh sistem, coba lagi otomatis bila kena batas.
-            </p>
-            <Textarea
-              value={broadcastText}
-              onChange={(event) => setBroadcastText(event.target.value)}
-              disabled={isBroadcasting}
-              rows={3}
-              maxLength={4000}
-              placeholder="Pengumuman untuk semua kanal…"
-              aria-label="Teks pengumuman"
-              className="mt-2 font-sans text-xs"
-            />
-            {broadcastNotice ? (
-              <p className="m-0 mt-1 font-sans text-xs text-signal">{broadcastNotice}</p>
-            ) : null}
-            <Button
-              type="button"
-              variant="default"
-              onClick={handleBroadcast}
-              disabled={isBroadcasting || broadcastText.trim().length === 0}
-              className="mt-2"
-            >
-              <span>Kirim Pengumuman</span>
-            </Button>
-          </div>
-        ) : null}
       </SectionCard>
 
       <SectionCard icon={Mail} title="Surel Transaksi" eyebrow="Notifikasi">

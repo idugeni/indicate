@@ -8,11 +8,11 @@ import {
 } from '@/modules/dashboard/ports';
 
 const actor = {
-  actorType: 'telegram',
-  actorId: 'mapping-1',
+  actorType: 'api_key',
+  actorId: 'key-1',
   organizationId: 'org-1',
   permissionSet: new Set<string>(),
-  entryPoint: 'telegram',
+  entryPoint: 'api',
   requestId: 'req-1',
 } as const;
 

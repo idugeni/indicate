@@ -22,5 +22,4 @@ export const STACK_LOGOS: readonly StackLogo[] = Object.freeze([
   { name: 'Node.js', file: '/brand/stack/nodejs.svg', role: 'Runtime' },
   { name: 'Vercel', file: '/brand/stack/vercel.svg', role: 'Hosting' },
   { name: 'Resend', file: '/brand/stack/resend.svg', role: 'Email' },
-  { name: 'Telegram', file: '/brand/stack/telegram.svg', role: 'Bot' },
 ]);

@@ -1,15 +1,13 @@
-import { createHash } from 'node:crypto';
-
-import { and, eq, gt, isNull, like, or, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import { publicApiKeyRecord, type CustomerProjection, type StoredApiKey, type SubscriptionRecord, type TelegramConversation, type TelegramIdentity, type TelegramIdentityOption, type TelegramMappingRecord, type WebhookReplayClaim } from '@/modules/integrations/models';
+import { publicApiKeyRecord, type CustomerProjection, type StoredApiKey, type SubscriptionRecord, type WebhookReplayClaim } from '@/modules/integrations/models';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import { SOLO_ADMIN_PERMISSION_NAMES } from '@/modules/dashboard/permissions';
-import { IntegrationsAccessDeniedError, IntegrationsConflictError, IntegrationsSubscriptionInactiveError, type NewStoredApiKey, type ReplayClaimInput, type ReplayClaimResult, type IntegrationsRepository, type TelegramOutboxRecord } from '@/modules/integrations/ports';
+import { IntegrationsAccessDeniedError, IntegrationsConflictError, IntegrationsSubscriptionInactiveError, type NewStoredApiKey, type ReplayClaimInput, type ReplayClaimResult, type IntegrationsRepository } from '@/modules/integrations/ports';
 import { redact } from '@/core/security/redaction';
-import { apiKeys, auditLogs, memberships, permissions, regions, rolePermissions, roles, subscriptions, telegramConversations, telegramIdentityMappings } from '@/data/schema';
+import { apiKeys, auditLogs, memberships, permissions, regions, rolePermissions, roles, subscriptions } from '@/data/schema';
 import type * as schema from '@/data/schema';
 
 type Database = PostgresJsDatabase<typeof schema>;
@@ -38,10 +36,6 @@ export function normalizeIntegrationsTimestamp(value: RawTimestamp): string {
 }
 const optionalIso = (value: RawTimestamp | null) => value === null ? null : normalizeIntegrationsTimestamp(value);
 function uniqueViolation(error: unknown): boolean { let current: unknown = error; const seen = new Set<object>(); while (typeof current === 'object' && current !== null && !seen.has(current)) { seen.add(current); if ('code' in current && current.code === '23505') return true; current = 'cause' in current ? current.cause : undefined; } return false; }
-/** One-way pseudonym for the Telegram identifier in audit context (UU PDP): raw values never enter audit_logs. */
-function pseudonymizeTelegramId(value: string): string {
-  return `sha256:${createHash('sha256').update(value, 'utf8').digest('hex')}`;
-}
 function deniedViolation(error: unknown): boolean { return typeof error === 'object' && error !== null && 'code' in error && error.code === '42501'; }
 
 function mapKey(row: typeof apiKeys.$inferSelect): StoredApiKey {
@@ -54,9 +48,6 @@ type RawApiKeyRow = {
 };
 function mapRawKey(row: RawApiKeyRow): StoredApiKey {
   return { id: row.id, organizationId: row.organization_id, lookupId: row.lookup_id, name: row.name, salt: row.salt, verificationHash: row.verification_hash, scopes: row.scopes, status: row.status, predecessorId: row.predecessor_id, expiresAt: optionalIso(row.expires_at), lastUsedAt: optionalIso(row.last_used_at), version: row.version, regionId: row.region_id, createdAt: normalizeIntegrationsTimestamp(row.created_at), updatedAt: normalizeIntegrationsTimestamp(row.updated_at) };
-}
-function mapTelegramMapping(row: typeof telegramIdentityMappings.$inferSelect): TelegramMappingRecord {
-  return { id: row.id, organizationId: row.organizationId, userId: row.userId, roleId: row.roleId, telegramUserId: row.telegramUserId, telegramChatId: row.telegramChatId, status: row.status, version: row.version, consentedAt: row.consentedAt === null ? null : normalizeIntegrationsTimestamp(row.consentedAt), consentTextVersion: row.consentTextVersion, ipHash: row.ipHash, createdAt: normalizeIntegrationsTimestamp(row.createdAt), updatedAt: normalizeIntegrationsTimestamp(row.updatedAt) };
 }
 type RawClaimRow = {
   source: string; replay_id: string; organization_id: string | null; body_digest: string;
@@ -136,53 +127,6 @@ export class DrizzleIntegrationsRepository implements IntegrationsRepository {
   async listApiKeys(actor: AuthorizedTenantActorContext) { return this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorizeAny(tx, actor, [INTEGRATIONS_PERMISSIONS.apiKeyRead, INTEGRATIONS_PERMISSIONS.apiKeyManage]); return (await tx.select().from(apiKeys).where(eq(apiKeys.organizationId, actor.organizationId))).map((row) => publicApiKeyRecord(mapKey(row))); }); }
   async findApiKeyByLookupId(lookupId: string): Promise<StoredApiKey | null> { const rows = await this.database.execute<RawApiKeyRow>(sql`SELECT * FROM indicate_private.resolve_api_key_lookup(${lookupId})`); return rows[0] === undefined ? null : mapRawKey(rows[0]); }
   async recordApiKeyUse(organizationId: string, id: string, now: string): Promise<void> { await this.database.transaction(async (tx) => { await this.context(tx, organizationId, id, 'api-key-authentication'); await tx.update(apiKeys).set({ lastUsedAt: new Date(now), updatedAt: new Date(now) }).where(and(eq(apiKeys.organizationId, organizationId), eq(apiKeys.id, id), eq(apiKeys.status, 'active'), or(isNull(apiKeys.expiresAt), gt(apiKeys.expiresAt, new Date(now))))); }); }
-
-  async resolveTelegramIdentity(telegramUserId: string, telegramChatId: string): Promise<TelegramIdentity | null> { const rows = await this.database.execute<{ mapping_id: string; organization_id: string; user_id: string; role_id: string; telegram_user_id: string; telegram_chat_id: string; region_id: string | null; permissions: string[] }>(sql`SELECT * FROM indicate_private.resolve_telegram_identity(${telegramUserId}, ${telegramChatId})`); const row = rows[0]; return row === undefined ? null : { mappingId: row.mapping_id, organizationId: row.organization_id, userId: row.user_id, roleId: row.role_id, telegramUserId: row.telegram_user_id, telegramChatId: row.telegram_chat_id, regionId: row.region_id, permissions: new Set(row.permissions) }; }
-  async listTelegramIdentities(telegramUserId: string, telegramChatId: string): Promise<readonly TelegramIdentityOption[]> { const rows = await this.database.execute<{ mapping_id: string; organization_id: string; organization_name: string; user_id: string; role_id: string; telegram_user_id: string; telegram_chat_id: string; region_id: string | null; permissions: string[] }>(sql`SELECT * FROM indicate_private.list_telegram_identities(${telegramUserId}, ${telegramChatId})`); return rows.map((row) => Object.freeze({ identity: { mappingId: row.mapping_id, organizationId: row.organization_id, userId: row.user_id, roleId: row.role_id, telegramUserId: row.telegram_user_id, telegramChatId: row.telegram_chat_id, regionId: row.region_id, permissions: new Set(row.permissions) }, organizationName: row.organization_name })); }
-  async listTelegramMappings(actor: AuthorizedTenantActorContext): Promise<readonly TelegramMappingRecord[]> { return this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorize(tx, actor, INTEGRATIONS_PERMISSIONS.telegramManage); return (await tx.select().from(telegramIdentityMappings).where(eq(telegramIdentityMappings.organizationId, actor.organizationId))).map(mapTelegramMapping); }); }
-  async createTelegramMapping(actor: AuthorizedTenantActorContext, input: { readonly id: string; readonly userId: string; readonly roleId: string; readonly telegramUserId: string; readonly telegramChatId: string; readonly consentedAt: string | null; readonly consentTextVersion: string | null; readonly ipHash: string | null; readonly now: string }): Promise<TelegramMappingRecord> {
-    try { return await this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorize(tx, actor, INTEGRATIONS_PERMISSIONS.telegramManage); await this.enforceWritableSubscription(tx, actor); const member = await tx.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.organizationId, actor.organizationId), eq(memberships.userId, input.userId), eq(memberships.roleId, input.roleId), eq(memberships.status, 'active'))).limit(1); if (member.length !== 1) throw new IntegrationsAccessDeniedError(); const rows = await tx.insert(telegramIdentityMappings).values({ organizationId: actor.organizationId, id: input.id, userId: input.userId, roleId: input.roleId, telegramUserId: input.telegramUserId, telegramChatId: input.telegramChatId, status: 'active', version: 1, consentedAt: input.consentedAt === null ? null : new Date(input.consentedAt), consentTextVersion: input.consentTextVersion, ipHash: input.ipHash, createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning(); await this.audit(tx, actor, actor.organizationId, 'telegram_mapping.create', 'telegram_mapping', input.id, { userId: input.userId, roleId: input.roleId, telegramUserId: pseudonymizeTelegramId(input.telegramUserId), telegramChatId: pseudonymizeTelegramId(input.telegramChatId) }, new Date(input.now)); return mapTelegramMapping(rows[0]!); }); } catch (error) { if (uniqueViolation(error)) throw new IntegrationsConflictError(); throw error; }
-  }
-  async updateTelegramMapping(actor: AuthorizedTenantActorContext, input: { readonly mappingId: string; readonly expectedVersion: number; readonly userId: string; readonly roleId: string; readonly telegramUserId: string; readonly telegramChatId: string; readonly status: TelegramMappingRecord['status']; readonly now: string }): Promise<TelegramMappingRecord> {
-    try { return await this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorize(tx, actor, INTEGRATIONS_PERMISSIONS.telegramManage); await this.enforceWritableSubscription(tx, actor); const member = await tx.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.organizationId, actor.organizationId), eq(memberships.userId, input.userId), eq(memberships.roleId, input.roleId), eq(memberships.status, 'active'))).limit(1); if (member.length !== 1) throw new IntegrationsAccessDeniedError(); const rows = await tx.update(telegramIdentityMappings).set({ userId: input.userId, roleId: input.roleId, telegramUserId: input.telegramUserId, telegramChatId: input.telegramChatId, status: input.status, version: input.expectedVersion + 1, updatedAt: new Date(input.now) }).where(and(eq(telegramIdentityMappings.organizationId, actor.organizationId), eq(telegramIdentityMappings.id, input.mappingId), eq(telegramIdentityMappings.version, input.expectedVersion))).returning(); if (rows.length !== 1) throw new IntegrationsConflictError(); await this.audit(tx, actor, actor.organizationId, 'telegram_mapping.update', 'telegram_mapping', input.mappingId, { status: input.status, userId: input.userId, roleId: input.roleId }, new Date(input.now)); return mapTelegramMapping(rows[0]!); }); } catch (error) { if (uniqueViolation(error)) throw new IntegrationsConflictError(); throw error; }
-  }
-  async readTelegramConversation(identity: TelegramIdentity): Promise<TelegramConversation | null> { return this.database.transaction(async (tx) => { await this.context(tx, identity.organizationId, identity.mappingId, 'telegram-conversation'); const rows = await tx.select().from(telegramConversations).where(and(eq(telegramConversations.organizationId, identity.organizationId), eq(telegramConversations.telegramChatId, identity.telegramChatId), eq(telegramConversations.telegramUserId, identity.telegramUserId))).limit(1); const row = rows[0]; return row === undefined ? null : { source: 'telegram', organizationId: row.organizationId, chatId: row.telegramChatId, userId: row.telegramUserId, step: row.step, data: row.data, updatedAt: normalizeIntegrationsTimestamp(row.updatedAt), expiresAt: normalizeIntegrationsTimestamp(row.expiresAt) }; }); }
-  async saveTelegramConversation(identity: TelegramIdentity, conversation: TelegramConversation): Promise<void> { await this.database.transaction(async (tx) => { await this.context(tx, identity.organizationId, identity.mappingId, 'telegram-conversation'); await tx.insert(telegramConversations).values({ organizationId: identity.organizationId, mappingId: identity.mappingId, telegramUserId: identity.telegramUserId, telegramChatId: identity.telegramChatId, step: conversation.step, data: conversation.data as Record<string, unknown>, expiresAt: new Date(conversation.expiresAt), updatedAt: new Date(conversation.updatedAt) }).onConflictDoUpdate({ target: [telegramConversations.organizationId, telegramConversations.telegramChatId, telegramConversations.telegramUserId], set: { mappingId: identity.mappingId, step: conversation.step, data: conversation.data as Record<string, unknown>, expiresAt: new Date(conversation.expiresAt), updatedAt: new Date(conversation.updatedAt) } }); }); }
-  async clearTelegramConversation(identity: TelegramIdentity): Promise<void> { await this.database.transaction(async (tx) => { await this.context(tx, identity.organizationId, identity.mappingId, 'telegram-conversation'); await tx.delete(telegramConversations).where(and(eq(telegramConversations.organizationId, identity.organizationId), eq(telegramConversations.telegramChatId, identity.telegramChatId), eq(telegramConversations.telegramUserId, identity.telegramUserId))); }); }
-
-  async enqueueOutboxMessage(input: { readonly organizationId: string | null; readonly chatId: string; readonly text: string; readonly now: string }): Promise<{ readonly id: string }> {
-    const rows = await this.database.execute<{ outbox_enqueue: string }>(sql`SELECT indicate_private.outbox_enqueue(${input.organizationId}::uuid, ${input.chatId}, ${input.text}, ${input.now}::timestamptz) AS outbox_enqueue`);
-    const id = rows[0]?.outbox_enqueue;
-    if (id === undefined) throw new IntegrationsConflictError();
-    return Object.freeze({ id });
-  }
-  async listOrganizationGroupChats(organizationId: string): Promise<readonly string[]> {
-    return this.database.transaction(async (tx) => {
-      await this.context(tx, organizationId, 'telegram-notify', 'telegram-notify');
-      const rows = await tx.selectDistinct({ chatId: telegramIdentityMappings.telegramChatId }).from(telegramIdentityMappings)
-        .where(and(eq(telegramIdentityMappings.organizationId, organizationId), eq(telegramIdentityMappings.status, 'active'), like(telegramIdentityMappings.telegramChatId, '-%')));
-      return rows.map((row) => row.chatId);
-    });
-  }
-
-  async claimOutboxMessages(now: string, limit: number): Promise<readonly TelegramOutboxRecord[]> {
-    const rows = await this.database.execute<{ id: string; organization_id: string | null; chat_id: string; text: string; status: TelegramOutboxRecord['status']; attempts: number }>(sql`SELECT * FROM indicate_private.outbox_claim(${now}::timestamptz, ${limit})`);
-    return rows.map((row) => Object.freeze({ id: row.id, organizationId: row.organization_id, chatId: row.chat_id, text: row.text, status: row.status, attempts: row.attempts }));
-  }
-
-  async ackOutboxMessage(input: { readonly id: string; readonly ok: boolean; readonly retryAfterSeconds: number | null; readonly error: string | null; readonly now: string }): Promise<void> {
-    await this.database.execute(sql`SELECT indicate_private.outbox_ack(${input.id}::uuid, ${input.ok}, ${input.retryAfterSeconds}, ${input.error}, ${input.now}::timestamptz)`);
-  }
-
-  async listBroadcastTargets(actorId: string): Promise<readonly { readonly organizationId: string; readonly chatId: string }[]> {
-    const rows = await this.database.execute<{ organization_id: string; chat_id: string }>(sql`SELECT * FROM indicate_private.outbox_broadcast_targets(${actorId}::uuid)`);
-    return rows.map((row) => Object.freeze({ organizationId: row.organization_id, chatId: row.chat_id }));
-  }
-
-  async listOutboxMessages(actorId: string): Promise<readonly TelegramOutboxRecord[]> {
-    const rows = await this.database.execute<{ id: string; organization_id: string | null; chat_id: string; text: string; status: TelegramOutboxRecord['status']; attempts: number }>(sql`SELECT * FROM indicate_private.outbox_list_platform(${actorId}::uuid)`);
-    return rows.map((row) => Object.freeze({ id: row.id, organizationId: row.organization_id, chatId: row.chat_id, text: row.text, status: row.status, attempts: row.attempts }));
-  }
 
   async claimReplay(input: ReplayClaimInput): Promise<ReplayClaimResult> {
     const executeClaim = () => this.database.execute<RawClaimRow & { claim_kind: 'created' | 'reclaimed' | 'duplicate' }>(sql`SELECT * FROM indicate_private.replay_claim(${input.source}, ${input.replayId}, ${input.organizationId}::uuid, ${input.bodyDigest}, ${input.receivedAt}::timestamptz, ${input.leaseExpiresAt}::timestamptz, ${input.expiresAt}::timestamptz)`);

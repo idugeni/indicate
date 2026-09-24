@@ -30,7 +30,7 @@ src/app/ → src/modules/ → src/core/ + ports ← src/integrations/
 ```
 
 - `src/modules/` — Product capabilities, each with its own `ports.ts` interfaces where applicable. No I/O straight from callers: adapters invoke shared application services.
-- `src/integrations/` — Concrete provider adapters: Supabase, R2 storage, Redis, Cloudflare, Vercel, Telegram. Server-only.
+- `src/integrations/` — Concrete provider adapters: Supabase, R2 storage, Redis, Cloudflare, Vercel, email. Server-only.
 - `src/core/` — Shared kernel: `config/`, errors, operation context, hostname, observability, routing, security, system, transactions.
 - `src/data/` — Drizzle schema, client factory, repository implementations, migrations.
 - `src/app/` — Purely routing (see below); business logic lives in `src/modules/` and `src/data/`.
@@ -86,7 +86,7 @@ Configured in `tsconfig.json`:
 ## Import boundaries (advisory)
 
 - `src/modules/` encapsulates product capabilities (`audit`, `auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `moderation`, `persisted-config`, `publishing`, `site`). Only `dashboard`, `delivery`, and `integrations` currently expose a barrel `index.ts` — prefer importing every other module by file path (e.g. `@/modules/publishing/publication-policy`).
-- `src/integrations/` holds provider adapters (`supabase`, `storage`, `redis`, `telegram`, `cloudflare`, `vercel`) and should stay server-only.
+- `src/integrations/` holds provider adapters (`supabase`, `storage`, `redis`, `cloudflare`, `vercel`, `email`) and should stay server-only.
 - `src/core/` holds the shared kernel (`config/`, errors, operation context, hostname, observability, routing, security, system, transactions).
 - `src/app/` handles Next.js App Router concerns and should delegate business logic to `src/modules/` and `src/data/`.
 

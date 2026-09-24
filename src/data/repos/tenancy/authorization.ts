@@ -14,7 +14,6 @@ import {
   rolePermissions,
   roles,
   sites,
-  telegramIdentityMappings,
   users,
 } from '@/data/schema';
 import type * as schema from '@/data/schema';
@@ -210,7 +209,7 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
 
   async findActiveActorAuthorization(
     organizationId: string,
-    actorType: 'api_key' | 'telegram' | 'system',
+    actorType: 'api_key' | 'system',
     actorId: string,
   ) {
     return this.database.transaction(async (transaction) => {
@@ -229,37 +228,6 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
           actorId,
           permissions: new Set(key.scopes),
           regionId: key.regionId,
-        };
-      }
-      if (actorType === 'telegram') {
-        const rows = await transaction.select({ permissionName: permissions.name, regionId: memberships.regionId })
-          .from(telegramIdentityMappings)
-          .innerJoin(memberships, and(
-            eq(memberships.organizationId, telegramIdentityMappings.organizationId),
-            eq(memberships.userId, telegramIdentityMappings.userId),
-            eq(memberships.roleId, telegramIdentityMappings.roleId),
-          ))
-          .innerJoin(roles, and(
-            eq(roles.organizationId, memberships.organizationId),
-            eq(roles.id, memberships.roleId),
-          ))
-          .innerJoin(rolePermissions, and(
-            eq(rolePermissions.organizationId, roles.organizationId),
-            eq(rolePermissions.roleId, roles.id),
-          ))
-          .innerJoin(permissions, eq(permissions.id, rolePermissions.permissionId))
-          .where(and(
-            eq(telegramIdentityMappings.organizationId, organizationId),
-            eq(telegramIdentityMappings.id, actorId),
-            eq(telegramIdentityMappings.status, 'active'),
-            eq(memberships.status, 'active'),
-            eq(roles.active, true),
-          ));
-        return rows.length === 0 ? null : {
-          organizationId,
-          actorId,
-          permissions: new Set(rows.map(({ permissionName }) => permissionName)),
-          regionId: rows[0]?.regionId ?? null,
         };
       }
       const claimed = await transaction.select({ id: publishingJobs.id }).from(publishingJobs).where(and(

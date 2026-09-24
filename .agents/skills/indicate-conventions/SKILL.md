@@ -22,14 +22,14 @@ Detailed guidance lives in `references/`: `architecture.md`, `tenancy-security.m
 
 Hexagonal / ports-and-adapters modular monolith under `src/`. Dependency direction: `app/` → `modules/` → `core/` + ports ← `integrations/`, with `data/` for persistence.
 
-- `src/app/` handles Next.js App Router concerns (route groups `(site)`, `(network)`, `(auth)`, `(dashboard)`, `api/`, plus `domain-pending/`, `tg/`, and machine-readable surfaces `llms.txt/`, `robots.txt/`, `rss.xml/`, `sitemap.xml/`, `news-sitemap.xml/`). Prefer delegating business logic to `src/modules/` and `src/data/`.
+- `src/app/` handles Next.js App Router concerns (route groups `(site)`, `(network)`, `(auth)`, `(dashboard)`, `api/`, plus `domain-pending/` and machine-readable surfaces `llms.txt/`, `robots.txt/`, `rss.xml/`, `sitemap.xml/`, `news-sitemap.xml/`). Prefer delegating business logic to `src/modules/` and `src/data/`.
 - `src/modules/` (`audit`, `auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `moderation`, `persisted-config`, `publishing`, `site`) encapsulates product capabilities. Only `dashboard`, `delivery`, and `integrations` expose a barrel `index.ts` — import other modules by file path, never by bare module specifier.
-- `src/integrations/` holds provider adapters (`supabase`, `storage`, `redis`, `telegram`, `cloudflare`, `vercel`, `email`) and stays server-only (`server-only` import at the top).
+- `src/integrations/` holds provider adapters (`supabase`, `storage`, `redis`, `cloudflare`, `vercel`, `email`) and stays server-only (`server-only` import at the top).
 - `src/core/` is the shared kernel (`config/`, errors, operation context, hostname, observability, routing, security, system, transactions).
 - `src/data/` holds the Drizzle schema (`schema/`), client factory (`client.ts`, pooled `DATABASE_POOL_URL` with `prepare: false`), repository implementations (`repos/`), and hand-written SQL migrations (`migrations/`).
 - Path aliases: `@/*` → `./src/*`, plus `@/components/*`, `@/modules/*`, `@/data/*`, `@/core/*`, `@/integrations/*`, `@/ui/*`.
-- Dashboard, API, Telegram, background, and reconciliation adapters should invoke shared application services — avoid issuing tenant SQL directly or reimplementing business rules.
-- External effects (purge, DNS, Telegram sends) should happen after durable intent is recorded in Postgres, and should be resumable, bounded, and idempotent.
+- Dashboard, API, background, and reconciliation adapters should invoke shared application services — avoid issuing tenant SQL directly or reimplementing business rules.
+- External effects (purge, DNS) should happen after durable intent is recorded in Postgres, and should be resumable, bounded, and idempotent.
 
 ## Multi-tenancy (defaults — overridable with owner approval in relaxed mode)
 

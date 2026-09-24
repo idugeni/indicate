@@ -23,7 +23,6 @@
 | [domains](domains.md) | Living | Indicate-related domain inventory. |
 | [active domains](active-domains.md) | Living ledger | Activation/deactivation ledger; update on every change. |
 | [ops lessons](ops-lessons.md) | Living | Incident-derived procedures (tenant context, Supavisor sessions). |
-| [telegram notifications](telegram-notifications.md) | Partially implemented | Group-only notification decision log and rollout scope. |
 
 ## Legal and per-tenant records
 

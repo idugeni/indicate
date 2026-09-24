@@ -19,7 +19,7 @@ const actor = {
 } as const;
 
 const COLLECTIONS = [
-  'domains', 'regions', 'sites', 'siteSettings', 'roles', 'memberships', 'telegramMappings',
+  'domains', 'regions', 'sites', 'siteSettings', 'roles', 'memberships',
   'publishers', 'affiliations', 'categories', 'authors', 'articles', 'articleCategories', 'articleSites', 'media',
 ] as const;
 

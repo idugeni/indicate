@@ -54,7 +54,6 @@ const STATE: DashboardTenantState = {
   siteSettings: [],
   roles: [],
   memberships: [],
-  telegramMappings: [],
   publishers: [],
   affiliations: [],
   categories: [],

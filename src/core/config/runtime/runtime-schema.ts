@@ -60,11 +60,6 @@ export interface RuntimeConfig {
     readonly batchSize: number;
     readonly functionDeadlineSeconds: number;
   };
-  readonly telegram: {
-    readonly botToken: string;
-    readonly webhookSecret: string;
-    readonly ownerIds: readonly string[];
-  };
   /** Resend transactional email; null when unconfigured (sender disabled). */
   readonly email: {
     readonly apiKey: string;

@@ -14,11 +14,11 @@ const MEDIA = '0199a2b3-4c5d-7e8f-9012-3456789abcdf';
 const ORG = '0199a2b3-4c5d-7e8f-9012-3456789abc00';
 
 const actor = {
-  actorType: 'telegram',
-  actorId: 'mapping-1',
+  actorType: 'api_key',
+  actorId: 'key-1',
   organizationId: ORG,
   permissionSet: new Set<string>(),
-  entryPoint: 'telegram',
+  entryPoint: 'api',
   requestId: 'req-1',
 } as const;
 

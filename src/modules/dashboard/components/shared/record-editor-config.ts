@@ -18,7 +18,7 @@ import { SOCIAL_FIELD_DEFS, SOCIAL_ORDER } from '@/modules/site/company-contact'
  * - `siteSettings` — heavy JSON payload (colors/seo/navigation) with a dedicated form.
  * - `articleSites`, `media`, `jobs`, `targets`, `auditLogs` — read-only or
  *   managed by dedicated forms (ArticleCreateForm/ArticleDistributeForm/PublishingForm/MediaForm).
- * - Integrations endpoint collections (`apiKeys`, `subscription`, `telegramMappings`)
+ * - Integrations endpoint collections (`apiKeys`, `subscription`)
  *   use a different command path, not yet covered by workspace commands in DataView.
  */
 
