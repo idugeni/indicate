@@ -21,9 +21,10 @@ tracking off; status `not_started`). Record DNS pending (pasang setelah zona CF 
 
 ## Kuota Vercel
 
-Project `indicate`: **50/50 domain — LIMIT TERCAPAI lagi** (sempat 49/50
-setelah `www.indicate.web.id` dilepas; 1 slot dipakai `jejakkebenaran.my.id`
-→ kembali 50/50).
+Project `indicate`: **53 domain — CAP HILANG sejak Pro riil 2026-09-24**
+(`indicate.website`, `api.indicate.website`, `webhook.indicate.website` tertambah via API,
+semua langsung `verified:true`; riwayat 50/50 saat trial ada di bawah).
+`api.`/`webhook.` baru tercakup wildcard CNAME zona baru, tanpa DNS tambahan.
 `docs.indicate.web.id` dilepas via `DELETE /v9/projects/:id/domains` karena
 surface docs dihapus penuh dari codebase (config, proxy, route `(docs)`,
 modul `src/modules/docs`, `openapi.json`, `docs-opengraph-image`, guard,
