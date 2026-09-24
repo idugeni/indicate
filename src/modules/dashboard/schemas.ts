@@ -44,7 +44,10 @@ export const siteSettingsSchema = z.object({
   description: z.string().trim().min(1).max(1000),
   tagline: z.string().trim().min(1).max(120).nullable().optional(),
   seoDefaultTitle: z.string().trim().min(SEO_TITLE_MIN).max(SEO_TITLE_MAX).nullable().optional(),
-  seoDefaultDescription: z.string().trim().min(SEO_DESCRIPTION_MIN).max(SEO_DESCRIPTION_MAX).nullable().optional(),
+  seoDefaultDescription: z.string().trim().min(SEO_DESCRIPTION_MIN).max(SEO_DESCRIPTION_MAX).nullable().optional().refine(
+    (value) => value === undefined || value === null || (!value.includes(':') && !/portal berita/iu.test(value)),
+    'Deskripsi default wajib unik per situs: tanpa titik dua dan tanpa pola template.',
+  ),
   seoOpenGraphSiteName: z.string().trim().min(1).max(160).nullable().optional(),
   locale: z.string().trim().regex(/^[a-z]{2}-[A-Z]{2}$/, 'Gunakan format id-ID.').nullable().optional(),
   seoRobotsDirective: z.enum(['index,follow', 'noindex,nofollow']).nullable().optional(),
