@@ -3,11 +3,16 @@ import { headers } from 'next/headers';
 
 import { denied } from '@/core/routing/deny';
 import { withApiAccess } from '@/core/observability/api-access';
+import { getNetworkSites, getPartnerOrganizations } from '@/modules/content/site-content';
 import { deliveryComposition } from '@/modules/delivery';
 import { resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 /** Control-plane llms.txt (llmstxt.org): H1 + blockquote summary + H2 file lists, absolute URLs. */
-export function controlPlaneLlms(host: string): string {
+export function controlPlaneLlms(
+  host: string,
+  portals: readonly { readonly name: string; readonly hostname: string }[] = [],
+  partners: readonly { readonly name: string }[] = [],
+): string {
   const origin = `https://${host}`;
   const lines = [
     '# Indicate',
@@ -25,6 +30,20 @@ export function controlPlaneLlms(host: string): string {
     `- [FAQ](${origin}/faq): jawaban pembelian, langganan manual, domain, bantuan, dan pelaporan konten.`,
     `- [Kontak](${origin}/contact): kanal surel, WhatsApp, dan Telegram.`,
     '',
+    ...(portals.length === 0
+      ? []
+      : [
+          `## Jaringan (${origin}/network)`,
+          ...portals.slice(0, 100).map((portal) => `- [${portal.name}](https://${portal.hostname})`),
+          '',
+        ]),
+    ...(partners.length === 0
+      ? []
+      : [
+          '## Partner',
+          ...partners.slice(0, 100).map((partner) => `- ${partner.name}`),
+          '',
+        ]),
     '## Legalitas',
     `- [Kebijakan Privasi](${origin}/privacy): penanganan data pembaca, media privat, dan retensi.`,
     `- [Ketentuan Layanan](${origin}/terms): tanggung jawab konten, keamanan akun, isolasi data, dan audit.`,
@@ -59,12 +78,20 @@ async function handleGET() {
   const { resolver, config } = await deliveryComposition();
   const result = await resolver.classify((await headers()).get('host'));
   if (result.kind === 'control' && result.surface === 'dashboard') {
-    return new Response(controlPlaneLlms(config.hosts.dashboard), {
-      headers: {
-        'Content-Type': 'text/markdown; charset=utf-8',
-        'Cache-Control': 'public, max-age=0, s-maxage=300',
+    const [sites, partners] = await Promise.all([getNetworkSites(), getPartnerOrganizations()]);
+    return new Response(
+      controlPlaneLlms(
+        config.hosts.dashboard,
+        sites.filter((site) => !site.isRegional).map((site) => ({ name: site.siteName, hostname: site.hostname })),
+        partners.map((partner) => ({ name: partner.name })),
+      ),
+      {
+        headers: {
+          'Content-Type': 'text/markdown; charset=utf-8',
+          'Cache-Control': 'public, max-age=0, s-maxage=300',
+        },
       },
-    });
+    );
   }
   if (result.kind === 'site') {
     const site = await resolveNetworkSite({}, '/llms.txt');

@@ -9,6 +9,24 @@ describe('controlPlaneLlms', () => {
     expect(body).toContain('(https://indicate.web.id/pricing)');
     expect(body).toContain('## Legalitas');
   });
+
+  it('menyematkan direktori portal dan partner aktif', () => {
+    const body = controlPlaneLlms(
+      'indicate.web.id',
+      [{ name: 'Portal Uji', hostname: 'portaluji.web.id' }],
+      [{ name: 'Mitra Contoh' }],
+    );
+    expect(body).toContain('## Jaringan (https://indicate.web.id/network)');
+    expect(body).toContain('- [Portal Uji](https://portaluji.web.id)');
+    expect(body).toContain('## Partner');
+    expect(body).toContain('- Mitra Contoh');
+  });
+
+  it('melewatkan seksi direktori saat data kosong', () => {
+    const body = controlPlaneLlms('indicate.web.id');
+    expect(body).not.toContain('## Jaringan');
+    expect(body).not.toContain('## Partner');
+  });
 });
 
 describe('tenantLlms', () => {
