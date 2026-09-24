@@ -9,6 +9,11 @@
 Baru: `indicate.website` (+ `api.`, `webhook.`, `media.`, `pv.`, `www.`). Lama
 (`indicate.web.id` + sub) tetap hidup sampai cutover: redirect 308 Cloudflare untuk
 apex/`www` lama (preserve path+query); `api`/`webhook`/`media`/`pv` lama dual-serve.
+Zona baru `active` 2026-09-24 (NS terdelegasi via API Vercel): 16 DNS, TLS strict,
+5 ruleset, Email Routing ready (catch-all drop, mirror zona lama), Worker route `pv`,
+R2 `media` (ownership active, SSL pending), Resend verify berjalan.
+HTTP: apex baru 200 halaman unknown-host bermerek + `noindex` (status pra-cutover yang benar;
+env+deploy baru belum dialihkan); `api.` 404 dan `pv.` SSL pending — normal pra-cutover.
 Terblokir saat ini: kuota Vercel 50/50 (tambah domain baru menunggu Pro riil/limit naik)
 dan zona Cloudflare baru belum dibuat (tanpa tool create-zone di MCP; via dashboard),
 lalu NS registrar. Email ikut pindah (Resend sending domain + Supabase Auth + 13 template).
