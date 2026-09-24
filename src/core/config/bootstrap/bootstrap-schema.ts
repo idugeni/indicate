@@ -60,6 +60,7 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'RESEND_WEBHOOK_SECRET',
   'GENERIC_WEBHOOK_SECRET',
   'CRON_SECRET',
+  'FB_APP_TOKEN',
   'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
 ]);
 
@@ -76,6 +77,10 @@ const hostnameSchema = z
   .pipe(z.string());
 
 const secretSchema = z.string().min(SECRET_MIN_LENGTH, 'secret_too_short');
+const facebookAppTokenSchema = secretSchema.refine((value) => {
+  const separator = value.indexOf('|');
+  return separator > 0 && separator < value.length - 1 && value.indexOf('|', separator + 1) === -1;
+}, 'fb_app_token_malformed');
 const httpsUrlSchema = z.url().refine((value) => value.startsWith('https://'), 'https_required');
 
 const bootstrapSchema = z
@@ -112,6 +117,7 @@ const bootstrapSchema = z
     RESEND_WEBHOOK_SECRET: secretSchema.optional(),
     GENERIC_WEBHOOK_SECRET: secretSchema,
     CRON_SECRET: secretSchema,
+    FB_APP_TOKEN: facebookAppTokenSchema.optional(),
   })
   .superRefine((value, context) => {
     if (value.NODE_ENV === 'production') {
@@ -131,6 +137,12 @@ const bootstrapSchema = z
         (value.RESEND_API_KEY.length < 24 || /(?:change[ -]?me|example|placeholder|sentinel|development|test-secret)/iu.test(value.RESEND_API_KEY))
       ) {
         context.addIssue({ code: 'custom', path: ['RESEND_API_KEY'], message: 'production_secret_not_bounded' });
+      }
+      if (
+        value.FB_APP_TOKEN !== undefined &&
+        (value.FB_APP_TOKEN.length < 24 || /(?:change[ -]?me|example|placeholder|sentinel|development|test-secret)/iu.test(value.FB_APP_TOKEN))
+      ) {
+        context.addIssue({ code: 'custom', path: ['FB_APP_TOKEN'], message: 'production_secret_not_bounded' });
       }
     }
     if ((value.RESEND_API_KEY === undefined) !== (value.RESEND_DEFAULT_FROM === undefined)) {
@@ -217,6 +229,8 @@ export interface BootstrapConfig {
     readonly resendWebhookSecret: SecretString | null;
     readonly genericWebhookSecret: SecretString;
     readonly cronSecret: SecretString;
+    /** Facebook app token (`APP_ID|APP_SECRET`); null when FB pre-scrape is disabled. */
+    readonly facebookAppToken: SecretString | null;
   }>;
 }
 
@@ -272,6 +286,7 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       resendWebhookSecret: value.RESEND_WEBHOOK_SECRET === undefined ? null : SecretString.fromPlain(value.RESEND_WEBHOOK_SECRET),
       genericWebhookSecret: SecretString.fromPlain(value.GENERIC_WEBHOOK_SECRET),
       cronSecret: SecretString.fromPlain(value.CRON_SECRET),
+      facebookAppToken: value.FB_APP_TOKEN === undefined ? null : SecretString.fromPlain(value.FB_APP_TOKEN),
     }),
   } as BootstrapConfig);
 }

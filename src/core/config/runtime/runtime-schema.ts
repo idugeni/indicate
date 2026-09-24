@@ -67,6 +67,10 @@ export interface RuntimeConfig {
     /** Resend webhook signing secret; null when the endpoint is disabled. */
     readonly webhookSecret: string | null;
   } | null;
+  /** Facebook pre-scrape for freshly published articles; null when unconfigured (manual scrape only). */
+  readonly social: {
+    readonly facebookAppToken: string;
+  } | null;
   readonly security: {
     readonly webhookFreshnessSeconds: number;
     readonly webhookReplayTtlSeconds: number;

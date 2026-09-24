@@ -1,6 +1,7 @@
 import 'server-only';
 import { DomainProvisioningService, type DomainZoneResolver } from '@/modules/delivery/domain-provisioning-service';
 import { InvalidationDispatcher } from '@/modules/delivery/invalidation';
+import { SocialWarmer } from '@/modules/delivery/social-warm';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { NextCacheInvalidationAdapter } from '@/modules/delivery/next-invalidation-adapter';
 import { CloudflareAuthorityAdapter } from '@/integrations/cloudflare/cloudflare-authority';
@@ -39,6 +40,6 @@ export async function deliveryOperationsComposition() {
     },
   };
   const provisioning = new DomainProvisioningService(repository, cloudflare, vercel, new HttpsPendingHostnameProbe(), config.hosts.reserved, zoneResolver, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts);
-  const invalidation = new InvalidationDispatcher(repository, new NextCacheInvalidationAdapter(), cloudflare, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts);
+  const invalidation = new InvalidationDispatcher(repository, new NextCacheInvalidationAdapter(), cloudflare, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts, new SocialWarmer(config.social?.facebookAppToken ?? null));
   return { config, runtime, repository, provisioning, invalidation };
 }

@@ -80,4 +80,29 @@ describe('validateBootstrapConfig gagal', () => {
     const result = validateBootstrapConfig({ ...validEnv(), ...secrets, NODE_ENV: 'production' });
     expect(result.success).toBe(true);
   });
+
+  it('menerima FB_APP_TOKEN format app-id pipe app-secret', () => {
+    const result = validateBootstrapConfig({ ...validEnv(), FB_APP_TOKEN: '1234567890123456|AbCdEfGhIjKlMnOpQrStUvWx' });
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.config.credentials.facebookAppToken).not.toBe(null);
+  });
+
+  it('menolak FB_APP_TOKEN tanpa separator atau sisi kosong', () => {
+    for (const token of ['tanpa-separator-sama-sekali', '|sisi-kiri-kosong', 'sisi-kanan-kosong|', 'dua|separator|lebih']) {
+      const result = validateBootstrapConfig({ ...validEnv(), FB_APP_TOKEN: token });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.issues.some((issue) => issue.category === 'fb_app_token_malformed')).toBe(true);
+      }
+    }
+  });
+
+  it('menolak FB_APP_TOKEN placeholder saat production', () => {
+    const result = validateBootstrapConfig({ ...validEnv(), NODE_ENV: 'production', FB_APP_TOKEN: 'test-secret-token|bagian-kedua' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.issues.some((issue) => issue.category === 'production_secret_not_bounded')).toBe(true);
+    }
+  });
 });

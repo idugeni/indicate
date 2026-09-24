@@ -105,6 +105,10 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
             defaultFrom: bootstrap.credentials.resendDefaultFrom,
             webhookSecret: bootstrap.credentials.resendWebhookSecret?.reveal() ?? null,
           },
+    social:
+      bootstrap.credentials.facebookAppToken === null
+        ? null
+        : { facebookAppToken: bootstrap.credentials.facebookAppToken.reveal() },
     security: Object.freeze({
       webhookFreshnessSeconds: policies.webhook.freshnessSeconds,
       webhookReplayTtlSeconds: policies.webhook.replayRetentionSeconds,
