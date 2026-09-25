@@ -2,7 +2,7 @@
 
 > **Status:** Living ledger — perbarui setiap ada aktivasi/penonaktifan domain.
 > **Owner:** Platform team.
-> **Last verified:** 2026-09-26 (3432 site aktif di DB: 104 apex + 104 region Jawa Tengah + 3224 city; Vercel exact + wildcard terverifikasi; Cloudflare strict; HTTP 104/104 apex dan sweep 1888/1888 turunan `200`; 10 apex Exabytes baru 2026-09-25 — NS Cloudflare terdelegasi 10/10, zona 8 `active` + 2 `pending`, belum tenant).
+> **Last verified:** 2026-09-26 (3762 site aktif di DB: 114 apex + 114 region Jawa Tengah + 3534 city; Vercel exact + wildcard terverifikasi 20/20 untuk 10 apex Exabytes baru; Cloudflare strict; HTTP 104/104 apex lama `200`; sweep 330/330 portal Exabytes baru `200` branded, 0 `noindex`).
 
 ## Migrasi domain utama (2026-09-24, dual-serve)
 
@@ -197,28 +197,95 @@ tenant-scoped terverifikasi HEAD → 1 transaksi DB (reservasi → media
 Stale edge-404 dibersihkan via purge exact-URL (task reconciler menyusul,
 idempoten). Verifikasi: `/logo.png` 200, manifest tenant, `/` 200.
 
-## Stok Exabytes 2026-09-25 (2026-09-26) — ZONA AKTIF, BELUM TENANT
+## Onboarding 10 apex Exabytes (2026-09-26) — 330/330 LIVE
 
 10 apex didaftarkan Exabytes 2026-09-25 (kedaluwarsa 2027-09-25, RDAP
-PANDI), ID Exabytes 347916–347925: sudutindonesia.web.id,
-ruangpublik.web.id, garisberita.web.id, titikmedia.my.id,
-suarapublik.biz.id, berandanasional.web.id, kabarutama.web.id,
-fokusrakyat.my.id, pusatmedia.biz.id, wartapersada.my.id.
+PANDI), ID Exabytes 347916–347925. NS dialihkan dari parking Masterweb
+(`dns1/dns2-parking.masterweb.com`, sebelumnya REFUSED) ke Cloudflare
+2026-09-26; delegasi terverifikasi 10/10.
 
-**NS sudah dialihkan 2026-09-26** dari parking Masterweb
-(`dns1/dns2-parking.masterweb.com`, sebelumnya REFUSED di delegasi publik)
-ke Cloudflare `joan.ns.cloudflare.com` + `kanye.ns.cloudflare.com`.
-Delegasi terverifikasi di 10/10 hostname via resolver publik. 10 zona
-Cloudflare provisioned penuh baseline tenant (TLS `strict`, Bot Fight
-Mode + AI-block off, Page Shield, 3 ruleset, 9 DNS record). Status zona
-pada pencatatan: 8 `active`, 2 `pending` (berandanasional, wartapersada)
-menunggu pemeriksaan propagasi.
+Infra: 10/10 zona `active`, baseline 56/56 setting identik zona tenant
+(termasuk HSTS + `early_hints=on` yang default Free dan harus di-set
+manual — keduanya ditambahkan ke `docs/cloudflare-baseline.md`), 3
+ruleset, 9 DNS record. Vercel exact + wildcard 20/20 `verified: true`.
 
-**Belum tenant**: 0/10 baris `domains`/`sites`/`site_settings`, 0/10
-asosiasi Vercel, 0/10 brand/SEO. Angka platform tidak berubah — 3432 site
-tetap, 104 apex tenant tetap. `GET /` serving unknown-host `noindex` yang
-normal. Menunggu penunjukan eksplisit pemilik; setelah itu wildcard cert
-Vercel perlu diterbitkan per apex.
+Tenant: 330 site (10 apex + 10 region Jawa Tengah + 310 city). Platform
+3.432 → **3.762 site**, apex 104 → **114**. 330/330 `active/active`,
+330/330 settings dengan nama + deskripsi + SEO unik. 30 objek R2
+(OG card + logo + favicon per apex; huruf S dibagi dua upload terpisah).
+Portal turunan mewarisi `default_media_id`, `logo_media_id`/
+`favicon_media_id` `NULL` (320/320). 330 task invalidasi
+`media.activated` → 330 `completed`, 0 `failed`.
+
+**Klaim institusi:** 590 baris `official_affiliations` ditambahkan
+(10 × 59) dengan menyalin pemetaan kanonik yang terbukti seragam di
+seluruh 104 domain lama. Total 6.136 → **6.726**, domain tercakup
+104 → **114**, fingerprint pemetaan tetap `distinct = 1` di 114 domain.
+
+**Verifikasi HTTP akhir:** sweep **330/330 `200`** — 10 apex + 10
+`jawa-tengah.*` + 310 `{city}.*` — semua branded, 0 failure, 0 `noindex`.
+Aset brand + `robots.txt`/`sitemap.xml`/`rss.xml` `200` di 10/10 apex.
+Subdomain acak → branded-404 `noindex`, tidak bocor tenant lain.
+
+**Dua akar masalah yang ditemukan (keduanya sudah diatasi):**
+
+1. 320 portal `525` sementara apex `200`. Diagnosis awal saya salah
+   (sangka menunggu deploy cert wildcard Cloudflare). Terbukti: cert
+   Cloudflare sudah `active` dan SAN-nya valid untuk wildcard; yang
+   hilang adalah **cert wildcard Vercel** — Vercel hanya auto-issued
+   cert apex, jadi `ssl=strict` gagal handshake ke origin. Diterbitkan via
+   ACME DNS-01 untuk 10 apex; cert apex + wildcard sekarang 20/20.
+2. Setelah itu apex masih `200` unknown-host `noindex`. Penyebabnya
+   `tenant-home` ter-prerender ISR (`x-nextjs-prerender: 1`) dan
+   onboarding manual melewati saga sehingga tidak ada task invalidasi.
+   330 task `media.activated` + purge reconciler menyelesaikannya.
+
+## Onboarding 20 apex Exabytes batch-2 (2026-09-26) — apex LIVE, drain berjalan
+
+20 apex ID Exabytes 347929–347948 (kontigu): lensamata, pikiranpublik,
+suaradata, fokusrakyat, lensakita24, sudutfakta7, narasipublik,
+titikberita9, mediasatu24, ruangredaksi, resonansi, eksposur, aspirasi,
+refleksi, sintesa, proyeksi, observasi, konstelasi, artikulasi,
+interpretasi.
+
+NS dialihkan dan **read-back 20/20** di panel Exabytes. 19 zona dapat
+pair `joan`/`kanye`; `pikiranpublik.web.id` mendapat pair `ivan`/`tia`
+dan NS-nya mengikuti pair itu — Cloudflare menetapkan pair acak per zona,
+harus dibaca dari API.
+
+**Satu nama domain dari daftar awal ternyata berbeda** dan ketahuan karena
+guard membandingkan judul halaman detail Exabytes sebelum mengubah NS:
+`pemikiranpublik.web.id` tidak pernah ada (aslinya `pikiranpublik.web.id`).
+Tanpa guard, NS akan dipasang ke domain yang salah.
+
+Infra: 19/20 zona `active`, baseline 56/56 identik, 40 asosiasi Vercel,
+**40/40 cert (apex + wildcard)** via ACME DNS-01. Platform 3.762 →
+**4.422 site**, apex 114 → **134**. 660/660 `active/active`, 660 settings
+unik, 60 objek R2, 1.180 klaim `official_affiliations` dengan fingerprint
+pemetaan tetap `distinct = 1` di 134 domain. Template 2 per template.
+
+Apex 200 + `robots=index, follow` + judul branded (terverifikasi).
+Sweep akhir 19 domain yang bisa di-resolve: **758/760 `200`**, 0
+unknown-host, 0 `noindex`. Dua sisanya (`rembang`/`surakarta.ruangredaksi`)
+`DNS` hanya saat 16 request paralel; serial 4/4 `200`.
+
+**Dua cacat yang ditemukan dan diperbaiki** (keduanya sudah dicatat di
+`docs/cloudflare-baseline.md`):
+
+1. Task invalidasi hanya memuat base paths, jadi `/logo.png`, `/icon.png`,
+   `/apple-touch-icon.png` menyimpan 404 basi di cache ISR. Gejala khas:
+   `manifest` `200` tapi ketiganya `404`.
+2. 60 `media.object_key` tertulis `2026-09-26-...` tanpa slug hostname,
+   sedangkan objek R2 ada sebagai `2026-09-25-...-{slug}-{token}.png`.
+   `site_settings` tetap `active` dan beranda tetap `200`, tapi
+   `getExact()` R2 `null` → route media `404`. Diperbaiki dengan membaca
+   key asli dari R2 (`ListObjectsV2` per prefix site) + `HeadObject`
+   tiap key sebelum menulis ke DB.
+
+`fokusrakyat.web.id` masih `pending`: PANDI mengembalikan NXDOMAIN
+walau RDAP mengonfirmasi terdaftar — lag publikasi delegasi registry,
+NS di registrar sudah terverifikasi. 33 portalnya ikut gagal karena itu,
+bukan konfigurasi.
 
 ## Backlog (belum punya site)
 
@@ -240,9 +307,7 @@ diestimasi sudah tidak berlaku.
 
 ## Backlog domain
 
-Tidak ada backlog pada 104 apex tenant yang terdaftar. Sisa backlog hanya
-org customer UPT Jateng yang belum memiliki site; itu bukan domain inventory
-aktif dan belum diaktifkan owner. Satu backlog domain baru ada sejak
-2026-09-25: 10 apex Exabytes yang tercatat di
-[domains](domains.md) bagian C — stok terdaftar, belum diprovisioning,
-menunggu penunjukan tenant pemilik.
+Tidak ada backlog domain. 114 apex tenant terdaftar dan 114-nya sudah
+live (104 lama + 10 Exabytes baru 2026-09-26). Sisa backlog hanya org
+customer UPT Jateng yang belum memiliki site; itu bukan domain inventory
+aktif dan belum diaktifkan owner.

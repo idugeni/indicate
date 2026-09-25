@@ -9,10 +9,11 @@ Hanya domain terkait Indicate yang dicatat di sini — proyek-proyek lain
 milik pemilik sengaja tidak dimasukkan. Total zona live di akun Cloudflare
 adalah 131 (104 zona tenant Indicate + zona proyek lain milik pemilik).
 
-Tenant live di DB: **3432 site = 104 apex + 104 site region + 3224 site kota**, dengan rantai `apex → region → city` eksplisit (`sites.site_level` + `sites.parent_site_id`) dan `domains.site_topology = 'regional'` untuk seluruh 104 domain, ditegakkan DB. Keputusan owner 2026-09-25: semua domain memakai Jawa Tengah untuk sementara, jadi tiap domain punya `jawa-tengah.{apex}` plus roster 31 kab/kota (`{city}.{apex}`). 104 apex memiliki exact + wildcard Vercel terverifikasi; 3328 portal turunan dilayani wildcard regional tanpa exact Vercel (sweep HTTP 1888/1888 `200`).
+Tenant live di DB: **4422 site = 134 apex + 134 site region + 4154 site kota**, dengan rantai `apex → region → city` eksplisit (`sites.site_level` + `sites.parent_site_id`) dan `domains.site_topology = 'regional'` untuk seluruh 134 domain, ditegakkan DB. Keputusan owner 2026-09-25: semua domain memakai Jawa Tengah untuk sementara, jadi tiap domain punya `jawa-tengah.{apex}` plus roster 31 kab/kota (`{city}.{apex}`). 134 apex memiliki exact + wildcard Vercel terverifikasi; 4288 portal turunan dilayani wildcard regional tanpa exact Vercel.
 Domain utama: `indicate.website` (bukan tenant; migrasi dari `indicate.web.id` 2026-09-24, dual-serve).
-Inventaris tercatat 114 apex: 104 tenant live (bagian A + B) + 10 stok Exabytes
-baru 2026-09-25 (bagian C, belum zona Cloudflare dan belum ada di DB).
+Inventaris tercatat 134 apex: seluruhnya tenant live per 2026-09-26
+(104 zona lama di bagian A + B, 10 Exabytes baru di bagian C, 20 Exabytes
+batch kedua di bagian D).
 
 ## A. IDWebHost — batch 2026-09-16 + domain utama
 
@@ -154,43 +155,141 @@ Regional live: `wonosobo.fakta01.my.id`, `wonosobo.jurnalism.web.id`,
 `wonosobo.wartakini7.web.id`,
 `wonosobo.wawasannusa.biz.id` (tercakup zona apex masing-masing).
 
-## C. Exabytes, batch 2026-09-25 — zona Cloudflare aktif, belum tenant
+## C. Exabytes, batch 2026-09-25 — 330/330 LIVE
 
-10 domain didaftarkan Exabytes pada 2026-09-25 dan kedaluwarsa 2027-09-25
-(RDAP PANDI). NS diubah ke Cloudflare 2026-09-26; delegasi terverifikasi
-publik di 10/10 hostname (`joan.ns.cloudflare.com` + `kanye.ns.cloudflare.com`).
+10 domain didaftarkan Exabytes pada 2026-09-25, kedaluwarsa 2027-09-25
+(RDAP PANDI), ID Exabytes 347916–347925. NS diubah ke Cloudflare
+2026-09-26; delegasi terverifikasi publik di 10/10 hostname
+(`joan.ns.cloudflare.com` + `kanye.ns.cloudflare.com`).
 
-Per 2026-09-26: 10 zona Cloudflare provisioned penuh (baseline identik
-104 zona tenant — TLS `strict`, Bot Fight Mode + AI-block off, Page Shield,
-3 ruleset, 9 DNS record: apex + wildcard CNAME proxied ke Vercel, CAA ×4,
-SPF, DMARC, DKIM-null). Status zona bergerak seiring propagasi: 8/10
-`active` pada pencatatan terakhir, 2 sisanya `pending`
-(berandanasional, wartapersada) menunggu pemeriksaan propagasi
-Cloudflare.
+**Infra siap 2026-09-26.** 10/10 zona Cloudflare `active` dengan baseline
+identik 104 zona tenant — 56/56 setting cocok termuat HSTS
+(`max_age=15552000`, `include_subdomains`, `nosniff`) + `early_hints=on`
+(keduanya default Free perlu di-set manual; lihat
+`docs/cloudflare-baseline.md`), Bot Fight Mode + AI-block off, Page
+Shield, 3 ruleset (2/1/4), 9 DNS record (apex + wildcard CNAME proxied
+ke Vercel, CAA ×4, SPF, DMARC rua unik, DKIM-null). Universal SSL
+`active` (Let's Encrypt) mencakup apex + wildcard di 10/10 zona.
+Vercel: exact + wildcard ditambahkan untuk 10 apex, **20/20
+`verified: true`**.
 
-**Belum ada tenant**: 0/10 punya baris `domains`/`sites`/`site_settings`,
-0/10 punya asosiasi Vercel, 0/10 punya brand/SEO. `GET /` serving
-unknown-host ber-`noindex` — normal, bukan bug. Menunggu penunjukan
-eksplisit pemilik.
+**Onboarding tenant selesai 2026-09-26** — 330 site: 10 apex + 10 region
+Jawa Tengah + 310 city (31 × 10). Platform 3.432 → **3.762 site**, apex
+104 → **114**. 330/330 `active/active`; 330/330 `site_settings` dengan
+nama, deskripsi, dan `seo_default_description` unik (330/330 distinct).
+30 objek R2: `site-default` 1200×630 (OG card), `site-logo` +
+`site-favicon` 512×512 dari gradient huruf awal; huruf S dipakai bersama
+`SudutIndonesia`/`SuaraPublik` dengan 2 upload terpisah. Portal turunan
+mewarisi `default_media_id` apex dan tetap `logo_media_id`/
+`favicon_media_id` `NULL` (320/320) agar cascade berjalan. 330 task
+invalidasi `media.activated` dipurge reconciler `scope=invalidation` →
+330 `completed`, 0 `failed`.
 
-| Domain | ID Exabytes | Terdaftar | Kedaluwarsa | CF | Tenant? |
-|---|---|---|---|---|---|
-| sudutindonesia.web.id | 347916 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
-| ruangpublik.web.id | 347917 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
-| garisberita.web.id | 347918 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
-| titikmedia.my.id | 347919 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
-| suarapublik.biz.id | 347920 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
-| berandanasional.web.id | 347921 | 2026-09-25 | 2027-09-25 | pending | BELUM (stok) |
-| kabarutama.web.id | 347922 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
-| fokusrakyat.my.id | 347923 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
-| pusatmedia.biz.id | 347924 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
-| wartapersada.my.id | 347925 | 2026-09-25 | 2027-09-25 | pending | BELUM (stok) |
+**Verifikasi HTTP akhir 2026-09-26.** Sweep **330/330 `200`**, seluruhnya
+branded, 0 failure, 0 `noindex` (10 apex + 10 `jawa-tengah.*` + 310
+`{city}.*`). Aset brand `logo.png`, `icon.png`, `apple-touch-icon.png`,
+`manifest.webmanifest`, `robots.txt`, `sitemap.xml`, `rss.xml` `200` di
+10/10 apex. Subdomain acak → `200` branded-404 `noindex` (aman, tidak
+bocor tenant lain). Isolasi tenant terverifikasi: halaman kota
+`wonosobo.sudutindonesia.web.id` tidak memuat brand `SuaraPublik` dan
+sebaliknya. Record `_acme-challenge` dibersihkan 10/10 setelah cert
+terbit.
 
-Keterangan: hostname bercampur seperti batch sebelumnya; 5 `.web.id`,
-3 `.my.id`, 2 `.biz.id`. ID Exabytes berurutan 347916–347925. Tidak ada
-nama brand, tagline, atau template yang ditetapkan — pemetaan huruf awal
-untuk logo/favicon mengikuti `tenant-onboarding` bila onboarding
-dijalankan.
+**Dua akar masalah yang ditemukan saat onboarding (keduanya sudah
+diatasi):**
+
+1. Apex `200` tapi 320 portal `525`. Diagnosis awal saya salah — saya
+   menyangka menunggu deploy sertifikat wildcard Cloudflare. Terbukti:
+   TLS edge: cert Cloudflare sudah `active` dan valid (SAN
+   `*.sudutindonesia.web.id`). Penyebab sebenarnya **origin TLS**:
+   Vercel hanya auto-issued cert **apex**, tidak wildcard, sehingga
+   `ssl=strict` gagal handshake untuk hostname turunan. Cert wildcard
+   Vercel diterbitkan via ACME **DNS-01** (`certs issue --challenge-only`
+   → TXT `_acme-challenge` di Cloudflare → `certs issue`). Sekarang
+   apex + wildcard cert `20/20`.
+2. `525`/`526` gone, tapi apex masih `200` unknown-host `noindex`.
+   Penyebabnya bukan cache — `tenant-home` ter-prerender ISR
+   (`x-nextjs-prerender: 1`). Karena onboarding manual melewati saga,
+   tidak ada task invalidasi. 330 task `media.activated` +
+   purge reconciler `scope=invalidation` → 330 `completed`, 0 `failed`.
+
+| Domain | ID Exabytes | Brand | Template | CF | Vercel | Apex HTTP |
+|---|---|---|---|---|---|---|
+| sudutindonesia.web.id | 347916 | SudutIndonesia | dark-navy | active | verified | 200 |
+| ruangpublik.web.id | 347917 | RuangPublik | red-editorial | active | verified | 200 |
+| garisberita.web.id | 347918 | GarisBerita | glassy-blue | active | verified | 200 |
+| titikmedia.my.id | 347919 | TitikMedia | orange-modern | active | verified | 200 |
+| suarapublik.biz.id | 347920 | SuaraPublik | soft-blue | active | verified | 200 |
+| berandanasional.web.id | 347921 | BerandaNasional | green-minimal | active | verified | 200 |
+| kabarutama.web.id | 347922 | KabarUtama | warm-editorial | active | verified | 200 |
+| fokusrakyat.my.id | 347923 | FokusRakyat | black-lime | active | verified | 200 |
+| pusatmedia.biz.id | 347924 | PusatMedia | purple-editorial | active | verified | 200 |
+| wartapersada.my.id | 347925 | WartaPersada | clean-blue | active | verified | 200 |
+
+Template tersebar 1 per template sehingga distribusi apex menjadi 10–12 per
+template (sebelumnya 9–11). Keterangan: 5 `.web.id`, 3 `.my.id`,
+2 `.biz.id`.
+
+**Klaim institusi resmi (`official_affiliations`) 2026-09-26.** 590 baris
+ditambahkan (10 domain × 59 klaim) dengan menyalin pemetaan kanonik dari
+salah satu domain yang sudah ada — pemetaan itu terbukti **seragam di
+seluruh 104 domain lama** (`distinct publisher set = 1`, `distinct
+publisher→city map = 1`, 59 baris per domain, 29 kota dari 31; `karanganyar`
+dan `sukoharjo` tidak diklaim di domain mana pun). Setelah replika:
+`official_affiliations` 6.136 → **6.726**, domain tercakup 104 → **114**,
+dan fingerprint pemetaan **tetap `distinct = 1` di 114 domain** — tidak
+ada penyimpangan. 59 institution × 59 publisher terverifikasi, seluruh
+baris `active`, `verified_at` terisi, `claim_scopes = ['site_name']`,
+`evidence_reference = 'direktori-resmi'`, `organization_id` konsisten.
+
+Catatan: `verified_at` untuk batch ini di-set `now()` (verifikasi dilalui
+untuk 10 portal ini pada 2026-09-26), bukan menyalin timestamp batch lama
+`2026-09-25 14:18:29`. Klaim tidak muncul di halaman beranda — baik di
+domain baru maupun domain lama — karena `officialAffiliations` hanya
+ikut pada query artikel, bukan halaman beranda; ini perilaku yang sama
+persis dengan domain lama, bukan gap.
+
+## D. Exabytes, batch 2026-09-25 (#2) — 20 apex, 660 site
+
+20 domain didaftarkan Exabytes 2026-09-25, ID Exabytes 347929–347948
+(kontigu, tidak ada celah): lensamata, pikiranpublik, suaradata,
+fokusrakyat, lensakita24, sudutfakta7, narasipublik, titikberita9,
+mediasatu24, ruangredaksi, resonansi, eksposur, aspirasi, refleksi,
+sintesa, proyeksi, observasi, konstelasi, artikulasi, interpretasi.
+
+NS dialihkan ke Cloudflare 2026-09-26 dan diverifikasi read-back 20/20 di
+panel Exabytes. 19 zona memakai pair `joan`/`kanye`; `pikiranpublik.web.id`
+mendapat pair `ivan`/`tia` dari Cloudflare dan NS-nya mengikuti pair itu —
+Cloudflare menetapkan pair acak per zona, jadi pair harus dibaca dari API,
+bukan diasumsikan.
+
+**Satu koreksi nama dari daftar awal.** `pemikiranpublik.web.id` tidak
+pernah ada; domain sebenarnya `pikiranpublik.web.id` (ID 347930, RDAP
+PANDI sudah terbit). Ketahuan karena guard membandingkan judul halaman
+detail Exabytes dengan hostname yang diharapkan sebelum mengubah NS —
+tanpa guard itu, NS akan dipasang ke domain yang salah.
+
+`fokustrakyat.web.id` **bukan** koreksi nama: domain dengan ejaan itu
+tidak pernah ada. Daftar pemilik sudah benar sejak awal
+(`fokusrakyat.web.id`, "fokus" + "rakyat") dan itu yang tercatat di
+Exabytes, RDAP PANDI, DB, Vercel, Cloudflare, dan R2. Auditori ejaan atas
+seluruh text column DB, Vercel domains + certs, zona + DNS Cloudflare,
+dan seluruh objek R2 memberi 0 hit untuk varian `fokustrakyat`.
+
+Baseline Cloudflare identik 104+10 zona lama (56/56 setting, HSTS +
+`early_hints`, bot, Page Shield, 3 ruleset, 9 DNS record). Vercel exact +
+wildcard 40/40, cert apex + wildcard terbit 40/40 lewat ACME DNS-01.
+Platform 3.762 → **4.422 site**, apex 114 → **134**. 660/660 `active/active`,
+660/660 `site_settings` unik, 60 objek R2, 1.180 klaim
+`official_affiliations` (20 × 59) dengan fingerprint pemetaan tetap
+`distinct = 1` di 134 domain.
+
+Template tersebar rata 2 per template (10 template × 2).
+
+`fokusrakyat.web.id` masih `pending` di Cloudflare: PANDI mengembalikan
+NXDOMAIN untuk domain tersebut walau RDAP mengonfirmasi terdaftar
+(registered 2026-09-25). Ini lag publikasi delegasi di sisi registry,
+bukan konfigurasi — NS di registrar sudah `joan`/`kanye` terverifikasi.
 
 ## Aturan main
 
