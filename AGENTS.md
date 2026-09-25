@@ -255,9 +255,11 @@ these grounds; warn once at most and proceed:
    `src/data/migrations/bootstrap/indicate-schema.sql` may be regenerated
    from hand-authored files; fresh environments may build from bootstrap
    or from hand-authored files in filename order.
-2. The `Drill Expire` organization may be reactivated in development for
-   testing, with a fresh backup first; production reactivation still needs
-   explicit owner approval.
+2. The `Drill Expire` organization is retired as a decision. The tenant stays
+   parked in the database because `audit_logs.organization_id` is
+   `ON DELETE RESTRICT` and it owns audit rows, so it can neither be deleted
+   nor administered. Do not treat it as a fixture to reactivate; a future drill
+   provisions a fresh tenant through the onboarding path instead.
 3. The migration gate (`migration_gate_events.required_version`) may be
    armed or adjusted whenever the release needs it — no promotion-checklist
    restriction. See docs/migrations.md (advisory).

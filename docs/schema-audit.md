@@ -92,7 +92,9 @@ Tiga hal yang terlihat seperti sisa data, tapi memang benar begitu:
   punya 4 baris `audit_logs`, dan `audit_logs.organization_id` memakai
   `ON DELETE RESTRICT`. Menghapusnya berarti merusak rantai audit append-only.
   Yang bisa dilakukan adalah membiarkannya parked (0 member, 0 role, 0 domain,
-  1 subscription) dan tidak mengklaim ia bisa di administers.
+  1 subscription) dan tidak mengklaim ia bisa di administers. Standing decision
+  yang melindunginya sudah dicabut dari `AGENTS.md`: drill berikutnya Provisions
+  tenant baru lewat jalur onboarding, bukan menghidupkan mayat ini.
 - **60 aset organisasi belum punya konsumen.** Semuanya `organization_asset`,
   byte-nya identik satu checksum untuk 60 file, dan tidak ada template portal
   publik yang merender logo institusi: blok afiliasi di portal menampilkan
