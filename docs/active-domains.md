@@ -2,7 +2,7 @@
 
 > **Status:** Living ledger — perbarui setiap ada aktivasi/penonaktifan domain.
 > **Owner:** Platform team.
-> **Last verified:** 2026-09-24 (mulai migrasi `indicate.web.id` → `indicate.website`, dual-serve; kode + config + test + docs dialihkan ke host baru; zona CF baru + asosiasi Vercel + alih env menyusul).
+> **Last verified:** 2026-09-25 (104 apex + 10 regional active di DB; Vercel exact + wildcard terverifikasi; Cloudflare strict; HTTP 114/114 `200`).
 
 ## Migrasi domain utama (2026-09-24, dual-serve)
 
@@ -27,49 +27,21 @@ Template email Auth live disinkron via `supabase config push` (13 konten + admin
 Gap SMTP 2026-09-25: key lama terikat domain lama (Resend 400); dibuat key baru
 `sending_access` domain baru, dipasang di `.env`, Vercel, dan SMTP Auth; uji API + recovery OK.
 Key server baru aktif penuh setelah redeploy berikutnya.
-Terblokir saat ini: kuota Vercel 50/50 (tambah domain baru menunggu Pro riil/limit naik)
-dan zona Cloudflare baru belum dibuat (tanpa tool create-zone di MCP; via dashboard),
-lalu NS registrar. Email ikut pindah (Resend sending domain + Supabase Auth + 13 template).
-Resend domain `indicate.website` sudah dibuat 2026-09-24
-(ID `f2cd59b7-faa2-47ab-a696-34bb1bafe514`, us-east-1, sending enabled / receiving disabled,
-tracking off; status `not_started`). Record DNS pending (pasang setelah zona CF aktif):
-`resend._domainkey` TXT DKIM, `send` MX `feedback-smtp.us-east-1.amazonses.com` (10),
-`send` TXT `v=spf1 include:amazonses.com ~all`, `rsend` CNAME `send.forge.rmta.net`.
+Status Vercel per 2026-09-25: project memiliki 213 asosiasi, seluruh asosiasi tenant
+104 apex exact + 104 wildcard `verified:true`; 10 hostname `wonosobo.*` tetap
+DB-only dan tidak memiliki exact Vercel. Kuota Pro/unlimited tidak lagi
+menghambat onboarding.
 > **Related:** [domains](domains.md) · [cloudflare baseline](cloudflare-baseline.md) · [release checklist](release-checklist.md)
 
-## Kuota Vercel
+## Status Vercel
 
-Project `indicate`: **53 domain — CAP HILANG sejak Pro riil 2026-09-24**
-(`indicate.website`, `api.indicate.website`, `webhook.indicate.website` tertambah via API,
-semua langsung `verified:true`; riwayat 50/50 saat trial ada di bawah).
-`api.`/`webhook.` baru tercakup wildcard CNAME zona baru, tanpa DNS tambahan.
-`docs.indicate.web.id` dilepas via `DELETE /v9/projects/:id/domains` karena
-surface docs dihapus penuh dari codebase (config, proxy, route `(docs)`,
-modul `src/modules/docs`, `openapi.json`, `docs-opengraph-image`, guard,
-test, tautan README/SUPPORT). DNS Cloudflare tidak punya record khusus
-`docs` (tercakup wildcard), jadi tidak ada yang dihapus di sana.
-`www.indicate.web.id` (dulu redirect 301 Vercel → apex) dipindah ke
-Cloudflare Redirect Rule `www_to_apex_301`
-(`http.host eq "www.indicate.web.id"` → `concat("https://indicate.web.id",
-http.request.uri.path)`, 301, preserve query; ruleset
-`www to apex redirect`, fase `http_request_dynamic_redirect`,
-terverifikasi live `/` dan `/tentang?x=1`), lalu domain dilepas dari Vercel.
-Cutover 2026-09-24: rule www langsung 308 ke `indicate.website` (satu hop);
-apex lama 308 ganda Cloudflare + Vercel (`redirect: indicate.website`, 308).
-Domain bawaan `*.vercel.app` tetap mapping dashboard + SSO (bukan redirect).
-Burnt-earth 2026-09-25: domain R2 `media.indicate.web.id` dicabut (bucket hanya baru,
-DNS ikut hilang otomatis; email lama yang memuat logo lama ikut rusak, disetujui owner).
-Bersih total 2026-09-26: route Worker + DNS `pv` lama dihapus; allow-list Auth live
-hanya callback baru.
-Sisa 0 slot; penambahan berikutnya tetap butuh penaikan limit
-(`project_domain_limit_reached`, "maximum allowed number of domains
-(50) ... contact sales").
+Project `indicate` memiliki **213 asosiasi**, dengan 104 exact + 104 wildcard
+untuk seluruh apex tenant. Semua asosiasi tenant `verified:true`; hostname
+regional `wonosobo.*` tidak memiliki exact association. Lima asosiasi sisanya
+adalah surface control-plane/redirect. Vercel Pro/unlimited terverifikasi.
 
-Update 2026-09-27: blokir di atas basi total — Pro riil unlimited terbukti
-(uji tambah-hapus domain), lalu 36 wildcard tenant + 68 stok (exact +
-wildcard + cert, HTTPS acak 104/104 halaman 404 bermerek, WAF 2-rule
-104/104 zona). Project kini **222 domain, 0 unverified** (118 exact +
-104 wildcard). Tidak ada penolakan limit di seluruh operasi.
+`docs.indicate.web.id` tetap dipensiunkan dan tidak dipulihkan sebagai tenant.
+DNS dan redirect edge tetap menjadi tanggung jawab Cloudflare.
 
 ## Fokus Wonosobo (kota)
 
@@ -107,7 +79,21 @@ Kota `wonosobo` (kind=`city` di bawah region Jawa Tengah, org Pengelola Platform
 
 `wonosobo.fakta01.my.id` tercatat 1 jejak aktivasi `failed` terminal (5x percobaan, 13 Sep 2026, `dependency_unavailable`) — tetapi hostname ini **live di tiga lapis**: site DB `active/active`, domain Vercel `verified: true`, HTTP `200` + merender penuh. Artinya aktivasi terjadi di luar saga setelah kegagalan itu. Baris jejak dibiarkan sebagai riwayat (tidak ditulis ulang); saga TIDAK dijalankan ulang karena kegagalan terminal akan menonaktifkan site yang sedang live (`failActivation` terminal → `status inactive`). Tidak ada tindakan pendaftaran tersisa di scope Wonosobo.
 
-## Stok terdaftar 2026-09-20 (parkir, belum jadi tenant)
+## Onboarding 68 apex (2026-09-25) — SELESAI
+
+Seluruh 68 apex yang sebelumnya berstatus stok kini menjadi tenant live.
+DB memiliki 104 apex `active/active` dan 10 regional Wonosobo `active/active`.
+Vercel memiliki exact + wildcard untuk 104 apex, semua `verified:true`;
+Cloudflare memiliki apex/wildcard CNAME terproxy, TLS `strict`, dan WAF
+2-rule untuk 104/104 zona. Media brand: 204 objek R2 (logo, favicon,
+default), reservation `used`, dan setiap apex memiliki setting brand/SEO.
+HTTP verifikasi akhir: 104/104 apex dan 10/10 regional `200`.
+
+Daftar hostname tetap menjadi sumber tunggal di `docs/domains.md`; tabel
+tersebut kini menandai seluruh apex sebagai `YA (apex live)`. Tidak ada
+exact Vercel untuk hostname regional `wonosobo.*`.
+
+## Stok terdaftar 2026-09-20 (riwayat sebelum rollout)
 
 26 domain stok masuk Vercel (semua `verified: true`, DNS CNAME
 apex+wildcard ke target project sudah ada sejak 2026-09-16 kecuali
@@ -178,9 +164,9 @@ mengembalikan site baru. Verifikasi render ulang setelah TTL lewat.
 
 Antre selesai — tidak ada sisa.
 
-Gagal masuk (limit tercapai): jejakwacana.my.id,
-jendelapublik.my.id, jurnalpas.web.id, keberimbangan.biz.id,
-kelanaberita.web.id. Belum dicoba: 62 domain stok sisanya.
+Riwayat antrean lama: `jejakwacana.my.id` sampai `kelanaberita.web.id`
+sempat gagal masuk karena limit Vercel. Batch tersebut kini selesai dan
+tidak lagi merupakan backlog.
 
 ## Onboarding jejakkebenaran.my.id menjadi portal (2026-09-20) — DB + BRAND SELESAI, HTTP MENYUSUL
 
@@ -215,13 +201,17 @@ idempoten). Verifikasi: `/logo.png` 200, manifest tenant, `/` 200.
 
 59 org customer (UPT Jateng): langganan active, member active, 0 site. Estimasi kebutuhan: 59 slot bila 1 hostname/org → total ±281 dari 100 ribu, aman.
 
-## Kesiapan aktivasi 70 stok (matriks 2026-09-25)
+## Verifikasi rollout 2026-09-25
 
-106/106 domain di `docs/domains.md` punya zona Cloudflare. 36 sudah tenant penuh
-(CF + exact + wildcard + DB). 70 stok (`jejakwacana.my.id` s.d. `wartaria.biz.id`,
-plus `indicate.web.id` lama) berstatus: zona CF ada, Vercel belum, DB belum.
-Langkah per domain saat ditunjuk owner: tambah exact Vercel (auto-verified,
-terbukti), tambah wildcard + cert via alur `certs issue` (terbukti),
-terapkan skip-rule WAF #1 (zona stok masih 1-rule), lalu onboarding DB
-(brand/SEO/template unik per playbook `tenant-onboarding`). Regional
-satu-label di bawah apex ber-wildcard + cert = DB-only, 0 API call Vercel.
+- 104 apex tenant + 10 regional Wonosobo: `active/active` di Supabase.
+- Vercel: 104 exact + 104 wildcard tenant, semua `verified:true`; 213 asosiasi total.
+- Cloudflare: 104 zona tenant, apex/wildcard CNAME terproxy, TLS `strict`, WAF 2-rule.
+- Media: 204 objek R2 untuk 68 apex baru, reservation `used`, setting brand/SEO lengkap.
+- HTTP: 104/104 apex dan 10/10 regional `200`.
+- Regional `wonosobo.*`: 0 exact Vercel, tetap dilayani wildcard apex.
+
+## Backlog domain
+
+Tidak ada backlog pada 104 apex tenant yang terdaftar. Sisa backlog hanya
+org customer UPT Jateng yang belum memiliki site; itu bukan domain inventory
+aktif dan belum diaktifkan owner.
