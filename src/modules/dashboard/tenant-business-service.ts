@@ -13,7 +13,7 @@ import {
 import type { IdentifierGenerator } from '@/core/system/ports';
 import { allocateUniqueSlug } from '@/modules/site/slug-allocator';
 import { expandCascadeSites } from '@/modules/site/site-cascade';
-import { regionScopeCovers } from '@/modules/site/region-scope';
+import { regionScopeCovers, type ScopeGeography } from '@/modules/site/region-scope';
 import { validateTipTapDoc } from '@/modules/site/tiptap-document';
 import {
   DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction,
@@ -150,12 +150,12 @@ function requirePublisherNameAvailable(
   }
 }
 
-function siteInScope(site: { readonly regionId: string | null }, lock: string | null): boolean {
-  return lock === null || site.regionId === null || site.regionId === lock;
+function siteInScope(site: { readonly regionId: string | null }, lock: string | null, geography: readonly ScopeGeography[]): boolean {
+  return regionScopeCovers(lock, site.regionId, geography);
 }
 
-function articleInScope(article: { readonly regionId: string }, lock: string | null): boolean {
-  return lock === null || article.regionId === lock;
+function articleInScope(article: { readonly regionId: string }, lock: string | null, geography: readonly ScopeGeography[]): boolean {
+  return regionScopeCovers(lock, article.regionId, geography);
 }
 
 function replaceById<T extends { readonly id: string }>(values: T[], next: T): void {
@@ -278,12 +278,14 @@ export class TenantBusinessService {
       }
       const lock = regionLock(actor);
       const scopeRegion = lock === null ? null : (regionState?.regions ?? []).find(({ id }) => id === lock);
+      const geography = regionState?.regions ?? siteState?.regions ?? [];
+      const inScope = (site: { readonly regionId: string | null }) => siteInScope(site, lock, geography);
       return { ok: true as const, value: {
         organizationName: anyState.organizationName,
         domains: domainState?.domains ?? [],
-        regions: (regionState?.regions ?? []).filter((region) => lock === null || region.id === lock),
-        sites: (siteState?.sites ?? []).filter((site) => siteInScope(site, lock)),
-        siteSettings: (siteState?.siteSettings ?? []).filter((settings) => (siteState?.sites ?? []).some((site) => site.id === settings.siteId && siteInScope(site, lock))),
+        regions: (regionState?.regions ?? []).filter((region) => regionScopeCovers(lock, region.id, geography)),
+        sites: (siteState?.sites ?? []).filter(inScope),
+        siteSettings: (siteState?.siteSettings ?? []).filter((settings) => (siteState?.sites ?? []).some((site) => site.id === settings.siteId && inScope(site))),
         roles: (roleManage?.roles ?? []).map(roleJson), memberships: membershipState?.memberships ?? [],
         activationAttempts, invitations,
         regionScope: scopeRegion === undefined || scopeRegion === null ? null : { id: scopeRegion.id, name: scopeRegion.name },
@@ -579,7 +581,7 @@ export class TenantBusinessService {
     try {
       const state = await this.repository.read(actor, DASHBOARD_PERMISSIONS.publisherRead);
       const visibleSites = actor.permissionSet.has(DASHBOARD_PERMISSIONS.siteRead)
-        ? state.sites.filter((site) => siteInScope(site, regionLock(actor)))
+        ? state.sites.filter((site) => siteInScope(site, regionLock(actor), state.regions))
         : [];
       return { ok: true as const, value: { publishers: state.publishers, affiliations: state.affiliations, sites: visibleSites } };
     } catch (error) {
@@ -687,7 +689,7 @@ export class TenantBusinessService {
       const lock = regionLock(actor);
       const detached = transaction.state.articles.filter((article) => article.categoryIds.includes(value.id) || article.categoryId === value.id);
       for (const article of detached) {
-        if (!articleInScope(article, lock)) throw new DashboardAccessDeniedError();
+        if (!articleInScope(article, lock, transaction.state.regions)) throw new DashboardAccessDeniedError();
       }
       for (const article of detached) {
         const categoryIds = article.categoryIds.filter((categoryId) => categoryId !== value.id);
@@ -704,7 +706,7 @@ export class TenantBusinessService {
       const lock = regionLock(actor);
       const affected = transaction.state.articles.filter((article) => article.tags.includes(value.from));
       for (const article of affected) {
-        if (!articleInScope(article, lock)) throw new DashboardAccessDeniedError();
+        if (!articleInScope(article, lock, transaction.state.regions)) throw new DashboardAccessDeniedError();
       }
       for (const article of affected) {
         const tags = [...new Set(article.tags.map((tag) => (tag === value.from ? value.to : tag)))];
@@ -720,7 +722,7 @@ export class TenantBusinessService {
       const lock = regionLock(actor);
       const affected = transaction.state.articles.filter((article) => article.tags.includes(value.tag));
       for (const article of affected) {
-        if (!articleInScope(article, lock)) throw new DashboardAccessDeniedError();
+        if (!articleInScope(article, lock, transaction.state.regions)) throw new DashboardAccessDeniedError();
       }
       for (const article of affected) {
         const after: ArticleRecord = { ...article, tags: article.tags.filter((tag) => tag !== value.tag), version: article.version + 1, updatedAt: now };
@@ -733,7 +735,7 @@ export class TenantBusinessService {
   listTaxonomy(actor: AuthorizedTenantActorContext) {
     return this.query(actor, DASHBOARD_PERMISSIONS.articleRead, 'taxonomy.list', 'taxonomy', (state) => {
       const lock = regionLock(actor);
-      const articles = state.articles.filter((article) => articleInScope(article, lock));
+      const articles = state.articles.filter((article) => articleInScope(article, lock, state.regions));
       const categoryCounts = new Map<string, number>();
       for (const article of articles) {
         for (const categoryId of new Set([article.categoryId, ...article.categoryIds])) {
@@ -772,9 +774,9 @@ export class TenantBusinessService {
     try {
       const summaries = await this.repository.listEditorialSummaries(actor, DASHBOARD_PERMISSIONS.articleRead);
       const lock = regionLock(actor);
-      const regions = summaries.regions.filter((region) => lock === null || region.id === lock);
-      const sites = summaries.sites.filter((site) => siteInScope(site, lock));
-      const articles = summaries.articles.filter((article) => articleInScope(article, lock));
+      const regions = summaries.regions.filter((region) => regionScopeCovers(lock, region.id, summaries.regions));
+      const sites = summaries.sites.filter((site) => siteInScope(site, lock, summaries.regions));
+      const articles = summaries.articles.filter((article) => articleInScope(article, lock, summaries.regions));
       const scopeRegion = lock === null ? null : regions.find(({ id }) => id === lock);
       return { ok: true, value: { articles, sites, regions, regionScope: scopeRegion === undefined || scopeRegion === null ? null : { id: scopeRegion.id, name: scopeRegion.name } } };
     } catch (error) {
@@ -800,9 +802,9 @@ export class TenantBusinessService {
     return this.query(actor, DASHBOARD_PERMISSIONS.articleRead, 'article.list', 'article', (state) => {
       this.requireFilterReferences(state, filter, actor);
       const lock = regionLock(actor);
-      const regions = state.regions.filter((region) => lock === null || region.id === lock);
-      const sites = state.sites.filter((site) => siteInScope(site, lock));
-      const scoped = { ...state, regions, sites, articles: state.articles.filter((article) => articleInScope(article, lock)) };
+      const regions = state.regions.filter((region) => regionScopeCovers(lock, region.id, state.regions));
+      const sites = state.sites.filter((site) => siteInScope(site, lock, state.regions));
+      const scoped = { ...state, regions, sites, articles: state.articles.filter((article) => articleInScope(article, lock, state.regions)) };
       const articles = filterArticles(scoped, filter);
       const articleIds = new Set(articles.map(({ id }) => id));
       const siteIds = new Set(sites.map(({ id }) => id));
@@ -829,7 +831,7 @@ export class TenantBusinessService {
       transaction.state.articles.push(record); this.syncArticleCategories(transaction.state, record.id, distinctCategoryIds); this.audit(transaction, 'article.create', 'article', record.id, null, record);
       const lock = regionLock(actor);
       const autoSiteIds = transaction.state.sites
-        .filter((site) => site.organizationId === actor.organizationId && site.status === 'active' && site.activationState === 'active' && siteInScope(site, lock))
+        .filter((site) => site.organizationId === actor.organizationId && site.status === 'active' && site.activationState === 'active' && siteInScope(site, lock, transaction.state.regions))
         .map(({ id }) => id);
       if (autoSiteIds.length > 0) {
         const { after, expandedFrom } = this.applySiteAssignment(transaction.state, record, autoSiteIds, actor, now);
@@ -870,7 +872,7 @@ export class TenantBusinessService {
     if (filter.authorId !== undefined) requireRecord(state.authors, filter.authorId);
     const lock = actor === undefined ? null : regionLock(actor);
     if (lock !== null) {
-      if (filter.regionId !== undefined && filter.regionId !== lock) throw new DashboardAccessDeniedError();
+      if (filter.regionId !== undefined && !regionScopeCovers(lock, filter.regionId, state.regions)) throw new DashboardAccessDeniedError();
       if (filter.siteId !== undefined) requireSiteInScope(state, filter.siteId, actor!);
     }
   }

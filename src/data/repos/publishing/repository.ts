@@ -10,6 +10,7 @@ import type {
 } from '@/modules/publishing/models';
 import { aggregateJobState, isAllowedTargetTransition, projectPublicationResult, seedInitialViewCount } from '@/modules/publishing/publication-policy';
 import { cascadeFamilyKey } from '@/modules/site/site-cascade';
+import { regionScopeCovers } from '@/modules/site/region-scope';
 import { duplicateIssuesForFamilies, excerptForDescription } from '@/modules/publishing/variant-suggester';
 import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
 import {
@@ -394,11 +395,12 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         const articleRows = await transaction.select({ id: articles.id, title: articles.title, body: articles.body, regionId: articles.regionId }).from(articles).where(and(eq(articles.organizationId, actor.organizationId), eq(articles.id, input.articleId), inArray(articles.status, ['draft', 'scheduled', 'active']))).limit(1);
         if (articleRows.length !== 1) throw new PublishingAccessDeniedError();
         const lock = actor.regionScopeId ?? null;
-        if (lock !== null && articleRows[0]!.regionId !== lock) throw new PublishingAccessDeniedError();
+        const geography = lock === null ? [] : await transaction.select({ id: regions.id, kind: regions.kind, parentRegionId: regions.parentRegionId }).from(regions).where(eq(regions.organizationId, actor.organizationId));
+        if (lock !== null && !regionScopeCovers(lock, articleRows[0]!.regionId, geography)) throw new PublishingAccessDeniedError();
         const distinctSites = [...new Set(input.siteIds)];
         const siteRows = await transaction.select({ id: sites.id, regionId: sites.regionId }).from(sites).where(and(eq(sites.organizationId, actor.organizationId), inArray(sites.id, distinctSites), eq(sites.status, 'active')));
         if (siteRows.length !== distinctSites.length) throw new PublishingAccessDeniedError();
-        if (lock !== null && siteRows.some(({ regionId }) => regionId !== null && regionId !== lock)) throw new PublishingAccessDeniedError();
+        if (lock !== null && siteRows.some(({ regionId }) => !regionScopeCovers(lock, regionId, geography))) throw new PublishingAccessDeniedError();
         const overrideImageIds = [...new Set(Object.values(input.overrides ?? {}).map((override) => override.imageMediaId).filter((value): value is string => typeof value === 'string' && value !== ''))];
         if (overrideImageIds.length > 0) {
           const coverRows = await transaction.select({ id: media.id }).from(media)

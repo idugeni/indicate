@@ -310,6 +310,8 @@ export interface EditorialSummarySite {
 export interface EditorialSummaryRegion {
   readonly id: string;
   readonly name: string;
+  readonly kind: 'region' | 'city';
+  readonly parentRegionId: string | null;
   readonly status: LifecycleStatus;
 }
 

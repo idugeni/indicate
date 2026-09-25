@@ -691,13 +691,13 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const [articleRows, siteRows, regionRows] = await Promise.all([
         transaction.select({ id: articles.id, regionId: articles.regionId, slug: articles.slug, title: articles.title, status: articles.status, createdAt: articles.createdAt }).from(articles).where(eq(articles.organizationId, organizationId)).orderBy(desc(articles.createdAt)),
         transaction.select({ id: sites.id, regionId: sites.regionId, normalizedHostname: sites.normalizedHostname, status: sites.status }).from(sites).where(eq(sites.organizationId, organizationId)),
-        transaction.select({ id: regions.id, name: regions.name, status: regions.status }).from(regions).where(eq(regions.organizationId, organizationId)),
+        transaction.select({ id: regions.id, name: regions.name, kind: regions.kind, parentRegionId: regions.parentRegionId, status: regions.status }).from(regions).where(eq(regions.organizationId, organizationId)),
       ]);
       const scope = actor.regionScopeId === null || actor.regionScopeId === undefined ? null : regionRows.find((row) => row.id === actor.regionScopeId);
       return Object.freeze({
         articles: Object.freeze(articleRows.map((row) => Object.freeze({ id: row.id, regionId: row.regionId, slug: row.slug, title: row.title, status: row.status, createdAt: iso(row.createdAt) }))),
         sites: Object.freeze(siteRows.map((row) => Object.freeze({ id: row.id, regionId: row.regionId, normalizedHostname: row.normalizedHostname, status: row.status }))),
-        regions: Object.freeze(regionRows.map((row) => Object.freeze({ id: row.id, name: row.name, status: row.status }))),
+        regions: Object.freeze(regionRows.map((row) => Object.freeze({ id: row.id, name: row.name, kind: row.kind, parentRegionId: row.parentRegionId, status: row.status }))),
         regionScope: scope === undefined || scope === null ? null : { id: scope.id, name: scope.name },
       });
     });

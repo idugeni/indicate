@@ -27,6 +27,10 @@ const tenantState = {
   memberships: [],
 };
 
+function stateWith(overrides: Record<string, readonly unknown[]>) {
+  return { ...tenantState, ...overrides };
+}
+
 function harness(repoOverrides: Record<string, unknown> = {}) {
   const repository = {
     dashboardCounts: vi.fn(async () => ({ activeSites: 2 })),
@@ -91,6 +95,58 @@ describe('TenantBusinessService listConfiguration', () => {
     expect(result.value.organizationName).toBe('Org Redaksi');
     expect(repository.activationAttempts).toHaveBeenCalledTimes(1);
     expect(repository.listInvitations).toHaveBeenCalledTimes(1);
+  });
+
+  it('menampilkan seluruh subtree wilayah untuk aktor terkunci dan menyembunyikan kota saudara', async () => {
+    const province = '0199a2b3-4c5d-7e8f-9012-3456789abc41';
+    const city = '0199a2b3-4c5d-7e8f-9012-3456789abc42';
+    const otherProvince = '0199a2b3-4c5d-7e8f-9012-3456789abc43';
+    const siblingCity = '0199a2b3-4c5d-7e8f-9012-3456789abc44';
+    const geography = [
+      { id: province, organizationId: 'org-1', externalKey: 'jateng', name: 'Jawa Tengah', slug: 'jawa-tengah', status: 'active', kind: 'region', parentRegionId: null, version: 1 },
+      { id: city, organizationId: 'org-1', externalKey: 'wonosobo', name: 'Wonosobo', slug: 'wonosobo', status: 'active', kind: 'city', parentRegionId: province, version: 1 },
+      { id: otherProvince, organizationId: 'org-1', externalKey: 'yogya', name: 'DI Yogyakarta', slug: 'yogyakarta', status: 'active', kind: 'region', parentRegionId: null, version: 1 },
+      { id: siblingCity, organizationId: 'org-1', externalKey: 'sleman', name: 'Sleman', slug: 'sleman', status: 'active', kind: 'city', parentRegionId: otherProvince, version: 1 },
+    ];
+    const sites = [
+      { id: 'site-apex', organizationId: 'org-1', domainId: 'domain-1', regionId: null, siteLevel: 'apex', parentSiteId: null, normalizedHostname: 'portal.test', status: 'active', activationState: 'active', version: 1 },
+      { id: 'site-city', organizationId: 'org-1', domainId: 'domain-1', regionId: city, siteLevel: 'city', parentSiteId: 'site-apex', normalizedHostname: 'wonosobo.portal.test', status: 'active', activationState: 'active', version: 1 },
+      { id: 'site-sibling', organizationId: 'org-1', domainId: 'domain-1', regionId: siblingCity, siteLevel: 'city', parentSiteId: 'site-apex', normalizedHostname: 'sleman.portal.test', status: 'active', activationState: 'active', version: 1 },
+    ];
+    const { service } = harness({ read: async () => stateWith({ regions: geography, sites, siteSettings: [] }) });
+    const result = await service.listConfiguration({ ...actor, regionScopeId: province });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.sites.map((site) => site.normalizedHostname).sort()).toEqual(['portal.test', 'wonosobo.portal.test']);
+    expect(result.value.regions.map((region) => region.id).sort()).toEqual([province, city].sort());
+  });
+
+  it('menampilkan artikel kota di bawahnya pada ringkasan redaksi', async () => {
+    const province = '0199a2b3-4c5d-7e8f-9012-3456789abc41';
+    const city = '0199a2b3-4c5d-7e8f-9012-3456789abc42';
+    const otherProvince = '0199a2b3-4c5d-7e8f-9012-3456789abc43';
+    const siblingCity = '0199a2b3-4c5d-7e8f-9012-3456789abc44';
+    const geography = [
+      { id: province, name: 'Jawa Tengah', kind: 'region', parentRegionId: null, status: 'active' },
+      { id: city, name: 'Wonosobo', kind: 'city', parentRegionId: province, status: 'active' },
+      { id: otherProvince, name: 'DI Yogyakarta', kind: 'region', parentRegionId: null, status: 'active' },
+      { id: siblingCity, name: 'Sleman', kind: 'city', parentRegionId: otherProvince, status: 'active' },
+    ];
+    const summaries = {
+      articles: [
+        { id: 'article-city', regionId: city, slug: 'kota', title: 'Kota', status: 'draft', createdAt: NOW.toISOString() },
+        { id: 'article-sibling', regionId: siblingCity, slug: 'sleman', title: 'Sleman', status: 'draft', createdAt: NOW.toISOString() },
+      ],
+      sites: [],
+      regions: geography,
+      regionScope: null,
+    };
+    const { service } = harness({ listEditorialSummaries: async () => summaries });
+    const result = await service.listEditorialSummaries({ ...actor, regionScopeId: province });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.articles.map((article) => article.id)).toEqual(['article-city']);
+    expect(result.value.regions.map((region) => region.id).sort()).toEqual([province, city].sort());
   });
 
   it('menolak aktor tanpa izin baca apa pun', async () => {
