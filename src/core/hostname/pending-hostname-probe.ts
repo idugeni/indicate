@@ -103,13 +103,21 @@ function fetchPinned(
         port: 443,
         path,
         method: 'GET',
-        lookup: (_host, _opts, callback) => {
+        lookup: (_host, lookupOptions, callback) => {
+          if (pinned.length === 0) {
+            callback(new Error('no_pinned_address'), '', 4);
+            return;
+          }
           const entry = pinned[cursor % pinned.length];
-          cursor += 1;
           if (entry === undefined) {
             callback(new Error('no_pinned_address'), '', 4);
             return;
           }
+          if (lookupOptions?.all === true) {
+            callback(null, pinned.map((item) => ({ address: item.address, family: item.family === 6 ? 6 : 4 })));
+            return;
+          }
+          cursor += 1;
           callback(null, entry.address, entry.family === 6 ? 6 : 4);
         },
         headers: {
