@@ -1345,6 +1345,13 @@
       "when": 1790419200000,
       "tag": "20260926010000_reconcile_author_newsroom_profile",
       "breakpoints": true
+    },
+    {
+      "idx": 192,
+      "version": "7",
+      "when": 1790422800000,
+      "tag": "20260926020000_purge_drill_litigation_hold",
+      "breakpoints": true
     }
   ]
 }

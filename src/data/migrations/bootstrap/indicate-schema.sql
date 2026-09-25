@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (192 migrations):
+-- Reviewed sources, in journal order (193 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -205,6 +205,7 @@
 --   190  20260925230000_refactor_residue_cleanup  ledger sha256:68b33327ce5c126c0486cae9d99cab1c120dcda79814730e1e6ff7d8024a47f7
 --   191  20260925240000_retire_release_governance_tables  ledger sha256:46d745927e063d10f14a737d1018e439e9689f757cfb30775761490c983994f6
 --   192  20260926010000_reconcile_author_newsroom_profile  ledger sha256:db2540a3804e49229f0ad0d392b21b2e4ad45f42b1b1b2ce03912cb2f4874611
+--   193  20260926020000_purge_drill_litigation_hold  ledger sha256:ac6b1d72fb89b9cb9be6c09fabe761caefbd96a482a8e0ae38f30cd906b6af35
 
 BEGIN;
 
@@ -16072,4 +16073,50 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (192, 'reconcile_author_newsroom_profile', 'sha256:df9dae7264942a084e1840ce2a2baac313fa1c4e9619766805ed7a9dbffdeecb');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('db2540a3804e49229f0ad0d392b21b2e4ad45f42b1b1b2ce03912cb2f4874611', 1790419200000);
+
+-- ----------------------------------------------------------------------
+-- 20260926020000_purge_drill_litigation_hold
+-- ----------------------------------------------------------------------
+-- Remove the drill litigation hold from the legal register.
+--
+-- `litigation_holds` exists to freeze erasure and retention for an organization
+-- under a legal hold. Its single row was a rehearsal: the reason reads "uji
+-- fungsi hold pasca-migrasi v79 (segera dilepas)", it was created 2026-09-07
+-- 11:03:42 UTC and released twenty seconds later at 11:04:02, and it names the
+-- Drill Expire organization, which is itself a parked test tenant. `is_org_held`
+-- only counts unreleased holds, so the row blocks nothing; it is pure rehearsal
+-- residue sitting in a compliance register, which is the one place a leftover
+-- test row is least defensible.
+--
+-- The delete is targeted by id, reason, and release state rather than by a broad
+-- age rule, so a real hold can never be caught by it: an active hold has
+-- `released_at IS NULL` and does not match. The guard asserts both that the drill
+-- row is gone and that no unreleased hold was touched.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+DELETE FROM public.litigation_holds
+ WHERE id = '977b207c-23d6-4a50-9ac3-3ab1586cbbbc'::uuid
+   AND reason = 'Uji fungsi hold pasca-migrasi v79 (segera dilepas).'
+   AND released_at IS NOT NULL;
+DO $$
+DECLARE
+  drill_left integer;
+  active_holds integer;
+BEGIN
+  SELECT count(*) INTO drill_left FROM public.litigation_holds
+   WHERE reason ILIKE '%uji fungsi hold%';
+  IF drill_left > 0 THEN
+    RAISE EXCEPTION 'drill_hold_left: % rehearsal hold row(s) still in the register', drill_left;
+  END IF;
+  SELECT count(*) INTO active_holds FROM public.litigation_holds WHERE released_at IS NULL;
+  IF active_holds > 0 THEN
+    RAISE EXCEPTION 'drill_hold_touched: % hold(s) are still in force and must stay', active_holds;
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (193, 'purge_drill_litigation_hold', 'sha256:b2a881c116059abded1badb58972a60dc4475002770275624b99a5767707627b');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ac6b1d72fb89b9cb9be6c09fabe761caefbd96a482a8e0ae38f30cd906b6af35', 1790422800000);
 COMMIT;
