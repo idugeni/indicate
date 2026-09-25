@@ -98,7 +98,7 @@ async function handleGET(request: Request) {
       ? actor.actorType === 'user'
         ? await fetchCachedDashboard(actor)
         : { ok: false as const, error: createNonDisclosingDenial(requestId) }
-      : parsed.data.view === 'configuration' ? await service.listConfiguration(actor)
+      : parsed.data.view === 'configuration' ? await service.listConfiguration(actor, { search: parsed.data.search })
       : parsed.data.view === 'publishers' ? await service.listPublishers(actor)
       : parsed.data.view === 'editorial' ? await service.listEditorial(actor, editorialFilter)
       : parsed.data.view === 'taxonomy' ? await service.listTaxonomy(actor)

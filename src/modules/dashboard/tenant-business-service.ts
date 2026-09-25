@@ -154,6 +154,10 @@ function siteInScope(site: { readonly regionId: string | null }, lock: string | 
   return regionScopeCovers(lock, site.regionId, geography);
 }
 
+const SITE_LEVEL_RANK: Readonly<Record<SiteLevel, number>> = Object.freeze({ apex: 0, region: 1, city: 2 });
+
+const CONFIGURATION_SITE_LIMIT = 200;
+
 function articleInScope(article: { readonly regionId: string }, lock: string | null, geography: readonly ScopeGeography[]): boolean {
   return regionScopeCovers(lock, article.regionId, geography);
 }
@@ -237,7 +241,7 @@ export class TenantBusinessService {
     });
   }
 
-  async listConfiguration(actor: AuthorizedTenantActorContext) {
+  async listConfiguration(actor: AuthorizedTenantActorContext, filter: { readonly search?: string | undefined } = {}) {
     try {
       const candidates = [
         DASHBOARD_PERMISSIONS.domainRead, DASHBOARD_PERMISSIONS.domainManage,
@@ -280,12 +284,26 @@ export class TenantBusinessService {
       const scopeRegion = lock === null ? null : (regionState?.regions ?? []).find(({ id }) => id === lock);
       const geography = regionState?.regions ?? siteState?.regions ?? [];
       const inScope = (site: { readonly regionId: string | null }) => siteInScope(site, lock, geography);
+      const scopedSites = (siteState?.sites ?? []).filter(inScope);
+      const settingsNames = new Map((siteState?.siteSettings ?? []).map((row) => [row.siteId, row.name] as const));
+      const needle = (filter.search ?? '').trim().toLowerCase();
+      const matchedSites = needle === ''
+        ? scopedSites
+        : scopedSites.filter((site) => `${site.normalizedHostname} ${settingsNames.get(site.id) ?? ''}`.toLowerCase().includes(needle));
+      const listedSites = [...matchedSites]
+        .sort((left, right) => SITE_LEVEL_RANK[left.siteLevel] - SITE_LEVEL_RANK[right.siteLevel] || left.normalizedHostname.localeCompare(right.normalizedHostname))
+        .slice(0, CONFIGURATION_SITE_LIMIT);
+      const listedIds = new Set(listedSites.map((site) => site.id));
       return { ok: true as const, value: {
         organizationName: anyState.organizationName,
         domains: domainState?.domains ?? [],
         regions: (regionState?.regions ?? []).filter((region) => regionScopeCovers(lock, region.id, geography)),
-        sites: (siteState?.sites ?? []).filter(inScope),
-        siteSettings: (siteState?.siteSettings ?? []).filter((settings) => (siteState?.sites ?? []).some((site) => site.id === settings.siteId && inScope(site))),
+        sites: listedSites,
+        siteSettings: (siteState?.siteSettings ?? []).filter((settings) => listedIds.has(settings.siteId)),
+        siteTotal: matchedSites.length,
+        siteTotalInScope: scopedSites.length,
+        siteLimit: CONFIGURATION_SITE_LIMIT,
+        siteSearch: needle === '' ? null : needle,
         roles: (roleManage?.roles ?? []).map(roleJson), memberships: membershipState?.memberships ?? [],
         activationAttempts, invitations,
         regionScope: scopeRegion === undefined || scopeRegion === null ? null : { id: scopeRegion.id, name: scopeRegion.name },

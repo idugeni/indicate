@@ -97,6 +97,37 @@ describe('TenantBusinessService listConfiguration', () => {
     expect(repository.listInvitations).toHaveBeenCalledTimes(1);
   });
 
+  it('membatasi daftar portal dan melaporkan totalnya secara jujur', async () => {
+    const sites = Array.from({ length: 260 }, (_unused, index) => ({
+      id: `site-${index}`, organizationId: 'org-1', domainId: 'd-1', regionId: null, siteLevel: 'city' as const,
+      parentSiteId: null, normalizedHostname: `kota-${index}.portal.test`, status: 'active' as const,
+      activationState: 'active' as const, version: 1, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(),
+    }));
+    const { service } = harness({ read: async () => stateWith({ sites, regions: [], siteSettings: [] }) });
+    const result = await service.listConfiguration(actor);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.sites).toHaveLength(200);
+    expect(result.value.siteTotal).toBe(260);
+    expect(result.value.siteLimit).toBe(200);
+    expect(result.value.siteSearch).toBeNull();
+  });
+
+  it('menemukan portal spesifik lewat pencarian', async () => {
+    const sites = Array.from({ length: 260 }, (_unused, index) => ({
+      id: `site-${index}`, organizationId: 'org-1', domainId: 'd-1', regionId: null, siteLevel: 'city' as const,
+      parentSiteId: null, normalizedHostname: `kota-${index}.portal.test`, status: 'active' as const,
+      activationState: 'active' as const, version: 1, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(),
+    }));
+    const { service } = harness({ read: async () => stateWith({ sites, regions: [], siteSettings: [] }) });
+    const result = await service.listConfiguration(actor, { search: 'kota-259' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.sites.map((site) => site.normalizedHostname)).toEqual(['kota-259.portal.test']);
+    expect(result.value.siteTotal).toBe(1);
+    expect(result.value.siteSearch).toBe('kota-259');
+  });
+
   it('menampilkan seluruh subtree wilayah untuk aktor terkunci dan menyembunyikan kota saudara', async () => {
     const province = '0199a2b3-4c5d-7e8f-9012-3456789abc41';
     const city = '0199a2b3-4c5d-7e8f-9012-3456789abc42';

@@ -28,6 +28,27 @@ interface ReferenceModel {
   readonly categories?: readonly { readonly id: string; readonly name: string }[];
   readonly publishers?: readonly { readonly id: string; readonly name: string }[];
   readonly authors?: readonly { readonly id: string; readonly displayName: string }[];
+  readonly siteTotal?: number;
+  readonly siteTotalInScope?: number;
+  readonly siteSearch?: string | null;
+}
+
+/**
+ * State how many portals the configuration listing actually returned.
+ *
+ * @param model - Configuration payload, or null before the first response.
+ * @returns Indonesian count line naming the search term when one is active.
+ */
+function configurationCountNote(model: ReferenceModel | null): string | null {
+  if (model === null || model.sites === undefined) return null;
+  const listed = model.sites.length;
+  const matched = model.siteTotal ?? listed;
+  const inScope = model.siteTotalInScope ?? matched;
+  const search = model.siteSearch ?? null;
+  const head = search === null
+    ? `Menampilkan ${listed.toLocaleString('id-ID')} dari ${inScope.toLocaleString('id-ID')} portal`
+    : `Pencarian “${search}” · ${matched.toLocaleString('id-ID')} dari ${inScope.toLocaleString('id-ID')} portal`;
+  return matched > listed ? `${head} · gunakan pencarian untuk membuka sisanya.` : head;
 }
 
 /**
@@ -101,16 +122,18 @@ function DatePicker({
 /**
  * Render data filter controls.
  *
- * @remarks Analytics only has date-range filters (from/to) per analyticsFilterSchema.
+ * @remarks Analytics only has date-range filters (from/to) per analyticsFilterSchema;
+ * the configuration view filters the portal listing by hostname or site name.
  */
 export function FilterControls({ view, data, onApply }: FilterControlsProps) {
   const [preset, setPreset] = useState<string[]>([]);
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
 
-  if (view !== 'editorial' && view !== 'audit' && view !== 'analytics') return null;
+  if (view !== 'editorial' && view !== 'audit' && view !== 'analytics' && view !== 'configuration') return null;
 
   const model = data as ReferenceModel | null;
+  const portalCount = view === 'configuration' ? configurationCountNote(model) : null;
 
   const applyRange = (start: Date | undefined, end: Date | undefined) => {
     const params = new URLSearchParams();
@@ -194,7 +217,7 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
           handleApply(event.currentTarget);
         }}
       >
-        <div className={view === 'editorial' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]' : view === 'analytics' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto]' : 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]'}>
+        <div className={view === 'editorial' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]' : view === 'analytics' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto]' : view === 'configuration' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto]' : 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]'}>
           {view === 'editorial' ? (
             <>
               <div className="flex flex-col gap-1.5">
@@ -251,6 +274,20 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
                 />
               </div>
             </>
+          ) : null}
+
+          {view === 'configuration' ? (
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <Label htmlFor="filter-portal" className="font-sans text-xs font-medium text-paper-dim">
+                Cari portal
+              </Label>
+              <Input
+                id="filter-portal"
+                name="search"
+                placeholder="mis. semarang.domainanda.id"
+                className="h-9 border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus-visible:ring-brass"
+              />
+            </div>
           ) : null}
 
           {view === 'audit' ? (
@@ -346,6 +383,9 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
           </div>
         </div>
       </form>
+      {portalCount === null ? null : (
+        <p className="m-0 mt-3 font-mono text-[11px] tabular-nums text-paper-faint">{portalCount}</p>
+      )}
     </section>
   );
 }
