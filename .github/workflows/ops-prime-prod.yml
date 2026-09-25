@@ -1,0 +1,29 @@
+name: Production Route Check
+
+on:
+  schedule:
+    # 03:20 Asia/Jakarta, five minutes after the Monday dependency bump, so a
+    # regression introduced by it is caught while the bisect window is open.
+    - cron: '40 20 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prime:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Prime the control-plane landing
+        run: node scripts/ops-prime-landing.mjs --url=https://indicate.website --attempts=3
+      - name: Prime a tenant apex
+        run: node scripts/ops-prime-landing.mjs --url=https://arsip24publik.biz.id --attempts=3
+      - name: Prime a tenant region
+        run: node scripts/ops-prime-landing.mjs --url=https://jawa-tengah.arsip24publik.biz.id --attempts=3
+      - name: Prime a tenant city
+        run: node scripts/ops-prime-landing.mjs --url=https://semarang.arsip24publik.biz.id --attempts=3
