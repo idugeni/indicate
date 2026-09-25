@@ -2,7 +2,7 @@
 
 > **Status:** Living ledger — perbarui setiap ada aktivasi/penonaktifan domain.
 > **Owner:** Platform team.
-> **Last verified:** 2026-09-26 (3432 site aktif di DB: 104 apex + 104 region Jawa Tengah + 3224 city; Vercel exact + wildcard terverifikasi; Cloudflare strict; HTTP 104/104 apex dan sweep 1888/1888 turunan `200`; 10 apex stok Exabytes baru 2026-09-25 diverifikasi belum ada di Cloudflare/DB/Vercel).
+> **Last verified:** 2026-09-26 (3432 site aktif di DB: 104 apex + 104 region Jawa Tengah + 3224 city; Vercel exact + wildcard terverifikasi; Cloudflare strict; HTTP 104/104 apex dan sweep 1888/1888 turunan `200`; 10 apex Exabytes baru 2026-09-25 — NS Cloudflare terdelegasi 10/10, zona 8 `active` + 2 `pending`, belum tenant).
 
 ## Migrasi domain utama (2026-09-24, dual-serve)
 
@@ -197,21 +197,28 @@ tenant-scoped terverifikasi HEAD → 1 transaksi DB (reservasi → media
 Stale edge-404 dibersihkan via purge exact-URL (task reconciler menyusul,
 idempoten). Verifikasi: `/logo.png` 200, manifest tenant, `/` 200.
 
-## Stok Exabytes baru 2026-09-25 (2026-09-26) — BELUM onboarding
+## Stok Exabytes 2026-09-25 (2026-09-26) — ZONA AKTIF, BELUM TENANT
 
 10 apex didaftarkan Exabytes 2026-09-25 (kedaluwarsa 2027-09-25, RDAP
-PANDI): berandanasional.web.id, garisberita.web.id, kabarutama.web.id,
-pusatmedia.biz.id, ruangpublik.web.id, suarapublik.biz.id,
-sudutindonesia.web.id, titikmedia.my.id, fokusrakyat.my.id,
-wartapersada.my.id.
+PANDI), ID Exabytes 347916–347925: sudutindonesia.web.id,
+ruangpublik.web.id, garisberita.web.id, titikmedia.my.id,
+suarapublik.biz.id, berandanasional.web.id, kabarutama.web.id,
+fokusrakyat.my.id, pusatmedia.biz.id, wartapersada.my.id.
 
-Status terverifikasi 2026-09-26: 0/10 ada di Cloudflare (`GET /zones`
-131 zona, tidak ada hostname dari daftar ini), 0/10 ada di DB
-(`domains`/`sites`), 0/10 punya asosiasi Vercel. NS masih di registrar.
-Tidak ada provisioning yang dijalankan dan tidak ada angka tenant/site
-yang berubah — 3432 site tetap. Menunggu penunjukan eksplisit pemilik
-sebagai tenant; setelah itu ikuti `docs/domains.md` bagian C dan
-baseline `docs/cloudflare-baseline.md`.
+**NS sudah dialihkan 2026-09-26** dari parking Masterweb
+(`dns1/dns2-parking.masterweb.com`, sebelumnya REFUSED di delegasi publik)
+ke Cloudflare `joan.ns.cloudflare.com` + `kanye.ns.cloudflare.com`.
+Delegasi terverifikasi di 10/10 hostname via resolver publik. 10 zona
+Cloudflare provisioned penuh baseline tenant (TLS `strict`, Bot Fight
+Mode + AI-block off, Page Shield, 3 ruleset, 9 DNS record). Status zona
+pada pencatatan: 8 `active`, 2 `pending` (berandanasional, wartapersada)
+menunggu pemeriksaan propagasi.
+
+**Belum tenant**: 0/10 baris `domains`/`sites`/`site_settings`, 0/10
+asosiasi Vercel, 0/10 brand/SEO. Angka platform tidak berubah — 3432 site
+tetap, 104 apex tenant tetap. `GET /` serving unknown-host `noindex` yang
+normal. Menunggu penunjukan eksplisit pemilik; setelah itu wildcard cert
+Vercel perlu diterbitkan per apex.
 
 ## Backlog (belum punya site)
 

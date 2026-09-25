@@ -4,6 +4,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 import { DashboardWorkspace } from '@/modules/dashboard/components/dashboard-workspace';
 
+/** The workspace loads eighteen panels through `next/dynamic`, so a lazy panel needs more than the 1s default. */
+const LAZY_MODULE_TIMEOUT_MS = 8000;
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
@@ -84,8 +87,8 @@ describe('Ruang kerja dashboard', () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByText('Ringkasan Ekosistem Redaksi');
     fireEvent.click(screen.getByRole('button', { name: 'Tulis Berita' }));
-    expect(await screen.findByText('Manajemen Artikel & Konten')).toBeDefined();
-    expect(await screen.findByText('Artikel baru')).toBeDefined();
+    expect(await screen.findByText('Manajemen Artikel & Konten', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
+    expect(await screen.findByText('Artikel baru', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     expect(screen.queryByText('Belum ada data')).toBeNull();
   });
 

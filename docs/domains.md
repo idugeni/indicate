@@ -2,7 +2,7 @@
 
 > **Status:** Living document (advisory).
 > **Owner:** Platform team.
-> **Last verified:** 2026-09-26 (Cloudflare API + DB `sites` + Vercel MCP + HTTP 104/104 apex and 10/10 regional `200`; RDAP PANDI untuk 10 domain stok Exabytes baru di bagian C).
+> **Last verified:** 2026-09-26 (Cloudflare API + DB `sites` + Vercel MCP + HTTP 104/104 apex and 10/10 regional `200`; RDAP PANDI + delegasi NS publik terverifikasi untuk 10 domain Exabytes baru di bagian C).
 > **Related:** [active domains](active-domains.md) · [cloudflare baseline](cloudflare-baseline.md)
 
 Hanya domain terkait Indicate yang dicatat di sini — proyek-proyek lain
@@ -154,34 +154,43 @@ Regional live: `wonosobo.fakta01.my.id`, `wonosobo.jurnalism.web.id`,
 `wonosobo.wartakini7.web.id`,
 `wonosobo.wawasannusa.biz.id` (tercakup zona apex masing-masing).
 
-## C. Exabytes, batch 2026-09-25 — stok, belum onboarding
+## C. Exabytes, batch 2026-09-25 — zona Cloudflare aktif, belum tenant
 
-10 domain didaftarkan Exabytes pada 2026-09-25 dan tanggal kedaluwarsa
-semuanya 2027-09-25 (RDAP PANDI, dibaca 2026-09-26). Status per
-2026-09-26: NS masih di registrar, **belum ada zona Cloudflare**
-(`GET /zones` 131 zona, 0 dari 10 hostname ini ada) dan **belum ada
-baris `domains`/`sites`/`site_settings`** di DB. Semua 10 masih
-menunggu penunjukan eksplisit pemilik sebagai tenant dan provisioning
-baseline per `docs/cloudflare-baseline.md`.
+10 domain didaftarkan Exabytes pada 2026-09-25 dan kedaluwarsa 2027-09-25
+(RDAP PANDI). NS diubah ke Cloudflare 2026-09-26; delegasi terverifikasi
+publik di 10/10 hostname (`joan.ns.cloudflare.com` + `kanye.ns.cloudflare.com`).
 
-| Domain | Terdaftar | Kedaluwarsa | IDW | CF | Tenant? |
+Per 2026-09-26: 10 zona Cloudflare provisioned penuh (baseline identik
+104 zona tenant — TLS `strict`, Bot Fight Mode + AI-block off, Page Shield,
+3 ruleset, 9 DNS record: apex + wildcard CNAME proxied ke Vercel, CAA ×4,
+SPF, DMARC, DKIM-null). Status zona bergerak seiring propagasi: 8/10
+`active` pada pencatatan terakhir, 2 sisanya `pending`
+(berandanasional, wartapersada) menunggu pemeriksaan propagasi
+Cloudflare.
+
+**Belum ada tenant**: 0/10 punya baris `domains`/`sites`/`site_settings`,
+0/10 punya asosiasi Vercel, 0/10 punya brand/SEO. `GET /` serving
+unknown-host ber-`noindex` — normal, bukan bug. Menunggu penunjukan
+eksplisit pemilik.
+
+| Domain | ID Exabytes | Terdaftar | Kedaluwarsa | CF | Tenant? |
 |---|---|---|---|---|---|
-| berandanasional.web.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
-| garisberita.web.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
-| kabarutama.web.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
-| pusatmedia.biz.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
-| ruangpublik.web.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
-| suarapublik.biz.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
-| sudutindonesia.web.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
-| titikmedia.my.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
-| fokusrakyat.my.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
-| wartapersada.my.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
+| sudutindonesia.web.id | 347916 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
+| ruangpublik.web.id | 347917 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
+| garisberita.web.id | 347918 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
+| titikmedia.my.id | 347919 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
+| suarapublik.biz.id | 347920 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
+| berandanasional.web.id | 347921 | 2026-09-25 | 2027-09-25 | pending | BELUM (stok) |
+| kabarutama.web.id | 347922 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
+| fokusrakyat.my.id | 347923 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
+| pusatmedia.biz.id | 347924 | 2026-09-25 | 2027-09-25 | active | BELUM (stok) |
+| wartapersada.my.id | 347925 | 2026-09-25 | 2027-09-25 | pending | BELUM (stok) |
 
-Keterangan: hostname `.web.id`, `.my.id`, dan `.biz.id` bercampur seperti
-batch sebelumnya; 5 `.web.id`, 3 `.my.id`, 2 `.biz.id`. Tidak ada
-nama brand, tagline, atau template yang ditetapkan untuk 10 hostname ini —
-pemetaan huruf awal untuk logo/favicon mengikuti `tenant-onboarding` bila
-onboarding dijalankan.
+Keterangan: hostname bercampur seperti batch sebelumnya; 5 `.web.id`,
+3 `.my.id`, 2 `.biz.id`. ID Exabytes berurutan 347916–347925. Tidak ada
+nama brand, tagline, atau template yang ditetapkan — pemetaan huruf awal
+untuk logo/favicon mengikuti `tenant-onboarding` bila onboarding
+dijalankan.
 
 ## Aturan main
 
