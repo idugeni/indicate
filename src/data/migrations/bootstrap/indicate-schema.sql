@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (195 migrations):
+-- Reviewed sources, in journal order (196 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -208,6 +208,7 @@
 --   193  20260926020000_purge_drill_litigation_hold  ledger sha256:ac6b1d72fb89b9cb9be6c09fabe761caefbd96a482a8e0ae38f30cd906b6af35
 --   194  20260926030000_purge_superseded_media_reservations  ledger sha256:8ae50186a792ae32f4dff73ed52acc192a224a86374c60783295114b90056bef
 --   195  20260926040000_drop_vestigial_replay_outcome_reference  ledger sha256:81bb2693e585a48a7e8cf37ea9652f9f2fe7d77377f40aa44c0c39a2e9dbc9d0
+--   196  20260926050000_retain_only_active_cache_bypasses  ledger sha256:b63dab6baa073b874498cf18ff3661808a1d52ccd32b73578d33559557e46e1d
 
 BEGIN;
 
@@ -16312,4 +16313,121 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (195, 'drop_vestigial_replay_outcome_reference', 'sha256:73d3ecea6d1f35dd4318dff75908a2a871aea08532f07b5a082a84b8882c90f6');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('81bb2693e585a48a7e8cf37ea9652f9f2fe7d77377f40aa44c0c39a2e9dbc9d0', 1790430000000);
+
+-- ----------------------------------------------------------------------
+-- 20260926050000_retain_only_active_cache_bypasses
+-- ----------------------------------------------------------------------
+-- Keep only the cache bypasses that are actually active.
+--
+-- `readBypassed()` treats a missing row as "not bypassing", so once an
+-- invalidation completes its row carries no information: the table ends up with
+-- one row per portal forever, describing the default state. That is the same
+-- shape the refactor residue cleanup found in migration 190, and every onboarding
+-- wave brings it back: the ten newest tenants alone produced 330 rows, of which
+-- 190 were live `invalidation_pending` bypasses and the rest had already
+-- completed and were pure noise.
+--
+-- The sweep therefore deletes rows whose bypass is off and leaves every active
+-- bypass untouched, which turns the table back into what the delivery read
+-- actually asks: "is this portal bypassing right now". A portal with an
+-- in-flight invalidation keeps its bypass until the reconciler finishes, because
+-- the guard refuses the whole migration if any such portal would lose it.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE OR REPLACE FUNCTION indicate_private.retention_sweep()
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $$
+DECLARE v_total integer := 0; v_count integer; v_started timestamptz := now();
+BEGIN
+  DELETE FROM public.org_invitations WHERE ((accepted_at IS NOT NULL AND accepted_at < now() - interval '90 days') OR (accepted_at IS NULL AND expires_at < now() - interval '90 days')) AND NOT indicate_private.is_org_held(org_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('org_invitations', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.webhook_replay_claims WHERE expires_at < now() AND (organization_id IS NULL OR NOT indicate_private.is_org_held(organization_id));
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('webhook_replay_claims', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.object_cleanup_tasks WHERE status = 'completed' AND updated_at < now() - interval '90 days' AND NOT indicate_private.is_org_held(organization_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('object_cleanup_tasks', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.invalidation_tasks WHERE status IN ('completed', 'failed') AND updated_at < now() - interval '90 days' AND NOT indicate_private.is_org_held(organization_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('invalidation_tasks', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.cache_bypasses AS bypass
+   WHERE NOT bypass.bypass
+     AND NOT indicate_private.is_org_held(bypass.organization_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('cache_bypasses', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.publication_transition_receipts r
+   WHERE r.created_at < now() - interval '90 days'
+     AND NOT indicate_private.is_org_held(r.organization_id)
+     AND NOT EXISTS (
+       SELECT 1 FROM public.publication_transition_receipts latest
+        WHERE latest.organization_id = r.organization_id
+          AND latest.job_id = r.job_id
+          AND (latest.created_at, latest.id) > (r.created_at, r.id)
+     );
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('publication_transition_receipts', v_count, v_started, now());
+  v_total := v_total + v_count;
+  UPDATE public.media_key_reservations AS reservation
+     SET status = 'expired', updated_at = now()
+   WHERE reservation.status IN ('reserved', 'occupied')
+     AND reservation.expires_at < now()
+     AND NOT EXISTS (
+       SELECT 1 FROM public.media AS asset
+        WHERE asset.organization_id = reservation.organization_id
+          AND asset.object_key = reservation.object_key
+     )
+     AND NOT indicate_private.is_org_held(reservation.organization_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  v_total := v_total + v_count;
+  DELETE FROM public.media_key_reservations AS reservation
+   WHERE reservation.status = 'used'
+     AND reservation.updated_at < now() - interval '3 days'
+     AND NOT EXISTS (
+       SELECT 1 FROM public.media AS asset
+        WHERE asset.organization_id = reservation.organization_id
+          AND asset.object_key = reservation.object_key
+     )
+     AND NOT indicate_private.is_org_held(reservation.organization_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  v_total := v_total + v_count;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('media_key_reservations', v_count, v_started, now());
+  RETURN v_total;
+END;
+$$;
+SELECT indicate_private.retention_sweep();
+DO $$
+DECLARE
+  inert_left integer;
+  bypass_lost integer;
+BEGIN
+  SELECT count(*) INTO inert_left FROM public.cache_bypasses WHERE NOT bypass;
+  IF inert_left > 0 THEN
+    RAISE EXCEPTION 'cache_bypass_inert_left: % completed bypass row(s) survived', inert_left;
+  END IF;
+  SELECT count(*) INTO bypass_lost
+    FROM public.invalidation_tasks AS task
+   WHERE task.status IN ('pending', 'processing')
+     AND EXISTS (
+       SELECT 1 FROM public.cache_bypasses AS bypass
+        WHERE bypass.site_id = task.site_id AND NOT bypass.bypass
+     );
+  IF bypass_lost > 0 THEN
+    RAISE EXCEPTION 'cache_bypass_unsafe: % portal(s) with in-flight invalidation lost their bypass', bypass_lost;
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (196, 'retain_only_active_cache_bypasses', 'sha256:64a9a5d54884e2bb0481b728178fc95170b4f7949d5b04ce84a3ad69b29be2fb');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b63dab6baa073b874498cf18ff3661808a1d52ccd32b73578d33559557e46e1d', 1790433600000);
 COMMIT;
