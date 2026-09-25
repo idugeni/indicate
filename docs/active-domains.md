@@ -199,7 +199,11 @@ idempoten). Verifikasi: `/logo.png` 200, manifest tenant, `/` 200.
 
 ## Backlog (belum punya site)
 
-59 org customer (UPT Jateng): langganan active, member active, 0 site. Estimasi kebutuhan: 59 slot bila 1 hostname/org → total ±281 dari 100 ribu, aman.
+Tidak ada. 59 org customer (UPT Jateng) tetap 0 site karena keputusan owner
+2026-09-17: mereka tidak punya hostname sendiri, melainkan berafiliasi ke 31
+portal kota lewat `official_affiliations` (590 baris per migrasi v181, 59
+institusi × 10 domain jaringan). Kebutuhan 59 slot hostname yang pernah
+diestimasi sudah tidak berlaku.
 
 ## Verifikasi rollout 2026-09-25
 

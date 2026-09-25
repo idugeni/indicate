@@ -92,6 +92,15 @@ tabrakan antar-provinsi kelak ditambah provinsi (`banjar-jabar`).
 | Wonogiri | Kab. | `wonogiri` |
 | Wonosobo | Kab. | `wonosobo` ✅ live |
 
+Status afiliasi (2026-09-25): **selesai**. Migrasi v181 mengisi
+`official_affiliations` untuk 59stitusi pada 10 domain jaringan prisoner =
+**590 baris** (bentuk sama dengan baris seed: `claim_scopes=['site_name']`,
+`evidence_reference='direktori-resmi'`, aktif + terverifikasi). Hanya portal
+kota yang menerima klaim, 0 di portal region/apex. Pemetaan UPT → 10 domain
+tersebut tidak dikalikan ke 94 domain lain karena peta di dokumen ini bersifat
+institusional, bukan per brand; menambahkannya adalah pernyataan yang sama
+tanpa filter Domain bila nanti diperlukan.
+
 Jumlah: 31 subdomain × 10 domain = **310 portal city** (+ 10 portal region).
 
 Status implementasi (2026-09-25): **selesai, seluruh jaringan**. Migrasi v175
