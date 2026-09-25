@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { and, eq } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
+import { QueryBuilder } from 'drizzle-orm/pg-core';
 
 import { DrizzlePublishingRepository } from '@/data/repos/publishing/repository';
+import { media } from '@/data/schema';
 
 const CONTEXT = {
   organizationId: 'o1',
@@ -44,19 +48,40 @@ function siteRow() {
   };
 }
 
-function harness(selects: { readonly media: readonly unknown[]; readonly publishers: readonly unknown[]; readonly extra?: readonly (readonly unknown[])[] }) {
+interface HarnessSelects {
+  readonly media: readonly unknown[];
+  readonly publishers: readonly unknown[];
+  readonly extra?: readonly (readonly unknown[])[];
+}
+
+interface RecordedQueryCall {
+  readonly method: string;
+  readonly args: readonly unknown[];
+}
+
+function buildHarness(selects: HarnessSelects) {
   const queue: readonly (readonly unknown[])[] = [selects.media, [siteRow()], [], selects.publishers, ...(selects.extra ?? [])];
   let cursor = 0;
+  const recorded: RecordedQueryCall[] = [];
   const chainable: Record<string, (...args: readonly unknown[]) => unknown> = {};
   const terminal = async () => [...(queue[Math.min(cursor++, queue.length - 1)] ?? [])];
-  for (const method of ['from', 'where', 'innerJoin', 'leftJoin', 'orderBy', 'for']) chainable[method] = () => chainable;
+  for (const method of ['from', 'where', 'innerJoin', 'leftJoin', 'orderBy', 'for']) {
+    chainable[method] = (...args: readonly unknown[]) => {
+      recorded.push({ method, args });
+      return chainable;
+    };
+  }
   chainable.limit = terminal;
   const transaction = {
     execute: async () => [],
     select: () => chainable,
   };
   const database = { transaction: async (callback: (tx: unknown) => unknown) => callback(transaction) };
-  return new DrizzlePublishingRepository(database as never);
+  return { repository: new DrizzlePublishingRepository(database as never), recorded };
+}
+
+function harness(selects: HarnessSelects) {
+  return buildHarness(selects).repository;
 }
 
 describe('authorizePublicMedia organization assets', () => {
@@ -96,5 +121,50 @@ describe('authorizePublicMedia organization article images', () => {
   it('menolak media organisasi bukan gambar walau dirujuk', async () => {
     const repository = harness({ media: [{ ...mediaRow(), purpose: 'article-inline', mediaType: 'application/pdf' }], publishers: [], extra: [[], [], [{ id: 'a1' }]] });
     await expect(repository.authorizePublicMedia({ ...CONTEXT }, 'm-org', 'req-1')).resolves.toBe(null);
+  });
+});
+
+/**
+ * Compile a recorded condition to SQL through the real query builder.
+ *
+ * @remarks The projection is deliberately a single non-tenant column. A bare
+ * `select()` projects every column, so `"organization_id"` would appear in the
+ * text whether or not the condition carried a tenant predicate, and the
+ * assertions below would pass vacuously. Narrowing the projection confines every
+ * occurrence of that identifier to the condition under test.
+ */
+function compileCondition(condition: unknown): { readonly text: string; readonly params: readonly unknown[] } {
+  const built = new QueryBuilder().select({ probe: media.id }).from(media).where(condition as SQL).toSQL();
+  return { text: built.sql, params: built.params };
+}
+
+describe('isolasi tenant pada SQL yang dihasilkan', () => {
+  it('setiap condition where membawa predikat organisasi milik pemanggil', async () => {
+    const { repository, recorded } = buildHarness({ media: [mediaRow()], publishers: [{ id: 'p1' }] });
+    await repository.authorizePublicMedia({ ...CONTEXT }, 'm-org', 'req-1');
+    const conditions = recorded.filter((call) => call.method === 'where');
+    expect(conditions.length).toBeGreaterThanOrEqual(4);
+    for (const call of conditions) {
+      const { text, params } = compileCondition(call.args[0]);
+      expect(text).toContain('"organization_id"');
+      expect(params).toContain(CONTEXT.organizationId);
+    }
+  });
+
+  it('setiap join menyambungkan kolom organisasinya, bukan join telanjang', async () => {
+    const { repository, recorded } = buildHarness({ media: [mediaRow()], publishers: [{ id: 'p1' }] });
+    await repository.authorizePublicMedia({ ...CONTEXT }, 'm-org', 'req-1');
+    const joins = recorded.filter((call) => call.method === 'innerJoin' || call.method === 'leftJoin');
+    expect(joins.length).toBeGreaterThanOrEqual(1);
+    for (const call of joins) {
+      expect(compileCondition(call.args[1]).text).toContain('"organization_id"');
+    }
+  });
+
+  it('kontrol negatif: condition tanpa predikat tenant terdeteksi hilang', () => {
+    const unscoped = and(eq(media.id, 'm-org'), eq(media.state, 'active'));
+    const { text, params } = compileCondition(unscoped);
+    expect(text).not.toContain('"organization_id"');
+    expect(params).not.toContain(CONTEXT.organizationId);
   });
 });
