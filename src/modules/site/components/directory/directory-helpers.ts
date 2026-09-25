@@ -1,4 +1,4 @@
-import type { NetworkSiteRow, PartnerRow } from '@/modules/content/site-content';
+import type { DirectoryEntry, PartnerRow } from '@/modules/content/site-content';
 
 export const DIRECTORY_ACCENTS: readonly string[] = Object.freeze([
   '#b88d3a',
@@ -118,15 +118,18 @@ export function accentForHostname(hostname: string): string {
   return DIRECTORY_ACCENTS[hash % DIRECTORY_ACCENTS.length] ?? DIRECTORY_ACCENTS[0] ?? '#b88d3a';
 }
 
+/** Result ceiling for a searched directory; browsing stays aggregated per city. */
+export const DIRECTORY_RESULT_LIMIT = 48;
+
 /**
  * Split portal listings into main portals and regional editions.
  *
  * @param sites - Network sites ordered by hostname.
  * @returns Frozen split of apex portals and their region/city editions.
  */
-export function splitSites(sites: readonly NetworkSiteRow[]): {
-  readonly main: readonly NetworkSiteRow[];
-  readonly regional: readonly NetworkSiteRow[];
+export function splitSites(sites: readonly DirectoryEntry[]): {
+  readonly main: readonly DirectoryEntry[];
+  readonly regional: readonly DirectoryEntry[];
 } {
   return Object.freeze({
     main: Object.freeze(sites.filter((site) => site.siteLevel === 'apex')),
@@ -143,16 +146,16 @@ export function splitSites(sites: readonly NetworkSiteRow[]): {
  * @returns Filtered sites in input order.
  */
 export function filterSites(
-  sites: readonly NetworkSiteRow[],
+  sites: readonly DirectoryEntry[],
   query: string,
   scope: 'all' | 'main' | 'regional',
-): readonly NetworkSiteRow[] {
+): readonly DirectoryEntry[] {
   const needle = query.trim().toLowerCase();
   return sites.filter((site) => {
     if (scope === 'main' && site.siteLevel !== 'apex') return false;
     if (scope === 'regional' && site.siteLevel === 'apex') return false;
     if (needle === '') return true;
-    const haystack = `${site.siteName} ${site.hostname} ${site.areaName ?? ''} ${site.tagline ?? ''} ${site.description}`.toLowerCase();
+    const haystack = `${site.siteName} ${site.hostname} ${site.areaName ?? ''} ${site.tagline ?? ''} ${site.description ?? ''}`.toLowerCase();
     return haystack.includes(needle);
   });
 }
@@ -163,15 +166,77 @@ export function filterSites(
  * @param site - Network site row.
  * @returns Geography name, falling back to the first DNS label for apex portals.
  */
-export function areaOf(site: NetworkSiteRow): string {
+export function areaOf(site: DirectoryEntry): string {
   if (site.areaName !== null && site.areaName !== '') return site.areaName;
   const label = site.hostname.split('.')[0] ?? site.hostname;
   return label.length === 0 ? site.hostname : label.charAt(0).toUpperCase() + label.slice(1);
 }
 
+/**
+ * Bound a rendered result set and report what was withheld.
+ *
+ * @param entries - Matching portals in listing order.
+ * @param limit - Maximum entries to render; defaults to `DIRECTORY_RESULT_LIMIT`.
+ * @returns The visible slice and the number of matches left unrendered.
+ * @remarks The count is always reported, so a capped list never claims to be
+ * the whole result set.
+ */
+export function capDirectoryResults(
+  entries: readonly DirectoryEntry[],
+  limit: number = DIRECTORY_RESULT_LIMIT,
+): { readonly shown: readonly DirectoryEntry[]; readonly hidden: number } {
+  return Object.freeze({ shown: Object.freeze(entries.slice(0, limit)), hidden: Math.max(0, entries.length - limit) });
+}
+
+/**
+ * Build the directory structured data.
+ *
+ * @param sites - Every active portal.
+ * @param pageUrl - Canonical URL of the directory page.
+ * @returns JSON-LD payload describing the page, its apex portals, and its city ledger.
+ * @remarks Only the units a visitor can actually reach from the page are listed:
+ * the apex portals carry a card and a link, and the city tiles carry a count. The
+ * thousands of regional portals behind each count stay out of the payload, which
+ * keeps the script small and keeps the markup honest about what is on the page.
+ */
+export function buildDirectoryJsonLd(
+  sites: readonly DirectoryEntry[],
+  pageUrl: string,
+): Readonly<Record<string, unknown>> {
+  const { main, regional } = splitSites(sites);
+  const cities = groupRegionalByCity(regional).map((group) => ({
+    '@type': 'ListItem',
+    name: group.city,
+    description: `${group.items.length} portal`,
+  }));
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'Jaringan portal Indicate',
+    description: 'Direktori portal aktif di jaringan Indicate: portal utama nasional dan edisi daerah per kota.',
+    url: pageUrl,
+    mainEntity: {
+      '@type': 'ItemList',
+      name: 'Portal utama',
+      numberOfItems: main.length,
+      itemListElement: main.map((site, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        item: { '@type': 'WebSite', name: site.siteName, url: `https://${site.hostname}` },
+      })),
+    },
+    hasPart: {
+      '@type': 'ItemList',
+      name: 'Edisi daerah per kota',
+      numberOfItems: cities.length,
+      itemListElement: cities,
+    },
+  };
+}
+
 export interface RegionalCityGroup {
   readonly city: string;
-  readonly items: readonly NetworkSiteRow[];
+  readonly items: readonly DirectoryEntry[];
 }
 
 /**
@@ -180,9 +245,9 @@ export interface RegionalCityGroup {
  * @param regional - Region and city portals ordered by hostname.
  * @returns City groups in first-seen order, frozen.
  */
-export function groupRegionalByCity(regional: readonly NetworkSiteRow[]): readonly RegionalCityGroup[] {
+export function groupRegionalByCity(regional: readonly DirectoryEntry[]): readonly RegionalCityGroup[] {
   const order: string[] = [];
-  const buckets = new Map<string, NetworkSiteRow[]>();
+  const buckets = new Map<string, DirectoryEntry[]>();
   for (const site of regional) {
     const city = areaOf(site);
     const bucket = buckets.get(city);

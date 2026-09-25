@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { ArrowUpRight, MapPin, Search } from 'lucide-react';
-import type { NetworkSiteRow } from '@/modules/content/site-content';
-import { accentEdgeStyle, accentForHostname, filterSites, groupRegionalByCity, patternForHostname, wordmarkPatternForHostname } from '@/modules/site/components/directory/directory-helpers';
+import type { DirectoryEntry } from '@/modules/content/site-content';
+import { accentEdgeStyle, accentForHostname, capDirectoryResults, filterSites, groupRegionalByCity, patternForHostname, wordmarkPatternForHostname } from '@/modules/site/components/directory/directory-helpers';
 import { Wordmark } from '@/modules/site/components/directory/wordmark';
 import { cn } from '@/ui/cn';
 
@@ -19,15 +19,31 @@ const SCOPES: readonly { readonly value: Scope; readonly label: string }[] = Obj
  * Interactive network directory: search plus edition-scope filter over the
  * live portal listing, rendered as a wordmark board and a regional ledger.
  *
- * @param sites - Active portals ordered by hostname.
+ * @param sites - Active portals ordered by hostname; regional rows carry no copy.
+ * @remarks Browsing stays aggregated: apex portals get a card, regional editions
+ * collapse into one tile per city. Searching switches to linkable result cards
+ * so a regional portal is reachable, capped at `DIRECTORY_RESULT_LIMIT` with the
+ * withheld count stated rather than hidden.
  */
-export function NetworkExplorer({ sites }: { readonly sites: readonly NetworkSiteRow[] }) {
+export function NetworkExplorer({ sites }: { readonly sites: readonly DirectoryEntry[] }) {
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<Scope>('all');
   const results = useMemo(() => filterSites(sites, query, scope), [sites, query, scope]);
-  const main = useMemo(() => results.filter((site) => site.siteLevel === 'apex'), [results]);
-  const regional = useMemo(() => results.filter((site) => site.siteLevel !== 'apex'), [results]);
-  const cityGroups = useMemo(() => groupRegionalByCity(regional), [regional]);
+  const searching = query.trim() !== '';
+  const capped = useMemo(() => capDirectoryResults(results), [results]);
+  const cards = useMemo(
+    () => (searching ? capped.shown : results.filter((site) => site.siteLevel === 'apex')),
+    [searching, capped.shown, results],
+  );
+  const cityGroups = useMemo(
+    () => (searching ? [] : groupRegionalByCity(results.filter((site) => site.siteLevel !== 'apex'))),
+    [searching, results],
+  );
+  const apexCount = useMemo(() => results.filter((site) => site.siteLevel === 'apex').length, [results]);
+  const cityCount = useMemo(
+    () => groupRegionalByCity(results.filter((site) => site.siteLevel !== 'apex')).length,
+    [results],
+  );
 
   return (
     <div>
@@ -67,8 +83,8 @@ export function NetworkExplorer({ sites }: { readonly sites: readonly NetworkSit
         <dl className="m-0 flex flex-wrap items-stretch justify-center gap-x-10 gap-y-6 p-0 sm:gap-x-14">
           {[
             { value: results.length, label: 'Portal' },
-            { value: main.length, label: 'Utama' },
-            { value: cityGroups.length, label: 'Daerah' },
+            { value: apexCount, label: 'Utama' },
+            { value: cityCount, label: 'Daerah' },
           ].map((stat) => (
             <div
               key={stat.label}
@@ -93,11 +109,21 @@ export function NetworkExplorer({ sites }: { readonly sites: readonly NetworkSit
         </div>
       ) : (
         <>
-          {main.length > 0 ? (
-            <div className={cn('mt-10 w-full px-4 sm:px-6 md:mt-12 lg:px-8', regional.length === 0 && 'pb-16 md:pb-24')}>
+          {cards.length > 0 ? (
+            <div className={cn('mt-10 w-full px-4 sm:px-6 md:mt-12 lg:px-8', !searching && cityGroups.length === 0 && 'pb-16 md:pb-24')}>
+              {searching ? (
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                  <p className="m-0 flex-none font-mono text-[11px] tracking-[0.14em] text-[#5f6b7a] uppercase">
+                    Hasil pencarian
+                  </p>
+                  <span aria-hidden="true" className="h-px flex-1 bg-[#e2ded2]" />
+                </div>
+              ) : null}
               <ul className="m-0 grid list-none gap-px overflow-hidden rounded-[3px] border border-[#e2ded2] bg-[#e2ded2] p-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                {main.map((site) => {
+                {cards.map((site) => {
                   const accent = accentForHostname(site.hostname);
+                  const regional = site.siteLevel !== 'apex';
+                  const subline = regional ? site.areaName : site.tagline;
                   return (
                     <li key={site.hostname} className="group relative flex bg-white transition-colors duration-180 hover:bg-[#faf9f5]">
                       <span aria-hidden="true" className="w-1 flex-none" style={accentEdgeStyle(accent, patternForHostname(site.hostname))} />
@@ -111,24 +137,35 @@ export function NetworkExplorer({ sites }: { readonly sites: readonly NetworkSit
                         <span className="pr-8 text-2xl md:text-3xl xl:text-[1.65rem]">
                           <Wordmark name={site.siteName} accent={accent} pattern={wordmarkPatternForHostname(site.hostname)} />
                         </span>
-                        {site.tagline !== null && site.tagline.trim() !== '' ? (
+                        {subline !== null && subline !== undefined && subline.trim() !== '' ? (
                           <span className="block font-sans text-[13px] font-semibold" style={{ color: accent }}>
-                            {site.tagline}
+                            {subline}
                           </span>
                         ) : null}
-                        <span className="block font-sans text-sm leading-relaxed text-[#4c5b6b]">
-                          {site.description}
-                        </span>
+                        {site.description !== null ? (
+                          <span className="block font-sans text-sm leading-relaxed text-[#4c5b6b]">
+                            {site.description}
+                          </span>
+                        ) : (
+                          <span className="block font-mono text-[11px] text-[#5f6b7a]">
+                            {site.hostname}
+                          </span>
+                        )}
                         <ArrowUpRight aria-hidden="true" className="absolute top-6 right-5 hidden h-4 w-4 text-[#e2ded2] transition-all duration-180 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[#8a5f1c] sm:block" />
                       </a>
                     </li>
                   );
                 })}
               </ul>
+              {capped.hidden > 0 ? (
+                <p className="mx-auto mt-4 max-w-6xl px-2 text-center font-sans text-[13px] text-[#4c5b6b]">
+                  {capped.hidden.toLocaleString('id-ID')} portal lain cocok. Persempit kata kunci atau pilih lingkup lain untuk melihatnya.
+                </p>
+              ) : null}
             </div>
           ) : null}
 
-          {regional.length > 0 ? (
+          {!searching && cityGroups.length > 0 ? (
             <div className="mx-auto mt-16 w-full max-w-6xl px-6 pb-16 md:mt-24 md:pb-24">
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                 <p className="m-0 flex-none font-mono text-[11px] tracking-[0.14em] text-[#5f6b7a] uppercase">

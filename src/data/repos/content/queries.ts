@@ -54,14 +54,24 @@ export async function readContactChannels(db: Database): Promise<readonly { read
   })));
 }
 
-export interface NetworkSiteRow {
+/**
+ * One portal as the public directory needs it.
+ *
+ * `description` and `tagline` are only filled for apex portals: the regional
+ * ledger renders a count per city, so shipping thousands of regional
+ * descriptions to the browser would bloat the page for nothing.
+ */
+export interface DirectoryEntry {
   readonly hostname: string;
-  readonly parentHostname: string | null;
-  readonly siteLevel: 'apex' | 'region' | 'city';
   readonly siteName: string;
-  readonly description: string;
-  readonly tagline: string | null;
+  readonly siteLevel: 'apex' | 'region' | 'city';
   readonly areaName: string | null;
+  readonly tagline: string | null;
+  readonly description: string | null;
+}
+
+export interface NetworkSiteRow extends DirectoryEntry {
+  readonly parentHostname: string | null;
   readonly parentAreaName: string | null;
 }
 

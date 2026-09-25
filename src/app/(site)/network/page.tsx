@@ -2,8 +2,9 @@ import type { Metadata } from 'next';
 import { Database, Globe, MapPin, MousePointerClick } from 'lucide-react';
 
 import { siteMetadata } from '@/ui/site/metadata-guard';
+import type { DirectoryEntry } from '@/data/repos/content/queries';
 import { getNetworkSites } from '@/modules/content/site-content';
-import { groupRegionalByCity, splitSites } from '@/modules/site/components/directory/directory-helpers';
+import { buildDirectoryJsonLd, groupRegionalByCity, splitSites } from '@/modules/site/components/directory/directory-helpers';
 import { NetworkExplorer } from '@/modules/site/components/directory/network-explorer';
 import {
   FeatureGrid,
@@ -46,20 +47,10 @@ export function generateMetadata(): Metadata {
 /**
  * Render JSON-LD for the portal directory so crawlers read the same list
  * visitors see.
+ *
+ * @param payload - Structured data built by `buildDirectoryJsonLd`.
  */
-function NetworkJsonLd({ hostnames }: { readonly hostnames: readonly { readonly name: string; readonly hostname: string }[] }) {
-  const payload = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: 'Jaringan portal Indicate',
-    description: DESCRIPTION,
-    numberOfItems: hostnames.length,
-    itemListElement: hostnames.map((site, index) => ({
-      '@type': 'ListItem',
-      position: index + 1,
-      item: { '@type': 'WebSite', name: site.name, url: `https://${site.hostname}` },
-    })),
-  };
+function NetworkJsonLd({ payload }: { readonly payload: Readonly<Record<string, unknown>> }) {
   return (
     <script
       type="application/ld+json"
@@ -72,6 +63,14 @@ export default async function JaringanPage() {
   const sites = await getNetworkSites();
   const { main, regional } = splitSites(sites);
   const cityCount = groupRegionalByCity(regional).length;
+  const directory: readonly DirectoryEntry[] = sites.map((site) => Object.freeze({
+    hostname: site.hostname,
+    siteName: site.siteName,
+    siteLevel: site.siteLevel,
+    areaName: site.areaName,
+    tagline: site.siteLevel === 'apex' ? site.tagline : null,
+    description: site.siteLevel === 'apex' ? site.description : null,
+  }));
 
   return (
     <PublicPage
@@ -87,10 +86,8 @@ export default async function JaringanPage() {
         </>
       }
     >
-      <NetworkJsonLd
-        hostnames={sites.map((site) => ({ name: site.siteName, hostname: site.hostname }))}
-      />
-      <NetworkExplorer sites={sites} />
+      <NetworkJsonLd payload={buildDirectoryJsonLd(directory, 'https://indicate.website/network')} />
+      <NetworkExplorer sites={directory} />
       <Section title="Jaringan dalam angka" eyebrow="Fakta" tone="band">
         <StatBand
           items={[

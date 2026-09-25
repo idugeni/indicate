@@ -5,8 +5,11 @@ import {
   accentForHostname,
   areaOf,
   ALL_PARTNER_FAMILIES,
+  buildDirectoryJsonLd,
+  capDirectoryResults,
   DIRECTORY_ACCENTS,
   DIRECTORY_PATTERNS,
+  DIRECTORY_RESULT_LIMIT,
   familyOf,
   filterPartners,
   filterSites,
@@ -19,13 +22,23 @@ import {
   wordmarkColors,
   wordmarkPatternForHostname,
 } from '@/modules/site/components/directory/directory-helpers';
-import type { NetworkSiteRow, PartnerRow } from '@/modules/content/site-content';
+import type { DirectoryEntry, NetworkSiteRow, PartnerRow } from '@/modules/content/site-content';
 
 const SITES: readonly NetworkSiteRow[] = Object.freeze([
   { hostname: 'fakta01.my.id', parentHostname: null, siteLevel: 'apex', siteName: 'Fakta01', description: 'Investigasi nasional', tagline: 'Fakta teruji', areaName: null, parentAreaName: null },
   { hostname: 'jawa-tengah.fakta01.my.id', parentHostname: 'fakta01.my.id', siteLevel: 'region', siteName: 'Fakta01 Jawa Tengah', description: 'Kabar provinsi', tagline: null, areaName: 'Jawa Tengah', parentAreaName: null },
   { hostname: 'wonosobo.fakta01.my.id', parentHostname: 'jawa-tengah.fakta01.my.id', siteLevel: 'city', siteName: 'Fakta01 Wonosobo', description: 'Kabar daerah', tagline: null, areaName: 'Wonosobo', parentAreaName: 'Jawa Tengah' },
 ]);
+
+/** Trimmed projection the page ships to the browser: regional rows carry no copy. */
+const DIRECTORY: readonly DirectoryEntry[] = Object.freeze(SITES.map((site) => Object.freeze({
+  hostname: site.hostname,
+  siteName: site.siteName,
+  siteLevel: site.siteLevel,
+  areaName: site.areaName,
+  tagline: site.siteLevel === 'apex' ? site.tagline : null,
+  description: site.siteLevel === 'apex' ? site.description : null,
+})));
 
 const PARTNERS: readonly PartnerRow[] = Object.freeze([
   { name: 'LAPAS KELAS I SEMARANG', slug: 'lapas-kelas-i-semarang' },
@@ -111,6 +124,50 @@ describe('filterSites', () => {
     expect(filterSites(SITES, 'wonosobo', 'all').map((site) => site.hostname)).toEqual(['wonosobo.fakta01.my.id']);
     expect(filterSites(SITES, 'jawa tengah', 'all').map((site) => site.hostname)).toEqual(['jawa-tengah.fakta01.my.id']);
     expect(filterSites(SITES, '', 'regional').map((site) => site.hostname)).toEqual(['jawa-tengah.fakta01.my.id', 'wonosobo.fakta01.my.id']);
+  });
+
+  it('tetap mencocokkan portal turunan dari proyeksi ringan tanpa copy', () => {
+    expect(filterSites(DIRECTORY, 'wonosobo', 'all').map((site) => site.hostname)).toEqual(['wonosobo.fakta01.my.id']);
+    expect(filterSites(DIRECTORY, 'kabar daerah', 'all')).toEqual([]);
+    expect(DIRECTORY.filter((site) => site.siteLevel !== 'apex').every((site) => site.description === null)).toBe(true);
+  });
+});
+
+describe('capDirectoryResults', () => {
+  it('memotong hasil dan melaporkan sisa secara jujur', () => {
+    const many = Array.from({ length: DIRECTORY_RESULT_LIMIT + 7 }, (_unused, index) => ({
+      hostname: `semarang${index}.fakta01.my.id`,
+      siteName: `Fakta01 Semarang ${index}`,
+      siteLevel: 'city' as const,
+      areaName: 'Semarang',
+      tagline: null,
+      description: null,
+    }));
+    const capped = capDirectoryResults(many);
+    expect(capped.shown).toHaveLength(DIRECTORY_RESULT_LIMIT);
+    expect(capped.hidden).toBe(7);
+  });
+
+  it('melewatkan seluruh hasil yang sudah muat', () => {
+    expect(capDirectoryResults(DIRECTORY)).toEqual({ shown: DIRECTORY, hidden: 0 });
+  });
+});
+
+describe('buildDirectoryJsonLd', () => {
+  it('mencantumkan portal utama dan ledger kota, bukan setiap portal turunan', () => {
+    const payload = buildDirectoryJsonLd(DIRECTORY, 'https://indicate.website/network');
+    const serialized = JSON.stringify(payload);
+    expect(payload['@type']).toBe('CollectionPage');
+    expect(serialized).toContain('fakta01.my.id');
+    expect(serialized).toContain('Wonosobo');
+    expect(serialized).toContain('Jawa Tengah');
+    expect(payload.mainEntity).toMatchObject({ '@type': 'ItemList', numberOfItems: 1 });
+    expect(payload.hasPart).toMatchObject({ '@type': 'ItemList', numberOfItems: 2 });
+  });
+
+  it('tidak membocorkan URL portal turunan yang tidakdirender', () => {
+    const serialized = JSON.stringify(buildDirectoryJsonLd(DIRECTORY, 'https://indicate.website/network'));
+    expect(serialized).not.toContain('https://wonosobo.fakta01.my.id');
   });
 });
 
