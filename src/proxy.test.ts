@@ -89,6 +89,14 @@ describe('proxy tenant surfaces', () => {
     expect(response.headers.get('x-middleware-rewrite')).toContain('/tenant-home');
   });
 
+  it('menyerahkan beranda control-plane ke route / tanpa rewrite', async () => {
+    const control = await proxy(request(HOSTS.dashboard, '/'));
+    expect(control.status).toBe(200);
+    expect(control.headers.get('x-middleware-rewrite')).toBeNull();
+    const tenant = await proxy(request('portal.example', '/'));
+    expect(tenant.headers.get('x-middleware-rewrite')).toContain('/tenant-home');
+  });
+
   it('meneruskan artikel tenant dan menyematkan korelasi', async () => {
     const response = await proxy(request('portal.example', '/berita-utama'));
     expect(response.status).toBe(200);

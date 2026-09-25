@@ -1,54 +1,19 @@
-import { cache } from 'react';
 import type { Metadata, Viewport } from 'next';
-import { headers } from 'next/headers';
-import { notFound } from 'next/navigation';
+
 import { indexableRobots } from '@/modules/site/seo';
 import { controlPlaneIcons } from '@/ui/site/metadata-guard';
 import { resolveGoogleSiteVerification } from '@/core/config/google-verification';
 import { SERVICE_SUMMARY } from '@/ui/site/marketing-content';
 import { LandingPage } from '@/modules/site/components/landing-page';
-import { deliveryComposition } from '@/modules/delivery';
-
-const resolveRouteContext = cache(async () => {
-  const requestHeaders = await headers();
-  const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host');
-  const composition = await deliveryComposition();
-  const classification = await composition.resolver.classify(host);
-  return { classification };
-});
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { classification } = await resolveRouteContext();
-
-  if (classification.kind === 'control') {
-    if (classification.surface === 'dashboard') {
-      const google = resolveGoogleSiteVerification();
-      return {
-        description: SERVICE_SUMMARY,
-        robots: indexableRobots(),
-        ...(google === undefined ? {} : { verification: { google } }),
-        ...controlPlaneIcons(),
-        twitter: { card: 'summary_large_image' },
-      };
-    }
-
-    return {
-      title: { absolute: 'Indicate Control Plane' },
-      description: 'Shared control plane for the Indicate publishing platform.',
-      robots: { index: false, follow: false },
-    };
-  }
-
-  if (classification.kind === 'ambiguous') {
-    return {
-      title: 'Configuration Error',
-      robots: { index: false, follow: false },
-    };
-  }
-
+  const google = resolveGoogleSiteVerification();
   return {
-    title: 'Not Found',
-    robots: { index: false, follow: false },
+    description: SERVICE_SUMMARY,
+    robots: indexableRobots(),
+    ...(google === undefined ? {} : { verification: { google } }),
+    ...controlPlaneIcons(),
+    twitter: { card: 'summary_large_image' },
   };
 }
 
@@ -57,18 +22,19 @@ export const viewport: Viewport = {
   colorScheme: 'light',
 };
 
-/** Control-plane `/` (landing). Portal home renders `(network)/tenant-home`
- *  via rewrite proxy to follow the tenant segment boundary. */
-export default async function RootPage() {
-  const { classification } = await resolveRouteContext();
-
-  if (classification.kind === 'control' && classification.surface === 'dashboard') {
-    return <LandingPage />;
-  }
-
-  if (classification.kind === 'ambiguous') {
-    throw new Error('AMBIGUOUS_PUBLIC_HOST_CONFIGURATION');
-  }
-
-  notFound();
+/**
+ * Render the control-plane landing page.
+ *
+ * @remarks Statically rendered on purpose. Classifying the host with
+ * `headers()` made this route dynamic, and under `cacheComponents` the
+ * resulting hole never resolved: the build emitted a 3.3KB shell carrying
+ * `loading.tsx`, and every request answered 200 with a body truncated at
+ * roughly 23KB once the platform cut the stream. `proxy.ts` already routes
+ * strictly by host, passing the dashboard surface through and rewriting every
+ * other `/` to `(network)/tenant-home`, so this file is only ever reached on
+ * the control plane and does not need to re-derive that. `proxy.test.ts` locks
+ * the invariant; reintroducing a host check here brings the hang back.
+ */
+export default function RootPage() {
+  return <LandingPage />;
 }
