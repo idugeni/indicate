@@ -86,8 +86,11 @@ jobs:
     # Build memprerender dengan snapshot runtime asli: butuh kredensial baca.
     # Nilai diisi dari GitHub Secrets (repo settings) — JANGAN tulis literal di sini.
     env:
-      # Gate tetap disarmed karena migration_gate_events kosong
-      # (standing decision) — build hanya membaca snapshot.
+      # Schema gate bersenjata di migrasi 197 (migration_gate_events tidak
+      # kosong lagi), dan build menegakkannya: initializeContext memanggil
+      # assertSchemaGate tanpa phase guard, jadi job ini memverifikasi nyawa
+      # terhadap database produksi. Migrasi baru harus diterapkan ke produksi
+      # lebih dulu sebelum build ini bisa hijau.
       DASHBOARD_HOST: indicate.website
       API_HOST: api.indicate.website
       WEBHOOK_HOST: webhook.indicate.website
