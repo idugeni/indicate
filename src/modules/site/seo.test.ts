@@ -247,7 +247,13 @@ describe('metadata helpers', () => {
       },
       manifest: '/manifest.webmanifest',
     });
-    expect(notFoundMetadata().title).toBe('Not Found');
+    expect(notFoundMetadata()).toMatchObject({
+      title: { absolute: 'Not Found' },
+      description: 'Halaman tidak ditemukan.',
+      alternates: null,
+      openGraph: null,
+      twitter: null,
+    });
     expect(indexableRobots()).toMatchObject({ index: true, follow: true });
     expect(nonIndexableRobots()).toMatchObject({ index: false, follow: true });
   });

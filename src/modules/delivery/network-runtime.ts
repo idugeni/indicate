@@ -4,7 +4,7 @@ import { cacheLife, cacheTag } from 'next/cache';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
-import { buildSeoDocument, indexableRobots, nonIndexableRobots, tenantFavicon } from '@/modules/site/seo';
+import { buildSeoDocument, indexableRobots, nonIndexableRobots, notFoundMetadata, tenantFavicon } from '@/modules/site/seo';
 import type { NetworkContentQuery, NetworkSiteData, RequestClassification, ResolvedSiteContext } from '@/modules/delivery/models';
 import { isNetworkArticle } from '@/modules/delivery/models';
 import { deliveryComposition } from '@/modules/delivery';
@@ -26,6 +26,24 @@ export const classifyTenantHost = cache(async (host: string | null | undefined):
   const { resolver } = await getDeliveryComposition();
   return resolver.classify(host);
 });
+
+const requireNetworkContext = cache(async (): Promise<ResolvedSiteContext> => {
+  const requestHeaders = await headers();
+  const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host');
+  const classification = await classifyTenantHost(host);
+  if (classification.kind === 'ambiguous') throw new Error('AMBIGUOUS_PUBLIC_HOST_CONFIGURATION');
+  if (classification.kind !== 'site') notFound();
+  return classification.context;
+});
+
+/**
+ * Reject an unknown or control hostname before tenant content rendering.
+ *
+ * @returns Nothing when the request resolves to one active site.
+ */
+export async function assertNetworkHost(): Promise<void> {
+  await requireNetworkContext();
+}
 
 const readBypassed = cache(async (organizationId: string, siteId: string): Promise<boolean> => {
   const { repository } = await getDeliveryComposition();
@@ -60,7 +78,7 @@ async function loadFreshNetworkSite(
   locale: string,
 ): Promise<NetworkSiteData | null> {
   const { content } = await getDeliveryComposition();
-  return content.load(context, query, { path, locale });
+  return content.load(context, query, { path, locale }, true);
 }
 async function loadCachedNetworkSite(
   context: ResolvedSiteContext,
@@ -72,7 +90,7 @@ async function loadCachedNetworkSite(
   cacheLife('minutes');
   cacheTag(`host:${context.normalizedHostname}`, `site:${context.siteId}`, `org:${context.organizationId}`, ...(query.articleSlug === undefined ? [] : [`article:${query.articleSlug}`]));
   const { content } = await getDeliveryComposition();
-  return content.load(context, query, { path, locale });
+  return content.load(context, query, { path, locale }, false);
 }
 async function loadCachedSearchSite(
   context: ResolvedSiteContext,
@@ -84,7 +102,7 @@ async function loadCachedSearchSite(
   cacheLife('seconds');
   cacheTag(`host:${context.normalizedHostname}`, `site:${context.siteId}`, `org:${context.organizationId}`);
   const { content } = await getDeliveryComposition();
-  return content.load(context, query, { path, locale });
+  return content.load(context, query, { path, locale }, false);
 }
 
 /**
@@ -97,23 +115,19 @@ async function loadCachedSearchSite(
  * `seconds` loader so unbounded keys never inhabit the minute cache.
  */
 export async function resolveNetworkSite(query: NetworkContentQuery = {}, path = '/'): Promise<NetworkSiteData> {
-  const requestHeaders = await headers();
-  const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host');
   const { config } = await getDeliveryComposition();
-  const classification = await classifyTenantHost(host);
-  if (classification.kind === 'ambiguous') throw new Error('AMBIGUOUS_PUBLIC_HOST_CONFIGURATION');
-  if (classification.kind !== 'site') notFound();
+  const context = await requireNetworkContext();
   const sanitized: NetworkContentQuery = {
     ...(query.articleSlug === undefined ? {} : { articleSlug: query.articleSlug.trim().toLowerCase() }),
     ...(query.categorySlug === undefined || query.categorySlug.trim() === '' ? {} : { categorySlug: normalizeSlugCandidate(query.categorySlug) }),
     ...(query.tag === undefined || query.tag.trim() === '' ? {} : { tag: normalizeSlugCandidate(query.tag).slice(0, TAG_MAX_LENGTH) }),
     ...(query.search === undefined || query.search.trim() === '' ? {} : { search: query.search.trim().slice(0, 120) }),
   };
-  const bypassed = await readBypassed(classification.context.organizationId, classification.context.siteId);
+  const bypassed = await readBypassed(context.organizationId, context.siteId);
   const loader = sanitized.search === undefined ? loadCachedNetworkSite : loadCachedSearchSite;
   const site = bypassed
-    ? await loadFreshNetworkSite(classification.context, sanitized, path, config.seo.defaultLocale)
-    : await loader(classification.context, sanitized, path, config.seo.defaultLocale);
+    ? await loadFreshNetworkSite(context, sanitized, path, config.seo.defaultLocale)
+    : await loader(context, sanitized, path, config.seo.defaultLocale);
   if (site === null) notFound();
   if (sanitized.articleSlug === undefined) return site;
   const head = site.articles[0];
@@ -126,8 +140,6 @@ export async function resolveNetworkSite(query: NetworkContentQuery = {}, path =
   };
 }
 
-/** Tenant metadata; search pages stay `noindex, follow` (link equity without index entry). */
-
 /**
  * Aggregator index threshold: list/tag/category pages stay noindex until content volume
  * is sufficient (anti thin-content). Rises on its own as articles grow,
@@ -138,7 +150,7 @@ const CATEGORY_INDEX_MINIMUM = 3;
 
 /**
  * Tenant metadata for deliberately unindexed pages (search,
- * below-threshold aggregators, missing articles): still carries the tenant's own canonical + OG
+ * below-threshold aggregators): still carries the tenant's own canonical + OG
  * so it never inherits control-plane metadata from the layout.
  */
 function tenantHiddenMeta(
@@ -196,7 +208,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
   const article = candidate !== undefined && isNetworkArticle(candidate) ? candidate : undefined;
 
   if (query.articleSlug !== undefined && article === undefined) {
-    return tenantHiddenMeta(site, path, site.settings.name, site.settings.seoDefaultDescription ?? site.settings.description);
+    return notFoundMetadata();
   }
 
   if (query.search !== undefined) {

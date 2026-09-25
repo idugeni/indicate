@@ -6,20 +6,29 @@ import postgres from 'postgres';
 import type { BootstrapConfig } from '@/core/config/bootstrap/bootstrap-schema';
 import * as schema from '@/data/schema';
 
-/** Open the pooled runtime database.
+const RUNTIME_DATABASE_OPTIONS = '-c statement_timeout=15000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=30000';
+
+function withRuntimeDatabaseOptions(rawUrl: string): string {
+  const url = new URL(rawUrl);
+  url.searchParams.set('options', RUNTIME_DATABASE_OPTIONS);
+  return url.toString();
+}
+
+/**
+ * Open the pooled runtime database.
  *
  * @param config - Bootstrap configuration providing the pooled URL.
  * @returns Frozen runtime client, database, and closer.
- * @remarks Max 5 connections: one shared pool per process × N Fluid instances stays far below the Supavisor pool (default 15–30 server connections); short public queries + Next cache keep the connection queue shallow. Connections recycle every 30 min so stale pooler connections (once a mass CONNECT_TIMEOUT) are replaced proactively before serving requests. Fail-fast 15s per statement (Postgres GUC = milliseconds, verified via node_modules/postgres ConnectionParameters + runtime-config docs): stuck queries (once 1× statement timeout 57014 in production) must not hang the instance (= memory billing keeps running) without bound.
+ * @remarks The Supabase transaction pooler multiplexes server connections, but each warm Vercel instance still owns its client pool. Runtime uses one connection per warm instance; the build phase uses two because its parallel prerender workers can briefly overlap cache fills. Startup options carry the timeout limits through transaction-mode Supavisor.
  */
 export function createRuntimeDatabase(config: BootstrapConfig) {
-  const client = postgres(config.database.pooledUrl.reveal(), {
-    max: 5,
+  const client = postgres(withRuntimeDatabaseOptions(config.database.pooledUrl.reveal()), {
+    max: process.env.NEXT_PHASE === 'phase-production-build' ? 2 : 1,
     prepare: false,
+    ssl: 'require',
     idle_timeout: 20,
     connect_timeout: 10,
     max_lifetime: 60 * 30,
-    connection: { statement_timeout: 15000 },
   });
   return Object.freeze({
     client,

@@ -74,6 +74,13 @@ describe('NetworkContentService cache paths', () => {
     expect(cache.read).not.toHaveBeenCalled();
   });
 
+  it('memakai status bypass yang sudah di-resolve runtime', async () => {
+    const { service, repository } = harness({ bypassed: false });
+    await service.load(CONTEXT, {}, { path: '/', locale: 'id-ID' }, true);
+    expect(repository.isCacheBypassed).not.toHaveBeenCalled();
+    expect(repository.loadNetworkBundle).toHaveBeenCalledTimes(1);
+  });
+
   it('memakai bundle untuk preview dan kelas terautentikasi', async () => {
     const preview = harness();
     await preview.service.load(CONTEXT, {}, { path: '/', locale: 'id-ID', preview: true });

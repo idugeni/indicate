@@ -14,7 +14,7 @@ export interface NetworkCacheRequest {
 export class NetworkContentService {
   constructor(private readonly repository: Pick<DeliveryRepository, 'loadNetworkSite' | 'loadNetworkBundle' | 'loadNetworkFeed' | 'loadSiteShell' | 'resolveArticleId' | 'isCacheBypassed'>, private readonly cache?: NetworkSiteCachePort) {}
 
-  async load(context: ResolvedSiteContext, query: NetworkContentQuery = {}, cacheRequest?: NetworkCacheRequest): Promise<NetworkSiteData | null> {
+  async load(context: ResolvedSiteContext, query: NetworkContentQuery = {}, cacheRequest?: NetworkCacheRequest, bypassedOverride?: boolean): Promise<NetworkSiteData | null> {
     const sanitized: NetworkContentQuery = {
       ...(query.articleSlug === undefined ? {} : { articleSlug: query.articleSlug.trim().toLowerCase() }),
       ...(query.categorySlug === undefined || query.categorySlug.trim() === '' ? {} : { categorySlug: normalizeSlugCandidate(query.categorySlug) }),
@@ -22,7 +22,7 @@ export class NetworkContentService {
       ...(query.search === undefined || query.search.trim() === '' ? {} : { search: query.search.trim().slice(0, 120) }),
     };
     const load = () => this.repository.loadNetworkSite(context, sanitized);
-    const bypassed = await this.repository.isCacheBypassed(context);
+    const bypassed = bypassedOverride ?? await this.repository.isCacheBypassed(context);
     const preview = cacheRequest?.preview ?? false;
     const authClass = cacheRequest?.authClass ?? 'anonymous';
     const queryDimensions = Object.fromEntries(Object.entries(sanitized).map(([key, value]) => [key, String(value)]));

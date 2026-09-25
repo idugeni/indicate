@@ -1,9 +1,14 @@
 import { Suspense } from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { buttonVariants } from '@/components/ui/button';
 import { NotFoundPage } from '@/modules/site/components/network/network-listing';
+import { notFoundMetadata } from '@/modules/site/seo';
+import { classifyTenantHost } from '@/modules/delivery/network-runtime';
 import { deliveryComposition } from '@/modules/delivery';
+
+export const metadata: Metadata = notFoundMetadata();
 
 async function resolveNotFoundSite() {
   try {
@@ -12,11 +17,10 @@ async function resolveNotFoundSite() {
 
     if (!host) return null;
 
-    const { resolver, content } = await deliveryComposition();
-    const classification = await resolver.classify(host);
-
+    const classification = await classifyTenantHost(host);
     if (classification.kind !== 'site') return null;
 
+    const { content } = await deliveryComposition();
     return content.loadShell(classification.context);
   } catch {
     return null;

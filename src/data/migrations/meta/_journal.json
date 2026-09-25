@@ -1212,6 +1212,20 @@
       "when": 1790347200000,
       "tag": "20260925040000_wonosobo_city_under_jawa_tengah",
       "breakpoints": true
+    },
+    {
+      "idx": 173,
+      "version": "7",
+      "when": 1790350800000,
+      "tag": "20260925050000_publication_state_transition_alignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 174,
+      "version": "7",
+      "when": 1790354400000,
+      "tag": "20260925060000_runtime_role_transaction_limits",
+      "breakpoints": true
     }
   ]
 }

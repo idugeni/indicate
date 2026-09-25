@@ -15,7 +15,7 @@ Indicate MVP is a modular monolith implemented as one TypeScript Next.js App Rou
 
 The durable source of truth is one PostgreSQL database in one Supabase project. That same project supplies Supabase Auth. One private Cloudflare R2 bucket stores media, and one Upstash Redis resource coordinates publication dispatch, leases, rate limits, idempotency acceleration, and cache invalidation. Redis, Vercel Cron invocations, provider state, and caches are recoverable projections of durable PostgreSQL intent.
 
-Cloudflare is the sole authority for nameservers, DNS records, wildcard DNS, edge TLS proxying, and CDN behavior. Vercel provides application hosting and exact custom-domain association only. The architecture never transfers nameserver control to Vercel and never uses Vercel wildcard-domain registration.
+Cloudflare is the sole authority for nameservers, DNS records, wildcard DNS, edge TLS proxying, and CDN behavior. Vercel provides application hosting and exact custom-domain association; the primary `*.indicate.website` association and certificate are separately provisioned for the reserved transport. The architecture never transfers nameserver control to Vercel and never uses Vercel domain registration.
 
 Every tenant operation carries one immutable Organization context derived from a verified actor or claimed durable record. Public operations receive one Organization only through an exact active Hostname Context. No missing, malformed, ambiguous, unauthorized, suffix-only, or substring-only request can select tenant data.
 
@@ -78,7 +78,15 @@ Each managed root domain remains a Cloudflare zone using Cloudflare nameservers.
 
 The architecture generates regional hostnames only in the one-label form `{regionSlug}.{rootDomain}`. Each apex carries a Vercel wildcard (`*.apex`, certificate via DNS challenge) so single-label regionals need no exact association — they activate DB-only. Each active apex hostname is associated exactly with the one Vercel project; regional exact entries for already-live sites are kept as redundancy.
 
-### 4.2 Control-plane hostnames
+### 4.2 Vercel cost guardrails
+
+- The project remains one application in one region; remediation does not create per-tenant Vercel projects, functions, queues, workers, or image-optimization traffic.
+- Verification deployments use a local `vercel build` followed by `vercel deploy --prebuilt`, so they do not add a remote Vercel build.
+- Public content resolves the host and cache-bypass flag once per request, and the runtime pool is capped at one connection per warm instance.
+- `images.unoptimized` remains enabled globally. Authorization-bearing requests bypass shared caching by design; any origin work for those requests is a security boundary, not a new billable resource.
+- Cache Components/PPR remains enabled. A `notFound()` raised after a stream starts can still produce HTTP 200 with `noindex`; removing the loading boundary solely to force a status code would trade away PPR latency and CPU benefits and is not enabled without an explicit architecture decision.
+
+### 4.3 Control-plane hostnames
 
 Validated Runtime Configuration reserves:
 
@@ -89,7 +97,7 @@ Validated Runtime Configuration reserves:
 
 Control-plane matching precedes public Site lookup. A Domain, Site, wildcard, or seed candidate that normalizes to a reserved hostname is rejected before public activation.
 
-### 4.3 Exact hostname activation saga
+### 4.4 Exact hostname activation saga
 
 The Domain Provisioning Service activates one exact Site hostname through a durable, resumable saga:
 
@@ -102,7 +110,7 @@ The Domain Provisioning Service activates one exact Site hostname through a dura
 
 Deactivation changes database state first so public resolution stops immediately; external cleanup follows asynchronously. Reconfiguration validates the new hostname before activation and invalidates both old and new Hostname Contexts. No saga phase changes nameserver delegation.
 
-### 4.4 Request normalization and classification
+### 4.5 Request normalization and classification
 
 The request classifier runs before route-specific tenant data access.
 
@@ -127,7 +135,7 @@ resolveRequest(rawHost):
 
 The direct `Host` header delivered by the configured Cloudflare/Vercel path is authoritative. Client-supplied forwarding headers cannot override it. A database exact-match resolution occurs before tenant cache use so stale caches cannot keep a deactivated mapping alive.
 
-### 4.5 Operator versus customer organizations
+### 4.6 Operator versus customer organizations
 
 An Organization is a plain tenant record (billing owner + memberships + permissions). It carries no portal semantics by itself. Two roles are distinguished by the `kind` column (`operator` vs `customer`), not by schema:
 

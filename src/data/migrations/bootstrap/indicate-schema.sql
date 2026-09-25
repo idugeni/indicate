@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (173 migrations):
+-- Reviewed sources, in journal order (175 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -186,6 +186,8 @@
 --   171  20260925020000_fix_guratfakta_zone_id  ledger sha256:072a1bab22435658aebd684b66b11ba4b1c1f70be55e103fc4959ae33e64ea2f
 --   172  20260925030000_retention_runs_drop_telegram_history  ledger sha256:cc49a726552d4ca7fea0a35fea71f829c048276ea928d8968814211c6266f1ae
 --   173  20260925040000_wonosobo_city_under_jawa_tengah  ledger sha256:aa4eabaf82039d7dddb91fe784229a4b911b23c87f782700872863567cac1864
+--   174  20260925050000_publication_state_transition_alignment  ledger sha256:81becd866154f84a8e9bd8436d9280bd58bcf5a28be32e0e16a0f08b08c1cc2b
+--   175  20260925060000_runtime_role_transaction_limits  ledger sha256:3c54cd5c44f62ed68f73ed7c72e58a56bbf423ba4ac69bbaae0e438251ccf226
 
 BEGIN;
 
@@ -13350,4 +13352,108 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (172, 'wonosobo_city_under_jawa_tengah', 'sha256:8f3a8728e976121d79602ec113f7d24e71c567b8d6943925894e9e67faef8018');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('aa4eabaf82039d7dddb91fe784229a4b911b23c87f782700872863567cac1864', 1790347200000);
+
+-- ----------------------------------------------------------------------
+-- 20260925050000_publication_state_transition_alignment
+-- ----------------------------------------------------------------------
+-- Align live publication guards with the application state machine.
+--
+-- Unpublishing a published target must move both the target and its aggregate
+-- job to `unpublished`; a job with a published and failed target can therefore
+-- move from `failed` to `unpublished`. A later publication request also needs
+-- to requeue an article-site projection that was previously unpublished.
+-- Existing processing and retry transitions remain unchanged.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE OR REPLACE FUNCTION indicate_private.enforce_publishing_job_transition()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NEW.state = OLD.state THEN RETURN NEW; END IF;
+  IF NOT (
+    (OLD.state = 'queued' AND NEW.state IN ('processing', 'retrying', 'failed')) OR
+    (OLD.state = 'processing' AND NEW.state IN ('published', 'retrying', 'failed')) OR
+    (OLD.state = 'retrying' AND NEW.state IN ('processing', 'failed')) OR
+    (OLD.state = 'published' AND NEW.state = 'unpublished') OR
+    (OLD.state = 'failed' AND NEW.state IN ('retrying', 'unpublished'))
+  ) THEN
+    RAISE EXCEPTION 'invalid publishing job state transition' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.enforce_publishing_target_transition()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NEW.state = OLD.state THEN
+    IF OLD.state IN ('published', 'failed', 'unpublished') THEN
+      NEW.finished_at := OLD.finished_at;
+      NEW.published_url := OLD.published_url;
+      NEW.published_at := OLD.published_at;
+      NEW.sanitized_error := OLD.sanitized_error;
+    END IF;
+    RETURN NEW;
+  END IF;
+  IF NOT (
+    (OLD.state = 'queued' AND NEW.state IN ('processing', 'failed')) OR
+    (OLD.state = 'processing' AND NEW.state IN ('published', 'retrying', 'failed')) OR
+    (OLD.state = 'retrying' AND NEW.state IN ('processing', 'failed')) OR
+    (OLD.state = 'published' AND NEW.state = 'unpublished')
+  ) THEN
+    RAISE EXCEPTION 'invalid publishing target state transition' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+CREATE OR REPLACE FUNCTION indicate_private.enforce_article_site_transition()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NEW.state = OLD.state THEN RETURN NEW; END IF;
+  IF (
+    (OLD.state = 'queued' AND NEW.state = 'processing') OR
+    (OLD.state = 'processing' AND NEW.state IN ('published', 'retrying', 'failed')) OR
+    (OLD.state = 'retrying' AND NEW.state IN ('processing', 'failed')) OR
+    (OLD.state = 'published' AND NEW.state = 'unpublished')
+  ) THEN RETURN NEW; END IF;
+  IF OLD.state IN ('published', 'failed', 'unpublished') AND NEW.state = 'queued' AND EXISTS (
+    SELECT 1 FROM public.publishing_job_targets AS target
+    INNER JOIN public.publishing_jobs AS job
+      ON job.organization_id = target.organization_id AND job.id = target.job_id
+    WHERE target.organization_id = OLD.organization_id AND target.article_site_id = OLD.id
+      AND target.state = 'queued' AND job.state = 'queued'
+  ) THEN RETURN NEW; END IF;
+  RAISE EXCEPTION 'invalid article site current-projection transition' USING ERRCODE = '23514';
+END;
+$function$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (173, 'publication_state_transition_alignment', 'sha256:6b322032ba21f92828ad9a042e759193050d874bed47aea5fa857be6c0ef215a');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('81becd866154f84a8e9bd8436d9280bd58bcf5a28be32e0e16a0f08b08c1cc2b', 1790350800000);
+
+-- ----------------------------------------------------------------------
+-- 20260925060000_runtime_role_transaction_limits
+-- ----------------------------------------------------------------------
+-- Bound runtime work on the Supabase transaction pooler.
+--
+-- The application uses port 6543, where per-session SET statements are not
+-- durable. Role defaults apply when Supavisor opens the backend connection and
+-- prevent abandoned transactions or long statements from retaining a backend
+-- slot indefinitely.
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER ROLE indicate_runtime SET statement_timeout = '15s';
+ALTER ROLE indicate_runtime SET lock_timeout = '5s';
+ALTER ROLE indicate_runtime SET idle_in_transaction_session_timeout = '30s';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (174, 'runtime_role_transaction_limits', 'sha256:b1b7a5f8568b985dec73ebc7b3c3b5512637fc01c222457c50b71c6a46dfceb0');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('3c54cd5c44f62ed68f73ed7c72e58a56bbf423ba4ac69bbaae0e438251ccf226', 1790354400000);
 COMMIT;

@@ -117,7 +117,16 @@ export function tenantFavicon(faviconUrl: string | null | undefined): Pick<Metad
 
 /** Uniform metadata for missing network content (unknown slug, empty id). */
 export function notFoundMetadata(): Metadata {
-  return { title: 'Not Found', robots: { index: false, follow: false } };
+  return {
+    title: { absolute: 'Not Found' },
+    description: 'Halaman tidak ditemukan.',
+    robots: { index: false, follow: false },
+    alternates: null,
+    openGraph: null,
+    twitter: null,
+    icons: null,
+    manifest: null,
+  };
 }
 
 /**
