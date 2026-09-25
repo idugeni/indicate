@@ -83,3 +83,22 @@ Tabel kosong bukan tanda kolom hilang: jaringan belum punya konten tayang.
 karena belum ada artikel yang dipublikasikan. `content_reports`,
 `privacy_requests`, `migration_gate_events`, `org_invitations`,
 `org_erasure_requests` kosong karena fiturnya belum dijalankan.
+
+## Koreksi setelah audit
+
+Tiga koreksi yang berasal dari pemeriksaan lanjutan, bukan dari tebakan:
+
+- **Publisher tidak memiliki domain.** Laporan sebelumnya menyebut "9 publisher
+  diarsipkan memiliki 104 domain aktif"; itu keliru. `domains` dan `sites`
+  dimiliki oleh `organization_id`, bukan publisher, jadi 9 record `archived` di
+  operator org tidak memiliki domain dan tidak memblokir apa pun: aset
+  organisasinya tetap terotorisasi lewat 59 publisher institusinya yang `active`.
+  Status `archived` pada record `verified` adalah terminal state yang sah,
+  bukan residu, jadi ketiganya tetap seperti adanya.
+- **Hold litigasi sudah dibuang** (migrasi 193). Satu-satunya baris di
+  `litigation_holds` adalah uji coba terhadap tenant `Drill Expire`, dibuat
+  dan dilepas dalam rentang 20 detik.
+- **Reservasi upload yang usang sudah bersih** (migrasi 194). 54 baris
+  `used` tanpa `media` — semuanya milik operator, 27 target apex yang
+  sudah punya logo dan favicon — dihapus, dan grace sweep diturunkan dari
+  7 hari ke 3 hari karena otorisasi upload hanya berlaku hitungan menit.
