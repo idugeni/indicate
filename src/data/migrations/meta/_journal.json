@@ -1275,6 +1275,34 @@
       "when": 1790379600000,
       "tag": "20260925130000_upt_city_affiliations",
       "breakpoints": true
+    },
+    {
+      "idx": 182,
+      "version": "7",
+      "when": 1790383200000,
+      "tag": "20260925140000_article_status_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 183,
+      "version": "7",
+      "when": 1790386800000,
+      "tag": "20260925150000_region_scope_hierarchy",
+      "breakpoints": true
+    },
+    {
+      "idx": 184,
+      "version": "7",
+      "when": 1790390400000,
+      "tag": "20260925160000_upt_city_affiliations_all_domains",
+      "breakpoints": true
+    },
+    {
+      "idx": 185,
+      "version": "7",
+      "when": 1790394000000,
+      "tag": "20260925170000_region_scope_session_independence",
+      "breakpoints": true
     }
   ]
 }

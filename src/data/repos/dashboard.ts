@@ -3,6 +3,7 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import { extractTipTapImages } from '@/modules/site/tiptap-document';
+import { regionScopeCovers } from '@/modules/site/region-scope';
 import type { ActivityHour, RecentActivity, AnalyticsProjection, PublisherFlow, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, DateWindow, OperationsProjection, RetentionRunRecord, TaskDay } from '@/modules/dashboard/models';
 import { DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
 import { redact } from '@/core/security/redaction';
@@ -654,8 +655,10 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         if (recent.length > 0) throw new DashboardRateLimitedError(MANUAL_PURGE_BULK_COOLDOWN_SECONDS);
       }
       const rows = await transaction.select({ id: sites.id, hostname: sites.normalizedHostname, regionId: sites.regionId }).from(sites).where(eq(sites.organizationId, actor.organizationId));
-      const lock = actor.regionScopeId ?? null;
-      const inScope = (regionId: string | null) => lock === null || regionId === null || regionId === lock;
+      const scope = actor.regionScopeId ?? null;
+      const geography = await transaction.select({ id: regions.id, kind: regions.kind, parentRegionId: regions.parentRegionId })
+        .from(regions).where(eq(regions.organizationId, actor.organizationId));
+      const inScope = (regionId: string | null) => regionScopeCovers(scope, regionId, geography);
       const targets = siteId === null ? rows.filter((row) => inScope(row.regionId)) : rows.filter((row) => row.id === siteId && inScope(row.regionId));
       if (siteId !== null && targets.length !== 1) throw new DashboardAccessDeniedError();
       const now = new Date();

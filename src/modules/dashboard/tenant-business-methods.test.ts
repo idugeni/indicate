@@ -101,6 +101,37 @@ const site = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const SCOPE_PROVINCE = '0199a2b3-4c5d-7e8f-9012-3456789abc31';
+const SCOPE_CITY_REGION = '0199a2b3-4c5d-7e8f-9012-3456789abc32';
+const OTHER_PROVINCE = '0199a2b3-4c5d-7e8f-9012-3456789abc33';
+const OTHER_CITY_REGION = '0199a2b3-4c5d-7e8f-9012-3456789abc34';
+const SCOPE_APEX_SITE = '0199a2b3-4c5d-7e8f-9012-3456789abc35';
+const SCOPE_REGION_SITE = '0199a2b3-4c5d-7e8f-9012-3456789abc36';
+const SCOPE_CITY_SITE = '0199a2b3-4c5d-7e8f-9012-3456789abc37';
+const OTHER_REGION_SITE = '0199a2b3-4c5d-7e8f-9012-3456789abc38';
+const OTHER_CITY_SITE = '0199a2b3-4c5d-7e8f-9012-3456789abc39';
+
+/** One network carrying two provinces so a scoped actor has a subtree and a neighbour. */
+function scopeHierarchyFixture(): Record<string, readonly unknown[]> {
+  return {
+    regions: [
+      { id: SCOPE_PROVINCE, organizationId: 'org-1', externalKey: 'jateng', name: 'Jawa Tengah', slug: 'jawa-tengah', status: 'active', kind: 'region', parentRegionId: null, version: 1 },
+      { id: SCOPE_CITY_REGION, organizationId: 'org-1', externalKey: 'wonosobo', name: 'Wonosobo', slug: 'wonosobo', status: 'active', kind: 'city', parentRegionId: SCOPE_PROVINCE, version: 1 },
+      { id: OTHER_PROVINCE, organizationId: 'org-1', externalKey: 'yogya', name: 'DI Yogyakarta', slug: 'yogyakarta', status: 'active', kind: 'region', parentRegionId: null, version: 1 },
+      { id: OTHER_CITY_REGION, organizationId: 'org-1', externalKey: 'sleman', name: 'Sleman', slug: 'sleman', status: 'active', kind: 'city', parentRegionId: OTHER_PROVINCE, version: 1 },
+    ],
+    sites: [
+      { id: SCOPE_APEX_SITE, organizationId: 'org-1', domainId: 'd-1', regionId: null, siteLevel: 'apex', parentSiteId: null, normalizedHostname: 'portal.test', status: 'active' },
+      { id: SCOPE_REGION_SITE, organizationId: 'org-1', domainId: 'd-1', regionId: SCOPE_PROVINCE, siteLevel: 'region', parentSiteId: SCOPE_APEX_SITE, normalizedHostname: 'jawa-tengah.portal.test', status: 'active' },
+      { id: SCOPE_CITY_SITE, organizationId: 'org-1', domainId: 'd-1', regionId: SCOPE_CITY_REGION, siteLevel: 'city', parentSiteId: SCOPE_REGION_SITE, normalizedHostname: 'wonosobo.portal.test', status: 'active' },
+      { id: OTHER_REGION_SITE, organizationId: 'org-1', domainId: 'd-1', regionId: OTHER_PROVINCE, siteLevel: 'region', parentSiteId: SCOPE_APEX_SITE, normalizedHostname: 'yogyakarta.portal.test', status: 'active' },
+      { id: OTHER_CITY_SITE, organizationId: 'org-1', domainId: 'd-1', regionId: OTHER_CITY_REGION, siteLevel: 'city', parentSiteId: OTHER_REGION_SITE, normalizedHostname: 'sleman.portal.test', status: 'active' },
+    ],
+    articles: [{ id: ID, organizationId: 'org-1', regionId: SCOPE_CITY_REGION, slug: 'berita-utama', status: 'draft', version: 1, archivedAt: null }],
+    articleSites: [],
+  };
+}
+
 describe('TenantBusinessService domains regions', () => {
   it('membuat domain dan mengaudit', async () => {
     const { service, state, appendAudit } = harness();
@@ -122,6 +153,32 @@ describe('TenantBusinessService domains regions', () => {
     const { service } = harness();
     const locked = { ...actor, regionScopeId: 'region-1' };
     const result = await service.createDomain(locked, { normalizedHostname: 'fakta01.my.id' });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+  });
+
+  it('aktor terkunci province boleh bekerja pada portal city di bawahnya', async () => {
+    const scoped = harness(scopeHierarchyFixture());
+    const result = await scoped.service.assignArticleSites({ ...actor, regionScopeId: SCOPE_PROVINCE }, { articleId: ID, siteIds: [SCOPE_CITY_SITE] });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.map((row) => (row as { siteId: string }).siteId).sort()).toEqual(
+      [SCOPE_CITY_SITE, SCOPE_REGION_SITE, SCOPE_APEX_SITE].sort(),
+    );
+  });
+
+  it('aktor terkunci province ditolak pada portal city provinsi lain', async () => {
+    const scoped = harness(scopeHierarchyFixture());
+    const result = await scoped.service.assignArticleSites({ ...actor, regionScopeId: SCOPE_PROVINCE }, { articleId: ID, siteIds: [OTHER_CITY_SITE] });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+  });
+
+  it('aktor terkunci city ditolak pada kota saudara', async () => {
+    const scoped = harness(scopeHierarchyFixture());
+    const result = await scoped.service.assignArticleSites({ ...actor, regionScopeId: SCOPE_CITY_REGION }, { articleId: ID, siteIds: [OTHER_CITY_SITE] });
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');
     expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
@@ -275,6 +332,7 @@ describe('TenantBusinessService articles assignments', () => {
     archivedAt: null,
   };
   const liveSite = { id: ID2, organizationId: 'org-1', status: 'active', regionId: null };
+
 
   it('mengarsipkan dan memulihkan artikel', async () => {
     const archived = harness({ articles: [{ ...baseArticle }] });

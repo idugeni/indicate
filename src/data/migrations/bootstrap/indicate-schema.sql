@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (182 migrations):
+-- Reviewed sources, in journal order (186 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -195,6 +195,10 @@
 --   180  20260925110000_domain_topology_site_level_literal  ledger sha256:d97f0e272fcb0e20f7c6bdf9355a2258288ae37edb7c01a69396021789babeca
 --   181  20260925120000_jateng_network_all_domains  ledger sha256:85675c4e7feb124d30c77744fbf896b4eb6d5482fe445264189611700be5abdc
 --   182  20260925130000_upt_city_affiliations  ledger sha256:c876b53e7e94a028f7f5201a8346f9bdb4ebd8543eb681652c492b20033a52be
+--   183  20260925140000_article_status_order  ledger sha256:d512026664c43dd6991073c1a7c90c7fc90de99e3f88518eda050528bbcc5766
+--   184  20260925150000_region_scope_hierarchy  ledger sha256:84f89ce2c23ef513c0ef88dfde52f9afd39e0064bfcbb30bf2342918f2f4b116
+--   185  20260925160000_upt_city_affiliations_all_domains  ledger sha256:77f9fcd4933248ade39486dd40757f370dcf527dd3b6269e04fdcdc228da08d7
+--   186  20260925170000_region_scope_session_independence  ledger sha256:31550afde5fe330a94c668e1afb7015ded712df6002f2d788a6a583313451caa
 
 BEGIN;
 
@@ -14918,4 +14922,433 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (181, 'upt_city_affiliations', 'sha256:0c68732ca20f78d10005ac6d84d9965bda607a7dd2d991bc9e6992845815855d');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c876b53e7e94a028f7f5201a8346f9bdb4ebd8543eb681652c492b20033a52be', 1790379600000);
+
+-- ----------------------------------------------------------------------
+-- 20260925140000_article_status_order
+-- ----------------------------------------------------------------------
+-- Align the article_status enum order with the declared schema.
+--
+-- The live type was created as `{draft, active, archived, in_review, scheduled}`
+-- while the Drizzle schema declares `draft, in_review, scheduled, active,
+-- archived`. Enum order is semantic in Postgres: it drives `ORDER BY status`,
+-- range aggregates, and any comparison that relies on the ordinal. Only
+-- `articles.status` uses the type and nothing else depends on it, so the type
+-- is recreated in the declared order and the column cast through text.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE TYPE public.article_status_ordered AS ENUM ('draft', 'in_review', 'scheduled', 'active', 'archived');
+ALTER TABLE public.articles ALTER COLUMN status DROP DEFAULT;
+ALTER TABLE public.articles
+  ALTER COLUMN status TYPE public.article_status_ordered USING status::text::public.article_status_ordered;
+DROP TYPE public.article_status;
+ALTER TYPE public.article_status_ordered RENAME TO article_status;
+ALTER TABLE public.articles ALTER COLUMN status SET DEFAULT 'draft'::public.article_status;
+DO $$
+BEGIN
+  IF (SELECT enum_range(NULL::public.article_status)::text)
+     <> '{draft,in_review,scheduled,active,archived}' THEN
+    RAISE EXCEPTION 'article_status_order_mismatch after migration: %', enum_range(NULL::public.article_status)::text;
+  END IF;
+  IF (SELECT count(*) FROM public.articles WHERE status::text NOT IN ('draft', 'in_review', 'scheduled', 'active', 'archived')) > 0 THEN
+    RAISE EXCEPTION 'article_status_order_mismatch: an article row holds an unknown status';
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (182, 'article_status_order', 'sha256:f73cfeeb72c9172e4d7825dcb708093c0c488f35507f45641070426580dbc505');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('d512026664c43dd6991073c1a7c90c7fc90de99e3f88518eda050528bbcc5766', 1790383200000);
+
+-- ----------------------------------------------------------------------
+-- 20260925150000_region_scope_hierarchy
+-- ----------------------------------------------------------------------
+-- Make a region scope cover the cities underneath it.
+--
+-- A scoped actor was matched with `region_id = current_region_id()`, so a
+-- membership scoped to Jawa Tengah could reach the province portal and every
+-- apex portal, but none of the 31 city portals below it. With 3224 city
+-- portals live that made regional scopes useless for city editorial work, and
+-- the same exact comparison was copy-pasted into every tenant isolation policy.
+--
+-- `region_scope_covers` becomes the single authority for the question: an
+-- unrestricted actor sees everything, an apex portal (no geography) is always
+-- visible, the scoped geography itself is visible, and a child geography of the
+-- scope is visible. Everything else stays denied, so this widens a regional
+-- scope to its own subtree and no further - never across organizations, never
+-- into a sibling region, and never upward into a parent portal.
+--
+-- The policies are then rewritten mechanically rather than by hand: every
+-- expression that compared `X.region_id` to `current_region_id()` is rewritten
+-- to call the helper, so no policy can keep the old exact comparison by
+-- omission. The block fails if it rewrites nothing, and fails again if any
+-- exact comparison survives, so the migration cannot half-apply.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE OR REPLACE FUNCTION indicate_private.region_scope_covers(p_scope uuid, p_candidate uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT p_scope IS NULL
+      OR p_candidate IS NULL
+      OR p_candidate = p_scope
+      OR EXISTS (
+        SELECT 1
+          FROM public.regions AS region
+         WHERE region.organization_id = indicate_private.current_organization_id()
+           AND region.id = p_candidate
+           AND region.parent_region_id = p_scope
+      );
+$$;
+DO $$
+DECLARE
+  policy_row record;
+  rewritten integer := 0;
+  exact_pattern constant text := '[a-z_]+\.region_id = \( SELECT indicate_private\.current_region_id\(\)';
+BEGIN
+  FOR policy_row IN
+    SELECT c.relname AS table_name,
+           p.polname AS policy_name,
+           p.polcmd AS policy_command,
+           pg_get_expr(p.polqual, p.polrelid) AS using_expr,
+           pg_get_expr(p.polwithcheck, p.polrelid) AS check_expr
+      FROM pg_policy AS p
+      JOIN pg_class AS c ON c.oid = p.polrelid
+      JOIN pg_namespace AS n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public'
+       AND (coalesce(pg_get_expr(p.polqual, p.polrelid), '') || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), ''))
+           LIKE '%indicate_private.current_region_id%'
+  LOOP
+    DECLARE
+      new_using text;
+      new_check text;
+    BEGIN
+      new_using := CASE
+        WHEN policy_row.using_expr IS NULL THEN NULL
+        ELSE regexp_replace(
+          policy_row.using_expr,
+          '([a-z_]+)\.region_id = \( SELECT indicate_private\.current_region_id\(\) AS current_region_id\)',
+          'indicate_private.region_scope_covers(( SELECT indicate_private.current_region_id() AS current_region_id), \1.region_id)',
+          'g')
+      END;
+      new_check := CASE
+        WHEN policy_row.check_expr IS NULL THEN NULL
+        ELSE regexp_replace(
+          policy_row.check_expr,
+          '([a-z_]+)\.region_id = \( SELECT indicate_private\.current_region_id\(\) AS current_region_id\)',
+          'indicate_private.region_scope_covers(( SELECT indicate_private.current_region_id() AS current_region_id), \1.region_id)',
+          'g')
+      END;
+
+      IF new_using IS NOT DISTINCT FROM policy_row.using_expr
+         AND new_check IS NOT DISTINCT FROM policy_row.check_expr THEN
+        CONTINUE;
+      END IF;
+
+      IF policy_row.policy_command IN ('*', 'w') THEN
+        EXECUTE format('ALTER POLICY %I ON public.%I USING (%s) WITH CHECK (%s)',
+          policy_row.policy_name, policy_row.table_name, new_using, new_check);
+      ELSIF policy_row.policy_command = 'a' THEN
+        EXECUTE format('ALTER POLICY %I ON public.%I WITH CHECK (%s)',
+          policy_row.policy_name, policy_row.table_name, new_check);
+      ELSE
+        EXECUTE format('ALTER POLICY %I ON public.%I USING (%s)',
+          policy_row.policy_name, policy_row.table_name, new_using);
+      END IF;
+      rewritten := rewritten + 1;
+    END;
+  END LOOP;
+
+  IF rewritten = 0 THEN
+    RAISE EXCEPTION 'region_scope_rewrite_found_no_policies';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+      FROM pg_policy AS p
+      JOIN pg_class AS c ON c.oid = p.polrelid
+      JOIN pg_namespace AS n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public'
+       AND (coalesce(pg_get_expr(p.polqual, p.polrelid), '') || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), ''))
+           ~ exact_pattern
+  ) THEN
+    RAISE EXCEPTION 'region_scope_rewrite_incomplete: an exact region comparison survived';
+  END IF;
+END;
+$$;
+DO $$
+DECLARE
+  covering integer;
+BEGIN
+  SELECT count(*) INTO covering
+    FROM pg_policy AS p
+    JOIN pg_class AS c ON c.oid = p.polrelid
+    JOIN pg_namespace AS n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public'
+     AND (coalesce(pg_get_expr(p.polqual, p.polrelid), '') || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), ''))
+         LIKE '%region_scope_covers%';
+  IF covering = 0 THEN
+    RAISE EXCEPTION 'region_scope_rewrite_missing: no policy calls the scope helper';
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (183, 'region_scope_hierarchy', 'sha256:39b9b22e0614b7e26d56495962d1caa1849e264300a66620dccb7dad9c5383d2');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('84f89ce2c23ef513c0ef88dfde52f9afd39e0064bfcbb30bf2342918f2f4b116', 1790386800000);
+
+-- ----------------------------------------------------------------------
+-- 20260925160000_upt_city_affiliations_all_domains
+-- ----------------------------------------------------------------------
+-- Extend the UPT city affiliations to every Domain.
+--
+-- Migration v181 recorded the documented 59 institutional claims on the ten
+-- domains that run the prisoner-affiliation network. Every Domain now carries
+-- the same 31-city Jawa Tengah roster, so the same verified institutional
+-- relationship applies to each of them: 59 x 104 = 6136 rows, of which 590 are
+-- already present. The claim shape is unchanged (`claim_scopes=['site_name']`,
+-- `evidence_reference='direktori-resmi'`, active and verified), the institution
+-- name always comes from the publisher record rather than the request, and the
+-- guard block still refuses to write unless all 59 pairs resolve to exactly one
+-- publisher and one city geography and the total reaches 59 per Domain.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+WITH source(city_slug, publisher_name) AS (
+  VALUES
+    ('cilacap', 'LAPAS KELAS I BATU NUSAKAMBANGAN'),
+    ('cilacap', 'LAPAS KELAS II A BESI NUSAKAMBANGAN'),
+    ('cilacap', 'LAPAS KHUSUS KELAS II A KARANGANYAR NUSAKAMBANGAN'),
+    ('cilacap', 'LAPAS KELAS II A KEMBANG KUNING NUSAKAMBANGAN'),
+    ('cilacap', 'LAPAS KELAS II A GLADAKAN NUSAKAMBANGAN'),
+    ('cilacap', 'LAPAS KELAS II A KUMBANG NUSAKAMBANGAN'),
+    ('cilacap', 'LAPAS KELAS II A NGASEMAN NUSAKAMBANGAN'),
+    ('cilacap', 'LAPAS NARKOTIKA KELAS II A NUSAKAMBANGAN'),
+    ('cilacap', 'LAPAS KELAS II A PASIR PUTIH NUSAKAMBANGAN'),
+    ('cilacap', 'LAPAS KELAS II A PERMISAN NUSAKAMBANGAN'),
+    ('cilacap', 'LAPAS KELAS II B NIRBAYA NUSAKAMBANGAN'),
+    ('cilacap', 'LAPAS TERBUKA KELAS II B NUSAKAMBANGAN'),
+    ('cilacap', 'LAPAS KELAS II B CILACAP'),
+    ('cilacap', 'BAPAS KELAS II NUSAKAMBANGAN'),
+    ('semarang', 'LAPAS KELAS I SEMARANG'),
+    ('semarang', 'LAPAS PEREMPUAN KELAS II A SEMARANG'),
+    ('semarang', 'RUTAN KELAS I SEMARANG'),
+    ('semarang', 'BAPAS KELAS I SEMARANG'),
+    ('semarang', 'LAPAS KELAS II A AMBARAWA'),
+    ('banyumas', 'LAPAS KELAS II A PURWOKERTO'),
+    ('banyumas', 'LAPAS NARKOTIKA KELAS II B PURWOKERTO'),
+    ('banyumas', 'RUTAN KELAS II B BANYUMAS'),
+    ('banyumas', 'BAPAS KELAS II PURWOKERTO'),
+    ('kendal', 'LAPAS KELAS II A KENDAL'),
+    ('kendal', 'LAPAS TERBUKA KELAS II B KENDAL'),
+    ('kendal', 'LAPAS PEMUDA KELAS II B PLANTUNGAN'),
+    ('pekalongan', 'LAPAS KELAS II A PEKALONGAN'),
+    ('pekalongan', 'RUTAN KELAS II A PEKALONGAN'),
+    ('pekalongan', 'BAPAS KELAS II PEKALONGAN'),
+    ('magelang', 'LAPAS KELAS II A MAGELANG'),
+    ('magelang', 'BAPAS KELAS II MAGELANG'),
+    ('tegal', 'LAPAS KELAS II B TEGAL'),
+    ('tegal', 'LAPAS KELAS II B SLAWI'),
+    ('klaten', 'LAPAS KELAS II B KLATEN'),
+    ('klaten', 'BAPAS KELAS II KLATEN'),
+    ('pati', 'LAPAS KELAS II B PATI'),
+    ('pati', 'BAPAS KELAS II PATI'),
+    ('purworejo', 'LPKA KELAS I KUTOARJO'),
+    ('purworejo', 'RUTAN KELAS II B PURWOREJO'),
+    ('surakarta', 'RUTAN KELAS I SURAKARTA'),
+    ('surakarta', 'BAPAS KELAS I SURAKARTA'),
+    ('banjarnegara', 'RUTAN KELAS II B BANJARNEGARA'),
+    ('batang', 'LAPAS KELAS II B BATANG'),
+    ('blora', 'RUTAN KELAS II B BLORA'),
+    ('boyolali', 'RUTAN KELAS II B BOYOLALI'),
+    ('brebes', 'LAPAS KELAS II B BREBES'),
+    ('demak', 'RUTAN KELAS II B DEMAK'),
+    ('grobogan', 'LAPAS KELAS II B PURWODADI'),
+    ('jepara', 'RUTAN KELAS II B JEPARA'),
+    ('kebumen', 'RUTAN KELAS II B KEBUMEN'),
+    ('kudus', 'RUTAN KELAS II B KUDUS'),
+    ('pemalang', 'RUTAN KELAS II B PEMALANG'),
+    ('purbalingga', 'RUTAN KELAS II B PURBALINGGA'),
+    ('rembang', 'RUTAN KELAS II B REMBANG'),
+    ('salatiga', 'RUTAN KELAS II B SALATIGA'),
+    ('sragen', 'LAPAS KELAS II A SRAGEN'),
+    ('temanggung', 'RUTAN KELAS II B TEMANGGUNG'),
+    ('wonogiri', 'LAPAS KELAS II B WONOGIRI'),
+    ('wonosobo', 'RUTAN KELAS II B WONOSOBO')
+), resolved AS (
+  SELECT geography.organization_id,
+         network.id AS domain_id,
+         source.publisher_name,
+         publisher.id AS publisher_id,
+         city_portal.id AS site_id
+    FROM source
+    JOIN public.regions AS geography
+      ON geography.kind = 'city' AND geography.slug = source.city_slug
+    JOIN public.publishers AS publisher
+      ON publisher.organization_id = geography.organization_id AND publisher.name = source.publisher_name
+    JOIN public.sites AS city_portal
+      ON city_portal.organization_id = geography.organization_id
+     AND city_portal.region_id = geography.id
+     AND city_portal.site_level = 'city'
+    JOIN public.domains AS network
+      ON network.organization_id = geography.organization_id
+     AND network.id = city_portal.domain_id
+), inserted AS (
+  INSERT INTO public.official_affiliations (
+    organization_id, id, publisher_id, site_id, institution_name, claim_scopes,
+    evidence_reference, active, verified_at, version, created_at, updated_at
+  )
+  SELECT resolved.organization_id,
+         gen_random_uuid(),
+         resolved.publisher_id,
+         resolved.site_id,
+         resolved.publisher_name,
+         ARRAY['site_name']::text[],
+         'direktori-resmi',
+         true,
+         now(),
+         1,
+         now(),
+         now()
+    FROM resolved
+   WHERE NOT EXISTS (
+     SELECT 1 FROM public.official_affiliations AS existing
+      WHERE existing.organization_id = resolved.organization_id
+        AND existing.publisher_id = resolved.publisher_id
+        AND existing.site_id = resolved.site_id
+   )
+  RETURNING organization_id, site_id
+)
+INSERT INTO public.audit_logs (
+  organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id,
+  outcome, changed_fields, after, request_id
+)
+SELECT DISTINCT organization_id,
+       gen_random_uuid(),
+       'system'::public.audit_actor_type,
+       'migration:upt_city_affiliations_all_domains',
+       'worker'::public.audit_entry_point,
+       'affiliation.verify',
+       'official_affiliation',
+       site_id::text,
+       'succeeded'::public.audit_outcome,
+       ARRAY['publisherId', 'siteId', 'claimScopes', 'evidenceReference'],
+       jsonb_build_object('claimScopes', ARRAY['site_name'], 'evidenceReference', 'direktori-resmi'),
+       'migration:184'
+  FROM inserted
+ LIMIT ALL;
+DO $$
+DECLARE
+  domains_total integer;
+  per_domain integer;
+  minimum_per_domain integer;
+  maximum_per_domain integer;
+  on_non_city integer;
+BEGIN
+  SELECT count(*) INTO domains_total FROM public.domains;
+
+  SELECT min(claims), max(claims) INTO minimum_per_domain, maximum_per_domain
+    FROM (
+      SELECT site.domain_id, count(a.id) AS claims
+        FROM public.sites AS site
+        JOIN public.official_affiliations AS a ON a.site_id = site.id
+       WHERE site.site_level = 'city'
+       GROUP BY site.domain_id
+    ) AS per_domain_rows;
+
+  SELECT count(*) INTO per_domain
+    FROM public.official_affiliations
+   WHERE evidence_reference = 'direktori-resmi';
+
+  SELECT count(*) INTO on_non_city
+    FROM public.official_affiliations AS a
+    JOIN public.sites AS s ON s.id = a.site_id
+   WHERE s.site_level <> 'city';
+
+  IF minimum_per_domain IS NULL OR minimum_per_domain <> 59 OR maximum_per_domain <> 59 THEN
+    RAISE EXCEPTION 'upt_affiliation_incomplete: per-domain claims range %, expected 59', minimum_per_domain;
+  END IF;
+  IF per_domain <> 59 * domains_total THEN
+    RAISE EXCEPTION 'upt_affiliation_incomplete: % claims for 59 institutions across % domains', per_domain, domains_total;
+  END IF;
+  IF on_non_city > 0 THEN
+    RAISE EXCEPTION 'upt_affiliation_incomplete: % claims landed on a non-city portal', on_non_city;
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (184, 'upt_city_affiliations_all_domains', 'sha256:ac56dfee648bf3b7205de8498021a03241de401216e0d1b1788d6cad913d4cd4');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('77f9fcd4933248ade39486dd40757f370dcf527dd3b6269e04fdcdc228da08d7', 1790390400000);
+
+-- ----------------------------------------------------------------------
+-- 20260925170000_region_scope_session_independence
+-- ----------------------------------------------------------------------
+-- Make region_scope_covers independent of the request session.
+--
+-- The helper filtered its subtree lookup on
+-- `indicate_private.current_organization_id()`, which made the predicate
+-- unusable outside a request context (a direct call returned false for a child
+-- city) and coupled a pure geography question to session state. The filter was
+-- also redundant: `regions_parent_fk` is a composite foreign key on
+-- `(organization_id, parent_region_id)`, so a city and its parent province are
+-- always in the same organization. A match on `parent_region_id` is therefore
+-- already same-organization, and every policy keeps its own
+-- `organization_id = current_organization_id()` conjunct next to the helper.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE OR REPLACE FUNCTION indicate_private.region_scope_covers(p_scope uuid, p_candidate uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT p_scope IS NULL
+      OR p_candidate IS NULL
+      OR p_candidate = p_scope
+      OR EXISTS (
+        SELECT 1
+          FROM public.regions AS region
+         WHERE region.id = p_candidate
+           AND region.parent_region_id = p_scope
+      );
+$$;
+DO $$
+DECLARE
+  province uuid;
+  city uuid;
+  sibling_city uuid;
+BEGIN
+  SELECT id INTO province FROM public.regions WHERE slug = 'jawa-tengah' AND kind = 'region';
+  SELECT id INTO city FROM public.regions WHERE slug = 'wonosobo' AND kind = 'city';
+  SELECT id INTO sibling_city FROM public.regions WHERE slug = 'semarang' AND kind = 'city';
+
+  IF NOT indicate_private.region_scope_covers(NULL, city) THEN
+    RAISE EXCEPTION 'region_scope_regression: an unrestricted scope must cover any geography';
+  END IF;
+  IF NOT indicate_private.region_scope_covers(province, NULL) THEN
+    RAISE EXCEPTION 'region_scope_regression: an apex portal must stay visible to a scoped actor';
+  END IF;
+  IF NOT indicate_private.region_scope_covers(province, province) THEN
+    RAISE EXCEPTION 'region_scope_regression: a scope must cover itself';
+  END IF;
+  IF NOT indicate_private.region_scope_covers(province, city) OR NOT indicate_private.region_scope_covers(province, sibling_city) THEN
+    RAISE EXCEPTION 'region_scope_regression: every city under the scope must be covered';
+  END IF;
+  IF indicate_private.region_scope_covers(city, sibling_city) THEN
+    RAISE EXCEPTION 'region_scope_regression: a city scope must not reach a sibling city';
+  END IF;
+  IF indicate_private.region_scope_covers(city, province) THEN
+    RAISE EXCEPTION 'region_scope_regression: a city scope must not reach its parent province';
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (185, 'region_scope_session_independence', 'sha256:81675ec391c43324fc3880a3f6753c3175db9548a4c502c1989f5bc8eafc8f9b');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('31550afde5fe330a94c668e1afb7015ded712df6002f2d788a6a583313451caa', 1790394000000);
 COMMIT;
