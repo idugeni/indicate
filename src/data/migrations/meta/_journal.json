@@ -1373,6 +1373,13 @@
       "when": 1790433600000,
       "tag": "20260926050000_retain_only_active_cache_bypasses",
       "breakpoints": true
+    },
+    {
+      "idx": 196,
+      "version": "7",
+      "when": 1790437200000,
+      "tag": "20260926060000_arm_schema_gate",
+      "breakpoints": true
     }
   ]
 }

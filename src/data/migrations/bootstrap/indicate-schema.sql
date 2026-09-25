@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (196 migrations):
+-- Reviewed sources, in journal order (197 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -209,6 +209,7 @@
 --   194  20260926030000_purge_superseded_media_reservations  ledger sha256:8ae50186a792ae32f4dff73ed52acc192a224a86374c60783295114b90056bef
 --   195  20260926040000_drop_vestigial_replay_outcome_reference  ledger sha256:81bb2693e585a48a7e8cf37ea9652f9f2fe7d77377f40aa44c0c39a2e9dbc9d0
 --   196  20260926050000_retain_only_active_cache_bypasses  ledger sha256:b63dab6baa073b874498cf18ff3661808a1d52ccd32b73578d33559557e46e1d
+--   197  20260926060000_arm_schema_gate  ledger sha256:f28b32dc1650780735eca8bae05f4eeed4155bf6ba8e66b90c42795dc53504d9
 
 BEGIN;
 
@@ -16430,4 +16431,55 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (196, 'retain_only_active_cache_bypasses', 'sha256:64a9a5d54884e2bb0481b728178fc95170b4f7949d5b04ce84a3ad69b29be2fb');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b63dab6baa073b874498cf18ff3661808a1d52ccd32b73578d33559557e46e1d', 1790433600000);
+
+-- ----------------------------------------------------------------------
+-- 20260926060000_arm_schema_gate
+-- ----------------------------------------------------------------------
+-- Arm the schema gate at this release.
+--
+-- The gate has been disarmed since it was built, and the database has already
+-- drifted once because of it: ledger row 187 (`author_newsroom_profile`) was
+-- applied outside this repository, and nothing at boot noticed. A disarmed gate
+-- cannot catch the next one either.
+--
+-- `assertSchemaGate` fails closed when a `required_version` row exists and the
+-- applied ledger does not satisfy it, so arming is a real promise: every
+-- environment that boots against this database must have migration 197 applied.
+-- The version is this migration itself, written in the same transaction as the
+-- ledger row, so a fresh environment reaches it by replaying the journal and an
+-- already-promoted environment passes the moment the transaction commits.
+--
+-- A refusal now records its own evidence: the gate writes `actual_version`
+-- beside `required_version` and names the ledger's `applied_at` in the error, so
+-- the incident answer exists without guesswork. Adjust the floor in a later
+-- migration when a release needs it; `AGENTS.md` leaves the arming policy to
+-- the release.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+INSERT INTO public.migration_gate_events (id, required_version, actual_version, status)
+VALUES (gen_random_uuid(), 197, 197, 'completed'::public.task_status);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (197, 'arm_schema_gate', 'sha256:86a1caf7bce165a57f12c87038f96431ef55adbced88332a8c9062c9721e0531');
+DO $$
+DECLARE
+  armed integer;
+  floor integer;
+  applied integer;
+BEGIN
+  SELECT count(*) INTO armed FROM public.migration_gate_events
+   WHERE required_version = 197 AND status = 'completed';
+  IF armed <> 1 THEN
+    RAISE EXCEPTION 'schema_gate_not_armed: % arming row(s) for 197', armed;
+  END IF;
+  SELECT max(version) INTO applied FROM public.indicate_schema_migrations;
+  SELECT required_version INTO floor FROM public.migration_gate_events
+   ORDER BY checked_at DESC, id DESC LIMIT 1;
+  IF applied IS NULL OR applied < floor THEN
+    RAISE EXCEPTION 'schema_gate_would_block_boot: applied=% required=%', applied, floor;
+  END IF;
+END;
+$$;
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f28b32dc1650780735eca8bae05f4eeed4155bf6ba8e66b90c42795dc53504d9', 1790437200000);
 COMMIT;
