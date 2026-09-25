@@ -34,6 +34,7 @@ export function ConfigurationPanel({
   const domainInputId = useId();
   const regionNameId = useId();
   const regionSlugId = useId();
+  const regionShortNameId = useId();
   const regionKindSelectId = useId();
   const regionParentSelectId = useId();
   const siteDomainSelectId = useId();
@@ -84,9 +85,11 @@ export function ConfigurationPanel({
 
     startRegionTransition(async () => {
       const parentRegionId = String(formData.get('parentRegionId') ?? '').trim();
+      const shortName = String(formData.get('shortName') ?? '').trim();
       await command('region.create', {
         externalKey: slug,
         name,
+        shortName: shortName === '' ? null : shortName,
         slug,
         status: 'active',
         kind: String(formData.get('kind') ?? 'region'),
@@ -202,6 +205,19 @@ export function ConfigurationPanel({
               placeholder="wonosobo"
               pattern="[a-z0-9-]+"
               className="h-9 border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus-visible:ring-brass"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor={regionShortNameId} className="font-sans text-xs font-medium text-paper-dim">
+              Nama singkat
+            </Label>
+            <Input
+              id={regionShortNameId}
+              name="shortName"
+              disabled={isAddingRegion}
+              placeholder="mis. Jatim"
+              className="h-9 border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus-visible:ring-brass"
             />
           </div>
 

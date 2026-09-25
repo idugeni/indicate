@@ -169,6 +169,8 @@ export const regions = pgTable('regions', {
   id: uuid('id').notNull(),
   externalKey: text('external_key').notNull(),
   name: text('name').notNull(),
+  /** Familiar public label for dense UI (Jateng, Jabar); null falls back to `name`. */
+  shortName: text('short_name'),
   slug: text('slug').notNull(),
   status: recordStatus('status').default('active').notNull(),
   kind: regionKind('kind').default('region').notNull(),

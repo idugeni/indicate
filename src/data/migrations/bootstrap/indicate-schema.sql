@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (187 migrations):
+-- Reviewed sources, in journal order (188 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -200,6 +200,7 @@
 --   185  20260925160000_upt_city_affiliations_all_domains  ledger sha256:77f9fcd4933248ade39486dd40757f370dcf527dd3b6269e04fdcdc228da08d7
 --   186  20260925170000_region_scope_session_independence  ledger sha256:31550afde5fe330a94c668e1afb7015ded712df6002f2d788a6a583313451caa
 --   187  20260925180000_media_shared_brand_guard  ledger sha256:7e975918223878f9f726139e07de7de85ea2edaa9f61b2a7d52d68943277b1fe
+--   188  20260925210000_indonesia_province_roster  ledger sha256:024e9256e5c2a531d20f641f748fbb07ef546f74e91dc7f0653fbee801ecb743
 
 BEGIN;
 
@@ -15439,4 +15440,155 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (186, 'media_shared_brand_guard', 'sha256:56076092edb09422f8198da0383f1fe5e5c780550f7faea9cc24d9fe4c9f267f');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7e975918223878f9f726139e07de7de85ea2edaa9f61b2a7d52d68943277b1fe', 1790397600000);
+
+-- ----------------------------------------------------------------------
+-- 20260925210000_indonesia_province_roster
+-- ----------------------------------------------------------------------
+-- Seed the national province roster and give every geography a short public name.
+--
+-- The network carried a single province, Jawa Tengah, because that was the
+-- pilot. Operators need the whole archipelago available before any of it is
+-- published: a city roster can only attach to a province that exists, and
+-- `regions` is the parent every city geography and every region portal hangs
+-- from. This migration writes all 38 first-level provinces for every
+-- organization that already carries geography. It is data only, so nothing
+-- customer-visible changes: no portal, no site, no hostname, no cache entry.
+--
+-- Naming has three jobs and therefore three fields:
+--   name       official name, shown to readers and used in SEO text
+--   short_name familiar public label (Jateng, Jabar, DIY) for dense UI
+--   slug       DNS label, formal kebab, matching the city slugs already live
+--              (`banjarnegara`, `surakarta`) and the existing
+--              `jawa-tengah.{apex}` region portals, so no live hostname moves
+-- `external_key` stays the machine key and keeps following the slug, which is
+-- what the dashboard region form has always written and what nothing else in
+-- the schema references.
+--
+-- `short_name` is nullable on purpose: a geography without a well-known short
+-- form should not invent one, and readers fall back to `name`.
+--
+-- This is version 188, not 187. Production already carries a ledger row 187
+-- named `author_newsroom_profile`, applied outside this repository; it left no
+-- schema object behind, so the sequence simply continues past it and the ledger
+-- stays monotonic. The gap is recorded here so nobody renumbers into it.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.regions ADD COLUMN short_name text;
+ALTER TABLE public.regions
+  ADD CONSTRAINT regions_short_name_length_check
+  CHECK (short_name IS NULL OR char_length(short_name) BETWEEN 1 AND 40);
+INSERT INTO public.regions (
+  organization_id, id, external_key, name, short_name, slug, status, kind, parent_region_id, version
+)
+SELECT tenant.organization_id,
+       gen_random_uuid(),
+       roster.slug,
+       roster.name,
+       roster.short_name,
+       roster.slug,
+       'active'::public.record_status,
+       'region'::public.region_kind,
+       NULL,
+       1
+  FROM (VALUES
+    ('Aceh', 'Aceh', 'aceh'),
+    ('Sumatera Utara', 'Sumut', 'sumatera-utara'),
+    ('Sumatera Barat', 'Sumbar', 'sumatera-barat'),
+    ('Riau', 'Riau', 'riau'),
+    ('Jambi', 'Jambi', 'jambi'),
+    ('Sumatera Selatan', 'Sumsel', 'sumatera-selatan'),
+    ('Bengkulu', 'Bengkulu', 'bengkulu'),
+    ('Lampung', 'Lampung', 'lampung'),
+    ('Kepulauan Bangka Belitung', 'Babel', 'bangka-belitung'),
+    ('Kepulauan Riau', 'Kepri', 'kepulauan-riau'),
+    ('Daerah Khusus Jakarta', 'DKI', 'dki-jakarta'),
+    ('Jawa Barat', 'Jabar', 'jawa-barat'),
+    ('Daerah Istimewa Yogyakarta', 'DIY', 'di-yogyakarta'),
+    ('Jawa Timur', 'Jatim', 'jawa-timur'),
+    ('Banten', 'Banten', 'banten'),
+    ('Bali', 'Bali', 'bali'),
+    ('Nusa Tenggara Barat', 'NTB', 'nusa-tenggara-barat'),
+    ('Nusa Tenggara Timur', 'NTT', 'nusa-tenggara-timur'),
+    ('Kalimantan Barat', 'Kalbar', 'kalimantan-barat'),
+    ('Kalimantan Tengah', 'Kalteng', 'kalimantan-tengah'),
+    ('Kalimantan Selatan', 'Kalsel', 'kalimantan-selatan'),
+    ('Kalimantan Timur', 'Kaltim', 'kalimantan-timur'),
+    ('Kalimantan Utara', 'Kalut', 'kalimantan-utara'),
+    ('Sulawesi Utara', 'Sulut', 'sulawesi-utara'),
+    ('Sulawesi Tengah', 'Sulteng', 'sulawesi-tengah'),
+    ('Sulawesi Selatan', 'Sulsel', 'sulawesi-selatan'),
+    ('Sulawesi Tenggara', 'Sultra', 'sulawesi-tenggara'),
+    ('Gorontalo', 'Gorontalo', 'gorontalo'),
+    ('Sulawesi Barat', 'Sulbar', 'sulawesi-barat'),
+    ('Maluku', 'Maluku', 'maluku'),
+    ('Maluku Utara', 'Malut', 'maluku-utara'),
+    ('Papua Barat', 'Papua Barat', 'papua-barat'),
+    ('Papua Barat Daya', 'Papua Barat Daya', 'papua-barat-daya'),
+    ('Papua', 'Papua', 'papua'),
+    ('Papua Selatan', 'Papua Selatan', 'papua-selatan'),
+    ('Papua Tengah', 'Papua Tengah', 'papua-tengah'),
+    ('Papua Pegunungan', 'Papua Pegunungan', 'papua-pegunungan')
+  ) AS roster(name, short_name, slug)
+  CROSS JOIN (SELECT DISTINCT organization_id FROM public.regions) AS tenant
+ WHERE NOT EXISTS (
+         SELECT 1 FROM public.regions AS existing
+          WHERE existing.organization_id = tenant.organization_id
+            AND existing.slug = roster.slug
+       );
+UPDATE public.regions
+   SET short_name = 'Jateng'
+ WHERE slug = 'jawa-tengah' AND kind = 'region' AND short_name IS NULL;
+DO $$
+DECLARE
+  tenants integer;
+  provinces integer;
+  cities integer;
+  incomplete integer;
+  collisions text;
+  orphan_portals integer;
+BEGIN
+  SELECT count(DISTINCT organization_id) INTO tenants FROM public.regions;
+  SELECT count(*) INTO provinces FROM public.regions WHERE kind = 'region';
+  SELECT count(*) INTO cities FROM public.regions WHERE kind = 'city';
+  IF provinces <> tenants * 38 THEN
+    RAISE EXCEPTION 'province_roster_incomplete: % provinces for % tenant(s), expected %', provinces, tenants, tenants * 38;
+  END IF;
+  IF cities <> tenants * 31 THEN
+    RAISE EXCEPTION 'province_roster_changed: % cities for % tenant(s), expected %', cities, tenants, tenants * 31;
+  END IF;
+  SELECT count(*) INTO incomplete
+    FROM public.regions
+   WHERE kind = 'region' AND (short_name IS NULL OR parent_region_id IS NOT NULL OR status <> 'active');
+  IF incomplete > 0 THEN
+    RAISE EXCEPTION 'province_roster_incomplete: % province row(s) without a short name, a parent, or active status', incomplete;
+  END IF;
+  SELECT string_agg(format('%s (city %s) = %s (province)', city.slug, city.name, province.name), ', ')
+    INTO collisions
+    FROM public.regions AS province
+    JOIN public.regions AS city
+      ON city.organization_id = province.organization_id
+     AND city.kind = 'city'
+     AND province.kind = 'region'
+     AND city.slug = province.slug;
+  IF collisions IS NOT NULL THEN
+    RAISE EXCEPTION 'province_roster_incomplete: slug collision %', collisions;
+  END IF;
+  SELECT count(*) INTO orphan_portals
+    FROM public.sites
+   WHERE site_level <> 'apex'
+     AND NOT EXISTS (
+       SELECT 1 FROM public.regions AS geography
+        WHERE geography.organization_id = sites.organization_id
+          AND geography.id = sites.region_id
+     );
+  IF orphan_portals > 0 THEN
+    RAISE EXCEPTION 'province_roster_incomplete: % derived portal(s) lost their geography', orphan_portals;
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (188, 'indonesia_province_roster', 'sha256:b1c106df4e7eda822f6595b102e1eff4b2b2ef4f0b58bdfc2b03ddd65167dc3d');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('024e9256e5c2a531d20f641f748fbb07ef546f74e91dc7f0653fbee801ecb743', 1790404800000);
 COMMIT;

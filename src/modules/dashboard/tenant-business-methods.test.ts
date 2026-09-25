@@ -192,8 +192,25 @@ describe('TenantBusinessService domains regions', () => {
     expect(result.error.error.code).toBe('CONFLICT');
   });
 
+  it('menyimpan nama singkat wilayah bersama nama resminya', async () => {
+    const { service } = harness();
+    const result = await service.createRegion(actor, { externalKey: 'jawa-timur', name: 'Jawa Timur', shortName: 'Jatim', slug: 'jawa-timur' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.name).toBe('Jawa Timur');
+    expect(result.value.shortName).toBe('Jatim');
+  });
+
+  it('menolak nama singkat yang tidak masuk akal', async () => {
+    const { service } = harness();
+    const result = await service.createRegion(actor, { externalKey: 'jawa-timur', name: 'Jawa Timur', shortName: 'a'.repeat(41), slug: 'jawa-timur' });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
+  });
+
   it('menolak slug region duplikat', async () => {
-    const region = { id: ID, organizationId: 'org-1', slug: 'jawa', externalKey: 'jw', name: 'Jawa', status: 'active', version: 1 };
+    const region = { id: ID, organizationId: 'org-1', slug: 'jawa', externalKey: 'jw', name: 'Jawa', shortName: null, status: 'active', version: 1 };
     const { service } = harness({ regions: [region] });
     const result = await service.createRegion(actor, { externalKey: 'jw', name: 'Jawa Tengah', slug: 'jateng' });
     expect(result.ok).toBe(false);

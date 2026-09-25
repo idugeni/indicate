@@ -33,8 +33,10 @@ const hostname = z.string().trim().toLowerCase().min(3).max(253).regex(/^(?=.{3,
 export const domainCreateSchema = z.object({ normalizedHostname: hostname, status: lifecycleStatus.default('inactive'), siteTopology: z.enum(['national', 'regional']).default('national') }).strict();
 export const domainUpdateSchema = domainCreateSchema.extend({ id, expectedVersion });
 export const regionKindSchema = z.enum(['region', 'city']);
-export const regionCreateSchema = z.object({ externalKey: slug, name: z.string().trim().min(1).max(160), slug, status: lifecycleStatus.default('active'), kind: regionKindSchema.default('region'), parentRegionId: id.nullable().default(null) }).strict();
-export const regionUpdateSchema = regionCreateSchema.extend({ id, expectedVersion, kind: regionKindSchema.optional(), parentRegionId: id.nullable().optional() });
+/** Familiar public label kept beside the official name; null falls back to `name`. */
+const regionShortName = z.string().trim().min(1).max(40).nullable();
+export const regionCreateSchema = z.object({ externalKey: slug, name: z.string().trim().min(1).max(160), shortName: regionShortName.default(null), slug, status: lifecycleStatus.default('active'), kind: regionKindSchema.default('region'), parentRegionId: id.nullable().default(null) }).strict();
+export const regionUpdateSchema = regionCreateSchema.extend({ id, expectedVersion, kind: regionKindSchema.optional(), parentRegionId: id.nullable().optional(), shortName: regionShortName.optional() });
 export const siteCreateSchema = z.object({ domainId: id, regionId: id.nullable(), status: lifecycleStatus.default('inactive') }).strict();
 export const siteUpdateSchema = siteCreateSchema.extend({ id, expectedVersion });
 export const siteSettingsSchema = z.object({

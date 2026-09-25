@@ -38,6 +38,8 @@ export interface DomainRecord extends VersionedRecord {
 export interface RegionRecord extends VersionedRecord {
   readonly externalKey: string;
   readonly name: string;
+  /** Familiar public label (Jateng, Jabar); null when the geography has none. */
+  readonly shortName: string | null;
   readonly slug: string;
   readonly status: LifecycleStatus;
   readonly kind: 'region' | 'city';

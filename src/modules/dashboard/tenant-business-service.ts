@@ -387,7 +387,7 @@ export class TenantBusinessService {
       if ((kind !== before.kind || parentRegionId !== before.parentRegionId) && transaction.state.sites.some((site) => site.regionId === before.id)) {
         throw new DashboardConflictError();
       }
-      const after: RegionRecord = { ...before, externalKey: value.externalKey, name: value.name, slug: value.slug, status: value.status, kind, parentRegionId, version: before.version + 1, updatedAt: now };
+      const after: RegionRecord = { ...before, externalKey: value.externalKey, name: value.name, shortName: value.shortName ?? before.shortName, slug: value.slug, status: value.status, kind, parentRegionId, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.regions, after);
       this.rederiveSiteHostnames(transaction.state, transaction.state.sites.filter((site) => site.regionId === before.id), (site) => {
         const domain = transaction.state.domains.find((item) => item.id === site.domainId);

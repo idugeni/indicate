@@ -1310,6 +1310,13 @@
       "when": 1790397600000,
       "tag": "20260925180000_media_shared_brand_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 187,
+      "version": "7",
+      "when": 1790404800000,
+      "tag": "20260925210000_indonesia_province_roster",
+      "breakpoints": true
     }
   ]
 }
