@@ -7,7 +7,10 @@ const ORG = 'org-1';
 
 function site(id: string, regionId: string | null) {
   return {
-    id, organizationId: ORG, domainId: 'd-1', regionId, normalizedHostname: `${id}.example`,
+    id, organizationId: ORG, domainId: 'd-1', regionId,
+    siteLevel: regionId === null ? 'apex' : 'city',
+    parentSiteId: regionId === null ? null : 's-2',
+    normalizedHostname: `${id}.example`,
     status: 'active', activationState: 'active', version: 1,
     createdAt: '2026-09-01T00:00:00.000Z', updatedAt: '2026-09-01T00:00:00.000Z',
   } as const;

@@ -92,9 +92,17 @@ tabrakan antar-provinsi kelak ditambah provinsi (`banjar-jabar`).
 | Wonogiri | Kab. | `wonogiri` |
 | Wonosobo | Kab. | `wonosobo` ✅ live |
 
-Jumlah: 31 subdomain × 9 domain = **279 hostname** Jateng penuh
-(hari ini 10 live, semua `wonosobo.*`; Wonosobo resmi kind=`city` di bawah
-region Jawa Tengah per migrasi v172 — preseden untuk 30 kab/kota sisanya).
+Jumlah: 31 subdomain × 10 domain = **310 portal city** (+ 10 portal region).
+
+Status implementasi (2026-09-25): **selesai**. Migrasi v175 membuat 10 portal
+region `jawa-tengah.{apex}`; v177 membuat 30 `regions` kota yang tersisa dan 300
+portal city `{city}.{apex}`, sehingga tiap domain regional punya 31 kota
+(424 site total: 104 apex + 10 region + 310 city). `domains.site_topology`
+ditandai `regional` untuk 10 domain itu dan ditegakkan DB. Semua 320 portal
+turunan terverifikasi HTTP `200` lewat wildcard apex, tanpa asosiasi Vercel
+exact. Copy tiap portal diturunkan dari frame editorial brand-nya dengan
+substitusi nama kota, sehingga setiap pasangan (brand, kota) punya title,
+description, dan tagline sendiri.
 
 ## Catatan pemetaan
 

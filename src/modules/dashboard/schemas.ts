@@ -30,12 +30,12 @@ const RESERVED_ARTICLE_SLUGS = new Set(['articles', 'categories', 'tags', 'searc
 const articleSlug = slug.refine((value) => !RESERVED_ARTICLE_SLUGS.has(value), 'Slug ini dicadangkan untuk rute portal.');
 const hostname = z.string().trim().toLowerCase().min(3).max(253).regex(/^(?=.{3,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/);
 
-export const domainCreateSchema = z.object({ normalizedHostname: hostname, status: lifecycleStatus.default('inactive') }).strict();
+export const domainCreateSchema = z.object({ normalizedHostname: hostname, status: lifecycleStatus.default('inactive'), siteTopology: z.enum(['national', 'regional']).default('national') }).strict();
 export const domainUpdateSchema = domainCreateSchema.extend({ id, expectedVersion });
 export const regionKindSchema = z.enum(['region', 'city']);
 export const regionCreateSchema = z.object({ externalKey: slug, name: z.string().trim().min(1).max(160), slug, status: lifecycleStatus.default('active'), kind: regionKindSchema.default('region'), parentRegionId: id.nullable().default(null) }).strict();
 export const regionUpdateSchema = regionCreateSchema.extend({ id, expectedVersion, kind: regionKindSchema.optional(), parentRegionId: id.nullable().optional() });
-export const siteCreateSchema = z.object({ domainId: id, regionId: id.nullable(), normalizedHostname: hostname, status: lifecycleStatus.default('inactive') }).strict();
+export const siteCreateSchema = z.object({ domainId: id, regionId: id.nullable(), status: lifecycleStatus.default('inactive') }).strict();
 export const siteUpdateSchema = siteCreateSchema.extend({ id, expectedVersion });
 export const siteSettingsSchema = z.object({
   siteId: id,

@@ -11,6 +11,9 @@ export type PublisherType =
   | 'independent_publisher';
 export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'rejected';
 
+/** Portal level in the apex -> region -> city tree; matches the `site_level` enum. */
+export type SiteLevel = 'apex' | 'region' | 'city';
+
 /** Membership tier bound to `roles.tier`; `superadmin` lives only in the platform organization. */
 export type RoleTier = 'admin' | 'user' | 'superadmin';
 
@@ -25,6 +28,8 @@ export interface VersionedRecord {
 export interface DomainRecord extends VersionedRecord {
   readonly normalizedHostname: string;
   readonly status: LifecycleStatus;
+  /** `national` = apex portal only; `regional` = apex + region + city chain (DB-enforced). */
+  readonly siteTopology: 'national' | 'regional';
   /** Cloudflare zone id; null until the domain is linked (required before activation by DB guard). */
   readonly cloudflareZoneId: string | null;
   readonly routingVersion: number;
@@ -42,6 +47,9 @@ export interface RegionRecord extends VersionedRecord {
 export interface SiteRecord extends VersionedRecord {
   readonly domainId: string;
   readonly regionId: string | null;
+  /** Position in the apex -> region -> city tree; mirrors the geography kind. */
+  readonly siteLevel: SiteLevel;
+  readonly parentSiteId: string | null;
   readonly normalizedHostname: string;
   readonly status: LifecycleStatus;
   readonly activationState: 'inactive' | 'pending' | 'active' | 'failed';

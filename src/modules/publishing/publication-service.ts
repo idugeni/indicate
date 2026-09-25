@@ -3,7 +3,7 @@ import { FINGERPRINT_VERSION, publicationFingerprint, retryDelaySeconds, type Re
 import type { PublicationOverride, PublicationStatusProjection } from '@/modules/publishing/models';
 import type { ArticleVariantContext } from '@/modules/publishing/ports';
 import { deriveSiteLabel, excerptForDescription, findCrossSiteDuplicates, suggestPublicationVariants } from '@/modules/publishing/variant-suggester';
-import { cascadeFamilyKey, expandCascadeSites } from '@/modules/site/site-cascade';
+import { CascadeIncompleteError, cascadeFamilyKey, expandCascadeSites } from '@/modules/site/site-cascade';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import type { RedisCoordinationPort } from '@/integrations/redis/ports';
 import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type ArticleSiteRobotsResult, type PublicationJobSummary, type PublishingRepository } from '@/modules/publishing/ports';
@@ -76,17 +76,18 @@ export class PublicationService {
     const scope = context.variants.map((variant) => ({
       id: variant.siteId,
       domainId: variant.domainId,
-      regionId: variant.regionId,
+      siteLevel: variant.siteLevel,
+      parentSiteId: variant.parentSiteId,
       normalizedHostname: variant.normalizedHostname,
       status: 'active' as const,
     }));
     const known = new Set(scope.map((site) => site.id));
     const expansion = expandCascadeSites(
       scope,
-      context.regions,
       manualSiteIds.filter((siteId) => known.has(siteId)),
       context.slug,
     );
+    if (expansion.unresolved.length > 0) throw new CascadeIncompleteError(expansion.unresolved);
     const siteIds = [...new Set([...manualSiteIds, ...expansion.targets.map((target) => target.siteId)])].sort();
     const derived: Record<string, string> = {};
     const canonicals: Record<string, string> = {};
@@ -101,6 +102,11 @@ export class PublicationService {
 
   private duplicateVariantError(actor: AuthorizedTenantActorContext) {
     return createPublicError('INVALID_INPUT', 'Judul dan deskripsi antar portal harus unik, termasuk portal yang sudah tayang. Minta saran varian unik atau isi override berbeda per portal.', actor.requestId);
+  }
+
+  private incompleteHierarchyError(actor: AuthorizedTenantActorContext, error: CascadeIncompleteError) {
+    const missing = [...new Set(error.unresolved.map((entry) => entry.missing))].join(' dan ');
+    return createPublicError('INVALID_INPUT', `Hierarki portal tidak lengkap: ${missing} belum tersedia. Lengkapi rantai apex -> region -> city di pengaturan situs sebelum menerbitkan.`, actor.requestId);
   }
 
   private resolvePublishAt(context: ArticleVariantContext, requested: string | null | undefined, now: Date): Date | null {
@@ -163,6 +169,7 @@ export class PublicationService {
       return { ok: true, value: status };
     } catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'publication.request.denied');
+      if (error instanceof CascadeIncompleteError) return { ok: false, error: this.incompleteHierarchyError(actor, error) };
       if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat meminta penerbitan.', actor.requestId) };
       if (error instanceof PublishingConflictError && error.code === 'duplicate_variant') return { ok: false, error: this.duplicateVariantError(actor) };
       return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The publication request could not be completed.', actor.requestId) };

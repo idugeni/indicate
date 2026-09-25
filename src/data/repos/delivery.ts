@@ -129,7 +129,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         const parentRows = await transaction.select({ logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId })
           .from(sites)
           .innerJoin(siteSettings, and(eq(siteSettings.organizationId, sites.organizationId), eq(siteSettings.siteId, sites.id)))
-          .where(and(eq(sites.organizationId, context.organizationId), eq(sites.domainId, context.domainId), sql`${sites.regionId} IS NULL`, eq(sites.status, 'active'), eq(sites.activationState, 'active'))).limit(1);
+          .where(and(eq(sites.organizationId, context.organizationId), eq(sites.domainId, context.domainId), sql`${sites.siteLevel} = 'apex'`, eq(sites.status, 'active'), eq(sites.activationState, 'active'))).limit(1);
         const parent = parentRows[0];
         if (parent !== undefined) {
           if (logoMediaId === null) logoMediaId = parent.logoMediaId;
@@ -183,7 +183,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       const parent = await transaction.select({ mediaId: column })
         .from(sites)
         .innerJoin(siteSettings, and(eq(siteSettings.organizationId, sites.organizationId), eq(siteSettings.siteId, sites.id)))
-        .where(and(eq(sites.organizationId, context.organizationId), eq(sites.domainId, context.domainId), sql`${sites.regionId} IS NULL`)).limit(1);
+        .where(and(eq(sites.organizationId, context.organizationId), eq(sites.domainId, context.domainId), sql`${sites.siteLevel} = 'apex'`)).limit(1);
       return parent[0]?.mediaId ?? null;
     });
   }

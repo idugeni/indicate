@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (175 migrations):
+-- Reviewed sources, in journal order (180 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -188,6 +188,11 @@
 --   173  20260925040000_wonosobo_city_under_jawa_tengah  ledger sha256:aa4eabaf82039d7dddb91fe784229a4b911b23c87f782700872863567cac1864
 --   174  20260925050000_publication_state_transition_alignment  ledger sha256:81becd866154f84a8e9bd8436d9280bd58bcf5a28be32e0e16a0f08b08c1cc2b
 --   175  20260925060000_runtime_role_transaction_limits  ledger sha256:3c54cd5c44f62ed68f73ed7c72e58a56bbf423ba4ac69bbaae0e438251ccf226
+--   176  20260925070000_site_hierarchy_levels  ledger sha256:6382769adda7e20660f78f423216a0256aa6aacb6cddb9bce79af0aa48517a1d
+--   177  20260925080000_region_hierarchy_guard_order  ledger sha256:a56de28a135bd6e27e7e545a76d1f06800594637cb7443338fd1d2637b43ca6e
+--   178  20260925090000_jateng_city_network  ledger sha256:73b191272cc099d70307c442a10431e5da679bbce215783357377b0e4f8a26c9
+--   179  20260925100000_domain_site_topology  ledger sha256:023bafaef382636df154f6d5a3c4c29edf5b3232f5e23af740b9054611ab2394
+--   180  20260925110000_domain_topology_site_level_literal  ledger sha256:d97f0e272fcb0e20f7c6bdf9355a2258288ae37edb7c01a69396021789babeca
 
 BEGIN;
 
@@ -13456,4 +13461,919 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (174, 'runtime_role_transaction_limits', 'sha256:b1b7a5f8568b985dec73ebc7b3c3b5512637fc01c222457c50b71c6a46dfceb0');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('3c54cd5c44f62ed68f73ed7c72e58a56bbf423ba4ac69bbaae0e438251ccf226', 1790354400000);
+
+-- ----------------------------------------------------------------------
+-- 20260925070000_site_hierarchy_levels
+-- ----------------------------------------------------------------------
+-- Make the apex -> region -> city portal hierarchy explicit and enforced.
+--
+-- The original model stored only `sites.region_id`, so a hierarchy was
+-- inferred: NULL meant apex, a `regions.kind='region'` row meant "regional",
+-- and a `regions.kind='city'` row was expected to expand to a region that no
+-- site row had to exist for. Ten live city sites therefore pointed at a
+-- parent geography with no region site, and publication silently dropped the
+-- region copy. This migration encodes the tree instead of inferring it:
+--
+--   * `sites.site_level` (apex|region|city) mirrors the geography kind and
+--     makes "non-apex means city" impossible.
+--   * `sites.parent_site_id` is the real edge: region hangs from the apex
+--     site of the same domain, city hangs from the region site that serves
+--     its parent geography.
+--   * One apex site per domain, enforced by a partial unique index.
+--   * Provisioning the region sites that the existing city sites require, so
+--     the live ten Wonosobo editions gain a `jawa-tengah.<apex>` parent.
+--
+-- Hostname shape is untouched: apex equals the domain hostname, and both
+-- derived levels stay a single label (`slug.<apex>`) so the wildcard
+-- certificate, Cloudflare transport, and Vercel routing keep working. The
+-- hierarchy is a data relation, not a DNS path.
+--
+-- Renaming a domain hostname or a geography slug previously left every
+-- derived site hostname stale. Both renames now rewrite the affected sites
+-- (bumping routing_version) inside the same transaction, and the existing
+-- `sites_hostname_shape_guard` validates each rewritten row.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE TYPE public.site_level AS ENUM ('apex', 'region', 'city');
+ALTER TABLE public.sites ADD COLUMN site_level public.site_level;
+ALTER TABLE public.sites ADD COLUMN parent_site_id uuid;
+UPDATE public.sites AS s
+   SET site_level = COALESCE(
+         (SELECT CASE g.kind::text WHEN 'region' THEN 'region'::public.site_level ELSE 'city'::public.site_level END
+            FROM public.regions AS g
+           WHERE g.organization_id = s.organization_id AND g.id = s.region_id),
+         'apex'::public.site_level);
+WITH missing AS (
+  SELECT DISTINCT ON (s.organization_id, s.domain_id, g.parent_region_id)
+         s.organization_id,
+         s.domain_id,
+         g.parent_region_id,
+         parent.slug AS region_slug,
+         d.normalized_hostname AS apex_hostname,
+         apex.id AS apex_site_id,
+         apex.status AS apex_status,
+         apex.activation_state AS apex_activation_state,
+         (apex_settings.site_id IS NOT NULL) AS apex_settings_ready
+    FROM public.sites AS s
+    JOIN public.regions AS g
+      ON g.organization_id = s.organization_id AND g.id = s.region_id AND g.kind = 'city'
+    JOIN public.regions AS parent
+      ON parent.organization_id = g.organization_id AND parent.id = g.parent_region_id AND parent.kind = 'region'
+    JOIN public.domains AS d
+      ON d.organization_id = s.organization_id AND d.id = s.domain_id
+    JOIN public.sites AS apex
+      ON apex.organization_id = s.organization_id AND apex.domain_id = s.domain_id AND apex.region_id IS NULL
+    LEFT JOIN public.site_settings AS apex_settings
+      ON apex_settings.organization_id = apex.organization_id AND apex_settings.site_id = apex.id
+   WHERE NOT EXISTS (
+     SELECT 1 FROM public.sites AS existing
+      WHERE existing.organization_id = s.organization_id
+        AND existing.domain_id = s.domain_id
+        AND existing.region_id = g.parent_region_id
+   )
+   ORDER BY s.organization_id, s.domain_id, g.parent_region_id
+), created AS (
+  INSERT INTO public.sites (
+    organization_id, id, domain_id, region_id, site_level, parent_site_id, normalized_hostname,
+    status, activation_state, routing_version, content_version, version, created_at, updated_at
+  )
+  SELECT organization_id,
+         gen_random_uuid(),
+         domain_id,
+         parent_region_id,
+         'region'::public.site_level,
+         apex_site_id,
+         region_slug || '.' || apex_hostname,
+         (CASE WHEN apex_status = 'active' AND apex_activation_state = 'active' AND apex_settings_ready THEN 'active' ELSE 'inactive' END)::public.record_status,
+         (CASE WHEN apex_status = 'active' AND apex_activation_state = 'active' AND apex_settings_ready THEN 'active' ELSE 'inactive' END)::public.site_activation_state,
+         1, 1, 1, now(), now()
+    FROM missing
+  RETURNING organization_id, id, parent_site_id, region_id, normalized_hostname
+), provisioned AS (
+  INSERT INTO public.site_settings (
+    organization_id, site_id, name, description, colors, social_links, seo, navigation,
+    logo_media_id, favicon_media_id, default_media_id, version, created_at, updated_at,
+    locale, seo_default_title, seo_default_description, seo_robots_directive,
+    seo_open_graph_site_name, seo_schema_version, tagline
+  )
+  SELECT apex_settings.organization_id,
+         created.id,
+         left(coalesce(apex_settings.name, '') || ' - ' || area.name, 160),
+         left(coalesce(apex_settings.description, '') || ' - ' || area.name, 1000),
+         apex_settings.colors,
+         apex_settings.social_links,
+         apex_settings.seo,
+         apex_settings.navigation,
+         NULL,
+         NULL,
+         apex_settings.default_media_id,
+         1,
+         now(),
+         now(),
+         apex_settings.locale,
+         left(coalesce(apex_settings.seo_default_title, apex_settings.name, '') || ' | ' || area.name, 60),
+         left(coalesce(apex_settings.seo_default_description, apex_settings.description, '') || ' ' || area.name, 160),
+         apex_settings.seo_robots_directive,
+         left(coalesce(apex_settings.seo_open_graph_site_name, apex_settings.name, '') || ' - ' || area.name, 160),
+         apex_settings.seo_schema_version,
+         apex_settings.tagline
+    FROM created
+    JOIN public.sites AS apex
+      ON apex.organization_id = created.organization_id AND apex.id = created.parent_site_id
+    JOIN public.site_settings AS apex_settings
+      ON apex_settings.organization_id = apex.organization_id AND apex_settings.site_id = apex.id
+    JOIN public.regions AS area
+      ON area.organization_id = created.organization_id AND area.id = created.region_id
+  RETURNING site_id
+)
+INSERT INTO public.audit_logs (
+  organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id,
+  outcome, changed_fields, after, request_id
+)
+SELECT created.organization_id,
+       gen_random_uuid(),
+       'system',
+       'migration:site_hierarchy_levels',
+       'worker',
+       'site.hierarchy.provision_region',
+       'site',
+       created.id::text,
+       'succeeded',
+       ARRAY['siteLevel', 'parentSiteId', 'normalizedHostname'],
+       jsonb_build_object(
+         'hostname', created.normalized_hostname,
+         'siteLevel', 'region',
+         'parentSiteId', created.parent_site_id
+       ),
+       'migration:175'
+  FROM created
+ WHERE created.id IN (SELECT site_id FROM provisioned);
+SET CONSTRAINTS ALL IMMEDIATE;
+UPDATE public.sites AS s
+   SET parent_site_id = (
+     SELECT parent.id
+       FROM public.regions AS g
+       JOIN public.sites AS parent
+         ON parent.organization_id = g.organization_id
+        AND parent.domain_id = s.domain_id
+        AND parent.region_id IS NOT DISTINCT FROM g.parent_region_id
+      WHERE g.organization_id = s.organization_id
+        AND g.id = s.region_id
+   )
+ WHERE s.parent_site_id IS NULL
+   AND s.region_id IS NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.sites WHERE site_level <> 'apex' AND (parent_site_id IS NULL OR region_id IS NULL)) THEN
+    RAISE EXCEPTION 'site_hierarchy_backfill_incomplete: derived sites without a parent';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.sites WHERE site_level = 'apex' AND (parent_site_id IS NOT NULL OR region_id IS NOT NULL)) THEN
+    RAISE EXCEPTION 'site_hierarchy_backfill_incomplete: apex sites carrying hierarchy links';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.sites AS s
+      JOIN public.regions AS g ON g.organization_id = s.organization_id AND g.id = s.region_id
+     WHERE g.kind::text <> s.site_level::text
+  ) THEN
+    RAISE EXCEPTION 'site_hierarchy_backfill_incomplete: site level disagrees with geography kind';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.sites AS s
+      JOIN public.regions AS g ON g.organization_id = s.organization_id AND g.id = s.region_id
+      JOIN public.sites AS parent
+        ON parent.organization_id = s.organization_id
+       AND parent.domain_id = s.domain_id
+       AND parent.site_level = 'apex'
+     WHERE s.site_level = 'region' AND parent.id IS DISTINCT FROM s.parent_site_id
+  ) THEN
+    RAISE EXCEPTION 'site_hierarchy_backfill_incomplete: region site not linked to its apex';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.sites AS s
+      JOIN public.regions AS g ON g.organization_id = s.organization_id AND g.id = s.region_id
+      JOIN public.sites AS parent
+        ON parent.organization_id = s.organization_id
+       AND parent.domain_id = s.domain_id
+       AND parent.region_id IS NOT DISTINCT FROM g.parent_region_id
+     WHERE s.site_level = 'city' AND parent.id IS DISTINCT FROM s.parent_site_id
+  ) THEN
+    RAISE EXCEPTION 'site_hierarchy_backfill_incomplete: city site not linked to its region site';
+  END IF;
+END;
+$$;
+ALTER TABLE public.sites ALTER COLUMN site_level SET NOT NULL;
+ALTER TABLE public.sites ADD CONSTRAINT sites_parent_fk
+  FOREIGN KEY (organization_id, parent_site_id) REFERENCES public.sites (organization_id, id) ON DELETE RESTRICT;
+ALTER TABLE public.sites ADD CONSTRAINT sites_hierarchy_shape CHECK (
+  (site_level = 'apex' AND parent_site_id IS NULL AND region_id IS NULL)
+  OR (site_level IN ('region', 'city') AND parent_site_id IS NOT NULL AND region_id IS NOT NULL)
+);
+CREATE UNIQUE INDEX sites_organization_domain_apex_unique
+  ON public.sites (organization_id, domain_id) WHERE site_level = 'apex';
+CREATE INDEX sites_parent_idx ON public.sites (organization_id, parent_site_id);
+CREATE OR REPLACE FUNCTION indicate_private.guard_site_hierarchy()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+DECLARE
+  geography_kind text;
+  geography_parent uuid;
+  parent_row public.sites%ROWTYPE;
+BEGIN
+  IF NEW.site_level = 'apex' THEN
+    IF NEW.parent_site_id IS NOT NULL OR NEW.region_id IS NOT NULL THEN
+      RAISE EXCEPTION 'apex site must not carry hierarchy links' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF NEW.parent_site_id IS NULL OR NEW.region_id IS NULL THEN
+    RAISE EXCEPTION '% site requires both a parent site and a geography', NEW.site_level USING ERRCODE = '23514';
+  END IF;
+  IF NEW.parent_site_id = NEW.id THEN
+    RAISE EXCEPTION 'site cannot be its own parent' USING ERRCODE = '23514';
+  END IF;
+
+  SELECT g.kind::text, g.parent_region_id INTO geography_kind, geography_parent
+    FROM public.regions AS g
+   WHERE g.organization_id = NEW.organization_id AND g.id = NEW.region_id;
+  IF geography_kind IS NULL THEN
+    RAISE EXCEPTION 'site geography unavailable' USING ERRCODE = '23503';
+  END IF;
+  IF geography_kind <> NEW.site_level::text THEN
+    RAISE EXCEPTION 'site level % does not match geography kind %', NEW.site_level, geography_kind USING ERRCODE = '23514';
+  END IF;
+  IF NEW.site_level = 'region' AND geography_parent IS NOT NULL THEN
+    RAISE EXCEPTION 'region geography must be parentless' USING ERRCODE = '23514';
+  END IF;
+
+  SELECT * INTO parent_row
+    FROM public.sites AS p
+   WHERE p.organization_id = NEW.organization_id AND p.id = NEW.parent_site_id;
+  IF parent_row.id IS NULL THEN
+    RAISE EXCEPTION 'parent site unavailable' USING ERRCODE = '23503';
+  END IF;
+  IF parent_row.domain_id <> NEW.domain_id THEN
+    RAISE EXCEPTION 'parent site belongs to another domain' USING ERRCODE = '23514';
+  END IF;
+  IF NEW.site_level = 'region' AND parent_row.site_level <> 'apex' THEN
+    RAISE EXCEPTION 'region site must hang from the apex site of its domain' USING ERRCODE = '23514';
+  END IF;
+  IF NEW.site_level = 'city' AND parent_row.site_level <> 'region' THEN
+    RAISE EXCEPTION 'city site must hang from a region site' USING ERRCODE = '23514';
+  END IF;
+  IF NEW.site_level = 'city' AND parent_row.region_id IS DISTINCT FROM geography_parent THEN
+    RAISE EXCEPTION 'city site parent must be the site of the city parent geography' USING ERRCODE = '23514';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS sites_hierarchy_guard ON public.sites;
+CREATE TRIGGER sites_hierarchy_guard
+  BEFORE INSERT OR UPDATE OF organization_id, domain_id, region_id, site_level, parent_site_id
+  ON public.sites FOR EACH ROW EXECUTE FUNCTION indicate_private.guard_site_hierarchy();
+CREATE OR REPLACE FUNCTION indicate_private.guard_region_hierarchy()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+DECLARE
+  parent_kind text;
+  referencing_sites integer;
+BEGIN
+  IF NEW.parent_region_id IS NULL THEN
+    IF NEW.kind::text <> 'region' THEN
+      RAISE EXCEPTION 'city geography requires a region parent' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+  END IF;
+  IF NEW.kind::text <> 'city' THEN
+    RAISE EXCEPTION 'only a city geography may declare a parent' USING ERRCODE = '23514';
+  END IF;
+  IF NEW.parent_region_id = NEW.id THEN
+    RAISE EXCEPTION 'geography cannot be its own parent' USING ERRCODE = '23514';
+  END IF;
+
+  SELECT g.kind::text INTO parent_kind
+    FROM public.regions AS g
+   WHERE g.organization_id = NEW.organization_id AND g.id = NEW.parent_region_id;
+  IF parent_kind IS DISTINCT FROM 'region' THEN
+    RAISE EXCEPTION 'city parent must be a region geography' USING ERRCODE = '23514';
+  END IF;
+
+  IF TG_OP = 'UPDATE'
+     AND (NEW.kind IS DISTINCT FROM OLD.kind OR NEW.parent_region_id IS DISTINCT FROM OLD.parent_region_id) THEN
+    SELECT count(*) INTO referencing_sites
+      FROM public.sites AS s
+     WHERE s.organization_id = NEW.organization_id AND s.region_id = NEW.id;
+    IF referencing_sites > 0 THEN
+      RAISE EXCEPTION 'geography kind and parent are immutable while % site(s) reference it', referencing_sites
+        USING ERRCODE = '23514';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS regions_hierarchy_guard ON public.regions;
+CREATE TRIGGER regions_hierarchy_guard
+  BEFORE INSERT OR UPDATE OF organization_id, kind, parent_region_id
+  ON public.regions FOR EACH ROW EXECUTE FUNCTION indicate_private.guard_region_hierarchy();
+CREATE OR REPLACE FUNCTION indicate_private.cascade_domain_hostname()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+BEGIN
+  IF NEW.normalized_hostname IS NOT DISTINCT FROM OLD.normalized_hostname THEN
+    RETURN NEW;
+  END IF;
+
+  UPDATE public.sites AS s
+     SET normalized_hostname = COALESCE((
+           SELECT g.slug || '.'
+             FROM public.regions AS g
+            WHERE g.organization_id = s.organization_id AND g.id = s.region_id
+         ), '') || NEW.normalized_hostname,
+         routing_version = s.routing_version + 1,
+         version = s.version + 1,
+         updated_at = now()
+   WHERE s.organization_id = NEW.organization_id
+     AND s.domain_id = NEW.id;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS domains_hostname_rename_cascade ON public.domains;
+CREATE TRIGGER domains_hostname_rename_cascade
+  AFTER UPDATE OF normalized_hostname ON public.domains
+  FOR EACH ROW EXECUTE FUNCTION indicate_private.cascade_domain_hostname();
+CREATE OR REPLACE FUNCTION indicate_private.cascade_region_slug()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+BEGIN
+  IF NEW.slug IS NOT DISTINCT FROM OLD.slug THEN
+    RETURN NEW;
+  END IF;
+
+  UPDATE public.sites AS s
+     SET normalized_hostname = NEW.slug || '.' || d.normalized_hostname,
+         routing_version = s.routing_version + 1,
+         version = s.version + 1,
+         updated_at = now()
+    FROM public.domains AS d
+   WHERE d.organization_id = s.organization_id
+     AND d.id = s.domain_id
+     AND s.organization_id = NEW.organization_id
+     AND s.region_id = NEW.id;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS regions_slug_rename_cascade ON public.regions;
+CREATE TRIGGER regions_slug_rename_cascade
+  AFTER UPDATE OF slug ON public.regions
+  FOR EACH ROW EXECUTE FUNCTION indicate_private.cascade_region_slug();
+DROP FUNCTION IF EXISTS indicate_private.list_public_network_sites();
+CREATE FUNCTION indicate_private.list_public_network_sites()
+RETURNS TABLE (
+  hostname text,
+  parent_hostname text,
+  site_level text,
+  site_name text,
+  description text,
+  tagline text,
+  area_name text,
+  parent_area_name text
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT s.normalized_hostname,
+         parent.normalized_hostname,
+         s.site_level::text,
+         ss.name,
+         ss.description,
+         ss.tagline,
+         area.name,
+         parent_area.name
+    FROM public.sites AS s
+    JOIN public.site_settings AS ss
+      ON ss.organization_id = s.organization_id AND ss.site_id = s.id
+    LEFT JOIN public.sites AS parent
+      ON parent.organization_id = s.organization_id AND parent.id = s.parent_site_id
+    LEFT JOIN public.regions AS area
+      ON area.organization_id = s.organization_id AND area.id = s.region_id
+    LEFT JOIN public.regions AS parent_area
+      ON parent_area.organization_id = s.organization_id AND parent_area.id = parent.region_id
+   WHERE s.status = 'active'
+     AND s.activation_state = 'active'
+   ORDER BY s.normalized_hostname;
+$$;
+REVOKE ALL ON FUNCTION indicate_private.list_public_network_sites() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.list_public_network_sites() TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (175, 'site_hierarchy_levels', 'sha256:01736ab29f7b22ce49affd8aa1bc6de7197306e2d7e2a4f059a028a44e85f170');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6382769adda7e20660f78f423216a0256aa6aacb6cddb9bce79af0aa48517a1d', 1790358000000);
+
+-- ----------------------------------------------------------------------
+-- 20260925080000_region_hierarchy_guard_order
+-- ----------------------------------------------------------------------
+-- Run the geography immutability guard before the shape checks.
+--
+-- `guard_region_hierarchy` returned early for a parentless row, so flipping a
+-- referenced city geography to `kind='region', parent_region_id=NULL` skipped
+-- the immutability check and detached a live city from its province. The
+-- guard now runs first for every UPDATE, then the shape rules apply.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE OR REPLACE FUNCTION indicate_private.guard_region_hierarchy()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+DECLARE
+  parent_kind text;
+  referencing_sites integer;
+BEGIN
+  IF TG_OP = 'UPDATE'
+     AND (NEW.kind IS DISTINCT FROM OLD.kind OR NEW.parent_region_id IS DISTINCT FROM OLD.parent_region_id) THEN
+    SELECT count(*) INTO referencing_sites
+      FROM public.sites AS s
+     WHERE s.organization_id = NEW.organization_id AND s.region_id = NEW.id;
+    IF referencing_sites > 0 THEN
+      RAISE EXCEPTION 'geography kind and parent are immutable while % site(s) reference it', referencing_sites
+        USING ERRCODE = '23514';
+    END IF;
+  END IF;
+
+  IF NEW.parent_region_id IS NULL THEN
+    IF NEW.kind::text <> 'region' THEN
+      RAISE EXCEPTION 'city geography requires a region parent' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF NEW.kind::text <> 'city' THEN
+    RAISE EXCEPTION 'only a city geography may declare a parent' USING ERRCODE = '23514';
+  END IF;
+  IF NEW.parent_region_id = NEW.id THEN
+    RAISE EXCEPTION 'geography cannot be its own parent' USING ERRCODE = '23514';
+  END IF;
+
+  SELECT g.kind::text INTO parent_kind
+    FROM public.regions AS g
+   WHERE g.organization_id = NEW.organization_id AND g.id = NEW.parent_region_id;
+  IF parent_kind IS DISTINCT FROM 'region' THEN
+    RAISE EXCEPTION 'city parent must be a region geography' USING ERRCODE = '23514';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (176, 'region_hierarchy_guard_order', 'sha256:91cbee4a2ae5007a76473b485e7dec03d27b889369ef693e38fc4ba711e1dfb5');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a56de28a135bd6e27e7e545a76d1f06800594637cb7443338fd1d2637b43ca6e', 1790361600000);
+
+-- ----------------------------------------------------------------------
+-- 20260925090000_jateng_city_network
+-- ----------------------------------------------------------------------
+-- Roll out the documented Jawa Tengah city network (docs/tenants/upt-jateng.md).
+--
+-- The plan on file lists 31 kabupaten/kota for Jawa Tengah, propagated to the
+-- portal-media domains that already run the prisoner-affiliation network
+-- (the ten apexes carrying `wonosobo.*`). Only Wonosobo was ever created, so
+-- ten of the 310 documented portals existed and 300 were missing. This
+-- migration closes that gap:
+--
+--   * 30 `regions` rows (kind='city', parent = Jawa Tengah), slugs taken
+--     verbatim from the plan table so hostnames match the documented contract.
+--   * 300 `sites` rows (10 domains x 31 cities, minus the 10 live Wonosobo
+--     sites), each parented to its domain's region site, so every non-apex
+--     portal carries a complete apex -> region -> city chain.
+--
+-- Per-portal copy is derived from each brand's existing Wonosobo portal by
+-- substituting the city name, so every brand keeps its own editorial voice and
+-- no two (brand, city) pairs share a title, description, or tagline. Brand
+-- assets stay inherited: logo and favicon are NULL (null-inheritance contract,
+-- resolved to the apex at delivery) and `default_media_id` points at the
+-- brand's active apex media until a dedicated city asset is uploaded through
+-- the dashboard. Navigation, colors, locale, robots, and schema version clone
+-- from the apex settings, matching the live Wonosobo portals.
+--
+-- Hostnames stay one label (`{city}.{apex}`) so the existing wildcard
+-- certificate serves them without any DNS or Vercel association, exactly like
+-- the ten portals already live.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+INSERT INTO public.regions (
+  organization_id, id, external_key, name, slug, status, kind, parent_region_id, version, created_at, updated_at
+)
+SELECT parent.organization_id,
+       gen_random_uuid(),
+       city.slug,
+       city.name,
+       city.slug,
+       'active'::public.record_status,
+       'city'::public.region_kind,
+       parent.id,
+       1,
+       now(),
+       now()
+  FROM (
+    VALUES
+      ('banjarnegara', 'Banjarnegara'),
+      ('banyumas', 'Banyumas'),
+      ('batang', 'Batang'),
+      ('blora', 'Blora'),
+      ('boyolali', 'Boyolali'),
+      ('brebes', 'Brebes'),
+      ('cilacap', 'Cilacap'),
+      ('demak', 'Demak'),
+      ('grobogan', 'Grobogan'),
+      ('jepara', 'Jepara'),
+      ('karanganyar', 'Karanganyar'),
+      ('kebumen', 'Kebumen'),
+      ('kendal', 'Kendal'),
+      ('klaten', 'Klaten'),
+      ('kudus', 'Kudus'),
+      ('magelang', 'Magelang'),
+      ('pati', 'Pati'),
+      ('pekalongan', 'Pekalongan'),
+      ('pemalang', 'Pemalang'),
+      ('purbalingga', 'Purbalingga'),
+      ('purworejo', 'Purworejo'),
+      ('rembang', 'Rembang'),
+      ('salatiga', 'Salatiga'),
+      ('semarang', 'Semarang'),
+      ('sragen', 'Sragen'),
+      ('sukoharjo', 'Sukoharjo'),
+      ('surakarta', 'Surakarta'),
+      ('tegal', 'Tegal'),
+      ('temanggung', 'Temanggung'),
+      ('wonogiri', 'Wonogiri')
+  ) AS city(slug, name)
+  JOIN public.regions AS parent
+    ON parent.slug = 'jawa-tengah' AND parent.kind = 'region'
+ON CONFLICT (organization_id, external_key) DO NOTHING;
+WITH brand AS (
+  SELECT city.organization_id,
+         city.domain_id,
+         domain.normalized_hostname AS apex_hostname,
+         region_site.id AS region_site_id,
+         apex_settings.name AS apex_name,
+         apex_settings.colors,
+         apex_settings.social_links,
+         apex_settings.seo,
+         apex_settings.navigation,
+         apex_settings.locale,
+         apex_settings.seo_robots_directive,
+         apex_settings.seo_schema_version,
+         apex_settings.default_media_id,
+         city_settings.name AS city_name_frame,
+         city_settings.description AS city_description_frame,
+         city_settings.seo_default_title AS city_title_frame,
+         city_settings.seo_default_description AS city_seo_description_frame,
+         city_settings.seo_open_graph_site_name AS city_og_frame,
+         city_settings.tagline AS city_tagline_frame
+    FROM public.sites AS city
+    JOIN public.site_settings AS city_settings
+      ON city_settings.organization_id = city.organization_id AND city_settings.site_id = city.id
+    JOIN public.sites AS region_site
+      ON region_site.organization_id = city.organization_id
+     AND region_site.domain_id = city.domain_id
+     AND region_site.site_level = 'region'
+    JOIN public.sites AS apex
+      ON apex.organization_id = city.organization_id
+     AND apex.domain_id = city.domain_id
+     AND apex.site_level = 'apex'
+    JOIN public.site_settings AS apex_settings
+      ON apex_settings.organization_id = apex.organization_id AND apex_settings.site_id = apex.id
+    JOIN public.domains AS domain
+      ON domain.organization_id = city.organization_id AND domain.id = city.domain_id
+   WHERE city.site_level = 'city'
+     AND city.normalized_hostname LIKE 'wonosobo.%'
+), geography AS (
+  SELECT organization_id, id, name, slug
+    FROM public.regions
+   WHERE kind = 'city' AND status = 'active'
+), created AS (
+  INSERT INTO public.sites (
+    organization_id, id, domain_id, region_id, site_level, parent_site_id, normalized_hostname,
+    status, activation_state, routing_version, content_version, version, created_at, updated_at
+  )
+  SELECT brand.organization_id,
+         gen_random_uuid(),
+         brand.domain_id,
+         geography.id,
+         'city'::public.site_level,
+         brand.region_site_id,
+         geography.slug || '.' || brand.apex_hostname,
+         'active'::public.record_status,
+         'active'::public.site_activation_state,
+         1, 1, 1, now(), now()
+    FROM brand
+    CROSS JOIN geography
+   WHERE NOT EXISTS (
+     SELECT 1 FROM public.sites AS existing
+      WHERE existing.organization_id = brand.organization_id
+        AND existing.normalized_hostname = geography.slug || '.' || brand.apex_hostname
+   )
+  RETURNING organization_id, id, domain_id, region_id, parent_site_id, normalized_hostname
+), provisioned AS (
+  INSERT INTO public.site_settings (
+    organization_id, site_id, name, description, colors, social_links, seo, navigation,
+    logo_media_id, favicon_media_id, default_media_id, version, created_at, updated_at,
+    locale, seo_default_title, seo_default_description, seo_robots_directive,
+    seo_open_graph_site_name, seo_schema_version, tagline
+  )
+  SELECT created.organization_id,
+         created.id,
+         replace(brand.city_name_frame, 'Wonosobo', geography.name),
+         replace(brand.city_description_frame, 'Wonosobo', geography.name),
+         brand.colors,
+         brand.social_links,
+         brand.seo,
+         brand.navigation,
+         NULL,
+         NULL,
+         brand.default_media_id,
+         1,
+         now(),
+         now(),
+         brand.locale,
+         left(replace(brand.city_title_frame, 'Wonosobo', geography.name), 60),
+         left(replace(brand.city_seo_description_frame, 'Wonosobo', geography.name), 160),
+         brand.seo_robots_directive,
+         left(replace(brand.city_og_frame, 'Wonosobo', geography.name), 160),
+         brand.seo_schema_version,
+         replace(brand.city_tagline_frame, 'Wonosobo', geography.name)
+    FROM created
+    JOIN brand
+      ON brand.organization_id = created.organization_id AND brand.domain_id = created.domain_id
+    JOIN geography
+      ON geography.organization_id = created.organization_id AND geography.id = created.region_id
+  RETURNING site_id
+)
+INSERT INTO public.audit_logs (
+  organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id,
+  outcome, changed_fields, after, request_id
+)
+SELECT created.organization_id,
+       gen_random_uuid(),
+       'system',
+       'migration:jateng_city_network',
+       'worker',
+       'site.hierarchy.provision_city',
+       'site',
+       created.id::text,
+       'succeeded',
+       ARRAY['siteLevel', 'parentSiteId', 'regionId', 'normalizedHostname'],
+       jsonb_build_object(
+         'hostname', created.normalized_hostname,
+         'siteLevel', 'city',
+         'parentSiteId', created.parent_site_id,
+         'regionId', created.region_id
+       ),
+       'migration:177'
+  FROM created
+ WHERE created.id IN (SELECT site_id FROM provisioned);
+DO $$
+DECLARE
+  expected integer;
+  actual integer;
+BEGIN
+  SELECT count(*) INTO expected
+    FROM public.sites AS city
+    JOIN public.sites AS region_site
+      ON region_site.organization_id = city.organization_id
+     AND region_site.domain_id = city.domain_id
+     AND region_site.site_level = 'region'
+   WHERE city.site_level = 'city';
+  SELECT count(*) INTO actual
+    FROM public.sites AS city
+    JOIN public.sites AS region_site ON region_site.id = city.parent_site_id
+   WHERE city.site_level = 'city';
+  IF actual <> expected THEN
+    RAISE EXCEPTION 'jateng_city_network_incomplete: % of % city sites have a region parent', actual, expected;
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.sites AS city
+      JOIN public.sites AS region_site ON region_site.id = city.parent_site_id
+     WHERE city.site_level = 'city' AND region_site.site_level <> 'region'
+  ) THEN
+    RAISE EXCEPTION 'jateng_city_network_incomplete: a city site hangs from a non-region portal';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.sites
+     WHERE site_level = 'city' AND status = 'active' AND activation_state = 'active'
+       AND NOT EXISTS (
+         SELECT 1 FROM public.site_settings AS settings
+          WHERE settings.organization_id = sites.organization_id
+            AND settings.site_id = sites.id
+            AND settings.default_media_id IS NOT NULL
+            AND settings.seo_default_title IS NOT NULL
+            AND settings.seo_default_description IS NOT NULL)
+  ) THEN
+    RAISE EXCEPTION 'jateng_city_network_incomplete: an active city site lacks complete settings';
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (177, 'jateng_city_network', 'sha256:d912f31603c0d9ce6629fe8770eed3cb1b81bb2e229128424a6d2091cdd7879e');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('73b191272cc099d70307c442a10431e5da679bbce215783357377b0e4f8a26c9', 1790365200000);
+
+-- ----------------------------------------------------------------------
+-- 20260925100000_domain_site_topology
+-- ----------------------------------------------------------------------
+-- Declare and enforce each Domain's portal topology.
+--
+-- After the hierarchy migration every non-apex portal has a complete
+-- apex -> region -> city chain, but nothing recorded whether a Domain is
+-- supposed to have regional editions at all. Ninety-four apex brands are
+-- national networks with no province, and ten are regional networks with a
+-- full thirty-one city roster; the difference was implicit, so "every apex has
+-- a region" was unenforceable and unverifiable. `domains.site_topology` makes
+-- the difference explicit and machine-checked:
+--
+--   * `national`  - one apex portal only. The database refuses any region or
+--                   city site in the domain, so a national network cannot
+--                   silently grow a half-wired regional edition.
+--   * `regional`  - the domain must keep at least one region portal and at
+--                   least one city portal under it. Deleting the last city of
+--                   a region, or activating a regional Domain with nothing
+--                   under it, is rejected.
+--
+-- Both directions are checked by deferred constraint triggers, so a dashboard
+-- transaction may create the Domain, its region portal, and its first city in
+-- any order and still be validated at commit.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE TYPE public.domain_site_topology AS ENUM ('national', 'regional');
+ALTER TABLE public.domains ADD COLUMN site_topology public.domain_site_topology;
+UPDATE public.domains AS d
+   SET site_topology = (
+     SELECT CASE WHEN count(*) > 0 THEN 'regional'::public.domain_site_topology ELSE 'national'::public.domain_site_topology END
+       FROM public.sites AS s
+      WHERE s.organization_id = d.organization_id AND s.domain_id = d.id AND s.site_level <> 'apex'
+   );
+ALTER TABLE public.domains ALTER COLUMN site_topology SET DEFAULT 'national';
+ALTER TABLE public.domains ALTER COLUMN site_topology SET NOT NULL;
+CREATE OR REPLACE FUNCTION indicate_private.assert_domain_topology(p_organization_id uuid, p_domain_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+DECLARE
+  topology public.domain_site_topology;
+  region_portals integer;
+  city_portals integer;
+BEGIN
+  SELECT site_topology INTO topology
+    FROM public.domains
+   WHERE organization_id = p_organization_id AND id = p_domain_id;
+  IF topology IS NULL THEN
+    RETURN;
+  END IF;
+
+  SELECT count(*) INTO region_portals
+    FROM public.sites
+   WHERE organization_id = p_organization_id AND domain_id = p_domain_id AND site_level = 'regional';
+
+  IF topology = 'national' THEN
+    IF region_portals > 0 THEN
+      RAISE EXCEPTION 'national domain cannot carry region or city portals' USING ERRCODE = '23514';
+    END IF;
+    RETURN;
+  END IF;
+
+  SELECT count(*) INTO city_portals
+    FROM public.sites AS city
+    JOIN public.sites AS region_portal ON region_portal.id = city.parent_site_id
+   WHERE city.organization_id = p_organization_id
+     AND region_portal.domain_id = p_domain_id
+     AND city.site_level = 'city';
+
+  IF region_portals = 0 OR city_portals = 0 THEN
+    RAISE EXCEPTION 'regional domain needs a region portal and a city portal (region %, city %)', region_portals, city_portals
+      USING ERRCODE = '23514';
+  END IF;
+END;
+$$;
+CREATE OR REPLACE FUNCTION indicate_private.guard_domain_topology()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+BEGIN
+  PERFORM indicate_private.assert_domain_topology(NEW.organization_id, NEW.id);
+  RETURN NULL;
+END;
+$$;
+CREATE OR REPLACE FUNCTION indicate_private.guard_site_domain_topology()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+DECLARE
+  topology public.domain_site_topology;
+BEGIN
+  IF TG_OP <> 'DELETE' THEN
+    SELECT site_topology INTO topology
+      FROM public.domains
+     WHERE organization_id = NEW.organization_id AND id = NEW.domain_id;
+    IF NEW.site_level <> 'apex' AND topology IS DISTINCT FROM 'regional'::public.domain_site_topology THEN
+      RAISE EXCEPTION 'a % portal requires a regional domain', NEW.site_level USING ERRCODE = '23514';
+    END IF;
+  END IF;
+
+  IF TG_OP = 'DELETE' OR (TG_OP = 'UPDATE' AND OLD.domain_id IS DISTINCT FROM NEW.domain_id) THEN
+    PERFORM indicate_private.assert_domain_topology(OLD.organization_id, OLD.domain_id);
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+CREATE CONSTRAINT TRIGGER domains_topology_guard
+  AFTER INSERT OR UPDATE ON public.domains
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION indicate_private.guard_domain_topology();
+CREATE CONSTRAINT TRIGGER sites_domain_topology_guard
+  AFTER INSERT OR UPDATE OR DELETE ON public.sites
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION indicate_private.guard_site_domain_topology();
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (178, 'domain_site_topology', 'sha256:7c3ba233538d25b4ecdbf727575fb6ba1ce50cff0ac5a5870207b8ab8baf5a13');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('023bafaef382636df154f6d5a3c4c29edf5b3232f5e23af740b9054611ab2394', 1790368800000);
+
+-- ----------------------------------------------------------------------
+-- 20260925110000_domain_topology_site_level_literal
+-- ----------------------------------------------------------------------
+-- Correct the site-level enum literal in the topology assertions.
+--
+-- `assert_domain_topology` compared `site_level` against `'regional'`, which is
+-- a `domain_site_topology` value, not a `site_level` value. The function body
+-- is only parsed when the deferred trigger fires, so the bad literal surfaced
+-- on the first domain or site write after the migration instead of at apply
+-- time. Both comparisons now use `'region'`.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE OR REPLACE FUNCTION indicate_private.assert_domain_topology(p_organization_id uuid, p_domain_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+DECLARE
+  topology public.domain_site_topology;
+  region_portals integer;
+  city_portals integer;
+BEGIN
+  SELECT site_topology INTO topology
+    FROM public.domains
+   WHERE organization_id = p_organization_id AND id = p_domain_id;
+  IF topology IS NULL THEN
+    RETURN;
+  END IF;
+
+  SELECT count(*) INTO region_portals
+    FROM public.sites
+   WHERE organization_id = p_organization_id AND domain_id = p_domain_id AND site_level = 'region';
+
+  IF topology = 'national' THEN
+    IF region_portals > 0 THEN
+      RAISE EXCEPTION 'national domain cannot carry region or city portals' USING ERRCODE = '23514';
+    END IF;
+    RETURN;
+  END IF;
+
+  SELECT count(*) INTO city_portals
+    FROM public.sites AS city
+    JOIN public.sites AS region_portal ON region_portal.id = city.parent_site_id
+   WHERE city.organization_id = p_organization_id
+     AND region_portal.domain_id = p_domain_id
+     AND city.site_level = 'city';
+
+  IF region_portals = 0 OR city_portals = 0 THEN
+    RAISE EXCEPTION 'regional domain needs a region portal and a city portal (region %, city %)', region_portals, city_portals
+      USING ERRCODE = '23514';
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (179, 'domain_topology_site_level_literal', 'sha256:b96e7f080dec93588ec306d3d9b09a9da4c0eb9de44fa9ae868392062cd8f078');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('d97f0e272fcb0e20f7c6bdf9355a2258288ae37edb7c01a69396021789babeca', 1790372400000);
 COMMIT;

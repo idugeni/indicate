@@ -4,7 +4,7 @@ import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type {
   ActivationAttemptRecord, AnalyticsProjection, ArticleFilter, ArticleRecord, ArticleSiteRecord, AuditFilter, AuditRecord, AuthorRecord, CategoryRecord,
   DashboardProjection, DomainRecord, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, MembershipRecord, OfficialAffiliationRecord, OperationsProjection, PublisherRecord, NetworkPublisherClaim,
-  RegionRecord, RetentionRunRecord, RoleListItem, RoleRecord, SiteRecord, SiteSettingsRecord, DashboardTenantState,
+  RegionRecord, RetentionRunRecord, RoleListItem, RoleRecord, SiteLevel, SiteRecord, SiteSettingsRecord, DashboardTenantState,
 } from '@/modules/dashboard/models';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
 import {
@@ -295,6 +295,27 @@ export class TenantBusinessService {
     }
   }
 
+  /**
+   * Rewrite hostnames derived from a domain hostname or geography slug rename.
+   *
+   * Mirrors the rename-cascade triggers in the database so the persisted rows
+   * and the projection that produced them stay identical.
+   *
+   * @param state - Mutable tenant state.
+   * @param sites - Sites whose hostname is derived from the renamed record.
+   * @param hostnameFor - Resolves the new hostname, or null to leave a site untouched.
+   * @param now - Audit timestamp for the rewrite.
+   * @throws {DashboardConflictError} When a rewritten hostname is already taken.
+   */
+  private rederiveSiteHostnames(state: MutableTenantState, sites: readonly SiteRecord[], hostnameFor: (site: SiteRecord) => string | null, now: string): void {
+    for (const site of sites) {
+      const normalizedHostname = hostnameFor(site);
+      if (normalizedHostname === null || normalizedHostname === site.normalizedHostname) continue;
+      if (state.sites.some((item) => item.id !== site.id && item.normalizedHostname === normalizedHostname)) throw new DashboardConflictError();
+      replaceById(state.sites, { ...site, normalizedHostname, version: site.version + 1, updatedAt: now });
+    }
+  }
+
   createDomain(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: domainCreateSchema, permission: DASHBOARD_PERMISSIONS.domainManage, action: 'domain.create', targetType: 'domain', execute: (transaction, value, now) => {
       requireUnrestrictedRegion(actor);
@@ -309,8 +330,17 @@ export class TenantBusinessService {
       requireUnrestrictedRegion(actor);
       const before = requireRecord(transaction.state.domains, value.id); requireVersion(before, value.expectedVersion);
       if (transaction.state.domains.some((item) => item.id !== before.id && item.normalizedHostname === value.normalizedHostname)) throw new DashboardConflictError();
-      const after: DomainRecord = { ...before, normalizedHostname: value.normalizedHostname, status: value.status, version: before.version + 1, updatedAt: now };
-      replaceById(transaction.state.domains, after); this.audit(transaction, 'domain.update', 'domain', after.id, before, after); return after;
+      const after: DomainRecord = { ...before, normalizedHostname: value.normalizedHostname, status: value.status, siteTopology: value.siteTopology, version: before.version + 1, updatedAt: now };
+      if (value.siteTopology === 'national' && transaction.state.sites.some((site) => site.domainId === before.id && site.siteLevel !== 'apex')) throw new DashboardConflictError();
+      if (value.siteTopology === 'regional' && !transaction.state.sites.some((site) => site.domainId === before.id && site.siteLevel === 'region')) {
+        throw new DashboardValidationError({ siteTopology: ['Domain regional harus punya portal region dan city; buat keduanya lebih dulu.'] });
+      }
+      replaceById(transaction.state.domains, after);
+      this.rederiveSiteHostnames(transaction.state, transaction.state.sites.filter((site) => site.domainId === before.id), (site) => {
+        const geography = transaction.state.regions.find((item) => item.id === site.regionId);
+        return geography === undefined ? null : `${geography.slug}.${value.normalizedHostname}`;
+      }, now);
+      this.audit(transaction, 'domain.update', 'domain', after.id, before, after); return after;
     }});
   }
 
@@ -336,9 +366,60 @@ export class TenantBusinessService {
       if ((kind === 'city') === (parent === null)) throw new DashboardValidationError({ parentRegionId: ['Kota wajib berinduk ke satu region; region tidak berinduk.'] });
       if (parent !== null && (parent.id === before.id || parent.kind !== 'region' || parent.status === 'archived')) throw new DashboardValidationError({ parentRegionId: ['Induk kota harus region aktif yang berbeda.'] });
       if (before.kind === 'region' && kind === 'city' && transaction.state.regions.some((region) => region.parentRegionId === before.id)) throw new DashboardConflictError();
+      if ((kind !== before.kind || parentRegionId !== before.parentRegionId) && transaction.state.sites.some((site) => site.regionId === before.id)) {
+        throw new DashboardConflictError();
+      }
       const after: RegionRecord = { ...before, externalKey: value.externalKey, name: value.name, slug: value.slug, status: value.status, kind, parentRegionId, version: before.version + 1, updatedAt: now };
-      replaceById(transaction.state.regions, after); this.audit(transaction, 'region.update', 'region', after.id, before, after); return after;
+      replaceById(transaction.state.regions, after);
+      this.rederiveSiteHostnames(transaction.state, transaction.state.sites.filter((site) => site.regionId === before.id), (site) => {
+        const domain = transaction.state.domains.find((item) => item.id === site.domainId);
+        return domain === undefined ? null : `${value.slug}.${domain.normalizedHostname}`;
+      }, now);
+      this.audit(transaction, 'region.update', 'region', after.id, before, after); return after;
     }});
+  }
+
+  /**
+   * Derive the level, parent portal, and hostname a site must carry.
+   *
+   * The apex -> region -> city chain is computed from the geography tree, never
+   * supplied by the caller, so a site can never claim a level its geography
+   * does not support or hang off a parent that does not exist.
+   *
+   * @param state - Tenant state holding domains, geographies, and sites.
+   * @param domainId - Owning domain (transport root).
+   * @param regionId - Geography served, or null for the apex site.
+   * @param selfId - Site being updated; excluded from collision and parent lookups.
+   * @returns Derived level, parent site id, and normalized hostname.
+   * @throws {DashboardConflictError} When the domain already has an apex site or the hostname is taken.
+   * @throws {DashboardValidationError} When the apex site is missing or a city has no region site yet.
+   */
+  private resolveSitePlacement(
+    state: DashboardTenantState,
+    domainId: string,
+    regionId: string | null,
+    selfId?: string,
+  ): { siteLevel: SiteLevel; parentSiteId: string | null; normalizedHostname: string } {
+    const domain = requireRecord(state.domains, domainId);
+    const others = state.sites.filter((site) => site.id !== selfId);
+    const apex = others.find((site) => site.domainId === domainId && site.siteLevel === 'apex');
+    if (regionId === null) {
+      if (apex !== undefined) throw new DashboardConflictError();
+      return { siteLevel: 'apex', parentSiteId: null, normalizedHostname: domain.normalizedHostname };
+    }
+    if (apex === undefined) throw new DashboardValidationError({ regionId: ['Domain harus punya situs apex sebelum menambah portal region atau city.'] });
+    const geography = requireRecord(state.regions, regionId);
+    const normalizedHostname = `${geography.slug}.${domain.normalizedHostname}`;
+    if (others.some((site) => site.normalizedHostname === normalizedHostname)) throw new DashboardConflictError();
+    if (geography.kind === 'region') return { siteLevel: 'region', parentSiteId: apex.id, normalizedHostname };
+    const parentGeography = geography.parentRegionId === null ? null : requireRecord(state.regions, geography.parentRegionId);
+    const regionSite = parentGeography === null
+      ? undefined
+      : others.find((site) => site.domainId === domainId && site.regionId === parentGeography.id && site.siteLevel === 'region');
+    if (regionSite === undefined) {
+      throw new DashboardValidationError({ regionId: [`Kota ${geography.name} butuh portal region ${parentGeography?.name ?? 'induk'} di domain yang sama.`] });
+    }
+    return { siteLevel: 'city', parentSiteId: regionSite.id, normalizedHostname };
   }
 
   createSite(actor: AuthorizedTenantActorContext, raw: unknown) {
@@ -346,8 +427,11 @@ export class TenantBusinessService {
       requireUnrestrictedRegion(actor);
       const domain = requireRecord(transaction.state.domains, value.domainId);
       if (domain.status === 'archived' || (value.regionId !== null && requireRecord(transaction.state.regions, value.regionId).status === 'archived')) throw new DashboardAccessDeniedError();
-      if (transaction.state.sites.some(({ normalizedHostname }) => normalizedHostname === value.normalizedHostname)) throw new DashboardConflictError();
-      const record: SiteRecord = { ...this.base(actor, now), ...value, activationState: 'inactive' };
+      if (value.regionId !== null && domain.siteTopology !== 'regional') {
+        throw new DashboardValidationError({ regionId: ['Domain ini jaringan nasional; ubah topologi domain ke regional sebelum menambah portal region atau city.'] });
+      }
+      const placement = this.resolveSitePlacement(transaction.state, value.domainId, value.regionId);
+      const record: SiteRecord = { ...this.base(actor, now), domainId: value.domainId, regionId: value.regionId, ...placement, status: value.status, activationState: 'inactive' };
       transaction.state.sites.push(record); this.audit(transaction, 'site.create', 'site', record.id, null, record); return record;
     }});
   }
@@ -357,7 +441,9 @@ export class TenantBusinessService {
       requireUnrestrictedRegion(actor);
       requireRecord(transaction.state.domains, value.domainId); if (value.regionId !== null) requireRecord(transaction.state.regions, value.regionId);
       const before = requireRecord(transaction.state.sites, value.id); requireVersion(before, value.expectedVersion);
-      const after: SiteRecord = { ...before, domainId: value.domainId, regionId: value.regionId, normalizedHostname: value.normalizedHostname, status: value.status, activationState: value.status === 'active' ? 'pending' : 'inactive', version: before.version + 1, updatedAt: now };
+      const placement = this.resolveSitePlacement(transaction.state, value.domainId, value.regionId, before.id);
+      if (placement.parentSiteId !== before.parentSiteId && transaction.state.sites.some((site) => site.parentSiteId === before.id)) throw new DashboardConflictError();
+      const after: SiteRecord = { ...before, domainId: value.domainId, regionId: value.regionId, ...placement, status: value.status, activationState: value.status === 'active' ? 'pending' : 'inactive', version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.sites, after); this.audit(transaction, 'site.update', 'site', after.id, before, after); return after;
     }});
   }
@@ -811,7 +897,11 @@ export class TenantBusinessService {
     const distinct = [...new Set(siteIds)];
     const requested = distinct.map((siteId) => requireSiteInScope(state.sites, siteId, actor));
     if (requested.some(({ organizationId, status }) => organizationId !== actor.organizationId || status !== 'active')) throw new DashboardAccessDeniedError();
-    const expansion = expandCascadeSites(state.sites, state.regions, distinct, article.slug);
+    const expansion = expandCascadeSites(state.sites, distinct, article.slug);
+    if (expansion.unresolved.length > 0) {
+      const missing = [...new Set(expansion.unresolved.map((entry) => entry.missing))].map((level) => (level === 'region' ? 'region' : 'apex'));
+      throw new DashboardValidationError({ siteIds: [`Rantai portal belum lengkap: ${missing.join(' dan ')} belum tersedia.`] });
+    }
     const expanded = expansion.targets.map((target) => ({ ...target, site: requireSiteInScope(state.sites, target.siteId, actor) }));
     if (expanded.some(({ site }) => site.organizationId !== actor.organizationId || site.status !== 'active')) throw new DashboardAccessDeniedError();
     for (let index = 0; index < state.articleSites.length; index += 1) {

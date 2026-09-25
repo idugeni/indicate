@@ -390,8 +390,10 @@ Service validation returns one non-disclosing denial for absent, unauthorized, a
 - Domain normalized hostnames are globally unique.
 - Site normalized public hostnames are globally unique and indexed for exact active lookup.
 - A Site references exactly one same-organization Domain and at most one same-organization Region.
-- Apex Site hostname equals the Domain hostname; regional Site hostname equals `{region.slug}.{domain.normalized_hostname}`.
+- Portals form an explicit three-level tree: `sites.site_level` (`apex|region|city`) plus `sites.parent_site_id`. A region Site hangs from the apex Site of the same Domain, a city Site hangs from the region Site serving its parent geography, and the apex Site carries neither. A partial unique index allows exactly one apex Site per Domain; a trigger rejects a level that disagrees with the geography kind, a cross-domain parent, a city under a non-region parent, and a geography whose kind or parent is edited while a Site references it.
+- Apex Site hostname equals the Domain hostname; regional Site hostname equals `{region.slug}.{domain.normalized_hostname}`. Renaming a Domain hostname or a Region slug rewrites every derived Site hostname in the same transaction, so derived hostnames cannot drift.
 - Reserved control-plane conflicts are rejected before writes or activation.
+- `domains.site_topology` declares the intended shape of a Domain and is enforced by deferred constraint triggers: a `national` domain may hold only its apex portal, while a `regional` domain must keep at least one region portal and at least one city portal beneath it. The check is deferred, so one dashboard transaction may create the Domain, its region portal, and its first city in any order and is validated at commit.
 - Routing and content versions support safe cache validation and invalidation.
 
 ### 9.6 Canonical editorial model
@@ -427,7 +429,7 @@ Public routing: purpose `article-cover` reserves keys under `pub/` (same tenant 
 
 ### 9.9 Syndication cascade and per-copy robots
 
-Cities are `regions` rows with `kind = 'city'` pointing at a parent region — never separate tables. Live: 1 region (Jawa Tengah) + 1 city (Wonosobo, 10 `{slug}.{apex}` sites): kab/kota berikutnya mengikuti pola yang sama (city di bawah Jawa Tengah, hostname satu-label, DB-only via wildcard). Publishing expands at write time into explicit `article_sites` rows (`manual`/`auto` + origin + inherited canonical): a city publish fans out to region + main tenant, a region publish to the main tenant. Every cascade copy declares the primary's canonical URL, so hundred-tenant syndication consolidates instead of duplicating.
+Cities are `regions` rows with `kind = 'city'` pointing at a parent region — never separate tables. Live: 1 region (Jawa Tengah) + 31 cities, propagated to the 10 `regional` domains, so 104 apex + 10 region + 310 city Sites; every city Site hangs from its domain's `jawa-tengah.{apex}` region Site. Hostnames stay one label (`{city}.{apex}`), so every derived portal is DB-only on the apex wildcard. The expansion walks `sites.parent_site_id` — never the geography table — so a city can only reach a region portal that actually exists. A missing ancestor is not skipped: `expandCascadeSites()` reports it and both the publication service and the dashboard assignment fail closed with `INVALID_INPUT`, so no partial fan-out is ever written. Publishing expands at write time into explicit `article_sites` rows (`manual`/`auto` + origin + inherited canonical): a city publish fans out to region + apex, a region publish to the apex. Every cascade copy declares the primary's canonical URL, so hundred-tenant syndication consolidates instead of duplicating.
 
 `article_sites.seo_robots_directive` (same enum as site settings, NULL = inherit) is the per-copy kill-switch for Search Console canonical disputes: dashboard action `publication.setSiteRobots` flips one copy with audit + cache invalidation, without touching siblings. Control-plane icons come from the single `controlPlaneIcons()` helper so crawler-facing `<link rel="icon">` always carries a >48px source alongside the ICO.
 

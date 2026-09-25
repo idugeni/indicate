@@ -54,11 +54,47 @@ function harness(collections: Record<string, readonly unknown[]> = {}) {
   return { repository, service, state, appendAudit };
 }
 
+const ID3 = '0199a2b3-4c5d-7e8f-9012-3456789abce0';
+const ID4 = '0199a2b3-4c5d-7e8f-9012-3456789abce1';
+const ID5 = '0199a2b3-4c5d-7e8f-9012-3456789abce2';
+
 const domain = (overrides: Record<string, unknown> = {}) => ({
   id: ID,
   organizationId: 'org-1',
   normalizedHostname: 'fakta01.my.id',
   status: 'active',
+  siteTopology: 'national',
+  version: 1,
+  createdAt: NOW.toISOString(),
+  updatedAt: NOW.toISOString(),
+  ...overrides,
+});
+
+const region = (overrides: Record<string, unknown> = {}) => ({
+  id: ID3,
+  organizationId: 'org-1',
+  externalKey: 'jawa-tengah',
+  name: 'Jawa Tengah',
+  slug: 'jawa-tengah',
+  status: 'active',
+  kind: 'region',
+  parentRegionId: null,
+  version: 1,
+  createdAt: NOW.toISOString(),
+  updatedAt: NOW.toISOString(),
+  ...overrides,
+});
+
+const site = (overrides: Record<string, unknown> = {}) => ({
+  id: ID,
+  organizationId: 'org-1',
+  domainId: ID,
+  regionId: null,
+  siteLevel: 'apex',
+  parentSiteId: null,
+  normalizedHostname: 'fakta01.my.id',
+  status: 'active',
+  activationState: 'active',
   version: 1,
   createdAt: NOW.toISOString(),
   updatedAt: NOW.toISOString(),
@@ -116,21 +152,97 @@ describe('TenantBusinessService sites roles categories', () => {
     sites: [],
   };
 
-  it('membuat site pending aktivasi', async () => {
+  it('membuat site apex pending aktivasi dengan hostname turunan domain', async () => {
     const { service, state } = harness(siteDeps);
-    const result = await service.createSite(actor, { domainId: ID2, regionId: null, normalizedHostname: 'portal.fakta01.my.id' });
+    const result = await service.createSite(actor, { domainId: ID2, regionId: null });
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('expected ok');
     expect(result.value.activationState).toBe('inactive');
+    expect(result.value.siteLevel).toBe('apex');
+    expect(result.value.normalizedHostname).toBe(domain({ id: ID2 }).normalizedHostname);
     expect((state.sites as unknown[])).toHaveLength(1);
   });
 
-  it('menolak hostname site duplikat', async () => {
+  it('menolak apex kedua pada domain yang sama', async () => {
     const { service } = harness({
       ...siteDeps,
-      sites: [{ id: ID, organizationId: 'org-1', normalizedHostname: 'portal.fakta01.my.id', version: 1 }],
+      sites: [{ id: ID, organizationId: 'org-1', domainId: ID2, regionId: null, siteLevel: 'apex', parentSiteId: null, normalizedHostname: 'portal.fakta01.my.id', version: 1 }],
     });
-    const result = await service.createSite(actor, { domainId: ID2, regionId: null, normalizedHostname: 'portal.fakta01.my.id' });
+    const result = await service.createSite(actor, { domainId: ID2, regionId: null });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('CONFLICT');
+  });
+
+  it('menolak site region sebelum apex tersedia', async () => {
+    const { service } = harness({ ...siteDeps, regions: [region({ id: ID3, kind: 'region', parentRegionId: null })] });
+    const result = await service.createSite(actor, { domainId: ID2, regionId: ID3 });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
+  });
+
+  it('menolak site city sebelum portal region induk ada', async () => {
+    const { service } = harness({
+      domains: [domain({ id: ID2 })],
+      regions: [region({ id: ID3 }), region({ id: ID4, kind: 'city', parentRegionId: ID3, slug: 'wonosobo', name: 'Wonosobo' })],
+      sites: [site({ id: ID, domainId: ID2, regionId: null, siteLevel: 'apex', parentSiteId: null })],
+    });
+    const result = await service.createSite(actor, { domainId: ID2, regionId: ID4 });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
+  });
+
+  it('menurunkan level, induk, dan hostname untuk portal city', async () => {
+    const { service } = harness({
+      domains: [domain({ id: ID2, siteTopology: 'regional' })],
+      regions: [region({ id: ID3, kind: 'region', parentRegionId: null }), region({ id: ID4, kind: 'city', parentRegionId: ID3 })],
+      sites: [
+        site({ id: ID, domainId: ID2, regionId: null, siteLevel: 'apex', parentSiteId: null }),
+        site({ id: ID5, domainId: ID2, regionId: ID3, siteLevel: 'region', parentSiteId: ID }),
+      ],
+    });
+    const result = await service.createSite(actor, { domainId: ID2, regionId: ID4 });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.siteLevel).toBe('city');
+    expect(result.value.parentSiteId).toBe(ID5);
+  });
+
+  it('menolak portal turunan pada domain yang declares nasional', async () => {
+    const { service } = harness({
+      domains: [domain({ id: ID2 })],
+      regions: [region({ id: ID3 })],
+      sites: [site({ id: ID, domainId: ID2, regionId: null, siteLevel: 'apex', parentSiteId: null })],
+    });
+    const result = await service.createSite(actor, { domainId: ID2, regionId: ID3 });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
+  });
+
+  it('menolak topology regional tanpa portal region', async () => {
+    const { service } = harness({
+      domains: [domain({ id: ID2 })],
+      sites: [site({ id: ID, domainId: ID2, regionId: null, siteLevel: 'apex', parentSiteId: null })],
+    });
+    const result = await service.updateDomain(actor, { id: ID2, expectedVersion: 1, normalizedHostname: 'fakta01.my.id', siteTopology: 'regional', status: 'active' });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
+  });
+
+  it('menolak downgrade ke nasional saat portal turunan masih ada', async () => {
+    const { service } = harness({
+      domains: [domain({ id: ID2, siteTopology: 'regional' })],
+      regions: [region({ id: ID3 })],
+      sites: [
+        site({ id: ID, domainId: ID2, regionId: null, siteLevel: 'apex', parentSiteId: null }),
+        site({ id: ID5, domainId: ID2, regionId: ID3, siteLevel: 'region', parentSiteId: ID }),
+      ],
+    });
+    const result = await service.updateDomain(actor, { id: ID2, expectedVersion: 1, normalizedHostname: 'fakta01.my.id', siteTopology: 'national', status: 'active' });
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');
     expect(result.error.error.code).toBe('CONFLICT');
@@ -225,9 +337,9 @@ describe('TenantBusinessService articles assignments', () => {
     const C = '0199a2b3-4c5d-7e8f-9012-3456789abc22';
     const article = { ...baseArticle, slug: 'berita-utama' };
     const sites = [
-      { id: APEX, organizationId: 'org-1', domainId: 'd-1', regionId: null, normalizedHostname: 'portal.test', status: 'active' },
-      { id: REGION_SITE, organizationId: 'org-1', domainId: 'd-1', regionId: R, normalizedHostname: 'wonosobo.portal.test', status: 'active' },
-      { id: CITY_SITE, organizationId: 'org-1', domainId: 'd-1', regionId: C, normalizedHostname: 'kota.portal.test', status: 'active' },
+      { id: APEX, organizationId: 'org-1', domainId: 'd-1', regionId: null, siteLevel: 'apex', parentSiteId: null, normalizedHostname: 'portal.test', status: 'active' },
+      { id: REGION_SITE, organizationId: 'org-1', domainId: 'd-1', regionId: R, siteLevel: 'region', parentSiteId: APEX, normalizedHostname: 'wonosobo.portal.test', status: 'active' },
+      { id: CITY_SITE, organizationId: 'org-1', domainId: 'd-1', regionId: C, siteLevel: 'city', parentSiteId: REGION_SITE, normalizedHostname: 'kota.portal.test', status: 'active' },
     ];
     const regions = [
       { id: R, organizationId: 'org-1', slug: 'wonosobo', externalKey: 'w', name: 'Wonosobo', status: 'active', kind: 'region', parentRegionId: null, version: 1 },
@@ -254,13 +366,15 @@ describe('TenantBusinessService articles assignments', () => {
 
   it('menciutkan turunan saat asal dicabut', async () => {
     const APEX = '0199a2b3-4c5d-7e8f-9012-3456789abc11';
+    const REGION_SITE = '0199a2b3-4c5d-7e8f-9012-3456789abc12';
     const CITY_SITE = '0199a2b3-4c5d-7e8f-9012-3456789abc13';
     const R = '0199a2b3-4c5d-7e8f-9012-3456789abc21';
     const C = '0199a2b3-4c5d-7e8f-9012-3456789abc22';
     const article = { ...baseArticle, slug: 'berita-utama' };
     const sites = [
-      { id: APEX, organizationId: 'org-1', domainId: 'd-1', regionId: null, normalizedHostname: 'portal.test', status: 'active' },
-      { id: CITY_SITE, organizationId: 'org-1', domainId: 'd-1', regionId: C, normalizedHostname: 'kota.portal.test', status: 'active' },
+      { id: APEX, organizationId: 'org-1', domainId: 'd-1', regionId: null, siteLevel: 'apex', parentSiteId: null, normalizedHostname: 'portal.test', status: 'active' },
+      { id: REGION_SITE, organizationId: 'org-1', domainId: 'd-1', regionId: R, siteLevel: 'region', parentSiteId: APEX, normalizedHostname: 'wonosobo.portal.test', status: 'active' },
+      { id: CITY_SITE, organizationId: 'org-1', domainId: 'd-1', regionId: C, siteLevel: 'city', parentSiteId: REGION_SITE, normalizedHostname: 'kota.portal.test', status: 'active' },
     ];
     const regions = [
       { id: R, organizationId: 'org-1', slug: 'wonosobo', externalKey: 'w', name: 'Wonosobo', status: 'active', kind: 'region', parentRegionId: null, version: 1 },

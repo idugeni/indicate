@@ -25,8 +25,8 @@ export function NetworkExplorer({ sites }: { readonly sites: readonly NetworkSit
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<Scope>('all');
   const results = useMemo(() => filterSites(sites, query, scope), [sites, query, scope]);
-  const main = useMemo(() => results.filter((site) => !site.isRegional), [results]);
-  const regional = useMemo(() => results.filter((site) => site.isRegional), [results]);
+  const main = useMemo(() => results.filter((site) => site.siteLevel === 'apex'), [results]);
+  const regional = useMemo(() => results.filter((site) => site.siteLevel !== 'apex'), [results]);
   const cityGroups = useMemo(() => groupRegionalByCity(regional), [regional]);
 
   return (

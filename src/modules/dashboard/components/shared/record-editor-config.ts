@@ -110,6 +110,7 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
     title: 'Ubah domain',
     fields: [
       { key: 'normalizedHostname', label: 'Nama domain utama', kind: 'text', required: true, placeholder: 'beritakota.news' },
+      { key: 'siteTopology', label: 'Topologi portal', kind: 'select', required: true, options: [{ value: 'national', label: 'Nasional (hanya apex)' }, { value: 'regional', label: 'Regional (apex + region + city)' }] },
       { key: 'status', label: 'Status', kind: 'select', required: true, options: LIFECYCLE_OPTIONS },
     ],
   },
@@ -129,7 +130,8 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
     fields: [
       { key: 'domainId', label: 'Domain', kind: 'select', required: true, optionSource: 'domains' },
       { key: 'regionId', label: 'Wilayah', kind: 'select', optionSource: 'regions', allowEmpty: true, emptyLabel: 'Domain utama (tanpa wilayah)' },
-      { key: 'normalizedHostname', label: 'Alamat Situs', kind: 'text', required: true, placeholder: 'pekalongan.wartakota.tv' },
+      { key: 'siteLevel', label: 'Tingkat', kind: 'static' },
+      { key: 'normalizedHostname', label: 'Alamat Situs', kind: 'static' },
       { key: 'status', label: 'Status', kind: 'select', required: true, options: LIFECYCLE_OPTIONS },
     ],
   },
@@ -298,11 +300,11 @@ export function buildUpdatePayload(
 
   switch (collectionKey) {
     case 'domains':
-      return { id, expectedVersion, normalizedHostname: lower('normalizedHostname'), status: text('status') };
+      return { id, expectedVersion, normalizedHostname: lower('normalizedHostname'), siteTopology: text('siteTopology'), status: text('status') };
     case 'regions':
       return { id, expectedVersion, externalKey: lower('externalKey'), name: text('name'), slug: lower('slug'), status: text('status') };
     case 'sites':
-      return { id, expectedVersion, domainId: text('domainId'), regionId: nullableId('regionId'), normalizedHostname: lower('normalizedHostname'), status: text('status') };
+      return { id, expectedVersion, domainId: text('domainId'), regionId: nullableId('regionId'), status: text('status') };
     case 'categories':
       return { id, expectedVersion, name: text('name'), slug: lower('slug'), status: text('status') };
     case 'authors':

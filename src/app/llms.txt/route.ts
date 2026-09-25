@@ -82,7 +82,7 @@ async function handleGET() {
     return new Response(
       controlPlaneLlms(
         config.hosts.dashboard,
-        sites.filter((site) => !site.isRegional).map((site) => ({ name: site.siteName, hostname: site.hostname })),
+        sites.filter((site) => site.siteLevel === 'apex').map((site) => ({ name: site.siteName, hostname: site.hostname })),
         partners.map((partner) => ({ name: partner.name })),
       ),
       {

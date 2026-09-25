@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   accentEdgeStyle,
   accentForHostname,
+  areaOf,
   ALL_PARTNER_FAMILIES,
-  cityOf,
   DIRECTORY_ACCENTS,
   DIRECTORY_PATTERNS,
   familyOf,
@@ -12,7 +12,6 @@ import {
   filterSites,
   groupPartners,
   groupRegionalByCity,
-  parentHostname,
   patternForHostname,
   splitSites,
   splitWordmark,
@@ -23,8 +22,9 @@ import {
 import type { NetworkSiteRow, PartnerRow } from '@/modules/content/site-content';
 
 const SITES: readonly NetworkSiteRow[] = Object.freeze([
-  { hostname: 'fakta01.my.id', siteName: 'Fakta01', description: 'Investigasi nasional', tagline: 'Fakta teruji', isRegional: false },
-  { hostname: 'wonosobo.fakta01.my.id', siteName: 'Fakta01 Wonosobo', description: 'Kabar daerah', tagline: null, isRegional: true },
+  { hostname: 'fakta01.my.id', parentHostname: null, siteLevel: 'apex', siteName: 'Fakta01', description: 'Investigasi nasional', tagline: 'Fakta teruji', areaName: null, parentAreaName: null },
+  { hostname: 'jawa-tengah.fakta01.my.id', parentHostname: 'fakta01.my.id', siteLevel: 'region', siteName: 'Fakta01 Jawa Tengah', description: 'Kabar provinsi', tagline: null, areaName: 'Jawa Tengah', parentAreaName: null },
+  { hostname: 'wonosobo.fakta01.my.id', parentHostname: 'jawa-tengah.fakta01.my.id', siteLevel: 'city', siteName: 'Fakta01 Wonosobo', description: 'Kabar daerah', tagline: null, areaName: 'Wonosobo', parentAreaName: 'Jawa Tengah' },
 ]);
 
 const PARTNERS: readonly PartnerRow[] = Object.freeze([
@@ -100,7 +100,7 @@ describe('splitSites', () => {
   it('memisahkan portal utama dan edisi daerah', () => {
     const split = splitSites(SITES);
     expect(split.main.map((site) => site.hostname)).toEqual(['fakta01.my.id']);
-    expect(split.regional.map((site) => site.hostname)).toEqual(['wonosobo.fakta01.my.id']);
+    expect(split.regional.map((site) => site.hostname)).toEqual(['jawa-tengah.fakta01.my.id', 'wonosobo.fakta01.my.id']);
   });
 });
 
@@ -108,32 +108,29 @@ describe('filterSites', () => {
   it('mencocokkan nama, hostname, dan tagline tanpa memperhatikan kapital', () => {
     expect(filterSites(SITES, 'WONOSOBO', 'all').map((site) => site.hostname)).toEqual(['wonosobo.fakta01.my.id']);
     expect(filterSites(SITES, 'fakta01.my.id', 'main').map((site) => site.hostname)).toEqual(['fakta01.my.id']);
-    expect(filterSites(SITES, '', 'regional').map((site) => site.hostname)).toEqual(['wonosobo.fakta01.my.id']);
+    expect(filterSites(SITES, 'wonosobo', 'all').map((site) => site.hostname)).toEqual(['wonosobo.fakta01.my.id']);
+    expect(filterSites(SITES, 'jawa tengah', 'all').map((site) => site.hostname)).toEqual(['jawa-tengah.fakta01.my.id']);
+    expect(filterSites(SITES, '', 'regional').map((site) => site.hostname)).toEqual(['jawa-tengah.fakta01.my.id', 'wonosobo.fakta01.my.id']);
   });
 });
 
-describe('cityOf', () => {
-  it('mengambil kota dari label pertama hostname regional', () => {
-    expect(cityOf('wonosobo.fakta01.my.id')).toBe('Wonosobo');
-    expect(cityOf('fakta01.my.id')).toBe('Fakta01');
-  });
-});
-
-describe('parentHostname', () => {
-  it('mengupas label kota dari hostname regional', () => {
-    expect(parentHostname('wonosobo.fakta01.my.id')).toBe('fakta01.my.id');
-    expect(parentHostname('fakta01.my.id')).toBe('fakta01.my.id');
+describe('areaOf', () => {
+  it('mengambil nama wilayah dari hierarchy, bukan dari hostname', () => {
+    expect(areaOf(SITES[2]!)).toBe('Wonosobo');
+    expect(areaOf(SITES[1]!)).toBe('Jawa Tengah');
+    expect(areaOf(SITES[0]!)).toBe('Fakta01');
   });
 });
 
 describe('groupRegionalByCity', () => {
   it('mengelompokkan edisi daerah per kota sesuai urutan kemunculan', () => {
     const regional: readonly NetworkSiteRow[] = Object.freeze([
-      { hostname: 'wonosobo.fakta01.my.id', siteName: 'Fakta01 Wonosobo', description: 'Kabar daerah', tagline: null, isRegional: true },
-      { hostname: 'wonosobo.jurnalism.web.id', siteName: 'Jurnalism Wonosobo', description: 'Bisnis daerah', tagline: null, isRegional: true },
+      { hostname: 'wonosobo.fakta01.my.id', parentHostname: 'fakta01.my.id', siteLevel: 'city', siteName: 'Fakta01 Wonosobo', description: 'Kabar daerah', tagline: null, areaName: 'Wonosobo', parentAreaName: 'Jawa Tengah' },
+      { hostname: 'wonosobo.jurnalism.web.id', parentHostname: 'jurnalism.web.id', siteLevel: 'city', siteName: 'Jurnalism Wonosobo', description: 'Bisnis daerah', tagline: null, areaName: 'Wonosobo', parentAreaName: 'Jawa Tengah' },
+      { hostname: 'jawa-tengah.fakta01.my.id', parentHostname: 'fakta01.my.id', siteLevel: 'region', siteName: 'Fakta01 Jawa Tengah', description: 'Kabar provinsi', tagline: null, areaName: 'Jawa Tengah', parentAreaName: null },
     ]);
     const groups = groupRegionalByCity(regional);
-    expect(groups.map((group) => group.city)).toEqual(['Wonosobo']);
+    expect(groups.map((group) => group.city)).toEqual(['Wonosobo', 'Jawa Tengah']);
     expect(groups[0]?.items).toHaveLength(2);
     expect(groupRegionalByCity([])).toEqual([]);
   });

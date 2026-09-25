@@ -23,6 +23,10 @@ export const permissionScope = pgEnum('permission_scope', ['organization', 'plat
 export const subscriptionStatus = pgEnum('subscription_status', ['trialing', 'active', 'past_due', 'suspended', 'cancelled']);
 export const apiKeyStatus = pgEnum('api_key_status', ['active', 'revoked', 'expired']);
 export const siteActivationState = pgEnum('site_activation_state', ['inactive', 'pending', 'active', 'failed']);
+/** Portal level in the apex -> region -> city tree; mirrors `regions.kind` for derived sites. */
+export const siteLevel = pgEnum('site_level', ['apex', 'region', 'city']);
+/** Whether a Domain runs a national network (apex only) or a regional one (apex + region + city). */
+export const domainSiteTopology = pgEnum('domain_site_topology', ['national', 'regional']);
 export const privacyRequestType = pgEnum('privacy_request_type', ['access', 'correction', 'deletion', 'portability', 'restriction']);
 export const privacyRequestStatus = pgEnum('privacy_request_status', ['open', 'in_progress', 'fulfilled', 'rejected']);
 
@@ -146,6 +150,8 @@ export const domains = pgTable('domains', {
   normalizedHostname: text('normalized_hostname').notNull(),
   status: recordStatus('status').default('inactive').notNull(),
   cloudflareZoneId: text('cloudflare_zone_id'),
+  /** `regional` domains must keep at least one region portal and one city portal (DB-enforced). */
+  siteTopology: domainSiteTopology('site_topology').default('national').notNull(),
   routingVersion: integer('routing_version').default(1).notNull(),
   version: integer('version').default(1).notNull(),
   ...timestamps,
@@ -185,7 +191,11 @@ export const sites = pgTable('sites', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
   id: uuid('id').notNull(),
   domainId: uuid('domain_id').notNull(),
+  /** Geography node served by a derived site; NULL for the apex site. */
   regionId: uuid('region_id'),
+  siteLevel: siteLevel('site_level').notNull(),
+  /** Parent portal: apex for a region site, region site for a city site, NULL for the apex site. */
+  parentSiteId: uuid('parent_site_id'),
   normalizedHostname: text('normalized_hostname').notNull(),
   status: recordStatus('status').default('inactive').notNull(),
   activationState: siteActivationState('activation_state').default('inactive').notNull(),
@@ -199,9 +209,16 @@ export const sites = pgTable('sites', {
   unique('sites_normalized_hostname_unique').on(table.normalizedHostname),
   foreignKey({ name: 'sites_domain_fk', columns: [table.organizationId, table.domainId], foreignColumns: [domains.organizationId, domains.id] }).onDelete('restrict'),
   foreignKey({ name: 'sites_region_fk', columns: [table.organizationId, table.regionId], foreignColumns: [regions.organizationId, regions.id] }).onDelete('restrict'),
+  foreignKey({ name: 'sites_parent_fk', columns: [table.organizationId, table.parentSiteId], foreignColumns: [table.organizationId, table.id] }).onDelete('restrict'),
   index('sites_exact_active_hostname_idx').on(table.normalizedHostname, table.status, table.activationState),
   index('sites_organization_domain_idx').on(table.organizationId, table.domainId),
   index('sites_organization_status_idx').on(table.organizationId, table.status),
+  index('sites_parent_idx').on(table.organizationId, table.parentSiteId),
+  uniqueIndex('sites_organization_domain_apex_unique').on(table.organizationId, table.domainId).where(sql`${table.siteLevel} = 'apex'`),
+  check('sites_hierarchy_shape', sql`(
+    (${table.siteLevel} = 'apex' AND ${table.parentSiteId} IS NULL AND ${table.regionId} IS NULL)
+    OR (${table.siteLevel} IN ('region', 'city') AND ${table.parentSiteId} IS NOT NULL AND ${table.regionId} IS NOT NULL)
+  )`),
   check('sites_versions_positive', sql`${table.routingVersion} > 0 AND ${table.contentVersion} > 0 AND ${table.version} > 0`),
 ]);
 

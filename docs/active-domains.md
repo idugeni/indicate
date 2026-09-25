@@ -2,7 +2,7 @@
 
 > **Status:** Living ledger — perbarui setiap ada aktivasi/penonaktifan domain.
 > **Owner:** Platform team.
-> **Last verified:** 2026-09-25 (104 apex + 10 regional active di DB; Vercel exact + wildcard terverifikasi; Cloudflare strict; HTTP 114/114 `200`).
+> **Last verified:** 2026-09-25 (424 site aktif di DB: 104 apex + 10 region + 310 city; Vercel exact + wildcard terverifikasi; Cloudflare strict; HTTP 104/104 apex dan 320/320 turunan `200`).
 
 ## Migrasi domain utama (2026-09-24, dual-serve)
 
@@ -203,12 +203,13 @@ idempoten). Verifikasi: `/logo.png` 200, manifest tenant, `/` 200.
 
 ## Verifikasi rollout 2026-09-25
 
-- 104 apex tenant + 10 regional Wonosobo: `active/active` di Supabase.
-- Vercel: 104 exact + 104 wildcard tenant, semua `verified:true`; 213 asosiasi total.
+- 104 apex tenant + 10 portal region Jawa Tengah + 310 portal city (31 kota × 10 domain): `active/active` di Supabase, ledger v179.
+- `domains.site_topology`: 94 `national` (hanya apex), 10 `regional` (region + 31 city), ditegakkan trigger DB.
+- Vercel: 104 exact + 104 wildcard tenant, semua `verified:true`; 213 asosiasi total (tidak bertambah — 320 portal turunan dilayani wildcard).
 - Cloudflare: 104 zona tenant, apex/wildcard CNAME terproxy, TLS `strict`, WAF 2-rule.
-- Media: 204 objek R2 untuk 68 apex baru, reservation `used`, setting brand/SEO lengkap.
-- HTTP: 104/104 apex dan 10/10 regional `200`.
-- Regional `wonosobo.*`: 0 exact Vercel, tetap dilayani wildcard apex.
+- Media: 204 objek R2 untuk 68 apex baru, reservation `used`, setting brand/SEO lengkap. Portal city mewarisi `default_media_id` apex (logo/favicon `NULL` → inherit).
+- HTTP: 104/104 apex dan 320/320 portal turunan `200`.
+- Portal turunan: 0 exact Vercel, tetap dilayani wildcard apex.
 
 ## Backlog domain
 

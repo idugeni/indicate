@@ -144,13 +144,13 @@ describe('TenantBusinessService updates', () => {
       collections: {
         domains: [{ id: ID2 }],
         regions: [{ id: ID2, externalKey: 'jw', name: 'Jawa', slug: 'jawa', status: 'active', version: 1 }],
-        sites: [{ id: ID, organizationId: 'org-1', domainId: ID2, regionId: null, normalizedHostname: 'a.example', status: 'active', activationState: 'active', version: 1 }],
+        sites: [{ id: ID, organizationId: 'org-1', domainId: ID2, regionId: null, siteLevel: 'apex', parentSiteId: null, normalizedHostname: 'a.example', status: 'active', activationState: 'active', version: 1 }],
         roles: [{ id: ID, name: 'Redaktur', tier: 'user', active: true, permissions: new Set(), version: 1 }],
         categories: [{ id: ID, name: 'Politik', slug: 'politik', status: 'active', version: 1 }],
         authors: [{ id: ID, displayName: 'A', byline: 'A', status: 'active', version: 1 }],
       },
     });
-    await expect(service.updateSite(actor, { id: ID, expectedVersion: 1, domainId: ID2, regionId: null, normalizedHostname: 'b.example', status: 'active' })).resolves.toMatchObject({ ok: true });
+    await expect(service.updateSite(actor, { id: ID, expectedVersion: 1, domainId: ID2, regionId: null, status: 'active' })).resolves.toMatchObject({ ok: true });
     await expect(service.updateRegion(actor, { id: ID2, expectedVersion: 1, externalKey: 'jw', name: 'Jawa Tengah', slug: 'jawa' })).resolves.toMatchObject({ ok: true });
     await expect(service.updateRole(actor, { id: ID, expectedVersion: 1, name: 'Redaktur', permissions: [] })).resolves.toMatchObject({ ok: true });
     await expect(service.updateCategory(actor, { id: ID, expectedVersion: 1, name: 'Politik', slug: 'politik', status: 'active' })).resolves.toMatchObject({ ok: true });

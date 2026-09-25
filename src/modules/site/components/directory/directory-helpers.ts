@@ -122,15 +122,15 @@ export function accentForHostname(hostname: string): string {
  * Split portal listings into main portals and regional editions.
  *
  * @param sites - Network sites ordered by hostname.
- * @returns Frozen split of main portals and regional editions.
+ * @returns Frozen split of apex portals and their region/city editions.
  */
 export function splitSites(sites: readonly NetworkSiteRow[]): {
   readonly main: readonly NetworkSiteRow[];
   readonly regional: readonly NetworkSiteRow[];
 } {
   return Object.freeze({
-    main: Object.freeze(sites.filter((site) => !site.isRegional)),
-    regional: Object.freeze(sites.filter((site) => site.isRegional)),
+    main: Object.freeze(sites.filter((site) => site.siteLevel === 'apex')),
+    regional: Object.freeze(sites.filter((site) => site.siteLevel !== 'apex')),
   });
 }
 
@@ -138,7 +138,7 @@ export function splitSites(sites: readonly NetworkSiteRow[]): {
  * Filter portal listings by free-text query and edition scope.
  *
  * @param sites - Network sites to filter.
- * @param query - Case-insensitive match against name, hostname, tagline, and description.
+ * @param query - Case-insensitive match against name, hostname, area, tagline, and description.
  * @param scope - Edition scope to keep.
  * @returns Filtered sites in input order.
  */
@@ -149,35 +149,24 @@ export function filterSites(
 ): readonly NetworkSiteRow[] {
   const needle = query.trim().toLowerCase();
   return sites.filter((site) => {
-    if (scope === 'main' && site.isRegional) return false;
-    if (scope === 'regional' && !site.isRegional) return false;
+    if (scope === 'main' && site.siteLevel !== 'apex') return false;
+    if (scope === 'regional' && site.siteLevel === 'apex') return false;
     if (needle === '') return true;
-    const haystack = `${site.siteName} ${site.hostname} ${site.tagline ?? ''} ${site.description}`.toLowerCase();
+    const haystack = `${site.siteName} ${site.hostname} ${site.areaName ?? ''} ${site.tagline ?? ''} ${site.description}`.toLowerCase();
     return haystack.includes(needle);
   });
 }
 
 /**
- * Derive the city label from a regional hostname's first DNS label.
+ * Label of the geography a portal serves.
  *
- * @param hostname - Regional hostname (e.g. `wonosobo.fakta01.my.id`).
- * @returns City label with a leading capital (e.g. `Wonosobo`).
+ * @param site - Network site row.
+ * @returns Geography name, falling back to the first DNS label for apex portals.
  */
-export function cityOf(hostname: string): string {
-  const label = hostname.split('.')[0] ?? hostname;
-  return label.length === 0 ? hostname : label.charAt(0).toUpperCase() + label.slice(1);
-}
-
-/**
- * Strip the city label from a regional hostname to find its parent portal.
- *
- * @param hostname - Hostname to resolve (e.g. `wonosobo.fakta01.my.id`).
- * @returns Parent hostname for four-label regional hostnames
- * (e.g. `fakta01.my.id`); apex hostnames pass through untouched.
- */
-export function parentHostname(hostname: string): string {
-  const parts = hostname.split('.');
-  return parts.length > 3 ? parts.slice(1).join('.') : hostname;
+export function areaOf(site: NetworkSiteRow): string {
+  if (site.areaName !== null && site.areaName !== '') return site.areaName;
+  const label = site.hostname.split('.')[0] ?? site.hostname;
+  return label.length === 0 ? site.hostname : label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 export interface RegionalCityGroup {
@@ -186,16 +175,16 @@ export interface RegionalCityGroup {
 }
 
 /**
- * Group regional editions by city so each city appears once as a heading.
+ * Group regional editions by the city they serve so each city appears once.
  *
- * @param regional - Regional sites ordered by hostname.
+ * @param regional - Region and city portals ordered by hostname.
  * @returns City groups in first-seen order, frozen.
  */
 export function groupRegionalByCity(regional: readonly NetworkSiteRow[]): readonly RegionalCityGroup[] {
   const order: string[] = [];
   const buckets = new Map<string, NetworkSiteRow[]>();
   for (const site of regional) {
-    const city = cityOf(site.hostname);
+    const city = areaOf(site);
     const bucket = buckets.get(city);
     if (bucket === undefined) {
       order.push(city);

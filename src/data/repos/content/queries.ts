@@ -56,10 +56,13 @@ export async function readContactChannels(db: Database): Promise<readonly { read
 
 export interface NetworkSiteRow {
   readonly hostname: string;
+  readonly parentHostname: string | null;
+  readonly siteLevel: 'apex' | 'region' | 'city';
   readonly siteName: string;
   readonly description: string;
   readonly tagline: string | null;
-  readonly isRegional: boolean;
+  readonly areaName: string | null;
+  readonly parentAreaName: string | null;
 }
 
 export interface PartnerRow {
@@ -77,17 +80,23 @@ export interface PartnerRow {
 export async function readPublicNetworkSites(db: Database): Promise<readonly NetworkSiteRow[]> {
   const rows = await db.execute<{
     readonly hostname: string;
+    readonly parent_hostname: string | null;
+    readonly site_level: 'apex' | 'region' | 'city';
     readonly site_name: string;
     readonly description: string;
     readonly tagline: string | null;
-    readonly is_regional: boolean;
+    readonly area_name: string | null;
+    readonly parent_area_name: string | null;
   }>(sql`SELECT * FROM indicate_private.list_public_network_sites()`);
   return Object.freeze(rows.map((row) => Object.freeze({
     hostname: row.hostname,
+    parentHostname: row.parent_hostname,
+    siteLevel: row.site_level,
     siteName: row.site_name,
     description: row.description,
     tagline: row.tagline,
-    isRegional: row.is_regional,
+    areaName: row.area_name,
+    parentAreaName: row.parent_area_name,
   })));
 }
 

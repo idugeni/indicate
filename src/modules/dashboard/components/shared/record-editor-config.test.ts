@@ -134,17 +134,18 @@ describe('initialFieldValue', () => {
 describe('buildUpdatePayload', () => {
   it('menormalkan hostname domain menjadi huruf kecil', () => {
     expect(
-      buildUpdatePayload('domains', { id: 'd1', version: 2 }, { normalizedHostname: '  Portal.Example ', status: 'active' }),
-    ).toEqual({ id: 'd1', expectedVersion: 2, normalizedHostname: 'portal.example', status: 'active' });
+      buildUpdatePayload('domains', { id: 'd1', version: 2 }, { normalizedHostname: '  Portal.Example ', siteTopology: 'national', status: 'active' }),
+    ).toEqual({ id: 'd1', expectedVersion: 2, normalizedHostname: 'portal.example', siteTopology: 'national', status: 'active' });
   });
 
   it('mengirim null untuk relasi opsional yang dikosongkan', () => {
     const payload = buildUpdatePayload(
       'sites',
       { id: 's1', version: 1 },
-      { domainId: 'd1', regionId: '', normalizedHostname: 'Portal.Example', status: 'active' },
+      { domainId: 'd1', regionId: '', status: 'active' },
     );
-    expect(payload).toMatchObject({ domainId: 'd1', regionId: null, normalizedHostname: 'portal.example' });
+    expect(payload).toMatchObject({ domainId: 'd1', regionId: null, status: 'active' });
+    expect(payload).not.toHaveProperty('normalizedHostname');
   });
 
   it('menggabungkan kontak penerbit dan men-null-kan bukti kosong', () => {

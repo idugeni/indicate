@@ -8,7 +8,7 @@ import { getEditorConfig } from '@/modules/dashboard/components/shared/record-ed
 const CONFIG = getEditorConfig('domains');
 if (!CONFIG) throw new Error('konfigurasi editor domain hilang');
 
-const ITEM = { id: 'd-1', version: 2, normalizedHostname: 'apex.example', status: 'active' };
+const ITEM = { id: 'd-1', version: 2, normalizedHostname: 'apex.example', siteTopology: 'national', status: 'active' };
 
 afterEach(() => {
   cleanup();
@@ -51,7 +51,7 @@ describe('Formulir editor rekaman', () => {
     await waitFor(() =>
       expect(submitMock).toHaveBeenCalledWith(
         'domain.update',
-        expect.objectContaining({ id: 'd-1', expectedVersion: 2, normalizedHostname: 'baru.example' }),
+        expect.objectContaining({ id: 'd-1', expectedVersion: 2, normalizedHostname: 'baru.example', siteTopology: 'national' }),
       ),
     );
     expect(savedMock).toHaveBeenCalledTimes(1);

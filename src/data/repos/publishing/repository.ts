@@ -352,9 +352,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         .from(articles).where(and(eq(articles.organizationId, actor.organizationId), eq(articles.id, articleId))).limit(1);
       const article = articleRows[0];
       if (article === undefined) return null;
-      const regionRows = await transaction.select({ id: regions.id, kind: regions.kind, parentRegionId: regions.parentRegionId, status: regions.status })
-        .from(regions).where(eq(regions.organizationId, actor.organizationId));
-      const siteRows = await transaction.select({ id: sites.id, hostname: sites.normalizedHostname, regionId: sites.regionId, domainId: sites.domainId })
+      const siteRows = await transaction.select({ id: sites.id, hostname: sites.normalizedHostname, siteLevel: sites.siteLevel, parentSiteId: sites.parentSiteId, domainId: sites.domainId })
         .from(sites).where(and(eq(sites.organizationId, actor.organizationId), eq(sites.status, 'active')));
       const variantRows = await transaction.select({
         siteId: articleSites.siteId, customTitle: articleSites.customTitle, customDescription: articleSites.customDescription,
@@ -369,11 +367,11 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         body: article.body,
         status: article.status,
         scheduledAt: optionalIso(article.scheduledAt),
-        regions: regionRows.map((row) => ({ id: row.id, kind: row.kind as 'region' | 'city', parentRegionId: row.parentRegionId, status: row.status })),
         variants: siteRows.map((site) => ({
           siteId: site.id,
           normalizedHostname: site.hostname,
-          regionId: site.regionId,
+          siteLevel: site.siteLevel,
+          parentSiteId: site.parentSiteId,
           domainId: site.domainId,
           customTitle: bySite.get(site.id)?.customTitle ?? null,
           customDescription: bySite.get(site.id)?.customDescription ?? null,

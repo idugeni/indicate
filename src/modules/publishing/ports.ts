@@ -1,4 +1,5 @@
 import type { AuthorizedTenantActorContext, HostnameContext } from '@/core/operation-context';
+import type { CascadeSiteLevel } from '@/modules/site/site-cascade';
 import type {
   ClaimedCleanupTask, MediaAssetRecord, MediaOwner, MediaReservationRecord, PublicationJobRecord,
   PublicationOptions, PublicationOverride, PublicationStatusProjection, PublicationTargetRecord, PublishingState, PublishingTenantSnapshot, TargetTransitionCommit,
@@ -92,7 +93,8 @@ export interface TargetTransitionInput {
 export interface ArticleVariantSite {
   readonly siteId: string;
   readonly normalizedHostname: string;
-  readonly regionId: string | null;
+  readonly siteLevel: CascadeSiteLevel;
+  readonly parentSiteId: string | null;
   readonly domainId: string;
   readonly customTitle: string | null;
   readonly customDescription: string | null;
@@ -102,13 +104,6 @@ export interface ArticleVariantSite {
   readonly expandedFromSiteId: string | null;
 }
 
-export interface CascadeRegionEntry {
-  readonly id: string;
-  readonly kind: 'region' | 'city';
-  readonly parentRegionId: string | null;
-  readonly status: string;
-}
-
 export interface ArticleVariantContext {
   readonly articleId: string;
   readonly title: string;
@@ -116,7 +111,6 @@ export interface ArticleVariantContext {
   readonly body: string;
   readonly status: 'draft' | 'in_review' | 'scheduled' | 'active' | 'archived';
   readonly scheduledAt: string | null;
-  readonly regions: readonly CascadeRegionEntry[];
   readonly variants: readonly ArticleVariantSite[];
 }
 
