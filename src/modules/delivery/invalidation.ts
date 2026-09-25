@@ -3,6 +3,7 @@ import type { NextCacheInvalidationPort } from '@/modules/delivery/ports';
 import type { CloudflareAuthorityPort } from '@/integrations/cloudflare/ports';
 import type { DeliveryRepository } from '@/modules/delivery/ports';
 import type { SocialWarmer } from '@/modules/delivery/social-warm';
+import { logEvent } from '@/core/observability/logger';
 
 export type NetworkMutation =
   | { readonly kind: 'article' | 'publication'; readonly organizationId: string; readonly siteId: string; readonly hostname: string; readonly articleSlug: string; readonly categorySlug?: string }
@@ -13,7 +14,10 @@ export type NetworkMutation =
 const sitePaths = ['/', '/kebijakan-privasi', '/syarat-ketentuan', '/tentang', '/kontak', '/search', '/robots.txt', '/sitemap.xml', '/rss.xml', '/llms.txt', '/news-sitemap.xml', '/tenant-home', '/report'];
 const HOST_TAG_PREFIX = 'host:';
 const ARTICLE_TAG_PREFIX = 'article:';
-const MAX_WARM_URLS_PER_DISPATCH = 8;
+const WARM_BATCH_SIZE = 8;
+const WARM_QUEUE_LIMIT = 64;
+const WARM_BUDGET_MS = 15_000;
+const WARM_FAILURE_LOG_LIMIT = 10;
 
 function articleWarmUrls(tags: readonly string[]): readonly string[] {
   const hosts = tags
@@ -26,6 +30,60 @@ function articleWarmUrls(tags: readonly string[]): readonly string[] {
     .filter((slug) => slug !== '');
   return hosts.flatMap((host) => slugs.map((slug) => `https://${host}/${slug}`));
 }
+
+/**
+ * Warm queued article URLs in parallel batches and report every outcome.
+ *
+ * @param urls - Unique article URLs collected from completed tasks.
+ * @param warmer - Page, image, and Facebook pre-scrape warmer.
+ * @returns Nothing; failures and truncation land in `delivery.social_warm.*` events.
+ * @remarks Batch width stays at `WARM_BATCH_SIZE` so parallel fetches cannot
+ * outlive the publication function budget, but the queue is drained across
+ * batches instead of truncated at the first one: a task whose completion is
+ * already recorded is never reclaimed by `claim_delivery_invalidation_tasks`,
+ * so anything dropped here would stay cold until its edge TTL expired. The
+ * `WARM_QUEUE_LIMIT` and `WARM_BUDGET_MS` ceilings bound a pathological batch
+ * and both report the remainder rather than dropping it silently. A single
+ * batch can still overrun its slice because each warm issues up to three
+ * sequential fetches bounded by the warmer's own timeouts.
+ */
+async function drainSocialWarm(urls: readonly string[], warmer: Pick<SocialWarmer, 'warmArticle'>): Promise<void> {
+  const startedAt = Date.now();
+  const failures: { url: string; pageOk: boolean; imageOk: boolean; facebookOk: boolean }[] = [];
+  let attempted = 0;
+  let truncated = 0;
+  for (let offset = 0; offset < urls.length; offset += WARM_BATCH_SIZE) {
+    if (offset >= WARM_QUEUE_LIMIT || Date.now() - startedAt >= WARM_BUDGET_MS) {
+      truncated = urls.length - offset;
+      break;
+    }
+    const batch = urls.slice(offset, Math.min(offset + WARM_BATCH_SIZE, WARM_QUEUE_LIMIT));
+    const outcomes = await Promise.allSettled(batch.map((url) => warmer.warmArticle(url)));
+    for (const [index, outcome] of outcomes.entries()) {
+      const url = batch[index] ?? '';
+      attempted += 1;
+      if (outcome.status === 'rejected') {
+        failures.push({ url, pageOk: false, imageOk: false, facebookOk: false });
+        continue;
+      }
+      const { pageOk, imageOk, facebookOk } = outcome.value;
+      if (!pageOk || !imageOk || !facebookOk) failures.push({ url, pageOk, imageOk, facebookOk });
+    }
+  }
+  if (failures.length > 0) {
+    logEvent('warn', {
+      event: 'delivery.social_warm.incomplete',
+      context: { attempted, failed: failures.length, failures: failures.slice(0, WARM_FAILURE_LOG_LIMIT) },
+    });
+  }
+  if (truncated > 0) {
+    logEvent('warn', { event: 'delivery.social_warm.truncated', context: { attempted, truncated, budgetMs: WARM_BUDGET_MS } });
+  }
+  if (failures.length === 0 && truncated === 0) {
+    logEvent('info', { event: 'delivery.social_warm.complete', context: { attempted, durationMs: Date.now() - startedAt } });
+  }
+}
+
 export function planInvalidation(mutation: NetworkMutation): InvalidationPlan {
   const hostnames = mutation.kind === 'hostname' ? [mutation.previousHostname, mutation.currentHostname].filter((value): value is string => value !== null) : [mutation.hostname];
   const articleSlugs = mutation.kind === 'article' || mutation.kind === 'publication' ? [mutation.articleSlug] : mutation.kind === 'publisher' ? [...mutation.articleSlugs] : [];
@@ -41,7 +99,7 @@ export function planInvalidation(mutation: NetworkMutation): InvalidationPlan {
 /**
  * Dispatch claimed invalidation tasks through Next cache and edge purge.
  *
- * @remarks One edge purge per batch (unique URLs across tasks): per-host per-task purges would trigger a thundering-herd to the origin, while the edge TTL is only 60 seconds. A purge failure does not fail the task; Next revalidate is the primary mechanism and the edge recovers on its own within one TTL. A poison task does not stop the batch: a failed complete is recorded via fail, and a fail that also fails counts as stranded. Social warming is one parallel best-effort batch per dispatch (unique article URLs, capped): sequential per-URL fetches could outlive the function budget, while tasks are already complete before warming so a warm failure never affects the summary.
+ * @remarks One edge purge per batch (unique URLs across tasks): per-host per-task purges would trigger a thundering-herd to the origin, while the edge TTL is only 60 seconds. A purge failure does not fail the task; Next revalidate is the primary mechanism and the edge recovers on its own within one TTL. A poison task does not stop the batch: a failed complete is recorded via fail, and a fail that also fails counts as stranded. Social warming is best-effort and runs after the tasks are already complete, so a warm failure never affects the summary; `drainSocialWarm` owns its parallel width, its budget, and its reporting.
  */
 export class InvalidationDispatcher {
   constructor(private readonly repository: Pick<DeliveryRepository, 'claimInvalidations' | 'completeInvalidation' | 'failInvalidation'>, private readonly nextCache: NextCacheInvalidationPort, private readonly cloudflare: CloudflareAuthorityPort, private readonly retryDelaysSeconds: readonly number[], private readonly maxAttempts: number, private readonly socialWarm: Pick<SocialWarmer, 'warmArticle'> | null = null) {}
@@ -68,7 +126,6 @@ export class InvalidationDispatcher {
         await this.repository.completeInvalidation(task, now.toISOString()); completed += 1;
         if (warmer !== null) {
           for (const url of articleWarmUrls(task.tags)) {
-            if (warmQueue.length >= MAX_WARM_URLS_PER_DISPATCH) break;
             if (queuedWarm.has(url)) continue;
             queuedWarm.add(url);
             warmQueue.push(url);
@@ -85,7 +142,7 @@ export class InvalidationDispatcher {
       }
     }
     if (warmer !== null && warmQueue.length > 0) {
-      await Promise.allSettled(warmQueue.map((url) => warmer.warmArticle(url)));
+      await drainSocialWarm(warmQueue, warmer);
     }
     return { completed, failed, stranded };
   }

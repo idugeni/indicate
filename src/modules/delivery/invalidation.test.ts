@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { InvalidationDispatcher, planInvalidation } from '@/modules/delivery/invalidation';
+import { logEvent } from '@/core/observability/logger';
 import type { InvalidationTask } from '@/modules/delivery/models';
 import type { CloudflareAuthorityPort } from '@/integrations/cloudflare/ports';
+
+vi.mock('@/core/observability/logger', () => ({ logEvent: vi.fn() }));
+
+const logMock = vi.mocked(logEvent);
 
 function task(id: string, urls: readonly string[]): InvalidationTask {
   return {
@@ -131,7 +136,7 @@ describe('InvalidationDispatcher', () => {
     await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
   });
 
-  it('membatasi pemanasan delapan url per dispatch', async () => {
+  it('memanaskan seluruh antrean tanpa memotong url yang sudah selesai', async () => {
     const warmed: string[] = [];
     const tagsFor = (articles: readonly string[]) => ['site:site-1', 'host:tenant.example', ...articles.map((slug) => `article:${slug}`)];
     const repository = {
@@ -147,8 +152,84 @@ describe('InvalidationDispatcher', () => {
     const socialWarm = { warmArticle: vi.fn(async (url: string) => { warmed.push(url); return { pageOk: true, imageOk: true, facebookOk: true }; }) };
     const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
     await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 2, failed: 0, stranded: 0 });
-    expect(warmed).toHaveLength(8);
+    expect(warmed).toHaveLength(10);
     expect(warmed).toEqual([...new Set(warmed)]);
+  });
+
+  it('mempertahankan lebar paralel delapan per batch', async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const slugs = Array.from({ length: 10 }, (_, index) => `s-${index}`);
+    const repository = {
+      claimInvalidations: vi.fn(async () => [{ ...task('task-1', []), tags: ['site:site-1', 'host:tenant.example', ...slugs.map((slug) => `article:${slug}`)] }]),
+      completeInvalidation: vi.fn(async () => {}),
+      failInvalidation: vi.fn(async () => {}),
+    };
+    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
+    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
+    const socialWarm = {
+      warmArticle: vi.fn(async () => {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await new Promise((resolve) => { setTimeout(resolve, 5); });
+        inFlight -= 1;
+        return { pageOk: true, imageOk: true, facebookOk: true };
+      }),
+    };
+    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
+    expect(socialWarm.warmArticle).toHaveBeenCalledTimes(10);
+    expect(maxInFlight).toBeGreaterThan(1);
+    expect(maxInFlight).toBeLessThanOrEqual(8);
+  });
+
+  it('mencatat url yang gagal dipanaskan beserta tahapnya', async () => {
+    logMock.mockClear();
+    const tagsFor = (articles: readonly string[]) => ['site:site-1', 'host:tenant.example', ...articles.map((slug) => `article:${slug}`)];
+    const repository = {
+      claimInvalidations: vi.fn(async () => [{ ...task('task-1', []), tags: tagsFor(['good', 'no-image', 'fb-rejected'])}]),
+      completeInvalidation: vi.fn(async () => {}),
+      failInvalidation: vi.fn(async () => {}),
+    };
+    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
+    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
+    const socialWarm = {
+      warmArticle: vi.fn(async (url: string) => {
+        if (url.endsWith('/no-image')) return { pageOk: true, imageOk: false, facebookOk: false };
+        if (url.endsWith('/fb-rejected')) return { pageOk: true, imageOk: true, facebookOk: false };
+        return { pageOk: true, imageOk: true, facebookOk: true };
+      }),
+    };
+    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
+    const incomplete = logMock.mock.calls.filter((call) => call[1]?.event === 'delivery.social_warm.incomplete');
+    expect(incomplete).toHaveLength(1);
+    const context = incomplete[0]?.[1]?.context as { failed: number; failures: { url: string; imageOk: boolean; facebookOk: boolean }[] };
+    expect(context.failed).toBe(2);
+    expect(context.failures).toEqual(expect.arrayContaining([
+      expect.objectContaining({ url: 'https://tenant.example/no-image', imageOk: false }),
+      expect.objectContaining({ url: 'https://tenant.example/fb-rejected', facebookOk: false }),
+    ]));
+    expect(logMock.mock.calls.some((call) => call[1]?.event === 'delivery.social_warm.complete')).toBe(false);
+  });
+
+  it('melaporkan url yang tidak sempat dipanaskan karena melewati batas antrean', async () => {
+    logMock.mockClear();
+    const slugs = Array.from({ length: 70 }, (_, index) => `s-${index}`);
+    const repository = {
+      claimInvalidations: vi.fn(async () => [{ ...task('task-1', []), tags: ['site:site-1', 'host:tenant.example', ...slugs.map((slug) => `article:${slug}`)] }]),
+      completeInvalidation: vi.fn(async () => {}),
+      failInvalidation: vi.fn(async () => {}),
+    };
+    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
+    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
+    const socialWarm = { warmArticle: vi.fn(async () => ({ pageOk: true, imageOk: true, facebookOk: true })) };
+    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
+    expect(socialWarm.warmArticle).toHaveBeenCalledTimes(64);
+    const truncated = logMock.mock.calls.filter((call) => call[1]?.event === 'delivery.social_warm.truncated');
+    expect(truncated).toHaveLength(1);
+    expect((truncated[0]?.[1]?.context as { truncated: number }).truncated).toBe(6);
   });
 
   it('tidak memanaskan saat task gagal', async () => {
