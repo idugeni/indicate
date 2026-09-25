@@ -27,6 +27,13 @@ Schema changes follow expand, backfill, verify, and contract across compatible r
 
 `audit_logs` is insert-only by design and is never swept: rows accumulate permanently and are exported daily to WORM storage (`audit_worm_export`, `src/modules/audit/audit-worm-export.ts`). No scheduled DELETE exists for it. `retention_sweep()` compacts operational queues (`org_invitations`, `webhook_replay_claims`, `object_cleanup_tasks`, `invalidation_tasks`, `publication_transition_receipts`) and keeps `media_key_reservations` honest: a reservation past its deadline that never produced a `media` row is flipped to `expired`, and a `used` reservation with no `media` row after a seven-day grace is deleted as an upload that never landed. An expired reservation keeps its row as an audit trail, which is why the object key carries a partial unique index (`WHERE status <> 'expired'`): without it the `ON CONFLICT DO NOTHING` in `reserveMediaCandidate` would answer `occupied` for that key forever. Orphan history for removed categories is deleted by explicit forward migration (precedent: `20260925030000_retention_runs_drop_telegram_history.sql`).
 
+## Schema audit
+
+A column-level audit of the live database against the application lives in
+[schema-audit.md](schema-audit.md). It records which columns are read through
+raw SQL rather than Drizzle, which are reserved for unwired features, and which
+tables were retired in migration 191 as unreachable from any code.
+
 ## Unused-index watchlist (monitor only, never drop blind)
 
 Pre-traffic advisors flag unused indexes that turn needed at volume (standing policy in `20260903035500_billing_advisor_hardening.sql`). Known case: `runtime_config_revisions_environment_idx` reads only through `read_runtime_config_revision()`, which casts the column (`environment::text`), defeating the btree — leave the index in place; if the flag ever blocks, cast the parameter instead of the column.

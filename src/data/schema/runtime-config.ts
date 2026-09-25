@@ -2,13 +2,11 @@ import { sql } from 'drizzle-orm';
 import {
   bigint,
   check,
-  foreignKey,
   integer,
   index,
   pgEnum,
   pgSchema,
   pgTable,
-  primaryKey,
   text,
   timestamp,
   unique,
@@ -182,74 +180,6 @@ export const runtimeConfigInvalidationIntents = pgTable('runtime_config_invalida
 }, (table) => [
   unique('runtime_config_invalidation_unique').on(table.runtimeRevision, table.partitionKind, table.organizationId, table.domainId, table.siteId),
   check('runtime_config_invalidation_attempts_nonnegative', sql`${table.attempts} >= 0`),
-]);
-
-/** Immutable rollout manifest header (parity/cutover tooling). */
-export const runtimeConfigReleaseManifests = pgTable('runtime_config_release_manifests', {
-  id: uuid('id').primaryKey(),
-  grammarVersion: integer('grammar_version').notNull(),
-  parityStart: timestamp('parity_start', { withTimezone: true }).notNull(),
-  parityEnd: timestamp('parity_end', { withTimezone: true }).notNull(),
-  sourceVersion: text('source_version').notNull(),
-  expectedSourceCount: integer('expected_source_count').notNull(),
-  targetSchemaVersion: integer('target_schema_version').notNull(),
-  candidateAppVersion: text('candidate_app_version').notNull(),
-  rollbackAppVersion: text('rollback_app_version').notNull(),
-  rollbackSchemaMin: integer('rollback_schema_min').notNull(),
-  rollbackSchemaMax: integer('rollback_schema_max').notNull(),
-  status: text('status').notNull().default('proposed'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => [
-  check('runtime_config_release_manifests_parity_window', sql`${table.parityEnd} - ${table.parityStart} <= interval '7 days'`),
-  check('runtime_config_release_manifests_grammar_positive', sql`${table.grammarVersion} > 0`),
-  check('runtime_config_release_manifests_source_positive', sql`${table.expectedSourceCount} > 0`),
-  check('runtime_config_release_manifests_schema_bounds', sql`${table.rollbackSchemaMax} >= ${table.rollbackSchemaMin}`),
-]);
-
-/** Explicit Domain-to-zone mapping rows, immutable after insert. */
-export const runtimeConfigReleaseDomainZones = pgTable('runtime_config_release_domain_zones', {
-  manifestId: uuid('manifest_id').notNull(),
-  domainId: uuid('domain_id').notNull(),
-  zoneId: text('zone_id').notNull(),
-}, (table) => [
-  primaryKey({ name: 'runtime_config_release_domain_zones_pk', columns: [table.manifestId, table.domainId] }),
-  foreignKey({ name: 'runtime_config_release_domain_zones_manifest_fk', columns: [table.manifestId], foreignColumns: [runtimeConfigReleaseManifests.id] }).onDelete('cascade'),
-  unique('runtime_config_release_domain_zones_zone_unique').on(table.zoneId),
-]);
-
-/** Backfill run accounting; counts satisfy created+updated+unchanged+conflicted+failed = processed. */
-export const runtimeConfigBackfillRuns = pgTable('runtime_config_backfill_runs', {
-  id: uuid('id').primaryKey(),
-  manifestId: uuid('manifest_id').notNull(),
-  sourceVersion: text('source_version').notNull(),
-  schemaVersion: integer('schema_version').notNull(),
-  createdCount: integer('created_count').notNull(),
-  updatedCount: integer('updated_count').notNull(),
-  unchangedCount: integer('unchanged_count').notNull(),
-  conflictedCount: integer('conflicted_count').notNull(),
-  failedCount: integer('failed_count').notNull(),
-  processedCount: integer('processed_count').notNull(),
-  startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
-  completedAt: timestamp('completed_at', { withTimezone: true }),
-}, (table) => [
-  check('runtime_config_backfill_created_nonnegative', sql`${table.createdCount} >= 0`),
-  check('runtime_config_backfill_sum', sql`${table.createdCount} + ${table.updatedCount} + ${table.unchangedCount} + ${table.conflictedCount} + ${table.failedCount} = ${table.processedCount}`),
-  foreignKey({ name: 'runtime_config_backfill_runs_manifest_fk', columns: [table.manifestId], foreignColumns: [runtimeConfigReleaseManifests.id] }).onDelete('cascade'),
-]);
-
-/** Parity evidence rows: metadata + categories only, never raw values. */
-export const runtimeConfigParityEvidence = pgTable('runtime_config_parity_evidence', {
-  id: uuid('id').primaryKey(),
-  manifestId: uuid('manifest_id').notNull(),
-  checkName: text('check_name').notNull(),
-  sourceVersion: text('source_version').notNull(),
-  persistedVersion: integer('persisted_version').notNull(),
-  authorizedTargetId: uuid('authorized_target_id'),
-  category: text('category').notNull(),
-  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
-  ...timestamps,
-}, (table) => [
-  foreignKey({ name: 'runtime_config_parity_evidence_manifest_fk', columns: [table.manifestId], foreignColumns: [runtimeConfigReleaseManifests.id] }).onDelete('cascade'),
 ]);
 
 /**

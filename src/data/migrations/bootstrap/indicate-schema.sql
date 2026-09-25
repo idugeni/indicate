@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (190 migrations):
+-- Reviewed sources, in journal order (191 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -203,6 +203,7 @@
 --   188  20260925210000_indonesia_province_roster  ledger sha256:024e9256e5c2a531d20f641f748fbb07ef546f74e91dc7f0653fbee801ecb743
 --   189  20260925220000_media_reservation_expiry  ledger sha256:2b4646473ccd2c55e5dfa499b06181fe392317feb4297de5a005c9c08b50ed6a
 --   190  20260925230000_refactor_residue_cleanup  ledger sha256:68b33327ce5c126c0486cae9d99cab1c120dcda79814730e1e6ff7d8024a47f7
+--   191  20260925240000_retire_release_governance_tables  ledger sha256:46d745927e063d10f14a737d1018e439e9689f757cfb30775761490c983994f6
 
 BEGIN;
 
@@ -15910,4 +15911,105 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (190, 'refactor_residue_cleanup', 'sha256:3d91f78a7de2dc76ab00e409ed32756567762dfa3fa5e77f99a491fcb1f0d1dd');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('68b33327ce5c126c0486cae9d99cab1c120dcda79814730e1e6ff7d8024a47f7', 1790412000000);
+
+-- ----------------------------------------------------------------------
+-- 20260925240000_retire_release_governance_tables
+-- ----------------------------------------------------------------------
+-- Drop the retired runtime-config release governance tables.
+--
+-- A column-by-column audit of the live database against the application found
+-- five tables that no code touches at all: not a Drizzle query, not a raw SQL
+-- string, not a trigger, not a view, and not a function in `public` or
+-- `indicate_private`. They are the release manifest, the domain-zone mapping,
+-- the parity evidence, the backfill run accounting, and the seed run ledger,
+-- which together implemented a manifest-driven cutover process that
+-- `shared_deployment_config` plus `runtime_config_revisions` replaced.
+--
+-- All five hold zero rows, and they form a closed foreign-key cluster: the
+-- three children reference the manifest with ON DELETE CASCADE and nothing
+-- outside the cluster points at any of them. The guard below refuses the drop
+-- if any of that is no longer true, so the migration is safe to replay and
+-- fails loudly rather than silently losing a row.
+--
+-- The definitions stay in `20260903000000_core_schema.sql`, so the mechanism can
+-- be rebuilt from history if a future release ever needs manifest-driven
+-- cutover again.
+--
+-- What deliberately stays: `runtime_config_revisions`,
+-- `runtime_config_audit_logs`, and `runtime_config_invalidation_intents` are
+-- live (8, 1, and 2 rows) and read by the runtime-config path; the moderation
+-- and privacy decision columns are reserved for features that are not wired
+-- yet; `audit_logs.prev_hash` belongs to the database-side hash chain.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+DO $$
+DECLARE
+  manifests integer;
+  zones integer;
+  parity integer;
+  backfills integer;
+  seeds integer;
+  foreign_refs integer;
+BEGIN
+  SELECT count(*) INTO manifests FROM public.runtime_config_release_manifests;
+  SELECT count(*) INTO zones FROM public.runtime_config_release_domain_zones;
+  SELECT count(*) INTO parity FROM public.runtime_config_parity_evidence;
+  SELECT count(*) INTO backfills FROM public.runtime_config_backfill_runs;
+  SELECT count(*) INTO seeds FROM public.seed_runs;
+  IF manifests + zones + parity + backfills + seeds > 0 THEN
+    RAISE EXCEPTION
+      'retired_tables_not_empty: manifests=% zones=% parity=% backfills=% seeds=%',
+      manifests, zones, parity, backfills, seeds;
+  END IF;
+  SELECT count(*) INTO foreign_refs
+    FROM pg_constraint
+   WHERE confrelid IN (
+     'public.runtime_config_release_manifests'::regclass,
+     'public.runtime_config_release_domain_zones'::regclass,
+     'public.runtime_config_parity_evidence'::regclass,
+     'public.runtime_config_backfill_runs'::regclass,
+     'public.seed_runs'::regclass
+   );
+  IF foreign_refs > 3 THEN
+    RAISE EXCEPTION 'retired_tables_still_referenced: % foreign key(s) point at the retired cluster', foreign_refs;
+  END IF;
+END;
+$$;
+DROP TABLE public.runtime_config_release_domain_zones;
+DROP TABLE public.runtime_config_parity_evidence;
+DROP TABLE public.runtime_config_backfill_runs;
+DROP TABLE public.runtime_config_release_manifests;
+DROP TABLE public.seed_runs;
+DROP TYPE public.seed_run_status;
+DO $$
+DECLARE
+  survivors integer;
+BEGIN
+  SELECT count(*) INTO survivors
+    FROM pg_class
+   WHERE relkind = 'r'
+     AND relnamespace = 'public'::regnamespace
+     AND relname IN (
+       'runtime_config_release_manifests', 'runtime_config_release_domain_zones',
+       'runtime_config_parity_evidence', 'runtime_config_backfill_runs', 'seed_runs'
+     );
+  IF survivors > 0 THEN
+    RAISE EXCEPTION 'retired_tables_survived: % table(s) still present', survivors;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
+              WHERE n.nspname = 'public' AND t.typname = 'seed_run_status') THEN
+    RAISE EXCEPTION 'retired_tables_survived: seed_run_status type still present';
+  END IF;
+  IF to_regclass('public.runtime_config_revisions') IS NULL
+     OR to_regclass('public.runtime_config_audit_logs') IS NULL
+     OR to_regclass('public.runtime_config_invalidation_intents') IS NULL THEN
+    RAISE EXCEPTION 'retired_tables_broke_live_config: a live runtime-config table went missing';
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (191, 'retire_release_governance_tables', 'sha256:4c80e8e3a6f6c1e51b4852aa20b50f8b3de812e6afd083811d13dfbaaa23c4e1');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('46d745927e063d10f14a737d1018e439e9689f757cfb30775761490c983994f6', 1790415600000);
 COMMIT;

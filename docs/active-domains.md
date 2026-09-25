@@ -2,7 +2,7 @@
 
 > **Status:** Living ledger — perbarui setiap ada aktivasi/penonaktifan domain.
 > **Owner:** Platform team.
-> **Last verified:** 2026-09-25 (3432 site aktif di DB: 104 apex + 104 region Jawa Tengah + 3224 city; Vercel exact + wildcard terverifikasi; Cloudflare strict; HTTP 104/104 apex dan sweep 1888/1888 turunan `200`).
+> **Last verified:** 2026-09-26 (3432 site aktif di DB: 104 apex + 104 region Jawa Tengah + 3224 city; Vercel exact + wildcard terverifikasi; Cloudflare strict; HTTP 104/104 apex dan sweep 1888/1888 turunan `200`; 10 apex stok Exabytes baru 2026-09-25 diverifikasi belum ada di Cloudflare/DB/Vercel).
 
 ## Migrasi domain utama (2026-09-24, dual-serve)
 
@@ -197,6 +197,22 @@ tenant-scoped terverifikasi HEAD → 1 transaksi DB (reservasi → media
 Stale edge-404 dibersihkan via purge exact-URL (task reconciler menyusul,
 idempoten). Verifikasi: `/logo.png` 200, manifest tenant, `/` 200.
 
+## Stok Exabytes baru 2026-09-25 (2026-09-26) — BELUM onboarding
+
+10 apex didaftarkan Exabytes 2026-09-25 (kedaluwarsa 2027-09-25, RDAP
+PANDI): berandanasional.web.id, garisberita.web.id, kabarutama.web.id,
+pusatmedia.biz.id, ruangpublik.web.id, suarapublik.biz.id,
+sudutindonesia.web.id, titikmedia.my.id, fokusrakyat.my.id,
+wartapersada.my.id.
+
+Status terverifikasi 2026-09-26: 0/10 ada di Cloudflare (`GET /zones`
+131 zona, tidak ada hostname dari daftar ini), 0/10 ada di DB
+(`domains`/`sites`), 0/10 punya asosiasi Vercel. NS masih di registrar.
+Tidak ada provisioning yang dijalankan dan tidak ada angka tenant/site
+yang berubah — 3432 site tetap. Menunggu penunjukan eksplisit pemilik
+sebagai tenant; setelah itu ikuti `docs/domains.md` bagian C dan
+baseline `docs/cloudflare-baseline.md`.
+
 ## Backlog (belum punya site)
 
 Tidak ada. 59 org customer (UPT Jateng) tetap 0 site karena keputusan owner
@@ -219,4 +235,7 @@ diestimasi sudah tidak berlaku.
 
 Tidak ada backlog pada 104 apex tenant yang terdaftar. Sisa backlog hanya
 org customer UPT Jateng yang belum memiliki site; itu bukan domain inventory
-aktif dan belum diaktifkan owner.
+aktif dan belum diaktifkan owner. Satu backlog domain baru ada sejak
+2026-09-25: 10 apex Exabytes yang tercatat di
+[domains](domains.md) bagian C — stok terdaftar, belum diprovisioning,
+menunggu penunjukan tenant pemilik.

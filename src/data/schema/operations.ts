@@ -20,7 +20,6 @@ import { organizations } from '@/data/schema/identity';
 
 export const dispatchStatus = pgEnum('dispatch_status', ['pending', 'scheduled', 'leased', 'acknowledged', 'failed']);
 export const replayClaimStatus = pgEnum('replay_claim_status', ['claimed', 'processed', 'rejected']);
-export const seedRunStatus = pgEnum('seed_run_status', ['running', 'completed', 'failed']);
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -138,25 +137,6 @@ export const webhookReplayClaims = pgTable('webhook_replay_claims', {
   index('webhook_replay_claims_reconciliation_idx').on(table.status, table.pendingStatus, table.leaseExpiresAt),
   check('webhook_replay_claims_bounded_identity', sql`length(${table.source}) BETWEEN 1 AND 100 AND length(${table.replayId}) BETWEEN 1 AND 255 AND length(${table.bodyDigest}) = 64 AND (${table.identityBindingDigest} IS NULL OR length(${table.identityBindingDigest}) = 64) AND ${table.attemptCount} > 0`),
   check('webhook_replay_claims_pending_terminal', sql`${table.pendingStatus} IS NULL OR ${table.pendingStatus} IN ('processed', 'rejected')`),
-]);
-
-export const seedRuns = pgTable('seed_runs', {
-  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
-  id: uuid('id').notNull(),
-  configFingerprint: text('config_fingerprint').notNull(),
-  status: seedRunStatus('status').notNull(),
-  createdCount: integer('created_count').default(0).notNull(),
-  updatedCount: integer('updated_count').default(0).notNull(),
-  unchangedCount: integer('unchanged_count').default(0).notNull(),
-  failedCount: integer('failed_count').default(0).notNull(),
-  sanitizedFailure: jsonb('sanitized_failure').$type<Record<string, unknown>>(),
-  startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
-  completedAt: timestamp('completed_at', { withTimezone: true }),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [
-  primaryKey({ name: 'seed_runs_pk', columns: [table.organizationId, table.id] }),
-  uniqueIndex('seed_runs_successful_fingerprint_unique').on(table.organizationId, table.configFingerprint).where(sql`${table.status} = 'completed'`),
-  check('seed_runs_counts_nonnegative', sql`${table.createdCount} >= 0 AND ${table.updatedCount} >= 0 AND ${table.unchangedCount} >= 0 AND ${table.failedCount} >= 0`),
 ]);
 
 export const migrationMetadata = pgTable('indicate_schema_migrations', {

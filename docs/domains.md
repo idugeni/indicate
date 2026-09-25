@@ -2,7 +2,7 @@
 
 > **Status:** Living document (advisory).
 > **Owner:** Platform team.
-> **Last verified:** 2026-09-25 (Cloudflare API + DB `sites` + Vercel MCP + HTTP 104/104 apex and 10/10 regional `200`).
+> **Last verified:** 2026-09-26 (Cloudflare API + DB `sites` + Vercel MCP + HTTP 104/104 apex and 10/10 regional `200`; RDAP PANDI untuk 10 domain stok Exabytes baru di bagian C).
 > **Related:** [active domains](active-domains.md) · [cloudflare baseline](cloudflare-baseline.md)
 
 Hanya domain terkait Indicate yang dicatat di sini — proyek-proyek lain
@@ -11,6 +11,8 @@ adalah 131 (104 zona tenant Indicate + zona proyek lain milik pemilik).
 
 Tenant live di DB: **3432 site = 104 apex + 104 site region + 3224 site kota**, dengan rantai `apex → region → city` eksplisit (`sites.site_level` + `sites.parent_site_id`) dan `domains.site_topology = 'regional'` untuk seluruh 104 domain, ditegakkan DB. Keputusan owner 2026-09-25: semua domain memakai Jawa Tengah untuk sementara, jadi tiap domain punya `jawa-tengah.{apex}` plus roster 31 kab/kota (`{city}.{apex}`). 104 apex memiliki exact + wildcard Vercel terverifikasi; 3328 portal turunan dilayani wildcard regional tanpa exact Vercel (sweep HTTP 1888/1888 `200`).
 Domain utama: `indicate.website` (bukan tenant; migrasi dari `indicate.web.id` 2026-09-24, dual-serve).
+Inventaris tercatat 114 apex: 104 tenant live (bagian A + B) + 10 stok Exabytes
+baru 2026-09-25 (bagian C, belum zona Cloudflare dan belum ada di DB).
 
 ## A. IDWebHost — batch 2026-09-16 + domain utama
 
@@ -131,7 +133,7 @@ MCP 2026-09-18, baseline diselaraskan maksimal mengikuti
 | indicate.web.id | 2026-08-30 | 2027-08-30 | Aktif | active | BUKAN tenant (domain utama lama; redirect 308 ke utama baru, dual-serve sejak 2026-09-24) |
 | indicate.website | 2026-09-24 | — | Aktif | active (Vercel apex + wildcard; wildcard certificate valid) | BUKAN tenant (domain utama baru) |
 
-## B. Tenant live (Exabytes, batch 2026-09-03)
+## B. Exabytes, batch 2026-09-03 — tenant live
 
 | Domain | Terdaftar | Kedaluwarsa | Tenant? |
 |---|---|---|---|
@@ -151,6 +153,35 @@ Regional live: `wonosobo.fakta01.my.id`, `wonosobo.jurnalism.web.id`,
 `wonosobo.penamerdeka.my.id`, `wonosobo.suarafakta24.biz.id`,
 `wonosobo.wartakini7.web.id`,
 `wonosobo.wawasannusa.biz.id` (tercakup zona apex masing-masing).
+
+## C. Exabytes, batch 2026-09-25 — stok, belum onboarding
+
+10 domain didaftarkan Exabytes pada 2026-09-25 dan tanggal kedaluwarsa
+semuanya 2027-09-25 (RDAP PANDI, dibaca 2026-09-26). Status per
+2026-09-26: NS masih di registrar, **belum ada zona Cloudflare**
+(`GET /zones` 131 zona, 0 dari 10 hostname ini ada) dan **belum ada
+baris `domains`/`sites`/`site_settings`** di DB. Semua 10 masih
+menunggu penunjukan eksplisit pemilik sebagai tenant dan provisioning
+baseline per `docs/cloudflare-baseline.md`.
+
+| Domain | Terdaftar | Kedaluwarsa | IDW | CF | Tenant? |
+|---|---|---|---|---|---|
+| berandanasional.web.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
+| garisberita.web.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
+| kabarutama.web.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
+| pusatmedia.biz.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
+| ruangpublik.web.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
+| suarapublik.biz.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
+| sudutindonesia.web.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
+| titikmedia.my.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
+| fokusrakyat.my.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
+| wartapersada.my.id | 2026-09-25 | 2027-09-25 | Aktif | belum ada zona | BELUM (stok) |
+
+Keterangan: hostname `.web.id`, `.my.id`, dan `.biz.id` bercampur seperti
+batch sebelumnya; 5 `.web.id`, 3 `.my.id`, 2 `.biz.id`. Tidak ada
+nama brand, tagline, atau template yang ditetapkan untuk 10 hostname ini —
+pemetaan huruf awal untuk logo/favicon mengikuti `tenant-onboarding` bila
+onboarding dijalankan.
 
 ## Aturan main
 
