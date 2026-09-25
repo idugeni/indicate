@@ -53,3 +53,6 @@ supabase/.temp/
 
 # Data scraping lokal (tidak di-commit)
 kemenimipas/
+
+# Scratch operasional: SQL/JSON/cert hasil generator, dibuang per sesi
+tmp/
