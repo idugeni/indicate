@@ -94,15 +94,17 @@ tabrakan antar-provinsi kelak ditambah provinsi (`banjar-jabar`).
 
 Jumlah: 31 subdomain × 10 domain = **310 portal city** (+ 10 portal region).
 
-Status implementasi (2026-09-25): **selesai**. Migrasi v175 membuat 10 portal
-region `jawa-tengah.{apex}`; v177 membuat 30 `regions` kota yang tersisa dan 300
-portal city `{city}.{apex}`, sehingga tiap domain regional punya 31 kota
-(424 site total: 104 apex + 10 region + 310 city). `domains.site_topology`
-ditandai `regional` untuk 10 domain itu dan ditegakkan DB. Semua 320 portal
-turunan terverifikasi HTTP `200` lewat wildcard apex, tanpa asosiasi Vercel
-exact. Copy tiap portal diturunkan dari frame editorial brand-nya dengan
-substitusi nama kota, sehingga setiap pasangan (brand, kota) punya title,
-description, dan tagline sendiri.
+Status implementasi (2026-09-25): **selesai, seluruh jaringan**. Migrasi v175
+membuat 10 portal region `jawa-tengah.{apex}` pertama; v177 membuat 30
+`regions` kota dan 300 portal city; v180 memperluas roster yang sama ke
+seluruh 104 domain (keputusan owner: semua domain memakai Jawa Tengah untuk
+sementara). Hasil: **3432 site** = 104 apex + 104 region + 3224 city, tiap
+domain punya 31 kota. `domains.site_topology` semuanya `regional` dan
+ditegakkan DB. Sweep HTTP 1888/1888 portal turunan `200` lewat wildcard apex
+tanpa asosiasi Vercel exact. Copy portal turunan pertama mengikuti frame
+editorial tiap brand; 94 domain tanpa frame kota memakai frame turunan generik
+yang diawali nama kota (`Semarang - <judul apex>`) agar tidak bentrok dengan
+judul apex.
 
 ## Catatan pemetaan
 

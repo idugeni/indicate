@@ -9,7 +9,7 @@ Hanya domain terkait Indicate yang dicatat di sini — proyek-proyek lain
 milik pemilik sengaja tidak dimasukkan. Total zona live di akun Cloudflare
 adalah 131 (104 zona tenant Indicate + zona proyek lain milik pemilik).
 
-Tenant live di DB: **424 site = 104 apex + 10 site region + 310 site kota**, dengan rantai `apex → region → city` eksplisit (`sites.site_level` + `sites.parent_site_id`) dan `domains.site_topology` (`national` 94 domain, `regional` 10 domain) yang ditegakkan DB. 10 domain regional menjalankan roster 31 kab/kota Jawa Tengah (`{city}.{apex}` plus `jawa-tengah.{apex}`); 94 apex lainnya declares `national` sehingga tidak boleh punya portal turunan. 104 apex memiliki exact + wildcard Vercel terverifikasi; 320 portal turunan dilayani wildcard regional tanpa exact Vercel (HTTP 320/320 `200`).
+Tenant live di DB: **3432 site = 104 apex + 104 site region + 3224 site kota**, dengan rantai `apex → region → city` eksplisit (`sites.site_level` + `sites.parent_site_id`) dan `domains.site_topology = 'regional'` untuk seluruh 104 domain, ditegakkan DB. Keputusan owner 2026-09-25: semua domain memakai Jawa Tengah untuk sementara, jadi tiap domain punya `jawa-tengah.{apex}` plus roster 31 kab/kota (`{city}.{apex}`). 104 apex memiliki exact + wildcard Vercel terverifikasi; 3328 portal turunan dilayani wildcard regional tanpa exact Vercel (sweep HTTP 1888/1888 `200`).
 Domain utama: `indicate.website` (bukan tenant; migrasi dari `indicate.web.id` 2026-09-24, dual-serve).
 
 ## A. IDWebHost — batch 2026-09-16 + domain utama
