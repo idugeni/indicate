@@ -99,6 +99,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             margin-top: 1.5rem;
             flex-wrap: wrap;
             align-items: center;
+            justify-content: center;
           }
           button, a {
             display: inline-flex;
