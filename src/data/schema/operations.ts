@@ -122,7 +122,6 @@ export const webhookReplayClaims = pgTable('webhook_replay_claims', {
   businessReceipt: jsonb('business_receipt').$type<Record<string, unknown>>(),
   status: replayClaimStatus('status').default('claimed').notNull(),
   pendingStatus: replayClaimStatus('pending_status'),
-  outcomeReference: text('outcome_reference'),
   outcome: jsonb('outcome').$type<Record<string, unknown>>(),
   receivedAt: timestamp('received_at', { withTimezone: true }).defaultNow().notNull(),
   leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }).notNull(),

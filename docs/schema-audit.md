@@ -1,23 +1,30 @@
 # Audit Skema: Kolom yang Dipakai dan yang Tidak
 
 Audit tingkat kolom terhadap database produksi, dibandingkan dengan kode di repo
-ini. Diregenerasi 2026-09-26 setelah migrasi 191.
+ini. Diregenerasi 2026-09-26 setelah migrasi 191, lalu dikoreksi setelah
+migrasi 195.
 
 ## Cara kerja
 
-Empat sinyal digabung per kolom, tidak ada yang ditebak dari nama kolom saja:
+Lima sinyal digabung per kolom, tidak ada yang ditebak dari nama kolom saja:
 
 | Sinyal | Arti | Contoh |
 |---|---|---|
 | `app` | Referensi terqualifikasi di kode aplikasi | `sites.parentSiteId`, `mediaKeyReservations.objectKey` |
 | `app-write` | Ditulis lewat kunci objek pada `values()` / `set:` | `organizationId: state.organizationId` |
 | `app-raw` | Disebut di SQL mentah di dalam `.ts` | `runtime-context.ts` membaca `required_version` |
-| `db-only` | Dipakai hanya oleh trigger/function/view di database | `audit_logs.prev_hash` pada rantai hash |
-| `migration-only` | Ada di skema Drizzle dan di database, tapi tidak disinggung kode aplikasi maupun kode database | lihat tabel di bawah |
+| `db-only` | Dipakai hanya oleh trigger/function/view di database | `content_reports.decided_by` ditulis `indicate_private.content_report_decide` |
+| `migration-only` | Ada di skema Drizzle dan di database, tapi tidak disinggung kode aplikasi maupun kode database | lihat bagian bawah |
 
-Sinyal `app-raw` penting: gate skema dan policy singleton dibaca lewat SQL
-mentah, bukan lewat Drizzle, jadi audit yang hanya melihat query Drizzle akan
-menuduh kolom itu mati.
+Dua jebakan sempat menuduh kolom yang sebenarnya hidup. Pertama, gate skema
+dan policy singleton dibaca lewat SQL mentah, bukan lewat Drizzle. Kedua, dan
+yang lebih besar: **10 kolom yang semula saya laporkan "fitur belum di-wire"
+justru ditulis oleh function SQL** — `decided_by`, `decision_note`,
+`requester_user_id`, dan `processed_at`/`outcome_ready_at` semuanya disentuh
+`indicate_private.privacy_request_decide`, `content_report_decide`, dan friends.
+Sinyal `db-only` kini hanya cocok bila function itu **sekaligus** menyebut
+nama tabelnya, supaya `status` atau `version` tidak lagi cocok di seluruh
+definisi function.
 
 ## Hasil
 
@@ -25,8 +32,8 @@ menuduh kolom itu mati.
 yang benar-benar tidak tersentuh: setiap kolom muncul di kode aplikasi, di kode
 database, atau di migrasi.
 
-Sebaran verdict: 313 `app`, 276 `app-write`, 7 `app-raw`, 1 `db-only`,
-18 `migration-only`.
+Sebaran verdict: 313 `app`, 276 `app-write`, 7 `app-raw`, 16 `db-only`,
+3 `migration-only`.
 
 Skema dan database sinkron dua arah: 0 kolom yang dideklarasikan Drizzle tapi
 tidak ada di database, dan 0 kolom database yang tidak dideklarasikan (empat
@@ -50,19 +57,22 @@ plus `runtime_config_revisions`.
 Definisinya tetap ada di `20260903000000_core_schema.sql`, jadi mechanism-nya
 bisa dibangun ulang dari histori bila suatu saat dibutuhkan.
 
-## Yang sengaja disimpan (18 kolom)
+## Tiga kolom yang benar-benar belum tersentuh
 
-**Fitur yang belum wired — 13 kolom.** Tabelnya ada dan kosong karena
-fiturnya belum ada, bukan karena kolomnya salah:
+Setelah koreksi di atas, hanya tiga kolom yang tidak disinggung kode aplikasi
+maupun routine database. Ketiganya sudah ditangani, bukan dibiarkan:
 
-| Kolom | Kenapa disimpan |
-|---|---|
-| `content_reports.decided_by/decided_at/decision_note` | Jejak keputusan moderasi; modul moderasi belum menulis laporan |
-| `privacy_requests.requester_user_id/decided_by/decided_at/decision_note` | Tidak ada modul privasi di repo |
-| `webhook_replay_claims.outcome_reference/processed_at/outcome_ready_at` | Hasil pemrosesan replay belum pernah ditulis |
-| `platform_user_permissions.provisioned_by` | Atribusi provisioning belum diisi |
-| `indicate_schema_migrations.applied_at` | Punya default, belum dibaca siapa pun |
-| `migration_gate_events.actual_version` | Gate membaca `required_version` + `checked_at`; nilai aktual dicatat manual |
+| Kolom | Seatnya | Tindakan |
+|---|---|---|
+| `indicate_schema_migrations.applied_at` | Ada isinya, tidak pernah dibaca | Gate skema kini membaca `applied_at` dari baris ledger terbaru dan menyebutkannya di pesan penolakan, jadi "migrasi mana yang hilang dan kapan kita berhenti menerapkannya" bisa dijawab dari log |
+| `migration_gate_events.actual_version` | Gate menolak tanpa mencatat apa pun | Gate mencatat penolakan ke `migration_gate_events` (best-effort, tidak boleh menutupi penolakan itu sendiri) sehingga jejaknya bisa diaudit |
+| `webhook_replay_claims.outcome_reference` | Sisa desain lama; hasil replay sudah ada di `outcome`, `processed_at`, `outcome_ready_at` | Dihapus (migrasi 195), setelah dijamin nol baris memegangnya |
+
+Kolom yang sempat saya laporkan "fitur belum di-wire" ternyata hidup: tenth
+`decided_by`, `decision_note`, `requester_user_id`, `processed_at`, dan
+`outcome_ready_at` ditulis oleh function `indicate_private` yang dipanggil
+`ModerationService` dan `WebhookService`. `platform_user_permissions.provisioned_by`
+juga dibaca lewat function provisioning platform.
 
 **Tabel yang hidup, tapi sebagian kolomnya belum terisi — 5 kolom.**
 `runtime_config_revisions` (8 baris, `committed_at`, `mutation_kind`),

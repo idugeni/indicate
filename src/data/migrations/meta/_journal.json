@@ -1359,6 +1359,13 @@
       "when": 1790426400000,
       "tag": "20260926030000_purge_superseded_media_reservations",
       "breakpoints": true
+    },
+    {
+      "idx": 194,
+      "version": "7",
+      "when": 1790430000000,
+      "tag": "20260926040000_drop_vestigial_replay_outcome_reference",
+      "breakpoints": true
     }
   ]
 }
