@@ -84,6 +84,26 @@ dilempar.
 **Milik rantai audit — 1 kolom.** `audit_logs.prev_hash` dipakai function
 `audit_verify_and_report`, bukan aplikasi.
 
+## Temuan yang terbukti bukan kebocoran
+
+Tiga hal yang terlihat seperti sisa data, tapi memang benar begitu:
+
+- **`Drill Expire` tidak bisa dihapus, dan itu oleh desain.** Tenant parked itu
+  punya 4 baris `audit_logs`, dan `audit_logs.organization_id` memakai
+  `ON DELETE RESTRICT`. Menghapusnya berarti merusak rantai audit append-only.
+  Yang bisa dilakukan adalah membiarkannya parked (0 member, 0 role, 0 domain,
+  1 subscription) dan tidak mengklaim ia bisa di administers.
+- **60 aset organisasi belum punya konsumen.** Semuanya `organization_asset`,
+  byte-nya identik satu checksum untuk 60 file, dan tidak ada template portal
+  publik yang merender logo institusi: blok afiliasi di portal menampilkan
+  atribusi teks. Data afiliasi (6136 baris) sudah tampil di dashboard, jadi
+  yang belum ada adalah consumer publiknya — itu pekerjaan tahap berikutnya,
+  bukan sesuatu yang bisa dibersihkan.
+- **Setiap institusi punya dua record publisher, itu memang desain.** Yang satu
+  di operator org sebagai record klaim (dengan 6136 afiliasi), yang satu lagi di
+  org tenant sebagai profil. Keduanya hidup: yang operator dipakai logika
+  atribusi publik, yang tenant dipakai dashboard tenant.
+
 ## Mengapa banyak tabel kosong
 
 Tabel kosong bukan tanda kolom hilang: jaringan belum punya konten tayang.
