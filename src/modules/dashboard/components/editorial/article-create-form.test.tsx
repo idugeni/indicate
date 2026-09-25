@@ -495,7 +495,7 @@ describe('Formulir tulis artikel', () => {
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
       expect(submit).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'scheduled', scheduledAt: '2026-09-23T10:00:00' }),
+        expect.objectContaining({ status: 'scheduled', scheduledAt: new Date('2026-09-23T10:00').toISOString() }),
       ),
     );
   });

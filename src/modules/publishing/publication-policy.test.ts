@@ -31,9 +31,11 @@ describe('canonicalPublicationPayload', () => {
     const first = await publicationFingerprint(base);
     const second = await publicationFingerprint({ ...base, siteIds: ['s-a', 's-b'] });
     expect(first).toBe(second);
-    expect(first.startsWith('v1:')).toBe(true);
+    expect(first.startsWith('v2:')).toBe(true);
     const changed = await publicationFingerprint({ ...base, articleId: 'art-2' });
     expect(changed).not.toBe(first);
+    const rescheduled = await publicationFingerprint({ ...base, publishAt: '2026-09-23T10:00:00.000Z' });
+    expect(rescheduled).not.toBe(first);
   });
 });
 

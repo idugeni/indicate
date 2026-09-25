@@ -34,6 +34,8 @@ const variantContext = {
   title: 'Judul Kanonik Artikel',
   slug: 'judul-kanonik-artikel',
   body: 'Isi artikel yang cukup panjang untuk diekstrak menjadi deskripsi kanonik oleh layanan publikasi.',
+  status: 'draft',
+  scheduledAt: null,
   regions: [],
   variants: [],
 };
@@ -325,6 +327,35 @@ describe('PublicationService request outcomes', () => {
     expect(result.ok).toBe(true);
     expect(queue.schedule).toHaveBeenCalledTimes(1);
     expect(repository.recordDispatchScheduled).toHaveBeenCalledTimes(1);
+  });
+
+  it('menjadwalkan dispatch pada publishAt yang dipilih', async () => {
+    const publishAt = '2026-09-18T14:05:00.000Z';
+    const { service, repository, queue } = harness();
+    const result = await service.request(actor, { ...singleRequest, publishAt, options: { mode: 'scheduled' } });
+    expect(result.ok).toBe(true);
+    expect(queue.schedule).toHaveBeenCalledWith('org-1:job-1', new Date(publishAt));
+    expect(repository.acceptPublication).toHaveBeenCalledWith(actor, expect.objectContaining({ publishAt }));
+    expect(repository.recordDispatchScheduled).toHaveBeenCalledWith('org-1', 'job-1', '2026-09-18T14:00:00.000Z');
+  });
+
+  it('memakai jadwal artikel saat publishAt tidak dikirim', async () => {
+    const publishAt = '2026-09-18T14:05:00.000Z';
+    const { service, queue } = harness({
+      getArticleVariantContext: async () => ({ ...variantContext, status: 'scheduled', scheduledAt: publishAt }),
+    });
+    const result = await service.request(actor, singleRequest);
+    expect(result.ok).toBe(true);
+    expect(queue.schedule).toHaveBeenCalledWith('org-1:job-1', new Date(publishAt));
+  });
+
+  it('menolak publishAt yang sudah lewat', async () => {
+    const { service, repository } = harness();
+    const result = await service.request(actor, { ...singleRequest, publishAt: '2026-09-18T13:59:00.000Z' });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
+    expect(repository.acceptPublication).not.toHaveBeenCalled();
   });
 
   it('tetap berhasil saat penjadwalan gagal dan mencatat kegagalan dispatch', async () => {

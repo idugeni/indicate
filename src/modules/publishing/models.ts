@@ -163,6 +163,8 @@ export interface PublishingArticleRef {
   readonly id: string;
   readonly organizationId: string;
   readonly active: boolean;
+  readonly status?: string;
+  readonly scheduledAt?: string | null;
   readonly leadMediaId: string | null;
   readonly title: string;
   readonly slug: string;

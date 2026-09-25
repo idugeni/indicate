@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
-import { generateIdempotencyUuid } from '@/modules/dashboard/components/shared/form-utils';
+import { generateIdempotencyUuid, isoToLocalDateTimeInput, localDateTimeToIso } from '@/modules/dashboard/components/shared/form-utils';
 import type { PublicationStatusProjection, PublishingState } from '@/modules/publishing/models';
 
 const STATE_LABELS: Readonly<Record<PublishingState, string>> = {
@@ -23,6 +23,14 @@ const STATE_LABELS: Readonly<Record<PublishingState, string>> = {
   retrying: 'Diulang',
   unpublished: 'Batal',
 };
+
+type PublishMode = 'now' | 'scheduled';
+
+function formatScheduleTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+}
 
 function TargetStateBadge({ state }: { readonly state: PublishingState }) {
   const tone =
@@ -52,15 +60,18 @@ export function PublishingForm({
   readonly command: (action: string, payload: unknown) => Promise<unknown>;
 }) {
   const model = data as {
-    readonly articles?: readonly { readonly id: string; readonly title?: string; readonly slug?: string }[];
+    readonly articles?: readonly { readonly id: string; readonly title?: string; readonly slug?: string; readonly status?: string; readonly scheduledAt?: string | null }[];
     readonly sites?: readonly { readonly id: string; readonly normalizedHostname: string }[];
   } | null;
 
   const articleSelectId = useId();
+  const publishAtInputId = useId();
   const idempotencyInputId = useId();
   const statusJobInputId = useId();
 
   const [idempotencyKey, setIdempotencyKey] = useState(generateIdempotencyUuid);
+  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
+  const [scheduleSelection, setScheduleSelection] = useState<{ readonly articleId: string; readonly mode: PublishMode; readonly value: string } | null>(null);
   const [isPublishing, startPublishTransition] = useTransition();
   const [jobStatus, setJobStatus] = useState<PublicationStatusProjection | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -70,9 +81,20 @@ export function PublishingForm({
   const [isSuggesting, startSuggestTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const articleOptions = useMemo(
-    () => (model?.articles ?? []).map((item) => ({ value: item.id, label: item.title ? `${item.title}${item.slug ? ` (${item.slug})` : ''}` : (item.slug ?? 'Tanpa judul') })),
+    () => (model?.articles ?? []).map((item) => ({ value: item.id, label: `${item.title ? `${item.title}${item.slug ? ` (${item.slug})` : ''}` : (item.slug ?? 'Tanpa judul')}${item.status === 'scheduled' ? ' · Terjadwal' : ''}` })),
     [model?.articles],
   );
+  const effectiveArticleId = selectedArticleId ?? model?.articles?.[0]?.id ?? '';
+  const selectedArticle = useMemo(
+    () => (model?.articles ?? []).find((item) => item.id === effectiveArticleId) ?? null,
+    [model?.articles, effectiveArticleId],
+  );
+  const storedSchedule = selectedArticle?.status === 'scheduled' ? isoToLocalDateTimeInput(selectedArticle.scheduledAt) : '';
+  const activeSchedule = scheduleSelection?.articleId === effectiveArticleId
+    ? scheduleSelection
+    : { articleId: effectiveArticleId, mode: storedSchedule === '' ? 'now' as const : 'scheduled' as const, value: storedSchedule };
+  const publishMode = activeSchedule.mode;
+  const publishAt = activeSchedule.value;
 
   const handleGenerateKey = () => {
     setIdempotencyKey(generateIdempotencyUuid());
@@ -143,6 +165,12 @@ export function PublishingForm({
     });
   };
 
+  const handleArticleChange = (next: string | null) => {
+    setSelectedArticleId(next ?? '');
+    setScheduleSelection(null);
+    setSuggested({});
+  };
+
   const handlePublish = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -151,6 +179,15 @@ export function PublishingForm({
     const siteIds = values.getAll('siteIds').map(String);
     if (articleId === '' || siteIds.length === 0) {
       toast.warning('Pilih artikel dan minimal satu situs dulu sebelum menerbitkan.');
+      return;
+    }
+    const normalizedPublishAt = publishMode === 'scheduled' ? localDateTimeToIso(String(values.get('publishAt') ?? '')) : null;
+    if (publishMode === 'scheduled' && normalizedPublishAt === null) {
+      toast.warning('Pilih tanggal dan waktu publish yang valid.');
+      return;
+    }
+    if (normalizedPublishAt !== null && new Date(normalizedPublishAt).getTime() <= Date.now()) {
+      toast.warning('Waktu publish harus berada di masa depan.');
       return;
     }
     const overrides: Record<string, { title?: string; description?: string; imageMediaId?: string }> = {};
@@ -168,7 +205,8 @@ export function PublishingForm({
         articleId,
         siteIds,
         idempotencyKey: values.get('idempotencyKey'),
-        options: { mode: 'immediate' },
+        options: { mode: publishMode === 'scheduled' ? 'scheduled' : 'immediate' },
+        publishAt: normalizedPublishAt,
         overrides,
       })) as PublicationStatusProjection | null;
       if (result !== null && typeof result === 'object' && 'job' in result && 'targets' in result) {
@@ -177,6 +215,10 @@ export function PublishingForm({
       handleGenerateKey();
     });
   };
+
+  const scheduledLabel = jobStatus !== null && jobStatus.job.options?.mode === 'scheduled'
+    ? `Dijadwalkan ${formatScheduleTime(jobStatus.job.nextDispatchAt)}`
+    : null;
 
   return (
     <div className="grid min-w-0 gap-4 lg:grid-cols-2">
@@ -190,12 +232,57 @@ export function PublishingForm({
             <SearchCombobox
               id={articleSelectId}
               name="articleId"
+              value={effectiveArticleId}
               disabled={isPublishing}
-              defaultValue={model?.articles?.[0]?.id ?? ''}
               placeholder="Pilih artikel"
               options={articleOptions}
-              onValueChange={() => setSuggested({})}
+              onValueChange={handleArticleChange}
             />
+          </div>
+
+          <div className="space-y-2 rounded border border-hairline bg-bg-raised/50 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-mono text-xs text-paper-dim">Waktu Publish</span>
+              <span className="font-mono text-[10px] text-paper-faint">Waktu lokal browser → UTC</span>
+            </div>
+            <div role="group" aria-label="Waktu publish" className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={publishMode === 'now' ? 'default' : 'outline'}
+                aria-pressed={publishMode === 'now'}
+                disabled={isPublishing}
+                onClick={() => setScheduleSelection({ articleId: effectiveArticleId, mode: 'now', value: '' })}
+                className="w-full"
+              >
+                Terbit sekarang
+              </Button>
+              <Button
+                type="button"
+                variant={publishMode === 'scheduled' ? 'default' : 'outline'}
+                aria-pressed={publishMode === 'scheduled'}
+                disabled={isPublishing}
+                onClick={() => setScheduleSelection({ articleId: effectiveArticleId, mode: 'scheduled', value: publishAt || storedSchedule })}
+                className="w-full"
+              >
+                Jadwalkan
+              </Button>
+            </div>
+            {publishMode === 'scheduled' ? (
+              <div className="space-y-1.5">
+                <Label htmlFor={publishAtInputId} className="font-mono text-xs text-paper-dim">Tanggal dan waktu</Label>
+                <Input
+                  id={publishAtInputId}
+                  name="publishAt"
+                  type="datetime-local"
+                  required
+                  value={publishAt}
+                  disabled={isPublishing}
+                  onChange={(event) => setScheduleSelection({ articleId: effectiveArticleId, mode: publishMode, value: event.target.value })}
+                  className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
+                />
+                <p className="m-0 font-sans text-[11px] text-paper-faint">Penerbitan akan diproses pada menit yang dipilih atau setelahnya.</p>
+              </div>
+            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -312,7 +399,7 @@ export function PublishingForm({
               ) : (
                 <Send className="h-3.5 w-3.5" aria-hidden="true" />
               )}
-              <span>Kirim Penerbitan</span>
+              <span>{publishMode === 'scheduled' ? 'Jadwalkan Penerbitan' : 'Kirim Penerbitan'}</span>
             </Button>
           </div>
         </form>
@@ -359,6 +446,7 @@ export function PublishingForm({
           <div className="mt-3 space-y-3">
             <p className="m-0 font-mono text-xs text-paper-dim">
               Pengiriman <span className="text-paper">{jobStatus.job.id}</span> · {STATE_LABELS[jobStatus.job.state] ?? jobStatus.job.state} · {jobStatus.targets.length} situs
+              {scheduledLabel !== null ? <span className="text-brass"> · {scheduledLabel}</span> : null}
             </p>
             <div className="divide-y divide-hairline border-y border-hairline">
               {jobStatus.targets.map((target) => (

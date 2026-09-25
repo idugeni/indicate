@@ -58,6 +58,8 @@ export interface AcceptPublicationInput {
   readonly fingerprint: string;
   readonly fingerprintVersion: number;
   readonly options: PublicationOptions;
+  /** Normalized future dispatch time; equal to `now` for immediate requests. */
+  readonly publishAt: string;
   readonly overrides: Readonly<Record<string, PublicationOverride>>;
   /** Derived site → manual origin for cascade expansion; absent means fully manual. */
   readonly cascade?: Readonly<Record<string, string>> | undefined;
@@ -112,6 +114,8 @@ export interface ArticleVariantContext {
   readonly title: string;
   readonly slug: string;
   readonly body: string;
+  readonly status: 'draft' | 'in_review' | 'scheduled' | 'active' | 'archived';
+  readonly scheduledAt: string | null;
   readonly regions: readonly CascadeRegionEntry[];
   readonly variants: readonly ArticleVariantSite[];
 }

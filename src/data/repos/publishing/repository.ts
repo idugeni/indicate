@@ -348,7 +348,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
   async getArticleVariantContext(actor: AuthorizedTenantActorContext, articleId: string): Promise<ArticleVariantContext | null> {
     return this.database.transaction(async (transaction) => {
       await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.publishingRequest);
-      const articleRows = await transaction.select({ id: articles.id, title: articles.title, slug: articles.slug, body: articles.body })
+      const articleRows = await transaction.select({ id: articles.id, title: articles.title, slug: articles.slug, body: articles.body, status: articles.status, scheduledAt: articles.scheduledAt })
         .from(articles).where(and(eq(articles.organizationId, actor.organizationId), eq(articles.id, articleId))).limit(1);
       const article = articleRows[0];
       if (article === undefined) return null;
@@ -367,6 +367,8 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         title: article.title,
         slug: article.slug,
         body: article.body,
+        status: article.status,
+        scheduledAt: optionalIso(article.scheduledAt),
         regions: regionRows.map((row) => ({ id: row.id, kind: row.kind as 'region' | 'city', parentRegionId: row.parentRegionId, status: row.status })),
         variants: siteRows.map((site) => ({
           siteId: site.id,
@@ -391,7 +393,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         const existingRows = await transaction.select().from(publishingJobs).where(and(eq(publishingJobs.organizationId, actor.organizationId), eq(publishingJobs.idempotencyKey, input.idempotencyKey))).limit(1).for('update');
         const existing = existingRows[0];
         if (existing !== undefined) return existing.fingerprint === input.fingerprint ? { kind: 'reused' as const, job: mapJob(existing) } : { kind: 'conflict' as const, existingJobId: existing.id };
-        const articleRows = await transaction.select({ id: articles.id, title: articles.title, body: articles.body, regionId: articles.regionId }).from(articles).where(and(eq(articles.organizationId, actor.organizationId), eq(articles.id, input.articleId), inArray(articles.status, ['draft', 'active']))).limit(1);
+        const articleRows = await transaction.select({ id: articles.id, title: articles.title, body: articles.body, regionId: articles.regionId }).from(articles).where(and(eq(articles.organizationId, actor.organizationId), eq(articles.id, input.articleId), inArray(articles.status, ['draft', 'scheduled', 'active']))).limit(1);
         if (articleRows.length !== 1) throw new PublishingAccessDeniedError();
         const lock = actor.regionScopeId ?? null;
         if (lock !== null && articleRows[0]!.regionId !== lock) throw new PublishingAccessDeniedError();
@@ -406,7 +408,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
           if (coverRows.length !== overrideImageIds.length) throw new PublishingAccessDeniedError();
         }
         await this.rejectCrossSiteDuplicates(transaction, actor.organizationId, input.articleId, articleRows[0]!.title, excerptForDescription(articleRows[0]!.body), distinctSites, input.overrides, input.cascade ?? {});
-        const jobRows = await transaction.insert(publishingJobs).values({ organizationId: actor.organizationId, id: input.jobId, articleId: input.articleId, idempotencyKey: input.idempotencyKey, fingerprint: input.fingerprint, fingerprintVersion: input.fingerprintVersion, state: 'queued', options: input.options as Record<string, unknown>, dispatchStatus: 'pending', nextDispatchAt: new Date(input.now), createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning();
+        const jobRows = await transaction.insert(publishingJobs).values({ organizationId: actor.organizationId, id: input.jobId, articleId: input.articleId, idempotencyKey: input.idempotencyKey, fingerprint: input.fingerprint, fingerprintVersion: input.fingerprintVersion, state: 'queued', options: input.options as Record<string, unknown>, dispatchStatus: 'pending', nextDispatchAt: new Date(input.publishAt), createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning();
         for (let index = 0; index < distinctSites.length; index += 1) {
           const siteId = distinctSites[index]!;
           const override = input.overrides[siteId];
@@ -419,13 +421,13 @@ export class DrizzlePublishingRepository implements PublishingRepository {
           } else if (relation.state !== 'published' && relation.state !== 'failed' && relation.state !== 'unpublished') {
             throw new PublishingConflictError();
           }
-          await transaction.insert(publishingJobTargets).values({ organizationId: actor.organizationId, id: input.targetIds[index]!, jobId: input.jobId, articleSiteId: relation.id, state: 'queued', nextAttemptAt: new Date(input.now), publishedUrl: null, publishedAt: null, createdAt: new Date(input.now), updatedAt: new Date(input.now) });
+          await transaction.insert(publishingJobTargets).values({ organizationId: actor.organizationId, id: input.targetIds[index]!, jobId: input.jobId, articleSiteId: relation.id, state: 'queued', nextAttemptAt: new Date(input.publishAt), publishedUrl: null, publishedAt: null, createdAt: new Date(input.now), updatedAt: new Date(input.now) });
           if (existingRelation[0] !== undefined) {
             const updated = await transaction.update(articleSites).set({ state: 'queued', stateOccurredAt: new Date(input.now), publishedUrl: null, publishedAt: null, sanitizedFailure: null, active: true, customTitle: override?.title ?? null, customDescription: override?.description ?? null, customImageMediaId: override?.imageMediaId ?? null, assignmentSource: originSiteId === null ? 'manual' : 'auto', expandedFromSiteId: originSiteId, ...(originSiteId === null ? {} : { customCanonicalUrl: canonicalUrl }), version: relation.version + 1, updatedAt: new Date(input.now) }).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.id, relation.id), eq(articleSites.version, relation.version))).returning();
             if (updated.length !== 1) throw new PublishingConflictError();
           }
         }
-        await this.audit(transaction, actor, 'publication.request', 'publishing_job', input.jobId, { articleId: input.articleId, siteIds: distinctSites, ...(input.cascade === undefined || Object.keys(input.cascade).length === 0 ? {} : { cascade: input.cascade }) }, new Date(input.now));
+        await this.audit(transaction, actor, 'publication.request', 'publishing_job', input.jobId, { articleId: input.articleId, siteIds: distinctSites, publishAt: input.publishAt, ...(input.cascade === undefined || Object.keys(input.cascade).length === 0 ? {} : { cascade: input.cascade }) }, new Date(input.now));
         return { kind: 'created' as const, job: mapJob(jobRows[0]!) };
       });
     } catch (error) {
@@ -651,7 +653,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       if (input.toState === 'published') {
         const current = (await transaction.select({ viewCount: articleSites.viewCount, publishedAt: articleSites.publishedAt }).from(articleSites).where(and(eq(articleSites.organizationId, claim.organizationId), eq(articleSites.id, target.articleSiteId))).limit(1))[0];
         if (current !== undefined && current.viewCount === 0) seededViews = seedInitialViewCount(current.viewCount, current.publishedAt !== null);
-        await transaction.update(articles).set({ status: 'active', updatedAt: new Date(input.now) }).where(and(eq(articles.organizationId, claim.organizationId), eq(articles.id, job.articleId), eq(articles.status, 'draft')));
+        await transaction.update(articles).set({ status: 'active', updatedAt: new Date(input.now) }).where(and(eq(articles.organizationId, claim.organizationId), eq(articles.id, job.articleId), inArray(articles.status, ['draft', 'scheduled'])));
       }
       await transaction.update(articleSites).set({ state: input.toState, stateOccurredAt: new Date(input.now), publishedUrl: input.toState === 'published' ? input.publishedUrl ?? null : null, publishedAt: input.toState === 'published' ? new Date(input.now) : null, sanitizedFailure: input.sanitizedError ?? null, attempt: input.toState === 'processing' ? target.attempt + 1 : target.attempt, ...(seededViews === null ? {} : { viewCount: seededViews }), version: sql`${articleSites.version} + 1`, updatedAt: new Date(input.now) }).where(and(eq(articleSites.organizationId, claim.organizationId), eq(articleSites.id, target.articleSiteId)));
       if (input.toState === 'published' || input.toState === 'unpublished') {
@@ -803,7 +805,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       const visibleJobIds = new Set(visibleJobs.map((row) => row.id));
       return {
         organizationId,
-        articles: visibleArticles.map((row) => ({ id: row.id, organizationId, active: row.status === 'active', leadMediaId: row.leadMediaId, title: row.title, slug: row.slug })),
+        articles: visibleArticles.map((row) => ({ id: row.id, organizationId, active: row.status === 'active', status: row.status, scheduledAt: optionalIso(row.scheduledAt), leadMediaId: row.leadMediaId, title: row.title, slug: row.slug })),
         sites: visibleSites.map((row) => ({ id: row.id, organizationId, active: row.status === 'active' && row.activationState === 'active', normalizedHostname: row.normalizedHostname, settingsMediaIds: settingsBySite.get(row.id) ?? [] })),
         articleSites: relationRows.filter((row) => visibleArticleIds.has(row.articleId) || visibleSiteIds.has(row.siteId)).map((row) => ({ id: row.id, organizationId, articleId: row.articleId, siteId: row.siteId, active: row.active, state: row.state, publishedUrl: row.publishedUrl, publishedAt: optionalIso(row.publishedAt), version: row.version })),
         reservations: reservationRows.map(mapReservation).filter((row) => ownerVisible(row.owner)), media: mediaRows.filter((row) => row.state !== 'reserved').map(mapMedia).filter((asset) => ownerVisible(asset.owner)), cleanupTasks: cleanupRows.map(mapCleanup),

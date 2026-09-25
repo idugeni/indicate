@@ -60,6 +60,7 @@ export interface ArticleEntity {
   readonly tags?: readonly string[];
   readonly version: number;
   readonly status: string;
+  readonly scheduledAt?: string | null;
 }
 
 export interface DomainEntity {

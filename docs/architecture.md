@@ -546,7 +546,7 @@ Validated Runtime Configuration supplies bounded attempt counts and delay schedu
 
 ### 12.6 Reconciliation
 
-A secured short-lived cron handler operates in bounded worker and reconciliation modes. Durable indexed scans find:
+A secured short-lived cron handler operates in bounded worker and reconciliation modes. The worker mode runs every minute so queued publication jobs can start at their selected minute; reconciliation remains on its daily schedule. Durable indexed scans find:
 
 - queued/retrying jobs without confirmed dispatch;
 - due retries;

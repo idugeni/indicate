@@ -47,6 +47,36 @@ describe('PublishingForm publish', () => {
     expect(screen.getByText('Gagal')).toBeDefined();
   });
 
+  it('mengirim publishAt ISO UTC saat jadwal dipilih', async () => {
+    const command = vi.fn(async (action: string) => (action === 'publication.request' ? STATUS : null));
+    render(<PublishingForm data={{ articles: [{ id: 'scheduled-1', title: 'Berita Terjadwal', slug: 'berita-terjadwal', status: 'scheduled', scheduledAt: '2099-01-02T10:00:00.000Z' }], sites: DATA.sites }} command={command} />);
+    const scheduleInput = await screen.findByLabelText('Tanggal dan waktu') as HTMLInputElement;
+    fireEvent.change(scheduleInput, { target: { value: '2099-01-02T10:00' } });
+    fireEvent.click(screen.getAllByRole('checkbox')[0]!);
+    fireEvent.click(screen.getByRole('button', { name: /jadwalkan penerbitan/i }));
+    await waitFor(() => expect(command).toHaveBeenCalledWith(
+      'publication.request',
+      expect.objectContaining({
+        articleId: 'scheduled-1',
+        publishAt: new Date('2099-01-02T10:00').toISOString(),
+        options: { mode: 'scheduled' },
+      }),
+    ));
+  });
+
+  it('memilih terbit sekarang untuk mengabaikan jadwal artikel', async () => {
+    const command = vi.fn(async (action: string) => (action === 'publication.request' ? STATUS : null));
+    render(<PublishingForm data={{ articles: [{ id: 'scheduled-1', title: 'Berita Terjadwal', slug: 'berita-terjadwal', status: 'scheduled', scheduledAt: '2099-01-02T10:00:00.000Z' }], sites: DATA.sites }} command={command} />);
+    await screen.findByLabelText('Tanggal dan waktu');
+    fireEvent.click(screen.getByRole('button', { name: 'Terbit sekarang' }));
+    fireEvent.click(screen.getAllByRole('checkbox')[0]!);
+    fireEvent.click(screen.getByRole('button', { name: /kirim penerbitan/i }));
+    await waitFor(() => expect(command).toHaveBeenCalledWith(
+      'publication.request',
+      expect.objectContaining({ publishAt: null, options: { mode: 'immediate' } }),
+    ));
+  });
+
   it('meregenerasi kunci idempotensi', () => {
     setup(vi.fn(async () => null));
     const input = screen.getByLabelText(/kunci pengiriman/i) as HTMLInputElement;

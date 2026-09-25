@@ -34,7 +34,7 @@ import type {
   PublisherEntity,
   RegionEntity,
 } from '@/modules/dashboard/components/shared/types';
-import { findMatchingCategoryId, slugify } from '@/modules/dashboard/components/shared/form-utils';
+import { findMatchingCategoryId, localDateTimeToIso, slugify } from '@/modules/dashboard/components/shared/form-utils';
 import { TAG_MAX_COUNT, normalizeTagList } from '@/modules/site/slug-allocator';
 import type { TipTapDoc, TipTapNode } from '@/modules/site/tiptap-document';
 import { ArticlePreview } from '@/modules/dashboard/components/editorial/article-preview';
@@ -148,7 +148,6 @@ export function ArticleCreateForm({
   const [slug, setSlug] = useState('');
   const [slugTouched, setSlugTouched] = useState(false);
   const [status, setStatus] = useState<string>('draft');
-  /** Checked category ids in order; first entry is the primary category. */
   const [categoryIds, setCategoryIds] = useState<readonly string[]>([]);
   const [extraCategories, setExtraCategories] = useState<readonly CategoryEntity[]>([]);
   const [featuredId, setFeaturedId] = useState<string | null>(null);
@@ -459,6 +458,11 @@ export function ArticleCreateForm({
       toast.error('Isi jadwal terbit dulu untuk status Terjadwal.');
       return;
     }
+    const scheduledAt = status === 'scheduled' ? localDateTimeToIso(rawSchedule) : undefined;
+    if (status === 'scheduled' && scheduledAt === null) {
+      toast.error('Jadwal terbit tidak valid.');
+      return;
+    }
     const trimmedBody = bodyText.trim();
     if (trimmedBody === '') {
       toast.error('Isi artikel masih kosong. Tulis dulu di tab Tulis.');
@@ -484,7 +488,7 @@ export function ArticleCreateForm({
         source: String(formData.get('source') ?? '').trim(),
         tags: normalizeTagList(String(formData.get('tags') ?? '').split(',')).slice(0, TAG_MAX_COUNT),
         status,
-        scheduledAt: status === 'scheduled' ? `${rawSchedule}:00` : undefined,
+        scheduledAt,
       })) as { readonly slug?: string } | null;
       if (created !== null && typeof created.slug === 'string' && created.slug !== payloadSlug) {
         toast.info(`Slug "${payloadSlug}" sudah dipakai — disimpan sebagai "${created.slug}".`);
@@ -982,7 +986,7 @@ export function ArticleCreateForm({
                   className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
                 />
                 {coverUrl.trim() !== '' ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                  // eslint-disable-next-line @next/next/no-img-element -- dashboard preview only; public delivery uses EditorialImage
                   <img src={coverUrl.trim()} alt="Pratinjau sampul luar" className="max-h-40 w-full rounded border border-hairline object-cover" />
                 ) : null}
                 <p className="m-0 font-mono text-[11px] text-paper-faint">

@@ -144,7 +144,7 @@ export const articleCreateSchema = z.object({
   source: z.string().trim().min(1).max(500),
   tags: z.preprocess((value) => (Array.isArray(value) ? normalizeTagList(value) : value), z.array(z.string().trim().min(1).max(60)).max(TAG_MAX_COUNT)).default([]),
   status: z.enum(['draft', 'in_review', 'scheduled', 'active']).default('draft'),
-  scheduledAt: z.iso.datetime().nullish(),
+  scheduledAt: z.iso.datetime({ offset: true }).nullish(),
 }).strict();
 export const articleUpdateSchema = articleCreateSchema.extend({ id, expectedVersion });
 export const articleTransitionSchema = z.object({ id, expectedVersion }).strict();

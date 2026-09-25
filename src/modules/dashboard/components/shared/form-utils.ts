@@ -51,3 +51,30 @@ export function generateIdempotencyUuid(): string {
     ? crypto.randomUUID()
     : `pub-${Date.now()}`;
 }
+
+/**
+ * Konversi nilai `datetime-local` browser menjadi timestamp ISO UTC.
+ *
+ * @param value - Nilai lokal `YYYY-MM-DDTHH:mm` dari input browser.
+ * @returns Timestamp ISO UTC, atau null bila kosong atau tidak valid.
+ */
+export function localDateTimeToIso(value: string): string | null {
+  const trimmed = value.trim();
+  if (trimmed === '') return null;
+  const date = new Date(trimmed);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+/**
+ * Ubah timestamp ISO menjadi format input datetime-local pada timezone browser.
+ *
+ * @param value - Timestamp ISO dari server.
+ * @returns Nilai `YYYY-MM-DDTHH:mm`, atau string kosong bila tidak valid.
+ */
+export function isoToLocalDateTimeInput(value: string | null | undefined): string {
+  if (value === null || value === undefined || value.trim() === '') return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}

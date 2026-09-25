@@ -24,7 +24,11 @@ export class PublicationService {
   ) {}
 
   private async denied(actor: AuthorizedTenantActorContext, action: string): Promise<Result<never, PublicErrorEnvelope>> {
-    try { await this.repository.recordDenial(actor, action, 'publishing_job', this.clock.now().toISOString()); } catch { /* preserve the non-disclosing boundary */ }
+    try {
+      await this.repository.recordDenial(actor, action, 'publishing_job', this.clock.now().toISOString());
+    } catch {
+      return { ok: false, error: createNonDisclosingDenial(actor.requestId) };
+    }
     return { ok: false, error: createNonDisclosingDenial(actor.requestId) };
   }
 
@@ -99,6 +103,21 @@ export class PublicationService {
     return createPublicError('INVALID_INPUT', 'Judul dan deskripsi antar portal harus unik, termasuk portal yang sudah tayang. Minta saran varian unik atau isi override berbeda per portal.', actor.requestId);
   }
 
+  private resolvePublishAt(context: ArticleVariantContext, requested: string | null | undefined, now: Date): Date | null {
+    const candidate = requested === undefined
+      ? context.status === 'scheduled' ? context.scheduledAt : null
+      : requested;
+    if (candidate === null) return now;
+    if (candidate === undefined) return null;
+    const publishAt = new Date(candidate);
+    if (Number.isNaN(publishAt.getTime()) || publishAt.getTime() <= now.getTime()) return null;
+    return publishAt;
+  }
+
+  private invalidPublishTime(actor: AuthorizedTenantActorContext): Result<never, PublicErrorEnvelope> {
+    return { ok: false, error: createPublicError('INVALID_INPUT', 'Waktu publish harus valid dan berada di masa depan.', actor.requestId) };
+  }
+
   async request(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<PublicationStatusProjection, PublicErrorEnvelope>> {
     const parsed = publicationRequestSchema.safeParse(raw);
     if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the publication request.', actor.requestId) };
@@ -122,20 +141,23 @@ export class PublicationService {
     try {
       const variantContext = await this.repository.getArticleVariantContext(actor, parsed.data.articleId);
       if (variantContext === null) return this.denied(actor, 'publication.request.denied');
+      const publishAt = this.resolvePublishAt(variantContext, parsed.data.publishAt, now);
+      if (publishAt === null) return this.invalidPublishTime(actor);
+      const publishAtKey = publishAt.getTime() === now.getTime() ? null : publishAt.toISOString();
       const expanded = this.expandRequest(variantContext, manualSiteIds);
       const families = this.cascadeFamilies(variantContext, expanded.derived);
-      const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds: expanded.siteIds, options: parsed.data.options, overrides });
+      const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds: expanded.siteIds, options: parsed.data.options, publishAt: publishAtKey, overrides });
       if (this.crossSiteDuplicates(variantContext, expanded.siteIds, overrides, families).length > 0) {
         return { ok: false, error: this.duplicateVariantError(actor) };
       }
       const accepted = await this.repository.acceptPublication(actor, {
         jobId: this.identifiers.create(), organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds: [...expanded.siteIds],
         idempotencyKey: parsed.data.idempotencyKey, fingerprint, fingerprintVersion: FINGERPRINT_VERSION,
-        options: parsed.data.options, overrides, cascade: expanded.derived, canonicals: expanded.canonicals,
+        options: parsed.data.options, publishAt: publishAt.toISOString(), overrides, cascade: expanded.derived, canonicals: expanded.canonicals,
         now: now.toISOString(), targetIds: expanded.siteIds.map(() => this.identifiers.create()), articleSiteIds: expanded.siteIds.map(() => this.identifiers.create()),
       });
       if (accepted.kind === 'conflict') return { ok: false, error: createPublicError('IDEMPOTENCY_CONFLICT', 'The idempotency key is already associated with another request.', actor.requestId) };
-      if (accepted.kind === 'created') await this.scheduleDispatch(actor, accepted.job.id, now);
+      if (accepted.kind === 'created') await this.scheduleDispatch(actor, accepted.job.id, publishAt, now);
       const status = await this.repository.getPublication(actor, accepted.job.id);
       if (status === null) return this.denied(actor, 'publication.request.denied');
       return { ok: true, value: status };
@@ -203,13 +225,14 @@ export class PublicationService {
     }
   }
 
-  private async scheduleDispatch(actor: AuthorizedTenantActorContext, jobId: string, now: Date): Promise<void> {
+  private async scheduleDispatch(actor: AuthorizedTenantActorContext, jobId: string, dispatchAt: Date, now: Date): Promise<void> {
     try {
-      await this.queue.schedule(`${actor.organizationId}:${jobId}`, now);
+      await this.queue.schedule(`${actor.organizationId}:${jobId}`, dispatchAt);
       await this.repository.recordDispatchScheduled(actor.organizationId, jobId, now.toISOString());
     } catch {
       const nextDelay = retryDelaySeconds(this.retryPolicy, 1);
-      await this.repository.recordDispatchFailure(actor.organizationId, jobId, nextDelay !== null, nextDelay === null ? now.toISOString() : new Date(now.getTime() + nextDelay * 1_000).toISOString(), now.toISOString());
+      const retryAt = nextDelay === null ? now : new Date(Math.max(now.getTime() + nextDelay * 1_000, dispatchAt.getTime()));
+      await this.repository.recordDispatchFailure(actor.organizationId, jobId, nextDelay !== null, retryAt.toISOString(), now.toISOString());
     }
   }
 
@@ -219,7 +242,7 @@ export class PublicationService {
     const now = this.clock.now();
     try {
       await this.repository.retryTargets(actor, { jobId: parsed.data.jobId, targetIds: parsed.data.targetIds, now: now.toISOString() });
-      await this.scheduleDispatch(actor, parsed.data.jobId, now);
+      await this.scheduleDispatch(actor, parsed.data.jobId, now, now);
       const refreshed = await this.repository.getPublication(actor, parsed.data.jobId);
       return refreshed === null ? this.denied(actor, 'publication.retry.denied') : { ok: true, value: refreshed };
     } catch (error) {
@@ -287,20 +310,23 @@ export class PublicationService {
       for (const articleId of articleIds) {
         const variantContext = await this.repository.getArticleVariantContext(actor, articleId);
         if (variantContext === null) return this.denied(actor, 'publication.request.denied');
+        const publishAt = this.resolvePublishAt(variantContext, parsed.data.publishAt, now);
+        if (publishAt === null) return this.invalidPublishTime(actor);
+        const publishAtKey = publishAt.getTime() === now.getTime() ? null : publishAt.toISOString();
         const expanded = this.expandRequest(variantContext, manualSiteIds);
         const families = this.cascadeFamilies(variantContext, expanded.derived);
         if (this.crossSiteDuplicates(variantContext, expanded.siteIds, overrides, families).length > 0) {
           return { ok: false, error: this.duplicateVariantError(actor) };
         }
-        const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId, siteIds: expanded.siteIds, options: parsed.data.options, overrides });
+        const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId, siteIds: expanded.siteIds, options: parsed.data.options, publishAt: publishAtKey, overrides });
         const accepted = await this.repository.acceptPublication(actor, {
           jobId: this.identifiers.create(), organizationId: actor.organizationId, articleId, siteIds: [...expanded.siteIds],
           idempotencyKey: `${parsed.data.idempotencyKey}:${articleId}`, fingerprint, fingerprintVersion: FINGERPRINT_VERSION,
-          options: parsed.data.options, overrides, cascade: expanded.derived, canonicals: expanded.canonicals,
+          options: parsed.data.options, publishAt: publishAt.toISOString(), overrides, cascade: expanded.derived, canonicals: expanded.canonicals,
           now: now.toISOString(), targetIds: expanded.siteIds.map(() => this.identifiers.create()), articleSiteIds: expanded.siteIds.map(() => this.identifiers.create()),
         });
         if (accepted.kind === 'conflict') return { ok: false, error: createPublicError('IDEMPOTENCY_CONFLICT', `The idempotency key is already associated with another request for article ${articleId}.`, actor.requestId) };
-        if (accepted.kind === 'created') await this.scheduleDispatch(actor, accepted.job.id, now);
+        if (accepted.kind === 'created') await this.scheduleDispatch(actor, accepted.job.id, publishAt, now);
         const status = await this.repository.getPublication(actor, accepted.job.id);
         if (status === null) return this.denied(actor, 'publication.request.denied');
         results.push(status);

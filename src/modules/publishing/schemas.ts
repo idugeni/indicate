@@ -56,6 +56,7 @@ export const mediaMetadataSchema = z.object({
 }, 'focalX and focalY must travel together');
 
 const publicationOptionsSchema = z.record(z.string().min(1).max(100), z.json()).default({});
+const publicationTimestampSchema = z.iso.datetime({ offset: true });
 const publicationOverrideSchema = z.object({
   title: z.string().trim().min(10).max(160).optional(),
   description: z.string().trim().min(50).max(500).optional(),
@@ -66,6 +67,7 @@ export const publicationRequestSchema = z.object({
   siteIds: z.array(z.uuid()).min(1).max(100),
   idempotencyKey: z.string().trim().min(1).max(200),
   options: publicationOptionsSchema,
+  publishAt: publicationTimestampSchema.nullable().optional(),
   overrides: z.record(z.uuid(), publicationOverrideSchema).default({}),
 }).strict();
 
@@ -91,5 +93,6 @@ export const publicationBulkRequestSchema = z.object({
   siteIds: z.array(z.uuid()).min(1).max(100),
   idempotencyKey: z.string().trim().min(1).max(200),
   options: publicationOptionsSchema,
+  publishAt: publicationTimestampSchema.nullable().optional(),
   overrides: z.record(z.uuid(), publicationOverrideSchema).default({}),
 }).strict();

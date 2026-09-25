@@ -2,7 +2,7 @@ import type {
   JsonValue, PublicationOptions, PublicationOverride, PublicationResult, PublicationTargetRecord, PublishingState,
 } from '@/modules/publishing/models';
 
-export const FINGERPRINT_VERSION = 1;
+export const FINGERPRINT_VERSION = 2;
 
 const TARGET_TRANSITIONS: Readonly<Record<PublishingState, ReadonlySet<PublishingState>>> = Object.freeze({
   queued: new Set<PublishingState>(['processing']),
@@ -36,6 +36,7 @@ export function canonicalPublicationPayload(input: {
   readonly articleId: string;
   readonly siteIds: readonly string[];
   readonly options: PublicationOptions;
+  readonly publishAt?: string | null;
   readonly overrides?: Readonly<Record<string, PublicationOverride>>;
 }): string {
   const overrides = input.overrides ?? {};
@@ -45,6 +46,7 @@ export function canonicalPublicationPayload(input: {
     articleId: input.articleId,
     siteIds: [...new Set(input.siteIds)].sort(),
     options: JSON.parse(canonicalizePublicationOptions(input.options)) as JsonValue,
+    publishAt: input.publishAt ?? null,
     ...(Object.keys(overrides).length === 0 ? {} : { overrides: canonicalizeValue(overrides as unknown as JsonValue) }),
   });
 }
@@ -54,6 +56,7 @@ export async function publicationFingerprint(input: {
   readonly articleId: string;
   readonly siteIds: readonly string[];
   readonly options: PublicationOptions;
+  readonly publishAt?: string | null;
   readonly overrides?: Readonly<Record<string, PublicationOverride>>;
 }): Promise<string> {
   const bytes = new TextEncoder().encode(canonicalPublicationPayload(input));

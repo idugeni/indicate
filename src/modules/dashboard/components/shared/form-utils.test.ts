@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { findMatchingCategoryId, generateIdempotencyUuid, normalizeCategoryKey, slugify } from '@/modules/dashboard/components/shared/form-utils';
+import { findMatchingCategoryId, generateIdempotencyUuid, isoToLocalDateTimeInput, localDateTimeToIso, normalizeCategoryKey, slugify } from '@/modules/dashboard/components/shared/form-utils';
 
 describe('slugify', () => {
   it('menurunkan huruf dan mengganti spasi dengan strip', () => {
@@ -47,6 +47,21 @@ describe('normalizeCategoryKey', () => {
 
   it('mengembalikan string kosong untuk masukan kosong', () => {
     expect(normalizeCategoryKey('   ')).toBe('');
+  });
+});
+
+describe('datetime form helpers', () => {
+  it('mengonversi datetime lokal ke ISO UTC dan kembali ke format input', () => {
+    const iso = localDateTimeToIso('2026-09-23T10:00');
+    expect(iso).toBe(new Date('2026-09-23T10:00').toISOString());
+    expect(isoToLocalDateTimeInput(iso)).toBe('2026-09-23T10:00');
+  });
+
+  it('menolak nilai kosong atau tidak valid', () => {
+    expect(localDateTimeToIso('')).toBeNull();
+    expect(localDateTimeToIso('bukan tanggal')).toBeNull();
+    expect(isoToLocalDateTimeInput(null)).toBe('');
+    expect(isoToLocalDateTimeInput('bukan timestamp')).toBe('');
   });
 });
 
