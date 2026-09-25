@@ -30,7 +30,7 @@ export function DarkNavyShell({
         Lewati ke konten
       </a>
       <DarkNavyHeader site={site} path={path} />
-      <main id="main-content" tabIndex={-1} className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col">
         {children}
       </main>
       <DarkNavyFooter site={site} />

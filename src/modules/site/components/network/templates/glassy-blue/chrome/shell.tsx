@@ -30,7 +30,7 @@ export function GlassyBlueShell({
         Lewati ke konten
       </a>
       <GlassyBlueHeader site={site} path={path} />
-      <main id="main-content" tabIndex={-1} className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col">
         {children}
       </main>
       <GlassyBlueFooter site={site} />

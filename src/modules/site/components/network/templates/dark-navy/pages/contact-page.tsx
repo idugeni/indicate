@@ -43,8 +43,8 @@ export function DarkNavyContact({ site, title, description, path = '/' }: DarkNa
         {channels.length === 0 ? (
           <DarkNavyEmpty title={title} />
         ) : (
-          <div className="space-y-4">
-            <ul className="m-0 grid list-none gap-3 p-0">
+          <div className="space-y-3">
+            <ul className="m-0 grid list-none gap-2.5 p-0 sm:grid-cols-2 lg:grid-cols-3">
               {primary.map((channel) => {
                 const Icon = channelIcon(channel.key);
                 const external = channel.href.startsWith('http');
@@ -54,9 +54,9 @@ export function DarkNavyContact({ site, title, description, path = '/' }: DarkNa
                       href={channel.href}
                       target={external ? '_blank' : undefined}
                       rel={external ? 'noopener noreferrer' : undefined}
-                      className="flex items-center gap-3 rounded-2xl bg-[#0e1a33] p-4 shadow-sm ring-1 ring-[#1b2c4f]/60 transition-colors hover:ring-[#2f7bff]/50"
+                      className="flex h-full items-center gap-2.5 rounded-2xl bg-[#0e1a33] p-3.5 shadow-sm ring-1 ring-[#1b2c4f]/60 transition-colors hover:ring-[#2f7bff]/50"
                     >
-                      <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[#2f7bff]/10 text-[#2f7bff]">
+                      <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#2f7bff]/10 text-[#2f7bff]">
                         <Icon className="h-4 w-4" />
                       </span>
                       <span className="min-w-0 flex-1">
@@ -72,7 +72,7 @@ export function DarkNavyContact({ site, title, description, path = '/' }: DarkNa
               })}
             </ul>
             {socials.length === 0 ? null : (
-              <ul className="m-0 grid list-none grid-cols-2 gap-3 p-0">
+              <ul className="m-0 grid list-none grid-cols-2 gap-2.5 p-0 lg:grid-cols-4">
                 {socials.map((channel) => {
                   const Icon = channelIcon(channel.key);
                   const external = channel.href.startsWith('http');
@@ -82,9 +82,9 @@ export function DarkNavyContact({ site, title, description, path = '/' }: DarkNa
                         href={channel.href}
                         target={external ? '_blank' : undefined}
                         rel={external ? 'noopener noreferrer' : undefined}
-                        className="flex h-full items-center gap-2.5 rounded-2xl bg-[#0e1a33] p-3.5 shadow-sm ring-1 ring-[#1b2c4f]/60 transition-colors hover:ring-[#2f7bff]/50"
+                        className="flex h-full items-center gap-2.5 rounded-2xl bg-[#0e1a33] p-3 shadow-sm ring-1 ring-[#1b2c4f]/60 transition-colors hover:ring-[#2f7bff]/50"
                       >
-                        <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#2f7bff]/10 text-[#2f7bff]">
+                        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#2f7bff]/10 text-[#2f7bff]">
                           <Icon className="h-4 w-4" />
                         </span>
                         <span className="min-w-0 flex-1">
