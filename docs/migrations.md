@@ -25,7 +25,7 @@ Schema changes follow expand, backfill, verify, and contract across compatible r
 
 ## Retention
 
-`audit_logs` is insert-only by design and is never swept: rows accumulate permanently and are exported daily to WORM storage (`audit_worm_export`, `src/modules/audit/audit-worm-export.ts`). No scheduled DELETE exists for it. `retention_sweep()` only compacts operational queues (`org_invitations`, `webhook_replay_claims`, `object_cleanup_tasks`, `invalidation_tasks`, `publication_transition_receipts`); orphan history for removed categories is deleted by explicit forward migration (precedent: `20260925030000_retention_runs_drop_telegram_history.sql`).
+`audit_logs` is insert-only by design and is never swept: rows accumulate permanently and are exported daily to WORM storage (`audit_worm_export`, `src/modules/audit/audit-worm-export.ts`). No scheduled DELETE exists for it. `retention_sweep()` compacts operational queues (`org_invitations`, `webhook_replay_claims`, `object_cleanup_tasks`, `invalidation_tasks`, `publication_transition_receipts`) and expires `media_key_reservations` whose deadline passed without ever producing a `media` row; orphan history for removed categories is deleted by explicit forward migration (precedent: `20260925030000_retention_runs_drop_telegram_history.sql`). An expired reservation keeps its row as an audit trail, which is why the object key carries a partial unique index (`WHERE status <> 'expired'`): without it the `ON CONFLICT DO NOTHING` in `reserveMediaCandidate` would answer `occupied` for that key forever.
 
 ## Unused-index watchlist (monitor only, never drop blind)
 

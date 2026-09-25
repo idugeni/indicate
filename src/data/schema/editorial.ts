@@ -14,6 +14,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -378,7 +379,7 @@ export const mediaKeyReservations = pgTable('media_key_reservations', {
   ...timestamps,
 }, (table) => [
   primaryKey({ name: 'media_key_reservations_pk', columns: [table.organizationId, table.id] }),
-  unique('media_key_reservations_object_key_unique').on(table.objectKey),
+  uniqueIndex('media_key_reservations_object_key_unique').on(table.objectKey).where(sql`${table.status} <> 'expired'`),
   foreignKey({ name: 'media_key_reservations_article_fk', columns: [table.organizationId, table.articleId], foreignColumns: [articles.organizationId, articles.id] }).onDelete('restrict'),
   foreignKey({ name: 'media_key_reservations_site_fk', columns: [table.organizationId, table.siteId], foreignColumns: [sites.organizationId, sites.id] }).onDelete('restrict'),
   check('media_key_reservation_exactly_one_owner', sql`num_nonnulls(${table.articleId}, ${table.siteId}) + CASE WHEN ${table.organizationAsset} THEN 1 ELSE 0 END = 1`),

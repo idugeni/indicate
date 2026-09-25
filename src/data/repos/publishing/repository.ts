@@ -135,6 +135,12 @@ export class DrizzlePublishingRepository implements PublishingRepository {
           const regionId = rows[0]!.regionId;
           if (actor.regionScopeId !== undefined && actor.regionScopeId !== null && regionId !== null && regionId !== actor.regionScopeId) throw new PublishingAccessDeniedError();
         }
+        await transaction.update(mediaKeyReservations).set({ status: 'expired', updatedAt: new Date(input.now) }).where(and(
+          eq(mediaKeyReservations.organizationId, actor.organizationId),
+          eq(mediaKeyReservations.objectKey, input.objectKey),
+          inArray(mediaKeyReservations.status, ['reserved', 'occupied']),
+          lte(mediaKeyReservations.expiresAt, new Date(input.now)),
+        ));
         const rows = await transaction.insert(mediaKeyReservations).values({ organizationId: actor.organizationId, id: input.reservationId, objectKey: input.objectKey, purpose: input.purpose, ...getOwnerColumns(input.owner), expectedMediaType: input.expectedMediaType, expectedSizeBytes: input.expectedSizeBytes, expectedChecksum: input.expectedChecksum, status: 'reserved', expiresAt: new Date(input.expiresAt), createdAt: new Date(input.now), updatedAt: new Date(input.now) }).onConflictDoNothing({ target: mediaKeyReservations.objectKey }).returning();
         const row = rows[0]; if (row === undefined) return { kind: 'occupied' as const };
         await this.audit(transaction, actor, 'media.upload.reserve', 'media_key_reservation', row.id, { objectKey: row.objectKey, purpose: row.purpose }, new Date(input.now));
