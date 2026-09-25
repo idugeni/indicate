@@ -119,3 +119,34 @@ proxied) dipakai ulang untuk semua zona.
 Setiap perubahan domain/hostname wajib dicatat di
 `docs/active-domains.md` (status DB + Vercel + HTTP + kuota) pada giliran
 yang sama — bukan belakangan.
+
+## 11. "Corrupted Image" Meta = robots, bukan gambar rusak
+
+Insiden: debugger Facebook melaporkan `og:image ... could not be processed as
+an image` untuk `jurnalism.web.id` padahal URL-nya 200 + `image/png`.
+
+Byte PNG-nya terbukti sehat: 71.174 byte, signature `89 50 4e 47`, seluruh
+CRC chunk OK, IDAT inflate bersih, 1200x630 RGBA, identik di empat fetch
+berturut-turut, tanpa `Content-Encoding` apa pun. Penyebab sebenarnya ada di
+robots.txt, bukan di berkas: `Disallow: /api/` menutup
+`/api/network/media/{id}` — satu-satunya permukaan gambar yang dilihat
+crawler. `facebookexternalhit` menolak fetch, tidak pernah melihat byte, lalu
+melaporkannya sebagai gambar rusak.
+
+Verifikasi yang membedakan: unduh byte dan decode (bukan hanya cek magic
+byte), lalu `curl` robots.txt dan cari prefiks URL aset. Warm-up internal
+(`social-warm.ts`) memakai fetch biasa sehingga selalu hijau — ia tidak
+mempertahankan robots.txt, jadi ia tidak bisa menangkap kelas bug ini.
+
+Aturan: setiap URL yang dialuskan ke crawler (og:image, cover artikel, galeri,
+sitemap `image:`) harus lolos robots. Dua jalan, pilih sesuai sifatnya:
+
+- satu slot konfigurasi per site (default OG) → `Allow: /api/network/media/`
+  di `serializeRobots`, karena prefiks carve-out lebih panjang dari `/api/`
+  sehingga menang lewat longest-match;
+- satu aset identik per site (favicon, logo) → pindah ke path stabil di luar
+  `/api/` seperti `brand-icons.ts` (lihat pelajaran 7).
+
+Setelah robots berubah, bersihkan cache edge `robots.txt` (`s-maxage=3600`),
+lalu scrape ulang `robots.txt` di debugger Meta sebelum halaman — Meta
+menyimpan salinan robots-nya sendiri.
