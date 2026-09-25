@@ -551,7 +551,7 @@ Validated Runtime Configuration supplies bounded attempt counts and delay schedu
 
 ### 12.6 Reconciliation
 
-A secured short-lived cron handler operates in bounded worker and reconciliation modes. The publishing worker runs every five minutes so queued publication jobs can start within five minutes of their selected time; publishing reconciliation runs every fifteen minutes. Delivery provisioning reconciliation runs every fifteen minutes, cache invalidation every five minutes, view flushing hourly, and certificate renewal daily. Durable indexed scans find:
+A secured short-lived cron handler operates in bounded worker and reconciliation modes. The publishing worker runs every five minutes so queued publication jobs can start within five minutes of their selected time; publishing reconciliation runs every fifteen minutes. Delivery provisioning reconciliation runs every fifteen minutes, cache invalidation every five minutes, view flushing hourly, Facebook metadata pre-warming hourly, and certificate renewal daily. Durable indexed scans find:
 
 - queued/retrying jobs without confirmed dispatch;
 - due retries;
@@ -560,6 +560,8 @@ A secured short-lived cron handler operates in bounded worker and reconciliation
 - pending invalidation and media cleanup tasks.
 
 Scans use short transactions and row locking suitable for transaction-pooled serverless access. Duplicate, overlapping, or missed cron invocations are safe: they reuse logical IDs, conditional claims, unique constraints, leases, and fencing. No long-running worker or exactly-once scheduler assumption exists.
+
+The Facebook pre-warm sweep is quota-bound rather than load-bound. It hands one bounded batch of tenant homepages to Meta's scrape endpoint — the same call the Sharing Debugger issues — because Meta caches a URL for roughly 30 days and only refreshes on request. A Redis cursor carries the fleet position between invocations, apex portals are swept before region and city hosts, and a Meta app-level rejection (`#4`, HTTP 403) halts the batch without advancing past the unattempted host, because a rejected call spends no budget and earns none. The sweep never throws: every per-host failure is reported instead.
 
 ### 12.7 Publication result
 
