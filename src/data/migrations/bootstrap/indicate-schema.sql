@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (186 migrations):
+-- Reviewed sources, in journal order (187 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -199,6 +199,7 @@
 --   184  20260925150000_region_scope_hierarchy  ledger sha256:84f89ce2c23ef513c0ef88dfde52f9afd39e0064bfcbb30bf2342918f2f4b116
 --   185  20260925160000_upt_city_affiliations_all_domains  ledger sha256:77f9fcd4933248ade39486dd40757f370dcf527dd3b6269e04fdcdc228da08d7
 --   186  20260925170000_region_scope_session_independence  ledger sha256:31550afde5fe330a94c668e1afb7015ded712df6002f2d788a6a583313451caa
+--   187  20260925180000_media_shared_brand_guard  ledger sha256:7e975918223878f9f726139e07de7de85ea2edaa9f61b2a7d52d68943277b1fe
 
 BEGIN;
 
@@ -15351,4 +15352,91 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (185, 'region_scope_session_independence', 'sha256:81675ec391c43324fc3880a3f6753c3175db9548a4c502c1989f5bc8eafc8f9b');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('31550afde5fe330a94c668e1afb7015ded712df6002f2d788a6a583313451caa', 1790394000000);
+
+-- ----------------------------------------------------------------------
+-- 20260925180000_media_shared_brand_guard
+-- ----------------------------------------------------------------------
+-- Protect a media asset that many portals display.
+--
+-- One apex brand image is the single source for the whole network: the apex, its
+-- province portal, and its 31 city portals all point at the same `media` row
+-- (3328 sites, 114 distinct default images). That sharing is deliberate and
+-- public delivery already authorizes it, but it also meant a single archive
+-- could quietly strip the image from 32 live portals, and a delete surfaced a
+-- bare foreign-key error. The database now refuses both with an actionable
+-- message naming how many portals depend on the asset.
+--
+-- The supported order is therefore: repoint the brand first, then archive the
+-- old asset. `saveSiteSettings` repoints every derived portal in the same
+-- transaction when an apex default changes, so that order is a single action in
+-- the dashboard.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE OR REPLACE FUNCTION indicate_private.guard_shared_media()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+DECLARE
+  dependent_sites integer;
+  action constant text := CASE WHEN TG_OP = 'DELETE' THEN 'deleted' ELSE 'archived' END;
+BEGIN
+  IF TG_OP = 'UPDATE' AND NEW.state = 'active' THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT count(*) INTO dependent_sites
+    FROM public.site_settings
+   WHERE organization_id = OLD.organization_id
+     AND (default_media_id = OLD.id OR logo_media_id = OLD.id OR favicon_media_id = OLD.id);
+
+  IF dependent_sites > 0 THEN
+    RAISE EXCEPTION
+      'media is still displayed by % portal(s); repoint the brand media first, then archive it',
+      dependent_sites
+      USING ERRCODE = '23503';
+  END IF;
+
+  RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+END;
+$$;
+DROP TRIGGER IF EXISTS media_shared_guard ON public.media;
+CREATE TRIGGER media_shared_guard
+  BEFORE DELETE OR UPDATE OF state ON public.media
+  FOR EACH ROW EXECUTE FUNCTION indicate_private.guard_shared_media();
+DO $$
+DECLARE
+  shared_assets integer;
+  protected_rows integer;
+BEGIN
+  SELECT count(*) INTO shared_assets
+    FROM (
+      SELECT media.id
+        FROM public.media
+        JOIN public.site_settings
+          ON site_settings.organization_id = media.organization_id
+         AND media.id IN (site_settings.default_media_id, site_settings.logo_media_id, site_settings.favicon_media_id)
+       GROUP BY media.id
+      HAVING count(*) > 1
+    ) AS shared;
+  IF shared_assets = 0 THEN
+    RAISE EXCEPTION 'media_shared_guard_degenerate: no shared brand asset found to protect';
+  END IF;
+
+  SELECT count(*) INTO protected_rows
+    FROM public.media
+   WHERE id IN (
+     SELECT unnest(ARRAY[default_media_id, logo_media_id, favicon_media_id]) FROM public.site_settings
+      WHERE default_media_id IS NOT NULL OR logo_media_id IS NOT NULL OR favicon_media_id IS NOT NULL
+   );
+  IF protected_rows = 0 THEN
+    RAISE EXCEPTION 'media_shared_guard_degenerate: no media row is referenced by portal settings';
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (186, 'media_shared_brand_guard', 'sha256:56076092edb09422f8198da0383f1fe5e5c780550f7faea9cc24d9fe4c9f267f');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7e975918223878f9f726139e07de7de85ea2edaa9f61b2a7d52d68943277b1fe', 1790397600000);
 COMMIT;

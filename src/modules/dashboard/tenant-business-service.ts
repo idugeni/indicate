@@ -455,6 +455,35 @@ export class TenantBusinessService {
     return next;
   }
 
+  /**
+   * Carry an apex brand image change to every portal that inherits it.
+   *
+   * Region and city portals keep `logo_media_id` and `favicon_media_id` null and
+   * resolve them to the apex at delivery, but the database requires a concrete
+   * `default_media_id` for an active portal. Without this the pointer would
+   * drift: changing the apex default would leave the province and its 31 cities
+   * on the previous image, and the shared-media guard would then block archiving
+   * the old asset. Repointing only the portals that actually pointed at the
+   * previous image keeps hand-authored per-portal media untouched.
+   *
+   * @param transaction - Open dashboard transaction.
+   * @param apexSiteId - Site whose settings were just written.
+   * @param previousMediaId - Default media before the write, if any.
+   * @param nextMediaId - Default media after the write, if any.
+   * @param now - Timestamp for the rewritten rows.
+   */
+  private propagateBrandMedia(transaction: DashboardTransaction, apexSiteId: string, previousMediaId: string | null, nextMediaId: string | null, now: string): void {
+    if (nextMediaId === null || previousMediaId === nextMediaId) return;
+    const apex = transaction.state.sites.find((site) => site.id === apexSiteId);
+    if (apex === undefined || apex.siteLevel !== 'apex') return;
+    for (const site of transaction.state.sites) {
+      if (site.domainId !== apex.domainId || site.siteLevel === 'apex') continue;
+      const settings = transaction.state.siteSettings.find((row) => row.siteId === site.id);
+      if (settings === undefined || settings.defaultMediaId !== previousMediaId) continue;
+      replaceById(transaction.state.siteSettings, { ...settings, defaultMediaId: nextMediaId, version: settings.version + 1, updatedAt: now });
+    }
+  }
+
   saveSiteSettings(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: siteSettingsSchema, permission: DASHBOARD_PERMISSIONS.siteManage, action: 'site.settings.update', targetType: 'site_settings', execute: (transaction, value, now) => {
       requireSiteInScope(transaction.state, value.siteId, actor);
@@ -489,6 +518,7 @@ export class TenantBusinessService {
         ? { ...this.base(actor, now), siteId: value.siteId, id: value.siteId, name: value.name, description: value.description, tagline, seoDefaultTitle, seoDefaultDescription, seoOpenGraphSiteName, locale, seoRobotsDirective, colors: value.colors ?? {}, socialLinks: value.socialLinks ?? {}, seo: value.seo ?? {}, navigation: value.navigation ?? [], logoMediaId, faviconMediaId, defaultMediaId, version: 1 }
         : { ...before, name: value.name, description: value.description, tagline, seoDefaultTitle, seoDefaultDescription, seoOpenGraphSiteName, locale, seoRobotsDirective, colors: value.colors ?? before.colors, socialLinks: value.socialLinks ?? before.socialLinks, seo: value.seo ?? before.seo, navigation: value.navigation ?? before.navigation, logoMediaId, faviconMediaId, defaultMediaId, version: before.version + 1, updatedAt: now };
       if (before === undefined) transaction.state.siteSettings.push(after); else replaceById(transaction.state.siteSettings, after);
+      this.propagateBrandMedia(transaction, value.siteId, before?.defaultMediaId ?? null, defaultMediaId, now);
       this.audit(transaction, 'site.settings.update', 'site_settings', after.id, before ?? null, after); return after;
     }});
   }
