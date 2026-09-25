@@ -34,6 +34,16 @@ A column-level audit of the live database against the application lives in
 raw SQL rather than Drizzle, which are reserved for unwired features, and which
 tables were retired in migration 191 as unreachable from any code.
 
+## Ledger gap at 187
+
+Production carries ledger row 187, `author_newsroom_profile`, whose SQL was
+never committed here. Only its digest survives, so the checksum can never be
+matched and the gap stays visible rather than being papered over. Its entire
+effect was the newsroom author row, so migration 192 states that effect as an
+idempotent, guarded UPDATE: a database built from the bootstrap converges on the
+same author profile, and production matches zero rows and takes no version churn.
+Never rewrite a ledger checksum to match a file nobody wrote.
+
 ## Unused-index watchlist (monitor only, never drop blind)
 
 Pre-traffic advisors flag unused indexes that turn needed at volume (standing policy in `20260903035500_billing_advisor_hardening.sql`). Known case: `runtime_config_revisions_environment_idx` reads only through `read_runtime_config_revision()`, which casts the column (`environment::text`), defeating the btree — leave the index in place; if the flag ever blocks, cast the parameter instead of the column.
