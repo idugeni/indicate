@@ -33,25 +33,51 @@ function repository(config: RuntimeConfig, bootstrap: BootstrapConfig): Delivery
   globalThis.indicateDeliveryRepository = new DrizzleDeliveryRepository(getSharedRuntimeDatabase(bootstrap).db, config.seo.defaultAssetUrl, config.r2.publicHost);
   return globalThis.indicateDeliveryRepository;
 }
+export interface DeliveryComposition {
+  readonly resolver: HostnameResolver;
+  readonly content: NetworkContentService;
+  readonly repository: DeliveryRepository;
+  readonly config: RuntimeConfig;
+}
+
+let active: DeliveryComposition | null = null;
+
+function build(context: { readonly bootstrap: BootstrapConfig; readonly config: RuntimeConfig }): DeliveryComposition {
+  const config = context.config;
+  const repo = repository(config, context.bootstrap);
+  return { resolver: new HostnameResolver(repo, config.hosts, hostnameCache(config)), content: new NetworkContentService(repo, new NextNetworkSiteCache(config.cache.defaultTtlSeconds)), repository: repo, config };
+}
+
 /**
  * Assemble the delivery resolver, content service, and repository for the
  * current runtime configuration.
  *
- * @remarks Awaiting this from inside a `use cache` fill is only safe once the
- * runtime context has settled: the await joins `getServerRuntimeContext`, whose
- * single-flight hydration promise is module-scoped and therefore created outside
- * the cache scope. A fill that catches it while it is still pending is rejected
- * by Next.js with "appears to be stuck on shared state from the outer render
- * scope", which surfaces as a stream that never completes rather than an error.
- * Hostname resolution resolves the context before any loader runs, which is what
- * keeps the `use cache` loaders in `network-runtime.ts` sound. Preserving that
- * order matters: a loader that reaches this composition before the host is
- * resolved reintroduces the failure. `site-content.ts` avoids the await entirely
- * by resolving its pool synchronously from `getBootstrapConfig`.
+ * @remarks Safe to await only outside a `use cache` fill. The hydration it
+ * awaits is module-scoped and therefore created outside the cache scope, so a
+ * fill that joins it while pending is rejected by Next.js with "appears to be
+ * stuck on shared state from the outer render scope" and never completes. Use
+ * `activeDeliveryComposition` inside a fill.
  */
-export async function deliveryComposition() {
+export async function deliveryComposition(): Promise<DeliveryComposition> {
+  if (active !== null) return active;
   const context = await getServerRuntimeContext();
-  const config = context.config;
-  const repo = repository(config, context.bootstrap);
-  return { resolver: new HostnameResolver(repo, config.hosts, hostnameCache(config)), content: new NetworkContentService(repo, new NextNetworkSiteCache(config.cache.defaultTtlSeconds)), repository: repo, config };
+  active = build(context);
+  return active;
+}
+
+/**
+ * Read the process-wide delivery composition without awaiting.
+ *
+ * @returns The composition built by the first `deliveryComposition` call.
+ * @throws {Error} `delivery_composition_unresolved` when no non-cached caller
+ * has resolved the runtime context yet. Hostname resolution always runs before
+ * a content loader, so this cannot fire on a served request; it exists so that a
+ * reordering fails loudly instead of suspending forever.
+ * @remarks Required by the `use cache` loaders in `network-runtime.ts`. Awaiting
+ * a composition there would rejoin module-scoped hydration from outside the
+ * cache scope, which is what previously left the landing shell unresolved.
+ */
+export function activeDeliveryComposition(): DeliveryComposition {
+  if (active === null) throw new Error('delivery_composition_unresolved');
+  return active;
 }

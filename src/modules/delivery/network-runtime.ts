@@ -7,7 +7,7 @@ import { cache } from 'react';
 import { buildSeoDocument, indexableRobots, nonIndexableRobots, notFoundMetadata, tenantFavicon } from '@/modules/site/seo';
 import type { NetworkContentQuery, NetworkSiteData, RequestClassification, ResolvedSiteContext } from '@/modules/delivery/models';
 import { isNetworkArticle } from '@/modules/delivery/models';
-import { deliveryComposition } from '@/modules/delivery';
+import { activeDeliveryComposition, deliveryComposition } from '@/modules/delivery';
 import { TAG_MAX_LENGTH, normalizeSlugCandidate } from '@/modules/site/slug-allocator';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { readPageviewCounts } from '@/integrations/redis/pageview-buffer';
@@ -45,10 +45,23 @@ export async function assertNetworkHost(): Promise<void> {
   await requireNetworkContext();
 }
 
-const readBypassed = cache(async (organizationId: string, siteId: string): Promise<boolean> => {
-  const { repository } = await getDeliveryComposition();
+/**
+ * Per-site cache-bypass flag, cached in the Next data cache.
+ *
+ * @param organizationId - Owning organization of the site.
+ * @param siteId - Site the flag belongs to.
+ * @returns True when the site opted out of the shared content caches.
+ * @remarks Reads one `cache_bypasses` row through a tenant-scoped transaction. Uncached, that transaction was the only Postgres work left on a warm public render (hostname and content are both cached), so every request on a warm instance serialised on the single pooled connection. Lifetime and tags mirror `loadCachedNetworkSite` so the flag and the content it gates are always evicted together and cannot disagree.
+ */
+async function readCachedBypass(organizationId: string, siteId: string): Promise<boolean> {
+  'use cache';
+  cacheLife('minutes');
+  cacheTag(`org:${organizationId}`, `site:${siteId}`);
+  const { repository } = activeDeliveryComposition();
   return repository.isCacheBypassed({ organizationId, siteId });
-});
+}
+
+const readBypassed = cache(readCachedBypass);
 
 const readArticleBuffer = cache(async (organizationId: string, siteId: string, articleSiteId: string): Promise<number> => {
   try {
@@ -89,7 +102,7 @@ async function loadCachedNetworkSite(
   'use cache';
   cacheLife('minutes');
   cacheTag(`host:${context.normalizedHostname}`, `site:${context.siteId}`, `org:${context.organizationId}`, ...(query.articleSlug === undefined ? [] : [`article:${query.articleSlug}`]));
-  const { content } = await getDeliveryComposition();
+  const { content } = activeDeliveryComposition();
   return content.load(context, query, { path, locale }, false);
 }
 async function loadCachedSearchSite(
@@ -101,7 +114,7 @@ async function loadCachedSearchSite(
   'use cache';
   cacheLife('seconds');
   cacheTag(`host:${context.normalizedHostname}`, `site:${context.siteId}`, `org:${context.organizationId}`);
-  const { content } = await getDeliveryComposition();
+  const { content } = activeDeliveryComposition();
   return content.load(context, query, { path, locale }, false);
 }
 
