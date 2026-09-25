@@ -338,6 +338,12 @@ export function serializeJsonLd(documents: readonly Readonly<Record<string, unkn
  * Serialize robots.txt for a site.
  *
  * @remarks Search pages are noindex: disallow them to keep crawl budget on canonical URLs.
+ * `/api/network/media/` is carved back out of the `/api/` catch-all because it is the only
+ * crawler-facing image surface: uploaded article covers, gallery images, and the tenant
+ * `site-default` card are all addressed there, so a blocked prefix makes social crawlers
+ * report every one of them as "Corrupted Image" (Meta refuses the fetch and never sees the
+ * bytes). The carve-out is longer than `/api/`, so longest-match precedence makes `Allow`
+ * win. Logo and favicon already ship from `/logo.png` + `/icon.png` for the same reason.
  */
 export function serializeRobots(site: {
   readonly context: ResolvedSiteContext;
@@ -354,6 +360,7 @@ export function serializeRobots(site: {
     'Allow: /logo.png',
     'Allow: /manifest.webmanifest',
     'Allow: /favicon.ico',
+    'Allow: /api/network/media/',
     'Disallow: /search',
     'Disallow: /api/',
     'Disallow: /dashboard',
