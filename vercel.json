@@ -9,7 +9,7 @@
     },
     {
       "path": "/api/internal/publishing?mode=work",
-      "schedule": "* * * * *"
+      "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/internal/publishing?mode=reconcile",
