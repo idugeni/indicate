@@ -146,15 +146,34 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
  * required_version row exists, the applied ledger must satisfy it or the
  * process refuses to activate. No row means disarmed (pre-production) and
  * behavior is unchanged. Versions are not secrets.
+ *
+ * A refusal also writes the evidence: the gate row records what was actually
+ * applied next to what was required, and the error names when the ledger last
+ * advanced, because "which migration is missing and when did we stop applying
+ * them" is the first question an operator asks. The evidence write is
+ * best-effort so it can never mask the refusal it is describing.
  */
-async function assertSchemaGate(client: Pick<ReturnType<typeof getSharedRuntimeDatabase>, 'client'>['client']): Promise<void> {
+export async function assertSchemaGate(client: Pick<ReturnType<typeof getSharedRuntimeDatabase>, 'client'>['client']): Promise<void> {
   const gates = await client<{ required_version: number }[]>`SELECT required_version FROM public.migration_gate_events ORDER BY checked_at DESC LIMIT 1`;
   const required = gates[0]?.required_version;
   if (required === undefined) return;
-  const ledgers = await client<{ applied_version: number | null }[]>`SELECT max(version)::int AS applied_version FROM public.indicate_schema_migrations`;
+  const ledgers = await client<{ applied_version: number | null; applied_at: Date | string | null }[]>`
+    SELECT version::int AS applied_version, applied_at
+      FROM public.indicate_schema_migrations
+     ORDER BY version DESC
+     LIMIT 1`;
   const applied = ledgers[0]?.applied_version ?? 0;
   if (applied < required) {
-    throw new Error(`schema_gate_unsatisfied: applied=${applied} required=${required}`);
+    try {
+      await client`
+        INSERT INTO public.migration_gate_events (id, required_version, actual_version, status)
+        VALUES (${crypto.randomUUID()}::uuid, ${required}::int, ${applied}::int, 'failed'::public.task_status)
+      `;
+    } catch {
+      // Evidence is best effort; the refusal below is the contract.
+    }
+    const appliedAt = ledgers[0]?.applied_at ?? null;
+    throw new Error(`schema_gate_unsatisfied: applied=${applied} required=${required} applied_at=${appliedAt instanceof Date ? appliedAt.toISOString() : String(appliedAt ?? 'unknown')}`);
   }
 }
 
