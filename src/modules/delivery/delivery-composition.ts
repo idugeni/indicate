@@ -33,6 +33,22 @@ function repository(config: RuntimeConfig, bootstrap: BootstrapConfig): Delivery
   globalThis.indicateDeliveryRepository = new DrizzleDeliveryRepository(getSharedRuntimeDatabase(bootstrap).db, config.seo.defaultAssetUrl, config.r2.publicHost);
   return globalThis.indicateDeliveryRepository;
 }
+/**
+ * Assemble the delivery resolver, content service, and repository for the
+ * current runtime configuration.
+ *
+ * @remarks Awaiting this from inside a `use cache` fill is only safe once the
+ * runtime context has settled: the await joins `getServerRuntimeContext`, whose
+ * single-flight hydration promise is module-scoped and therefore created outside
+ * the cache scope. A fill that catches it while it is still pending is rejected
+ * by Next.js with "appears to be stuck on shared state from the outer render
+ * scope", which surfaces as a stream that never completes rather than an error.
+ * Hostname resolution resolves the context before any loader runs, which is what
+ * keeps the `use cache` loaders in `network-runtime.ts` sound. Preserving that
+ * order matters: a loader that reaches this composition before the host is
+ * resolved reintroduces the failure. `site-content.ts` avoids the await entirely
+ * by resolving its pool synchronously from `getBootstrapConfig`.
+ */
 export async function deliveryComposition() {
   const context = await getServerRuntimeContext();
   const config = context.config;

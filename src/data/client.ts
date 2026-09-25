@@ -8,6 +8,17 @@ import * as schema from '@/data/schema';
 
 const RUNTIME_DATABASE_OPTIONS = '-c statement_timeout=15000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=30000';
 
+const DEFAULT_POOL_MAX = 1;
+const MAX_POOL_MAX = 20;
+
+function poolMax(fallback: number): number {
+  const raw = process.env.DATABASE_POOL_MAX;
+  if (raw === undefined || raw.trim() === '') return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > MAX_POOL_MAX) return fallback;
+  return parsed;
+}
+
 function withRuntimeDatabaseOptions(rawUrl: string): string {
   const url = new URL(rawUrl);
   url.searchParams.set('options', RUNTIME_DATABASE_OPTIONS);
@@ -19,11 +30,11 @@ function withRuntimeDatabaseOptions(rawUrl: string): string {
  *
  * @param config - Bootstrap configuration providing the pooled URL.
  * @returns Frozen runtime client, database, and closer.
- * @remarks The Supabase transaction pooler multiplexes server connections, but each warm Vercel instance still owns its client pool. Runtime uses one connection per warm instance; the build phase uses two because its parallel prerender workers can briefly overlap cache fills. Startup options carry the timeout limits through transaction-mode Supavisor.
+ * @remarks The Supabase transaction pooler multiplexes server connections, but each warm Vercel instance still owns its client pool. Runtime uses one connection per warm instance; the build phase uses two because its parallel prerender workers can briefly overlap cache fills. Startup options carry the timeout limits through transaction-mode Supavisor, and they are load-bearing: the project default is `statement_timeout` 120000 with `lock_timeout` and `idle_in_transaction_session_timeout` disabled, so dropping the options would widen the statement budget from 15s to 120s. `DATABASE_POOL_MAX` raises the pool per warm instance when concurrent reads must not serialize; measured headroom is 57 usable connections against 16 in use, of which only two are Supavisor backends, and twelve concurrent queries through the pooler complete normally.
  */
 export function createRuntimeDatabase(config: BootstrapConfig) {
   const client = postgres(withRuntimeDatabaseOptions(config.database.pooledUrl.reveal()), {
-    max: process.env.NEXT_PHASE === 'phase-production-build' ? 2 : 1,
+    max: poolMax(process.env.NEXT_PHASE === 'phase-production-build' ? 2 : DEFAULT_POOL_MAX),
     prepare: false,
     ssl: 'require',
     idle_timeout: 20,
