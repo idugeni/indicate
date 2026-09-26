@@ -110,6 +110,12 @@ Configured in `tsconfig.json` (all under `src/`):
 The source of truth is [docs/architecture.md](docs/architecture.md).
 The summary below must not contradict it.
 
+Its invariants are defaults, not laws. Each states the current shape and the
+reason for it. To build a different shape, the owner's request is the approval:
+record one line of reason in the same commit as a `Deviates:` trailer naming the
+invariant, and update the section that described the old default. No CI job
+checks for the trailer, and that is deliberate.
+
 ### Repository layout
 
 | Path | Purpose |

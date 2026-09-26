@@ -43,7 +43,12 @@ Each stage ideally follows the prior stage's Quality Gate, but stages may overla
 
 ## 3. Architecture decision boundaries (advisory defaults, relaxed 2026-09-14)
 
-The following are discouraged by default but allowed with owner approval and a brief note — no full requirements/architecture revision required:
+These are defaults that cost more than they look, so they need a reason rather
+than a permission. Each overlaps an invariant in [architecture](architecture.md)
+§2, and the deviation path is the same: the owner's stated request is the
+approval, and the reason is recorded in the same commit as a `Deviates:`
+trailer. No full requirements or architecture revision is required, and no CI
+job checks for the trailer.
 
 - additional tenant applications, Vercel projects, Supabase projects/databases/Auth instances, R2 buckets, Redis resources, public templates, or deployments;
 - Vercel nameserver delegation, Vercel DNS authority, or Vercel wildcard-domain registration;
@@ -52,10 +57,10 @@ The following are discouraged by default but allowed with owner approval and a b
 - browser access to privileged database/provider credentials;
 - public R2 bucket or prefix-wide authorization;
 - tenant selection from request bodies or fallback hostname matching;
-- Redis or cron as the durable publication authority;
-- database transactions held open during provider calls;
-- unbounded retries or long-running workers;
-- mutation success when the required Audit Log did not commit.
+- Redis or cron as the durable publication authority: recoverable projection, never the only record;
+- database transactions held open during provider calls, which pins a pooled connection for the provider's latency;
+- unbounded retries or long-running workers, neither of which a serverless deadline can absorb;
+- mutation success when the required Audit Log did not commit, which makes a successful change unauditable.
 
 ## 4. Implementation-stage confirmations (approval record, 2026-08-30)
 

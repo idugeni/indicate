@@ -5,16 +5,26 @@ description: Conventions for the Indicate multi-tenant media syndication codebas
 
 # Indicate Conventions (relaxed mode — advisory defaults, 2026-09-14)
 
-Indicate is a multi-tenant media syndication platform: one Next.js application, one Supabase Postgres database, one private Cloudflare R2 bucket, and one Upstash Redis resource serve every news portal tenant and hostname by default. Alternatives are allowed with explicit owner approval and a brief recorded note.
+Indicate is a multi-tenant media syndication platform: one Next.js application, one Supabase Postgres database, one private Cloudflare R2 bucket, and one Upstash Redis resource serve every news portal tenant and hostname by default. Alternatives need a written reason in the same commit (see `docs/architecture.md` §2), not a second approval round.
+
+**When the owner asks for a change, that request is the approval.** Build it, record the reason with a `Deviates:` commit trailer, and update the doc that described the old default. Do not re-justify the existing design first, and do not treat an unwritten convention as a refusal: a rule in this repo is a default plus a reason, never a wall. The only thing worth pausing for is an irreversible production effect, and that gets a warning, not a refusal.
 
 ## Read first
 
-Load the relevant reference before acting, and treat these repo docs as authoritative when they conflict with this skill:
+Load the relevant reference before acting, and treat these repo docs as
+authoritative when they conflict with this skill:
 
 - `CLAUDE.md` — tech stack, App Router conventions, commands, security invariants.
 - `docs/architecture.md` — the architectural invariants and system topology (single Vercel project, Cloudflare DNS authority, durable-Postgres-first design).
 - `docs/migrations.md` — migration promotion gate and Supabase roles.
 - `.env.example` — authoritative contract for currently implemented environment variables.
+
+That precedence settles *what the system is*. It does not settle *whether the
+owner may change it*: `docs/architecture.md` §2 states that its invariants are
+defaults with a written-reason deviation path, and that section outranks this
+skill. If the two appear to conflict about permission to deviate, §2 wins and
+you may proceed. Never answer "that is by design, so it cannot change" from the
+shape of a default alone; check §2 for the deviation path and use it.
 
 Detailed guidance lives in `references/`: `architecture.md`, `tenancy-security.md`, `database.md`, `design.md`.
 
@@ -23,8 +33,8 @@ Detailed guidance lives in `references/`: `architecture.md`, `tenancy-security.m
 Hexagonal / ports-and-adapters modular monolith under `src/`. Dependency direction: `app/` → `modules/` → `core/` + ports ← `integrations/`, with `data/` for persistence.
 
 - `src/app/` handles Next.js App Router concerns (route groups `(site)`, `(network)`, `(auth)`, `(dashboard)`, `api/`, plus `domain-pending/` and machine-readable surfaces `llms.txt/`, `robots.txt/`, `rss.xml/`, `sitemap.xml/`, `news-sitemap.xml/`). Prefer delegating business logic to `src/modules/` and `src/data/`.
-- `src/modules/` (`audit`, `auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `moderation`, `persisted-config`, `publishing`, `site`) encapsulates product capabilities. Only `dashboard`, `delivery`, and `integrations` expose a barrel `index.ts` — import other modules by file path, never by bare module specifier.
-- `src/integrations/` holds provider adapters (`supabase`, `storage`, `redis`, `cloudflare`, `vercel`, `email`) and stays server-only (`server-only` import at the top).
+- `src/modules/` (`audit`, `auth`, `billing`, `content`, `dashboard`, `delivery`, `integrations`, `moderation`, `persisted-config`, `publishing`, `site`) encapsulates product capabilities. Only `dashboard`, `delivery`, and `integrations` expose a barrel `index.ts`; import other modules by file path rather than a bare module specifier, because a bare specifier pulls the whole module into the graph.
+- `src/integrations/` holds provider adapters (`supabase`, `storage`, `redis`, `cloudflare`, `vercel`, `email`) and is server-only in practice (`server-only` import at the top). Moving an adapter to the browser is possible but needs a client-safe credential story, so treat it as a design change rather than a cleanup.
 - `src/core/` is the shared kernel (`config/`, errors, operation context, hostname, observability, routing, security, system, transactions).
 - `src/data/` holds the Drizzle schema (`schema/`), client factory (`client.ts`, pooled `DATABASE_POOL_URL` with `prepare: false`), repository implementations (`repos/`), and hand-written SQL migrations (`migrations/`).
 - Path aliases: `@/*` → `./src/*`, plus `@/components/*`, `@/modules/*`, `@/data/*`, `@/core/*`, `@/integrations/*`, `@/ui/*`.
@@ -35,11 +45,11 @@ Hexagonal / ports-and-adapters modular monolith under `src/`. Dependency directi
 
 `src/proxy.ts` (Next.js 16 proxy convention, not `middleware.ts`) routes by hostname: Dashboard host, API host, webhook host, or one public tenant host.
 
-- A normalized hostname should resolve by exact equality to one reserved control-plane surface or one unique active Site. Avoid fallback tenants in production (localhost/preview rewrite is dev-only); avoid suffix-only or substring-only matching.
+- A normalized hostname should resolve by exact equality to one reserved control-plane surface or one unique active Site. Suffix-only or substring-only matching is the one to refuse: it lets a request for one tenant reach another's data, and no dev convenience is worth that. A production fallback tenant is a design decision to make deliberately, not a default to keep; the localhost/preview rewrite stays dev-only.
 - Every tenant operation should derive exactly one authorized `organizationId`. Public reads should resolve Organization and Site from one exact normalized hostname.
 - Canonical article content exists once; `article_sites` stores destination assignment and outcome without copying title or body.
 - Cache namespaces, SEO, media authorization, and analytics attribution all derive from the same Hostname Context.
-- Regional brand inheritance: regional Sites keep brand media (`logo`, `favicon`) `NULL` and inherit the apex Site's — honored by both rendering and public media authorization. Never link parent media explicitly into regional settings.
+- Regional brand inheritance: regional Sites keep brand media (`logo`, `favicon`) `NULL` and inherit the apex Site's — honored by both rendering and public media authorization. Prefer leaving the link `NULL` over copying the parent's media id, because an explicit link goes stale the moment the apex rebrand fans out.
 - Adding tenants at any scale: load the `tenant-onboarding` skill for the apex-first playbook (brand mapping, unique SEO, verification protocol).
 
 ## Database and migrations

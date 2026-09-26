@@ -22,18 +22,58 @@ Every tenant operation carries one immutable Organization context derived from a
 
 ## 2. Architectural invariants
 
-1. Exactly one application codebase, Next.js application, Vercel project, Supabase project/database/Auth instance, R2 bucket, and Upstash Redis resource, plus ten public news templates, serve every tenant and hostname.
-2. Cloudflare remains authoritative for all managed nameservers, DNS, wildcard records, SSL proxy behavior, and CDN configuration; Vercel is hosting only.
-3. A normalized hostname resolves only by exact equality to one reserved control-plane surface or one unique active Site; no fallback tenant exists.
-4. Every tenant entity, relationship, query, mutation, job, object authorization, cache namespace, aggregate, and audit event preserves Organization ownership.
-5. Canonical Article content exists once. `article_sites` stores destination assignment and current outcome without copying title or body.
-6. PostgreSQL is authoritative for publication jobs, targets, state, idempotency, attempts, leases, fencing, and recovery. Redis is never the sole record.
-7. Publication acceptance is transactional and Organization-scoped by Idempotency Key plus canonical Request Fingerprint.
-8. Public rendering, URL generation, SEO, media access, analytics attribution, and cache identity derive from the same Hostname Context.
-9. Security-sensitive database changes and required Audit Logs commit atomically. Secrets and internal diagnostics never enter public errors or audit context.
-10. Dashboard, API, background, and reconciliation adapters invoke shared application services rather than issuing tenant SQL or reimplementing business rules.
-11. External effects occur only after durable intent is recorded and are resumable, bounded, and idempotent.
-12. Implementation follows the recommended seven-stage sequence as a guideline; a failed Quality Gate is a warning, not a hard block on the next stage (relaxed 2026-09-14).
+Read this before treating any invariant as a prohibition.
+
+**Every invariant in this section is a default, not a law.** Each states the shape
+the system is built in and the reason that shape was chosen. None of them is
+permanent, and none of them outranks an explicit owner instruction to build it
+differently.
+
+### How to deviate
+
+Deviating from an invariant is a normal engineering decision, not an escalation.
+It needs a written reason, not permission:
+
+1. **Approval is the owner's stated request.** If the owner asks for the change,
+   that request *is* the approval. Do not ask a second time, and do not
+   re-justify the default before starting.
+2. **Record it in the same commit.** Add a `Deviates:` trailer naming the
+   invariant and one line on why:
+
+   ```text
+   Deviates: architecture §2.3 — wildcard match accepted, tenant list is
+   bounded to 200 rows so exact lookup is kept for writes
+   ```
+
+3. **Nothing blocks the build.** This is a record, not a gate. No CI job, lint
+   rule, or test checks for a `Deviates:` trailer, and none ever should: a
+   machine-enforced approval step would recreate the problem this section exists
+   to remove, because an agent that cannot clear the gate would stop rather than
+   ask.
+4. **Update this section in the same commit** so the default and the reason for
+   changing it stay together. An invariant that no longer describes the system
+   is worse than one that was never true, because the next reader trusts it.
+
+The distinction that matters: an invariant may be *load-bearing* and still be
+*changeable*. Load-bearing means a careless change causes real damage, which is
+an argument for thinking before deviating, never an argument for refusing. Where
+correctness genuinely depends on one, say so in the invariant's own text so the
+next reader knows the cost.
+
+Items 1 to 11 below are current defaults. Item 12 records a standing relaxation.
+
+1. **One stack, default.** Exactly one application codebase, Next.js application, Vercel project, Supabase project/database/Auth instance, R2 bucket, and Upstash Redis resource, plus ten public news templates, serve every tenant and hostname. Chosen so tenant isolation has one place to be enforced instead of one per deployment; a second project or bucket multiplies that surface and the credentials behind it.
+2. **Cloudflare owns DNS, default.** Cloudflare is authoritative for all managed nameservers, DNS, wildcard records, SSL proxy behavior, and CDN configuration; Vercel is hosting only. The `525` incident in [active domains](active-domains.md) traced to origin TLS, which is the cost of splitting this authority.
+3. **Exact hostname resolution, load-bearing.** A normalized hostname resolves by exact equality to one reserved control-plane surface or one unique active Site; no fallback tenant exists. Suffix or substring matching would let one tenant's request reach another's data, so treat breaking this as a security change, not a refactor.
+4. **Organization ownership, load-bearing.** Every tenant entity, relationship, query, mutation, job, object authorization, cache namespace, aggregate, and audit event preserves Organization ownership. Enforced below the application by RLS, so a code change that appears to work locally can still be denied in production.
+5. **Canonical article body, default.** Canonical Article content exists once. `article_sites` stores destination assignment and current outcome without copying title or body. Copying per site was the original design and was replaced because a title edit had to fan out to every destination.
+6. **Postgres is the record, load-bearing.** PostgreSQL is authoritative for publication jobs, targets, state, idempotency, attempts, leases, fencing, and recovery. Redis is never the sole record, because a Redis eviction would otherwise lose a publication that Postgres already accepted.
+7. **Transactional acceptance, default.** Publication acceptance is transactional and Organization-scoped by Idempotency Key plus canonical Request Fingerprint. Without the fingerprint, a retry after a network timeout creates a second publication.
+8. **One hostname context, default.** Public rendering, URL generation, SEO, media access, analytics attribution, and cache identity derive from the same Hostname Context, so a site cannot be indexed under one hostname and served under another.
+9. **Atomic audit, load-bearing.** Security-sensitive database changes and required Audit Logs commit atomically, and secrets and internal diagnostics never enter public errors or audit context. The audit chain is append-only and hash-linked; a partially committed change is indistinguishable from tampering.
+10. **Services own business rules, default.** Dashboard, API, background, and reconciliation adapters invoke shared application services rather than issuing tenant SQL or reimplementing business rules. Direct tenant SQL from an adapter is how a rule ends up enforced in one entry point and skipped in another.
+11. **Durable intent before external effects, default.** External effects occur only after durable intent is recorded and are resumable, bounded, and idempotent. A purge or DNS call that succeeds but leaves no record cannot be retried or audited.
+12. **Stage order, relaxed (2026-09-14).** Implementation follows the recommended seven-stage sequence as a guideline; a failed Quality Gate is a warning, not a hard block on the next stage.
 
 ## 3. System topology
 

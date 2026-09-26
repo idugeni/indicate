@@ -22,6 +22,8 @@ Exact pins live in `package.json`; the majors below are the contract.
 
 Hexagonal / ports-and-adapters modular monolith under `src/`. One application, one database, one deployment.
 
+The invariants in [docs/architecture.md](docs/architecture.md) §2 are defaults, not laws, and each records why the current shape was chosen. When the owner asks for a different shape, that request is the approval: build it, record the reason in the same commit as a `Deviates:` trailer, and update the section describing the old default. Do not answer "by design, so it cannot change" from the shape of a convention alone.
+
 **Dependency direction:**
 
 ```text

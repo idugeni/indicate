@@ -237,6 +237,15 @@ No rule in this file overrules an explicit owner instruction — these
 rules constrain the agent's defaults and initiative, never the owner's
 taste. When the owner changes requirements:
 
+0. **The owner's stated request is the approval.** Do not ask for a second
+   approval, do not re-justify the current design before starting, and do not
+   answer "by design, so it cannot change" from the shape of a convention
+   alone. `docs/architecture.md` §2 gives the deviation path for every
+   architectural invariant: build the change, record one line of reason in the
+   same commit as a `Deviates:` trailer, and update the doc that described the
+   old default. Nothing in CI gates that trailer, deliberately: a
+   machine-enforced approval step is what produces refusals instead of changes.
+   This covers architecture and data rules, not only comment and commit style.
 1. Adjust first, docs may follow: code the change, then update the
    governing docs (`docs/architecture.md`, `docs/migrations.md`, this file)
    in the same PR when practical. Docs are advisory, not a pre-code gate.
