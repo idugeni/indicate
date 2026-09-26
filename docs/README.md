@@ -8,7 +8,8 @@
 
 | Document | Status | Contents |
 |---|---|---|
-| [architecture](architecture.md) | Approved 2026-08-30 | MVP topology, invariants, deployment and hostname design. Code wins on conflict. |
+| [architecture](architecture.md) | Approved 2026-08-30 | MVP topology, invariants, deployment and hostname design. Sections 1-20 are binding. Code wins on conflict. |
+| [architecture policy](architecture-policy.md) | Advisory | Owner relaxations from 2026-09-14, decision boundaries, and the pre-launch approval record. Split out of `architecture.md`; nothing here binds a build. |
 | [architecture rules](architecture-rules.md) | Advisory | Performance and caching rules for contributors. |
 | [templates](templates.md) | Advisory | Ten public news templates in `src/modules/site/components/network/templates/`. |
 
@@ -24,7 +25,9 @@
 | [active domains](active-domains.md) | Living ledger | Activation/deactivation ledger; update on every change. |
 | [ops lessons](ops-lessons.md) | Living | Incident-derived procedures (tenant context, Supavisor sessions). |
 | [plans/audit remediation 2026-09-24](plans/audit-remediation-2026-09-24.md) | Approved-plan | Full 6-phase remediation plan from the 2026-09-24 six-area audit. |
-| [vercel multi-tenant archive](vercel-multi-tenant/README.md) | Archive 2026-09-24 | Verbatim Vercel multi-tenant platform docs (9 pages) for internal reference. Upstream wins on conflict. |
+| [schema audit](schema-audit.md) | Generated | Column-level audit of production schema against application code. Regenerate after schema migrations. |
+| [regions](regions.md) | Living | Single source for province geography in `regions` (naming rules + 38-row roster). |
+| [vercel multi-tenant archive](vercel-multi-tenant/README.md) | Archive 2026-09-24 | Verbatim Vercel multi-tenant platform docs (10 pages) for internal reference. Upstream wins on conflict; excluded from `lint:md` and link checks. |
 
 ## Legal and per-tenant records
 
@@ -38,4 +41,4 @@
 
 ## Root community files (stay `UPPERCASE.md`)
 
-`README.md` · `CONTRIBUTING.md` · `CODE_OF_CONDUCT.md` · `SECURITY.md` · `SUPPORT.md` · `CHANGELOG.md` · `LICENSE` · `AGENTS.md` · `CLAUDE.md`
+`README.md` · `CONTRIBUTING.md` · `CODE_OF_CONDUCT.md` · `SECURITY.md` · `SUPPORT.md` · `CHANGELOG.md` · `THIRD-PARTY-NOTICES.md` · `LICENSE` · `AGENTS.md` · `CLAUDE.md`

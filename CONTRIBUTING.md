@@ -88,7 +88,7 @@ compatible license in the PR.
 
 ### Formatting
 
-Markdown and prose follow `.prettierrc` (`proseWrap: preserve`, `printWidth: 100`) and `.markdownlint.json`; `npm run lint:md` covers curated markdown. Code follows the existing formatting conventions in the codebase.
+Markdown and prose follow `.prettierrc` (`proseWrap: preserve`, `printWidth: 100`) and `.markdownlint.json`; `npm run lint:md` covers curated markdown. `npm run lint:md:citations` resolves every `file:line` source citation in prose against the tree and fails on a missing file, a line past end-of-file, a blank target line, or a citation written without a repo-relative root. Fenced code blocks are skipped, and vendored trees (`docs/vercel-multi-tenant/`, `.agents/`) are excluded from both. Code follows the existing formatting conventions in the codebase.
 Use single quotes, trailing commas, and 2-space indentation.
 
 ### Path aliases
@@ -340,7 +340,8 @@ When making structural changes, consider updating these files:
 | File | What to update |
 |---|---|
 | `README.md` | Repository layout, commands, architecture overview |
-| `docs/architecture.md` | System topology, layer responsibilities |
+| `docs/architecture.md` | System topology, layer responsibilities (sections 1-20) |
+| `docs/architecture-policy.md` | Advisory relaxations, decision boundaries, approval record |
 | `docs/migrations.md` | Migration or rollback procedure changes |
 | `docs/production-readiness-runbook.md` | Readiness or rollback changes |
 | `src/app/globals.css` + `src/components/ui/` | Visual tokens, component specs (if adding UI) |
@@ -352,6 +353,7 @@ When making structural changes, consider updating these files:
 If you are unsure where code belongs or how to handle a specific pattern, check:
 
 1. [docs/architecture.md](docs/architecture.md) for system design
-2. [src/app/globals.css](src/app/globals.css) and `src/components/ui/` for visual decisions
-3. [SUPPORT.md](SUPPORT.md) for where to ask for help
-4. Existing code in the same layer for established patterns
+2. [docs/architecture-policy.md](docs/architecture-policy.md) if you want to know whether a deviation is still allowed
+3. [src/app/globals.css](src/app/globals.css) and `src/components/ui/` for visual decisions
+4. [SUPPORT.md](SUPPORT.md) for where to ask for help
+5. Existing code in the same layer for established patterns
