@@ -1429,6 +1429,12 @@
       "when": 1790478000000,
       "tag": "20260926180000_audit_chain_head_lock",
       "breakpoints": true
-    }
-  ]
+    },
+    {
+      "idx": 204,
+      "version": "7",
+      "when": 1790481600000,
+      "tag": "20260926190000_publisher_brand_removal",
+      "breakpoints": true
+    }  ]
 }

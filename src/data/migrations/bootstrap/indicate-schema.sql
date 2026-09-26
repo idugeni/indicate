@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (204 migrations):
+-- Reviewed sources, in journal order (205 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -217,6 +217,7 @@
 --   202  20260926160000_site_settings_manage_permission  ledger sha256:6f94f59164e019cdc55068f4f5b7c85b87a1227465830c127f09a429914e7fa0
 --   203  20260926170000_site_settings_robots_directive_cast  ledger sha256:a98a1077e49431e37db6025fba6d42acd09780ad66ec8e27bbb31fe1e26484ce
 --   204  20260926180000_audit_chain_head_lock  ledger sha256:b4b24494492cf9f7bb09ac238eee0d5c4e3fa6a5be91966186c92d9ecb3c3036
+--   205  20260926190000_publisher_brand_removal  ledger sha256:e8100322757317b7bce632f9aef9b6297c69b0e2d405e1fa692e07f8e2f4fee2
 
 BEGIN;
 
@@ -17088,4 +17089,157 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (204, 'audit_chain_head_lock', 'sha256:bbab7baa060fd1a05855aac525b0b049b9075db1332df326e0b495a46e2b3c5d');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b4b24494492cf9f7bb09ac238eee0d5c4e3fa6a5be91966186c92d9ecb3c3036', 1790478000000);
+
+-- ----------------------------------------------------------------------
+-- 20260926190000_publisher_brand_removal
+-- ----------------------------------------------------------------------
+-- Remove the network's portal brands from `publishers`.
+--
+-- `publishers` mixed two different subjects. The 118 `correctional_institution`
+-- rows are the newsrooms the network actually syndicates: each one owns its own
+-- Organization and appears both in the platform organization and in its tenant
+-- organization, which is what the affiliation model resolves against. The nine
+-- `independent_publisher` rows were something else entirely — Kabar360,
+-- Liputan99, Fakta01, Jurnalism, WawasanNusa, and four more. Each of those
+-- names is a portal brand, not a newsroom: every one of them is the apex label
+-- of 33 rows in `sites` (the bare apex plus 32 city subdomains such as
+-- `banjarnegara.kabar360.biz.id`), and each carried the brand logo through
+-- `contacts.logoUrl` pointing at the same `media` row that `site_settings`
+-- already references as `logo_media_id` for that apex site.
+--
+-- Reading the dashboard publisher list therefore mixed institutions with the
+-- network's own properties, which is why the roster showed archived brand rows
+-- interleaved with active institutions and read as one list of publishers.
+-- These rows carry no publishing history at all: zero `articles` and zero
+-- `official_affiliations` reference them, and `audit_logs` records them only as
+-- the `publisher.archive` transition that retired them on 2026-09-22. A brand
+-- belongs to `sites` and `site_settings`, which already hold it, so deleting
+-- the duplicate publisher row loses no brand information and orphans no media:
+-- the `media` rows stay referenced by `site_settings.logo_media_id` and stay
+-- reachable through the public brand route.
+--
+-- The delete is restricted to that exact shape rather than to a name list, so a
+-- genuine independent newsroom is never removed by name collision, and the
+-- guard block below refuses to run unless every remaining archived
+-- `independent_publisher` row without publishing history is a portal brand. If
+-- a future independent publisher with articles behind it appears, the predicate
+-- stops matching and the guard fails loudly instead of deleting a newsroom.
+--
+-- `audit_logs` rows are never touched: insert-only by design with daily WORM
+-- export (see docs/migrations.md). One `publisher.delete` row is appended per
+-- removed brand so the erasure itself is on the record.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+DO $$
+DECLARE
+  pending integer;
+  unexplained integer;
+BEGIN
+  SELECT count(*) INTO pending
+    FROM public.publishers AS p
+   WHERE p.type = 'independent_publisher'
+     AND p.status = 'archived'
+     AND NOT EXISTS (SELECT 1 FROM public.articles AS a WHERE a.publisher_id = p.id)
+     AND NOT EXISTS (SELECT 1 FROM public.official_affiliations AS o WHERE o.publisher_id = p.id)
+     AND EXISTS (
+       SELECT 1 FROM public.sites AS s
+        WHERE s.organization_id = p.organization_id
+          AND s.normalized_hostname ILIKE '%' || lower(p.name) || '%'
+     );
+
+  IF pending = 0 THEN
+    RAISE EXCEPTION 'publisher_brand_removal_nothing_to_do: no unreferenced archived brand rows remain';
+  END IF;
+
+  SELECT count(*) INTO unexplained
+    FROM public.publishers AS p
+   WHERE p.type = 'independent_publisher'
+     AND p.status = 'archived'
+     AND NOT EXISTS (SELECT 1 FROM public.articles AS a WHERE a.publisher_id = p.id)
+     AND NOT EXISTS (SELECT 1 FROM public.official_affiliations AS o WHERE o.publisher_id = p.id)
+     AND NOT EXISTS (
+       SELECT 1 FROM public.sites AS s
+        WHERE s.organization_id = p.organization_id
+          AND s.normalized_hostname ILIKE '%' || lower(p.name) || '%'
+     );
+
+  IF unexplained > 0 THEN
+    RAISE EXCEPTION 'publisher_brand_removal_ambiguous: % archived rows without publishing history are not portal brands', unexplained;
+  END IF;
+END;
+$$;
+WITH removed AS (
+  DELETE FROM public.publishers AS p
+   WHERE p.type = 'independent_publisher'
+     AND p.status = 'archived'
+     AND NOT EXISTS (SELECT 1 FROM public.articles AS a WHERE a.publisher_id = p.id)
+     AND NOT EXISTS (SELECT 1 FROM public.official_affiliations AS o WHERE o.publisher_id = p.id)
+     AND EXISTS (
+       SELECT 1 FROM public.sites AS s
+        WHERE s.organization_id = p.organization_id
+          AND s.normalized_hostname ILIKE '%' || lower(p.name) || '%'
+     )
+  RETURNING p.organization_id, p.id, p.name, p.attribution_label, p.type
+), audited AS (
+  INSERT INTO public.audit_logs (
+    organization_id, id, actor_type, actor_id, entry_point, action, target_type,
+    target_id, outcome, changed_fields, before, request_id
+  )
+  SELECT organization_id,
+         gen_random_uuid(),
+         'system'::public.audit_actor_type,
+         'migration:publisher_brand_removal',
+         'worker'::public.audit_entry_point,
+         'publisher.delete',
+         'publisher',
+         id::text,
+         'succeeded'::public.audit_outcome,
+         ARRAY['status'],
+         jsonb_build_object(
+           'id', id,
+           'name', name,
+           'type', type,
+           'attributionLabel', attribution_label,
+           'status', 'archived'
+         ),
+         'migration:205'
+    FROM removed
+  RETURNING organization_id
+)
+SELECT count(*) FROM audited;
+DO $$
+DECLARE
+  remaining integer;
+  orphaned_media integer;
+BEGIN
+  SELECT count(*) INTO remaining
+    FROM public.publishers AS p
+   WHERE p.type = 'independent_publisher'
+     AND p.status = 'archived'
+     AND NOT EXISTS (SELECT 1 FROM public.articles AS a WHERE a.publisher_id = p.id)
+     AND NOT EXISTS (SELECT 1 FROM public.official_affiliations AS o WHERE o.publisher_id = p.id)
+     AND EXISTS (
+       SELECT 1 FROM public.sites AS s
+        WHERE s.organization_id = p.organization_id
+          AND s.normalized_hostname ILIKE '%' || lower(p.name) || '%'
+     );
+
+  IF remaining <> 0 THEN
+    RAISE EXCEPTION 'publisher_brand_removal_incomplete: % mirrored brand rows still present', remaining;
+  END IF;
+
+  SELECT count(*) INTO orphaned_media
+    FROM public.media AS m
+   WHERE NOT EXISTS (SELECT 1 FROM public.site_settings AS s WHERE s.logo_media_id = m.id)
+     AND NOT EXISTS (SELECT 1 FROM public.site_settings AS s WHERE s.favicon_media_id = m.id)
+     AND NOT EXISTS (SELECT 1 FROM public.site_settings AS s WHERE s.default_media_id = m.id);
+
+  RAISE NOTICE 'publisher_brand_removal_done: unreferenced media rows now %', orphaned_media;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (205, 'publisher_brand_removal', 'sha256:bf26f268c32325f2ca192df55f3d09a7f17a53d3296a980b8a1e286cd7261461');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e8100322757317b7bce632f9aef9b6297c69b0e2d405e1fa692e07f8e2f4fee2', 1790481600000);
 COMMIT;
