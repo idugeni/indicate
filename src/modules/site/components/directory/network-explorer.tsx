@@ -119,7 +119,7 @@ export function NetworkExplorer({ sites }: { readonly sites: readonly DirectoryE
                   <span aria-hidden="true" className="h-px flex-1 bg-[#e2ded2]" />
                 </div>
               ) : null}
-              <ul className="m-0 grid list-none gap-px overflow-hidden rounded-[3px] border border-[#e2ded2] bg-[#e2ded2] p-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <ul className="m-0 grid list-none grid-cols-2 gap-px overflow-hidden rounded-[3px] border border-[#e2ded2] bg-[#e2ded2] p-0 lg:grid-cols-3 xl:grid-cols-5">
                 {cards.map((site) => {
                   const accent = accentForHostname(site.hostname);
                   const regional = site.siteLevel !== 'apex';
@@ -132,9 +132,9 @@ export function NetworkExplorer({ sites }: { readonly sites: readonly DirectoryE
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label={`Buka portal ${site.siteName}`}
-                        className="relative flex flex-1 flex-col gap-2 p-6 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-[#b88d3a] xl:p-7"
+                        className="relative flex flex-1 flex-col gap-2 p-4 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-[#b88d3a] sm:p-6 xl:p-7"
                       >
-                        <span className="pr-8 text-2xl md:text-3xl xl:text-[1.65rem]">
+                        <span className="text-[1.375rem] sm:pr-8 sm:text-2xl md:text-3xl xl:text-[1.65rem]">
                           <Wordmark name={site.siteName} accent={accent} pattern={wordmarkPatternForHostname(site.hostname)} />
                         </span>
                         {subline !== null && subline !== undefined && subline.trim() !== '' ? (
@@ -143,7 +143,7 @@ export function NetworkExplorer({ sites }: { readonly sites: readonly DirectoryE
                           </span>
                         ) : null}
                         {site.description !== null ? (
-                          <span className="block font-sans text-sm leading-relaxed text-[#4c5b6b]">
+                          <span className="block font-sans text-sm leading-relaxed text-[#4c5b6b] line-clamp-4 sm:line-clamp-none">
                             {site.description}
                           </span>
                         ) : (
