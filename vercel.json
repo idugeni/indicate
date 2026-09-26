@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["sin1"],
-  "ignoreCommand": "base=''; for candidate in \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD^ HEAD~1; do if [ -n \"$candidate\" ] && git rev-parse --verify --quiet \"$candidate^{commit}\" >/dev/null 2>&1; then base=\"$candidate\"; break; fi; done; [ -n \"$base\" ] || exit 1; if git diff --quiet \"$base\" HEAD -- . ':!*.md' ':!docs/**' ':!.github/**' ':!.agents/**' ':!.claude/**' && git diff --quiet \"$base\" HEAD -- public/; then exit 0; else exit 1; fi",
+  "ignoreCommand": "b=$(git rev-parse --verify --quiet \"${VERCEL_GIT_PREVIOUS_SHA}^{commit}\" || git rev-parse --verify --quiet \"HEAD^\") || exit 1; [ -z \"$(git diff --name-only \"$b\" HEAD | grep -vE '^(docs/|\\.github/|\\.claude/)|\\.md$')\" ]",
   "crons": [
     {
       "path": "/api/internal/maintenance/view-flush",
