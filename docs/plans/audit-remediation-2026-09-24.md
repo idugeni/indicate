@@ -51,7 +51,7 @@ maks 72 karakter, tanpa titik, tanpa emoji), selalu `git commit -s`,
 
 ## Fase 2 — Operasi domain: backoff + wildcard per apex (SELESAI kecuali cert 2.3)
 
-- [x] 2.1. Backoff 429 di `exact-domain-adapter.ts:8`: baca status 429 + `Retry-After`,
+- [x] 2.1. Backoff 429 di `src/integrations/vercel/exact-domain-adapter.ts:37`: baca status 429 + `Retry-After`,
   exponential backoff + jitter, bedakan 429 (retry) vs 4xx permanen (gagal cepat).
   Verifikasi: mock 429 beruntun menjadi sukses tanpa bakar kuota buta.
 - [x] 2.2. Delegasi `_acme-challenge` per 36 apex ke Vercel (NS di Cloudflare,
