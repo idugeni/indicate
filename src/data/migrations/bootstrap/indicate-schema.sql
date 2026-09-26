@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (197 migrations):
+-- Reviewed sources, in journal order (198 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -210,6 +210,7 @@
 --   195  20260926040000_drop_vestigial_replay_outcome_reference  ledger sha256:81bb2693e585a48a7e8cf37ea9652f9f2fe7d77377f40aa44c0c39a2e9dbc9d0
 --   196  20260926050000_retain_only_active_cache_bypasses  ledger sha256:b63dab6baa073b874498cf18ff3661808a1d52ccd32b73578d33559557e46e1d
 --   197  20260926060000_arm_schema_gate  ledger sha256:f28b32dc1650780735eca8bae05f4eeed4155bf6ba8e66b90c42795dc53504d9
+--   198  20260926120000_runtime_config_environment_cast  ledger sha256:3f09a7f362d99b27e7a46f48706ea51e698306ac9baa3ea64c9ff316d61ab30f
 
 BEGIN;
 
@@ -16482,4 +16483,70 @@ END;
 $$;
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f28b32dc1650780735eca8bae05f4eeed4155bf6ba8e66b90c42795dc53504d9', 1790437200000);
+
+-- ----------------------------------------------------------------------
+-- 20260926120000_runtime_config_environment_cast
+-- ----------------------------------------------------------------------
+-- Cast the runtime environment inside the runtime-config mutation functions.
+--
+-- Every function that commits a runtime-config or site-settings change read the
+-- environment from `current_setting('app.environment', true)`, which is `text`,
+-- and inserted it straight into the `runtime_config_environment` columns of
+-- `runtime_config_revisions`, `runtime_config_audit_logs`, and
+-- `runtime_config_invalidation_intents`. Those columns have been the enum since
+-- the runtime-config core migration, so each call raised 42804 on its first
+-- insert and rolled the whole change back. The admin runtime-config surface
+-- could not commit anything, and every production config change so far had to
+-- bypass it with hand-written SQL.
+--
+-- The repair reuses the idiom `20260915020000_media_policy_allow_ico` already
+-- established, including its `production` default for an unset setting, and then
+-- asserts that no uncast read survives anywhere in the schema, so this migration
+-- fails closed instead of leaving a partial repair behind.
+--
+-- Rewriting the stored source keeps exactly one definition of each function in
+-- the catalog; restating eight bodies by hand here would let them drift from the
+-- migrations that created them.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+DO $$
+DECLARE
+  target regprocedure;
+  patched integer := 0;
+BEGIN
+  FOR target IN
+    SELECT function_entry.oid::regprocedure
+      FROM pg_proc AS function_entry
+      JOIN pg_namespace AS nsp ON nsp.oid = function_entry.pronamespace
+     WHERE nsp.nspname = 'indicate_private'
+       AND function_entry.prosrc LIKE '%current_setting(''app.environment'', true)%'
+       AND function_entry.prosrc NOT LIKE '%::public.runtime_config_environment%'
+  LOOP
+    EXECUTE replace(
+      pg_get_functiondef(target),
+      'current_setting(''app.environment'', true)',
+      'COALESCE(NULLIF(current_setting(''app.environment'', true), ''''), ''production'')::public.runtime_config_environment'
+    );
+    patched := patched + 1;
+  END LOOP;
+  IF patched = 0 THEN
+    RAISE EXCEPTION 'runtime_config_environment_cast_missing: no uncast environment read found';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+      FROM pg_proc AS function_entry
+      JOIN pg_namespace AS nsp ON nsp.oid = function_entry.pronamespace
+     WHERE nsp.nspname = 'indicate_private'
+       AND function_entry.prosrc LIKE '%current_setting(''app.environment'', true)%'
+       AND function_entry.prosrc NOT LIKE '%::public.runtime_config_environment%'
+  ) THEN
+    RAISE EXCEPTION 'runtime_config_environment_cast_incomplete: an uncast environment read remains';
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (198, 'runtime_config_environment_cast', 'sha256:2aa56704731ce39b6c2f82eafd3f9f3e33347881a57cd76a78cb2511aaf4c858');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('3f09a7f362d99b27e7a46f48706ea51e698306ac9baa3ea64c9ff316d61ab30f', 1790448000000);
 COMMIT;
