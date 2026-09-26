@@ -4,6 +4,20 @@ Audit tingkat kolom terhadap database produksi, dibandingkan dengan kode di repo
 ini. Diregenerasi 2026-09-26 setelah migrasi 191, lalu dikoreksi setelah
 migrasi 195.
 
+Angka di bawah hasilkan dengan pemeriksaan manual terhadap produksi, bukan oleh
+generator, dan tidak ada generator di repo ini. Alasannya bersifat teknis: sinyal
+`app` menuntut setiap akses properti diatribusikan ke tabel yang memilikinya.
+`eq(articles.status, 'active')` harus dihitung untuk `articles.status` dan bukan
+untuk `sites.status` yang kebetulan bernama sama. Pencocokan teks tidak bisa
+membedakan keduanya, dan percobaan generator berbasis regex melaporkan 574 `app`
+dari 610 kolom, bukan 313, karena setiap `.status` di mana pun ikut terhitung.
+Generator yang benar butuh resolusi simbol lewat compiler TypeScript, bukan
+`RegExp`. Sampai itu ada, angka di bawah diperlakukan sebagai hasil audit
+terverifikasi yang **tidak boleh** ditimpa angka mesin.
+
+Setiap perubahan skema atau kueri setelah 2026-09-26 berarti audit ini basi
+dan harus diulang secara manual.
+
 ## Cara kerja
 
 Lima sinyal digabung per kolom, tidak ada yang ditebak dari nama kolom saja:
