@@ -166,4 +166,53 @@ describe('fb:app_id tenant coverage', () => {
   }
 });
 
+describe('tenant brand isolation', () => {
+  beforeEach(() => {
+    load.mockReset();
+    load.mockResolvedValue(makeNetworkSite([makeNetworkArticle({ tags: ['daerah'] } as never)]));
+  });
+
+  const surfaces: readonly (readonly [string, Parameters<typeof networkMetadata>[1]])[]
+    = [
+      ['halaman utama', {}],
+      ['artikel', { articleSlug: 'berita-utama' }],
+      ['kategori', { categorySlug: 'daerah' }],
+      ['tag', { tag: 'daerah' }],
+      ['pencarian', { search: 'daerah' }],
+    ];
+
+  for (const [name, query] of surfaces) {
+    it(`mengikat application-name dan publisher ke tenant di ${name}`, async () => {
+      const metadata = await meta('/', query);
+      expect(metadata.applicationName).toBe('Portal');
+      expect(metadata.publisher).toBe('Portal');
+    });
+
+    it(`tidak mewarisi brand control-plane di ${name}`, async () => {
+      const metadata = await meta('/', query);
+      expect(metadata.creator).toBeNull();
+      expect(metadata.category).toBeNull();
+      expect(JSON.stringify(metadata)).not.toContain('Indicate');
+      expect(JSON.stringify(metadata)).not.toContain('News Platform');
+    });
+  }
+});
+
+describe('utility surfaces stay non-indexable', () => {
+  beforeEach(() => {
+    load.mockReset();
+    load.mockResolvedValue(makeNetworkSite());
+  });
+
+  it('menandai /report noindex agar tidak bersaing dengan artikel', async () => {
+    const metadata = await networkMetadata('/report', {}, undefined, undefined, 'noindex, nofollow');
+    expect(metadata.robots).toMatchObject({ index: false });
+  });
+
+  it('membiarkan dokumen tenant biasa tetap indexable', async () => {
+    const metadata = await networkMetadata('/tentang', {}, 'Tentang', 'Deskripsi.');
+    expect(metadata.robots).toMatchObject({ index: true, follow: true });
+  });
+});
+
 

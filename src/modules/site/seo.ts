@@ -145,12 +145,44 @@ export function tenantFacebook(appToken: string | null | undefined): Pick<Metada
   return appId === null ? {} : { facebook: { appId } };
 }
 
+/**
+ * Brand fields the root layout lends to every route in the app.
+ */
+type BrandFields = Pick<Metadata, 'applicationName' | 'authors' | 'creator' | 'publisher' | 'category'>;
+
+/**
+ * Bind the inheritable brand fields to one tenant portal.
+ *
+ * @param siteName - Tenant portal name already resolved for the document.
+ * @returns `applicationName` and `publisher` for the tenant, with explicit nulls
+ *   for the control-plane-only fields.
+ * @remarks `src/app/(network)/layout.tsx` exports no `metadata`, so a tenant page
+ * that sets none of these inherits `application-name`, `author`, `creator`,
+ * `publisher`, and `category` from `src/app/layout.tsx` — a reference to another
+ * Site on every portal, which `docs/architecture.md` §6 forbids for tenant
+ * documents. `author` and `category` carry no meaning on a listing, a legal page,
+ * or a contact page, so they are cleared rather than filled with the tenant name.
+ */
+export function tenantBrand(siteName: string): BrandFields {
+  return { applicationName: siteName, authors: null, creator: null, publisher: siteName, category: null };
+}
+
+/**
+ * Clear every brand field so a page can never inherit another Site's identity.
+ *
+ * @returns All brand fields null, for pages that must name no publisher at all.
+ */
+export function clearedBrand(): BrandFields {
+  return { applicationName: null, authors: null, creator: null, publisher: null, category: null };
+}
+
 /** Uniform metadata for missing network content (unknown slug, empty id). */
 export function notFoundMetadata(): Metadata {
   return {
     title: { absolute: 'Not Found' },
     description: 'Halaman tidak ditemukan.',
     robots: { index: false, follow: false },
+    ...clearedBrand(),
     alternates: null,
     openGraph: null,
     twitter: null,
@@ -367,7 +399,9 @@ export function serializeJsonLd(documents: readonly Readonly<Record<string, unkn
 /**
  * Serialize robots.txt for a site.
  *
- * @remarks Search pages are noindex: disallow them to keep crawl budget on canonical URLs.
+ * @remarks Search and report pages are noindex: disallow them to keep crawl budget on
+ * canonical URLs. `/report` is a content-report form, so it has no standalone content to
+ * index and only ever appears in a sitemap as an orphan.
  * `/api/network/media/` is carved back out of the `/api/` catch-all because it is the only
  * crawler-facing image surface: uploaded article covers, gallery images, and the tenant
  * `site-default` card are all addressed there, so a blocked prefix makes social crawlers
@@ -392,6 +426,7 @@ export function serializeRobots(site: {
     'Allow: /favicon.ico',
     'Allow: /api/network/media/',
     'Disallow: /search',
+    'Disallow: /report',
     'Disallow: /api/',
     'Disallow: /dashboard',
     'Disallow: /auth',

@@ -5,6 +5,7 @@ import { ChannelPage } from '@/modules/site/components/network/network-listing';
 import RootLoading from '@/app/loading';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 import { TAG_MAX_LENGTH, normalizeSlugCandidate } from '@/modules/site/slug-allocator';
+import { notFoundMetadata } from '@/modules/site/seo';
 
 export const maxDuration = 25;
 
@@ -16,7 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { tag } = await params;
   const raw = decodeURIComponent(tag);
   if (raw.trim() === '') {
-    return { title: 'Not Found', robots: { index: false, follow: false } };
+    return notFoundMetadata();
   }
   const clean = normalizeSlugCandidate(raw).slice(0, TAG_MAX_LENGTH);
   return networkMetadata(`/tags/${clean}`, { tag: clean });

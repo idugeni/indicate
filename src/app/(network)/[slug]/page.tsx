@@ -5,6 +5,7 @@ import { ArticlePage } from '@/modules/site/components/network/network-listing';
 import RootLoading from '@/app/loading';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 import { isNetworkArticle } from '@/modules/delivery/models';
+import { notFoundMetadata } from '@/modules/site/seo';
 
 export const maxDuration = 25;
 
@@ -16,7 +17,7 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   if (slug.trim() === '') {
-    return { title: 'Not Found', robots: { index: false, follow: false } };
+    return notFoundMetadata();
   }
   return networkMetadata(`/${slug}`, { articleSlug: slug });
 }

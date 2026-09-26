@@ -1,6 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { controlPlaneIcons, siteMetadata } from '@/ui/site/metadata-guard';
+
+vi.mock('@/core/config/bootstrap/bootstrap-config', () => ({
+  getBootstrapConfig: () => ({
+    credentials: { facebookAppToken: { reveal: () => '28410585598598931|app-secret' } },
+    controlHosts: { dashboard: 'dasbor.example' },
+  }),
+}));
 
 const originalEnv = { ...process.env };
 
@@ -57,5 +64,11 @@ describe('siteMetadata', () => {  it('membangun kanonis, robots, dan kartu sosia
     const metadata = siteMetadata('Layanan', 'Deskripsi layanan.', '/services');
     expect(metadata.openGraph).not.toHaveProperty('images');
     expect(metadata.twitter).not.toHaveProperty('images');
+  });
+
+  it('menerbitkan fb:app_id tanpa membocorkan app secret', () => {
+    const metadata = siteMetadata('Layanan', 'Deskripsi layanan.', '/services');
+    expect(metadata.facebook).toEqual({ appId: '28410585598598931' });
+    expect(JSON.stringify(metadata)).not.toContain('app-secret');
   });
 });

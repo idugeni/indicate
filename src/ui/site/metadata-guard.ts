@@ -7,7 +7,7 @@ import { getPublicConfig } from '@/core/config/public-config';
 import { getBootstrapConfig } from '@/core/config/bootstrap/bootstrap-config';
 import { resolveGoogleSiteVerification } from '@/core/config/google-verification';
 import { deliveryComposition } from '@/modules/delivery';
-import { indexableRobots } from '@/modules/site/seo';
+import { indexableRobots, tenantFacebook } from '@/modules/site/seo';
 import { SERVICE_NAME } from '@/ui/site/marketing-content';
 
 /** Defense-in-depth: repeats the proxy's tenant-host refusal at the page so a routing change can't expose service pages. */
@@ -57,6 +57,10 @@ export function controlPlaneIcons(): Pick<Metadata, 'icons'> {
  * `opengraph-image.tsx` file supplies the per-page card automatically
  * (nested generated images carry a Next-assigned hash suffix, so hardcoding
  * the URL would 404). Segments without their own file inherit the root card.
+ *
+ * `fb:app_id` is spread here rather than only on the landing page: Meta reads
+ * it per URL, so a marketing page that omits it is reported as a missing
+ * required property even though the same host emits the tag elsewhere.
  */
 export function siteMetadata(title: string, description: string, path: string): Metadata {
   const origin = controlPlaneOrigin();
@@ -67,6 +71,7 @@ export function siteMetadata(title: string, description: string, path: string): 
     title,
     description,
     ...(google === undefined ? {} : { verification: { google } }),
+    ...tenantFacebook(getBootstrapConfig().credentials.facebookAppToken?.reveal()),
     alternates: {
       canonical,
       languages: { 'id-ID': canonical },

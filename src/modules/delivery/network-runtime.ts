@@ -4,8 +4,9 @@ import { cacheLife, cacheTag } from 'next/cache';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
-import { buildSeoDocument, indexableRobots, nonIndexableRobots, notFoundMetadata, tenantFacebook, tenantFavicon } from '@/modules/site/seo';
+import { buildSeoDocument, indexableRobots, nonIndexableRobots, notFoundMetadata, tenantBrand, tenantFacebook, tenantFavicon } from '@/modules/site/seo';
 import type { NetworkContentQuery, NetworkSiteData, RequestClassification, ResolvedSiteContext } from '@/modules/delivery/models';
+import type { RobotsDirective } from '@/modules/site/seo';
 import { isNetworkArticle } from '@/modules/delivery/models';
 import { activeDeliveryComposition, deliveryComposition } from '@/modules/delivery';
 import { TAG_MAX_LENGTH, normalizeSlugCandidate } from '@/modules/site/slug-allocator';
@@ -237,10 +238,11 @@ function tenantHiddenMeta(
   return {
     title: { absolute: title },
     description,
-    alternates: seo.canonical
-      ? { canonical: seo.canonical, languages: { 'id-ID': seo.canonical } }
-      : undefined,
+    alternates: seo.canonical === null
+      ? null
+      : { canonical: seo.canonical, languages: { 'id-ID': seo.canonical } },
     robots: nonIndexableRobots(),
+    ...tenantBrand(site.settings.name),
     ...tenantFavicon(site.settings.faviconUrl),
     ...tenantFacebookMetadata(),
     openGraph: card === null || seo.openGraph === null
@@ -275,9 +277,16 @@ function robotsForDocument(robots: 'index, follow' | 'noindex, nofollow' | 'noin
 /**
  * Build tenant metadata for the given path and query.
  *
+ * @param path - Tenant path the document represents.
+ * @param query - Content selector; decides which surface branch is built.
+ * @param titleOverride - Title for pages that do not derive one from the site.
+ * @param descriptionOverride - Description for pages that do not derive one from the site.
+ * @param robotsOverride - Directive for utility surfaces such as `/report`, which have
+ *   no standalone content to index; defaults to the document's own directive.
+ * @returns Tenant metadata carrying the tenant brand, favicon, and `fb:app_id`.
  * @remarks Titles use the absolute form so the control-plane '| Indicate' template (src/app/layout.tsx) is never appended.
  */
-export async function networkMetadata(path: string, query: NetworkContentQuery = {}, titleOverride?: string, descriptionOverride?: string): Promise<Metadata> {
+export async function networkMetadata(path: string, query: NetworkContentQuery = {}, titleOverride?: string, descriptionOverride?: string, robotsOverride?: RobotsDirective): Promise<Metadata> {
   const site = await resolveNetworkSite(query, path);
   const candidate = query.articleSlug === undefined ? undefined : site.articles[0];
   const article = candidate !== undefined && isNetworkArticle(candidate) ? candidate : undefined;
@@ -307,13 +316,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
     }
     const categorySeo = buildSeoDocument(site, { path });
     if (categorySeo.canonical === null || categorySeo.openGraph === null) {
-      return {
-        title: { absolute: categoryTitle },
-        description: categoryDescription,
-        robots: indexableRobots(),
-        ...tenantFavicon(site.settings.faviconUrl),
-        ...tenantFacebookMetadata(),
-      };
+      return tenantHiddenMeta(site, path, categoryTitle, categoryDescription);
     }
     const categoryCard = socialCardImages(
       categorySeo.openGraph.image,
@@ -330,6 +333,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
         languages: { 'id-ID': categorySeo.canonical },
       },
       robots: indexableRobots(),
+      ...tenantBrand(site.settings.name),
       ...tenantFavicon(site.settings.faviconUrl),
       ...tenantFacebookMetadata(),
       openGraph: {
@@ -360,50 +364,43 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
       return tenantHiddenMeta(site, path, tagTitle, tagDescription);
     }
     const tagSeo = buildSeoDocument(site, { path, titleOverride: tagTitle });
-    const tagCard = tagSeo.openGraph === null
-      ? null
-      : socialCardImages(
-          tagSeo.openGraph.image,
-          site.settings.name,
-          site.settings.defaultImageWidth ?? 1200,
-          site.settings.defaultImageHeight ?? 630,
-          site.settings.defaultImageMediaType,
-        );
+    if (tagSeo.canonical === null || tagSeo.openGraph === null) {
+      return tenantHiddenMeta(site, path, tagTitle, tagDescription);
+    }
+    const tagCard = socialCardImages(
+      tagSeo.openGraph.image,
+      site.settings.name,
+      site.settings.defaultImageWidth ?? 1200,
+      site.settings.defaultImageHeight ?? 630,
+      site.settings.defaultImageMediaType,
+    );
     return {
       title: { absolute: tagTitle },
       description: tagDescription,
-      alternates: tagSeo.canonical
-        ? { canonical: tagSeo.canonical, languages: { 'id-ID': tagSeo.canonical } }
-        : undefined,
+      alternates: {
+        canonical: tagSeo.canonical,
+        languages: { 'id-ID': tagSeo.canonical },
+      },
       robots: indexableRobots(),
+      ...tenantBrand(site.settings.name),
       ...tenantFavicon(site.settings.faviconUrl),
       ...tenantFacebookMetadata(),
-      openGraph: tagCard === null || tagSeo.openGraph === null
-        ? undefined
-        : {
-            title: tagTitle,
-            description: tagDescription,
-            url: tagSeo.openGraph.url,
-            siteName: tagSeo.openGraph.siteName,
-            locale: 'id_ID',
-            images: tagCard.openGraphImages,
-            type: 'website' as const,
-          },
-      twitter: tagCard === null
-        ? undefined
-        : { card: 'summary_large_image', title: tagTitle, description: tagDescription, images: tagCard.twitterImages },
+      openGraph: {
+        title: tagTitle,
+        description: tagDescription,
+        url: tagSeo.openGraph.url,
+        siteName: tagSeo.openGraph.siteName,
+        locale: 'id_ID',
+        images: tagCard.openGraphImages,
+        type: 'website' as const,
+      },
+      twitter: { card: 'summary_large_image', title: tagTitle, description: tagDescription, images: tagCard.twitterImages },
     };
   }
 
   const seo = buildSeoDocument(site, { path, ...(article === undefined ? {} : { article }), ...(titleOverride === undefined ? {} : { titleOverride }), ...(descriptionOverride === undefined ? {} : { descriptionOverride }) });
   if (seo.canonical === null || seo.openGraph === null) {
-    return {
-      title: { absolute: seo.title },
-      description: seo.description,
-      robots: nonIndexableRobots(),
-      ...tenantFavicon(site.settings.faviconUrl),
-      ...tenantFacebookMetadata(),
-    };
+    return tenantHiddenMeta(site, path, seo.title, seo.description);
   }
 
   const card = socialCardImages(
@@ -421,7 +418,8 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
       canonical: seo.canonical,
       languages: { 'id-ID': seo.canonical },
     },
-    robots: robotsForDocument(seo.robots),
+    robots: robotsForDocument(robotsOverride ?? seo.robots),
+    ...tenantBrand(site.settings.name),
     ...tenantFavicon(site.settings.faviconUrl),
     ...tenantFacebookMetadata(),
     openGraph: {

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 
-import { indexableRobots } from '@/modules/site/seo';
+import { indexableRobots, tenantFacebook } from '@/modules/site/seo';
+import { getBootstrapConfig } from '@/core/config/bootstrap/bootstrap-config';
 import { controlPlaneIcons } from '@/ui/site/metadata-guard';
 import { resolveGoogleSiteVerification } from '@/core/config/google-verification';
 import { SERVICE_SUMMARY } from '@/ui/site/marketing-content';
@@ -13,6 +14,9 @@ export async function generateMetadata(): Promise<Metadata> {
     robots: indexableRobots(),
     ...(google === undefined ? {} : { verification: { google } }),
     ...controlPlaneIcons(),
+    // Reads process.env synchronously, so the page stays statically rendered
+    // (see the remark below) while still emitting the tag.
+    ...tenantFacebook(getBootstrapConfig().credentials.facebookAppToken?.reveal()),
     twitter: { card: 'summary_large_image' },
   };
 }

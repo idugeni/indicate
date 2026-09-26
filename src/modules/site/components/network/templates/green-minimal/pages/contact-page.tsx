@@ -43,7 +43,7 @@ export function GreenMinimalContact({ site, title, description, path = '/' }: Gr
         {channels.length === 0 ? (
           <GreenMinimalEmpty title={title} />
         ) : (
-          <div className="space-y-3">
+          <div className="grid gap-4">
             <ul className="m-0 grid list-none gap-2.5 p-0 sm:grid-cols-2 lg:grid-cols-3">
               {primary.map((channel) => {
                 const Icon = channelIcon(channel.key);

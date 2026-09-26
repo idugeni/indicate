@@ -6,8 +6,13 @@ type Props = {
   readonly searchParams: Promise<{ artikel?: string } & { [key: string]: string | string[] | undefined }>;
 };
 
+/**
+ * The report form is a utility surface, not content: it is `noindex, nofollow` so it
+ * never competes with an article for the same query, and `serializeRobots` disallows
+ * `/report` for the same reason it disallows `/search`.
+ */
 export async function generateMetadata(): Promise<Metadata> {
-  return networkMetadata('/report', {});
+  return networkMetadata('/report', {}, undefined, undefined, 'noindex, nofollow');
 }
 
 /**

@@ -4,8 +4,20 @@ import type { ReactNode } from 'react';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Toaster } from '@/components/ui/sonner';
+import { SERVICE_SUMMARY } from '@/ui/site/marketing-content';
 import { cn } from '@/ui/cn';
 import './globals.css';
+
+/**
+ * Control-plane brand voice for every surface that inherits this layout.
+ *
+ * @remarks `SERVICE_SUMMARY` is the single description string: it already backs
+ * `name="description"` on the landing page, so reusing it here keeps
+ * `og:description` and `twitter:description` in step with what search engines
+ * already read instead of a second, shorter variant drifting out of sync.
+ */
+const BRAND_TITLE = 'Indicate - Publishing infrastructure';
+const BRAND_IMAGE_ALT = 'Indicate - One Newsroom. Everywhere.';
 
 export const viewport: Viewport = {
   themeColor: '#0e1320',
@@ -32,11 +44,10 @@ const METADATA_BASE = resolveMetadataBase();
 export const metadata: Metadata = {
   metadataBase: METADATA_BASE,
   title: {
-    default: 'Indicate - Publishing infrastructure',
+    default: BRAND_TITLE,
     template: '%s | Indicate',
   },
-  description:
-    'Indicate menyatukan pengelolaan puluhan domain berita ke dalam satu Dashboard terpusat. Redaksi menulis satu kali, lalu menerbitkannya ke situs mana pun yang dipilih.',
+  description: SERVICE_SUMMARY,
   applicationName: 'Indicate',
   authors: [{ name: 'Indicate' }],
   creator: 'Indicate',
@@ -62,23 +73,14 @@ export const metadata: Metadata = {
     locale: 'id_ID',
     url: METADATA_BASE.toString(),
     siteName: 'Indicate',
-    title: 'Indicate - Publishing infrastructure',
-    description:
-      'Indicate menyatukan pengelolaan puluhan domain berita ke dalam satu Dashboard terpusat.',
-    images: [
-      {
-        url: '/opengraph-image',
-        width: 1200,
-        height: 630,
-        alt: 'Indicate - Publishing infrastructure',
-      },
-    ],
+    title: BRAND_TITLE,
+    description: SERVICE_SUMMARY,
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: BRAND_IMAGE_ALT }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Indicate - Publishing infrastructure',
-    description:
-      'Indicate menyatukan pengelolaan puluhan domain berita ke dalam satu Dashboard terpusat.',
+    title: BRAND_TITLE,
+    description: SERVICE_SUMMARY,
     images: ['/opengraph-image'],
   },
 };
