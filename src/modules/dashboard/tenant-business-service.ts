@@ -61,21 +61,76 @@ function defined<T extends object>(value: T): T {
   return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as T;
 }
 
+/** Batas panjang pesan agar satu error tidak membanjiri telemetry. */
+const ERROR_MESSAGE_LIMIT = 300;
+
+/** Kedalaman rantai `cause` yang ditelusuri. */
+const ERROR_CAUSE_DEPTH = 4;
+
 /**
- * Ambil metadata driver yang aman-log dari error database.
+ * Klasifikasikan satu error untuk log lewat nama konstruktor aslinya.
  *
  * @param error - Error yang ditangkap dari lapisan repositori.
- * @returns Hanya kolom metadata murni (`code`, `table`, `column`,
- * `constraint`); pesan, detail, dan argumen query tidak pernah ikut agar PII
- * tidak bocor ke telemetry.
+ * @returns Nama konstruktor, atau `NonError` bila bukan objek Error.
+ * @remarks `error.name` saja tidak cukup. Drizzle dan `TypeError` sama-sama
+ * bisa melaporkan `name` sebagai `Error`, sehingga setiap kegagalan terlihat
+ * identik di log. Nama konstruktor yang membedakan keduanya.
+ */
+function errorIdentity(error: unknown): string {
+  if (!(error instanceof Error)) return 'NonError';
+  return error.constructor.name === 'Object' ? 'Error' : error.constructor.name;
+}
+
+/**
+ * Ambil metadata driver yang aman-log dari seluruh rantai penyebab.
+ *
+ * @param error - Error yang ditangkap dari lapisan repositori.
+ * @returns Field log dari rantai `cause` (`code`, `table`, `column`,
+ * `constraint`), diambil dari lapisan terdalam yang punya nilai.
+ * @remarks Pesan, `detail`, dan argumen query tidak pernah ikut agar PII
+ * tidak bocor ke telemetry. Menelusuri `cause` penting karena
+ * `DrizzleQueryError` menyimpan error Postgres di sana, sehingga `code` asli
+ * sebelumnya hilang dari log.
  */
 function driverErrorContext(error: Error): { readonly [key: string]: string } {
   const fields: Record<string, string> = {};
-  for (const key of ['code', 'table', 'column', 'constraint'] as const) {
-    const value = (error as unknown as Record<string, unknown>)[key];
-    if (typeof value === 'string' && value !== '') fields[key] = value;
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  for (let depth = 0; depth < ERROR_CAUSE_DEPTH; depth += 1) {
+    if (typeof current !== 'object' || current === null || seen.has(current)) break;
+    seen.add(current);
+    const record = current as Record<string, unknown>;
+    for (const key of ['code', 'table', 'column', 'constraint'] as const) {
+      const value = record[key];
+      if (typeof value === 'string' && value !== '' && fields[key] === undefined) {
+        fields[key] = value.slice(0, ERROR_MESSAGE_LIMIT);
+      }
+    }
+    current = record.cause;
   }
   return fields;
+}
+
+/**
+ * Ambil pesan error yang aman-log.
+ *
+ * @param error - Error yang ditangkap dari lapisan repositori.
+ * @returns Potongan pesan, atau `undefined` bila error berasal dari driver.
+ * @remarks Error yang dilempar kode aplikasi sendiri, misalnya
+ * `schema_gate_unsatisfied: applied=... required=...`, hanya memuat nomor
+ * versi dan aman dicatat. Pesan itulah satu-satunya petunjuk yang membuat
+ * kegagalan bisa ditindaklanjuti. Error dari driver Postgres tidak ikut karena
+ * `message`-nya bisa memuat constraint, kolom, dan cuplikan baris;
+ * `errorIdentity` sudah menjembatani kasus itu.
+ */
+function safeErrorMessage(error: unknown): string | undefined {
+  if (!(error instanceof Error)) return undefined;
+  const driverFields = ['code', 'constraint', 'table', 'column', 'severity', 'detail'];
+  const record = error as unknown as Record<string, unknown>;
+  if (driverFields.some((key) => typeof record[key] === 'string')) return undefined;
+  const message = error.message.trim();
+  if (message === '') return undefined;
+  return message.length > ERROR_MESSAGE_LIMIT ? `${message.slice(0, ERROR_MESSAGE_LIMIT)}…` : message;
 }
 
 function requireRecord<T extends { readonly id: string }>(values: readonly T[], id: string): T {
@@ -194,6 +249,7 @@ export class TenantBusinessService {
       return { ok: true, value: project(await this.repository.read(actor, permission)) };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, action, targetType);
+      const message = safeErrorMessage(error);
       logEvent('error', {
         event: 'dashboard.query.failed',
         requestId: actor.requestId,
@@ -201,8 +257,9 @@ export class TenantBusinessService {
           action,
           targetType,
           permission,
-          name: error instanceof Error ? error.name : 'UnknownError',
+          name: errorIdentity(error),
           ...(error instanceof Error ? driverErrorContext(error) : {}),
+          ...(message === undefined ? {} : { message }),
         },
       });
       return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
@@ -223,6 +280,19 @@ export class TenantBusinessService {
       if (error instanceof DashboardAccessDeniedError) return this.denied(input.actor, input.action, input.targetType);
       if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', input.actor.requestId) };
       if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, input.actor.requestId) };
+      const message = safeErrorMessage(error);
+      logEvent('error', {
+        event: 'dashboard.mutation.failed',
+        requestId: input.actor.requestId,
+        context: {
+          action: input.action,
+          targetType: input.targetType,
+          permission: input.permission,
+          name: errorIdentity(error),
+          ...(error instanceof Error ? driverErrorContext(error) : {}),
+          ...(message === undefined ? {} : { message }),
+        },
+      });
       return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', input.actor.requestId) };
     }
   }
@@ -308,7 +378,19 @@ export class TenantBusinessService {
         activationAttempts, invitations,
         regionScope: scopeRegion === undefined || scopeRegion === null ? null : { id: scopeRegion.id, name: scopeRegion.name },
       } };
-    } catch {
+    } catch (error) {
+      const message = safeErrorMessage(error);
+      logEvent('error', {
+        event: 'dashboard.query.failed',
+        requestId: actor.requestId,
+        context: {
+          action: 'configuration.list',
+          targetType: 'configuration',
+          name: errorIdentity(error),
+          ...(error instanceof Error ? driverErrorContext(error) : {}),
+          ...(message === undefined ? {} : { message }),
+        },
+      });
       return { ok: false as const, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
     }
   }
