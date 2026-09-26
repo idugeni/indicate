@@ -230,3 +230,39 @@ Kalau pemanasan gagal tanpa membuka dispatch, dua event baru itu aparecen:
 `delivery.social_warm.mark_failed` (penandaan gagal, target tetap due). Keduanya
 sengaja tidak dilempar: warmer bersifat best-effort dan tidak boleh menggagalkan
 task invalidasi.
+
+## 13. Komentar migrasi adalah klaim, bukan catatan
+
+Komentar migration 204 (`audit_chain_head_lock`) menyatakan diagnosis yang
+terukur: enam fork, semuanya `media.access.authorize`, antara 16 dan 17
+September. `audit_chain_scan()` pada produksi mengembalikan **67 baris rusak**:
+1 pada 2026-09-04, **60 pada 2026-09-13**, 3 pada 09-16, 3 pada 09-17. Action
+yang rusak sebagian besar `membership.assign-first`, `invite.create`, dan
+`organization.transfer` — bukan `media.access.authorize`.
+
+Hanya sebagian yang benar. **Enam** baris memang berbagi `prev_hash` dengan
+tetangganya; 61 sisanya punya `prev_hash` unik, jadi mekanismenya berbeda dan
+tidak dijelaskan oleh advisory lock. Akar penyebab 61 baris itu belum
+dibuktikan. `seq` punya lima celah totaling 964, tetapi `seq` tampaknya identity
+column yang nilainya habis dipakai transaksi yang rollback, jadi celah itu belum
+tentu berarti baris hilang — klaim itu tidak ditulis tanpa bukti.
+
+Kodenya sendiri benar: lock ada, `FOR UPDATE` hilang, assertion pada `DO` block
+lulus, ledger 204/204. Yang keliru hanya cara menguraikan data yang ternyata
+ditemukan.
+
+**Aturan:** komentar migrasi yang menyebut jumlah, rentang tanggal, atau
+`action` dari data produksi adalah klaim yang harus diverifikasi ke database
+sebelum di-commit. Kode yang benar tidak menjamin cerita yang benar. Kalau
+sebuah angka muncul di komentar, jalankan query yang menghasilkan angka itu.
+
+**Kenapa koreksinya tidak ditulis di file migrasi.** Dua checksum terpisah
+menjepit file itu. `drizzle."__drizzle_migrations".hash` adalah SHA-256 seluruh
+byte file termasuk komentar, dihitung `scripts/db-bootstrap.mjs`; dan
+`public.indicate_schema_migrations.checksum` adalah checksum swadaya dengan
+substitusi 64 nol yang ditulis `INSERT` migrasi itu sendiri. Mengubah komentar
+menggerakkan keduanya: bootstrap harus diregenerasi dan baris ledger produksi
+harus di-`UPDATE` agar checksum swadaya tetap jujur. Mutasi ledger itu lebih
+berbahaya daripada kalimat yang keliru, jadi file yang sudah diterapkan
+dibiarkan byte-identik dan koreksinya dicatat di sini serta di pesan commit —
+keduanya permanen dan bisa dicari.
