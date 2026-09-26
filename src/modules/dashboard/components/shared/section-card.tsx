@@ -17,14 +17,14 @@ export function SectionCard({
   return (
     <section aria-label={title}>
       <Card className="rounded-lg border border-hairline bg-bg-raised shadow-none ring-0">
-        <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 border-b border-hairline px-5 pb-4 pt-5 sm:px-6 sm:pt-6">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 border-b border-hairline px-4 pb-2.5 pt-3 sm:px-5 sm:pb-3 sm:pt-3.5">
           <CardTitle className="flex items-center gap-2 font-sans text-sm font-semibold tracking-tight text-paper">
             <Icon className="h-4 w-4 text-brass" aria-hidden="true" />
             {title}
           </CardTitle>
-          <CardDescription className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">{eyebrow}</CardDescription>
+          <CardDescription className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">{eyebrow}</CardDescription>
         </CardHeader>
-        <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6">{children}</CardContent>
+        <CardContent className="px-4 pb-4 sm:px-5">{children}</CardContent>
       </Card>
     </section>
   );

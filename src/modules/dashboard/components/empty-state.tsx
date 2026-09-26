@@ -8,6 +8,8 @@ export interface EmptyStateProps {
   readonly action?: ReactNode;
   readonly icon?: ReactNode;
   readonly className?: string;
+  /** Single-line form for an empty region inside a card, where a hero block would dominate. */
+  readonly compact?: boolean;
 }
 
 export function EmptyState({
@@ -16,7 +18,20 @@ export function EmptyState({
   action,
   icon,
   className,
+  compact = false,
 }: EmptyStateProps) {
+  if (compact) {
+    return (
+      <p
+        role="status"
+        aria-live="polite"
+        className={cn('m-0 font-sans text-[11px] leading-relaxed text-paper-faint', className)}
+      >
+        {title}
+      </p>
+    );
+  }
+
   return (
     <div
       role="status"
