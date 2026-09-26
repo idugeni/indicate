@@ -42,8 +42,9 @@ async function handleGET() {
         repository.readPoliciesOverview(identity.authUserId, local.value.id),
       ]);
       return NextResponse.json({ policy, policies });
-    } catch {
-      return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+    } catch (error) {
+      if (error instanceof RuntimeConfigAdminAccessDeniedError) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+      return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'The runtime configuration could not be read.', requestId), { status: runtimeConfigErrorStatus(error) });
     }
   }
 }
