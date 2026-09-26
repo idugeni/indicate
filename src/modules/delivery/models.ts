@@ -32,6 +32,12 @@ export interface PublicSiteSettings {
   readonly logoUrl: string;
   readonly faviconUrl: string | null;
   readonly defaultImageUrl: string;
+  /** MIME type of the default image's media row, when the site references one. */
+  readonly defaultImageMediaType: string | null;
+  /** Natural width of the default image; null falls back to the 1200 card width. */
+  readonly defaultImageWidth: number | null;
+  /** Natural height of the default image; null falls back to the 630 card height. */
+  readonly defaultImageHeight: number | null;
   readonly robots: readonly string[];
 }
 

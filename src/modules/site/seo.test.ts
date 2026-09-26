@@ -5,6 +5,7 @@ import {
   absoluteSiteAssetUrl,
   buildFaqPageSchema,
   buildSeoDocument,
+  facebookAppId,
   indexableRobots,
   nonIndexableRobots,
   notFoundMetadata,
@@ -13,6 +14,7 @@ import {
   serializeRobots,
   serializeRss,
   serializeSitemap,
+  tenantFacebook,
   tenantFavicon,
 } from '@/modules/site/seo';
 
@@ -181,6 +183,48 @@ describe('serializers', () => {
     expect(robots).toContain('Allow: /manifest.webmanifest');
     expect(robots).toContain('Allow: /api/network/media/');
     expect(robots).toContain('Sitemap: https://portal.example/sitemap.xml');
+  });
+
+  it('menjaga carve-out media tetap sempit dan-ordered sebelum Disallow', () => {
+    const robots = serializeRobots({ context: makeNetworkSite().context, settings: { robots: [] } });
+    const rules = robots.split('\n').map((line) => line.trim());
+    const carveOut = rules.indexOf('Allow: /api/network/media/');
+    // Allow must precede Disallow so first-match parsers (not just Google's
+    // longest-match) still resolve the media prefix as crawlable.
+    expect(carveOut).toBeGreaterThan(-1);
+    expect(carveOut).toBeLessThan(rules.indexOf('Disallow: /api/'));
+    expect(rules.filter((rule) => rule.startsWith('Allow: /api/'))).toEqual(['Allow: /api/network/media/']);
+  });
+
+  it('tetap menutup permukaan mesin lain di bawah /api/', () => {
+    const robots = serializeRobots({ context: makeNetworkSite().context, settings: { robots: [] } });
+    const rules = robots.split('\n').map((line) => line.trim());
+    expect(robots).toContain('Disallow: /api/');
+    // Exact-line comparison: a broader `Allow: /api/network/` would also
+    // unblock /api/network/reports, the report-submission surface.
+    expect(rules).not.toContain('Allow: /api/network/');
+    for (const surface of ['/api/v1', '/api/internal', '/api/dashboard', '/api/health', '/api/webhooks', '/api/network/reports']) {
+      expect(rules).not.toContain(`Allow: ${surface}`);
+      expect(rules).not.toContain(`Allow: ${surface}/`);
+    }
+  });
+
+  it('mengambil app id dari token APP_ID|APP_SECRET', () => {
+    expect(facebookAppId('1234567890|app-secret')).toBe('1234567890');
+    expect(facebookAppId('1234567890')).toBe('1234567890');
+  });
+
+  it('tidak melempar tag fb:app_id kosong saat token tidak dikonfigurasi', () => {
+    expect(facebookAppId(null)).toBe(null);
+    expect(facebookAppId(undefined)).toBe(null);
+    expect(facebookAppId('|app-secret')).toBe(null);
+    expect(facebookAppId('   |app-secret')).toBe(null);
+    expect(tenantFacebook(null)).toEqual({});
+  });
+
+  it('menyertakan fb:app_id dari token yang dikonfigurasi', () => {
+    expect(tenantFacebook('1234567890|app-secret')).toEqual({ facebook: { appId: '1234567890' } });
+    expect(JSON.stringify(tenantFacebook('1234567890|app-secret'))).not.toContain('app-secret');
   });
 
   it('membuat sitemap dengan beranda, kategori, dan artikel', () => {

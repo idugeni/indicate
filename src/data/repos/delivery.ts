@@ -116,11 +116,12 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
   }
 
   private async readSettings(transaction: Transaction, context: ResolvedSiteContext) {
-      const settingsRows = await transaction.select({ name: siteSettings.name, description: siteSettings.description, tagline: siteSettings.tagline, seoDefaultTitle: siteSettings.seoDefaultTitle, seoDefaultDescription: siteSettings.seoDefaultDescription, seoOpenGraphSiteName: siteSettings.seoOpenGraphSiteName, locale: siteSettings.locale, colors: siteSettings.colors, socialLinks: siteSettings.socialLinks, seo: siteSettings.seo, navigation: siteSettings.navigation, logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId, defaultMediaId: siteSettings.defaultMediaId, regionName: regions.name, siteCreatedAt: sites.createdAt })
+      const settingsRows = await transaction.select({ name: siteSettings.name, description: siteSettings.description, tagline: siteSettings.tagline, seoDefaultTitle: siteSettings.seoDefaultTitle, seoDefaultDescription: siteSettings.seoDefaultDescription, seoOpenGraphSiteName: siteSettings.seoOpenGraphSiteName, locale: siteSettings.locale, colors: siteSettings.colors, socialLinks: siteSettings.socialLinks, seo: siteSettings.seo, navigation: siteSettings.navigation, logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId, defaultMediaId: siteSettings.defaultMediaId, defaultMediaType: media.mediaType, defaultMediaWidth: media.widthPx, defaultMediaHeight: media.heightPx, regionName: regions.name, siteCreatedAt: sites.createdAt })
         .from(sites)
         .innerJoin(domains, and(eq(domains.organizationId, sites.organizationId), eq(domains.id, sites.domainId), eq(domains.status, 'active')))
         .leftJoin(regions, and(eq(regions.organizationId, sites.organizationId), eq(regions.id, sites.regionId)))
         .innerJoin(siteSettings, and(eq(siteSettings.organizationId, sites.organizationId), eq(siteSettings.siteId, sites.id)))
+        .leftJoin(media, and(eq(media.organizationId, siteSettings.organizationId), eq(media.id, siteSettings.defaultMediaId)))
         .where(and(eq(sites.organizationId, context.organizationId), eq(sites.id, context.siteId), eq(sites.normalizedHostname, context.normalizedHostname), eq(sites.status, 'active'), eq(sites.activationState, 'active'), or(sql`${sites.regionId} IS NULL`, eq(regions.status, 'active')))).limit(1);
       const settings = settingsRows[0]; if (settings === undefined) return null;
       let logoMediaId = settings.logoMediaId;
@@ -150,6 +151,9 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           logoUrl: `https://${context.normalizedHostname}/logo.png`,
           faviconUrl: faviconMediaId === null ? null : absoluteMediaUrl(context, faviconMediaId),
           defaultImageUrl: settings.defaultMediaId === null ? absoluteDefaultAssetUrl(context, this.defaultImageUrl) : absoluteMediaUrl(context, settings.defaultMediaId),
+          defaultImageMediaType: settings.defaultMediaId === null ? null : settings.defaultMediaType,
+          defaultImageWidth: settings.defaultMediaId === null ? null : settings.defaultMediaWidth,
+          defaultImageHeight: settings.defaultMediaId === null ? null : settings.defaultMediaHeight,
           robots: Array.isArray(settings.seo.robots) ? settings.seo.robots.map(String) : [],
         },
       };

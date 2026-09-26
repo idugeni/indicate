@@ -115,6 +115,36 @@ export function tenantFavicon(faviconUrl: string | null | undefined): Pick<Metad
   };
 }
 
+/**
+ * Derive the public Facebook App ID from the platform app token.
+ *
+ * @param appToken - `APP_ID|APP_SECRET` token, or nullish when unconfigured.
+ * @returns App ID for the `fb:app_id` tag, or null when no usable ID half exists.
+ * @remarks `FB_APP_TOKEN` stores the Graph API app token as `APP_ID|APP_SECRET`.
+ * Only the ID half is document metadata, so the secret never leaves the caller
+ * that authenticates to the Graph API.
+ */
+export function facebookAppId(appToken: string | null | undefined): string | null {
+  if (appToken === null || appToken === undefined) return null;
+  const separator = appToken.indexOf('|');
+  const appId = (separator === -1 ? appToken : appToken.slice(0, separator)).trim();
+  return appId === '' ? null : appId;
+}
+
+/**
+ * `fb:app_id` metadata for tenant documents.
+ *
+ * @param appToken - `APP_ID|APP_SECRET` token, or nullish when unconfigured.
+ * @returns Facebook metadata carrying the App ID, or an empty object so an
+ *   unconfigured deployment emits no empty tag that Meta would flag again.
+ * @remarks Meta reports `fb:app_id` as a missing required property, and without
+ * it insights and link-breakdown attributes stay unavailable for the tenant.
+ */
+export function tenantFacebook(appToken: string | null | undefined): Pick<Metadata, 'facebook'> {
+  const appId = facebookAppId(appToken);
+  return appId === null ? {} : { facebook: { appId } };
+}
+
 /** Uniform metadata for missing network content (unknown slug, empty id). */
 export function notFoundMetadata(): Metadata {
   return {

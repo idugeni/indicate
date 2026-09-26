@@ -4,16 +4,34 @@ import { cacheLife, cacheTag } from 'next/cache';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
-import { buildSeoDocument, indexableRobots, nonIndexableRobots, notFoundMetadata, tenantFavicon } from '@/modules/site/seo';
+import { buildSeoDocument, indexableRobots, nonIndexableRobots, notFoundMetadata, tenantFacebook, tenantFavicon } from '@/modules/site/seo';
 import type { NetworkContentQuery, NetworkSiteData, RequestClassification, ResolvedSiteContext } from '@/modules/delivery/models';
 import { isNetworkArticle } from '@/modules/delivery/models';
 import { activeDeliveryComposition, deliveryComposition } from '@/modules/delivery';
 import { TAG_MAX_LENGTH, normalizeSlugCandidate } from '@/modules/site/slug-allocator';
+import { getBootstrapConfig } from '@/core/config/bootstrap/bootstrap-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { readPageviewCounts } from '@/integrations/redis/pageview-buffer';
 import { buildPageviewKey } from '@/modules/site/pageview-contract';
 
 const getDeliveryComposition = cache(async () => deliveryComposition());
+
+let cachedTenantFacebook: Pick<Metadata, 'facebook'> | undefined;
+
+/**
+ * `fb:app_id` for every tenant document, resolved once per process.
+ *
+ * @returns Facebook metadata for the platform app, or an empty object when
+ *   `FB_APP_TOKEN` is unconfigured.
+ * @remarks One Meta app serves the whole network, so the tag is platform-wide
+ * rather than per-tenant; memoized because the token never changes at runtime.
+ */
+function tenantFacebookMetadata(): Pick<Metadata, 'facebook'> {
+  if (cachedTenantFacebook === undefined) {
+    cachedTenantFacebook = tenantFacebook(getBootstrapConfig().credentials.facebookAppToken?.reveal());
+  }
+  return cachedTenantFacebook;
+}
 
 /**
  * Classify a request hostname with per-request deduplication.
@@ -162,6 +180,40 @@ const TAG_INDEX_MINIMUM = 3;
 const CATEGORY_INDEX_MINIMUM = 3;
 
 /**
+ * Social card entries for one tenant page, shared by Open Graph and Twitter.
+ *
+ * @param image - Absolute social image URL for the page.
+ * @param alt - Text alternative describing that image.
+ * @param width - Intrinsic width when known, else the 1200 card width.
+ * @param height - Intrinsic height when known, else the 630 card height.
+ * @param mediaType - Verified MIME type of that image, when the read path knows it.
+ * @returns Matching `openGraph.images` and `twitter.images` entries.
+ * @remarks Both surfaces take the same entry so the two cannot drift, which is
+ * how `twitter:image:alt` went missing while `og:image:alt` existed. The MIME
+ * type is emitted only when the read path actually carries it: an article
+ * resolves `imageMediaType` and the site default image resolves
+ * `defaultImageMediaType`, both from the `media` row, so neither is guessed. A
+ * site with no default media, or a media row predating dimension capture, simply
+ * omits the field — every major scraper sniffs the bytes it fetches, and a
+ * wrongly declared type is worse than none.
+ */
+function socialCardImages(image: string, alt: string, width = 1200, height = 630, mediaType?: string | null) {
+  const typed = isDeclaredImageType(mediaType) ? { type: mediaType } : {};
+  const entry = { url: image, alt, width, height, ...typed };
+  return { openGraphImages: [entry], twitterImages: [entry] };
+}
+
+/**
+ * Narrow a stored media type to something safe to publish as `og:image:type`.
+ *
+ * @param mediaType - Candidate MIME type from the media record.
+ * @returns The type when it is a well-formed image MIME, otherwise `null`.
+ */
+function isDeclaredImageType(mediaType: string | null | undefined): mediaType is string {
+  return typeof mediaType === 'string' && /^image\/[a-z0-9.+-]+$/iu.test(mediaType.trim());
+}
+
+/**
  * Tenant metadata for deliberately unindexed pages (search,
  * below-threshold aggregators): still carries the tenant's own canonical + OG
  * so it never inherits control-plane metadata from the layout.
@@ -173,6 +225,15 @@ function tenantHiddenMeta(
   description: string,
 ): Metadata {
   const seo = buildSeoDocument(site, { path, titleOverride: title });
+  const card = seo.openGraph === null
+    ? null
+    : socialCardImages(
+        seo.openGraph.image,
+        site.settings.name,
+        site.settings.defaultImageWidth ?? 1200,
+        site.settings.defaultImageHeight ?? 630,
+        site.settings.defaultImageMediaType,
+      );
   return {
     title: { absolute: title },
     description,
@@ -181,20 +242,21 @@ function tenantHiddenMeta(
       : undefined,
     robots: nonIndexableRobots(),
     ...tenantFavicon(site.settings.faviconUrl),
-    openGraph: seo.openGraph
-      ? {
+    ...tenantFacebookMetadata(),
+    openGraph: card === null || seo.openGraph === null
+      ? undefined
+      : {
           title,
           description,
           url: seo.openGraph.url,
           siteName: seo.openGraph.siteName,
           locale: 'id_ID',
-          images: [{ url: seo.openGraph.image, width: 1200, height: 630, alt: title }],
+          images: card.openGraphImages,
           type: 'website' as const,
-        }
-      : undefined,
-    twitter: seo.openGraph
-      ? { card: 'summary_large_image', title, description, images: [seo.openGraph.image] }
-      : undefined,
+        },
+    twitter: card === null
+      ? undefined
+      : { card: 'summary_large_image', title, description, images: card.twitterImages },
   };
 }
 /**
@@ -250,8 +312,16 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
         description: categoryDescription,
         robots: indexableRobots(),
         ...tenantFavicon(site.settings.faviconUrl),
+        ...tenantFacebookMetadata(),
       };
     }
+    const categoryCard = socialCardImages(
+      categorySeo.openGraph.image,
+      site.settings.name,
+      site.settings.defaultImageWidth ?? 1200,
+      site.settings.defaultImageHeight ?? 630,
+      site.settings.defaultImageMediaType,
+    );
     return {
       title: { absolute: categoryTitle },
       description: categoryDescription,
@@ -261,20 +331,21 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
       },
       robots: indexableRobots(),
       ...tenantFavicon(site.settings.faviconUrl),
+      ...tenantFacebookMetadata(),
       openGraph: {
         title: categoryTitle,
         description: categoryDescription,
         url: categorySeo.openGraph.url,
         siteName: categorySeo.openGraph.siteName,
         locale: 'id_ID',
-        images: [{ url: categorySeo.openGraph.image, width: 1200, height: 630, alt: categoryName }],
+        images: categoryCard.openGraphImages,
         type: 'website' as const,
       },
       twitter: {
         card: 'summary_large_image',
         title: categoryTitle,
         description: categoryDescription,
-        images: [categorySeo.openGraph.image],
+        images: categoryCard.twitterImages,
       },
     };
   }
@@ -289,6 +360,15 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
       return tenantHiddenMeta(site, path, tagTitle, tagDescription);
     }
     const tagSeo = buildSeoDocument(site, { path, titleOverride: tagTitle });
+    const tagCard = tagSeo.openGraph === null
+      ? null
+      : socialCardImages(
+          tagSeo.openGraph.image,
+          site.settings.name,
+          site.settings.defaultImageWidth ?? 1200,
+          site.settings.defaultImageHeight ?? 630,
+          site.settings.defaultImageMediaType,
+        );
     return {
       title: { absolute: tagTitle },
       description: tagDescription,
@@ -297,17 +377,21 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
         : undefined,
       robots: indexableRobots(),
       ...tenantFavicon(site.settings.faviconUrl),
-      openGraph: tagSeo.openGraph
-        ? {
+      ...tenantFacebookMetadata(),
+      openGraph: tagCard === null || tagSeo.openGraph === null
+        ? undefined
+        : {
             title: tagTitle,
             description: tagDescription,
             url: tagSeo.openGraph.url,
             siteName: tagSeo.openGraph.siteName,
             locale: 'id_ID',
-            images: [{ url: tagSeo.openGraph.image, width: 1200, height: 630, alt: tagTitle }],
+            images: tagCard.openGraphImages,
             type: 'website' as const,
-          }
-        : undefined,
+          },
+      twitter: tagCard === null
+        ? undefined
+        : { card: 'summary_large_image', title: tagTitle, description: tagDescription, images: tagCard.twitterImages },
     };
   }
 
@@ -318,15 +402,17 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
       description: seo.description,
       robots: nonIndexableRobots(),
       ...tenantFavicon(site.settings.faviconUrl),
+      ...tenantFacebookMetadata(),
     };
   }
 
-  const ogImage = {
-    url: seo.openGraph.image,
-    width: article?.imageWidth ?? 1200,
-    height: article?.imageHeight ?? 630,
-    alt: article?.title ?? site.settings.name,
-  };
+  const card = socialCardImages(
+    seo.openGraph.image,
+    article?.title ?? site.settings.name,
+    article?.imageWidth ?? site.settings.defaultImageWidth ?? 1200,
+    article?.imageHeight ?? site.settings.defaultImageHeight ?? 630,
+    article === undefined ? site.settings.defaultImageMediaType : article.imageMediaType,
+  );
 
   return {
     title: { absolute: seo.title },
@@ -337,13 +423,14 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
     },
     robots: robotsForDocument(seo.robots),
     ...tenantFavicon(site.settings.faviconUrl),
+    ...tenantFacebookMetadata(),
     openGraph: {
       title: seo.openGraph.title,
       description: seo.openGraph.description,
       url: seo.openGraph.url,
       siteName: seo.openGraph.siteName,
       locale: 'id_ID',
-      images: [ogImage],
+      images: card.openGraphImages,
       ...(article === undefined
         ? { type: 'website' as const }
         : {
@@ -356,7 +443,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
           }),
     },
     twitter: seo.twitter
-      ? { card: seo.twitter.card, title: seo.twitter.title, description: seo.twitter.description, images: [seo.twitter.image] }
+      ? { card: seo.twitter.card, title: seo.twitter.title, description: seo.twitter.description, images: card.twitterImages }
       : undefined,
     ...(article === undefined
       ? {}
