@@ -19,9 +19,9 @@ WORM opsional, satu resource Upstash Redis.
       (`.github/workflows/quality-gate.yml`): `static`
       (`db:bootstrap:check`, `typecheck`, `audit:production`), `lint`,
       `test` (4 shard), `perf` (`npm run perf`), `docs`
-      (`npm run lint:md`, link check), `build`.
+      (`npm run lint:md`, `npm run lint:md:citations`, link check), `build`.
       Cek manual setara: `npm run typecheck`, `npm run lint`,
-      `npm test`, `npm run perf`, `npm run lint:md`.
+      `npm test`, `npm run perf`, `npm run lint:docs`.
 - [ ] Migrasi database (bila ada file baru di `src/data/migrations/`):
       backup Supabase dulu, terapkan tiap file SQL sesuai urutan
       `src/data/migrations/meta/_journal.json` dengan kredensial direct

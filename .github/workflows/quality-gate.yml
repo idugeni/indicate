@@ -154,6 +154,7 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run lint:md
+      - run: npm run lint:md:citations
       - uses: lycheeverse/lychee-action@v2
         with:
           args: --no-progress --timeout 20 --max-retries 2 --exclude-path 'docs/vercel-multi-tenant/**' --exclude 'https://www.whatsmydns.net/*' '*.md' 'docs/**/*.md' '.github/**/*.md' 'workers/**/*.md' 'src/**/*.md' 'public/**/*.md'

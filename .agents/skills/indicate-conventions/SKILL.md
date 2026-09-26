@@ -59,7 +59,7 @@ Hexagonal / ports-and-adapters modular monolith under `src/`. Dependency directi
 ## Naming and commands
 
 - Files `kebab-case.ts(x)`; components, types, and interfaces `PascalCase`; functions and variables `camelCase`; constants `UPPER_SNAKE_CASE`.
-- Commands: `npm run dev`, `npm run build`, `npm run start`, `npm run typecheck` (`tsc --noEmit`), `npm run lint` (ESLint, `--max-warnings=0`), `npm run lint:md` (markdownlint over curated md; link check runs in the CI `docs` job). Run `typecheck` and `lint` after code changes, `lint:md` after docs changes.
+- Commands: `npm run dev`, `npm run build`, `npm run start`, `npm run typecheck` (`tsc --noEmit`), `npm run lint` (ESLint, `--max-warnings=0`), `npm run lint:md` (markdownlint over curated md), `npm run lint:md:citations` (resolves `file:line` doc citations), `npm run lint:docs` (both). Link check runs in the CI `docs` job. Run `typecheck` and `lint` after code changes, `lint:docs` after docs changes.
 - `next.config.ts` keeps `postgres`, `drizzle-orm`, `sharp`, `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `@upstash/redis`, and `resend` in `serverExternalPackages`, sets `cacheComponents: true` and `images.unoptimized: true` (no Vercel image-optimization cost); image `remotePatterns` are a tenant allowlist — unknown hosts stay rejected.
 
 ## Commits

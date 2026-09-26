@@ -40,6 +40,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "lint:md": "npx -y markdownlint-cli2 \"*.md\" \"docs/**/*.md\" \".github/**/*.md\" \"workers/**/*.md\" \"src/**/*.md\" \"public/**/*.md\"",
+    "lint:md:citations": "node scripts/qa/doc-citations.mjs",
+    "lint:docs": "npm run lint:md && npm run lint:md:citations",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "perf:listing-payload": "node scripts/perf/listing-payload.mjs",
