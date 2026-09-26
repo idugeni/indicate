@@ -3,7 +3,7 @@ import 'server-only';
 import { cacheLife, cacheTag } from 'next/cache';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { getBootstrapConfig } from '@/core/config/bootstrap/bootstrap-config';
-import { getSharedRuntimeDatabase } from '@/data/client';
+import { getSharedRuntimeDatabase, withQueryDeadline } from '@/data/client';
 import type * as schema from '@/data/schema';
 import { readContactChannels, readFaqs, readPublicNetworkSites, readPublicPartners, readTestimonials } from '@/data/repos/content/queries';
 import type { DirectoryEntry, FaqRow, NetworkSiteRow, PartnerRow, TestimonialRow } from '@/data/repos/content/queries';
@@ -29,35 +29,35 @@ export async function getFaqs(): Promise<readonly FaqRow[]> {
   'use cache';
   cacheLife('hours');
   cacheTag('site-content');
-  return withRuntimeDatabase((db) => readFaqs(db));
+  return withQueryDeadline('faqs', () => withRuntimeDatabase((db) => readFaqs(db)));
 }
 
 export async function getTestimonials(): Promise<readonly TestimonialRow[]> {
   'use cache';
   cacheLife('hours');
   cacheTag('site-content');
-  return withRuntimeDatabase((db) => readTestimonials(db));
+  return withQueryDeadline('testimonials', () => withRuntimeDatabase((db) => readTestimonials(db)));
 }
 
 export async function getContactChannels(): Promise<readonly FeatureItem[]> {
   'use cache';
   cacheLife('hours');
   cacheTag('site-content');
-  return withRuntimeDatabase((db) => readContactChannels(db));
+  return withQueryDeadline('contact_channels', () => withRuntimeDatabase((db) => readContactChannels(db)));
 }
 
 export async function getNetworkSites(): Promise<readonly NetworkSiteRow[]> {
   'use cache';
   cacheLife('hours');
   cacheTag('public-directory');
-  return withRuntimeDatabase((db) => readPublicNetworkSites(db));
+  return withQueryDeadline('network_sites', () => withRuntimeDatabase((db) => readPublicNetworkSites(db)));
 }
 
 export async function getPartnerOrganizations(): Promise<readonly PartnerRow[]> {
   'use cache';
   cacheLife('hours');
   cacheTag('public-directory');
-  return withRuntimeDatabase((db) => readPublicPartners(db));
+  return withQueryDeadline('partner_organizations', () => withRuntimeDatabase((db) => readPublicPartners(db)));
 }
 
 export type { DirectoryEntry, FaqRow, FeatureItem, NetworkSiteRow, PartnerRow, TestimonialRow };
