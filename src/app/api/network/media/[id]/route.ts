@@ -58,10 +58,11 @@ async function handleGET(request: Request, { params }: { readonly params: Promis
  * revalidation bursts; stale frames inside it may carry an expired presigned
  * URL until background revalidation finishes. `site-default` cards (tenant OG
  * images) are proxied as bytes instead: their keys are unique per upload,
- * and scrapers must never meet an expired signature. Note the global
- * `/api/:path*` no-store rule in `next.config.ts` currently overrides the
- * immutable header below at the edge, so responses revalidate per request;
- * the header documents intent and takes effect if that rule ever narrows.
+ * and scrapers must never meet an expired signature. The `Cache-Control` this
+ * route sets wins over the global `/api/:path*` no-store rule in
+ * `next.config.ts`; Vercel strips `s-maxage` when handing the response to the
+ * browser, so the edge sees `public, max-age=0, immutable` and scrapers always
+ * get a 200 rather than a signature that expired mid-crawl.
  * Stability (always-200 bytes) holds either way.
  */
 export const GET = withApiAccess('GET /api/network/media/[id]', handleGET, { accessLog: 'errors-only' });
