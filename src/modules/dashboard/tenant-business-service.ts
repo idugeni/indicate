@@ -244,25 +244,45 @@ export class TenantBusinessService {
     }
   }
 
+  /**
+   * Catat penyebab sebenarnya, lalu kembalikan error non-disclosing.
+   *
+   * @param actor - Aktor yang meminta operasi.
+   * @param error - Error yang ditangkap dari lapisan repositori.
+   * @param event - Nama event log; `dashboard.query.failed` untuk bacaan dan
+   * `dashboard.mutation.failed` untuk penulisan.
+   * @param action - Operasi yang gagal, mis. `audit.list`.
+   * @param targetType - Jenis target yang gagal, mis. `audit_log`.
+   * @param permission - Izin yang dibutuhkan; tidak wajib pada operasi yang
+   * tidak membacanya.
+   * @returns Envelope `INTERNAL_ERROR` yang tidak membocorkan detail.
+   * @remarks Setiap catch yang mengembalikan `INTERNAL_ERROR` wajib lewat
+   * sini. Envelope itu sengaja seragam untuk menghindari kebocoran, jadi tanpa
+   * log titik ini kegagalan menjadi tidak bisa ditindaklanjuti.
+   */
+  private internal(actor: AuthorizedTenantActorContext, error: unknown, event: 'dashboard.query.failed' | 'dashboard.mutation.failed', action: string, targetType: string, permission?: string): Result<never, PublicErrorEnvelope> {
+    const message = safeErrorMessage(error);
+    logEvent('error', {
+      event,
+      requestId: actor.requestId,
+      context: {
+        action,
+        targetType,
+        ...(permission === undefined ? {} : { permission }),
+        name: errorIdentity(error),
+        ...(error instanceof Error ? driverErrorContext(error) : {}),
+        ...(message === undefined ? {} : { message }),
+      },
+    });
+    return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+  }
+
   private async query<T>(actor: AuthorizedTenantActorContext, permission: string, action: string, targetType: string, project: (state: DashboardTenantState) => T): Promise<Result<T, PublicErrorEnvelope>> {
     try {
       return { ok: true, value: project(await this.repository.read(actor, permission)) };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, action, targetType);
-      const message = safeErrorMessage(error);
-      logEvent('error', {
-        event: 'dashboard.query.failed',
-        requestId: actor.requestId,
-        context: {
-          action,
-          targetType,
-          permission,
-          name: errorIdentity(error),
-          ...(error instanceof Error ? driverErrorContext(error) : {}),
-          ...(message === undefined ? {} : { message }),
-        },
-      });
-      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+      return this.internal(actor, error, 'dashboard.query.failed', action, targetType, permission);
     }
   }
 
@@ -280,20 +300,7 @@ export class TenantBusinessService {
       if (error instanceof DashboardAccessDeniedError) return this.denied(input.actor, input.action, input.targetType);
       if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', input.actor.requestId) };
       if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, input.actor.requestId) };
-      const message = safeErrorMessage(error);
-      logEvent('error', {
-        event: 'dashboard.mutation.failed',
-        requestId: input.actor.requestId,
-        context: {
-          action: input.action,
-          targetType: input.targetType,
-          permission: input.permission,
-          name: errorIdentity(error),
-          ...(error instanceof Error ? driverErrorContext(error) : {}),
-          ...(message === undefined ? {} : { message }),
-        },
-      });
-      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', input.actor.requestId) };
+      return this.internal(input.actor, error, 'dashboard.mutation.failed', input.action, input.targetType, input.permission);
     }
   }
 
@@ -379,19 +386,7 @@ export class TenantBusinessService {
         regionScope: scopeRegion === undefined || scopeRegion === null ? null : { id: scopeRegion.id, name: scopeRegion.name },
       } };
     } catch (error) {
-      const message = safeErrorMessage(error);
-      logEvent('error', {
-        event: 'dashboard.query.failed',
-        requestId: actor.requestId,
-        context: {
-          action: 'configuration.list',
-          targetType: 'configuration',
-          name: errorIdentity(error),
-          ...(error instanceof Error ? driverErrorContext(error) : {}),
-          ...(message === undefined ? {} : { message }),
-        },
-      });
-      return { ok: false as const, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+      return this.internal(actor, error, 'dashboard.query.failed', 'configuration.list', 'configuration');
     }
   }
 
@@ -638,7 +633,7 @@ export class TenantBusinessService {
         return { ok: false as const, error: createPublicError('RATE_LIMITED', `Purge semua situs terlalu sering. Coba lagi dalam ${error.retryAfterSeconds} detik.`, actor.requestId) };
       }
       if (error instanceof DashboardSubscriptionInactiveError) return { ok: false as const, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
-      return { ok: false as const, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+      return this.internal(actor, error, 'dashboard.mutation.failed', 'site.cache.purge', 'site', DASHBOARD_PERMISSIONS.siteManage);
     }
   }
 
@@ -686,7 +681,7 @@ export class TenantBusinessService {
       return { ok: true as const, value: { publishers: state.publishers, affiliations: state.affiliations, sites: visibleSites } };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'publisher.list', 'publisher');
-      return { ok: false as const, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+      return this.internal(actor, error, 'dashboard.query.failed', 'publisher.list', 'publisher', DASHBOARD_PERMISSIONS.publisherRead);
     }
   }
 
@@ -881,7 +876,7 @@ export class TenantBusinessService {
       return { ok: true, value: { articles, sites, regions, regionScope: scopeRegion === undefined || scopeRegion === null ? null : { id: scopeRegion.id, name: scopeRegion.name } } };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.list', 'article');
-      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+      return this.internal(actor, error, 'dashboard.query.failed', 'article.list', 'article', DASHBOARD_PERMISSIONS.articleRead);
     }
   }
 
@@ -891,7 +886,7 @@ export class TenantBusinessService {
       return { ok: true, value: await this.repository.searchArticleSummaries(actor, DASHBOARD_PERMISSIONS.articleRead, keyword, limit) };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.list', 'article');
-      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+      return this.internal(actor, error, 'dashboard.query.failed', 'article.search', 'article', DASHBOARD_PERMISSIONS.articleRead);
     }
   }
 
@@ -1110,7 +1105,7 @@ export class TenantBusinessService {
       return { ok: true, value: await this.repository.dashboardCounts(actor, DASHBOARD_PERMISSIONS.dashboardRead) };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'dashboard.read', 'dashboard');
-      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+      return this.internal(actor, error, 'dashboard.query.failed', 'dashboard.read', 'dashboard', DASHBOARD_PERMISSIONS.dashboardRead);
     }
   }
 
@@ -1132,7 +1127,7 @@ export class TenantBusinessService {
       return { ok: true, value: { auditLogs, retentionRuns } };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'audit.list', 'audit_log');
-      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+      return this.internal(actor, error, 'dashboard.query.failed', 'audit.list', 'audit_log', DASHBOARD_PERMISSIONS.auditRead);
     }
   }
 
@@ -1155,7 +1150,7 @@ export class TenantBusinessService {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'invitation.create', 'invitation');
       if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, actor.requestId) };
       if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
-      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+      return this.internal(actor, error, 'dashboard.mutation.failed', 'invitation.create', 'invitation', DASHBOARD_PERMISSIONS.membershipManage);
     }
   }
 
@@ -1169,7 +1164,7 @@ export class TenantBusinessService {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'invitation.revoke', 'invitation');
       if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, actor.requestId) };
       if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
-      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+      return this.internal(actor, error, 'dashboard.mutation.failed', 'invitation.revoke', 'invitation', DASHBOARD_PERMISSIONS.membershipManage);
     }
   }
 
@@ -1183,7 +1178,7 @@ export class TenantBusinessService {
       return { ok: true, value: await run(this.repository) };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, action, targetType);
-      return { ok: false, error: createPublicError('INTERNAL_ERROR', 'The operation could not be completed.', actor.requestId) };
+      return this.internal(actor, error, 'dashboard.query.failed', action, targetType);
     }
   }
 }
