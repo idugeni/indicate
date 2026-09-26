@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
 import { getPublicConfig } from '@/core/config/public-config';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
-import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
+import { getServerRuntimeContext, invalidateServerRuntimeConfig } from '@/core/config/runtime/runtime-context';
 import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
@@ -89,6 +89,7 @@ async function handlePOST(request: Request) {
         readAuthorizationSeconds: policy.readAuthorizationSeconds,
         expectedVersion: policy.version,
       });
+      await invalidateServerRuntimeConfig(context.bootstrap.environment);
       return NextResponse.json({ ok: true, version: result.version });
     } catch (error) {
       if (error instanceof RuntimeConfigAdminAccessDeniedError) return NextResponse.json(createNonDisclosingDenial(requestId), { status: runtimeConfigErrorStatus(error) });

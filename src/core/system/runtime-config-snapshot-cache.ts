@@ -121,6 +121,21 @@ export class RuntimeConfigSnapshotCache {
     }
   }
 
+  /**
+   * Drop the entry when the persisted revision has moved past the one it holds.
+   *
+   * @param environment - Environment whose revision decides whether the entry is stale.
+   * @returns Nothing; resolves once the entry is dropped or confirmed current.
+   * @remarks Call this after a committed configuration mutation so the instance
+   * that performed it stops serving the previous policy instead of holding it for
+   * the rest of the entry TTL. A repository fault is propagated so the caller can
+   * decide that a cache drop must never fail the mutation that triggered it.
+   */
+  async invalidateFromSource(environment: string): Promise<void> {
+    const { configurationVersion } = await this.#repository.readInventoryVersion(environment);
+    this.invalidate({ runtimeRevision: configurationVersion });
+  }
+
   status(environment: string): SnapshotStatus {
     const now = this.#clock.now();
     const active = this.#active;

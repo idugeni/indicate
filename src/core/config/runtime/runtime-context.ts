@@ -39,6 +39,28 @@ export async function getServerRuntimeContext(): Promise<RuntimeContext> {
 
 let cache: RuntimeConfigSnapshotCache | null = null;
 
+/**
+ * Drop the process-local runtime configuration snapshot after a committed mutation.
+ *
+ * @param environment - Environment whose revision identifies the snapshot to drop.
+ * @returns Nothing; every failure is swallowed.
+ * @remarks Only the instance that performed the mutation can benefit: instance
+ * memory is unreachable from anywhere else, and the shared Redis snapshot is keyed
+ * by configuration version, so a new revision already misses it and the next cold
+ * instance reads the new values. What this buys is the mutating instance dropping a
+ * stale policy instead of serving it until the 300-second entry TTL expires.
+ * A configuration change must never fail because a cache could not be dropped, so
+ * the invalidation is best-effort.
+ */
+export async function invalidateServerRuntimeConfig(environment: string): Promise<void> {
+  if (cache === null) return;
+  try {
+    await cache.invalidateFromSource(environment);
+  } catch {
+    /* the entry TTL bounds how long a stale snapshot can survive */
+  }
+}
+
 function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigSnapshot): RuntimeConfig {
   const shared = snapshot.sharedDeployment;
   const policies = snapshot.policies;

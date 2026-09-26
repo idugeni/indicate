@@ -134,6 +134,50 @@ describe('RuntimeConfigSnapshotCache baca penuh', () => {
   });
 });
 
+describe('RuntimeConfigSnapshotCache invalidateFromSource', () => {
+  it('menjatuhkan entri saat revisi sumber sudah lebih baru', async () => {
+    const readComplete = vi.fn(async () => validModel());
+    const clock = new FixedMonotonicClock();
+    let configurationVersion = 7;
+    const repository: RuntimeConfigReadRepository = {
+      readComplete,
+      readInventoryVersion: async () => ({ configurationVersion }),
+    };
+    const cache = new RuntimeConfigSnapshotCache({ repository, clock });
+    await cache.get('test');
+    configurationVersion = 8;
+    await cache.invalidateFromSource('test');
+    clock.advance(1);
+    await cache.get('test');
+    expect(readComplete).toHaveBeenCalledTimes(2);
+  });
+
+  it('menahan entri saat revisi sumber belum bergerak', async () => {
+    const readComplete = vi.fn(async () => validModel());
+    const clock = new FixedMonotonicClock();
+    const repository: RuntimeConfigReadRepository = {
+      readComplete,
+      readInventoryVersion: async () => ({ configurationVersion: 7 }),
+    };
+    const cache = new RuntimeConfigSnapshotCache({ repository, clock });
+    await cache.get('test');
+    await cache.invalidateFromSource('test');
+    clock.advance(1);
+    await cache.get('test');
+    expect(readComplete).toHaveBeenCalledOnce();
+  });
+
+  it('meneruskan galat repository agar pemanggil bisa menelan', async () => {
+    const clock = new FixedMonotonicClock();
+    const repository: RuntimeConfigReadRepository = {
+      readComplete: async () => validModel(),
+      readInventoryVersion: async () => { throw new Error('revision_unavailable'); },
+    };
+    const cache = new RuntimeConfigSnapshotCache({ repository, clock });
+    await expect(cache.invalidateFromSource('test')).rejects.toThrow('revision_unavailable');
+  });
+});
+
 describe('RuntimeConfigSnapshotCache lapis bersama', () => {
   it('mengadopsi model tervalidasi dari store tanpa baca penuh', async () => {
     const readComplete = vi.fn(async () => validModel());
