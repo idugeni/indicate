@@ -219,7 +219,7 @@ Meta meng-scrape sendiri atau link dibagikan ulang. Lebih buruk, perbaikan
 lewat Sharing Debugger (urutkan `robots.txt` dulu, baru halamannya) bukan lagi
 workaround sementara, melainkan satu-satunya obat, selamanya.
 
-Sweep `/api/internal/maintenance/facebook-prewarm` (17 * * * *) tetap khusus
+Sweep `/api/internal/maintenance/facebook-prewarm` (`17 * * * *`) tetap khusus
 homepage `https://{host}/` dan tidak tersentuh perubahan ini; `read_runtime_config_active_sites()`
 tidak memuat artikel. Index parsial `article_sites_social_warm_due_idx` hanya
 memuat baris published yang belum bertanda — kosong pada keadaan steady, 8 kB di
@@ -230,4 +230,3 @@ Kalau pemanasan gagal tanpa membuka dispatch, dua event baru itu aparecen:
 `delivery.social_warm.mark_failed` (penandaan gagal, target tetap due). Keduanya
 sengaja tidak dilempar: warmer bersifat best-effort dan tidak boleh menggagalkan
 task invalidasi.
-
