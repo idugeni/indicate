@@ -13,6 +13,7 @@ import {
 } from '@/data/schema';
 import type * as schema from '@/data/schema';
 import { completeInvalidationValues } from '@/data/repos/shared/delivery-invalidation-values';
+import { sqlStringArray } from '@/data/repos/shared/sql-array';
 
 type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -128,7 +129,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     if (membershipIds.length > 0) {
       const profileRows = await transaction.execute<{ user_id: string; display_name: string | null; avatar_url: string | null }>(sql`
         SELECT u AS user_id, profile.display_name, profile.avatar_url
-        FROM unnest(${membershipIds}::uuid[]) AS u
+        FROM unnest(${sqlStringArray(membershipIds)}::uuid[]) AS u
         LEFT JOIN LATERAL indicate_private.lookup_user_profile(u) AS profile ON true
       `);
       const byId = new Map(profileRows.map((row) => [row.user_id, row]));

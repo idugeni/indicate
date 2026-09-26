@@ -3,6 +3,7 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { SocialWarmLedger, SocialWarmTarget } from '@/modules/delivery/ports';
 import type * as schema from '@/data/schema';
+import { sqlStringArray } from '@/data/repos/shared/sql-array';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -27,6 +28,6 @@ export class DrizzleSocialWarmLedger implements SocialWarmLedger {
   async markWarmed(articleSiteIds: readonly string[], now: Date): Promise<void> {
     if (articleSiteIds.length === 0) return;
     await this.database.execute(sql`
-      SELECT indicate_private.mark_social_warm_targets(${articleSiteIds}::uuid[], ${now.toISOString()}::timestamptz)`);
+      SELECT indicate_private.mark_social_warm_targets(${sqlStringArray(articleSiteIds)}::uuid[], ${now.toISOString()}::timestamptz)`);
   }
 }
