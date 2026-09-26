@@ -1436,5 +1436,13 @@
       "when": 1790481600000,
       "tag": "20260926190000_publisher_brand_removal",
       "breakpoints": true
-    }  ]
+    }  ,
+    {
+      "idx": 205,
+      "version": "7",
+      "when": 1790485200000,
+      "tag": "20260926200000_default_article_category",
+      "breakpoints": true
+    }
+  ]
 }

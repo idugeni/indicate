@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (205 migrations):
+-- Reviewed sources, in journal order (206 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -218,6 +218,7 @@
 --   203  20260926170000_site_settings_robots_directive_cast  ledger sha256:a98a1077e49431e37db6025fba6d42acd09780ad66ec8e27bbb31fe1e26484ce
 --   204  20260926180000_audit_chain_head_lock  ledger sha256:b4b24494492cf9f7bb09ac238eee0d5c4e3fa6a5be91966186c92d9ecb3c3036
 --   205  20260926190000_publisher_brand_removal  ledger sha256:e8100322757317b7bce632f9aef9b6297c69b0e2d405e1fa692e07f8e2f4fee2
+--   206  20260926200000_default_article_category  ledger sha256:0c2beda581d76609112d6239859fa14f373ea675119e45c5c22fa3bd6eab7d72
 
 BEGIN;
 
@@ -17242,4 +17243,87 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (205, 'publisher_brand_removal', 'sha256:bf26f268c32325f2ca192df55f3d09a7f17a53d3296a980b8a1e286cd7261461');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e8100322757317b7bce632f9aef9b6297c69b0e2d405e1fa692e07f8e2f4fee2', 1790481600000);
+
+-- ----------------------------------------------------------------------
+-- 20260926200000_default_article_category
+-- ----------------------------------------------------------------------
+-- Seed the default article category for every organization that can publish.
+--
+-- `articles.category_id` was nullable and the article composer let the field
+-- stay empty, so an article could be filed under no category at all. Every
+-- consumer degrades on that: the article page drops the category chip and the
+-- breadcrumb segment, the nav and the author profile build their category
+-- lists from `categorySlug IS NOT NULL` so the article is unreachable from
+-- any category page, and the NewsArticle JSON-LD, the OpenGraph `section`, and
+-- the RSS `<category>` element are all omitted. An article nobody can browse
+-- to and whose structured data is missing is the worst possible filing, and it
+-- happened silently.
+--
+-- The default is `Umum` (slug `umum`). "Lainnya" would have been the obvious
+-- alternative, but a fallback that reads as a rubbish bin is one editors start
+-- ignoring; `Umum` is the neutral filing label Indonesian newsrooms actually
+-- use for material that does not belong to a specific desk.
+--
+-- The row is seeded per organization rather than globally because categories
+-- are tenant data (`categories.organization_id`). Sixty of the sixty-one
+-- organizations had no category row at all, so scoping the seed to
+-- organizations that own a publisher is what makes a tenant able to file an
+-- article at all; `Drill Expire` owns no publisher and gets no category.
+--
+-- `TenantBusinessService` resolves this slug before writing, so an article can
+-- no longer be stored without a category even when an API caller omits the
+-- field, and the composer pre-selects it so the choice is visible rather than
+-- silent.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+INSERT INTO public.categories (organization_id, id, name, slug, status, version, created_at, updated_at)
+SELECT publisher_org.organization_id,
+       gen_random_uuid(),
+       'Umum',
+       'umum',
+       'active'::public.record_status,
+       1,
+       now(),
+       now()
+  FROM (SELECT DISTINCT organization_id FROM public.publishers) AS publisher_org
+  LEFT JOIN public.categories AS existing
+    ON existing.organization_id = publisher_org.organization_id
+   AND existing.slug = 'umum'
+ WHERE existing.id IS NULL;
+DO $$
+DECLARE
+  seeded integer;
+  expected integer;
+  missing integer;
+BEGIN
+  SELECT count(*) INTO expected
+    FROM (SELECT DISTINCT organization_id FROM public.publishers) AS publisher_org;
+
+  SELECT count(*) INTO seeded
+    FROM public.categories
+   WHERE slug = 'umum'
+     AND status = 'active'
+     AND EXISTS (SELECT 1 FROM public.publishers AS p WHERE p.organization_id = categories.organization_id);
+
+  SELECT count(*) INTO missing
+    FROM (SELECT DISTINCT organization_id FROM public.publishers) AS publisher_org
+   WHERE NOT EXISTS (
+     SELECT 1 FROM public.categories AS c
+      WHERE c.organization_id = publisher_org.organization_id
+        AND c.slug = 'umum'
+        AND c.status = 'active'
+   );
+
+  IF missing <> 0 THEN
+    RAISE EXCEPTION 'default_article_category_missing: % publishing organizations have no active umum category', missing;
+  END IF;
+
+  RAISE NOTICE 'default_article_category_done: % seeded, % publishing organizations', seeded, expected;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (206, 'default_article_category', 'sha256:1b33e87699190df9803a5701d9a5b4288e6ec131bb01e9d80396be7616db0846');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('0c2beda581d76609112d6239859fa14f373ea675119e45c5c22fa3bd6eab7d72', 1790485200000);
 COMMIT;
