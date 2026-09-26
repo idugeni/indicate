@@ -2,7 +2,8 @@
 
 > **Status:** Living ledger — perbarui setiap ada aktivasi/penonaktifan domain.
 > **Owner:** Platform team.
-> **Last verified:** 2026-09-26 (3762 site aktif di DB: 114 apex + 114 region Jawa Tengah + 3534 city; Vercel exact + wildcard terverifikasi 20/20 untuk 10 apex Exabytes baru; Cloudflare strict; HTTP 104/104 apex lama `200`; sweep 330/330 portal Exabytes baru `200` branded, 0 `noindex`).
+> **Role:** mencatat **kapan** setiap aktivasi dan penonaktifan terjadi, sebagai kronologi bertanggal. Domain yang terdaftar dan status kepemilikannya ada di [domains](domains.md); angka total terkini hanya ada di header dokumen itu dan di header di bawah, tidak di per-section.
+> **Last verified:** 2026-09-26 against the live database (4422 site `active/active`: 134 apex + 134 region + 4154 city; Vercel exact + wildcard terverifikasi 20/20 untuk 10 apex Exabytes baru; Cloudflare strict; HTTP 104/104 apex lama `200`; sweep 330/330 portal Exabytes baru `200` branded, 0 `noindex`). Angka per bagian di bawah adalah snapshot bertanggal, bukan total terkini.
 
 ## Migrasi domain utama (2026-09-24, dual-serve)
 
@@ -287,27 +288,16 @@ walau RDAP mengonfirmasi terdaftar — lag publikasi delegasi registry,
 NS di registrar sudah terverifikasi. 33 portalnya ikut gagal karena itu,
 bukan konfigurasi.
 
-## Backlog (belum punya site)
+## Backlog
 
-Tidak ada. 59 org customer (UPT Jateng) tetap 0 site karena keputusan owner
-2026-09-17: mereka tidak punya hostname sendiri, melainkan berafiliasi ke 31
-portal kota lewat `official_affiliations` (590 baris per migrasi v181, 59
-institusi × 10 domain jaringan). Kebutuhan 59 slot hostname yang pernah
-diestimasi sudah tidak berlaku.
+Tidak ada backlog domain. 134 apex tenant terdaftar dan 134-nya sudah live
+(104 lama + 10 Exabytes baru 2026-09-26 + 20 Exabytes batch-2 2026-09-26).
+Satu-satunya entri yang tersisa adalah 59 org customer (UPT Jateng) yang tetap
+0 site karena keputusan owner 2026-09-17: mereka tidak punya hostname sendiri,
+melainkan berafiliasi ke 31 portal kota lewat `official_affiliations` (590 baris
+per migrasi v181, 59 institusi × 10 domain jaringan). Kebutuhan 59 slot hostname
+yang pernah diestimasi sudah tidak berlaku, dan itu bukan domain inventory aktif.
 
-## Verifikasi rollout 2026-09-25
-
-- 104 apex tenant + 104 portal region Jawa Tengah + 3224 portal city (31 kota × 104 domain): `active/active` di Supabase, ledger v180.
-- `domains.site_topology`: seluruh 104 domain `regional`; trigger DB mewajibkan ≥1 region portal dan ≥1 city portal per domain.
-- Vercel: 104 exact + 104 wildcard tenant, semua `verified:true`; 213 asosiasi total (tidak bertambah — 3328 portal turunan dilayani wildcard apex).
-- Cloudflare: 104 zona tenant, apex/wildcard CNAME terproxy, TLS `strict`, WAF 2-rule.
-- Media: 204 objek R2 untuk 68 apex baru, reservation `used`, setting brand/SEO lengkap. Portal turunan mewarisi `default_media_id` apex (logo/favicon `NULL` → inherit).
-- HTTP: 104/104 apex dan sweep 1888/1888 portal turunan `200`.
-- Portal turunan: 0 exact Vercel, tetap dilayani wildcard apex.
-
-## Backlog domain
-
-Tidak ada backlog domain. 114 apex tenant terdaftar dan 114-nya sudah
-live (104 lama + 10 Exabytes baru 2026-09-26). Sisa backlog hanya org
-customer UPT Jateng yang belum memiliki site; itu bukan domain inventory
-aktif dan belum diaktifkan owner.
+Daftar domain yang terdaftar beserta status kepemilikannya ada di
+[domains.md](domains.md); dokumen ini hanya mencatat kapan setiap aktivasi dan
+penonaktifan terjadi.

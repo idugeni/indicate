@@ -2,12 +2,18 @@
 
 > **Status:** Living document (advisory).
 > **Owner:** Platform team.
+> **Role:** satu-satunya tempat yang menyebut **domain mana yang terdaftar** dan status kepemilikannya, plus angka total terkini. Kapan tiap aktivasi terjadi dicatat di [active domains](active-domains.md) sebagai kronologi bertanggal.
 > **Last verified:** 2026-09-26 (Cloudflare API + DB `sites` + Vercel MCP + HTTP 104/104 apex and 10/10 regional `200`; RDAP PANDI + delegasi NS publik terverifikasi untuk 10 domain Exabytes baru di bagian C).
 > **Related:** [active domains](active-domains.md) · [cloudflare baseline](cloudflare-baseline.md)
 
 Hanya domain terkait Indicate yang dicatat di sini — proyek-proyek lain
-milik pemilik sengaja tidak dimasukkan. Total zona live di akun Cloudflare
-adalah 131 (104 zona tenant Indicate + zona proyek lain milik pemilik).
+milik pemilik sengaja tidak dimasukkan. Zona tenant Indicate = **134 apex**
+(satu zona per apex, sesuai bagian A sampai D). Total zona live seluruh akun
+Cloudflare belum diverifikasi ulang setelah batch 2026-09-26: angka lama 131
+(104 zona tenant + zona proyek lain) sudah tidak berlaku karena 30 apex
+ditambahkan, dan connection Cloudflare yang tersedia untuk audit docs ini
+menunjuk akun lain (69 zona tenant, tanpa `indicate.website`). Verifikasi ulang
+nilai akun perlu akses ke akun Cloudflare pemilik.
 
 Tenant live di DB: **4422 site = 134 apex + 134 site region + 4154 site kota**, dengan rantai `apex → region → city` eksplisit (`sites.site_level` + `sites.parent_site_id`) dan `domains.site_topology = 'regional'` untuk seluruh 134 domain, ditegakkan DB. Keputusan owner 2026-09-25: semua domain memakai Jawa Tengah untuk sementara, jadi tiap domain punya `jawa-tengah.{apex}` plus roster 31 kab/kota (`{city}.{apex}`). 134 apex memiliki exact + wildcard Vercel terverifikasi; 4288 portal turunan dilayani wildcard regional tanpa exact Vercel.
 Domain utama: `indicate.website` (bukan tenant; migrasi dari `indicate.web.id` 2026-09-24, dual-serve).
