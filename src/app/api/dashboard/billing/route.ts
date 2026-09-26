@@ -38,7 +38,7 @@ function response(error: PublicErrorEnvelope) {
 
 interface Session { readonly actor: ActorContext; readonly close: () => Promise<void> }
 
-async function sessionFor(requestId: string): Promise<Session | PublicErrorEnvelope> {
+async function sessionFor(requestId: string, organizationId?: string): Promise<Session | PublicErrorEnvelope> {
   const cookieStore = await cookies();
   const publicConfig = getPublicConfig(process.env);
   const auth = createSupabaseSsrAuthAdapter({
@@ -52,7 +52,12 @@ async function sessionFor(requestId: string): Promise<Session | PublicErrorEnvel
   const authorization = new DrizzleAuthorizationRepository(runtime.db);
   const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
   if (!local.ok || local.value.status !== 'active') { return createNonDisclosingDenial(requestId); }
-  const platformPermissions = await authorization.listPlatformPermissions(local.value.id);
+  let platformPermissions: readonly string[];
+  try {
+    platformPermissions = await authorization.listPlatformPermissions(local.value.id, organizationId);
+  } catch {
+    return createNonDisclosingDenial(requestId);
+  }
   const actor: ActorContext = {
     actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId: null,
     permissionSet: new Set(), platformPermissionSet: new Set(platformPermissions), entryPoint: 'dashboard', requestId,

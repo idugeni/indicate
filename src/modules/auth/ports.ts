@@ -39,7 +39,7 @@ export interface AuthorizationRepository {
    */
   findActiveMemberships(userId: string, organizationIds: readonly string[]): Promise<ReadonlyMap<string, MembershipAuthorization>>;
   /** Platform-scoped grant names for a local user (billing/platform surfaces for users without an org membership). */
-  listPlatformPermissions(userId: string): Promise<readonly string[]>;
+  listPlatformPermissions(userId: string, organizationId?: string): Promise<readonly string[]>;
   findActiveActorAuthorization(
     organizationId: string,
     actorType: Exclude<ActorType, 'user'>,

@@ -50,7 +50,12 @@ async function sessionFor(requestId: string): Promise<Session | PublicErrorEnvel
   const authorization = new DrizzleAuthorizationRepository(runtime.db);
   const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
   if (!local.ok || local.value.status !== 'active') { return createNonDisclosingDenial(requestId); }
-  const platformPermissions = await authorization.listPlatformPermissions(local.value.id);
+  let platformPermissions: readonly string[];
+  try {
+    platformPermissions = await authorization.listPlatformPermissions(local.value.id);
+  } catch {
+    return createNonDisclosingDenial(requestId);
+  }
   const actor: ActorContext = {
     actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId: null,
     permissionSet: new Set(), platformPermissionSet: new Set(platformPermissions), entryPoint: 'dashboard', requestId,

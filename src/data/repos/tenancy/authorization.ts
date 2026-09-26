@@ -125,8 +125,22 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
   }
 
 
-  async listPlatformPermissions(userId: string) {
+  /**
+   * List the platform-scoped grants of one user.
+   *
+   * @param userId - Local user id whose platform grants are requested.
+   * @param organizationId - Tenant to scope the transaction to. Platform-scope
+   *   callers often have none, so only the actor/request GUCs the RLS guard
+   *   checks are set in that case.
+   * @returns Platform permission names; an empty list when the user holds none.
+   */
+  async listPlatformPermissions(userId: string, organizationId?: string) {
     return this.database.transaction(async (transaction) => {
+      if (organizationId === undefined) {
+        await transaction.execute(sql`SELECT set_config('app.actor_id', ${userId}, true), set_config('app.request_id', ${'platform-authorization'}, true)`);
+      } else {
+        await transaction.execute(sql`SELECT indicate_private.set_tenant_context(${organizationId}::uuid, ${userId}, ${'platform-authorization'})`);
+      }
       const rows = await transaction.execute<{ name: string }>(sql`SELECT name FROM indicate_private.permission_list_platform(${userId}::uuid)`);
       return rows.map(({ name }) => name);
     });
