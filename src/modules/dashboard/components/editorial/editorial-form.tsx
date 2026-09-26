@@ -39,6 +39,8 @@ import { TAG_MAX_COUNT, normalizeTagList } from '@/modules/site/slug-allocator';
 import type { TipTapDoc, TipTapNode } from '@/modules/site/tiptap-document';
 import { ArticlePreview } from '@/modules/dashboard/components/editorial/article-preview';
 import { RichTextEditor } from '@/modules/dashboard/components/editorial/rich-text-editor';
+import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
+import { COVER_COMPRESS, formatBytes } from '@/modules/publishing/compress-image';
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draf' },
@@ -324,66 +326,23 @@ export function ArticleCreateForm({
       return;
     }
     setUploadingFeatured(true);
-    setFeaturedStatus('Menyiapkan penyimpanan...');
-    let dimensions: { readonly widthPx: number; readonly heightPx: number } | undefined;
+    setFeaturedStatus('Menganalisis & mengompresi gambar di perangkat…');
     try {
-      const bitmap = await createImageBitmap(file);
-      if (bitmap.width > 0 && bitmap.height > 0) dimensions = { widthPx: bitmap.width, heightPx: bitmap.height };
-      bitmap.close();
-    } catch {
-      dimensions = undefined;
-    }
-    try {
-      const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
-      const bytes = new Uint8Array(digest);
-      let binary = '';
-      for (const byte of bytes) binary += String.fromCharCode(byte);
-      const reserved = (await command('media.reserve', {
-        filename: file.name,
-        mediaType: file.type,
-        sizeBytes: file.size,
-        checksum: btoa(binary),
+      const { mediaId, previewUrl, storedSrc, version, sizeBytes, savingsBytes } = await uploadEditorImage(file, { kind: 'organization' }, command, {
         purpose: 'article-cover',
-        owner: { kind: 'organization' },
-      })) as {
-        readonly reservationId?: string;
-        readonly authorization?: { readonly url?: string; readonly requiredHeaders?: Record<string, string> };
-      } | null;
-      if (!reserved?.reservationId || !reserved.authorization?.url || !reserved.authorization.requiredHeaders) {
-        setFeaturedStatus('Gagal menyiapkan penyimpanan. Coba lagi.');
-        return;
-      }
-      setFeaturedStatus('Mengunggah berkas...');
-      const uploadResponse = await fetch(reserved.authorization.url, {
-        method: 'PUT',
-        headers: reserved.authorization.requiredHeaders,
-        body: file,
+        compress: COVER_COMPRESS,
+        onConverting: () => setFeaturedStatus('Mengonversi HEIC ke JPEG di perangkat…'),
       });
-      if (!uploadResponse.ok) {
-        setFeaturedStatus('Gagal mengunggah. Periksa koneksi lalu coba lagi.');
-        return;
-      }
-      setFeaturedStatus('Menyelesaikan pemeriksaan berkas...');
-      const completed = (await command('media.complete', { reservationId: reserved.reservationId, ...(dimensions === undefined ? {} : dimensions) })) as { readonly id?: unknown; readonly version?: unknown } | null;
-      const mediaId = typeof completed?.id === 'string' ? completed.id : null;
-      if (mediaId === null) {
-        setFeaturedStatus('Pemeriksaan berkas gagal. Coba unggah ulang.');
-        return;
-      }
       setFeaturedId(mediaId);
       setFeaturedName(file.name);
-      setFeaturedVersion(typeof completed?.version === 'number' ? completed.version : 1);
+      setFeaturedVersion(version);
       setFeaturedAlt('');
       setFeaturedCaption('');
       setFeaturedFocal(null);
-      const storedSrc = `/api/network/media/${mediaId}`;
-      try {
-        const read = (await command('media.read', { mediaId })) as { readonly url?: unknown } | null;
-        setFeaturedPreviewUrl(typeof read?.url === 'string' && read.url !== '' ? read.url : storedSrc);
-      } catch {
-        setFeaturedPreviewUrl(storedSrc);
-      }
-      setFeaturedStatus(null);
+      setFeaturedPreviewUrl(previewUrl === '' ? storedSrc : previewUrl);
+      setFeaturedStatus(savingsBytes > 0 ? `Terkompresi ${formatBytes(file.size)} → ${formatBytes(sizeBytes)} (WebP).` : null);
+    } catch (error) {
+      setFeaturedStatus(error instanceof Error ? error.message : 'Gagal mengunggah gambar sampul. Coba lagi.');
     } finally {
       setUploadingFeatured(false);
     }
@@ -959,7 +918,7 @@ export function ArticleCreateForm({
                 <input
                   id={featuredFileId}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/avif,.heic,.heif"
                   data-testid="featured-file-input"
                   className="hidden"
                   disabled={isSubmitting || uploadingFeatured}
@@ -967,7 +926,11 @@ export function ArticleCreateForm({
                 />
                 {featuredStatus !== null ? (
                   <p className="m-0 font-mono text-[11px] text-paper-faint">{featuredStatus}</p>
-                ) : null}
+                ) : (
+                  <p className="m-0 font-mono text-[11px] text-paper-faint">
+                    JPEG, PNG, WebP, AVIF, atau HEIC · maks {formatBytes(COVER_COMPRESS.maxSourceBytes)} · dikompresi otomatis ke WebP
+                  </p>
+                )}
               </div>
 
               <Separator />

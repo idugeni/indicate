@@ -1,5 +1,8 @@
 import type { MediaOwner } from '@/modules/publishing/models';
-import { prepareImageUpload } from '@/modules/publishing/compress-image';
+import type { CompressOptions } from '@/modules/publishing/compress-image';
+import type { MediaPurpose } from '@/modules/publishing/object-key';
+import { INLINE_COMPRESS, formatBytes, prepareImageUpload } from '@/modules/publishing/compress-image';
+import { normalizeImageSource } from '@/modules/publishing/heic-source';
 
 type CommandFn = (action: string, payload: unknown) => Promise<unknown>;
 type PrepareFn = typeof prepareImageUpload;
@@ -13,27 +16,59 @@ interface ReservationResponse {
 
 interface CompletedMedia {
   readonly id?: string;
+  readonly version?: number;
+}
+
+/** Options for {@link uploadEditorImage}; every field has a production default. */
+export interface UploadEditorImageOptions {
+  /** Media purpose to reserve; defaults to `article-inline`. */
+  readonly purpose?: MediaPurpose;
+  /** Compression budget; defaults to the inline preset. */
+  readonly compress?: CompressOptions;
+  /** Called when a HEIC source starts converting, for progress copy. */
+  readonly onConverting?: () => void;
+  /** Injectable browser dependencies for testing. */
+  readonly convert?: (blob: Blob) => Promise<Blob | Blob[]>;
+  /** Injectable browser dependencies for testing. */
+  readonly prepare?: PrepareFn;
+  /** Injectable browser dependencies for testing. */
+  readonly fetchFn?: FetchFn;
 }
 
 /**
- * Upload an inline editor image through the existing R2 reservation flow.
+ * Upload an editorial image through the existing R2 reservation flow.
  *
- * @param file - Source image file from the editor picker.
+ * @param file - Source image file from the picker.
  * @param owner - Media owner; new drafts use `{ kind: 'organization' }`.
  * @param command - Dashboard command dispatcher (`media.reserve`, `media.complete`, `media.read`).
- * @param deps - Injectable browser dependencies for testing.
- * @returns Durable stored `src` plus a preview URL for the editor canvas.
- * @throws {Error} With an Indonesian user-facing message when any step fails.
+ * @param options - Purpose, compression budget, conversion progress, and injectable browser dependencies.
+ * @returns Durable stored `src`, a preview URL for the editor canvas, the media id, the activated version, and the stored/thrifted byte counts.
+ * @throws {Error} With an Indonesian user-facing message when the HEIC conversion fails, the source file is over the size ceiling, or any step fails.
  */
 export async function uploadEditorImage(
   file: File,
   owner: MediaOwner,
   command: CommandFn,
-  deps: { readonly prepare?: PrepareFn; readonly fetchFn?: FetchFn } = {},
-): Promise<{ readonly storedSrc: string; readonly previewUrl: string; readonly mediaId: string }> {
-  const prepare = deps.prepare ?? prepareImageUpload;
-  const fetchFn = deps.fetchFn ?? fetch;
-  const prepared = await prepare(file);
+  options: UploadEditorImageOptions = {},
+): Promise<{
+  readonly storedSrc: string;
+  readonly previewUrl: string;
+  readonly mediaId: string;
+  readonly version: number;
+  readonly sizeBytes: number;
+  readonly savingsBytes: number;
+}> {
+  const prepare = options.prepare ?? prepareImageUpload;
+  const fetchFn = options.fetchFn ?? fetch;
+  const compress = options.compress ?? INLINE_COMPRESS;
+  const source = await normalizeImageSource(file, {
+    ...(options.onConverting === undefined ? {} : { onConverting: options.onConverting }),
+    ...(options.convert === undefined ? {} : { convert: options.convert }),
+  });
+  if (compress.maxSourceBytes !== undefined && source.size > compress.maxSourceBytes) {
+    throw new Error(`Ukuran berkas melebihi ${formatBytes(compress.maxSourceBytes)}. Pilih foto dengan resolusi lebih rendah.`);
+  }
+  const prepared = await prepare(source, compress);
   const thumbSpec =
     prepared.thumb === null
       ? null
@@ -43,7 +78,7 @@ export async function uploadEditorImage(
     mediaType: prepared.mediaType,
     sizeBytes: prepared.sizeBytes,
     checksum: prepared.checksum,
-    purpose: 'article-inline',
+    purpose: options.purpose ?? 'article-inline',
     owner,
     ...(thumbSpec === null ? {} : { thumb: thumbSpec }),
   })) as ReservationResponse | null;
@@ -70,11 +105,18 @@ export async function uploadEditorImage(
   const mediaId = completed?.id;
   if (typeof mediaId !== 'string' || mediaId === '') throw new Error('Pemeriksaan berkas gagal. Coba unggah ulang.');
   const storedSrc = `/api/network/media/${mediaId}`;
+  const stored = {
+    storedSrc,
+    mediaId,
+    version: typeof completed?.version === 'number' ? completed.version : 1,
+    sizeBytes: prepared.sizeBytes,
+    savingsBytes: prepared.savingsBytes,
+  } as const;
   try {
     const read = (await command('media.read', { mediaId })) as { readonly url?: string } | null;
-    if (typeof read?.url === 'string' && read.url !== '') return { storedSrc, previewUrl: read.url, mediaId };
+    if (typeof read?.url === 'string' && read.url !== '') return { ...stored, previewUrl: read.url };
   } catch {
     /* Fall through to the durable relative URL. */
   }
-  return { storedSrc, previewUrl: storedSrc, mediaId };
+  return { ...stored, previewUrl: storedSrc };
 }

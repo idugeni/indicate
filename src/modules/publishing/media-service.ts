@@ -53,7 +53,7 @@ export class MediaService {
     if (!this.policy.allowedTypes.includes(value.mediaType) || value.sizeBytes > this.policy.maxBytes) {
       return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, {
         ...(this.policy.allowedTypes.includes(value.mediaType) ? {} : { mediaType: ['Unsupported media type.'] }),
-        ...(value.sizeBytes <= this.policy.maxBytes ? {} : { sizeBytes: ['Media exceeds the configured size limit.'] }),
+        ...(value.sizeBytes <= this.policy.maxBytes ? {} : { sizeBytes: [`Exceeds the ${(this.policy.maxBytes / (1024 * 1024)).toLocaleString('en-US')} MB upload limit.`] }),
       }) };
     }
     const attempts = Math.max(1, Math.min(20, this.policy.reservationAttempts ?? 8));

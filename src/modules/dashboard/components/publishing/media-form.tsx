@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
-import { formatBytes, prepareImageUpload } from '@/modules/publishing/compress-image';
+import { INLINE_COMPRESS, formatBytes, prepareImageUpload } from '@/modules/publishing/compress-image';
+import { normalizeImageSource } from '@/modules/publishing/heic-source';
 import { MEDIA_PURPOSES } from '@/modules/publishing/object-key';
 
 const SUPPORTED_MEDIA_TYPES = new Set([
@@ -18,17 +19,6 @@ const SUPPORTED_MEDIA_TYPES = new Set([
   'image/avif',
   'image/x-icon',
 ]);
-
-const HEIC_TYPES = new Set(['image/heic', 'image/heif']);
-
-function isHeicFile(file: File): boolean {
-  return HEIC_TYPES.has(file.type) || /\.hei[cf]$/iu.test(file.name);
-}
-
-function heicStem(filename: string): string {
-  const stem = filename.replace(/\.[a-z0-9]{1,10}$/iu, '');
-  return stem === '' ? 'file' : stem;
-}
 
 /**
  * Render the media upload form with compression and client-side reservation.
@@ -68,23 +58,16 @@ export function MediaForm({
 
     startUploadTransition(async () => {
       try {
-        let source = file;
-        if (isHeicFile(file)) {
-          setUploadStatus('Mengonversi HEIC ke JPEG di perangkat…');
-          let converted: Blob | Blob[];
-          try {
-            const { default: heic2any } = await import('heic2any');
-            converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
-          } catch {
-            setUploadStatus('Gagal mengonversi HEIC. Coba simpan ulang foto sebagai JPG dari galeri lalu unggah lagi.');
-            return;
-          }
-          const first = Array.isArray(converted) ? converted[0] : converted;
-          if (!(first instanceof Blob) || first.size === 0) {
-            setUploadStatus('Gagal mengonversi HEIC. Coba simpan ulang foto sebagai JPG dari galeri lalu unggah lagi.');
-            return;
-          }
-          source = new File([first], `${heicStem(file.name)}.jpg`, { type: 'image/jpeg' });
+        let source: File;
+        try {
+          source = await normalizeImageSource(file, { onConverting: () => setUploadStatus('Mengonversi HEIC ke JPEG di perangkat…') });
+        } catch (error) {
+          setUploadStatus(error instanceof Error ? error.message : 'Gagal mengonversi HEIC. Coba simpan ulang foto sebagai JPG dari galeri lalu unggah lagi.');
+          return;
+        }
+        if (source.size > INLINE_COMPRESS.maxSourceBytes) {
+          setUploadStatus(`Ukuran berkas melebihi ${formatBytes(INLINE_COMPRESS.maxSourceBytes)}. Pilih foto dengan resolusi lebih rendah.`);
+          return;
         }
         setUploadStatus('Menganalisis & mengompresi gambar di perangkat…');
         const prepared = await prepareImageUpload(source);
