@@ -82,6 +82,18 @@ describe('useMobileMenu', () => {
     expect(screen.getByText('tertutup')).toBeDefined();
   });
 
+  it('tetap bisa dibuka setelah navigasi, tanpa menusorot fokus ke tombol', () => {
+    const { rerender } = render(<Probe />);
+    fireEvent.click(screen.getByRole('button', { name: 'buka menu' }));
+    jalur.saatIni = '/layanan';
+    rerender(<Probe />);
+    expect(screen.getByText('tertutup')).toBeDefined();
+    expect(document.activeElement).not.toBe(screen.getByRole('button', { name: 'buka menu' }));
+    fireEvent.click(screen.getByRole('button', { name: 'buka menu' }));
+    expect(screen.getByText('terbuka')).toBeDefined();
+    expect(document.body.style.overflow).toBe('hidden');
+  });
+
   it('menutup saat viewport menjadi desktop', () => {
     render(<Probe />);
     fireEvent.click(screen.getByRole('button', { name: 'buka menu' }));

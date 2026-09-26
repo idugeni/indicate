@@ -274,13 +274,13 @@ export function BillingPanel({
 
       <section aria-label="Ringkasan faktur" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
         <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Ringkasan faktur</p>
-        <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-paper-dim">
-          {invoices.length === 0 ? (
-            <EmptyState title="Belum ada faktur tercatat untuk organisasi ini." description="Data akan tampil di sini setelah tersedia." />
-          ) : (
-            `${invoices.length} faktur · ${paidInvoices.length} lunas (${formatIdr(paidTotal)}) · ${unpaidInvoices.length} belum bayar.`
-          )}
-        </p>
+        {invoices.length === 0 ? (
+          <EmptyState title="Belum ada faktur tercatat untuk organisasi ini." description="Data akan tampil di sini setelah tersedia." className="mt-2" />
+        ) : (
+          <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-paper-dim">
+            {`${invoices.length} faktur · ${paidInvoices.length} lunas (${formatIdr(paidTotal)}) · ${unpaidInvoices.length} belum bayar.`}
+          </p>
+        )}
       </section>
         </div>
       </TabsContent>

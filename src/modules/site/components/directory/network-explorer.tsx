@@ -143,7 +143,7 @@ export function NetworkExplorer({ sites }: { readonly sites: readonly DirectoryE
                           </span>
                         ) : null}
                         {site.description !== null ? (
-                          <span className="block font-sans text-sm leading-relaxed text-[#4c5b6b] line-clamp-4 sm:line-clamp-none">
+                          <span className="block font-sans text-[13px] leading-snug text-[#4c5b6b] line-clamp-3 sm:text-sm sm:leading-relaxed sm:line-clamp-none">
                             {site.description}
                           </span>
                         ) : (

@@ -244,11 +244,16 @@ export interface RegionalCityGroup {
  *
  * @param regional - Region and city portals ordered by hostname.
  * @returns City groups in first-seen order, frozen.
+ * @remarks A region edition is the parent of its cities, not a city itself, so it
+ * never forms a tile. Letting `jawa-tengah.<apex>` through would print the region
+ * as a city beside its own children, inflate the city count, and repeat the same
+ * mistake in the directory JSON-LD. Region portals stay reachable through search.
  */
 export function groupRegionalByCity(regional: readonly DirectoryEntry[]): readonly RegionalCityGroup[] {
   const order: string[] = [];
   const buckets = new Map<string, DirectoryEntry[]>();
   for (const site of regional) {
+    if (site.siteLevel !== 'city') continue;
     const city = areaOf(site);
     const bucket = buckets.get(city);
     if (bucket === undefined) {

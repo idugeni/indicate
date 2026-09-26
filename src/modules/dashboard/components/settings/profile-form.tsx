@@ -5,7 +5,7 @@ import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { Loader2, UserRound } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { cn } from '@/ui/cn';
 
 interface Profile {
   readonly displayName: string;
@@ -236,11 +237,9 @@ export function ProfileForm() {
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
               <span>Simpan Profil</span>
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              render={<Link href="/update-password">Ganti Kata Sandi</Link>}
-            />
+            <Link href="/update-password" className={cn(buttonVariants({ variant: 'outline' }))}>
+              Ganti Kata Sandi
+            </Link>
           </div>
         </form>
       )}

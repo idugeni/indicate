@@ -13,17 +13,16 @@ const MENU_OPEN_EASE = 'cubic-bezier(0.32,0.72,0,1)';
 export function LandingHeader() {
   const { open, setOpen, pathname, menuButtonRef, panelRef, closeButtonRef: closeRef } =
     useMobileMenu();
-  const firstPaintRef = useRef(true);
+  const wasOpenRef = useRef(false);
   const backdropRef = useRef<HTMLDivElement>(null);
   const asideRef = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (firstPaintRef.current) {
-      firstPaintRef.current = false;
-      if (!open) return undefined;
-    }
+    const wasOpen = wasOpenRef.current;
+    wasOpenRef.current = open;
+    if (!open && !wasOpen) return undefined;
     const backdrop = backdropRef.current;
     const aside = asideRef.current;
     if (!backdrop || !aside) return undefined;
@@ -63,14 +62,12 @@ export function LandingHeader() {
       play(backdrop, [{ opacity: '1' }, { opacity: '0' }], { duration: 260, easing: 'ease-out' });
       play(aside, [{ translate: '0 0' }, { translate: '100% 0' }], { duration: 320, easing: 'ease-in' });
     }
-    const clearHints = () => {
+    const release = () => {
+      for (const animation of played) animation.cancel();
       for (const element of animated) element.style.willChange = '';
     };
-    void Promise.allSettled(played.map((animation) => animation.finished)).then(clearHints);
-    return () => {
-      for (const animation of played) animation.cancel();
-      clearHints();
-    };
+    void Promise.allSettled(played.map((animation) => animation.finished)).then(release);
+    return release;
   }, [open ]);
 
   return (

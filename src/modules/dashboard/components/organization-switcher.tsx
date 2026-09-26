@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useOptimistic } from 'react';
+import { startTransition, useActionState, useEffect, useOptimistic } from 'react';
 
 import {
   switchActiveOrganization,
@@ -19,7 +19,14 @@ interface OrganizationSwitcherProps {
   readonly onSwitchFailed: (message: string) => void;
 }
 
-/** Org switch via Server Action; optimistic select rolls back to the server-committed id on denial. */
+/**
+ * Switches the active organization through a Server Action and shows the
+ * selected id optimistically.
+ *
+ * The optimistic value is updated inside a transition, so React discards it
+ * when the action settles and the select snaps back to `activeOrganizationId`
+ * whenever the server denies the switch.
+ */
 export function OrganizationSwitcher({
   organizations,
   activeOrganizationId,
@@ -34,17 +41,18 @@ export function OrganizationSwitcher({
     if (state.status === 'ok') {
       if (state.organizationId !== activeOrganizationId) onSwitchCommitted(state.organizationId);
     } else if (state.status === 'error') {
-      setOptimisticId(activeOrganizationId);
       onSwitchFailed(state.message);
     }
-  }, [state, activeOrganizationId, onSwitchCommitted, onSwitchFailed, setOptimisticId]);
+  }, [state, activeOrganizationId, onSwitchCommitted, onSwitchFailed]);
 
   const handleChange = (next: string | null) => {
     if (next === null || next === '' || next === optimisticId || isPending) return;
-    setOptimisticId(next);
-    const formData = new FormData();
-    formData.set('organizationId', next);
-    formAction(formData);
+    startTransition(() => {
+      setOptimisticId(next);
+      const formData = new FormData();
+      formData.set('organizationId', next);
+      formAction(formData);
+    });
   };
 
   return (

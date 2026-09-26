@@ -14,10 +14,11 @@ import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { UuidGenerator } from '@/core/system/uuid-generator';
 import { DashboardWorkspace, type OrganizationOption } from '@/modules/dashboard/components/dashboard-workspace';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { DashboardFooter } from '@/modules/dashboard/components/dashboard-footer';
 import { RedeemInviteForm } from '@/modules/dashboard/components/billing/redeem-invite-form';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
+import { cn } from '@/ui/cn';
 import DashboardLoading from '@/app/(dashboard)/loading';
 
 /**
@@ -92,8 +93,12 @@ async function DashboardBody() {
             Anda pelanggan baru. Begitu keanggotaan aktif, dasbor redaksi langsung tersedia di halaman ini.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Button variant="default" size="lg" className="px-5" render={<Link href="/contact">Hubungi Kami</Link>} />
-            <Button variant="outline" size="lg" className="px-5" render={<Link href="/pricing">Lihat Info Harga</Link>} />
+            <Link href="/contact" className={cn(buttonVariants({ size: 'lg' }), 'px-5')}>
+              Hubungi Kami
+            </Link>
+            <Link href="/pricing" className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'px-5')}>
+              Lihat Info Harga
+            </Link>
             <SignOutDialog mode="button" />
           </div>
           <RedeemInviteForm />

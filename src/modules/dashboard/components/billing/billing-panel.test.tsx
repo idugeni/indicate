@@ -100,6 +100,18 @@ describe('Panel langganan', () => {
     expect(await screen.findByText('Belum ada faktur.')).toBeDefined();
   });
 
+  it('menyusun ringkasan faktur kosong tanpa blok di dalam paragraf', async () => {
+    const violations: string[] = [];
+    vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      violations.push(String(args[0]));
+    });
+    stubBilling('suspended', []);
+    render(<BillingPanel organizationId="org-1" permissions={[]} />);
+    const summaryEmpty = await screen.findByText('Belum ada faktur tercatat untuk organisasi ini.');
+    expect(summaryEmpty.closest('p')).toBeNull();
+    expect(violations.filter((message) => message.includes('cannot be a descendant of'))).toEqual([]);
+  });
+
   it('menampilkan panel manual khusus platform', async () => {
     stubBilling('active', []);
     render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);

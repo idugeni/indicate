@@ -160,9 +160,9 @@ describe('buildDirectoryJsonLd', () => {
     expect(payload['@type']).toBe('CollectionPage');
     expect(serialized).toContain('fakta01.my.id');
     expect(serialized).toContain('Wonosobo');
-    expect(serialized).toContain('Jawa Tengah');
+    expect(serialized).not.toContain('Jawa Tengah');
     expect(payload.mainEntity).toMatchObject({ '@type': 'ItemList', numberOfItems: 1 });
-    expect(payload.hasPart).toMatchObject({ '@type': 'ItemList', numberOfItems: 2 });
+    expect(payload.hasPart).toMatchObject({ '@type': 'ItemList', numberOfItems: 1 });
   });
 
   it('tidak membocorkan URL portal turunan yang tidakdirender', () => {
@@ -180,16 +180,23 @@ describe('areaOf', () => {
 });
 
 describe('groupRegionalByCity', () => {
-  it('mengelompokkan edisi daerah per kota sesuai urutan kemunculan', () => {
+  it('mengelompokkan edisi kota per kota sesuai urutan kemunculan', () => {
     const regional: readonly NetworkSiteRow[] = Object.freeze([
       { hostname: 'wonosobo.fakta01.my.id', parentHostname: 'fakta01.my.id', siteLevel: 'city', siteName: 'Fakta01 Wonosobo', description: 'Kabar daerah', tagline: null, areaName: 'Wonosobo', parentAreaName: 'Jawa Tengah' },
       { hostname: 'wonosobo.jurnalism.web.id', parentHostname: 'jurnalism.web.id', siteLevel: 'city', siteName: 'Jurnalism Wonosobo', description: 'Bisnis daerah', tagline: null, areaName: 'Wonosobo', parentAreaName: 'Jawa Tengah' },
-      { hostname: 'jawa-tengah.fakta01.my.id', parentHostname: 'fakta01.my.id', siteLevel: 'region', siteName: 'Fakta01 Jawa Tengah', description: 'Kabar provinsi', tagline: null, areaName: 'Jawa Tengah', parentAreaName: null },
     ]);
     const groups = groupRegionalByCity(regional);
-    expect(groups.map((group) => group.city)).toEqual(['Wonosobo', 'Jawa Tengah']);
+    expect(groups.map((group) => group.city)).toEqual(['Wonosobo']);
     expect(groups[0]?.items).toHaveLength(2);
     expect(groupRegionalByCity([])).toEqual([]);
+  });
+
+  it('tidak menghitung edisi region sebagai kota', () => {
+    const groups = groupRegionalByCity([
+      { hostname: 'jawa-tengah.fakta01.my.id', siteName: 'Fakta01 Jawa Tengah', siteLevel: 'region', areaName: 'Jawa Tengah', tagline: null, description: null },
+      { hostname: 'wonosobo.fakta01.my.id', siteName: 'Fakta01 Wonosobo', siteLevel: 'city', areaName: 'Wonosobo', tagline: null, description: null },
+    ]);
+    expect(groups.map((group) => group.city)).toEqual(['Wonosobo']);
   });
 });
 describe('splitWordmark', () => {
