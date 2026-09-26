@@ -169,10 +169,12 @@ resolveRequest(rawHost):
   if normalized exactly matches a configured control-plane host:
     return that explicit control-plane route family
   site = database exact active normalized-hostname lookup
-  if no site: return generic non-indexable HTTP 404
+  if no site: return generic non-indexable branded 404 (HTTP 200; see §4.2)
   if more than one site: return non-indexable configuration error
   return HostnameContext(site, domain, optional region, organization)
 ```
+
+The unknown-host branch returns a branded `404` document, not a bare status code. `docs/domains.md` and `docs/active-domains.md` record the live behaviour as `200` + `noindex`, and §4.2 is the decision that fixes it there: the tenant layout awaits `assertNetworkHost()` before the Suspense boundary, so a host that resolves to no site is refused by `notFound()` in the layout body. The cost is that the visitor sees `200`, mitigated by `noindex, nofollow` and a cleared canonical (`notFoundMetadata()`). Turning this into a real `404` would mean moving the lookup into `proxy.ts`, which §4.2 declines.
 
 The direct `Host` header delivered by the configured Cloudflare/Vercel path is authoritative. Client-supplied forwarding headers cannot override it. A database exact-match resolution occurs before tenant cache use so stale caches cannot keep a deactivated mapping alive.
 
@@ -592,7 +594,7 @@ Validated Runtime Configuration supplies bounded attempt counts and delay schedu
 
 ### 12.6 Reconciliation
 
-A secured short-lived cron handler operates in bounded worker and reconciliation modes. The publishing worker runs every five minutes so queued publication jobs can start within five minutes of their selected time; publishing reconciliation runs every fifteen minutes. Delivery provisioning reconciliation runs every fifteen minutes, cache invalidation every five minutes, view flushing hourly, Facebook metadata pre-warming hourly, and certificate renewal daily. Durable indexed scans find:
+A secured short-lived cron handler operates in bounded worker and reconciliation modes. The publishing worker runs every minute, so a queued publication job starts within a minute of its selected time and a job that outlives one invocation is re-marked due at once instead of waiting out a backoff; publishing reconciliation runs every five minutes. Delivery provisioning reconciliation runs every fifteen minutes, cache invalidation every minute, view flushing hourly, Facebook metadata pre-warming hourly, and certificate renewal daily. The minute-cadence crons are affordable because a Vercel invocation that only claims work costs a fraction of a cent: the batch size, not the clock, ends each run, so the configured function deadline is slack rather than the binding constraint. Durable indexed scans find:
 
 - queued/retrying jobs without confirmed dispatch;
 - due retries;
@@ -600,9 +602,9 @@ A secured short-lived cron handler operates in bounded worker and reconciliation
 - incomplete transition/audit acknowledgements;
 - pending invalidation and media cleanup tasks.
 
-Scans use short transactions and row locking suitable for transaction-pooled serverless access. Duplicate, overlapping, or missed cron invocations are safe: they reuse logical IDs, conditional claims, unique constraints, leases, and fencing. No long-running worker or exactly-once scheduler assumption exists.
+Scans use short transactions and row locking suitable for transaction-pooled serverless access. Every claimed item is repaired in isolation: one unrepairable row must not abort a pass, because claimed items are re-claimed in the same order and would otherwise starve the rest of the queue. Duplicate, overlapping, or missed cron invocations are safe: they reuse logical IDs, conditional claims, unique constraints, leases, and fencing. No long-running worker or exactly-once scheduler assumption exists.
 
-The Facebook pre-warm sweep is quota-bound rather than load-bound. It hands one bounded batch of tenant homepages to Meta's scrape endpoint — the same call the Sharing Debugger issues — because Meta caches a URL for roughly 30 days and only refreshes on request. A Redis cursor carries the fleet position between invocations, apex portals are swept before region and city hosts, and a Meta app-level rejection (`#4`, HTTP 403) halts the batch without advancing past the unattempted host, because a rejected call spends no budget and earns none. The sweep never throws: every per-host failure is reported instead.
+The Facebook pre-warm sweep is quota-bound rather than load-bound. It hands one bounded batch of tenant homepages to Meta's scrape endpoint — the same call the Sharing Debugger issues — because Meta caches a URL for roughly 30 days and only refreshes on request. A Redis cursor carries the fleet position between invocations, apex portals are swept before region and city hosts, and a Meta app-level rejection (`#4`, HTTP 403) halts the batch without advancing past the unattempted host, because a rejected call spends no budget and earns none. The sweep never throws: every per-host failure is reported instead. Homepages are the only URLs it submits: article URLs reach the Sharing Debugger backend solely through the publish-time warmer, so an article that is never changed again is never re-scraped. See [ops lessons §12](ops-lessons.md#12-fb-debugger-artikel-di-scrape-saat-berubah-tidak-pernah-terjadwal) for the accepted path to closing that gap.
 
 ### 12.7 Publication result
 
@@ -659,6 +661,8 @@ Article/publication, Site Settings, hostname/Region, Publisher identity/verifica
 A pure Absolute URL Builder accepts only Hostname Context and canonical path; untrusted request host values never reach it. A pure SEO Document Builder produces escaped title/description, canonical, Open Graph, NewsArticle, Breadcrumb, Organization, and WebSite models. Dedicated serializers emit HTML metadata, robots text, sitemap XML, RSS XML, and safe JSON-LD.
 
 Only active, published, Site-visible Article URLs enter sitemap or RSS. Official claims require a currently verified Publisher and active Official Affiliation matching the Site and claim scope. Unknown hosts, pending activation, branded 404s, and sanitized errors emit `noindex, nofollow` and no canonical or structured references to another Site. JSON-LD escapes characters unsafe in HTML script context; XML/RSS serializers escape untrusted text.
+
+`src/app/(network)/layout.tsx` exports no `metadata`, so every tenant document inherits the root layout's `applicationName`, `authors`, `creator`, `publisher`, and `category` unless it overrides them. `tenantBrand()` binds `applicationName` and `publisher` to the tenant and clears the rest on every tenant return path in `networkMetadata()`; `clearedBrand()`, spread into `notFoundMetadata()`, nulls all five so a 404 names no publisher at all. Without both, all 4422 tenant portals would ship `application-name: Indicate` and `category: News Platform` — the cross-Site reference this section forbids.
 
 ## 15. Webhooks, replay, and rate limits
 

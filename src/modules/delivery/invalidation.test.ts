@@ -306,4 +306,40 @@ describe('InvalidationDispatcher', () => {
     await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 2, failed: 0, stranded: 0 });
     expect(warmed).toEqual(['https://tenant.example/slug-a']);
   });
+
+  it('membatasi jumlah url purge per dispatch dan melaporkan sisanya', async () => {
+    logMock.mockClear();
+    const urls = Array.from({ length: 400 }, (_, index) => `https://tenant.example/p-${index}`);
+    const repository = {
+      claimInvalidations: vi.fn(async () => [{ ...task('task-1', urls), tags: ['site:site-1'] }]),
+      completeInvalidation: vi.fn(async () => {}),
+      failInvalidation: vi.fn(async () => {}),
+    };
+    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
+    const cloudflare = { purgeExactUrls: vi.fn(async (_urls: readonly string[]) => {}), purgeHostname: vi.fn(async () => {}) };
+    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5);
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
+    const purged = vi.mocked(cloudflare.purgeExactUrls).mock.calls[0]?.[0] as readonly string[];
+    expect(purged).toHaveLength(300);
+    const deferred = logMock.mock.calls.filter((call) => call[1]?.event === 'delivery.invalidation.purge_deferred');
+    expect(deferred).toHaveLength(1);
+    expect(deferred[0]?.[1]?.context).toMatchObject({ requested: 400, purged: 300, deferred: 100, budget: 300 });
+  });
+
+  it('memprioritaskan url artikel saat anggaran purge harus memotong', async () => {
+    const articleUrl = 'https://tenant.example/slug-a';
+    const urls = [articleUrl, ...Array.from({ length: 400 }, (_, index) => `https://tenant.example/p-${index}`)];
+    const repository = {
+      claimInvalidations: vi.fn(async () => [{ ...task('task-1', urls), tags: ['site:site-1', 'host:tenant.example', 'article:slug-a'] }]),
+      completeInvalidation: vi.fn(async () => {}),
+      failInvalidation: vi.fn(async () => {}),
+    };
+    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
+    const cloudflare = { purgeExactUrls: vi.fn(async (_urls: readonly string[]) => {}), purgeHostname: vi.fn(async () => {}) };
+    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5);
+    await dispatcher.dispatch(new Date(), 10);
+    const purged = vi.mocked(cloudflare.purgeExactUrls).mock.calls[0]?.[0] as readonly string[];
+    expect(purged[0]).toBe(articleUrl);
+    expect(purged).toHaveLength(300);
+  });
 });

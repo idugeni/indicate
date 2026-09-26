@@ -13,7 +13,7 @@ export interface WorkerPolicy extends RetryPolicy {
   readonly batchSize: number;
   readonly functionDeadlineSeconds: number;
 }
-export interface WorkerRunSummary { readonly claimed: number; readonly processed: number; readonly reconciled: number; readonly cleaned: number }
+export interface WorkerRunSummary { readonly claimed: number; readonly processed: number; readonly reconciled: number; readonly cleaned: number; readonly failed: number }
 
 function parseLogicalId(value: string): { organizationId: string; jobId: string } | null {
   const separator = value.indexOf(':'); if (separator < 1) return null;
@@ -121,44 +121,62 @@ export class PublicationWorker {
         await this.prewarmer?.prewarm([...warmedUrls]);
       } catch { /* best-effort: crawlers still get correct responses on a miss */ }
     }
-    return { claimed, processed, reconciled: 0, cleaned: 0 };
+    return { claimed, processed, reconciled: 0, cleaned: 0, failed: 0 };
   }
 
+  /**
+   * Repair interrupted publication work: expired leases, dispatch gaps, orphaned receipts, cleanup tasks.
+   *
+   * @returns Per-category counters; `failed` counts items that could not be repaired in this pass.
+   * @remarks Every claimed item is isolated: one unrepairable row must not abort the pass, because the
+   * claimed items are then re-claimed in the same order and would starve the rest of the queue. Failures
+   * stay visible through `failed` instead of collapsing into a single failed invocation.
+   */
   async reconcile(): Promise<WorkerRunSummary> {
-    const now = this.clock.now(); let reconciled = 0; let cleaned = 0;
+    const now = this.clock.now(); let reconciled = 0; let cleaned = 0; let failed = 0;
     const claimExpiresAt = new Date(now.getTime() + Math.max(5, this.policy.leaseSeconds) * 1_000).toISOString();
     for (const job of await this.repository.findExpiredLeases(now.toISOString(), this.policy.batchSize)) {
-      await this.repository.recoverExpiredLease(job.organizationId, job.id, this.policy.maxAttempts, now.toISOString()); reconciled += 1;
-      const systemActor = { actorType: 'system' as const, actorId: job.id, organizationId: job.organizationId, permissionSet: new Set(['publishing.read']), entryPoint: 'worker' as const, requestId: `reconcile:${now.toISOString()}` };
-      const status = await this.repository.getPublication(systemActor, job.id);
-      if (status !== null && status.result !== null) await this.notifyTerminal(job.organizationId, job.id, status);
+      try {
+        await this.repository.recoverExpiredLease(job.organizationId, job.id, this.policy.maxAttempts, now.toISOString()); reconciled += 1;
+        const systemActor = { actorType: 'system' as const, actorId: job.id, organizationId: job.organizationId, permissionSet: new Set(['publishing.read']), entryPoint: 'worker' as const, requestId: `reconcile:${now.toISOString()}` };
+        const status = await this.repository.getPublication(systemActor, job.id);
+        if (status !== null && status.result !== null) await this.notifyTerminal(job.organizationId, job.id, status);
+      } catch { failed += 1; }
     }
     const dispatchClaimToken = crypto.randomUUID();
     for (const job of await this.repository.claimDispatchGaps(now.toISOString(), this.policy.batchSize, dispatchClaimToken, claimExpiresAt)) {
       try {
         await this.queue.schedule(`${job.organizationId}:${job.id}`, now);
         await this.repository.recordDispatchScheduled(job.organizationId, job.id, now.toISOString(), dispatchClaimToken);
+        reconciled += 1;
       } catch {
-        const delay = retryDelaySeconds(this.policy, job.dispatchAttempts + 1);
-        await this.repository.recordDispatchFailure(job.organizationId, job.id, delay !== null, delay === null ? now.toISOString() : new Date(now.getTime() + delay * 1_000).toISOString(), now.toISOString(), dispatchClaimToken);
+        try {
+          const delay = retryDelaySeconds(this.policy, job.dispatchAttempts + 1);
+          await this.repository.recordDispatchFailure(job.organizationId, job.id, delay !== null, delay === null ? now.toISOString() : new Date(now.getTime() + delay * 1_000).toISOString(), now.toISOString(), dispatchClaimToken);
+          reconciled += 1;
+        } catch { failed += 1; }
       }
-      reconciled += 1;
     }
     const receiptClaimToken = crypto.randomUUID();
     for (const receipt of await this.repository.claimTransitionReceipts(now.toISOString(), this.policy.batchSize, receiptClaimToken, claimExpiresAt)) {
-      await this.repository.reconcileTransitionReceipt(receipt, receiptClaimToken, now.toISOString()); reconciled += 1;
+      try {
+        await this.repository.reconcileTransitionReceipt(receipt, receiptClaimToken, now.toISOString()); reconciled += 1;
+      } catch { failed += 1; }
     }
     const cleanupClaimToken = crypto.randomUUID();
     for (const task of await this.repository.claimCleanupTasks(now.toISOString(), this.policy.batchSize, cleanupClaimToken, claimExpiresAt)) {
       try {
         await this.storage.deleteExact(task.objectKey);
         await this.repository.completeCleanupTask(task.organizationId, task.id, task.claimToken, now.toISOString());
+        cleaned += 1;
       } catch (error) {
-        const delay = retryDelaySeconds(this.policy, task.attempts + 1);
-        await this.repository.failCleanupTask(task.organizationId, task.id, task.claimToken, delay !== null, delay === null ? now.toISOString() : new Date(now.getTime() + delay * 1_000).toISOString(), sanitizeError(error), now.toISOString());
+        try {
+          const delay = retryDelaySeconds(this.policy, task.attempts + 1);
+          await this.repository.failCleanupTask(task.organizationId, task.id, task.claimToken, delay !== null, delay === null ? now.toISOString() : new Date(now.getTime() + delay * 1_000).toISOString(), sanitizeError(error), now.toISOString());
+          cleaned += 1;
+        } catch { failed += 1; }
       }
-      cleaned += 1;
     }
-    return { claimed: 0, processed: 0, reconciled, cleaned };
+    return { claimed: 0, processed: 0, reconciled, cleaned, failed };
   }
 }

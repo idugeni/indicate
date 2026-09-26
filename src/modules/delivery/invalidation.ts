@@ -1,4 +1,4 @@
-import type { InvalidationPlan } from '@/modules/delivery/models';
+import type { InvalidationPlan, InvalidationTask } from '@/modules/delivery/models';
 import type { NextCacheInvalidationPort } from '@/modules/delivery/ports';
 import type { CloudflareAuthorityPort } from '@/integrations/cloudflare/ports';
 import type { DeliveryRepository } from '@/modules/delivery/ports';
@@ -18,6 +18,16 @@ const WARM_BATCH_SIZE = 8;
 const WARM_QUEUE_LIMIT = 64;
 const WARM_BUDGET_MS = 15_000;
 const WARM_FAILURE_LOG_LIMIT = 10;
+/**
+ * Hard ceiling on exact-URL purges per dispatch.
+ *
+ * @remarks `purgeExactUrls` issues its provider calls sequentially in chunks of
+ * 30, so this ceiling bounds one dispatch to at most ten provider calls. A
+ * network-wide publication produces apex tasks that each carry a few hundred
+ * URLs, and an unbounded batch could exhaust the function budget before a
+ * single task completes, which re-claims the same heavy tasks forever.
+ */
+const PURGE_URL_BUDGET = 300;
 
 function articleWarmUrls(tags: readonly string[]): readonly string[] {
   const hosts = tags
@@ -29,6 +39,25 @@ function articleWarmUrls(tags: readonly string[]): readonly string[] {
     .map((tag) => tag.slice(ARTICLE_TAG_PREFIX.length))
     .filter((slug) => slug !== '');
   return hosts.flatMap((host) => slugs.map((slug) => `https://${host}/${slug}`));
+}
+
+/**
+ * Order purge candidates so freshly published article URLs survive the budget.
+ *
+ * @param tasks - Claimed invalidation tasks.
+ * @returns Unique URLs, article URLs first, then the static and brand paths.
+ * @remarks A deferred URL is not lost: the edge TTL is 60 seconds and Next
+ * revalidation already ran, so the worst case is one TTL of staleness on a
+ * static path instead of an unbounded provider stall.
+ */
+function purgeOrder(tasks: readonly InvalidationTask[]): readonly string[] {
+  const articleFirst: string[] = [];
+  const remainder: string[] = [];
+  for (const task of tasks) {
+    const warm = new Set(articleWarmUrls(task.tags));
+    for (const url of task.urls) (warm.has(url) ? articleFirst : remainder).push(url);
+  }
+  return [...new Set([...articleFirst, ...remainder])];
 }
 
 /**
@@ -99,20 +128,25 @@ export function planInvalidation(mutation: NetworkMutation): InvalidationPlan {
 /**
  * Dispatch claimed invalidation tasks through Next cache and edge purge.
  *
- * @remarks One edge purge per batch (unique URLs across tasks): per-host per-task purges would trigger a thundering-herd to the origin, while the edge TTL is only 60 seconds. A purge failure does not fail the task; Next revalidate is the primary mechanism and the edge recovers on its own within one TTL. A poison task does not stop the batch: a failed complete is recorded via fail, and a fail that also fails counts as stranded. Social warming is best-effort and runs after the tasks are already complete, so a warm failure never affects the summary; `drainSocialWarm` owns its parallel width, its budget, and its reporting.
+ * @remarks One edge purge per batch (unique URLs across tasks): per-host per-task purges would trigger a thundering-herd to the origin, while the edge TTL is only 60 seconds. A purge failure does not fail the task; Next revalidate is the primary mechanism and the edge recovers on its own within one TTL. The purge set is bounded by `PURGE_URL_BUDGET` and ordered so article URLs are never the ones deferred. A poison task does not stop the batch: a failed complete is recorded via fail, and a fail that also fails counts as stranded. Social warming is best-effort and runs after the tasks are already complete, so a warm failure never affects the summary; `drainSocialWarm` owns its parallel width, its budget, and its reporting.
  */
 export class InvalidationDispatcher {
   constructor(private readonly repository: Pick<DeliveryRepository, 'claimInvalidations' | 'completeInvalidation' | 'failInvalidation'>, private readonly nextCache: NextCacheInvalidationPort, private readonly cloudflare: CloudflareAuthorityPort, private readonly retryDelaysSeconds: readonly number[], private readonly maxAttempts: number, private readonly socialWarm: Pick<SocialWarmer, 'warmArticle'> | null = null) {}
 
   async dispatch(now: Date, limit: number): Promise<{ completed: number; failed: number; stranded: number }> {
     const tasks = await this.repository.claimInvalidations(now.toISOString(), limit);
-    const urls = [...new Set(tasks.flatMap((task) => task.urls))];
-    if (urls.length > 0) {
+    const urls = purgeOrder(tasks);
+    const budgeted = urls.slice(0, PURGE_URL_BUDGET);
+    const deferred = urls.length - budgeted.length;
+    if (budgeted.length > 0) {
       try {
-        await this.cloudflare.purgeExactUrls(urls);
+        await this.cloudflare.purgeExactUrls(budgeted);
       } catch {
         /* left to expire via the edge TTL; the task still completes below */
       }
+    }
+    if (deferred > 0) {
+      logEvent('warn', { event: 'delivery.invalidation.purge_deferred', context: { requested: urls.length, purged: budgeted.length, deferred, budget: PURGE_URL_BUDGET } });
     }
     const warmer = this.socialWarm;
     let completed = 0; let failed = 0; let stranded = 0;

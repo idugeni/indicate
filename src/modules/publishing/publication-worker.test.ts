@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { QueueClaim, RedisCoordinationPort } from '@/integrations/redis/ports';
 import type { ObjectStoragePort } from '@/integrations/storage/ports';
-import type { PublicationJobRecord, PublicationStatusProjection, PublicationTargetRecord, WorkerClaim } from '@/modules/publishing/models';
+import type { PublicationJobRecord, PublicationStatusProjection, PublicationTargetRecord, TransitionReceiptRecord, WorkerClaim } from '@/modules/publishing/models';
 import type { PublicationTargetPublisherPort, PublishingRepository } from '@/modules/publishing/ports';
 import { PublicationWorker, type WorkerPolicy } from '@/modules/publishing/publication-worker';
 
@@ -83,7 +83,7 @@ const STORAGE: ObjectStoragePort = { deleteExact: async () => {} } as unknown as
 describe('PublicationWorker run', () => {
   it('mengembalikan nol saat antrean kosong', async () => {
     const worker = new PublicationWorker(repositoryStub(), queueStub(), PUBLISHER, STORAGE, POLICY);
-    await expect(worker.run('w-1')).resolves.toEqual({ claimed: 0, processed: 0, reconciled: 0, cleaned: 0 });
+    await expect(worker.run('w-1')).resolves.toEqual({ claimed: 0, processed: 0, reconciled: 0, cleaned: 0, failed: 0 });
   });
 
   it('mengakui klaim ber-id rusak tanpa menyentuh repo klaim', async () => {
@@ -92,7 +92,7 @@ describe('PublicationWorker run', () => {
     const claimJob = vi.fn(async () => null);
     const repository = repositoryStub({ claimJob: claimJob as PublishingRepository['claimJob'] });
     const worker = new PublicationWorker(repository, queue, PUBLISHER, STORAGE, POLICY);
-    await expect(worker.run('w-1')).resolves.toEqual({ claimed: 0, processed: 0, reconciled: 0, cleaned: 0 });
+    await expect(worker.run('w-1')).resolves.toEqual({ claimed: 0, processed: 0, reconciled: 0, cleaned: 0, failed: 0 });
     expect(queue.acknowledged).toEqual([claim]);
     expect(claimJob).not.toHaveBeenCalled();
   });
@@ -103,7 +103,7 @@ describe('PublicationWorker run', () => {
     const workerClaim: WorkerClaim = { organizationId: 'org-1', jobId: 'job-1', workerId: 'w-1', fencingToken: 1, leaseExpiresAt: new Date().toISOString() };
     const repository = repositoryStub({ claimJob: async () => workerClaim });
     const worker = new PublicationWorker(repository, queue, PUBLISHER, STORAGE, POLICY);
-    await expect(worker.run('w-1')).resolves.toEqual({ claimed: 1, processed: 0, reconciled: 0, cleaned: 0 });
+    await expect(worker.run('w-1')).resolves.toEqual({ claimed: 1, processed: 0, reconciled: 0, cleaned: 0, failed: 0 });
     expect(repository.calls).toContain('releaseJob');
     expect(queue.acknowledged).toEqual([claim]);
   });
@@ -183,7 +183,7 @@ describe('PublicationWorker run', () => {
     });
     const prewarmer = { prewarm: vi.fn(async () => undefined) };
     const worker = new PublicationWorker(repository, queue, PUBLISHER, STORAGE, POLICY, undefined, undefined, prewarmer);
-    await expect(worker.run('w-1')).resolves.toEqual({ claimed: 1, processed: 1, reconciled: 0, cleaned: 0 });
+    await expect(worker.run('w-1')).resolves.toEqual({ claimed: 1, processed: 1, reconciled: 0, cleaned: 0, failed: 0 });
     expect(prewarmer.prewarm).toHaveBeenCalledWith(['https://portal.example/a']);
   });
 
@@ -225,7 +225,7 @@ describe('PublicationWorker run', () => {
     });
     const prewarmer = { prewarm: vi.fn(async () => { throw new Error('jaringan putus'); }) };
     const worker = new PublicationWorker(repository, queue, PUBLISHER, STORAGE, POLICY, undefined, undefined, prewarmer);
-    await expect(worker.run('w-1')).resolves.toEqual({ claimed: 1, processed: 1, reconciled: 0, cleaned: 0 });
+    await expect(worker.run('w-1')).resolves.toEqual({ claimed: 1, processed: 1, reconciled: 0, cleaned: 0, failed: 0 });
     expect(prewarmer.prewarm).toHaveBeenCalledWith(['https://portal.example/a']);
   });
 });
@@ -234,13 +234,13 @@ describe('PublicationWorker reconcile', () => {
   it('memulihkan lease kedaluwarsa dan menghitung rekonsiliasi', async () => {
     const repository = repositoryStub({ findExpiredLeases: async () => [jobRecord()] });
     const worker = new PublicationWorker(repository, queueStub(), PUBLISHER, STORAGE, POLICY);
-    await expect(worker.reconcile()).resolves.toEqual({ claimed: 0, processed: 0, reconciled: 1, cleaned: 0 });
+    await expect(worker.reconcile()).resolves.toEqual({ claimed: 0, processed: 0, reconciled: 1, cleaned: 0, failed: 0 });
     expect(repository.calls).toContain('recoverExpiredLease');
   });
 
   it('mengembalikan nol saat tidak ada pekerjaan', async () => {
     const worker = new PublicationWorker(repositoryStub(), queueStub(), PUBLISHER, STORAGE, POLICY);
-    await expect(worker.reconcile()).resolves.toEqual({ claimed: 0, processed: 0, reconciled: 0, cleaned: 0 });
+    await expect(worker.reconcile()).resolves.toEqual({ claimed: 0, processed: 0, reconciled: 0, cleaned: 0, failed: 0 });
   });
 
   it('memberi kabar grup saat lease pulih menjadi terminal', async () => {
@@ -258,5 +258,35 @@ describe('PublicationWorker reconcile', () => {
     const worker = new PublicationWorker(repository, queueStub(), PUBLISHER, STORAGE, POLICY, undefined, notifier);
     await worker.reconcile();
     expect(notifier.notifyJobTerminal).toHaveBeenCalledTimes(1);
+  });
+
+  it('lease beracun tidak menghentikan pemulihan lease lain', async () => {
+    const recoverExpiredLease = vi.fn(async (_organizationId: string, jobId: string) => {
+      if (jobId === 'job-1') throw new Error('poison_lease');
+    });
+    const repository = repositoryStub({
+      findExpiredLeases: async () => [jobRecord({ id: 'job-1' }), jobRecord({ id: 'job-2' })],
+      recoverExpiredLease: recoverExpiredLease as unknown as PublishingRepository['recoverExpiredLease'],
+    });
+    const worker = new PublicationWorker(repository, queueStub(), PUBLISHER, STORAGE, POLICY);
+    await expect(worker.reconcile()).resolves.toEqual({ claimed: 0, processed: 0, reconciled: 1, cleaned: 0, failed: 1 });
+    expect(recoverExpiredLease).toHaveBeenCalledTimes(2);
+  });
+
+  it('receipt beracun tidak menghentikan receipt lain', async () => {
+    const receipt = (id: string): TransitionReceiptRecord => ({
+      id, organizationId: 'org-1', transitionId: `tr-${id}`, jobId: 'job-1', targetId: `tgt-${id}`,
+      fromState: 'processing', toState: 'published', fencingToken: 1, acknowledgedAt: null, createdAt: '2026-09-18T00:00:00.000Z',
+    });
+    const reconcileTransitionReceipt = vi.fn(async (candidate: TransitionReceiptRecord) => {
+      if (candidate.id === 'rc-1') throw new Error('poison_receipt');
+    });
+    const repository = repositoryStub({
+      claimTransitionReceipts: async () => [receipt('rc-1'), receipt('rc-2')],
+      reconcileTransitionReceipt: reconcileTransitionReceipt as unknown as PublishingRepository['reconcileTransitionReceipt'],
+    });
+    const worker = new PublicationWorker(repository, queueStub(), PUBLISHER, STORAGE, POLICY);
+    await expect(worker.reconcile()).resolves.toEqual({ claimed: 0, processed: 0, reconciled: 1, cleaned: 0, failed: 1 });
+    expect(reconcileTransitionReceipt).toHaveBeenCalledTimes(2);
   });
 });

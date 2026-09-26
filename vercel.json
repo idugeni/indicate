@@ -9,11 +9,11 @@
     },
     {
       "path": "/api/internal/publishing?mode=work",
-      "schedule": "*/5 * * * *"
+      "schedule": "* * * * *"
     },
     {
       "path": "/api/internal/publishing?mode=reconcile",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/internal/delivery/reconcile?scope=provisioning",
@@ -21,7 +21,7 @@
     },
     {
       "path": "/api/internal/delivery/reconcile?scope=invalidation",
-      "schedule": "*/5 * * * *"
+      "schedule": "* * * * *"
     },
     {
       "path": "/api/internal/maintenance/cert-renewal",
