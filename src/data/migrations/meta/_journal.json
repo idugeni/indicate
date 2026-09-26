@@ -1408,6 +1408,20 @@
       "when": 1790467200000,
       "tag": "20260926150000_runtime_config_revision_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 201,
+      "version": "7",
+      "when": 1790470800000,
+      "tag": "20260926160000_site_settings_manage_permission",
+      "breakpoints": true
+    },
+    {
+      "idx": 202,
+      "version": "7",
+      "when": 1790474400000,
+      "tag": "20260926170000_site_settings_robots_directive_cast",
+      "breakpoints": true
     }
   ]
 }

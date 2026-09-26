@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (201 migrations):
+-- Reviewed sources, in journal order (203 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -214,6 +214,8 @@
 --   199  20260926130000_publication_fanout_throughput  ledger sha256:85eb4bf6d569d54628edb497f7602317546c46b913653a71a0da16e4543e7bad
 --   200  20260926140000_social_warm_once  ledger sha256:d63130b400c688842d2473dbfad039290cab82c3b5ba6115b3b8ef50b64b1307
 --   201  20260926150000_runtime_config_revision_identity  ledger sha256:223631c84a0ff66b7ef974bafa9f7dc77907e99048b31ab07a83e54b65d7fa4f
+--   202  20260926160000_site_settings_manage_permission  ledger sha256:6f94f59164e019cdc55068f4f5b7c85b87a1227465830c127f09a429914e7fa0
+--   203  20260926170000_site_settings_robots_directive_cast  ledger sha256:a98a1077e49431e37db6025fba6d42acd09780ad66ec8e27bbb31fe1e26484ce
 
 BEGIN;
 
@@ -16854,4 +16856,155 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (201, 'runtime_config_revision_identity', 'sha256:b6bd83c9a3822a9caa08f14d4bb73a88da144338a7ef4477b7038283bc4a8d86');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('223631c84a0ff66b7ef974bafa9f7dc77907e99048b31ab07a83e54b65d7fa4f', 1790467200000);
+
+-- ----------------------------------------------------------------------
+-- 20260926160000_site_settings_manage_permission
+-- ----------------------------------------------------------------------
+-- Make `site_settings.manage` a real organization permission.
+--
+-- `indicate_private.mutate_site_settings` guards on `site_settings.manage`, but
+-- that permission was never sanctioned. It is absent from
+-- `permission_definitions`, its only row in `permissions` was platform-scoped,
+-- and `permission_has_tenant` resolves a tenant permission through
+-- memberships, roles, and role_permissions only. A platform-scoped row can never
+-- satisfy that check, and no grant existed anywhere either, so the function was
+-- unreachable for every actor.
+--
+-- The permission becomes organization-scoped, one row per organization that
+-- already manages sites, granted to exactly the roles that hold `site.manage`.
+-- That is the set the dashboard already authorizes to edit site settings, so the
+-- function and the dashboard share one authority instead of introducing a second
+-- one over the same table.
+--
+-- The platform-scoped row is removed last, and only after checking that nothing
+-- references it: it cannot match the tenant check, so keeping it would only
+-- mislead the next reader.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+INSERT INTO public.permission_definitions (scope, name, description, sort_order)
+VALUES ('organization'::public.permission_scope, 'site_settings.manage', 'Manage site settings', 28)
+ON CONFLICT (scope, name) DO NOTHING;
+INSERT INTO public.permissions (id, organization_id, name, scope, description, created_at)
+SELECT gen_random_uuid(), source.organization_id, 'site_settings.manage',
+       'organization'::public.permission_scope, 'Manage site settings', now()
+  FROM public.permissions AS source
+ WHERE source.name = 'site.manage'
+   AND source.organization_id IS NOT NULL
+ON CONFLICT DO NOTHING;
+INSERT INTO public.role_permissions (organization_id, role_id, permission_id)
+SELECT granted.organization_id, granted.role_id, target.id
+  FROM public.role_permissions AS granted
+  JOIN public.permissions AS source
+    ON source.id = granted.permission_id AND source.name = 'site.manage'
+  JOIN public.permissions AS target
+    ON target.organization_id = granted.organization_id AND target.name = 'site_settings.manage'
+ON CONFLICT DO NOTHING;
+DO $$
+DECLARE
+  phantom integer;
+BEGIN
+  SELECT count(*) INTO phantom
+    FROM public.permissions AS candidate
+   WHERE candidate.name = 'site_settings.manage'
+     AND candidate.organization_id IS NULL
+     AND (
+       EXISTS (SELECT 1 FROM public.role_permissions AS grant_row WHERE grant_row.permission_id = candidate.id)
+       OR EXISTS (SELECT 1 FROM public.platform_user_permissions AS grant_row WHERE grant_row.permission_id = candidate.id)
+     );
+  IF phantom > 0 THEN
+    RAISE EXCEPTION 'site_settings_permission_referenced: % platform-scoped row(s) still granted', phantom;
+  END IF;
+  DELETE FROM public.permissions
+   WHERE name = 'site_settings.manage' AND organization_id IS NULL;
+END;
+$$;
+DO $$
+DECLARE
+  orgs_without integer;
+  roles_without integer;
+  platform_left integer;
+BEGIN
+  SELECT count(*) INTO orgs_without
+    FROM (SELECT DISTINCT organization_id FROM public.permissions WHERE name = 'site.manage') AS managed
+   WHERE NOT EXISTS (
+     SELECT 1 FROM public.permissions AS scoped
+      WHERE scoped.name = 'site_settings.manage' AND scoped.organization_id = managed.organization_id
+   );
+  IF orgs_without > 0 THEN
+    RAISE EXCEPTION 'site_settings_permission_incomplete: % organization(s) missing it', orgs_without;
+  END IF;
+  SELECT count(*) INTO roles_without
+    FROM public.role_permissions AS granted
+    JOIN public.permissions AS source ON source.id = granted.permission_id AND source.name = 'site.manage'
+   WHERE NOT EXISTS (
+     SELECT 1
+       FROM public.role_permissions AS mirrored
+       JOIN public.permissions AS target ON target.id = mirrored.permission_id
+      WHERE mirrored.organization_id = granted.organization_id
+        AND mirrored.role_id = granted.role_id
+        AND target.name = 'site_settings.manage'
+   );
+  IF roles_without > 0 THEN
+    RAISE EXCEPTION 'site_settings_grant_incomplete: % role grant(s) missing it', roles_without;
+  END IF;
+  SELECT count(*) INTO platform_left
+    FROM public.permissions
+   WHERE name = 'site_settings.manage' AND organization_id IS NULL;
+  IF platform_left > 0 THEN
+    RAISE EXCEPTION 'site_settings_permission_phantom_left: % platform-scoped row(s) remain', platform_left;
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (202, 'site_settings_manage_permission', 'sha256:7a6a06fed65423b64d05ee575b5d138e6c3a19d599714ce2bf4ef2b9f4c87273');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6f94f59164e019cdc55068f4f5b7c85b87a1227465830c127f09a429914e7fa0', 1790470800000);
+
+-- ----------------------------------------------------------------------
+-- 20260926170000_site_settings_robots_directive_cast
+-- ----------------------------------------------------------------------
+-- Cast the robots directive in `mutate_site_settings`.
+--
+-- The function takes `p_seo_robots_directive` as text and assigns it straight to
+-- `site_settings.seo_robots_directive`, which is the `seo_robots_directive` enum.
+-- Every call therefore failed with 42804 on the UPDATE, after its permission
+-- check had already passed, so the function could never commit a change. This is
+-- the same missing-cast defect that migration 198 repaired in the runtime-config
+-- functions, on a different column.
+--
+-- The other columns the function writes match their parameter types, and the
+-- revision bookkeeping it shares with the runtime-config functions was repaired
+-- by migration 201.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+DO $$
+DECLARE
+  target regprocedure := 'indicate_private.mutate_site_settings(uuid,uuid,uuid,text,text,text,text,text,integer,uuid,integer)'::regprocedure;
+  definition text;
+  patched integer;
+BEGIN
+  IF (SELECT prosrc FROM pg_proc WHERE oid = target) NOT LIKE '%seo_robots_directive = p_seo_robots_directive,%' THEN
+    RAISE EXCEPTION 'site_settings_robots_cast_missing: uncast assignment not found';
+  END IF;
+  definition := replace(
+    pg_get_functiondef(target),
+    'seo_robots_directive = p_seo_robots_directive,',
+    'seo_robots_directive = p_seo_robots_directive::public.seo_robots_directive,'
+  );
+  EXECUTE definition;
+  SELECT count(*) INTO patched
+    FROM pg_proc
+   WHERE oid = target
+     AND prosrc LIKE '%seo_robots_directive = p_seo_robots_directive::public.seo_robots_directive,%';
+  IF patched <> 1 THEN
+    RAISE EXCEPTION 'site_settings_robots_cast_not_applied';
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (203, 'site_settings_robots_directive_cast', 'sha256:9fd351d5ca580214ae541de39d8f5acc3274ecf942d43761dc7e2f337594beb1');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a98a1077e49431e37db6025fba6d42acd09780ad66ec8e27bbb31fe1e26484ce', 1790474400000);
 COMMIT;
