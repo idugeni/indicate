@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (199 migrations):
+-- Reviewed sources, in journal order (201 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -212,6 +212,8 @@
 --   197  20260926060000_arm_schema_gate  ledger sha256:f28b32dc1650780735eca8bae05f4eeed4155bf6ba8e66b90c42795dc53504d9
 --   198  20260926120000_runtime_config_environment_cast  ledger sha256:3f09a7f362d99b27e7a46f48706ea51e698306ac9baa3ea64c9ff316d61ab30f
 --   199  20260926130000_publication_fanout_throughput  ledger sha256:85eb4bf6d569d54628edb497f7602317546c46b913653a71a0da16e4543e7bad
+--   200  20260926140000_social_warm_once  ledger sha256:d63130b400c688842d2473dbfad039290cab82c3b5ba6115b3b8ef50b64b1307
+--   201  20260926150000_runtime_config_revision_identity  ledger sha256:223631c84a0ff66b7ef974bafa9f7dc77907e99048b31ab07a83e54b65d7fa4f
 
 BEGIN;
 
@@ -16638,4 +16640,218 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (199, 'publication_fanout_throughput', 'sha256:20f3be28302c3fc53999bd1390f70e00f61ec431930a5839d8a9cf7561fd76f0');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('85eb4bf6d569d54628edb497f7602317546c46b913653a71a0da16e4543e7bad', 1790452800000);
+
+-- ----------------------------------------------------------------------
+-- 20260926140000_social_warm_once
+-- ----------------------------------------------------------------------
+-- Warm each public article URL for social scrapers exactly once, at first publish.
+--
+-- Every mutation that touched an article used to hand its URL back to Meta's
+-- scrape backend, so one editorial edit — or one publisher rename, which fans
+-- out to every article that publisher owns — spent app quota to re-scrape a URL
+-- Meta had already cached for about thirty days. The marker below replaces that
+-- fan-out with one scrape per URL for the lifetime of the article.
+--
+-- `article_sites` is one row per (article, site) pair, so it is the row that owns
+-- one public URL, `https://{hostname}/{slug}`. Keying the marker there rather
+-- than on the article matters: a site assignment publishes a brand-new URL for an
+-- article that is not new at all, and that URL still needs its one scrape.
+--
+-- The backfill marks every already-published row. Articles live before this
+-- migration keep whatever Meta already cached instead of spending one quota unit
+-- each the first time somebody edits them, and it keeps the due set equal to
+-- "published since the migration", which is what the warmer drains.
+--
+-- `due_social_warm_targets` reads that set oldest-first and `mark_social_warm_targets`
+-- fills it, so a warm that fails or is cut off by the dispatch budget stays due
+-- and is retried on the next minute rather than being lost.
+--
+-- The partial index holds only published, unmarked rows, which is empty in
+-- steady state, so the due query costs an index probe and the marker adds one
+-- nullable column and no table bloat.
+
+ALTER TABLE public.article_sites ADD COLUMN social_warmed_at timestamptz;
+
+UPDATE public.article_sites
+   SET social_warmed_at = published_at
+ WHERE state = 'published' AND published_at IS NOT NULL AND social_warmed_at IS NULL;
+
+CREATE INDEX article_sites_social_warm_due_idx
+  ON public.article_sites (published_at, id)
+  WHERE social_warmed_at IS NULL AND state = 'published';
+
+-- Oldest-due first: a URL whose warm failed or was cut off is retried before
+-- newer URLs, and LIMIT caps one dispatch regardless of backlog size.
+CREATE OR REPLACE FUNCTION indicate_private.due_social_warm_targets(p_limit integer)
+RETURNS TABLE (article_site_id uuid, url text)
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  SELECT target.id, 'https://' || host.normalized_hostname || '/' || article.slug
+    FROM public.article_sites AS target
+    JOIN public.articles AS article
+      ON article.organization_id = target.organization_id AND article.id = target.article_id
+    JOIN public.sites AS host
+      ON host.organization_id = target.organization_id AND host.id = target.site_id
+   WHERE target.social_warmed_at IS NULL
+     AND target.state = 'published'
+     AND target.active
+     AND host.status = 'active'
+   ORDER BY target.published_at, target.id
+   LIMIT greatest(1, least(p_limit, 200));
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.due_social_warm_targets(integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.due_social_warm_targets(integer) TO indicate_runtime;
+
+-- Fills only NULL markers, so a concurrent dispatcher that already recorded the
+-- same URL is not overwritten and the call is idempotent.
+CREATE OR REPLACE FUNCTION indicate_private.mark_social_warm_targets(p_article_site_ids uuid[], p_now timestamptz)
+RETURNS integer
+LANGUAGE sql
+VOLATILE SECURITY DEFINER
+SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  WITH filled AS (
+    UPDATE public.article_sites AS target
+       SET social_warmed_at = p_now
+     WHERE target.id = ANY (p_article_site_ids)
+       AND target.social_warmed_at IS NULL
+    RETURNING 1
+  )
+  SELECT count(*)::integer FROM filled;
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.mark_social_warm_targets(uuid[], timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.mark_social_warm_targets(uuid[], timestamptz) TO indicate_runtime;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.article_sites
+     WHERE state = 'published' AND published_at IS NOT NULL AND social_warmed_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'social_warm_backfill_incomplete';
+  END IF;
+END;
+$$;
+
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (200, 'social_warm_once', 'sha256:066f8e73c35430da3cf8cf7352f975756dbfd5e8ae59123676c2a91217b66eca');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('d63130b400c688842d2473dbfad039290cab82c3b5ba6115b3b8ef50b64b1307', 1790456400000);
+
+-- ----------------------------------------------------------------------
+-- 20260926150000_runtime_config_revision_identity
+-- ----------------------------------------------------------------------
+-- Let the revision identity assign its own value.
+--
+-- Migration 198 removed the enum defect that stopped every runtime-config
+-- mutation at its first insert. The next statement was just as unreachable: each
+-- function read the revisions sequence with nextval() and then inserted that
+-- value into `version`, which has been `bigint GENERATED ALWAYS AS IDENTITY`
+-- since the runtime-config core migration. Postgres refuses an explicit value
+-- there (428C9), so the functions still could not commit anything, including
+-- `mutate_runtime_config_media_policy`, the one mutation the dashboard exposes
+-- through `POST /api/dashboard/runtime-config`.
+--
+-- The repair drops the sequence read, lets the identity column assign the
+-- revision, and reads it back with RETURNING, which is also what the
+-- invalidation intent has to point at. No other part of the bodies changes.
+--
+-- The transform is four literal string replacements rather than a rewrite, so
+-- each one is checkable on its own: the sequence read goes, `version` leaves the
+-- column list, the `v_revision` value leaves the VALUES tuple, and the statement
+-- gains its RETURNING clause. The loop then asserts that no function reads the
+-- sequence explicitly and that every function writing a revision reads it back,
+-- so this migration fails closed instead of leaving a half-repaired catalog.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+DO $$
+DECLARE
+  target regprocedure;
+  mutation_kind text;
+  definition text;
+  patched integer := 0;
+  expected integer;
+BEGIN
+  SELECT count(*) INTO expected
+    FROM pg_proc AS function_entry
+    JOIN pg_namespace AS nsp ON nsp.oid = function_entry.pronamespace
+   WHERE nsp.nspname = 'indicate_private'
+     AND function_entry.prosrc LIKE '%INSERT INTO public.runtime_config_revisions%';
+  IF expected = 0 THEN
+    RAISE EXCEPTION 'runtime_config_revision_identity_missing: no function writes a revision';
+  END IF;
+  FOR target, mutation_kind IN
+    SELECT function_entry.oid::regprocedure,
+           substring(function_entry.prosrc FROM 'now\(\), ''([a-z_]+)''\);')
+      FROM pg_proc AS function_entry
+      JOIN pg_namespace AS nsp ON nsp.oid = function_entry.pronamespace
+     WHERE nsp.nspname = 'indicate_private'
+       AND function_entry.prosrc LIKE '%INSERT INTO public.runtime_config_revisions%'
+  LOOP
+    IF mutation_kind IS NULL THEN
+      RAISE EXCEPTION 'runtime_config_revision_identity_unreadable: % revision statement not recognized', target;
+    END IF;
+    definition := pg_get_functiondef(target);
+    definition := replace(
+      definition,
+      'v_revision := nextval(pg_get_serial_sequence(''public.runtime_config_revisions'', ''version''));',
+      ''
+    );
+    definition := replace(
+      definition,
+      'INSERT INTO public.runtime_config_revisions (version, environment, committed_at, mutation_kind)',
+      'INSERT INTO public.runtime_config_revisions (environment, committed_at, mutation_kind)'
+    );
+    definition := replace(definition, '(v_revision, ', '(');
+    definition := replace(
+      definition,
+      ', now(), ''' || mutation_kind || ''');',
+      ', now(), ''' || mutation_kind || ''') RETURNING version INTO v_revision;'
+    );
+    definition := replace(definition, 'VALUES ( COALESCE', 'VALUES (COALESCE');
+    EXECUTE definition;
+    patched := patched + 1;
+  END LOOP;
+  IF patched <> expected THEN
+    RAISE EXCEPTION 'runtime_config_revision_identity_partial: patched % of % revision writers', patched, expected;
+  END IF;
+  IF EXISTS (
+    SELECT 1
+      FROM pg_proc AS function_entry
+      JOIN pg_namespace AS nsp ON nsp.oid = function_entry.pronamespace
+     WHERE nsp.nspname = 'indicate_private'
+       AND function_entry.prosrc LIKE '%nextval(pg_get_serial_sequence(''public.runtime_config_revisions''%'
+  ) THEN
+    RAISE EXCEPTION 'runtime_config_revision_identity_incomplete: an explicit revision sequence read remains';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+      FROM pg_proc AS function_entry
+      JOIN pg_namespace AS nsp ON nsp.oid = function_entry.pronamespace
+     WHERE nsp.nspname = 'indicate_private'
+       AND function_entry.prosrc LIKE '%INSERT INTO public.runtime_config_revisions (version,%'
+  ) THEN
+    RAISE EXCEPTION 'runtime_config_revision_identity_incomplete: a revision insert still names the identity column';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+      FROM pg_proc AS function_entry
+      JOIN pg_namespace AS nsp ON nsp.oid = function_entry.pronamespace
+     WHERE nsp.nspname = 'indicate_private'
+       AND function_entry.prosrc LIKE '%INSERT INTO public.runtime_config_revisions%'
+       AND function_entry.prosrc NOT LIKE '%RETURNING version INTO v_revision;%'
+  ) THEN
+    RAISE EXCEPTION 'runtime_config_revision_identity_incomplete: a revision writer does not read its revision back';
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (201, 'runtime_config_revision_identity', 'sha256:b6bd83c9a3822a9caa08f14d4bb73a88da144338a7ef4477b7038283bc4a8d86');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('223631c84a0ff66b7ef974bafa9f7dc77907e99048b31ab07a83e54b65d7fa4f', 1790467200000);
 COMMIT;

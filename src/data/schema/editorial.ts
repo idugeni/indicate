@@ -217,6 +217,8 @@ export const articleSites = pgTable('article_sites', {
   customCanonicalUrl: text('custom_canonical_url'),
   /** Per-copy robots override (NULL inherits the site default). */
   seoRobotsDirective: seoRobotsDirective('seo_robots_directive'),
+  /** One-shot social warm marker; NULL until Meta's scrape backend accepted this URL. */
+  socialWarmedAt: timestamp('social_warmed_at', { withTimezone: true }),
   ...timestamps,
 }, (table) => [
   primaryKey({ name: 'article_sites_pk', columns: [table.organizationId, table.id] }),
@@ -229,6 +231,7 @@ export const articleSites = pgTable('article_sites', {
   index('article_sites_expanded_from_idx').on(table.organizationId, table.expandedFromSiteId),
   index('article_sites_outcome_date_idx').on(table.organizationId, table.siteId, table.state, table.stateOccurredAt),
   index('article_sites_organization_state_idx').on(table.organizationId, table.state),
+  index('article_sites_social_warm_due_idx').on(table.publishedAt, table.id).where(sql`${table.socialWarmedAt} IS NULL AND ${table.state} = 'published'`),
   check('article_sites_attempt_nonnegative', sql`${table.attempt} >= 0 AND ${table.version} > 0`),
   check('article_sites_view_counts_nonnegative', sql`${table.viewCount} >= 0`),
   check('article_sites_custom_title_shape', sql`${table.customTitle} IS NULL OR (char_length(${table.customTitle}) BETWEEN 10 AND 160)`),

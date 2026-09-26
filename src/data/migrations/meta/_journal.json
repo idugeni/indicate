@@ -1394,6 +1394,20 @@
       "when": 1790452800000,
       "tag": "20260926130000_publication_fanout_throughput",
       "breakpoints": true
+    },
+    {
+      "idx": 199,
+      "version": "7",
+      "when": 1790456400000,
+      "tag": "20260926140000_social_warm_once",
+      "breakpoints": true
+    },
+    {
+      "idx": 200,
+      "version": "7",
+      "when": 1790467200000,
+      "tag": "20260926150000_runtime_config_revision_identity",
+      "breakpoints": true
     }
   ]
 }

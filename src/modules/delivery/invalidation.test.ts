@@ -3,11 +3,47 @@ import { describe, expect, it, vi } from 'vitest';
 import { InvalidationDispatcher, planInvalidation } from '@/modules/delivery/invalidation';
 import { logEvent } from '@/core/observability/logger';
 import type { InvalidationTask } from '@/modules/delivery/models';
+import type { SocialWarmLedger, SocialWarmTarget } from '@/modules/delivery/ports';
 import type { CloudflareAuthorityPort } from '@/integrations/cloudflare/ports';
 
 vi.mock('@/core/observability/logger', () => ({ logEvent: vi.fn() }));
 
 const logMock = vi.mocked(logEvent);
+
+const WARM_OK = { pageOk: true, imageOk: true, facebookOk: true } as const;
+
+type WarmOutcome = { readonly pageOk: boolean; readonly imageOk: boolean; readonly facebookOk: boolean };
+type Warmer = { warmArticle: (url: string) => Promise<WarmOutcome> };
+
+function target(index: number): SocialWarmTarget {
+  return { articleSiteId: `article-site-${index}`, url: `https://tenant.example/s-${index}` };
+}
+
+function ledger(targets: readonly SocialWarmTarget[], options: { readonly dueFails?: boolean; readonly markFails?: boolean } = {}) {
+  return {
+    dueTargets: vi.fn(async () => {
+      if (options.dueFails === true) throw new Error('ledger_unavailable');
+      return targets;
+    }),
+    markWarmed: vi.fn(async () => {
+      if (options.markFails === true) throw new Error('mark_unavailable');
+    }),
+  };
+}
+
+function warmHarness(options: { readonly warmer: Warmer; readonly ledger: SocialWarmLedger; readonly tasks?: readonly InvalidationTask[]; readonly completeFails?: boolean }) {
+  const repository = {
+    claimInvalidations: vi.fn(async () => options.tasks ?? [task('task-1', [])]),
+    completeInvalidation: vi.fn(async () => {
+      if (options.completeFails === true) throw new Error('next_unavailable');
+    }),
+    failInvalidation: vi.fn(async () => {}),
+  };
+  const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
+  const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
+  const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, options.warmer, options.ledger);
+  return { dispatcher, repository };
+}
 
 function task(id: string, urls: readonly string[]): InvalidationTask {
   return {
@@ -104,103 +140,133 @@ describe('InvalidationDispatcher', () => {
     expect(plan.paths).toEqual(expect.arrayContaining(['/llms.txt', '/news-sitemap.xml', '/tenant-home', '/report']));
   });
 
-  it('memanaskan url artikel setelah task selesai tanpa menggagalkan batch', async () => {
+  it('memanaskan url artikel yang belum pernah dipanaskan lalu menandainya', async () => {
     const warmed: string[] = [];
-    const repository = {
-      claimInvalidations: vi.fn(async () => [{ ...task('task-1', []), tags: ['site:site-1', 'host:tenant.example', 'article:slug-a'] }]),
-      completeInvalidation: vi.fn(async () => {}),
-      failInvalidation: vi.fn(async () => {}),
-    };
-    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
-    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
-    const socialWarm = { warmArticle: vi.fn(async (url: string) => { warmed.push(url); return { pageOk: true, imageOk: true, facebookOk: true }; }) };
-    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
+    const warmer = { warmArticle: vi.fn(async (url: string) => { warmed.push(url); return WARM_OK; }) };
+    const socialLedger = ledger([target(0)]);
+    const { dispatcher } = warmHarness({ warmer, ledger: socialLedger });
     await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
-    expect(warmed).toEqual(['https://tenant.example/slug-a']);
+    expect(warmed).toEqual(['https://tenant.example/s-0']);
+    expect(socialLedger.markWarmed).toHaveBeenCalledWith(['article-site-0'], expect.any(Date));
   });
 
-  it('warmer yang melempar tidak menggagalkan task yang selesai', async () => {
+  it('warmer yang melempar tidak menggagalkan task yang selesai dan url tetap due', async () => {
+    const socialLedger = ledger([target(0)]);
+    const { dispatcher } = warmHarness({ warmer: { warmArticle: vi.fn(async () => { throw new Error('warm_down'); }) }, ledger: socialLedger });
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
+    expect(socialLedger.markWarmed).not.toHaveBeenCalled();
+  });
+
+  it('tidak menandai url yang ditolak meta agar tetap due', async () => {
+    const socialLedger = ledger([target(0), target(1)]);
+    const warmer = { warmArticle: vi.fn(async (url: string) => (url.endsWith('/s-1') ? { pageOk: true, imageOk: true, facebookOk: false } : WARM_OK)) };
+    const { dispatcher } = warmHarness({ warmer, ledger: socialLedger });
+    await dispatcher.dispatch(new Date(), 10);
+    expect(socialLedger.markWarmed).toHaveBeenCalledWith(['article-site-0'], expect.any(Date));
+  });
+
+  it('tidak menandai apa pun saat ledger tidak punya target due', async () => {
+    const warmer = { warmArticle: vi.fn(async () => WARM_OK) };
+    const socialLedger = ledger([]);
+    const { dispatcher } = warmHarness({ warmer, ledger: socialLedger });
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
+    expect(warmer.warmArticle).not.toHaveBeenCalled();
+    expect(socialLedger.markWarmed).not.toHaveBeenCalled();
+  });
+
+  it('ledger yang gagal tidak menggagalkan dispatch dan target tetap due', async () => {
+    logMock.mockClear();
+    const warmer = { warmArticle: vi.fn(async () => WARM_OK) };
+    const socialLedger = ledger([target(0)], { dueFails: true });
+    const { dispatcher } = warmHarness({ warmer, ledger: socialLedger });
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
+    expect(warmer.warmArticle).not.toHaveBeenCalled();
+    expect(logMock.mock.calls.some((call) => call[1]?.event === 'delivery.social_warm.due_failed')).toBe(true);
+  });
+
+  it('penandaan yang gagal dilaporkan dan url tetap due untuk dispatch berikutnya', async () => {
+    logMock.mockClear();
+    const socialLedger = ledger([target(0)], { markFails: true });
+    const { dispatcher } = warmHarness({ warmer: { warmArticle: vi.fn(async () => WARM_OK) }, ledger: socialLedger });
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
+    expect(logMock.mock.calls.some((call) => call[1]?.event === 'delivery.social_warm.mark_failed')).toBe(true);
+  });
+
+  it('tidak menyentuh ledger tanpa token meta karena tidak ada yang bisa dihangatkan', async () => {
+    const socialLedger = ledger([target(0)]);
     const repository = {
-      claimInvalidations: vi.fn(async () => [{ ...task('task-1', []), tags: ['site:site-1', 'host:tenant.example', 'article:slug-a'] }]),
+      claimInvalidations: vi.fn(async () => [task('task-1', [])]),
       completeInvalidation: vi.fn(async () => {}),
       failInvalidation: vi.fn(async () => {}),
     };
     const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
     const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
-    const socialWarm = {
-      warmArticle: vi.fn(async () => {
-        throw new Error('warm_down');
-      }),
+    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, null, socialLedger);
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
+    expect(socialLedger.dueTargets).not.toHaveBeenCalled();
+  });
+
+  it('tidak menyentuh ledger saat tidak ada task yang selesai', async () => {
+    const socialLedger = ledger([target(0)]);
+    const { dispatcher } = warmHarness({ warmer: { warmArticle: vi.fn(async () => WARM_OK) }, ledger: socialLedger, completeFails: true });
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 0, failed: 1, stranded: 0 });
+    expect(socialLedger.dueTargets).not.toHaveBeenCalled();
+  });
+
+  it('tetap bekerja tanpa ledger untuk pemurnian cache saja', async () => {
+    const repository = {
+      claimInvalidations: vi.fn(async () => [task('task-1', ['https://tenant.example/a'])]),
+      completeInvalidation: vi.fn(async () => {}),
+      failInvalidation: vi.fn(async () => {}),
     };
-    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
+    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
+    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
+    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, { warmArticle: vi.fn(async () => WARM_OK) });
     await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
   });
 
-  it('memanaskan seluruh antrean tanpa memotong url yang sudah selesai', async () => {
+  it('memanaskan seluruh antrean due tanpa memotong url yang sudah selesai', async () => {
     const warmed: string[] = [];
-    const tagsFor = (articles: readonly string[]) => ['site:site-1', 'host:tenant.example', ...articles.map((slug) => `article:${slug}`)];
-    const repository = {
-      claimInvalidations: vi.fn(async () => [
-        { ...task('task-1', []), tags: tagsFor(['a-1', 'a-2', 'a-3', 'a-4', 'a-5']) },
-        { ...task('task-2', []), tags: tagsFor(['b-1', 'b-2', 'b-3', 'b-4', 'b-5']) },
-      ]),
-      completeInvalidation: vi.fn(async () => {}),
-      failInvalidation: vi.fn(async () => {}),
-    };
-    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
-    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
-    const socialWarm = { warmArticle: vi.fn(async (url: string) => { warmed.push(url); return { pageOk: true, imageOk: true, facebookOk: true }; }) };
-    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
-    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 2, failed: 0, stranded: 0 });
+    const targets = Array.from({ length: 10 }, (_, index) => target(index));
+    const warmer = { warmArticle: vi.fn(async (url: string) => { warmed.push(url); return WARM_OK; }) };
+    const { dispatcher } = warmHarness({ warmer, ledger: ledger(targets) });
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
     expect(warmed).toHaveLength(10);
-    expect(warmed).toEqual([...new Set(warmed)]);
+    expect(new Set(warmed).size).toBe(10);
   });
 
   it('mempertahankan lebar paralel delapan per batch', async () => {
     let inFlight = 0;
     let maxInFlight = 0;
-    const slugs = Array.from({ length: 10 }, (_, index) => `s-${index}`);
-    const repository = {
-      claimInvalidations: vi.fn(async () => [{ ...task('task-1', []), tags: ['site:site-1', 'host:tenant.example', ...slugs.map((slug) => `article:${slug}`)] }]),
-      completeInvalidation: vi.fn(async () => {}),
-      failInvalidation: vi.fn(async () => {}),
-    };
-    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
-    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
-    const socialWarm = {
+    const targets = Array.from({ length: 10 }, (_, index) => target(index));
+    const warmer = {
       warmArticle: vi.fn(async () => {
         inFlight += 1;
         maxInFlight = Math.max(maxInFlight, inFlight);
         await new Promise((resolve) => { setTimeout(resolve, 5); });
         inFlight -= 1;
-        return { pageOk: true, imageOk: true, facebookOk: true };
+        return WARM_OK;
       }),
     };
-    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
+    const { dispatcher } = warmHarness({ warmer, ledger: ledger(targets) });
     await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
-    expect(socialWarm.warmArticle).toHaveBeenCalledTimes(10);
+    expect(warmer.warmArticle).toHaveBeenCalledTimes(10);
     expect(maxInFlight).toBeGreaterThan(1);
     expect(maxInFlight).toBeLessThanOrEqual(8);
   });
 
   it('mencatat url yang gagal dipanaskan beserta tahapnya', async () => {
     logMock.mockClear();
-    const tagsFor = (articles: readonly string[]) => ['site:site-1', 'host:tenant.example', ...articles.map((slug) => `article:${slug}`)];
-    const repository = {
-      claimInvalidations: vi.fn(async () => [{ ...task('task-1', []), tags: tagsFor(['good', 'no-image', 'fb-rejected'])}]),
-      completeInvalidation: vi.fn(async () => {}),
-      failInvalidation: vi.fn(async () => {}),
-    };
-    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
-    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
-    const socialWarm = {
+    const targets = [{ articleSiteId: 'as-good', url: 'https://tenant.example/good' }, { articleSiteId: 'as-no-image', url: 'https://tenant.example/no-image' }, { articleSiteId: 'as-fb', url: 'https://tenant.example/fb-rejected' }];
+    const warmer = {
       warmArticle: vi.fn(async (url: string) => {
         if (url.endsWith('/no-image')) return { pageOk: true, imageOk: false, facebookOk: false };
         if (url.endsWith('/fb-rejected')) return { pageOk: true, imageOk: true, facebookOk: false };
-        return { pageOk: true, imageOk: true, facebookOk: true };
+        return WARM_OK;
       }),
     };
-    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
+    const socialLedger = ledger(targets);
+    const { dispatcher } = warmHarness({ warmer, ledger: socialLedger });
     await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
     const incomplete = logMock.mock.calls.filter((call) => call[1]?.event === 'delivery.social_warm.incomplete');
     expect(incomplete).toHaveLength(1);
@@ -211,100 +277,37 @@ describe('InvalidationDispatcher', () => {
       expect.objectContaining({ url: 'https://tenant.example/fb-rejected', facebookOk: false }),
     ]));
     expect(logMock.mock.calls.some((call) => call[1]?.event === 'delivery.social_warm.complete')).toBe(false);
+    expect(socialLedger.markWarmed).toHaveBeenCalledWith(['as-good'], expect.any(Date));
   });
 
   it('melaporkan url yang tidak sempat dipanaskan karena melewati batas antrean', async () => {
     logMock.mockClear();
-    const slugs = Array.from({ length: 70 }, (_, index) => `s-${index}`);
-    const repository = {
-      claimInvalidations: vi.fn(async () => [{ ...task('task-1', []), tags: ['site:site-1', 'host:tenant.example', ...slugs.map((slug) => `article:${slug}`)] }]),
-      completeInvalidation: vi.fn(async () => {}),
-      failInvalidation: vi.fn(async () => {}),
-    };
-    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
-    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
-    const socialWarm = { warmArticle: vi.fn(async () => ({ pageOk: true, imageOk: true, facebookOk: true })) };
-    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
+    const targets = Array.from({ length: 70 }, (_, index) => target(index));
+    const warmer = { warmArticle: vi.fn(async () => WARM_OK) };
+    const { dispatcher } = warmHarness({ warmer, ledger: ledger(targets) });
     await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
-    expect(socialWarm.warmArticle).toHaveBeenCalledTimes(64);
+    expect(warmer.warmArticle).toHaveBeenCalledTimes(64);
     const truncated = logMock.mock.calls.filter((call) => call[1]?.event === 'delivery.social_warm.truncated');
     expect(truncated).toHaveLength(1);
     expect((truncated[0]?.[1]?.context as { truncated: number }).truncated).toBe(6);
   });
 
-  it('tidak memanaskan saat task gagal', async () => {
-    const repository = {
-      claimInvalidations: vi.fn(async () => [{ ...task('task-1', []), tags: ['site:site-1', 'host:tenant.example', 'article:slug-a'] }]),
-      completeInvalidation: vi.fn(async () => {}),
-      failInvalidation: vi.fn(async () => {}),
-    };
-    const nextCache = {
-      revalidateTags: vi.fn(async () => { throw new Error('next_unavailable'); }),
-      revalidatePaths: vi.fn(async () => {}),
-    };
-    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
-    const socialWarm = { warmArticle: vi.fn(async () => ({ pageOk: true, imageOk: true, facebookOk: true })) };
-    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
-    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 0, failed: 1, stranded: 0 });
-    expect(socialWarm.warmArticle).not.toHaveBeenCalled();
-  });
-
-  it('tidak memanaskan tag tanpa host atau artikel', async () => {
-    const repository = {
-      claimInvalidations: vi.fn(async () => [{ ...task('task-1', []), tags: ['site:site-1'] }]),
-      completeInvalidation: vi.fn(async () => {}),
-      failInvalidation: vi.fn(async () => {}),
-    };
-    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
-    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
-    const socialWarm = { warmArticle: vi.fn(async () => ({ pageOk: true, imageOk: true, facebookOk: true })) };
-    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
-    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
-    expect(socialWarm.warmArticle).not.toHaveBeenCalled();
-  });
-
   it('memanaskan batch secara paralel dalam satu dispatch', async () => {
     let inFlight = 0;
     let maxInFlight = 0;
-    const repository = {
-      claimInvalidations: vi.fn(async () => [{ ...task('task-1', []), tags: ['site:site-1', 'host:tenant.example', 'article:a-1', 'article:a-2', 'article:a-3'] }]),
-      completeInvalidation: vi.fn(async () => {}),
-      failInvalidation: vi.fn(async () => {}),
-    };
-    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
-    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
-    const socialWarm = {
+    const warmer = {
       warmArticle: vi.fn(async () => {
         inFlight += 1;
         maxInFlight = Math.max(maxInFlight, inFlight);
         await new Promise((resolve) => { setTimeout(resolve, 20); });
         inFlight -= 1;
-        return { pageOk: true, imageOk: true, facebookOk: true };
+        return WARM_OK;
       }),
     };
-    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
+    const { dispatcher } = warmHarness({ warmer, ledger: ledger([target(0), target(1), target(2)]) });
     await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
-    expect(socialWarm.warmArticle).toHaveBeenCalledTimes(3);
+    expect(warmer.warmArticle).toHaveBeenCalledTimes(3);
     expect(maxInFlight).toBeGreaterThan(1);
-  });
-
-  it('hanya memanaskan url unik sekali per dispatch', async () => {
-    const warmed: string[] = [];
-    const tags = ['site:site-1', 'host:tenant.example', 'article:slug-a'];
-    const repository = {
-      claimInvalidations: vi.fn(async () => [
-        { ...task('task-1', []), tags },
-        { ...task('task-2', []), tags },
-      ]),
-      completeInvalidation: vi.fn(async () => {}),
-      failInvalidation: vi.fn(async () => {}),
-    };
-    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
-    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
-    const socialWarm = { warmArticle: vi.fn(async (url: string) => { warmed.push(url); return { pageOk: true, imageOk: true, facebookOk: true }; }) };
-    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, socialWarm);
-    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 2, failed: 0, stranded: 0 });
-    expect(warmed).toEqual(['https://tenant.example/slug-a']);
   });
 
   it('membatasi jumlah url purge per dispatch dan melaporkan sisanya', async () => {

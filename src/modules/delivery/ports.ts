@@ -70,6 +70,26 @@ export interface DeliveryRepository {
   failInvalidation(task: InvalidationTask, failure: Readonly<Record<string, unknown>>, nextAttemptAt: string, terminal: boolean, now: string): Promise<void>;
 }
 
+/** One public article URL that has never been handed to a social scraper. */
+export interface SocialWarmTarget {
+  readonly articleSiteId: string;
+  readonly url: string;
+}
+
+/**
+ * Durable record of which article URLs already reached Meta's scrape backend.
+ *
+ * @remarks Kept separate from `DeliveryRepository` because the warmer needs only
+ * these two operations, and a failed warm must stay retryable: a target is
+ * marked after Meta accepted the URL, never before, so a crash or a budget
+ * cutoff leaves it due for the next dispatch.
+ */
+export interface SocialWarmLedger {
+  /** Oldest-due article URLs, so a retried one is served before a newer one. */
+  dueTargets(limit: number): Promise<readonly SocialWarmTarget[]>;
+  markWarmed(articleSiteIds: readonly string[], now: Date): Promise<void>;
+}
+
 export class DeliveryResourceUnavailableError extends Error {
   constructor() { super('Network resource unavailable'); }
 }
