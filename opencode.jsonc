@@ -6,14 +6,6 @@
   },
   "mcp": {
     "servers": {
-      "browser-use": {
-        "type": "remote",
-        "url": "https://api.browser-use.com/v3/mcp",
-        "oauth": false,
-        "headers": {
-          "x-browser-use-api-key": "{env:BROWSER_USE_API_KEY}"
-        }
-      },
       "supabase": {
         "type": "remote",
         "url": "https://mcp.supabase.com/mcp?project_ref=cmqipmerhfpfqoeasibs&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching%2Cstorage"
@@ -116,6 +108,20 @@
           "npx",
           "-y",
           "@upstash/redis-mcp"
+        ]
+      },
+      "semgrep": {
+        // Python sistem 3.14 tidak didukung semgrep; uvx pin interpreter
+        // 3.13 terisolasi agar install ini tidak menyentuh environment utama.
+        "type": "local",
+        "command": [
+          "cmd",
+          "/c",
+          "uvx",
+          "--python",
+          "3.13",
+          "semgrep",
+          "mcp"
         ]
       }
     }
