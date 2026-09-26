@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
@@ -448,27 +448,40 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const organization = await transaction.select({ id: organizations.id }).from(organizations).where(and(eq(organizations.id, actor.organizationId), eq(organizations.status, 'active'))).limit(1);
       if (organization.length !== 1) throw new DashboardAccessDeniedError();
       const orgId = actor.organizationId;
-      const rows = await transaction.execute<{
-        readonly id: string; readonly actorType: AuditRecord['actorType']; readonly actorId: string;
-        readonly entryPoint: AuditRecord['entryPoint']; readonly action: string; readonly targetType: string;
-        readonly targetId: string | null; readonly outcome: AuditRecord['outcome'];
-        readonly changedFields: readonly string[]; readonly before: Readonly<Record<string, unknown>> | null;
-        readonly after: Readonly<Record<string, unknown>> | null; readonly requestId: string; readonly occurredAt: Date;
-      }>(sql`
-        SELECT id, actor_type AS "actorType", actor_id AS "actorId", entry_point AS "entryPoint",
-          action, target_type AS "targetType", target_id AS "targetId", outcome,
-          changed_fields AS "changedFields", before, after, request_id AS "requestId", occurred_at AS "occurredAt"
-        FROM audit_logs
-        WHERE organization_id = ${orgId}
-          AND (${filter.actorId ?? null} IS NULL OR actor_id = ${filter.actorId ?? null})
-          AND (${filter.action ?? null} IS NULL OR action = ${filter.action ?? null})
-          AND (${filter.targetType ?? null} IS NULL OR target_type = ${filter.targetType ?? null})
-          AND (${filter.outcome ?? null} IS NULL OR outcome = ${filter.outcome ?? null})
-          AND (${filter.from ?? null}::timestamptz IS NULL OR occurred_at >= ${filter.from ?? null}::timestamptz)
-          AND (${filter.to ?? null}::timestamptz IS NULL OR occurred_at <= ${filter.to ?? null}::timestamptz)
-        ORDER BY occurred_at DESC
-        LIMIT 500`);
-      return Object.freeze(rows.map((row) => ({
+      const rows = await transaction
+        .select({
+          id: auditLogs.id,
+          actorType: auditLogs.actorType,
+          actorId: auditLogs.actorId,
+          entryPoint: auditLogs.entryPoint,
+          action: auditLogs.action,
+          targetType: auditLogs.targetType,
+          targetId: auditLogs.targetId,
+          outcome: auditLogs.outcome,
+          changedFields: auditLogs.changedFields,
+          before: auditLogs.before,
+          after: auditLogs.after,
+          requestId: auditLogs.requestId,
+          occurredAt: auditLogs.occurredAt,
+        })
+        .from(auditLogs)
+        .where(and(
+          eq(auditLogs.organizationId, orgId),
+          ...(filter.actorId === undefined ? [] : [eq(auditLogs.actorId, filter.actorId)]),
+          ...(filter.action === undefined ? [] : [eq(auditLogs.action, filter.action)]),
+          ...(filter.targetType === undefined ? [] : [eq(auditLogs.targetType, filter.targetType)]),
+          ...(filter.outcome === undefined ? [] : [eq(auditLogs.outcome, filter.outcome)]),
+          ...(filter.from === undefined ? [] : [gte(auditLogs.occurredAt, new Date(filter.from))]),
+          ...(filter.to === undefined ? [] : [lte(auditLogs.occurredAt, new Date(filter.to))]),
+        ))
+        .orderBy(desc(auditLogs.occurredAt))
+        .limit(500);
+      // Telegram traffic is not part of the dashboard audit trail, and the schema enums are wider than `AuditRecord`.
+      const dashboardRows = rows.filter((row): row is typeof row & {
+        readonly actorType: AuditRecord['actorType'];
+        readonly entryPoint: AuditRecord['entryPoint'];
+      } => row.actorType !== 'telegram' && row.entryPoint !== 'telegram');
+      return Object.freeze(dashboardRows.map((row) => ({
         id: row.id, organizationId: orgId, actorType: row.actorType, actorId: row.actorId, entryPoint: row.entryPoint,
         action: row.action, targetType: row.targetType, targetId: row.targetId, outcome: row.outcome,
         changedFields: [...row.changedFields], before: row.before, after: row.after,
@@ -485,7 +498,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       if (organization.length !== 1) throw new DashboardAccessDeniedError();
       const rows = await transaction.execute<{
         readonly id: string; readonly organization_id: string | null; readonly category: string;
-        readonly purged_count: number; readonly started_at: Date; readonly finished_at: Date;
+        readonly purged_count: number; readonly started_at: Date | string; readonly finished_at: Date | string;
       }>(sql`SELECT * FROM indicate_private.retention_list(${actor.actorId}::uuid, ${actor.organizationId}::uuid)`);
       return Object.freeze(rows.map((row) => ({
         id: row.id,
@@ -493,9 +506,9 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         name: `${row.category} — ${row.purged_count} purged`,
         status: 'success' as const,
         category: row.category,
-        purgedCount: row.purged_count,
-        startedAt: row.started_at.toISOString(),
-        finishedAt: row.finished_at.toISOString(),
+        purgedCount: Number(row.purged_count),
+        startedAt: isoOf(row.started_at),
+        finishedAt: isoOf(row.finished_at),
       })));
     });
   }
