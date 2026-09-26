@@ -53,8 +53,8 @@
     "audit:production": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1140.0",
-    "@aws-sdk/s3-request-presigner": "^3.1140.0",
+    "@aws-sdk/client-s3": "^3.1141.0",
+    "@aws-sdk/s3-request-presigner": "^3.1141.0",
     "@base-ui/react": "^1.8.0",
     "@shadcn/react": "^0.3.1",
     "@supabase/ssr": "^0.12.7",
@@ -94,7 +94,7 @@
     "react": "19.3.0",
     "react-day-picker": "^10.0.1",
     "react-dom": "19.3.0",
-    "react-hook-form": "^7.88.0",
+    "react-hook-form": "^7.89.0",
     "react-icons": "^5.7.0",
     "react-is": "^19.3.0",
     "react-resizable-panels": "^4.13.3",
@@ -114,7 +114,7 @@
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
-    "@types/node": "^26.6.2",
+    "@types/node": "^26.6.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@typescript/native": "npm:typescript@^7.0.2",
