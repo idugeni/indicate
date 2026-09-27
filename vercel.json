@@ -1,11 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["sin1"],
-  "ignoreCommand": "b=$(git rev-parse --verify --quiet \"${VERCEL_GIT_PREVIOUS_SHA}^{commit}\" || git rev-parse --verify --quiet \"HEAD^\") || exit 1; [ -z \"$(git diff --name-only \"$b\" HEAD | grep -vE '^(docs/|\\.github/|\\.claude/)|\\.md$')\" ]",
+  "ignoreCommand": "sh scripts/ci/skip-build.sh",
   "crons": [
     {
       "path": "/api/internal/maintenance/view-flush",
-      "schedule": "0 * * * *"
+      "schedule": "0 */3 * * *"
     },
     {
       "path": "/api/internal/publishing?mode=work",
@@ -17,7 +17,7 @@
     },
     {
       "path": "/api/internal/delivery/reconcile?scope=provisioning",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/internal/delivery/reconcile?scope=invalidation",
