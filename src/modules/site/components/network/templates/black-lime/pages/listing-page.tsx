@@ -30,8 +30,16 @@ export function BlackLimeListing({ site, title, description, path, indexable }: 
   const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const [hero, ...rest] = site.articles;
   const picks = rest.slice(0, 4);
-  const mostRead = [...rest].sort((a, b) => b.viewCount - a.viewCount).slice(0, 5);
-  const archive = rest.slice(4);
+  // Partition the remaining articles instead of re-slicing the same list. Ranking
+  // the whole tail by view count used to hand "Paling Banyak Dibaca" the four
+  // articles "Berita Terbaru" already showed, because a young site has near-zero
+  // counts everywhere and the sort preserves the incoming order. Each article now
+  // appears in exactly one section.
+  const ranked = [...rest].sort((a, b) => b.viewCount - a.viewCount);
+  const picked = new Set(picks.map((article) => article.id));
+  const mostRead = ranked.filter((article) => !picked.has(article.id)).slice(0, 5);
+  const shown = new Set([...picks, ...mostRead].map((article) => article.id));
+  const archive = rest.filter((article) => !shown.has(article.id));
   const quote = site.settings.tagline ?? site.settings.description;
 
   return (

@@ -30,8 +30,16 @@ export function DarkNavyListing({ site, title, description, path, indexable }: L
   const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const rest = site.articles.slice(1);
   const latest = rest.slice(0, 5);
-  const mostRead = [...rest].sort((a, b) => b.viewCount - a.viewCount).slice(0, 5);
-  const archive = rest.slice(5);
+  // Partition rather than re-slice. Ranking the whole tail by view count made
+  // "Paling Banyak Dibaca" repeat whatever "Terbaru" already showed, and once
+  // view counts diverge it also pulled articles out of the archive while hiding
+  // low-traffic ones from the page entirely. Each article now lands in exactly
+  // one section.
+  const ranked = [...rest].sort((a, b) => b.viewCount - a.viewCount);
+  const latestIds = new Set(latest.map((article) => article.id));
+  const mostRead = ranked.filter((article) => !latestIds.has(article.id)).slice(0, 5);
+  const placed = new Set([...latest, ...mostRead].map((article) => article.id));
+  const archive = rest.filter((article) => !placed.has(article.id));
 
   return (
     <DarkNavyShell site={site} path={path ?? '/'}>
