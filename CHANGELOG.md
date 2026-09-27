@@ -152,6 +152,28 @@ npm-facing.
 
 ### Changed
 
+- Publication dispatch no longer waits for the cron tick. A publish, bulk
+  publish, or retry drains the queue through `after()` in the request that
+  enqueued it, so a job due now starts in seconds instead of up to a minute
+  later. The worker module is imported dynamically, so the read path never loads
+  it, and a failed drain leaves the job due for the poller.
+- Idle publishing ticks cost two `ZCARD` reads. `RedisCoordinationPort` gained
+  `hasPendingWork()`, and the cron handler short-circuits before building the
+  Postgres pool, the R2 client, and the target publisher. See
+  `docs/architecture.md` §12.6.
+- The view flush opens its Postgres pool only after Redis reports buffered
+  counters, so an empty sweep touches Redis alone.
+- Delivery provisioning reconciliation moved from every fifteen minutes to
+  hourly and view flushing from hourly to every three hours. Neither is on the
+  publish path: provisioning resumes tenant activation, and view counters were
+  already coarse. Cache invalidation and the publishing worker stay at one
+  minute.
+- The Ignored Build Step moved to `scripts/ci/skip-build.sh` and widened to
+  `*.test.ts`, `*.test.tsx`, `.agents/`, `LICENSE`, `.prettierrc`,
+  `.markdownlint.json`, and `skills-lock.json`. The inline form had 38 characters
+  of headroom left against the schema's 256-character cap, and the rule had
+  already cost four commits of build failures. `scripts/` stays
+  build-triggering on purpose: a broken gate is worse than a wasted build.
 - Documented route groups as `(site)`, `(network)`, `(auth)`, `(dashboard)` with
   group-specific `_composition/` roots and per-segment `loading.tsx` /
   `error.tsx` conventions.
