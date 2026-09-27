@@ -16,4 +16,4 @@ WHERE o.slug = 'lpka-kelas-i-kutoarjo'
   AND p.organization_id = o.id
   AND p.contacts->>'city' = 'Jawa Tengah';--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (120, 'fix_upt_city_lpka_kutoarjo', 'sha256:3360800ed0b015ca9e58af0f60d91207dcf91856acfbdbc8de16a9d2165c3402');
+VALUES (120, 'fix_upt_city_lpka_kutoarjo', 'sha256:163485bfa218958d2ffa720ee345c2977c21be6daafda65c372fc75de306814f');

@@ -19,4 +19,4 @@ UPDATE public.indicate_schema_migrations SET checksum = 'sha256:03cae1232fe49299
 UPDATE public.indicate_schema_migrations SET checksum = 'sha256:bcabfe159c0a78ab0ae5b9b3fde8c2ffd55faa1840f761bb8b7c03e461bbbe30' WHERE version = 51;--> statement-breakpoint
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (52, 'billing_real_checksums', 'sha256:fefdf3bf26bf9c7fa8de15cdf77c4033a33a7d6e3fb50b3f6ccfafa8c891d059');
+VALUES (52, 'billing_real_checksums', 'sha256:4163fb7093cd2dabf7303fbce5901d2521543aedaca77a7d3ee21f25dd07fc41');

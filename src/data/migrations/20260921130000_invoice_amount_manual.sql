@@ -109,4 +109,4 @@ BEGIN
 END
 $function$;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (145, 'invoice_amount_manual', 'sha256:c2890287772320e4d87771f54a84c23967426f445dcc56ecd282e313d60bfb00');
+VALUES (145, 'invoice_amount_manual', 'sha256:8097dd713132807721550ea3184a5392e5292578df6bcb65dbcda99fd9de64b2');

@@ -11,4 +11,4 @@ IMMUTABLE
 RETURN 'Humas ' || replace(initcap(regexp_replace(official_name, '\sKELAS\s+[IVX]+(\s+[A-Z](?=\s))?', '', 'g')), 'Lpka', 'LPKA');--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.short_attribution_label(text) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (127, 'publisher_attribution_helper', 'sha256:62054eee4e7b9c58ecb424c6eeb5162d64a48f5487c9b6597ab378ea02dc290c');
+VALUES (127, 'publisher_attribution_helper', 'sha256:97f0c9c59803a4620ab07b584eb39870f7ea45f1894d2ee97db03f9fe45be4bb');

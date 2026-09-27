@@ -8,4 +8,4 @@ SET paths = (SELECT coalesce(array_agg(regexp_replace(p, '/articles/', '/') ORDE
 WHERE status = 'pending'
   AND (EXISTS (SELECT 1 FROM unnest(paths) AS p WHERE p LIKE '%/articles/%') OR EXISTS (SELECT 1 FROM unnest(urls) AS u WHERE u LIKE '%/articles/%'));--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (116, 'invalidation_root_article_paths', 'sha256:e64fb971b0be9ea2a600b6d856baa77118b0edd02374ff0bc85cf2034e82574d');
+VALUES (116, 'invalidation_root_article_paths', 'sha256:bab2074239b3ccca3247b72c66e0ed90af9cbf682279bf1fe468cd11e1961bea');

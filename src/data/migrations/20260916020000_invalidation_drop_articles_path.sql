@@ -8,4 +8,4 @@ SET paths = array_remove(paths, '/articles'),
 WHERE status = 'pending'
   AND (paths @> ARRAY['/articles'] OR EXISTS (SELECT 1 FROM unnest(urls) AS u WHERE u LIKE '%/articles'));--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (115, 'invalidation_drop_articles_path', 'sha256:7e229d07a4e666b249b02ff9c4ec3ba66a3a09a15ab1f9971a633d8079d92062');
+VALUES (115, 'invalidation_drop_articles_path', 'sha256:fd4b045ea1ac8db2a78e7fde60139ab96529a146a4ea3a335653613744de86d5');

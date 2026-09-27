@@ -10,4 +10,4 @@ ALTER TABLE public.organizations ADD CONSTRAINT organizations_kind_check CHECK (
 CREATE INDEX IF NOT EXISTS organizations_kind_idx ON public.organizations USING btree (kind);--> statement-breakpoint
 UPDATE public.organizations SET kind = 'operator' WHERE slug IN ('fakta01', 'indicate-platform');--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (106, 'organizations_kind', 'sha256:d04d655981dfddc3b21e9453ea7ee9fd7c810053ac924013aee09ecedd23f602');
+VALUES (106, 'organizations_kind', 'sha256:64847b4aeee1e22039c737665f55baf847f74726b0061c5b9fe61ada38a22e7f');

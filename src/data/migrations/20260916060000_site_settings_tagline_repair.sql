@@ -13,4 +13,4 @@ UPDATE public.site_settings SET seo_default_title = 'WartaKini7 Wonosobo — Bud
 UPDATE public.site_settings SET seo_default_title = 'WawasanNusa Wonosobo — Gagasan Jernih Wonosobo.', tagline = 'Gagasan Jernih Wonosobo.', updated_at = now() WHERE organization_id = '7e27727d-b59f-4d24-998e-1bee6eeb3fa0' AND site_id = '52899b6f-b552-41c2-a4dc-ee7c49c18f8e' AND (seo_default_title IS NULL OR tagline IS NULL);--> statement-breakpoint
 ALTER TABLE public.site_settings ENABLE TRIGGER site_settings_active_site_guard;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (119, 'site_settings_tagline_repair', 'sha256:9d00e8b8b5c3da82d282cc57531ea02ec17f732a2518d48c9659a7f5de00846c');
+VALUES (119, 'site_settings_tagline_repair', 'sha256:1e2dc9e3706f9eb6d40cd17c76f7f743a076ccfea1e4ad716daff58c781f9efb');

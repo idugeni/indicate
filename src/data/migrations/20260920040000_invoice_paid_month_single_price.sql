@@ -110,4 +110,4 @@ $function$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.invoice_reissue(uuid, text, uuid, integer, text, timestamptz) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.invoice_reissue(uuid, text, uuid, integer, text, timestamptz) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (137, 'invoice_paid_month_single_price', 'sha256:2195e850eb0180bf790c738c90eafaf27bd6ea156bd58d47ee297c371f888d0a');
+VALUES (137, 'invoice_paid_month_single_price', 'sha256:b8698ef595496021e4b4c1a590e1302edb6949cd1fc4fbc8a3e929549de9be3e');

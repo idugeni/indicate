@@ -37,9 +37,10 @@ const HEADER_PROSE = [
   '-- migration-owner credential, never an application runtime credential.',
   '--',
   '-- The digests below are the Drizzle ledger digests: SHA-256 over each raw',
-  '-- migration file. They are deliberately distinct from the reviewed checksums',
-  '-- in src/features/release/migration-manifest.ts, which canonicalize each body',
-  '-- before hashing. Both are verified against these files by the test suite.',
+  '-- migration file with its own checksum literal replaced by 64 zeros. The',
+  '-- suite verifies every ledger row against its own file body, so a migration',
+  '-- whose body was edited after its digest was written is caught rather than',
+  '-- silently trusted.',
   '--',
 ];
 

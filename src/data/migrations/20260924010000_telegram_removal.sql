@@ -208,4 +208,4 @@ BEGIN
 END
 $function$;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (164, 'telegram_removal', 'sha256:9c8570433fae0b5e8c8e9bc995367668c3f268492457c56bcaadb94c64543798');
+VALUES (164, 'telegram_removal', 'sha256:275a55e1379a9638c43bcf5599678dd0dbfdfcb2a4d64b629555e3f3332ba1c1');

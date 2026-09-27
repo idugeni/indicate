@@ -27,4 +27,4 @@ WHERE target.organization_id = normalized.organization_id
   AND target.id = normalized.id
   AND target.tags IS DISTINCT FROM normalized.tags;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (141, 'article_tags_canonical', 'sha256:caff95bc251c87b804fbce84eba79e2d4c5d3360faa86d4abbe55fb9b4a6ee1f');
+VALUES (141, 'article_tags_canonical', 'sha256:e47dbda9f869700b05fd2f9de19e744576e49615333accec7422259014d2b7d7');

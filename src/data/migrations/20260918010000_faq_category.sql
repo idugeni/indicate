@@ -12,4 +12,4 @@ UPDATE public.faqs SET category = 'Keamanan Data' WHERE id = 'b1d4b620-5724-40d5
 UPDATE public.faqs SET category = 'Migrasi' WHERE id = '1de04400-5846-4d71-a6e4-b66668c3fc76';--> statement-breakpoint
 UPDATE public.faqs SET category = 'Bantuan' WHERE id IN ('d849d3fe-c818-469d-bc54-10aa1b8dd235', '7e9f1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b');--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (125, 'faq_category', 'sha256:2b23e29c0fd17a13e0940e7156632f27c6a992c8e9deddb97598bc125b3c7a65');
+VALUES (125, 'faq_category', 'sha256:483e2040159bd5890f323f2209c54ad8e69b0771b313a5c11c5807d2049317dc');

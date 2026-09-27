@@ -24,4 +24,4 @@ INSERT INTO public.runtime_config_invalidation_intents (id, runtime_revision, en
 SELECT gen_random_uuid(), rev.version, (SELECT environment FROM env), 'policy'::public.invalidation_partition_kind, 'pending', 0, now()
 FROM rev;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (112, 'media_policy_allow_ico', 'sha256:a4897962bbcd7ec7e4c66c0bcc4f06a02c8a26e53bf3f72f29055f8e091b81b7');
+VALUES (112, 'media_policy_allow_ico', 'sha256:d6520eb28c0b07967905e7ef2b36acd560645e690bf006cfcd584815ead1ff56');

@@ -54,4 +54,4 @@ BEGIN
 END
 $function$;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (135, 'retention_terminal_sweep', 'sha256:4262ce1fa93ccd67231e53c5714a4a6b5cd6655d12056791963a5a22230ca02a');
+VALUES (135, 'retention_terminal_sweep', 'sha256:24f1d212847f78a6300653330422d7120fe48a348c567fd6d4be1dfd9584cffd');

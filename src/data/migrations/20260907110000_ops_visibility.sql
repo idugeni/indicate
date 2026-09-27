@@ -45,4 +45,4 @@ GRANT EXECUTE ON FUNCTION indicate_private.retention_list(uuid, uuid) TO indicat
 REVOKE ALL ON FUNCTION indicate_private.outbox_list_platform(uuid) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.outbox_list_platform(uuid) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (88, 'ops_visibility', 'sha256:414877ce74e48efc153bed150a99085cc440216b2cf4ce000dc0ae11301ab39e');
+VALUES (88, 'ops_visibility', 'sha256:aae9ca585f3d24bef359020c13dda9e1deefb3a6d36c6832a27512ab535158a2');

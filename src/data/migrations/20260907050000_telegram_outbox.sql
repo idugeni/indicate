@@ -110,4 +110,4 @@ GRANT EXECUTE ON FUNCTION indicate_private.outbox_ack(uuid, boolean, integer, te
 REVOKE ALL ON FUNCTION indicate_private.outbox_broadcast_targets(uuid) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.outbox_broadcast_targets(uuid) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (83, 'telegram_outbox', 'sha256:9202019251aac5d50fcd943ab37072cc5e4f94c53f9d9e8055281608b0355bf8');
+VALUES (83, 'telegram_outbox', 'sha256:5c62e9115bcec1a29af50e0437b567e68370bad42d282ee6cdf2a692cdf442d8');

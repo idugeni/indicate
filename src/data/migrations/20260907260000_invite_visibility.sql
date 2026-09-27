@@ -77,4 +77,4 @@ GRANT EXECUTE ON FUNCTION indicate_private.invite_revoke(uuid, text, uuid, times
 REVOKE ALL ON FUNCTION indicate_private.outbox_list(uuid, uuid) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.outbox_list(uuid, uuid) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (103, 'invite_visibility', 'sha256:4a28307e987a696d366c49060d6b971459c8a9bcc165550038e8589f07cdd716');
+VALUES (103, 'invite_visibility', 'sha256:1ed7171c032fbb054a7ae5c149cfa0523581b4c207bb4e3f0a8d92b3d3bf60a4');

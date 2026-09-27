@@ -14,4 +14,4 @@ UPDATE public.media_showcase
 SET name = 'Cendekia Post', updated_at = now()
 WHERE id = '00000000-0000-4000-8000-000000007027' AND name = 'Arcadia News';--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (117, 'content_attribution_cleanup', 'sha256:bb43add4ffa8c5dd9be068b57293399423a4c32689e77291ae52f7c48b0ec089');
+VALUES (117, 'content_attribution_cleanup', 'sha256:1b2544a928a03a7887c68edefb34a6849d2756d676553fb9054027bb23a385fb');

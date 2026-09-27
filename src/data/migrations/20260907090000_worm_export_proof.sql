@@ -21,4 +21,4 @@ $function$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.worm_export_proof(text, integer, timestamptz) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.worm_export_proof(text, integer, timestamptz) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (86, 'worm_export_proof', 'sha256:a9d8295b9cfa43811268a74c2055ae86bae4e23f991afd9c2911f6f396b3892b');
+VALUES (86, 'worm_export_proof', 'sha256:3cc243e3c7d2ec9121d76e0ee2d5c3026247922057692e249dcd77518f0bbf4e');

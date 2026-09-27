@@ -34,4 +34,4 @@ $function$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.subscription_update(uuid, text, uuid, integer, subscription_status, timestamptz, text) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.subscription_update(uuid, text, uuid, integer, subscription_status, timestamptz, text) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (136, 'subscription_update_entry_point', 'sha256:5afd115d9c049e8d8248ce63afad86ec78b70d9c20fc796cd5e356e89e44094d');
+VALUES (136, 'subscription_update_entry_point', 'sha256:191807525478d0e75977916fb184ff7b4ff670c253a950d644e4bde845b968f8');

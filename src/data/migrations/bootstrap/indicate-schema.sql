@@ -8,9 +8,10 @@
 -- migration-owner credential, never an application runtime credential.
 --
 -- The digests below are the Drizzle ledger digests: SHA-256 over each raw
--- migration file. They are deliberately distinct from the reviewed checksums
--- in src/features/release/migration-manifest.ts, which canonicalize each body
--- before hashing. Both are verified against these files by the test suite.
+-- migration file with its own checksum literal replaced by 64 zeros. The
+-- suite verifies every ledger row against its own file body, so a migration
+-- whose body was edited after its digest was written is caught rather than
+-- silently trusted.
 --
 -- Reviewed sources, in journal order (209 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
@@ -26,7 +27,7 @@
 --   11  20260903005000_security_hardening  ledger sha256:987a2378aab0e316808333f442443a5f94b1ee593932f46fd1fd0b0932cc8ae4
 --   12  20260903005500_strict_platform_authorization  ledger sha256:4b4d4b75f140c83779d6b05875f63c961f87d35da06910f1eb27e18e57c4ea82
 --   13  20260903010000_readiness_discovery  ledger sha256:298c1fcb059c7e0919caf08343ebfadc2a89bd836f2d29e9e878fc215c48f483
---   14  20260903010500_migration_body_digests  ledger sha256:968a24224fb29a036a3fe56866ab11d6204c732243864353af18ecfa34500dcc
+--   14  20260903010500_migration_body_digests  ledger sha256:bd1372ae63d3ba2ec84b152ba2ae3ba2e11943a157f504d58dce84e37b7ca4e6
 --   15  20260903011000_updated_at_integrity_guard  ledger sha256:2955fb76c0c3ab351091158cb64cdeb0a9717bee242d95d64164eab87071579e
 --   16  20260903011500_operational_table_read_policies  ledger sha256:849fd713446fbd8b7857206bd00081c039e0a54fe1ab3e960d0574fa2b17323d
 --   17  20260903012000_data_api_and_index_hardening  ledger sha256:109af0132f9eb215333e457b892403bdb87e0027ea88b276832ddef4907b1e53
@@ -64,7 +65,7 @@
 --   49  20260903035500_billing_advisor_hardening  ledger sha256:d640cfbb36b38f55fc02f89ac5892895f81572d7478f36a15440e4d53a6bd9be
 --   50  20260903036000_billing_users_email_idx  ledger sha256:f6b4e2271d6142cc24c0dad8c6696f8454d33e9471bb64c987ebcd6d6d478aae
 --   51  20260903036500_billing_faq_random_ids  ledger sha256:022c10a71fa093b0979ef09be759030788f4d728d5863da5846dfbfcc672a1c8
---   52  20260903037000_billing_real_checksums  ledger sha256:7bd6b57ba6482ca481036314feded0f96a65ed65f195ab615a7ec3e106c5e989
+--   52  20260903037000_billing_real_checksums  ledger sha256:221419f8825617e5e11e85b6b417c7ae1ae5da8a78c4a3971f9ed8843730aa5f
 --   53  20260903037500_billing_packages_plan_unique  ledger sha256:2c9245957e4e6776ef3f9f5fbe2d0345fc76c8d87fcacf59e46df19d2a55a618
 --   54  20260903038000_billing_pro_100_enterprise_custom  ledger sha256:7e3182e2c36af9723dbcd73110cf7aa08fe034c446957876f188d58f347ca97b
 --   55  20260903038500_billing_sales_copy  ledger sha256:32af17f6c568bceb3faae02383a12916f2681452d8581dde2767ad1bb77edf10
@@ -84,28 +85,28 @@
 --   69  20260906000000_billing_terms_consent  ledger sha256:1d5e3e70e73614fec355aabe42542115cd5049add6e09db4ede8c2e7d1c90315
 --   70  20260906001000_billing_refund_status  ledger sha256:b9dacfbc2024351be42696f39bc1433b188c63cc0b76c7807432fd6af30c1de1
 --   71  20260906002000_billing_pending_terms  ledger sha256:ca317573867eb610e2e733b68e8d0ccd37fd60547a588dc393fa4fbb9b1701c8
---   72  20260906003000_historical_digest_rebaseline  ledger sha256:e604aa8e6a85b65c247afc8189a8c29af1608c1d48c3d86fa9d32a06d4d567fe
---   73  20260906004000_malformed_digest_correction  ledger sha256:4603bd3fe900ac7c2ea647a13169d6a747eb059d6f1a6dc398c23e65862487ee
+--   72  20260906003000_historical_digest_rebaseline  ledger sha256:789572770b4e242c29131907584c896a966a91bc5df151ef5d51a2269b78a53f
+--   73  20260906004000_malformed_digest_correction  ledger sha256:2fc21c0ed66c745c5776b0afe3d0c57f7a174262bb6613ea27f85fada3dab9ef
 --   74  20260906005000_audit_hash_chain  ledger sha256:f8b1336fb8842b0041fa2adee9b5d3bdd5cd3ec6e6cc5b97c4b7785d71b27619
 --   75  20260906006000_retention_sweep  ledger sha256:83edc7e8040711c9c3a61948b1e0f8b3745e3f06d5bdcd32058a91b30fc043b3
 --   76  20260906007000_moderation_reports  ledger sha256:abc7b801da94d2a74ea964bea1a365953278731c1a68e74505c58dba05b6a86a
 --   77  20260906008000_moderation_fk_indexes  ledger sha256:ceb9d156043b24e05acda856a3792d5e62901e88714fcabb503ec3b03e3cfb62
---   78  20260907000000_delivery_activation_claim  ledger sha256:5930a61f1313231da8bf871b0570d8ff84b702ca55d53f2719a50e2cdb12c19c
---   79  20260907010000_litigation_holds  ledger sha256:4a1b9e655395c52a5f41fb247c8b3355a5cd82e2fa9e2ff503d591b636ae58b1
---   80  20260907020000_org_erasure  ledger sha256:57b2b7e15ce6c9f6fa641d77a66d419dd50da4df7a112de3cdcdf71610b37f51
---   81  20260907030000_rls_global_select_tightening  ledger sha256:eef950f979b7f94c7e2960a09600f8c8d132dc3890a80ba73dfd02bdd8346bda
---   82  20260907040000_function_grants_repair  ledger sha256:9ef1be218107d9be43339825e6759089399c61891c65d2f83782657ee60b05d9
---   83  20260907050000_telegram_outbox  ledger sha256:7c4b646650088954612cd6a01fa623c5e9349bfb571d9aa34a3bcd2356effa1e
---   84  20260907060000_lead_consent  ledger sha256:5b34f645a608638a10d77852284daead5369d445ff5472a978bff5db8ee6cb86
---   85  20260907080000_function_only_policies  ledger sha256:2bab06cdc9f2a5d02bb2bd88ee4ee0c189d0e231d6ab4106dc78248e4d0ec4a6
---   86  20260907090000_worm_export_proof  ledger sha256:e39fbc068a47ee9681de3fd4d0dc1d3ced101f7ee28a66df9dcb9d2d938b5be5
---   87  20260907100000_delivery_previous_host_owned  ledger sha256:6b0d16b60cf393663fa21911ed40832abbd0e25038ab6a6909dc96cfe72e646d
---   88  20260907110000_ops_visibility  ledger sha256:9f0190f034aa3fd4e9e67de2ccf416b23019cecdf252fe47d0272851d949c6ab
---   89  20260907120000_invoice_list  ledger sha256:eab0fb0ff02350f5c5b234035144f8e14fe9e5c4db61a298232f1375399becd0
---   90  20260907130000_ops_fk_covering_indexes  ledger sha256:a9e99e8725de43325befe61a4b94d21063be8baf58d75a8b6adef0a74ed7055f
---   91  20260907140000_article_site_view_counts  ledger sha256:30ccbebf959a89aeef8d7ccadc872895a90e62b4387a2d376086fc2e742f40e8
---   92  20260907150000_article_tags  ledger sha256:95e29c7703dd24b8081850223ad2e76bad347e58b1da3c52d8cfecafe4cfa2d2
---   93  20260907160000_merge_view_counts  ledger sha256:4577d7045f8bd1a22478c3390d3ecd6453998d18ff9a4a4c3df0c517bec190de
+--   78  20260907000000_delivery_activation_claim  ledger sha256:e3abe87d563b6b985eac2b27651bc57365407ba3a1b26734b9ef397882642336
+--   79  20260907010000_litigation_holds  ledger sha256:ef1a37aca2d95b0c6bc639b6545a9a93f5d88944365ef7f1915e170e56159203
+--   80  20260907020000_org_erasure  ledger sha256:a6d3e62729617d19542c8ad53eed10be3deb7eb0a59858c45f148e8ca7d150a7
+--   81  20260907030000_rls_global_select_tightening  ledger sha256:d4037fb238baa185496aec27d92f1f732c0632a928a3613f6551a64af23aa706
+--   82  20260907040000_function_grants_repair  ledger sha256:d0df3ace45ebc7b8ccc82ea93041ffd03c48ab8c82e9065993e981df5c1ef60e
+--   83  20260907050000_telegram_outbox  ledger sha256:17b9a49a75b7f51e55f3731106b354eb21f80fb919167da17e1618cc1970b5d6
+--   84  20260907060000_lead_consent  ledger sha256:6ae3bf8a99638159a0f2d19335a6f938713028e1e599bec5cd5b4ace2e752aef
+--   85  20260907080000_function_only_policies  ledger sha256:63f375b72422464c1098097399fb8492c6de0bb02ba44630e6f01255b3705f70
+--   86  20260907090000_worm_export_proof  ledger sha256:8f84d8ba56efba611e6cf918935a6da8b9ff814be72ade69bad88f24be695811
+--   87  20260907100000_delivery_previous_host_owned  ledger sha256:bd3cbc6dfda242fc258b51bd236ec8e183bd17bbbb9a9a71eca4807a1b76a2e8
+--   88  20260907110000_ops_visibility  ledger sha256:6c321347b66ee60edea65d71b3e5f328c0621962312641b073f4aab21b747bb4
+--   89  20260907120000_invoice_list  ledger sha256:cb9c56175d3ea6d59f71e3a12629976bc9b09fad5af699cfccbaa9b6234e076e
+--   90  20260907130000_ops_fk_covering_indexes  ledger sha256:097cf4bbfe70d2ae7d12089a810faf58bf4af7b36617258655442f56f4b5f148
+--   91  20260907140000_article_site_view_counts  ledger sha256:e44b0b0b9697e4858706447ad117eae838cca82d75ac793a64682a8a6b25a9cd
+--   92  20260907150000_article_tags  ledger sha256:86508a551ed1ac62ba30328e6fe5fd7019451c999a7a0e7a872bba4aefc60619
+--   93  20260907160000_merge_view_counts  ledger sha256:203e8e6fa21a437d1f4fa547db9e83ad9c98e5e186bf74037c02293c18d6ebd1
 --   94  20260907170000_seed_upt_jateng_59org  ledger sha256:36006ad8ca4eabce4a3b90831f5bb1d7db8ab32b478070ae2539f46847358580
 --   95  20260907180000_fix_upt_city_ambarawa_klaten  ledger sha256:ace527a8a731e1b55e643694bb09d1ab27bda4f78f5c2aefb3e63a538546c961
 --   96  20260907190000_publisher_humas_attribution  ledger sha256:5c957edf0165666206229605ae4fc49059cf1b0cbca85d42044d22564b9273bd
@@ -115,50 +116,50 @@
 --   100  20260907230000_drop_billing_order_status  ledger sha256:2979e4de0b51864744cff7bc55a9cfd93f3d8bea745ab7c776f32637e3ef18a2
 --   101  20260907240000_manual_invoices  ledger sha256:7077d44dfd73241b6a47777d62d805d7ad55995a4e8e780ec4a7f1f1a3020edf
 --   102  20260907250000_invoice_number_enterprise  ledger sha256:c6f332b7bd6c818cdc0bc11ce62c2c37e13293d4a4ac476ee37b2f68b9ca77bb
---   103  20260907260000_invite_visibility  ledger sha256:dd823700429f94990a4ccd3e543c735602cfbb043d9c6e7d18fc38cdeb1d0a19
---   104  20260907270000_fix_site_settings_guard_return  ledger sha256:87b58751c14844cfaf6617ed617fe08864a86287fc12e9b0e5e89f306b8b35fe
---   105  20260907280000_discover_hosts_add_versions  ledger sha256:afe5d5ae1390c3f115910c25e981dd622cb9f7e55a013fc6a34265bf4075a0b1
---   106  20260907290000_organizations_kind  ledger sha256:1cf29d796e80440c29c0e54bb777865a9926b574f591504d87571061ef3aa3a4
---   107  20260914020000_template_preset_clean_blue  ledger sha256:537f1dbd9d7d4bf251888ba1e4da1103c6affb86865b13d98e576027493a5c32
---   108  20260914030000_articles_cover_image_url  ledger sha256:4b4be4b5400c1473969d7c060bbf88be15dfd33d211bbc02eb9b4f38dbf923b6
---   109  20260914040000_single_template_clean_blue  ledger sha256:16ce003f1b2624fa78dff1463b31ac701895ec02fe4c1735011b63f5374e5c0a
---   110  20260915000000_seo_metadata_hardening  ledger sha256:33702d7fb317a932c060423fffeaeeaf3a68155eb4c51e147e6783c3d1d6cb01
---   111  20260915010000_invoices_created_by_covering_index  ledger sha256:995168799f377bff817043b7757a7161741d92fea327253c57fd6aa11d05c0f1
---   112  20260915020000_media_policy_allow_ico  ledger sha256:38ecc2cee63b8ffb3034d85e1b67506941d9a9418fbdc06048556838bceb55ed
+--   103  20260907260000_invite_visibility  ledger sha256:242cf0b7a352077076324e42803c39f1689307a56c497634cef75adfb340aebb
+--   104  20260907270000_fix_site_settings_guard_return  ledger sha256:70f6cf01e84f162403e9fa5669ed684fd2eed49997bc7629b2082adf41163642
+--   105  20260907280000_discover_hosts_add_versions  ledger sha256:170ddb6e63338a779425243624aa082245913fb5cffd71c44452beed89744a9e
+--   106  20260907290000_organizations_kind  ledger sha256:1f0b65ba390247695ae013326edac55a51c9aa09b30a8eb7539abadfccbd20b9
+--   107  20260914020000_template_preset_clean_blue  ledger sha256:13c06a9f2bd54fe9db66ef90548550404a18c22cb02f76496256cd10e4eb244f
+--   108  20260914030000_articles_cover_image_url  ledger sha256:0fa96f4171f416ca828b45a27e615ab4bfc669b0334db7b2fcaf75b3369f955b
+--   109  20260914040000_single_template_clean_blue  ledger sha256:bfd5dfe5b0ea07e9e72ff50c72061a49fc3e28b6e7ec9a2dbe53755a6249cd77
+--   110  20260915000000_seo_metadata_hardening  ledger sha256:2dcd95dcde29bcb90a75e10e048ad728ffc1c8435522e082786ddb99a38fc236
+--   111  20260915010000_invoices_created_by_covering_index  ledger sha256:6b5a30107f6294883a3450f5836194a8bef88533fc61dfcc828b69a05e2bec7b
+--   112  20260915020000_media_policy_allow_ico  ledger sha256:b4365793555de47395e261c85ae8f85d984a726fdfdfa6c6e73b2ae9ffe746eb
 --   113  20260916000000_region_locked_memberships  ledger sha256:398087aef20abd0eead610110e9026b41f73bf35eedc3fba3c7c917ea9a35337
---   114  20260916010000_article_root_urls  ledger sha256:675a780cf8f2e72d8b42731ca6d3cfc5f02e70dfc1455ef8d95ea2be321eab85
---   115  20260916020000_invalidation_drop_articles_path  ledger sha256:e7dae07ed4c4e6be7fa011eb3c43843831c34e49b47d8e1c75b6065bf94d52ec
---   116  20260916030000_invalidation_root_article_paths  ledger sha256:7b9fe0fe8ab205d93354ba2aa661f08ec02b0ae55a7af6a31c46e2f8619f3822
---   117  20260916040000_content_attribution_cleanup  ledger sha256:088513474cb393af2e1cb9cf52dabfac713ccc75a9cdddc0325ee3cee0bc7071
---   118  20260916050000_site_settings_tagline  ledger sha256:04c7fb6d276f31f32cfc0c615117ffa7db72e9e879addf6cad36471bc8b3fea3
---   119  20260916060000_site_settings_tagline_repair  ledger sha256:a0840de2778d006f5eba47dd24271ab51011e108a51d62cf9a98dcb4373b907c
---   120  20260917000000_fix_upt_city_lpka_kutoarjo  ledger sha256:249d27aa8ae8005cc345ce5d5012bb3330fb8d9cadf721317227bc9c6a98ae4d
---   121  20260917010000_fix_upt_city_plantungan_banjarnegara  ledger sha256:b66db0d238034df9130030716f41e0792365a304ae3196e006c11b4c7b495208
---   122  20260917020000_fix_upt_city_bapas_magelang  ledger sha256:a052e94a5c51ab785a3ca16e9f043d1ef9621e0be3e7503d4fb6037616e6fce9
---   123  20260917030000_fix_upt_city_slawi  ledger sha256:b7051605faabec496d888d89b6db53cfa29ba04bcfaaa1326a1dfcd1eed11bae
+--   114  20260916010000_article_root_urls  ledger sha256:c6e37a0eaa99dc127b741906de25c649301a18f4c15c2055162c5772bc3bb743
+--   115  20260916020000_invalidation_drop_articles_path  ledger sha256:650e82a619bde3275aee9b06d57d7977445bd2dee25c84bebaddac85856739f5
+--   116  20260916030000_invalidation_root_article_paths  ledger sha256:3a3b0cced04a9a0c0d106d8fafe724a913b6f2609b04918ac5ccab2ad734a7c8
+--   117  20260916040000_content_attribution_cleanup  ledger sha256:ad29f35ad3feb8aec9b04817b62bdfea2bfee84217865cd75f8c68acdeaabf5b
+--   118  20260916050000_site_settings_tagline  ledger sha256:833b43c56675d1c7dd730cdb599f76e3cbd77b0bbc5e548afe15bb3b16ad35b9
+--   119  20260916060000_site_settings_tagline_repair  ledger sha256:b83e53823d84240c0a6a45273978a534a6ca0ab8ac498549980c610cc657ddb7
+--   120  20260917000000_fix_upt_city_lpka_kutoarjo  ledger sha256:2b20cc2a6d2d19fe3a04dc9664363968b1ad84c0b8aad0adfa8728ffb943cdd9
+--   121  20260917010000_fix_upt_city_plantungan_banjarnegara  ledger sha256:5e19aded6f75d50e5505a134ccdfa046c65a9ec9d0d060ca367dd11380edeb79
+--   122  20260917020000_fix_upt_city_bapas_magelang  ledger sha256:db16a91355eb45515bf25c0793c630a77187a0e3b3be73ca3f6235f5a3351335
+--   123  20260917030000_fix_upt_city_slawi  ledger sha256:1972c928cb46113f41ddb96fbf243b3b2229a698239eb63fc3b2b6bc9509a024
 --   124  20260918000000_faq_canonical_13  ledger sha256:557d615cfa121741dfa1db667332fa088caf55b7521e7aafcd236ff5ee29a0a7
---   125  20260918010000_faq_category  ledger sha256:f22a45aa12055e1739064e9a160a7b4cf223fd75f42baba2c9c3233ef67b3b2d
---   126  20260918020000_publisher_attribution_short  ledger sha256:cbba982f7b67214a257c4460e577633aaa6fb479c5cb684319821353d68b88e0
---   127  20260918030000_publisher_attribution_helper  ledger sha256:e3870e0b944265cdfa7e4f489b070eb593708cf7c14183c1d6b81bf332690ab6
---   128  20260918040000_function_search_path  ledger sha256:92b89a3979a4955f8d6b711abdaa3b6abc42f5afe380628fa09ae5225807ff07
---   129  20260918050000_telegram_publish_pick_site  ledger sha256:b7ad2fb3ca7aeeffff1dfafd0c1944465f8bdaa9ef127c6072319249c96d3802
---   130  20260919010000_invoice_payment_method  ledger sha256:e89b52f05853e285fbb9a1d6b883f91928994edff92713905e05301766e09831
---   131  20260919020000_telegram_suggest_step  ledger sha256:f7c94c8795a2d6d3c3f54917194b67f6562ba53631c9a98077ea0c475fdd5da9
---   132  20260919030000_template_presets_nine  ledger sha256:690b951bc2e4ed749ca8961203a2dd0c5157a2e7b73cacee1d31f31fbf188ab3
---   133  20260919040000_telegram_identity_options  ledger sha256:e8192d2701af3ac5c1814f86becf9139bc51d77fb34f29460ba30c0133a8ba7f
---   134  20260919050000_telegram_article_edit_step  ledger sha256:68757b6a83cc1029faa7bc376a6cac2ffe200e1a33bf24744459c054d3c18c5e
---   135  20260919060000_retention_terminal_sweep  ledger sha256:88aa6858763e01f1b9987bb1d1cd741483962aa03813c5ce15e5f19717db331d
---   136  20260920030000_subscription_update_entry_point  ledger sha256:ce315b60f682d837381b5a08910ed05484d5c7811487629f0078d8c972bcdfd6
---   137  20260920040000_invoice_paid_month_single_price  ledger sha256:8039b3d3b9dadc3faae32b2b4c9ee5b7d70336eed108f13212a09a328a77423d
---   138  20260920050000_site_settings_template_fk  ledger sha256:f3cdcf931e6bcfa7e384d7133e9793c5941b61bb4e393ab6fc647de414c7501c
---   139  20260920060000_site_settings_template_fk_idx  ledger sha256:4222bd4f7d9c0293328682acf0d52f19a2d881c60c57073aad86af718a90d53e
---   140  20260920070000_invoice_unpaid  ledger sha256:5b92a475182327b1dbfc02f84f62be080c91a6d8ae9de9f4d5b8c834664efebc
---   141  20260920080000_article_tags_canonical  ledger sha256:f15e59155ae924936f42fccd5a2f6293ebc7914a9ead56e39245a89f15ba9de2
+--   125  20260918010000_faq_category  ledger sha256:5814e2c123dfde77d9c22f922da3421eb0d896876870ecabf177e6c9c9d0a779
+--   126  20260918020000_publisher_attribution_short  ledger sha256:2ec0c7d3b6ce2b98144a47e3abb160e21f29106a10a24483323d16bf59a4d108
+--   127  20260918030000_publisher_attribution_helper  ledger sha256:545b10bc32c1211bed7b9e6819a24b70cb8442853819b073c6994bfae8127dac
+--   128  20260918040000_function_search_path  ledger sha256:05545197a2c97951bd20bc268e8b157a657cd42abd4a66ba2e24499c74c577cc
+--   129  20260918050000_telegram_publish_pick_site  ledger sha256:8736bfa2f7a0c941d9818a0dc4022e26b8c515a421bfff7dbd38c496edff8138
+--   130  20260919010000_invoice_payment_method  ledger sha256:cf2e2dbeb4a9e2abd77f1b7d48e4279dacf900f05a61efca7e0fb7be2d7f1e55
+--   131  20260919020000_telegram_suggest_step  ledger sha256:95675f3992e0857487697ccb4e53777b4bb6a79d6e975818b33ed35614401ad4
+--   132  20260919030000_template_presets_nine  ledger sha256:cef650422f2387c4ef2bc71c24997ff8877a32eeb0be24a0ccd5f3fcdfc34f86
+--   133  20260919040000_telegram_identity_options  ledger sha256:31b0ced7586202d0fa98fa2e82db853c3f17378edf6a94e6d632988c9fc8d279
+--   134  20260919050000_telegram_article_edit_step  ledger sha256:e93e6645b38d6d7ff02a0382b557023fd3d8c2c87ed7c4f306ee3402726e20a1
+--   135  20260919060000_retention_terminal_sweep  ledger sha256:ebe7869a31f84cfaddf46151189edaea2fb3c8fc8f85b0d049bddd3085d43507
+--   136  20260920030000_subscription_update_entry_point  ledger sha256:4914cc4ac33d86bd9e0a65c6be54d0a763dfa8bb46f5831f541e357f78e6636a
+--   137  20260920040000_invoice_paid_month_single_price  ledger sha256:79e06983b04438bb2d18300e9ef6ddba0785ed37ab8a7926c42380bd2db55032
+--   138  20260920050000_site_settings_template_fk  ledger sha256:b2b9b99997e85d615e1996772963fd26aa9386c8bc2112b0ca7612376bd95f70
+--   139  20260920060000_site_settings_template_fk_idx  ledger sha256:968078185aabe4cc3c0899aa341eb7c1ede1c258a673593d4406c4840a6b55b1
+--   140  20260920070000_invoice_unpaid  ledger sha256:48900a963c919f47e56abfa4c86cb089bbd4f45aa3053b95e31d03133549a2ad
+--   141  20260920080000_article_tags_canonical  ledger sha256:72242173d133a9cdc1117711f7ee3fa76ebd55a128204e7284af4c56f2317b2b
 --   142  20260920090000_dashboard_metric_indexes  ledger sha256:03d1c9876901f91d99345df94b9e4444d48b5256b0210c53c88f2c5e47aa9b26
 --   143  20260920100000_publisher_logo_single_host  ledger sha256:b0776d14e863da4b48fe56209d6c8f2413f2943dfd43b9264c4dc299612cb730
 --   144  20260920110000_article_site_view_days  ledger sha256:6843dc4a2cbdf88860cad4a8a5d23dd1bdbb689fca16ccaaa54d34f16e7dd9af
 --   145  20260921120000_rls_internal_config  ledger sha256:c786ef81105ea8b3789d15426ca55bb712dc5bb51c30c3f908c08f8cba8c8363
---   146  20260921130000_invoice_amount_manual  ledger sha256:a85233831af991411fc5c88b8b9b142b0be783b51a991dec501ec36ccb369920
+--   146  20260921130000_invoice_amount_manual  ledger sha256:2b0fec797dc1953c3c3705705a0ec27fadbca52e0fbf87415bcde8793b7a25b8
 --   147  20260921140000_article_editorial_fields  ledger sha256:2881cbcdf206cbc5cf5fc9b11f3c29c2265f64b52a61c77221f4a72773bf96db
 --   148  20260922000000_article_body_json  ledger sha256:dbdd8783a227df74128cebbd173b6b02617d9a844e97c3ea9f917aa9a0d9bedb
 --   149  20260922010000_publisher_verification_evidence  ledger sha256:6ba561a9b520f7eb0253bcabd346b9471e449c376e590d06a486f1f733012fa5
@@ -177,7 +178,7 @@
 --   162  20260923155015_cascade_hierarchy  ledger sha256:2a35dc9d06af8a15c362acc4e962213e07e2bcf1a13b52b08359eeb9c309896d
 --   163  20260923170017_media_public_prefix  ledger sha256:cda647367f2caff941ca6ca1a940b563aaffeb29a95722b5dfea2f6a872c2ad9
 --   164  20260923172152_cascade_fk_covering_indexes  ledger sha256:cbb46d566bf3b67bfe6eac22f990a891b5448e2849d6da20b46c7b19631631ac
---   165  20260924010000_telegram_removal  ledger sha256:c95176ab1f761d9439c62caa97f51289e1213b7f7a2f88f4989deae9a9871531
+--   165  20260924010000_telegram_removal  ledger sha256:7fea92023b3127c11f4e634e2c13f446c2dac96c1029071d33ac04c14346343e
 --   166  20260924023027_article_site_robots_directive  ledger sha256:1f6c3a7fccc3532bc2bfcee8efadadd6a6284adba8e545b29b43809f13c7e2a8
 --   167  20260924030000_public_directory  ledger sha256:46fab2aa92bd6314226dfc41d8af84f4c55b063575b8695fd324aec654f590bb
 --   168  20260924040000_publisher_logo_r2_backfill  ledger sha256:82ab65b7d6a954ab39c7c7d5301c64ba07ec03f10212a32d7e8d67af69a86ad3
@@ -2797,9 +2798,9 @@ END
 $$;
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (14, 'migration_body_digests', 'sha256:1c63d8dc80a2f8364564e264da18055980a178d65043861ff9f4d8ed99365fc9');
+VALUES (14, 'migration_body_digests', 'sha256:14e8fa12e9c4863fed0869be0459622c80d45c4821d8b4e64a43a8420bb6971c');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('968a24224fb29a036a3fe56866ab11d6204c732243864353af18ecfa34500dcc', 1788121000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('bd1372ae63d3ba2ec84b152ba2ae3ba2e11943a157f504d58dce84e37b7ca4e6', 1788121000000);
 
 -- ----------------------------------------------------------------------
 -- 20260903011000_updated_at_integrity_guard
@@ -7908,9 +7909,9 @@ UPDATE public.indicate_schema_migrations SET checksum = 'sha256:03cae1232fe49299
 UPDATE public.indicate_schema_migrations SET checksum = 'sha256:bcabfe159c0a78ab0ae5b9b3fde8c2ffd55faa1840f761bb8b7c03e461bbbe30' WHERE version = 51;
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (52, 'billing_real_checksums', 'sha256:fefdf3bf26bf9c7fa8de15cdf77c4033a33a7d6e3fb50b3f6ccfafa8c891d059');
+VALUES (52, 'billing_real_checksums', 'sha256:4163fb7093cd2dabf7303fbce5901d2521543aedaca77a7d3ee21f25dd07fc41');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7bd6b57ba6482ca481036314feded0f96a65ed65f195ab615a7ec3e106c5e989', 1788504252403);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('221419f8825617e5e11e85b6b417c7ae1ae5da8a78c4a3971f9ed8843730aa5f', 1788504252403);
 
 -- ----------------------------------------------------------------------
 -- 20260903037500_billing_packages_plan_unique
@@ -8719,9 +8720,9 @@ UPDATE public.indicate_schema_migrations SET checksum = 'sha256:501add921dcf4a38
 UPDATE public.indicate_schema_migrations SET checksum = 'sha256:d964c9cc8b7f459386704716e48ec545cdd24772b249248ed956d4620462c2f7' WHERE version = 61 AND name = 'release_manifest_source_version';
 UPDATE public.indicate_schema_migrations SET checksum = 'sha256:90701d84dbb02442ee4b650d91dbd8fdf8226873a6bcce9a077cee3b4862bf80' WHERE version = 62 AND name = 'fix_site_settings_robots_cast';
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (72, 'historical_digest_rebaseline', 'sha256:1e7a72f184e7e9e5155da44dddf6fad1f52fffeeda24ae728f5bd01efff70b0b');
+VALUES (72, 'historical_digest_rebaseline', 'sha256:cabc135462a09382052c1e9d53b39cf9966912219107a5b98f6ea6e65aabb4ce');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e604aa8e6a85b65c247afc8189a8c29af1608c1d48c3d86fa9d32a06d4d567fe', 1788630000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('789572770b4e242c29131907584c896a966a91bc5df151ef5d51a2269b78a53f', 1788630000000);
 
 -- ----------------------------------------------------------------------
 -- 20260906004000_malformed_digest_correction
@@ -8739,9 +8740,9 @@ INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e604a
 UPDATE public.indicate_schema_migrations SET checksum = 'sha256:d0deed2abb01bd3527ddd9643a238cdbce7bdeae792b56863a3b9214efb1c44d' WHERE version = 53 AND name = 'billing_packages_plan_unique';
 UPDATE public.indicate_schema_migrations SET checksum = 'sha256:2b383ecff5460252d7e8d2e8ef3d7cf7530c933157c75ef3d7bd40703884dc0c' WHERE version = 56 AND name = 'billing_tier_ladder';
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (73, 'malformed_digest_correction', 'sha256:82951df8af4bba4c063daedf099d7d972e3a8c33c2c99c14f26b721ccb7ab954');
+VALUES (73, 'malformed_digest_correction', 'sha256:d7a787b46f1451b967e362c9da20df2bed17fe39f65dd3b9c9bff883ca74f833');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4603bd3fe900ac7c2ea647a13169d6a747eb059d6f1a6dc398c23e65862487ee', 1788631000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2fc21c0ed66c745c5776b0afe3d0c57f7a174262bb6613ea27f85fada3dab9ef', 1788631000000);
 
 -- ----------------------------------------------------------------------
 -- 20260906005000_audit_hash_chain
@@ -9327,9 +9328,9 @@ BEGIN
 END;
 $function$;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (78, 'delivery_activation_claim', 'sha256:8224ca1fcd311f4022a8469de4b3c3ac8b0b35ef4474f0b7692eb40b2dee61a4');
+VALUES (78, 'delivery_activation_claim', 'sha256:6e962d1fa360086f668b14bf31ab84cfd99b3955c8d8c03351f063ef6cfcd45d');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5930a61f1313231da8bf871b0570d8ff84b702ca55d53f2719a50e2cdb12c19c', 1788775443478);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e3abe87d563b6b985eac2b27651bc57365407ba3a1b26734b9ef397882642336', 1788775443478);
 
 -- ----------------------------------------------------------------------
 -- 20260907010000_litigation_holds
@@ -9447,9 +9448,9 @@ BEGIN
 END
 $function$;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (79, 'litigation_holds', 'sha256:5556c07d527e7dc89eae5a2b3e0174ba5be77ed5b2d65a9a19a07d4691893df1');
+VALUES (79, 'litigation_holds', 'sha256:85290402d67029252fe124837252c6c84ca2dd8e7bfbdbb5d789f3d7de2f5529');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4a1b9e655395c52a5f41fb247c8b3355a5cd82e2fa9e2ff503d591b636ae58b1', 1788777000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ef1a37aca2d95b0c6bc639b6545a9a93f5d88944365ef7f1915e170e56159203', 1788777000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907020000_org_erasure
@@ -9641,9 +9642,9 @@ END
 $function$;
 SELECT cron.schedule('indicate-org-erasure', '0 4 * * *', 'SELECT indicate_private.erasure_sweep()');
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (80, 'org_erasure', 'sha256:36c1c49eb990f3e1d53c96c12376153e3679a29b78e5f5e7c67464c9e2741808');
+VALUES (80, 'org_erasure', 'sha256:3d6ee98d2358233fe241dc89eb890f39d10263807e51cc8466ea41d2bc6e5fc8');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('57b2b7e15ce6c9f6fa641d77a66d419dd50da4df7a112de3cdcdf71610b37f51', 1788778000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a6d3e62729617d19542c8ad53eed10be3deb7eb0a59858c45f148e8ca7d150a7', 1788778000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907030000_rls_global_select_tightening
@@ -9683,9 +9684,9 @@ CREATE POLICY runtime_config_invalidation_tenant_isolation_select ON public.runt
 DROP POLICY IF EXISTS webhook_replay_tenant_isolation_select ON public.webhook_replay_claims;
 CREATE POLICY webhook_replay_tenant_isolation_select ON public.webhook_replay_claims FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()));
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (81, 'rls_global_select_tightening', 'sha256:9238a2d15b91e9887e8f4a84cee26278ee35c3ee42d07dd171faf61b9864b091');
+VALUES (81, 'rls_global_select_tightening', 'sha256:31c0f13bf02e57163eecc0812450e1bb29a5fd5ba3f5b0b567edcb75bd5b3035');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('eef950f979b7f94c7e2960a09600f8c8d132dc3890a80ba73dfd02bdd8346bda', 1788779000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('d4037fb238baa185496aec27d92f1f732c0632a928a3613f6551a64af23aa706', 1788779000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907040000_function_grants_repair
@@ -9716,9 +9717,9 @@ GRANT EXECUTE ON FUNCTION indicate_private.erasure_request_list(uuid) TO indicat
 REVOKE ALL ON FUNCTION indicate_private.audit_worm_fetch(timestamptz, timestamptz, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.audit_worm_fetch(timestamptz, timestamptz, text) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (82, 'function_grants_repair', 'sha256:0a309d26b79151a2697869f89de31d82fcf32056aebf350898a264c38b780c1f');
+VALUES (82, 'function_grants_repair', 'sha256:49024f474c4714e32ba670fa4f51f3e56842f65eb5ae2d73544fdb7218079efb');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('9ef1be218107d9be43339825e6759089399c61891c65d2f83782657ee60b05d9', 1788780000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('d0df3ace45ebc7b8ccc82ea93041ffd03c48ab8c82e9065993e981df5c1ef60e', 1788780000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907050000_telegram_outbox
@@ -9835,9 +9836,9 @@ GRANT EXECUTE ON FUNCTION indicate_private.outbox_ack(uuid, boolean, integer, te
 REVOKE ALL ON FUNCTION indicate_private.outbox_broadcast_targets(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.outbox_broadcast_targets(uuid) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (83, 'telegram_outbox', 'sha256:9202019251aac5d50fcd943ab37072cc5e4f94c53f9d9e8055281608b0355bf8');
+VALUES (83, 'telegram_outbox', 'sha256:5c62e9115bcec1a29af50e0437b567e68370bad42d282ee6cdf2a692cdf442d8');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7c4b646650088954612cd6a01fa623c5e9349bfb571d9aa34a3bcd2356effa1e', 1788781000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('17b9a49a75b7f51e55f3731106b354eb21f80fb919167da17e1618cc1970b5d6', 1788781000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907060000_lead_consent
@@ -9882,9 +9883,9 @@ $function$;
 REVOKE ALL ON FUNCTION indicate_private.billing_lead_create(text, text, text, timestamptz, text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.billing_lead_create(text, text, text, timestamptz, text, text) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (84, 'lead_consent', 'sha256:cbc059697c94ba7dbaccfb7ae03d1331193de18903a87a7bc0210d434083a060');
+VALUES (84, 'lead_consent', 'sha256:5aa97e5d57d19ec1fbb9c4e606018369fc832af3ff9a6c79023fa373ebb9e768');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5b34f645a608638a10d77852284daead5369d445ff5472a978bff5db8ee6cb86', 1788782000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6ae3bf8a99638159a0f2d19335a6f938713028e1e599bec5cd5b4ace2e752aef', 1788782000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907080000_function_only_policies
@@ -9899,9 +9900,9 @@ CREATE POLICY litigation_holds_function_only ON public.litigation_holds FOR ALL 
 CREATE POLICY org_erasure_requests_function_only ON public.org_erasure_requests FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);
 CREATE POLICY telegram_outbox_function_only ON public.telegram_outbox FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (85, 'function_only_policies', 'sha256:9b15cbca7b133758831bd739e09b017674976d56f5877981398ab0aae2e1e1a1');
+VALUES (85, 'function_only_policies', 'sha256:105b04e2857575d1ef23799ec391f34f5bb7c38e2bbc0d9d5b016ffef63e3579');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2bab06cdc9f2a5d02bb2bd88ee4ee0c189d0e231d6ab4106dc78248e4d0ec4a6', 1788783000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('63f375b72422464c1098097399fb8492c6de0bb02ba44630e6f01255b3705f70', 1788783000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907090000_worm_export_proof
@@ -9929,9 +9930,9 @@ $function$;
 REVOKE ALL ON FUNCTION indicate_private.worm_export_proof(text, integer, timestamptz) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.worm_export_proof(text, integer, timestamptz) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (86, 'worm_export_proof', 'sha256:a9d8295b9cfa43811268a74c2055ae86bae4e23f991afd9c2911f6f396b3892b');
+VALUES (86, 'worm_export_proof', 'sha256:3cc243e3c7d2ec9121d76e0ee2d5c3026247922057692e249dcd77518f0bbf4e');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e39fbc068a47ee9681de3fd4d0dc1d3ced101f7ee28a66df9dcb9d2d938b5be5', 1788784000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('8f84d8ba56efba611e6cf918935a6da8b9ff814be72ade69bad88f24be695811', 1788784000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907100000_delivery_previous_host_owned
@@ -9959,9 +9960,9 @@ $function$;
 REVOKE ALL ON FUNCTION indicate_private.is_delivery_previous_host_owned(uuid, uuid, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.is_delivery_previous_host_owned(uuid, uuid, text) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (87, 'delivery_previous_host_owned', 'sha256:ec262e41300964c5b35a90452df2168982cfca6ae402d2c544d9a6dde5190129');
+VALUES (87, 'delivery_previous_host_owned', 'sha256:90994cf056f406b87dbfd63643e7db00697fefe9aa389c89d6ed87118ab22a8b');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6b0d16b60cf393663fa21911ed40832abbd0e25038ab6a6909dc96cfe72e646d', 1788785000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('bd3cbc6dfda242fc258b51bd236ec8e183bd17bbbb9a9a71eca4807a1b76a2e8', 1788785000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907110000_ops_visibility
@@ -10013,9 +10014,9 @@ GRANT EXECUTE ON FUNCTION indicate_private.retention_list(uuid, uuid) TO indicat
 REVOKE ALL ON FUNCTION indicate_private.outbox_list_platform(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.outbox_list_platform(uuid) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (88, 'ops_visibility', 'sha256:414877ce74e48efc153bed150a99085cc440216b2cf4ce000dc0ae11301ab39e');
+VALUES (88, 'ops_visibility', 'sha256:aae9ca585f3d24bef359020c13dda9e1deefb3a6d36c6832a27512ab535158a2');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('9f0190f034aa3fd4e9e67de2ccf416b23019cecdf252fe47d0272851d949c6ab', 1788786000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6c321347b66ee60edea65d71b3e5f328c0621962312641b073f4aab21b747bb4', 1788786000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907120000_invoice_list
@@ -10051,9 +10052,9 @@ $function$;
 REVOKE ALL ON FUNCTION indicate_private.invoice_list(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.invoice_list(uuid) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (89, 'invoice_list', 'sha256:344c13557d670084a5a12e96264feed4ec46be188c84735db73282a2d94c5859');
+VALUES (89, 'invoice_list', 'sha256:9dbae350cda0c97ca5448b42965beae9b50f925dc72bcf96fd42f759ae99b029');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('eab0fb0ff02350f5c5b234035144f8e14fe9e5c4db61a298232f1375399becd0', 1788787000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('cb9c56175d3ea6d59f71e3a12629976bc9b09fad5af699cfccbaa9b6234e076e', 1788787000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907130000_ops_fk_covering_indexes
@@ -10065,9 +10066,9 @@ INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('eab0f
 CREATE INDEX IF NOT EXISTS org_erasure_requests_organization_idx ON public.org_erasure_requests USING btree (organization_id);
 CREATE INDEX IF NOT EXISTS telegram_outbox_organization_idx ON public.telegram_outbox USING btree (organization_id);
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (90, 'ops_fk_covering_indexes', 'sha256:beae2c320d9da542ac57d6d5ff2cf5598895acc17debeab8f07662f91d8ed6ca');
+VALUES (90, 'ops_fk_covering_indexes', 'sha256:48163e00653ecc84984b636052ba6e281be4819503186c1f7223b8baa416cfb3');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a9e99e8725de43325befe61a4b94d21063be8baf58d75a8b6adef0a74ed7055f', 1788788000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('097cf4bbfe70d2ae7d12089a810faf58bf4af7b36617258655442f56f4b5f148', 1788788000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907140000_article_site_view_counts
@@ -10082,9 +10083,9 @@ ALTER TABLE public.article_sites
   ADD COLUMN IF NOT EXISTS view_count integer NOT NULL DEFAULT 0 CHECK (view_count >= 0),
   ADD COLUMN IF NOT EXISTS custom_view_count integer NOT NULL DEFAULT 0 CHECK (custom_view_count >= 0);
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (91, 'article_site_view_counts', 'sha256:f8a32ade33af9cc3e49c01d64e261b1d1635a9d321946f2536e7fa83b5dfc456');
+VALUES (91, 'article_site_view_counts', 'sha256:ea741341b4d12e681ccd26a99ac5a904793b22ab73a5150211a39666acaab412');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('30ccbebf959a89aeef8d7ccadc872895a90e62b4387a2d376086fc2e742f40e8', 1788789000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e44b0b0b9697e4858706447ad117eae838cca82d75ac793a64682a8a6b25a9cd', 1788789000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907150000_article_tags
@@ -10095,9 +10096,9 @@ ALTER TABLE public.articles
   ADD COLUMN IF NOT EXISTS tags text[] NOT NULL DEFAULT ARRAY[]::text[];
 CREATE INDEX IF NOT EXISTS articles_tags_gin_idx ON public.articles USING gin (tags);
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (92, 'article_tags', 'sha256:9bceec37ddec044e6961419fffa37def005d45e6fff5f762a8c9130a8284903d');
+VALUES (92, 'article_tags', 'sha256:150027a34dc697d78713c819653c6d0ed51779d5eb84eb3bebffb8e5e5791961');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('95e29c7703dd24b8081850223ad2e76bad347e58b1da3c52d8cfecafe4cfa2d2', 1788790000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('86508a551ed1ac62ba30328e6fe5fd7019451c999a7a0e7a872bba4aefc60619', 1788790000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907160000_merge_view_counts
@@ -10110,9 +10111,9 @@ INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('95e29
 -- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
 ALTER TABLE public.article_sites DROP COLUMN IF EXISTS custom_view_count;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (93, 'merge_view_counts', 'sha256:f39d872a28b766d00cd24954bbd1926d23b95bfb8c3c3642b5726741a32c1af6');
+VALUES (93, 'merge_view_counts', 'sha256:ba58c7da71036cd44d72e10021c6c7ba1ace540f25f95fe3bc42c41db40a7ce3');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4577d7045f8bd1a22478c3390d3ecd6453998d18ff9a4a4c3df0c517bec190de', 1788791000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('203e8e6fa21a437d1f4fa547db9e83ad9c98e5e186bf74037c02293c18d6ebd1', 1788791000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907170000_seed_upt_jateng_59org
@@ -10855,9 +10856,9 @@ GRANT EXECUTE ON FUNCTION indicate_private.invite_revoke(uuid, text, uuid, times
 REVOKE ALL ON FUNCTION indicate_private.outbox_list(uuid, uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.outbox_list(uuid, uuid) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (103, 'invite_visibility', 'sha256:4a28307e987a696d366c49060d6b971459c8a9bcc165550038e8589f07cdd716');
+VALUES (103, 'invite_visibility', 'sha256:1ed7171c032fbb054a7ae5c149cfa0523581b4c207bb4e3f0a8d92b3d3bf60a4');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('dd823700429f94990a4ccd3e543c735602cfbb043d9c6e7d18fc38cdeb1d0a19', 1788900000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('242cf0b7a352077076324e42803c39f1689307a56c497634cef75adfb340aebb', 1788900000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907270000_fix_site_settings_guard_return
@@ -10891,9 +10892,9 @@ BEGIN
 END
 $$;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (104, 'fix_site_settings_guard_return', 'sha256:1f798db5acb1e6a468e3bacadd78a5cefa236b05fe2f8d6ce9fbc2597a2484a6');
+VALUES (104, 'fix_site_settings_guard_return', 'sha256:5bd9ad641e0f2207eda734534d90158c68a4ec12bd445dd55790ce971b82e9bf');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('87b58751c14844cfaf6617ed617fe08864a86287fc12e9b0e5e89f306b8b35fe', 1788900000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('70f6cf01e84f162403e9fa5669ed684fd2eed49997bc7629b2082adf41163642', 1788900000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907280000_discover_hosts_add_versions
@@ -10945,9 +10946,9 @@ $function$;
 REVOKE ALL ON FUNCTION indicate_private.discover_release_active_hosts(text[]) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.discover_release_active_hosts(text[]) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (105, 'discover_hosts_add_versions', 'sha256:27ef80fdb997568a9fd81c958db76259384c1cace6d5e7970c1e2b08ac010927');
+VALUES (105, 'discover_hosts_add_versions', 'sha256:5d3c1c20e75b04acba3f662ad774af985ac4c06237b54a601c257f917ec47df7');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('afe5d5ae1390c3f115910c25e981dd622cb9f7e55a013fc6a34265bf4075a0b1', 1788900000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('170ddb6e63338a779425243624aa082245913fb5cffd71c44452beed89744a9e', 1788900000000);
 
 -- ----------------------------------------------------------------------
 -- 20260907290000_organizations_kind
@@ -10964,9 +10965,9 @@ ALTER TABLE public.organizations ADD CONSTRAINT organizations_kind_check CHECK (
 CREATE INDEX IF NOT EXISTS organizations_kind_idx ON public.organizations USING btree (kind);
 UPDATE public.organizations SET kind = 'operator' WHERE slug IN ('fakta01', 'indicate-platform');
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (106, 'organizations_kind', 'sha256:d04d655981dfddc3b21e9453ea7ee9fd7c810053ac924013aee09ecedd23f602');
+VALUES (106, 'organizations_kind', 'sha256:64847b4aeee1e22039c737665f55baf847f74726b0061c5b9fe61ada38a22e7f');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('1cf29d796e80440c29c0e54bb777865a9926b574f591504d87571061ef3aa3a4', 1788900000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('1f0b65ba390247695ae013326edac55a51c9aa09b30a8eb7539abadfccbd20b9', 1788900000000);
 
 -- ----------------------------------------------------------------------
 -- 20260914020000_template_preset_clean_blue
@@ -10975,18 +10976,18 @@ INSERT INTO public.template_presets (id, name, description, category) VALUES
   ('clean-blue', 'Clean Blue Editorial', 'Layout editorial terang: ticker terkini, hero 2-kolom, kartu pilihan, dan panel newsletter.', 'news')
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, category = EXCLUDED.category, updated_at = now();
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (107, 'template_preset_clean_blue', 'sha256:73e40efa094ed2089c84460be27ffd955b8f0430f4ff7a3c31ed26de9d821149');
+VALUES (107, 'template_preset_clean_blue', 'sha256:2ddd4a09cffb87d60f2886d80bf124b5d1d23a56ac148c8da18c451a3e91e5cf');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('537f1dbd9d7d4bf251888ba1e4da1103c6affb86865b13d98e576027493a5c32', 1789470865962);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('13c06a9f2bd54fe9db66ef90548550404a18c22cb02f76496256cd10e4eb244f', 1789470865962);
 
 -- ----------------------------------------------------------------------
 -- 20260914030000_articles_cover_image_url
 -- ----------------------------------------------------------------------
 ALTER TABLE public.articles ADD COLUMN IF NOT EXISTS cover_image_url text;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (108, 'articles_cover_image_url', 'sha256:00dcad3c254637e41f1a0482311232cdfaa857ba039be2dae8f8afa91d1fcff6');
+VALUES (108, 'articles_cover_image_url', 'sha256:3ac9767fb219c6d05bbb982a7c3e02d6cd18aa13c35a36df2baebd8492aeb61b');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4b4be4b5400c1473969d7c060bbf88be15dfd33d211bbc02eb9b4f38dbf923b6', 1789470866962);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('0fa96f4171f416ca828b45a27e615ab4bfc669b0334db7b2fcaf75b3369f955b', 1789470866962);
 
 -- ----------------------------------------------------------------------
 -- 20260914040000_single_template_clean_blue
@@ -11003,9 +11004,9 @@ UPDATE public.site_settings SET colors = ((colors - 'presetId' - 'primary' - 'ac
 DELETE FROM public.template_presets WHERE id <> 'clean-blue';
 DROP TABLE IF EXISTS public.color_presets;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (109, 'single_template_clean_blue', 'sha256:e5b588799cf4a27f19c5cfcd7731e775eaef4fc423989e26e548c8cb75f5ced5');
+VALUES (109, 'single_template_clean_blue', 'sha256:98c8a18f830ca37e646deb67553d8b3fa7abe15a71c0da916f4ca026e1895138');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('16ce003f1b2624fa78dff1463b31ac701895ec02fe4c1735011b63f5374e5c0a', 1789470867962);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('bfd5dfe5b0ea07e9e72ff50c72061a49fc3e28b6e7ec9a2dbe53755a6249cd77', 1789470867962);
 
 -- ----------------------------------------------------------------------
 -- 20260915000000_seo_metadata_hardening
@@ -11085,9 +11086,9 @@ WHERE ras.organization_id = a.organization_id
     || COALESCE(' (' || NULLIF(btrim(p.contacts ->> 'city'), '') || ')', '')
   ) BETWEEN 50 AND 500;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (110, 'seo_metadata_hardening', 'sha256:d833c30c72734f1520eeb5acf0c3f1ba00680d7f60bf0a50270ec58df11f2c94');
+VALUES (110, 'seo_metadata_hardening', 'sha256:eb142ad3de40e2c39a474e113fa51d22c3f672345907acd36160d6740d7069d4');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('33702d7fb317a932c060423fffeaeeaf3a68155eb4c51e147e6783c3d1d6cb01', 1789470868962);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2dcd95dcde29bcb90a75e10e048ad728ffc1c8435522e082786ddb99a38fc236', 1789470868962);
 
 -- ----------------------------------------------------------------------
 -- 20260915010000_invoices_created_by_covering_index
@@ -11096,9 +11097,9 @@ INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('33702
 -- Mempercepat join ke users serta SET NULL saat user dihapus.
 CREATE INDEX IF NOT EXISTS invoices_created_by_idx ON public.invoices USING btree (created_by);
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (111, 'invoices_created_by_covering_index', 'sha256:49660d2c16c090179637f6d66154f6716b27d5414377e0fd40801d4a76e259b0');
+VALUES (111, 'invoices_created_by_covering_index', 'sha256:3ed1aa3686f7d423ce1bff07544b1bea7d0dc19787d599a08b107dbdbcf1226c');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('995168799f377bff817043b7757a7161741d92fea327253c57fd6aa11d05c0f1', 1789470869962);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6b5a30107f6294883a3450f5836194a8bef88533fc61dfcc828b69a05e2bec7b', 1789470869962);
 
 -- ----------------------------------------------------------------------
 -- 20260915020000_media_policy_allow_ico
@@ -11129,9 +11130,9 @@ INSERT INTO public.runtime_config_invalidation_intents (id, runtime_revision, en
 SELECT gen_random_uuid(), rev.version, (SELECT environment FROM env), 'policy'::public.invalidation_partition_kind, 'pending', 0, now()
 FROM rev;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (112, 'media_policy_allow_ico', 'sha256:a4897962bbcd7ec7e4c66c0bcc4f06a02c8a26e53bf3f72f29055f8e091b81b7');
+VALUES (112, 'media_policy_allow_ico', 'sha256:d6520eb28c0b07967905e7ef2b36acd560645e690bf006cfcd584815ead1ff56');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('38ecc2cee63b8ffb3034d85e1b67506941d9a9418fbdc06048556838bceb55ed', 1789470870962);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b4365793555de47395e261c85ae8f85d984a726fdfdfa6c6e73b2ae9ffe746eb', 1789470870962);
 
 -- ----------------------------------------------------------------------
 -- 20260916000000_region_locked_memberships
@@ -11330,9 +11331,9 @@ UPDATE public.article_sites
 SET published_url = regexp_replace(published_url, '/articles/', '/'), updated_at = now()
 WHERE published_url LIKE '%/articles/%';
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (114, 'article_root_urls', 'sha256:6d4cca5d246408de829601ba01845d3c4ce801c4b05b8a7d4e22d37a817eeb4e');
+VALUES (114, 'article_root_urls', 'sha256:b3171d2459e0eba194626be04667da52fa8f91e8f3512fe1914fd0cf915a8ba1');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('675a780cf8f2e72d8b42731ca6d3cfc5f02e70dfc1455ef8d95ea2be321eab85', 1789502290201);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c6e37a0eaa99dc127b741906de25c649301a18f4c15c2055162c5772bc3bb743', 1789502290201);
 
 -- ----------------------------------------------------------------------
 -- 20260916020000_invalidation_drop_articles_path
@@ -11347,9 +11348,9 @@ SET paths = array_remove(paths, '/articles'),
 WHERE status = 'pending'
   AND (paths @> ARRAY['/articles'] OR EXISTS (SELECT 1 FROM unnest(urls) AS u WHERE u LIKE '%/articles'));
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (115, 'invalidation_drop_articles_path', 'sha256:7e229d07a4e666b249b02ff9c4ec3ba66a3a09a15ab1f9971a633d8079d92062');
+VALUES (115, 'invalidation_drop_articles_path', 'sha256:fd4b045ea1ac8db2a78e7fde60139ab96529a146a4ea3a335653613744de86d5');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e7dae07ed4c4e6be7fa011eb3c43843831c34e49b47d8e1c75b6065bf94d52ec', 1789529104771);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('650e82a619bde3275aee9b06d57d7977445bd2dee25c84bebaddac85856739f5', 1789529104771);
 
 -- ----------------------------------------------------------------------
 -- 20260916030000_invalidation_root_article_paths
@@ -11364,9 +11365,9 @@ SET paths = (SELECT coalesce(array_agg(regexp_replace(p, '/articles/', '/') ORDE
 WHERE status = 'pending'
   AND (EXISTS (SELECT 1 FROM unnest(paths) AS p WHERE p LIKE '%/articles/%') OR EXISTS (SELECT 1 FROM unnest(urls) AS u WHERE u LIKE '%/articles/%'));
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (116, 'invalidation_root_article_paths', 'sha256:e64fb971b0be9ea2a600b6d856baa77118b0edd02374ff0bc85cf2034e82574d');
+VALUES (116, 'invalidation_root_article_paths', 'sha256:bab2074239b3ccca3247b72c66e0ed90af9cbf682279bf1fe468cd11e1961bea');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7b9fe0fe8ab205d93354ba2aa661f08ec02b0ae55a7af6a31c46e2f8619f3822', 1789529191150);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('3a3b0cced04a9a0c0d106d8fafe724a913b6f2609b04918ac5ccab2ad734a7c8', 1789529191150);
 
 -- ----------------------------------------------------------------------
 -- 20260916040000_content_attribution_cleanup
@@ -11387,9 +11388,9 @@ UPDATE public.media_showcase
 SET name = 'Cendekia Post', updated_at = now()
 WHERE id = '00000000-0000-4000-8000-000000007027' AND name = 'Arcadia News';
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (117, 'content_attribution_cleanup', 'sha256:bb43add4ffa8c5dd9be068b57293399423a4c32689e77291ae52f7c48b0ec089');
+VALUES (117, 'content_attribution_cleanup', 'sha256:1b2544a928a03a7887c68edefb34a6849d2756d676553fb9054027bb23a385fb');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('088513474cb393af2e1cb9cf52dabfac713ccc75a9cdddc0325ee3cee0bc7071', 1789539165999);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ad29f35ad3feb8aec9b04817b62bdfea2bfee84217865cd75f8c68acdeaabf5b', 1789539165999);
 
 -- ----------------------------------------------------------------------
 -- 20260916050000_site_settings_tagline
@@ -11398,9 +11399,9 @@ INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('08851
 -- Expand (nullable); baca fallback ke deskripsi bila NULL; backfill data terpisah.
 ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS "tagline" text;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (118, 'site_settings_tagline', 'sha256:6af1a02e9b5dfbbab5f2ccd6802fc4133a055e3e868918094b8b7b9639708c52');
+VALUES (118, 'site_settings_tagline', 'sha256:2ba1af0056cc1d0ddf87e291f4ae4443257e216a234b19628770d931fea5a2ff');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('04c7fb6d276f31f32cfc0c615117ffa7db72e9e879addf6cad36471bc8b3fea3', 1789553499234);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('833b43c56675d1c7dd730cdb599f76e3cbd77b0bbc5e548afe15bb3b16ad35b9', 1789553499234);
 
 -- ----------------------------------------------------------------------
 -- 20260916060000_site_settings_tagline_repair
@@ -11420,9 +11421,9 @@ UPDATE public.site_settings SET seo_default_title = 'WartaKini7 Wonosobo — Bud
 UPDATE public.site_settings SET seo_default_title = 'WawasanNusa Wonosobo — Gagasan Jernih Wonosobo.', tagline = 'Gagasan Jernih Wonosobo.', updated_at = now() WHERE organization_id = '7e27727d-b59f-4d24-998e-1bee6eeb3fa0' AND site_id = '52899b6f-b552-41c2-a4dc-ee7c49c18f8e' AND (seo_default_title IS NULL OR tagline IS NULL);
 ALTER TABLE public.site_settings ENABLE TRIGGER site_settings_active_site_guard;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (119, 'site_settings_tagline_repair', 'sha256:9d00e8b8b5c3da82d282cc57531ea02ec17f732a2518d48c9659a7f5de00846c');
+VALUES (119, 'site_settings_tagline_repair', 'sha256:1e2dc9e3706f9eb6d40cd17c76f7f743a076ccfea1e4ad716daff58c781f9efb');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a0840de2778d006f5eba47dd24271ab51011e108a51d62cf9a98dcb4373b907c', 1789553647269);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b83e53823d84240c0a6a45273978a534a6ca0ab8ac498549980c610cc657ddb7', 1789553647269);
 
 -- ----------------------------------------------------------------------
 -- 20260917000000_fix_upt_city_lpka_kutoarjo
@@ -11445,9 +11446,9 @@ WHERE o.slug = 'lpka-kelas-i-kutoarjo'
   AND p.organization_id = o.id
   AND p.contacts->>'city' = 'Jawa Tengah';
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (120, 'fix_upt_city_lpka_kutoarjo', 'sha256:3360800ed0b015ca9e58af0f60d91207dcf91856acfbdbc8de16a9d2165c3402');
+VALUES (120, 'fix_upt_city_lpka_kutoarjo', 'sha256:163485bfa218958d2ffa720ee345c2977c21be6daafda65c372fc75de306814f');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('249d27aa8ae8005cc345ce5d5012bb3330fb8d9cadf721317227bc9c6a98ae4d', 1789621023666);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2b20cc2a6d2d19fe3a04dc9664363968b1ad84c0b8aad0adfa8728ffb943cdd9', 1789621023666);
 
 -- ----------------------------------------------------------------------
 -- 20260917010000_fix_upt_city_plantungan_banjarnegara
@@ -11483,9 +11484,9 @@ WHERE o.slug = 'rutan-kelas-ii-b-banjarnegara'
   AND p.organization_id = o.id
   AND p.contacts->>'city' = 'Jawa Tengah';
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (121, 'fix_upt_city_plantungan_banjarnegara', 'sha256:49ed7408668f315049085976fc1544f7a76f2174694a0456e1cb59bae198a364');
+VALUES (121, 'fix_upt_city_plantungan_banjarnegara', 'sha256:43875c2b14c95dc073210e39f3ddc7613fb83668c94c7f7e3f3721da9b493d80');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b66db0d238034df9130030716f41e0792365a304ae3196e006c11b4c7b495208', 1789621118158);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5e19aded6f75d50e5505a134ccdfa046c65a9ec9d0d060ca367dd11380edeb79', 1789621118158);
 
 -- ----------------------------------------------------------------------
 -- 20260917020000_fix_upt_city_bapas_magelang
@@ -11509,9 +11510,9 @@ WHERE o.slug = 'bapas-kelas-ii-magelang'
   AND p.organization_id = o.id
   AND p.contacts->>'city' = 'Kota Magelang';
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (122, 'fix_upt_city_bapas_magelang', 'sha256:4d446d44c6de7e3a6c96c6a6d1a31bf2e6d158da3ff3e0af8c5b58d2db698a6d');
+VALUES (122, 'fix_upt_city_bapas_magelang', 'sha256:dad401186a32fb12140e2b3610c1a228b0d76c0c5088417512249c27ccf3efb4');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a052e94a5c51ab785a3ca16e9f043d1ef9621e0be3e7503d4fb6037616e6fce9', 1789621185254);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('db16a91355eb45515bf25c0793c630a77187a0e3b3be73ca3f6235f5a3351335', 1789621185254);
 
 -- ----------------------------------------------------------------------
 -- 20260917030000_fix_upt_city_slawi
@@ -11534,9 +11535,9 @@ WHERE o.slug = 'lapas-kelas-ii-b-slawi'
   AND p.organization_id = o.id
   AND p.contacts->>'city' = 'Kota Tegal';
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (123, 'fix_upt_city_slawi', 'sha256:368630527513803ac6f978f9affac3f6af0a6bfe6207cc84a1c94b7560a1fdc8');
+VALUES (123, 'fix_upt_city_slawi', 'sha256:a127c0e2b53bef7d4ea23f7f631c3b93b3f4ec915bf5341fe65693dcc67bf144');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b7051605faabec496d888d89b6db53cfa29ba04bcfaaa1326a1dfcd1eed11bae', 1789621262751);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('1972c928cb46113f41ddb96fbf243b3b2229a698239eb63fc3b2b6bc9509a024', 1789621262751);
 
 -- ----------------------------------------------------------------------
 -- 20260918000000_faq_canonical_13
@@ -11587,9 +11588,9 @@ UPDATE public.faqs SET category = 'Keamanan Data' WHERE id = 'b1d4b620-5724-40d5
 UPDATE public.faqs SET category = 'Migrasi' WHERE id = '1de04400-5846-4d71-a6e4-b66668c3fc76';
 UPDATE public.faqs SET category = 'Bantuan' WHERE id IN ('d849d3fe-c818-469d-bc54-10aa1b8dd235', '7e9f1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b');
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (125, 'faq_category', 'sha256:2b23e29c0fd17a13e0940e7156632f27c6a992c8e9deddb97598bc125b3c7a65');
+VALUES (125, 'faq_category', 'sha256:483e2040159bd5890f323f2209c54ad8e69b0771b313a5c11c5807d2049317dc');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f22a45aa12055e1739064e9a160a7b4cf223fd75f42baba2c9c3233ef67b3b2d', 1789734433960);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5814e2c123dfde77d9c22f922da3421eb0d896876870ecabf177e6c9c9d0a779', 1789734433960);
 
 -- ----------------------------------------------------------------------
 -- 20260918020000_publisher_attribution_short
@@ -11625,9 +11626,9 @@ WHERE name ~ ' KELAS (I|II) '
     || ' '
     || replace(initcap(regexp_replace(name, '^.* KELAS (I|II) ', '')), 'Lpka', 'LPKA');
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (126, 'publisher_attribution_short', 'sha256:dc991100643411a0d1ae3d1cab6f6d9c0a646214e9c00c3622303b2cea64d523');
+VALUES (126, 'publisher_attribution_short', 'sha256:78dfb65bf197da43fe3ebc16cc2f85251bea0e983942d87fee736c5ff18a9df5');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('cbba982f7b67214a257c4460e577633aaa6fb479c5cb684319821353d68b88e0', 1789735675398);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2ec0c7d3b6ce2b98144a47e3abb160e21f29106a10a24483323d16bf59a4d108', 1789735675398);
 
 -- ----------------------------------------------------------------------
 -- 20260918030000_publisher_attribution_helper
@@ -11645,9 +11646,9 @@ IMMUTABLE
 RETURN 'Humas ' || replace(initcap(regexp_replace(official_name, '\sKELAS\s+[IVX]+(\s+[A-Z](?=\s))?', '', 'g')), 'Lpka', 'LPKA');
 GRANT EXECUTE ON FUNCTION indicate_private.short_attribution_label(text) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (127, 'publisher_attribution_helper', 'sha256:62054eee4e7b9c58ecb424c6eeb5162d64a48f5487c9b6597ab378ea02dc290c');
+VALUES (127, 'publisher_attribution_helper', 'sha256:97f0c9c59803a4620ab07b584eb39870f7ea45f1894d2ee97db03f9fe45be4bb');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e3870e0b944265cdfa7e4f489b070eb593708cf7c14183c1d6b81bf332690ab6', 1789736068044);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('545b10bc32c1211bed7b9e6819a24b70cb8442853819b073c6994bfae8127dac', 1789736068044);
 
 -- ----------------------------------------------------------------------
 -- 20260918040000_function_search_path
@@ -11659,9 +11660,9 @@ INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e3870
 -- sebelum baris INSERT.
 ALTER FUNCTION indicate_private.short_attribution_label(text) SET search_path = pg_catalog, public, indicate_private;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (128, 'function_search_path', 'sha256:2d61210529f201fbcafb264b2a34654f215505b7884a0cb839d62202eb562844');
+VALUES (128, 'function_search_path', 'sha256:6e2ce89c95f589b7255cf36e2861580c39ada0b8f63a851496da32fc3964906d');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('92b89a3979a4955f8d6b711abdaa3b6abc42f5afe380628fa09ae5225807ff07', 1789736363176);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('05545197a2c97951bd20bc268e8b157a657cd42abd4a66ba2e24499c74c577cc', 1789736363176);
 
 -- ----------------------------------------------------------------------
 -- 20260918050000_telegram_publish_pick_site
@@ -11671,9 +11672,9 @@ INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('92b89
 -- sebelum baris INSERT.
 ALTER TYPE "public"."telegram_conversation_step" ADD VALUE IF NOT EXISTS 'publish_pick_site';
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (129, 'telegram_publish_pick_site', 'sha256:b3c9dcbb60ef2f4a32180d2ada330294ff70a570fea01342020e6b2e41898fbd');
+VALUES (129, 'telegram_publish_pick_site', 'sha256:9ed140e6997f32fc27d0fc2828e10bd8e466213ea8d6a0fe75367970a8dcf99b');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b7ad2fb3ca7aeeffff1dfafd0c1944465f8bdaa9ef127c6072319249c96d3802', 1789743743127);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('8736bfa2f7a0c941d9818a0dc4022e26b8c515a421bfff7dbd38c496edff8138', 1789743743127);
 
 -- ----------------------------------------------------------------------
 -- 20260919010000_invoice_payment_method
@@ -11738,9 +11739,9 @@ $function$;
 REVOKE ALL ON FUNCTION indicate_private.invoice_list_for_org(uuid, uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.invoice_list_for_org(uuid, uuid) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (130, 'invoice_payment_method', 'sha256:c6760485915fe0cd5645aa40afa37a8db3b9fbb3c244d58329965176c779840a');
+VALUES (130, 'invoice_payment_method', 'sha256:2a246e3d44f6c55da6c92aa5bbd131182d7e851f2b67240e35b2f8e7277c4be3');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e89b52f05853e285fbb9a1d6b883f91928994edff92713905e05301766e09831', 1789759012791);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('cf2e2dbeb4a9e2abd77f1b7d48e4279dacf900f05a61efca7e0fb7be2d7f1e55', 1789759012791);
 
 -- ----------------------------------------------------------------------
 -- 20260919020000_telegram_suggest_step
@@ -11750,9 +11751,9 @@ INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e89b5
 -- sebelum baris INSERT.
 ALTER TYPE "public"."telegram_conversation_step" ADD VALUE IF NOT EXISTS 'suggest_sites';
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (131, 'telegram_suggest_step', 'sha256:3ecf7b5f24876b5bd5b2524f8ae9fbf7b7036759be6ef9a4539d2c757868ae53');
+VALUES (131, 'telegram_suggest_step', 'sha256:15d16f8a5665dbfee39206939f0b06aa1364c448113c0ad07456bf0f914f9551');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f7c94c8795a2d6d3c3f54917194b67f6562ba53631c9a98077ea0c475fdd5da9', 1789761092778);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('95675f3992e0857487697ccb4e53777b4bb6a79d6e975818b33ed35614401ad4', 1789761092778);
 
 -- ----------------------------------------------------------------------
 -- 20260919030000_template_presets_nine
@@ -11770,9 +11771,9 @@ INSERT INTO public.template_presets (id, name, description, category) VALUES
   ('warm-editorial', 'Warm Editorial', 'Terakota hangat serif: hero split krem, kartu 3 kolom, quote senja.', 'editorial')
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, category = EXCLUDED.category, updated_at = now();
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (132, 'template_presets_nine', 'sha256:0d9d950fcfb63f2c576bcd0a081e3001b7e71fb63aa2c70e599e103ecea12116');
+VALUES (132, 'template_presets_nine', 'sha256:02fff43989237f780b88653a1d50ae81623fcce2f8d09229e47bbe8756ead35b');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('690b951bc2e4ed749ca8961203a2dd0c5157a2e7b73cacee1d31f31fbf188ab3', 1789762092778);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('cef650422f2387c4ef2bc71c24997ff8877a32eeb0be24a0ccd5f3fcdfc34f86', 1789762092778);
 
 -- ----------------------------------------------------------------------
 -- 20260919040000_telegram_identity_options
@@ -11803,9 +11804,9 @@ $function$;
 REVOKE ALL ON FUNCTION indicate_private.list_telegram_identities(text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.list_telegram_identities(text, text) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (133, 'telegram_identity_options', 'sha256:39fd5403801ce886b3f469c08bdd960fccc4bfcb1b19e41253625e1d6ae66a14');
+VALUES (133, 'telegram_identity_options', 'sha256:a8a664248f863d3f202f937980fbc7fad961e07524438be3fbd15a79d654ff04');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e8192d2701af3ac5c1814f86becf9139bc51d77fb34f29460ba30c0133a8ba7f', 1789850400000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('31b0ced7586202d0fa98fa2e82db853c3f17378edf6a94e6d632988c9fc8d279', 1789850400000);
 
 -- ----------------------------------------------------------------------
 -- 20260919050000_telegram_article_edit_step
@@ -11816,9 +11817,9 @@ INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e8192
 ALTER TYPE "public"."telegram_conversation_step" ADD VALUE IF NOT EXISTS 'article_edit';
 ALTER TYPE "public"."telegram_conversation_step" ADD VALUE IF NOT EXISTS 'article_edit_confirm';
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (134, 'telegram_article_edit_step', 'sha256:21697c7a60a4a1575b88b493ae1f5d998001f0e415eca77901a49ff0138ff0d7');
+VALUES (134, 'telegram_article_edit_step', 'sha256:e120edbbbe7cef9a935f491d0d9eb8cc5fa981a92720a53221c25bff4c60f35e');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('68757b6a83cc1029faa7bc376a6cac2ffe200e1a33bf24744459c054d3c18c5e', 1789850500000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e93e6645b38d6d7ff02a0382b557023fd3d8c2c87ed7c4f306ee3402726e20a1', 1789850500000);
 
 -- ----------------------------------------------------------------------
 -- 20260919060000_retention_terminal_sweep
@@ -11879,9 +11880,9 @@ BEGIN
 END
 $function$;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (135, 'retention_terminal_sweep', 'sha256:4262ce1fa93ccd67231e53c5714a4a6b5cd6655d12056791963a5a22230ca02a');
+VALUES (135, 'retention_terminal_sweep', 'sha256:24f1d212847f78a6300653330422d7120fe48a348c567fd6d4be1dfd9584cffd');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('88aa6858763e01f1b9987bb1d1cd741483962aa03813c5ce15e5f19717db331d', 1789850600000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ebe7869a31f84cfaddf46151189edaea2fb3c8fc8f85b0d049bddd3085d43507', 1789850600000);
 
 -- ----------------------------------------------------------------------
 -- 20260920030000_subscription_update_entry_point
@@ -11922,9 +11923,9 @@ $function$;
 REVOKE ALL ON FUNCTION indicate_private.subscription_update(uuid, text, uuid, integer, subscription_status, timestamptz, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.subscription_update(uuid, text, uuid, integer, subscription_status, timestamptz, text) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (136, 'subscription_update_entry_point', 'sha256:5afd115d9c049e8d8248ce63afad86ec78b70d9c20fc796cd5e356e89e44094d');
+VALUES (136, 'subscription_update_entry_point', 'sha256:191807525478d0e75977916fb184ff7b4ff670c253a950d644e4bde845b968f8');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ce315b60f682d837381b5a08910ed05484d5c7811487629f0078d8c972bcdfd6', 1789850700000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4914cc4ac33d86bd9e0a65c6be54d0a763dfa8bb46f5831f541e357f78e6636a', 1789850700000);
 
 -- ----------------------------------------------------------------------
 -- 20260920040000_invoice_paid_month_single_price
@@ -12041,9 +12042,9 @@ $function$;
 REVOKE ALL ON FUNCTION indicate_private.invoice_reissue(uuid, text, uuid, integer, text, timestamptz) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.invoice_reissue(uuid, text, uuid, integer, text, timestamptz) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (137, 'invoice_paid_month_single_price', 'sha256:2195e850eb0180bf790c738c90eafaf27bd6ea156bd58d47ee297c371f888d0a');
+VALUES (137, 'invoice_paid_month_single_price', 'sha256:b8698ef595496021e4b4c1a590e1302edb6949cd1fc4fbc8a3e929549de9be3e');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('8039b3d3b9dadc3faae32b2b4c9ee5b7d70336eed108f13212a09a328a77423d', 1789850800000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('79e06983b04438bb2d18300e9ef6ddba0785ed37ab8a7926c42380bd2db55032', 1789850800000);
 
 -- ----------------------------------------------------------------------
 -- 20260920050000_site_settings_template_fk
@@ -12059,9 +12060,9 @@ INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('8039b
 ALTER TABLE public.site_settings ADD COLUMN template_id text GENERATED ALWAYS AS ((colors ->> 'templateId')) STORED;
 ALTER TABLE public.site_settings ADD CONSTRAINT site_settings_template_id_fk FOREIGN KEY (template_id) REFERENCES public.template_presets(id);
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (138, 'site_settings_template_fk', 'sha256:5b2b4e03b95947db149393017f60c5630d008a9aacebe474fcf309c888b281b0');
+VALUES (138, 'site_settings_template_fk', 'sha256:3b38a50e8a2d2a32c72ae182f6c0249902b7e53b44ef261d5238ddd3d48712a3');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f3cdcf931e6bcfa7e384d7133e9793c5941b61bb4e393ab6fc647de414c7501c', 1789850900000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b2b9b99997e85d615e1996772963fd26aa9386c8bc2112b0ca7612376bd95f70', 1789850900000);
 
 -- ----------------------------------------------------------------------
 -- 20260920060000_site_settings_template_fk_idx
@@ -12073,9 +12074,9 @@ INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f3cdc
 -- lagi memindai penuh `site_settings`.
 CREATE INDEX site_settings_template_id_idx ON public.site_settings USING btree (template_id);
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (139, 'site_settings_template_fk_idx', 'sha256:5ce19ae165d62eaa17b8afa2f7959e623d583a8e36db498026e3ac09509a3b8c');
+VALUES (139, 'site_settings_template_fk_idx', 'sha256:ec1a9fc579d803cbe8de9d965c27154b807ac4fea84af531ef96b5d9b81a547c');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4222bd4f7d9c0293328682acf0d52f19a2d881c60c57073aad86af718a90d53e', 1789851000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('968078185aabe4cc3c0899aa341eb7c1ede1c258a673593d4406c4840a6b55b1', 1789851000000);
 
 -- ----------------------------------------------------------------------
 -- 20260920070000_invoice_unpaid
@@ -12198,9 +12199,9 @@ $function$;
 REVOKE ALL ON FUNCTION indicate_private.invoice_list_for_org(uuid, uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.invoice_list_for_org(uuid, uuid) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (140, 'invoice_unpaid', 'sha256:207d0829a94ee9486889ef196ad9db9c5ae7d5fa075a242acea50c3260cc35f7');
+VALUES (140, 'invoice_unpaid', 'sha256:5d8d1e0304d4b3e8d19ace5e09abddcbdfea565a76180afb629889f9832618d0');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5b92a475182327b1dbfc02f84f62be080c91a6d8ae9de9f4d5b8c834664efebc', 1789835708210);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('48900a963c919f47e56abfa4c86cb089bbd4f45aa3053b95e31d03133549a2ad', 1789835708210);
 
 -- ----------------------------------------------------------------------
 -- 20260920080000_article_tags_canonical
@@ -12234,9 +12235,9 @@ WHERE target.organization_id = normalized.organization_id
   AND target.id = normalized.id
   AND target.tags IS DISTINCT FROM normalized.tags;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (141, 'article_tags_canonical', 'sha256:caff95bc251c87b804fbce84eba79e2d4c5d3360faa86d4abbe55fb9b4a6ee1f');
+VALUES (141, 'article_tags_canonical', 'sha256:e47dbda9f869700b05fd2f9de19e744576e49615333accec7422259014d2b7d7');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f15e59155ae924936f42fccd5a2f6293ebc7914a9ead56e39245a89f15ba9de2', 1789841835396);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('72242173d133a9cdc1117711f7ee3fa76ebd55a128204e7284af4c56f2317b2b', 1789841835396);
 
 -- ----------------------------------------------------------------------
 -- 20260920090000_dashboard_metric_indexes
@@ -12497,9 +12498,9 @@ BEGIN
 END
 $function$;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (145, 'invoice_amount_manual', 'sha256:c2890287772320e4d87771f54a84c23967426f445dcc56ecd282e313d60bfb00');
+VALUES (145, 'invoice_amount_manual', 'sha256:8097dd713132807721550ea3184a5392e5292578df6bcb65dbcda99fd9de64b2');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a85233831af991411fc5c88b8b9b142b0be783b51a991dec501ec36ccb369920', 1790037182087);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2b0fec797dc1953c3c3705705a0ec27fadbca52e0fbf87415bcde8793b7a25b8', 1790037182087);
 
 -- ----------------------------------------------------------------------
 -- 20260921140000_article_editorial_fields
@@ -13135,9 +13136,9 @@ BEGIN
 END
 $function$;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (164, 'telegram_removal', 'sha256:9c8570433fae0b5e8c8e9bc995367668c3f268492457c56bcaadb94c64543798');
+VALUES (164, 'telegram_removal', 'sha256:275a55e1379a9638c43bcf5599678dd0dbfdfcb2a4d64b629555e3f3332ba1c1');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c95176ab1f761d9439c62caa97f51289e1213b7f7a2f88f4989deae9a9871531', 1790194800000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7fea92023b3127c11f4e634e2c13f446c2dac96c1029071d33ac04c14346343e', 1790194800000);
 
 -- ----------------------------------------------------------------------
 -- 20260924023027_article_site_robots_directive

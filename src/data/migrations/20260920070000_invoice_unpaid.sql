@@ -116,4 +116,4 @@ $function$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.invoice_list_for_org(uuid, uuid) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.invoice_list_for_org(uuid, uuid) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (140, 'invoice_unpaid', 'sha256:207d0829a94ee9486889ef196ad9db9c5ae7d5fa075a242acea50c3260cc35f7');
+VALUES (140, 'invoice_unpaid', 'sha256:5d8d1e0304d4b3e8d19ace5e09abddcbdfea565a76180afb629889f9832618d0');

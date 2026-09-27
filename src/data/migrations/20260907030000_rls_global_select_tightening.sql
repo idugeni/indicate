@@ -33,4 +33,4 @@ CREATE POLICY runtime_config_invalidation_tenant_isolation_select ON public.runt
 DROP POLICY IF EXISTS webhook_replay_tenant_isolation_select ON public.webhook_replay_claims;--> statement-breakpoint
 CREATE POLICY webhook_replay_tenant_isolation_select ON public.webhook_replay_claims FOR SELECT TO indicate_runtime USING (organization_id = (SELECT indicate_private.current_organization_id()));--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (81, 'rls_global_select_tightening', 'sha256:9238a2d15b91e9887e8f4a84cee26278ee35c3ee42d07dd171faf61b9864b091');
+VALUES (81, 'rls_global_select_tightening', 'sha256:31c0f13bf02e57163eecc0812450e1bb29a5fd5ba3f5b0b567edcb75bd5b3035');

@@ -27,4 +27,4 @@ BEGIN
 END
 $$;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (104, 'fix_site_settings_guard_return', 'sha256:1f798db5acb1e6a468e3bacadd78a5cefa236b05fe2f8d6ce9fbc2597a2484a6');
+VALUES (104, 'fix_site_settings_guard_return', 'sha256:5bd9ad641e0f2207eda734534d90158c68a4ec12bd445dd55790ce971b82e9bf');

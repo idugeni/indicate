@@ -45,4 +45,4 @@ $function$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.discover_release_active_hosts(text[]) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.discover_release_active_hosts(text[]) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (105, 'discover_hosts_add_versions', 'sha256:27ef80fdb997568a9fd81c958db76259384c1cace6d5e7970c1e2b08ac010927');
+VALUES (105, 'discover_hosts_add_versions', 'sha256:5d3c1c20e75b04acba3f662ad774af985ac4c06237b54a601c257f917ec47df7');

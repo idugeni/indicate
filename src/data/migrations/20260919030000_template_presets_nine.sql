@@ -11,4 +11,4 @@ INSERT INTO public.template_presets (id, name, description, category) VALUES
   ('warm-editorial', 'Warm Editorial', 'Terakota hangat serif: hero split krem, kartu 3 kolom, quote senja.', 'editorial')
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, category = EXCLUDED.category, updated_at = now();--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (132, 'template_presets_nine', 'sha256:0d9d950fcfb63f2c576bcd0a081e3001b7e71fb63aa2c70e599e103ecea12116');
+VALUES (132, 'template_presets_nine', 'sha256:02fff43989237f780b88653a1d50ae81623fcce2f8d09229e47bbe8756ead35b');

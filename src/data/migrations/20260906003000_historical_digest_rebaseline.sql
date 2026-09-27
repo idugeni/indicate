@@ -24,4 +24,4 @@ UPDATE public.indicate_schema_migrations SET checksum = 'sha256:501add921dcf4a38
 UPDATE public.indicate_schema_migrations SET checksum = 'sha256:d964c9cc8b7f459386704716e48ec545cdd24772b249248ed956d4620462c2f7' WHERE version = 61 AND name = 'release_manifest_source_version';--> statement-breakpoint
 UPDATE public.indicate_schema_migrations SET checksum = 'sha256:90701d84dbb02442ee4b650d91dbd8fdf8226873a6bcce9a077cee3b4862bf80' WHERE version = 62 AND name = 'fix_site_settings_robots_cast';--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (72, 'historical_digest_rebaseline', 'sha256:1e7a72f184e7e9e5155da44dddf6fad1f52fffeeda24ae728f5bd01efff70b0b');
+VALUES (72, 'historical_digest_rebaseline', 'sha256:cabc135462a09382052c1e9d53b39cf9966912219107a5b98f6ea6e65aabb4ce');

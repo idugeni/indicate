@@ -24,4 +24,4 @@ $function$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.list_telegram_identities(text, text) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.list_telegram_identities(text, text) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (133, 'telegram_identity_options', 'sha256:39fd5403801ce886b3f469c08bdd960fccc4bfcb1b19e41253625e1d6ae66a14');
+VALUES (133, 'telegram_identity_options', 'sha256:a8a664248f863d3f202f937980fbc7fad961e07524438be3fbd15a79d654ff04');

@@ -38,4 +38,4 @@ $function$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.billing_lead_create(text, text, text, timestamptz, text, text) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.billing_lead_create(text, text, text, timestamptz, text, text) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (84, 'lead_consent', 'sha256:cbc059697c94ba7dbaccfb7ae03d1331193de18903a87a7bc0210d434083a060');
+VALUES (84, 'lead_consent', 'sha256:5aa97e5d57d19ec1fbb9c4e606018369fc832af3ff9a6c79023fa373ebb9e768');

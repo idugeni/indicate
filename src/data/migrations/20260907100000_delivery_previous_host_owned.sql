@@ -21,4 +21,4 @@ $function$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.is_delivery_previous_host_owned(uuid, uuid, text) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.is_delivery_previous_host_owned(uuid, uuid, text) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (87, 'delivery_previous_host_owned', 'sha256:ec262e41300964c5b35a90452df2168982cfca6ae402d2c544d9a6dde5190129');
+VALUES (87, 'delivery_previous_host_owned', 'sha256:90994cf056f406b87dbfd63643e7db00697fefe9aa389c89d6ed87118ab22a8b');

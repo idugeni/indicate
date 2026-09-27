@@ -24,4 +24,4 @@ GRANT EXECUTE ON FUNCTION indicate_private.erasure_request_list(uuid) TO indicat
 REVOKE ALL ON FUNCTION indicate_private.audit_worm_fetch(timestamptz, timestamptz, text) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.audit_worm_fetch(timestamptz, timestamptz, text) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (82, 'function_grants_repair', 'sha256:0a309d26b79151a2697869f89de31d82fcf32056aebf350898a264c38b780c1f');
+VALUES (82, 'function_grants_repair', 'sha256:49024f474c4714e32ba670fa4f51f3e56842f65eb5ae2d73544fdb7218079efb');

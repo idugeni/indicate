@@ -29,4 +29,4 @@ WHERE o.slug = 'rutan-kelas-ii-b-banjarnegara'
   AND p.organization_id = o.id
   AND p.contacts->>'city' = 'Jawa Tengah';--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (121, 'fix_upt_city_plantungan_banjarnegara', 'sha256:49ed7408668f315049085976fc1544f7a76f2174694a0456e1cb59bae198a364');
+VALUES (121, 'fix_upt_city_plantungan_banjarnegara', 'sha256:43875c2b14c95dc073210e39f3ddc7613fb83668c94c7f7e3f3721da9b493d80');

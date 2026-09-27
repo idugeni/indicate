@@ -5,4 +5,4 @@
 CREATE INDEX IF NOT EXISTS org_erasure_requests_organization_idx ON public.org_erasure_requests USING btree (organization_id);--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS telegram_outbox_organization_idx ON public.telegram_outbox USING btree (organization_id);--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (90, 'ops_fk_covering_indexes', 'sha256:beae2c320d9da542ac57d6d5ff2cf5598895acc17debeab8f07662f91d8ed6ca');
+VALUES (90, 'ops_fk_covering_indexes', 'sha256:48163e00653ecc84984b636052ba6e281be4819503186c1f7223b8baa416cfb3');

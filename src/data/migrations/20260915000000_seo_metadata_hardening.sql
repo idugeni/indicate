@@ -73,4 +73,4 @@ WHERE ras.organization_id = a.organization_id
     || COALESCE(' (' || NULLIF(btrim(p.contacts ->> 'city'), '') || ')', '')
   ) BETWEEN 50 AND 500;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (110, 'seo_metadata_hardening', 'sha256:d833c30c72734f1520eeb5acf0c3f1ba00680d7f60bf0a50270ec58df11f2c94');
+VALUES (110, 'seo_metadata_hardening', 'sha256:eb142ad3de40e2c39a474e113fa51d22c3f672345907acd36160d6740d7069d4');

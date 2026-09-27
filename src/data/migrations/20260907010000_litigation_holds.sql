@@ -111,4 +111,4 @@ BEGIN
 END
 $function$;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (79, 'litigation_holds', 'sha256:5556c07d527e7dc89eae5a2b3e0174ba5be77ed5b2d65a9a19a07d4691893df1');
+VALUES (79, 'litigation_holds', 'sha256:85290402d67029252fe124837252c6c84ca2dd8e7bfbdbb5d789f3d7de2f5529');

@@ -29,4 +29,4 @@ WHERE name ~ ' KELAS (I|II) '
     || ' '
     || replace(initcap(regexp_replace(name, '^.* KELAS (I|II) ', '')), 'Lpka', 'LPKA');--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (126, 'publisher_attribution_short', 'sha256:dc991100643411a0d1ae3d1cab6f6d9c0a646214e9c00c3622303b2cea64d523');
+VALUES (126, 'publisher_attribution_short', 'sha256:78dfb65bf197da43fe3ebc16cc2f85251bea0e983942d87fee736c5ff18a9df5');

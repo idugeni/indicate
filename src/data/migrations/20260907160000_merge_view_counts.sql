@@ -6,4 +6,4 @@
 -- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
 ALTER TABLE public.article_sites DROP COLUMN IF EXISTS custom_view_count;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (93, 'merge_view_counts', 'sha256:f39d872a28b766d00cd24954bbd1926d23b95bfb8c3c3642b5726741a32c1af6');
+VALUES (93, 'merge_view_counts', 'sha256:ba58c7da71036cd44d72e10021c6c7ba1ace540f25f95fe3bc42c41db40a7ce3');

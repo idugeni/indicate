@@ -8,4 +8,4 @@ CREATE POLICY litigation_holds_function_only ON public.litigation_holds FOR ALL 
 CREATE POLICY org_erasure_requests_function_only ON public.org_erasure_requests FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);--> statement-breakpoint
 CREATE POLICY telegram_outbox_function_only ON public.telegram_outbox FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (85, 'function_only_policies', 'sha256:9b15cbca7b133758831bd739e09b017674976d56f5877981398ab0aae2e1e1a1');
+VALUES (85, 'function_only_policies', 'sha256:105b04e2857575d1ef23799ec391f34f5bb7c38e2bbc0d9d5b016ffef63e3579');

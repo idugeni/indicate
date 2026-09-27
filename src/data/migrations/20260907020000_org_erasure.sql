@@ -185,4 +185,4 @@ END
 $function$;--> statement-breakpoint
 SELECT cron.schedule('indicate-org-erasure', '0 4 * * *', 'SELECT indicate_private.erasure_sweep()');--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (80, 'org_erasure', 'sha256:36c1c49eb990f3e1d53c96c12376153e3679a29b78e5f5e7c67464c9e2741808');
+VALUES (80, 'org_erasure', 'sha256:3d6ee98d2358233fe241dc89eb890f39d10263807e51cc8466ea41d2bc6e5fc8');

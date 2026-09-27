@@ -17,4 +17,4 @@ WHERE o.slug = 'bapas-kelas-ii-magelang'
   AND p.organization_id = o.id
   AND p.contacts->>'city' = 'Kota Magelang';--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (122, 'fix_upt_city_bapas_magelang', 'sha256:4d446d44c6de7e3a6c96c6a6d1a31bf2e6d158da3ff3e0af8c5b58d2db698a6d');
+VALUES (122, 'fix_upt_city_bapas_magelang', 'sha256:dad401186a32fb12140e2b3610c1a228b0d76c0c5088417512249c27ccf3efb4');
