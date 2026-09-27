@@ -47,7 +47,7 @@ interface Attempt {
  */
 const bytesPerPixel = (attempt: Attempt): number => Math.round(attempt.width * attempt.height * (0.06 + attempt.quality * 0.24));
 
-function stubEncoder(source: { readonly width: number; readonly height: number }, bytesFor: (attempt: Attempt) => number): { readonly attempts: Attempt[]; restore(): void } {
+function stubEncoder(source: { readonly width: number; readonly height: number }, bytesFor: (attempt: Attempt) => number, grantedType: string | null = 'image/webp'): { readonly attempts: Attempt[]; restore(): void } {
   const attempts: Attempt[] = [];
   const globals = globalThis as { createImageBitmap?: unknown; document?: unknown };
   const originalBitmap = globals.createImageBitmap;
@@ -62,7 +62,9 @@ function stubEncoder(source: { readonly width: number; readonly height: number }
         toBlob: (callback: (blob: Blob) => void, _type: string, quality: number) => {
           const attempt = { width: canvas.width, height: canvas.height, quality };
           attempts.push(attempt);
-          callback(new Blob([new Uint8Array(bytesFor(attempt))]));
+          // A real browser substitutes image/png when it cannot encode the
+          // requested type, so an unsupported encoder must be modelled here too.
+          callback(new Blob([new Uint8Array(bytesFor(attempt))], grantedType === null ? {} : { type: grantedType }));
         },
       };
       return canvas;
@@ -88,11 +90,36 @@ afterEach(() => {
   for (const restore of restoreStub.splice(0)) restore();
 });
 
-function stub(source: { readonly width: number; readonly height: number }, bytesFor: (attempt: Attempt) => number): Attempt[] {
-  const harness = stubEncoder(source, bytesFor);
+function stub(source: { readonly width: number; readonly height: number }, bytesFor: (attempt: Attempt) => number, grantedType: string | null = 'image/webp'): Attempt[] {
+  const harness = stubEncoder(source, bytesFor, grantedType);
   restoreStub.push(harness.restore);
   return harness.attempts;
 }
+
+describe('prepareImageUpload saat browser tidak bisa encode WebP', () => {
+  it('menyimpan berkas asli apa adanya alih-alih PNG yang dilabeli WebP', async () => {
+    const attempts = stub({ width: 3000, height: 2000 }, bytesPerPixel, 'image/png');
+    const file = sourceFile(4_000_000);
+    const result = await prepareImageUpload(file, { passthroughBytes: 0 });
+
+    expect(result.mode).toBe('passthrough');
+    expect(result.mediaType).toBe('image/jpeg');
+    expect(result.filename).toBe('foto.jpg');
+    expect(result.blob).toBe(file);
+    expect(result.sizeBytes).toBe(file.size);
+    expect(result.thumb).toBe(null);
+    expect(attempts.length).toBeGreaterThan(0);
+  });
+
+  it('menyimpan berkas asli apa adanya saat encoder mengembalikan tipe kosong', async () => {
+    const attempts = stub({ width: 3000, height: 2000 }, bytesPerPixel, null);
+    const result = await prepareImageUpload(sourceFile(4_000_000), { passthroughBytes: 0 });
+
+    expect(result.mode).toBe('passthrough');
+    expect(result.mediaType).toBe('image/jpeg');
+    expect(attempts.length).toBeGreaterThan(0);
+  });
+});
 
 describe('prepareImageUpload ladder', () => {
   it('menurunkan resolusi pada kualitas tetap 0.82 sebelum menyentuh kualitas', async () => {

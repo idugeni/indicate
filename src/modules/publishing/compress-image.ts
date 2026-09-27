@@ -152,6 +152,7 @@ const DEFAULT_PASSTHROUGH_BYTES = INLINE_COMPRESS.passthroughBytes;
 const DEFAULT_RUNGS = INLINE_COMPRESS.rungs;
 /** Formats already efficient enough to skip recompression when under target. */
 const EFFICIENT_TYPES = new Set(['image/webp', 'image/avif']);
+const WEBP_MEDIA_TYPE = 'image/webp';
 
 interface Encoded {
   readonly blob: Blob;
@@ -178,6 +179,15 @@ async function decodeBitmap(file: File): Promise<ImageBitmap | null> {
   }
 }
 
+/**
+ * Encode one rung as WebP, or resolve null when the browser cannot.
+ *
+ * @remarks Canvas silently substitutes `image/png` for a type it cannot encode
+ * (Safari has no canvas WebP encoder), so the blob type is verified rather than
+ * the requested type assumed. Returning null routes the caller to
+ * `passthrough`, which keeps the original bytes and their real media type
+ * instead of storing an oversized PNG mislabelled as WebP.
+ */
 function encodeWebp(bitmap: ImageBitmap, width: number, height: number, quality: number): Promise<Blob | null> {
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -186,7 +196,7 @@ function encodeWebp(bitmap: ImageBitmap, width: number, height: number, quality:
   if (context === null) return Promise.resolve(null);
   context.drawImage(bitmap, 0, 0, width, height);
   return new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob), 'image/webp', quality);
+    canvas.toBlob((blob) => resolve(blob !== null && blob.type === WEBP_MEDIA_TYPE ? blob : null), WEBP_MEDIA_TYPE, quality);
   });
 }
 
@@ -253,7 +263,7 @@ async function buildThumb(bitmap: ImageBitmap, sourceWidth: number, sourceHeight
     blob: candidate.blob,
     sizeBytes: candidate.blob.size,
     checksum: await base64Sha256(bytes),
-    mediaType: 'image/webp',
+    mediaType: WEBP_MEDIA_TYPE,
     width: candidate.width,
     height: candidate.height,
   };
@@ -292,7 +302,7 @@ export async function prepareImageUpload(file: File, options: CompressOptions = 
   return {
     blob: full.blob,
     filename: withWebpExtension(file.name),
-    mediaType: 'image/webp',
+    mediaType: WEBP_MEDIA_TYPE,
     sizeBytes: full.blob.size,
     checksum: await base64Sha256(bytes),
     width: full.width,
