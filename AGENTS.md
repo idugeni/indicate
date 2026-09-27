@@ -37,7 +37,16 @@ Use the connected tools when they help. Retrieval beats memory, but nothing here
   `chrome-devtools MCP` alone is insufficient.
 - **vercel MCP**: use to inspect project and deployment state before changing
   hosting config; pair with `vercel-optimize` and
-  `vercel-react-best-practices` skills.
+  `vercel-react-best-practices` skills. **Always pass `teamId` explicitly**
+  (`team_HvgOzoFV92X1vjzqQkczC8kK`, slug `safenca`). The OAuth grant covers
+  several accounts, so the default scope resolves to
+  `team_PRHMAl57mntpvsb8t4LETyAA`, which does not own `indicate`:
+  `list_projects()` with no `teamId` returns six unrelated projects (irnk,
+  sipeternak, ...) and that is not a sign the MCP is broken. Access itself is
+  intact, since `get_team({ teamId })` and `filter_project_envs({ idOrName:
+  "indicate", teamId })` both succeed. The `vercel` CLI with `--scope` and the
+  REST API with `?teamId=` share the same pitfall, so cross-check all three
+  sources before calling an environment complete.
 - **upstash-redis MCP**: repo-declared in `.mcp.json`/`opencode.jsonc` with
   credentials from git-ignored `.env` (`UPSTASH_REDIS_REST_URL`,
   `UPSTASH_REDIS_REST_TOKEN`); use to inspect live cache and queue state.
