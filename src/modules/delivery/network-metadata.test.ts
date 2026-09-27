@@ -213,6 +213,17 @@ describe('utility surfaces stay non-indexable', () => {
     const metadata = await networkMetadata('/tentang', {}, 'Tentang', 'Deskripsi.');
     expect(metadata.robots).toMatchObject({ index: true, follow: true });
   });
+
+  it('menyembunyikan beranda portal yang belum punya artikel terbit', async () => {
+    const metadata = await networkMetadata('/');
+    expect(metadata.robots).toMatchObject({ index: false });
+  });
+
+  it('membiarkan beranda tetap indexable begitu ada artikel terbit', async () => {
+    load.mockResolvedValue(makeNetworkSite([makeNetworkArticle()]));
+    const metadata = await networkMetadata('/');
+    expect(metadata.robots).toMatchObject({ index: true, follow: true });
+  });
 });
 
 

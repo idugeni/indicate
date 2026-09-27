@@ -402,6 +402,15 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
   if (seo.canonical === null || seo.openGraph === null) {
     return tenantHiddenMeta(site, path, seo.title, seo.description);
   }
+  // A portal with nothing published yet answers its home page with 200 and an
+  // empty shell whose only heading is "Belum ada laporan terbit", self-canonical.
+  // The network provisions 4,288 city portals under 134 apexes, so indexable
+  // would hand crawlers one thin duplicate per portal. Scope this to the listing
+  // page: /categories and /tags already hide themselves below their minimum, and
+  // the static documents must stay indexable.
+  if (article === undefined && site.articles.length === 0 && path === '/') {
+    return tenantHiddenMeta(site, path, seo.title, seo.description);
+  }
 
   const card = socialCardImages(
     seo.openGraph.image,
