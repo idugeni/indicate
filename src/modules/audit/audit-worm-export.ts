@@ -40,21 +40,58 @@ export interface WormExportSummary {
   readonly verified: boolean;
 }
 
+const EXPORT_DAY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** Hari ekspor yang ditolak: format bukan kalender, atau jendela UTC-nya belum tertutup. */
+export class WormExportDateError extends Error {
+  constructor() {
+    super('WORM export day is not a closed UTC day');
+  }
+}
+
+/**
+ * Resolusi jendela ekspor menjadi satu hari UTC yang isinya stabil.
+ *
+ * @param now - Waktu acuan; default `new Date()` di production.
+ * @param day - Target `YYYY-MM-DD` UTC untuk backfill; null memakai HARI KEMARIN.
+ * @returns Label hari, batas bawah inklusif, dan batas atas eksklusif jendela.
+ * @throws {WormExportDateError} Bila `day` bukan tanggal kalender yang valid atau belum melewati hari ini UTC.
+ */
+export function resolveExportWindow(now: Date, day?: string | null): { readonly day: string; readonly sinceIso: string; readonly untilIso: string } {
+  if (day === null || day === undefined || day === '') {
+    const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+    return { day: since.toISOString().slice(0, 10), sinceIso: since.toISOString(), untilIso: new Date(since.getTime() + 86_400_000).toISOString() };
+  }
+  const matched = EXPORT_DAY_PATTERN.exec(day);
+  if (matched === null) throw new WormExportDateError();
+  const since = new Date(Date.UTC(Number(matched[1]), Number(matched[2]) - 1, Number(matched[3])));
+  if (since.toISOString().slice(0, 10) !== day) throw new WormExportDateError();
+  if (since.getTime() >= Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) throw new WormExportDateError();
+  return { day, sinceIso: since.toISOString(), untilIso: new Date(since.getTime() + 86_400_000).toISOString() };
+}
+
 /** Ekspor harian jejak audit ke bucket WORM: tulis JSONL + manifes, verifikasi baca-balik, catat bukti.
- * Mengekspor HARI KEMARIN penuh (jendela tertutup sehingga isi stabil) dan idempoten:
+ * Secara default mengekspor HARI KEMARIN penuh (jendela tertutup sehingga isi stabil) dan idempoten:
  * berkas yang sudah ada dilewati (lock bucket melarang tulis ulang) setelah diverifikasi.
  *
- * @remarks Akses global lewat fungsi allowlist (RLS indicate_runtime tenant-only). */
+ * @param input - Database, penyimpanan, waktu acuan, dan hari target opsional untuk backfill.
+ * @returns Ringkasan hari yang diekspor beserta jumlah baris dan status verifikasi.
+ * @throws {WormExportDateError} Bila `day` bukan tanggal kalender yang valid atau belum melewati hari ini UTC.
+ * @throws {Error} Bila verifikasi baca-balik gagal atau checksum objek tidak cocok.
+ * @remarks Akses global lewat fungsi allowlist (RLS indicate_runtime tenant-only). Cakupan hari ada di
+ * manifes R2, bukan di `retention_runs`: baris bukti memakai waktu jalan, sehingga beberapa backfill
+ * satu hari berdekatan menghasilkan `started_at` yang berdekatan juga. */
 export async function exportDailyAudit(input: {
   readonly db: WormExecutor;
   readonly storage: ObjectStoragePort;
   readonly now?: Date;
+  readonly day?: string | null;
 }): Promise<WormExportSummary> {
   const now = input.now ?? new Date();
-  const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
-  const day = since.toISOString().slice(0, 10);
-  const sinceIso = since.toISOString();
-  const untilIso = new Date(since.getTime() + 86_400_000).toISOString();
+  const window = resolveExportWindow(now, input.day);
+  const day = window.day;
+  const sinceIso = window.sinceIso;
+  const untilIso = window.untilIso;
 
   const tables = ['audit_logs', 'runtime_config_audit_logs', 'retention_runs'] as const;
   const files: { readonly key: string; readonly bytes: Uint8Array; readonly sha256: string }[] = [];

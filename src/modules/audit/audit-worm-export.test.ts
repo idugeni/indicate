@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { exportDailyAudit } from '@/modules/audit/audit-worm-export';
+import { exportDailyAudit, resolveExportWindow, WormExportDateError } from '@/modules/audit/audit-worm-export';
 
 const NOW = new Date('2026-09-19T10:00:00.000Z');
 const DAY = '2026-09-18';
@@ -72,5 +72,38 @@ describe('exportDailyAudit', () => {
   it('gagal saat verifikasi baca-balik rusak', async () => {
     const { db, storage } = harness({ fetchStatus: 500 });
     await expect(exportDailyAudit({ db: db as never, storage: storage as never, now: NOW })).rejects.toThrow('WORM verify failed');
+  });
+
+  it('mengekspor hari target saat backfill dan menandai hari itu di manifes', async () => {
+    const { db, storage, puts } = harness({ rowsPerTable: 3 });
+    const summary = await exportDailyAudit({ db: db as never, storage: storage as never, now: NOW, day: '2026-09-13' });
+    expect(summary.date).toBe('2026-09-13');
+    expect(summary.rows).toBe(9);
+    expect([...puts.keys()].every((key) => key.startsWith('worm/2026-09-13/'))).toBe(true);
+    expect(JSON.parse(new TextDecoder().decode(puts.get('worm/2026-09-13/manifest.json'))) as { date: string }).toMatchObject({ date: '2026-09-13', rows: 9 });
+  });
+
+  it('menolak tanggal yang jendela UTC-nya belum tertutup', async () => {
+    const { db, storage } = harness();
+    await expect(exportDailyAudit({ db: db as never, storage: storage as never, now: NOW, day: '2026-09-19' })).rejects.toThrow(WormExportDateError);
+    await expect(exportDailyAudit({ db: db as never, storage: storage as never, now: NOW, day: '2026-09-20' })).rejects.toThrow(WormExportDateError);
+  });
+});
+
+describe('resolveExportWindow', () => {
+  it('memakai HARI KEMARIN saat hari tidak diberikan', () => {
+    expect(resolveExportWindow(NOW).day).toBe(DAY);
+    expect(resolveExportWindow(NOW, null).day).toBe(DAY);
+    expect(resolveExportWindow(NOW, '').day).toBe(DAY);
+  });
+
+  it('menolak format, kalender, dan hari yang belum lewat', () => {
+    for (const invalid of ['2026-9-13', '13-09-2026', '2026-02-30', '20260913', '2026-09-19', '2026-09-30', 'sejak']) {
+      expect(() => resolveExportWindow(NOW, invalid)).toThrow(WormExportDateError);
+    }
+  });
+
+  it('menerima HARI KEMARIN tepat satu hari sebelum hari ini', () => {
+    expect(resolveExportWindow(NOW, '2026-09-18').sinceIso).toBe('2026-09-18T00:00:00.000Z');
   });
 });
