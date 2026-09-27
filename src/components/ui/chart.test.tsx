@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render } from '@testing-library/react';
+import { act, cleanup, render } from '@testing-library/react';
 
 import { ChartContainer } from '@/components/ui/chart';
+
+const RESIZE_DEBOUNCE_MS = 50;
 
 function mockDimensions(width: number, height: number) {
   vi.stubGlobal(
@@ -36,11 +38,18 @@ function mockDimensions(width: number, height: number) {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers();
   mockDimensions(320, 200);
 });
 
 afterEach(() => {
   cleanup();
+  // recharts throttles the ResizeObserver callback with `leading: false`, so each
+  // render leaves a timer pending. Draining it after unmount but before vitest tears
+  // the jsdom environment down keeps the trailing call from touching a deleted
+  // `window`, which surfaces as an unhandled ReferenceError and fails the shard.
+  vi.runOnlyPendingTimers();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -104,5 +113,18 @@ describe('Wadah bagan', () => {
       </ChartContainer>,
     );
     expect(container.querySelector('style')).toBe(null);
+  });
+
+  it('menyerap timer throttle bagan sebelum lingkungan dibongkar', () => {
+    render(
+      <ChartContainer config={{}}>
+        <p>Isi bagan</p>
+      </ChartContainer>,
+    );
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    act(() => {
+      vi.advanceTimersByTime(RESIZE_DEBOUNCE_MS + 10);
+    });
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
