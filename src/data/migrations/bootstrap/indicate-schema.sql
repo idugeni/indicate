@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (206 migrations):
+-- Reviewed sources, in journal order (207 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -219,6 +219,7 @@
 --   204  20260926180000_audit_chain_head_lock  ledger sha256:b4b24494492cf9f7bb09ac238eee0d5c4e3fa6a5be91966186c92d9ecb3c3036
 --   205  20260926190000_publisher_brand_removal  ledger sha256:e8100322757317b7bce632f9aef9b6297c69b0e2d405e1fa692e07f8e2f4fee2
 --   206  20260926200000_default_article_category  ledger sha256:0c2beda581d76609112d6239859fa14f373ea675119e45c5c22fa3bd6eab7d72
+--   207  20260927020000_moderation_reader_id_qualification  ledger sha256:76c38a93bd2f22b08a9ba054bbf5292841817a43bbe6251df1bb6861c0e6579e
 
 BEGIN;
 
@@ -17326,4 +17327,62 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (206, 'default_article_category', 'sha256:1b33e87699190df9803a5701d9a5b4288e6ec131bb01e9d80396be7616db0846');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('0c2beda581d76609112d6239859fa14f373ea675119e45c5c22fa3bd6eab7d72', 1790485200000);
+
+-- ----------------------------------------------------------------------
+-- 20260927020000_moderation_reader_id_qualification
+-- ----------------------------------------------------------------------
+-- Qualify `public.users.id` in the two moderation readers that declare an
+-- `id` output column. PL/pgSQL turns each RETURNS TABLE column into a
+-- variable, so the unqualified `WHERE id = p_actor_id` guard resolved against
+-- both the output variable and the table column and failed with
+-- `42702 column reference "id" is ambiguous`. Both readers therefore raised on
+-- every call, which surfaced as `503 Moderation is temporarily unavailable` for
+-- the content-report and privacy-ticket queues.
+CREATE OR REPLACE FUNCTION indicate_private.content_report_list(p_actor_id uuid)
+ RETURNS TABLE(id uuid, org_id uuid, site_id uuid, article_id uuid, reporter_contact text, reason_category text, details text, article_url text, status report_status, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.users u WHERE u.id = p_actor_id AND u.status = 'active') THEN
+    RAISE EXCEPTION 'active user required' USING ERRCODE = '42501';
+  END IF;
+  IF indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RETURN QUERY SELECT r.id, r.organization_id, r.site_id, r.article_id, r.reporter_contact, r.reason_category, r.details, r.article_url, r.status, r.created_at
+    FROM public.content_reports r ORDER BY r.created_at DESC;
+  ELSE
+    RETURN QUERY SELECT r.id, r.organization_id, r.site_id, r.article_id, r.reporter_contact, r.reason_category, r.details, r.article_url, r.status, r.created_at
+    FROM public.content_reports r JOIN public.memberships m ON m.organization_id = r.organization_id
+    WHERE m.user_id = p_actor_id AND m.status = 'active' ORDER BY r.created_at DESC;
+  END IF;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.content_report_list(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.content_report_list(uuid) TO indicate_runtime;
+
+CREATE OR REPLACE FUNCTION indicate_private.privacy_request_list(p_actor_id uuid)
+ RETURNS TABLE(id uuid, ticket_number text, org_id uuid, request_type privacy_request_type, details text, status privacy_request_status, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.users u WHERE u.id = p_actor_id AND u.status = 'active') THEN
+    RAISE EXCEPTION 'active user required' USING ERRCODE = '42501';
+  END IF;
+  IF indicate_private.permission_has_platform_admin(p_actor_id) THEN
+    RETURN QUERY SELECT r.id, r.ticket_number, r.organization_id, r.request_type, r.details, r.status, r.created_at
+    FROM public.privacy_requests r ORDER BY r.created_at DESC;
+  ELSE
+    RETURN QUERY SELECT r.id, r.ticket_number, r.organization_id, r.request_type, r.details, r.status, r.created_at
+    FROM public.privacy_requests r JOIN public.memberships m ON m.organization_id = r.organization_id
+    WHERE m.user_id = p_actor_id AND m.status = 'active' ORDER BY r.created_at DESC;
+  END IF;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.privacy_request_list(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.privacy_request_list(uuid) TO indicate_runtime;
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('76c38a93bd2f22b08a9ba054bbf5292841817a43bbe6251df1bb6861c0e6579e', 1790488800000);
 COMMIT;
