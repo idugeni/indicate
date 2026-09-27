@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Scatter, ScatterCh
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { AnalyticsProjection, ViewDay, ViewsPoint } from '@/modules/dashboard/models';
-import { weekdayLabel, truncateLabel, categoryColor } from '@/modules/dashboard/components/analytics/chart-helpers';
+import { categoryColor, hasAnalyticsSignal, truncateLabel, weekdayLabel, NO_PUBLICATION_TITLE, NO_PUBLICATION_DESCRIPTION } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { ActivityCalendar, ActivityHeatmap } from '@/modules/dashboard/components/analytics/heatmap';
 import { KpiSparkline } from '@/modules/dashboard/components/analytics/kpi-spark';
@@ -89,7 +89,7 @@ export function ViewsLine({ series }: { readonly series: readonly ViewDay[] }) {
           config={{ views: { label: 'Tayangan', color: '#cc9a44' } }}
           className="mt-4 h-64 w-full"
         >
-          <LineChart data={[...data]} margin={{ left: 0, right: 8, top: 4, bottom: 0 }}>
+          <LineChart data={[...data]} margin={{ left: 0, right: 28, top: 4, bottom: 0 }}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={28} tick={{ fontSize: 11 }} />
             <YAxis width={44} tickLine={false} axisLine={false} allowDecimals={false} tick={{ fontSize: 11 }} tickFormatter={(value: number) => (value >= 1000 ? `${Math.round(value / 1000)}rb` : String(value))} />
@@ -382,6 +382,13 @@ export function PrimaryBento({
     count: point.views,
   }));
   const funnelTasks = analytics?.totalPenyaluran ?? (succeeded + failed);
+  if (analytics !== null && !hasAnalyticsSignal(analytics)) {
+    return (
+      <div className="col-span-full min-w-0">
+        <EmptyState title={NO_PUBLICATION_TITLE} description={NO_PUBLICATION_DESCRIPTION} />
+      </div>
+    );
+  }
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12 col-span-full">
       <div className="min-w-0 col-span-full sm:col-span-2 lg:col-span-12">

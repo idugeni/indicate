@@ -87,7 +87,7 @@ export function PublicationTrend({ series }: { readonly series: readonly TaskDay
           }}
           className="mt-4 h-64 w-full"
         >
-          <AreaChart data={data} margin={{ left: 0, right: 8, top: 4, bottom: 0 }}>
+          <AreaChart data={data} margin={{ left: 0, right: 28, top: 4, bottom: 0 }}>
             <defs>
               <linearGradient id={`${grad}-terbit`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={COLOR_PUBLISHED} stopOpacity={0.45} />

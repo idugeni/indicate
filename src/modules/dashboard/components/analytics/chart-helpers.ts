@@ -1,9 +1,16 @@
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
+import type { AnalyticsProjection, TaskDay } from '@/modules/dashboard/models';
+
 export const COLOR_PUBLISHED = '#5fcbb0';
 export const COLOR_FAILED = '#d9705f';
 export const COLOR_QUEUED = '#d8a94e';
+
+export const NO_PUBLICATION_TITLE = 'Belum ada satu pun terpublikasi.';
+
+export const NO_PUBLICATION_DESCRIPTION =
+  'Semua grafik di halaman ini diukur dari penerbitan nyata: artikel yang masuk antrean, AIM yang tersalin ke tiap situs portal, dan tayangan pembaca. Belum ada satu pun yang tercatat, jadi belum ada yang bisa diukur.';
 
 /**
  * 12-color categorical palette for dashboard visuals on dark backgrounds.
@@ -61,4 +68,41 @@ export function weekdayLabel(day: string): string {
  */
 export function truncateLabel(value: string, max = 20): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
+function isQuietTaskDay(point: TaskDay): boolean {
+  return point.diterbitkan === 0 && point.gagal === 0 && point.antre === 0;
+}
+
+/**
+ * Reports whether an analytics projection holds any measurement at all.
+ *
+ * @remarks The daily series are dense: every day in the window is present even when
+ * nothing happened, so length alone is not a measurement and only a non-zero bucket
+ * counts. Used to collapse a gallery of empty charts into one honest empty state.
+ *
+ * @remarks A cached dashboard snapshot may embed only part of the projection, so every
+ * collection is read defensively: a missing one reads as empty rather than throwing.
+ *
+ * @param analytics - Tenant analytics projection, possibly partial.
+ * @returns True when at least one collection carries a non-zero measurement.
+ */
+export function hasAnalyticsSignal(analytics: AnalyticsProjection): boolean {
+  const rows = (value: readonly unknown[] | undefined): readonly unknown[] => value ?? [];
+  return (
+    rows(analytics.tugasHarian).some((point) => !isQuietTaskDay(point as TaskDay)) ||
+    rows(analytics.penyaluranHarian).some((point) => !isQuietTaskDay(point as TaskDay)) ||
+    rows(analytics.viewsHarian).some((point) => ((point as { views?: number }).views ?? 0) > 0) ||
+    rows(analytics.articlesByRegion).length > 0 ||
+    rows(analytics.articlesBySite).length > 0 ||
+    rows(analytics.articlesByCategory).length > 0 ||
+    rows(analytics.articlesByPublisher).length > 0 ||
+    rows(analytics.jobsByState).length > 0 ||
+    rows(analytics.outcomesBySiteAndState).length > 0 ||
+    rows(analytics.aktivitasPerJam).length > 0 ||
+    rows(analytics.aktivitasTerbaru).length > 0 ||
+    rows(analytics.arusPenerbit).length > 0 ||
+    rows(analytics.viewsBySite).length > 0 ||
+    rows(analytics.viewsByArticle).length > 0
+  );
 }

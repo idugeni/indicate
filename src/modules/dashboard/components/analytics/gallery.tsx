@@ -11,7 +11,8 @@ import { TreeMap } from '@/modules/dashboard/components/analytics/treemap';
 import { TelemetryCharts } from '@/modules/dashboard/components/analytics/telemetry-charts';
 import { StackedTasks } from '@/modules/dashboard/components/analytics/stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { truncateLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
+import { truncateLabel, hasAnalyticsSignal, NO_PUBLICATION_TITLE, NO_PUBLICATION_DESCRIPTION } from '@/modules/dashboard/components/analytics/chart-helpers';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import type { AnalyticsPoint, AnalyticsProjection, PublisherFlow } from '@/modules/dashboard/models';
 
 /**
@@ -56,6 +57,9 @@ export function TelemetryGallery({ data }: { readonly data: AnalyticsProjection 
     outcomesBySiteAndState: labeledOutcomes,
     arusPenerbit: labeledFlows,
   };
+  if (!hasAnalyticsSignal(data)) {
+    return <EmptyState title={NO_PUBLICATION_TITLE} description={NO_PUBLICATION_DESCRIPTION} />;
+  }
   return (
     <Tabs defaultValue="ringkasan" className="w-full">
       <TabsList aria-label="Bagian analitik" className="w-full max-w-full overflow-x-auto overflow-y-clip">

@@ -8,7 +8,6 @@ import type { TaskDay } from '@/modules/dashboard/models';
 import { COLOR_QUEUED, COLOR_FAILED, COLOR_PUBLISHED } from '@/modules/dashboard/components/analytics/chart-helpers';
 
 function deltaPercent(current: number, previous: number): string {
-  if (previous <= 0) return current > 0 ? 'baru' : '—';
   const percent = Math.round(((current - previous) / previous) * 100);
   return `${percent >= 0 ? '+' : ''}${percent}%`;
 }
@@ -40,6 +39,7 @@ function SparkCard({
   const previousTotal = previous.reduce((count, point) => count + pick(point), 0);
   const delta = currentTotal - previousTotal;
   const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
+  const comparable = previousTotal > 0;
   const data = current.map((point, index) => ({ index, value: pick(point) }));
   return (
     <div className="h-full min-w-0 overflow-hidden rounded-lg border border-hairline bg-bg-raised p-5">
@@ -47,25 +47,33 @@ function SparkCard({
       <p className="m-0 mt-1 truncate font-mono text-2xl font-bold tabular-nums tracking-tight text-paper">
         {currentTotal.toLocaleString('id-ID')}
       </p>
-      <p className="m-0 mt-1 flex items-center gap-1.5 font-mono text-[11px] tabular-nums text-paper-faint">
-        <Icon className="h-3 w-3 text-brass" aria-hidden="true" />
-        {deltaPercent(currentTotal, previousTotal)} vs 7 hari lalu
-      </p>
-      <ChartContainer config={{ value: { label, color } }} className="mt-3 h-12 w-full">
-        <AreaChart data={data} margin={{ left: 0, right: 0, top: 2, bottom: 0 }}>
-          <ChartTooltip
-            content={
-              <ChartTooltipContent
-                hideLabel
-                formatter={(value) =>
-                  typeof value === 'number' ? value.toLocaleString('id-ID') : String(value ?? '')
-                }
-              />
-            }
-          />
-          <Area type="monotone" dataKey="value" stroke={color} strokeWidth={1.5} fill={color} fillOpacity={0.22} dot={false} />
-        </AreaChart>
-      </ChartContainer>
+      {comparable ? (
+        <p className="m-0 mt-1 flex items-center gap-1.5 font-mono text-[11px] tabular-nums text-paper-faint">
+          <Icon className="h-3 w-3 text-brass" aria-hidden="true" />
+          {deltaPercent(currentTotal, previousTotal)} vs 7 hari lalu
+        </p>
+      ) : (
+        <p className="m-0 mt-1 font-mono text-[11px] tabular-nums text-paper-faint">
+          {currentTotal > 0 ? 'baru, tanpa pembanding' : 'belum ada aktivitas'}
+        </p>
+      )}
+      {currentTotal > 0 ? (
+        <ChartContainer config={{ value: { label, color } }} className="mt-3 h-12 w-full">
+          <AreaChart data={data} margin={{ left: 0, right: 0, top: 2, bottom: 0 }}>
+            <ChartTooltip
+              content={
+                <ChartTooltipContent
+                  hideLabel
+                  formatter={(value) =>
+                    typeof value === 'number' ? value.toLocaleString('id-ID') : String(value ?? '')
+                  }
+                />
+              }
+            />
+            <Area type="monotone" dataKey="value" stroke={color} strokeWidth={1.5} fill={color} fillOpacity={0.22} dot={false} />
+          </AreaChart>
+        </ChartContainer>
+      ) : null}
     </div>
   );
 }
