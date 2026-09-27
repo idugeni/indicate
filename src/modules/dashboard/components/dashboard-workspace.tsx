@@ -1,32 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import {
-  BarChart3,
-  CreditCard,
-  FileText,
-  Flag,
-  FolderKanban,
-  Globe,
-  KeyRound,
-  LayoutDashboard,
-  Megaphone,
   Menu,
-  Newspaper,
   RefreshCw,
-  Settings,
-  Share2,
-  ShieldAlert,
-  Tags,
-  Users,
-  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DashboardAvatar } from '@/modules/dashboard/components/dashboard-avatar';
-import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -45,290 +27,25 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  DashboardCollectionsSkeleton,
-  DashboardContentSkeleton,
-  DashboardFormSkeleton,
-} from '@/modules/dashboard/components/dashboard-skeletons';
 
 import {
-  VIEW_METADATA_REGISTRY,
   type DashboardSnapshot,
-  type NavGroup,
   type OrganizationOption,
   type View,
 } from '@/modules/dashboard/components/dashboard-types';
-import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
-import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
-import { DataView } from '@/modules/dashboard/components/data-view';
 import { DashboardFooter } from '@/modules/dashboard/components/dashboard-footer';
-import { FilterControls } from '@/modules/dashboard/components/filter-controls';
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
-import { PanelErrorBoundary } from '@/modules/dashboard/components/shared/panel-error-boundary';
 import { useDashboardPage, useDashboardView } from '@/modules/dashboard/components/shared/use-dashboard-query';
-import { SidebarResizeRail } from '@/modules/dashboard/components/shared/sidebar-resize-rail';
-import type { EmailStatus } from '@/modules/dashboard/components/settings/integration-settings';
+import {
+  ALL_NAV_ITEMS,
+  DASHBOARD_TOOLTIP_CONTENT,
+  DashboardNavList,
+  DashboardSidebar,
+} from '@/modules/dashboard/components/dashboard-sidebar';
+import { DashboardViewPanel, VIEW_WITHOUT_RAW_COLLECTIONS } from '@/modules/dashboard/components/dashboard-view-panel';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
-import { cn } from '@/ui/cn';
-
-const ConfigurationPanel = dynamic(
-  () => import('@/modules/dashboard/components/infrastructure/configuration-panel').then((module) => ({ default: module.ConfigurationPanel })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const AccessManagementForm = dynamic(
-  () => import('@/modules/dashboard/components/infrastructure/access-management-form').then((module) => ({ default: module.AccessManagementForm })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const SiteSettingsForm = dynamic(
-  () => import('@/modules/dashboard/components/infrastructure/site-settings-form').then((module) => ({ default: module.SiteSettingsForm })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const CachePurgeForm = dynamic(
-  () => import('@/modules/dashboard/components/infrastructure/cache-purge-form').then((module) => ({ default: module.CachePurgeForm })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const CustomerManagement = dynamic(
-  () => import('@/modules/dashboard/components/customers/customer-management').then((module) => ({ default: module.CustomerManagement })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const ContentManager = dynamic(
-  () => import('@/modules/dashboard/components/content/content-manager').then((module) => ({ default: module.ContentManager })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const ArticleCreateForm = dynamic(
-  () => import('@/modules/dashboard/components/editorial/editorial-form').then((module) => ({ default: module.ArticleCreateForm })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const ArticleDistributeForm = dynamic(
-  () => import('@/modules/dashboard/components/editorial/article-distribute-form').then((module) => ({ default: module.ArticleDistributeForm })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const IntegrationSettings = dynamic(
-  () => import('@/modules/dashboard/components/settings/integration-settings').then((module) => ({ default: module.IntegrationSettings })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-function selectEmailStatus(data: unknown): EmailStatus | null {
-  if (typeof data !== 'object' || data === null || !('email' in data)) return null;
-  const email = (data as { readonly email?: unknown }).email;
-  if (typeof email !== 'object' || email === null) return null;
-  const status = email as { readonly configured?: unknown; readonly defaultFrom?: unknown; readonly webhook?: unknown };
-  if (typeof status.configured !== 'boolean' || typeof status.webhook !== 'boolean') return null;
-  if (status.defaultFrom !== null && typeof status.defaultFrom !== 'string') return null;
-  return { configured: status.configured, defaultFrom: status.defaultFrom, webhook: status.webhook };
-}
-const MediaLibrary = dynamic(
-  () => import('@/modules/dashboard/components/publishing/media-library').then((module) => ({ default: module.MediaLibrary })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-/**
- * Views whose own panel already presents every collection the payload carries,
- * or which fetch their own endpoint entirely. Rendering `DataView` underneath
- * them only repeats the same rows in a generic table — or renders a skeleton for
- * a payload that was never going to arrive — so these views stay single-surface.
- */
-const VIEW_WITHOUT_RAW_COLLECTIONS: ReadonlySet<View> = new Set<View>([
-  'articles',
-  'billing',
-  'configuration',
-  'content',
-  'editorial',
-  'media',
-  'moderation',
-  'publishing',
-  'settings',
-  'taxonomy',
-]);
-const PublisherForm = dynamic(
-  () => import('@/modules/dashboard/components/editorial/publisher-form').then((module) => ({ default: module.PublisherForm })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const TaxonomyManager = dynamic(
-  () => import('@/modules/dashboard/components/editorial/taxonomy-manager').then((module) => ({ default: module.TaxonomyManager })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const ArticleArchive = dynamic(
-  () => import('@/modules/dashboard/components/editorial/article-archive').then((module) => ({ default: module.ArticleArchive })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const PublishingForm = dynamic(
-  () => import('@/modules/dashboard/components/publishing/publishing-form').then((module) => ({ default: module.PublishingForm })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const BillingPanel = dynamic(
-  () => import('@/modules/dashboard/components/billing/billing-panel').then((module) => ({ default: module.BillingPanel })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const ModerationPanel = dynamic(
-  () => import('@/modules/dashboard/components/moderation/moderation-panel').then((module) => ({ default: module.ModerationPanel })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const LoginMethodsForm = dynamic(
-  () => import('@/modules/dashboard/components/settings/login-methods-form').then((module) => ({ default: module.LoginMethodsForm })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const ProfileForm = dynamic(
-  () => import('@/modules/dashboard/components/settings/profile-form').then((module) => ({ default: module.ProfileForm })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
 
 export type { OrganizationOption } from '@/modules/dashboard/components/dashboard-types';
-
-const CONTENT_MANAGE_PERMISSION = INTEGRATIONS_PERMISSIONS.contentManage;
-
-/** Dark dashboard tooltip: content and its arrow share the raised surface. */
-const DASHBOARD_TOOLTIP_CONTENT =
-  'border border-hairline bg-bg-raised font-sans text-xs text-paper [&>div]:bg-bg-raised';
-
-const SIDEBAR_WIDTH = 256;
-const SIDEBAR_COLLAPSED_WIDTH = 64;
-
-const NAV_GROUPS: readonly NavGroup[] = [
-  {
-    id: 'overview',
-    title: 'Ringkasan',
-    items: [
-      { view: 'dashboard', label: 'Beranda', icon: LayoutDashboard },
-      { view: 'analytics', label: 'Statistik & Grafik', icon: BarChart3 },
-    ],
-  },
-  {
-    id: 'editorial',
-    title: 'Redaksi & Konten',
-    items: [
-      { view: 'editorial', label: 'Tulis Berita', icon: FileText },
-      { view: 'articles', label: 'Arsip Berita', icon: Newspaper },
-      { view: 'taxonomy', label: 'Kategori & Tag', icon: Tags },
-      { view: 'publishers', label: 'Daftar Penerbit', icon: Users },
-      { view: 'media', label: 'Media', icon: FolderKanban },
-    ],
-  },
-  {
-    id: 'publishing',
-    title: 'Penerbitan',
-    items: [{ view: 'publishing', label: 'Antrean Penerbitan', icon: Share2 }],
-  },
-  {
-    id: 'system',
-    title: 'Pengaturan Sistem',
-    items: [
-      { view: 'configuration', label: 'Domain & Wilayah', icon: Globe },
-      { view: 'settings', label: 'Koneksi & Kunci Akses', icon: KeyRound, requiredPermission: INTEGRATIONS_PERMISSIONS.apiKeyRead },
-      { view: 'billing', label: 'Langganan', icon: CreditCard, requiredPermission: INTEGRATIONS_PERMISSIONS.subscriptionRead },
-      { view: 'audit', label: 'Riwayat Keamanan', icon: ShieldAlert, requiredPermission: DASHBOARD_PERMISSIONS.auditRead },
-      { view: 'operations', label: 'Tugas Latar Belakang', icon: RefreshCw, requiredPermission: DASHBOARD_PERMISSIONS.auditRead },
-      { view: 'moderation', label: 'Laporan & Data Pengguna', icon: Flag, requiredPermission: DASHBOARD_PERMISSIONS.auditRead },
-      { view: 'customers', label: 'Kelola Pelanggan', icon: Settings, requiredPermission: INTEGRATIONS_PERMISSIONS.superAdmin },
-      { view: 'content', label: 'Konten Website', icon: Megaphone, requiredPermission: CONTENT_MANAGE_PERMISSION },
-    ],
-  },
-];
-
-const ALL_NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
-
-function DashboardNavList({
-  view,
-  permissions,
-  collapsed = false,
-  onSelect,
-}: {
-  readonly view: View;
-  readonly permissions: ReadonlySet<string>;
-  readonly collapsed?: boolean;
-  readonly onSelect: (view: View) => void;
-}) {
-  return (
-    <>
-      {NAV_GROUPS.map((group, groupIndex) => {
-        const visibleItems = group.items.filter(
-          (item) =>
-            item.requiredPermission === undefined ||
-            permissions.has(item.requiredPermission),
-        );
-        if (visibleItems.length === 0) return null;
-        return (
-        <div
-          key={group.id}
-          className={`animate-in fade-in duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${collapsed ? 'space-y-1 py-1' : 'space-y-1 px-1 py-1'}`}
-        >
-          {collapsed ? (
-            groupIndex > 0 ? (
-              <div className="mx-4 border-t border-hairline" aria-hidden="true" />
-            ) : null
-          ) : (
-            <h3 className="px-2 pb-1 font-sans text-[11px] font-medium uppercase tracking-wider text-paper-faint">
-              {group.title}
-            </h3>
-          )}
-          <div className="space-y-0.5">
-            {visibleItems.map((item) => {
-              const isActive = view === item.view;
-              const Icon = item.icon;
-
-              if (collapsed) {
-                return (
-                  <Tooltip key={item.view}>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          aria-current={isActive ? 'page' : undefined}
-                          aria-label={item.label}
-                          onClick={() => onSelect(item.view)}
-                          className={`mx-auto flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
-                            isActive
-                              ? 'bg-bg-raised-3 text-paper'
-                              : 'text-paper-dim hover:bg-bg-raised-2 hover:text-paper'
-                          }`}
-                        >
-                          <Icon
-                            className={`h-4 w-4 flex-none ${isActive ? 'text-paper' : 'text-paper-faint'}`}
-                            aria-hidden="true"
-                          />
-                        </Button>
-                      }
-                    />
-                    <TooltipContent side="right" className={DASHBOARD_TOOLTIP_CONTENT}>
-                      {item.label}
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              }
-
-              return (
-                <Button
-                  key={item.view}
-                  type="button"
-                  variant="ghost"
-                  aria-current={isActive ? 'page' : undefined}
-                  onClick={() => onSelect(item.view)}
-                  className={`flex w-full items-center justify-start gap-2.5 rounded-md px-2.5 py-1.5 text-left font-sans text-[13px] font-normal transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
-                    isActive
-                      ? 'bg-bg-raised-3 font-medium text-paper'
-                      : 'text-paper-dim hover:bg-bg-raised-2 hover:text-paper'
-                  }`}
-                >
-                  <Icon
-                    className={`h-4 w-4 flex-none ${isActive ? 'text-paper' : 'text-paper-faint'}`}
-                    aria-hidden="true"
-                  />
-                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                  {item.badge ? (
-                    <span className="flex-none rounded-full bg-bg-raised-2 px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-paper-dim">
-                      {typeof item.badge === 'object' ? item.badge.label : item.badge}
-                    </span>
-                  ) : null}
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-        );
-      })}
-    </>
-  );
-}
 
 interface ApiErrorResponse {
   readonly error?: {
@@ -413,7 +130,6 @@ export function DashboardWorkspace({
   readonly organizations: readonly OrganizationOption[];
   readonly initialDashboard?: DashboardSnapshot | null;
 }) {
-  const selectOrgId = useId();
   const drawerOrgId = useId();
   const initialOrgId = organizations[0]?.id ?? '';
 
@@ -427,10 +143,6 @@ export function DashboardWorkspace({
   const [busy, setBusy] = useState(false);
   const [currentPage, setCurrentPage] = useDashboardPage();
   const [navOpen, setNavOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState<number | null>(null);
-  const [sidebarDragging, setSidebarDragging] = useState(false);
-  const sidebarRenderedWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : (sidebarWidth ?? SIDEBAR_WIDTH);
 
   useEffect(() => {
     const query = window.matchMedia('(min-width: 768px)');
@@ -464,12 +176,6 @@ export function DashboardWorkspace({
     () => new Set(activeOrganization?.permissions ?? []),
     [activeOrganization],
   );
-
-  const activeMetadata = VIEW_METADATA_REGISTRY[view] ?? {
-    title: 'Ruang Kerja Redaksi',
-    eyebrow: 'Sistem',
-    description: 'Modul sistem INDICATE.',
-  };
 
   const fetchAnalytics = useCallback(
     async (targetOrg: string, signal?: AbortSignal): Promise<unknown> => {
@@ -588,24 +294,11 @@ export function DashboardWorkspace({
     toast.error(message);
   }, []);
 
-  /** Tab-scoped tables: a tab lists only the collections it owns instead of the whole payload. */
-  const collectionTables = (keys: readonly string[]) => (
-    <DataView
-      view={view}
-      data={data}
-      collections={keys}
-      currentPage={currentPage}
-      onPageChange={setCurrentPage}
-      onRefresh={() => void fetchData(view, organizationId, filterQuery)}
-      command={command}
-    />
-  );
-
   const handleSwitchRequested = useCallback((nextOrgId: string) => {
     setPendingOrgId(nextOrgId);
   }, []);
 
-  const command = async (action: string, payload: unknown): Promise<unknown> => {
+  const command = useCallback(async (action: string, payload: unknown): Promise<unknown> => {
     const targetOrg = organizationId;
     setBusy(true);
     setError(null);
@@ -662,121 +355,40 @@ export function DashboardWorkspace({
         setBusy(false);
       }
     }
-  };
+  }, [organizationId, view, filterQuery, fetchData]);
+
+  const dismissError = useCallback(() => setError(null), []);
+
+  const selectView = useCallback((next: View) => {
+    setView(next);
+    setCurrentPage(1);
+  }, [setView, setCurrentPage]);
+
+  const selectMobileNavView = useCallback((next: View) => {
+    setView(next);
+    setCurrentPage(1);
+    setNavOpen(false);
+  }, [setView, setCurrentPage]);
+
+  const refreshActiveView = useCallback(() => {
+    void fetchData(view, organizationId, filterQuery);
+  }, [fetchData, view, organizationId, filterQuery]);
 
   return (
     <TooltipProvider delay={150}>
       <div className="flex min-h-screen supports-[min-height:100svh]:min-h-svh bg-bg text-paper antialiased" data-generation={generation}>
-        <aside
-          aria-label="Navigasi utama Dashboard"
-          style={sidebarCollapsed ? undefined : { width: sidebarRenderedWidth }}
-          className={cn(
-            'sticky top-0 hidden h-screen supports-[height:100svh]:h-svh flex-none flex-col border-r border-hairline bg-bg-raised/40 md:flex',
-            sidebarCollapsed ? 'w-16' : 'w-64',
-            sidebarDragging
-              ? 'transition-none'
-              : 'transition-[width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]',
-          )}
-        >
-          <div className={`flex h-12 flex-none items-center border-b border-hairline ${sidebarCollapsed ? 'justify-center px-0' : 'gap-2 px-3'}`}>
-            <Image
-              src="/brand/indicate-mark.svg"
-              alt=""
-              aria-hidden="true"
-              unoptimized
-              width={28}
-              height={28}
-              className="h-7 w-7 flex-none rounded-md"
-            />
-            {sidebarCollapsed ? null : (
-              <span className="grid min-w-0 flex-1 animate-in leading-none fade-in duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
-                <span className="truncate font-sans text-sm font-semibold tracking-tight text-paper">
-                  Indicate
-                </span>
-                <span className="mt-1 truncate font-mono text-[9px] font-medium uppercase tracking-[0.18em] text-paper-faint">
-                  Publishing infrastructure
-                </span>
-              </span>
-            )}
-          </div>
-
-          {sidebarCollapsed ? null : (
-            <div className="flex-none animate-in border-b border-hairline p-3 fade-in duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
-              <Label htmlFor={selectOrgId} className="px-1 font-sans text-[11px] font-medium uppercase tracking-wider text-paper-faint">
-                Organisasi
-              </Label>
-              <div className="mt-1.5">
-                {organizations.length > 1 ? (
-                  <OrganizationSwitcher
-                    organizations={organizations}
-                    activeOrganizationId={organizationId}
-                    selectId={selectOrgId}
-                    onSwitchRequested={handleSwitchRequested}
-                    onSwitchCommitted={handleSwitchCommitted}
-                    onSwitchFailed={handleSwitchFailed}
-                  />
-                ) : (
-                  <p className="truncate px-1 font-sans text-[13px] font-medium text-paper">
-                    {activeOrganization?.name ?? 'Belum ada organisasi'}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          <nav
-            aria-label="Navigasi sidebar Dashboard"
-            className="dashboard-scrollbar min-h-0 flex-1 overflow-y-auto py-2"
-          >
-            <DashboardNavList
-              key={sidebarCollapsed ? 'nav-ciut' : 'nav-penuh'}
-              view={view}
-              permissions={activePermissions}
-              collapsed={sidebarCollapsed}
-              onSelect={(next) => {
-                setView(next);
-                setCurrentPage(1);
-              }}
-            />
-          </nav>
-
-          <div className="flex-none border-t border-hairline p-3">
-            <SignOutDialog
-              mode="icon"
-              trigger={
-                <button
-                  type="button"
-                  aria-label="Keluar dari workspace"
-                  className={cn(
-                    'flex w-full rounded-md text-left transition-colors duration-150 hover:bg-bg-raised-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60',
-                    sidebarCollapsed ? 'justify-center p-1' : 'items-center gap-2.5 p-1.5',
-                  )}
-                >
-                  <DashboardAvatar displayName={displayName} avatarRef={avatarUrl} />
-                  {sidebarCollapsed ? null : (
-                    <span className="grid min-w-0 flex-1 animate-in leading-none fade-in duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
-                      <span className="truncate font-sans text-xs font-medium text-paper">{displayName}</span>
-                      {activeOrganization?.role ? (
-                        <span className="mt-1 truncate font-mono text-[10px] uppercase tracking-wider text-paper-faint">
-                          {activeOrganization.role}
-                        </span>
-                      ) : null}
-                    </span>
-                  )}
-                </button>
-              }
-            />
-          </div>
-
-          <SidebarResizeRail
-            width={sidebarRenderedWidth}
-            collapsed={sidebarCollapsed}
-            label={sidebarCollapsed ? 'Bentangkan sidebar' : 'Ciutkan sidebar'}
-            onWidthChange={setSidebarWidth}
-            onCollapsedChange={setSidebarCollapsed}
-            onDraggingChange={setSidebarDragging}
-          />
-        </aside>
+        <DashboardSidebar
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+          organizations={organizations}
+          activeOrganization={activeOrganization}
+          permissions={activePermissions}
+          view={view}
+          onSelectView={selectView}
+          onRequestOrganizationSwitch={handleSwitchRequested}
+          onOrganizationSwitchCommitted={handleSwitchCommitted}
+          onOrganizationSwitchFailed={handleSwitchFailed}
+        />
 
         <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-12 flex-none items-center gap-2 border-b border-hairline bg-bg/95 px-4 backdrop-blur sm:px-6">
@@ -822,7 +434,7 @@ export function DashboardWorkspace({
               <TooltipTrigger
                 type="button"
                 disabled={busy}
-                onClick={() => void fetchData(view, organizationId, filterQuery)}
+                onClick={refreshActiveView}
                 aria-label="Muat ulang data"
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-paper-dim transition-colors duration-150 hover:bg-bg-raised-2 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 disabled:opacity-50"
               >
@@ -888,13 +500,8 @@ export function DashboardWorkspace({
               <DashboardNavList
                 view={view}
                 permissions={activePermissions}
-                onSelect={(next) => {
-                  setView(next);
-                  setCurrentPage(1);
-                  setNavOpen(false);
-                }}
-              />
-            </div>
+                onSelect={selectMobileNavView}
+              />            </div>
             <div className="flex-none border-t border-hairline px-4 py-3">
               <SignOutDialog
                 mode="icon"
@@ -920,157 +527,23 @@ export function DashboardWorkspace({
           </SheetContent>
         </Sheet>
 
-          <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
-            <div
-              key={`${organizationId}:${view}`}
-              className="mx-auto w-full max-w-7xl animate-in fade-in slide-in-from-bottom-2 duration-300"
-            >
-            <header className="flex flex-wrap items-start justify-between gap-4">
-              <div className="max-w-2xl">
-                <p className="m-0 font-sans text-xs font-medium text-paper-faint">
-                  {activeMetadata.eyebrow}
-                </p>
-                <h1 className="m-0 mt-1 font-sans text-lg font-semibold tracking-tight text-paper sm:text-xl">
-                  {activeMetadata.title}
-                </h1>
-                <p className="m-0 mt-1 font-sans text-[13px] leading-relaxed text-paper-dim">
-                  {activeMetadata.description}
-                </p>
-              </div>
-            </header>
-
-            <div className={view === 'publishers' ? 'space-y-4 pt-4' : 'space-y-6 pt-6'}>
-            {error ? (
-              <Alert
-                variant="destructive"
-                className="flex animate-in items-start gap-3 border-l-2 border-error bg-error/[0.06] px-4 py-3 fade-in slide-in-from-top-2 duration-200"
-              >
-                <AlertDescription className="flex-1 font-sans text-sm text-paper">{error}</AlertDescription>
-                <AlertAction>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => setError(null)}
-                    aria-label="Tutup pesan kesalahan"
-                    className="text-paper-faint hover:text-paper"
-                  >
-                    <X className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </AlertAction>
-              </Alert>
-            ) : null}
-
-            {activeOrganization && activeOrganization.records.length > 0 ? (
-              <p className="font-mono text-[11px] tabular-nums text-paper-faint">
-                Akses: {activeOrganization.records.join(' · ')}
-              </p>
-            ) : null}
-
-            {view === 'editorial' ? null : <FilterControls view={view} data={data} onApply={setFilterQuery} />}
-
-            <PanelErrorBoundary key={`forms:${organizationId}:${view}`} name={activeMetadata.title}>
-            {view === 'publishers' ? <PublisherForm data={data} command={command} /> : null}
-            {view === 'editorial' ? (
-              <ArticleCreateForm
-                data={data}
-                onSubmit={(payload) => command('article.create', payload)}
-                command={command}
-              />
-            ) : null}
-            {view === 'taxonomy' ? <TaxonomyManager data={data} command={command} /> : null}
-            {view === 'articles' ? <ArticleArchive data={data} /> : null}
-            {view === 'configuration' ? (
-              <Tabs defaultValue="domain" className="w-full">
-                <TabsList aria-label="Bagian infrastruktur" className="max-w-full overflow-x-auto overflow-y-clip">
-                  <TabsTrigger value="domain" className="flex-none">Domain & Wilayah</TabsTrigger>
-                  <TabsTrigger value="brand" className="flex-none">SEO & Brand</TabsTrigger>
-                  <TabsTrigger value="cache" className="flex-none">Cache</TabsTrigger>
-                  <TabsTrigger value="access" className="flex-none">Akses</TabsTrigger>
-                </TabsList>
-                <TabsContent keepMounted value="domain">
-                  <div className="space-y-6">
-                    <ConfigurationPanel data={data} command={command} />
-                    {collectionTables(['domains', 'regions', 'sites'])}
-                  </div>
-                </TabsContent>
-                <TabsContent keepMounted value="brand">
-                  <div className="space-y-6">
-                    <SiteSettingsForm data={data} command={command} />
-                    {collectionTables(['siteSettings'])}
-                  </div>
-                </TabsContent>
-                <TabsContent keepMounted value="cache">
-                  <CachePurgeForm data={data} command={command} />
-                </TabsContent>
-                <TabsContent keepMounted value="access">
-                  <div className="space-y-6">
-                    <AccessManagementForm data={data} command={command} organizationId={organizationId} />
-                    {collectionTables(['roles', 'memberships', 'invitations', 'activationAttempts'])}
-                  </div>
-                </TabsContent>
-              </Tabs>
-            ) : null}
-            {view === 'media' ? <MediaLibrary data={data} command={command} /> : null}
-            {view === 'publishing' ? (
-              <div className="grid gap-6">
-                <PublishingForm data={data} command={command} />
-                <ArticleDistributeForm
-                  data={data}
-                  onAssign={(payload) => command('article.sites.assign', payload)}
-                  command={command}
-                />
-              </div>
-            ) : null}
-            {view === 'settings' ? (
-              <Tabs defaultValue="koneksi" className="w-full">
-                <TabsList aria-label="Bagian pengaturan" className="max-w-full overflow-x-auto overflow-y-clip">
-                  <TabsTrigger value="koneksi" className="flex-none">Koneksi</TabsTrigger>
-                  <TabsTrigger value="profil" className="flex-none">Profil</TabsTrigger>
-                  <TabsTrigger value="login" className="flex-none">Login</TabsTrigger>
-                </TabsList>
-                <TabsContent keepMounted value="koneksi">
-                  <div className="space-y-6">
-                    <IntegrationSettings command={command} isPlatform={activePermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin) || activePermissions.has(INTEGRATIONS_PERMISSIONS.customerAdmin)} email={selectEmailStatus(data)} />
-                    {collectionTables(['apiKeys'])}
-                  </div>
-                </TabsContent>
-                <TabsContent keepMounted value="profil">
-                  <ProfileForm />
-                </TabsContent>
-                <TabsContent keepMounted value="login">
-                  <LoginMethodsForm />
-                </TabsContent>
-              </Tabs>
-            ) : null}
-            {view === 'billing' ? <BillingPanel organizationId={organizationId} permissions={[...activePermissions]} /> : null}
-            {view === 'moderation' ? <ModerationPanel organizationId={organizationId} /> : null}
-            {view === 'customers' ? <CustomerManagement command={command} /> : null}
-            {view === 'content' ? <ContentManager /> : null}
-            </PanelErrorBoundary>
-
-            {VIEW_WITHOUT_RAW_COLLECTIONS.has(view) ? null : busy && !data ? (
-              view === 'dashboard' ? <DashboardContentSkeleton /> : <DashboardCollectionsSkeleton />
-            ) : (
-              <PanelErrorBoundary key={`data:${organizationId}:${view}`} name={`${activeMetadata.title} — data`}>
-              <DataView
-                view={view}
-                data={data}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-                onRefresh={() => void fetchData(view, organizationId, filterQuery)}
-                command={command}
-                onSelectView={(next) => {
-                  setView(next);
-                  setCurrentPage(1);
-                }}
-              />
-              </PanelErrorBoundary>
-            )}
-            </div>
-            </div>
-          </main>
-          <DashboardFooter />
+        <DashboardViewPanel
+          view={view}
+          data={data}
+          organizationId={organizationId}
+          activeOrganization={activeOrganization}
+          permissions={activePermissions}
+          error={error}
+          showSkeleton={!VIEW_WITHOUT_RAW_COLLECTIONS.has(view) && busy && !data}
+          currentPage={currentPage}
+          command={command}
+          onDismissError={dismissError}
+          onFilterApply={setFilterQuery}
+          onPageChange={setCurrentPage}
+          onRefresh={refreshActiveView}
+          onSelectView={selectView}
+        />
+        <DashboardFooter />
         </div>
       </div>
     </TooltipProvider>

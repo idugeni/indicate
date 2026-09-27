@@ -22,6 +22,11 @@ function clampWidth(width: number): number {
  * right border at mid-height and stays invisible until the pointer reaches that
  * edge. Dragging sideways resizes, a click toggles collapsed, arrow keys
  * resize for keyboard users. Exposed as an ARIA window splitter.
+ *
+ * @remarks
+ * The rail sits above the workspace chrome (sticky header `z-30`, sticky footer
+ * `z-20`) so the edge stays hoverable and the grip stays visible behind them,
+ * and below the `z-50` overlay layer so modals, sheets, and menus still cover it.
  */
 export function SidebarResizeRail({
   width,
@@ -138,7 +143,7 @@ export function SidebarResizeRail({
       onPointerUp={endPointerGesture}
       onPointerCancel={endPointerGesture}
       onKeyDown={handleKeyDown}
-      className="group/rail absolute inset-y-0 -right-3.5 z-20 hidden w-7 touch-none select-none items-center justify-center focus-visible:outline-none md:flex"
+      className="group/rail absolute inset-y-0 -right-3.5 z-40 hidden w-7 touch-none select-none items-center justify-center focus-visible:outline-none md:flex"
     >
       <span
         aria-hidden="true"
@@ -150,7 +155,7 @@ export function SidebarResizeRail({
       <span
         aria-hidden="true"
         className={cn(
-          'flex h-7 w-7 flex-none items-center justify-center rounded-full border transition-[opacity,background-color,border-color,color] duration-150',
+          'relative z-10 flex h-7 w-7 flex-none items-center justify-center rounded-full border transition-[opacity,background-color,border-color,color] duration-150',
           dragging
             ? 'border-brass bg-brass/15 text-brass opacity-100'
             : 'border-hairline-strong bg-bg-raised-2 text-paper-dim opacity-0 group-hover/rail:border-brass/60 group-hover/rail:text-paper group-hover/rail:opacity-100 group-focus-visible/rail:border-brass/60 group-focus-visible/rail:text-paper group-focus-visible/rail:opacity-100',
