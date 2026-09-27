@@ -157,6 +157,17 @@ npm-facing.
 
 ### Changed
 
+- Vercel Web Analytics is gone from the root layout. It carried no `track()`
+  call, no custom event, and no property, so it fed only the raw traffic tab in
+  the Vercel dashboard while the product's own view analytics ran entirely
+  first-party: pageview beacon to Redis buffer to the view flush cron to
+  `article_site_view_days` to `buildAnalytics`, per article, per site, per day.
+  Pro includes no Web Analytics events and bills the rest per thousand, so the
+  script cost real money for a number the dashboard already had at higher
+  resolution. Speed Insights stays: it bills zero today and is the source of
+  Core Web Vitals. `@vercel/analytics` is left in `package.json` for the owner
+  to drop alongside the next dependency change; an unrendered component bills
+  nothing.
 - Publication dispatch no longer waits for the cron tick. A publish, bulk
   publish, or retry drains the queue through `after()` in the request that
   enqueued it, so a job due now starts in seconds instead of up to a minute
