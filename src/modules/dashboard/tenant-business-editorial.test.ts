@@ -419,7 +419,7 @@ describe('TenantBusinessService affiliations memberships articles', () => {
   });
 });
 
-describe('TenantBusinessService auto distribusi', () => {
+describe('TenantBusinessService assignment saat pembuatan', () => {
   const site = (overrides: Record<string, unknown> = {}) => ({
     id: 'site-1',
     organizationId: 'org-1',
@@ -442,7 +442,7 @@ describe('TenantBusinessService auto distribusi', () => {
     source: 'Humas',
   };
 
-  it('membuat artikel langsung antre ke semua situs aktif', async () => {
+  it('membuat artikel tanpa menulis assignment portal', async () => {
     const { service, state, appendAudit } = harness({
       regions: [{ id: ID2, status: 'active' }],
       sites: [site(), site({ id: 'site-2', normalizedHostname: 'lain.test' })],
@@ -452,10 +452,9 @@ describe('TenantBusinessService auto distribusi', () => {
     const result = await service.createArticle(actor, draft);
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('expected ok');
-    const rows = state.articleSites as { articleId: string; siteId: string; state: string; active: boolean }[];
-    expect(rows.filter(({ active }) => active).map(({ siteId }) => siteId).sort()).toEqual(['site-1', 'site-2']);
-    expect(rows.every(({ state }) => state === 'queued')).toBe(true);
-    expect(appendAudit).toHaveBeenCalledTimes(2);
+    const rows = state.articleSites as { siteId: string }[];
+    expect(rows).toEqual([]);
+    expect(appendAudit).toHaveBeenCalledTimes(1);
   });
 
   it('melewati situs nonaktif dan tanpa situs tetap sukses', async () => {
@@ -470,7 +469,7 @@ describe('TenantBusinessService auto distribusi', () => {
     expect(state.articleSites as unknown[]).toHaveLength(0);
   });
 
-  it('aktor terkunci region hanya antre ke situs dalam cakupan', async () => {
+  it('aktor terkunci region tetap sukses tanpa menulis assignment', async () => {
     const { service, state } = harness({
       regions: [{ id: ID2, status: 'active' }, { id: 'region-lain', status: 'active' }],
       sites: [site(), site({ id: 'site-luar', regionId: 'region-lain', normalizedHostname: 'luar.test' })],
@@ -481,6 +480,6 @@ describe('TenantBusinessService auto distribusi', () => {
     const result = await service.createArticle(locked, { ...draft, regionId: ID2 });
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('expected ok');
-    expect((state.articleSites as { siteId: string }[]).map(({ siteId }) => siteId)).toEqual(['site-1']);
+    expect(state.articleSites as unknown[]).toHaveLength(0);
   });
 });

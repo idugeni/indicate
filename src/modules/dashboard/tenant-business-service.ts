@@ -997,14 +997,6 @@ export class TenantBusinessService {
       const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId ?? null, null, 'leadMediaId', 'article-cover');
       const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, leadMediaId, coverImageUrl: value.coverImageUrl ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, bodyJson: requireValidBodyJson(value.bodyJson), scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null };
       transaction.state.articles.push(record); this.syncArticleCategories(transaction.state, record.id, distinctCategoryIds); this.audit(transaction, 'article.create', 'article', record.id, null, record);
-      const lock = regionLock(actor);
-      const autoSiteIds = transaction.state.sites
-        .filter((site) => site.organizationId === actor.organizationId && site.status === 'active' && site.activationState === 'active' && siteInScope(site, lock, transaction.state.regions))
-        .map(({ id }) => id);
-      if (autoSiteIds.length > 0) {
-        const { after, expandedFrom } = this.applySiteAssignment(transaction.state, record, autoSiteIds, actor, now);
-        this.audit(transaction, 'article.sites.assign', 'article', record.id, { siteIds: [] as string[] }, { siteIds: after.map(({ siteId }) => siteId).sort(), expanded: expandedFrom });
-      }
       return record;
     }});
     if (result.ok && this.notifier !== null) {
