@@ -316,6 +316,50 @@ describe('PublicationService request validation', () => {  it('menolak payload m
     expect(repository.acceptPublication).toHaveBeenCalledTimes(1);
   });
 
+  it('menolak portal region karena hanya penghubung', async () => {
+    const city = '0199a2b3-4c5d-7e8f-9012-3456789abc11';
+    const region = '0199a2b3-4c5d-7e8f-9012-3456789abc12';
+    const apex = '0199a2b3-4c5d-7e8f-9012-3456789abc13';
+    const context = {
+      ...variantContext,
+      variants: [
+        { siteId: apex, normalizedHostname: 'portal.test', siteLevel: 'apex', parentSiteId: null, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', assignmentSource: 'manual', expandedFromSiteId: null },
+        { siteId: region, normalizedHostname: 'jawa-tengah.portal.test', siteLevel: 'region', parentSiteId: apex, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', assignmentSource: 'manual', expandedFromSiteId: null },
+        { siteId: city, normalizedHostname: 'kota.portal.test', siteLevel: 'city', parentSiteId: region, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', assignmentSource: 'manual', expandedFromSiteId: null },
+      ],
+    };
+    const { service, repository } = harness({ getArticleVariantContext: async () => context });
+    const result = await service.request(actor, { ...singleRequest, siteIds: [region] });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
+    expect(result.error.error.message).toContain('region');
+    expect(repository.acceptPublication).not.toHaveBeenCalled();
+  });
+
+  it('menerima publish ke apex dan ke city tanpa saling menimpa', async () => {
+    const city = '0199a2b3-4c5d-7e8f-9012-3456789abc11';
+    const region = '0199a2b3-4c5d-7e8f-9012-3456789abc12';
+    const apex = '0199a2b3-4c5d-7e8f-9012-3456789abc13';
+    const context = {
+      ...variantContext,
+      variants: [
+        { siteId: apex, normalizedHostname: 'portal.test', siteLevel: 'apex', parentSiteId: null, domainId: 'd-1', customTitle: 'Edisi Apex', customDescription: 'Ringkasan untuk apex.', active: true, state: 'queued', assignmentSource: 'manual', expandedFromSiteId: null },
+        { siteId: region, normalizedHostname: 'jawa-tengah.portal.test', siteLevel: 'region', parentSiteId: apex, domainId: 'd-1', customTitle: 'Edisi Region', customDescription: 'Ringkasan untuk region.', active: true, state: 'queued', assignmentSource: 'manual', expandedFromSiteId: null },
+        { siteId: city, normalizedHostname: 'kota.portal.test', siteLevel: 'city', parentSiteId: region, domainId: 'd-1', customTitle: 'Edisi Kota', customDescription: 'Ringkasan untuk kota.', active: true, state: 'queued', assignmentSource: 'manual', expandedFromSiteId: null },
+      ],
+    };
+    const { service, repository } = harness({ getArticleVariantContext: async () => context });
+    const toApex = await service.request(actor, { ...singleRequest, siteIds: [apex], idempotencyKey: 'key-apex' });
+    const toCity = await service.request(actor, { ...singleRequest, siteIds: [city], idempotencyKey: 'key-city' });
+    expect(toApex.ok).toBe(true);
+    if (!toApex.ok) throw new Error(toApex.error.error.message);
+    expect(toCity.ok).toBe(true);
+    if (!toCity.ok) throw new Error(toCity.error.error.message);
+    expect(repository.acceptPublication).toHaveBeenCalledWith(actor, expect.objectContaining({ siteIds: [apex] }));
+    expect(repository.acceptPublication).toHaveBeenCalledWith(actor, expect.objectContaining({ siteIds: [city] }));
+  });
+
   it('tetap menolak duplikat lintas keluarga manual', async () => {
     const context = {
       ...variantContext,

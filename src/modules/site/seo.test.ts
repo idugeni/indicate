@@ -127,6 +127,24 @@ describe('buildSeoDocument', () => {
     expect(invalid.canonical).toBe('https://portal.example/berita-utama');
   });
 
+  it('menyatakan kanonis ke portal asal untuk artikel warisan tanpa override', () => {
+    const inherited = makeNetworkArticle({ canonicalUrl: null, href: 'https://kota.portal.example/berita-utama' });
+    const document = buildSeoDocument(makeNetworkSite([inherited]), { path: '/berita-utama', article: inherited });
+    expect(document.canonical).toBe('https://kota.portal.example/berita-utama');
+  });
+
+  it('membiarkan override editorial menang atas asal warisan', () => {
+    const inherited = makeNetworkArticle({ canonicalUrl: 'https://sumber.example/asli', href: 'https://kota.portal.example/berita-utama' });
+    const document = buildSeoDocument(makeNetworkSite([inherited]), { path: '/berita-utama', article: inherited });
+    expect(document.canonical).toBe('https://sumber.example/asli');
+  });
+
+  it('memakai kanonis tenant untuk artikel milik sendiri', () => {
+    const owned = makeNetworkArticle({ canonicalUrl: null, href: '/berita-utama' });
+    const document = buildSeoDocument(makeNetworkSite([owned]), { path: '/berita-utama', article: owned });
+    expect(document.canonical).toBe('https://portal.example/berita-utama');
+  });
+
   it('memperkaya Organization dan AboutPage untuk halaman tentang', () => {
     const article = makeNetworkArticle({
       publisherName: 'Humas Uji',
