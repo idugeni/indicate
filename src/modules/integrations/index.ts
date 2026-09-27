@@ -1,3 +1,9 @@
 import 'server-only';
 
-export { createProductionIntegrations, createProductionIntegrationsContext } from './integrations-composition';
+export type { PublicationWorkerComposition } from './integrations-composition';
+export {
+  createProductionIntegrations,
+  createProductionIntegrationsContext,
+  createPublicationWorkerComposition,
+  createPublicationWorkerContext,
+} from './integrations-composition';

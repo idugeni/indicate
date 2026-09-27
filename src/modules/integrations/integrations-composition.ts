@@ -3,6 +3,8 @@ import 'server-only';
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
 import { MediaService } from '@/modules/publishing/media-service';
 import { PublicationService } from '@/modules/publishing/publication-service';
+import { PublicationWorker } from '@/modules/publishing/publication-worker';
+import { HttpSharePrewarm } from '@/modules/publishing/share-prewarm';
 import { ApiKeyService } from '@/modules/integrations/api-key-service';
 import { CustomerService } from '@/modules/integrations/customer-service';
 import { RateLimitService } from '@/modules/integrations/rate-limit-service';
@@ -13,6 +15,7 @@ import type { RuntimeConfig } from '@/core/config/runtime/runtime-schema';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { DrizzlePublishingRepository } from '@/data/repos/publishing/repository';
+import { DrizzlePublicationTargetPublisher } from '@/data/repos/publishing/publication-target-publisher';
 import { DrizzleIntegrationsRepository } from '@/data/repos/integrations';
 import { UpstashPublicationQueueAdapter } from '@/integrations/redis/upstash-publication-queue';
 import { UpstashRateLimitAdapter } from '@/integrations/redis/upstash-rate-limit';
@@ -62,4 +65,54 @@ export function createProductionIntegrations(config: RuntimeConfig, bootstrap: B
 export async function createProductionIntegrationsContext() {
   const context = await getServerRuntimeContext();
   return createProductionIntegrations(context.config, context.bootstrap);
+}
+
+export interface PublicationWorkerComposition {
+  readonly queue: UpstashPublicationQueueAdapter;
+  /**
+   * Build a worker bound to the shared runtime database.
+   *
+   * @remarks Deferred behind a factory so a poller can read the queue on an
+   * idle tick without paying for the Postgres pool, the R2 client, or the
+   * target publisher it does not need.
+   */
+  worker(): PublicationWorker;
+}
+
+/**
+ * Compose the publication worker and its coordination queue.
+ *
+ * @param config - Assembled runtime configuration.
+ * @param bootstrap - Validated bootstrap environment.
+ * @returns Queue plus a worker factory bound to the shared runtime database.
+ */
+export function createPublicationWorkerComposition(config: RuntimeConfig, bootstrap: BootstrapConfig): PublicationWorkerComposition {
+  const queue = new UpstashPublicationQueueAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace, resourceId: config.redis.resourceId });
+  return {
+    queue,
+    worker: () => {
+      const runtime = getSharedRuntimeDatabase(bootstrap);
+      return new PublicationWorker(
+        new DrizzlePublishingRepository(runtime.db),
+        queue,
+        new DrizzlePublicationTargetPublisher(runtime.db),
+        new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, publicBucketName: config.r2.publicBucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey }),
+        {
+          maxAttempts: config.publishing.maxAttempts,
+          delaysSeconds: config.publishing.retryDelaysSeconds,
+          leaseSeconds: config.publishing.leaseSeconds,
+          batchSize: config.publishing.batchSize,
+          functionDeadlineSeconds: config.publishing.functionDeadlineSeconds,
+        },
+        undefined,
+        undefined,
+        new HttpSharePrewarm(),
+      );
+    },
+  };
+}
+
+export async function createPublicationWorkerContext(): Promise<PublicationWorkerComposition> {
+  const context = await getServerRuntimeContext();
+  return createPublicationWorkerComposition(context.config, context.bootstrap);
 }

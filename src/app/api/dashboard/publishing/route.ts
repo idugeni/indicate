@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
@@ -19,6 +19,7 @@ import { UpstashPublicationQueueAdapter } from '@/integrations/redis/upstash-pub
 import { UuidGenerator } from '@/core/system/uuid-generator';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
+import { logEvent } from '@/core/observability/logger';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
 import type { PublishingRepository } from '@/modules/publishing/ports';
@@ -26,6 +27,31 @@ import type { ObjectStoragePort } from '@/integrations/storage/ports';
 
 const querySchema = z.object({ organizationId: z.uuid(), view: z.enum(['media', 'publishing']), jobId: z.uuid().optional() });
 const commandSchema = z.object({ organizationId: z.uuid(), action: z.string().min(1).max(100), payload: z.unknown() });
+const DISPATCHING_ACTIONS: ReadonlySet<string> = new Set(['publication.request', 'publication.requestBulk', 'publication.retry']);
+
+/**
+ * Drain the publication queue once the response has been sent.
+ *
+ * @param requestId - Request id of the command that enqueued the work.
+ * @remarks The queue is a Redis sorted set scored by due time, so the periodic
+ * worker is only a sampler: a job due now waits for the next tick. Draining it
+ * here removes that wait, and the module is imported dynamically so the read
+ * path never pays to load the worker, its Postgres pool, or its R2 client. A
+ * failure here is safe — the job stays in the queue and the poller retries it.
+ */
+function dispatchAfterEnqueue(requestId: string): void {
+  after(async () => {
+    const workerId = `after-${requestId}`;
+    try {
+      const { createPublicationWorkerContext } = await import('@/modules/integrations/integrations-composition');
+      const composition = await createPublicationWorkerContext();
+      if (!(await composition.queue.hasPendingWork())) return;
+      await composition.worker().run(workerId);
+    } catch (error) {
+      logEvent('error', { event: 'publishing.dispatch.deferred', requestId, context: { name: error instanceof Error ? error.name : 'UnknownError' } });
+    }
+  });
+}
 
 interface ServiceContext {
   readonly actor: AuthorizedTenantActorContext;
@@ -99,7 +125,9 @@ async function handlePOST(request: Request) {
       'publication.status': (payload) => context.publication.status(context.actor, payload),
     };
     const action = actions[parsed.data.action]; if (action === undefined) return NextResponse.json(createPublicError('INVALID_INPUT', 'Unknown Publishing command.', requestId), { status: 400 });
-    const result = await action(parsed.data.payload); return result.ok ? NextResponse.json(result.value) : NextResponse.json(result.error, { status: statusFor(result.error) });
+    const result = await action(parsed.data.payload);
+    if (result.ok && DISPATCHING_ACTIONS.has(parsed.data.action)) dispatchAfterEnqueue(requestId);
+    return result.ok ? NextResponse.json(result.value) : NextResponse.json(result.error, { status: statusFor(result.error) });
   }
 }
 
