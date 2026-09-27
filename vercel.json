@@ -34,10 +34,6 @@
     {
       "path": "/api/internal/maintenance/worm-export",
       "schedule": "30 5 * * *"
-    },
-    {
-      "path": "/api/internal/maintenance/retention-sweep",
-      "schedule": "40 4 * * *"
     }
   ]
 }
