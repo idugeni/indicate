@@ -281,13 +281,19 @@ describe('readSite projection', () => {
     expect(item).toHaveProperty('imageHeight', null);
   });
 
-  it('mewarisi kanonis primer pada baris turunan cascade', async () => {
+  it('membawa kanonis artikel sendiri ke setiap portal', async () => {
     const { repository } = harness({
-      articles: [articleRow({ customCanonicalUrl: 'https://portal.test/berita-utama' })],
+      articles: [articleRow({ canonicalUrl: 'https://sumber.example/berita-utama' })],
     });
     const item = (await repository.loadNetworkSite({ ...CONTEXT }, {}))?.articles[0];
     expect(item).toBeDefined();
-    expect(item).toHaveProperty('canonicalUrl', 'https://portal.test/berita-utama');
+    expect(item).toHaveProperty('canonicalUrl', 'https://sumber.example/berita-utama');
+  });
+
+  it('membawa kanonis URL tenant bila artikel tidak menetapkannya', async () => {
+    const { repository } = harness({ articles: [articleRow({ canonicalUrl: null })] });
+    const item = (await repository.loadNetworkSite({ ...CONTEXT }, {}))?.articles[0];
+    expect(item).toHaveProperty('canonicalUrl', null);
   });
 
   it('memakai url publik langsung untuk sampul pub', async () => {

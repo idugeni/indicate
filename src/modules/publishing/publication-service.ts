@@ -3,7 +3,7 @@ import { FINGERPRINT_VERSION, publicationFingerprint, retryDelaySeconds, type Re
 import type { PublicationOverride, PublicationStatusProjection } from '@/modules/publishing/models';
 import type { ArticleVariantContext } from '@/modules/publishing/ports';
 import { deriveSiteLabel, excerptForDescription, findCrossSiteDuplicates, suggestPublicationVariants } from '@/modules/publishing/variant-suggester';
-import { CascadeIncompleteError, cascadeFamilyKey, unresolvedCascadeAncestors } from '@/modules/site/site-cascade';
+import { CascadeIncompleteError, unresolvedCascadeAncestors } from '@/modules/site/site-cascade';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import type { RedisCoordinationPort } from '@/integrations/redis/ports';
 import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type ArticleSiteRobotsResult, type PublicationJobSummary, type PublishingRepository } from '@/modules/publishing/ports';
@@ -36,7 +36,6 @@ export class PublicationService {
     context: ArticleVariantContext,
     siteIds: readonly string[],
     overrides: Readonly<Record<string, PublicationOverride>>,
-    families?: Readonly<Record<string, string>> | undefined,
   ): readonly { field: string; code: string }[] {
     const renderable = context.variants.filter((variant) =>
       variant.active && (variant.state === 'queued' || variant.state === 'processing' || variant.state === 'retrying' || variant.state === 'published'));
@@ -46,17 +45,9 @@ export class PublicationService {
       existing: renderable.map((variant) => ({ siteId: variant.siteId, customTitle: variant.customTitle, customDescription: variant.customDescription })),
       requestedSiteIds: siteIds,
       overrides,
-      families,
     });
   }
 
-  private cascadeFamilies(context: ArticleVariantContext): Record<string, string> {
-    const families: Record<string, string> = {};
-    for (const variant of context.variants) {
-      families[variant.siteId] = cascadeFamilyKey(variant.siteId, variant.expandedFromSiteId);
-    }
-    return families;
-  }
 
   /**
    * Resolve the sites a publication writes an assignment row to.
@@ -142,9 +133,8 @@ export class PublicationService {
       if (publishAt === null) return this.invalidPublishTime(actor);
       const publishAtKey = publishAt.getTime() === now.getTime() ? null : publishAt.toISOString();
       const expanded = this.expandRequest(variantContext, manualSiteIds);
-      const families = this.cascadeFamilies(variantContext);
       const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds: expanded, options: parsed.data.options, publishAt: publishAtKey, overrides });
-      if (this.crossSiteDuplicates(variantContext, expanded, overrides, families).length > 0) {
+      if (this.crossSiteDuplicates(variantContext, expanded, overrides).length > 0) {
         return { ok: false, error: this.duplicateVariantError(actor) };
       }
       const accepted = await this.repository.acceptPublication(actor, {
@@ -312,8 +302,7 @@ export class PublicationService {
         if (publishAt === null) return this.invalidPublishTime(actor);
         const publishAtKey = publishAt.getTime() === now.getTime() ? null : publishAt.toISOString();
         const expanded = this.expandRequest(variantContext, manualSiteIds);
-        const families = this.cascadeFamilies(variantContext);
-        if (this.crossSiteDuplicates(variantContext, expanded, overrides, families).length > 0) {
+        if (this.crossSiteDuplicates(variantContext, expanded, overrides).length > 0) {
           return { ok: false, error: this.duplicateVariantError(actor) };
         }
         const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId, siteIds: expanded, options: parsed.data.options, publishAt: publishAtKey, overrides });

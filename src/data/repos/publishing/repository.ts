@@ -9,9 +9,8 @@ import type {
   TransitionReceiptRecord, WorkerClaim,
 } from '@/modules/publishing/models';
 import { aggregateJobState, isAllowedTargetTransition, projectPublicationResult, seedInitialViewCount } from '@/modules/publishing/publication-policy';
-import { cascadeFamilyKey } from '@/modules/site/site-cascade';
 import { regionScopeCovers } from '@/modules/site/region-scope';
-import { duplicateIssuesForFamilies, excerptForDescription } from '@/modules/publishing/variant-suggester';
+import { duplicateIssuesAcrossSites, excerptForDescription } from '@/modules/publishing/variant-suggester';
 import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
 import {
   PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type AcceptPublicationInput, type AcceptPublicationResult,
@@ -328,14 +327,11 @@ export class DrizzlePublishingRepository implements PublishingRepository {
     const rows = await transaction.select({
       siteId: articleSites.siteId, customTitle: articleSites.customTitle, customDescription: articleSites.customDescription,
       active: articleSites.active, state: articleSites.state,
-      expandedFromSiteId: articleSites.expandedFromSiteId,
     }).from(articleSites).where(and(eq(articleSites.organizationId, organizationId), eq(articleSites.articleId, articleId)));
-    const familyOf = (siteId: string, expandedFrom: string | null): string => cascadeFamilyKey(siteId, expandedFrom);
-    const effective = new Map<string, { family: string; title: string; description: string }>();
+    const effective = new Map<string, { title: string; description: string }>();
     for (const row of rows) {
       if (!row.active || (row.state !== 'queued' && row.state !== 'processing' && row.state !== 'retrying' && row.state !== 'published')) continue;
       effective.set(row.siteId, {
-        family: familyOf(row.siteId, row.expandedFromSiteId),
         title: row.customTitle ?? canonicalTitle,
         description: row.customDescription ?? canonicalDescription,
       });
@@ -343,13 +339,12 @@ export class DrizzlePublishingRepository implements PublishingRepository {
     for (const siteId of siteIds) {
       const prior = effective.get(siteId);
       effective.set(siteId, {
-        family: familyOf(siteId, null),
         title: overrides[siteId]?.title ?? prior?.title ?? canonicalTitle,
         description: overrides[siteId]?.description ?? prior?.description ?? canonicalDescription,
       });
     }
-    const issues = duplicateIssuesForFamilies(
-      [...effective.values()].map((value) => ({ family: value.family, title: value.title, description: value.description })),
+    const issues = duplicateIssuesAcrossSites(
+      [...effective].map(([siteId, value]) => ({ siteId, title: value.title, description: value.description })),
     );
     if (issues.length > 0) {
       throw new PublishingConflictError('duplicate_variant');
@@ -368,7 +363,6 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       const variantRows = await transaction.select({
         siteId: articleSites.siteId, customTitle: articleSites.customTitle, customDescription: articleSites.customDescription,
         active: articleSites.active, state: articleSites.state,
-        expandedFromSiteId: articleSites.expandedFromSiteId,
       }).from(articleSites).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.articleId, articleId)));
       const bySite = new Map(variantRows.map((row) => [row.siteId, row] as const));
       return {
@@ -388,7 +382,6 @@ export class DrizzlePublishingRepository implements PublishingRepository {
           customDescription: bySite.get(site.id)?.customDescription ?? null,
           active: bySite.get(site.id)?.active ?? false,
           state: bySite.get(site.id)?.state ?? 'unpublished',
-          expandedFromSiteId: bySite.get(site.id)?.expandedFromSiteId ?? null,
         })),
       };
     });
@@ -424,13 +417,13 @@ export class DrizzlePublishingRepository implements PublishingRepository {
           const existingRelation = await transaction.select().from(articleSites).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.articleId, input.articleId), eq(articleSites.siteId, siteId))).limit(1).for('update');
           let relation = existingRelation[0];
           if (relation === undefined) {
-            relation = (await transaction.insert(articleSites).values({ organizationId: actor.organizationId, id: input.articleSiteIds[index]!, articleId: input.articleId, siteId, state: 'queued', stateOccurredAt: new Date(input.now), active: true, customTitle: override?.title ?? null, customDescription: override?.description ?? null, customImageMediaId: override?.imageMediaId ?? null, assignmentSource: 'manual', expandedFromSiteId: null, customCanonicalUrl: null, createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning())[0]!;
+            relation = (await transaction.insert(articleSites).values({ organizationId: actor.organizationId, id: input.articleSiteIds[index]!, articleId: input.articleId, siteId, state: 'queued', stateOccurredAt: new Date(input.now), active: true, customTitle: override?.title ?? null, customDescription: override?.description ?? null, customImageMediaId: override?.imageMediaId ?? null, createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning())[0]!;
           } else if (relation.state !== 'published' && relation.state !== 'failed' && relation.state !== 'unpublished' && relation.state !== 'queued') {
             throw new PublishingConflictError();
           }
           await transaction.insert(publishingJobTargets).values({ organizationId: actor.organizationId, id: input.targetIds[index]!, jobId: input.jobId, articleSiteId: relation.id, state: 'queued', nextAttemptAt: new Date(input.publishAt), publishedUrl: null, publishedAt: null, createdAt: new Date(input.now), updatedAt: new Date(input.now) });
           if (existingRelation[0] !== undefined) {
-            const updated = await transaction.update(articleSites).set({ state: 'queued', stateOccurredAt: new Date(input.now), publishedUrl: null, publishedAt: null, sanitizedFailure: null, active: true, customTitle: override?.title ?? null, customDescription: override?.description ?? null, customImageMediaId: override?.imageMediaId ?? null, assignmentSource: 'manual', expandedFromSiteId: null, version: relation.version + 1, updatedAt: new Date(input.now) }).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.id, relation.id), eq(articleSites.version, relation.version))).returning();
+            const updated = await transaction.update(articleSites).set({ state: 'queued', stateOccurredAt: new Date(input.now), publishedUrl: null, publishedAt: null, sanitizedFailure: null, active: true, customTitle: override?.title ?? null, customDescription: override?.description ?? null, customImageMediaId: override?.imageMediaId ?? null, version: relation.version + 1, updatedAt: new Date(input.now) }).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.id, relation.id), eq(articleSites.version, relation.version))).returning();
             if (updated.length !== 1) throw new PublishingConflictError();
           }
         }

@@ -37,26 +37,6 @@ function requiredAncestors(level: CascadeSiteLevel): readonly Exclude<CascadeSit
 }
 
 /**
- * Derive the duplicate-counting family for one site row.
- *
- * @param siteId - Site carrying the content.
- * @param expandedFromSiteId - Manual origin of an auto row, if known.
- * @returns Family key; rows sharing a key never count as duplicates of each other.
- * @remarks A region and an apex list their descendant cities' articles rather
- * than owning copies, so a city and every ancestor that inherits it are one
- * family. Keying on the origin collapses that closure; keying on the assignment
- * source would not, and would forbid the city's own publication.
- */
-export function cascadeFamilyKey(
-  siteId: string,
-  expandedFromSiteId: string | null | undefined,
-): string {
-  return expandedFromSiteId !== null && expandedFromSiteId !== undefined
-    ? `origin:${expandedFromSiteId}`
-    : `origin:${siteId}`;
-}
-
-/**
  * Report requested portals whose ancestor chain is incomplete.
  *
  * @param sites - Active and inactive site rows carrying level and parent links.

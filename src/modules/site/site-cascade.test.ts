@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CascadeIncompleteError, cascadeFamilyKey, unresolvedCascadeAncestors } from '@/modules/site/site-cascade';
+import { CascadeIncompleteError, unresolvedCascadeAncestors } from '@/modules/site/site-cascade';
 
 const SITES = [
   { id: 'apex', siteLevel: 'apex' as const, parentSiteId: null, status: 'active' },
@@ -36,13 +36,5 @@ describe('unresolvedCascadeAncestors', () => {
   it('tidak menurunkan apa pun: hanya melaporkan rantai yang rusak', () => {
     const broken = unresolvedCascadeAncestors(SITES, ['orphan']);
     expect(new CascadeIncompleteError(broken).message).toBe('cascade_hierarchy_incomplete: orphan missing region');
-  });
-});
-
-describe('cascadeFamilyKey', () => {
-  it('menggabungkan asal dan keturunannya ke satu keluarga', () => {
-    expect(cascadeFamilyKey('s-1', null)).toBe('origin:s-1');
-    expect(cascadeFamilyKey('s-2', 's-1')).toBe('origin:s-1');
-    expect(cascadeFamilyKey('s-3', null)).toBe('origin:s-3');
   });
 });

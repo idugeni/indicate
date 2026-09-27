@@ -82,24 +82,35 @@ describe('findCrossSiteDuplicates', () => {
     expect(issues).toContainEqual({ field: 'title', code: 'duplicate' });
   });
 
-  it('mengecualikan keluarga cascade yang berbagi kanonis', () => {
+  it('menandai judul sama di dua portal berbeda sebagai duplikat', () => {
     const issues = findCrossSiteDuplicates({
       ...canonical,
       existing: [],
       requestedSiteIds: ['city', 'region', 'apex'],
       overrides: {},
-      families: { city: 'auto:city', region: 'auto:city', apex: 'auto:city' },
+    });
+    expect(issues).toContainEqual({ field: 'title', code: 'duplicate' });
+  });
+
+  it('menerima judul berbeda per portal', () => {
+    const issues = findCrossSiteDuplicates({
+      ...canonical,
+      existing: [],
+      requestedSiteIds: ['city', 'region'],
+      overrides: {
+        city: { title: 'Edisi Kota', description: 'Ringkasan panjang untuk portal kota agar berbeda.' },
+        region: { title: 'Edisi Region', description: 'Ringkasan panjang untuk portal region agar berbeda.' },
+      },
     });
     expect(issues).toEqual([]);
   });
 
-  it('tetap mendeteksi duplikat lintas keluarga', () => {
+  it('tetap mendeteksi duplikat lintas portal', () => {
     const issues = findCrossSiteDuplicates({
       ...canonical,
       existing: [{ siteId: 'other', customTitle: 'Judul Kanonik', customDescription: null }],
       requestedSiteIds: ['new'],
       overrides: {},
-      families: { other: 'manual:other', new: 'manual:new' },
     });
     expect(issues).toContainEqual({ field: 'title', code: 'duplicate' });
   });

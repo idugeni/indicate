@@ -154,13 +154,17 @@ export function suggestPublicationVariants(input: {
 }
 
 /**
- * Count title/description duplication with cascade families collapsed.
+ * Count title/description duplication across the portals one article reaches.
  *
- * @param entries - Effective content per site with its duplicate-counting family.
- * @returns Duplicate issues; content repeated only inside one family is safe.
+ * @param entries - Effective content per portal.
+ * @returns Duplicate issues; content repeated on two portals is a doorway risk.
+ * @remarks Every entry is one portal's own assignment now. The old cascade
+ * copied a row upward and needed a family key to stop those copies counting
+ * against each other, but nothing derives rows any more, so a repeated title is
+ * a repeat across genuinely different portals.
  */
-export function duplicateIssuesForFamilies(
-  entries: readonly { readonly family: string; readonly title: string; readonly description: string }[],
+export function duplicateIssuesAcrossSites(
+  entries: readonly { readonly siteId: string; readonly title: string; readonly description: string }[],
 ): readonly SeoValidationIssue[] {
   const issues: SeoValidationIssue[] = [];
   const seenTitles = new Map<string, Set<string>>();
@@ -170,12 +174,12 @@ export function duplicateIssuesForFamilies(
     const description = fold(entry.description);
     if (title.length > 0) {
       const holders = seenTitles.get(title) ?? new Set<string>();
-      holders.add(entry.family);
+      holders.add(entry.siteId);
       seenTitles.set(title, holders);
     }
     if (description.length > 0) {
       const holders = seenDescriptions.get(description) ?? new Set<string>();
-      holders.add(entry.family);
+      holders.add(entry.siteId);
       seenDescriptions.set(description, holders);
     }
   }
@@ -192,8 +196,6 @@ export function duplicateIssuesForFamilies(
  * @param input.existing - Effective variants already stored per portal.
  * @param input.requestedSiteIds - Portals requested on this request.
  * @param input.overrides - Override pada request ini.
- * @param input.families - Optional cascade family per site; sites sharing a
- * family never count as duplicates of each other (they share one canonical).
  * @returns Masalah duplikasi; kosong berarti aman tayang ke semua portal.
  */
 export function findCrossSiteDuplicates(input: {
@@ -202,7 +204,6 @@ export function findCrossSiteDuplicates(input: {
   readonly existing: readonly ExistingSiteVariant[];
   readonly requestedSiteIds: readonly string[];
   readonly overrides: Readonly<Record<string, PublicationOverride>>;
-  readonly families?: Readonly<Record<string, string>> | undefined;
 }): readonly SeoValidationIssue[] {
   const effective = new Map<string, { title: string; description: string }>();
   for (const variant of input.existing) {
@@ -219,7 +220,7 @@ export function findCrossSiteDuplicates(input: {
       description: override?.description ?? prior?.description ?? input.canonicalDescription,
     });
   }
-  return duplicateIssuesForFamilies(
-    [...effective].map(([siteId, value]) => ({ family: input.families?.[siteId] ?? siteId, title: value.title, description: value.description })),
+  return duplicateIssuesAcrossSites(
+    [...effective].map(([siteId, value]) => ({ siteId, title: value.title, description: value.description })),
   );
 }

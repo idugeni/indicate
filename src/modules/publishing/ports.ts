@@ -96,8 +96,6 @@ export interface ArticleVariantSite {
   readonly customDescription: string | null;
   readonly active: boolean;
   readonly state: PublishingState;
-  /** Origin of a legacy cascade copy; every new row is manual, so this is normally null. */
-  readonly expandedFromSiteId: string | null;
 }
 
 export interface ArticleVariantContext {
