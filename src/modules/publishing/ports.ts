@@ -62,10 +62,6 @@ export interface AcceptPublicationInput {
   /** Normalized future dispatch time; equal to `now` for immediate requests. */
   readonly publishAt: string;
   readonly overrides: Readonly<Record<string, PublicationOverride>>;
-  /** Derived site → manual origin for cascade expansion; absent means fully manual. */
-  readonly cascade?: Readonly<Record<string, string>> | undefined;
-  /** Inherited canonical URL per derived site; manual rows keep existing values. */
-  readonly canonicals?: Readonly<Record<string, string>> | undefined;
   readonly now: string;
   readonly targetIds: readonly string[];
   readonly articleSiteIds: readonly string[];
@@ -100,7 +96,7 @@ export interface ArticleVariantSite {
   readonly customDescription: string | null;
   readonly active: boolean;
   readonly state: PublishingState;
-  readonly assignmentSource: 'manual' | 'auto';
+  /** Origin of a legacy cascade copy; every new row is manual, so this is normally null. */
   readonly expandedFromSiteId: string | null;
 }
 

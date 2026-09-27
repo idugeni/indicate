@@ -367,7 +367,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         .from(sites).where(and(eq(sites.organizationId, actor.organizationId), eq(sites.status, 'active')));
       const variantRows = await transaction.select({
         siteId: articleSites.siteId, customTitle: articleSites.customTitle, customDescription: articleSites.customDescription,
-        active: articleSites.active, state: articleSites.state, assignmentSource: articleSites.assignmentSource,
+        active: articleSites.active, state: articleSites.state,
         expandedFromSiteId: articleSites.expandedFromSiteId,
       }).from(articleSites).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.articleId, articleId)));
       const bySite = new Map(variantRows.map((row) => [row.siteId, row] as const));
@@ -388,7 +388,6 @@ export class DrizzlePublishingRepository implements PublishingRepository {
           customDescription: bySite.get(site.id)?.customDescription ?? null,
           active: bySite.get(site.id)?.active ?? false,
           state: bySite.get(site.id)?.state ?? 'unpublished',
-          assignmentSource: (bySite.get(site.id)?.assignmentSource ?? 'manual') as 'manual' | 'auto',
           expandedFromSiteId: bySite.get(site.id)?.expandedFromSiteId ?? null,
         })),
       };
@@ -422,22 +421,20 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         for (let index = 0; index < distinctSites.length; index += 1) {
           const siteId = distinctSites[index]!;
           const override = input.overrides[siteId];
-          const originSiteId = input.cascade?.[siteId] ?? null;
-          const canonicalUrl = originSiteId === null ? null : (input.canonicals?.[siteId] ?? null);
           const existingRelation = await transaction.select().from(articleSites).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.articleId, input.articleId), eq(articleSites.siteId, siteId))).limit(1).for('update');
           let relation = existingRelation[0];
           if (relation === undefined) {
-            relation = (await transaction.insert(articleSites).values({ organizationId: actor.organizationId, id: input.articleSiteIds[index]!, articleId: input.articleId, siteId, state: 'queued', stateOccurredAt: new Date(input.now), active: true, customTitle: override?.title ?? null, customDescription: override?.description ?? null, customImageMediaId: override?.imageMediaId ?? null, assignmentSource: originSiteId === null ? 'manual' : 'auto', expandedFromSiteId: originSiteId, customCanonicalUrl: canonicalUrl, createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning())[0]!;
+            relation = (await transaction.insert(articleSites).values({ organizationId: actor.organizationId, id: input.articleSiteIds[index]!, articleId: input.articleId, siteId, state: 'queued', stateOccurredAt: new Date(input.now), active: true, customTitle: override?.title ?? null, customDescription: override?.description ?? null, customImageMediaId: override?.imageMediaId ?? null, assignmentSource: 'manual', expandedFromSiteId: null, customCanonicalUrl: null, createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning())[0]!;
           } else if (relation.state !== 'published' && relation.state !== 'failed' && relation.state !== 'unpublished' && relation.state !== 'queued') {
             throw new PublishingConflictError();
           }
           await transaction.insert(publishingJobTargets).values({ organizationId: actor.organizationId, id: input.targetIds[index]!, jobId: input.jobId, articleSiteId: relation.id, state: 'queued', nextAttemptAt: new Date(input.publishAt), publishedUrl: null, publishedAt: null, createdAt: new Date(input.now), updatedAt: new Date(input.now) });
           if (existingRelation[0] !== undefined) {
-            const updated = await transaction.update(articleSites).set({ state: 'queued', stateOccurredAt: new Date(input.now), publishedUrl: null, publishedAt: null, sanitizedFailure: null, active: true, customTitle: override?.title ?? null, customDescription: override?.description ?? null, customImageMediaId: override?.imageMediaId ?? null, assignmentSource: originSiteId === null ? 'manual' : 'auto', expandedFromSiteId: originSiteId, ...(originSiteId === null ? {} : { customCanonicalUrl: canonicalUrl }), version: relation.version + 1, updatedAt: new Date(input.now) }).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.id, relation.id), eq(articleSites.version, relation.version))).returning();
+            const updated = await transaction.update(articleSites).set({ state: 'queued', stateOccurredAt: new Date(input.now), publishedUrl: null, publishedAt: null, sanitizedFailure: null, active: true, customTitle: override?.title ?? null, customDescription: override?.description ?? null, customImageMediaId: override?.imageMediaId ?? null, assignmentSource: 'manual', expandedFromSiteId: null, version: relation.version + 1, updatedAt: new Date(input.now) }).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.id, relation.id), eq(articleSites.version, relation.version))).returning();
             if (updated.length !== 1) throw new PublishingConflictError();
           }
         }
-        await this.audit(transaction, actor, 'publication.request', 'publishing_job', input.jobId, { articleId: input.articleId, siteIds: distinctSites, publishAt: input.publishAt, ...(input.cascade === undefined || Object.keys(input.cascade).length === 0 ? {} : { cascade: input.cascade }) }, new Date(input.now));
+        await this.audit(transaction, actor, 'publication.request', 'publishing_job', input.jobId, { articleId: input.articleId, siteIds: distinctSites, publishAt: input.publishAt }, new Date(input.now));
         return { kind: 'created' as const, job: mapJob(jobRows[0]!) };
       });
     } catch (error) {

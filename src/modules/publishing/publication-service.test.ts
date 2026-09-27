@@ -262,22 +262,18 @@ describe('PublicationService request validation', () => {  it('menolak payload m
     const context = {
       ...variantContext,
       variants: [
-        { siteId: apex, normalizedHostname: 'portal.test', siteLevel: 'apex', parentSiteId: null, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', assignmentSource: 'auto', expandedFromSiteId: city },
-        { siteId: region, normalizedHostname: 'jawa-tengah.portal.test', siteLevel: 'region', parentSiteId: apex, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', assignmentSource: 'auto', expandedFromSiteId: city },
-        { siteId: city, normalizedHostname: 'kota.portal.test', siteLevel: 'city', parentSiteId: region, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', assignmentSource: 'manual', expandedFromSiteId: null },
+        { siteId: apex, normalizedHostname: 'portal.test', siteLevel: 'apex', parentSiteId: null, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', expandedFromSiteId: city },
+        { siteId: region, normalizedHostname: 'jawa-tengah.portal.test', siteLevel: 'region', parentSiteId: apex, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', expandedFromSiteId: city },
+        { siteId: city, normalizedHostname: 'kota.portal.test', siteLevel: 'city', parentSiteId: region, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', expandedFromSiteId: null },
       ],
     };
     const { service, repository } = harness({ getArticleVariantContext: async () => context });
     const result = await service.request(actor, { ...singleRequest, siteIds: [city] });
     expect(result.ok).toBe(true);
-    expect(repository.acceptPublication).toHaveBeenCalledWith(
-      actor,
-      expect.objectContaining({
-        siteIds: [city],
-        cascade: {},
-        canonicals: {},
-      }),
-    );
+    const input = (repository.acceptPublication as unknown as { mock: { calls: readonly (readonly [unknown, Record<string, unknown>])[] } }).mock.calls[0]?.[1] ?? {};
+    expect(input.siteIds).toEqual([city]);
+    expect(input).not.toHaveProperty('cascade');
+    expect(input).not.toHaveProperty('canonicals');
   });
 
   it('menolak penerbitan tanpa partial write saat rantai hierarchy tidak lengkap', async () => {
@@ -286,8 +282,8 @@ describe('PublicationService request validation', () => {  it('menolak payload m
     const context = {
       ...variantContext,
       variants: [
-        { siteId: apex, normalizedHostname: 'portal.test', siteLevel: 'apex' as const, parentSiteId: null, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued' as const, assignmentSource: 'manual' as const, expandedFromSiteId: null },
-        { siteId: city, normalizedHostname: 'kota.portal.test', siteLevel: 'city' as const, parentSiteId: '0199a2b3-4c5d-7e8f-9012-3456789abcff', domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued' as const, assignmentSource: 'manual' as const, expandedFromSiteId: null },
+        { siteId: apex, normalizedHostname: 'portal.test', siteLevel: 'apex' as const, parentSiteId: null, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued' as const, expandedFromSiteId: null },
+        { siteId: city, normalizedHostname: 'kota.portal.test', siteLevel: 'city' as const, parentSiteId: '0199a2b3-4c5d-7e8f-9012-3456789abcff', domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued' as const, expandedFromSiteId: null },
       ],
     };
     const { service, repository } = harness({ getArticleVariantContext: async () => context });
@@ -305,9 +301,9 @@ describe('PublicationService request validation', () => {  it('menolak payload m
     const context = {
       ...variantContext,
       variants: [
-        { siteId: apex, normalizedHostname: 'portal.test', siteLevel: 'apex', parentSiteId: null, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'published', assignmentSource: 'auto', expandedFromSiteId: city },
-        { siteId: region, normalizedHostname: 'jawa-tengah.portal.test', siteLevel: 'region', parentSiteId: apex, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'published', assignmentSource: 'auto', expandedFromSiteId: city },
-        { siteId: city, normalizedHostname: 'kota.portal.test', siteLevel: 'city', parentSiteId: region, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'published', assignmentSource: 'manual', expandedFromSiteId: null },
+        { siteId: apex, normalizedHostname: 'portal.test', siteLevel: 'apex', parentSiteId: null, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'published', expandedFromSiteId: city },
+        { siteId: region, normalizedHostname: 'jawa-tengah.portal.test', siteLevel: 'region', parentSiteId: apex, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'published', expandedFromSiteId: city },
+        { siteId: city, normalizedHostname: 'kota.portal.test', siteLevel: 'city', parentSiteId: region, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'published', expandedFromSiteId: null },
       ],
     };
     const { service, repository } = harness({ getArticleVariantContext: async () => context });
@@ -323,9 +319,9 @@ describe('PublicationService request validation', () => {  it('menolak payload m
     const context = {
       ...variantContext,
       variants: [
-        { siteId: apex, normalizedHostname: 'portal.test', siteLevel: 'apex', parentSiteId: null, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', assignmentSource: 'manual', expandedFromSiteId: null },
-        { siteId: region, normalizedHostname: 'jawa-tengah.portal.test', siteLevel: 'region', parentSiteId: apex, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', assignmentSource: 'manual', expandedFromSiteId: null },
-        { siteId: city, normalizedHostname: 'kota.portal.test', siteLevel: 'city', parentSiteId: region, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', assignmentSource: 'manual', expandedFromSiteId: null },
+        { siteId: apex, normalizedHostname: 'portal.test', siteLevel: 'apex', parentSiteId: null, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', expandedFromSiteId: null },
+        { siteId: region, normalizedHostname: 'jawa-tengah.portal.test', siteLevel: 'region', parentSiteId: apex, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', expandedFromSiteId: null },
+        { siteId: city, normalizedHostname: 'kota.portal.test', siteLevel: 'city', parentSiteId: region, domainId: 'd-1', customTitle: null, customDescription: null, active: true, state: 'queued', expandedFromSiteId: null },
       ],
     };
     const { service, repository } = harness({ getArticleVariantContext: async () => context });
@@ -344,9 +340,9 @@ describe('PublicationService request validation', () => {  it('menolak payload m
     const context = {
       ...variantContext,
       variants: [
-        { siteId: apex, normalizedHostname: 'portal.test', siteLevel: 'apex', parentSiteId: null, domainId: 'd-1', customTitle: 'Edisi Apex', customDescription: 'Ringkasan untuk apex.', active: true, state: 'queued', assignmentSource: 'manual', expandedFromSiteId: null },
-        { siteId: region, normalizedHostname: 'jawa-tengah.portal.test', siteLevel: 'region', parentSiteId: apex, domainId: 'd-1', customTitle: 'Edisi Region', customDescription: 'Ringkasan untuk region.', active: true, state: 'queued', assignmentSource: 'manual', expandedFromSiteId: null },
-        { siteId: city, normalizedHostname: 'kota.portal.test', siteLevel: 'city', parentSiteId: region, domainId: 'd-1', customTitle: 'Edisi Kota', customDescription: 'Ringkasan untuk kota.', active: true, state: 'queued', assignmentSource: 'manual', expandedFromSiteId: null },
+        { siteId: apex, normalizedHostname: 'portal.test', siteLevel: 'apex', parentSiteId: null, domainId: 'd-1', customTitle: 'Edisi Apex', customDescription: 'Ringkasan untuk apex.', active: true, state: 'queued', expandedFromSiteId: null },
+        { siteId: region, normalizedHostname: 'jawa-tengah.portal.test', siteLevel: 'region', parentSiteId: apex, domainId: 'd-1', customTitle: 'Edisi Region', customDescription: 'Ringkasan untuk region.', active: true, state: 'queued', expandedFromSiteId: null },
+        { siteId: city, normalizedHostname: 'kota.portal.test', siteLevel: 'city', parentSiteId: region, domainId: 'd-1', customTitle: 'Edisi Kota', customDescription: 'Ringkasan untuk kota.', active: true, state: 'queued', expandedFromSiteId: null },
       ],
     };
     const { service, repository } = harness({ getArticleVariantContext: async () => context });
@@ -364,7 +360,7 @@ describe('PublicationService request validation', () => {  it('menolak payload m
     const context = {
       ...variantContext,
       variants: [
-        { siteId: SITE_A, normalizedHostname: 'a.test', regionId: null, domainId: 'd-1', customTitle: 'Judul Kanonik Artikel', customDescription: null, active: true, state: 'published', assignmentSource: 'manual', expandedFromSiteId: null },
+        { siteId: SITE_A, normalizedHostname: 'a.test', regionId: null, domainId: 'd-1', customTitle: 'Judul Kanonik Artikel', customDescription: null, active: true, state: 'published', expandedFromSiteId: null },
       ],
       regions: [],
     };

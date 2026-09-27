@@ -16,8 +16,9 @@ afterEach(() => {
 const DATA = {
   domains: [{ id: 'd-1', normalizedHostname: 'fakta01.my.id' }],
   sites: [
-    { id: 's-1', normalizedHostname: 'wonosobo.fakta01.my.id', domainId: 'd-1' },
-    { id: 's-2', normalizedHostname: 'semarang.fakta01.my.id', domainId: 'd-1' },
+    { id: 's-0', normalizedHostname: 'fakta01.my.id', domainId: 'd-1' },
+    { id: 's-1', normalizedHostname: 'wonosobo.fakta01.my.id', domainId: 'd-1', regionId: 'r-1' },
+    { id: 's-2', normalizedHostname: 'semarang.fakta01.my.id', domainId: 'd-1', regionId: 'r-1' },
   ],
   articles: [{ id: 'art-1', title: 'Artikel Uji' }],
   articleSites: [{ articleId: 'art-1', siteId: 's-1' }],
@@ -54,13 +55,21 @@ describe('Formulir penyaluran artikel', () => {
     await waitFor(() => expect(assign).not.toHaveBeenCalled());
   });
 
-  it('menyalurkan ke seluruh situs domain setelah artikel dipilih', async () => {
+  it('menyalurkan hanya ke portal apex domain setelah artikel dipilih', async () => {
     const { assign, container } = setup({});
     await selectArticle();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
-      expect(assign).toHaveBeenCalledWith({ articleId: 'art-1', siteIds: ['s-1', 's-2'] }),
+      expect(assign).toHaveBeenCalledWith({ articleId: 'art-1', siteIds: ['s-0'] }),
     );
+  });
+
+  it('menyatakan portal turunan diwarisi, bukan dipilih', () => {
+    setup({});
+    fireEvent.click(screen.getByRole('button', { name: /lihat 3 portal/i }));
+    expect(screen.getAllByText('fakta01.my.id').length).toBeGreaterThan(0);
+    expect(screen.getAllByText((content) => content.includes('portal region')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText((content) => content.includes('menampilkan artikel ini otomatis')).length).toBeGreaterThan(0);
   });
 
   it('mengecualikan situs saat domain tidak dicentang', async () => {
@@ -77,7 +86,7 @@ describe('Formulir penyaluran artikel', () => {
     expect(screen.getByText('Artikel Uji')).toBeDefined();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
-      expect(assign).toHaveBeenCalledWith({ articleId: 'art-1', siteIds: ['s-1', 's-2'] }),
+      expect(assign).toHaveBeenCalledWith({ articleId: 'art-1', siteIds: ['s-0'] }),
     );
   });
 
@@ -99,11 +108,16 @@ describe('Penyaluran artikel pada jaringan besar', () => {
       { id: 'd-1', normalizedHostname: 'fakta01.my.id' },
       { id: 'd-2', normalizedHostname: 'fakta02.my.id' },
     ],
-    sites: Array.from({ length: 200 }, (_, index) => ({
-      id: `s-${index}`,
-      normalizedHostname: `kota-${index}.${index < 100 ? 'fakta01' : 'fakta02'}.my.id`,
-      domainId: index < 100 ? 'd-1' : 'd-2',
-    })),
+    sites: [
+      { id: 's-apex-1', normalizedHostname: 'fakta01.my.id', domainId: 'd-1' },
+      { id: 's-apex-2', normalizedHostname: 'fakta02.my.id', domainId: 'd-2' },
+      ...Array.from({ length: 198 }, (_, index) => ({
+        id: `s-${index}`,
+        normalizedHostname: `kota-${index}.${index < 99 ? 'fakta01' : 'fakta02'}.my.id`,
+        domainId: index < 99 ? 'd-1' : 'd-2',
+        regionId: 'r-1',
+      })),
+    ],
     articles: [{ id: 'art-1', title: 'Artikel Uji' }],
     articleSites: [],
   };
@@ -114,38 +128,35 @@ describe('Penyaluran artikel pada jaringan besar', () => {
     return { assign, form: container.querySelectorAll('form')[0] as HTMLFormElement };
   }
 
-  it('tidak memasang daftar situs per domain sampai barisnya dibuka', () => {
+  it('tidak memasang daftar portal per domain sampai barisnya dibuka', () => {
     renderBig();
     expect(document.querySelectorAll('li')).toHaveLength(0);
     expect(document.querySelectorAll('input[name="siteIds"]')).toHaveLength(0);
-    fireEvent.click(screen.getAllByRole('button', { name: /lihat 100 situs/i })[0]!);
-    expect(document.querySelectorAll('li')).toHaveLength(100);
+    fireEvent.click(screen.getAllByRole('button', { name: /lihat 100 portal/i })[0]!);
+    expect(document.querySelectorAll('li')).toHaveLength(2);
     expect(screen.getByRole('button', { name: /sembunyikan/i }).getAttribute('aria-expanded')).toBe('true');
   });
 
   it('menyaring domain dan hanya menyalurkan yang cocok', async () => {
     const { assign, form } = renderBig();
-    expect(screen.getByText('2 dari 2 domain · 200 situs terpilih')).toBeDefined();
+    expect(screen.getByText('2 dari 2 domain · 2 situs terpilih')).toBeDefined();
     fireEvent.change(screen.getByLabelText(/cari domain tujuan/i), { target: { value: 'fakta02' } });
     fireEvent.click(screen.getByRole('button', { name: /pilih semua yang cocok/i }));
-    expect(screen.getByText('1 dari 2 domain · 100 situs terpilih')).toBeDefined();
+    expect(screen.getByText('1 dari 2 domain · 1 situs terpilih')).toBeDefined();
     fireEvent.submit(form);
     await waitFor(() =>
-      expect(assign).toHaveBeenCalledWith({
-        articleId: 'art-1',
-        siteIds: Array.from({ length: 100 }, (_, index) => `s-${100 + index}`),
-      }),
+      expect(assign).toHaveBeenCalledWith({ articleId: 'art-1', siteIds: ['s-apex-2'] }),
     );
   });
 
   it('mengembalikan seluruh domain lewat tombol pilih semuanya', async () => {
     const { assign, form } = renderBig();
     fireEvent.click(screen.getByRole('checkbox', { name: 'fakta01.my.id' }));
-    expect(screen.getByText('2 dari 2 domain · 100 situs terpilih')).toBeDefined();
+    expect(screen.getByText('2 dari 2 domain · 1 situs terpilih')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /pilih semuanya/i }));
     fireEvent.submit(form);
     await waitFor(() =>
-      expect(assign).toHaveBeenCalledWith({ articleId: 'art-1', siteIds: expect.arrayContaining(['s-0', 's-199']) }),
+      expect(assign).toHaveBeenCalledWith({ articleId: 'art-1', siteIds: ['s-apex-1', 's-apex-2'] }),
     );
   });
 });

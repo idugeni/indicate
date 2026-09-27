@@ -74,11 +74,25 @@ export function ArticleDistributeForm({
       if (bucket === undefined) byDomain.set(key, [site]);
       else bucket.push(site);
     }
+    /**
+     * A domain offers exactly one assignable portal: its apex.
+     *
+     * @remarks An apex hostname is its domain verbatim, while a region or city
+     * portal always carries a leading label, so the apex is identifiable without
+     * a level column. It is also the only correct target, because a region reads
+     * its cities' articles and an apex reads its whole subtree: assigning one
+     * article to every portal of a domain would list it once per portal on the
+     * ancestors.
+     */
     return [
       ...assignDomains
         .filter((domain) => (byDomain.get(domain.id)?.length ?? 0) > 0)
-        .map((domain) => ({ id: domain.id, label: domain.normalizedHostname, sites: byDomain.get(domain.id) ?? [] })),
-      ...(orphan.length > 0 ? [{ id: '__tanpa-domain__', label: 'Lainnya', sites: orphan }] : []),
+        .map((domain) => {
+          const all = byDomain.get(domain.id) ?? [];
+          const apex = all.find((site) => site.normalizedHostname === domain.normalizedHostname) ?? all.find((site) => site.regionId == null) ?? all[0];
+          return { id: domain.id, label: domain.normalizedHostname, sites: apex === undefined ? [] : [apex], portalCount: all.length };
+        }),
+      ...(orphan.length > 0 ? [{ id: '__tanpa-domain__', label: 'Lainnya', sites: orphan, portalCount: orphan.length }] : []),
     ];
   }, [assignDomains, assignSites]);
   const isAssignGroupChecked = (id: string) => !assignExcluded.includes(id);
@@ -192,8 +206,9 @@ export function ArticleDistributeForm({
             </span>
           </div>
           <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">
-            Semua domain terpilih secara default; hapus centang untuk mengecualikan. Satu domain mencakup seluruh
-            subdomain di bawahnya, termasuk situs kota.
+            Pilih portal apex yang akan menayangkan artikel; portal region dan kota di bawahnya tidak dipilih satu per satu.
+            Artikel di portal kota otomatis ikut tampil di region dan apex di atasnya, sedangkan artikel yang
+            ditayangkan di apex hanya tampil di apex itu sendiri.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <Input
@@ -250,7 +265,7 @@ export function ArticleDistributeForm({
                         {group.label}
                       </span>
                       <span aria-hidden="true" className="font-mono text-[11px] tabular-nums text-paper-faint">
-                        {group.sites.length} situs
+                        {group.sites.length} portal apex
                       </span>
                     </Label>
                     <div className="ml-9 pb-1.5">
@@ -264,7 +279,7 @@ export function ArticleDistributeForm({
                         onClick={() => setExpandedGroupIds((prev) => (prev.includes(group.id) ? prev.filter((id) => id !== group.id) : [...prev, group.id]))}
                         className="h-auto p-0 font-mono text-[11px] text-paper-faint hover:text-paper"
                       >
-                        <span>{expandedGroupIds.includes(group.id) ? 'Sembunyikan' : `Lihat ${group.sites.length.toLocaleString('id-ID')} situs`}</span>
+                        <span>{expandedGroupIds.includes(group.id) ? 'Sembunyikan' : `Lihat ${group.portalCount.toLocaleString('id-ID')} portal`}</span>
                       </Button>
                       {expandedGroupIds.includes(group.id) ? (
                         <ul id={`assign-sites-${group.id}`} className="m-0 mt-1 list-none space-y-0.5 p-0">
@@ -273,6 +288,12 @@ export function ArticleDistributeForm({
                               {site.normalizedHostname}
                             </li>
                           ))}
+                          {group.portalCount > group.sites.length ? (
+                            <li className="font-sans text-[11px] text-paper-faint">
+                              {(group.portalCount - group.sites.length).toLocaleString('id-ID')} portal region/kota di bawahnya
+                              menampilkan artikel ini otomatis.
+                            </li>
+                          ) : null}
                         </ul>
                       ) : null}
                     </div>

@@ -3,7 +3,7 @@ import { FINGERPRINT_VERSION, publicationFingerprint, retryDelaySeconds, type Re
 import type { PublicationOverride, PublicationStatusProjection } from '@/modules/publishing/models';
 import type { ArticleVariantContext } from '@/modules/publishing/ports';
 import { deriveSiteLabel, excerptForDescription, findCrossSiteDuplicates, suggestPublicationVariants } from '@/modules/publishing/variant-suggester';
-import { CascadeIncompleteError, cascadeFamilyKey, expandCascadeSites } from '@/modules/site/site-cascade';
+import { CascadeIncompleteError, cascadeFamilyKey, unresolvedCascadeAncestors } from '@/modules/site/site-cascade';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import type { RedisCoordinationPort } from '@/integrations/redis/ports';
 import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type ArticleSiteRobotsResult, type PublicationJobSummary, type PublishingRepository } from '@/modules/publishing/ports';
@@ -50,22 +50,11 @@ export class PublicationService {
     });
   }
 
-  private cascadeFamilies(
-    context: ArticleVariantContext,
-    derived: Readonly<Record<string, string>>,
-  ): Record<string, string> {
+  private cascadeFamilies(context: ArticleVariantContext): Record<string, string> {
     const families: Record<string, string> = {};
-    const origins = new Set(Object.values(derived));
     for (const variant of context.variants) {
-      if (derived[variant.siteId] !== undefined) {
-        families[variant.siteId] = `auto:${derived[variant.siteId] as string}`;
-      } else if (origins.has(variant.siteId)) {
-        families[variant.siteId] = `auto:${variant.siteId}`;
-      } else {
-        families[variant.siteId] = cascadeFamilyKey(variant.siteId, variant.expandedFromSiteId);
-      }
+      families[variant.siteId] = cascadeFamilyKey(variant.siteId, variant.expandedFromSiteId);
     }
-    for (const [siteId, originSiteId] of Object.entries(derived)) families[siteId] = `auto:${originSiteId}`;
     return families;
   }
 
@@ -74,36 +63,30 @@ export class PublicationService {
    *
    * @param context - Article variant context carrying the org's site tree.
    * @param manualSiteIds - Sites the editor explicitly targeted.
-   * @returns Target ids, always empty derivation and canonical maps.
+   * @returns The requested portals, deduplicated and ordered.
    *
-   * @remarks Only the requested portals get a row. The cascade is still walked so
-   * an incomplete `apex -> region -> city` chain is refused before anything is
-   * written, but its ancestors are no longer materialised: a region and an apex
-   * list their descendant cities' articles by walking the tree at read time, so
-   * copying the row upward bought nothing and multiplied storage and edge purges
-   * by the portal count. An apex publication stays apex-only, because a city
-   * portal lists its own rows and nothing else.
+   * @remarks Only the requested portals get a row, and the hierarchy is still
+   * checked so an incomplete `apex -> region -> city` chain is refused before
+   * anything is written. Nothing is derived: a region and an apex list their
+   * descendant cities' articles by walking the tree at read time, so copying the
+   * row upward bought nothing and multiplied storage and edge purges by the
+   * portal count. An apex publication stays apex-only, because a city portal
+   * lists its own rows and nothing else.
    */
   private expandRequest(
     context: ArticleVariantContext,
     manualSiteIds: readonly string[],
-  ): { readonly siteIds: readonly string[]; readonly derived: Readonly<Record<string, string>>; readonly canonicals: Readonly<Record<string, string>> } {
+  ): readonly string[] {
     const scope = context.variants.map((variant) => ({
       id: variant.siteId,
-      domainId: variant.domainId,
       siteLevel: variant.siteLevel,
       parentSiteId: variant.parentSiteId,
-      normalizedHostname: variant.normalizedHostname,
       status: 'active' as const,
     }));
     const known = new Set(scope.map((site) => site.id));
-    const expansion = expandCascadeSites(
-      scope,
-      manualSiteIds.filter((siteId) => known.has(siteId)),
-      context.slug,
-    );
-    if (expansion.unresolved.length > 0) throw new CascadeIncompleteError(expansion.unresolved);
-    return { siteIds: [...new Set(manualSiteIds)].sort(), derived: {}, canonicals: {} };
+    const unresolved = unresolvedCascadeAncestors(scope, manualSiteIds.filter((siteId) => known.has(siteId)));
+    if (unresolved.length > 0) throw new CascadeIncompleteError(unresolved);
+    return [...new Set(manualSiteIds)].sort();
   }
 
   private duplicateVariantError(actor: AuthorizedTenantActorContext) {
@@ -159,16 +142,16 @@ export class PublicationService {
       if (publishAt === null) return this.invalidPublishTime(actor);
       const publishAtKey = publishAt.getTime() === now.getTime() ? null : publishAt.toISOString();
       const expanded = this.expandRequest(variantContext, manualSiteIds);
-      const families = this.cascadeFamilies(variantContext, expanded.derived);
-      const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds: expanded.siteIds, options: parsed.data.options, publishAt: publishAtKey, overrides });
-      if (this.crossSiteDuplicates(variantContext, expanded.siteIds, overrides, families).length > 0) {
+      const families = this.cascadeFamilies(variantContext);
+      const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds: expanded, options: parsed.data.options, publishAt: publishAtKey, overrides });
+      if (this.crossSiteDuplicates(variantContext, expanded, overrides, families).length > 0) {
         return { ok: false, error: this.duplicateVariantError(actor) };
       }
       const accepted = await this.repository.acceptPublication(actor, {
-        jobId: this.identifiers.create(), organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds: [...expanded.siteIds],
+        jobId: this.identifiers.create(), organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds: [...expanded],
         idempotencyKey: parsed.data.idempotencyKey, fingerprint, fingerprintVersion: FINGERPRINT_VERSION,
-        options: parsed.data.options, publishAt: publishAt.toISOString(), overrides, cascade: expanded.derived, canonicals: expanded.canonicals,
-        now: now.toISOString(), targetIds: expanded.siteIds.map(() => this.identifiers.create()), articleSiteIds: expanded.siteIds.map(() => this.identifiers.create()),
+        options: parsed.data.options, publishAt: publishAt.toISOString(), overrides,
+        now: now.toISOString(), targetIds: expanded.map(() => this.identifiers.create()), articleSiteIds: expanded.map(() => this.identifiers.create()),
       });
       if (accepted.kind === 'conflict') return { ok: false, error: createPublicError('IDEMPOTENCY_CONFLICT', 'The idempotency key is already associated with another request.', actor.requestId) };
       if (accepted.kind === 'created') await this.scheduleDispatch(actor, accepted.job.id, publishAt, now);
@@ -329,16 +312,16 @@ export class PublicationService {
         if (publishAt === null) return this.invalidPublishTime(actor);
         const publishAtKey = publishAt.getTime() === now.getTime() ? null : publishAt.toISOString();
         const expanded = this.expandRequest(variantContext, manualSiteIds);
-        const families = this.cascadeFamilies(variantContext, expanded.derived);
-        if (this.crossSiteDuplicates(variantContext, expanded.siteIds, overrides, families).length > 0) {
+        const families = this.cascadeFamilies(variantContext);
+        if (this.crossSiteDuplicates(variantContext, expanded, overrides, families).length > 0) {
           return { ok: false, error: this.duplicateVariantError(actor) };
         }
-        const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId, siteIds: expanded.siteIds, options: parsed.data.options, publishAt: publishAtKey, overrides });
+        const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId, siteIds: expanded, options: parsed.data.options, publishAt: publishAtKey, overrides });
         const accepted = await this.repository.acceptPublication(actor, {
-          jobId: this.identifiers.create(), organizationId: actor.organizationId, articleId, siteIds: [...expanded.siteIds],
+          jobId: this.identifiers.create(), organizationId: actor.organizationId, articleId, siteIds: [...expanded],
           idempotencyKey: `${parsed.data.idempotencyKey}:${articleId}`, fingerprint, fingerprintVersion: FINGERPRINT_VERSION,
-          options: parsed.data.options, publishAt: publishAt.toISOString(), overrides, cascade: expanded.derived, canonicals: expanded.canonicals,
-          now: now.toISOString(), targetIds: expanded.siteIds.map(() => this.identifiers.create()), articleSiteIds: expanded.siteIds.map(() => this.identifiers.create()),
+          options: parsed.data.options, publishAt: publishAt.toISOString(), overrides,
+          now: now.toISOString(), targetIds: expanded.map(() => this.identifiers.create()), articleSiteIds: expanded.map(() => this.identifiers.create()),
         });
         if (accepted.kind === 'conflict') return { ok: false, error: createPublicError('IDEMPOTENCY_CONFLICT', `The idempotency key is already associated with another request for article ${articleId}.`, actor.requestId) };
         if (accepted.kind === 'created') await this.scheduleDispatch(actor, accepted.job.id, publishAt, now);

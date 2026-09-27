@@ -13,7 +13,7 @@ import {
 } from '@/modules/dashboard/policies';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import { allocateUniqueSlug } from '@/modules/site/slug-allocator';
-import { expandCascadeSites } from '@/modules/site/site-cascade';
+import { unresolvedCascadeAncestors } from '@/modules/site/site-cascade';
 import { regionScopeCovers, type ScopeGeography } from '@/modules/site/region-scope';
 import { validateTipTapDoc } from '@/modules/site/tiptap-document';
 import {
@@ -1111,12 +1111,12 @@ export class TenantBusinessService {
     const distinct = [...new Set(siteIds)];
     const requested = distinct.map((siteId) => requireSiteInScope(state, siteId, actor));
     if (requested.some(({ organizationId, status }) => organizationId !== actor.organizationId || status !== 'active')) throw new DashboardAccessDeniedError();
-    const expansion = expandCascadeSites(state.sites, distinct, article.slug);
-    if (expansion.unresolved.length > 0) {
-      const missing = [...new Set(expansion.unresolved.map((entry) => entry.missing))].map((level) => (level === 'region' ? 'region' : 'apex'));
+    const unresolved = unresolvedCascadeAncestors(state.sites, distinct);
+    if (unresolved.length > 0) {
+      const missing = [...new Set(unresolved.map((entry) => entry.missing))].map((level) => (level === 'region' ? 'region' : 'apex'));
       throw new DashboardValidationError({ siteIds: [`Rantai portal belum lengkap: ${missing.join(' dan ')} belum tersedia.`] });
     }
-    const expanded = distinct.map((siteId) => ({ siteId, originSiteId: null, canonicalUrl: null, site: requireSiteInScope(state, siteId, actor) }));
+    const expanded = distinct.map((siteId) => ({ siteId, site: requireSiteInScope(state, siteId, actor) }));
     if (expanded.some(({ site }) => site.organizationId !== actor.organizationId || site.status !== 'active')) throw new DashboardAccessDeniedError();
     const existingBySite = new Map<string, ArticleSiteRecord>();
     for (let index = 0; index < state.articleSites.length; index += 1) {
