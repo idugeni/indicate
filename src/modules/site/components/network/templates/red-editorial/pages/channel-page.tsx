@@ -5,7 +5,7 @@ import { RedEditorialContainer } from '@/modules/site/components/network/templat
 import { RedEditorialEmpty } from '@/modules/site/components/network/templates/red-editorial/ui/empty';
 import { RedEditorialStatusLine } from '@/modules/site/components/network/templates/red-editorial/ui/status-line';
 import { RedEditorialPicks } from '@/modules/site/components/network/templates/red-editorial/cards/picks';
-import { RedEditorialLoadMore } from '@/modules/site/components/network/templates/red-editorial/cards/load-more';
+import { RedEditorialArchivePager } from '@/modules/site/components/network/templates/red-editorial/cards/archive-pager';
 import { RedEditorialJsonLd } from '@/modules/site/components/network/templates/red-editorial/seo/json-ld';
 
 export interface RedEditorialChannelProps {
@@ -49,7 +49,7 @@ export function RedEditorialChannel({ site, kicker, title, description, path = '
         ) : (
           <>
             <RedEditorialPicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
-            <RedEditorialLoadMore articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
+            <RedEditorialArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
       </RedEditorialContainer>

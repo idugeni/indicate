@@ -5,7 +5,7 @@ import { PurpleEditorialTicker } from '@/modules/site/components/network/templat
 import { PurpleEditorialHero } from '@/modules/site/components/network/templates/purple-editorial/cards/hero';
 import { PurpleEditorialLatest } from '@/modules/site/components/network/templates/purple-editorial/cards/latest';
 import { PurpleEditorialPicks } from '@/modules/site/components/network/templates/purple-editorial/cards/picks';
-import { PurpleEditorialLoadMore } from '@/modules/site/components/network/templates/purple-editorial/cards/load-more';
+import { PurpleEditorialArchivePager } from '@/modules/site/components/network/templates/purple-editorial/cards/archive-pager';
 import { PurpleEditorialNewsletter } from '@/modules/site/components/network/templates/purple-editorial/cards/newsletter';
 import { PurpleEditorialJsonLd } from '@/modules/site/components/network/templates/purple-editorial/seo/json-ld';
 import { PurpleEditorialContainer } from '@/modules/site/components/network/templates/purple-editorial/ui/container';
@@ -47,7 +47,7 @@ export function PurpleEditorialListing({ site, title, description, path, indexab
             <PurpleEditorialPicks articles={picks} description={description ?? 'Informasi terkurasi untuk Anda'} />
             <PurpleEditorialLatest articles={latest} siteName={site.settings.name} quote={quote} />
             <PurpleEditorialNewsletter />
-            <PurpleEditorialLoadMore
+            <PurpleEditorialArchivePager
               articles={archive}
               heading="Arsip Berita"
               description="Jelajahi semua liputan kanal ini"

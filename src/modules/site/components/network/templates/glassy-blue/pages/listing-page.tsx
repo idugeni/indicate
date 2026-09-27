@@ -6,7 +6,7 @@ import { GlassyBlueHero } from '@/modules/site/components/network/templates/glas
 import { GlassyBlueCategoryPills } from '@/modules/site/components/network/templates/glassy-blue/cards/category-pills';
 import { GlassyBlueLatestNews } from '@/modules/site/components/network/templates/glassy-blue/cards/latest-news';
 import { GlassyBluePicks } from '@/modules/site/components/network/templates/glassy-blue/cards/picks';
-import { GlassyBlueLoadMore } from '@/modules/site/components/network/templates/glassy-blue/cards/load-more';
+import { GlassyBlueArchivePager } from '@/modules/site/components/network/templates/glassy-blue/cards/archive-pager';
 import { GlassyBlueNewsletter } from '@/modules/site/components/network/templates/glassy-blue/cards/newsletter';
 import { GlassyBlueJsonLd } from '@/modules/site/components/network/templates/glassy-blue/seo/json-ld';
 import { GlassyBlueContainer } from '@/modules/site/components/network/templates/glassy-blue/ui/container';
@@ -59,7 +59,7 @@ export async function GlassyBlueListing({ site, title, description, path, indexa
               description="Kabar terkini yang baru diterbitkan"
             />
             <GlassyBlueNewsletter />
-            <GlassyBlueLoadMore
+            <GlassyBlueArchivePager
               articles={archive}
               heading="Arsip Berita"
               description="Jelajahi semua liputan kanal ini"

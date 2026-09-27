@@ -5,7 +5,7 @@ import { WarmEditorialTicker } from '@/modules/site/components/network/templates
 import { WarmEditorialHero } from '@/modules/site/components/network/templates/warm-editorial/cards/hero';
 import { WarmEditorialLatest } from '@/modules/site/components/network/templates/warm-editorial/cards/latest';
 import { WarmEditorialPicks } from '@/modules/site/components/network/templates/warm-editorial/cards/picks';
-import { WarmEditorialLoadMore } from '@/modules/site/components/network/templates/warm-editorial/cards/load-more';
+import { WarmEditorialArchivePager } from '@/modules/site/components/network/templates/warm-editorial/cards/archive-pager';
 import { WarmEditorialNewsletter } from '@/modules/site/components/network/templates/warm-editorial/cards/newsletter';
 import { WarmEditorialJsonLd } from '@/modules/site/components/network/templates/warm-editorial/seo/json-ld';
 import { WarmEditorialContainer } from '@/modules/site/components/network/templates/warm-editorial/ui/container';
@@ -47,7 +47,7 @@ export function WarmEditorialListing({ site, title, description, path, indexable
             <WarmEditorialPicks articles={picks} description={description ?? 'Informasi terkurasi untuk Anda'} />
             <WarmEditorialLatest articles={latest} siteName={site.settings.name} quote={quote} />
             <WarmEditorialNewsletter />
-            <WarmEditorialLoadMore
+            <WarmEditorialArchivePager
               articles={archive}
               heading="Arsip Berita"
               description="Jelajahi semua liputan kanal ini"

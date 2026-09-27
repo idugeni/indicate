@@ -4,7 +4,7 @@ import { RedEditorialShell } from '@/modules/site/components/network/templates/r
 import { RedEditorialTicker } from '@/modules/site/components/network/templates/red-editorial/cards/ticker';
 import { RedEditorialHero } from '@/modules/site/components/network/templates/red-editorial/cards/hero';
 import { RedEditorialPicks } from '@/modules/site/components/network/templates/red-editorial/cards/picks';
-import { RedEditorialLoadMore } from '@/modules/site/components/network/templates/red-editorial/cards/load-more';
+import { RedEditorialArchivePager } from '@/modules/site/components/network/templates/red-editorial/cards/archive-pager';
 import { RedEditorialNewsletter } from '@/modules/site/components/network/templates/red-editorial/cards/newsletter';
 import { RedEditorialJsonLd } from '@/modules/site/components/network/templates/red-editorial/seo/json-ld';
 import { RedEditorialContainer } from '@/modules/site/components/network/templates/red-editorial/ui/container';
@@ -43,7 +43,7 @@ export function RedEditorialListing({ site, title, description, path, indexable 
             <RedEditorialHero articles={site.articles.slice(0, 3)} />
             <RedEditorialPicks articles={picks} description={description ?? 'Informasi terkurasi untuk Anda'} />
             <RedEditorialNewsletter />
-            <RedEditorialLoadMore
+            <RedEditorialArchivePager
               articles={archive}
               heading="Arsip Berita"
               description="Jelajahi semua liputan kanal ini"

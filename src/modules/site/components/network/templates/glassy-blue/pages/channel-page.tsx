@@ -5,7 +5,7 @@ import { GlassyBlueContainer } from '@/modules/site/components/network/templates
 import { GlassyBlueEmpty } from '@/modules/site/components/network/templates/glassy-blue/ui/empty';
 import { GlassyBlueStatusLine } from '@/modules/site/components/network/templates/glassy-blue/ui/status-line';
 import { GlassyBluePicks } from '@/modules/site/components/network/templates/glassy-blue/cards/picks';
-import { GlassyBlueLoadMore } from '@/modules/site/components/network/templates/glassy-blue/cards/load-more';
+import { GlassyBlueArchivePager } from '@/modules/site/components/network/templates/glassy-blue/cards/archive-pager';
 import { GlassyBlueJsonLd } from '@/modules/site/components/network/templates/glassy-blue/seo/json-ld';
 
 export interface GlassyBlueChannelProps {
@@ -49,7 +49,7 @@ export function GlassyBlueChannel({ site, kicker, title, description, path = '/'
         ) : (
           <>
             <GlassyBluePicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
-            <GlassyBlueLoadMore articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
+            <GlassyBlueArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
       </GlassyBlueContainer>

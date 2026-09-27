@@ -5,7 +5,7 @@ import { DarkNavyContainer } from '@/modules/site/components/network/templates/d
 import { DarkNavyEmpty } from '@/modules/site/components/network/templates/dark-navy/ui/empty';
 import { DarkNavyStatusLine } from '@/modules/site/components/network/templates/dark-navy/ui/status-line';
 import { DarkNavyPicks } from '@/modules/site/components/network/templates/dark-navy/cards/picks';
-import { DarkNavyLoadMore } from '@/modules/site/components/network/templates/dark-navy/cards/load-more';
+import { DarkNavyArchivePager } from '@/modules/site/components/network/templates/dark-navy/cards/archive-pager';
 import { DarkNavyJsonLd } from '@/modules/site/components/network/templates/dark-navy/seo/json-ld';
 
 export interface DarkNavyChannelProps {
@@ -49,7 +49,7 @@ export function DarkNavyChannel({ site, kicker, title, description, path = '/', 
         ) : (
           <>
             <DarkNavyPicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
-            <DarkNavyLoadMore articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
+            <DarkNavyArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
       </DarkNavyContainer>

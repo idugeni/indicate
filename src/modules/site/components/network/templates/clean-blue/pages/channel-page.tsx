@@ -5,7 +5,7 @@ import { CleanBlueContainer } from '@/modules/site/components/network/templates/
 import { CleanBlueEmpty } from '@/modules/site/components/network/templates/clean-blue/ui/empty';
 import { CleanBlueStatusLine } from '@/modules/site/components/network/templates/clean-blue/ui/status-line';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/cards/picks';
-import { CleanBlueLoadMore } from '@/modules/site/components/network/templates/clean-blue/cards/load-more';
+import { CleanBlueArchivePager } from '@/modules/site/components/network/templates/clean-blue/cards/archive-pager';
 import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/seo/json-ld';
 
 export interface CleanBlueChannelProps {
@@ -49,7 +49,7 @@ export function CleanBlueChannel({ site, kicker, title, description, path = '/',
         ) : (
           <>
             <CleanBluePicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
-            <CleanBlueLoadMore articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
+            <CleanBlueArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
       </CleanBlueContainer>

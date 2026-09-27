@@ -5,7 +5,7 @@ import { BlackLimeTicker } from '@/modules/site/components/network/templates/bla
 import { BlackLimeHero } from '@/modules/site/components/network/templates/black-lime/cards/hero';
 import { BlackLimeMostRead, BlackLimeQuotePanel } from '@/modules/site/components/network/templates/black-lime/cards/most-read';
 import { BlackLimePicks } from '@/modules/site/components/network/templates/black-lime/cards/picks';
-import { BlackLimeLoadMore } from '@/modules/site/components/network/templates/black-lime/cards/load-more';
+import { BlackLimeArchivePager } from '@/modules/site/components/network/templates/black-lime/cards/archive-pager';
 import { BlackLimeNewsletter } from '@/modules/site/components/network/templates/black-lime/cards/newsletter';
 import { BlackLimeJsonLd } from '@/modules/site/components/network/templates/black-lime/seo/json-ld';
 import { BlackLimeContainer } from '@/modules/site/components/network/templates/black-lime/ui/container';
@@ -56,7 +56,7 @@ export function BlackLimeListing({ site, title, description, path, indexable }: 
               <BlackLimeMostRead articles={mostRead} />
             </div>
             <BlackLimeNewsletter />
-            <BlackLimeLoadMore
+            <BlackLimeArchivePager
               articles={archive}
               heading="Arsip Berita"
               description="Jelajahi semua liputan kanal ini"

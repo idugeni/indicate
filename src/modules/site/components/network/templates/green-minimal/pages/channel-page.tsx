@@ -5,7 +5,7 @@ import { GreenMinimalContainer } from '@/modules/site/components/network/templat
 import { GreenMinimalEmpty } from '@/modules/site/components/network/templates/green-minimal/ui/empty';
 import { GreenMinimalStatusLine } from '@/modules/site/components/network/templates/green-minimal/ui/status-line';
 import { GreenMinimalPicks } from '@/modules/site/components/network/templates/green-minimal/cards/picks';
-import { GreenMinimalLoadMore } from '@/modules/site/components/network/templates/green-minimal/cards/load-more';
+import { GreenMinimalArchivePager } from '@/modules/site/components/network/templates/green-minimal/cards/archive-pager';
 import { GreenMinimalJsonLd } from '@/modules/site/components/network/templates/green-minimal/seo/json-ld';
 
 export interface GreenMinimalChannelProps {
@@ -49,7 +49,7 @@ export function GreenMinimalChannel({ site, kicker, title, description, path = '
         ) : (
           <>
             <GreenMinimalPicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
-            <GreenMinimalLoadMore articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
+            <GreenMinimalArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
       </GreenMinimalContainer>

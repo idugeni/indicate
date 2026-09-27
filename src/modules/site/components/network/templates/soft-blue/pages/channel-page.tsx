@@ -5,7 +5,7 @@ import { SoftBlueContainer } from '@/modules/site/components/network/templates/s
 import { SoftBlueEmpty } from '@/modules/site/components/network/templates/soft-blue/ui/empty';
 import { SoftBlueStatusLine } from '@/modules/site/components/network/templates/soft-blue/ui/status-line';
 import { SoftBluePicks } from '@/modules/site/components/network/templates/soft-blue/cards/picks';
-import { SoftBlueLoadMore } from '@/modules/site/components/network/templates/soft-blue/cards/load-more';
+import { SoftBlueArchivePager } from '@/modules/site/components/network/templates/soft-blue/cards/archive-pager';
 import { SoftBlueJsonLd } from '@/modules/site/components/network/templates/soft-blue/seo/json-ld';
 
 export interface SoftBlueChannelProps {
@@ -49,7 +49,7 @@ export function SoftBlueChannel({ site, kicker, title, description, path = '/', 
         ) : (
           <>
             <SoftBluePicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
-            <SoftBlueLoadMore articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
+            <SoftBlueArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
       </SoftBlueContainer>

@@ -4,7 +4,7 @@ import { CleanBlueShell } from '@/modules/site/components/network/templates/clea
 import { CleanBlueTicker } from '@/modules/site/components/network/templates/clean-blue/cards/ticker';
 import { CleanBlueHero } from '@/modules/site/components/network/templates/clean-blue/cards/hero';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/cards/picks';
-import { CleanBlueLoadMore } from '@/modules/site/components/network/templates/clean-blue/cards/load-more';
+import { CleanBlueArchivePager } from '@/modules/site/components/network/templates/clean-blue/cards/archive-pager';
 import { CleanBlueNewsletter } from '@/modules/site/components/network/templates/clean-blue/cards/newsletter';
 import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/seo/json-ld';
 import { CleanBlueContainer } from '@/modules/site/components/network/templates/clean-blue/ui/container';
@@ -42,7 +42,7 @@ export function CleanBlueListing({ site, title, description, path, indexable }: 
             {hero ? <CleanBlueHero article={hero} /> : null}
             <CleanBluePicks articles={rest.slice(0, 3)} description={description ?? 'Informasi terkurasi untuk Anda'} />
             <CleanBlueNewsletter />
-            <CleanBlueLoadMore
+            <CleanBlueArchivePager
               articles={archive}
               heading="Arsip Berita"
               description="Jelajahi semua liputan kanal ini"

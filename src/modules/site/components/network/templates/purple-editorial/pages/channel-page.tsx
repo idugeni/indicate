@@ -5,7 +5,7 @@ import { PurpleEditorialContainer } from '@/modules/site/components/network/temp
 import { PurpleEditorialEmpty } from '@/modules/site/components/network/templates/purple-editorial/ui/empty';
 import { PurpleEditorialStatusLine } from '@/modules/site/components/network/templates/purple-editorial/ui/status-line';
 import { PurpleEditorialPicks } from '@/modules/site/components/network/templates/purple-editorial/cards/picks';
-import { PurpleEditorialLoadMore } from '@/modules/site/components/network/templates/purple-editorial/cards/load-more';
+import { PurpleEditorialArchivePager } from '@/modules/site/components/network/templates/purple-editorial/cards/archive-pager';
 import { PurpleEditorialJsonLd } from '@/modules/site/components/network/templates/purple-editorial/seo/json-ld';
 
 export interface PurpleEditorialChannelProps {
@@ -49,7 +49,7 @@ export function PurpleEditorialChannel({ site, kicker, title, description, path 
         ) : (
           <>
             <PurpleEditorialPicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
-            <PurpleEditorialLoadMore articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
+            <PurpleEditorialArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
       </PurpleEditorialContainer>

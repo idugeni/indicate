@@ -36,7 +36,7 @@ netral — boundary Suspense tidak punya konteks Site, jadi loader per-template
                                  # article-meta, section-heading,
                                  # <id>-input, <id>-button, loader
   seo/json-ld.tsx                # JSON-LD mandiri template
-  cards/                         # hero, ticker, picks, pick-card, load-more,
+  cards/                         # hero, ticker, picks, pick-card, archive-pager,
                                  # newsletter, hero-actions, share-buttons, view-beacon
   pages/                         # 8 halaman + search-form + report-form
 ```

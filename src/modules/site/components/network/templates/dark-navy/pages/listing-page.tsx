@@ -5,7 +5,7 @@ import { DarkNavyTicker } from '@/modules/site/components/network/templates/dark
 import { DarkNavyHero } from '@/modules/site/components/network/templates/dark-navy/cards/hero';
 import { DarkNavyLatest } from '@/modules/site/components/network/templates/dark-navy/cards/latest';
 import { DarkNavyMostRead } from '@/modules/site/components/network/templates/dark-navy/cards/most-read';
-import { DarkNavyLoadMore } from '@/modules/site/components/network/templates/dark-navy/cards/load-more';
+import { DarkNavyArchivePager } from '@/modules/site/components/network/templates/dark-navy/cards/archive-pager';
 import { DarkNavyNewsletter } from '@/modules/site/components/network/templates/dark-navy/cards/newsletter';
 import { DarkNavyJsonLd } from '@/modules/site/components/network/templates/dark-navy/seo/json-ld';
 import { DarkNavyContainer } from '@/modules/site/components/network/templates/dark-navy/ui/container';
@@ -53,7 +53,7 @@ export function DarkNavyListing({ site, title, description, path, indexable }: L
                 <DarkNavyNewsletter compact />
               </div>
             </div>
-            <DarkNavyLoadMore
+            <DarkNavyArchivePager
               articles={archive}
               heading="Arsip Berita"
               description="Jelajahi semua liputan kanal ini"

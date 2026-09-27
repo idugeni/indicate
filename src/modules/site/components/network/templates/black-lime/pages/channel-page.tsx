@@ -5,7 +5,7 @@ import { BlackLimeContainer } from '@/modules/site/components/network/templates/
 import { BlackLimeEmpty } from '@/modules/site/components/network/templates/black-lime/ui/empty';
 import { BlackLimeStatusLine } from '@/modules/site/components/network/templates/black-lime/ui/status-line';
 import { BlackLimePicks } from '@/modules/site/components/network/templates/black-lime/cards/picks';
-import { BlackLimeLoadMore } from '@/modules/site/components/network/templates/black-lime/cards/load-more';
+import { BlackLimeArchivePager } from '@/modules/site/components/network/templates/black-lime/cards/archive-pager';
 import { BlackLimeJsonLd } from '@/modules/site/components/network/templates/black-lime/seo/json-ld';
 
 export interface BlackLimeChannelProps {
@@ -49,7 +49,7 @@ export function BlackLimeChannel({ site, kicker, title, description, path = '/',
         ) : (
           <>
             <BlackLimePicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
-            <BlackLimeLoadMore articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
+            <BlackLimeArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
       </BlackLimeContainer>

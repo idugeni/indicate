@@ -13,7 +13,7 @@ template — semua lewat registry di `network-listing.tsx`.
 - `ui/` — primitif: container, status-line, empty, author-avatar,
   section-heading, loader.
 - `seo/` — JSON-LD mandiri.
-- `cards/` — hero, ticker, picks, pick-card, load-more, newsletter,
+- `cards/` — hero, ticker, picks, pick-card, archive-pager, newsletter,
   hero-actions, share-buttons, view-beacon.
 - `pages/` — 8 halaman + `search-form` + `report-form`.
 

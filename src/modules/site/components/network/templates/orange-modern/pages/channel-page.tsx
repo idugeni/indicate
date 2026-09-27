@@ -5,7 +5,7 @@ import { OrangeModernContainer } from '@/modules/site/components/network/templat
 import { OrangeModernEmpty } from '@/modules/site/components/network/templates/orange-modern/ui/empty';
 import { OrangeModernStatusLine } from '@/modules/site/components/network/templates/orange-modern/ui/status-line';
 import { OrangeModernPicks } from '@/modules/site/components/network/templates/orange-modern/cards/picks';
-import { OrangeModernLoadMore } from '@/modules/site/components/network/templates/orange-modern/cards/load-more';
+import { OrangeModernArchivePager } from '@/modules/site/components/network/templates/orange-modern/cards/archive-pager';
 import { OrangeModernJsonLd } from '@/modules/site/components/network/templates/orange-modern/seo/json-ld';
 
 export interface OrangeModernChannelProps {
@@ -49,7 +49,7 @@ export function OrangeModernChannel({ site, kicker, title, description, path = '
         ) : (
           <>
             <OrangeModernPicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
-            <OrangeModernLoadMore articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
+            <OrangeModernArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
       </OrangeModernContainer>

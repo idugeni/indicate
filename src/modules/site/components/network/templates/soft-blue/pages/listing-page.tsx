@@ -4,7 +4,7 @@ import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-
 import { SoftBlueTicker } from '@/modules/site/components/network/templates/soft-blue/cards/ticker';
 import { SoftBlueHero } from '@/modules/site/components/network/templates/soft-blue/cards/hero';
 import { SoftBluePicks } from '@/modules/site/components/network/templates/soft-blue/cards/picks';
-import { SoftBlueLoadMore } from '@/modules/site/components/network/templates/soft-blue/cards/load-more';
+import { SoftBlueArchivePager } from '@/modules/site/components/network/templates/soft-blue/cards/archive-pager';
 import { SoftBlueNewsletter } from '@/modules/site/components/network/templates/soft-blue/cards/newsletter';
 import { SoftBlueJsonLd } from '@/modules/site/components/network/templates/soft-blue/seo/json-ld';
 import { SoftBlueContainer } from '@/modules/site/components/network/templates/soft-blue/ui/container';
@@ -42,7 +42,7 @@ export function SoftBlueListing({ site, title, description, path, indexable }: L
             {hero ? <SoftBlueHero article={hero} /> : null}
             <SoftBluePicks articles={rest.slice(0, 4)} description={description ?? 'Informasi terkurasi untuk Anda'} />
             <SoftBlueNewsletter />
-            <SoftBlueLoadMore
+            <SoftBlueArchivePager
               articles={archive}
               heading="Arsip Berita"
               description="Jelajahi semua liputan kanal ini"

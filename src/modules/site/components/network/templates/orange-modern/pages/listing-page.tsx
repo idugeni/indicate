@@ -5,7 +5,7 @@ import { OrangeModernTicker } from '@/modules/site/components/network/templates/
 import { OrangeModernHero } from '@/modules/site/components/network/templates/orange-modern/cards/hero';
 import { OrangeModernLatest } from '@/modules/site/components/network/templates/orange-modern/cards/latest';
 import { OrangeModernPicks } from '@/modules/site/components/network/templates/orange-modern/cards/picks';
-import { OrangeModernLoadMore } from '@/modules/site/components/network/templates/orange-modern/cards/load-more';
+import { OrangeModernArchivePager } from '@/modules/site/components/network/templates/orange-modern/cards/archive-pager';
 import { OrangeModernNewsletter } from '@/modules/site/components/network/templates/orange-modern/cards/newsletter';
 import { OrangeModernJsonLd } from '@/modules/site/components/network/templates/orange-modern/seo/json-ld';
 import { OrangeModernContainer } from '@/modules/site/components/network/templates/orange-modern/ui/container';
@@ -54,7 +54,7 @@ export function OrangeModernListing({ site, title, description, path, indexable 
             />
             <OrangeModernLatest articles={latest} siteName={site.settings.name} quote={quote} />
             <OrangeModernNewsletter />
-            <OrangeModernLoadMore
+            <OrangeModernArchivePager
               articles={archive}
               heading="Arsip Berita"
               description="Jelajahi semua liputan kanal ini"

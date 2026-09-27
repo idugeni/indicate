@@ -4,7 +4,7 @@ import { GreenMinimalShell } from '@/modules/site/components/network/templates/g
 import { GreenMinimalTicker } from '@/modules/site/components/network/templates/green-minimal/cards/ticker';
 import { GreenMinimalHero } from '@/modules/site/components/network/templates/green-minimal/cards/hero';
 import { GreenMinimalLatest } from '@/modules/site/components/network/templates/green-minimal/cards/latest';
-import { GreenMinimalLoadMore } from '@/modules/site/components/network/templates/green-minimal/cards/load-more';
+import { GreenMinimalArchivePager } from '@/modules/site/components/network/templates/green-minimal/cards/archive-pager';
 import { GreenMinimalNewsletter } from '@/modules/site/components/network/templates/green-minimal/cards/newsletter';
 import { GreenMinimalJsonLd } from '@/modules/site/components/network/templates/green-minimal/seo/json-ld';
 import { GreenMinimalContainer } from '@/modules/site/components/network/templates/green-minimal/ui/container';
@@ -43,7 +43,7 @@ export function GreenMinimalListing({ site, title, description, path, indexable 
             {hero ? <GreenMinimalHero article={hero} /> : null}
             <GreenMinimalLatest articles={latest} description={description ?? 'Liputan terbaru dari redaksi'} />
             <GreenMinimalNewsletter />
-            <GreenMinimalLoadMore
+            <GreenMinimalArchivePager
               articles={archive}
               heading="Arsip Berita"
               description="Jelajahi semua liputan kanal ini"

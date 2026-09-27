@@ -5,7 +5,7 @@ import { WarmEditorialContainer } from '@/modules/site/components/network/templa
 import { WarmEditorialEmpty } from '@/modules/site/components/network/templates/warm-editorial/ui/empty';
 import { WarmEditorialStatusLine } from '@/modules/site/components/network/templates/warm-editorial/ui/status-line';
 import { WarmEditorialPicks } from '@/modules/site/components/network/templates/warm-editorial/cards/picks';
-import { WarmEditorialLoadMore } from '@/modules/site/components/network/templates/warm-editorial/cards/load-more';
+import { WarmEditorialArchivePager } from '@/modules/site/components/network/templates/warm-editorial/cards/archive-pager';
 import { WarmEditorialJsonLd } from '@/modules/site/components/network/templates/warm-editorial/seo/json-ld';
 
 export interface WarmEditorialChannelProps {
@@ -49,7 +49,7 @@ export function WarmEditorialChannel({ site, kicker, title, description, path = 
         ) : (
           <>
             <WarmEditorialPicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
-            <WarmEditorialLoadMore articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
+            <WarmEditorialArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
       </WarmEditorialContainer>
