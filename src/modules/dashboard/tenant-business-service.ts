@@ -1126,13 +1126,17 @@ export class TenantBusinessService {
     }
     const expanded = expansion.targets.map((target) => ({ ...target, site: requireSiteInScope(state, target.siteId, actor) }));
     if (expanded.some(({ site }) => site.organizationId !== actor.organizationId || site.status !== 'active')) throw new DashboardAccessDeniedError();
+    const existingBySite = new Map<string, ArticleSiteRecord>();
     for (let index = 0; index < state.articleSites.length; index += 1) {
       const assignment = state.articleSites[index]!;
-      if (assignment.articleId === article.id) state.articleSites[index] = { ...assignment, active: false };
+      if (assignment.articleId !== article.id) continue;
+      const deactivated = { ...assignment, active: false };
+      state.articleSites[index] = deactivated;
+      existingBySite.set(assignment.siteId, deactivated);
     }
     const expandedFrom: Record<string, string> = {};
     for (const target of expanded) {
-      const existing = state.articleSites.find(({ articleId, siteId }) => articleId === article.id && siteId === target.siteId);
+      const existing = existingBySite.get(target.siteId);
       if (target.originSiteId !== null) expandedFrom[target.siteId] = target.originSiteId;
       if (existing === undefined) {
         state.articleSites.push({
