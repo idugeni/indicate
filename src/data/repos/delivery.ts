@@ -448,15 +448,6 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
     });
   }
 
-  async createInvalidation(plan: InvalidationPlan, now: string): Promise<InvalidationTask> {
-    const value = this.taskValues(plan, now);
-    await this.database.transaction(async (transaction) => {
-      await transaction.execute(sql`SELECT indicate_private.set_tenant_context(${plan.organizationId}::uuid, ${'system:invalidation-scheduler'}, ${crypto.randomUUID()})`);
-      const rows = await transaction.insert(invalidationTasks).values(value).returning({ id: invalidationTasks.id });
-      if (rows.length !== 1) throw new DeliveryResourceUnavailableError();
-    });
-    return { ...plan, id: value.id, attempts: 0, nextAttemptAt: now, status: 'pending', claimToken: null, claimExpiresAt: null, sanitizedFailure: null };
-  }
   private mapTask(row: typeof invalidationTasks.$inferSelect): InvalidationTask { return { id: row.id, organizationId: row.organizationId, siteId: row.siteId, previousHostname: row.previousHostname, currentHostname: row.currentHostname, tags: row.tags, paths: row.paths, urls: row.urls, reason: row.reason, attempts: row.attempts, nextAttemptAt: iso(row.nextAttemptAt), status: row.status, claimToken: row.reconciliationClaimToken, claimExpiresAt: row.reconciliationClaimExpiresAt === null ? null : iso(row.reconciliationClaimExpiresAt), sanitizedFailure: row.sanitizedFailure ?? null }; }
   async claimInvalidations(now: string, limit: number): Promise<readonly InvalidationTask[]> {
     const token = crypto.randomUUID();

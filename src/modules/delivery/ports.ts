@@ -64,7 +64,6 @@ export interface DeliveryRepository {
   completeActivation(actor: AuthorizedTenantActorContext, attemptId: string, plan: InvalidationPlan, now: string): Promise<ResolvedSiteContext>;
   deactivateSite(actor: AuthorizedTenantActorContext, siteId: string, hostname: string, plan: InvalidationPlan, now: string): Promise<ActivationAttempt>;
   completeDeactivation(actor: AuthorizedTenantActorContext, attemptId: string, now: string): Promise<void>;
-  createInvalidation(plan: InvalidationPlan, now: string): Promise<InvalidationTask>;
   claimInvalidations(now: string, limit: number): Promise<readonly InvalidationTask[]>;
   completeInvalidation(task: InvalidationTask, now: string): Promise<void>;
   failInvalidation(task: InvalidationTask, failure: Readonly<Record<string, unknown>>, nextAttemptAt: string, terminal: boolean, now: string): Promise<void>;
