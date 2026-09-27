@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (207 migrations):
+-- Reviewed sources, in journal order (208 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -220,6 +220,7 @@
 --   205  20260926190000_publisher_brand_removal  ledger sha256:e8100322757317b7bce632f9aef9b6297c69b0e2d405e1fa692e07f8e2f4fee2
 --   206  20260926200000_default_article_category  ledger sha256:0c2beda581d76609112d6239859fa14f373ea675119e45c5c22fa3bd6eab7d72
 --   207  20260927020000_moderation_reader_id_qualification  ledger sha256:76c38a93bd2f22b08a9ba054bbf5292841817a43bbe6251df1bb6861c0e6579e
+--   208  20260927030000_derived_portal_title_rebuild  ledger sha256:92d8e1868af367ce9104f40c000a0034afe768391b64191a4fc570d2115814c7
 
 BEGIN;
 
@@ -17385,4 +17386,55 @@ REVOKE ALL ON FUNCTION indicate_private.privacy_request_list(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.privacy_request_list(uuid) TO indicate_runtime;
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('76c38a93bd2f22b08a9ba054bbf5292841817a43bbe6251df1bb6861c0e6579e', 1790488800000);
+
+-- ----------------------------------------------------------------------
+-- 20260927030000_derived_portal_title_rebuild
+-- ----------------------------------------------------------------------
+-- Rebuild derived portal titles from the intact apex title.
+--
+-- Migration 20260925120000 built each regional and city portal title by
+-- concatenating its area label onto the apex seo_default_title, then truncating
+-- the result to 60 characters. The apex title it concatenated was itself already
+-- cut at a hard character boundary, so the derived titles compounded the cut and
+-- ended mid-phrase: "Boyolali - NawalaPerkara - Liputan yang memberi gambaran".
+-- The missing tail is unrecoverable from the stored value, so this rebuilds the
+-- string from the apex title as it stands today and cuts only on a word boundary.
+
+with apex_titles as (
+  select distinct
+    s.organization_id,
+    s.domain_id,
+    coalesce(nullif(btrim(apex_settings.seo_default_title), ''), apex_settings.name) as apex_title
+  from public.sites s
+  join public.sites apex
+    on apex.organization_id = s.organization_id
+   and apex.domain_id = s.domain_id
+   and apex.site_level = 'apex'
+  join public.site_settings apex_settings on apex_settings.site_id = apex.id
+  where s.site_level in ('region', 'city')
+),
+rebuilt as (
+  select
+    ss.site_id,
+    case
+      when length(coalesce(r.name, '') || ' - ' || a.apex_title) <= 60
+        then coalesce(r.name, '') || ' - ' || a.apex_title
+      else btrim(regexp_replace(left(coalesce(r.name, '') || ' - ' || a.apex_title, 60), '\s+\S*$', ''))
+    end as title
+  from public.site_settings ss
+  join public.sites s on s.id = ss.site_id
+  join apex_titles a on a.organization_id = s.organization_id and a.domain_id = s.domain_id
+  join public.regions r on r.id = s.region_id
+  where s.site_level in ('region', 'city')
+)
+update public.site_settings ss
+set
+  seo_default_title = rebuilt.title,
+  version = ss.version + 1,
+  updated_at = now()
+from rebuilt
+where ss.site_id = rebuilt.site_id
+  and ss.seo_default_title is distinct from rebuilt.title;
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('92d8e1868af367ce9104f40c000a0034afe768391b64191a4fc570d2115814c7', 1790492400000);
 COMMIT;

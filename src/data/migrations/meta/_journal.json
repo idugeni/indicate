@@ -1450,6 +1450,13 @@
       "when": 1790488800000,
       "tag": "20260927020000_moderation_reader_id_qualification",
       "breakpoints": true
+    },
+    {
+      "idx": 207,
+      "version": "7",
+      "when": 1790492400000,
+      "tag": "20260927030000_derived_portal_title_rebuild",
+      "breakpoints": true
     }
   ]
 }
