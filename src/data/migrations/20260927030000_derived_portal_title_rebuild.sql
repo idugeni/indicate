@@ -43,3 +43,6 @@ set
 from rebuilt
 where ss.site_id = rebuilt.site_id
   and ss.seo_default_title is distinct from rebuilt.title;
+--> statement-breakpoint
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (208, 'derived_portal_title_rebuild', 'sha256:2e13bc93f45e8a353c2346537c4361626a4afd44f9988c8d5d906fe56b611a74');

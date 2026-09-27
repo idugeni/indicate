@@ -219,8 +219,8 @@
 --   204  20260926180000_audit_chain_head_lock  ledger sha256:b4b24494492cf9f7bb09ac238eee0d5c4e3fa6a5be91966186c92d9ecb3c3036
 --   205  20260926190000_publisher_brand_removal  ledger sha256:e8100322757317b7bce632f9aef9b6297c69b0e2d405e1fa692e07f8e2f4fee2
 --   206  20260926200000_default_article_category  ledger sha256:0c2beda581d76609112d6239859fa14f373ea675119e45c5c22fa3bd6eab7d72
---   207  20260927020000_moderation_reader_id_qualification  ledger sha256:76c38a93bd2f22b08a9ba054bbf5292841817a43bbe6251df1bb6861c0e6579e
---   208  20260927030000_derived_portal_title_rebuild  ledger sha256:92d8e1868af367ce9104f40c000a0034afe768391b64191a4fc570d2115814c7
+--   207  20260927020000_moderation_reader_id_qualification  ledger sha256:ad65050321a254c0c54d8189cb3a8a243747a9176979a6766de173660bd179ab
+--   208  20260927030000_derived_portal_title_rebuild  ledger sha256:b077fb24cb6e6b32d8020fd778bc5f6b2fa49f9932c2ade2051464c4f124d082
 
 BEGIN;
 
@@ -17385,7 +17385,10 @@ $function$;
 REVOKE ALL ON FUNCTION indicate_private.privacy_request_list(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.privacy_request_list(uuid) TO indicate_runtime;
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('76c38a93bd2f22b08a9ba054bbf5292841817a43bbe6251df1bb6861c0e6579e', 1790488800000);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (207, 'moderation_reader_id_qualification', 'sha256:daf314952676e7c32157144b7b1dd074562ad6bc81db20b8a7da1ee742e7c076');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ad65050321a254c0c54d8189cb3a8a243747a9176979a6766de173660bd179ab', 1790488800000);
 
 -- ----------------------------------------------------------------------
 -- 20260927030000_derived_portal_title_rebuild
@@ -17436,5 +17439,8 @@ from rebuilt
 where ss.site_id = rebuilt.site_id
   and ss.seo_default_title is distinct from rebuilt.title;
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('92d8e1868af367ce9104f40c000a0034afe768391b64191a4fc570d2115814c7', 1790492400000);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (208, 'derived_portal_title_rebuild', 'sha256:2e13bc93f45e8a353c2346537c4361626a4afd44f9988c8d5d906fe56b611a74');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b077fb24cb6e6b32d8020fd778bc5f6b2fa49f9932c2ade2051464c4f124d082', 1790492400000);
 COMMIT;

@@ -50,3 +50,6 @@ END
 $function$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.privacy_request_list(uuid) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.privacy_request_list(uuid) TO indicate_runtime;--> statement-breakpoint
+--> statement-breakpoint
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (207, 'moderation_reader_id_qualification', 'sha256:daf314952676e7c32157144b7b1dd074562ad6bc81db20b8a7da1ee742e7c076');
