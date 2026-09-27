@@ -93,7 +93,6 @@ async function handleGET(request: Request) {
     return new NextResponse('Not Found', { status: 404, headers: { 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
   }
   const noStore = { 'Cache-Control': 'private, no-store' };
-  const runtime = getSharedRuntimeDatabase(context.bootstrap);
   {
     const redis = new Redis({ url: context.config.redis.url, token: context.config.redis.token });
     const prefix = `pv:${context.bootstrap.environment}:`;
@@ -118,6 +117,8 @@ async function handleGET(request: Request) {
         invalid += outcome.invalidKeys.length;
       }
     } while (cursor !== 0);
+    if (deltas.size === 0 && invalid === 0) return NextResponse.json({ requestId, keys: 0, applied: 0, skipped: 0, orphans: 0, invalid: 0 }, { headers: noStore });
+    const runtime = getSharedRuntimeDatabase(context.bootstrap);
     const byOrg = new Map<string, { key: string; entry: FlushEntry & { count: number } }[]>();
     for (const [key, entry] of deltas) {
       const list = byOrg.get(entry.organizationId) ?? [];

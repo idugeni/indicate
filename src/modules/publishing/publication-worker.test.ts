@@ -70,6 +70,7 @@ function queueStub(claims: readonly QueueClaim[] = []): RedisCoordinationPort & 
     namespace: 'test',
     check: async () => ({ service: 'redis', status: 'healthy' as const }),
     schedule: async () => {},
+    hasPendingWork: async () => claims.length > 0,
     claimDue: async () => claims,
     acknowledge: async (claim) => { acknowledged.push(claim); },
     mirrorState: async () => {},

@@ -66,6 +66,11 @@ export class UpstashPublicationQueueAdapter implements RedisCoordinationPort {
     await this.redis.zadd(this.dueKey, { score: dueAt.getTime(), member: logicalId });
   }
 
+  async hasPendingWork(): Promise<boolean> {
+    const [due, leased] = await Promise.all([this.redis.zcard(this.dueKey), this.redis.zcard(this.leasedKey)]);
+    return due > 0 || leased > 0;
+  }
+
   async claimDue(now: Date, limit: number, leaseSeconds: number): Promise<readonly QueueClaim[]> {
     const boundedLimit = Math.max(1, Math.min(100, limit));
     const leaseExpiresAt = new Date(now.getTime() + Math.max(1, Math.min(300, leaseSeconds)) * 1_000);
