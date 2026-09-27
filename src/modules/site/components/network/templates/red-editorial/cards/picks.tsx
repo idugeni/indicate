@@ -25,7 +25,14 @@ export function RedEditorialPicks({
 }) {
   if (articles.length === 0) return null;
   const grid = articles.slice(0, GRID_SIZE);
-  const popular = [...articles].sort((a, b) => b.viewCount - a.viewCount).slice(0, POPULAR_SIZE);
+  const gridIds = new Set(grid.map((article) => article.id));
+  // The most-read list ranks by view count, so on a young site where every
+  // article has a near-zero count it re-ranks to the same order the grid already
+  // shows. Excluding the grid keeps the sidebar from repeating the same covers.
+  const popular = [...articles]
+    .filter((article) => !gridIds.has(article.id))
+    .sort((a, b) => b.viewCount - a.viewCount)
+    .slice(0, POPULAR_SIZE);
   return (
     <section aria-label={heading}>
       <div className="flex items-end justify-between gap-4 border-b border-[#ecd3d3] pb-3">
@@ -49,48 +56,50 @@ export function RedEditorialPicks({
         </div>
 
         <aside aria-label="Paling banyak dibaca" className="min-w-0 space-y-6 self-start lg:sticky lg:top-20">
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#ecd3d3]/70">
-            <p className="m-0 flex items-center gap-2 text-sm font-bold text-[#230d0d]">
-              <TrendingUp className="h-4 w-4 text-[#b91c1c]" aria-hidden="true" />
-              Paling Banyak Dibaca
-            </p>
-            <ol className="m-0 mt-4 list-none space-y-4 p-0">
-              {popular.map((article, position) => {
-                const thumb = articleImage(article);
-                return (
-                  <li
-                    key={article.id}
-                    className="m-0 flex items-start gap-3 border-b border-[#f6e8e8] p-0 pb-4 last:border-b-0 last:pb-0"
-                  >
-                    <span aria-hidden="true" className="w-7 flex-none font-serif text-xl font-bold tabular-nums text-[#b91c1c]">
-                      {String(position + 1).padStart(2, '0')}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <Link
-                        href={`/${article.slug}`}
-                        className="line-clamp-2 block text-sm font-bold leading-snug text-[#230d0d] transition-colors hover:text-[#b91c1c]"
-                      >
-                        {article.title}
-                      </Link>
-                      <span className="mt-1 block text-[11px] tabular-nums text-[#ac9393]">
-                        {formatFullViews(article.viewCount)} pembaca · {readingMinutes(article)} mnt baca
+          {popular.length > 0 ? (
+            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#ecd3d3]/70">
+              <p className="m-0 flex items-center gap-2 text-sm font-bold text-[#230d0d]">
+                <TrendingUp className="h-4 w-4 text-[#b91c1c]" aria-hidden="true" />
+                Paling Banyak Dibaca
+              </p>
+              <ol className="m-0 mt-4 list-none space-y-4 p-0">
+                {popular.map((article, position) => {
+                  const thumb = articleImage(article);
+                  return (
+                    <li
+                      key={article.id}
+                      className="m-0 flex items-start gap-3 border-b border-[#f6e8e8] p-0 pb-4 last:border-b-0 last:pb-0"
+                    >
+                      <span aria-hidden="true" className="w-7 flex-none font-serif text-xl font-bold tabular-nums text-[#b91c1c]">
+                        {String(position + 1).padStart(2, '0')}
                       </span>
-                    </span>
-                    <Image
-                      unoptimized={!isLocalImageSrc(thumb)}
-                      src={thumb}
-                      alt=""
-                      loading="lazy"
-                      className="h-14 w-14 flex-none rounded-xl object-cover"
-                      width={112}
-                      height={112}
-                      sizes="56px"
-                    />
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
+                      <span className="min-w-0 flex-1">
+                        <Link
+                          href={`/${article.slug}`}
+                          className="line-clamp-2 block text-sm font-bold leading-snug text-[#230d0d] transition-colors hover:text-[#b91c1c]"
+                        >
+                          {article.title}
+                        </Link>
+                        <span className="mt-1 block text-[11px] tabular-nums text-[#ac9393]">
+                          {formatFullViews(article.viewCount)} pembaca · {readingMinutes(article)} mnt baca
+                        </span>
+                      </span>
+                      <Image
+                        unoptimized={!isLocalImageSrc(thumb)}
+                        src={thumb}
+                        alt=""
+                        loading="lazy"
+                        className="h-14 w-14 flex-none rounded-xl object-cover"
+                        width={112}
+                        height={112}
+                        sizes="56px"
+                      />
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          ) : null}
 
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#5f0f0f] via-[#7f1d1d] to-[#b91c1c] p-6 text-white shadow-sm">
             <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-white/10" />
