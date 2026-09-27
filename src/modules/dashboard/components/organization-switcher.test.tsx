@@ -30,6 +30,7 @@ describe('Pengalih organisasi', () => {
         organizations={ORGANIZATIONS}
         activeOrganizationId="org-1"
         selectId="uji-org"
+        onSwitchRequested={vi.fn()}
         onSwitchCommitted={vi.fn()}
         onSwitchFailed={vi.fn()}
       />,
@@ -48,6 +49,7 @@ describe('Pengalih organisasi', () => {
         organizations={[]}
         activeOrganizationId=""
         selectId="uji-org"
+        onSwitchRequested={vi.fn()}
         onSwitchCommitted={vi.fn()}
         onSwitchFailed={vi.fn()}
       />,
@@ -62,17 +64,20 @@ describe('Pengalih organisasi', () => {
       organizationId: String(data.get('organizationId')),
     }));
     const committed = vi.fn();
+    const requested = vi.fn();
     render(
       <OrganizationSwitcher
         organizations={ORGANIZATIONS}
         activeOrganizationId="org-1"
         selectId="uji-org"
+        onSwitchRequested={requested}
         onSwitchCommitted={committed}
         onSwitchFailed={vi.fn()}
       />,
     );
     await user.click(screen.getByRole('combobox'));
     await user.click(await screen.findByRole('option', { name: 'Org Kedua' }));
+    expect(requested).toHaveBeenCalledWith('org-2');
     await waitFor(() => expect(committed).toHaveBeenCalledWith('org-2'));
   });
 
@@ -85,6 +90,7 @@ describe('Pengalih organisasi', () => {
         organizations={ORGANIZATIONS}
         activeOrganizationId="org-1"
         selectId="uji-org"
+        onSwitchRequested={vi.fn()}
         onSwitchCommitted={vi.fn()}
         onSwitchFailed={onFailed}
       />,

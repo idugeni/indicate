@@ -141,6 +141,17 @@ export interface CategoryRecord extends VersionedRecord {
   readonly status: LifecycleStatus;
 }
 
+/**
+ * Category an article falls back to when the editor files none.
+ *
+ * Seeding one neutral label keeps an article browsable: every category listing
+ * and the NewsArticle `articleSection` are driven by a non-null
+ * `categorySlug`/`categoryName`, so a categoryless article disappears from the
+ * nav, the author profile, and the structured data at once. Seeded per
+ * organization by `20260926200000_default_article_category.sql`.
+ */
+export const DEFAULT_CATEGORY_SLUG = 'umum';
+
 export interface AuthorRecord extends VersionedRecord {
   readonly displayName: string;
   readonly byline: string;

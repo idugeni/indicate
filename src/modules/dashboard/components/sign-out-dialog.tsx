@@ -1,6 +1,7 @@
 'use client';
 
 import { LogOut } from 'lucide-react';
+import type { ReactElement } from 'react';
 
 import {
   AlertDialog,
@@ -16,23 +17,31 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-/** Logout runs a destructive POST only after explicit confirm. */
-export function SignOutDialog({ mode }: { readonly mode: 'icon' | 'button' }) {
+/**
+ * Logout runs a destructive POST only after explicit confirm.
+ *
+ * @param mode - `icon` renders the compact rail trigger, `button` the labelled form trigger.
+ * @param trigger - Element that opens the confirmation, replacing the built-in icon button.
+ *   Use it when the surrounding UI already offers a richer affordance, such as the sidebar profile row.
+ * @returns The confirmation dialog, opened by its trigger.
+ */
+export function SignOutDialog({ mode, trigger }: { readonly mode: 'icon' | 'button'; readonly trigger?: ReactElement }) {
+  const iconTrigger = trigger ?? (
+    <button
+      type="button"
+      aria-label="Keluar dari workspace"
+      className="flex h-7 w-7 items-center justify-center rounded-md text-paper-dim transition-colors duration-150 hover:bg-bg-raised-2 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
+    >
+      <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
+    </button>
+  );
+
   return (
     <AlertDialog>
       {mode === 'icon' ? (
         <TooltipProvider delay={150}>
           <Tooltip>
-            <TooltipTrigger
-              render={
-                <AlertDialogTrigger
-                  aria-label="Keluar dari workspace"
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-paper-dim transition-colors duration-150 hover:bg-bg-raised-2 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
-                >
-                  <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-                </AlertDialogTrigger>
-              }
-            />
+            <TooltipTrigger render={<AlertDialogTrigger render={iconTrigger} />} />
             <TooltipContent side="right" className="border border-hairline bg-bg-raised font-sans text-xs text-paper [&>div]:bg-bg-raised">
               Keluar dari workspace
             </TooltipContent>

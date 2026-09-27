@@ -49,30 +49,50 @@ export function ArticleDistributeForm({
 
   const assignArticleSelectId = useId();
   const seedCountInputId = useId();
+  const assignQueryInputId = useId();
 
   /** Domain groups excluded from distribution; empty means every domain is selected (default all). */
   const [assignExcluded, setAssignExcluded] = useState<readonly string[]>([]);
+  const [expandedGroupIds, setExpandedGroupIds] = useState<readonly string[]>([]);
+  const [assignQuery, setAssignQuery] = useState('');
   const [isAssigning, startAssignTransition] = useTransition();
   const [isSeeding, startSeedTransition] = useTransition();
 
-  const assignSites = model?.sites ?? [];
-  const assignDomains = model?.domains ?? [];
-  const assignGroups = [
-    ...assignDomains
-      .map((domain) => ({ id: domain.id, label: domain.normalizedHostname, sites: assignSites.filter((site) => site.domainId === domain.id) }))
-      .filter((group) => group.sites.length > 0),
-    ...(assignSites.some((site) => site.domainId === undefined || site.domainId === null || !assignDomains.some((domain) => domain.id === site.domainId))
-      ? [{
-        id: '__tanpa-domain__',
-        label: 'Lainnya',
-        sites: assignSites.filter((site) => site.domainId === undefined || site.domainId === null || !assignDomains.some((domain) => domain.id === site.domainId)),
-      }]
-      : []),
-  ];
+  const assignSites = useMemo(() => model?.sites ?? [], [model?.sites]);
+  const assignDomains = useMemo(() => model?.domains ?? [], [model?.domains]);
+  const assignGroups = useMemo(() => {
+    const domainIds = new Set(assignDomains.map((domain) => domain.id));
+    const byDomain = new Map<string, SiteEntity[]>();
+    const orphan: SiteEntity[] = [];
+    for (const site of assignSites) {
+      const key = site.domainId ?? '';
+      if (key === '' || !domainIds.has(key)) {
+        orphan.push(site);
+        continue;
+      }
+      const bucket = byDomain.get(key);
+      if (bucket === undefined) byDomain.set(key, [site]);
+      else bucket.push(site);
+    }
+    return [
+      ...assignDomains
+        .filter((domain) => (byDomain.get(domain.id)?.length ?? 0) > 0)
+        .map((domain) => ({ id: domain.id, label: domain.normalizedHostname, sites: byDomain.get(domain.id) ?? [] })),
+      ...(orphan.length > 0 ? [{ id: '__tanpa-domain__', label: 'Lainnya', sites: orphan }] : []),
+    ];
+  }, [assignDomains, assignSites]);
   const isAssignGroupChecked = (id: string) => !assignExcluded.includes(id);
   const toggleAssignGroup = (id: string) => {
     setAssignExcluded((prev) => (prev.includes(id) ? prev.filter((excluded) => excluded !== id) : [...prev, id]));
   };
+  const matchedAssignGroups = useMemo(() => {
+    const needle = assignQuery.trim().toLowerCase();
+    if (needle === '') return assignGroups;
+    return assignGroups.filter((group) => group.label.toLowerCase().includes(needle) || group.sites.some((site) => site.normalizedHostname.toLowerCase().includes(needle)));
+  }, [assignGroups, assignQuery]);
+  const selectedSiteTotal = assignGroups
+    .filter((group) => isAssignGroupChecked(group.id))
+    .reduce((total, group) => total + group.sites.length, 0);
   const articleOptions = useMemo(() => (model?.articles ?? []).map((a) => ({ value: a.id, label: a.title })), [model?.articles]);
   /** No silent default: distribution requires an explicit article choice (or a locked articleId). */
   const [assignArticleId, setAssignArticleId] = useState<string | null>(null);
@@ -90,7 +110,9 @@ export function ArticleDistributeForm({
       toast.error('Pilih artikel target dulu sebelum menyalurkan.');
       return;
     }
-    const siteIds = formData.getAll('siteIds');
+    const siteIds = assignGroups
+      .filter((group) => isAssignGroupChecked(group.id))
+      .flatMap((group) => group.sites.map((site) => site.id));
     if (siteIds.length === 0) {
       toast.error('Pilih minimal satu situs tujuan.');
       return;
@@ -161,17 +183,55 @@ export function ArticleDistributeForm({
         )}
 
         <div className="space-y-2">
-          <span className="block font-mono text-xs text-paper-dim">
-            Domain Tujuan (default: semua)
-          </span>
-          <p className="m-0 font-mono text-[11px] text-paper-faint">
-            Memilih domain menyalurkan ke seluruh situs (subdomain) di bawahnya. Situs kota otomatis ikut menyalurkan region induk dan portal utama.
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="block font-mono text-[11px] font-medium uppercase tracking-wider text-paper-dim">
+              Domain tujuan
+            </span>
+            <span className="font-mono text-[11px] tabular-nums text-paper-faint">
+              {matchedAssignGroups.length.toLocaleString('id-ID')} dari {assignGroups.length.toLocaleString('id-ID')} domain · {selectedSiteTotal.toLocaleString('id-ID')} situs terpilih
+            </span>
+          </div>
+          <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">
+            Semua domain terpilih secara default; hapus centang untuk mengecualikan. Satu domain mencakup seluruh
+            subdomain di bawahnya, termasuk situs kota.
           </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              id={assignQueryInputId}
+              type="search"
+              value={assignQuery}
+              disabled={isAssigning}
+              onChange={(event) => setAssignQuery(event.target.value)}
+              placeholder="Cari domain tujuan"
+              aria-label="Cari domain tujuan"
+              className="h-8 min-w-0 flex-1 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isAssigning || matchedAssignGroups.length === 0}
+              onClick={() => setAssignExcluded((prev) => [...new Set([...prev, ...assignGroups.filter((group) => !matchedAssignGroups.some((match) => match.id === group.id)).map((group) => group.id)])])}
+            >
+              Pilih semua yang cocok
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isAssigning || assignExcluded.length === 0}
+              onClick={() => setAssignExcluded([])}
+            >
+              Pilih semuanya
+            </Button>
+          </div>
           <div className="max-h-60 space-y-1.5 overflow-y-auto rounded border border-hairline bg-bg p-3">
             {assignSites.length === 0 ? (
               <EmptyState title="Belum ada situs aktif." description="Data akan tampil di sini setelah tersedia." />
+            ) : matchedAssignGroups.length === 0 ? (
+              <p className="m-0 font-sans text-xs text-paper-faint">Tidak ada domain yang cocok dengan "{assignQuery.trim()}".</p>
             ) : (
-              assignGroups.map((group) => {
+              matchedAssignGroups.map((group) => {
                 const checked = isAssignGroupChecked(group.id);
                 return (
                   <div key={group.id} className="rounded transition-colors duration-180 hover:bg-bg-raised-2">
@@ -186,26 +246,36 @@ export function ArticleDistributeForm({
                         disabled={isAssigning}
                         className="border-hairline-strong data-checked:border-brass data-checked:bg-brass data-checked:text-bg"
                       />
-                      {checked ? group.sites.map((site) => <input key={site.id} type="hidden" name="siteIds" value={site.id} />) : null}
-                      <span className="font-mono text-xs text-paper">
+                      <span className="min-w-0 flex-1 truncate font-mono text-xs text-paper">
                         {group.label}
                       </span>
-                      <span aria-hidden="true" className="ml-auto font-mono text-[11px] tabular-nums text-paper-faint">
+                      <span aria-hidden="true" className="font-mono text-[11px] tabular-nums text-paper-faint">
                         {group.sites.length} situs
                       </span>
                     </Label>
-                    <details className="ml-9 pb-1.5">
-                      <summary className="cursor-pointer font-mono text-[11px] text-paper-faint hover:text-paper">
-                        Lihat situs
-                      </summary>
-                      <ul className="m-0 mt-1 list-none space-y-0.5 p-0">
-                        {group.sites.map((site) => (
-                          <li key={site.id} className="font-mono text-[11px] text-paper-dim">
-                            {site.normalizedHostname}
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
+                    <div className="ml-9 pb-1.5">
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="xs"
+                        disabled={isAssigning}
+                        aria-expanded={expandedGroupIds.includes(group.id)}
+                        aria-controls={`assign-sites-${group.id}`}
+                        onClick={() => setExpandedGroupIds((prev) => (prev.includes(group.id) ? prev.filter((id) => id !== group.id) : [...prev, group.id]))}
+                        className="h-auto p-0 font-mono text-[11px] text-paper-faint hover:text-paper"
+                      >
+                        <span>{expandedGroupIds.includes(group.id) ? 'Sembunyikan' : `Lihat ${group.sites.length.toLocaleString('id-ID')} situs`}</span>
+                      </Button>
+                      {expandedGroupIds.includes(group.id) ? (
+                        <ul id={`assign-sites-${group.id}`} className="m-0 mt-1 list-none space-y-0.5 p-0">
+                          {group.sites.map((site) => (
+                            <li key={site.id} className="font-mono text-[11px] text-paper-dim">
+                              {site.normalizedHostname}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
                   </div>
                 );
               })

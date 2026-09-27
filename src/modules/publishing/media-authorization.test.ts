@@ -40,6 +40,7 @@ function site(overrides: Partial<PublishingSiteRef> = {}): PublishingSiteRef {
     organizationId: 'o1',
     active: true,
     normalizedHostname: 'portal.example',
+    domainId: null,
     settingsMediaIds: [],
     ...overrides,
   };

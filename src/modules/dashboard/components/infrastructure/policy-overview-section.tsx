@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useState, useTransition, type ReactNode } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
@@ -57,18 +57,27 @@ interface PoliciesOverview {
 
 function DefinitionList({ entries }: { readonly entries: readonly (readonly [string, string])[] }) {
   return (
-    <dl className="m-0 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+    <dl className="m-0 grid gap-x-5 gap-y-1 sm:grid-cols-2 xl:grid-cols-3">
       {entries.map(([term, value]) => (
-        <div key={term} className="min-w-0">
-          <dt className="font-mono text-[11px] uppercase tracking-wider text-paper-faint">{term}</dt>
-          <dd className="m-0 mt-0.5 min-w-0">
+        <div key={term} className="flex min-w-0 items-baseline justify-between gap-2 border-b border-hairline/50 py-1 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0">
+          <dt className="min-w-0 truncate font-mono text-[10px] uppercase tracking-wider text-paper-faint">{term}</dt>
+          <dd className="m-0 min-w-0 shrink">
             <ChartTip tip={value}>
-              <span className="block truncate font-mono text-xs tabular-nums text-paper">{value}</span>
+              <span className="block max-w-[16rem] truncate font-mono text-[11px] tabular-nums text-paper">{value}</span>
             </ChartTip>
           </dd>
         </div>
       ))}
     </dl>
+  );
+}
+
+function PolicyGroup({ label, children }: { readonly label: string; readonly children: ReactNode }) {
+  return (
+    <div className="rounded border border-hairline bg-bg/40 p-2">
+      <h4 className="m-0 mb-1 font-mono text-[10px] font-medium uppercase tracking-wider text-brass">{label}</h4>
+      {children}
+    </div>
   );
 }
 
@@ -112,7 +121,7 @@ export function PolicyOverviewSection() {
   }
 
   return (
-    <section aria-label="Ringkasan kebijakan platform" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
+    <section aria-label="Ringkasan kebijakan platform" className="rounded-lg border border-hairline bg-bg-raised p-4">
       <div className="flex items-baseline gap-2">
         <span className="font-mono text-[11px] tabular-nums text-brass">05</span>
         <h3 className="m-0 flex items-center gap-2 font-sans text-sm font-semibold tracking-tight text-paper">
@@ -140,92 +149,67 @@ export function PolicyOverviewSection() {
       {policies === null ? (
         <p className="m-0 mt-4 font-mono text-xs text-paper-faint">{isLoading ? 'Memuat…' : 'Menunggu data kebijakan.'}</p>
       ) : (
-        <div className="mt-4 space-y-5">
+        <div className="mt-3 space-y-2">
           {policies.deployment === null ? null : (
-            <div>
-              <h4 className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-dim">
-                Deployment · v{policies.deployment.version}
-              </h4>
-              <div className="mt-2">
-                <DefinitionList
-                  entries={[
-                    ['Supabase ref', policies.deployment.supabaseProjectRef],
-                    ['Cloudflare account', policies.deployment.cloudflareAccountId],
-                    ['Vercel project', policies.deployment.vercelProjectId],
-                    ['Vercel team', policies.deployment.vercelTeamId],
-                    ['Production host', policies.deployment.vercelProductionTargetHostname],
-                    ['R2 bucket', `${policies.deployment.r2BucketName}`],
-                    ['Redis resource', policies.deployment.upstashRedisResourceId],
-                  ]}
-                />
-              </div>
-            </div>
+            <PolicyGroup label={`Deployment · v${policies.deployment.version}`}>
+              <DefinitionList
+                entries={[
+                  ['Supabase ref', policies.deployment.supabaseProjectRef],
+                  ['Cloudflare account', policies.deployment.cloudflareAccountId],
+                  ['Vercel project', policies.deployment.vercelProjectId],
+                  ['Vercel team', policies.deployment.vercelTeamId],
+                  ['Production host', policies.deployment.vercelProductionTargetHostname],
+                  ['R2 bucket', `${policies.deployment.r2BucketName}`],
+                  ['Redis resource', policies.deployment.upstashRedisResourceId],
+                ]}
+              />
+            </PolicyGroup>
           )}
           {policies.publication === null ? null : (
-            <div>
-              <h4 className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-dim">
-                Publikasi · v{policies.publication.version}
-              </h4>
-              <div className="mt-2">
-                <DefinitionList
-                  entries={[
-                    ['Max attempts', String(policies.publication.maxAttempts)],
-                    ['Retry delays (s)', policies.publication.retryDelaysSeconds.join(', ')],
-                    ['Lease (s)', String(policies.publication.leaseSeconds)],
-                    ['Batch', String(policies.publication.batchSize)],
-                    ['Deadline fungsi (s)', String(policies.publication.functionDeadlineSeconds)],
-                  ]}
-                />
-              </div>
-            </div>
+            <PolicyGroup label={`Publikasi · v${policies.publication.version}`}>
+              <DefinitionList
+                entries={[
+                  ['Max attempts', String(policies.publication.maxAttempts)],
+                  ['Retry delays (s)', policies.publication.retryDelaysSeconds.join(', ')],
+                  ['Lease (s)', String(policies.publication.leaseSeconds)],
+                  ['Batch', String(policies.publication.batchSize)],
+                  ['Deadline fungsi (s)', String(policies.publication.functionDeadlineSeconds)],
+                ]}
+              />
+            </PolicyGroup>
           )}
           {policies.webhook === null ? null : (
-            <div>
-              <h4 className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-dim">
-                Webhook · v{policies.webhook.version}
-              </h4>
-              <div className="mt-2">
-                <DefinitionList
-                  entries={[
-                    ['Freshness (s)', String(policies.webhook.freshnessSeconds)],
-                    ['Retensi replay (s)', String(policies.webhook.replayRetentionSeconds)],
-                  ]}
-                />
-              </div>
-            </div>
+            <PolicyGroup label={`Webhook · v${policies.webhook.version}`}>
+              <DefinitionList
+                entries={[
+                  ['Freshness (s)', String(policies.webhook.freshnessSeconds)],
+                  ['Retensi replay (s)', String(policies.webhook.replayRetentionSeconds)],
+                ]}
+              />
+            </PolicyGroup>
           )}
           {policies.cache === null ? null : (
-            <div>
-              <h4 className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-dim">
-                Cache · v{policies.cache.version}
-              </h4>
-              <div className="mt-2">
-                <DefinitionList
-                  entries={[
-                    ['Public cache (s)', String(policies.cache.publicCacheSeconds)],
-                    ['Cache version', String(policies.cache.cacheVersion)],
-                  ]}
-                />
-              </div>
-            </div>
+            <PolicyGroup label={`Cache · v${policies.cache.version}`}>
+              <DefinitionList
+                entries={[
+                  ['Public cache (s)', String(policies.cache.publicCacheSeconds)],
+                  ['Cache version', String(policies.cache.cacheVersion)],
+                ]}
+              />
+            </PolicyGroup>
           )}
-          <div>
-            <h4 className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-dim">
-              Rate limits
-            </h4>
+          <PolicyGroup label="Rate limits">
             {policies.rateLimits.length === 0 ? (
               <EmptyState title="Belum ada batas laju." description="Data akan tampil di sini setelah tersedia." />
             ) : (
-              <div className="mt-2">
-                <DefinitionList
-                  entries={policies.rateLimits.map(
-                    (row) =>
-                      [`${row.endpointClass} · v${row.version}`, `${row.allowance} / ${row.windowSeconds}s`] as const,
-                  )}
-                />
-              </div>
+              <DefinitionList
+                entries={policies.rateLimits.map(
+                  (row) =>
+                    [`${row.endpointClass} · v${row.version}`, `${row.allowance} / ${row.windowSeconds}s`] as const,
+                )}
+              />
             )}
-          </div>
+          </PolicyGroup>
         </div>
       )}
     </section>

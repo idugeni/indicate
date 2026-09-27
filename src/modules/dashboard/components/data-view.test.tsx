@@ -87,6 +87,196 @@ describe('Tampilan data koleksi', () => {
     expect(screen.getByRole('button', { name: 'Aksi untuk portal.example' })).toBeDefined();
   });
 
+  it('merender audit dengan aksi, target, waktu, dan hasil', () => {
+    render(
+      <DataView
+        view="audit"
+        data={{
+          auditLogs: [
+            {
+              id: 'log-1',
+              action: 'media.access.authorize',
+              targetType: 'media',
+              outcome: 'denied',
+              occurredAt: '2026-09-26T10:15:00.000Z',
+              changedFields: [],
+              before: null,
+              after: null,
+            },
+          ],
+        }}
+        currentPage={1}
+        onPageChange={vi.fn()}
+        onRefresh={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Catatan Audit')).toBeDefined();
+    expect(screen.getByText('media.access.authorize')).toBeDefined();
+    expect(screen.getByText(/^media · \d/)).toBeDefined();
+    expect(screen.getAllByText('denied').length).toBeGreaterThan(0);
+    expect(screen.queryByText('unknown')).toBeNull();
+  });
+
+  it('merender antrean mesin dengan label Indonesia dan ringkasan kosong ringkas', () => {
+    render(
+      <DataView
+        view="operations"
+        data={{
+          invalidationTasks: [{ id: 'it-1', name: 'site.settings.default_media_replaced · fatos01.my.id', status: 'completed' }],
+          objectCleanupTasks: [],
+          webhookReplayClaims: [],
+        }}
+        currentPage={1}
+        onPageChange={vi.fn()}
+        onRefresh={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Antrean Invalidasi Cache')).toBeDefined();
+    expect(screen.getByText('Antrean Pembersihan Objek')).toBeDefined();
+    expect(screen.getByText('Klaim Replay Webhook')).toBeDefined();
+    expect(screen.getByText('Antrean Pembersihan Objek — tidak ada entri.')).toBeDefined();
+    expect(screen.getByText('Klaim Replay Webhook — tidak ada entri.')).toBeDefined();
+    // A sidecar table must not spend a full-page empty block; only a lone collection may.
+    expect(screen.queryByRole('button', { name: /^muat ulang$/i })).toBeNull();
+    expect(screen.getAllByText('completed').length).toBeGreaterThan(0);
+  });
+
+  it('memakai empty state penuh saat koleksi tunggal kosong', () => {
+    render(
+      <DataView
+        view="operations"
+        data={{ webhookReplayClaims: [] }}
+        currentPage={1}
+        onPageChange={vi.fn()}
+        onRefresh={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /^muat ulang$/i })).toBeDefined();
+    expect(screen.getByText('Belum ada data Klaim Replay Webhook. Buat data pertama lewat formulir di halaman ini, atau muat ulang.')).toBeDefined();
+  });
+
+  it('membaca status dan kota dari amplop customer bersarang', () => {
+    render(
+      <DataView
+        view="customers"
+        data={[
+          {
+            customer: {
+              id: 'org-1',
+              name: 'BAPAS KELAS I SEMARANG',
+              slug: 'bapas-kelas-i-semarang',
+              status: 'active',
+              customerMetadata: { city: 'Kota Semarang' },
+            },
+            subscription: { organizationId: 'org-1', status: 'suspended' },
+          },
+        ]}
+        currentPage={1}
+        onPageChange={vi.fn()}
+        onRefresh={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Pelanggan')).toBeDefined();
+    expect(screen.getByText('BAPAS KELAS I SEMARANG')).toBeDefined();
+    expect(screen.getByText('Kota Semarang')).toBeDefined();
+    // Customer status wins so a suspended account is not hidden behind an active subscription.
+    expect(screen.getAllByText('active').length).toBeGreaterThan(0);
+    expect(screen.queryByText('unknown')).toBeNull();
+  });
+
+  it('merender hanya koleksi yang diminta, berlabel Indonesia', () => {
+    render(
+      <DataView
+        view="configuration"
+        collections={['domains', 'regions']}
+        data={{
+          domains: [{ id: 'd-1', normalizedHostname: 'fakta01.my.id', status: 'active', version: 1 }],
+          regions: [{ id: 'r-1', name: 'Wonosobo', kind: 'city', status: 'active', version: 1 }],
+          roles: [{ id: 'role-1', name: 'admin', status: 'active', version: 1 }],
+          sites: [{ id: 's-1', normalizedHostname: 'portal.example', status: 'active', version: 1 }],
+        }}
+        currentPage={1}
+        onPageChange={vi.fn()}
+        onRefresh={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Domain')).toBeDefined();
+    expect(screen.getByText('Wilayah')).toBeDefined();
+    expect(screen.getByText('fakta01.my.id')).toBeDefined();
+    expect(screen.getByText('Wonosobo')).toBeDefined();
+    expect(screen.queryByText('Peran')).toBeNull();
+    expect(screen.queryByText('Situs')).toBeNull();
+  });
+
+  it('mengabaikan kunci koleksi yang tidak ada di payload', () => {
+    render(
+      <DataView
+        view="configuration"
+        collections={['domains', 'siteSettings']}
+        data={{ domains: [{ id: 'd-1', normalizedHostname: 'fakta01.my.id', status: 'active', version: 1 }] }}
+        currentPage={1}
+        onPageChange={vi.fn()}
+        onRefresh={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Domain')).toBeDefined();
+    expect(screen.queryByText('Pengaturan Situs')).toBeNull();
+    expect(screen.queryByText('Belum ada data')).toBeNull();
+  });
+
+  it('memisahkan penerbit dari afiliasi dan meringkas klaim per kota', () => {
+    render(
+      <DataView
+        view="publishers"
+        data={{
+          publishers: [{ id: 'pub-1', name: 'Humas Rutan', status: 'active', version: 1 }],
+          affiliations: [
+            { id: 'aff-1', institutionName: 'Rutan II B Wonosobo', cityName: 'Wonosobo', portalCount: 134, active: true, version: 1 },
+          ],
+        }}
+        currentPage={1}
+        onPageChange={vi.fn()}
+        onRefresh={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Humas Rutan')).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Penerbit' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Keterkaitan penerbit & portal' })).toBeDefined();
+    expect(screen.getByText('Lembaga yang memasok berita ke jaringan, satu baris per lembaga.')).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Afiliasi Resmi' })).toBeDefined();
+    expect(screen.getByText('Rutan II B Wonosobo')).toBeDefined();
+    expect(screen.getByText('Wonosobo · 134 portal')).toBeDefined();
+    expect(screen.queryByText('Tanpa nama')).toBe(null);
+    expect(screen.queryByRole('region', { name: 'Situs' })).toBe(null);
+  });
+
+  it('memetakan flag aktif afiliasi ke status', () => {
+    render(
+      <DataView
+        view="publishers"
+        data={{
+          publishers: [{ id: 'pub-1', name: 'Humas Rutan', status: 'active', version: 1 }],
+          affiliations: [
+            { id: 'aff-1', institutionName: 'Rutan II B Wonosobo', cityName: 'Wonosobo', portalCount: 134, active: true, version: 1 },
+            { id: 'aff-2', institutionName: 'RS Husada Wonosobo', cityName: 'Batang', portalCount: 12, active: false, version: 1 },
+          ],
+        }}
+        currentPage={1}
+        onPageChange={vi.fn()}
+        onRefresh={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText('unknown')).toBe(null);
+    const affiliationRegion = screen.getByRole('region', { name: 'Afiliasi Resmi' });
+    const badges = [...affiliationRegion.querySelectorAll('tbody tr')].map((row) =>
+      row.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(badges).toEqual([
+      'Rutan II B WonosoboWonosobo · 134 portalactiveactive',
+      'RS Husada WonosoboBatang · 12 portalinactiveinactive',
+    ]);
+  });
+
   it('berpindah halaman saat koleksi melebihi satu halaman', () => {
     const handlePageChange = vi.fn();
     const manySites = Array.from({ length: 11 }, (_, i) => ({

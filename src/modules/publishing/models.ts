@@ -175,7 +175,17 @@ export interface PublishingSiteRef {
   readonly organizationId: string;
   readonly active: boolean;
   readonly normalizedHostname: string;
+  /** Owning domain, so callers can group portals by apex instead of guessing from the hostname. */
+  readonly domainId: string | null;
   readonly settingsMediaIds: readonly string[];
+}
+
+export interface PublishingDomainRef {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly normalizedHostname: string;
+  readonly status: string;
+  readonly siteTopology: string;
 }
 
 export interface PublishingArticleSiteRef {
@@ -193,6 +203,7 @@ export interface PublishingArticleSiteRef {
 export interface PublishingTenantSnapshot {
   readonly organizationId: string;
   readonly articles: readonly PublishingArticleRef[];
+  readonly domains: readonly PublishingDomainRef[];
   readonly sites: readonly PublishingSiteRef[];
   readonly articleSites: readonly PublishingArticleSiteRef[];
   readonly reservations: readonly MediaReservationRecord[];

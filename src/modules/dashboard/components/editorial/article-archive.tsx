@@ -116,6 +116,12 @@ export function ArticleArchive({ data }: { readonly data: unknown }) {
     return grouped;
   }, [assignments, siteHostnames]);
   const allTags = useMemo(() => [...new Set(articles.flatMap((article) => article.tags))].sort(), [articles]);
+  const portalOptions = useMemo(
+    () => [...new Set([...sitesByArticle.values()].flat())]
+      .sort()
+      .map((hostname) => ({ value: hostname, label: hostname })),
+    [sitesByArticle],
+  );
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -171,9 +177,14 @@ export function ArticleArchive({ data }: { readonly data: unknown }) {
             id={siteId}
             value={site}
             onValueChange={(next) => { setSite(next ?? ''); resetPage(); }}
-            placeholder="Semua portal"
-            options={sites.map((item) => ({ value: item.normalizedHostname, label: item.normalizedHostname }))}
+            placeholder={portalOptions.length === 0 ? 'Tidak ada portal' : 'Semua portal'}
+            options={portalOptions}
           />
+          <p className="m-0 font-mono text-[11px] text-paper-faint">
+            {portalOptions.length === 0
+              ? 'Belum ada portal yang memuat artikel.'
+              : `${portalOptions.length.toLocaleString('id-ID')} portal yang memuat artikel.`}
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor={statusId}>Status</Label>

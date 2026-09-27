@@ -41,6 +41,33 @@ describe('ArticleArchive', () => {
     expect(screen.queryByText('APBD Jateng')).toBeNull();
   });
 
+  it('menawarkan hanya portal yang memuat artikel', async () => {
+    const user = userEvent.setup();
+    render(
+      <ArticleArchive
+        data={{
+          ...DATA,
+          sites: [
+            { id: 's-1', normalizedHostname: 'fakta01.my.id' },
+            { id: 's-2', normalizedHostname: 'wonosobo.fakta01.my.id' },
+            { id: 's-3', normalizedHostname: 'kabar360.biz.id' },
+            { id: 's-4', normalizedHostname: 'batang.kabar360.biz.id' },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByText('1 portal yang memuat artikel.')).toBeDefined();
+    await user.click(screen.getByLabelText('Portal'));
+    const options = await screen.findAllByRole('option');
+    expect(options.map((option) => option.textContent)).toEqual(['fakta01.my.id']);
+  });
+
+  it('menyatakan tidak ada portal saat belum ada artikel', () => {
+    render(<ArticleArchive data={{ articles: DATA.articles, categories: DATA.categories, sites: DATA.sites, articleSites: [] }} />);
+    expect(screen.getByText('Belum ada portal yang memuat artikel.')).toBeDefined();
+    expect(screen.getByLabelText('Portal').getAttribute('placeholder')).toBe('Tidak ada portal');
+  });
+
   it('menampilkan status kosong yang ramah', () => {
     render(<ArticleArchive data={{ articles: [], categories: [], sites: [], articleSites: [] }} />);
     expect(screen.getByText(/Tidak ada artikel yang cocok/)).toBeDefined();

@@ -279,7 +279,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
           && await this.isOrgArticleMediaVisible(transaction, context, mediaId)) return asset;
         return null;
       }
-      const site = { id: siteRows[0].site.id, organizationId: context.organizationId, active: true, normalizedHostname: siteRows[0].site.normalizedHostname, settingsMediaIds: [...new Set([...ownMediaIds, ...inheritedMediaIds])] };
+      const site = { id: siteRows[0].site.id, organizationId: context.organizationId, active: true, normalizedHostname: siteRows[0].site.normalizedHostname, domainId: siteRows[0].site.domainId, settingsMediaIds: [...new Set([...ownMediaIds, ...inheritedMediaIds])] };
       const articleRefs = asset.owner.kind !== 'article' ? [] : (await transaction.select({ id: articles.id, status: articles.status }).from(articles).where(and(eq(articles.organizationId, context.organizationId), eq(articles.id, asset.owner.articleId))).limit(1))
         .map((row) => ({ id: row.id, organizationId: context.organizationId, active: row.status === 'active', leadMediaId: null, title: '', slug: '' }));
       const refs = asset.owner.kind !== 'article' ? [] : (await transaction.select({ id: articleSites.id, organizationId: articleSites.organizationId, articleId: articleSites.articleId, siteId: articleSites.siteId, active: articleSites.active, state: articleSites.state }).from(articleSites).where(and(eq(articleSites.organizationId, context.organizationId), eq(articleSites.siteId, context.siteId), eq(articleSites.articleId, asset.owner.articleId), eq(articleSites.active, true))).limit(1))
@@ -777,9 +777,10 @@ export class DrizzlePublishingRepository implements PublishingRepository {
     return this.database.transaction(async (transaction) => {
       await this.context(transaction, organizationId, 'publishing-snapshot', SYSTEM_REQUEST);
       const organization = await transaction.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).limit(1); if (organization.length === 0) return null;
-      const [articleRows, siteRows, settingsRows, relationRows, reservationRows, mediaRows, cleanupRows, invalidationRows, jobRows, targetRows, receiptRows, auditRows] = await Promise.all([
+      const [articleRows, siteRows, domainRows, settingsRows, relationRows, reservationRows, mediaRows, cleanupRows, invalidationRows, jobRows, targetRows, receiptRows, auditRows] = await Promise.all([
         transaction.select().from(articles).where(eq(articles.organizationId, organizationId)),
         transaction.select().from(sites).where(eq(sites.organizationId, organizationId)),
+        transaction.select().from(domains).where(eq(domains.organizationId, organizationId)),
         transaction.select().from(siteSettings).where(eq(siteSettings.organizationId, organizationId)),
         transaction.select().from(articleSites).where(eq(articleSites.organizationId, organizationId)),
         transaction.select().from(mediaKeyReservations).where(eq(mediaKeyReservations.organizationId, organizationId)),
@@ -812,7 +813,8 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       return {
         organizationId,
         articles: visibleArticles.map((row) => ({ id: row.id, organizationId, active: row.status === 'active', status: row.status, scheduledAt: optionalIso(row.scheduledAt), leadMediaId: row.leadMediaId, title: row.title, slug: row.slug })),
-        sites: visibleSites.map((row) => ({ id: row.id, organizationId, active: row.status === 'active' && row.activationState === 'active', normalizedHostname: row.normalizedHostname, settingsMediaIds: settingsBySite.get(row.id) ?? [] })),
+        sites: visibleSites.map((row) => ({ id: row.id, organizationId, active: row.status === 'active' && row.activationState === 'active', normalizedHostname: row.normalizedHostname, domainId: row.domainId, settingsMediaIds: settingsBySite.get(row.id) ?? [] })),
+        domains: domainRows.map((row) => ({ id: row.id, organizationId, normalizedHostname: row.normalizedHostname, status: row.status, siteTopology: row.siteTopology })),
         articleSites: relationRows.filter((row) => visibleArticleIds.has(row.articleId) || visibleSiteIds.has(row.siteId)).map((row) => ({ id: row.id, organizationId, articleId: row.articleId, siteId: row.siteId, active: row.active, state: row.state, publishedUrl: row.publishedUrl, publishedAt: optionalIso(row.publishedAt), version: row.version })),
         reservations: reservationRows.map(mapReservation).filter((row) => ownerVisible(row.owner)), media: mediaRows.filter((row) => row.state !== 'reserved').map(mapMedia).filter((asset) => ownerVisible(asset.owner)), cleanupTasks: cleanupRows.map(mapCleanup),
         invalidationIntents: invalidationRows.filter((row) => visibleSiteIds.has(row.siteId)).map((row) => ({ id: row.id, organizationId, siteId: row.siteId, reason: row.reason, tags: row.tags, status: row.status })),

@@ -4,6 +4,8 @@ import { TenantBusinessService } from '@/modules/dashboard/tenant-business-servi
 
 const ID = '0199a2b3-4c5d-7e8f-9012-3456789abcde';
 const ID2 = '0199a2b3-4c5d-7e8f-9012-3456789abcdf';
+const ID3 = '0199a2b3-4c5d-7e8f-9012-3456789abce0';
+const ID4 = '0199a2b3-4c5d-7e8f-9012-3456789abce1';
 const NOW = new Date('2026-09-18T14:00:00.000Z');
 
 const actor = {
@@ -150,6 +152,30 @@ describe('TenantBusinessService updateAffiliation', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('expected ok');
     expect(result.value.institutionName).toBe('Rutan Baru');
+  });
+
+  it('memperbarui seluruh portal yang memuat klaim yang sama', async () => {
+    const replica = (id: string, siteId: string) => ({
+      id, publisherId: ID, siteId, institutionName: 'Rutan', claimScopes: ['kegiatan'],
+      evidenceReference: 'sk-1', active: true, verifiedAt: NOW.toISOString(), version: 1,
+    });
+    const { service, state } = harness({
+      ...base,
+      sites: [
+        { ...site, id: ID, regionId: 'region-1' },
+        { ...site, id: ID3, regionId: 'region-1' },
+        { ...site, id: ID4, regionId: 'region-2' },
+      ],
+      affiliations: [replica(ID2, ID), replica(ID3, ID), replica(ID4, ID4)],
+    });
+    const result = await service.updateAffiliation(actor, {
+      id: ID3, expectedVersion: 1, institutionName: 'Rutan Baru', claimScopes: ['kegiatan'], evidenceReference: 'sk-2', active: true,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    const updated = state.affiliations as { id: string; institutionName: string; evidenceReference: string }[];
+    expect(updated.filter((row) => row.institutionName === 'Rutan Baru').map((row) => row.id).sort()).toEqual([ID2, ID3].sort());
+    expect(updated.find((row) => row.id === ID4)?.institutionName).toBe('Rutan');
   });
 
   it('menolak aktivasi untuk publisher belum terverifikasi', async () => {

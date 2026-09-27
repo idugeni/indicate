@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
-import type { PublisherEntity, SiteEntity } from '@/modules/dashboard/components/shared/types';
+import type { PublisherEntity } from '@/modules/dashboard/components/shared/types';
 
 const VERIFICATION_STATUS_LABELS: Readonly<Record<string, string>> = {
   unverified: 'Belum diverifikasi',
@@ -33,7 +33,6 @@ export function PublisherForm({
 }) {
   const model = data as {
     readonly publishers?: readonly PublisherEntity[];
-    readonly sites?: readonly SiteEntity[];
   } | null;
 
   const createNameId = useId();

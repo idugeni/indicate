@@ -39,15 +39,19 @@ afterEach(() => {
 });
 
 const DATA = {
-  regions: [{ id: 'r-1', name: 'Wonosobo' }],
+  regions: [
+    { id: 'r-1', name: 'Jawa Tengah', kind: 'region', parentRegionId: null },
+    { id: 'r-2', name: 'Wonosobo', kind: 'city', parentRegionId: 'r-1' },
+  ],
   publishers: [
     { id: 'p-1', name: 'Penerbit Uji', status: 'active' },
     { id: 'p-2', name: 'Penerbit Arsip', status: 'archived' },
   ],
   categories: [
-    { id: 'c-1', name: 'Politik', status: 'active' },
-    { id: 'c-2', name: 'Ekonomi', status: 'active' },
-    { id: 'c-3', name: 'Arsip Lama', status: 'archived' },
+    { id: 'c-0', name: 'Umum', slug: 'umum', status: 'active' },
+    { id: 'c-1', name: 'Politik', slug: 'politik', status: 'active' },
+    { id: 'c-2', name: 'Ekonomi', slug: 'ekonomi', status: 'active' },
+    { id: 'c-3', name: 'Arsip Lama', slug: 'arsip-lama', status: 'archived' },
   ],
   authors: [{ id: 'a-1', displayName: 'Penulis Uji' }],
   articles: [{ id: 'art-1', title: 'Artikel Uji' }],
@@ -65,6 +69,8 @@ function setup(overrides: {
 async function pilihWilayahWonosobo(): Promise<void> {
   const user = userEvent.setup();
   await user.click(screen.getByLabelText('Wilayah'));
+  await user.click(await screen.findByRole('option', { name: 'Jawa Tengah' }));
+  await user.click(screen.getByLabelText('Kota / kabupaten'));
   await user.click(await screen.findByRole('option', { name: 'Wonosobo' }));
 }
 
@@ -75,6 +81,24 @@ describe('Formulir tulis artikel', () => {
     expect(screen.queryByText('Penyaluran Artikel')).toBeNull();
     expect(screen.queryByText('Pilih Artikel Target')).toBeNull();
     expect(screen.getByRole('button', { name: /simpan draf/i })).toBeDefined();
+  });
+
+  it('menampilkan kota hanya setelah wilayah dipilih dan mengirim id kota', async () => {
+    const user = userEvent.setup();
+    const { submit, container } = setup({});
+    expect(screen.queryByLabelText('Kota / kabupaten')).toBeNull();
+
+    await user.click(screen.getByLabelText('Wilayah'));
+    await user.click(await screen.findByRole('option', { name: 'Jawa Tengah' }));
+    expect(screen.getByLabelText('Kota / kabupaten')).toBeDefined();
+
+    await user.click(screen.getByLabelText('Kota / kabupaten'));
+    await user.click(await screen.findByRole('option', { name: 'Wonosobo' }));
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({ regionId: 'r-2' })));
   });
 
   it('menyembunyikan penerbit arsip dari formulir artikel', async () => {
@@ -198,6 +222,17 @@ describe('Formulir tulis artikel', () => {
     await waitFor(() =>
       expect(submit).toHaveBeenCalledWith(expect.objectContaining({ categoryIds: ['c-2', 'c-1'] })),
     );
+  });
+
+  it('mengirim kategori umum saat tidak ada yang dipilih', async () => {
+    const { submit, container } = setup({});
+    expect(screen.getByLabelText(/Kategori \(1 dipilih · Umum\)/)).toBeDefined();
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await pilihWilayahWonosobo();
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({ categoryIds: ['c-0'] })));
   });
 
   it('menyembunyikan kategori arsip dari combobox', async () => {

@@ -72,6 +72,12 @@ interface DataViewProps {
   readonly currentPage: number;
   readonly onPageChange: (page: number) => void;
   readonly onRefresh: () => void;
+  /**
+   * Restrict rendering to these payload collections, in this order. Used by
+   * tabbed views that own several collections and want each tab to show only
+   * its own; omit it to render every array the payload carries.
+   */
+  readonly collections?: readonly string[];
   /** Workspace command dispatcher; when absent, the table becomes read-only. */
   readonly command?: (action: string, payload: unknown) => Promise<unknown>;
   /** Switch modules from inside content (quick actions, guides); when absent, navigation buttons are hidden. */
@@ -89,6 +95,7 @@ function resolveStatus(rawStatus: unknown): { readonly label: string; readonly t
     case 'verified':
     case 'success':
     case 'healthy':
+    case 'completed':
       return { label: status, tone: 'ok' };
     case 'failed':
     case 'error':
@@ -112,6 +119,59 @@ const STATUS_BADGE_TONE: Record<StatusTone, string> = {
   idle: 'border-hairline-strong text-paper-dim',
 };
 
+/** Secondary line under a row name: claim scope for affiliations, target and time for audit rows. */
+function resolveItemSubtitle(item: Record<string, unknown>): string | null {
+  const city = typeof item.cityName === 'string' ? item.cityName.trim() : '';
+  const portals = typeof item.portalCount === 'number' && Number.isFinite(item.portalCount) ? item.portalCount : null;
+  const target = typeof item.targetType === 'string' ? item.targetType.trim() : '';
+  const occurredAt = typeof item.occurredAt === 'string' ? formatAuditMoment(item.occurredAt) : '';
+  const parts: string[] = [];
+  if (city !== '') parts.push(city);
+  if (portals !== null) parts.push(`${portals.toLocaleString('id-ID')} portal`);
+  if (target !== '') parts.push(target);
+  if (occurredAt !== '') parts.push(occurredAt);
+  if (parts.length > 0) return parts.join(' · ');
+  const metadata = nestedCustomer(item)?.customerMetadata;
+  const customerCity = typeof metadata === 'object' && metadata !== null
+    ? (metadata as Record<string, unknown>).city
+    : undefined;
+  return typeof customerCity === 'string' && customerCity.trim() !== '' ? customerCity.trim() : null;
+}
+
+/** Nested customer record inside a `{ customer, subscription }` row. */
+function nestedCustomer(item: Record<string, unknown>): Record<string, unknown> | null {
+  const customer = item.customer;
+  return typeof customer === 'object' && customer !== null ? (customer as Record<string, unknown>) : null;
+}
+
+const AUDIT_MOMENT = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+
+/** Absolute moment for an audit row; an unparsable value is passed through unchanged. */
+function formatAuditMoment(value: string): string {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : AUDIT_MOMENT.format(parsed);
+}
+
+/**
+ * Derive the badge status for a row.
+ *
+ * @remarks Honours boolean `active`, audit `outcome`, and the `{ customer, subscription }`
+ * envelope the customer projection ships, whose status lives on the nested record.
+ */
+function resolveRowStatus(item: Record<string, unknown>): string {
+  const direct = item.status ?? item.state ?? item.verificationStatus ?? item.outcome;
+  if (direct !== undefined) return String(direct);
+  if (typeof item.active === 'boolean') return item.active ? 'active' : 'inactive';
+  const customer = nestedCustomer(item);
+  if (customer !== null && customer.status !== undefined) return String(customer.status);
+  const subscription = item.subscription;
+  if (typeof subscription === 'object' && subscription !== null) {
+    const status = (subscription as Record<string, unknown>).status;
+    if (status !== undefined) return String(status);
+  }
+  return 'unknown';
+}
+
 function StatusMark({ status }: { readonly status: string }) {
   const meta = resolveStatus(status);
   return (
@@ -121,19 +181,48 @@ function StatusMark({ status }: { readonly status: string }) {
   );
 }
 
+const COLLECTION_LABELS: Readonly<Record<string, string>> = {
+  publishers: 'Penerbit',
+  affiliations: 'Afiliasi Resmi',
+  sites: 'Situs',
+  records: 'Pelanggan',
+  apiKeys: 'Kunci API',
+  domains: 'Domain',
+  regions: 'Wilayah',
+  siteSettings: 'Pengaturan Situs',
+  roles: 'Peran',
+  memberships: 'Anggota',
+  invitations: 'Undangan',
+  activationAttempts: 'Percobaan Aktivasi',
+  auditLogs: 'Catatan Audit',
+  retentionRuns: 'Riwayat Retensi',
+  invalidationTasks: 'Antrean Invalidasi Cache',
+  objectCleanupTasks: 'Antrean Pembersihan Objek',
+  mediaKeyReservations: 'Reservasi Kunci Media',
+  cacheBypasses: 'Bypass Cache',
+  transitionReceipts: 'Bukti Transisi',
+  webhookReplayClaims: 'Klaim Replay Webhook',
+};
+
+function collectionLabel(collectionKey: string): string {
+  return COLLECTION_LABELS[collectionKey] ?? collectionKey.replace(/([A-Z])/g, ' $1').trim();
+}
+
 function resolveItemName(item: Record<string, unknown>): string {
   const possibleName =
     item.name ??
     item.title ??
     item.displayName ??
+    item.institutionName ??
     item.action ??
     item.key ??
     item.normalizedHostname ??
+    item.objectKey ??
     (item.customer as { name?: string } | undefined)?.name;
 
-  return typeof possibleName === 'string' && possibleName.trim()
-    ? possibleName.trim()
-    : 'Tanpa nama';
+  const label = typeof possibleName === 'string' ? possibleName.trim() : '';
+  if (label !== '') return label;
+  return typeof item.id === 'string' && item.id !== '' ? item.id : 'Tanpa nama';
 }
 
 /**
@@ -147,6 +236,7 @@ export function DataView({
   currentPage,
   onPageChange,
   onRefresh,
+  collections: onlyCollections,
   command,
   onSelectView,
 }: DataViewProps) {
@@ -305,10 +395,15 @@ export function DataView({
       ? (data as Record<string, unknown>)
       : {};
 
-  const collections = Object.entries(normalizedSource).filter(([, val]) => Array.isArray(val)) as [
+  const allCollections = Object.entries(normalizedSource).filter(([, val]) => Array.isArray(val)) as [
     string,
     Record<string, unknown>[],
   ][];
+  const collections = onlyCollections === undefined
+    ? allCollections
+    : (onlyCollections
+        .filter((key): key is string => key in normalizedSource)
+        .map((key) => [key, normalizedSource[key] as Record<string, unknown>[]] as [string, Record<string, unknown>[]]));
 
   const lookups: LookupTables = Object.fromEntries(collections);
 
@@ -362,25 +457,57 @@ export function DataView({
     }
   }
 
-  const useColumns = view === 'publishers' && collections.length > 1;
-
-  return (
-    <div className={useColumns ? 'grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3' : 'space-y-10'}>
-      {collections.map(([collectionKey, rawItems]) => (
-        <CollectionTable
-          key={collectionKey}
-          collectionKey={collectionKey}
-          rawItems={rawItems}
-          lookups={lookups}
-          currentPage={currentPage}
-          onPageChange={onPageChange}
-          onRefresh={onRefresh}
-          command={command}
-          compact={useColumns}
-        />
-      ))}
-    </div>
+  const renderTable = (collectionKey: string, rawItems: readonly CollectionItem[], showTitle = true) => (
+    <CollectionTable
+      key={collectionKey}
+      collectionKey={collectionKey}
+      rawItems={rawItems}
+      lookups={lookups}
+      currentPage={currentPage}
+      onPageChange={onPageChange}
+      onRefresh={onRefresh}
+      command={command}
+      showTitle={showTitle}
+      compactEmpty={collections.length > 1}
+    />
   );
+
+  const [primaryCollection, ...referenceCollections] = collections;
+  const singleReference = referenceCollections.length === 1 ? referenceCollections[0] : undefined;
+  const firstReference = referenceCollections[0];
+
+  if (view === 'publishers' && primaryCollection !== undefined && firstReference !== undefined) {
+    const [primaryKey, primaryItems] = primaryCollection;
+    const [referenceKey, referenceItems] = singleReference ?? firstReference;
+    return (
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="min-w-0 space-y-3">
+          <div className="border-b border-hairline pb-2">
+            <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
+              Penerbit
+            </h2>
+            <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
+              Lembaga yang memasok berita ke jaringan, satu baris per lembaga.
+            </p>
+          </div>
+          {renderTable(primaryKey, primaryItems, false)}
+        </div>
+        <div className="min-w-0 space-y-3">
+          <div className="border-b border-hairline pb-2">
+            <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
+              Keterkaitan penerbit &amp; portal
+            </h2>
+            <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
+              Afiliasi resmi: satu baris per klaim institusi di satu kota, bukan per portal.
+            </p>
+          </div>
+          {renderTable(referenceKey, referenceItems, false)}
+        </div>
+      </div>
+    );
+  }
+
+  return <div className="space-y-6">{collections.map(([collectionKey, items]) => renderTable(collectionKey, items))}</div>;
 }
 
 type CollectionItem = Record<string, unknown>;
@@ -407,7 +534,8 @@ function CollectionTable({
   onPageChange,
   onRefresh,
   command,
-  compact = false,
+  showTitle = true,
+  compactEmpty = false,
 }: {
   readonly collectionKey: string;
   readonly rawItems: readonly CollectionItem[];
@@ -416,7 +544,13 @@ function CollectionTable({
   readonly onPageChange: (page: number) => void;
   readonly onRefresh: () => void;
   readonly command: ((action: string, payload: unknown) => Promise<unknown>) | undefined;
-  readonly compact?: boolean;
+  /** Set false when a wrapping section already names the table. */
+  readonly showTitle?: boolean;
+  /**
+   * True when other collections share the page. An empty sidecar table then gets
+   * a one-line note instead of a full-page empty block.
+   */
+  readonly compactEmpty?: boolean;
 }) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -424,7 +558,7 @@ function CollectionTable({
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const editorConfig = command === undefined ? undefined : getEditorConfig(collectionKey);
-  const formattedTitle = collectionKey.replace(/([A-Z])/g, ' $1').trim();
+  const formattedTitle = collectionLabel(collectionKey);
   const memoData = useMemo(() => [...rawItems], [rawItems]);
 
   const copyToClipboard = async (text: string, label: string): Promise<void> => {
@@ -477,13 +611,19 @@ function CollectionTable({
         header: ({ column }) => <SortHeader label="Nama" column={column} />,
         cell: ({ row, table: cellTable }) => {
           const name = resolveItemName(row.original);
-          const status = String(row.original.status ?? row.original.state ?? row.original.verificationStatus ?? '');
+          const subtitle = resolveItemSubtitle(row.original);
+          const status = resolveRowStatus(row.original);
           const statusColumnVisible = cellTable.getColumn('status')?.getIsVisible() ?? true;
           return (
             <div className="min-w-0">
               <div className="truncate font-sans font-medium text-paper">
                 {name}
               </div>
+              {subtitle === null ? null : (
+                <div className="mt-0.5 truncate font-mono text-[11px] text-paper-faint">
+                  {subtitle}
+                </div>
+              )}
               {status === '' || !statusColumnVisible ? null : (
                 <div className="mt-0.5 sm:hidden">
                   <StatusMark status={status} />
@@ -495,7 +635,7 @@ function CollectionTable({
       },
       {
         id: 'status',
-        accessorFn: (item) => String(item.status ?? item.state ?? item.verificationStatus ?? 'unknown'),
+        accessorFn: (item) => resolveRowStatus(item),
         header: ({ column }) => <SortHeader label="Status" column={column} />,
         cell: ({ getValue }) => <StatusMark status={String(getValue())} />,
       },
@@ -508,7 +648,7 @@ function CollectionTable({
           const item = row.original;
           const itemId = row.id;
           const name = resolveItemName(item);
-          const status = String(item.status ?? item.state ?? item.verificationStatus ?? 'unknown');
+          const status = resolveRowStatus(item);
           const transitions = (editorConfig?.transitions ?? []).filter(
             (transition) => transition.whenStatus === undefined || transition.whenStatus.includes(status),
           );
@@ -601,8 +741,7 @@ function CollectionTable({
   const selectedRows = table.getSelectedRowModel().rows;
   const selectedCount = selectedRows.length;
 
-  const statusOf = (row: Row<DashboardFeatures, CollectionItem>): string =>
-    String(row.original.status ?? row.original.state ?? row.original.verificationStatus ?? 'unknown');
+  const statusOf = (row: Row<DashboardFeatures, CollectionItem>): string => resolveRowStatus(row.original);
   const commonTransitions: readonly EditorTransition[] = (editorConfig?.transitions ?? []).filter(
     (transition) =>
       selectedCount > 0 &&
@@ -655,15 +794,23 @@ function CollectionTable({
   };
 
   return (
-    <section key={collectionKey} aria-label={formattedTitle} className={compact ? 'min-w-0 rounded-lg border border-hairline bg-bg-raised p-4' : 'min-w-0 rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6'}>
-      <div className={compact ? 'flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-2.5' : 'flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-3'}>
-        <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
-          {formattedTitle}
-        </h2>
-        <div className="flex items-center gap-3">
+    <section key={collectionKey} aria-label={formattedTitle} className="min-w-0 rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-3">
+        {showTitle ? (
+          <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
+            {formattedTitle}
+          </h2>
+        ) : (
           <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
             {totalItems.toLocaleString('id-ID')} data
           </p>
+        )}
+        <div className="flex items-center gap-3">
+          {showTitle ? (
+            <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
+              {totalItems.toLocaleString('id-ID')} data
+            </p>
+          ) : null}
           {totalItems > 0 ? (
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -740,6 +887,11 @@ function CollectionTable({
       ) : null}
 
       {totalItems === 0 ? (
+        compactEmpty ? (
+          <p role="status" aria-live="polite" className="m-0 font-sans text-[11px] text-paper-faint">
+            {`${formattedTitle} — tidak ada entri.`}
+          </p>
+        ) : (
         <EmptyState
           title="Belum ada data"
           description={`Belum ada data ${formattedTitle}. Buat data pertama lewat formulir di halaman ini, atau muat ulang.`}
@@ -755,6 +907,7 @@ function CollectionTable({
             </Button>
           }
         />
+        )
       ) : (
         <>
           <div className="min-w-0">
@@ -794,12 +947,12 @@ function CollectionTable({
                           key={cell.id}
                           className={
                             cell.column.id === 'select'
-                              ? compact ? 'w-8 py-2.5' : 'w-8 py-3'
+                              ? 'w-8 py-3'
                               : cell.column.id === 'actions'
-                                ? compact ? 'w-12 py-2.5 text-right' : 'w-12 py-3 text-right'
+                                ? 'w-12 py-3 text-right'
                                 : cell.column.id === 'status'
-                                  ? compact ? 'hidden py-2.5 sm:table-cell sm:w-28' : 'hidden py-3 sm:table-cell sm:w-28'
-                                  : compact ? 'min-w-0 py-2.5' : 'min-w-0 py-3'
+                                  ? 'hidden py-3 sm:table-cell sm:w-28'
+                                  : 'min-w-0 py-3'
                           }
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}

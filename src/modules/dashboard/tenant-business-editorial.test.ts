@@ -4,6 +4,8 @@ import { TenantBusinessService } from '@/modules/dashboard/tenant-business-servi
 
 const ID = '0199a2b3-4c5d-7e8f-9012-3456789abcde';
 const ID2 = '0199a2b3-4c5d-7e8f-9012-3456789abcdf';
+const ID3 = '0199a2b3-4c5d-7e8f-9012-3456789abf01';
+const ID4 = '0199a2b3-4c5d-7e8f-9012-3456789abf02';
 const CAT1 = '0199a2b3-4c5d-7e8f-9012-3456789abce0';
 const CAT2 = '0199a2b3-4c5d-7e8f-9012-3456789abce1';
 const CAT3 = '0199a2b3-4c5d-7e8f-9012-3456789abce2';
@@ -29,6 +31,9 @@ const COLLECTIONS = [
 function harness(collections: Record<string, readonly unknown[]> = {}) {
   const state: Record<string, unknown> = { organizationId: 'org-1' };
   for (const key of COLLECTIONS) state[key] = [...(collections[key] ?? [])];
+  if (collections.categories === undefined) {
+    state.categories = [{ id: ID4, name: 'Umum', slug: 'umum', status: 'active' }];
+  }
   const appendAudit = vi.fn();
   const repository = {
     execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {
@@ -172,6 +177,44 @@ describe('TenantBusinessService affiliations memberships articles', () => {
     expect((state.memberships as { userId: string }[]).some((membership) => membership.userId === ID)).toBe(true);
   });
 
+  it('mengisi kategori umum saat artikel dibuat tanpa kategori', async () => {
+    const { service } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+      categories: [
+        { id: ID3, name: 'Politik', slug: 'politik', status: 'active' },
+        { id: ID4, name: 'Umum', slug: 'umum', status: 'active' },
+      ],
+    });
+    const result = await service.createArticle(actor, {
+      regionId: ID2,
+      slug: 'tanpa-kategori',
+      title: 'Judul Artikel Yang Cukup Panjang',
+      body: 'Isi artikel yang cukup panjang untuk lolos validasi.',
+      source: 'Humas',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.categoryId).toBe(ID4);
+    expect(result.value.categoryIds).toEqual([ID4]);
+  });
+
+  it('menolak artikel saat tenetsan belum punya kategori sama sekali', async () => {
+    const { service } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+      categories: [],
+    });
+    const result = await service.createArticle(actor, {
+      regionId: ID2,
+      slug: 'tanpa-kategori',
+      title: 'Judul Artikel Yang Cukup Panjang',
+      body: 'Isi artikel yang cukup panjang untuk lolos validasi.',
+      source: 'Humas',
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
+  });
+
   it('membuat artikel dengan slug unik', async () => {
     const { service } = harness({
       regions: [{ id: ID2, status: 'active' }],
@@ -191,7 +234,7 @@ describe('TenantBusinessService affiliations memberships articles', () => {
 
   it('memberi kabar grup saat artikel dibuat', async () => {
     const notifyArticleCreated = vi.fn(async () => undefined);
-    const state: Record<string, unknown> = { organizationId: 'org-1', regions: [{ id: ID2, status: 'active' }], articles: [] as unknown[] };
+    const state: Record<string, unknown> = { organizationId: 'org-1', regions: [{ id: ID2, status: 'active' }], categories: [{ id: ID4, name: 'Umum', slug: 'umum', status: 'active' }], articles: [] as unknown[] };
     for (const key of COLLECTIONS) state[key] ??= [];
     const repository = {
       execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {

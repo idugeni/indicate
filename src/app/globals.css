@@ -280,6 +280,46 @@
     background-color: var(--brass);
   }
 
+  /* Sidebar nav rail: slimmer than the page gutter (6px instead of 10px, so a
+     2px thumb), hairline at rest and brass while the rail is hovered. Chromium
+     drops ::-webkit-scrollbar sizing as soon as scrollbar-width is declared, so
+     the two syntaxes stay in separate @supports branches. */
+  .dashboard-scrollbar {
+    scrollbar-gutter: stable;
+  }
+  @supports selector(::-webkit-scrollbar) {
+    .dashboard-scrollbar {
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+    }
+    .dashboard-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .dashboard-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .dashboard-scrollbar::-webkit-scrollbar-thumb {
+      background-color: var(--hairline-strong);
+      background-clip: padding-box;
+      border: 2px solid transparent;
+      border-radius: 999px;
+    }
+    .dashboard-scrollbar:hover::-webkit-scrollbar-thumb,
+    .dashboard-scrollbar:focus-within::-webkit-scrollbar-thumb {
+      background-color: var(--brass);
+    }
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    .dashboard-scrollbar {
+      scrollbar-width: thin;
+      scrollbar-color: var(--hairline-strong) transparent;
+    }
+    .dashboard-scrollbar:hover,
+    .dashboard-scrollbar:focus-within {
+      scrollbar-color: var(--brass) transparent;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;

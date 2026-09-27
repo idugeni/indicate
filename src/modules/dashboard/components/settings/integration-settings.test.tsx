@@ -23,7 +23,7 @@ describe('Pengaturan integrasi', () => {
   it('menerbitkan kunci API dan menampilkan rahasia sekali lihat', async () => {
     const command = vi.fn(async () => ({ plaintext: 'kunci-rahasia-uji' }));
     const { container } = render(<IntegrationSettings command={command} />);
-    fireEvent.change(screen.getByLabelText('Nama Kunci'), {
+    fireEvent.change(screen.getByLabelText('Nama kunci'), {
       target: { value: 'Layanan Uji' },
     });
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
@@ -45,7 +45,7 @@ describe('Pengaturan integrasi', () => {
     });
     const command = vi.fn(async () => ({ plaintext: 'kunci-rahasia-uji' }));
     const { container } = render(<IntegrationSettings command={command} />);
-    fireEvent.change(screen.getByLabelText('Nama Kunci'), {
+    fireEvent.change(screen.getByLabelText('Nama kunci'), {
       target: { value: 'Layanan Uji' },
     });
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
@@ -56,6 +56,54 @@ describe('Pengaturan integrasi', () => {
       expect(writeText).toHaveBeenCalledWith('kunci-rahasia-uji');
       expect(toast.success).toHaveBeenCalledWith('Kunci API tersalin.');
     });
+  });
+
+  it('menambah hak akses lalu mengirimkannya', async () => {
+    const command = vi.fn(async () => ({ plaintext: 'kunci-rahasia-uji' }));
+    const { container } = render(<IntegrationSettings command={command} />);
+    expect(screen.getByText('article.read')).toBeDefined();
+    expect(screen.getByText('publishing.read')).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText('Tambah hak akses'), { target: { value: 'sites.manage' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tambah' }));
+    expect(await screen.findByText('sites.manage')).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText('Nama kunci'), { target: { value: 'Layanan Uji' } });
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() =>
+      expect(command).toHaveBeenCalledWith(
+        'api-key.issue',
+        expect.objectContaining({ scopes: ['article.read', 'publishing.read', 'sites.manage'] }),
+      ),
+    );
+  });
+
+  it('menghapus hak akses lewat chip', async () => {
+    render(<IntegrationSettings command={vi.fn(async () => ({}))} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Hapus hak akses article.read' }));
+    await waitFor(() => expect(screen.queryByText('article.read')).toBeNull());
+    expect(screen.getByText('publishing.read')).toBeDefined();
+  });
+
+  it('menambah hak akses dari tombol Enter tanpa klik', async () => {
+    render(<IntegrationSettings command={vi.fn(async () => ({}))} />);
+    const field = screen.getByLabelText('Tambah hak akses');
+    fireEvent.change(field, { target: { value: 'domains.manage' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    expect(await screen.findByText('domains.manage')).toBeDefined();
+  });
+
+  it('menolak menerbitkan tanpa hak akses', async () => {
+    const command = vi.fn(async () => ({ plaintext: 'kunci-rahasia-uji' }));
+    const { container } = render(<IntegrationSettings command={command} />);
+    fireEvent.change(screen.getByLabelText('Nama kunci'), { target: { value: 'Layanan Uji' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Hapus hak akses article.read' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hapus hak akses publishing.read' }));
+    expect(screen.getByText(/minimal satu hak akses/i)).toBeDefined();
+    const submit = screen.getByRole('button', { name: 'Terbitkan Kunci API' }) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    expect(command).not.toHaveBeenCalled();
   });
 
   it('mengirim email uji saat layanan terkonfigurasi', async () => {

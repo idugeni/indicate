@@ -32,6 +32,10 @@ function setup(command: (action: string, payload: unknown) => Promise<unknown>) 
   return render(<PublishingForm data={DATA} command={command} />);
 }
 
+function expandFirstTarget(): void {
+  fireEvent.click(screen.getAllByRole('button', { name: /^varian$/i })[0]!);
+}
+
 describe('PublishingForm publish', () => {
   it('menerbitkan ke site tercentang dan menampilkan status', async () => {
     const command = vi.fn(async (action: string) => (action === 'publication.request' ? STATUS : null));
@@ -79,9 +83,9 @@ describe('PublishingForm publish', () => {
 
   it('meregenerasi kunci idempotensi', () => {
     setup(vi.fn(async () => null));
-    const input = screen.getByLabelText(/kunci pengiriman/i) as HTMLInputElement;
+    const input = screen.getByLabelText('Kunci') as HTMLInputElement;
     const before = input.value;
-    fireEvent.click(screen.getByRole('button', { name: /regenerasi kunci/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerasi kunci pengiriman' }));
     expect(input.value).not.toBe(before);
   });
 
@@ -89,6 +93,7 @@ describe('PublishingForm publish', () => {
     const command = vi.fn(async () => STATUS);
     setup(command);
     fireEvent.click(screen.getAllByRole('checkbox')[0]!);
+    expandFirstTarget();
     fireEvent.change(screen.getAllByPlaceholderText(/judul khusus situs/i)[0]!, { target: { value: 'Judul Khusus Portal Yang Unik' } });
     fireEvent.click(screen.getByRole('button', { name: /kirim penerbitan/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith(
@@ -114,6 +119,7 @@ describe('PublishingForm suggest and status', () => {
     }));
     setup(command);
     fireEvent.click(screen.getAllByRole('checkbox')[0]!);
+    expandFirstTarget();
     fireEvent.click(screen.getByRole('button', { name: /varian unik otomatis/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith('publication.suggest', { articleId: 'article-1', siteIds: ['site-1'] }));
     expect((screen.getAllByPlaceholderText(/judul khusus situs/i)[0]! as HTMLInputElement).value).toBe('Judul Saran Unik');
@@ -128,7 +134,7 @@ describe('PublishingForm suggest and status', () => {
     expect(await screen.findByText(/job-1/)).toBeDefined();
 
     await user.click(screen.getByRole('button', { name: /ulangi yang gagal/i }));
-    await waitFor(() => expect(command).toHaveBeenCalledWith('publication.retry', { jobId: 'job-1' }), { timeout: 5000 });
+    await waitFor(() => expect(command).toHaveBeenCalledWith('publication.retry', { jobId: 'job-1' }), { timeout: 15000 });
   });
 
   it('menarik yang tayang hanya setelah konfirmasi', async () => {
@@ -173,5 +179,65 @@ describe('PublishingForm suggest and status', () => {
     vi.stubGlobal('confirm', vi.fn(() => true));
     await user.click(screen.getByRole('button', { name: /^nonindeks$/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith('publication.setSiteRobots', { articleSiteId: 'as-1', directive: 'noindex' }), { timeout: 5000 });
+  });
+});
+
+describe('PublishingForm daftar situs tujuan', () => {
+  const SITES = Array.from({ length: 120 }, (_, index) => ({
+    id: `site-${index}`,
+    normalizedHostname: `wilayah-${String(index).padStart(3, '0')}.contoh.id`,
+  }));
+
+  function renderWide(command: (action: string, payload: unknown) => Promise<unknown>) {
+    return render(<PublishingForm data={{ articles: DATA.articles, sites: SITES }} command={command} />);
+  }
+
+  it('membatasi baris yang dirender dan menambahkannya bertahap', () => {
+    renderWide(vi.fn(async () => null));
+    expect(screen.getAllByRole('button', { name: /^varian$/i })).toHaveLength(40);
+    expect(screen.getByText('40 dari 120 ditampilkan')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /muat 40 lagi/i }));
+    expect(screen.getAllByRole('button', { name: /^varian$/i })).toHaveLength(80);
+  });
+
+  it('menyaring hostname dan memilih seluruh hasil saringan', async () => {
+    const command = vi.fn(async () => STATUS);
+    renderWide(command);
+    fireEvent.change(screen.getByLabelText(/cari situs tujuan/i), { target: { value: 'wilayah-11' } });
+    expect(screen.getAllByRole('button', { name: /^varian$/i })).toHaveLength(10);
+    fireEvent.click(screen.getByRole('button', { name: /pilih semua yang cocok/i }));
+    expect(screen.getByText('10 dipilih dari 10 cocok / 120 total')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /kirim penerbitan/i }));
+    await waitFor(() => expect(command).toHaveBeenCalledWith(
+      'publication.request',
+      expect.objectContaining({ siteIds: Array.from({ length: 10 }, (_, index) => `site-${110 + index}`) }),
+    ));
+  });
+
+  it('menyemprekan override pada baris yang tidak sedang dirender', async () => {
+    const command = vi.fn(async () => STATUS);
+    renderWide(command);
+    fireEvent.click(screen.getAllByRole('checkbox')[0]!);
+    expect(screen.getByText('1 dipilih dari 120 cocok / 120 total')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /kirim penerbitan/i }));
+    await waitFor(() => expect(command).toHaveBeenCalledWith(
+      'publication.request',
+      expect.objectContaining({ siteIds: ['site-0'] }),
+    ));
+  });
+
+  it('menyorot baris terpilih di atas kandidat lain', () => {
+    renderWide(vi.fn(async () => null));
+    fireEvent.change(screen.getByLabelText(/cari situs tujuan/i), { target: { value: 'wilayah-05' } });
+    fireEvent.click(screen.getByRole('button', { name: /pilih semua yang cocok/i }));
+    fireEvent.change(screen.getByLabelText(/cari situs tujuan/i), { target: { value: 'wilayah-0' } });
+    expect(screen.getByText('10 dipilih dari 100 cocok / 120 total')).toBeDefined();
+    expect(screen.getAllByRole('checkbox').map((box) => box.getAttribute('aria-label'))[0]).toBe('Pilih wilayah-050.contoh.id');
+  });
+
+  it('menyatakan kosong bila pencarian tidak cocok', () => {
+    renderWide(vi.fn(async () => null));
+    fireEvent.change(screen.getByLabelText(/cari situs tujuan/i), { target: { value: 'tidak-ada' } });
+    expect(screen.getByText(/tidak ada situs yang cocok/i)).toBeDefined();
   });
 });

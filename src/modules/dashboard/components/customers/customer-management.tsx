@@ -2,7 +2,7 @@
 
 import { useId, useState, useTransition, type FormEvent } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Plus, Users } from 'lucide-react';
+import { Building2, Loader2, MailPlus, Plus, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -135,12 +135,12 @@ export function CustomerManagement({
 
   return (
     <div className="grid w-full grid-cols-1 items-start gap-4 lg:grid-cols-3">
-      <SectionCard icon={Users} title="Organisasi Baru" eyebrow="Registrasi akun">
+      <SectionCard icon={Building2} title="Organisasi Baru" eyebrow="Registrasi akun">
 
-        <form noValidate onSubmit={handleCreateCustomer} className="space-y-3.5">
+        <form noValidate onSubmit={handleCreateCustomer} className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor={nameInputId} className="font-mono text-xs text-paper-dim">
-              Nama Organisasi / Lembaga
+            <Label htmlFor={nameInputId} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
+              Nama organisasi / lembaga
             </Label>
             <Input
               id={nameInputId}
@@ -154,8 +154,8 @@ export function CustomerManagement({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor={slugInputId} className="font-mono text-xs text-paper-dim">
-              Kode Organisasi
+            <Label htmlFor={slugInputId} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
+              Kode organisasi
             </Label>
             <Input
               id={slugInputId}
@@ -171,9 +171,10 @@ export function CustomerManagement({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor={`${slugInputId}-status`} className="font-mono text-xs text-paper-dim">
-              Status Awal (aktivasi manual setelah bayar)
+            <Label htmlFor={`${slugInputId}-status`} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
+              Status awal
             </Label>
+            <p className="m-0 font-sans text-[11px] text-paper-faint">Aktivasi manual setelah pembayaran diterima.</p>
             <DashboardSelect
               id={`${slugInputId}-status`}
               name="status"
@@ -190,6 +191,7 @@ export function CustomerManagement({
             <Button
               type="submit"
               variant="default"
+              size="sm"
               disabled={isCreatingCustomer}
               className="w-full"
             >
@@ -204,12 +206,15 @@ export function CustomerManagement({
         </form>
       </SectionCard>
 
-      <SectionCard icon={Users} title="Admin pertama" eyebrow="Pengguna harus sudah masuk sekali agar terdaftar">
+      <SectionCard icon={UserCheck} title="Admin pertama" eyebrow="Penetapan peran">
 
-        <form noValidate onSubmit={handleAssignFirstAdmin} className="space-y-3.5">
+        <form noValidate onSubmit={handleAssignFirstAdmin} className="space-y-3">
+          <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">
+            Pengguna harus sudah masuk sekali agar terdaftar.
+          </p>
           <div className="space-y-1.5">
-            <Label htmlFor={`${slugInputId}-org`} className="font-mono text-xs text-paper-dim">
-              ID Organisasi
+            <Label htmlFor={`${slugInputId}-org`} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
+              ID organisasi
             </Label>
             <Input
               id={`${slugInputId}-org`}
@@ -223,8 +228,8 @@ export function CustomerManagement({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor={`${slugInputId}-email`} className="font-mono text-xs text-paper-dim">
-              Surel Pengguna
+            <Label htmlFor={`${slugInputId}-email`} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
+              Surel pengguna
             </Label>
             <Input
               id={`${slugInputId}-email`}
@@ -244,13 +249,14 @@ export function CustomerManagement({
             <Button
               type="submit"
               variant="default"
+              size="sm"
               disabled={isAssigning}
               className="w-full"
             >
               {isAssigning ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                <UserCheck className="h-3.5 w-3.5" aria-hidden="true" />
               )}
               <span>Tetapkan sebagai Admin</span>
             </Button>
@@ -258,12 +264,12 @@ export function CustomerManagement({
         </form>
       </SectionCard>
 
-      <SectionCard icon={Plus} title="Undangan organisasi" eyebrow="24 jam · sekali pakai">
+      <SectionCard icon={MailPlus} title="Undangan organisasi" eyebrow="24 jam · sekali pakai">
 
-        <form noValidate onSubmit={handleCreateInvite} className="space-y-3.5">
+        <form noValidate onSubmit={handleCreateInvite} className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor={`${slugInputId}-invite-org`} className="font-mono text-xs text-paper-dim">
-              ID Organisasi
+            <Label htmlFor={`${slugInputId}-invite-org`} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
+              ID organisasi
             </Label>
             <Input
               id={`${slugInputId}-invite-org`}
@@ -277,8 +283,8 @@ export function CustomerManagement({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor={`${slugInputId}-invite-role`} className="font-mono text-xs text-paper-dim">
-              ID Peran Target
+            <Label htmlFor={`${slugInputId}-invite-role`} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
+              ID peran target
             </Label>
             <Input
               id={`${slugInputId}-invite-role`}
@@ -292,8 +298,8 @@ export function CustomerManagement({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor={`${slugInputId}-invite-email`} className="font-mono text-xs text-paper-dim">
-              Surel Penerima
+            <Label htmlFor={`${slugInputId}-invite-email`} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
+              Surel penerima
             </Label>
             <Input
               id={`${slugInputId}-invite-email`}
@@ -316,13 +322,14 @@ export function CustomerManagement({
             <Button
               type="submit"
               variant="default"
+              size="sm"
               disabled={isInviting}
               className="w-full"
             >
               {isInviting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                <MailPlus className="h-3.5 w-3.5" aria-hidden="true" />
               )}
               <span>Buat Undangan</span>
             </Button>

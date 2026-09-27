@@ -2,7 +2,7 @@
 
 import { useId, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Send, Sparkles } from 'lucide-react';
+import { Activity, CalendarClock, Loader2, RefreshCw, Send, Sparkles } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
@@ -25,6 +25,9 @@ const STATE_LABELS: Readonly<Record<PublishingState, string>> = {
 };
 
 type PublishMode = 'now' | 'scheduled';
+
+/** Target rows rendered per pass; one network carries thousands of portals. */
+const SITE_PAGE_SIZE = 40;
 
 function formatScheduleTime(value: string): string {
   const date = new Date(value);
@@ -68,6 +71,7 @@ export function PublishingForm({
   const publishAtInputId = useId();
   const idempotencyInputId = useId();
   const statusJobInputId = useId();
+  const siteQueryId = useId();
 
   const [idempotencyKey, setIdempotencyKey] = useState(generateIdempotencyUuid);
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
@@ -78,6 +82,9 @@ export function PublishingForm({
   const [isStatusBusy, startStatusTransition] = useTransition();
   const [suggested, setSuggested] = useState<Readonly<Record<string, { readonly title: string; readonly description: string; readonly imageMediaId: string }>>>({});
   const [selectedSiteIds, setSelectedSiteIds] = useState<readonly string[]>([]);
+  const [siteQuery, setSiteQuery] = useState('');
+  const [expandedSiteIds, setExpandedSiteIds] = useState<readonly string[]>([]);
+  const [siteLimit, setSiteLimit] = useState(SITE_PAGE_SIZE);
   const [isSuggesting, startSuggestTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const articleOptions = useMemo(
@@ -102,6 +109,29 @@ export function PublishingForm({
 
   const toggleSite = (siteId: string) => {
     setSelectedSiteIds((prev) => (prev.includes(siteId) ? prev.filter((id) => id !== siteId) : [...prev, siteId]));
+  };
+
+  const toggleExpandedSite = (siteId: string) => {
+    setExpandedSiteIds((prev) => (prev.includes(siteId) ? prev.filter((id) => id !== siteId) : [...prev, siteId]));
+  };
+
+  const matchedSites = useMemo(() => {
+    const needle = siteQuery.trim().toLowerCase();
+    const sites = model?.sites ?? [];
+    if (needle === '') return sites;
+    return sites.filter((site) => site.normalizedHostname.toLowerCase().includes(needle));
+  }, [model?.sites, siteQuery]);
+
+  const orderedSites = useMemo(() => {
+    const selected = new Set(selectedSiteIds);
+    return [...matchedSites].sort((a, b) => Number(selected.has(b.id)) - Number(selected.has(a.id)));
+  }, [matchedSites, selectedSiteIds]);
+
+  const visibleSites = useMemo(() => orderedSites.slice(0, siteLimit), [orderedSites, siteLimit]);
+  const unmatchedSelectedCount = selectedSiteIds.length - matchedSites.filter((site) => selectedSiteIds.includes(site.id)).length;
+
+  const selectMatchedSites = () => {
+    setSelectedSiteIds((prev) => [...new Set([...prev, ...matchedSites.map((site) => site.id)])]);
   };
 
   const hostnames = new Map((model?.sites ?? []).map((site) => [site.id, site.normalizedHostname]));
@@ -240,9 +270,9 @@ export function PublishingForm({
             />
           </div>
 
-          <div className="space-y-2 rounded border border-hairline bg-bg-raised/50 p-3">
+          <div className="space-y-2 rounded border border-hairline bg-bg-raised/50 p-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-mono text-xs text-paper-dim">Waktu Publish</span>
+              <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-paper-dim">Waktu publish</span>
               <span className="font-mono text-[10px] text-paper-faint">Waktu lokal browser → UTC</span>
             </div>
             <div role="group" aria-label="Waktu publish" className="grid grid-cols-2 gap-2">
@@ -286,100 +316,154 @@ export function PublishingForm({
           </div>
 
           <div className="space-y-2">
-            <span className="block font-mono text-xs text-paper-dim">
-              Situs Tujuan
-            </span>
-            <div className="max-h-52 divide-y divide-hairline overflow-y-auto border-y border-hairline">
-              {model?.sites?.length === 0 ? (
-                <EmptyState title="Belum ada situs tujuan." description="Data akan tampil di sini setelah tersedia." />
-              ) : (
-                model?.sites?.map((item) => (
-                  <details key={item.id} className="py-1">
-                    <summary className="flex cursor-pointer list-none items-center gap-2.5 py-1.5">
-                      <Checkbox
-                        id={`publish-site-${item.id}`}
-                        checked={selectedSiteIds.includes(item.id)}
-                        onCheckedChange={() => toggleSite(item.id)}
-                        disabled={isPublishing}
-                        aria-label={`Pilih ${item.normalizedHostname}`}
-                        className="border-hairline-strong data-checked:border-brass data-checked:bg-brass data-checked:text-bg"
-                      />
-                      {selectedSiteIds.includes(item.id) ? <input type="hidden" name="siteIds" value={item.id} /> : null}
-                      <Label
-                        htmlFor={`publish-site-${item.id}`}
-                        className="cursor-pointer font-mono text-xs font-normal text-paper"
-                      >
-                        {item.normalizedHostname}
-                      </Label>
-                      <span className="font-sans text-[11px] text-paper-faint">varian opsional</span>
-                    </summary>
-                    <div className="space-y-1.5 py-2 pl-6 pr-1">
-                      <Input
-                        name={`overrideTitle:${item.id}`}
-                        disabled={isPublishing}
-                        maxLength={160}
-                        value={suggested[item.id]?.title ?? ''}
-                        onChange={(e) => setSuggested((prev) => ({ ...prev, [item.id]: { title: e.target.value, description: prev[item.id]?.description ?? '', imageMediaId: prev[item.id]?.imageMediaId ?? '' } }))}
-                        placeholder="Judul khusus situs ini (10-160 karakter, unik per situs)"
-                        className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
-                      />
-                      <Input
-                        name={`overrideDescription:${item.id}`}
-                        disabled={isPublishing}
-                        maxLength={500}
-                        value={suggested[item.id]?.description ?? ''}
-                        onChange={(e) => setSuggested((prev) => ({ ...prev, [item.id]: { title: prev[item.id]?.title ?? '', description: e.target.value, imageMediaId: prev[item.id]?.imageMediaId ?? '' } }))}
-                        placeholder="Deskripsi khusus situs ini (50-500 karakter, unik per situs)"
-                        className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
-                      />
-                      <Input
-                        name={`overrideImage:${item.id}`}
-                        disabled={isPublishing}
-                        value={suggested[item.id]?.imageMediaId ?? ''}
-                        onChange={(e) => setSuggested((prev) => ({ ...prev, [item.id]: { title: prev[item.id]?.title ?? '', description: prev[item.id]?.description ?? '', imageMediaId: e.target.value } }))}
-                        placeholder="ID gambar khusus situs ini (opsional, lihat halaman Media)"
-                        className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
-                      />
-                    </div>
-                  </details>
-                ))
-              )}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="block font-mono text-xs text-paper-dim">
+                Situs Tujuan
+              </span>
+              <span className="font-mono text-[11px] tabular-nums text-paper-faint">
+                {selectedSiteIds.length.toLocaleString('id-ID')} dipilih dari {matchedSites.length.toLocaleString('id-ID')} cocok / {(model?.sites ?? []).length.toLocaleString('id-ID')} total
+              </span>
             </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor={idempotencyInputId} className="font-mono text-xs text-paper-dim">
-                Kunci Pengiriman
-              </Label>
-              <Button
-                type="button"
-                variant="link"
-                size="xs"
-                onClick={handleGenerateKey}
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                id={siteQueryId}
+                type="search"
+                value={siteQuery}
                 disabled={isPublishing}
-                className="font-mono text-[10px] text-brass"
-              >
-                Regenerasi Kunci
+                onChange={(event) => { setSiteQuery(event.target.value); setSiteLimit(SITE_PAGE_SIZE); }}
+                placeholder="Cari hostname portal"
+                aria-label="Cari situs tujuan"
+                className="h-8 min-w-0 flex-1 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
+              />
+              <Button type="button" variant="outline" size="sm" disabled={isPublishing || matchedSites.length === 0} onClick={selectMatchedSites}>
+                Pilih semua yang cocok
+              </Button>
+              <Button type="button" variant="ghost" size="sm" disabled={isPublishing || selectedSiteIds.length === 0} onClick={() => setSelectedSiteIds([])}>
+                Kosongkan
               </Button>
             </div>
+            {unmatchedSelectedCount > 0 ? (
+              <p className="m-0 font-sans text-[11px] text-paper-faint">
+                {unmatchedSelectedCount.toLocaleString('id-ID')} situs terpilih tidak cocok dengan pencarian ini, tetapi tetap terkirim.
+              </p>
+            ) : null}
+            <div>
+              {selectedSiteIds.map((siteId) => <input key={siteId} type="hidden" name="siteIds" value={siteId} />)}
+            </div>
+            <div className="max-h-44 divide-y divide-hairline overflow-y-auto border-y border-hairline">
+              {(model?.sites ?? []).length === 0 ? (
+                <EmptyState title="Belum ada situs tujuan." description="Data akan tampil di sini setelah tersedia." />
+              ) : visibleSites.length === 0 ? (
+                <p className="m-0 px-3 py-4 font-sans text-xs text-paper-faint">Tidak ada situs yang cocok dengan "{siteQuery.trim()}".</p>
+              ) : (
+                visibleSites.map((item) => {
+                  const expanded = expandedSiteIds.includes(item.id);
+                  return (
+                    <div key={item.id} className="py-1">
+                      <div className="flex items-center gap-2.5 py-1.5">
+                        <Checkbox
+                          id={`publish-site-${item.id}`}
+                          checked={selectedSiteIds.includes(item.id)}
+                          onCheckedChange={() => toggleSite(item.id)}
+                          disabled={isPublishing}
+                          aria-label={`Pilih ${item.normalizedHostname}`}
+                          className="border-hairline-strong data-checked:border-brass data-checked:bg-brass data-checked:text-bg"
+                        />
+                        <Label
+                          htmlFor={`publish-site-${item.id}`}
+                          className="min-w-0 flex-1 truncate font-mono text-xs font-normal text-paper"
+                        >
+                          {item.normalizedHostname}
+                        </Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          disabled={isPublishing}
+                          aria-expanded={expanded}
+                          aria-controls={`publish-overrides-${item.id}`}
+                          onClick={() => toggleExpandedSite(item.id)}
+                          className="font-mono text-[10px] uppercase tracking-wider text-paper-faint"
+                        >
+                          <span>{expanded ? 'Tutup' : 'Varian'}</span>
+                        </Button>
+                      </div>
+                      {expanded ? (
+                        <div id={`publish-overrides-${item.id}`} className="space-y-1.5 py-2 pl-6 pr-1">
+                          <Input
+                            disabled={isPublishing}
+                            maxLength={160}
+                            value={suggested[item.id]?.title ?? ''}
+                            onChange={(e) => setSuggested((prev) => ({ ...prev, [item.id]: { title: e.target.value, description: prev[item.id]?.description ?? '', imageMediaId: prev[item.id]?.imageMediaId ?? '' } }))}
+                            placeholder="Judul khusus situs ini (10-160 karakter, unik per situs)"
+                            className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
+                          />
+                          <Input
+                            disabled={isPublishing}
+                            maxLength={500}
+                            value={suggested[item.id]?.description ?? ''}
+                            onChange={(e) => setSuggested((prev) => ({ ...prev, [item.id]: { title: prev[item.id]?.title ?? '', description: e.target.value, imageMediaId: prev[item.id]?.imageMediaId ?? '' } }))}
+                            placeholder="Deskripsi khusus situs ini (50-500 karakter, unik per situs)"
+                            className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
+                          />
+                          <Input
+                            disabled={isPublishing}
+                            value={suggested[item.id]?.imageMediaId ?? ''}
+                            onChange={(e) => setSuggested((prev) => ({ ...prev, [item.id]: { title: prev[item.id]?.title ?? '', description: prev[item.id]?.description ?? '', imageMediaId: e.target.value } }))}
+                            placeholder="ID gambar khusus situs ini (opsional, lihat halaman Media)"
+                            className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            {orderedSites.length > visibleSites.length ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <span className="font-mono text-[11px] tabular-nums text-paper-faint">
+                  {visibleSites.length.toLocaleString('id-ID')} dari {orderedSites.length.toLocaleString('id-ID')} ditampilkan
+                </span>
+                <Button type="button" variant="outline" size="sm" disabled={isPublishing} onClick={() => setSiteLimit((current) => current + SITE_PAGE_SIZE)}>
+                  Muat {Math.min(orderedSites.length - visibleSites.length, SITE_PAGE_SIZE).toLocaleString('id-ID')} lagi
+                </Button>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex items-center gap-2 rounded border border-hairline bg-bg px-2 py-1">
+            <Label htmlFor={idempotencyInputId} className="font-mono text-[10px] uppercase tracking-wider text-paper-faint">
+              Kunci
+            </Label>
             <Input
               id={idempotencyInputId}
               name="idempotencyKey"
               required
               readOnly
               value={idempotencyKey}
-              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper-dim focus-visible:ring-brass"
+              className="h-5 min-w-0 flex-1 border-0 bg-transparent px-0 font-mono text-[10px] tracking-tight text-paper-dim focus-visible:ring-0"
             />
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              aria-label="Regenerasi kunci pengiriman"
+              title="Regenerasi kunci pengiriman"
+              onClick={handleGenerateKey}
+              disabled={isPublishing}
+              className="h-5 flex-none px-1 text-brass"
+            >
+              <RefreshCw className="h-3 w-3" aria-hidden="true" />
+            </Button>
           </div>
 
-          <div className="space-y-2 pt-2">
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
             <Button
               type="button"
               variant="outline"
               onClick={handleSuggest}
               disabled={isPublishing || isSuggesting}
-              className="w-full"
             >
               {isSuggesting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -392,7 +476,6 @@ export function PublishingForm({
               type="submit"
               variant="default"
               disabled={isPublishing}
-              className="w-full"
             >
               {isPublishing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -405,7 +488,28 @@ export function PublishingForm({
         </form>
       </SectionCard>
 
-      <SectionCard icon={Send} title="Status Pengiriman" eyebrow="Per situs">
+      <div className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:self-start">
+        <SectionCard icon={CalendarClock} title="Rencana pengiriman" eyebrow="Sebelum kirim">
+          <dl className="m-0 divide-y divide-hairline/60">
+            {[
+              { label: 'Mode', value: publishMode === 'scheduled' ? 'Terjadwal' : 'Terbit sekarang' },
+              { label: 'Waktu', value: publishMode === 'scheduled' && publishAt !== '' ? formatScheduleTime(localDateTimeToIso(publishAt) ?? publishAt) : 'Segera setelah dikirim' },
+              { label: 'Portal tujuan', value: `${selectedSiteIds.length.toLocaleString('id-ID')} dipilih` },
+              { label: 'Varian unik', value: `${Object.values(suggested).filter((entry) => entry.title !== '' || entry.description !== '' || entry.imageMediaId !== '').length.toLocaleString('id-ID')} terisi` },
+              { label: 'Artikel', value: selectedArticle?.title ?? selectedArticle?.slug ?? 'Belum dipilih' },
+            ].map((row) => (
+              <div key={row.label} className="flex items-baseline justify-between gap-3 py-1.5">
+                <dt className="font-mono text-[10px] uppercase tracking-wider text-paper-faint">{row.label}</dt>
+                <dd className="m-0 min-w-0 truncate text-right font-sans text-xs text-paper" title={row.value}>{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+          {scheduledLabel !== null ? (
+            <p className="m-0 mt-2 font-mono text-[10px] tabular-nums text-brass">{scheduledLabel}</p>
+          ) : null}
+        </SectionCard>
+
+        <SectionCard icon={Activity} title="Status Pengiriman" eyebrow="Per situs">
         <form
           noValidate
           className="space-y-3"
@@ -416,7 +520,7 @@ export function PublishingForm({
           }}
         >
           <div className="space-y-1.5">
-            <Label htmlFor={statusJobInputId} className="font-mono text-xs text-paper-dim">
+            <Label htmlFor={statusJobInputId} className="font-mono text-[11px] font-medium text-paper-dim">
               ID Pengiriman
             </Label>
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -511,7 +615,8 @@ export function PublishingForm({
             </div>
           </div>
         ) : null}
-      </SectionCard>
+        </SectionCard>
+      </div>
     </div>
   );
 }

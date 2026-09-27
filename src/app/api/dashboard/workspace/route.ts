@@ -99,7 +99,7 @@ async function handleGET(request: Request) {
         ? await fetchCachedDashboard(actor)
         : { ok: false as const, error: createNonDisclosingDenial(requestId) }
       : parsed.data.view === 'configuration' ? await service.listConfiguration(actor, { search: parsed.data.search })
-      : parsed.data.view === 'publishers' ? await service.listPublishers(actor)
+      : parsed.data.view === 'publishers' ? await service.listPublishers(actor, { search: parsed.data.search })
       : parsed.data.view === 'editorial' ? await service.listEditorial(actor, editorialFilter)
       : parsed.data.view === 'taxonomy' ? await service.listTaxonomy(actor)
       : parsed.data.view === 'articles' ? await service.listEditorial(actor, {})

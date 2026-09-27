@@ -15,6 +15,8 @@ interface OrganizationSwitcherProps {
   readonly organizations: readonly OrganizationOption[];
   readonly activeOrganizationId: string;
   readonly selectId: string;
+  /** Fired the moment the label moves optimistically, before the action settles. */
+  readonly onSwitchRequested: (organizationId: string) => void;
   readonly onSwitchCommitted: (organizationId: string) => void;
   readonly onSwitchFailed: (message: string) => void;
 }
@@ -26,11 +28,17 @@ interface OrganizationSwitcherProps {
  * The optimistic value is updated inside a transition, so React discards it
  * when the action settles and the select snaps back to `activeOrganizationId`
  * whenever the server denies the switch.
+ *
+ * @remarks `onSwitchRequested` fires with the optimistic id, not the committed
+ * one, so the workspace can retire the outgoing tenant's records for the whole
+ * round trip. Without it the label would name one organization while the tables
+ * underneath still showed the previous one's.
  */
 export function OrganizationSwitcher({
   organizations,
   activeOrganizationId,
   selectId,
+  onSwitchRequested,
   onSwitchCommitted,
   onSwitchFailed,
 }: OrganizationSwitcherProps) {
@@ -47,6 +55,7 @@ export function OrganizationSwitcher({
 
   const handleChange = (next: string | null) => {
     if (next === null || next === '' || next === optimisticId || isPending) return;
+    onSwitchRequested(next);
     startTransition(() => {
       setOptimisticId(next);
       const formData = new FormData();

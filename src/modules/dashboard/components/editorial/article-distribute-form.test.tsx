@@ -92,3 +92,60 @@ describe('Formulir penyaluran artikel', () => {
     expect(cmd).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('Penyaluran artikel pada jaringan besar', () => {
+  const BIG = {
+    domains: [
+      { id: 'd-1', normalizedHostname: 'fakta01.my.id' },
+      { id: 'd-2', normalizedHostname: 'fakta02.my.id' },
+    ],
+    sites: Array.from({ length: 200 }, (_, index) => ({
+      id: `s-${index}`,
+      normalizedHostname: `kota-${index}.${index < 100 ? 'fakta01' : 'fakta02'}.my.id`,
+      domainId: index < 100 ? 'd-1' : 'd-2',
+    })),
+    articles: [{ id: 'art-1', title: 'Artikel Uji' }],
+    articleSites: [],
+  };
+
+  function renderBig() {
+    const assign = vi.fn(async () => null);
+    const { container } = render(<ArticleDistributeForm data={BIG} onAssign={assign} command={vi.fn(async () => ({}))} articleId="art-1" />);
+    return { assign, form: container.querySelectorAll('form')[0] as HTMLFormElement };
+  }
+
+  it('tidak memasang daftar situs per domain sampai barisnya dibuka', () => {
+    renderBig();
+    expect(document.querySelectorAll('li')).toHaveLength(0);
+    expect(document.querySelectorAll('input[name="siteIds"]')).toHaveLength(0);
+    fireEvent.click(screen.getAllByRole('button', { name: /lihat 100 situs/i })[0]!);
+    expect(document.querySelectorAll('li')).toHaveLength(100);
+    expect(screen.getByRole('button', { name: /sembunyikan/i }).getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('menyaring domain dan hanya menyalurkan yang cocok', async () => {
+    const { assign, form } = renderBig();
+    expect(screen.getByText('2 dari 2 domain · 200 situs terpilih')).toBeDefined();
+    fireEvent.change(screen.getByLabelText(/cari domain tujuan/i), { target: { value: 'fakta02' } });
+    fireEvent.click(screen.getByRole('button', { name: /pilih semua yang cocok/i }));
+    expect(screen.getByText('1 dari 2 domain · 100 situs terpilih')).toBeDefined();
+    fireEvent.submit(form);
+    await waitFor(() =>
+      expect(assign).toHaveBeenCalledWith({
+        articleId: 'art-1',
+        siteIds: Array.from({ length: 100 }, (_, index) => `s-${100 + index}`),
+      }),
+    );
+  });
+
+  it('mengembalikan seluruh domain lewat tombol pilih semuanya', async () => {
+    const { assign, form } = renderBig();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'fakta01.my.id' }));
+    expect(screen.getByText('2 dari 2 domain · 100 situs terpilih')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /pilih semuanya/i }));
+    fireEvent.submit(form);
+    await waitFor(() =>
+      expect(assign).toHaveBeenCalledWith({ articleId: 'art-1', siteIds: expect.arrayContaining(['s-0', 's-199']) }),
+    );
+  });
+});

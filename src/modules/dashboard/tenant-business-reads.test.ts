@@ -5,6 +5,8 @@ import { DashboardAccessDeniedError, DashboardConflictError } from '@/modules/da
 
 const ID = '0199a2b3-4c5d-7e8f-9012-3456789abcde';
 const ID2 = '0199a2b3-4c5d-7e8f-9012-3456789abcdf';
+const ID3 = '0199a2b3-4c5d-7e8f-9012-3456789abcde';
+const ID4 = '0199a2b3-4c5d-7e8f-9012-3456789abce0';
 const NOW = new Date('2026-09-18T14:00:00.000Z');
 const HASH = 'a'.repeat(64);
 
@@ -94,6 +96,78 @@ describe('TenantBusinessService editorial reads', () => {
     expect(editorial.ok).toBe(true);
     if (!editorial.ok) throw new Error('expected ok');
     expect(editorial.value.domains).toEqual([{ id: ID, normalizedHostname: 'fakta01.my.id' }]);
+  });
+
+  it('meringkas afiliasi per klaim institusi-kota dan memfilternya', async () => {
+    const affiliation = (index: number, siteId: string, institutionName: string) => ({
+      id: `aff-${index}`,
+      organizationId: 'org-1',
+      publisherId: ID,
+      siteId,
+      institutionName,
+      claimScopes: ['site_name'],
+      evidenceReference: 'direktori-resmi',
+      active: true,
+      verifiedAt: '2026-09-18T00:00:00.000Z',
+      version: 1,
+      createdAt: '2026-09-18T00:00:00.000Z',
+      updatedAt: '2026-09-18T00:00:00.000Z',
+    });
+    const affiliations = [
+      affiliation(1, ID2, 'Bapas Kelas I Semarang'),
+      affiliation(2, ID3, 'Bapas Kelas I Semarang'),
+      affiliation(3, ID4, 'Bapas Kelas I Semarang'),
+      affiliation(4, ID2, 'Rutan Kelas II B Wonosobo'),
+    ];
+    const state = {
+      organizationId: 'org-1',
+      organizationName: 'Org',
+      regions: [
+        { id: 'region-semarang', organizationId: 'org-1', name: 'Semarang', status: 'active' },
+        { id: 'region-wonosobo', organizationId: 'org-1', name: 'Wonosobo', status: 'active' },
+      ],
+      sites: [
+        { id: ID2, organizationId: 'org-1', normalizedHostname: 'semarang.fakta01.my.id', siteLevel: 'city', status: 'active', regionId: 'region-semarang' },
+        { id: ID3, organizationId: 'org-1', normalizedHostname: 'semarang.liputan99.web.id', siteLevel: 'city', status: 'active', regionId: 'region-semarang' },
+        { id: ID4, organizationId: 'org-1', normalizedHostname: 'wonosobo.fakta01.my.id', siteLevel: 'city', status: 'active', regionId: 'region-wonosobo' },
+      ],
+      publishers: [
+        { id: ID, name: 'Bapas Kelas I Semarang', attributionLabel: 'Humas Bapas', type: 'correctional_institution', status: 'active', verificationStatus: 'verified' },
+      ],
+      affiliations,
+    };
+    const { service } = harness({ repo: { read: vi.fn(async () => state) } });
+
+    const all = await service.listPublishers(actor);
+    expect(all.ok).toBe(true);
+    if (!all.ok) throw new Error('expected ok');
+    expect(all.value.affiliationRowTotal).toBe(4);
+    expect(all.value.affiliationTotalInScope).toBe(3);
+    expect(all.value.affiliationLimit).toBe(500);
+    expect(all.value.affiliationSearch).toBeNull();
+    expect(Object.hasOwn(all.value, 'sites')).toBe(false);
+    expect(all.value.affiliations).toEqual([
+      expect.objectContaining({ institutionName: 'Bapas Kelas I Semarang', cityName: 'Semarang', portalCount: 2, id: 'aff-1' }),
+      expect.objectContaining({ institutionName: 'Bapas Kelas I Semarang', cityName: 'Wonosobo', portalCount: 1, id: 'aff-3' }),
+      expect.objectContaining({ institutionName: 'Rutan Kelas II B Wonosobo', cityName: 'Semarang', portalCount: 1, id: 'aff-4' }),
+    ]);
+
+    const byCity = await service.listPublishers(actor, { search: 'wonosobo' });
+    expect(byCity.ok).toBe(true);
+    if (!byCity.ok) throw new Error('expected ok');
+    expect(byCity.value.affiliationTotal).toBe(2);
+    expect(byCity.value.affiliationSearch).toBe('wonosobo');
+
+    const byPortal = await service.listPublishers(actor, { search: 'semarang.liputan99' });
+    expect(byPortal.ok).toBe(true);
+    if (!byPortal.ok) throw new Error('expected ok');
+    expect(byPortal.value.affiliationTotal).toBe(1);
+
+    const noMatch = await service.listPublishers(actor, { search: 'tidak-ada' });
+    expect(noMatch.ok).toBe(true);
+    if (!noMatch.ok) throw new Error('expected ok');
+    expect(noMatch.value.affiliations).toHaveLength(0);
+    expect(noMatch.value.publishers).toHaveLength(0);
   });
 
   it('menolak filter editorial rusak dan klaim asing', async () => {

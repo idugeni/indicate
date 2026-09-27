@@ -6,6 +6,7 @@ import type {
   DashboardProjection, DomainRecord, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, MembershipRecord, OfficialAffiliationRecord, OperationsProjection, PublisherRecord, NetworkPublisherClaim,
   RegionRecord, RetentionRunRecord, RoleListItem, RoleRecord, SiteLevel, SiteRecord, SiteSettingsRecord, DashboardTenantState,
 } from '@/modules/dashboard/models';
+import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
 import {
   buildNetworkPublisherClaim, filterArticles, selectNetworkArticles,
@@ -212,6 +213,8 @@ function siteInScope(site: { readonly regionId: string | null }, lock: string | 
 const SITE_LEVEL_RANK: Readonly<Record<SiteLevel, number>> = Object.freeze({ apex: 0, region: 1, city: 2 });
 
 const CONFIGURATION_SITE_LIMIT = 200;
+
+const PUBLISHER_AFFILIATION_LIMIT = 500;
 
 function articleInScope(article: { readonly regionId: string }, lock: string | null, geography: readonly ScopeGeography[]): boolean {
   return regionScopeCovers(lock, article.regionId, geography);
@@ -672,13 +675,53 @@ export class TenantBusinessService {
     }});
   }
 
-  async listPublishers(actor: AuthorizedTenantActorContext) {
+  async listPublishers(actor: AuthorizedTenantActorContext, filter: { readonly search?: string | undefined } = {}) {
     try {
       const state = await this.repository.read(actor, DASHBOARD_PERMISSIONS.publisherRead);
-      const visibleSites = actor.permissionSet.has(DASHBOARD_PERMISSIONS.siteRead)
-        ? state.sites.filter((site) => siteInScope(site, regionLock(actor), state.regions))
-        : [];
-      return { ok: true as const, value: { publishers: state.publishers, affiliations: state.affiliations, sites: visibleSites } };
+      const siteNames = new Map(state.sites.map((site) => [site.id, site.normalizedHostname] as const));
+      const cityNames = new Map(state.regions.map((region) => [region.id, region.name] as const));
+      const siteCity = (siteId: string): string | null => state.sites.find((site) => site.id === siteId)?.regionId ?? null;
+      const cityName = (siteId: string): string | null => {
+        const regionId = siteCity(siteId);
+        return regionId === null ? null : cityNames.get(regionId) ?? null;
+      };
+      const needle = (filter.search ?? '').trim().toLowerCase();
+      const matches = (...fields: readonly (string | null)[]): boolean =>
+        needle === '' || fields.some((field) => (field ?? '').toLowerCase().includes(needle));
+      const publishers = state.publishers.filter((publisher) => matches(publisher.name, publisher.attributionLabel));
+      const claims = new Map<string, { affiliation: OfficialAffiliationRecord; hostnames: string[] }>();
+      for (const affiliation of state.affiliations) {
+        const city = siteCity(affiliation.siteId);
+        const key = `${affiliation.publisherId}|${city ?? ''}|${affiliation.institutionName}`;
+        const hostname = siteNames.get(affiliation.siteId) ?? '';
+        const existing = claims.get(key);
+        if (existing === undefined) claims.set(key, { affiliation, hostnames: [hostname] });
+        else {
+          existing.hostnames.push(hostname);
+          if (hostname < (siteNames.get(existing.affiliation.siteId) ?? '')) existing.affiliation = affiliation;
+        }
+      }
+      const allClaims = [...claims.values()];
+      const matchedClaims = allClaims.filter(({ affiliation, hostnames }) => matches(
+        affiliation.institutionName,
+        cityName(affiliation.siteId),
+        affiliation.evidenceReference,
+        ...hostnames,
+      ));
+      const affiliations = matchedClaims
+        .map(({ affiliation, hostnames }) => ({ affiliation, portalCount: hostnames.length }))
+        .sort((left, right) => left.affiliation.institutionName.localeCompare(right.affiliation.institutionName) || (cityName(left.affiliation.siteId) ?? '').localeCompare(cityName(right.affiliation.siteId) ?? ''))
+        .slice(0, PUBLISHER_AFFILIATION_LIMIT)
+        .map(({ affiliation, portalCount }) => ({ ...affiliation, cityName: cityName(affiliation.siteId), portalCount }));
+      return { ok: true as const, value: {
+        publishers,
+        affiliations,
+        affiliationTotal: matchedClaims.length,
+        affiliationTotalInScope: allClaims.length,
+        affiliationRowTotal: state.affiliations.length,
+        affiliationLimit: PUBLISHER_AFFILIATION_LIMIT,
+        affiliationSearch: needle === '' ? null : needle,
+      } };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'publisher.list', 'publisher');
       return this.internal(actor, error, 'dashboard.query.failed', 'publisher.list', 'publisher', DASHBOARD_PERMISSIONS.publisherRead);
@@ -755,8 +798,38 @@ export class TenantBusinessService {
       const publisher = requireRecord(transaction.state.publishers, before.publisherId); requireSiteInScope(transaction.state, before.siteId, actor);
       if (value.active && publisher.verificationStatus !== 'verified') throw new DashboardAccessDeniedError();
       const after: OfficialAffiliationRecord = { ...before, institutionName: value.institutionName, claimScopes: value.claimScopes, evidenceReference: value.evidenceReference, active: value.active, verifiedAt: value.active ? now : before.verifiedAt, version: before.version + 1, updatedAt: now };
-      replaceById(transaction.state.affiliations, after); this.audit(transaction, 'affiliation.update', 'official_affiliation', after.id, before, after); return after;
+      const replicas = this.affiliationClaimReplicas(transaction.state, before);
+      for (const replica of replicas) {
+        const updated: OfficialAffiliationRecord = { ...replica, institutionName: value.institutionName, claimScopes: value.claimScopes, evidenceReference: value.evidenceReference, active: value.active, verifiedAt: value.active ? now : replica.verifiedAt, version: replica.version + 1, updatedAt: now };
+        replaceById(transaction.state.affiliations, updated);
+      }
+      this.audit(transaction, 'affiliation.update', 'official_affiliation', after.id, before, after);
+      return after;
     }});
+  }
+
+  /**
+   * Every row carrying one institution claim across the portals that publish it.
+   *
+   * A claim is stored once per portal: the same institution asserting its name on
+   * the same city is a separate row per Domain, which is why one claim is 134
+   * rows. Editing a claim therefore has to move all of them together, or the
+   * dashboard would report one claim while only a single portal changed.
+   *
+   * @param state - Tenant state holding affiliations, sites, and regions.
+   * @param seed - The affiliation row the operator opened.
+   * @returns Replica rows sharing the seed's publisher, institution, and city.
+   */
+  private affiliationClaimReplicas(state: DashboardTenantState, seed: OfficialAffiliationRecord): readonly OfficialAffiliationRecord[] {
+    const seedSite = requireRecord(state.sites, seed.siteId);
+    const cityOf = (siteId: string): string | null => {
+      const site = state.sites.find((candidate) => candidate.id === siteId);
+      return site?.regionId ?? null;
+    };
+    return state.affiliations.filter((affiliation) =>
+      affiliation.publisherId === seed.publisherId
+      && affiliation.institutionName === seed.institutionName
+      && cityOf(affiliation.siteId) === seedSite.regionId);
   }
 
   getPublisherClaim(actor: AuthorizedTenantActorContext, publisherId: string, siteId: string): Promise<Result<NetworkPublisherClaim, PublicErrorEnvelope>> {
@@ -920,7 +993,7 @@ export class TenantBusinessService {
       this.requireArticleReferences(transaction.state, value);
       requireLockedRegionValue(transaction.state, actor, value.regionId);
       const slug = allocateUniqueSlug(transaction.state.articles.map(({ slug }) => slug), value.slug);
-      const distinctCategoryIds = [...new Set(value.categoryIds ?? [])];
+      const distinctCategoryIds = this.resolveArticleCategoryIds(transaction.state, value.categoryIds ?? []);
       const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId ?? null, null, 'leadMediaId', 'article-cover');
       const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, leadMediaId, coverImageUrl: value.coverImageUrl ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, bodyJson: requireValidBodyJson(value.bodyJson), scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null };
       transaction.state.articles.push(record); this.syncArticleCategories(transaction.state, record.id, distinctCategoryIds); this.audit(transaction, 'article.create', 'article', record.id, null, record);
@@ -950,9 +1023,9 @@ export class TenantBusinessService {
       requireLockedRegionValue(transaction.state, actor, value.regionId);
       if (value.slug !== before.slug && transaction.state.articles.some(({ id, slug }) => id !== value.id && slug === value.slug)) throw new DashboardConflictError();
       const existingCategoryIds = transaction.state.articleCategories.filter((row) => row.articleId === value.id).sort((a, b) => a.position - b.position).map((row) => row.categoryId);
-      const distinctCategoryIds = value.categoryIds === undefined
+      const distinctCategoryIds = this.resolveArticleCategoryIds(transaction.state, value.categoryIds === undefined
         ? (value.categoryId === before.categoryId ? existingCategoryIds : (value.categoryId === null ? [] : [value.categoryId]))
-        : [...new Set(value.categoryIds)];
+        : value.categoryIds);
       const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId, before.leadMediaId ?? null, 'leadMediaId', 'article-cover');
       const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, authorId: value.authorId, leadMediaId, coverImageUrl: value.coverImageUrl === undefined ? before.coverImageUrl : (value.coverImageUrl ?? null), slug: value.slug, title: value.title, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, body: value.body, bodyJson: value.bodyJson === undefined ? before.bodyJson : requireValidBodyJson(value.bodyJson), source: value.source, tags: [...value.tags], status: value.status, scheduledAt: value.scheduledAt ?? null, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.articles, after); this.syncArticleCategories(transaction.state, after.id, distinctCategoryIds); this.audit(transaction, 'article.update', 'article', after.id, before, after); return after;
@@ -988,6 +1061,30 @@ export class TenantBusinessService {
     distinct.forEach((categoryId, index) => {
       state.articleCategories.push({ articleId, categoryId, position: index + 1 });
     });
+  }
+
+  /**
+   * Category set to file an article under when the editor picked none.
+   *
+   * A categoryless article is unreachable: the category listings, the nav, and
+   * the author profile all filter on a non-null slug, and the NewsArticle
+   * `articleSection`, the OpenGraph `section`, and the RSS `<category>` element
+   * are omitted outright. So the write path fills the seeded `Umum` category
+   * instead of storing null, which also covers API callers that omit the field.
+   *
+   * @param state - Tenant state holding the organization categories.
+   * @param picked - Category ids the editor submitted.
+   * @returns The submitted ids, or the single default category when empty.
+   * @throws {DashboardValidationError} When the tenant has no category at all.
+   */
+  private resolveArticleCategoryIds(state: DashboardTenantState, picked: readonly string[]): readonly string[] {
+    const distinct = [...new Set(picked)];
+    if (distinct.length > 0) return distinct;
+    const active = state.categories.filter((category) => category.status === 'active');
+    const fallback = active.find((category) => category.slug === DEFAULT_CATEGORY_SLUG)
+      ?? [...active].sort((left, right) => left.name.localeCompare(right.name))[0];
+    if (fallback === undefined) throw new DashboardValidationError({ categoryIds: ['Buat kategori terlebih dahulu sebelum menulis artikel.'] });
+    return [fallback.id];
   }
 
   archiveArticle(actor: AuthorizedTenantActorContext, raw: unknown) { return this.transitionArticle(actor, raw, 'archived'); }

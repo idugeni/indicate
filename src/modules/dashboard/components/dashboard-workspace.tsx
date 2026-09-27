@@ -15,7 +15,6 @@ import {
   Megaphone,
   Menu,
   Newspaper,
-  PanelLeft,
   RefreshCw,
   Settings,
   Share2,
@@ -68,8 +67,10 @@ import { FilterControls } from '@/modules/dashboard/components/filter-controls';
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
 import { PanelErrorBoundary } from '@/modules/dashboard/components/shared/panel-error-boundary';
 import { useDashboardPage, useDashboardView } from '@/modules/dashboard/components/shared/use-dashboard-query';
+import { SidebarResizeRail } from '@/modules/dashboard/components/shared/sidebar-resize-rail';
 import type { EmailStatus } from '@/modules/dashboard/components/settings/integration-settings';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
+import { cn } from '@/ui/cn';
 
 const ConfigurationPanel = dynamic(
   () => import('@/modules/dashboard/components/infrastructure/configuration-panel').then((module) => ({ default: module.ConfigurationPanel })),
@@ -116,10 +117,28 @@ function selectEmailStatus(data: unknown): EmailStatus | null {
   if (status.defaultFrom !== null && typeof status.defaultFrom !== 'string') return null;
   return { configured: status.configured, defaultFrom: status.defaultFrom, webhook: status.webhook };
 }
-const MediaForm = dynamic(
-  () => import('@/modules/dashboard/components/publishing/media-form').then((module) => ({ default: module.MediaForm })),
+const MediaLibrary = dynamic(
+  () => import('@/modules/dashboard/components/publishing/media-library').then((module) => ({ default: module.MediaLibrary })),
   { loading: () => <DashboardFormSkeleton /> },
 );
+/**
+ * Views whose own panel already presents every collection the payload carries,
+ * or which fetch their own endpoint entirely. Rendering `DataView` underneath
+ * them only repeats the same rows in a generic table — or renders a skeleton for
+ * a payload that was never going to arrive — so these views stay single-surface.
+ */
+const VIEW_WITHOUT_RAW_COLLECTIONS: ReadonlySet<View> = new Set<View>([
+  'articles',
+  'billing',
+  'configuration',
+  'content',
+  'editorial',
+  'media',
+  'moderation',
+  'publishing',
+  'settings',
+  'taxonomy',
+]);
 const PublisherForm = dynamic(
   () => import('@/modules/dashboard/components/editorial/publisher-form').then((module) => ({ default: module.PublisherForm })),
   { loading: () => <DashboardFormSkeleton /> },
@@ -160,6 +179,9 @@ const CONTENT_MANAGE_PERMISSION = INTEGRATIONS_PERMISSIONS.contentManage;
 /** Dark dashboard tooltip: content and its arrow share the raised surface. */
 const DASHBOARD_TOOLTIP_CONTENT =
   'border border-hairline bg-bg-raised font-sans text-xs text-paper [&>div]:bg-bg-raised';
+
+const SIDEBAR_WIDTH = 256;
+const SIDEBAR_COLLAPSED_WIDTH = 64;
 
 const NAV_GROUPS: readonly NavGroup[] = [
   {
@@ -225,7 +247,10 @@ function DashboardNavList({
         );
         if (visibleItems.length === 0) return null;
         return (
-        <div key={group.id} className={collapsed ? 'space-y-1 py-1' : 'space-y-1 px-1 py-1'}>
+        <div
+          key={group.id}
+          className={`animate-in fade-in duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${collapsed ? 'space-y-1 py-1' : 'space-y-1 px-1 py-1'}`}
+        >
           {collapsed ? (
             groupIndex > 0 ? (
               <div className="mx-4 border-t border-hairline" aria-hidden="true" />
@@ -395,13 +420,17 @@ export function DashboardWorkspace({
   const [organizationId, setOrganizationId] = useState(initialOrgId);
   const [generation, setGeneration] = useState(initialOrgId ? 1 : 0);
   const [view, setView] = useDashboardView();
-  const [data, setData] = useState<unknown>(null);
+  const [payload, setPayload] = useState<{ readonly key: string; readonly body: unknown } | null>(null);
+  const [pendingOrgId, setPendingOrgId] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [currentPage, setCurrentPage] = useDashboardPage();
   const [navOpen, setNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState<number | null>(null);
+  const [sidebarDragging, setSidebarDragging] = useState(false);
+  const sidebarRenderedWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : (sidebarWidth ?? SIDEBAR_WIDTH);
 
   useEffect(() => {
     const query = window.matchMedia('(min-width: 768px)');
@@ -422,6 +451,9 @@ export function DashboardWorkspace({
   useEffect(() => {
     activeOrgRef.current = organizationId;
   }, [organizationId]);
+
+  const scopeKey = `${organizationId}|${view}|${filterQuery}|${pendingOrgId ?? ''}`;
+  const data = payload !== null && payload.key === scopeKey ? payload.body : null;
 
   const activeOrganization = useMemo(
     () => organizations.find((org) => org.id === organizationId),
@@ -480,9 +512,9 @@ export function DashboardWorkspace({
           setError(apiError.error?.message ?? 'Server gagal memproses. Coba lagi.');
         } else if (targetView === 'dashboard') {
           if (activeOrgRef.current !== targetOrg) return;
-          setData(withAnalytics(body, analytics));
+          setPayload({ key: `${targetOrg}|${targetView}|${query}|`, body: withAnalytics(body, analytics) });
         } else {
-          setData(body);
+          setPayload({ key: `${targetOrg}|${targetView}|${query}|`, body });
         }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
@@ -509,17 +541,20 @@ export function DashboardWorkspace({
       snapshotConsumedRef.current = true;
       const snapshot = initialDashboard.data;
       const snapshotOrg = initialDashboard.organizationId;
-      void Promise.resolve().then(() => setData(snapshot));
+      const snapshotKey = `${snapshotOrg}|dashboard||`;
+      void Promise.resolve().then(() => setPayload({ key: snapshotKey, body: snapshot }));
       if (hasEmbeddedAnalytics(snapshot)) return;
       void fetchAnalytics(snapshotOrg).then((analytics) => {
         if (analytics === null || activeOrgRef.current !== snapshotOrg) return;
-        setData((prev: unknown) => withAnalytics(prev, analytics));
+        setPayload((previous) => (previous === null || previous.key !== snapshotKey
+          ? previous
+          : { key: snapshotKey, body: withAnalytics(previous.body, analytics) }));
       });
       return;
     }
     if (view === 'content' || view === 'billing' || view === 'moderation') {
       void Promise.resolve().then(() => {
-        setData(null);
+        setPayload(null);
         setBusy(false);
         setError(null);
       });
@@ -536,7 +571,8 @@ export function DashboardWorkspace({
     (nextOrgId: string) => {
       const target = organizations.find((o) => o.id === nextOrgId);
       setError(null);
-      setData(null);
+      setPayload(null);
+      setPendingOrgId(null);
       activeOrgRef.current = nextOrgId;
       setOrganizationId(nextOrgId);
       setGeneration((prev) => prev + 1);
@@ -547,8 +583,26 @@ export function DashboardWorkspace({
   );
 
   const handleSwitchFailed = useCallback((message: string) => {
+    setPendingOrgId(null);
     setError(message);
     toast.error(message);
+  }, []);
+
+  /** Tab-scoped tables: a tab lists only the collections it owns instead of the whole payload. */
+  const collectionTables = (keys: readonly string[]) => (
+    <DataView
+      view={view}
+      data={data}
+      collections={keys}
+      currentPage={currentPage}
+      onPageChange={setCurrentPage}
+      onRefresh={() => void fetchData(view, organizationId, filterQuery)}
+      command={command}
+    />
+  );
+
+  const handleSwitchRequested = useCallback((nextOrgId: string) => {
+    setPendingOrgId(nextOrgId);
   }, []);
 
   const command = async (action: string, payload: unknown): Promise<unknown> => {
@@ -588,7 +642,7 @@ export function DashboardWorkspace({
             : cause instanceof Error
               ? cause.message
               : 'Gagal menjalankan perintah.',
-      });
+      }).unwrap();
       if (body === null || activeOrgRef.current !== targetOrg) return null;
       void fetchData(view, targetOrg, filterQuery);
       return body;
@@ -615,33 +669,27 @@ export function DashboardWorkspace({
       <div className="flex min-h-screen supports-[min-height:100svh]:min-h-svh bg-bg text-paper antialiased" data-generation={generation}>
         <aside
           aria-label="Navigasi utama Dashboard"
-          className={`sticky top-0 hidden h-screen supports-[height:100svh]:h-svh flex-none flex-col overflow-hidden border-r border-hairline bg-bg-raised/40 transition-[width] duration-300 ease-out md:flex ${
-            sidebarCollapsed ? 'w-16' : 'w-64'
-          }`}
+          style={sidebarCollapsed ? undefined : { width: sidebarRenderedWidth }}
+          className={cn(
+            'sticky top-0 hidden h-screen supports-[height:100svh]:h-svh flex-none flex-col border-r border-hairline bg-bg-raised/40 md:flex',
+            sidebarCollapsed ? 'w-16' : 'w-64',
+            sidebarDragging
+              ? 'transition-none'
+              : 'transition-[width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]',
+          )}
         >
-          <div className={`flex flex-none items-center border-b border-hairline ${sidebarCollapsed ? 'flex-col justify-center gap-1.5 px-0 py-2' : 'h-12 gap-2 px-3'}`}>
-            {sidebarCollapsed ? (
-              <Image
-                src="/brand/indicate-mark.svg"
-                alt=""
-                aria-hidden="true"
-                unoptimized
-                width={28}
-                height={28}
-                className="h-7 w-7 flex-none rounded-md"
-              />
-            ) : (
-              <>
-                <Image
-                  src="/brand/indicate-mark.svg"
-                  alt=""
-                  aria-hidden="true"
-                  unoptimized
-                  width={28}
-                  height={28}
-                  className="h-7 w-7 flex-none rounded-md"
-                />
-              <span className="grid min-w-0 flex-1 animate-in leading-none fade-in duration-200">
+          <div className={`flex h-12 flex-none items-center border-b border-hairline ${sidebarCollapsed ? 'justify-center px-0' : 'gap-2 px-3'}`}>
+            <Image
+              src="/brand/indicate-mark.svg"
+              alt=""
+              aria-hidden="true"
+              unoptimized
+              width={28}
+              height={28}
+              className="h-7 w-7 flex-none rounded-md"
+            />
+            {sidebarCollapsed ? null : (
+              <span className="grid min-w-0 flex-1 animate-in leading-none fade-in duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
                 <span className="truncate font-sans text-sm font-semibold tracking-tight text-paper">
                   Indicate
                 </span>
@@ -649,29 +697,11 @@ export function DashboardWorkspace({
                   Publishing infrastructure
                 </span>
               </span>
-              </>
             )}
-            <Tooltip>
-              <TooltipTrigger
-                type="button"
-                onClick={() => setSidebarCollapsed((prev) => !prev)}
-                aria-label={sidebarCollapsed ? 'Bentangkan sidebar' : 'Ciutkan sidebar'}
-                aria-expanded={!sidebarCollapsed}
-                className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-paper-faint transition-all duration-200 hover:bg-bg-raised-2 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
-              >
-                <PanelLeft
-                  className={`h-4 w-4 transition-transform duration-300 ease-out ${sidebarCollapsed ? '-scale-x-100' : ''}`}
-                  aria-hidden="true"
-                />
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className={`${DASHBOARD_TOOLTIP_CONTENT} p-2`}>
-                {sidebarCollapsed ? 'Bentangkan sidebar' : 'Ciutkan sidebar'}
-              </TooltipContent>
-            </Tooltip>
           </div>
 
           {sidebarCollapsed ? null : (
-            <div className="flex-none animate-in border-b border-hairline p-3 fade-in duration-200">
+            <div className="flex-none animate-in border-b border-hairline p-3 fade-in duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
               <Label htmlFor={selectOrgId} className="px-1 font-sans text-[11px] font-medium uppercase tracking-wider text-paper-faint">
                 Organisasi
               </Label>
@@ -681,6 +711,7 @@ export function DashboardWorkspace({
                     organizations={organizations}
                     activeOrganizationId={organizationId}
                     selectId={selectOrgId}
+                    onSwitchRequested={handleSwitchRequested}
                     onSwitchCommitted={handleSwitchCommitted}
                     onSwitchFailed={handleSwitchFailed}
                   />
@@ -693,8 +724,12 @@ export function DashboardWorkspace({
             </div>
           )}
 
-          <nav aria-label="Navigasi sidebar Dashboard" className="min-h-0 flex-1 overflow-y-auto py-2">
+          <nav
+            aria-label="Navigasi sidebar Dashboard"
+            className="dashboard-scrollbar min-h-0 flex-1 overflow-y-auto py-2"
+          >
             <DashboardNavList
+              key={sidebarCollapsed ? 'nav-ciut' : 'nav-penuh'}
               view={view}
               permissions={activePermissions}
               collapsed={sidebarCollapsed}
@@ -706,23 +741,41 @@ export function DashboardWorkspace({
           </nav>
 
           <div className="flex-none border-t border-hairline p-3">
-            <div className={sidebarCollapsed ? 'flex flex-col items-center gap-2' : 'flex items-center gap-2.5'}>
-              <DashboardAvatar displayName={displayName} avatarRef={avatarUrl} />
-              {sidebarCollapsed ? null : (
-                <div className="min-w-0 flex-1 animate-in fade-in duration-200">
-                  <p className="truncate font-sans text-xs font-medium text-paper">{displayName}</p>
-                  {activeOrganization?.role ? (
-                    <p className="truncate font-mono text-[10px] uppercase tracking-wider text-paper-faint">
-                      {activeOrganization.role}
-                    </p>
-                  ) : null}
-                </div>
-              )}
-              <div className="flex-none">
-                <SignOutDialog mode="icon" />
-              </div>
-            </div>
+            <SignOutDialog
+              mode="icon"
+              trigger={
+                <button
+                  type="button"
+                  aria-label="Keluar dari workspace"
+                  className={cn(
+                    'flex w-full rounded-md text-left transition-colors duration-150 hover:bg-bg-raised-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60',
+                    sidebarCollapsed ? 'justify-center p-1' : 'items-center gap-2.5 p-1.5',
+                  )}
+                >
+                  <DashboardAvatar displayName={displayName} avatarRef={avatarUrl} />
+                  {sidebarCollapsed ? null : (
+                    <span className="grid min-w-0 flex-1 animate-in leading-none fade-in duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
+                      <span className="truncate font-sans text-xs font-medium text-paper">{displayName}</span>
+                      {activeOrganization?.role ? (
+                        <span className="mt-1 truncate font-mono text-[10px] uppercase tracking-wider text-paper-faint">
+                          {activeOrganization.role}
+                        </span>
+                      ) : null}
+                    </span>
+                  )}
+                </button>
+              }
+            />
           </div>
+
+          <SidebarResizeRail
+            width={sidebarRenderedWidth}
+            collapsed={sidebarCollapsed}
+            label={sidebarCollapsed ? 'Bentangkan sidebar' : 'Ciutkan sidebar'}
+            onWidthChange={setSidebarWidth}
+            onCollapsedChange={setSidebarCollapsed}
+            onDraggingChange={setSidebarDragging}
+          />
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
@@ -820,6 +873,7 @@ export function DashboardWorkspace({
                     organizations={organizations}
                     activeOrganizationId={organizationId}
                     selectId={drawerOrgId}
+                    onSwitchRequested={handleSwitchRequested}
                     onSwitchCommitted={handleSwitchCommitted}
                     onSwitchFailed={handleSwitchFailed}
                   />
@@ -830,7 +884,7 @@ export function DashboardWorkspace({
                 )}
               </div>
             </div>
-            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-2 py-4">
+            <div className="dashboard-scrollbar min-h-0 flex-1 space-y-6 overflow-y-auto px-2 py-4">
               <DashboardNavList
                 view={view}
                 permissions={activePermissions}
@@ -842,20 +896,26 @@ export function DashboardWorkspace({
               />
             </div>
             <div className="flex-none border-t border-hairline px-4 py-3">
-              <div className="flex items-center gap-2.5">
-                <DashboardAvatar displayName={displayName} avatarRef={avatarUrl} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-sans text-xs font-medium text-paper">{displayName}</p>
-                  {activeOrganization?.role ? (
-                    <p className="truncate font-mono text-[10px] uppercase tracking-wider text-paper-faint">
-                      {activeOrganization.role}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="flex-none">
-                  <SignOutDialog mode="icon" />
-                </div>
-              </div>
+              <SignOutDialog
+                mode="icon"
+                trigger={
+                  <button
+                    type="button"
+                    aria-label="Keluar dari workspace"
+                    className="flex w-full items-center gap-2.5 rounded-md p-1.5 text-left transition-colors duration-150 hover:bg-bg-raised-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
+                  >
+                    <DashboardAvatar displayName={displayName} avatarRef={avatarUrl} />
+                    <span className="grid min-w-0 flex-1 leading-none">
+                      <span className="truncate font-sans text-xs font-medium text-paper">{displayName}</span>
+                      {activeOrganization?.role ? (
+                        <span className="mt-1 truncate font-mono text-[10px] uppercase tracking-wider text-paper-faint">
+                          {activeOrganization.role}
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                }
+              />
             </div>
           </SheetContent>
         </Sheet>
@@ -929,20 +989,29 @@ export function DashboardWorkspace({
                   <TabsTrigger value="access" className="flex-none">Akses</TabsTrigger>
                 </TabsList>
                 <TabsContent keepMounted value="domain">
-                  <ConfigurationPanel data={data} command={command} />
+                  <div className="space-y-6">
+                    <ConfigurationPanel data={data} command={command} />
+                    {collectionTables(['domains', 'regions', 'sites'])}
+                  </div>
                 </TabsContent>
                 <TabsContent keepMounted value="brand">
-                  <SiteSettingsForm data={data} command={command} />
+                  <div className="space-y-6">
+                    <SiteSettingsForm data={data} command={command} />
+                    {collectionTables(['siteSettings'])}
+                  </div>
                 </TabsContent>
                 <TabsContent keepMounted value="cache">
                   <CachePurgeForm data={data} command={command} />
                 </TabsContent>
                 <TabsContent keepMounted value="access">
-                  <AccessManagementForm data={data} command={command} organizationId={organizationId} />
+                  <div className="space-y-6">
+                    <AccessManagementForm data={data} command={command} organizationId={organizationId} />
+                    {collectionTables(['roles', 'memberships', 'invitations', 'activationAttempts'])}
+                  </div>
                 </TabsContent>
               </Tabs>
             ) : null}
-            {view === 'media' ? <MediaForm data={data} command={command} /> : null}
+            {view === 'media' ? <MediaLibrary data={data} command={command} /> : null}
             {view === 'publishing' ? (
               <div className="grid gap-6">
                 <PublishingForm data={data} command={command} />
@@ -961,7 +1030,10 @@ export function DashboardWorkspace({
                   <TabsTrigger value="login" className="flex-none">Login</TabsTrigger>
                 </TabsList>
                 <TabsContent keepMounted value="koneksi">
-                  <IntegrationSettings command={command} isPlatform={activePermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin) || activePermissions.has(INTEGRATIONS_PERMISSIONS.customerAdmin)} email={selectEmailStatus(data)} />
+                  <div className="space-y-6">
+                    <IntegrationSettings command={command} isPlatform={activePermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin) || activePermissions.has(INTEGRATIONS_PERMISSIONS.customerAdmin)} email={selectEmailStatus(data)} />
+                    {collectionTables(['apiKeys'])}
+                  </div>
                 </TabsContent>
                 <TabsContent keepMounted value="profil">
                   <ProfileForm />
@@ -977,7 +1049,7 @@ export function DashboardWorkspace({
             {view === 'content' ? <ContentManager /> : null}
             </PanelErrorBoundary>
 
-            {view === 'billing' || view === 'moderation' || view === 'editorial' || view === 'articles' || view === 'taxonomy' ? null : busy && !data ? (
+            {VIEW_WITHOUT_RAW_COLLECTIONS.has(view) ? null : busy && !data ? (
               view === 'dashboard' ? <DashboardContentSkeleton /> : <DashboardCollectionsSkeleton />
             ) : (
               <PanelErrorBoundary key={`data:${organizationId}:${view}`} name={`${activeMetadata.title} — data`}>

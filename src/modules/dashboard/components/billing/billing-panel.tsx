@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -239,6 +240,11 @@ export function BillingPanel({
   const paidInvoices = invoices.filter((invoice) => invoice.status === 'paid');
   const unpaidInvoices = invoices.filter((invoice) => invoice.status === 'unpaid');
   const paidTotal = paidInvoices.reduce((sum, invoice) => sum + invoice.amountIdr, 0);
+  const openTotal = unpaidInvoices.reduce((sum, invoice) => sum + invoice.amountIdr, 0);
+
+  const downloadInvoice = (invoice: InvoiceRow): void => {
+    window.open(`/api/dashboard/billing/invoice/${invoice.id}?organizationId=${encodeURIComponent(invoice.organizationId)}`, '_blank', 'noopener');
+  };
 
   return (
     <Tabs defaultValue="ringkasan" className="w-full">
@@ -248,129 +254,122 @@ export function BillingPanel({
         {isPlatform ? <TabsTrigger value="admin" className="flex-none">Admin</TabsTrigger> : null}
       </TabsList>
       <TabsContent keepMounted value="ringkasan">
-        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <section aria-label="Status langganan" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
-        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Langganan</p>
-        <p className="m-0 mt-2 font-sans text-lg font-semibold tracking-tight text-paper">
-          {stateLabel(state)}
-        </p>
-        {state !== null && state !== 'platform' && state !== 'active' ? (
-          <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
-            Organisasi tidak aktif tidak bisa menulis atau menerbitkan. Hubungi administrator untuk aktivasi.
-          </p>
-        ) : null}
-        {busy ? <p className="m-0 mt-1 font-sans text-xs text-paper-faint">Memuat…</p> : null}
-        {error ? <FormNotice tone="error">{error}</FormNotice> : null}
-        {notice ? <FormNotice tone="success">{notice}</FormNotice> : null}
-      </section>
+        <div className="space-y-3">
+          <section aria-label="Status langganan" className="rounded border border-hairline bg-bg-raised p-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-paper-faint">Status langganan</span>
+              <span className="font-sans text-base font-semibold tracking-tight text-paper">{stateLabel(state)}</span>
+            </div>
+            {state !== null && state !== 'platform' && state !== 'active' ? (
+              <p className="m-0 mt-1.5 font-sans text-[11px] leading-relaxed text-paper-dim">
+                Organisasi tidak aktif tidak bisa menulis atau menerbitkan. Hubungi administrator untuk aktivasi.
+              </p>
+            ) : null}
+            {busy ? <p className="m-0 mt-1 font-sans text-[11px] text-paper-faint">Memuat…</p> : null}
+            {error ? <FormNotice tone="error">{error}</FormNotice> : null}
+            {notice ? <FormNotice tone="success">{notice}</FormNotice> : null}
+          </section>
 
-      <section aria-label="Tentang aktivasi" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
-        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Aktivasi manual</p>
-        <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-paper-dim">
-          Tidak ada paket dan tidak ada masa aktif yang kedaluwarsa: pembelian lewat kontak langsung, lalu
-          status diaktifkan di sini dan berjalan terus sampai diubah manual.
-        </p>
-      </section>
+          <section aria-label="Ringkasan faktur" className="rounded border border-hairline bg-bg-raised p-3">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-paper-faint">Ringkasan faktur</span>
+            {invoices.length === 0 ? (
+              <EmptyState compact title="Belum ada faktur tercatat untuk organisasi ini." className="mt-1" />
+            ) : (
+              <dl className="m-0 mt-1.5 grid grid-cols-2 gap-x-5 sm:grid-cols-4">
+                {[
+                  { label: 'Total', value: invoices.length.toLocaleString('id-ID') },
+                  { label: 'Nilai lunas', value: formatIdr(paidTotal) },
+                  { label: 'Belum bayar', value: formatIdr(openTotal) },
+                  { label: 'Faktur', value: `${paidInvoices.length} lunas · ${unpaidInvoices.length} menunggu` },
+                ].map((stat) => (
+                  <div key={stat.label} className="min-w-0 border-t border-hairline/60 py-1.5">
+                    <dt className="truncate font-mono text-[10px] uppercase tracking-wider text-paper-faint">{stat.label}</dt>
+                    <dd className="m-0 mt-0.5 truncate font-mono text-xs tabular-nums text-paper" title={stat.value}>{stat.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </section>
 
-      <section aria-label="Ringkasan faktur" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
-        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Ringkasan faktur</p>
-        {invoices.length === 0 ? (
-          <EmptyState title="Belum ada faktur tercatat untuk organisasi ini." description="Data akan tampil di sini setelah tersedia." className="mt-2" />
-        ) : (
-          <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-paper-dim">
-            {`${invoices.length} faktur · ${paidInvoices.length} lunas (${formatIdr(paidTotal)}) · ${unpaidInvoices.length} belum bayar.`}
-          </p>
-        )}
-      </section>
+          <section aria-label="Tentang aktivasi" className="rounded border border-hairline bg-bg-raised p-3">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-paper-faint">Aktivasi manual</span>
+            <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">
+              Tidak ada paket dan tidak ada masa aktif yang kedaluwarsa: pembelian lewat kontak langsung, lalu
+              status diaktifkan di sini dan berjalan terus sampai diubah manual.
+            </p>
+          </section>
         </div>
       </TabsContent>
       <TabsContent keepMounted value="faktur">
-        <section aria-label="Faktur saya" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
-        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Faktur saya</p>
-        <ul className="m-0 mt-2 grid list-none gap-0 p-0">
-          {invoices.map((invoice) => (
-            <li key={invoice.id} className="border-b border-hairline py-3 last:border-b-0">
-              <p className="m-0 font-sans text-sm font-medium text-paper">
-                {invoice.number} — {formatIdr(invoice.amountIdr)} · {invoice.status === 'paid' ? 'Lunas' : invoice.status === 'unpaid' ? 'Belum bayar' : 'Batal'}
-              </p>
-              <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
+        <section aria-label="Faktur saya" className="rounded border border-hairline bg-bg-raised p-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-paper-faint">Faktur saya</span>
+          <span className="font-mono text-[11px] tabular-nums text-paper-faint">
+            {invoices.length.toLocaleString('id-ID')} faktur · {formatIdr(paidTotal + openTotal)} tercatat
+          </span>
+        </div>
+        {invoices.length === 0 ? (
+          <EmptyState compact title="Belum ada faktur. Catat lewat tab Admin." className="mt-1" />
+        ) : (
+        <ul className="m-0 mt-1.5 grid list-none gap-0 p-0">
+          {invoices.map((invoice) => {
+            const tone = invoice.status === 'paid' ? 'border-signal/40 text-signal' : invoice.status === 'unpaid' ? 'border-warning/40 text-warning' : 'border-hairline-strong text-paper-faint';
+            return (
+            <li key={invoice.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-hairline/60 py-2 first:border-t-0">
+              <Badge variant="outline" className={`flex-none font-mono text-[9px] uppercase tracking-wider ${tone}`}>
+                {invoice.status === 'paid' ? 'Lunas' : invoice.status === 'unpaid' ? 'Belum bayar' : 'Batal'}
+              </Badge>
+              <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-paper" title={invoice.number}>{invoice.number}</span>
+              <span className="flex-none font-mono text-[11px] tabular-nums text-paper-dim">{formatIdr(invoice.amountIdr)}</span>
+              <span className="min-w-0 flex-none font-mono text-[10px] tabular-nums text-paper-faint">
                 {invoice.status === 'unpaid'
                   ? `Tempo ${invoice.dueAt === null ? '-' : formatDate(invoice.dueAt)}`
                   : `Bayar ${invoice.paidAt === null ? '-' : formatDate(invoice.paidAt)}`}
                 {invoice.billingNote ? ` · ${invoice.billingNote}` : ''}
-              </p>
+              </span>
               {invoice.status === 'voided' && invoice.voidReason ? (
-                <p className="m-0 mt-0.5 font-sans text-xs text-error">Batal: {invoice.voidReason}</p>
+                <span className="w-full font-sans text-[11px] text-error">Batal: {invoice.voidReason}</span>
               ) : null}
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setPreview(invoice)}
-                  disabled={busy}
-                >
-                  Pratinjau
+              <span className="ml-auto flex flex-none flex-wrap items-center gap-1.5">
+                <Button type="button" variant="ghost" size="xs" onClick={() => setPreview(invoice)} disabled={busy}>
+                  <span>Pratinjau</span>
                 </Button>
-              </div>
-              {isPlatform && invoice.status === 'paid' ? (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Button type="button" variant="outline" size="xs" onClick={() => downloadInvoice(invoice)} disabled={busy}>
+                  <span>Unduh</span>
+                </Button>
+                {isPlatform && invoice.status === 'paid' ? (
+                  <Button type="button" variant="destructive" size="xs" onClick={() => void voidInvoice(invoice)} disabled={busy}>
+                    <span>Batalkan</span>
+                  </Button>
+                ) : null}
+                {isPlatform && invoice.status !== 'paid' ? (
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => window.open(`/api/dashboard/billing/invoice/${invoice.id}?organizationId=${encodeURIComponent(invoice.organizationId)}`, '_blank', 'noopener')}
+                    size="xs"
+                    onClick={() => void reissueInvoice(invoice)}
                     disabled={busy}
-                  >
-                    Unduh
-                  </Button>
-                  <Button
-                    type="button" variant="destructive" onClick={() => void voidInvoice(invoice)} disabled={busy}
-                  >
-                    Batalkan
-                  </Button>
-                </div>
-              ) : isPlatform ? (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => window.open(`/api/dashboard/billing/invoice/${invoice.id}?organizationId=${encodeURIComponent(invoice.organizationId)}`, '_blank', 'noopener')}
-                    disabled={busy}
-                  >
-                    Unduh
-                  </Button>
-                  <Button
-                    type="button" variant="outline" onClick={() => void reissueInvoice(invoice)} disabled={busy}
                     className="border-brass/60"
                   >
-                    Terbitkan ulang
+                    <span>Terbitkan ulang</span>
                   </Button>
-                </div>
-              ) : (
-                <div className="mt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => window.open(`/api/dashboard/billing/invoice/${invoice.id}?organizationId=${encodeURIComponent(invoice.organizationId)}`, '_blank', 'noopener')}
-                    disabled={busy}
-                  >
-                    Unduh
-                  </Button>
-                </div>
-              )}
+                ) : null}
+              </span>
             </li>
-          ))}
-          {invoices.length === 0 ? <li><EmptyState title="Belum ada faktur." description="Data akan tampil di sini setelah tersedia." /></li> : null}
+          );
+          })}
         </ul>
+        )}
       </section>
       </TabsContent>
       {isPlatform ? (
         <TabsContent keepMounted value="admin">
           <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-            <section aria-label="Ubah status langganan" className="rounded-lg border border-brass/60 bg-bg-raised p-5 sm:p-6">
-          <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Ubah status (pembayaran manual di luar sistem)</p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <section aria-label="Ubah status langganan" className="rounded border border-brass/60 bg-bg-raised p-3">
+          <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">Ubah status (pembayaran manual di luar sistem)</p>
+          <div className="mt-2.5 grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="manual-org-id" className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor="manual-org-id" className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
                 ID organisasi
               </Label>
               <Input
@@ -380,7 +379,7 @@ export function BillingPanel({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="manual-status" className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor="manual-status" className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
                 Status
               </Label>
               <DashboardSelect
@@ -394,23 +393,23 @@ export function BillingPanel({
               </DashboardSelect>
             </div>
           </div>
-          <div className="mt-3">
+          <div className="mt-2.5">
             <Button
-              type="button" variant="default" size="lg" onClick={() => void manualSetSubscription()} disabled={busy} className="w-full sm:w-auto"
+              type="button" variant="default" size="sm" onClick={() => void manualSetSubscription()} disabled={busy}
             >
               Terapkan status
             </Button>
           </div>
         </section>
 
-        <section aria-label="Catat faktur" className="rounded-lg border border-brass/60 bg-bg-raised p-5 sm:p-6">
-          <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Catat faktur (pembayaran manual terkonfirmasi)</p>
-          <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
+        <section aria-label="Catat faktur" className="rounded border border-brass/60 bg-bg-raised p-3">
+          <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">Catat faktur (pembayaran manual terkonfirmasi)</p>
+          <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">
             Nomor faktur dibuat otomatis dan tidak bisa ditebak. Faktur tercatat langsung berstatus lunas.
           </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-2.5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="invoice-org-id" className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor="invoice-org-id" className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
                 ID organisasi
               </Label>
               <Input
@@ -420,7 +419,7 @@ export function BillingPanel({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="invoice-amount" className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor="invoice-amount" className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
                 Nominal (Rp)
               </Label>
               <Input
@@ -428,10 +427,10 @@ export function BillingPanel({
                 placeholder={String(SINGLE_INVOICE_AMOUNT_IDR)} inputMode="numeric"
                 className="font-mono text-xs"
               />
-              <p className="m-0 font-sans text-xs text-paper-faint">{`Bawaan ${formatIdr(SINGLE_INVOICE_AMOUNT_IDR)}/bulan — dapat diubah manual`}</p>
+              <p className="m-0 font-sans text-[11px] text-paper-faint">{`Bawaan ${formatIdr(SINGLE_INVOICE_AMOUNT_IDR)}/bulan — dapat diubah manual`}</p>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="invoice-paid-at" className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor="invoice-paid-at" className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
                 Tanggal bayar
               </Label>
               <Input
@@ -440,7 +439,7 @@ export function BillingPanel({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="invoice-note" className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor="invoice-note" className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
                 Catatan (opsional)
               </Label>
               <Input
@@ -450,7 +449,7 @@ export function BillingPanel({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="invoice-method" className="font-sans text-xs font-medium text-paper-dim">
+              <Label htmlFor="invoice-method" className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
                 Metode (opsional)
               </Label>
               <Input
@@ -460,9 +459,9 @@ export function BillingPanel({
               />
             </div>
           </div>
-          <div className="mt-3">
+          <div className="mt-2.5">
             <Button
-              type="button" variant="default" size="lg" onClick={() => void createInvoice()} disabled={busy} className="w-full sm:w-auto"
+              type="button" variant="default" size="sm" onClick={() => void createInvoice()} disabled={busy}
             >
               Catat faktur
             </Button>
@@ -481,32 +480,32 @@ export function BillingPanel({
             Stempel LUNAS dan paraf digital dibubuhkan otomatis pada dokumen unduhan.
           </DialogDescription>
           {preview === null ? null : (
-            <dl className="m-0 space-y-2 font-sans text-xs">
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-paper-faint">Nominal</dt>
-                <dd className="m-0 font-mono tabular-nums text-paper">{formatIdr(preview.amountIdr)}</dd>
+            <dl className="m-0 divide-y divide-hairline/60">
+              <div className="flex items-baseline justify-between gap-3 py-1.5">
+                <dt className="font-sans text-[11px] text-paper-faint">Nominal</dt>
+                <dd className="m-0 font-mono text-xs tabular-nums text-paper">{formatIdr(preview.amountIdr)}</dd>
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-paper-faint">Status</dt>
-                <dd className="m-0 text-paper">{preview.status === 'paid' ? 'Lunas' : preview.status === 'unpaid' ? 'Belum bayar' : 'Batal'}</dd>
+              <div className="flex items-baseline justify-between gap-3 py-1.5">
+                <dt className="font-sans text-[11px] text-paper-faint">Status</dt>
+                <dd className="m-0 text-xs text-paper">{preview.status === 'paid' ? 'Lunas' : preview.status === 'unpaid' ? 'Belum bayar' : 'Batal'}</dd>
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-paper-faint">{preview.status === 'unpaid' ? 'Tempo' : 'Tanggal bayar'}</dt>
-                <dd className="m-0 font-mono tabular-nums text-paper">
+              <div className="flex items-baseline justify-between gap-3 py-1.5">
+                <dt className="font-sans text-[11px] text-paper-faint">{preview.status === 'unpaid' ? 'Tempo' : 'Tanggal bayar'}</dt>
+                <dd className="m-0 font-mono text-xs tabular-nums text-paper">
                   {preview.status === 'unpaid'
                     ? (preview.dueAt === null ? '-' : formatDate(preview.dueAt))
                     : (preview.paidAt === null ? '-' : formatDate(preview.paidAt))}
                 </dd>
               </div>
               {preview.billingNote ? (
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-paper-faint">Catatan</dt>
-                  <dd className="m-0 text-right text-paper">{preview.billingNote}</dd>
+                <div className="flex items-baseline justify-between gap-3 py-1.5">
+                  <dt className="font-sans text-[11px] text-paper-faint">Catatan</dt>
+                  <dd className="m-0 min-w-0 truncate text-right text-xs text-paper">{preview.billingNote}</dd>
                 </div>
               ) : null}
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-paper-faint">Metode</dt>
-                <dd className="m-0 text-paper">{preview.paymentMethod}</dd>
+              <div className="flex items-baseline justify-between gap-3 py-1.5">
+                <dt className="font-sans text-[11px] text-paper-faint">Metode</dt>
+                <dd className="m-0 min-w-0 truncate text-right text-xs text-paper">{preview.paymentMethod}</dd>
               </div>
             </dl>
           )}

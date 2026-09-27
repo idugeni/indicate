@@ -92,12 +92,17 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
   const reload = useCallback(async () => {
     setBusy(true);
     setError(null);
+    const load = async <T,>(scope: string): Promise<T> => {
+      const response = await fetch(`/api/dashboard/moderation?scope=${encodeURIComponent(scope)}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return (await response.json()) as T;
+    };
     try {
       const [reportBody, privacyBody, holdsBody, erasureBody] = await Promise.all([
-        api('/api/dashboard/moderation?scope=reports') as Promise<readonly ReportRow[]>,
-        api('/api/dashboard/moderation?scope=privacy-requests') as Promise<readonly PrivacyRow[]>,
-        api('/api/dashboard/moderation?scope=holds') as Promise<readonly HoldRow[]>,
-        api('/api/dashboard/moderation?scope=erasure-requests') as Promise<readonly ErasureRow[]>,
+        load<readonly ReportRow[]>('reports'),
+        load<readonly PrivacyRow[]>('privacy-requests'),
+        load<readonly HoldRow[]>('holds'),
+        load<readonly ErasureRow[]>('erasure-requests'),
       ]);
       setReports(reportBody);
       setPrivacy(privacyBody);
@@ -248,9 +253,9 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
         <TabsTrigger value="retensi" className="flex-none">Retensi</TabsTrigger>
       </TabsList>
       <TabsContent keepMounted value="laporan">
-        <section aria-label="Laporan konten" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
-        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Laporan konten publik</p>
-        <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
+        <section aria-label="Laporan konten" className="rounded border border-hairline bg-bg-raised p-3">
+        <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">Laporan konten publik</p>
+        <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">
           SLA peninjauan 1x24 jam (Ketentuan §14). Tindakan penarikan dilakukan lewat alur unpublish yang sudah ada,
           lalu laporan ditandai di sini sebagai bukti penanganan.
         </p>
@@ -259,31 +264,31 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
         {notice ? <FormNotice tone="success">{notice}</FormNotice> : null}
         <ul className="m-0 mt-2 grid list-none gap-0 p-0 md:grid-cols-2 md:gap-x-10">
           {reports.map((report) => (
-            <li key={report.id} className="border-b border-hairline py-3">
-              <p className="m-0 font-sans text-sm font-medium text-paper">
+            <li key={report.id} className="border-b border-hairline py-2">
+              <p className="m-0 font-sans text-xs font-medium text-paper">
                 {CATEGORY_LABELS[report.reasonCategory] ?? report.reasonCategory} · {report.status}
               </p>
-              <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">{report.details}</p>
-              <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
+              <p className="m-0 mt-0.5 font-sans text-[11px] leading-relaxed text-paper-dim">{report.details}</p>
+              <p className="m-0 mt-0.5 font-mono text-[10px] tabular-nums text-paper-faint">
                 {report.id} · {report.reporterContact}
               </p>
               {report.status === 'received' || report.status === 'under_review' ? (
-                <div className="mt-2 flex flex-col gap-2">
+                <div className="mt-1.5 flex flex-col gap-1.5">
                   <Input
                     type="text" value={decisionNote[report.id] ?? ''} disabled={busy}
                     onChange={(event) => setDecisionNote((prev) => ({ ...prev, [report.id]: event.target.value }))}
                     placeholder="Catatan penanganan (opsional)"
                     aria-label="Catatan penanganan laporan"
-                    className="font-sans text-xs"
+                    className="h-8 font-sans text-xs"
                   />
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <Button
-                      type="button" variant="default" onClick={() => void decideReport(report.id, true)} disabled={busy}
+                      type="button" size="sm" variant="default" onClick={() => void decideReport(report.id, true)} disabled={busy}
                     >
                       Sudah ditindak
                     </Button>
                     <Button
-                      type="button" variant="outline" onClick={() => void decideReport(report.id, false)} disabled={busy}
+                      type="button" size="sm" variant="outline" onClick={() => void decideReport(report.id, false)} disabled={busy}
                     >
                       Tolak
                     </Button>
@@ -292,15 +297,15 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               ) : null}
             </li>
           ))}
-          {reports.length === 0 ? <li><EmptyState title="Belum ada laporan konten." description="Data akan tampil di sini setelah tersedia." /></li> : null}
+          {reports.length === 0 ? <li><EmptyState compact title="Belum ada laporan konten." className="mt-2" /></li> : null}
         </ul>
       </section>
       </TabsContent>
       <TabsContent keepMounted value="privasi">
         <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-          <section aria-label="Permintaan data" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
-        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Permintaan data baru</p>
-        <div className="mt-3 flex flex-col gap-2">
+          <section aria-label="Permintaan data" className="rounded border border-hairline bg-bg-raised p-3">
+        <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">Permintaan data baru</p>
+        <div className="mt-2 flex flex-col gap-2">
           <DashboardSelect
             value={privacyType} disabled={busy}
             placeholder="Pilih jenis permintaan"
@@ -320,32 +325,32 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             className="font-sans text-xs"
           />
           <Button
-            type="button" variant="default" size="lg" onClick={submitPrivacy} disabled={busy} className="w-full sm:w-auto"
+            type="button" variant="default" size="sm" onClick={submitPrivacy} disabled={busy} className="w-full sm:w-auto"
           >
             Kirim permintaan
           </Button>
         </div>
       </section>
 
-      <section aria-label="Tiket permintaan data" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
-        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Tiket permintaan (SLA 30 hari)</p>
-        <ul className="m-0 mt-2 grid list-none gap-0 p-0">
+      <section aria-label="Tiket permintaan data" className="rounded border border-hairline bg-bg-raised p-3">
+        <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">Tiket permintaan (SLA 30 hari)</p>
+        <ul className="m-0 mt-1.5 grid list-none gap-0 p-0">
           {privacy.map((ticket) => (
-            <li key={ticket.id} className="border-b border-hairline py-3 last:border-b-0">
-              <p className="m-0 font-sans text-sm font-medium text-paper">
+            <li key={ticket.id} className="border-b border-hairline py-2 last:border-b-0">
+              <p className="m-0 font-sans text-xs font-medium text-paper">
                 {ticket.ticketNumber} · {ticket.requestType} · {ticket.status}
               </p>
-              <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">{ticket.details}</p>
+              <p className="m-0 mt-0.5 font-sans text-[11px] leading-relaxed text-paper-dim">{ticket.details}</p>
               {ticket.status === 'open' || ticket.status === 'in_progress' ? (
-                <div className="mt-2 flex flex-col gap-2">
+                <div className="mt-1.5 flex flex-col gap-1.5">
                   <Input
                     type="text" value={decisionNote[ticket.ticketNumber] ?? ''} disabled={busy}
                     onChange={(event) => setDecisionNote((prev) => ({ ...prev, [ticket.ticketNumber]: event.target.value }))}
                     placeholder="Catatan penyelesaian (opsional)"
                     aria-label="Catatan penyelesaian tiket"
-                    className="font-sans text-xs"
+                    className="h-8 font-sans text-xs"
                   />
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {(['in_progress', 'fulfilled', 'rejected'] as const).map((status) => (
                       <Button
                         key={status} type="button" variant="outline" size="sm" onClick={() => void decidePrivacy(ticket.ticketNumber, status)} disabled={busy}
@@ -358,21 +363,21 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               ) : null}
             </li>
           ))}
-          {privacy.length === 0 ? <li><EmptyState title="Belum ada tiket permintaan data." description="Data akan tampil di sini setelah tersedia." /></li> : null}
+          {privacy.length === 0 ? <li><EmptyState compact title="Belum ada tiket permintaan data." className="mt-2" /></li> : null}
         </ul>
       </section>
         </div>
       </TabsContent>
       <TabsContent keepMounted value="retensi">
         <div className="grid grid-cols-1 items-start gap-4">
-          <section aria-label="Tunda hapus resmi" className="rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
-        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Tunda hapus resmi</p>
-        <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
+          <section aria-label="Tunda hapus resmi" className="rounded border border-hairline bg-bg-raised p-3">
+        <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">Tunda hapus resmi</p>
+        <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">
           Organisasi yang ditunda dilewatkan pembersihan retensi dan penghapusan sampai penundaan dilepas. Satu penundaan aktif per organisasi.
         </p>
-        <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]">
+        <div className="mt-2 grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="hold-org-id" className="font-sans text-xs font-medium text-paper-dim">
+            <Label htmlFor="hold-org-id" className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
               ID organisasi
             </Label>
             <Input
@@ -382,37 +387,37 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="hold-reason" className="font-sans text-xs font-medium text-paper-dim">
+            <Label htmlFor="hold-reason" className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
               Alasan perkara (min. 10 karakter)
             </Label>
             <Input
               id="hold-reason" value={holdReason} onChange={(event) => setHoldReason(event.target.value)} disabled={busy}
               placeholder="Perkara No. … / permintaan aparat …"
-              className="font-sans text-xs"
+              className="h-8 font-sans text-xs"
             />
           </div>
           <div className="flex items-end">
             <Button
-              type="button" variant="default" size="lg" onClick={() => void createHold()} disabled={busy} className="w-full sm:w-auto"
+              type="button" variant="default" size="sm" onClick={() => void createHold()} disabled={busy} className="w-full sm:w-auto"
             >
               Tahan hapus
             </Button>
           </div>
         </div>
-        <ul className="m-0 mt-2 grid list-none gap-0 p-0 md:grid-cols-2 md:gap-x-10">
+        <ul className="m-0 mt-1.5 grid list-none gap-0 p-0 md:grid-cols-2 md:gap-x-10">
           {holds.map((hold) => (
-            <li key={hold.id} className="border-b border-hairline py-3">
-              <p className="m-0 font-sans text-sm font-medium text-paper">
+            <li key={hold.id} className="border-b border-hairline py-2">
+              <p className="m-0 font-sans text-xs font-medium text-paper">
                 {hold.releasedAt === null ? 'Aktif' : 'Dilepas'}
               </p>
-              <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">{hold.reason}</p>
-              <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
+              <p className="m-0 mt-0.5 font-sans text-[11px] leading-relaxed text-paper-dim">{hold.reason}</p>
+              <p className="m-0 mt-0.5 font-mono text-[10px] tabular-nums text-paper-faint">
                 {formatDate(hold.createdAt)} ({formatRelative(hold.createdAt)})
               </p>
               {hold.releasedAt === null ? (
-                <div className="mt-2">
+                <div className="mt-1.5">
                   <Button
-                    type="button" variant="outline" onClick={() => void releaseHold(hold.id)} disabled={busy}
+                    type="button" variant="outline" size="sm" onClick={() => void releaseHold(hold.id)} disabled={busy}
                   >
                     Lepas penundaan
                   </Button>
@@ -420,19 +425,19 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               ) : null}
             </li>
           ))}
-          {holds.length === 0 ? <li><EmptyState title="Belum ada penundaan." description="Data akan tampil di sini setelah tersedia." /></li> : null}
+          {holds.length === 0 ? <li><EmptyState compact title="Belum ada penundaan." className="mt-2" /></li> : null}
         </ul>
       </section>
 
-      <section aria-label="Hapus data organisasi" className="rounded-lg border border-error/60 bg-bg-raised p-5 sm:p-6">
-        <p className="m-0 font-mono text-[11px] uppercase tracking-wider text-paper-faint">Hapus data organisasi</p>
-        <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">
+      <section aria-label="Hapus data organisasi" className="rounded border border-error/60 bg-bg-raised p-3">
+        <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">Hapus data organisasi</p>
+        <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">
           Hapus permanen data operasional + samarkan data pribadi anggota. Arsip legal (audit, faktur, order,
           langganan) dipertahankan; organisasi menjadi arsip. Organisasi yang ditunda atau organisasi platform akan ditolak sistem.
         </p>
-        <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]">
+        <div className="mt-2 grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="erasure-org-id" className="font-sans text-xs font-medium text-paper-dim">
+            <Label htmlFor="erasure-org-id" className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
               ID organisasi
             </Label>
             <Input
@@ -442,37 +447,37 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="erasure-reason" className="font-sans text-xs font-medium text-paper-dim">
+            <Label htmlFor="erasure-reason" className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
               Alasan (min. 10 karakter)
             </Label>
             <Input
               id="erasure-reason" value={erasureReason} onChange={(event) => setErasureReason(event.target.value)} disabled={busy}
               placeholder="Alasan penghapusan data…"
-              className="font-sans text-xs"
+              className="h-8 font-sans text-xs"
             />
           </div>
           <div className="flex items-end">
             <Button
-              type="button" variant="destructive" size="lg" onClick={() => void requestErasure()} disabled={busy} className="w-full sm:w-auto"
+              type="button" variant="destructive" size="sm" onClick={() => void requestErasure()} disabled={busy} className="w-full sm:w-auto"
             >
               Minta hapus data
             </Button>
           </div>
         </div>
-        <ul className="m-0 mt-2 grid list-none gap-0 p-0 md:grid-cols-2 md:gap-x-10">
+        <ul className="m-0 mt-1.5 grid list-none gap-0 p-0 md:grid-cols-2 md:gap-x-10">
           {erasures.map((row) => (
-            <li key={row.id} className="border-b border-hairline py-3">
-              <p className="m-0 font-sans text-sm font-medium text-paper">
+            <li key={row.id} className="border-b border-hairline py-2">
+              <p className="m-0 font-sans text-xs font-medium text-paper">
                 {row.status}
               </p>
-              <p className="m-0 mt-1 font-sans text-xs leading-relaxed text-paper-dim">{row.reason}</p>
-              <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
+              <p className="m-0 mt-0.5 font-sans text-[11px] leading-relaxed text-paper-dim">{row.reason}</p>
+              <p className="m-0 mt-0.5 font-mono text-[10px] tabular-nums text-paper-faint">
                 {formatDate(row.createdAt)} ({formatRelative(row.createdAt)})
                 {row.completedAt ? ` → ${formatDate(row.completedAt)}` : ''}
               </p>
             </li>
           ))}
-          {erasures.length === 0 ? <li><EmptyState title="Belum ada permintaan hapus data." description="Data akan tampil di sini setelah tersedia." /></li> : null}
+          {erasures.length === 0 ? <li><EmptyState compact title="Belum ada permintaan hapus data." className="mt-2" /></li> : null}
         </ul>
       </section>
         </div>

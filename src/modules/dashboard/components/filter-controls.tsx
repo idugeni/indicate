@@ -28,9 +28,14 @@ interface ReferenceModel {
   readonly categories?: readonly { readonly id: string; readonly name: string }[];
   readonly publishers?: readonly { readonly id: string; readonly name: string }[];
   readonly authors?: readonly { readonly id: string; readonly displayName: string }[];
+  readonly affiliations?: readonly { readonly id: string; readonly institutionName: string }[];
   readonly siteTotal?: number;
   readonly siteTotalInScope?: number;
   readonly siteSearch?: string | null;
+  readonly affiliationTotal?: number;
+  readonly affiliationTotalInScope?: number;
+  readonly affiliationRowTotal?: number;
+  readonly affiliationSearch?: string | null;
 }
 
 /**
@@ -49,6 +54,26 @@ function configurationCountNote(model: ReferenceModel | null): string | null {
     ? `Menampilkan ${listed.toLocaleString('id-ID')} dari ${inScope.toLocaleString('id-ID')} portal`
     : `Pencarian “${search}” · ${matched.toLocaleString('id-ID')} dari ${inScope.toLocaleString('id-ID')} portal`;
   return matched > listed ? `${head} · gunakan pencarian untuk membuka sisanya.` : head;
+}
+
+/**
+ * State how much of the affiliation and portal cross product this listing returned.
+ *
+ * @param model - Publisher payload, or null before the first response.
+ * @returns Indonesian count line naming the search term when one is active.
+ */
+function publisherCountNote(model: ReferenceModel | null): string | null {
+  if (model === null || model.affiliations === undefined) return null;
+  const listed = model.affiliations.length;
+  const matched = model.affiliationTotal ?? listed;
+  const total = model.affiliationTotalInScope ?? matched;
+  const rows = model.affiliationRowTotal;
+  const search = model.affiliationSearch ?? null;
+  const head = search === null
+    ? `${total.toLocaleString('id-ID')} klaim institusi, satu baris per klaim`
+    : `Pencarian “${search}” · ${matched.toLocaleString('id-ID')} dari ${total.toLocaleString('id-ID')} klaim`;
+  const portals = rows === undefined ? null : `Setiap klaim disimpan sekali per portal, jadi ${rows.toLocaleString('id-ID')} baris di database.`;
+  return matched > listed ? `${head} · gunakan pencarian untuk membuka sisanya.` : [head, portals].filter((part) => part !== null).join(' · ');
 }
 
 /**
@@ -130,10 +155,12 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
 
-  if (view !== 'editorial' && view !== 'audit' && view !== 'analytics' && view !== 'configuration') return null;
+  if (view !== 'editorial' && view !== 'audit' && view !== 'analytics' && view !== 'configuration' && view !== 'publishers') return null;
 
   const model = data as ReferenceModel | null;
   const portalCount = view === 'configuration' ? configurationCountNote(model) : null;
+  const publisherCount = view === 'publishers' ? publisherCountNote(model) : null;
+  const countNote = publisherCount ?? portalCount;
 
   const applyRange = (start: Date | undefined, end: Date | undefined) => {
     const params = new URLSearchParams();
@@ -204,7 +231,7 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
   ];
 
   return (
-    <section aria-label={`Filter data untuk ${view}`} className="rounded-lg border border-hairline bg-bg-raised p-4 sm:p-5">
+    <section aria-label={`Filter data untuk ${view}`} className="rounded-lg border border-hairline bg-bg-raised p-3">
       <form
         noValidate
         aria-label={`Filter data untuk ${view}`}
@@ -217,7 +244,7 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
           handleApply(event.currentTarget);
         }}
       >
-        <div className={view === 'editorial' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]' : view === 'analytics' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto]' : view === 'configuration' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto]' : 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]'}>
+        <div className={view === 'editorial' ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]' : view === 'analytics' ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto]' : view === 'configuration' || view === 'publishers' ? 'grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,26rem)_auto] sm:items-end' : 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]'}>
           {view === 'editorial' ? (
             <>
               <div className="flex flex-col gap-1.5">
@@ -276,15 +303,15 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
             </>
           ) : null}
 
-          {view === 'configuration' ? (
+          {view === 'configuration' || view === 'publishers' ? (
             <div className="flex min-w-0 flex-col gap-1.5">
               <Label htmlFor="filter-portal" className="font-sans text-xs font-medium text-paper-dim">
-                Cari portal
+                {view === 'publishers' ? 'Cari institusi atau portal' : 'Cari portal'}
               </Label>
               <Input
                 id="filter-portal"
                 name="search"
-                placeholder="mis. semarang.domainanda.id"
+                placeholder={view === 'publishers' ? 'mis. Rutan atau batang.domainanda.id' : 'mis. semarang.domainanda.id'}
                 className="h-9 border-hairline-strong bg-bg px-2 font-mono text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus-visible:ring-brass"
               />
             </div>
@@ -364,7 +391,7 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
             <Button
               type="submit"
               variant="default"
-              size="lg"
+              size="sm"
               className="flex-1 lg:flex-none"
             >
               <Search className="h-3 w-3" aria-hidden="true" />
@@ -373,7 +400,7 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
             <Button
               type="button"
               variant="outline"
-              size="lg"
+              size="sm"
               onClick={handleReset}
               aria-label="Bersihkan filter"
               className="flex-1 lg:flex-none"
@@ -383,8 +410,8 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
           </div>
         </div>
       </form>
-      {portalCount === null ? null : (
-        <p className="m-0 mt-3 font-mono text-[11px] tabular-nums text-paper-faint">{portalCount}</p>
+      {countNote === null ? null : (
+        <p className="m-0 mt-2 font-mono text-[11px] tabular-nums text-paper-faint">{countNote}</p>
       )}
     </section>
   );

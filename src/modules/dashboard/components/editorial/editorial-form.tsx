@@ -35,6 +35,7 @@ import type {
   RegionEntity,
 } from '@/modules/dashboard/components/shared/types';
 import { findMatchingCategoryId, localDateTimeToIso, slugify } from '@/modules/dashboard/components/shared/form-utils';
+import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { TAG_MAX_COUNT, normalizeTagList } from '@/modules/site/slug-allocator';
 import type { TipTapDoc, TipTapNode } from '@/modules/site/tiptap-document';
 import { ArticlePreview } from '@/modules/dashboard/components/editorial/article-preview';
@@ -132,6 +133,7 @@ export function ArticleCreateForm({
   } | null;
 
   const regionSelectId = useId();
+  const citySelectId = useId();
   const publisherSelectId = useId();
   const authorSelectId = useId();
   const statusSelectId = useId();
@@ -156,6 +158,8 @@ export function ArticleCreateForm({
   const [featuredName, setFeaturedName] = useState('');
   const [featuredPreviewUrl, setFeaturedPreviewUrl] = useState<string | null>(null);
   const [featuredStatus, setFeaturedStatus] = useState<string | null>(null);
+  const [provinceId, setProvinceId] = useState<string | null>(null);
+  const [cityId, setCityId] = useState<string | null>(null);
   const [uploadingFeatured, setUploadingFeatured] = useState(false);
   const [featuredVersion, setFeaturedVersion] = useState<number | null>(null);
   const [featuredAlt, setFeaturedAlt] = useState('');
@@ -217,7 +221,16 @@ export function ArticleCreateForm({
     setBodyJsonDraft(empty ? null : change.doc);
     setBodyText(change.text);
   };
-  const regionOptions = useMemo(() => (model?.regions ?? []).map((r) => ({ value: r.id, label: r.name })), [model?.regions]);
+  const regionOptions = useMemo(
+    () => (model?.regions ?? []).filter((r) => r.kind !== 'city').map((r) => ({ value: r.id, label: r.name })),
+    [model?.regions],
+  );
+  const cityOptions = useMemo(
+    () => (model?.regions ?? [])
+      .filter((r) => r.kind === 'city' && (provinceId === null || r.parentRegionId === provinceId))
+      .map((r) => ({ value: r.id, label: r.name })),
+    [model?.regions, provinceId],
+  );
   const publisherOptions = useMemo(
     () => (model?.publishers ?? []).filter((p) => p.status === undefined || p.status === 'active').map((p) => ({ value: p.id, label: p.name })),
     [model?.publishers],
@@ -230,6 +243,10 @@ export function ArticleCreateForm({
     const seen = new Set(activeCategories.map((category) => category.id));
     return [...activeCategories, ...extraCategories.filter((category) => !seen.has(category.id))];
   }, [activeCategories, extraCategories]);
+  const defaultCategoryId = useMemo(
+    () => allCategories.find((category) => category.slug === DEFAULT_CATEGORY_SLUG)?.id ?? allCategories[0]?.id ?? null,
+    [allCategories],
+  );
   const authorOptions = useMemo(
     () => (model?.authors ?? []).filter((a) => a.status === undefined || a.status === 'active').map((a) => ({ value: a.id, label: a.displayName })),
     [model?.authors],
@@ -251,6 +268,10 @@ export function ArticleCreateForm({
       setAuthorId(defaultAuthorId);
     }
   }, [publisherId, authorId, defaultAuthorId]);
+
+  const effectiveCategoryIds = categoryIds.length > 0
+    ? categoryIds
+    : defaultCategoryId === null ? [] : [defaultCategoryId];
 
   const selectedPublisher = useMemo(
     () => (model?.publishers ?? []).find((p) => p.id === publisherId) ?? null,
@@ -405,7 +426,7 @@ export function ArticleCreateForm({
       toast.error('Slug hanya boleh huruf kecil, angka, dan strip.');
       return;
     }
-    if (String(formData.get('regionId') ?? '').trim() === '') {
+    if (String(formData.get('provinceId') ?? '').trim() === '') {
       toast.error('Pilih wilayah dulu.');
       return;
     }
@@ -431,10 +452,11 @@ export function ArticleCreateForm({
     startSubmitTransition(async () => {
       const payloadSlug = String(formData.get('slug') ?? '').trim();
       const description = optional('excerpt');
+      const pickedCity = String(formData.get('cityId') ?? '').trim();
       const created = (await onSubmit({
-        regionId: formData.get('regionId'),
+        regionId: pickedCity === '' ? formData.get('provinceId') : pickedCity,
         publisherId: formData.get('publisherId') || null,
-        categoryIds: formData.getAll('categoryIds').map(String),
+        categoryIds: effectiveCategoryIds,
         authorId: formData.get('authorId') || null,
         leadMediaId: formData.get('leadMediaId') || null,
         slug: payloadSlug,
@@ -456,8 +478,10 @@ export function ArticleCreateForm({
       setSlug('');
       setSlugTouched(false);
       setStatus('draft');
-      setCategoryIds([]);
+      setCategoryIds(defaultCategoryId === null ? [] : [defaultCategoryId]);
       setPublisherId(null);
+      setProvinceId(null);
+      setCityId(null);
       touchedAuthor.current = false;
       setAuthorId(defaultAuthorId);
       setTitleText('');
@@ -711,13 +735,37 @@ export function ArticleCreateForm({
                 </Label>
                 <SearchCombobox
                   id={regionSelectId}
-                  name="regionId"
+                  name="provinceId"
                   required
                   disabled={isSubmitting}
                   placeholder="Pilih wilayah"
+                  value={provinceId ?? ''}
+                  onValueChange={(next) => {
+                    setProvinceId(next);
+                    setCityId(null);
+                  }}
                   options={regionOptions}
                 />
               </div>
+
+              {provinceId === null ? null : (
+                <div className="space-y-1.5">
+                  <Label htmlFor={citySelectId} className="font-mono text-xs text-paper-dim">
+                    Kota / kabupaten
+                  </Label>
+                  <SearchCombobox
+                    id={citySelectId}
+                    name="cityId"
+                    disabled={isSubmitting}
+                    allowEmpty
+                    emptyLabel="Semua kota di wilayah ini"
+                    placeholder={cityOptions.length === 0 ? 'Wilayah ini belum punya kota' : 'Pilih kota'}
+                    value={cityId ?? ''}
+                    onValueChange={setCityId}
+                    options={cityOptions}
+                  />
+                </div>
+              )}
 
               <Separator />
 
@@ -742,10 +790,10 @@ export function ArticleCreateForm({
 
               <div className="space-y-1.5">
                 <Label htmlFor={categoryInputId} className="font-mono text-xs text-paper-dim">
-                  Kategori {categoryIds.length > 0 ? `(${categoryIds.length} dipilih)` : '(belum ada)'}
+                  Kategori ({effectiveCategoryIds.length} dipilih{effectiveCategoryIds.length === categoryIds.length ? '' : ' · Umum'})
                 </Label>
                 <p className="m-0 font-mono text-[11px] text-paper-faint">
-                  Ketik untuk mencari; bila tidak ada, tombol tambah muncul di dalam daftar. Boleh lebih dari satu; yang pertama jadi kategori utama.
+                  Ketik untuk mencari; bila tidak ada, tombol tambah muncul di dalam daftar. Boleh lebih dari satu; yang pertama jadi kategori utama. Wajib — tanpa pilihan, artikel memakai “Umum”.
                 </p>
                 <CategoryCombobox
                   id={categoryInputId}

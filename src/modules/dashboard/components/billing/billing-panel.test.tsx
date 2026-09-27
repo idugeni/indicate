@@ -97,7 +97,7 @@ describe('Panel langganan', () => {
     render(<BillingPanel organizationId="org-1" permissions={[]} />);
     expect(await screen.findByText('Ditangguhkan')).toBeDefined();
     fireEvent.click(screen.getByRole('tab', { name: 'Faktur' }));
-    expect(await screen.findByText('Belum ada faktur.')).toBeDefined();
+    expect(await screen.findByText('Belum ada faktur. Catat lewat tab Admin.')).toBeDefined();
   });
 
   it('menyusun ringkasan faktur kosong tanpa blok di dalam paragraf', async () => {
@@ -108,7 +108,7 @@ describe('Panel langganan', () => {
     stubBilling('suspended', []);
     render(<BillingPanel organizationId="org-1" permissions={[]} />);
     const summaryEmpty = await screen.findByText('Belum ada faktur tercatat untuk organisasi ini.');
-    expect(summaryEmpty.closest('p')).toBeNull();
+    expect(summaryEmpty.parentElement?.tagName).not.toBe('P');
     expect(violations.filter((message) => message.includes('cannot be a descendant of'))).toEqual([]);
   });
 

@@ -255,6 +255,50 @@ domain baru maupun domain lama — karena `officialAffiliations` hanya
 ikut pada query artikel, bukan halaman beranda; ini perilaku yang sama
 persis dengan domain lama, bukan gap.
 
+**Bentuk tabel 2026-09-26.** `official_affiliations` menyimpan satu klaim
+per portal, jadi 59 klaim institusi-kota tereplikasi ke 134 domain =
+**7.906 baris untuk 59 fakta** (semua replika identik: `version = 1`,
+`claim_scopes`, `evidence_reference`, `active` sama, nol drift). Daftar
+dasbor karena itu meringkas per klaim: `listPublishers` mengelompokkan
+`(publisher, kota, institution)` dan mengembalikan satu baris per klaim
+lengkap dengan `cityName` + `portalCount`, capped 500 dengan
+`affiliationTotal` / `affiliationRowTotal` untuk membuka sisanya lewat
+`?search=`. `updateAffiliation` ikut fans out ke seluruh replika klaim
+yang sama (kunci: publisher + institution + kota) supaya mengedit satu
+baris tidak meninggalkan 133 portal lain dengan klaim lama. `listPublishers`
+tidak lagi mengirim `sites` — `PublisherForm` tidak pernah membacanya, dan
+4.422 baris portal cukup diwakili lewat `portalCount`.
+
+**Kategori default artikel 2026-09-26 (ledger 206).**
+`articles.category_id` dulu nullable dan komposer membiarkan field itu kosong,
+jadi artikel bisa tersimpan tanpa kategori. Semua konsumen turun kualitas di
+kasus itu: chip kategori dan segmen breadcrumb dihilangkan
+(`templates/*/pages/article-page.tsx`), nav dan profil penulis membangun
+daftar kategori dari `categorySlug IS NOT NULL` sehingga artikel tidak
+terjangkau dari halaman kategori mana pun, dan `articleSection` pada JSON-LD
+NewsArticle, `section` OpenGraph, serta `<category>` RSS semuanya dilewati.
+Migration `20260926200000_default_article_category.sql` men-seed kategori
+`Umum` (slug `umum`) untuk 60 organisasi yang punya publisher; `Drill Expire`
+tidak punya publisher dan tidak mendapat kategori.
+`TenantBusinessService.resolveArticleCategoryIds` mengisi slug itu sebelum
+write, jadi artikel tidak lagi bisa tersimpan tanpa kategori walau pemanggil
+API kosongkan field, dan komposer menampilkan `Umum` sebagai pilihan efektif
+`(1 dipilih · Umum)` tanpa mencentangnya — memilih kategori lain tidak
+menambah tag `Umum`. Fallback kedua adalah kategori aktif pertama
+urutan nama, dan tenant tanpa kategori apa pun ditolak `INVALID_INPUT` alih-alih
+menyimpan null.
+
+**Brand portal di `publishers` dihapus 2026-09-26 (ledger 205).** 9 baris
+`independent_publisher` (Kabar360, Liputan99, Nusantara24, PantauNusantara,
+SuaraFakta24, WartaKini7, Fakta01, Jurnalism, WawasanNusa) adalah apex label
+portal, bukan newsroom: masing-masing mencerminkan 33 baris `sites` dan
+`logoUrl`-nya menunjuk media yang sama dengan `site_settings.logo_media_id`
+apex. Semuanya `archived`, 0 artikel, 0 afiliasi. Migration
+`20260926190000_publisher_brand_removal.sql` menghapus berdasarkan bentuk
+(archived + tak dirujuk + ter-mirror site), bukan daftar nama, dengan guard
+yang gagal keras bila ada `independent_publisher` tanpa sejarah publikasi
+yang bukan brand portal. `publishers` kini 118 = 118 `correctional_institution`.
+
 ## D. Exabytes, batch 2026-09-25 (#2) — 20 apex, 660 site
 
 20 domain didaftarkan Exabytes 2026-09-25, ID Exabytes 347929–347948

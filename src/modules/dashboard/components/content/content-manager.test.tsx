@@ -19,23 +19,41 @@ afterEach(() => {
 });
 
 describe('Pengelola konten dinamis', () => {
-  it('merender tab jenis konten dan tombol muat ulang', async () => {
+  it('merender tab jenis konten, jumlah baris, dan tombol muat ulang', async () => {
     stubContent(EMPTY);
     render(<ContentManager />);
-    expect(screen.getByRole('tab', { name: 'Testimoni' })).toBeDefined();
-    expect(screen.getByRole('tab', { name: 'FAQ' })).toBeDefined();
-    expect(screen.getByRole('tab', { name: 'Etalase Media' })).toBeDefined();
+    expect(screen.getByRole('tab', { name: /^Testimoni/ })).toBeDefined();
+    expect(screen.getByRole('tab', { name: /^FAQ/ })).toBeDefined();
+    expect(screen.getByRole('tab', { name: /^Etalase Media/ })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Muat ulang' })).toBeDefined();
     expect(await screen.findByText(/Perubahan tayang segera setelah disimpan/)).toBeDefined();
+    expect(screen.getByText('Belum ada baris testimoni di situs publik.')).toBeDefined();
   });
 
   it('berpindah tab aktif saat tab diklik', async () => {
     stubContent(EMPTY);
     render(<ContentManager />);
     await screen.findByText(/Perubahan tayang segera setelah disimpan/);
-    fireEvent.click(screen.getByRole('tab', { name: 'FAQ' }));
-    expect(screen.getByRole('tab', { name: 'FAQ' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByRole('tab', { name: 'Testimoni' }).getAttribute('aria-selected')).toBe('false');
+    fireEvent.click(screen.getByRole('tab', { name: /^FAQ/ }));
+    expect(screen.getByRole('tab', { name: /^FAQ/ }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: /^Testimoni/ }).getAttribute('aria-selected')).toBe('false');
+  });
+
+  it('menyaring baris dengan pencarian dan memberi judul manusia pada kartu', async () => {
+    stubContent({
+      ...EMPTY,
+      quotes: [
+        { id: 'q-1', quote: 'Layanan cepat', author: 'Budi', role: 'Pembaca', media: 'Portal Uji', sortOrder: 1, active: true },
+        { id: 'q-2', quote: 'Redaksi gesit', author: 'Sari', role: 'Pembaca', media: 'Portal Uji', sortOrder: 2, active: true },
+      ],
+    });
+    render(<ContentManager />);
+    expect(await screen.findByText('Budi')).toBeDefined();
+    expect(screen.getByText('2 dari 2 baris')).toBeDefined();
+    fireEvent.change(screen.getByLabelText('Cari Testimoni'), { target: { value: 'Sari' } });
+    expect(screen.getByText('1 dari 2 baris')).toBeDefined();
+    expect(screen.queryByText('Budi')).toBeNull();
+    expect(screen.getByText('Sari')).toBeDefined();
   });
 
   it('menampilkan baris testimoni beserta tombol simpan', async () => {
