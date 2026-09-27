@@ -1,4 +1,4 @@
-import { aliasedTable, and, eq, gt, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import { aliasedTable, and, eq, gt, inArray, isNotNull, notInArray, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
@@ -52,9 +52,19 @@ function publicMediaUrl(publicHost: string | null, objectKey: string | null): st
   return `https://${publicHost}/${objectKey}`;
 }
 
+/**
+ * Select the images a gallery should list on its own.
+ *
+ * @remarks The body already renders every image node in `bodyJson`, in place,
+ * between the paragraphs around it. Listing those same nodes again in the
+ * gallery therefore printed every inline image twice per article. The gallery
+ * is for article-owned media that was never placed in the body, so anything
+ * the body already shows is excluded.
+ */
 function galleryScope(articleId: string, referencedIds: readonly string[]) {
-  if (referencedIds.length === 0) return eq(media.articleId, articleId);
-  return or(eq(media.articleId, articleId), and(sql`${media.articleId} IS NULL`, inArray(media.id, [...referencedIds])));
+  const owned = eq(media.articleId, articleId);
+  if (referencedIds.length === 0) return owned;
+  return and(owned, notInArray(media.id, [...referencedIds]));
 }
 
 /**
