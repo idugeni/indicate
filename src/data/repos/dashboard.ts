@@ -1073,15 +1073,6 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         && prior.status === row.status && prior.version === row.version && prior.updatedAt === row.updatedAt) continue;
       await transaction.insert(authors).values({ organizationId: state.organizationId, id: row.id, displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [authors.organizationId, authors.id], set: { displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
     }
-    if (!sameJson(
-      [...state.articleCategories].map((row) => [row.articleId, row.categoryId, row.position]),
-      [...before.articleCategories].map((row) => [row.articleId, row.categoryId, row.position]),
-    )) {
-      await transaction.delete(articleCategories).where(eq(articleCategories.organizationId, state.organizationId));
-      for (const chunk of insertChunks(state.articleCategories)) {
-        await transaction.insert(articleCategories).values(chunk.map((row) => ({ organizationId: state.organizationId, articleId: row.articleId, categoryId: row.categoryId, position: row.position }))).onConflictDoNothing();
-      }
-    }
     const changedArticles: DashboardTenantState['articles'][number][] = [];
     for (const row of state.articles) {
       const prior = index.priorArticles.get(row.id);
@@ -1094,6 +1085,15 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         && sameJson(prior.bodyJson ?? null, row.bodyJson ?? null) && sameJson(prior.tags, row.tags)) continue;
       changedArticles.push(row);
       await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
+    }
+    if (!sameJson(
+      [...state.articleCategories].map((row) => [row.articleId, row.categoryId, row.position]),
+      [...before.articleCategories].map((row) => [row.articleId, row.categoryId, row.position]),
+    )) {
+      await transaction.delete(articleCategories).where(eq(articleCategories.organizationId, state.organizationId));
+      for (const chunk of insertChunks(state.articleCategories)) {
+        await transaction.insert(articleCategories).values(chunk.map((row) => ({ organizationId: state.organizationId, articleId: row.articleId, categoryId: row.categoryId, position: row.position }))).onConflictDoNothing();
+      }
     }
     await this.recordArticleRevisions(transaction, actorId, before, index);
     if (changedArticles.length > 0) await this.syncArticleGalleryMetadata(transaction, changedArticles, state.organizationId);
