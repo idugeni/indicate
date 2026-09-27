@@ -1,4 +1,4 @@
-import { RUNTIME_CONFIG_SNAPSHOT_TTL_SECONDS } from '@/core/config/runtime/runtime-constants';
+import { RUNTIME_CONFIG_SNAPSHOT_SHARED_TTL_SECONDS, RUNTIME_CONFIG_SNAPSHOT_TTL_SECONDS } from '@/core/config/runtime/runtime-constants';
 import { parsePersistedReadModel, type RuntimeConfigSnapshot } from '@/core/config/persisted/parser';
 import type { PersistedRuntimeConfigReadModel } from '@/core/config/persisted/read-model';
 import type { RuntimeConfigReadRepository } from '@/modules/persisted-config/ports';
@@ -16,6 +16,8 @@ export interface CacheEntry {
 export interface SnapshotSharedStore {
   read(environment: string, revision: number): Promise<unknown | null>;
   write(environment: string, revision: number, model: unknown, ttlSeconds: number): Promise<void>;
+  /** Slide the key's expiry forward on a hit; failures stay best-effort. */
+  touch(environment: string, revision: number, ttlSeconds: number): Promise<void>;
 }
 
 export interface SnapshotStatus {
@@ -47,7 +49,7 @@ export class RuntimeConfigSnapshotCache {
     this.#repository = input.repository;
     this.#clock = input.clock;
     this.#store = input.snapshotStore ?? null;
-    this.#storeTtlSeconds = input.snapshotStoreTtlSeconds ?? RUNTIME_CONFIG_SNAPSHOT_TTL_SECONDS;
+    this.#storeTtlSeconds = input.snapshotStoreTtlSeconds ?? RUNTIME_CONFIG_SNAPSHOT_SHARED_TTL_SECONDS;
     void input.ttlSeconds;
   }
 
@@ -79,7 +81,10 @@ export class RuntimeConfigSnapshotCache {
         const shared = await this.#store.read(environment, configurationVersion);
         if (shared !== null) {
           const sharedParsed = parsePersistedReadModel(shared as PersistedRuntimeConfigReadModel, environment);
-          if (sharedParsed.success) return this.adopt(environment, sharedParsed.snapshot);
+          if (sharedParsed.success) {
+            void this.#store.touch(environment, configurationVersion, this.#storeTtlSeconds).catch(() => undefined);
+            return this.adopt(environment, sharedParsed.snapshot);
+          }
         }
       } catch {
         /* fall through to full read */

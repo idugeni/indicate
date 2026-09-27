@@ -30,6 +30,14 @@ export class UpstashSnapshotStore {
     await this.writeKey(`snapshot:${environment}:v${revision}`, model, ttlSeconds);
   }
 
+  async touch(environment: string, revision: number, ttlSeconds: number): Promise<void> {
+    try {
+      await this.redis.expire(`${this.namespace}:snapshot:${environment}:v${revision}`, ttlSeconds);
+    } catch {
+      /* best-effort: an unextended key simply expires on schedule */
+    }
+  }
+
   /**
    * Read an arbitrary namespaced key for cache-aside projections.
    *

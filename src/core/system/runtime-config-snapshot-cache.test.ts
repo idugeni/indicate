@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { FixedMonotonicClock } from '@/core/system/monotonic-clock';
+import { RUNTIME_CONFIG_SNAPSHOT_SHARED_TTL_SECONDS, RUNTIME_CONFIG_SNAPSHOT_TTL_SECONDS } from '@/core/config/runtime/runtime-constants';
 import { RuntimeConfigSnapshotCache, type SnapshotSharedStore } from '@/core/system/runtime-config-snapshot-cache';
 import type { PersistedRuntimeConfigReadModel } from '@/core/config/persisted/read-model';
 import type { RuntimeConfigReadRepository } from '@/modules/persisted-config/ports';
@@ -184,6 +185,30 @@ describe('RuntimeConfigSnapshotCache lapis bersama', () => {
     const store: SnapshotSharedStore = {
       read: async () => validModel(),
       write: async () => {},
+      touch: async () => {},
+    };
+    const { cache } = setup(readComplete, store);
+    const entry = await cache.get('test');
+    expect(entry.snapshot.configurationVersion).toBe(7);
+    expect(readComplete).not.toHaveBeenCalled();
+  });
+
+  it('memperpanjang umur kunci saat storehits agar baca penuh tidak diulang', async () => {
+    const readComplete = vi.fn(async () => validModel());
+    const touch = vi.fn(async () => {});
+    const store: SnapshotSharedStore = { read: async () => validModel(), write: async () => {}, touch };
+    const { cache } = setup(readComplete, store);
+    await cache.get('test');
+    expect(touch).toHaveBeenCalledWith('test', 7, RUNTIME_CONFIG_SNAPSHOT_SHARED_TTL_SECONDS);
+    expect(RUNTIME_CONFIG_SNAPSHOT_SHARED_TTL_SECONDS).toBeGreaterThan(RUNTIME_CONFIG_SNAPSHOT_TTL_SECONDS);
+  });
+
+  it('tetap mengadopsi snapshot ketika touch gagal', async () => {
+    const readComplete = vi.fn(async () => validModel());
+    const store: SnapshotSharedStore = {
+      read: async () => validModel(),
+      write: async () => {},
+      touch: async () => { throw new Error('redis_unavailable'); },
     };
     const { cache } = setup(readComplete, store);
     const entry = await cache.get('test');

@@ -4,6 +4,23 @@ import 'server-only';
 
 export const RUNTIME_CONFIG_SNAPSHOT_TTL_SECONDS = 300;
 
+/**
+ * Lifetime of the shared (Redis) runtime snapshot, independent of the
+ * in-process entry.
+ *
+ * @remarks The key embeds `configurationVersion`, so a committed revision
+ * already misses every older key and correctness never depends on this value —
+ * it only bounds how long a dead revision's blob occupies Redis. Measured on the
+ * tenant fleet it decides how often Postgres re-reads the whole configuration:
+ * with the shared TTL pinned to the 300-second in-process entry, every window
+ * fell through to a full read of `read_runtime_config_active_sites()` plus
+ * `read_runtime_config_site_settings()` — 3.65 MB on the wire for 4,422 sites,
+ * about 2.2 GB/day against a 5 GB monthly Supabase Free egress quota. A hit
+ * slides this window forward, so the full read now happens once per committed
+ * revision instead of once per window.
+ */
+export const RUNTIME_CONFIG_SNAPSHOT_SHARED_TTL_SECONDS = 3_600;
+
 /** Bootstrap grammar: 1 = monolithic, 2 = reduced allowlist. */
 export const BOOTSTRAP_GRAMMAR_VERSION = 2;
 
