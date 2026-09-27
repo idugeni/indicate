@@ -47,6 +47,80 @@ interface TaxonomyTag {
 const MANAGER_PAGE_SIZE = 12;
 
 /**
+ * Render the range counter and pager for one managed list.
+ *
+ * @param total - Rows matching the current filter.
+ * @param page - Current 1-based page, already clamped to the page count.
+ * @param pageCount - Total pages, at least 1.
+ * @param noun - List name used in the pager's accessible labels.
+ * @param onPageChange - Receives the requested 1-based page.
+ * @returns Pager row, or null when the list is empty.
+ */
+function ManagerPagination({
+  total,
+  page,
+  pageCount,
+  noun,
+  onPageChange,
+}: {
+  readonly total: number;
+  readonly page: number;
+  readonly pageCount: number;
+  readonly noun: string;
+  readonly onPageChange: (page: number) => void;
+}) {
+  if (total === 0) return null;
+  const first = (page - 1) * MANAGER_PAGE_SIZE + 1;
+  const last = Math.min(page * MANAGER_PAGE_SIZE, total);
+  const atStart = page <= 1;
+  const atEnd = page >= pageCount;
+  return (
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+      <span role="status" aria-live="polite" aria-atomic="true" className="font-mono text-[11px] tabular-nums text-paper-faint">
+        {first}–{last} dari {total}
+      </span>
+      <Pagination className="mx-0 w-auto">
+        <PaginationContent className="gap-4">
+          <PaginationItem>
+            <PaginationPrevious
+              text="Sebelumnya"
+              href="#"
+              aria-label={`Ke halaman ${noun} sebelumnya`}
+              aria-disabled={atStart}
+              tabIndex={atStart ? -1 : 0}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!atStart) onPageChange(page - 1);
+              }}
+              className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${atStart ? 'pointer-events-none opacity-40' : 'cursor-pointer'}`}
+            />
+          </PaginationItem>
+          <PaginationItem>
+            <span className="font-mono text-[11px] tabular-nums text-paper-faint">
+              {page} / {pageCount}
+            </span>
+          </PaginationItem>
+          <PaginationItem>
+            <PaginationNext
+              text="Berikutnya"
+              href="#"
+              aria-label={`Ke halaman ${noun} berikutnya`}
+              aria-disabled={atEnd}
+              tabIndex={atEnd ? -1 : 0}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!atEnd) onPageChange(page + 1);
+              }}
+              className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${atEnd ? 'pointer-events-none opacity-40' : 'cursor-pointer'}`}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    </div>
+  );
+}
+
+/**
  * Kelola kanal kategori dan rapikan tag topik dalam satu layar.
  *
  * @param data - Proyeksi `taxonomy.list` (kategori + hitungan artikel, tag + hitungan pakai).
@@ -273,7 +347,11 @@ export function TaxonomyManager({
           </div>
         </div>
         {pagedCategories.length === 0 ? (
-          <p className="m-0 font-sans text-sm text-paper-faint">Tidak ada kanal yang cocok. Longgarkan saringan atau buat dari formulir di atas.</p>
+          <p className="m-0 font-sans text-sm text-paper-faint">
+            {categories.length === 0
+              ? 'Belum ada kanal kategori. Buat dari formulir di atas.'
+              : 'Tidak ada kanal yang cocok. Longgarkan saringan atau buat dari formulir di atas.'}
+          </p>
         ) : (
           <ul className="m-0 grid list-none gap-1.5 p-0 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {pagedCategories.map((category) => (
@@ -313,48 +391,13 @@ export function TaxonomyManager({
             ))}
           </ul>
         )}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <span role="status" aria-live="polite" aria-atomic="true" className="font-mono text-[11px] tabular-nums text-paper-faint">
-            {visibleCategories.length === 0 ? 0 : (safeCategoryPage - 1) * MANAGER_PAGE_SIZE + 1}–{Math.min(safeCategoryPage * MANAGER_PAGE_SIZE, visibleCategories.length)} dari {visibleCategories.length}
-          </span>
-          <Pagination className="mx-0 w-auto">
-            <PaginationContent className="gap-4">
-              <PaginationItem>
-                <PaginationPrevious
-                  text="Sebelumnya"
-                  href="#"
-                  aria-label="Ke halaman kanal sebelumnya"
-                  aria-disabled={safeCategoryPage <= 1}
-                  tabIndex={safeCategoryPage <= 1 ? -1 : 0}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    if (safeCategoryPage > 1) setCategoryPage(safeCategoryPage - 1);
-                  }}
-                  className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${safeCategoryPage <= 1 ? 'pointer-events-none opacity-40' : 'cursor-pointer'}`}
-                />
-              </PaginationItem>
-              <PaginationItem>
-                <span className="font-mono text-[11px] tabular-nums text-paper-faint">
-                  {safeCategoryPage} / {categoryPageCount}
-                </span>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext
-                  text="Berikutnya"
-                  href="#"
-                  aria-label="Ke halaman kanal berikutnya"
-                  aria-disabled={safeCategoryPage >= categoryPageCount}
-                  tabIndex={safeCategoryPage >= categoryPageCount ? -1 : 0}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    if (safeCategoryPage < categoryPageCount) setCategoryPage(safeCategoryPage + 1);
-                  }}
-                  className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${safeCategoryPage >= categoryPageCount ? 'pointer-events-none opacity-40' : 'cursor-pointer'}`}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
+        <ManagerPagination
+          total={visibleCategories.length}
+          page={safeCategoryPage}
+          pageCount={categoryPageCount}
+          noun="kanal"
+          onPageChange={setCategoryPage}
+        />
       </SectionCard>
 
       <SectionCard icon={Hash} title={`Tag topik (${visibleTags.length}/${tags.length})`} eyebrow="Hitungan pakai">
@@ -365,7 +408,11 @@ export function TaxonomyManager({
           </div>
         </div>
         {pagedTags.length === 0 ? (
-          <p className="m-0 font-sans text-sm text-paper-faint">Tidak ada tag yang cocok. Tag muncul setelah artikel memakai kolom tag.</p>
+          <p className="m-0 font-sans text-sm text-paper-faint">
+            {tags.length === 0
+              ? 'Belum ada tag topik. Tag muncul sendiri setelah artikel memakai kolom tag.'
+              : 'Tidak ada tag yang cocok. Longgarkan saringan atau periksa ejaan.'}
+          </p>
         ) : (
           <ul className="m-0 grid list-none gap-1.5 p-0 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {pagedTags.map((item) => (
@@ -391,48 +438,13 @@ export function TaxonomyManager({
             ))}
           </ul>
         )}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <span role="status" aria-live="polite" aria-atomic="true" className="font-mono text-[11px] tabular-nums text-paper-faint">
-            {visibleTags.length === 0 ? 0 : (safeTagPage - 1) * MANAGER_PAGE_SIZE + 1}–{Math.min(safeTagPage * MANAGER_PAGE_SIZE, visibleTags.length)} dari {visibleTags.length}
-          </span>
-          <Pagination className="mx-0 w-auto">
-            <PaginationContent className="gap-4">
-              <PaginationItem>
-                <PaginationPrevious
-                  text="Sebelumnya"
-                  href="#"
-                  aria-label="Ke halaman tag sebelumnya"
-                  aria-disabled={safeTagPage <= 1}
-                  tabIndex={safeTagPage <= 1 ? -1 : 0}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    if (safeTagPage > 1) setTagPage(safeTagPage - 1);
-                  }}
-                  className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${safeTagPage <= 1 ? 'pointer-events-none opacity-40' : 'cursor-pointer'}`}
-                />
-              </PaginationItem>
-              <PaginationItem>
-                <span className="font-mono text-[11px] tabular-nums text-paper-faint">
-                  {safeTagPage} / {tagPageCount}
-                </span>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext
-                  text="Berikutnya"
-                  href="#"
-                  aria-label="Ke halaman tag berikutnya"
-                  aria-disabled={safeTagPage >= tagPageCount}
-                  tabIndex={safeTagPage >= tagPageCount ? -1 : 0}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    if (safeTagPage < tagPageCount) setTagPage(safeTagPage + 1);
-                  }}
-                  className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${safeTagPage >= tagPageCount ? 'pointer-events-none opacity-40' : 'cursor-pointer'}`}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
+        <ManagerPagination
+          total={visibleTags.length}
+          page={safeTagPage}
+          pageCount={tagPageCount}
+          noun="tag"
+          onPageChange={setTagPage}
+        />
       </SectionCard>
 
       <AlertDialog open={pendingCategoryDelete !== null} onOpenChange={(open) => { if (!open) setPendingCategoryDelete(null); }}>

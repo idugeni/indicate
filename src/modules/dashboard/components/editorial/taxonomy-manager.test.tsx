@@ -113,4 +113,23 @@ describe('TaxonomyManager', () => {
     expect(screen.queryByText('Politik')).toBeNull();
     expect(screen.getByText('Ekonomi')).toBeDefined();
   });
+
+  it('menyembunyikan paginasi dan menyalahkan saringan hanya saat daftarnya kosong', () => {
+    const { container } = render(
+      <TaxonomyManager data={{ categories: [], tags: [] }} command={async () => ({})} />,
+    );
+    expect(screen.getByText('Belum ada kanal kategori. Buat dari formulir di atas.')).toBeDefined();
+    expect(screen.getByText('Belum ada tag topik. Tag muncul sendiri setelah artikel memakai kolom tag.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Ke halaman kanal sebelumnya/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Ke halaman tag berikutnya/ })).toBeNull();
+    expect(container.textContent).not.toContain('0–0 dari 0');
+  });
+
+  it('menyalahkan saringan, bukan data, saat kanal ada tetapi tidak cocok', async () => {
+    const user = userEvent.setup();
+    render(<TaxonomyManager data={DATA} command={async () => ({})} />);
+    await user.type(screen.getByLabelText('Cari kanal'), 'tidak-ada-sama-sekali');
+    expect(screen.getByText('Tidak ada kanal yang cocok. Longgarkan saringan atau buat dari formulir di atas.')).toBeDefined();
+    expect(screen.getByRole('button', { name: /Ke halaman tag sebelumnya/ })).toBeDefined();
+  });
 });
