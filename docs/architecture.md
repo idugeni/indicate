@@ -658,6 +658,14 @@ A content/configuration mutation creates `invalidation_tasks` in the same transa
 
 Article/publication, Site Settings, hostname/Region, Publisher identity/verification/affiliation, and public media-reference changes cover listing, detail, Category, search, media, SEO, sitemap, RSS, old-host, and new-host partitions. On failure, a Site-level bypass version prevents stale cross-context use while bounded retries or a broader Site purge proceed. Unrelated Sites are not invalidated.
 
+### 13.4 Database egress budget
+
+The project runs on the Supabase Free plan, where every byte PostgreSQL sends back out — a column in a result set, a row in an update `returning()`, a feed body — counts against a 5 GB unified egress quota shared by Database, Auth, and Shared Pooler egress. Exceeding it puts the organization into a grace period rather than billing it, so the quota is a hard availability budget, not a cost line. Every public read therefore needs a cache layer above the query, not only a cache header: an edge `s-maxage` still spends the bytes once per TTL window per host, and a 600-second window across the tenant fleet re-reads the same rows ~36 times a day. The measured offenders and their rules:
+
+- Machine-readable surfaces are cached in the data cache, not left to the edge alone. `robots.txt` revalidates hourly; the RSS feed revalidates on the same TTL as portal pages, keyed by host/Organization/Site with `limit` as a query dimension. Both carry full article bodies, so they are the largest single per-request payload the public fleet produces.
+- The cache-bypass flag is read inside the branch that needs it. A preview, authenticated, or cache-less request goes straight to `loadNetworkBundle`, which returns that flag in the same transaction as the site read, so a separate `isCacheBypassed` round trip would repeat a read the bundle performs anyway.
+- Listing, sitemap, and news-sitemap paths select columns explicitly. `body` is truncated in the database (`substring(body from 1 for 600)`) wherever only an excerpt is rendered; full bodies are read only for the single-article detail path and the RSS feed.
+
 ## 14. SEO architecture
 
 A pure Absolute URL Builder accepts only Hostname Context and canonical path; untrusted request host values never reach it. A pure SEO Document Builder produces escaped title/description, canonical, Open Graph, NewsArticle, Breadcrumb, Organization, and WebSite models. Dedicated serializers emit HTML metadata, robots text, sitemap XML, RSS XML, and safe JSON-LD.

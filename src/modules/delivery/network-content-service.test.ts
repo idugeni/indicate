@@ -32,14 +32,20 @@ function harness(options: {
   readonly bundleSite?: typeof siteData | null;
   readonly cachedEntry?: { readonly identity: unknown; readonly data: unknown } | null;
   readonly withCache?: boolean;
+  readonly feed?: readonly unknown[];
+  readonly cachedFeed?: readonly unknown[];
 } = {}) {
   const repository = {
     loadNetworkSite: vi.fn(async () => siteData),
     loadNetworkBundle: vi.fn(async () => ({ site: options.bundleSite === undefined ? siteData : options.bundleSite })),
     isCacheBypassed: vi.fn(async () => options.bypassed ?? false),
+    loadNetworkFeed: vi.fn(async () => options.feed ?? []),
   };
   const cache = {
-    read: vi.fn(async (identity: unknown) => options.cachedEntry ?? { identity, data: siteData }),
+    read: vi.fn(async (identity: unknown, _tags: readonly string[]) => {
+      if (options.cachedEntry !== undefined) return options.cachedEntry;
+      return { identity, data: options.cachedFeed ?? siteData };
+    }),
   };
   const service = new NetworkContentService(
     repository as never,
@@ -91,6 +97,20 @@ describe('NetworkContentService cache paths', () => {
     expect(authed.cache.read).not.toHaveBeenCalled();
   });
 
+  it('tidak membaca status bypass saat cache tidak akan dipakai', async () => {
+    const preview = harness();
+    await preview.service.load(CONTEXT, {}, { path: '/', locale: 'id-ID', preview: true });
+    expect(preview.repository.isCacheBypassed).not.toHaveBeenCalled();
+
+    const authed = harness();
+    await authed.service.load(CONTEXT, {}, { path: '/', locale: 'id-ID', authClass: 'authenticated' });
+    expect(authed.repository.isCacheBypassed).not.toHaveBeenCalled();
+
+    const uncached = harness({ withCache: false });
+    await uncached.service.load(CONTEXT, {}, { path: '/', locale: 'id-ID' });
+    expect(uncached.repository.isCacheBypassed).not.toHaveBeenCalled();
+  });
+
   it('menyajikan entri cache yang cocok', async () => {
     const { service, cache } = harness();
     const result = await service.load(CONTEXT, {}, { path: '/', locale: 'id-ID' });
@@ -113,5 +133,31 @@ describe('NetworkContentService cache paths', () => {
 
     const foreign = harness({ bundleSite: { ...siteData, context: { ...CONTEXT, organizationId: 'org-asing' } } });
     await expect(foreign.service.load(CONTEXT, {})).resolves.toBe(null);
+  });
+});
+
+describe('NetworkContentService feed cache', () => {
+  const feed = [{ id: 'a-1', slug: 'berita', title: 'Berita' }];
+
+  it('menyajikan feed dari data cache bertag host, org, dan site', async () => {
+    const { service, repository, cache } = harness({ feed, cachedFeed: feed });
+    const result = await service.loadFeed(CONTEXT, 50);
+    expect(result).toEqual(feed);
+    expect(cache.read).toHaveBeenCalledTimes(1);
+    expect(repository.loadNetworkFeed).not.toHaveBeenCalled();
+    expect(cache.read.mock.calls[0]?.[1]).toEqual(['host:portal.example', 'org:org-1', 'site:site-1']);
+  });
+
+  it('memuat feed langsung tanpa cache port', async () => {
+    const { service, repository, cache } = harness({ feed, withCache: false });
+    await expect(service.loadFeed(CONTEXT, 25)).resolves.toEqual(feed);
+    expect(cache.read).not.toHaveBeenCalled();
+    expect(repository.loadNetworkFeed).toHaveBeenCalledWith(CONTEXT, 25);
+  });
+
+  it('jatuh ke repository saat identitas cache tidak cocok', async () => {
+    const { service, repository } = harness({ feed, cachedEntry: { identity: { embedded: { hostname: 'lain.example' } }, data: [] } });
+    await expect(service.loadFeed(CONTEXT, 50)).resolves.toEqual(feed);
+    expect(repository.loadNetworkFeed).toHaveBeenCalledTimes(1);
   });
 });

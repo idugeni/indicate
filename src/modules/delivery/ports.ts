@@ -6,13 +6,13 @@ export interface NextCacheInvalidationPort {
   revalidatePaths(paths: readonly string[]): Promise<void>;
 }
 
-export interface NetworkSiteCacheEntry {
+export interface NetworkSiteCacheEntry<T> {
   readonly identity: CacheIdentity;
-  readonly data: NetworkSiteData | null;
+  readonly data: T;
 }
 
 export interface NetworkSiteCachePort {
-  read(identity: CacheIdentity, tags: readonly string[], loader: () => Promise<NetworkSiteData | null>): Promise<NetworkSiteCacheEntry>;
+  read<T>(identity: CacheIdentity, tags: readonly string[], loader: () => Promise<T>): Promise<NetworkSiteCacheEntry<T>>;
 }
 
 export interface SiteCategory {
