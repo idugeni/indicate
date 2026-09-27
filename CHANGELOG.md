@@ -110,6 +110,11 @@ npm-facing.
 
 ### Fixed
 
+- The daily `/api/health` keep-alive cron that
+  `docs/production-readiness-runbook.md` requires was missing from
+  `vercel.json`. The route reads the configuration snapshot from Postgres on
+  every request, so it is the call that holds off a Supabase Free auto-pause.
+  Scheduled at 04:47 UTC, clear of the 05:00 certificate and 05:30 export runs.
 - The Ignored Build Step compared only `HEAD^..HEAD`, so it saw just the last
   commit of a push. A push whose final commit was docs-only exited 0, Vercel
   cancelled the build, and every code commit in that same push never reached
