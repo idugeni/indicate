@@ -54,6 +54,76 @@ function resolveWindow(filter: { readonly from?: string | undefined; readonly to
 }
 const MANUAL_PURGE_BULK_COOLDOWN_SECONDS = 120;
 
+/** Row identity lookups for one tenant snapshot, so diffing never rescans a collection. */
+interface TenantStateIndex {
+  readonly priorDomains: ReadonlyMap<string, DashboardTenantState['domains'][number]>;
+  readonly priorRegions: ReadonlyMap<string, DashboardTenantState['regions'][number]>;
+  readonly priorSites: ReadonlyMap<string, DashboardTenantState['sites'][number]>;
+  readonly priorSiteSettings: ReadonlyMap<string, DashboardTenantState['siteSettings'][number]>;
+  readonly priorAffiliations: ReadonlyMap<string, DashboardTenantState['affiliations'][number]>;
+  readonly priorCategories: ReadonlyMap<string, DashboardTenantState['categories'][number]>;
+  readonly priorAuthors: ReadonlyMap<string, DashboardTenantState['authors'][number]>;
+  readonly priorPublishers: ReadonlyMap<string, DashboardTenantState['publishers'][number]>;
+  readonly priorArticles: ReadonlyMap<string, DashboardTenantState['articles'][number]>;
+  readonly priorArticleSites: ReadonlyMap<string, DashboardTenantState['articleSites'][number]>;
+  readonly currentArticles: ReadonlyMap<string, DashboardTenantState['articles'][number]>;
+  readonly currentArticleSites: ReadonlyMap<string, DashboardTenantState['articleSites'][number]>;
+  readonly currentSites: ReadonlyMap<string, DashboardTenantState['sites'][number]>;
+  readonly currentCategories: ReadonlyMap<string, DashboardTenantState['categories'][number]>;
+}
+
+function indexBy<T extends { readonly id: string }>(rows: readonly T[]): Map<string, T> {
+  return new Map(rows.map((row) => [row.id, row]));
+}
+
+function indexSiteSettingsBy(rows: readonly DashboardTenantState['siteSettings'][number][]): Map<string, DashboardTenantState['siteSettings'][number]> {
+  return new Map(rows.map((row) => [row.siteId, row]));
+}
+
+/** Build every identity map the mutation diff needs, once per transaction. */
+function buildTenantStateIndex(before: DashboardTenantState, state: MutableTenantState): TenantStateIndex {
+  return {
+    priorDomains: indexBy(before.domains),
+    priorRegions: indexBy(before.regions),
+    priorSites: indexBy(before.sites),
+    priorSiteSettings: indexSiteSettingsBy(before.siteSettings),
+    priorAffiliations: indexBy(before.affiliations),
+    priorCategories: indexBy(before.categories),
+    priorAuthors: indexBy(before.authors),
+    priorPublishers: indexBy(before.publishers),
+    priorArticles: indexBy(before.articles),
+    priorArticleSites: indexBy(before.articleSites),
+    currentArticles: indexBy(state.articles),
+    currentArticleSites: indexBy(state.articleSites),
+    currentSites: indexBy(state.sites),
+    currentCategories: indexBy(state.categories),
+  };
+}
+
+export function sameJson(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+/** Rows per multi-row insert, kept well under the 65,535 bind-parameter ceiling. */
+const INSERT_CHUNK_ROWS = 200;
+
+/**
+ * Split a collection into multi-row-sized slices.
+ *
+ * @remarks One dashboard mutation can touch hundreds of rows at once, such as
+ * assigning an article across a tenant's portal tree. Awaiting a statement per row
+ * held the organization row lock for the whole fan-out; batching collapses it to a
+ * handful of round trips.
+ *
+ * @param rows - Rows to write, in order.
+ * @returns Non-empty slices of at most {@link INSERT_CHUNK_ROWS} rows.
+ */
+export function* insertChunks<T>(rows: readonly T[]): Generator<readonly T[]> {
+  for (let offset = 0; offset < rows.length; offset += INSERT_CHUNK_ROWS) {
+    yield rows.slice(offset, offset + INSERT_CHUNK_ROWS);
+  }
+}
+
 export interface AnalyticsLabelInput {
   readonly siteLabelRows: readonly { id: string; name: string }[];
   readonly categoryLabelRows: readonly { id: string; name: string }[];
@@ -911,10 +981,40 @@ export class DrizzleDashboardRepository implements DashboardRepository {
   }
 
   private async persist(transaction: Transaction, actorId: string, before: DashboardTenantState, state: MutableTenantState, pendingAudits: readonly AuditRecord[]): Promise<void> {
-    for (const row of state.domains) await transaction.insert(domains).values({ organizationId: state.organizationId, id: row.id, normalizedHostname: row.normalizedHostname, status: row.status, cloudflareZoneId: row.cloudflareZoneId, siteTopology: row.siteTopology, routingVersion: row.routingVersion, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [domains.organizationId, domains.id], set: { normalizedHostname: row.normalizedHostname, status: row.status, cloudflareZoneId: row.cloudflareZoneId, siteTopology: row.siteTopology, routingVersion: row.routingVersion, version: row.version, updatedAt: new Date(row.updatedAt) } });
-    for (const row of state.regions) await transaction.insert(regions).values({ organizationId: state.organizationId, id: row.id, externalKey: row.externalKey, name: row.name, shortName: row.shortName, slug: row.slug, status: row.status, kind: row.kind, parentRegionId: row.parentRegionId, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [regions.organizationId, regions.id], set: { externalKey: row.externalKey, name: row.name, shortName: row.shortName, slug: row.slug, status: row.status, kind: row.kind, parentRegionId: row.parentRegionId, version: row.version, updatedAt: new Date(row.updatedAt) } });
-    for (const row of state.sites) await transaction.insert(sites).values({ organizationId: state.organizationId, id: row.id, domainId: row.domainId, regionId: row.regionId, siteLevel: row.siteLevel, parentSiteId: row.parentSiteId, normalizedHostname: row.normalizedHostname, status: row.status, activationState: row.activationState, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [sites.organizationId, sites.id], set: { domainId: row.domainId, regionId: row.regionId, siteLevel: row.siteLevel, parentSiteId: row.parentSiteId, normalizedHostname: row.normalizedHostname, status: row.status, activationState: row.activationState, version: row.version, updatedAt: new Date(row.updatedAt) } });
-    for (const row of state.siteSettings) await transaction.insert(siteSettings).values({ organizationId: state.organizationId, siteId: row.siteId, name: row.name, description: row.description, tagline: row.tagline, seoDefaultTitle: row.seoDefaultTitle, seoDefaultDescription: row.seoDefaultDescription, seoOpenGraphSiteName: row.seoOpenGraphSiteName, locale: row.locale, seoRobotsDirective: row.seoRobotsDirective, colors: row.colors, socialLinks: row.socialLinks, seo: row.seo, navigation: row.navigation.map(({ label, path }) => ({ label, path })), logoMediaId: row.logoMediaId, faviconMediaId: row.faviconMediaId, defaultMediaId: row.defaultMediaId, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [siteSettings.organizationId, siteSettings.siteId], set: { name: row.name, description: row.description, tagline: row.tagline, seoDefaultTitle: row.seoDefaultTitle, seoDefaultDescription: row.seoDefaultDescription, seoOpenGraphSiteName: row.seoOpenGraphSiteName, locale: row.locale, seoRobotsDirective: row.seoRobotsDirective, colors: row.colors, socialLinks: row.socialLinks, seo: row.seo, navigation: row.navigation.map(({ label, path }) => ({ label, path })), logoMediaId: row.logoMediaId, faviconMediaId: row.faviconMediaId, defaultMediaId: row.defaultMediaId, version: row.version, updatedAt: new Date(row.updatedAt) } });
+    const index = buildTenantStateIndex(before, state);
+    for (const row of state.domains) {
+      const prior = index.priorDomains.get(row.id);
+      if (prior !== undefined && prior.normalizedHostname === row.normalizedHostname && prior.status === row.status
+        && prior.cloudflareZoneId === row.cloudflareZoneId && prior.siteTopology === row.siteTopology
+        && prior.routingVersion === row.routingVersion && prior.version === row.version && prior.updatedAt === row.updatedAt) continue;
+      await transaction.insert(domains).values({ organizationId: state.organizationId, id: row.id, normalizedHostname: row.normalizedHostname, status: row.status, cloudflareZoneId: row.cloudflareZoneId, siteTopology: row.siteTopology, routingVersion: row.routingVersion, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [domains.organizationId, domains.id], set: { normalizedHostname: row.normalizedHostname, status: row.status, cloudflareZoneId: row.cloudflareZoneId, siteTopology: row.siteTopology, routingVersion: row.routingVersion, version: row.version, updatedAt: new Date(row.updatedAt) } });
+    }
+    for (const row of state.regions) {
+      const prior = index.priorRegions.get(row.id);
+      if (prior !== undefined && prior.externalKey === row.externalKey && prior.name === row.name && prior.shortName === row.shortName
+        && prior.slug === row.slug && prior.status === row.status && prior.kind === row.kind && prior.parentRegionId === row.parentRegionId
+        && prior.version === row.version && prior.updatedAt === row.updatedAt) continue;
+      await transaction.insert(regions).values({ organizationId: state.organizationId, id: row.id, externalKey: row.externalKey, name: row.name, shortName: row.shortName, slug: row.slug, status: row.status, kind: row.kind, parentRegionId: row.parentRegionId, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [regions.organizationId, regions.id], set: { externalKey: row.externalKey, name: row.name, shortName: row.shortName, slug: row.slug, status: row.status, kind: row.kind, parentRegionId: row.parentRegionId, version: row.version, updatedAt: new Date(row.updatedAt) } });
+    }
+    for (const row of state.sites) {
+      const prior = index.priorSites.get(row.id);
+      if (prior !== undefined && prior.domainId === row.domainId && prior.regionId === row.regionId && prior.siteLevel === row.siteLevel
+        && prior.parentSiteId === row.parentSiteId && prior.normalizedHostname === row.normalizedHostname && prior.status === row.status
+        && prior.activationState === row.activationState && prior.version === row.version && prior.updatedAt === row.updatedAt) continue;
+      await transaction.insert(sites).values({ organizationId: state.organizationId, id: row.id, domainId: row.domainId, regionId: row.regionId, siteLevel: row.siteLevel, parentSiteId: row.parentSiteId, normalizedHostname: row.normalizedHostname, status: row.status, activationState: row.activationState, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [sites.organizationId, sites.id], set: { domainId: row.domainId, regionId: row.regionId, siteLevel: row.siteLevel, parentSiteId: row.parentSiteId, normalizedHostname: row.normalizedHostname, status: row.status, activationState: row.activationState, version: row.version, updatedAt: new Date(row.updatedAt) } });
+    }
+    for (const row of state.siteSettings) {
+      const prior = index.priorSiteSettings.get(row.siteId);
+      if (prior !== undefined && prior.name === row.name && prior.description === row.description && prior.tagline === row.tagline
+        && prior.seoDefaultTitle === row.seoDefaultTitle && prior.seoDefaultDescription === row.seoDefaultDescription
+        && prior.seoOpenGraphSiteName === row.seoOpenGraphSiteName && prior.locale === row.locale
+        && prior.seoRobotsDirective === row.seoRobotsDirective && prior.logoMediaId === row.logoMediaId
+        && prior.faviconMediaId === row.faviconMediaId && prior.defaultMediaId === row.defaultMediaId
+        && prior.version === row.version && prior.updatedAt === row.updatedAt
+        && sameJson(prior.colors, row.colors) && sameJson(prior.socialLinks, row.socialLinks)
+        && sameJson(prior.seo, row.seo) && sameJson(prior.navigation, row.navigation)) continue;
+      await transaction.insert(siteSettings).values({ organizationId: state.organizationId, siteId: row.siteId, name: row.name, description: row.description, tagline: row.tagline, seoDefaultTitle: row.seoDefaultTitle, seoDefaultDescription: row.seoDefaultDescription, seoOpenGraphSiteName: row.seoOpenGraphSiteName, locale: row.locale, seoRobotsDirective: row.seoRobotsDirective, colors: row.colors, socialLinks: row.socialLinks, seo: row.seo, navigation: row.navigation.map(({ label, path }) => ({ label, path })), logoMediaId: row.logoMediaId, faviconMediaId: row.faviconMediaId, defaultMediaId: row.defaultMediaId, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [siteSettings.organizationId, siteSettings.siteId], set: { name: row.name, description: row.description, tagline: row.tagline, seoDefaultTitle: row.seoDefaultTitle, seoDefaultDescription: row.seoDefaultDescription, seoOpenGraphSiteName: row.seoOpenGraphSiteName, locale: row.locale, seoRobotsDirective: row.seoRobotsDirective, colors: row.colors, socialLinks: row.socialLinks, seo: row.seo, navigation: row.navigation.map(({ label, path }) => ({ label, path })), logoMediaId: row.logoMediaId, faviconMediaId: row.faviconMediaId, defaultMediaId: row.defaultMediaId, version: row.version, updatedAt: new Date(row.updatedAt) } });
+    }
     for (const row of state.roles) {
       const prior = before.roles.find(({ id }) => id === row.id);
       const same = prior !== undefined && prior.name === row.name && prior.tier === row.tier && prior.active === row.active
@@ -953,31 +1053,94 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       if (same) continue;
       await transaction.insert(publishers).values({ organizationId: state.organizationId, id: row.id, name: row.name, type: row.type, attributionLabel: row.attributionLabel, contacts: row.contacts, evidenceReference: row.evidenceReference, verificationStatus: row.verificationStatus, submittedBy: row.submittedBy, submittedAt: row.submittedAt === null ? null : new Date(row.submittedAt), verifiedBy: row.verifiedBy, verifiedAt: row.verifiedAt === null ? null : new Date(row.verifiedAt), rejectionReason: row.rejectionReason, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [publishers.organizationId, publishers.id], set: { name: row.name, type: row.type, attributionLabel: row.attributionLabel, contacts: row.contacts, evidenceReference: row.evidenceReference, verificationStatus: row.verificationStatus, submittedBy: row.submittedBy, submittedAt: row.submittedAt === null ? null : new Date(row.submittedAt), verifiedBy: row.verifiedBy, verifiedAt: row.verifiedAt === null ? null : new Date(row.verifiedAt), rejectionReason: row.rejectionReason, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
     }
-    for (const row of state.affiliations) await transaction.insert(officialAffiliations).values({ organizationId: state.organizationId, id: row.id, publisherId: row.publisherId, siteId: row.siteId, institutionName: row.institutionName, claimScopes: [...row.claimScopes], evidenceReference: row.evidenceReference, active: row.active, verifiedAt: row.verifiedAt === null ? null : new Date(row.verifiedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [officialAffiliations.organizationId, officialAffiliations.id], set: { institutionName: row.institutionName, claimScopes: [...row.claimScopes], evidenceReference: row.evidenceReference, active: row.active, verifiedAt: row.verifiedAt === null ? null : new Date(row.verifiedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
-    for (const row of state.categories) await transaction.insert(categories).values({ organizationId: state.organizationId, id: row.id, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [categories.organizationId, categories.id], set: { name: row.name, slug: row.slug, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
-    for (const row of state.authors) await transaction.insert(authors).values({ organizationId: state.organizationId, id: row.id, displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [authors.organizationId, authors.id], set: { displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
-    await transaction.delete(articleCategories).where(eq(articleCategories.organizationId, state.organizationId));
-    for (const row of state.articleCategories) await transaction.insert(articleCategories).values({ organizationId: state.organizationId, articleId: row.articleId, categoryId: row.categoryId, position: row.position }).onConflictDoNothing();
-    for (const row of state.articles) await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
-    await this.recordArticleRevisions(transaction, actorId, before, state);
-    await this.syncArticleGalleryMetadata(transaction, state);
-    for (const row of state.articleSites) await transaction.insert(articleSites).values({ organizationId: state.organizationId, id: row.id, articleId: row.articleId, siteId: row.siteId, state: row.state, stateOccurredAt: new Date(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), active: row.active, viewCount: row.viewCount, assignmentSource: row.assignmentSource, expandedFromSiteId: row.expandedFromSiteId, customCanonicalUrl: row.customCanonicalUrl, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articleSites.organizationId, articleSites.id], set: { state: row.state, stateOccurredAt: new Date(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), active: row.active, viewCount: row.viewCount, assignmentSource: row.assignmentSource, expandedFromSiteId: row.expandedFromSiteId, customCanonicalUrl: row.customCanonicalUrl, version: row.version, updatedAt: new Date(row.updatedAt) } });
-    await this.enqueueDeliveryInvalidations(transaction, before, state);
+    for (const row of state.affiliations) {
+      const prior = index.priorAffiliations.get(row.id);
+      if (prior !== undefined && prior.publisherId === row.publisherId && prior.siteId === row.siteId
+        && prior.institutionName === row.institutionName && prior.evidenceReference === row.evidenceReference
+        && prior.active === row.active && prior.verifiedAt === row.verifiedAt && prior.version === row.version
+        && prior.updatedAt === row.updatedAt && sameJson(prior.claimScopes, row.claimScopes)) continue;
+      await transaction.insert(officialAffiliations).values({ organizationId: state.organizationId, id: row.id, publisherId: row.publisherId, siteId: row.siteId, institutionName: row.institutionName, claimScopes: [...row.claimScopes], evidenceReference: row.evidenceReference, active: row.active, verifiedAt: row.verifiedAt === null ? null : new Date(row.verifiedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [officialAffiliations.organizationId, officialAffiliations.id], set: { institutionName: row.institutionName, claimScopes: [...row.claimScopes], evidenceReference: row.evidenceReference, active: row.active, verifiedAt: row.verifiedAt === null ? null : new Date(row.verifiedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
+    }
+    for (const row of state.categories) {
+      const prior = index.priorCategories.get(row.id);
+      if (prior !== undefined && prior.name === row.name && prior.slug === row.slug && prior.status === row.status
+        && prior.version === row.version && prior.updatedAt === row.updatedAt) continue;
+      await transaction.insert(categories).values({ organizationId: state.organizationId, id: row.id, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [categories.organizationId, categories.id], set: { name: row.name, slug: row.slug, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
+    }
+    for (const row of state.authors) {
+      const prior = index.priorAuthors.get(row.id);
+      if (prior !== undefined && prior.displayName === row.displayName && prior.byline === row.byline
+        && prior.status === row.status && prior.version === row.version && prior.updatedAt === row.updatedAt) continue;
+      await transaction.insert(authors).values({ organizationId: state.organizationId, id: row.id, displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [authors.organizationId, authors.id], set: { displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
+    }
+    if (!sameJson(
+      [...state.articleCategories].map((row) => [row.articleId, row.categoryId, row.position]),
+      [...before.articleCategories].map((row) => [row.articleId, row.categoryId, row.position]),
+    )) {
+      await transaction.delete(articleCategories).where(eq(articleCategories.organizationId, state.organizationId));
+      for (const chunk of insertChunks(state.articleCategories)) {
+        await transaction.insert(articleCategories).values(chunk.map((row) => ({ organizationId: state.organizationId, articleId: row.articleId, categoryId: row.categoryId, position: row.position }))).onConflictDoNothing();
+      }
+    }
+    const changedArticles: DashboardTenantState['articles'][number][] = [];
+    for (const row of state.articles) {
+      const prior = index.priorArticles.get(row.id);
+      if (prior !== undefined && prior.regionId === row.regionId && prior.publisherId === row.publisherId
+        && prior.categoryId === row.categoryId && prior.authorId === row.authorId && prior.leadMediaId === row.leadMediaId
+        && prior.coverImageUrl === row.coverImageUrl && prior.slug === row.slug && prior.title === row.title
+        && prior.excerpt === row.excerpt && prior.canonicalUrl === row.canonicalUrl && prior.body === row.body
+        && prior.source === row.source && prior.status === row.status && prior.scheduledAt === row.scheduledAt
+        && prior.archivedAt === row.archivedAt && prior.version === row.version && prior.updatedAt === row.updatedAt
+        && sameJson(prior.bodyJson ?? null, row.bodyJson ?? null) && sameJson(prior.tags, row.tags)) continue;
+      changedArticles.push(row);
+      await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
+    }
+    await this.recordArticleRevisions(transaction, actorId, before, index);
+    if (changedArticles.length > 0) await this.syncArticleGalleryMetadata(transaction, changedArticles, state.organizationId);
+    const changedArticleSites: DashboardTenantState['articleSites'][number][] = [];
+    for (const row of state.articleSites) {
+      const prior = index.priorArticleSites.get(row.id);
+      if (prior !== undefined && prior.state === row.state && prior.stateOccurredAt === row.stateOccurredAt
+        && prior.publishedUrl === row.publishedUrl && prior.publishedAt === row.publishedAt && prior.active === row.active
+        && prior.viewCount === row.viewCount && prior.assignmentSource === row.assignmentSource
+        && prior.expandedFromSiteId === row.expandedFromSiteId && prior.customCanonicalUrl === row.customCanonicalUrl
+        && prior.version === row.version && prior.updatedAt === row.updatedAt) continue;
+      changedArticleSites.push(row);
+    }
+    for (const chunk of insertChunks(changedArticleSites)) {
+      await transaction.insert(articleSites).values(chunk.map((row) => ({
+        organizationId: state.organizationId, id: row.id, articleId: row.articleId, siteId: row.siteId, state: row.state,
+        stateOccurredAt: new Date(row.stateOccurredAt), publishedUrl: row.publishedUrl,
+        publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), active: row.active,
+        viewCount: row.viewCount, assignmentSource: row.assignmentSource, expandedFromSiteId: row.expandedFromSiteId,
+        customCanonicalUrl: row.customCanonicalUrl, version: row.version, createdAt: new Date(row.createdAt),
+        updatedAt: new Date(row.updatedAt),
+      }))).onConflictDoUpdate({
+        target: [articleSites.organizationId, articleSites.id],
+        set: {
+          state: sql`excluded.state`, stateOccurredAt: sql`excluded.state_occurred_at`, publishedUrl: sql`excluded.published_url`,
+          publishedAt: sql`excluded.published_at`, active: sql`excluded.active`, viewCount: sql`excluded.view_count`,
+          assignmentSource: sql`excluded.assignment_source`, expandedFromSiteId: sql`excluded.expanded_from_site_id`,
+          customCanonicalUrl: sql`excluded.custom_canonical_url`, version: sql`excluded.version`, updatedAt: sql`excluded.updated_at`,
+        },
+      });
+    }
+    await this.enqueueDeliveryInvalidations(transaction, before, state, index);
     if (pendingAudits.length > 0) await transaction.insert(auditLogs).values(pendingAudits.map((row) => ({ organizationId: row.organizationId, id: row.id, actorType: row.actorType, actorId: row.actorId, entryPoint: row.entryPoint, action: row.action, targetType: row.targetType, targetId: row.targetId, outcome: row.outcome, changedFields: [...row.changedFields], before: row.before, after: row.after, requestId: row.requestId, occurredAt: new Date(row.occurredAt) })));
   }
 
-  private async recordArticleRevisions(transaction: Transaction, actorId: string, before: DashboardTenantState, state: MutableTenantState): Promise<void> {
-    for (const row of state.articles) {
-      const prior = before.articles.find((item) => item.id === row.id);
-      if (prior !== undefined && prior.title === row.title && prior.body === row.body && JSON.stringify(prior.bodyJson ?? null) === JSON.stringify(row.bodyJson ?? null)) continue;
-      const latest = await transaction.select({ revisionNumber: articleRevisions.revisionNumber }).from(articleRevisions).where(and(eq(articleRevisions.organizationId, state.organizationId), eq(articleRevisions.articleId, row.id))).orderBy(desc(articleRevisions.revisionNumber)).limit(1);
+  private async recordArticleRevisions(transaction: Transaction, actorId: string, before: DashboardTenantState, index: TenantStateIndex): Promise<void> {
+    for (const row of index.currentArticles.values()) {
+      const prior = index.priorArticles.get(row.id);
+      if (prior !== undefined && prior.title === row.title && prior.body === row.body && sameJson(prior.bodyJson ?? null, row.bodyJson ?? null)) continue;
+      const latest = await transaction.select({ revisionNumber: articleRevisions.revisionNumber }).from(articleRevisions).where(and(eq(articleRevisions.organizationId, before.organizationId), eq(articleRevisions.articleId, row.id))).orderBy(desc(articleRevisions.revisionNumber)).limit(1);
       const revisionNumber = (latest[0]?.revisionNumber ?? 0) + 1;
-      await transaction.insert(articleRevisions).values({ organizationId: state.organizationId, id: crypto.randomUUID(), articleId: row.id, revisionNumber, title: row.title, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, snapshot: { slug: row.slug, excerpt: row.excerpt, source: row.source, tags: [...row.tags], status: row.status, version: row.version }, createdBy: actorId, createdAt: new Date(row.updatedAt), updatedAt: new Date(row.updatedAt) });
+      await transaction.insert(articleRevisions).values({ organizationId: before.organizationId, id: crypto.randomUUID(), articleId: row.id, revisionNumber, title: row.title, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, snapshot: { slug: row.slug, excerpt: row.excerpt, source: row.source, tags: [...row.tags], status: row.status, version: row.version }, createdBy: actorId, createdAt: new Date(row.updatedAt), updatedAt: new Date(row.updatedAt) });
     }
   }
 
-  private async syncArticleGalleryMetadata(transaction: Transaction, state: MutableTenantState): Promise<void> {
-    for (const article of state.articles) {
+  private async syncArticleGalleryMetadata(transaction: Transaction, articles: readonly DashboardTenantState['articles'][number][], organizationId: string): Promise<void> {
+    for (const article of articles) {
       if (article.bodyJson === null || article.bodyJson === undefined) continue;
       const refs = extractTipTapImages(article.bodyJson);
       if (refs.length === 0) continue;
@@ -990,7 +1153,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       });
       const rows = await transaction.select({ id: media.id, articleId: media.articleId, altText: media.altText, caption: media.caption, sortOrder: media.sortOrder })
         .from(media)
-        .where(and(eq(media.organizationId, state.organizationId), inArray(media.id, [...position.keys()]), eq(media.state, 'active'), sql`${media.mediaType} LIKE 'image/%'`));
+        .where(and(eq(media.organizationId, organizationId), inArray(media.id, [...position.keys()]), eq(media.state, 'active'), sql`${media.mediaType} LIKE 'image/%'`));
       for (const row of rows) {
         if (row.articleId !== article.id && row.articleId !== null) continue;
         const patch = editorial.get(row.id);
@@ -1000,42 +1163,46 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         const nextOrder = position.get(row.id) ?? row.sortOrder;
         if (nextAlt === row.altText && nextCaption === row.caption && nextOrder === row.sortOrder) continue;
         await transaction.update(media).set({ altText: nextAlt, caption: nextCaption, sortOrder: nextOrder, updatedAt: new Date() })
-          .where(and(eq(media.organizationId, state.organizationId), eq(media.id, row.id)));
+          .where(and(eq(media.organizationId, organizationId), eq(media.id, row.id)));
       }
     }
   }
 
-  private async enqueueDeliveryInvalidations(transaction: Transaction, before: DashboardTenantState, state: MutableTenantState): Promise<void> {
+  private async enqueueDeliveryInvalidations(transaction: Transaction, before: DashboardTenantState, state: MutableTenantState, index: TenantStateIndex): Promise<void> {
     type Aggregate = { siteId: string; previousHostname: string | null; currentHostname: string | null; reasons: Set<string>; articleSlugs: Set<string>; categorySlugs: Set<string>; mediaIds: Set<string> };
     const affected = new Map<string, Aggregate>();
-    const priorSite = (siteId: string) => before.sites.find((site) => site.id === siteId);
-    const currentSite = (siteId: string) => state.sites.find((site) => site.id === siteId);
+    const priorSite = (siteId: string) => index.priorSites.get(siteId);
+    const currentSite = (siteId: string) => index.currentSites.get(siteId);
+    const priorArticle = (articleId: string) => index.priorArticles.get(articleId);
+    const currentArticle = (articleId: string) => index.currentArticles.get(articleId);
+    const priorCategorySlug = (categoryId: string) => index.priorCategories.get(categoryId)?.slug;
+    const currentCategorySlug = (categoryId: string) => index.currentCategories.get(categoryId)?.slug;
     const add = (siteId: string, reason: string, articleSlugs: readonly string[] = [], categorySlugs: readonly string[] = [], mediaIds: readonly string[] = []) => {
       const prior = priorSite(siteId); const current = currentSite(siteId); if (prior === undefined && current === undefined) return;
       const aggregate = affected.get(siteId) ?? { siteId, previousHostname: prior?.normalizedHostname ?? null, currentHostname: current?.normalizedHostname ?? null, reasons: new Set<string>(), articleSlugs: new Set<string>(), categorySlugs: new Set<string>(), mediaIds: new Set<string>() };
       aggregate.reasons.add(reason); for (const slug of articleSlugs) aggregate.articleSlugs.add(slug); for (const slug of categorySlugs) aggregate.categorySlugs.add(slug); for (const id of mediaIds) aggregate.mediaIds.add(id); affected.set(siteId, aggregate);
     };
-    const changed = (left: unknown, right: unknown) => JSON.stringify(left) !== JSON.stringify(right);
+    const changed = (left: unknown, right: unknown) => !sameJson(left, right);
     const articleDetails = (articleId: string) => {
-      const prior = before.articles.find((article) => article.id === articleId); const current = state.articles.find((article) => article.id === articleId);
+      const prior = priorArticle(articleId); const current = currentArticle(articleId);
       const categoryIds = [prior?.categoryId, current?.categoryId].filter((id): id is string => id !== null && id !== undefined);
-      const categorySlugs = categoryIds.flatMap((id) => [before.categories.find((category) => category.id === id)?.slug, state.categories.find((category) => category.id === id)?.slug]).filter((slug): slug is string => slug !== undefined);
+      const categorySlugs = categoryIds.flatMap((id) => [priorCategorySlug(id), currentCategorySlug(id)]).filter((slug): slug is string => slug !== undefined);
       return { slugs: [prior?.slug, current?.slug].filter((slug): slug is string => slug !== undefined), categorySlugs };
     };
     for (const site of state.sites) { const prior = priorSite(site.id); if (prior !== undefined && changed({ host: prior.normalizedHostname, region: prior.regionId, level: prior.siteLevel, parent: prior.parentSiteId, status: prior.status, activation: prior.activationState }, { host: site.normalizedHostname, region: site.regionId, level: site.siteLevel, parent: site.parentSiteId, status: site.status, activation: site.activationState })) add(site.id, 'site.mapping'); }
-    for (const region of state.regions) { const prior = before.regions.find((item) => item.id === region.id); if (prior !== undefined && changed(prior, region)) for (const site of state.sites.filter((item) => item.regionId === region.id)) add(site.id, 'region.changed'); }
-    for (const settings of state.siteSettings) { const prior = before.siteSettings.find((item) => item.siteId === settings.siteId); if (prior !== undefined && changed(prior, settings)) { const mediaIds = [prior.logoMediaId, prior.faviconMediaId, prior.defaultMediaId, settings.logoMediaId, settings.faviconMediaId, settings.defaultMediaId].filter((id): id is string => id !== null); add(settings.siteId, 'site_settings.changed', [], mediaIds); } }
+    for (const region of state.regions) { const prior = index.priorRegions.get(region.id); if (prior !== undefined && changed(prior, region)) for (const site of state.sites.filter((item) => item.regionId === region.id)) add(site.id, 'region.changed'); }
+    for (const settings of state.siteSettings) { const prior = index.priorSiteSettings.get(settings.siteId); if (prior !== undefined && changed(prior, settings)) { const mediaIds = [prior.logoMediaId, prior.faviconMediaId, prior.defaultMediaId, settings.logoMediaId, settings.faviconMediaId, settings.defaultMediaId].filter((id): id is string => id !== null); add(settings.siteId, 'site_settings.changed', [], mediaIds); } }
     for (const article of state.articles) {
-      const prior = before.articles.find((item) => item.id === article.id); if (prior === undefined || !changed(prior, article)) continue;
+      const prior = priorArticle(article.id); if (prior === undefined || !changed(prior, article)) continue;
       const details = articleDetails(article.id);
       const relations = [...before.articleSites, ...state.articleSites].filter((relation) => relation.articleId === article.id);
       for (const relation of relations) add(relation.siteId, 'article.changed', details.slugs, details.categorySlugs);
     }
-    for (const relation of state.articleSites) { const prior = before.articleSites.find((item) => item.id === relation.id); if (prior === undefined || changed(prior, relation)) { const details = articleDetails(relation.articleId); add(relation.siteId, 'article_site.changed', details.slugs, details.categorySlugs); if (prior !== undefined && prior.siteId !== relation.siteId) add(prior.siteId, 'article_site.changed', details.slugs, details.categorySlugs); } }
-    for (const publisher of state.publishers) { const prior = before.publishers.find((item) => item.id === publisher.id); if (prior === undefined || !changed(prior, publisher)) continue; for (const article of state.articles.filter((item) => item.publisherId === publisher.id)) { const details = articleDetails(article.id); for (const relation of state.articleSites.filter((item) => item.articleId === article.id)) add(relation.siteId, 'publisher.changed', details.slugs, details.categorySlugs); } }
-    for (const affiliation of state.affiliations) { const prior = before.affiliations.find((item) => item.id === affiliation.id); if (prior !== undefined && !changed(prior, affiliation)) continue; const publisherIds = [prior?.publisherId, affiliation.publisherId].filter((id): id is string => id !== undefined); const siteIds = [prior?.siteId, affiliation.siteId].filter((id): id is string => id !== undefined); for (const article of state.articles.filter((item) => item.publisherId !== null && publisherIds.includes(item.publisherId))) { const details = articleDetails(article.id); for (const siteId of siteIds) if (state.articleSites.some((item) => item.articleId === article.id && item.siteId === siteId)) add(siteId, 'affiliation.changed', details.slugs, details.categorySlugs); } }
-    for (const category of state.categories) { const prior = before.categories.find((item) => item.id === category.id); if (prior === undefined || !changed(prior, category)) continue; for (const article of state.articles.filter((item) => item.categoryId === category.id)) { const details = articleDetails(article.id); for (const relation of state.articleSites.filter((item) => item.articleId === article.id)) add(relation.siteId, 'category.changed', details.slugs, [...details.categorySlugs, category.slug]); } }
-    for (const author of state.authors) { const prior = before.authors.find((item) => item.id === author.id); if (prior === undefined || !changed(prior, author)) continue; for (const article of state.articles.filter((item) => item.authorId === author.id)) { const details = articleDetails(article.id); for (const relation of state.articleSites.filter((item) => item.articleId === article.id)) add(relation.siteId, 'author.changed', details.slugs, details.categorySlugs); } }
+    for (const relation of state.articleSites) { const prior = index.priorArticleSites.get(relation.id); if (prior === undefined || changed(prior, relation)) { const details = articleDetails(relation.articleId); add(relation.siteId, 'article_site.changed', details.slugs, details.categorySlugs); if (prior !== undefined && prior.siteId !== relation.siteId) add(prior.siteId, 'article_site.changed', details.slugs, details.categorySlugs); } }
+    for (const publisher of state.publishers) { const prior = index.priorPublishers.get(publisher.id); if (prior === undefined || !changed(prior, publisher)) continue; for (const article of state.articles.filter((item) => item.publisherId === publisher.id)) { const details = articleDetails(article.id); for (const relation of state.articleSites.filter((item) => item.articleId === article.id)) add(relation.siteId, 'publisher.changed', details.slugs, details.categorySlugs); } }
+    for (const affiliation of state.affiliations) { const prior = index.priorAffiliations.get(affiliation.id); if (prior !== undefined && !changed(prior, affiliation)) continue; const publisherIds = [prior?.publisherId, affiliation.publisherId].filter((id): id is string => id !== undefined); const siteIds = [prior?.siteId, affiliation.siteId].filter((id): id is string => id !== undefined); for (const article of state.articles.filter((item) => item.publisherId !== null && publisherIds.includes(item.publisherId))) { const details = articleDetails(article.id); for (const siteId of siteIds) if (state.articleSites.some((item) => item.articleId === article.id && item.siteId === siteId)) add(siteId, 'affiliation.changed', details.slugs, details.categorySlugs); } }
+    for (const category of state.categories) { const prior = index.priorCategories.get(category.id); if (prior === undefined || !changed(prior, category)) continue; for (const article of state.articles.filter((item) => item.categoryId === category.id)) { const details = articleDetails(article.id); for (const relation of state.articleSites.filter((item) => item.articleId === article.id)) add(relation.siteId, 'category.changed', details.slugs, [...details.categorySlugs, category.slug]); } }
+    for (const author of state.authors) { const prior = index.priorAuthors.get(author.id); if (prior === undefined || !changed(prior, author)) continue; for (const article of state.articles.filter((item) => item.authorId === author.id)) { const details = articleDetails(article.id); for (const relation of state.articleSites.filter((item) => item.articleId === article.id)) add(relation.siteId, 'author.changed', details.slugs, details.categorySlugs); } }
     for (const aggregate of affected.values()) await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId: state.organizationId, siteId: aggregate.siteId, previousHostname: aggregate.previousHostname, currentHostname: aggregate.currentHostname, reason: [...aggregate.reasons].sort().join(','), articleSlugs: [...aggregate.articleSlugs], categorySlugs: [...aggregate.categorySlugs], mediaIds: [...aggregate.mediaIds] }));
   }
 }

@@ -1,14 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { pruneAnalyticsLabels } from '@/data/repos/dashboard';
-
-const SITE_ROWS = Array.from({ length: 50 }, (_, index) => ({ id: `s-${index}`, name: `situs-${index}.example` }));
-const PUBLISHER_ROWS = Array.from({ length: 20 }, (_, index) => ({ id: `p-${index}`, name: `Penerbit ${index}` }));
+import { insertChunks, sameJson, pruneAnalyticsLabels } from '@/data/repos/dashboard';
 
 const EMPTY_INPUT = {
-  siteLabelRows: SITE_ROWS,
+  siteLabelRows: Array.from({ length: 50 }, (_, index) => ({ id: `s-${index}`, name: `situs-${index}.example` })),
   categoryLabelRows: [{ id: 'k-1', name: 'Umum' }],
-  publisherLabelRows: PUBLISHER_ROWS,
+  publisherLabelRows: Array.from({ length: 20 }, (_, index) => ({ id: `p-${index}`, name: `Penerbit ${index}` })),
   regionLabelRows: [{ id: 'w-1', name: 'Jawa Tengah' }],
   siteViewRows: [],
   articleViewRows: [],
@@ -66,5 +63,34 @@ describe('Pemangkasan label analitik', () => {
       siteViewRows: [{ id: 's-8', name: 'situs-8.example' }],
     });
     expect(labels.siteLabels).toEqual({ 's-8': 'situs-8.example' });
+  });
+});
+
+describe('Pemotongan sisipan massal', () => {
+  it('tidak menghasilkan pernyataan untuk koleksi kosong', () => {
+    expect([...insertChunks([])]).toEqual([]);
+  });
+
+  it('mempertahankan seluruh baris dan urutannya', () => {
+    const rows = Array.from({ length: 134 }, (_, index) => ({ id: `a-${index}` }));
+    const flat = [...insertChunks(rows)].flat();
+    expect(flat).toHaveLength(134);
+    expect(flat.map((row) => row.id)).toEqual(rows.map((row) => row.id));
+  });
+
+  it('memecah menjadi beberapa pernyataan untuk koleksi besar', () => {
+    const rows = Array.from({ length: 250 }, (_, index) => ({ id: `a-${index}` }));
+    const chunks = [...insertChunks(rows)];
+    expect(chunks.length).toBe(2);
+    expect(chunks[0]).toHaveLength(200);
+    expect(chunks[1]).toHaveLength(50);
+  });
+});
+
+describe('Perbandingan nilai untuk diff tenant', () => {
+  it('membandingkan nilai JSON secara struktural', () => {
+    expect(sameJson([{ label: 'a', path: '/a' }], [{ label: 'a', path: '/a' }])).toBe(true);
+    expect(sameJson([{ label: 'a', path: '/a' }], [{ label: 'b', path: '/a' }])).toBe(false);
+    expect(sameJson(null, undefined)).toBe(false);
   });
 });
