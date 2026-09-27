@@ -12,7 +12,7 @@
 -- in src/features/release/migration-manifest.ts, which canonicalize each body
 -- before hashing. Both are verified against these files by the test suite.
 --
--- Reviewed sources, in journal order (208 migrations):
+-- Reviewed sources, in journal order (209 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -221,6 +221,7 @@
 --   206  20260926200000_default_article_category  ledger sha256:0c2beda581d76609112d6239859fa14f373ea675119e45c5c22fa3bd6eab7d72
 --   207  20260927020000_moderation_reader_id_qualification  ledger sha256:ad65050321a254c0c54d8189cb3a8a243747a9176979a6766de173660bd179ab
 --   208  20260927030000_derived_portal_title_rebuild  ledger sha256:b077fb24cb6e6b32d8020fd778bc5f6b2fa49f9932c2ade2051464c4f124d082
+--   209  20260927130000_drop_unpublished_auto_assignments  ledger sha256:4a439bb6cb61919e4599750374df9c3badff56b8c36eeb70efcb5588e2ecae52
 
 BEGIN;
 
@@ -17443,4 +17444,53 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (208, 'derived_portal_title_rebuild', 'sha256:2e13bc93f45e8a353c2346537c4361626a4afd44f9988c8d5d906fe56b611a74');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b077fb24cb6e6b32d8020fd778bc5f6b2fa49f9932c2ade2051464c4f124d082', 1790492400000);
+
+-- ----------------------------------------------------------------------
+-- 20260927130000_drop_unpublished_auto_assignments
+-- ----------------------------------------------------------------------
+-- Drop the assignment rows that the removed automatic distribution created.
+--
+-- article.create used to write one article_sites row per active portal in the
+-- organization. Delivery only ever reads rows in the published state, and
+-- publication is the operation that decides which portals an article reaches,
+-- so every one of those rows was invisible, unused, and pure write amplification.
+-- On the main tenant 30 articles left 132,660 rows behind, and each editorial
+-- write also enqueued a cache invalidation per portal, which is what pushed the
+-- invalidation queue past half a million rows and the database over its size
+-- allowance.
+--
+-- A row is dead when it is still queued, carries no publication timestamp, and
+-- no publication job ever targeted it. Anything a job touched, or that has been
+-- published, is left alone so in-flight and live work survives. The delete runs
+-- in batches so it stays inside a statement timeout on a large backlog.
+
+DO $migration$
+DECLARE
+  passes integer := 0;
+  batch_size constant integer := 2000;
+BEGIN
+  LOOP
+    DELETE FROM public.article_sites
+    WHERE id IN (
+      SELECT candidate.id
+      FROM public.article_sites AS candidate
+      WHERE candidate.state = 'queued'
+        AND candidate.published_at IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM public.publishing_job_targets AS target
+          WHERE target.article_site_id = candidate.id
+        )
+      ORDER BY candidate.id
+      LIMIT batch_size
+    );
+    passes := passes + 1;
+    EXIT WHEN passes > 10000;
+  END LOOP;
+END
+$migration$;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (209, 'drop_unpublished_auto_assignments', 'sha256:09a60347a6fe4fc18565194e26bca74f3b2cfc5f99528f3ddf20a8324c24b7fb');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4a439bb6cb61919e4599750374df9c3badff56b8c36eeb70efcb5588e2ecae52', 1790499600000);
 COMMIT;
