@@ -38,8 +38,8 @@ WORM opsional, satu resource Upstash Redis.
       tidak membuka slot.
 - [ ] Secret/env production lengkap via server-only environment; tidak ada
       kredensial di argumen perintah, log, atau file repo.
-- [ ] Cron `vercel.json` tidak terhapus (keep-alive `/api/health`,
-      reconciler publishing/delivery, maintenance).
+- [ ] Cron `vercel.json` tidak terhapus (reconciler publishing/delivery,
+      maintenance, ekspor audit WORM harian).
 
 ## 2. Promosi
 

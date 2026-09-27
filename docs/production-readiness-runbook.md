@@ -20,7 +20,7 @@ Cloudflare must remain authoritative for nameservers, DNS, wildcard records, edg
 
 ## Owner-gated items (dashboard/provider actions no agent can perform)
 
-- Cloudflare R2 WORM audit: bucket `indicate-audit-worm` + lock `worm-indefinite` + `R2_AUDIT_BUCKET_NAME` (production env) selesai 2026-09-07; kredensial utama mencakup bucket ini (token scoped terpisah opsional). Redeploy production sekali agar env terbaca cron 05:00; lalu konfirmasi baris `audit_worm_export` harian di `retention_runs`.
+- Cloudflare R2 WORM audit: bucket `indicate-audit-worm` + lock `worm-indefinite` + `R2_AUDIT_BUCKET_NAME` (production env) selesai 2026-09-07; kredensial utama mencakup bucket ini (token scoped terpisah opsional). Cron harian `30 5 * * *` UTC menulis hari sebelumnya; lalu konfirmasi cakupan dengan prefiks `worm/<YYYY-MM-DD>/` di bucket, bukan baris `retention_runs` (baris bukti memakai waktu jalan, bukan hari yang diekspor). Isi `R2_AUDIT_*` tidak ada di `.env`/`.env.production` lokal, jadi route menjawab 503 di luar production.
 - Per enterprise deal: sign SOW (from `docs/templates/sow-template.md`) + DPA (`docs/dpa.md`); confirm Vercel plan capacity for the new domains.
 
 ## Production checks
