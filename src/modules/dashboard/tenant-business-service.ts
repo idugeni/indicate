@@ -1095,8 +1095,8 @@ export class TenantBusinessService {
       const article = requireArticleInScope(transaction.state, value.articleId, actor);
       if (article.organizationId !== actor.organizationId) throw new DashboardAccessDeniedError();
       const before = transaction.state.articleSites.filter(({ articleId, active }) => articleId === article.id && active);
-      const { after, expandedFrom } = this.applySiteAssignment(transaction.state, article, value.siteIds, actor, now);
-      this.audit(transaction, 'article.sites.assign', 'article', article.id, { siteIds: before.map(({ siteId }) => siteId).sort() }, { siteIds: after.map(({ siteId }) => siteId).sort(), expanded: expandedFrom });
+      const { after } = this.applySiteAssignment(transaction.state, article, value.siteIds, actor, now);
+      this.audit(transaction, 'article.sites.assign', 'article', article.id, { siteIds: before.map(({ siteId }) => siteId).sort() }, { siteIds: after.map(({ siteId }) => siteId).sort() });
       return after;
     }});
   }
@@ -1107,7 +1107,7 @@ export class TenantBusinessService {
     siteIds: readonly string[],
     actor: AuthorizedTenantActorContext,
     now: string,
-  ): { after: readonly ArticleSiteRecord[]; expandedFrom: Record<string, string> } {
+  ): { after: readonly ArticleSiteRecord[] } {
     const distinct = [...new Set(siteIds)];
     const requested = distinct.map((siteId) => requireSiteInScope(state, siteId, actor));
     if (requested.some(({ organizationId, status }) => organizationId !== actor.organizationId || status !== 'active')) throw new DashboardAccessDeniedError();
@@ -1116,7 +1116,7 @@ export class TenantBusinessService {
       const missing = [...new Set(expansion.unresolved.map((entry) => entry.missing))].map((level) => (level === 'region' ? 'region' : 'apex'));
       throw new DashboardValidationError({ siteIds: [`Rantai portal belum lengkap: ${missing.join(' dan ')} belum tersedia.`] });
     }
-    const expanded = expansion.targets.map((target) => ({ ...target, site: requireSiteInScope(state, target.siteId, actor) }));
+    const expanded = distinct.map((siteId) => ({ siteId, originSiteId: null, canonicalUrl: null, site: requireSiteInScope(state, siteId, actor) }));
     if (expanded.some(({ site }) => site.organizationId !== actor.organizationId || site.status !== 'active')) throw new DashboardAccessDeniedError();
     const existingBySite = new Map<string, ArticleSiteRecord>();
     for (let index = 0; index < state.articleSites.length; index += 1) {
@@ -1126,10 +1126,8 @@ export class TenantBusinessService {
       state.articleSites[index] = deactivated;
       existingBySite.set(assignment.siteId, deactivated);
     }
-    const expandedFrom: Record<string, string> = {};
     for (const target of expanded) {
       const existing = existingBySite.get(target.siteId);
-      if (target.originSiteId !== null) expandedFrom[target.siteId] = target.originSiteId;
       if (existing === undefined) {
         state.articleSites.push({
           ...this.base(actor, now),
@@ -1141,18 +1139,16 @@ export class TenantBusinessService {
           publishedAt: null,
           active: true,
           viewCount: 0,
-          assignmentSource: target.originSiteId === null ? 'manual' : 'auto',
-          expandedFromSiteId: target.originSiteId,
-          customCanonicalUrl: target.originSiteId === null ? null : target.canonicalUrl,
+          assignmentSource: 'manual',
+          expandedFromSiteId: null,
+          customCanonicalUrl: null,
         });
-      } else if (target.originSiteId === null) {
-        Object.assign(existing, { active: true, assignmentSource: 'manual' as const, expandedFromSiteId: null, version: existing.version + 1, updatedAt: now });
       } else {
-        Object.assign(existing, { active: true, assignmentSource: 'auto' as const, expandedFromSiteId: target.originSiteId, customCanonicalUrl: target.canonicalUrl, version: existing.version + 1, updatedAt: now });
+        Object.assign(existing, { active: true, assignmentSource: 'manual' as const, expandedFromSiteId: null, version: existing.version + 1, updatedAt: now });
       }
     }
     const after = state.articleSites.filter(({ articleId, active }) => articleId === article.id && active);
-    return { after, expandedFrom };
+    return { after };
   }
 
   setArticleSiteViews(actor: AuthorizedTenantActorContext, raw: unknown) {

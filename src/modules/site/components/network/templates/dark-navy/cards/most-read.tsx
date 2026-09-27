@@ -37,7 +37,7 @@ export function DarkNavyMostRead({ articles }: { readonly articles: readonly Art
               </span>
               <div className="min-w-0 flex-1">
                 <h3 className="m-0 line-clamp-2 font-sans text-sm font-bold leading-snug text-[#eaf0fb]">
-                  <Link href={`/${article.slug}`} className="hover:text-[#2f7bff]">
+                  <Link href={article.href} className="hover:text-[#2f7bff]">
                     {article.title}
                   </Link>
                 </h3>

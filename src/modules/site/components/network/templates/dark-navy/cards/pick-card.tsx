@@ -40,7 +40,7 @@ export function DarkNavyPickCard({ article, index }: { readonly article: Article
       </div>
       <CardHeader className="flex-1 px-5 pt-4">
         <CardTitle className="line-clamp-2 font-sans text-[17px] font-bold leading-snug tracking-tight text-[#eaf0fb]">
-          <Link href={`/${article.slug}`} className="hover:text-[#2f7bff]">
+          <Link href={article.href} className="hover:text-[#2f7bff]">
             {article.title}
           </Link>
         </CardTitle>
@@ -57,7 +57,7 @@ export function DarkNavyPickCard({ article, index }: { readonly article: Article
       <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t border-[#1b2c4f] bg-[#0e1a33] px-5 py-3.5">
         <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} />
         <Link
-          href={`/${article.slug}`}
+          href={article.href}
           aria-label={`Baca: ${article.title}`}
           className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#14294f] text-[#2f7bff] transition-colors hover:bg-[#2f7bff] hover:text-white"
         >

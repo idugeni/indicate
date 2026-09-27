@@ -163,9 +163,7 @@ describe('TenantBusinessService domains regions', () => {
     const result = await scoped.service.assignArticleSites({ ...actor, regionScopeId: SCOPE_PROVINCE }, { articleId: ID, siteIds: [SCOPE_CITY_SITE] });
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('expected ok');
-    expect(result.value.map((row) => (row as { siteId: string }).siteId).sort()).toEqual(
-      [SCOPE_CITY_SITE, SCOPE_REGION_SITE, SCOPE_APEX_SITE].sort(),
-    );
+    expect(result.value.map((row) => (row as { siteId: string }).siteId)).toEqual([SCOPE_CITY_SITE]);
   });
 
   it('aktor terkunci province ditolak pada portal city provinsi lain', async () => {
@@ -404,7 +402,7 @@ describe('TenantBusinessService articles assignments', () => {
     expect(regionAsCity.ok).toBe(false);
   });
 
-  it('meluaskan assignment kota ke region dan apex dengan kanonis primer', async () => {
+  it('menulis satu baris di kota dan membiarkan region serta apex mewarisi', async () => {
     const APEX = '0199a2b3-4c5d-7e8f-9012-3456789abc11';
     const REGION_SITE = '0199a2b3-4c5d-7e8f-9012-3456789abc12';
     const CITY_SITE = '0199a2b3-4c5d-7e8f-9012-3456789abc13';
@@ -424,19 +422,10 @@ describe('TenantBusinessService articles assignments', () => {
     const result = await service.assignArticleSites(actor, { articleId: ID, siteIds: [CITY_SITE] });
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('expected ok');
-    expect(result.value.map((row) => (row as { siteId: string }).siteId).sort()).toEqual([APEX, CITY_SITE, REGION_SITE].sort());
+    expect(result.value.map((row) => (row as { siteId: string }).siteId)).toEqual([CITY_SITE]);
     const rows = state.articleSites as { siteId: string; assignmentSource: string; expandedFromSiteId: string | null; customCanonicalUrl: string | null }[];
+    expect(rows).toHaveLength(1);
     expect(rows.find((row) => row.siteId === CITY_SITE)).toMatchObject({ assignmentSource: 'manual', expandedFromSiteId: null, customCanonicalUrl: null });
-    expect(rows.find((row) => row.siteId === REGION_SITE)).toMatchObject({
-      assignmentSource: 'auto',
-      expandedFromSiteId: CITY_SITE,
-      customCanonicalUrl: 'https://portal.test/berita-utama',
-    });
-    expect(rows.find((row) => row.siteId === APEX)).toMatchObject({
-      assignmentSource: 'auto',
-      expandedFromSiteId: CITY_SITE,
-      customCanonicalUrl: 'https://portal.test/berita-utama',
-    });
   });
 
   it('menciutkan turunan saat asal dicabut', async () => {

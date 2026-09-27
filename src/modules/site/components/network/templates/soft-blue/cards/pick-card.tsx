@@ -14,7 +14,7 @@ export function SoftBluePickCard({ article, index }: { readonly article: Article
   return (
     <article className="flex h-full gap-4 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200/60">
       <Link
-        href={`/${article.slug}`}
+        href={article.href}
         aria-label={article.title}
         className="relative block w-32 flex-none self-stretch overflow-hidden rounded-xl sm:w-44"
       >
@@ -38,14 +38,14 @@ export function SoftBluePickCard({ article, index }: { readonly article: Article
           </span>
         )}
         <h3 className="m-0 mt-2 line-clamp-3 font-sans text-[15px] font-bold leading-snug tracking-tight text-slate-900">
-          <Link href={`/${article.slug}`} className="hover:text-[#2563eb]">
+          <Link href={article.href} className="hover:text-[#2563eb]">
             {article.title}
           </Link>
         </h3>
         <div className="mt-auto flex items-end justify-between gap-2 pt-3">
           <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} />
           <Link
-            href={`/${article.slug}`}
+            href={article.href}
             aria-label={`Baca: ${article.title}`}
             className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#dbeafe] text-[#2563eb] transition-colors hover:bg-[#2563eb] hover:text-white"
           >

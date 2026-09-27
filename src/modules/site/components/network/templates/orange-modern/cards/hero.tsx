@@ -18,7 +18,7 @@ export function OrangeModernHero({ article }: { readonly article: ArticleListIte
     <section className="relative grid items-center gap-8 lg:grid-cols-2 lg:gap-12" aria-label="Sorotan utama">
       <div className="relative min-w-0">
         <Link
-          href={`/${article.slug}`}
+          href={article.href}
           aria-label={article.title}
           className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
         >
@@ -55,7 +55,7 @@ export function OrangeModernHero({ article }: { readonly article: ArticleListIte
           </p>
         )}
         <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl">
-          <Link href={`/${article.slug}`} className="hover:text-[var(--tpl-primary,#ea580c)]">
+          <Link href={article.href} className="hover:text-[var(--tpl-primary,#ea580c)]">
             {article.title}
           </Link>
         </h1>
@@ -73,7 +73,7 @@ export function OrangeModernHero({ article }: { readonly article: ArticleListIte
             </div>
           </div>
           <Link
-            href={`/${article.slug}`}
+            href={article.href}
             aria-label={`Baca: ${article.title}`}
             className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#ea580c)] text-white shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#c2410c)]"
           >

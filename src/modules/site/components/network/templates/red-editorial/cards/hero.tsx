@@ -70,7 +70,7 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link
-            href={`/${article.slug}`}
+            href={article.href}
             className="inline-flex h-11 items-center gap-2 rounded-full bg-[var(--tpl-primary,#b91c1c)] px-6 text-sm font-bold text-white transition-colors hover:bg-[var(--tpl-primary-dark,#7f1212)]"
           >
             Baca Selengkapnya
@@ -109,7 +109,7 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
 
       <div className="relative min-w-0">
         <Link
-          href={`/${article.slug}`}
+          href={article.href}
           aria-label={article.title}
           className="block overflow-hidden rounded-2xl shadow-md transition-shadow duration-200 hover:shadow-lg"
         >
@@ -132,7 +132,7 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
           </span>
         </p>
         <Link
-          href={`/${article.slug}`}
+          href={article.href}
           aria-label={`Buka: ${article.title}`}
           className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--tpl-primary,#b91c1c)] text-white shadow-md transition-colors hover:bg-[var(--tpl-primary-dark,#7f1212)]"
         >

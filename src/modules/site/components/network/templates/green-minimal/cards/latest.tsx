@@ -40,7 +40,7 @@ export function GreenMinimalLatest({
           return (
             <li key={article.id} className="m-0 grid gap-4 p-0 py-5 sm:grid-cols-[220px_minmax(0,1fr)_auto] sm:items-center">
               <Link
-                href={`/${article.slug}`}
+                href={article.href}
                 aria-label={article.title}
                 className="block overflow-hidden rounded-xl shadow-sm"
               >
@@ -66,7 +66,7 @@ export function GreenMinimalLatest({
                   </span>
                 </p>
                 <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-lg font-bold leading-snug text-[#10231a]">
-                  <Link href={`/${article.slug}`} className="hover:text-[#1d7a38]">
+                  <Link href={article.href} className="hover:text-[#1d7a38]">
                     {article.title}
                   </Link>
                 </h3>
@@ -75,7 +75,7 @@ export function GreenMinimalLatest({
                 </p>
               </div>
               <Link
-                href={`/${article.slug}`}
+                href={article.href}
                 aria-label={`Baca: ${article.title}`}
                 className="hidden h-10 w-10 flex-none items-center justify-center rounded-full bg-[#1d7a38]/10 text-[#1d7a38] transition-colors hover:bg-[#1d7a38] hover:text-white sm:flex"
               >

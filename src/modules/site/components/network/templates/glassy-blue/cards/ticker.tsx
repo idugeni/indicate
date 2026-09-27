@@ -45,7 +45,7 @@ export function GlassyBlueTicker({ articles }: { readonly articles: readonly Art
         className={`m-0 min-w-0 flex-1 font-sans text-[15px] font-medium leading-snug text-slate-800 line-clamp-2 sm:text-sm sm:line-clamp-1 ${reduceMotion ? '' : 'ticker-enter'}`}
         aria-live="polite"
       >
-        <Link href={`/${article.slug}`} className="no-underline hover:text-[var(--tpl-primary,#1f7cff)]">
+        <Link href={article.href} className="no-underline hover:text-[var(--tpl-primary,#1f7cff)]">
           {tickerHeadline(article)}
         </Link>
       </p>

@@ -57,7 +57,7 @@ export function GlassyBlueLatestNews({
             return (
               <li key={article.id} className="m-0 p-0">
                 <Link
-                  href={`/${article.slug}`}
+                  href={article.href}
                   className="group flex gap-4 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200/70 transition-shadow duration-200 hover:shadow-md hover:shadow-[#1f7cff]/10"
                 >
                   <span className="relative block h-20 w-28 flex-none overflow-hidden rounded-xl">
@@ -110,7 +110,7 @@ export function GlassyBlueLatestNews({
                 Perspektif
               </p>
               <h3 className="m-0 font-sans text-2xl font-extrabold leading-tight tracking-tight text-white">
-                <Link href={`/${spotlight.slug}`} className="hover:underline">
+                <Link href={spotlight.href} className="hover:underline">
                   {spotlight.title}
                 </Link>
               </h3>
@@ -122,7 +122,7 @@ export function GlassyBlueLatestNews({
               </p>
               <p className="m-0 mt-1">
                 <Link
-                  href={`/${spotlight.slug}`}
+                  href={spotlight.href}
                   className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 font-sans text-[13px] font-bold text-slate-900 shadow-md transition-colors hover:text-[#1f7cff]"
                 >
                   Baca Selengkapnya

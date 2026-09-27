@@ -1,11 +1,13 @@
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 
 export function makeNetworkArticle(overrides: Partial<NetworkArticle> = {}): NetworkArticle {
+  const slug = overrides.slug ?? 'berita-utama';
   return {
     id: 'a1',
     slug: 'berita-utama',
     title: 'Judul',
     description: 'Deskripsi singkat.',
+    href: `/${slug}`,
     body: 'Isi berita.',
     tags: [],
     regionId: 'r1',

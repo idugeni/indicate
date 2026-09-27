@@ -38,6 +38,7 @@ function articleRow(overrides: Record<string, unknown> = {}) {
     id: 'a1',
     slug: 'berita-utama',
     title: 'Judul Utama',
+    originHost: CONTEXT.normalizedHostname,
     tags: [],
     regionId: 'r1',
     categoryId: null,
@@ -169,6 +170,18 @@ describe('readSite projection', () => {
     expect(item).not.toHaveProperty('body');
     expect(item).not.toHaveProperty('gallery');
     expect(item?.description).toBe('Deskripsi kustom yang sudah final dari redaksi.');
+  });
+
+  it('menautkan artikel milik sendiri secara relatif agar hemat byte', async () => {
+    const { repository } = harness({});
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
+    expect(site?.articles[0]?.href).toBe('/berita-utama');
+  });
+
+  it('menautkan artikel warisan turunan ke host kota asalnya', async () => {
+    const { repository } = harness({ articles: [articleRow({ originHost: 'kota.apex.example' })] });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
+    expect(site?.articles[0]?.href).toBe('https://kota.apex.example/berita-utama');
   });
 
   it('detail artikel tunggal membawa body penuh dan galeri', async () => {
@@ -384,6 +397,7 @@ describe('loadNetworkFeed', () => {  it('menyertakan body penuh untuk RSS', asyn
       id: 'a1',
       slug: 'berita-utama',
       title: 'Judul Utama',
+      originHost: CONTEXT.normalizedHostname,
       description: null,
       body: 'Isi penuh untuk content:encoded RSS.',
       coverImageUrl: null,
@@ -399,6 +413,18 @@ describe('loadNetworkFeed', () => {  it('menyertakan body penuh untuk RSS', asyn
     const feed = await repository.loadNetworkFeed({ ...CONTEXT }, 50);
     expect(feed).toHaveLength(1);
     expect(feed[0]?.body).toBe('Isi penuh untuk content:encoded RSS.');
+    expect(feed[0]?.href).toBe('/berita-utama');
     expect(selectLog.some((entry) => entry.keys.includes('body'))).toBe(true);
+  });
+
+  it('menautkan item RSS ke host kota asal saat portal hanya aggregating', async () => {
+    const feedRow = {
+      id: 'a1', slug: 'berita-utama', title: 'Judul Utama', originHost: 'kota.apex.example',
+      description: null, body: 'Isi.', coverImageUrl: null, customImageMediaId: null, customMediaType: null,
+      leadMediaId: null, leadMediaType: null, mediaState: null, publishedAt: new Date('2026-09-14T10:00:00.000Z'), categoryName: null,
+    };
+    const { repository } = harness({ feed: [feedRow] });
+    const feed = await repository.loadNetworkFeed({ ...CONTEXT }, 50);
+    expect(feed[0]?.href).toBe('https://kota.apex.example/berita-utama');
   });
 });

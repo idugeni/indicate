@@ -18,7 +18,7 @@ export function PurpleEditorialHero({ article }: { readonly article: ArticleList
     <section className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12" aria-label="Sorotan utama">
       <div className="relative min-w-0">
         <Link
-          href={`/${article.slug}`}
+          href={article.href}
           aria-label={article.title}
           className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
         >
@@ -50,7 +50,7 @@ export function PurpleEditorialHero({ article }: { readonly article: ArticleList
           </p>
         )}
         <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-[var(--tpl-ink,#1c1440)] sm:text-4xl">
-          <Link href={`/${article.slug}`} className="hover:text-[var(--tpl-primary,#7c3aed)]">
+          <Link href={article.href} className="hover:text-[var(--tpl-primary,#7c3aed)]">
             {article.title}
           </Link>
         </h1>
@@ -70,7 +70,7 @@ export function PurpleEditorialHero({ article }: { readonly article: ArticleList
           <div className="flex flex-none items-center gap-2">
             <PurpleEditorialHeroActions slug={article.slug} title={article.title} />
             <Link
-              href={`/${article.slug}`}
+              href={article.href}
               aria-label={`Baca: ${article.title}`}
               className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary-soft,#ede9fe)] text-[var(--tpl-primary,#7c3aed)] transition-colors hover:bg-[var(--tpl-primary,#7c3aed)] hover:text-white"
             >

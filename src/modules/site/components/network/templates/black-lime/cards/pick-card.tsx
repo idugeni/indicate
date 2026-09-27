@@ -40,7 +40,7 @@ export function BlackLimePickCard({ article, index }: { readonly article: Articl
       </div>
       <CardHeader className="flex-1 px-5 pt-4">
         <CardTitle className="line-clamp-2 font-sans text-[17px] font-bold leading-snug tracking-tight text-slate-100">
-          <Link href={`/${article.slug}`} className="hover:text-[#c5f82a]">
+          <Link href={article.href} className="hover:text-[#c5f82a]">
             {article.title}
           </Link>
         </CardTitle>
@@ -57,7 +57,7 @@ export function BlackLimePickCard({ article, index }: { readonly article: Articl
       <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t border-[#242b1f] bg-[#131711] px-5 py-3.5">
         <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} />
         <Link
-          href={`/${article.slug}`}
+          href={article.href}
           aria-label={`Baca: ${article.title}`}
           className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#c5f82a] text-[#0a0c07] transition-colors hover:bg-[#9ecb14]"
         >

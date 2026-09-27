@@ -244,7 +244,7 @@ export function GreenMinimalArticle({
               <div className={`min-w-0 ${newer !== null && older === null ? 'col-span-2' : ''}`}>
                 {newer !== null ? (
                   <Link
-                    href={`/${newer.slug}`}
+                    href={newer.href}
                     className="group flex h-full items-start gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 transition-all hover:shadow-md hover:ring-[#1d7a38]/50 sm:p-5"
                   >
                     <Image
@@ -274,7 +274,7 @@ export function GreenMinimalArticle({
               <div className={`min-w-0 ${older !== null && newer === null ? 'col-span-2' : ''}`}>
                 {older !== null ? (
                   <Link
-                    href={`/${older.slug}`}
+                    href={older.href}
                     className="group flex h-full flex-row-reverse items-start gap-3 rounded-2xl bg-white p-4 text-right shadow-sm ring-1 ring-slate-200/60 transition-all hover:shadow-md hover:ring-[#1d7a38]/50 sm:p-5"
                   >
                     <Image

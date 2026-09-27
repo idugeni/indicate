@@ -65,7 +65,7 @@ export function BlackLimeMostRead({ articles }: { readonly articles: readonly Ar
               </span>
               <div className="min-w-0 flex-1">
                 <h3 className="m-0 line-clamp-2 font-sans text-sm font-bold leading-snug text-slate-100">
-                  <Link href={`/${article.slug}`} className="hover:text-[#c5f82a]">
+                  <Link href={article.href} className="hover:text-[#c5f82a]">
                     {article.title}
                   </Link>
                 </h3>

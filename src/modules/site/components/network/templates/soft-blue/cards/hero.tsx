@@ -17,7 +17,7 @@ export function SoftBlueHero({ article }: { readonly article: ArticleListItem })
     <section aria-label="Sorotan utama" className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
       <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-10">
       <Link
-        href={`/${article.slug}`}
+        href={article.href}
         aria-label={article.title}
         className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
       >
@@ -41,7 +41,7 @@ export function SoftBlueHero({ article }: { readonly article: ArticleListItem })
           </p>
         )}
         <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-[var(--tpl-ink,#0e1b33)] sm:text-4xl">
-          <Link href={`/${article.slug}`} className="hover:text-[var(--tpl-primary,#2563eb)]">
+          <Link href={article.href} className="hover:text-[var(--tpl-primary,#2563eb)]">
             {article.title}
           </Link>
         </h1>

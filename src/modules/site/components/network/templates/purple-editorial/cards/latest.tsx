@@ -74,7 +74,7 @@ export function PurpleEditorialLatest({
             return (
               <li key={article.id} className="m-0 flex gap-4 p-0 py-4 first:pt-0 last:pb-0">
                 <Link
-                  href={`/${article.slug}`}
+                  href={article.href}
                   aria-label={article.title}
                   className="block h-20 w-28 flex-none overflow-hidden rounded-xl shadow-sm"
                 >
@@ -101,7 +101,7 @@ export function PurpleEditorialLatest({
                     </span>
                   </p>
                   <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-[15px] font-bold leading-snug text-slate-900">
-                    <Link href={`/${article.slug}`} className="hover:text-[#7c3aed]">
+                    <Link href={article.href} className="hover:text-[#7c3aed]">
                       {article.title}
                     </Link>
                   </h3>

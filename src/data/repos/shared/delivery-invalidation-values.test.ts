@@ -64,4 +64,25 @@ describe('completeInvalidationValues', () => {
     expect(values.urls).toContain('https://tenant.example/api/network/media/media-1');
     expect(values.urls).toContain('https://tenant.example/api/network/media/media-1?variant=thumb');
   });
+
+  it('membersihkan leluhur bersama karena portal pencetus ikut memuat artikel kota', () => {
+    const values = completeInvalidationValues({
+      organizationId: 'org-1', siteId: 'site-kota', currentHostname: 'kota.apex.example',
+      relatedHostnames: ['kota.apex.example', 'jawa-tengah.apex.example', 'apex.example'],
+      reason: 'publication.published', articleSlugs: ['berita-utama'],
+    });
+    expect(values.urls).toContain('https://kota.apex.example/berita-utama');
+    expect(values.urls).toContain('https://jawa-tengah.apex.example/berita-utama');
+    expect(values.urls).toContain('https://apex.example/berita-utama');
+    expect(values.urls).toHaveLength(24);
+  });
+
+  it('membatasi url ke host leluhur, bukan ke seluruh subdomain domain', () => {
+    const values = completeInvalidationValues({
+      organizationId: 'org-1', siteId: 'site-apex', currentHostname: 'apex.example',
+      relatedHostnames: ['apex.example'], reason: 'publication.published', articleSlugs: ['berita-utama'],
+    });
+    expect(values.urls.every((url) => url.endsWith('.example/berita-utama') || url.includes('apex.example'))).toBe(true);
+    expect(values.urls).toHaveLength(8);
+  });
 });

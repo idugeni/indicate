@@ -255,7 +255,7 @@ describe('PublicationService request validation', () => {  it('menolak payload m
     expect(repository.acceptPublication).toHaveBeenCalledTimes(1);
   });
 
-  it('meluaskan permintaan kota ke region dan apex dengan kanonis primer', async () => {
+  it('memenuhi permintaan kota dengan satu baris dan tanpa kanonis turunan', async () => {
     const city = '0199a2b3-4c5d-7e8f-9012-3456789abc11';
     const region = '0199a2b3-4c5d-7e8f-9012-3456789abc12';
     const apex = '0199a2b3-4c5d-7e8f-9012-3456789abc13';
@@ -273,12 +273,9 @@ describe('PublicationService request validation', () => {  it('menolak payload m
     expect(repository.acceptPublication).toHaveBeenCalledWith(
       actor,
       expect.objectContaining({
-        siteIds: [city, region, apex],
-        cascade: { [apex]: city, [region]: city },
-        canonicals: {
-          [apex]: 'https://portal.test/judul-kanonik-artikel',
-          [region]: 'https://portal.test/judul-kanonik-artikel',
-        },
+        siteIds: [city],
+        cascade: {},
+        canonicals: {},
       }),
     );
   });

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import type { FeedArticle, NetworkArticle, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
+import type { ArticleListItem, FeedArticle, NetworkArticle, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
 import { isNetworkArticle } from '@/modules/delivery/models';
 import { deriveAboutPublisher } from '@/modules/site/about-profile';
 import { articleBodyText } from '@/modules/site/article-markup';
@@ -214,11 +214,17 @@ function homeTitle(siteName: string, siteDescription: string): string {
  * @param site - Tenant site data for the default hostname.
  * @param path - Default in-tenant path.
  * @param article - Article carrying an optional absolute canonical override.
- * @returns Override when it is an absolute http(s) URL; otherwise the tenant URL.
+ * @returns Override, then the origin portal for an inherited article, otherwise the tenant URL.
+ * @remarks A region or apex serves its descendant cities' articles without owning
+ * them, so all three hosts would otherwise answer the same article with three
+ * self-canonicals. Pointing the ancestor copy at the origin city keeps one URL
+ * per article, which is also the link a reader should land on.
  */
 export function resolveArticleCanonical(site: NetworkSiteData, path: string, article: NetworkArticle | undefined): string {
   const override = article?.canonicalUrl?.trim() ?? '';
   if (/^https?:\/\/[^/]+/u.test(override)) return override;
+  const href = article?.href ?? '';
+  if (href.startsWith('https://')) return href;
   return absoluteSiteUrl(site.context, path);
 }
 
@@ -451,9 +457,25 @@ function toLastmod(value: string, fallback: string): string {
   return new Date(time).toISOString();
 }
 
+/**
+ * Narrow aggregated articles down to the ones this host owns.
+ *
+ * @param articles - Indexable articles visible to the host, own and inherited.
+ * @returns Only the rows whose assignment sits on the host itself.
+ *
+ * @remarks A region or apex portal lists its descendant cities' articles and
+ * links out to them, but it does not host them. Declaring those URLs in its own
+ * sitemap would list another host's pages, so each city sitemap stays the single
+ * place its articles are submitted from. A host-relative `href` is the marker.
+ */
+function ownedArticles(articles: readonly ArticleListItem[]): readonly ArticleListItem[] {
+  return articles.filter((article) => article.href.startsWith('/'));
+}
+
 export function serializeSitemap(site: NetworkSiteData): string {
   const stable = site.siteCreatedAt;
   const indexable = site.articles.filter((article) => article.robotsDirective?.startsWith('noindex') !== true);
+  const owned = ownedArticles(indexable);
   const homepageLastmod = indexable.reduce<string>(
     (latest, article) => (article.updatedAt > latest ? article.updatedAt : latest),
     stable,
@@ -477,7 +499,7 @@ export function serializeSitemap(site: NetworkSiteData): string {
       });
     }
   }
-  for (const article of indexable) {
+  for (const article of owned) {
     entries.push({
       loc: resolveArticleCanonical(site, `/${article.slug}`, isNetworkArticle(article) ? article : undefined),
       lastmod: toLastmod(article.updatedAt, stable),
@@ -502,7 +524,7 @@ export function serializeSitemap(site: NetworkSiteData): string {
 /** Google News sitemap: only articles ≤2 days old, max 1000 URLs. */
 export function serializeNewsSitemap(site: NetworkSiteData): string {
   const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
-  const items = site.articles
+  const items = ownedArticles(site.articles)
     .filter((article) => article.robotsDirective?.startsWith('noindex') !== true)
     .filter((article) => {
       const time = new Date(article.publishedAt).getTime();
@@ -526,7 +548,7 @@ export function serializeRss(channel: {
 }): string {
   const feedChannel = absoluteSiteUrl(channel.context, '/');
   return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>${xml(channel.siteName)}</title><link>${xml(feedChannel)}</link><description>${xml(channel.description)}</description><language>id-ID</language>${channel.articles.map((article) => {
-    const link = absoluteSiteUrl(channel.context, `/${article.slug}`);
+    const link = article.href;
     const enclosure = article.imageUrl === null ? '' : `<enclosure url="${xml(absoluteSiteAssetUrl(channel.context, article.imageUrl))}"${article.imageMediaType === null ? ' type="image/jpeg"' : ` type="${xml(article.imageMediaType)}"`} />`;
     return `<item><title>${xml(article.title)}</title><link>${xml(link)}</link><guid isPermaLink="true">${xml(link)}</guid><description>${xml(article.description)}</description><content:encoded>${xml(article.body)}</content:encoded>${enclosure}<pubDate>${new Date(article.publishedAt).toUTCString()}</pubDate>${article.categoryName === null ? '' : `<category>${xml(article.categoryName)}</category>`}</item>`;
   }).join('')}</channel></rss>`;

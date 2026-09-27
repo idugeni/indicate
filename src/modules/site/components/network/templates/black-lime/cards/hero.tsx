@@ -27,7 +27,7 @@ export function BlackLimeHero({ article }: { readonly article: ArticleListItem }
           </p>
         )}
         <h1 className="m-0 mt-3 font-sans text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-100 sm:text-5xl">
-          <Link href={`/${article.slug}`} className="hover:text-[var(--tpl-primary,#c5f82a)]">
+          <Link href={article.href} className="hover:text-[var(--tpl-primary,#c5f82a)]">
             {lead}
             {accent === null ? null : (
               <>
@@ -42,7 +42,7 @@ export function BlackLimeHero({ article }: { readonly article: ArticleListItem }
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-4">
           <Link
-            href={`/${article.slug}`}
+            href={article.href}
             className="group inline-flex flex-none items-center gap-3 font-sans text-sm font-bold text-slate-100"
             aria-label={`Baca selengkapnya: ${article.title}`}
           >
@@ -65,7 +65,7 @@ export function BlackLimeHero({ article }: { readonly article: ArticleListItem }
 
       <div className="relative min-w-0">
         <Link
-          href={`/${article.slug}`}
+          href={article.href}
           aria-label={article.title}
           className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
         >
@@ -87,7 +87,7 @@ export function BlackLimeHero({ article }: { readonly article: ArticleListItem }
           </p>
         )}
         <Link
-          href={`/${article.slug}`}
+          href={article.href}
           aria-label={`Buka: ${article.title}`}
           className="absolute bottom-4 right-4 flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--tpl-primary,#c5f82a)] text-[var(--tpl-on-primary,#0a0c07)] shadow-md transition-colors hover:bg-[var(--tpl-primary-dark,#9ecb14)]"
         >

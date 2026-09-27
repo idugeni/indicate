@@ -24,7 +24,7 @@ export function GreenMinimalHero({ article }: { readonly article: ArticleListIte
           </p>
         )}
         <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-[var(--tpl-ink,#10231a)] sm:text-4xl">
-          <Link href={`/${article.slug}`} className="hover:text-[var(--tpl-primary,#1d7a38)]">
+          <Link href={article.href} className="hover:text-[var(--tpl-primary,#1d7a38)]">
             {article.title}
           </Link>
         </h1>
@@ -33,7 +33,7 @@ export function GreenMinimalHero({ article }: { readonly article: ArticleListIte
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-4">
           <Link
-            href={`/${article.slug}`}
+            href={article.href}
             className="group inline-flex flex-none items-center gap-2 rounded-full bg-[var(--tpl-primary,#1d7a38)] py-2 pl-5 pr-2 font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#145c2a)]"
             aria-label={`Baca selengkapnya: ${article.title}`}
           >
@@ -56,7 +56,7 @@ export function GreenMinimalHero({ article }: { readonly article: ArticleListIte
 
       <div className="relative min-w-0">
         <Link
-          href={`/${article.slug}`}
+          href={article.href}
           aria-label={article.title}
           className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
         >

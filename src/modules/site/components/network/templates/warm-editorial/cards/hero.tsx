@@ -23,7 +23,7 @@ export function WarmEditorialHero({ article }: { readonly article: ArticleListIt
           </p>
         )}
         <h1 className="m-0 mt-3 font-serif text-4xl font-bold leading-[1.12] tracking-tight text-[var(--tpl-ink,#231208)] sm:text-5xl">
-          <Link href={`/${article.slug}`} className="hover:text-[var(--tpl-primary,#b4532a)]">
+          <Link href={article.href} className="hover:text-[var(--tpl-primary,#b4532a)]">
             {article.title}
           </Link>
         </h1>
@@ -35,7 +35,7 @@ export function WarmEditorialHero({ article }: { readonly article: ArticleListIt
         </div>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link
-            href={`/${article.slug}`}
+            href={article.href}
             className="inline-flex h-11 items-center gap-2 rounded-full bg-[var(--tpl-primary,#b4532a)] px-6 font-sans text-sm font-bold text-white transition-colors hover:bg-[var(--tpl-primary-dark,#8a3c1d)]"
           >
             Baca Selengkapnya
@@ -46,7 +46,7 @@ export function WarmEditorialHero({ article }: { readonly article: ArticleListIt
       </div>
 
       <Link
-        href={`/${article.slug}`}
+        href={article.href}
         aria-label={article.title}
         className="relative order-2 block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
       >

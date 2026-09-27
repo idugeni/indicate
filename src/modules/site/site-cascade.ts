@@ -53,20 +53,20 @@ function requiredAncestors(level: CascadeSiteLevel): readonly Exclude<CascadeSit
  * Derive the duplicate-counting family for one site row.
  *
  * @param siteId - Site carrying the content.
- * @param source - Assignment origin marker, if known.
  * @param expandedFromSiteId - Manual origin of an auto row, if known.
  * @returns Family key; rows sharing a key never count as duplicates of each other.
- * @remarks Cascaded copies share their origin's canonical URL, so counting
- * them as duplicates of their own family would forbid every cascade.
+ * @remarks A region and an apex list their descendant cities' articles rather
+ * than owning copies, so a city and every ancestor that inherits it are one
+ * family. Keying on the origin collapses that closure; keying on the assignment
+ * source would not, and would forbid the city's own publication.
  */
 export function cascadeFamilyKey(
   siteId: string,
-  source: 'manual' | 'auto' | null | undefined,
   expandedFromSiteId: string | null | undefined,
 ): string {
-  return source === 'auto' && expandedFromSiteId !== null && expandedFromSiteId !== undefined
-    ? `auto:${expandedFromSiteId}`
-    : `manual:${siteId}`;
+  return expandedFromSiteId !== null && expandedFromSiteId !== undefined
+    ? `origin:${expandedFromSiteId}`
+    : `origin:${siteId}`;
 }
 
 /**

@@ -29,7 +29,7 @@ export function RedEditorialPickCard({ article, index }: { readonly article: Art
           </p>
         )}
         <h3 className="m-0 mt-1.5 line-clamp-3 font-serif text-lg font-bold leading-snug text-[#230d0d]">
-          <Link href={`/${article.slug}`} className="transition-colors hover:text-[#b91c1c]">
+          <Link href={article.href} className="transition-colors hover:text-[#b91c1c]">
             {article.title}
           </Link>
         </h3>

@@ -53,7 +53,7 @@ export interface CompleteInvalidationInput {
   readonly siteId: string;
   readonly previousHostname?: string | null;
   readonly currentHostname?: string | null;
-  readonly siblingHostnames?: readonly string[];
+  readonly relatedHostnames?: readonly string[];
   readonly reason: string;
   readonly articleSlugs?: readonly string[];
   readonly categorySlugs?: readonly string[];
@@ -66,10 +66,10 @@ export interface CompleteInvalidationInput {
  *
  * @param input - Invalidation input carrying hostnames, slugs, and media IDs.
  * @returns Pending invalidation row values with deduped tags, paths, and URLs.
- * @remarks Article bytes behind signed redirects purge through exact-URL purge only: the edge-cached 307s stay out of `paths` because Next path revalidation is unreliable for query-string route variants. Brand bytes (`/icon.png` et al.) are directly cached immutable responses, so every site-level reason carries them in `paths` like any page; article-corpus reasons leave them out because publishing cannot change brand bytes. Sibling hostnames (`<region>.<apex>`) ride the same task so one dispatch busts regional copies sharing apex brand. Narrowing the path set matters at network scale: a network-wide publication writes one row per portal, so every path held here is multiplied by the portal count and by the sibling-host fan-out on each `urls` entry.
+ * @remarks Article bytes behind signed redirects purge through exact-URL purge only: the edge-cached 307s stay out of `paths` because Next path revalidation is unreliable for query-string route variants. Brand bytes (`/icon.png` et al.) are directly cached immutable responses, so every site-level reason carries them in `paths` like any page; article-corpus reasons leave them out because publishing cannot change brand bytes. Related hostnames ride the same task so one dispatch busts every portal that renders the change: a city article is also listed by its region and apex, so those three are purged together, while an apex article belongs to the apex alone. Widening this set is what previously multiplied a publication by the portal count, so it carries the lineage only — never a sibling scan.
  */
 export function completeInvalidationValues(input: CompleteInvalidationInput) {
-  const hostnames = [...new Set([input.previousHostname ?? null, input.currentHostname ?? null, ...(input.siblingHostnames ?? [])].filter((value): value is string => value !== null))];
+  const hostnames = [...new Set([input.previousHostname ?? null, input.currentHostname ?? null, ...(input.relatedHostnames ?? [])].filter((value): value is string => value !== null))];
   const articleSlugs = [...new Set(input.articleSlugs ?? [])];
   const categorySlugs = [...new Set(input.categorySlugs ?? [])];
   const paths = new Set<string>(basePathsFor(input.reason));

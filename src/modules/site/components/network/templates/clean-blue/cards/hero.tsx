@@ -16,7 +16,7 @@ export function CleanBlueHero({ article }: { readonly article: ArticleListItem }
   return (
     <section className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12" aria-label="Sorotan utama">
       <Link
-        href={`/${article.slug}`}
+        href={article.href}
         aria-label={article.title}
         className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
       >
@@ -40,7 +40,7 @@ export function CleanBlueHero({ article }: { readonly article: ArticleListItem }
           </p>
         )}
         <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl">
-          <Link href={`/${article.slug}`} className="hover:text-[var(--tpl-primary,#1a5fd0)]">
+          <Link href={article.href} className="hover:text-[var(--tpl-primary,#1a5fd0)]">
             {article.title}
           </Link>
         </h1>

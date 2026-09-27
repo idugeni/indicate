@@ -62,13 +62,28 @@ export class PublicationService {
       } else if (origins.has(variant.siteId)) {
         families[variant.siteId] = `auto:${variant.siteId}`;
       } else {
-        families[variant.siteId] = cascadeFamilyKey(variant.siteId, variant.assignmentSource, variant.expandedFromSiteId);
+        families[variant.siteId] = cascadeFamilyKey(variant.siteId, variant.expandedFromSiteId);
       }
     }
     for (const [siteId, originSiteId] of Object.entries(derived)) families[siteId] = `auto:${originSiteId}`;
     return families;
   }
 
+  /**
+   * Resolve the sites a publication writes an assignment row to.
+   *
+   * @param context - Article variant context carrying the org's site tree.
+   * @param manualSiteIds - Sites the editor explicitly targeted.
+   * @returns Target ids, always empty derivation and canonical maps.
+   *
+   * @remarks Only the requested portals get a row. The cascade is still walked so
+   * an incomplete `apex -> region -> city` chain is refused before anything is
+   * written, but its ancestors are no longer materialised: a region and an apex
+   * list their descendant cities' articles by walking the tree at read time, so
+   * copying the row upward bought nothing and multiplied storage and edge purges
+   * by the portal count. An apex publication stays apex-only, because a city
+   * portal lists its own rows and nothing else.
+   */
   private expandRequest(
     context: ArticleVariantContext,
     manualSiteIds: readonly string[],
@@ -88,16 +103,7 @@ export class PublicationService {
       context.slug,
     );
     if (expansion.unresolved.length > 0) throw new CascadeIncompleteError(expansion.unresolved);
-    const siteIds = [...new Set([...manualSiteIds, ...expansion.targets.map((target) => target.siteId)])].sort();
-    const derived: Record<string, string> = {};
-    const canonicals: Record<string, string> = {};
-    for (const target of expansion.targets) {
-      if (target.originSiteId !== null && target.canonicalUrl !== null) {
-        derived[target.siteId] = target.originSiteId;
-        canonicals[target.siteId] = target.canonicalUrl;
-      }
-    }
-    return { siteIds, derived, canonicals };
+    return { siteIds: [...new Set(manualSiteIds)].sort(), derived: {}, canonicals: {} };
   }
 
   private duplicateVariantError(actor: AuthorizedTenantActorContext) {
@@ -147,6 +153,8 @@ export class PublicationService {
     try {
       const variantContext = await this.repository.getArticleVariantContext(actor, parsed.data.articleId);
       if (variantContext === null) return this.denied(actor, 'publication.request.denied');
+      const connector = manualSiteIds.find((siteId) => variantContext.variants.find((variant) => variant.siteId === siteId)?.siteLevel === 'region');
+      if (connector !== undefined) return { ok: false, error: createPublicError('INVALID_INPUT', 'Portal region hanya penghubung: ia menampilkan artikel dari kota-kotanya. Terbitkan ke portal kota di bawahnya, atau ke apex bila berita memang hanya untuk apex.', actor.requestId) };
       const publishAt = this.resolvePublishAt(variantContext, parsed.data.publishAt, now);
       if (publishAt === null) return this.invalidPublishTime(actor);
       const publishAtKey = publishAt.getTime() === now.getTime() ? null : publishAt.toISOString();

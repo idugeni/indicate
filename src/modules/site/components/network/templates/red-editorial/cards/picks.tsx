@@ -75,7 +75,7 @@ export function RedEditorialPicks({
                       </span>
                       <span className="min-w-0 flex-1">
                         <Link
-                          href={`/${article.slug}`}
+                          href={article.href}
                           className="line-clamp-2 block text-sm font-bold leading-snug text-[#230d0d] transition-colors hover:text-[#b91c1c]"
                         >
                           {article.title}

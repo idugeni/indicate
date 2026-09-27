@@ -60,7 +60,7 @@ export function DarkNavyHero({ articles }: { readonly articles: readonly Article
       </div>
       <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6">
         <h1 className="m-0 max-w-3xl font-sans text-2xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-4xl">
-          <Link href={`/${article.slug}`} className="hover:text-[#9fc0ff]">
+          <Link href={article.href} className="hover:text-[#9fc0ff]">
             {article.title}
           </Link>
         </h1>
@@ -70,7 +70,7 @@ export function DarkNavyHero({ articles }: { readonly articles: readonly Article
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <p className="m-0 flex min-w-0 items-center gap-2.5">
             <Link
-              href={`/${article.slug}`}
+              href={article.href}
               className="group inline-flex flex-none items-center gap-2.5 font-sans text-sm font-bold text-white"
               aria-label={`Baca selengkapnya: ${article.title}`}
             >

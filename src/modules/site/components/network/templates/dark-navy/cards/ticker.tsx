@@ -45,7 +45,7 @@ export function DarkNavyTicker({ articles }: { readonly articles: readonly Artic
         className={`m-0 min-w-0 flex-1 font-sans text-[15px] font-medium leading-snug text-[var(--tpl-ink,#eaf0fb)] line-clamp-2 sm:text-sm sm:line-clamp-1 ${reduceMotion ? '' : 'ticker-enter'}`}
         aria-live="polite"
       >
-        <Link href={`/${article.slug}`} className="no-underline hover:text-[var(--tpl-primary,#2f7bff)]">
+        <Link href={article.href} className="no-underline hover:text-[var(--tpl-primary,#2f7bff)]">
           {tickerHeadline(article)}
         </Link>
       </p>

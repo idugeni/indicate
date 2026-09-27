@@ -109,8 +109,18 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       const relation = (await transaction.select({ customImageMediaId: articleSites.customImageMediaId }).from(articleSites).where(and(eq(articleSites.organizationId, organizationId), eq(articleSites.articleId, articleId), eq(articleSites.siteId, siteId))).limit(1))[0];
       if (relation?.customImageMediaId != null) extraMediaIds.push(relation.customImageMediaId);
     }
-    const siblings = await transaction.select({ hostname: sites.normalizedHostname }).from(sites).where(and(eq(sites.organizationId, organizationId), sql`${sites.normalizedHostname} LIKE ${`%.${site.hostname}`}`));
-    await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId, siteId, currentHostname: site.hostname, siblingHostnames: siblings.map((row) => row.hostname), reason, articleSlugs, categorySlugs, mediaIds: [...(mediaId === undefined ? [] : [mediaId]), ...extraMediaIds], now }));
+    const ancestors = await transaction.execute(sql`(
+      with recursive lineage as (
+        select ${sites.id} as id, ${sites.parentSiteId} as parent_site_id, ${sites.normalizedHostname} as normalized_hostname from ${sites}
+        where ${sites.organizationId} = ${organizationId} and ${sites.id} = ${siteId}
+        union all
+        select parent.id, parent.parent_site_id, parent.normalized_hostname
+        from ${sites} parent join lineage child on parent.id = child.parent_site_id
+        where parent.organization_id = ${organizationId}
+      ) select normalized_hostname from lineage
+    )`);
+    const relatedHostnames = [...ancestors].map((row) => (row as { normalized_hostname: string }).normalized_hostname);
+    await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId, siteId, currentHostname: site.hostname, relatedHostnames, reason, articleSlugs, categorySlugs, mediaIds: [...(mediaId === undefined ? [] : [mediaId]), ...extraMediaIds], now }));
   }
 
   async recordDenial(actor: AuthorizedTenantActorContext, action: string, targetType: string, now: string): Promise<void> {
@@ -314,24 +324,18 @@ export class DrizzlePublishingRepository implements PublishingRepository {
     canonicalDescription: string,
     siteIds: readonly string[],
     overrides: Readonly<Record<string, { readonly title?: string | undefined; readonly description?: string | undefined }>>,
-    cascade: Readonly<Record<string, string>>,
   ): Promise<void> {
     const rows = await transaction.select({
       siteId: articleSites.siteId, customTitle: articleSites.customTitle, customDescription: articleSites.customDescription,
-      active: articleSites.active, state: articleSites.state, assignmentSource: articleSites.assignmentSource,
+      active: articleSites.active, state: articleSites.state,
       expandedFromSiteId: articleSites.expandedFromSiteId,
     }).from(articleSites).where(and(eq(articleSites.organizationId, organizationId), eq(articleSites.articleId, articleId)));
-    const familyOf = (siteId: string, source: 'manual' | 'auto' | null, expandedFrom: string | null): string => {
-      const current = cascade[siteId];
-      if (current !== undefined) return `auto:${current}`;
-      if (Object.values(cascade).includes(siteId)) return `auto:${siteId}`;
-      return cascadeFamilyKey(siteId, source, expandedFrom);
-    };
+    const familyOf = (siteId: string, expandedFrom: string | null): string => cascadeFamilyKey(siteId, expandedFrom);
     const effective = new Map<string, { family: string; title: string; description: string }>();
     for (const row of rows) {
       if (!row.active || (row.state !== 'queued' && row.state !== 'processing' && row.state !== 'retrying' && row.state !== 'published')) continue;
       effective.set(row.siteId, {
-        family: familyOf(row.siteId, row.assignmentSource as 'manual' | 'auto' | null, row.expandedFromSiteId),
+        family: familyOf(row.siteId, row.expandedFromSiteId),
         title: row.customTitle ?? canonicalTitle,
         description: row.customDescription ?? canonicalDescription,
       });
@@ -339,7 +343,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
     for (const siteId of siteIds) {
       const prior = effective.get(siteId);
       effective.set(siteId, {
-        family: familyOf(siteId, null, null),
+        family: familyOf(siteId, null),
         title: overrides[siteId]?.title ?? prior?.title ?? canonicalTitle,
         description: overrides[siteId]?.description ?? prior?.description ?? canonicalDescription,
       });
@@ -413,7 +417,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
             .where(and(eq(media.organizationId, actor.organizationId), inArray(media.id, overrideImageIds), eq(media.state, 'active'), eq(media.purpose, 'article-cover'), sql`${media.mediaType} LIKE 'image/%'`));
           if (coverRows.length !== overrideImageIds.length) throw new PublishingAccessDeniedError();
         }
-        await this.rejectCrossSiteDuplicates(transaction, actor.organizationId, input.articleId, articleRows[0]!.title, excerptForDescription(articleRows[0]!.body), distinctSites, input.overrides, input.cascade ?? {});
+        await this.rejectCrossSiteDuplicates(transaction, actor.organizationId, input.articleId, articleRows[0]!.title, excerptForDescription(articleRows[0]!.body), distinctSites, input.overrides);
         const jobRows = await transaction.insert(publishingJobs).values({ organizationId: actor.organizationId, id: input.jobId, articleId: input.articleId, idempotencyKey: input.idempotencyKey, fingerprint: input.fingerprint, fingerprintVersion: input.fingerprintVersion, state: 'queued', options: input.options as Record<string, unknown>, dispatchStatus: 'pending', nextDispatchAt: new Date(input.publishAt), createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning();
         for (let index = 0; index < distinctSites.length; index += 1) {
           const siteId = distinctSites[index]!;

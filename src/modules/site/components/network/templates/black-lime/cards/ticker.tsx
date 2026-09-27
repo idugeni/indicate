@@ -45,7 +45,7 @@ export function BlackLimeTicker({ articles }: { readonly articles: readonly Arti
         className={`m-0 min-w-0 flex-1 font-sans text-[15px] font-medium leading-snug text-slate-200 line-clamp-2 sm:text-sm sm:line-clamp-1 ${reduceMotion ? '' : 'ticker-enter'}`}
         aria-live="polite"
       >
-        <Link href={`/${article.slug}`} className="no-underline hover:text-[var(--tpl-primary,#c5f82a)]">
+        <Link href={article.href} className="no-underline hover:text-[var(--tpl-primary,#c5f82a)]">
           {tickerHeadline(article)}
         </Link>
       </p>

@@ -237,6 +237,16 @@ describe('serializers', () => {
     expect(sitemap).toContain('/berita-utama');
   });
 
+  it('tidak mendeklarasikan artikel warisan kota di sitemap portal pencetus', () => {
+    const inherited = makeNetworkArticle({ slug: 'kota-lokal', href: 'https://kota.portal.example/kota-lokal' });
+    const owned = makeNetworkArticle({ slug: 'milik-sendiri', href: '/milik-sendiri' });
+    const sitemap = serializeSitemap(makeNetworkSite([inherited, owned]));
+    expect(sitemap).toContain('/milik-sendiri');
+    expect(sitemap).not.toContain('kota.portal.example');
+    const news = serializeNewsSitemap(makeNetworkSite([inherited, owned]));
+    expect(news).not.toContain('kota.portal.example');
+  });
+
   it('menyaring news sitemap ke artikel dua hari terakhir', () => {
     const fresh = makeNetworkArticle({ slug: 'baru', publishedAt: new Date(Date.now() - 3_600_000).toISOString() });
     const stale = makeNetworkArticle({ slug: 'lama', publishedAt: '2020-01-01T00:00:00.000Z' });

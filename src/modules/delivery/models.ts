@@ -46,6 +46,14 @@ export interface ArticleListItem {
   readonly slug: string;
   readonly title: string;
   readonly description: string;
+  /**
+   * Absolute path or cross-host URL a listing must link to.
+   *
+   * @remarks A city portal owns its articles, so its rows stay host-relative and cost
+   * no extra bytes. A region or apex portal only aggregates descendant cities, so its
+   * rows point at the origin city host — one stored assignment, one canonical URL.
+   */
+  readonly href: string;
   /** Optional canonical URL override; falls back to the tenant article URL. */
   readonly canonicalUrl?: string | null;
   /** Optional per-article robots override (`noindex`, `nosnippet`); null follows site default. */
@@ -108,6 +116,8 @@ export interface FeedArticle {
   readonly id: string;
   readonly slug: string;
   readonly title: string;
+  /** Absolute item URL, pointing at the origin portal when an ancestor aggregates it. */
+  readonly href: string;
   readonly description: string;
   readonly body: string;
   readonly imageUrl: string | null;

@@ -54,7 +54,7 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
     >
       <div className="grid items-center gap-6 lg:grid-cols-[1.05fr_minmax(0,1fr)] lg:gap-8">
         <Link
-          href={`/${article.slug}`}
+          href={article.href}
           aria-label={article.title}
           className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
         >
@@ -117,7 +117,7 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
             ) : null}
           </div>
           <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.12] tracking-tight text-[var(--tpl-ink,#0e1b33)] sm:text-4xl">
-            <Link href={`/${article.slug}`} className="hover:text-[var(--tpl-primary,#1f7cff)]">
+            <Link href={article.href} className="hover:text-[var(--tpl-primary,#1f7cff)]">
               {article.title}
             </Link>
           </h1>
@@ -137,7 +137,7 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
             <div className="flex flex-none items-center gap-2">
               <GlassyBlueHeroActions slug={article.slug} title={article.title} />
               <Link
-                href={`/${article.slug}`}
+                href={article.href}
                 aria-label={`Baca: ${article.title}`}
                 className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--tpl-primary,#1f7cff)] text-white shadow-lg shadow-[#1f7cff]/30 transition-colors hover:bg-[var(--tpl-primary-dark,#155fd0)]"
               >

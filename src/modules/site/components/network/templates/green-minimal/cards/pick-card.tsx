@@ -40,7 +40,7 @@ export function GreenMinimalPickCard({ article, index }: { readonly article: Art
       </div>
       <CardHeader className="flex-1 px-5 pt-4">
         <CardTitle className="line-clamp-2 font-sans text-[17px] font-bold leading-snug tracking-tight text-slate-900">
-          <Link href={`/${article.slug}`} className="hover:text-[#1d7a38]">
+          <Link href={article.href} className="hover:text-[#1d7a38]">
             {article.title}
           </Link>
         </CardTitle>
@@ -57,7 +57,7 @@ export function GreenMinimalPickCard({ article, index }: { readonly article: Art
       <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t border-slate-100 bg-white px-5 py-3.5">
         <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} />
         <Link
-          href={`/${article.slug}`}
+          href={article.href}
           aria-label={`Baca: ${article.title}`}
           className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#e0f0e5] text-[#1d7a38] transition-colors hover:bg-[#1d7a38] hover:text-white"
         >

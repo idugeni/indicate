@@ -68,9 +68,9 @@ describe('expandCascadeSites', () => {
   });
 
   it('membedakan kunci keluarga cascade', () => {
-    expect(cascadeFamilyKey('s-1', 'manual', null)).toBe('manual:s-1');
-    expect(cascadeFamilyKey('s-2', 'auto', 's-1')).toBe('auto:s-1');
-    expect(cascadeFamilyKey('s-3', null, null)).toBe('manual:s-3');
+    expect(cascadeFamilyKey('s-1', null)).toBe('origin:s-1');
+    expect(cascadeFamilyKey('s-2', 's-1')).toBe('origin:s-1');
+    expect(cascadeFamilyKey('s-3', null)).toBe('origin:s-3');
   });
 });
 
