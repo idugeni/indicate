@@ -15,6 +15,17 @@ async function handleGET() {
       environment: context.bootstrap.environment,
       configurationSource: 'postgres',
       configurationVersion: context.snapshot.configurationVersion,
+      /**
+       * Whether the daily WORM audit export can run at all.
+       *
+       * @remarks The export route answers 503 on its own when this is
+       * `unconfigured`, but nothing watches that route, so a missing bucket
+       * silently stopped the daily export for fifteen days while audit rows kept
+       * accumulating with no archive copy. Health is the one endpoint already
+       * polled on a schedule, so the condition is reported here instead of only
+       * inside the cron that fails.
+       */
+      auditExport: context.config.r2.audit === null ? 'unconfigured' : 'configured',
     },
     {
       headers: {
