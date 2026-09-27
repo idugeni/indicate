@@ -32,7 +32,7 @@ describe('controlPlaneLlms', () => {
 describe('tenantLlms', () => {
   it('merender kanal, liputan, dan peta situs', () => {
     const body = tenantLlms('portal.example', 'Portal', 'Kabar terkini', ['Teknologi'], [
-      { title: 'Judul A', slug: 'judul-a' },
+      { title: 'Judul A', slug: 'judul-a', href: '/judul-a' },
     ]);
     expect(body).toContain('# Portal');
     expect(body).toContain('- Teknologi');
@@ -40,8 +40,15 @@ describe('tenantLlms', () => {
     expect(body).toContain('(https://portal.example/sitemap.xml)');
   });
 
+  it('menautkan liputan warisan ke host kota asalnya', () => {
+    const body = tenantLlms('jawa-tengah.portal.example', 'Portal', 'Kabar terkini', [], [
+      { title: 'Judul Kota', slug: 'judul-kota', href: 'https://kota.portal.example/judul-kota' },
+    ]);
+    expect(body).toContain('- [Judul Kota](https://kota.portal.example/judul-kota)');
+  });
+
   it('membatasi liputan pada 30 artikel', () => {
-    const articles = Array.from({ length: 35 }, (_, index) => ({ title: `A${index}`, slug: `a-${index}` }));
+    const articles = Array.from({ length: 35 }, (_, index) => ({ title: `A${index}`, slug: `a-${index}`, href: `/a-${index}` }));
     const body = tenantLlms('portal.example', 'Portal', 'Deskripsi', [], articles);
     expect(body).toContain('a-29');
     expect(body).not.toContain('a-30');

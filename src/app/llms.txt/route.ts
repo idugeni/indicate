@@ -54,7 +54,7 @@ export function controlPlaneLlms(
 }
 
 /** Tenant llms.txt: portal name + description, category channels, and latest coverage list. */
-export function tenantLlms(host: string, siteName: string, description: string, categories: readonly string[], articles: readonly { readonly title: string; readonly slug: string }[]): string {
+export function tenantLlms(host: string, siteName: string, description: string, categories: readonly string[], articles: readonly { readonly title: string; readonly slug: string; readonly href: string }[]): string {
   const origin = `https://${host}`;
   const lines = [
     `# ${siteName}`,
@@ -65,7 +65,7 @@ export function tenantLlms(host: string, siteName: string, description: string, 
     ...categories.map((name) => `- ${name}`),
     '',
     '## Liputan terkini',
-    ...articles.slice(0, 30).map((article) => `- [${article.title}](${origin}/${article.slug})`),
+    ...articles.slice(0, 30).map((article) => `- [${article.title}](${article.href.startsWith('https://') ? article.href : `${origin}/${article.slug}`})`),
     '',
     `- [Peta Situs](${origin}/sitemap.xml): daftar URL untuk perayap mesin pencari.`,
     '',
@@ -108,7 +108,7 @@ async function handleGET() {
         siteName,
         site.settings.seoDefaultDescription ?? site.settings.description,
         [...seen.values()],
-        site.articles.map((article) => ({ title: article.title, slug: article.slug })),
+        site.articles.map((article) => ({ title: article.title, slug: article.slug, href: article.href })),
       ),
       {
         headers: {
