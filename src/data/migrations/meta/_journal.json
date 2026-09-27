@@ -1464,6 +1464,13 @@
       "when": 1790499600000,
       "tag": "20260927130000_drop_unpublished_auto_assignments",
       "breakpoints": true
+    },
+    {
+      "idx": 209,
+      "version": "7",
+      "when": 1790503200000,
+      "tag": "20260927200000_social_warm_cooldown",
+      "breakpoints": true
     }
   ]
 }

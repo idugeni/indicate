@@ -30,4 +30,10 @@ export class DrizzleSocialWarmLedger implements SocialWarmLedger {
     await this.database.execute(sql`
       SELECT indicate_private.mark_social_warm_targets(${sqlStringArray(articleSiteIds)}::uuid[], ${now.toISOString()}::timestamptz)`);
   }
+
+  async markAttempted(articleSiteIds: readonly string[], now: Date): Promise<void> {
+    if (articleSiteIds.length === 0) return;
+    await this.database.execute(sql`
+      SELECT indicate_private.mark_social_warm_attempts(${sqlStringArray(articleSiteIds)}::uuid[], ${now.toISOString()}::timestamptz)`);
+  }
 }

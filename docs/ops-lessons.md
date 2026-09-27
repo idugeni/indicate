@@ -212,6 +212,16 @@ minimal satu task selesai, supaya halaman yang di-scrape bukan hasil edge purge
 yang belum mendarat. Tanpa `FB_APP_TOKEN` warmer tidak dipasang sama sekali:
 tidak ada yang bisa dihangatkan, jadi tidak ada panggilan sia-sia.
 
+Urutan *oldest-first* itu sendiri pernah jadi cacat, bukan fitur: karena target
+hanya ditandai setelah Meta menerimanya, satu URL yang tidak pernah berhasil
+menahan jendela forever. Produksi membuktikannya — 4.020 dari 4.020 baris
+`article_sites` published masih `social_warmed_at IS NULL` per 2026-09-27, dan
+64 slot tiap tick dipenuhi batch 2026-07-28 yang sama, sehingga artikel yang
+baru published berdiri di posisi 4.021 dan tidak pernah masuk jendela. Migrasi
+210 menambah `social_warm_attempts` + `social_warm_next_attempt_at` supaya
+target yang gagal didorong keluar jendela (30 detik, berlipat, cap 7 hari) alih-alih
+menjadi kepala antrean selamanya.
+
 Konsekuensi yang diterima secara sadar: menyunting judul, gambar, atau nama
 penulis tidak memberi tahu Meta. Kartu yang sudah di-cache tetap isi lama sampai
 Meta meng-scrape sendiri atau link dibagikan ulang. Lebih buruk, perbaikan
@@ -222,14 +232,20 @@ workaround sementara, melainkan satu-satunya obat, selamanya.
 Sweep `/api/internal/maintenance/facebook-prewarm` (`17 * * * *`) tetap khusus
 homepage `https://{host}/` dan tidak tersentuh perubahan ini; `read_runtime_config_active_sites()`
 tidak memuat artikel. Index parsial `article_sites_social_warm_due_idx` hanya
-memuat baris published yang belum bertanda — kosong pada keadaan steady, 8 kB di
-produksi, dan query due membaca indeks itu tanpa sort.
+memuat baris published yang belum bertanda; sejak migrasi 210 susunannya
+`social_warm_next_attempt_at NULLS FIRST, published_at, id`, dan backlog lama
+diparkir seminggu sehingga jendela oldest-first kosong dan tidak lagi menahan
+artikel yang baru published.
 
-Kalau pemanasan gagal tanpa membuka dispatch, dua event baru itu aparecen:
-`delivery.social_warm.due_failed` (ledger tidak terbaca) dan
-`delivery.social_warm.mark_failed` (penandaan gagal, target tetap due). Keduanya
+Kalau pemanasan gagal tanpa membuka dispatch, event yang muncul:
+`delivery.social_warm.due_failed` (ledger tidak terbaca),
+`delivery.social_warm.mark_failed` (penandaan gagal, target tetap due), dan
+`delivery.social_warm.cooldown_failed` (dorong cooldown gagal). Ketiganya
 sengaja tidak dilempar: warmer bersifat best-effort dan tidak boleh menggagalkan
-task invalidasi.
+task invalidasi. `delivery.social_warm.stalled` adalah satu-satunya peringatan
+berlevel `error`: ia menyala hanya ketika `attempted > 0` tetapi tidak ada satu
+pun URL yang diterima Meta, yaitu kondisi yang diam-diam mematikan seluruh fitur
+dan tidak boleh berlama-lama tanpa terlihat.
 
 ## 13. Komentar migrasi adalah klaim, bukan catatan
 

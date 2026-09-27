@@ -5,6 +5,13 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const MIGRATIONS_DIR = join(process.cwd(), 'src', 'data', 'migrations');
+/**
+ * Deliberately single-line: a few files wrap their ledger INSERT across lines and
+ * one (`faq_canonical_13`) digests its own body *before* the INSERT rather than
+ * with the literal zeroed, so a whitespace-tolerant regex would flag a documented
+ * convention as drift. Those files are skipped instead; the literal-shape test
+ * below still covers all of them.
+ */
 const LEDGER_ROW = /VALUES\s*\((\d+),\s*'([a-z_]+)',\s*'sha256:([0-9a-f]{64})'\)/;
 
 const ZEROS = '0'.repeat(64);
@@ -43,6 +50,17 @@ describe('Integritas digest migrasi', () => {
       if (match[3] !== bodyDigest(text)) drifted.push(`${file} (v${match[1]} ${match[2]})`);
     }
     expect(drifted).toEqual([]);
+  });
+
+  it('menolak literal checksum yang bukan 64 heksadesimal huruf kecil', () => {
+    const malformed: string[] = [];
+    for (const file of files) {
+      const text = readFileSync(join(MIGRATIONS_DIR, file), 'utf8').replace(/\r\n/g, '\n');
+      for (const literal of text.match(/sha256:[0-9a-zA-Z]+/gu) ?? []) {
+        if (!/^sha256:[0-9a-f]{64}$/u.test(literal)) malformed.push(`${file} (${literal})`);
+      }
+    }
+    expect(malformed).toEqual([]);
   });
 
   it('tidak ada nomor versi yang dipakai dua kali', () => {

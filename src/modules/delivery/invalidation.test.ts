@@ -5,21 +5,25 @@ import { logEvent } from '@/core/observability/logger';
 import type { InvalidationTask } from '@/modules/delivery/models';
 import type { SocialWarmLedger, SocialWarmTarget } from '@/modules/delivery/ports';
 import type { CloudflareAuthorityPort } from '@/integrations/cloudflare/ports';
+import type { SocialWarmFailure, SocialWarmResult } from '@/modules/delivery/social-warm';
 
 vi.mock('@/core/observability/logger', () => ({ logEvent: vi.fn() }));
 
 const logMock = vi.mocked(logEvent);
 
-const WARM_OK = { pageOk: true, imageOk: true, facebookOk: true } as const;
+const WARM_OK: SocialWarmResult = { pageOk: true, imageOk: true, facebookOk: true, pageReason: null, imageReason: null, facebookReason: null };
 
-type WarmOutcome = { readonly pageOk: boolean; readonly imageOk: boolean; readonly facebookOk: boolean };
-type Warmer = { warmArticle: (url: string) => Promise<WarmOutcome> };
+type Warmer = { warmArticle: (url: string) => Promise<SocialWarmResult> };
+
+function failed(overrides: Partial<SocialWarmResult> & { readonly pageReason?: SocialWarmFailure | null; readonly facebookReason?: SocialWarmFailure | null } = {}): SocialWarmResult {
+  return { pageOk: false, imageOk: false, facebookOk: false, pageReason: 'page_network', imageReason: 'image_not_linked', facebookReason: null, ...overrides };
+}
 
 function target(index: number): SocialWarmTarget {
   return { articleSiteId: `article-site-${index}`, url: `https://tenant.example/s-${index}` };
 }
 
-function ledger(targets: readonly SocialWarmTarget[], options: { readonly dueFails?: boolean; readonly markFails?: boolean } = {}) {
+function ledger(targets: readonly SocialWarmTarget[], options: { readonly dueFails?: boolean; readonly markFails?: boolean; readonly cooldownFails?: boolean } = {}) {
   return {
     dueTargets: vi.fn(async () => {
       if (options.dueFails === true) throw new Error('ledger_unavailable');
@@ -27,6 +31,9 @@ function ledger(targets: readonly SocialWarmTarget[], options: { readonly dueFai
     }),
     markWarmed: vi.fn(async () => {
       if (options.markFails === true) throw new Error('mark_unavailable');
+    }),
+    markAttempted: vi.fn(async () => {
+      if (options.cooldownFails === true) throw new Error('cooldown_unavailable');
     }),
   };
 }
@@ -159,10 +166,62 @@ describe('InvalidationDispatcher', () => {
 
   it('tidak menandai url yang ditolak meta agar tetap due', async () => {
     const socialLedger = ledger([target(0), target(1)]);
-    const warmer = { warmArticle: vi.fn(async (url: string) => (url.endsWith('/s-1') ? { pageOk: true, imageOk: true, facebookOk: false } : WARM_OK)) };
+    const warmer = { warmArticle: vi.fn(async (url: string) => (url.endsWith('/s-1') ? failed({ pageOk: true, imageOk: true, pageReason: null, imageReason: null, facebookReason: 'facebook_http_status' }) : WARM_OK)) };
     const { dispatcher } = warmHarness({ warmer, ledger: socialLedger });
     await dispatcher.dispatch(new Date(), 10);
     expect(socialLedger.markWarmed).toHaveBeenCalledWith(['article-site-0'], expect.any(Date));
+    expect(socialLedger.markAttempted).toHaveBeenCalledWith(['article-site-1'], expect.any(Date));
+  });
+
+  it('mendorong cooldown pada url gagal agar tidak menahan antrean', async () => {
+    const socialLedger = ledger([target(0)]);
+    const { dispatcher } = warmHarness({ warmer: { warmArticle: vi.fn(async () => failed()) }, ledger: socialLedger });
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
+    expect(socialLedger.markWarmed).not.toHaveBeenCalled();
+    expect(socialLedger.markAttempted).toHaveBeenCalledWith(['article-site-0'], expect.any(Date));
+  });
+
+  it('mendorong cooldown pada target yang tidak sempat dituntaskan', async () => {
+    const socialLedger = ledger([target(0)]);
+    const { dispatcher } = warmHarness({ warmer: { warmArticle: vi.fn(async () => { throw new Error('warm_down'); }) }, ledger: socialLedger });
+    await dispatcher.dispatch(new Date(), 10);
+    expect(socialLedger.markAttempted).toHaveBeenCalledWith(['article-site-0'], expect.any(Date));
+  });
+
+  it('melaporkan cooldown yang gagal tanpa menggagalkan dispatch', async () => {
+    logMock.mockClear();
+    const socialLedger = ledger([target(0)], { cooldownFails: true });
+    const { dispatcher } = warmHarness({ warmer: { warmArticle: vi.fn(async () => failed()) }, ledger: socialLedger });
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
+    expect(logMock.mock.calls.some((call) => call[1]?.event === 'delivery.social_warm.cooldown_failed')).toBe(true);
+  });
+
+  it('berhenti setelah meta menghabiskan kuota agar sisa batch tidak dibakar', async () => {
+    logMock.mockClear();
+    const targets = Array.from({ length: 40 }, (_, index) => target(index));
+    const warmer = { warmArticle: vi.fn(async () => failed({ facebookReason: 'facebook_rate_limited' })) };
+    const { dispatcher } = warmHarness({ warmer, ledger: ledger(targets) });
+    await dispatcher.dispatch(new Date(), 10);
+    expect(warmer.warmArticle).toHaveBeenCalledTimes(8);
+    expect(logMock.mock.calls.some((call) => call[1]?.event === 'delivery.social_warm.rate_limited')).toBe(true);
+  });
+
+  it('melempar error stalled saat tidak ada satu pun url yang diterima meta', async () => {
+    logMock.mockClear();
+    const socialLedger = ledger([target(0)]);
+    const { dispatcher } = warmHarness({ warmer: { warmArticle: vi.fn(async () => failed()) }, ledger: socialLedger });
+    await dispatcher.dispatch(new Date(), 10);
+    const stalled = logMock.mock.calls.filter((call) => call[1]?.event === 'delivery.social_warm.stalled');
+    expect(stalled).toHaveLength(1);
+    expect(stalled[0]?.[0]).toBe('error');
+  });
+
+  it('tidak melempar stalled saat meta tetap menerima url', async () => {
+    logMock.mockClear();
+    const socialLedger = ledger([target(0)]);
+    const { dispatcher } = warmHarness({ warmer: { warmArticle: vi.fn(async () => WARM_OK) }, ledger: socialLedger });
+    await dispatcher.dispatch(new Date(), 10);
+    expect(logMock.mock.calls.some((call) => call[1]?.event === 'delivery.social_warm.stalled')).toBe(false);
   });
 
   it('tidak menandai apa pun saat ledger tidak punya target due', async () => {
@@ -255,13 +314,13 @@ describe('InvalidationDispatcher', () => {
     expect(maxInFlight).toBeLessThanOrEqual(8);
   });
 
-  it('mencatat url yang gagal dipanaskan beserta tahapnya', async () => {
+  it('mencatat url yang gagal dipanaskan beserta sebabnya', async () => {
     logMock.mockClear();
     const targets = [{ articleSiteId: 'as-good', url: 'https://tenant.example/good' }, { articleSiteId: 'as-no-image', url: 'https://tenant.example/no-image' }, { articleSiteId: 'as-fb', url: 'https://tenant.example/fb-rejected' }];
     const warmer = {
       warmArticle: vi.fn(async (url: string) => {
-        if (url.endsWith('/no-image')) return { pageOk: true, imageOk: false, facebookOk: false };
-        if (url.endsWith('/fb-rejected')) return { pageOk: true, imageOk: true, facebookOk: false };
+        if (url.endsWith('/no-image')) return failed({ pageOk: true, imageOk: false, pageReason: null, imageReason: 'image_not_linked' });
+        if (url.endsWith('/fb-rejected')) return failed({ pageOk: true, imageOk: true, pageReason: null, imageReason: null, facebookReason: 'facebook_http_status' });
         return WARM_OK;
       }),
     };
@@ -270,11 +329,12 @@ describe('InvalidationDispatcher', () => {
     await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
     const incomplete = logMock.mock.calls.filter((call) => call[1]?.event === 'delivery.social_warm.incomplete');
     expect(incomplete).toHaveLength(1);
-    const context = incomplete[0]?.[1]?.context as { failed: number; failures: { url: string; imageOk: boolean; facebookOk: boolean }[] };
+    const context = incomplete[0]?.[1]?.context as { failed: number; reasons: Record<string, number>; examples: { url: string; reason: string }[] };
     expect(context.failed).toBe(2);
-    expect(context.failures).toEqual(expect.arrayContaining([
-      expect.objectContaining({ url: 'https://tenant.example/no-image', imageOk: false }),
-      expect.objectContaining({ url: 'https://tenant.example/fb-rejected', facebookOk: false }),
+    expect(context.reasons).toEqual({ image_not_linked: 1, facebook_http_status: 1 });
+    expect(context.examples).toEqual(expect.arrayContaining([
+      expect.objectContaining({ url: 'https://tenant.example/no-image', reason: 'image_not_linked' }),
+      expect.objectContaining({ url: 'https://tenant.example/fb-rejected', reason: 'facebook_http_status' }),
     ]));
     expect(logMock.mock.calls.some((call) => call[1]?.event === 'delivery.social_warm.complete')).toBe(false);
     expect(socialLedger.markWarmed).toHaveBeenCalledWith(['as-good'], expect.any(Date));

@@ -79,14 +79,17 @@ export interface SocialWarmTarget {
  * Durable record of which article URLs already reached Meta's scrape backend.
  *
  * @remarks Kept separate from `DeliveryRepository` because the warmer needs only
- * these two operations, and a failed warm must stay retryable: a target is
+ * these three operations, and a failed warm must stay retryable: a target is
  * marked after Meta accepted the URL, never before, so a crash or a budget
- * cutoff leaves it due for the next dispatch.
+ * cutoff leaves it due for the next dispatch. `markAttempted` is what keeps one
+ * permanently unreachable target from holding the oldest-first window forever.
  */
 export interface SocialWarmLedger {
-  /** Oldest-due article URLs, so a retried one is served before a newer one. */
+  /** Oldest-due article URLs whose cooldown has elapsed, so a retried one is served before a newer one. */
   dueTargets(limit: number): Promise<readonly SocialWarmTarget[]>;
   markWarmed(articleSiteIds: readonly string[], now: Date): Promise<void>;
+  /** Push a target's cooldown forward after a failed attempt. */
+  markAttempted(articleSiteIds: readonly string[], now: Date): Promise<void>;
 }
 
 export class DeliveryResourceUnavailableError extends Error {

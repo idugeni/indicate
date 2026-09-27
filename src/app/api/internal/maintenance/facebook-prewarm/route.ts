@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
+import { logEvent } from '@/core/observability/logger';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { withApiAccess } from '@/core/observability/api-access';
 import { sweepFacebookMetadata } from '@/modules/delivery/social-sweep';
@@ -67,6 +68,22 @@ async function handleGET(request: Request) {
   if (report.halted) {
     logSweepIssue(requestId, 'facebook-prewarm.halted', { attempted: report.attempted, nextOffset: report.nextOffset, detail: report.results.at(-1)?.detail ?? null });
   }
+  logEvent('info', {
+    event: 'facebook-prewarm.sweep',
+    requestId,
+    context: {
+      hosts: hosts.length,
+      offset,
+      attempted: report.attempted,
+      verified: report.verified,
+      incomplete: report.incomplete,
+      unreachable: report.unreachable,
+      rejected: report.rejected,
+      failed: report.failed,
+      halted: report.halted,
+      nextOffset: report.nextOffset,
+    },
+  });
 
   return NextResponse.json(
     {

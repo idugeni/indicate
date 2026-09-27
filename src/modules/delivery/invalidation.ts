@@ -3,6 +3,7 @@ import type { NextCacheInvalidationPort } from '@/modules/delivery/ports';
 import type { CloudflareAuthorityPort } from '@/integrations/cloudflare/ports';
 import type { DeliveryRepository, SocialWarmLedger, SocialWarmTarget } from '@/modules/delivery/ports';
 import type { SocialWarmer } from '@/modules/delivery/social-warm';
+import type { SocialWarmFailure } from '@/modules/delivery/social-warm';
 import { logEvent } from '@/core/observability/logger';
 
 export type NetworkMutation =
@@ -17,7 +18,7 @@ const ARTICLE_TAG_PREFIX = 'article:';
 const WARM_BATCH_SIZE = 8;
 const WARM_QUEUE_LIMIT = 64;
 const WARM_BUDGET_MS = 15_000;
-const WARM_FAILURE_LOG_LIMIT = 10;
+const WARM_REASON_LOG_LIMIT = 10;
 /**
  * Hard ceiling on exact-URL purges per dispatch.
  *
@@ -65,7 +66,8 @@ function purgeOrder(tasks: readonly InvalidationTask[]): readonly string[] {
  *
  * @param targets - Due article URLs collected from the ledger.
  * @param warmer - Page, image, and Facebook pre-scrape warmer.
- * @returns Article site ids whose Meta scrape succeeded, ready to be marked.
+ * @returns Article site ids whose Meta scrape succeeded, plus the ids whose
+ *   cooldown must be pushed forward and whether the batch was abandoned.
  * @remarks Batch width stays at `WARM_BATCH_SIZE` so parallel fetches cannot
  * outlive the publication function budget, but the queue is drained across
  * batches instead of truncated at the first one. The `WARM_QUEUE_LIMIT` and
@@ -74,13 +76,21 @@ function purgeOrder(tasks: readonly InvalidationTask[]): readonly string[] {
  * in the ledger, so the next dispatch serves it again. A single batch can still
  * overrun its slice because each warm issues up to three sequential fetches
  * bounded by the warmer's own timeouts.
+ *
+ * A batch that reports `facebook_rate_limited` abandons the rest: Meta is
+ * refusing every call, so continuing would spend the remaining budget on URLs
+ * it will not accept. Every target actually attempted is handed back for
+ * cooldown, so an abandoned target does not return on the very next tick.
  */
-async function drainSocialWarm(targets: readonly SocialWarmTarget[], warmer: Pick<SocialWarmer, 'warmArticle'>): Promise<readonly string[]> {
+async function drainSocialWarm(targets: readonly SocialWarmTarget[], warmer: Pick<SocialWarmer, 'warmArticle'>): Promise<{ readonly warmed: readonly string[]; readonly failed: readonly string[]; readonly rateLimited: boolean }> {
   const startedAt = Date.now();
   const warmed: string[] = [];
-  const failures: { url: string; pageOk: boolean; imageOk: boolean; facebookOk: boolean }[] = [];
+  const failed: string[] = [];
+  const reasons = new Map<SocialWarmFailure, number>();
+  const examples: { readonly url: string; readonly reason: SocialWarmFailure }[] = [];
   let attempted = 0;
   let truncated = 0;
+  let rateLimited = false;
   for (let offset = 0; offset < targets.length; offset += WARM_BATCH_SIZE) {
     if (offset >= WARM_QUEUE_LIMIT || Date.now() - startedAt >= WARM_BUDGET_MS) {
       truncated = targets.length - offset;
@@ -93,27 +103,43 @@ async function drainSocialWarm(targets: readonly SocialWarmTarget[], warmer: Pic
       if (target === undefined) continue;
       attempted += 1;
       if (outcome.status === 'rejected') {
-        failures.push({ url: target.url, pageOk: false, imageOk: false, facebookOk: false });
+        reasons.set('page_network', (reasons.get('page_network') ?? 0) + 1);
+        if (examples.length < WARM_REASON_LOG_LIMIT) examples.push({ url: target.url, reason: 'page_network' });
+        failed.push(target.articleSiteId);
         continue;
       }
-      const { pageOk, imageOk, facebookOk } = outcome.value;
-      if (!pageOk || !imageOk || !facebookOk) failures.push({ url: target.url, pageOk, imageOk, facebookOk });
+      const { pageOk, imageOk, facebookOk, pageReason, imageReason, facebookReason } = outcome.value;
+      const reason = facebookReason ?? (pageOk ? imageReason : pageReason);
+      if (!facebookOk || reason !== null) {
+        const key = reason ?? 'page_network';
+        reasons.set(key, (reasons.get(key) ?? 0) + 1);
+        if (examples.length < WARM_REASON_LOG_LIMIT) examples.push({ url: target.url, reason: key });
+      }
+      if (!pageOk || !imageOk || !facebookOk) failed.push(target.articleSiteId);
       if (facebookOk) warmed.push(target.articleSiteId);
+      if (facebookReason === 'facebook_rate_limited') rateLimited = true;
+    }
+    if (rateLimited) {
+      truncated += targets.length - offset - WARM_BATCH_SIZE;
+      break;
     }
   }
-  if (failures.length > 0) {
-    logEvent('warn', {
-      event: 'delivery.social_warm.incomplete',
-      context: { attempted, failed: failures.length, failures: failures.slice(0, WARM_FAILURE_LOG_LIMIT) },
-    });
+  const context = { attempted, warmed: warmed.length, failed: failed.length, reasons: Object.fromEntries(reasons) };
+  if (failed.length > 0) {
+    logEvent('warn', { event: 'delivery.social_warm.incomplete', context: { ...context, examples, truncated } });
   }
   if (truncated > 0) {
-    logEvent('warn', { event: 'delivery.social_warm.truncated', context: { attempted, truncated, budgetMs: WARM_BUDGET_MS } });
+    logEvent('warn', { event: 'delivery.social_warm.truncated', context: { ...context, truncated, budgetMs: WARM_BUDGET_MS } });
   }
-  if (failures.length === 0 && truncated === 0) {
+  if (rateLimited) {
+    logEvent('error', { event: 'delivery.social_warm.rate_limited', context });
+  }
+  if (attempted > 0 && warmed.length === 0) {
+    logEvent('error', { event: 'delivery.social_warm.stalled', context });
+  } else if (failed.length === 0 && truncated === 0) {
     logEvent('info', { event: 'delivery.social_warm.complete', context: { attempted, durationMs: Date.now() - startedAt } });
   }
-  return warmed;
+  return { warmed, failed, rateLimited };
 }
 
 /**
@@ -121,7 +147,9 @@ async function drainSocialWarm(targets: readonly SocialWarmTarget[], warmer: Pic
  *
  * @remarks Never throws. A ledger or provider failure leaves its targets due,
  * so the next dispatch retries them instead of losing the single warm each URL
- * is allowed.
+ * is allowed. Targets Meta refused are recorded through the cooldown instead,
+ * so one permanently unreachable URL cannot occupy the oldest-first window on
+ * every tick.
  */
 async function drainDueSocialWarm(ledger: SocialWarmLedger, warmer: Pick<SocialWarmer, 'warmArticle'>, now: Date): Promise<void> {
   let due: readonly SocialWarmTarget[];
@@ -132,12 +160,20 @@ async function drainDueSocialWarm(ledger: SocialWarmLedger, warmer: Pick<SocialW
     return;
   }
   if (due.length === 0) return;
-  const warmed = await drainSocialWarm(due, warmer);
-  if (warmed.length === 0) return;
-  try {
-    await ledger.markWarmed(warmed, now);
-  } catch {
-    logEvent('warn', { event: 'delivery.social_warm.mark_failed', context: { attempted: warmed.length } });
+  const { warmed, failed } = await drainSocialWarm(due, warmer);
+  if (warmed.length > 0) {
+    try {
+      await ledger.markWarmed(warmed, now);
+    } catch {
+      logEvent('warn', { event: 'delivery.social_warm.mark_failed', context: { attempted: warmed.length } });
+    }
+  }
+  if (failed.length > 0) {
+    try {
+      await ledger.markAttempted(failed, now);
+    } catch {
+      logEvent('warn', { event: 'delivery.social_warm.cooldown_failed', context: { attempted: failed.length } });
+    }
   }
 }
 
