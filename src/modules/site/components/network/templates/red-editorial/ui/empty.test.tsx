@@ -15,4 +15,8 @@ describe('RedEditorialEmpty', () => {
     expect(screen.getByText('Belum ada laporan terbit')).toBeDefined();
     expect(screen.getByText(/Kanal Teknologi/)).toBeDefined();
   });
-});
+
+  it('memakai heading tingkat satu untuk judul status kosong', () => {
+    render(<RedEditorialEmpty title="Kanal Teknologi" />);
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Belum ada laporan terbit');
+  });});
