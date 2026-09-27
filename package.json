@@ -50,6 +50,9 @@
     "db:bootstrap": "node scripts/db-bootstrap.mjs",
     "db:bootstrap:check": "node scripts/db-bootstrap.mjs --check",
     "hygiene:publishers": "node scripts/db-publisher-hygiene.mjs",
+    "audit:gsc": "node scripts/gsc-verification-audit.mjs",
+    "audit:gsc:verify": "node scripts/gsc-verification-audit.mjs --verify",
+    "gsc:verify": "node scripts/gsc-verify-domains.mjs",
     "audit:production": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
