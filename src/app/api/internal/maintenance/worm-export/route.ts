@@ -5,6 +5,7 @@ import { getSharedRuntimeDatabase } from '@/data/client';
 import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
 import { exportDailyAudit, WormExportDateError } from '@/modules/audit/audit-worm-export';
 import { withApiAccess } from '@/core/observability/api-access';
+import { logEvent } from '@/core/observability/logger';
 import { resolveRequestId } from '@/core/observability/request-id';
 
 /**
@@ -58,6 +59,16 @@ async function handleGET(request: Request) {
     return NextResponse.json({ requestId, ...summary }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     if (error instanceof WormExportDateError) return NextResponse.json({ error: 'invalid export date' }, { status: 400, headers: { 'Cache-Control': 'private, no-store' } });
+    /**
+     * The reason stays in the log, not the response.
+     *
+     * @remarks The bare `audit export failed` body is what made a fifteen-day
+     * outage un diagnosable: the body is identical whether the bucket is
+     * unconfigured, the object lock refused an overwrite, or the database read
+     * failed, and a cron has no reader to ask. The response keeps its fixed
+     * shape; the log carries the cause for whoever reads the function log.
+     */
+    logEvent('error', { event: 'audit.worm_export_failed', requestId, context: { reason: error instanceof Error ? `${error.name}: ${error.message}` : 'unknown' } });
     return NextResponse.json({ error: 'audit export failed' }, { status: 503, headers: { 'Cache-Control': 'private, no-store' } });
   }
 }
