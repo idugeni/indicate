@@ -424,7 +424,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
           let relation = existingRelation[0];
           if (relation === undefined) {
             relation = (await transaction.insert(articleSites).values({ organizationId: actor.organizationId, id: input.articleSiteIds[index]!, articleId: input.articleId, siteId, state: 'queued', stateOccurredAt: new Date(input.now), active: true, customTitle: override?.title ?? null, customDescription: override?.description ?? null, customImageMediaId: override?.imageMediaId ?? null, assignmentSource: originSiteId === null ? 'manual' : 'auto', expandedFromSiteId: originSiteId, customCanonicalUrl: canonicalUrl, createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning())[0]!;
-          } else if (relation.state !== 'published' && relation.state !== 'failed' && relation.state !== 'unpublished') {
+          } else if (relation.state !== 'published' && relation.state !== 'failed' && relation.state !== 'unpublished' && relation.state !== 'queued') {
             throw new PublishingConflictError();
           }
           await transaction.insert(publishingJobTargets).values({ organizationId: actor.organizationId, id: input.targetIds[index]!, jobId: input.jobId, articleSiteId: relation.id, state: 'queued', nextAttemptAt: new Date(input.publishAt), publishedUrl: null, publishedAt: null, createdAt: new Date(input.now), updatedAt: new Date(input.now) });
