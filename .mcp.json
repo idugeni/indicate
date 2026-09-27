@@ -6,8 +6,11 @@
     },
     "codegraph": {
       "type": "stdio",
-      "command": "codegraph",
+      "command": "C:/nvm4w/nodejs/node_modules/@colbymchenry/codegraph/node_modules/@colbymchenry/codegraph-win32-x64/node.exe",
       "args": [
+        "--liftoff-only",
+        "--disable-warning=ExperimentalWarning",
+        "C:/nvm4w/nodejs/node_modules/@colbymchenry/codegraph/node_modules/@colbymchenry/codegraph-win32-x64/lib/dist/bin/codegraph.js",
         "serve",
         "--mcp"
       ]
