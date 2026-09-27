@@ -254,6 +254,19 @@ fix bug                           # undescriptive
 update                            # undescriptive
 ```
 
+### Push cadence
+
+One commit is one logical change, and it is also the cheaper unit to deploy.
+Vercel bills a production build per push, so fifteen single-commit pushes in a
+day cost about three times five batched pushes for the same work. Commit when
+the change is reviewable, then push on a natural boundary — end of a task, or
+every few commits — rather than after each one.
+
+The Ignored Build Step (`scripts/ci/skip-build.sh`) already absorbs docs, agent
+config, tests, and licence-file pushes at no build cost. It deliberately does
+not absorb `scripts/`, `src/data/migrations/`, or anything the production bundle
+reads, so widening the allowlist is a decision, not a default.
+
 ### Review expectations
 
 - Every PR should have a Release Quality Gate
