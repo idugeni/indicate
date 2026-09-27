@@ -50,10 +50,9 @@
       "url": "https://mcp.vercel.com"
     },
     "next-devtools": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "next-devtools-mcp@latest"
+        "node_modules/next-devtools-mcp/dist/index.js"
       ]
     },
     "webmcp": {
