@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createHash } from 'node:crypto';
 
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
 
@@ -381,6 +382,27 @@ describe('TenantBusinessService articles assignments', () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');
     expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+  });
+
+  it('mengaudit assignment sebagai digest plus delta, bukan daftar portal penuh', async () => {
+    const { service, appendAudit } = harness({
+      articles: [{ ...baseArticle }],
+      sites: [liveSite, { ...liveSite, id: ID3 }, { ...liveSite, id: ID4 }],
+      articleSites: [{ id: ID5, organizationId: 'org-1', articleId: ID, siteId: ID4, active: true, state: 'queued', stateOccurredAt: NOW.toISOString(), publishedUrl: null, publishedAt: null, viewCount: 0, assignmentSource: 'manual', expandedFromSiteId: null, customCanonicalUrl: null, version: 1, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString() }],
+    });
+    const result = await service.assignArticleSites(actor, { articleId: ID, siteIds: [ID2, ID3] });
+    expect(result.ok).toBe(true);
+
+    const entry = appendAudit.mock.calls.at(-1)?.[0] as {
+      before: { siteCount: number; siteIdsSha256: string };
+      after: { siteCount: number; siteIdsSha256: string; added: readonly string[]; removed: readonly string[] };
+    };
+    expect(entry.before).toEqual({ siteCount: 1, siteIdsSha256: createHash('sha256').update(ID4).digest('hex') });
+    expect(entry.after.siteCount).toBe(2);
+    expect(entry.after.siteIdsSha256).toBe(createHash('sha256').update([ID2, ID3].sort().join('\n')).digest('hex'));
+    expect(entry.after.added).toEqual([ID2, ID3].sort());
+    expect(entry.after.removed).toEqual([ID4]);
+    expect(JSON.stringify(entry)).not.toContain('"siteIds"');
   });
 
   it('membuat kota berinduk dan menolak induk tak valid', async () => {

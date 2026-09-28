@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import { createHash } from 'node:crypto';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type {
@@ -52,6 +53,25 @@ function changedFields(before: Readonly<Record<string, unknown>>, after: Readonl
 
 function publicRecord(value: object): Readonly<Record<string, unknown>> {
   return Object.fromEntries(Object.entries(value).filter(([key]) => !['createdAt', 'updatedAt'].includes(key)));
+}
+
+/**
+ * Pin a portal assignment set without dumping it.
+ *
+ * @remarks An article can be assigned to every portal in the network, so the
+ * id list runs to thousands of entries and a full `before` plus `after` pair
+ * costs hundreds of kilobytes per audit row — bytes the daily WORM export
+ * mirrors verbatim, once per write, for a payload that repeated almost exactly
+ * across every write of the same article. The count plus a digest over the
+ * sorted ids still pins the exact set, so a verifier can prove what the set was
+ * at that point in the chain, while the ids that actually moved travel once in
+ * the delta.
+ *
+ * @param siteIds - Assigned site ids, already deduplicated and sorted.
+ * @returns Size and SHA-256 digest of the newline-joined ids.
+ */
+function assignmentDigest(siteIds: readonly string[]): { readonly siteCount: number; readonly siteIdsSha256: string } {
+  return { siteCount: siteIds.length, siteIdsSha256: createHash('sha256').update(siteIds.join('\n')).digest('hex') };
 }
 
 function roleJson(role: RoleRecord): RoleListItem {
@@ -1096,7 +1116,18 @@ export class TenantBusinessService {
       if (article.organizationId !== actor.organizationId) throw new DashboardAccessDeniedError();
       const before = transaction.state.articleSites.filter(({ articleId, active }) => articleId === article.id && active);
       const { after } = this.applySiteAssignment(transaction.state, article, value.siteIds, actor, now);
-      this.audit(transaction, 'article.sites.assign', 'article', article.id, { siteIds: before.map(({ siteId }) => siteId).sort() }, { siteIds: after.map(({ siteId }) => siteId).sort() });
+      const beforeIds = before.map(({ siteId }) => siteId).sort();
+      const afterIds = after.map(({ siteId }) => siteId).sort();
+      const beforeSet = new Set(beforeIds);
+      const afterSet = new Set(afterIds);
+      this.audit(
+        transaction,
+        'article.sites.assign',
+        'article',
+        article.id,
+        assignmentDigest(beforeIds),
+        { ...assignmentDigest(afterIds), added: afterIds.filter((siteId) => !beforeSet.has(siteId)), removed: beforeIds.filter((siteId) => !afterSet.has(siteId)) },
+      );
       return after;
     }});
   }
