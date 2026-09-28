@@ -71,7 +71,6 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'CRON_SECRET',
   'GOOGLE_SITE_VERIFICATION',
   'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
-  'TURNSTILE_SECRET_KEY',
   'TURNSTILE_REPORT_SECRETS',
 ]);
 
@@ -182,7 +181,6 @@ const bootstrapSchema = z
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(8).optional(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(8).optional(),
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
-    TURNSTILE_SECRET_KEY: secretSchema.optional(),
     TURNSTILE_REPORT_SECRETS: turnstileReportSecrets.optional(),
     DEFAULT_LOCALE: z.string().regex(/^[a-z]{2}-[A-Z]{2}$/).default('id-ID'),
     SITE_DEFAULT_ASSET_URL: httpsUrlSchema.default('https://indicate.website/assets/default.png'),
@@ -240,25 +238,12 @@ const bootstrapSchema = z
       ) {
         context.addIssue({ code: 'custom', path: ['RESEND_API_KEY'], message: 'production_secret_not_bounded' });
       }
-      if (
-        value.TURNSTILE_SECRET_KEY !== undefined &&
-        (value.TURNSTILE_SECRET_KEY.length < 24 || PLACEHOLDER_SECRET_PATTERN.test(value.TURNSTILE_SECRET_KEY))
-      ) {
-        context.addIssue({ code: 'custom', path: ['TURNSTILE_SECRET_KEY'], message: 'production_secret_not_bounded' });
-      }
     }
     if ((value.RESEND_API_KEY === undefined) !== (value.RESEND_DEFAULT_FROM === undefined)) {
       context.addIssue({
         code: 'custom',
         path: [value.RESEND_API_KEY === undefined ? 'RESEND_API_KEY' : 'RESEND_DEFAULT_FROM'],
         message: 'resend_email_incomplete',
-      });
-    }
-    if ((value.NEXT_PUBLIC_TURNSTILE_SITE_KEY === undefined) !== (value.TURNSTILE_SECRET_KEY === undefined)) {
-      context.addIssue({
-        code: 'custom',
-        path: [value.NEXT_PUBLIC_TURNSTILE_SITE_KEY === undefined ? 'NEXT_PUBLIC_TURNSTILE_SITE_KEY' : 'TURNSTILE_SECRET_KEY'],
-        message: 'turnstile_config_incomplete',
       });
     }
     if ((value.R2_PUBLIC_BUCKET_NAME === undefined) !== (value.R2_PUBLIC_HOST === undefined)) {
@@ -347,8 +332,6 @@ export interface BootstrapConfig {
     readonly resendWebhookSecret: SecretString | null;
     readonly genericWebhookSecret: SecretString;
     readonly cronSecret: SecretString;
-    /** Cloudflare Turnstile Siteverify secret; null when public forms run without a server-side challenge. */
-    readonly turnstileSecretKey: SecretString | null;
     /** Siteverify secret per tenant report widget, keyed by site key; null when no widget is configured. */
     readonly turnstileReportSecrets: ReadonlyMap<string, SecretString> | null;
   }>;
@@ -413,7 +396,6 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       resendWebhookSecret: value.RESEND_WEBHOOK_SECRET === undefined ? null : SecretString.fromPlain(value.RESEND_WEBHOOK_SECRET),
       genericWebhookSecret: SecretString.fromPlain(value.GENERIC_WEBHOOK_SECRET),
       cronSecret: SecretString.fromPlain(value.CRON_SECRET),
-      turnstileSecretKey: value.TURNSTILE_SECRET_KEY === undefined ? null : SecretString.fromPlain(value.TURNSTILE_SECRET_KEY),
       turnstileReportSecrets: value.TURNSTILE_REPORT_SECRETS === undefined
         ? null
         : new Map(Object.entries(value.TURNSTILE_REPORT_SECRETS).map(([sitekey, secret]) => [sitekey, SecretString.fromPlain(secret)])),

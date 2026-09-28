@@ -76,8 +76,6 @@ export interface RuntimeConfig {
     readonly webhookReplayTtlSeconds: number;
     readonly genericWebhookSecret: string;
     readonly cronSecret: string;
-    /** Cloudflare Turnstile Siteverify secret for single-widget surfaces; null when unconfigured. */
-    readonly turnstileSecretKey: string | null;
     /**
      * Siteverify secret per tenant report widget, keyed by site key.
      *
