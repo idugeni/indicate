@@ -51,6 +51,7 @@
     "db:bootstrap:check": "node scripts/db-bootstrap.mjs --check",
     "check:bootstrap-identity": "node scripts/check-bootstrap-identity.mjs",
     "hygiene:publishers": "node scripts/db-publisher-hygiene.mjs",
+    "hygiene:network": "node scripts/db-network-coverage.mjs",
     "audit:gsc": "node scripts/gsc-verification-audit.mjs",
     "audit:gsc:verify": "node scripts/gsc-verification-audit.mjs --verify",
     "gsc:verify": "node scripts/gsc-verify-domains.mjs",

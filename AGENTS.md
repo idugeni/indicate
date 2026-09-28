@@ -240,6 +240,39 @@ must follow it before answering MCP/integration questions or writing code:
 4. If `.mcp.json` vs `opencode.jsonc` vs runtime diverge, report the drift
    explicitly before proceeding.
 
+## Angka (WAJIB — bukan relaxed mode)
+
+Bagian ini mengikat setiap agen AI dan manusia. Tidak dicover oleh "relaxed
+mode" di bawah. Langgar = angka tidak layak dipercaya sebelum diulang.
+
+1. Setiap angka yang dipakai untuk mengambil keputusan wajib menyebut tiga
+   hal: **apa** yang dihitung, **berapa** yang benar-benar terpakai, dan
+   apakah itu *provisioned* atau *observed*. `4422 portal` tanpa `144 yang
+   pernah serves` adalah angka yang belum selesai.
+2. **Jangan melakukan aritmetika kapasitas pada angka provisioned.** Row
+   count dari tabel `sites`, `domains`, `regions`, atau `media` menjawab
+   "berapa yang dialokasikan", bukan "berapa yang hidup". Mengali
+   provisioned count dengan biaya per-unit menghasilkan proyeksi yang
+   terlihat presisi dan benar-benar salah.
+3. Untuk setiap count di atas 100 yang relevan, jalankan probe pemakaian
+   sebelum mengutip: sudah pernah terpakai atau belum. Pemprobean yang
+   sering menangkapnya adalah `article_sites.state = 'published'`,
+   `view_count = 0`, dan sebaran geografi.
+4. Angka yang berasal dari satu eksekusi query tidak boleh dirangkum ulang
+   dengan satuan berbeda. `count(*)` dari `sites` tetap `sites`, bukan
+   "portal yang tayang" dan bukan "domain yang aktif".
+5. Untuk skala portal dan geografi, jalankan audit yang sudah ada alih-alih
+   menyusun query sendiri:
+
+   ```text
+   ORG_ID=<uuid> npm run hygiene:network
+   ```
+
+   Script read-only (`scripts/db-network-coverage.mjs`) mencetak coverage
+   provisioned vs serving, jumlah kota/provinsi, bentuk hostname apex, dan
+   apakah `view_count` observed atau seeded. `hygiene:publishers` audited
+   markup penerbit dengan pola yang sama.
+
 ## Owner overrides (rules stay flexible)
 
 No rule in this file overrules an explicit owner instruction — these
