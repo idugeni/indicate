@@ -24,6 +24,26 @@ const MAX_POOL_MAX = 20;
  */
 const QUERY_DEADLINE_MS = 20_000;
 
+/**
+ * How long a pooled connection survives without serving a query.
+ *
+ * @remarks Must exceed the longest gap between two requests a warm Vercel
+ * instance sees, because every reopen is not free: postgres.js re-runs
+ * `fetchArrayTypes()` on connect (`node_modules/postgres/src/connection.js`
+ * resets `needsTypes = options.fetch_types` in `connected()`), which pulls the
+ * whole 447-row `pg_type` array-type map out of the pooler before the caller's
+ * first statement, on top of a TCP, TLS, and SCRAM round trip. Measured on
+ * 2026-09-27 that map was 19.9M rows over 33 days - the single largest
+ * row-returning statement in the project - driven by an `idle_timeout` shorter
+ * than the request spacing of a serverless instance. Supavisor runs in
+ * transaction mode, so a held client socket pins no PostgreSQL backend between
+ * transactions; only this instance's own pool slot is reserved.
+ */
+const IDLE_TIMEOUT_SECONDS = 600;
+
+/** Upper bound on one connection's total life before it is recycled. */
+const MAX_LIFETIME_SECONDS = 60 * 30;
+
 function poolMax(fallback: number): number {
   const raw = process.env.DATABASE_POOL_MAX;
   if (raw === undefined || raw.trim() === '') return fallback;
@@ -50,9 +70,9 @@ export function createRuntimeDatabase(config: BootstrapConfig) {
     max: poolMax(DEFAULT_POOL_MAX),
     prepare: false,
     ssl: 'require',
-    idle_timeout: 20,
+    idle_timeout: IDLE_TIMEOUT_SECONDS,
     connect_timeout: 10,
-    max_lifetime: 60 * 30,
+    max_lifetime: MAX_LIFETIME_SECONDS,
   });
   return Object.freeze({
     client,
