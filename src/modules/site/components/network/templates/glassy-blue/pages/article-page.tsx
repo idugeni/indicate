@@ -94,7 +94,7 @@ export function GlassyBlueArticle({
                   <span aria-hidden="true">·</span>
                   <span className="inline-flex items-center gap-1">
                     <Eye className="h-3 w-3" aria-hidden="true" />
-                    {formatFullViews(article.viewCount)}
+                    {formatFullViews(article.viewCount)} pembaca
                   </span>
                 </span>
               </span>

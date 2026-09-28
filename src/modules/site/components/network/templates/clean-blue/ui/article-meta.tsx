@@ -33,7 +33,7 @@ export function ArticleMeta({
       </span>
       <span className={item}>
         <Eye className={icon} aria-hidden="true" />
-        {formatFullViews(viewCount)}
+        {formatFullViews(viewCount)} pembaca
       </span>
     </span>
   );
