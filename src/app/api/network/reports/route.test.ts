@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { reportOutcomeStatus } from '@/app/api/network/reports/route';
+import { reportChallengeDenial, reportOutcomeStatus } from '@/app/api/network/reports/route';
 
 describe('reportOutcomeStatus', () => {
   it('memetakan input invalid ke 400', () => {
@@ -15,5 +15,20 @@ describe('reportOutcomeStatus', () => {
     expect(reportOutcomeStatus('RESOURCE_UNAVAILABLE')).toBe(404);
     expect(reportOutcomeStatus('ACCESS_DENIED')).toBe(404);
     expect(reportOutcomeStatus('CONFLICT')).toBe(404);
+  });
+});
+
+describe('reportChallengeDenial', () => {
+  it('menolak token yang ditolak cloudflare dengan 403', () => {
+    const denial = reportChallengeDenial('rejected', 'req-1');
+    expect(denial.status).toBe(403);
+    expect(denial.error.error.code).toBe('FORBIDDEN');
+    expect(denial.error.requestId).toBe('req-1');
+  });
+
+  it('melaporkan gangguan verifikasi sebagai 503, bukan 403', () => {
+    const denial = reportChallengeDenial('unavailable', 'req-2');
+    expect(denial.status).toBe(503);
+    expect(denial.error.error.code).toBe('DEPENDENCY_UNAVAILABLE');
   });
 });

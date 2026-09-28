@@ -3,7 +3,10 @@
 import { useId, useState, type FormEvent } from 'react';
 
 import { Spinner } from '@/components/ui/spinner';
+import { useTurnstileChallenge } from '@/components/turnstile-challenge';
+import { TURNSTILE_TOKEN_HEADER } from '@/core/security/turnstile-contract';
 import { TemplateButton, TemplateInput, TemplateLabel, TemplateMenuSelect, TemplateNotice, TemplateTextarea } from '@/modules/site/components/network/ui/field';
+import { ReportChallengeField } from '@/modules/site/components/network/ui/report-challenge';
 
 const CATEGORIES = [
   { value: 'copyright', label: 'Pelanggaran hak cipta' },
@@ -25,6 +28,7 @@ export function WarmEditorialReportForm({ articleSlug }: { readonly articleSlug:
   const [error, setError] = useState<string | null>(null);
   const [ticket, setTicket] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const { captchaToken, challengeNonce, resetChallenge, onChallengeToken } = useTurnstileChallenge();
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -38,11 +42,19 @@ export function WarmEditorialReportForm({ articleSlug }: { readonly articleSlug:
     try {
       const response = await fetch('/api/network/reports', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(captchaToken === null ? {} : { [TURNSTILE_TOKEN_HEADER]: captchaToken }),
+        },
         body: JSON.stringify({ articleSlug, contact: contact.trim(), category, details: details.trim(), articleUrl: null }),
       });
       if (response.status === 429) {
         setError('Terlalu banyak laporan. Coba lagi dalam satu menit.');
+        return;
+      }
+      if (response.status === 403) {
+        setError('Verifikasi keamanan gagal. Muat ulang verifikasi lalu kirim lagi.');
+        resetChallenge();
         return;
       }
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -98,6 +110,7 @@ export function WarmEditorialReportForm({ articleSlug }: { readonly articleSlug:
           className="mt-1.5 block w-full appearance-none rounded-xl px-3.5 py-2.5 font-sans text-base focus:outline-none sm:text-sm"
         />
       </div>
+      <ReportChallengeField key={challengeNonce} onToken={onChallengeToken} />
       {error ? (
         <TemplateNotice tone="error" title="Gagal mengirim laporan">{error}</TemplateNotice>
       ) : null}

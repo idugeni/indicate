@@ -8,12 +8,13 @@ import { deliveryComposition } from '@/modules/delivery';
 import { createProductionIntegrationsContext } from '@/modules/integrations';
 import { reportIntakeSchema } from '@/modules/moderation/schemas';
 import { enforceReportIntakeThrottle } from '@/modules/moderation/report-intake-throttle';
+import { enforceReportIntakeChallenge } from '@/modules/moderation/report-intake-challenge';
 import { ModerationService } from '@/modules/moderation/moderation-service';
 import { extractPlatformIp } from '@/core/routing/platform-guard';
 import { withApiAccess } from '@/core/observability/api-access';
 import { logEvent } from '@/core/observability/logger';
 import { resolveRequestId } from '@/core/observability/request-id';
-import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
+import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 
 /**
  * Map a report outcome code to its HTTP status.
@@ -31,6 +32,22 @@ export function reportOutcomeStatus(code: string): number {
   return 404;
 }
 
+/**
+ * Map a challenge denial to its public error and status.
+ *
+ * @param denial.outcome - Whether Cloudflare refused the token or could not be reached.
+ * @returns Public error envelope plus status: 403 for a refused token, 503 for a verification outage.
+ * @remarks Keeping a Cloudflare-side fault off the 403 path matters: a reader told their submission
+ * was refused for bot reasons during an outage stops reporting, and the broken channel stays invisible
+ * behind what looks like ordinary bot traffic.
+ */
+export function reportChallengeDenial(outcome: 'rejected' | 'unavailable', requestId: string): { readonly error: PublicErrorEnvelope; readonly status: number } {
+  if (outcome === 'rejected') {
+    return { error: createPublicError('FORBIDDEN', 'Security verification failed. Please try again.', requestId), status: 403 };
+  }
+  return { error: createPublicError('DEPENDENCY_UNAVAILABLE', 'Report intake is temporarily unavailable.', requestId), status: 503 };
+}
+
 async function handlePOST(request: Request) {
   await connection();
   const requestId = resolveRequestId(request);
@@ -42,14 +59,32 @@ async function handlePOST(request: Request) {
   const context = await getServerRuntimeContext();
   const production = await createProductionIntegrationsContext();
   try {
+    const clientIp = extractPlatformIp(requestHeaders);
     const throttle = await enforceReportIntakeThrottle(production.rateLimits, {
       hostname: result.context.normalizedHostname,
-      clientIp: extractPlatformIp(requestHeaders),
+      clientIp,
       hostPolicy: context.config.rateLimits.publicRead,
       requestId,
     });
     if (!throttle.allowed) {
       return NextResponse.json(createPublicError('RATE_LIMITED', 'Request limit exceeded. Retry later.', requestId, { retryAfterSeconds: [throttle.retryAfterSeconds] }), { status: 429, headers: { ...noStore, 'Retry-After': throttle.retryAfterSeconds } });
+    }
+    const challenge = await enforceReportIntakeChallenge({
+      secret: context.config.security.turnstileSecretKey,
+      headers: requestHeaders,
+      clientIp,
+    });
+    if (!challenge.allowed) {
+      const denial = reportChallengeDenial(challenge.denial.outcome, requestId);
+      logEvent('warn', {
+        event: 'network.report.challenge_rejected',
+        requestId,
+        route: 'POST /api/network/reports',
+        method: 'POST',
+        status: denial.status,
+        context: { outcome: challenge.denial.outcome, hostname: result.context.normalizedHostname },
+      });
+      return NextResponse.json(denial.error, { status: denial.status, headers: noStore });
     }
     const parsed = reportIntakeSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return NextResponse.json(createPublicError('INVALID_INPUT', 'Please correct the report fields.', requestId), { status: 400, headers: noStore });

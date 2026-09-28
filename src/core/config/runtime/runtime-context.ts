@@ -134,6 +134,7 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
       webhookReplayTtlSeconds: policies.webhook.replayRetentionSeconds,
       genericWebhookSecret: bootstrap.credentials.genericWebhookSecret.reveal(),
       cronSecret: bootstrap.credentials.cronSecret.reveal(),
+      turnstileSecretKey: bootstrap.credentials.turnstileSecretKey?.reveal() ?? null,
     }),
     cache: Object.freeze({
       defaultTtlSeconds: policies.cache.publicCacheSeconds,

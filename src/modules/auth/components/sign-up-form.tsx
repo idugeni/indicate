@@ -8,7 +8,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
 import { GoogleButton } from '@/modules/auth/components/google-button';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
-import { TurnstileField, useTurnstileChallenge } from '@/modules/auth/components/turnstile-field';
+import { TurnstileChallenge, useTurnstileChallenge } from '@/components/turnstile-challenge';
 
 /** Client sign-up leaf; parent page stays a Server Component. */
 export function SignUpForm() {
@@ -105,7 +105,7 @@ export function SignUpForm() {
             <p className="m-0 mt-1.5 font-sans text-xs text-[#5f6b7a]">Minimal 8 karakter.</p>
           </div>
 
-          <TurnstileField key={challengeNonce} onToken={onChallengeToken} />
+          <TurnstileChallenge key={challengeNonce} onToken={onChallengeToken} />
           <AuthSubmit busy={busy} busyLabel="Mendaftarkan..." icon={ArrowRight} disabled={turnstilePending}>
             Buat Akun
           </AuthSubmit>

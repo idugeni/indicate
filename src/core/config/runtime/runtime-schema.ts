@@ -76,6 +76,8 @@ export interface RuntimeConfig {
     readonly webhookReplayTtlSeconds: number;
     readonly genericWebhookSecret: string;
     readonly cronSecret: string;
+    /** Cloudflare Turnstile Siteverify secret; null when report intake runs unchallenged. */
+    readonly turnstileSecretKey: string | null;
   };
   readonly cache: {
     readonly defaultTtlSeconds: number;

@@ -8,7 +8,7 @@ import { ArrowRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
-import { TurnstileField, useTurnstileChallenge } from '@/modules/auth/components/turnstile-field';
+import { TurnstileChallenge, useTurnstileChallenge } from '@/components/turnstile-challenge';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
 
 /** Client sign-in leaf; parent page stays a Server Component. */
@@ -91,7 +91,7 @@ export function SignInForm() {
           </div>
         </div>
 
-        <TurnstileField key={challengeNonce} onToken={onChallengeToken} />
+        <TurnstileChallenge key={challengeNonce} onToken={onChallengeToken} />
 
         <AuthSubmit busy={busy} busyLabel="Masuk..." icon={ArrowRight} disabled={turnstilePending}>
           Masuk ke Dashboard

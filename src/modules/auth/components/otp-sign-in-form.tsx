@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
-import { TurnstileField, useTurnstileChallenge } from '@/modules/auth/components/turnstile-field';
+import { TurnstileChallenge, useTurnstileChallenge } from '@/components/turnstile-challenge';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
 
 const CODE_LENGTH = 8;
@@ -140,7 +140,7 @@ export function OtpSignInForm() {
               className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white"
             />
           </div>
-          <TurnstileField key={challengeNonce} onToken={onChallengeToken} />
+          <TurnstileChallenge key={challengeNonce} onToken={onChallengeToken} />
           <AuthSubmit busy={busy} busyLabel="Mengirim kode..." icon={ArrowRight} disabled={turnstilePending}>
             Kirim kode masuk
           </AuthSubmit>
@@ -192,7 +192,7 @@ export function OtpSignInForm() {
             </InputOTPGroup>
           </InputOTP>
         </div>
-        <TurnstileField key={challengeNonce} onToken={onChallengeToken} />
+        <TurnstileChallenge key={challengeNonce} onToken={onChallengeToken} />
         <AuthSubmit busy={busy} busyLabel="Memverifikasi..." icon={ArrowRight}>
           Masuk
         </AuthSubmit>

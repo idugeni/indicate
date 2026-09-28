@@ -19,7 +19,7 @@ import {
 
 const noindex = { 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'private, no-store' };
 
-/** script-src keeps 'unsafe-inline' for Next.js flight payloads; XSS defense rests on React output escaping. Allows Cloudflare Web Analytics beacon auto-injected at the edge; Cloudflare already terminates TLS/proxies, so no new trust. Allows Turnstile challenge script + widget frame (sole iframe in the app, dashboard auth). Allows Google Fonts stylesheet for the invoice print page. Development adds 'unsafe-eval' for React/Turbopack dev runtimes; production stays without it. No plugins. */
+/** script-src keeps 'unsafe-inline' for Next.js flight payloads; XSS defense rests on React output escaping. Allows Cloudflare Web Analytics beacon auto-injected at the edge; Cloudflare already terminates TLS/proxies, so no new trust. Allows Turnstile challenge script + widget frame (sole iframe in the app, dashboard auth and tenant report form). Allows Google Fonts stylesheet for the invoice print page. Development adds 'unsafe-eval' for React/Turbopack dev runtimes; production stays without it. No plugins. */
 function contentSecurityPolicy(): string {
   const scriptHosts = "'self' 'unsafe-inline' https://static.cloudflareinsights.com https://challenges.cloudflare.com";
   const scriptSrc = isProductionEdge() ? `script-src ${scriptHosts}` : `script-src ${scriptHosts} 'unsafe-eval'`;

@@ -143,11 +143,13 @@ describe('proxy tenant surfaces', () => {
   });
 
   it('mengizinkan skrip dan bingkai Turnstile serta font invoice', async () => {
-    const response = await proxy(request(HOSTS.dashboard, '/dashboard'));
-    const csp = response.headers.get('content-security-policy') ?? '';
-    expect(csp).toContain('https://challenges.cloudflare.com');
-    expect(csp).toContain('frame-src https://challenges.cloudflare.com');
-    expect(csp).toContain('https://fonts.googleapis.com');
+    for (const [hostname, path] of [[HOSTS.dashboard, '/dashboard'], ['portal.example', '/report?artikel=berita-utama']] as const) {
+      const csp = (await proxy(request(hostname, path))).headers.get('content-security-policy') ?? '';
+      expect(csp).toContain('https://challenges.cloudflare.com');
+      expect(csp).toContain('frame-src https://challenges.cloudflare.com');
+    }
+    const invoiceCsp = (await proxy(request(HOSTS.dashboard, '/dashboard'))).headers.get('content-security-policy') ?? '';
+    expect(invoiceCsp).toContain('https://fonts.googleapis.com');
   });
 
   it('gagal-terbuka saat refresh sesi tak terjangkau', async () => {

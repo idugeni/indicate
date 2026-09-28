@@ -5,7 +5,7 @@ import { Send } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
-import { TurnstileField, useTurnstileChallenge } from '@/modules/auth/components/turnstile-field';
+import { TurnstileChallenge, useTurnstileChallenge } from '@/components/turnstile-challenge';
 import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
 
 /** Client recovery leaf; parent page stays a Server Component. */
@@ -83,7 +83,7 @@ export function ForgotPasswordForm() {
         <Input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@kabarjateng.org" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
       </div>
 
-      <TurnstileField key={challengeNonce} onToken={onChallengeToken} />
+      <TurnstileChallenge key={challengeNonce} onToken={onChallengeToken} />
       <AuthSubmit busy={busy} busyLabel="Mengirim..." icon={Send} disabled={turnstilePending}>
         Kirim Tautan Pemulihan
       </AuthSubmit>

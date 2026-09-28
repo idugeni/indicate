@@ -15,6 +15,25 @@ npm-facing.
 
 ### Added
 
+- Server-verified Cloudflare Turnstile on the tenant report form
+  (`POST /api/network/reports`). The widget in the browser now hands a one-time
+  token to the server in the `cf-turnstile-response` header, and the server
+  re-verifies it against the Siteverify API before parsing the body, so a
+  forged or absent token is refused there. Anything the server cannot read from
+  Cloudflare (transport failure, non-2xx, unparseable body, no boolean
+  `success`) denies rather than admits: a refused token answers 403, a
+  Cloudflare-side fault answers 503 so a verification outage never reads as a
+  reader being blocked for bot reasons. The submit button is deliberately not
+  gated on a pending challenge, so a blocked challenge script cannot make the
+  form unsubmittable. Enforcement is configured by the new server-only
+  `TURNSTILE_SECRET_KEY`; without it the intake stays unchallenged and relies on
+  the existing per-host and per-IP rate limits. The site key and the secret are
+  validated as a pair, and the placeholder pattern now also covers
+  `replace-with-...` values pasted from `.env.example`.
+- The Turnstile widget moved from `src/modules/auth/components/turnstile-field.tsx`
+  to `src/components/turnstile-challenge.tsx` with an injectable failure notice,
+  so the auth forms and the tenant report form share one loader instead of two
+  copies of the same script handling.
 - Crawler access to the tenant media surface: `robots.txt` now carves
   `/api/network/media/` out of the `/api/` catch-all, because it is the only
   crawler-facing image surface. A blocked prefix made `facebookexternalhit` refuse

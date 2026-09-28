@@ -29,6 +29,7 @@ const INDICATE_NAMESPACE_PREFIXES = [
   'DEFAULT_',
   'SITE_',
   'APP_',
+  'TURNSTILE_',
 ] as const;
 
 const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
@@ -69,6 +70,7 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'CRON_SECRET',
   'GOOGLE_SITE_VERIFICATION',
   'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+  'TURNSTILE_SECRET_KEY',
 ]);
 
 const hostnameSchema = z
@@ -84,6 +86,8 @@ const hostnameSchema = z
   .pipe(z.string());
 
 const secretSchema = z.string().min(SECRET_MIN_LENGTH, 'secret_too_short');
+/** Unchanged in production: a placeholder that survived copy-paste from `.env.example` is not a credential. */
+const PLACEHOLDER_SECRET_PATTERN = /(?:change[ -]?me|example|placeholder|replace|sentinel|development|test-secret)/iu;
 const httpsUrlSchema = z.url().refine((value) => value.startsWith('https://'), 'https_required');
 
 const SUPABASE_POOLER_HOST_SUFFIX = '.pooler.supabase.com';
@@ -127,6 +131,7 @@ const bootstrapSchema = z
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(8).optional(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(8).optional(),
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
+    TURNSTILE_SECRET_KEY: secretSchema.optional(),
     DEFAULT_LOCALE: z.string().regex(/^[a-z]{2}-[A-Z]{2}$/).default('id-ID'),
     SITE_DEFAULT_ASSET_URL: httpsUrlSchema.default('https://indicate.website/assets/default.png'),
     SUPABASE_PROJECT_REF: z.string().regex(/^[a-z0-9]{8,32}$/).optional(),
@@ -173,15 +178,21 @@ const bootstrapSchema = z
         ['GENERIC_WEBHOOK_SECRET', value.GENERIC_WEBHOOK_SECRET],
         ['CRON_SECRET', value.CRON_SECRET],
       ] as const) {
-        if (secret.length < 24 || /(?:change[ -]?me|example|placeholder|sentinel|development|test-secret)/iu.test(secret)) {
+        if (secret.length < 24 || PLACEHOLDER_SECRET_PATTERN.test(secret)) {
           context.addIssue({ code: 'custom', path: [name], message: 'production_secret_not_bounded' });
         }
       }
       if (
         value.RESEND_API_KEY !== undefined &&
-        (value.RESEND_API_KEY.length < 24 || /(?:change[ -]?me|example|placeholder|sentinel|development|test-secret)/iu.test(value.RESEND_API_KEY))
+        (value.RESEND_API_KEY.length < 24 || PLACEHOLDER_SECRET_PATTERN.test(value.RESEND_API_KEY))
       ) {
         context.addIssue({ code: 'custom', path: ['RESEND_API_KEY'], message: 'production_secret_not_bounded' });
+      }
+      if (
+        value.TURNSTILE_SECRET_KEY !== undefined &&
+        (value.TURNSTILE_SECRET_KEY.length < 24 || PLACEHOLDER_SECRET_PATTERN.test(value.TURNSTILE_SECRET_KEY))
+      ) {
+        context.addIssue({ code: 'custom', path: ['TURNSTILE_SECRET_KEY'], message: 'production_secret_not_bounded' });
       }
     }
     if ((value.RESEND_API_KEY === undefined) !== (value.RESEND_DEFAULT_FROM === undefined)) {
@@ -189,6 +200,13 @@ const bootstrapSchema = z
         code: 'custom',
         path: [value.RESEND_API_KEY === undefined ? 'RESEND_API_KEY' : 'RESEND_DEFAULT_FROM'],
         message: 'resend_email_incomplete',
+      });
+    }
+    if ((value.NEXT_PUBLIC_TURNSTILE_SITE_KEY === undefined) !== (value.TURNSTILE_SECRET_KEY === undefined)) {
+      context.addIssue({
+        code: 'custom',
+        path: [value.NEXT_PUBLIC_TURNSTILE_SITE_KEY === undefined ? 'NEXT_PUBLIC_TURNSTILE_SITE_KEY' : 'TURNSTILE_SECRET_KEY'],
+        message: 'turnstile_config_incomplete',
       });
     }
     if ((value.R2_PUBLIC_BUCKET_NAME === undefined) !== (value.R2_PUBLIC_HOST === undefined)) {
@@ -277,6 +295,8 @@ export interface BootstrapConfig {
     readonly resendWebhookSecret: SecretString | null;
     readonly genericWebhookSecret: SecretString;
     readonly cronSecret: SecretString;
+    /** Cloudflare Turnstile Siteverify secret; null when public forms run without a server-side challenge. */
+    readonly turnstileSecretKey: SecretString | null;
   }>;
 }
 
@@ -339,6 +359,7 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       resendWebhookSecret: value.RESEND_WEBHOOK_SECRET === undefined ? null : SecretString.fromPlain(value.RESEND_WEBHOOK_SECRET),
       genericWebhookSecret: SecretString.fromPlain(value.GENERIC_WEBHOOK_SECRET),
       cronSecret: SecretString.fromPlain(value.CRON_SECRET),
+      turnstileSecretKey: value.TURNSTILE_SECRET_KEY === undefined ? null : SecretString.fromPlain(value.TURNSTILE_SECRET_KEY),
     }),
   } as BootstrapConfig);
 }

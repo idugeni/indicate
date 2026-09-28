@@ -1,8 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-
-import { Button } from '@/components/ui/button';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 interface TurnstileRenderOptions {
   readonly sitekey: string;
@@ -23,6 +21,21 @@ declare global {
 }
 
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+
+const defaultFailureNotice: (retry: () => void) => ReactNode = (retry) => (
+  <div className="rounded border border-[#e2ded2] bg-white px-4 py-3 text-center" role="alert">
+    <p className="m-0 font-sans text-xs leading-relaxed text-[#4c5b6b]">
+      Verifikasi keamanan gagal dimuat. Izinkan challenges.cloudflare.com atau nonaktifkan pemblokir iklan, lalu muat ulang.
+    </p>
+    <button
+      type="button"
+      onClick={retry}
+      className="mt-2 inline-flex h-8 items-center rounded-md border border-[#d8d3c6] bg-white px-3 font-sans text-xs font-semibold text-[#25324a] hover:bg-[#f4f1ea]"
+    >
+      Muat ulang verifikasi
+    </button>
+  </div>
+);
 
 let scriptPromise: Promise<void> | null = null;
 
@@ -74,7 +87,7 @@ function loadScript(): Promise<void> {
 }
 
 /**
- * Reports whether a Turnstile site key is configured for auth forms.
+ * Reports whether a Turnstile site key is configured for public forms.
  *
  * @returns True when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is non-empty.
  */
@@ -83,9 +96,9 @@ export function isTurnstileConfigured(): boolean {
 }
 
 /**
- * Tracks a single Turnstile challenge for an auth form.
+ * Tracks a single Turnstile challenge for a form.
  *
- * @returns Token state with helpers to gate submits and reset the widget after each attempt, since Supabase consumes the token once.
+ * @returns Token state with helpers to gate submits and reset the widget after each attempt, since Cloudflare consumes the token once.
  */
 export function useTurnstileChallenge() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -107,12 +120,21 @@ export function useTurnstileChallenge() {
 }
 
 /**
- * Renders the Cloudflare Turnstile challenge inside auth forms.
+ * Renders the Cloudflare Turnstile challenge inside a form.
  *
- * @param onToken - Receives the one-time token on success, or null when it expires or fails.
- * @returns The widget element, a reload fallback when the challenge script fails, or nothing when no site key is configured.
+ * @param onToken - Receives the one-time token on success, or null when it expires or the widget errors.
+ * @param fallback - Replaces the default retry card when the challenge script cannot load; receives a retry callback.
+ * @returns Nothing when no site key is configured, the widget host, or the failure notice with a retry control.
+ * @remarks The widget is a courtesy to the reader, never the enforcement point: the server
+ * re-verifies the token, so a form that submits early or with no widget at all is refused there.
  */
-export function TurnstileField({ onToken }: { readonly onToken: (token: string | null) => void }) {
+export function TurnstileChallenge({
+  onToken,
+  fallback = defaultFailureNotice,
+}: {
+  readonly onToken: (token: string | null) => void;
+  readonly fallback?: (retry: () => void) => ReactNode;
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sitekey = (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '').trim();
   const [loadFailed, setLoadFailed] = useState(false);
@@ -144,23 +166,12 @@ export function TurnstileField({ onToken }: { readonly onToken: (token: string |
   if (sitekey === '') return null;
   if (loadFailed) {
     return (
-      <div className="rounded border border-[#e2ded2] bg-white px-4 py-3 text-center" role="alert">
-        <p className="m-0 font-sans text-xs leading-relaxed text-[#4c5b6b]">
-          Verifikasi keamanan gagal dimuat. Izinkan challenges.cloudflare.com atau nonaktifkan pemblokir iklan, lalu muat ulang.
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setLoadFailed(false);
-            setAttempt((value) => value + 1);
-          }}
-          className="mt-2"
-        >
-          Muat ulang verifikasi
-        </Button>
-      </div>
+      <>
+        {fallback(() => {
+          setLoadFailed(false);
+          setAttempt((value) => value + 1);
+        })}
+      </>
     );
   }
   return <div ref={hostRef} className="flex justify-center" />;

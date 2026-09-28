@@ -81,6 +81,47 @@ describe('validateBootstrapConfig gagal', () => {
     expect(result.success).toBe(true);
   });
 
+  it('membungkus secret turnstile saat challenge aktif', () => {
+    const result = validateBootstrapConfig({
+      ...validEnv(),
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 'kunci-situs-uji',
+      TURNSTILE_SECRET_KEY: 'secret-turnstile-uji',
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.config.credentials.turnstileSecretKey?.reveal()).toBe('secret-turnstile-uji');
+  });
+
+  it('menolak pasangan turnstile yang timpang agar intake tidak tanpa verifikasi', () => {
+    const secretOnly = validateBootstrapConfig({ ...validEnv(), TURNSTILE_SECRET_KEY: 'secret-turnstile-uji' });
+    expect(secretOnly.success).toBe(false);
+    if (!secretOnly.success) {
+      expect(secretOnly.issues.some((issue) => issue.category === 'turnstile_config_incomplete')).toBe(true);
+    }
+    const siteKeyOnly = validateBootstrapConfig({ ...validEnv(), NEXT_PUBLIC_TURNSTILE_SITE_KEY: 'kunci-situs-uji' });
+    expect(siteKeyOnly.success).toBe(false);
+    if (!siteKeyOnly.success) {
+      expect(siteKeyOnly.issues.some((issue) => issue.category === 'turnstile_config_incomplete')).toBe(true);
+    }
+  });
+
+  it('menolak secret turnstile placeholder saat production', () => {
+    const secrets = Object.fromEntries(
+      ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ORIGIN_SECRET', 'VERCEL_API_TOKEN', 'GENERIC_WEBHOOK_SECRET', 'CRON_SECRET'].map((name) => [name, 'kredensial-produksi-yang-cukup-panjang']),
+    );
+    const result = validateBootstrapConfig({
+      ...validEnv(),
+      ...secrets,
+      NODE_ENV: 'production',
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 'kunci-situs-produksi',
+      TURNSTILE_SECRET_KEY: 'replace-with-turnstile-secret-key',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.issues.some((issue) => issue.category === 'production_secret_not_bounded' && issue.path === 'TURNSTILE_SECRET_KEY')).toBe(true);
+    }
+  });
+
   it('menerima GOOGLE_SITE_VERIFICATION opsional dan menolak format salah', () => {
     const valid = validateBootstrapConfig({ ...validEnv(), GOOGLE_SITE_VERIFICATION: 'dBw4xYz_9-ABCdef1234567890abcDEF' });
     expect(valid.success).toBe(true);
