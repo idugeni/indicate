@@ -86,13 +86,19 @@ function articleRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function chainable(rows: readonly unknown[]): unknown {
+function chainable(rows: readonly unknown[], limitLog?: number[]): unknown {
   return new Proxy(
     {},
     {
       get(_target, prop) {
         if (prop === 'then') return (resolve: (value: unknown) => void) => resolve(rows);
-        return () => chainable(rows);
+        if (prop === 'limit' && limitLog !== undefined) {
+          return (bound: number) => {
+            limitLog.push(bound);
+            return chainable(rows.slice(0, bound), limitLog);
+          };
+        }
+        return () => chainable(rows, limitLog);
       },
     },
   );
@@ -108,10 +114,12 @@ function harness(handlers: {
   readonly body?: readonly unknown[];
   readonly gallery?: readonly unknown[];
   readonly feed?: readonly unknown[];
+  readonly categories?: readonly unknown[];
   readonly brand?: readonly unknown[] | readonly (readonly unknown[])[];
   readonly publicHost?: string | null;
 }) {
   const selectLog: SelectLog[] = [];
+  const limitLog: number[] = [];
   const settings = handlers.settings ?? [SETTINGS_ROW];
   const articles = handlers.articles ?? [articleRow()];
   const body = handlers.body ?? [];
@@ -134,17 +142,18 @@ function harness(handlers: {
             selectLog.push({ keys });
             const only = (...wanted: readonly string[]) =>
               wanted.length === keys.length && wanted.every((key) => keys.includes(key));
-            if (only('body') || only('body', 'bodyJson')) return chainable(body);
-            if (keys.includes('sortOrder')) return chainable(gallery);
+            if (only('body') || only('body', 'bodyJson')) return chainable(body, limitLog);
+            if (keys.includes('sortOrder')) return chainable(gallery, limitLog);
             if (only('mediaId')) {
               const set = brandSets[Math.min(brandCursor, brandSets.length - 1)] ?? [];
               brandCursor += 1;
-              return chainable(set);
+              return chainable(set, limitLog);
             }
-            if (keys.includes('logoMediaId')) return chainable(settings);
-            if (keys.includes('bodyExcerpt')) return chainable(articles);
-            if (keys.includes('body') && keys.includes('slug')) return chainable(feed);
-            return chainable([]);
+            if (keys.includes('logoMediaId')) return chainable(settings, limitLog);
+            if (keys.includes('bodyExcerpt')) return chainable(articles, limitLog);
+            if (keys.includes('body') && keys.includes('slug')) return chainable(feed, limitLog);
+            if (only('slug', 'name')) return chainable(handlers.categories ?? [], limitLog);
+            return chainable([], limitLog);
           };
         return () => transaction;
       },
@@ -152,7 +161,7 @@ function harness(handlers: {
   );
   const database = { transaction: async (callback: (tx: unknown) => unknown) => callback(transaction) };
   const repository = new DrizzleDeliveryRepository(database as never, 'https://portal.example/brand/default.jpg', handlers.publicHost ?? null);
-  return { repository, selectLog };
+  return { repository, selectLog, limitLog };
 }
 
 describe('readSite projection', () => {
@@ -361,6 +370,23 @@ describe('readSite projection', () => {
     expect(description.length).toBeLessThanOrEqual(180);
     expect(description.endsWith(' ')).toBe(false);
     expect(description).not.toContain('<b>');
+  });
+});
+
+describe('public bundle and category nav reads', () => {
+  it('bundle tidak lagi membaca kanal yang tidak pernah dibaca', async () => {
+    const { repository, selectLog } = harness({});
+    const bundle = await repository.loadNetworkBundle({ ...CONTEXT }, {});
+    expect(bundle.bypassed).toBe(false);
+    expect(selectLog.some((entry) => entry.keys.includes('slug') && entry.keys.includes('name') && entry.keys.length === 2)).toBe(false);
+  });
+
+  it('baca kanal dibatasi di SQL sesuai jumlah kanal yang dirender', async () => {
+    const { repository, limitLog } = harness({
+      categories: Array.from({ length: 64 }, (_, i) => ({ slug: `kanal-${i}`, name: `Kanal ${i}` })),
+    });
+    await expect(repository.loadSiteCategories({ ...CONTEXT }, 6)).resolves.toHaveLength(6);
+    expect(limitLog).toContain(6);
   });
 });
 

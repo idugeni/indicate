@@ -153,9 +153,8 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
     return this.database.transaction(async (transaction) => {
       await this.publicTenant(transaction, context);
       const site = await this.readSite(transaction, context, query);
-      const categories = await this.readCategories(transaction, context);
       const bypassed = await this.readBypassed(transaction, context);
-      return { site, categories, bypassed };
+      return { site, bypassed };
     });
   }
 
@@ -292,11 +291,23 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       };
   }
 
-  private async readCategories(transaction: Transaction, context: ResolvedSiteContext): Promise<readonly { slug: string; name: string }[]> {
+  /**
+   * Read the channels one navigation renders.
+   *
+   * @param transaction - Tenant transaction.
+   * @param context - Resolved tenant hostname context.
+   * @param limit - Maximum channels the caller renders.
+   * @returns At most `limit` active categories ordered by name.
+   * @remarks Bounded in SQL rather than in the caller. The operator organization
+   * holds 64 active channels and every navigation renders six, so the previous
+   * unbounded read shipped 58 unused rows out of the pooler on each fill.
+   */
+  private async readCategories(transaction: Transaction, context: ResolvedSiteContext, limit: number): Promise<readonly { slug: string; name: string }[]> {
       const rows = await transaction.select({ slug: categories.slug, name: categories.name })
         .from(categories)
         .where(and(eq(categories.organizationId, context.organizationId), eq(categories.status, 'active')))
-        .orderBy(sql`${categories.name} ASC`);
+        .orderBy(sql`${categories.name} ASC`)
+        .limit(limit);
       return rows.map((row) => ({ slug: row.slug, name: row.name }));
   }
 
@@ -321,9 +332,9 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
     });
   }
 
-  async loadSiteCategories(context: ResolvedSiteContext): Promise<readonly { slug: string; name: string }[]> {    return this.database.transaction(async (transaction) => {
+  async loadSiteCategories(context: ResolvedSiteContext, limit: number): Promise<readonly { slug: string; name: string }[]> {    return this.database.transaction(async (transaction) => {
       await this.publicTenant(transaction, context);
-      return this.readCategories(transaction, context);
+      return this.readCategories(transaction, context, limit);
     });
   }
 

@@ -20,10 +20,9 @@ export interface SiteCategory {
   readonly name: string;
 }
 
-/** Single-checkout public read: one tenant context for site, categories, and bypass state. */
+/** Single-checkout public read: one tenant context for site and bypass state. */
 export interface PublicBundle {
   readonly site: NetworkSiteData | null;
-  readonly categories: readonly SiteCategory[];
   readonly bypassed: boolean;
 }
 
@@ -46,8 +45,14 @@ export interface DeliveryRepository {
   resolveBrandMediaId(context: ResolvedSiteContext, kind: 'logo' | 'favicon'): Promise<string | null>;
   /** Tenant custom robots (seo settings column, no articles) for /robots.txt. */
   loadSiteRobots(context: ResolvedSiteContext): Promise<readonly string[] | null>;
-  /** Active org category list (lightweight, for the identical nav on every page). */
-  loadSiteCategories(context: ResolvedSiteContext): Promise<readonly SiteCategory[]>;
+  /**
+   * Active org category list (lightweight, for the identical nav on every page).
+   *
+   * @param context - Resolved tenant hostname context.
+   * @param limit - Maximum channels the caller renders; bounds the read.
+   * @returns First `limit` active categories ordered by name.
+   */
+  loadSiteCategories(context: ResolvedSiteContext, limit: number): Promise<readonly SiteCategory[]>;
   /**
    * Resolve published article id by slug without loading body or gallery.
    *

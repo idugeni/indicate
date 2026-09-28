@@ -20,7 +20,7 @@ export async function getSiteCategoryNav(site: NetworkSiteData, limit = 6): Prom
   try {
     const { context } = site;
     const cached = unstable_cache(
-      async () => (await deliveryComposition()).repository.loadSiteCategories(context),
+      async () => (await deliveryComposition()).repository.loadSiteCategories(context, limit),
       [`site-nav:${context.normalizedHostname}:${context.siteId}:${context.routingVersion}:${context.contentVersion}`],
       {
         tags: [`host:${context.normalizedHostname}`, `site:${context.siteId}`, `org:${context.organizationId}`],
