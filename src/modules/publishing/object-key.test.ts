@@ -2,23 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildScopedObjectKey,
-  buildStructuredObjectKey,
   buildThumbObjectKey,
-  createCollisionToken,
-  isLegacyMediaKey,
   isPublicObjectKey,
   isPublicPurpose,
-  normalizePurpose,
-  objectKeyPrefix,
 } from '@/modules/publishing/object-key';
-
-describe('objectKeyPrefix', () => {
-  it('memetakan prefix per jenis owner', () => {
-    expect(objectKeyPrefix({ kind: 'article', articleId: 'a-1' })).toBe('articles/a-1/');
-    expect(objectKeyPrefix({ kind: 'site', siteId: 's-1' })).toBe('sites/s-1/');
-    expect(objectKeyPrefix({ kind: 'organization' })).toBe('assets/');
-  });
-});
 
 describe('buildThumbObjectKey', () => {
   it('menyisipkan infix thumb sebelum ekstensi', () => {
@@ -61,18 +48,6 @@ describe('visibilitas publik', () => {
     });
     expect(key.startsWith('pub/o/')).toBe(true);
     expect(isPublicObjectKey(key)).toBe(true);
-  });
-});
-
-describe('buildStructuredObjectKey', () => {
-  it('membersihkan nama file dan menempel token tabrakan', () => {
-    expect(buildStructuredObjectKey({ kind: 'article', articleId: 'a-1' }, 'Foto Acara.JPG', 'collisiontokenabcdef')).toBe(
-      'articles/a-1/foto-acara-collisiontokenabcdef.jpg',
-    );
-  });
-
-  it('menolak token tabrakan yang terlalu pendek', () => {
-    expect(() => buildStructuredObjectKey({ kind: 'site', siteId: 's-1' }, 'f.jpg', 'id-1')).toThrow();
   });
 });
 
@@ -128,16 +103,5 @@ describe('buildScopedObjectKey', () => {
         now,
       }),
     ).toThrow();
-  });
-});
-
-describe('purpose helpers', () => {
-  it('menormalkan purpose legacy dan mendeteksi key lama', () => {
-    expect(normalizePurpose('inline_article')).toBe('article-inline');
-    expect(normalizePurpose('article_image')).toBe('article-inline');
-    expect(normalizePurpose('acak')).toBe('organization-asset');
-    expect(createCollisionToken()).toMatch(/^[0-9a-f]{16}$/);
-    expect(isLegacyMediaKey('assets/foto-abc.jpg')).toBe(true);
-    expect(isLegacyMediaKey('o/org/p/article-inline/y=2026/m=09/organization/23-a-b.webp')).toBe(false);
   });
 });

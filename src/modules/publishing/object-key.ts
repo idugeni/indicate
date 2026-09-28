@@ -1,5 +1,3 @@
-import { randomBytes } from 'node:crypto';
-
 import type { MediaOwner } from '@/modules/publishing/models';
 
 const EXTENSION_PATTERN = /(?:\.([a-z0-9]{1,10}))$/i;
@@ -15,14 +13,6 @@ export const MEDIA_PURPOSES = [
 ] as const;
 
 export type MediaPurpose = (typeof MEDIA_PURPOSES)[number];
-
-const LEGACY_PURPOSE_MAP: Readonly<Record<string, MediaPurpose>> = {
-  inline_article: 'article-inline',
-  article_image: 'article-inline',
-  hero_banner: 'article-cover',
-  logo: 'site-logo',
-  favicon: 'site-favicon',
-};
 
 /** Top-level prefix routing published article bytes to the public bucket. */
 export const PUBLIC_OBJECT_KEY_PREFIX = 'pub/';
@@ -62,43 +52,6 @@ function sanitizeMediaFilename(filename: string): string {
   return extension === undefined ? stem : `${stem}.${extension}`;
 }
 
-export function objectKeyPrefix(owner: MediaOwner): string {
-  if (owner.kind === 'article') return `articles/${owner.articleId}/`;
-  if (owner.kind === 'site') return `sites/${owner.siteId}/`;
-  return 'assets/';
-}
-
-/**
- * Generate a 16-character collision token for new scoped object keys.
- *
- * @returns 16 lowercase hex characters carrying 64 bits of entropy.
- */
-export function createCollisionToken(): string {
-  return randomBytes(8).toString('hex');
-}
-
-/**
- * Normalize a legacy or free-form purpose to the canonical purpose enum.
- *
- * @param purpose - Raw purpose from reservation input or stored rows.
- * @returns Canonical purpose; falls back to `organization-asset` for unknown values.
- */
-export function normalizePurpose(purpose: string): MediaPurpose {
-  const normalized = purpose.trim().toLowerCase().replace(/_/g, '-');
-  if ((MEDIA_PURPOSES as readonly string[]).includes(normalized)) return normalized as MediaPurpose;
-  return LEGACY_PURPOSE_MAP[purpose] ?? LEGACY_PURPOSE_MAP[normalized] ?? 'organization-asset';
-}
-
-/**
- * Detect whether an object key uses the legacy flat layout.
- *
- * @param key - Stored R2 object key.
- * @returns True for `assets/`, `articles/`, or `sites/` prefixed keys.
- */
-export function isLegacyMediaKey(key: string): boolean {
-  return key.startsWith('assets/') || key.startsWith('articles/') || key.startsWith('sites/');
-}
-
 /**
  * Derives the listing-thumbnail key from a full object key by inserting a
  * `-thumb` infix before the extension. Deterministic: the server derives it
@@ -109,16 +62,6 @@ export function buildThumbObjectKey(objectKey: string): string {
   const suffix = extension === undefined ? '' : `.${extension}`;
   const base = extension === undefined ? objectKey : objectKey.slice(0, -(extension.length + 1));
   return `${base}-thumb${suffix}`;
-}
-
-export function buildStructuredObjectKey(owner: MediaOwner, filename: string, collisionToken: string): string {
-  const normalizedToken = collisionToken.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 64);
-  if (normalizedToken.length < 12) throw new Error('Collision token must contain at least 12 safe characters.');
-  const sanitized = sanitizeMediaFilename(filename);
-  const extension = EXTENSION_PATTERN.exec(sanitized)?.[1];
-  const stem = extension === undefined ? sanitized : sanitized.slice(0, -(extension.length + 1));
-  const suffix = extension === undefined ? '' : `.${extension}`;
-  return `${objectKeyPrefix(owner)}${stem}-${normalizedToken}${suffix}`;
 }
 
 /**
