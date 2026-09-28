@@ -228,6 +228,18 @@ export function resolveArticleCanonical(site: NetworkSiteData, path: string, art
   return absoluteSiteUrl(site.context, path);
 }
 
+/**
+ * Build the SEO document for one tenant path.
+ *
+ * @param site - Tenant site data for the requesting host.
+ * @param options - Path plus the article, robots, and copy overrides of the surface.
+ * @returns Title, description, canonical, robots, social card, and JSON-LD for the path.
+ * @remarks `openGraph.url` is the tenant's own URL for `options.path`, never the canonical.
+ * An editorial canonical override aims at the original publisher so search engines credit the
+ * source, but Facebook follows `og:url` off-site and rejects the whole scrape with
+ * "URL Follow Failed" when it leaves the requested host, which left every syndicated article
+ * without a card on any tenant.
+ */
 export function buildSeoDocument(site: NetworkSiteData, options: { readonly path: string; readonly article?: NetworkArticle; readonly indexable?: boolean; readonly titleOverride?: string; readonly descriptionOverride?: string; readonly robotsOverride?: RobotsDirective }): SeoDocument {
   const indexable = options.indexable ?? true;
   const article = options.article;
@@ -294,7 +306,7 @@ export function buildSeoDocument(site: NetworkSiteData, options: { readonly path
   return {
     title, description, canonical, robots,
     openGraph: {
-      title, description, url: canonical, siteName, type: article === undefined ? 'website' : 'article', image,
+      title, description, url: absoluteSiteUrl(site.context, options.path), siteName, type: article === undefined ? 'website' : 'article', image,
       ...(article === undefined
         ? {}
         : {

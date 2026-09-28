@@ -198,6 +198,26 @@ describe('tenant brand isolation', () => {
   }
 });
 
+describe('syndicated article keeps the shareable url on the tenant', () => {
+  beforeEach(() => {
+    load.mockReset();
+    load.mockResolvedValue(makeNetworkSite([makeNetworkArticle({ canonicalUrl: 'https://sumber.example/asli' })]));
+  });
+
+  it('menahan og:url di tenant sementara kanonis tetap menunjuk sumber', async () => {
+    const metadata = await meta('/berita-utama', { articleSlug: 'berita-utama' });
+    expect(metadata.alternates?.canonical).toBe('https://sumber.example/asli');
+    expect(metadata.openGraph?.url).toBe('https://portal.example/berita-utama');
+  });
+
+  it('menyamakan og:url dengan kanonis tenant untuk artikel milik sendiri', async () => {
+    load.mockResolvedValue(makeNetworkSite([makeNetworkArticle({ canonicalUrl: null })]));
+    const metadata = await meta('/berita-utama', { articleSlug: 'berita-utama' });
+    expect(metadata.openGraph?.url).toBe('https://portal.example/berita-utama');
+    expect(metadata.alternates?.canonical).toBe('https://portal.example/berita-utama');
+  });
+});
+
 describe('utility surfaces stay non-indexable', () => {
   beforeEach(() => {
     load.mockReset();

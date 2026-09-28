@@ -139,6 +139,19 @@ describe('buildSeoDocument', () => {
     expect(document.canonical).toBe('https://sumber.example/asli');
   });
 
+  it('menahan og:url di URL tenant ketika kanonis menunjuk sumber luar', () => {
+    const syndicated = makeNetworkArticle({ canonicalUrl: 'https://sumber.example/asli', href: 'https://portal.example/berita-utama' });
+    const document = buildSeoDocument(makeNetworkSite([syndicated]), { path: '/berita-utama', article: syndicated });
+    expect(document.canonical).toBe('https://sumber.example/asli');
+    expect(document.openGraph?.url).toBe('https://portal.example/berita-utama');
+  });
+
+  it('menyamakan og:url dengan kanonis untuk artikel milik sendiri', () => {
+    const owned = makeNetworkArticle({ canonicalUrl: null, href: '/berita-utama' });
+    const document = buildSeoDocument(makeNetworkSite([owned]), { path: '/berita-utama', article: owned });
+    expect(document.openGraph?.url).toBe(document.canonical);
+  });
+
   it('memakai kanonis tenant untuk artikel milik sendiri', () => {
     const owned = makeNetworkArticle({ canonicalUrl: null, href: '/berita-utama' });
     const document = buildSeoDocument(makeNetworkSite([owned]), { path: '/berita-utama', article: owned });
