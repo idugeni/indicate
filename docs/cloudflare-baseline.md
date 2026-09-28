@@ -21,7 +21,7 @@ Acuan kanonis per zona + checklist zona baru + ritme tinjauan.
 | Page Shield | `enabled=true` | — |
 | WAF kustom | `tenant probes` (skip crawler sosial #1, managed_challenge WP/env/git #2) | Maks 5 rule di Free; terpakai 2 (rollout 36/36 zona tenant 2026-09-24) |
 | Rate limit | `tenant api guard` (20/10 dtk per IP, blokir 429) | Maks 1 rule di Free; sudah penuh |
-| Edge cache | `Indicate edge cache`, **tepat 4 rule**: (1) bypass privat/auth/mutasi/query tanpa batas, (2) halaman publik 60 dtk, (3) feed `sitemap.xml`/`news-sitemap.xml`/`rss.xml`/`robots.txt` 600 dtk, (4) brand bytes `/logo.png` `/icon.png` `/apple-touch-icon.png` `/manifest.webmanifest` 1 thn | Tidak dipasang di `safenca.id` (path app berbeda) |
+| Edge cache | `Indicate edge cache`, **tepat 7 rule**: (1) bypass privat/auth/mutasi/query tanpa batas, (2) halaman publik 60 dtk, (3) feed `sitemap.xml`/`news-sitemap.xml`/`rss.xml`/`robots.txt` 600 dtk, (4) brand bytes `/logo.png` `/icon.png` `/apple-touch-icon.png` `/manifest.webmanifest` 1 thn, (5) halaman konten tenant 60 dtk query-agnostic termasuk artikel `/{slug}`, (6) legal statis `/tentang` `/kontak` `/kebijakan-privasi` `/syarat-ketentuan` + `/llms.txt` 300 dtk, (7) aset publik `/favicon.ico` `/brand/*` `/assets/*` 24 jam | Terpasang di 161/161 zona tenant (termasuk 24 zona yang sebelumnya tanpa ruleset, 2026-09-28) |
 | Browser cache TTL | `0` (hormati origin) | — |
 | DNS inti | Apex + wildcard CNAME proxied ke target Vercel; CAA issue/issuewild × pki.goog/letsencrypt.org | — |
 | Email non-kirim | SPF `v=spf1 -all`, DMARC reject + rua, DKIM-null `*._domainkey` | 94 bank; pengecualian di bawah |
@@ -39,7 +39,7 @@ Acuan kanonis per zona + checklist zona baru + ritme tinjauan.
   Page Shield, Email Routing + MX, Worker route `pv`, custom domain R2 `media`, verifikasi Resend.
 - `indicate.web.id`: + record `www`, `pv` (Worker pageview), Email Routing + Resend aktif. Redirect Rule `www_to_apex_301` (fase `http_request_dynamic_redirect`, ruleset `www to apex redirect`): `www.indicate.web.id` ke `https://indicate.web.id` + path, 301, preserve query — pengganti redirect domain Vercel `www` yang dilepas 2026-09-20 untuk slot kuota project. Setelah cutover: tambah Redirect Rule `apex_to_website_308` (`http.host eq "indicate.web.id"` ke `concat("https://indicate.website", http.request.uri.path)`, 308, preserve query); `api`/`webhook`/`media`/`pv` lama dual-serve sampai traffic lama habis.
 - 9 tenant: DMARC + SPF + DKIM-null; tanpa Email Routing/Resend.
-- `safenca.id`: tanpa `Indicate edge cache`, tanpa wildcard; Email Routing + Resend aktif.
+- `safenca.id`: tanpa wildcard; Email Routing + Resend aktif. Edge cache 7-rule dipasang 2026-09-28 bersama 160 zona lain (path app sama dengan zona tenant lain, jadi tidak lagi pengecualian).
 - 94 bank: tanpa TXT kirim/terima selain hardening; tanpa record `www`/`pv`.
 
 ## Checklist zona baru (wajib sebelum dianggap selesai)
@@ -49,7 +49,9 @@ Acuan kanonis per zona + checklist zona baru + ritme tinjauan.
 2b. HSTS enabled (`max_age=15552000`, `include_subdomains`, `nosniff`) + `early_hints=on`.
 3. Bot Fight Mode + crawler enabled, AI block OFF (keputusan sadar 2026-09-23); Page Shield on.
 4. Ruleset `tenant probes` (2-rule: skip crawler sosial #1 + challenge #2) + `tenant api guard` (cek sisa kuota Free).
-5. Ruleset `Indicate edge cache` (kecuali app non-Indicate).
+5. Ruleset `Indicate edge cache`, 7 rule (termasuk rule 5 halaman artikel dan
+   rule 6 legal statis; tanpa rule 5, `/{slug}` selalu `dynamic` dan setiap
+   tangkapan artikel menembus origin).
 6. `browser_cache_ttl=0`; apex + wildcard proxied; CAA 4 record.
 7. Email: hardening non-kirim default; aktifkan Routing/Resend hanya bila ditunjuk.
 8. DNSSEC: enable di Cloudflare, catat DS untuk input registrar.
