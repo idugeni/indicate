@@ -15,6 +15,16 @@ npm-facing.
 
 ### Added
 
+- `Hasil Tayang` dashboard view: every published article with its live portal
+  URLs, numbered in a code block and copyable for WhatsApp. Reads the same
+  editorial payload the article archive uses, so a row it lists is one a
+  reader can open right now. URLs come from `article_sites.published_url` and
+  fall back to `https://{hostname}/{slug}`, the shape the public article route
+  serves; only `published` rows are listed, since an assignment still queued
+  would advertise a link that 404s. The copy payload is the plain numbered list
+  with no code fence, so pasting into a chat leaves clean lines, and it always
+  carries every URL even though the block scrolls.
+
 - Server-verified Cloudflare Turnstile on the tenant report form
   (`POST /api/network/reports`). The widget in the browser now hands a one-time
   token to the server in the `cf-turnstile-response` header, and the server

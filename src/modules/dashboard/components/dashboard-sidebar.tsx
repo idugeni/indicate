@@ -11,6 +11,7 @@ import {
   Globe,
   KeyRound,
   LayoutDashboard,
+  Link2,
   Megaphone,
   Newspaper,
   RefreshCw,
@@ -65,7 +66,10 @@ const NAV_GROUPS: readonly NavGroup[] = [
   {
     id: 'publishing',
     title: 'Penerbitan',
-    items: [{ view: 'publishing', label: 'Antrean Penerbitan', icon: Share2 }],
+    items: [
+      { view: 'publishing', label: 'Antrean Penerbitan', icon: Share2 },
+      { view: 'published', label: 'Hasil Tayang', icon: Link2 },
+    ],
   },
   {
     id: 'system',

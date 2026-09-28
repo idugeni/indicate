@@ -106,6 +106,10 @@ const PublishingForm = dynamic(
   () => import('@/modules/dashboard/components/publishing/publishing-form').then((module) => ({ default: module.PublishingForm })),
   { loading: () => <DashboardFormSkeleton /> },
 );
+const PublishedUrlBoard = dynamic(
+  () => import('@/modules/dashboard/components/publishing/published-url-board').then((module) => ({ default: module.PublishedUrlBoard })),
+  { loading: () => <DashboardFormSkeleton /> },
+);
 const BillingPanel = dynamic(
   () => import('@/modules/dashboard/components/billing/billing-panel').then((module) => ({ default: module.BillingPanel })),
   { loading: () => <DashboardFormSkeleton /> },
@@ -281,6 +285,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         </Tabs>
       ) : null}
       {view === 'media' ? <MediaLibrary data={data} command={command} /> : null}
+      {view === 'published' ? <PublishedUrlBoard data={data} /> : null}
       {view === 'publishing' ? (
         <div className="grid gap-6">
           <PublishingForm data={data} command={command} />

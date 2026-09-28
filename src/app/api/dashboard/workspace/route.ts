@@ -24,7 +24,7 @@ import type { Result } from '@/core/result';
 const organizationSchema = z.uuid();
 const querySchema = z.object({
   organizationId: organizationSchema,
-  view: z.enum(['dashboard', 'configuration', 'publishers', 'editorial', 'taxonomy', 'articles', 'analytics', 'audit', 'operations']),
+  view: z.enum(['dashboard', 'configuration', 'publishers', 'editorial', 'taxonomy', 'articles', 'published', 'analytics', 'audit', 'operations']),
   regionId: organizationSchema.optional(), siteId: organizationSchema.optional(), categoryId: organizationSchema.optional(), publisherId: organizationSchema.optional(), authorId: organizationSchema.optional(),
   publicationState: z.enum(['queued', 'processing', 'published', 'failed', 'retrying', 'unpublished']).optional(), search: z.string().max(300).optional(),
   actorId: z.string().max(200).optional(), action: z.string().max(200).optional(), targetType: z.string().max(100).optional(), outcome: z.enum(['succeeded', 'denied', 'failed']).optional(),
@@ -103,6 +103,7 @@ async function handleGET(request: Request) {
       : parsed.data.view === 'editorial' ? await service.listEditorial(actor, editorialFilter)
       : parsed.data.view === 'taxonomy' ? await service.listTaxonomy(actor)
       : parsed.data.view === 'articles' ? await service.listEditorial(actor, {})
+      : parsed.data.view === 'published' ? await service.listEditorial(actor, {})
       : parsed.data.view === 'analytics'
         ? actor.actorType === 'user'
           ? await fetchCachedAnalytics(actor, rangeFilter)

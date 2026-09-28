@@ -13,6 +13,7 @@ export type View =
   | 'articles'
   | 'media'
   | 'publishing'
+  | 'published'
   | 'analytics'
   | 'audit'
   | 'operations'
@@ -94,6 +95,11 @@ export const VIEW_METADATA_REGISTRY: Record<View, ViewMetadata> = {
     title: 'Antrean Penerbitan',
     eyebrow: 'Antrean Pengiriman',
     description: 'Daftar pengiriman artikel ke situs beserta statusnya.',
+  },
+  published: {
+    title: 'Hasil Tayang',
+    eyebrow: 'URL Siap Dishare',
+    description: 'Semua URL artikel yang sudah tayang, bernomor dan siap disalin ke WhatsApp.',
   },
   media: {
     title: 'Galeri Media',

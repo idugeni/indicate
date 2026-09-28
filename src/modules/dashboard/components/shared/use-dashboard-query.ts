@@ -14,6 +14,7 @@ const VIEWS = [
   'articles',
   'media',
   'publishing',
+  'published',
   'analytics',
   'audit',
   'operations',
