@@ -1485,6 +1485,27 @@
       "when": 1790564400000,
       "tag": "20260928030000_media_object_key_reconciliation_reader",
       "breakpoints": true
+    },
+    {
+      "idx": 212,
+      "version": "7",
+      "when": 1790593200000,
+      "tag": "20260928040000_publisher_dedupe_and_article_dates",
+      "breakpoints": true
+    },
+    {
+      "idx": 213,
+      "version": "7",
+      "when": 1790596800000,
+      "tag": "20260928050000_publisher_provenance_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 214,
+      "version": "7",
+      "when": 1790597000000,
+      "tag": "20260928060000_article_updated_at_restore",
+      "breakpoints": true
     }
   ]
 }

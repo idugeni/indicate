@@ -68,6 +68,7 @@ export const publishers = pgTable('publishers', {
 }, (table) => [
   primaryKey({ name: 'publishers_pk', columns: [table.organizationId, table.id] }),
   unique('publishers_id_unique').on(table.id),
+  unique('publishers_org_name_unique').on(table.organizationId, table.name),
   foreignKey({ name: 'publishers_submitter_membership_fk', columns: [table.organizationId, table.submittedBy], foreignColumns: [memberships.organizationId, memberships.userId] }).onDelete('restrict'),
   foreignKey({ name: 'publishers_verifier_membership_fk', columns: [table.organizationId, table.verifiedBy], foreignColumns: [memberships.organizationId, memberships.userId] }).onDelete('restrict'),
   index('publishers_organization_status_type_idx').on(table.organizationId, table.status, table.type),
