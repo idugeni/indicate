@@ -19,6 +19,7 @@ import { SectionCard } from '@/modules/dashboard/components/shared/section-card'
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -41,6 +42,8 @@ import type { TipTapDoc, TipTapNode } from '@/modules/site/tiptap-document';
 import { ArticlePreview } from '@/modules/dashboard/components/editorial/article-preview';
 import { RichTextEditor } from '@/modules/dashboard/components/editorial/rich-text-editor';
 import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
+import { chunkPublicationTargets, selectPublicationTargets } from '@/modules/dashboard/components/editorial/publication-batch';
+import type { PublicationScope, PublishTargetSite } from '@/modules/dashboard/components/editorial/publication-batch';
 import { COVER_COMPRESS, formatBytes } from '@/modules/publishing/compress-image';
 
 const STATUS_OPTIONS = [
@@ -55,6 +58,13 @@ const SUBMIT_LABELS: Record<string, string> = {
   in_review: 'Simpan untuk Reviu',
   scheduled: 'Jadwalkan Terbit',
   active: 'Terbitkan Langsung',
+};
+
+const PUBLISH_ON_SAVE_LABELS: Record<string, string> = {
+  draft: 'Simpan Draf',
+  in_review: 'Simpan untuk Reviu',
+  scheduled: 'Jadwalkan dan Terbitkan',
+  active: 'Simpan dan Terbitkan',
 };
 
 const MODE_TABS = [
@@ -130,6 +140,7 @@ export function ArticleCreateForm({
     readonly categories?: readonly CategoryEntity[];
     readonly authors?: readonly AuthorEntity[];
     readonly articles?: readonly ArticleEntity[];
+    readonly sites?: readonly PublishTargetSite[];
   } | null;
 
   const regionSelectId = useId();
@@ -148,6 +159,7 @@ export function ArticleCreateForm({
   const categoryInputId = useId();
   const featuredFileId = useId();
   const coverUrlInputId = useId();
+  const publishOnSaveId = useId();
 
   const [slug, setSlug] = useState('');
   const [slugTouched, setSlugTouched] = useState(false);
@@ -174,6 +186,22 @@ export function ArticleCreateForm({
   const [bodyJsonDraft, setBodyJsonDraft] = useState<TipTapDoc | null>(null);
   const [richResetKey, setRichResetKey] = useState(0);
   const [isSubmitting, startSubmitTransition] = useTransition();
+  const [publishOnSave, setPublishOnSave] = useState(true);
+
+  const liveSites = useMemo(() => model?.sites ?? [], [model?.sites]);
+  const publicationScope = useMemo<PublicationScope>(() => {
+    const pickedCity = model?.regions?.find((region) => region.id === cityId);
+    return pickedCity?.kind === 'city' ? { kind: 'city', regionId: pickedCity.id } : { kind: 'apex' };
+  }, [model?.regions, cityId]);
+  const targetSiteIds = useMemo(
+    () => selectPublicationTargets(liveSites, publicationScope),
+    [liveSites, publicationScope],
+  );
+  const targetLabel = useMemo(() => {
+    if (publicationScope.kind !== 'city') return 'portal apex';
+    return `portal kota ${model?.regions?.find((region) => region.id === publicationScope.regionId)?.name ?? ''}`.trim();
+  }, [publicationScope, model?.regions]);
+  const willPublish = publishOnSave && (status === 'active' || status === 'scheduled');
   const editorStats = useMemo(() => {
     const trimmed = bodyText.trim();
     const words = trimmed === '' ? 0 : trimmed.split(/\s+/u).length;
@@ -405,6 +433,72 @@ export function ArticleCreateForm({
     void saveFeaturedMeta({ altText: alt === '' ? null : alt, caption: caption === '' ? null : caption, focalX: x, focalY: y });
   };
 
+  /**
+   * Publish a freshly created article across every target portal.
+   *
+   * @param articleId - Id of the article the create call just persisted.
+   * @param scheduled - True when the article carries a future publish time.
+   * @param scheduledAt - ISO publish time for a scheduled article.
+   * @returns Nothing; the toast carries the outcome.
+   *
+   * @remarks Two server rules shape this. First, `siteIds` is capped per command,
+   * so a network with more apex portals than the cap has to be split into as many
+   * batches as it takes — the batch count therefore follows the live apex count
+   * instead of a fixed number. Second, any multi-portal request must carry a
+   * distinct title and description per portal, so each batch asks for suggested
+   * variants first and sends them back as overrides; sending an empty override
+   * map is rejected. Batches run in order because each one's suggestions are
+   * computed against the variants the previous batch already claimed, which is
+   * what keeps every portal's title unique across the whole fan-out.
+   *
+   * The article exists before any of this runs, so a failure leaves it publishable
+   * from the queue rather than losing the writing.
+   */
+  const publishCreatedArticle = async (articleId: string, scheduled: boolean, scheduledAt: string | null | undefined) => {
+    if (command === undefined) {
+      toast.error('Artikel tersimpan, tetapi perintah publikasi tidak tersedia di layar ini.');
+      return;
+    }
+    if (targetSiteIds.length === 0) {
+      toast.error('Artikel tersimpan, tetapi tidak ada portal aktif untuk ditayangkan.');
+      return;
+    }
+    const batches = chunkPublicationTargets(targetSiteIds);
+    const idempotencyPrefix = crypto.randomUUID();
+    let dispatched = 0;
+    try {
+      for (const [index, batch] of batches.entries()) {
+        const suggested = (await command('publication.suggest', { articleId, siteIds: batch })) as {
+          readonly overrides?: Readonly<Record<string, { readonly title?: string; readonly description?: string }>>;
+        } | null;
+        const overrides = suggested?.overrides ?? {};
+        if (Object.keys(overrides).length !== batch.length) {
+          throw new Error('Varian portal tidak lengkap untuk satu batch.');
+        }
+        await command('publication.request', {
+          articleId,
+          siteIds: batch,
+          idempotencyKey: `${idempotencyPrefix}:${index}`,
+          options: { mode: scheduled ? 'scheduled' : 'immediate' },
+          publishAt: scheduled ? (scheduledAt ?? null) : null,
+          overrides,
+        });
+        dispatched += batch.length;
+      }
+      toast.success(
+        scheduled
+          ? `Terjadwal ke ${dispatched.toLocaleString('id-ID')} portal.`
+          : `Dikirim ke ${dispatched.toLocaleString('id-ID')} portal. Buka Hasil Tayang untuk menyalin URL.`,
+      );
+    } catch {
+      toast.error(
+        dispatched === 0
+          ? 'Artikel tersimpan, tetapi gagal ditayangkan. Coba lagi dari Antrean Penerbitan.'
+          : `Artikel tersimpan dan ${dispatched.toLocaleString('id-ID')} portal sudah masuk antrean, sisanya gagal. Periksa Antrean Penerbitan.`,
+      );
+    }
+  };
+
   const handleCreateArticle = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -472,9 +566,12 @@ export function ArticleCreateForm({
         tags: normalizeTagList(String(formData.get('tags') ?? '').split(',')).slice(0, TAG_MAX_COUNT),
         status,
         scheduledAt,
-      })) as { readonly slug?: string } | null;
+      })) as { readonly id?: string; readonly slug?: string } | null;
       if (created !== null && typeof created.slug === 'string' && created.slug !== payloadSlug) {
         toast.info(`Slug "${payloadSlug}" sudah dipakai — disimpan sebagai "${created.slug}".`);
+      }
+      if (willPublish && created !== null && typeof created.id === 'string') {
+        await publishCreatedArticle(created.id, status === 'scheduled', scheduledAt);
       }
       form.reset();
       setSlug('');
@@ -540,6 +637,23 @@ export function ArticleCreateForm({
           />
           <span className="font-mono text-[11px] tabular-nums text-paper-faint">{editorStats.words} kata</span>
         </span>
+        <span className="flex items-center gap-2">
+          <Checkbox
+            id={publishOnSaveId}
+            checked={publishOnSave}
+            onCheckedChange={(checked) => setPublishOnSave(checked === true)}
+            disabled={isSubmitting}
+            className="border-hairline-strong data-checked:border-brass data-checked:bg-brass data-checked:text-bg"
+          />
+          <Label htmlFor={publishOnSaveId} className="font-mono text-[10px] uppercase tracking-wider text-paper-faint">
+            Tayang otomatis
+          </Label>
+        </span>
+        {willPublish ? (
+          <span className="font-mono text-[11px] tabular-nums text-paper-faint">
+            {targetSiteIds.length.toLocaleString('id-ID')} {targetLabel}
+          </span>
+        ) : null}
         <span className="flex-1" />
         <Button type="submit" variant="default" disabled={isSubmitting}>
           {isSubmitting ? (
@@ -547,7 +661,7 @@ export function ArticleCreateForm({
           ) : (
             <Send className="h-3.5 w-3.5" aria-hidden="true" />
           )}
-          <span>{SUBMIT_LABELS[status] ?? 'Simpan Artikel'}</span>
+          <span>{(willPublish ? PUBLISH_ON_SAVE_LABELS[status] : SUBMIT_LABELS[status]) ?? 'Simpan Artikel'}</span>
         </Button>
       </div>
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">

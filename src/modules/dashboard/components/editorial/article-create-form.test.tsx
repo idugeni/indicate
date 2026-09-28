@@ -55,13 +55,30 @@ const DATA = {
   ],
   authors: [{ id: 'a-1', displayName: 'Penulis Uji' }],
   articles: [{ id: 'art-1', title: 'Artikel Uji' }],
+  sites: [
+    { id: 's-apex-1', siteLevel: 'apex', status: 'active', activationState: 'active', regionId: null },
+    { id: 's-apex-2', siteLevel: 'apex', status: 'active', activationState: 'active', regionId: null },
+    { id: 's-region-1', siteLevel: 'region', status: 'active', activationState: 'active', regionId: 'r-1' },
+    { id: 's-city-1', siteLevel: 'city', status: 'active', activationState: 'active', regionId: 'r-2' },
+    { id: 's-dead-1', siteLevel: 'apex', status: 'retired', activationState: 'active', regionId: null },
+  ],
 };
 
 function setup(overrides: {
   submit?: (payload: unknown) => Promise<unknown>;
+  command?: (action: string, payload: unknown) => Promise<unknown>;
 }) {
   const submit = vi.fn(async (payload: unknown) => (overrides.submit ? overrides.submit(payload) : null));
-  const cmd = vi.fn(async () => ({}));
+  const cmd = vi.fn(async (action: string, payload: unknown) => {
+    if (overrides.command !== undefined) return overrides.command(action, payload);
+    if (action !== 'publication.suggest') return {};
+    const { siteIds } = payload as { readonly siteIds: readonly string[] };
+    return {
+      overrides: Object.fromEntries(
+        siteIds.map((siteId, index) => [siteId, { title: `Judul portal ${index}`, description: `Deskripsi portal ${index}.` }]),
+      ),
+    };
+  });
   const { container } = render(<ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} />);
   return { submit, cmd, container };
 }
@@ -72,6 +89,12 @@ async function pilihWilayahWonosobo(): Promise<void> {
   await user.click(await screen.findByRole('option', { name: 'Jawa Tengah' }));
   await user.click(screen.getByLabelText('Kota / kabupaten'));
   await user.click(await screen.findByRole('option', { name: 'Wonosobo' }));
+}
+
+async function pilihWilayahSaja(): Promise<void> {
+  const user = userEvent.setup();
+  await user.click(screen.getByLabelText('Wilayah'));
+  await user.click(await screen.findByRole('option', { name: 'Jawa Tengah' }));
 }
 
 describe('Formulir tulis artikel', () => {
@@ -411,10 +434,123 @@ describe('Formulir tulis artikel', () => {
     expect(screen.getByRole('button', { name: 'Simpan untuk Reviu' })).toBeDefined();
     await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
     await user.click(await screen.findByRole('option', { name: 'Terjadwal' }));
-    expect(screen.getByRole('button', { name: 'Jadwalkan Terbit' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Jadwalkan dan Terbitkan' })).toBeDefined();
+    await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
+    expect(screen.getByRole('button', { name: 'Simpan dan Terbitkan' })).toBeDefined();
+  });
+
+  it('menampilkan label simpan biasa saat tayang otomatis dimatikan', async () => {
+    const user = userEvent.setup();
+    setup({});
+    await user.click(screen.getByRole('checkbox', { name: /Tayang otomatis/ }));
     await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
     await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
     expect(screen.getByRole('button', { name: 'Terbitkan Langsung' })).toBeDefined();
+    expect(screen.queryByText(/portal$/)).toBe(null);
+  });
+
+  it('menyorot portal apex sebagai target saat kota belum dipilih', async () => {
+    const user = userEvent.setup();
+    setup({});
+    await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
+    expect(screen.getByText('2 portal apex')).toBeDefined();
+  });
+
+  it('berpindah ke portal kota terpilih begitu kota dipilih', async () => {
+    const user = userEvent.setup();
+    setup({});
+    await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
+    expect(screen.getByText('2 portal apex')).toBeDefined();
+    await pilihWilayahWonosobo();
+    expect(screen.getByText('1 portal kota Wonosobo')).toBeDefined();
+    expect(screen.queryByText('2 portal apex')).toBe(null);
+  });
+
+  it('menayangkan artikel tersimpan lewat satu formulir dengan varian unik per portal', async () => {
+    const user = userEvent.setup();
+    const { cmd, container } = setup({ submit: async () => ({ id: 'art-baru', slug: 'judul-uji' }) });
+    await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await pilihWilayahWonosobo();
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() =>
+      expect(cmd).toHaveBeenCalledWith(
+        'publication.suggest',
+        expect.objectContaining({ articleId: 'art-baru', siteIds: ['s-city-1'] }),
+      ),
+    );
+    const request = cmd.mock.calls.find(([action]) => action === 'publication.request');
+    expect(request?.[1]).toEqual(expect.objectContaining({
+      articleId: 'art-baru',
+      siteIds: ['s-city-1'],
+      options: { mode: 'immediate' },
+      overrides: {
+        's-city-1': { title: 'Judul portal 0', description: 'Deskripsi portal 0.' },
+      },
+    }));
+  });
+
+  it('memecah penerbitan mengikuti jumlah apex portal yang tersedia', async () => {
+    const user = userEvent.setup();
+    const apexSites = Array.from({ length: 134 }, (_, index) => ({ id: `apex-${index}`, siteLevel: 'apex', status: 'active', activationState: 'active' }));
+    const seen: number[] = [];
+    const { container } = render(
+      <ArticleCreateForm
+        data={{ ...DATA, sites: apexSites }}
+        onSubmit={async () => ({ id: 'art-besar', slug: 'judul-uji' })}
+        command={async (action, payload) => {
+          const { siteIds } = payload as { readonly siteIds: readonly string[] };
+          if (action === 'publication.suggest') {
+            seen.push(siteIds.length);
+            return { overrides: Object.fromEntries(siteIds.map((id) => [id, { title: `T${id}`, description: `D${id} yang berbeda.` }])) };
+          }
+          return {};
+        }}
+      />,
+    );
+    await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await pilihWilayahSaja();
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() => expect(seen.length).toBe(2));
+    expect(seen).toEqual([100, 34]);
+  });
+
+  it('menahan penerbitan bila varian portal tidak lengkap', async () => {
+    const user = userEvent.setup();
+    const cmd = vi.fn(async (action: string) => (action === 'publication.suggest' ? { overrides: {} } : {}));
+    const { container } = render(
+      <ArticleCreateForm data={DATA} onSubmit={async () => ({ id: 'art-var', slug: 'judul-uji' })} command={cmd} />,
+    );
+    await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await pilihWilayahWonosobo();
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() => expect(screen.queryByText(/gagal ditayangkan/)).toBeDefined());
+    expect(cmd.mock.calls.some(([action]) => action === 'publication.request')).toBe(false);
+  });
+
+  it('tidak menayangkan draf meski tayang otomatis nyala', async () => {
+    const { cmd, container } = setup({ submit: async () => ({ id: 'art-draf', slug: 'judul-uji' }) });
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() =>
+      expect(cmd).not.toHaveBeenCalledWith('publication.request', expect.anything()),
+    );
   });
 
   it('mengunci penulis ke penerbit dan menampilkan byline humas', async () => {
