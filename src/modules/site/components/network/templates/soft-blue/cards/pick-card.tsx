@@ -6,11 +6,13 @@ import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/soft-blue/lib/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/soft-blue/theme';
 import { ArticleMeta } from '@/modules/site/components/network/templates/soft-blue/ui/article-meta';
+import { AuthorAvatar } from '@/modules/site/components/network/templates/soft-blue/ui/author-avatar';
 
 export function SoftBluePickCard({ article, index }: { readonly article: ArticleListItem; readonly index: number }) {
   const src = articleImage(article);
   const reading = readingMinutes(article);
   const badge = badgeStyle(index);
+  const publisherName = article.attribution;
   return (
     <article className="flex h-full gap-4 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200/60">
       <Link
@@ -42,6 +44,12 @@ export function SoftBluePickCard({ article, index }: { readonly article: Article
             {article.title}
           </Link>
         </h3>
+        <p className="m-0 mt-2 flex min-w-0 items-center gap-2.5">
+          <AuthorAvatar name={publisherName} avatarUrl={article.publisherLogoUrl} size="sm" />
+          <span className="m-0 truncate font-sans text-xs font-bold text-slate-800">
+            {publisherName}
+          </span>
+        </p>
         <div className="mt-auto flex items-end justify-between gap-2 pt-3">
           <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} />
           <Link

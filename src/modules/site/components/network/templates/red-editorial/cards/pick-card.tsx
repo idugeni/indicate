@@ -4,10 +4,12 @@ import { Share2 } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/red-editorial/lib/format';
+import { AuthorAvatar } from '@/modules/site/components/network/templates/red-editorial/ui/author-avatar';
 
 export function RedEditorialPickCard({ article, index }: { readonly article: ArticleListItem; readonly index: number }) {
   const src = articleImage(article);
   const reading = readingMinutes(article);
+  const publisherName = article.attribution;
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#ecd3d3]/70">
       <div className="overflow-hidden">
@@ -35,6 +37,12 @@ export function RedEditorialPickCard({ article, index }: { readonly article: Art
         </h3>
         <p className="m-0 mt-2 line-clamp-3 text-sm leading-relaxed text-[#705050]">
           {article.description}
+        </p>
+        <p className="m-0 mt-3 flex min-w-0 items-center gap-2.5">
+          <AuthorAvatar name={publisherName} avatarUrl={article.publisherLogoUrl} size="sm" />
+          <span className="m-0 truncate font-sans text-xs font-bold text-slate-800">
+            {publisherName}
+          </span>
         </p>
         <p className="m-0 mt-auto flex items-center justify-between gap-3 pt-4">
           <span className="text-xs tabular-nums text-[#ac9393]">

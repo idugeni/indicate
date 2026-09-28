@@ -5,6 +5,7 @@ import { ArrowRight, MapPin } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/warm-editorial/ui/article-meta';
+import { AuthorAvatar } from '@/modules/site/components/network/templates/warm-editorial/ui/author-avatar';
 import { articleImage, readingMinutes } from '@/modules/site/components/network/templates/warm-editorial/lib/format';
 import { WarmEditorialHeroActions } from '@/modules/site/components/network/templates/warm-editorial/cards/hero-actions';
 
@@ -12,6 +13,7 @@ export function WarmEditorialHero({ article }: { readonly article: ArticleListIt
   const src = articleImage(article);
   const reading = readingMinutes(article);
   const location = article.publisherCity;
+  const publisherName = article.attribution;
 
   return (
     <section className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12" aria-label="Sorotan utama">
@@ -30,8 +32,14 @@ export function WarmEditorialHero({ article }: { readonly article: ArticleListIt
         <p className="m-0 mt-4 max-w-xl font-sans text-[15px] leading-relaxed text-[var(--tpl-muted,#6f5a4c)]">
           {article.description}
         </p>
-        <div className="mt-4">
-          <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} />
+        <div className="mt-4 flex min-w-0 items-center gap-3">
+          <AuthorAvatar name={publisherName} avatarUrl={article.publisherLogoUrl} size="md" />
+          <div className="grid min-w-0 gap-1">
+            <p className="m-0 truncate font-sans text-sm font-bold text-[var(--tpl-ink,#231208)]">
+              {publisherName}
+            </p>
+            <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} />
+          </div>
         </div>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link
