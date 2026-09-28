@@ -1,8 +1,33 @@
 export const SLUG_MAX_LENGTH = 100;
 export const TAG_MAX_LENGTH = 60;
 export const TAG_MAX_COUNT = 10;
-const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const MAX_SUFFIX_ATTEMPTS = 1000;
+
+/**
+ * Reduce a raw request value to a canonical published-article slug.
+ *
+ * Unlike {@link normalizeSlugCandidate}, which is forgiving free text for the
+ * authoring path, this rejects anything that could never be a stored slug so a
+ * query parameter cannot widen the cache-key space or reach a lookup in an
+ * unexpected shape.
+ *
+ * @param value - Raw query value (a string, a repeated parameter, or absent).
+ * @returns Canonical slug, or null when empty, oversized, or not kebab-case.
+ * @example
+ * ```ts
+ * normalizeArticleSlug('  Rutan-Wonosobo-2026 ');
+ * // 'rutan-wonosobo-2026'
+ * normalizeArticleSlug('javascript:alert(1)');
+ * // null
+ * ```
+ */
+export function normalizeArticleSlug(value: string | string[] | undefined): string | null {
+  const raw = Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
+  const slug = raw.trim().toLowerCase();
+  if (slug.length === 0 || slug.length > SLUG_MAX_LENGTH) return null;
+  return SLUG_PATTERN.test(slug) ? slug : null;
+}
 
 /**
  * Normalize a slug candidate into canonical kebab-case.

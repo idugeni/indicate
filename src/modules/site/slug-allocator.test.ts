@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { allocateUniqueSlug, normalizeSlugCandidate, normalizeTagCandidate, normalizeTagList } from '@/modules/site/slug-allocator';
+import { allocateUniqueSlug, normalizeArticleSlug, normalizeSlugCandidate, normalizeTagCandidate, normalizeTagList, SLUG_MAX_LENGTH } from '@/modules/site/slug-allocator';
 
 describe('normalizeSlugCandidate', () => {
   it('menormalkan judul ke kebab-case', () => {
@@ -19,6 +19,36 @@ describe('normalizeSlugCandidate', () => {
     const slug = normalizeSlugCandidate(`${'a'.repeat(120)} ---`);
     expect(slug.length).toBeLessThanOrEqual(100);
     expect(slug.endsWith('-')).toBe(false);
+  });
+});
+
+describe('normalizeArticleSlug', () => {
+  it('menormalkan kapital dan memangkas spasi tepi', () => {
+    expect(normalizeArticleSlug('Judul-Berita')).toBe('judul-berita');
+    expect(normalizeArticleSlug('  Rutan-Wonosobo  ')).toBe('rutan-wonosobo');
+  });
+
+  it('memakai entri pertama saat parameter berulang', () => {
+    expect(normalizeArticleSlug(['Satu', 'Dua'])).toBe('satu');
+  });
+
+  it('mengembalikan null saat kosong', () => {
+    expect(normalizeArticleSlug(undefined)).toBe(null);
+    expect(normalizeArticleSlug('   ')).toBe(null);
+    expect(normalizeArticleSlug([])).toBe(null);
+  });
+
+  it('menolak nilai yang tidak mungkin menjadi slug tersimpan', () => {
+    expect(normalizeArticleSlug('javascript:alert(1)')).toBe(null);
+    expect(normalizeArticleSlug('../../etc/passwd')).toBe(null);
+    expect(normalizeArticleSlug('foo--bar')).toBe(null);
+    expect(normalizeArticleSlug('slug dengan spasi')).toBe(null);
+    expect(normalizeArticleSlug('<script>alert(1)</script>')).toBe(null);
+  });
+
+  it('menolak slug melebihi batas kanonik', () => {
+    expect(normalizeArticleSlug('a'.repeat(SLUG_MAX_LENGTH))).toBe('a'.repeat(SLUG_MAX_LENGTH));
+    expect(normalizeArticleSlug('a'.repeat(SLUG_MAX_LENGTH + 1))).toBe(null);
   });
 });
 

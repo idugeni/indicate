@@ -1,16 +1,42 @@
 import { z } from 'zod';
 
+import { SLUG_MAX_LENGTH, SLUG_PATTERN } from '@/modules/site/slug-allocator';
+
 const id = z.uuid();
 const category = z.enum(['copyright', 'defamation', 'privacy', 'hate', 'misinformation', 'other']);
+const contact = z.string().trim().min(3).max(320);
+const details = z.string().trim().min(10).max(4000);
+
+/**
+ * Reporter-supplied article link, restricted to absolute HTTP(S) URLs.
+ *
+ * The value is stored and later shipped to the dashboard moderation queue, so a
+ * bare string bound would admit `javascript:` and `data:` payloads that become
+ * script execution the moment a consumer renders it as a link.
+ */
+const articleUrl = z.url({ protocol: /^https?$/ }).max(2000);
+
+const articleSlug = z.preprocess(
+  (value) => (typeof value === 'string' ? value.trim().toLowerCase() : value),
+  z.string().min(1).max(SLUG_MAX_LENGTH).regex(SLUG_PATTERN).nullable().default(null),
+);
+
+export const reportIntakeSchema = z.object({
+  articleSlug,
+  contact,
+  category,
+  details,
+  articleUrl: articleUrl.nullable().default(null),
+}).strict();
 
 export const reportSubmitSchema = z.object({
   orgId: id,
   siteId: id.nullable().default(null),
   articleId: id.nullable().default(null),
-  contact: z.string().trim().min(3).max(320),
+  contact,
   category,
-  details: z.string().trim().min(10).max(4000),
-  articleUrl: z.string().trim().min(8).max(2000).nullable().default(null),
+  details,
+  articleUrl: articleUrl.nullable().default(null),
 }).strict();
 
 export const reportDecideSchema = z.object({
