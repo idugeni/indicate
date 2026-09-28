@@ -131,3 +131,90 @@ describe('validateBootstrapConfig gagal', () => {
     }
   });
 });
+
+const REF = 'abcdefgh1234';
+const OTHER_REF = 'zyxwvuts9876';
+
+function identityEnv(database: { readonly pool: string; readonly direct: string }) {
+  return {
+    ...validEnv(),
+    SUPABASE_PROJECT_REF: REF,
+    DATABASE_POOL_URL: database.pool,
+    DATABASE_DIRECT_URL: database.direct,
+  };
+}
+
+function categoriesFor(env: Record<string, string | undefined>, key: 'DATABASE_POOL_URL' | 'DATABASE_DIRECT_URL') {
+  const result = validateBootstrapConfig(env);
+  if (result.success) return [];
+  return result.issues.filter((issue) => issue.path.includes(key)).map((issue) => issue.category);
+}
+
+describe('identitas project pada URL database', () => {
+  it('menerima host direct per-project', () => {
+    const env = identityEnv({
+      pool: `postgresql://indicate_runtime.${REF}:pw@db.${REF}.supabase.co:5432/postgres`,
+      direct: `postgresql://postgres:pw@db.${REF}.supabase.co:5432/postgres`,
+    });
+    expect(categoriesFor(env, 'DATABASE_POOL_URL')).toEqual([]);
+    expect(categoriesFor(env, 'DATABASE_DIRECT_URL')).toEqual([]);
+  });
+
+  it('menerima pooler dengan ref di username, karena bentuk inilah yang dipakai jaringan tanpa IPv6', () => {
+    const env = identityEnv({
+      pool: `postgresql://indicate_runtime.${REF}:pw@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true`,
+      direct: `postgresql://postgres.${REF}:pw@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`,
+    });
+    expect(validateBootstrapConfig(env).success).toBe(true);
+  });
+
+  it('menolak pooler tanpa ref di username walau password memuat ref', () => {
+    const env = identityEnv({
+      pool: `postgresql://postgres:pw-${REF}@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`,
+      direct: `postgresql://postgres:pw@db.${REF}.supabase.co:5432/postgres`,
+    });
+    expect(categoriesFor(env, 'DATABASE_POOL_URL')).toContain('supabase_project_identity_mismatch');
+  });
+
+  it('menolak pooler yang menunjuk project lain', () => {
+    const env = identityEnv({
+      pool: `postgresql://indicate_runtime.${REF}:pw@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres`,
+      direct: `postgresql://postgres.${OTHER_REF}:pw@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`,
+    });
+    expect(categoriesFor(env, 'DATABASE_DIRECT_URL')).toContain('supabase_project_identity_mismatch');
+  });
+
+  it('menolak username pooler kosong dan host asing', () => {
+    const emptyUser = identityEnv({
+      pool: `postgresql://:pw@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`,
+      direct: `postgresql://postgres:pw@db.${REF}.supabase.co:5432/postgres`,
+    });
+    expect(categoriesFor(emptyUser, 'DATABASE_POOL_URL')).toContain('supabase_project_identity_mismatch');
+
+    const foreignHost = identityEnv({
+      pool: `postgresql://indicate_runtime.${REF}:pw@db.${REF}.supabase.co:5432/postgres`,
+      direct: `postgresql://postgres:pw@db.other-project.supabase.co:5432/postgres`,
+    });
+    expect(categoriesFor(foreignHost, 'DATABASE_DIRECT_URL')).toContain('supabase_project_identity_mismatch');
+  });
+
+  it('menolak host yang hanya menyerupai pooler', () => {
+    const env = identityEnv({
+      pool: `postgresql://indicate_runtime.${REF}:pw@aws-0-ap-southeast-1.pooler.supabase.com.example.net:6543/postgres`,
+      direct: `postgresql://postgres:${REF}@db.${REF}.supabase.co:5432/postgres`,
+    });
+    expect(categoriesFor(env, 'DATABASE_POOL_URL')).toContain('supabase_project_identity_mismatch');
+  });
+
+  it('tetap menolak NEXT_PUBLIC_SUPABASE_URL project lain', () => {
+    const env = identityEnv({
+      pool: `postgresql://indicate_runtime.${REF}:pw@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres`,
+      direct: `postgresql://postgres.${REF}:pw@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`,
+    });
+    const result = validateBootstrapConfig({ ...env, NEXT_PUBLIC_SUPABASE_URL: `https://${OTHER_REF}.supabase.co` });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.issues.some((issue) => issue.path.includes('NEXT_PUBLIC_SUPABASE_URL'))).toBe(true);
+    }
+  });
+});

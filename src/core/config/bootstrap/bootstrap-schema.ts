@@ -91,6 +91,36 @@ const facebookAppTokenSchema = secretSchema.refine((value) => {
 }, 'fb_app_token_malformed');
 const httpsUrlSchema = z.url().refine((value) => value.startsWith('https://'), 'https_required');
 
+const SUPABASE_POOLER_HOST_SUFFIX = '.pooler.supabase.com';
+const SUPABASE_TENANT_USER_PATTERN = /^[A-Za-z0-9_][A-Za-z0-9_-]*\.(.+)$/;
+
+/**
+ * Decide whether a Postgres URL can only reach one specific Supabase project.
+ *
+ * @param url - Parsed `postgresql://` URL from the environment.
+ * @param projectRef - Supabase project ref that every other URL in the env must agree on.
+ * @returns True when the URL cannot address a different project.
+ * @remarks Two shapes qualify, and both bind the project as tightly as the other:
+ *
+ * - `db.<ref>.supabase.co`, whose hostname is per-project DNS.
+ * - `….pooler.supabase.com` with a `<user>.<ref>` username, because Supavisor
+ *   resolves the tenant from that suffix and refuses any other one, so the
+ *   username rather than the shared pooler hostname is what binds the project.
+ *
+ * The second shape is not a convenience. Supabase publishes a project's direct
+ * host as AAAA-only for some regions, so on an IPv4-only network
+ * `db.<ref>.supabase.co` cannot resolve at all, and port 5432 on the pooler is
+ * the supported way in. Requiring the ref inside the username is what keeps that
+ * path from becoming a way to point the app at a stranger's database: a URL
+ * without the ref suffix is rejected here rather than at connect time.
+ */
+function supabaseDatabaseTargetsProject(url: URL, projectRef: string): boolean {
+  if (url.hostname === `db.${projectRef}.supabase.co`) return true;
+  if (!url.hostname.endsWith(SUPABASE_POOLER_HOST_SUFFIX)) return false;
+  const tenant = SUPABASE_TENANT_USER_PATTERN.exec(decodeURIComponent(url.username));
+  return tenant !== null && tenant[1] === projectRef;
+}
+
 const bootstrapSchema = z
   .object({
     NODE_ENV: z.enum(BOOTSTRAP_ENVIRONMENTS).default('development'),
@@ -189,15 +219,13 @@ const bootstrapSchema = z
     const projectRef = value.SUPABASE_PROJECT_REF;
     if (projectRef !== undefined) {
       const supabaseHost = new URL(value.NEXT_PUBLIC_SUPABASE_URL).hostname;
-      const pooledDatabase = new URL(value.DATABASE_POOL_URL);
-      const directDatabase = new URL(value.DATABASE_DIRECT_URL);
       if (supabaseHost !== `${projectRef}.supabase.co`) {
         context.addIssue({ code: 'custom', path: ['NEXT_PUBLIC_SUPABASE_URL'], message: 'supabase_project_identity_mismatch' });
       }
-      if (value.DATABASE_POOL_URL.includes(projectRef) === false && !pooledDatabase.hostname.endsWith('.pooler.supabase.com')) {
+      if (!supabaseDatabaseTargetsProject(new URL(value.DATABASE_POOL_URL), projectRef)) {
         context.addIssue({ code: 'custom', path: ['DATABASE_POOL_URL'], message: 'supabase_project_identity_mismatch' });
       }
-      if (directDatabase.hostname !== `db.${projectRef}.supabase.co`) {
+      if (!supabaseDatabaseTargetsProject(new URL(value.DATABASE_DIRECT_URL), projectRef)) {
         context.addIssue({ code: 'custom', path: ['DATABASE_DIRECT_URL'], message: 'supabase_project_identity_mismatch' });
       }
     }

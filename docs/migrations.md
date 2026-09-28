@@ -7,6 +7,21 @@
 
 Indicate uses forward-only Drizzle PostgreSQL migrations in `src/data/migrations/` by default (history edits allowed in development with reviewer approval). Runtime traffic uses `DATABASE_POOL_URL` with prepared statements disabled; migrations use the separate `DATABASE_DIRECT_URL` credential.
 
+## Reaching the direct credential
+
+`DATABASE_DIRECT_URL` accepts two equivalent shapes, and the choice is forced by the network rather than by preference:
+
+```text
+postgresql://postgres:<password>@db.<ref>.supabase.co:5432/postgres
+postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+```
+
+Supabase publishes a project's direct host as **AAAA-only** in some regions. `indicate-sg` is one: `db.cmqipmerhfpfqoeasibs.supabase.co` has no A record at all, so on an IPv4-only workstation `getaddrinfo` returns `ENOTFOUND` and no URL pointing at it can ever connect. Port 5432 on the pooler is the same database reached over IPv4, with the same password, and `postgres` there carries `BYPASSRLS`, `CREATEDB`, and `CREATEROLE` — everything a migration needs. The pooler itself dials the database over the IPv6 address, which is why the client side is the only part that has to be IPv4.
+
+Diagnose it with `resolve4` and `resolve6` on the host rather than by retrying the connection: a `ENODATA` on A next to a populated AAAA is the fingerprint, and it is not a local resolver fault, since `1.1.1.1` and `8.8.8.8` return the same split. The Supavisor username must carry the ref as `<user>.<ref>`; a bare `postgres` is refused with `no tenant identifier provided`, and `bootstrap-schema.ts` rejects a pooler URL whose username lacks the ref, so the project binding stays in the configuration rather than at connect time.
+
+`DATABASE_POOL_URL` takes the same two shapes, so one project's credentials can point at one host without the pair drifting apart.
+
 ## Promotion gate (recommended, not blocking)
 
 1. Run deterministic source checks and review every migration for drift against the Drizzle snapshot metadata.
