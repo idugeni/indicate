@@ -157,6 +157,16 @@ describe('InvalidationDispatcher', () => {
     expect(socialLedger.markWarmed).toHaveBeenCalledWith(['article-site-0'], expect.any(Date));
   });
 
+  it('memanaskan url artikel meski tidak ada task invalidasi yang selesai', async () => {
+    const warmed: string[] = [];
+    const warmer = { warmArticle: vi.fn(async (url: string) => { warmed.push(url); return WARM_OK; }) };
+    const socialLedger = ledger([target(0)]);
+    const { dispatcher } = warmHarness({ warmer, ledger: socialLedger, tasks: [] });
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 0, failed: 0, stranded: 0 });
+    expect(warmed).toEqual(['https://tenant.example/s-0']);
+    expect(socialLedger.markWarmed).toHaveBeenCalledWith(['article-site-0'], expect.any(Date));
+  });
+
   it('warmer yang melempar tidak menggagalkan task yang selesai dan url tetap due', async () => {
     const socialLedger = ledger([target(0)]);
     const { dispatcher } = warmHarness({ warmer: { warmArticle: vi.fn(async () => { throw new Error('warm_down'); }) }, ledger: socialLedger });
@@ -265,11 +275,13 @@ describe('InvalidationDispatcher', () => {
     expect(socialLedger.dueTargets).not.toHaveBeenCalled();
   });
 
-  it('tidak menyentuh ledger saat tidak ada task yang selesai', async () => {
+  it('menyusul ledger meski task yang ada gagal diselesaikan', async () => {
+    const warmed: string[] = [];
     const socialLedger = ledger([target(0)]);
-    const { dispatcher } = warmHarness({ warmer: { warmArticle: vi.fn(async () => WARM_OK) }, ledger: socialLedger, completeFails: true });
+    const { dispatcher } = warmHarness({ warmer: { warmArticle: vi.fn(async (url: string) => { warmed.push(url); return WARM_OK; }) }, ledger: socialLedger, completeFails: true });
     await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 0, failed: 1, stranded: 0 });
-    expect(socialLedger.dueTargets).not.toHaveBeenCalled();
+    expect(warmed).toEqual(['https://tenant.example/s-0']);
+    expect(socialLedger.markWarmed).toHaveBeenCalledWith(['article-site-0'], expect.any(Date));
   });
 
   it('tetap bekerja tanpa ledger untuk pemurnian cache saja', async () => {

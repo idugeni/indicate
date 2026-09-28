@@ -192,7 +192,7 @@ export function planInvalidation(mutation: NetworkMutation): InvalidationPlan {
 /**
  * Dispatch claimed invalidation tasks through Next cache and edge purge.
  *
- * @remarks One edge purge per batch (unique URLs across tasks): per-host per-task purges would trigger a thundering-herd to the origin, while the edge TTL is only 60 seconds. A purge failure does not fail the task; Next revalidate is the primary mechanism and the edge recovers on its own within one TTL. The purge set is bounded by `PURGE_URL_BUDGET` and ordered so article URLs are never the ones deferred. A poison task does not stop the batch: a failed complete is recorded via fail, and a fail that also fails counts as stranded. Social warming runs after the tasks are already complete, so the edge is fresh before a scraper is sent to the page, and only when at least one task completed: warming a page whose purge has not landed would spend the URL's single Meta scrape on stale markup. Warming is best-effort, so a warm failure never affects the summary.
+ * @remarks One edge purge per batch (unique URLs across tasks): per-host per-task purges would trigger a thundering-herd to the origin, while the edge TTL is only 60 seconds. A purge failure does not fail the task; Next revalidate is the primary mechanism and the edge recovers on its own within one TTL. The purge set is bounded by `PURGE_URL_BUDGET` and ordered so article URLs are never the ones deferred. A poison task does not stop the batch: a failed complete is recorded via fail, and a fail that also fails counts as stranded. Social warming runs after the tasks are handled, so a page whose purge just landed is warm before a scraper reaches it, and it no longer waits for a completed task: gating it on one left the queue frozen whenever publishing paused, and 4,020 published articles sat never-warmed with a single due target untouched since 2026-09-27. Per-target pacing is the cooldown's job, not the dispatcher's. Warming is best-effort, so a warm failure never affects the summary.
  */
 export class InvalidationDispatcher {
   constructor(private readonly repository: Pick<DeliveryRepository, 'claimInvalidations' | 'completeInvalidation' | 'failInvalidation'>, private readonly nextCache: NextCacheInvalidationPort, private readonly cloudflare: CloudflareAuthorityPort, private readonly retryDelaysSeconds: readonly number[], private readonly maxAttempts: number, private readonly socialWarm: Pick<SocialWarmer, 'warmArticle'> | null = null, private readonly warmLedger: SocialWarmLedger | null = null) {}
@@ -229,7 +229,7 @@ export class InvalidationDispatcher {
         }
       }
     }
-    if (completed > 0 && this.socialWarm !== null && this.warmLedger !== null) {
+    if (this.socialWarm !== null && this.warmLedger !== null) {
       await drainDueSocialWarm(this.warmLedger, this.socialWarm, now);
     }
     return { completed, failed, stranded };
