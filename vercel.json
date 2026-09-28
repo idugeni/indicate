@@ -36,6 +36,10 @@
       "schedule": "30 5 * * *"
     },
     {
+      "path": "/api/internal/maintenance/media-reconcile",
+      "schedule": "12 6 * * *"
+    },
+    {
       "path": "/api/health",
       "schedule": "47 4 * * *"
     }

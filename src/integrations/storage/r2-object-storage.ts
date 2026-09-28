@@ -2,10 +2,10 @@ import 'server-only';
 
 import { createHash } from 'node:crypto';
 
-import { DeleteObjectCommand, HeadBucketCommand, HeadObjectCommand, PutObjectCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, HeadBucketCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-import type { ExactObjectAuthorization, ObjectStoragePort, StoredObjectMetadata } from '@/integrations/storage/ports';
+import type { ExactObjectAuthorization, ObjectStoragePort, StoredObjectMetadata, StoredObjectRef } from '@/integrations/storage/ports';
 import { isPublicObjectKey } from '@/modules/publishing/object-key';
 
 export interface R2ObjectStorageConfig {
@@ -125,5 +125,34 @@ export class R2ObjectStorageAdapter implements ObjectStoragePort {
 
   async deleteExact(key: string): Promise<void> {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucketFor(key), Key: key }));
+  }
+
+  async listObjects(): Promise<readonly StoredObjectRef[]> {
+    const publicBucket = this.config.publicBucketName;
+    const buckets: readonly { readonly name: string; readonly visibility: 'private' | 'public' }[] =
+      publicBucket === null
+        ? [{ name: this.config.bucketName, visibility: 'private' }]
+        : [{ name: this.config.bucketName, visibility: 'private' }, { name: publicBucket, visibility: 'public' }];
+    const found: StoredObjectRef[] = [];
+    for (const { name, visibility } of buckets) {
+      let continuationToken: string | undefined;
+      do {
+        const result = await this.client.send(new ListObjectsV2Command({
+          Bucket: name,
+          ...(continuationToken === undefined ? {} : { ContinuationToken: continuationToken }),
+        }));
+        for (const object of result.Contents ?? []) {
+          found.push(Object.freeze({
+            bucket: name,
+            key: object.Key ?? '',
+            contentLength: object.Size ?? 0,
+            etag: (object.ETag ?? '').replace(/"/g, '') || null,
+            visibility,
+          }));
+        }
+        continuationToken = result.IsTruncated === true ? result.NextContinuationToken : undefined;
+      } while (continuationToken !== undefined);
+    }
+    return Object.freeze(found);
   }
 }

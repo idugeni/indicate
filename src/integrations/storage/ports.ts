@@ -15,6 +15,16 @@ export interface ExactObjectAuthorization {
   readonly requiredHeaders: Readonly<Record<string, string>>;
 }
 
+export interface StoredObjectRef {
+  readonly bucket: string;
+  readonly key: string;
+  readonly contentLength: number;
+  /** Provider ETag, quoted-form stripped. */
+  readonly etag: string | null;
+  /** Bucket role the key prefix routed this object into. */
+  readonly visibility: 'private' | 'public';
+}
+
 export interface ObjectStoragePort extends HealthCheckPort {
   readonly bucketCount: 1;
   headExact(key: string): Promise<StoredObjectMetadata | null>;
@@ -23,4 +33,11 @@ export interface ObjectStoragePort extends HealthCheckPort {
   authorizeExactGet(key: string, expiresInSeconds: number): Promise<ExactObjectAuthorization>;
   putExact(key: string, body: Uint8Array, contentType: string): Promise<{ readonly etag: string | null }>;
   deleteExact(key: string): Promise<void>;
+  /**
+   * Enumerate stored objects across every configured bucket for reconciliation.
+   *
+   * @remarks Returns key and size metadata only, never object bytes. Reserved for
+   * system reconciliation; a tenant-scoped read path must use `authorizeExactGet`.
+   */
+  listObjects(): Promise<readonly StoredObjectRef[]>;
 }

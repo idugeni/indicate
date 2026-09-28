@@ -396,7 +396,7 @@ Editorial and publisher:
 
 Media:
 
-- `media`, `media_key_reservations`, `object_cleanup_tasks`.
+- `media`, `media_key_reservations`, `object_cleanup_tasks`. Archiving a `media` row enqueues the object delete; see the reconciler contract below.
 
 Publishing:
 
@@ -605,6 +605,8 @@ A secured short-lived cron handler operates in bounded worker and reconciliation
 - pending invalidation and media cleanup tasks.
 
 Scans use short transactions and row locking suitable for transaction-pooled serverless access. Every claimed item is repaired in isolation: one unrepairable row must not abort a pass, because claimed items are re-claimed in the same order and would otherwise starve the rest of the queue. Duplicate, overlapping, or missed cron invocations are safe: they reuse logical IDs, conditional claims, unique constraints, leases, and fencing. No long-running worker or exactly-once scheduler assumption exists.
+
+Media bytes leave R2 only through a durable row. Archiving a `media` row (or rejecting a reservation) enqueues `object_cleanup_tasks` in the same transaction, and the five-minute reconciler claims it, calls `deleteExact`, and records the outcome — so a crash mid-delete leaves the task due rather than an object nobody tracks. That path is not optional: R2 has no object versioning, so a delete is irreversible and an unqueued one is invisible to every later pass. `GET /api/internal/maintenance/media-reconcile` (`12 6 * * *`) closes the remaining blind spot by reading both sides at once — the object keys the buckets actually hold against the keys `media` claims — and reporting four drift classes: a row with no object, an object no row addresses, a missing thumbnail, and a key filed in the wrong bucket for its `pub/` prefix. It only reports. Reading across organizations needs `indicate_private.read_media_object_keys()` because the `media` policies compare `organization_id` against a tenant context the system cron does not have. Only `active` rows are expected to have an object: an `archived` row is meant to lose its bytes once its task drained, so a missing object there is the design working, while a surviving one means the queue stalled.
 
 The Facebook pre-warm sweep is quota-bound rather than load-bound. It hands one bounded batch of tenant homepages to Meta's scrape endpoint — the same call the Sharing Debugger issues — because Meta caches a URL for roughly 30 days and only refreshes on request. A Redis cursor carries the fleet position between invocations, apex portals are swept before region and city hosts, and a Meta app-level rejection (`#4`, HTTP 403) halts the batch without advancing past the unattempted host, because a rejected call spends no budget and earns none. The sweep never throws: every per-host failure is reported instead. Homepages are the only URLs it submits.
 
