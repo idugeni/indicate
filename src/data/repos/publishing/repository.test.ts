@@ -4,7 +4,7 @@ import type { SQL } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 
 import { DrizzlePublishingRepository } from '@/data/repos/publishing/repository';
-import { media } from '@/data/schema';
+import { auditLogs, media, objectCleanupTasks } from '@/data/schema';
 
 const CONTEXT = {
   organizationId: 'o1',
@@ -137,6 +137,44 @@ function compileCondition(condition: unknown): { readonly text: string; readonly
   const built = new QueryBuilder().select({ probe: media.id }).from(media).where(condition as SQL).toSQL();
   return { text: built.sql, params: built.params };
 }
+
+describe('archiveMedia menjadwalkan penghapusan objek', () => {
+  it('mencatat object_cleanup_tasks untuk kunci yang diarsipkan', async () => {
+    const archived = { ...mediaRow(), state: 'archived', version: 2 };
+    const inserted: { table: unknown; values: Record<string, unknown> }[] = [];
+    const queue: readonly unknown[][] = [[mediaRow()], []];
+    let cursor = 0;
+    const chainable: Record<string, unknown> = {};
+    const next = () => queue[Math.min(cursor++, queue.length - 1)] ?? [];
+    for (const method of ['from', 'where', 'innerJoin', 'limit', 'for']) chainable[method] = () => chainable;
+    chainable.then = (resolve: (value: readonly unknown[]) => unknown) => resolve(next());
+    const transaction = {
+      execute: async () => [],
+      select: () => chainable,
+      update: () => ({ set: () => ({ where: () => ({ returning: async () => [archived] }) }) }),
+      insert: (table: unknown) => ({ values: async (values: Record<string, unknown>) => { inserted.push({ table, values }); return []; } }),
+    };
+    const repository = new DrizzlePublishingRepository({ transaction: async (callback: (tx: unknown) => unknown) => callback(transaction) } as never);
+
+    await repository.archiveMedia(
+      { organizationId: 'o1', actorType: 'system', actorId: 'worker', entryPoint: 'worker', requestId: 'req-1', regionScopeId: null, permissionSet: new Set(['media.manage']) } as never,
+      'm-org',
+      1,
+      '2026-09-28T00:00:00.000Z',
+    );
+
+    const cleanup = inserted.find((entry) => entry.table === objectCleanupTasks);
+    expect(cleanup).toBeDefined();
+    expect(cleanup?.values).toMatchObject({
+      organizationId: 'o1',
+      objectKey: mediaRow().objectKey,
+      reason: 'media.archived',
+      status: 'pending',
+      attempts: 0,
+    });
+    expect(inserted.some((entry) => entry.table === auditLogs)).toBe(true);
+  });
+});
 
 describe('isolasi tenant pada SQL yang dihasilkan', () => {
   it('setiap condition where membawa predikat organisasi milik pemanggil', async () => {

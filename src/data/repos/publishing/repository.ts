@@ -3,6 +3,7 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext, HostnameContext } from '@/core/operation-context';
 import { canPublicAccessMedia } from '@/modules/publishing/media-authorization';
+import type { MediaObjectKeyRow } from '@/modules/publishing/media-reconciliation';
 import type {
   ClaimedCleanupTask, MediaAssetRecord, PublicationJobRecord,
   PublicationStatusProjection, PublishingTenantSnapshot, TargetTransitionCommit,
@@ -52,7 +53,6 @@ import {
 type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 const SYSTEM_REQUEST = 'publishing-reconciler';
-
 export class DrizzlePublishingRepository implements PublishingRepository {
   constructor(private readonly database: Database) {}
 
@@ -120,6 +120,18 @@ export class DrizzlePublishingRepository implements PublishingRepository {
     )`);
     const relatedHostnames = [...ancestors].map((row) => (row as { normalized_hostname: string }).normalized_hostname);
     await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId, siteId, currentHostname: site.hostname, relatedHostnames, reason, articleSlugs, categorySlugs, mediaIds: [...(mediaId === undefined ? [] : [mediaId]), ...extraMediaIds], now }));
+  }
+
+  /**
+   * Record the intent to delete one object before the object is touched.
+   *
+   * @remarks The reconciler claims these tasks, calls `deleteExact`, and records the
+   * outcome, so a delete survives a crash and is never re-attempted blindly. A row
+   * whose object was never written is a no-op at delete time, which keeps this safe
+   * for media whose key the platform could not upload.
+   */
+  private async enqueueObjectCleanup(transaction: Transaction, organizationId: string, objectKey: string, reason: string, now: Date): Promise<void> {
+    await transaction.insert(objectCleanupTasks).values({ organizationId, id: crypto.randomUUID(), objectKey, reason, status: 'pending', attempts: 0, nextAttemptAt: now });
   }
 
   async recordDenial(actor: AuthorizedTenantActorContext, action: string, targetType: string, now: string): Promise<void> {
@@ -192,7 +204,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       const rows = await transaction.update(mediaKeyReservations).set({ status: 'occupied', updatedAt: new Date(now) }).where(and(eq(mediaKeyReservations.organizationId, actor.organizationId), eq(mediaKeyReservations.id, reservationId), eq(mediaKeyReservations.status, 'reserved'))).returning({ id: mediaKeyReservations.id, objectKey: mediaKeyReservations.objectKey, organizationAsset: mediaKeyReservations.organizationAsset });
       const row = rows[0]; if (row === undefined) throw new PublishingAccessDeniedError();
       if (row.organizationAsset && actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new PublishingAccessDeniedError();
-      await transaction.insert(objectCleanupTasks).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), objectKey: row.objectKey, reason, status: 'pending', attempts: 0, nextAttemptAt: new Date(now) });
+      await this.enqueueObjectCleanup(transaction, actor.organizationId, row.objectKey, reason, new Date(now));
       await this.audit(transaction, actor, 'media.reject', 'media_key_reservation', row.id, { reason }, new Date(now));
     });
   }
@@ -213,6 +225,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         .innerJoin(articles, and(eq(articles.organizationId, articleSites.organizationId), eq(articles.id, articleSites.articleId)))
         .where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.active, true), eq(articleSites.state, 'published'), eq(articles.status, 'active'), articleReference));
       for (const siteId of new Set([...settingsRefs, ...articleRefs].map(({ siteId }) => siteId))) await this.enqueuePublicInvalidation(transaction, actor.organizationId, siteId, 'media.archived', new Date(now), existing.articleId ?? undefined, mediaId);
+      await this.enqueueObjectCleanup(transaction, actor.organizationId, existing.objectKey, 'media.archived', new Date(now));
       await this.audit(transaction, actor, 'media.archive', 'media', mediaId, { state: 'archived' }, new Date(now));
       return mapMedia(rows[0]!);
     });
@@ -743,6 +756,23 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         gt(publicationTransitionReceipts.reconciliationClaimExpiresAt, sql`clock_timestamp()`),
       ));
     });
+  }
+  /**
+   * Read every tracked media object key across all organizations.
+   *
+   * @remarks Backed by a `SECURITY DEFINER` reader because the `media` policies are
+   * tenant-scoped and the system reconciler has no tenant context. Keys only, never
+   * object bytes.
+   */
+  async listMediaObjectKeys(): Promise<readonly MediaObjectKeyRow[]> {    const rows = await this.database.execute<{ organization_id: string; media_id: string; object_key: string; thumb_object_key: string | null; purpose: string; state: string }>(sql`SELECT * FROM indicate_private.read_media_object_keys()`);
+    return rows.map((row) => Object.freeze({
+      organizationId: row.organization_id,
+      mediaId: row.media_id,
+      objectKey: row.object_key,
+      thumbObjectKey: row.thumb_object_key,
+      purpose: row.purpose,
+      state: row.state,
+    }));
   }
   async claimCleanupTasks(now: string, limit: number, claimToken: string, claimExpiresAt: string): Promise<readonly ClaimedCleanupTask[]> {
     const refs = await this.database.execute<{ organization_id: string; task_id: string }>(sql`SELECT * FROM indicate_private.claim_media_cleanup_tasks(${now}::timestamptz, ${limit}, ${claimToken}::uuid, ${claimExpiresAt}::timestamptz)`);
