@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (216 migrations):
+-- Reviewed sources, in journal order (217 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -230,6 +230,7 @@
 --   214  20260928050000_publisher_provenance_audit  ledger sha256:c89571253d69d135e056fb4e0e2ac682372015ebea421d5b682e9edf60e3ed9b
 --   215  20260928060000_article_updated_at_restore  ledger sha256:d644af1766e59173b94d44c315767d135f6e21ad339f3ff96b86c9093df9ccbe
 --   216  20260928070000_default_article_category_berita  ledger sha256:5fed13cb8f761e79e353417ff3a915d36d36ab6a7be014e2294efda161f12d4d
+--   217  20260928100000_drop_social_warm  ledger sha256:2100aeae7e052359c5b6b53ce7c4f4880bc1645cc3d47a151650b62c642c3b91
 
 BEGIN;
 
@@ -18254,4 +18255,52 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (216, 'default_article_category_berita', 'sha256:37cff4dd0fa5725d116fc7c4a9f156a5bc812c61bf20ee0dd87d15ea24762c31');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5fed13cb8f761e79e353417ff3a915d36d36ab6a7be014e2294efda161f12d4d', 1790598808000);
+
+-- ----------------------------------------------------------------------
+-- 20260928100000_drop_social_warm
+-- ----------------------------------------------------------------------
+-- Retire the Facebook/Meta pre-scrape machinery.
+--
+-- Migrations 200 and 210 built a one-shot ledger for handing each public article
+-- URL to Meta's Graph API scrape endpoint: a marker column, a cooldown pair, a
+-- partial due index, and three SECURITY DEFINER helpers the invalidation
+-- dispatcher drained. The integration it served is gone, so every object exists
+-- only to schedule a call nobody makes.
+--
+-- Nothing reads or writes these columns outside the removed warmer, and the
+-- article URLs themselves are unaffected: the Open Graph surface a scraper
+-- consumes is `og:title` / `og:description` / `og:image` rendered by
+-- `generateMetadata()`, which is independent of this ledger. The marker only
+-- ever recorded "Meta has already been told about this URL", and losing that
+-- memory is precisely what retiring the integration means.
+--
+-- Dropping the columns is safe under expand/contract because the release that
+-- removes the writer is this one: the code no longer references them, so nothing
+-- has to be backfilled and no later release depends on the state.
+--
+-- The functions go first, since they are the only callers of the columns and
+-- their signatures would otherwise outlive the table shape they read.
+
+DROP FUNCTION IF EXISTS indicate_private.due_social_warm_targets(integer);
+
+DROP FUNCTION IF EXISTS indicate_private.mark_social_warm_targets(uuid[], timestamptz);
+
+DROP FUNCTION IF EXISTS indicate_private.mark_social_warm_attempts(uuid[], timestamptz);
+
+DROP FUNCTION IF EXISTS indicate_private.social_warm_cooldown(integer);
+
+DROP INDEX IF EXISTS public.article_sites_social_warm_due_idx;
+
+ALTER TABLE public.article_sites
+  DROP CONSTRAINT IF EXISTS article_sites_social_warm_attempts_nonnegative;
+
+ALTER TABLE public.article_sites
+  DROP COLUMN IF EXISTS social_warm_next_attempt_at,
+  DROP COLUMN IF EXISTS social_warm_attempts,
+  DROP COLUMN IF EXISTS social_warmed_at;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (217, 'drop_social_warm', 'sha256:55a2e19ae2ad79e1cef9f8d17baa2473737eaab9a26fa4d5197b8de67fef52d1');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2100aeae7e052359c5b6b53ce7c4f4880bc1645cc3d47a151650b62c642c3b91', 1790602400000);
 COMMIT;

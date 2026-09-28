@@ -1513,6 +1513,13 @@
       "when": 1790598808000,
       "tag": "20260928070000_default_article_category_berita",
       "breakpoints": true
+    },
+    {
+      "idx": 216,
+      "version": "7",
+      "when": 1790602400000,
+      "tag": "20260928100000_drop_social_warm",
+      "breakpoints": true
     }
   ]
 }
