@@ -22,6 +22,23 @@ Diagnose it with `resolve4` and `resolve6` on the host rather than by retrying t
 
 `DATABASE_POOL_URL` takes the same two shapes, so one project's credentials can point at one host without the pair drifting apart.
 
+### Proving the identity guard before it reaches a deployment
+
+`SUPABASE_PROJECT_REF` is what makes the guard live, and the guard is fail-closed: `validateBootstrapConfig` refuses to produce a configuration, so a mismatch stops the application booting. That makes the ref worth proving before it lands in an environment, and the values it needs are exactly the ones the Vercel API will not return — both database URLs are `visibility: secret`, so `get_project_env` answers `decrypted: false` and only a human can read them from the dashboard.
+
+`npm run check:bootstrap-identity` runs the same rule offline, with no database connection, and prints the verdict per field. It accepts `--env <file>` or explicit `--ref`, `--supabase-url`, `--pool`, and `--direct` flags, exits 0 when the guard would pass and 1 when it would refuse, and never prints a password:
+
+```text
+$ npm run check:bootstrap-identity -- --env .env
+project ref: cmqipmerhfpfqoeasibs
+  ok   NEXT_PUBLIC_SUPABASE_URL host cmqipmerhfpfqoeasibs.supabase.co
+  ok   DATABASE_POOL_URL indicate_runtime.cmqipmerhfpfqoeasibs@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
+  ok   DATABASE_DIRECT_URL postgres.cmqipmerhfpfqoeasibs@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+bootstrap identity guard would pass.
+```
+
+Run it against the dashboard's production values before adding `SUPABASE_PROJECT_REF` there. If it refuses, the env var is what is wrong, not the ref.
+
 ## Promotion gate (recommended, not blocking)
 
 1. Run deterministic source checks and review every migration for drift against the Drizzle snapshot metadata.

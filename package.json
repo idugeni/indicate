@@ -49,6 +49,7 @@
     "perf": "npm run perf:listing-payload && npm run perf:seal-coldstart",
     "db:bootstrap": "node scripts/db-bootstrap.mjs",
     "db:bootstrap:check": "node scripts/db-bootstrap.mjs --check",
+    "check:bootstrap-identity": "node scripts/check-bootstrap-identity.mjs",
     "hygiene:publishers": "node scripts/db-publisher-hygiene.mjs",
     "audit:gsc": "node scripts/gsc-verification-audit.mjs",
     "audit:gsc:verify": "node scripts/gsc-verification-audit.mjs --verify",
