@@ -5,7 +5,6 @@ import {
   absoluteSiteAssetUrl,
   buildFaqPageSchema,
   buildSeoDocument,
-  facebookAppId,
   indexableRobots,
   nonIndexableRobots,
   notFoundMetadata,
@@ -14,7 +13,6 @@ import {
   serializeRobots,
   serializeRss,
   serializeSitemap,
-  tenantFacebook,
   tenantFavicon,
 } from '@/modules/site/seo';
 
@@ -238,24 +236,6 @@ describe('serializers', () => {
       expect(rules).not.toContain(`Allow: ${surface}`);
       expect(rules).not.toContain(`Allow: ${surface}/`);
     }
-  });
-
-  it('mengambil app id dari token APP_ID|APP_SECRET', () => {
-    expect(facebookAppId('1234567890|app-secret')).toBe('1234567890');
-    expect(facebookAppId('1234567890')).toBe('1234567890');
-  });
-
-  it('tidak melempar tag fb:app_id kosong saat token tidak dikonfigurasi', () => {
-    expect(facebookAppId(null)).toBe(null);
-    expect(facebookAppId(undefined)).toBe(null);
-    expect(facebookAppId('|app-secret')).toBe(null);
-    expect(facebookAppId('   |app-secret')).toBe(null);
-    expect(tenantFacebook(null)).toEqual({});
-  });
-
-  it('menyertakan fb:app_id dari token yang dikonfigurasi', () => {
-    expect(tenantFacebook('1234567890|app-secret')).toEqual({ facebook: { appId: '1234567890' } });
-    expect(JSON.stringify(tenantFacebook('1234567890|app-secret'))).not.toContain('app-secret');
   });
 
   it('membuat sitemap dengan beranda, kategori, dan artikel', () => {

@@ -35,10 +35,6 @@ vi.mock('@/core/config/runtime/runtime-context', () => ({
   getServerRuntimeContext: async () => ({ config: { seo: { defaultLocale: 'id-ID' } } }),
 }));
 
-vi.mock('@/core/config/bootstrap/bootstrap-config', () => ({
-  getBootstrapConfig: () => ({ credentials: { facebookAppToken: { reveal: () => null } } }),
-}));
-
 vi.mock('@/modules/delivery', () => ({
   deliveryComposition: async () => ({
     config: { seo: { defaultLocale: 'id-ID' } },

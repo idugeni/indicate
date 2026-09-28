@@ -35,10 +35,6 @@ vi.mock('@/core/config/runtime/runtime-context', () => ({
   getServerRuntimeContext: async () => ({ config: { seo: { defaultLocale: 'id-ID' } } }),
 }));
 
-vi.mock('@/core/config/bootstrap/bootstrap-config', () => ({
-  getBootstrapConfig: () => ({ credentials: { facebookAppToken: { reveal: () => '28410585598598931|app-secret' } } }),
-}));
-
 vi.mock('@/modules/delivery', () => ({
   deliveryComposition: async () => ({
     config: { seo: { defaultLocale: 'id-ID' } },
@@ -142,28 +138,6 @@ describe('networkMetadata social card completeness', () => {
     const result = await meta('/');
     expect(images(result.openGraph)[0]?.type).toBeUndefined();
   });
-});
-
-describe('fb:app_id tenant coverage', () => {
-  beforeEach(() => {
-    load.mockReset();
-    load.mockResolvedValue(makeNetworkSite([makeNetworkArticle({ tags: ['daerah'] } as never)]));
-  });
-
-  const surfaces: readonly (readonly [string, Parameters<typeof networkMetadata>[1]])[]
-    = [
-      ['halaman utama', {}],
-      ['artikel', { articleSlug: 'berita-utama' }],
-      ['kategori', { categorySlug: 'daerah' }],
-      ['tag', { tag: 'daerah' }],
-      ['pencarian', { search: 'daerah' }],
-    ];
-
-  for (const [name, query] of surfaces) {
-    it(`menerbitkan fb:app_id di ${name}`, async () => {
-      expect((await meta('/', query)).facebook).toEqual({ appId: '28410585598598931' });
-    });
-  }
 });
 
 describe('tenant brand isolation', () => {

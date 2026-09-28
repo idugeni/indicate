@@ -28,10 +28,6 @@
       "schedule": "0 5 * * *"
     },
     {
-      "path": "/api/internal/maintenance/facebook-prewarm",
-      "schedule": "17 * * * *"
-    },
-    {
       "path": "/api/internal/maintenance/worm-export",
       "schedule": "30 5 * * *"
     },

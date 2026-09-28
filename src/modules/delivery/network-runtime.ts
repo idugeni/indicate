@@ -4,35 +4,17 @@ import { cacheLife, cacheTag } from 'next/cache';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
-import { buildSeoDocument, indexableRobots, nonIndexableRobots, notFoundMetadata, tenantBrand, tenantFacebook, tenantFavicon } from '@/modules/site/seo';
+import { buildSeoDocument, indexableRobots, nonIndexableRobots, notFoundMetadata, tenantBrand, tenantFavicon } from '@/modules/site/seo';
 import type { NetworkContentQuery, NetworkSiteData, RequestClassification, ResolvedSiteContext } from '@/modules/delivery/models';
 import type { RobotsDirective } from '@/modules/site/seo';
 import { isNetworkArticle } from '@/modules/delivery/models';
 import { activeDeliveryComposition, deliveryComposition } from '@/modules/delivery';
 import { TAG_MAX_LENGTH, normalizeSlugCandidate } from '@/modules/site/slug-allocator';
-import { getBootstrapConfig } from '@/core/config/bootstrap/bootstrap-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { readPageviewCounts } from '@/integrations/redis/pageview-buffer';
 import { buildPageviewKey } from '@/modules/site/pageview-contract';
 
 const getDeliveryComposition = cache(async () => deliveryComposition());
-
-let cachedTenantFacebook: Pick<Metadata, 'facebook'> | undefined;
-
-/**
- * `fb:app_id` for every tenant document, resolved once per process.
- *
- * @returns Facebook metadata for the platform app, or an empty object when
- *   `FB_APP_TOKEN` is unconfigured.
- * @remarks One Meta app serves the whole network, so the tag is platform-wide
- * rather than per-tenant; memoized because the token never changes at runtime.
- */
-function tenantFacebookMetadata(): Pick<Metadata, 'facebook'> {
-  if (cachedTenantFacebook === undefined) {
-    cachedTenantFacebook = tenantFacebook(getBootstrapConfig().credentials.facebookAppToken?.reveal());
-  }
-  return cachedTenantFacebook;
-}
 
 /**
  * Classify a request hostname with per-request deduplication.
@@ -268,7 +250,6 @@ function tenantHiddenMeta(
     robots: nonIndexableRobots(),
     ...tenantBrand(site.settings.name),
     ...tenantFavicon(site.settings.faviconUrl),
-    ...tenantFacebookMetadata(),
     openGraph: card === null || seo.openGraph === null
       ? undefined
       : {
@@ -307,7 +288,7 @@ function robotsForDocument(robots: 'index, follow' | 'noindex, nofollow' | 'noin
  * @param descriptionOverride - Description for pages that do not derive one from the site.
  * @param robotsOverride - Directive for utility surfaces such as `/report`, which have
  *   no standalone content to index; defaults to the document's own directive.
- * @returns Tenant metadata carrying the tenant brand, favicon, and `fb:app_id`.
+ * @returns Tenant metadata carrying the tenant brand, favicon, and social card.
  * @remarks Titles use the absolute form so the control-plane '| Indicate' template (src/app/layout.tsx) is never appended.
  */
 export async function networkMetadata(path: string, query: NetworkContentQuery = {}, titleOverride?: string, descriptionOverride?: string, robotsOverride?: RobotsDirective): Promise<Metadata> {
@@ -359,7 +340,6 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
       robots: indexableRobots(),
       ...tenantBrand(site.settings.name),
       ...tenantFavicon(site.settings.faviconUrl),
-      ...tenantFacebookMetadata(),
       openGraph: {
         title: categoryTitle,
         description: categoryDescription,
@@ -408,7 +388,6 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
       robots: indexableRobots(),
       ...tenantBrand(site.settings.name),
       ...tenantFavicon(site.settings.faviconUrl),
-      ...tenantFacebookMetadata(),
       openGraph: {
         title: tagTitle,
         description: tagDescription,
@@ -454,7 +433,6 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
     robots: robotsForDocument(robotsOverride ?? seo.robots),
     ...tenantBrand(site.settings.name),
     ...tenantFavicon(site.settings.faviconUrl),
-    ...tenantFacebookMetadata(),
     openGraph: {
       title: seo.openGraph.title,
       description: seo.openGraph.description,

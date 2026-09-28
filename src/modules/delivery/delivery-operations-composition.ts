@@ -1,13 +1,11 @@
 import 'server-only';
 import { DomainProvisioningService, type DomainZoneResolver } from '@/modules/delivery/domain-provisioning-service';
 import { InvalidationDispatcher } from '@/modules/delivery/invalidation';
-import { SocialWarmer } from '@/modules/delivery/social-warm';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { NextCacheInvalidationAdapter } from '@/modules/delivery/next-invalidation-adapter';
 import { CloudflareAuthorityAdapter } from '@/integrations/cloudflare/cloudflare-authority';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleDeliveryRepository } from '@/data/repos/delivery';
-import { DrizzleSocialWarmLedger } from '@/data/repos/social-warm-ledger';
 import { HttpsPendingHostnameProbe } from '@/core/hostname/pending-hostname-probe';
 import { VercelExactDomainAdapter } from '@/integrations/vercel/exact-domain-adapter';
 import { UpstashSnapshotStore } from '@/integrations/redis/upstash-snapshot-store';
@@ -47,9 +45,6 @@ export async function deliveryOperationsComposition() {
       ? undefined
       : new UpstashHostnameCache(new UpstashSnapshotStore({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })),
     process.env.NEXT_PHASE !== 'phase-production-build');
-  const facebookAppToken = config.social?.facebookAppToken ?? null;
-  const invalidation = new InvalidationDispatcher(repository, new NextCacheInvalidationAdapter(), cloudflare, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts,
-    facebookAppToken === null || facebookAppToken.length === 0 ? null : new SocialWarmer(facebookAppToken),
-    new DrizzleSocialWarmLedger(runtime.db));
+  const invalidation = new InvalidationDispatcher(repository, new NextCacheInvalidationAdapter(), cloudflare, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts);
   return { config, runtime, repository, provisioning, invalidation };
 }

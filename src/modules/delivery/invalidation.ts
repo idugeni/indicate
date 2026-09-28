@@ -1,9 +1,7 @@
 import type { InvalidationPlan, InvalidationTask } from '@/modules/delivery/models';
 import type { NextCacheInvalidationPort } from '@/modules/delivery/ports';
 import type { CloudflareAuthorityPort } from '@/integrations/cloudflare/ports';
-import type { DeliveryRepository, SocialWarmLedger, SocialWarmTarget } from '@/modules/delivery/ports';
-import type { SocialWarmer } from '@/modules/delivery/social-warm';
-import type { SocialWarmFailure } from '@/modules/delivery/social-warm';
+import type { DeliveryRepository } from '@/modules/delivery/ports';
 import { logEvent } from '@/core/observability/logger';
 
 export type NetworkMutation =
@@ -15,10 +13,6 @@ export type NetworkMutation =
 const sitePaths = ['/', '/kebijakan-privasi', '/syarat-ketentuan', '/tentang', '/kontak', '/search', '/robots.txt', '/sitemap.xml', '/rss.xml', '/llms.txt', '/news-sitemap.xml', '/tenant-home', '/report'];
 const HOST_TAG_PREFIX = 'host:';
 const ARTICLE_TAG_PREFIX = 'article:';
-const WARM_BATCH_SIZE = 8;
-const WARM_QUEUE_LIMIT = 64;
-const WARM_BUDGET_MS = 15_000;
-const WARM_REASON_LOG_LIMIT = 10;
 /**
  * Hard ceiling on exact-URL purges per dispatch.
  *
@@ -61,122 +55,6 @@ function purgeOrder(tasks: readonly InvalidationTask[]): readonly string[] {
   return [...new Set([...articleFirst, ...remainder])];
 }
 
-/**
- * Warm queued article URLs in parallel batches and report every outcome.
- *
- * @param targets - Due article URLs collected from the ledger.
- * @param warmer - Page, image, and Facebook pre-scrape warmer.
- * @returns Article site ids whose Meta scrape succeeded, plus the ids whose
- *   cooldown must be pushed forward and whether the batch was abandoned.
- * @remarks Batch width stays at `WARM_BATCH_SIZE` so parallel fetches cannot
- * outlive the publication function budget, but the queue is drained across
- * batches instead of truncated at the first one. The `WARM_QUEUE_LIMIT` and
- * `WARM_BUDGET_MS` ceilings bound a pathological batch and both report the
- * remainder rather than dropping it silently; a dropped target stays unmarked
- * in the ledger, so the next dispatch serves it again. A single batch can still
- * overrun its slice because each warm issues up to three sequential fetches
- * bounded by the warmer's own timeouts.
- *
- * A batch that reports `facebook_rate_limited` abandons the rest: Meta is
- * refusing every call, so continuing would spend the remaining budget on URLs
- * it will not accept. Every target actually attempted is handed back for
- * cooldown, so an abandoned target does not return on the very next tick.
- */
-async function drainSocialWarm(targets: readonly SocialWarmTarget[], warmer: Pick<SocialWarmer, 'warmArticle'>): Promise<{ readonly warmed: readonly string[]; readonly failed: readonly string[]; readonly rateLimited: boolean }> {
-  const startedAt = Date.now();
-  const warmed: string[] = [];
-  const failed: string[] = [];
-  const reasons = new Map<SocialWarmFailure, number>();
-  const examples: { readonly url: string; readonly reason: SocialWarmFailure }[] = [];
-  let attempted = 0;
-  let truncated = 0;
-  let rateLimited = false;
-  for (let offset = 0; offset < targets.length; offset += WARM_BATCH_SIZE) {
-    if (offset >= WARM_QUEUE_LIMIT || Date.now() - startedAt >= WARM_BUDGET_MS) {
-      truncated = targets.length - offset;
-      break;
-    }
-    const batch = targets.slice(offset, Math.min(offset + WARM_BATCH_SIZE, WARM_QUEUE_LIMIT));
-    const outcomes = await Promise.allSettled(batch.map((target) => warmer.warmArticle(target.url)));
-    for (const [index, outcome] of outcomes.entries()) {
-      const target = batch[index];
-      if (target === undefined) continue;
-      attempted += 1;
-      if (outcome.status === 'rejected') {
-        reasons.set('page_network', (reasons.get('page_network') ?? 0) + 1);
-        if (examples.length < WARM_REASON_LOG_LIMIT) examples.push({ url: target.url, reason: 'page_network' });
-        failed.push(target.articleSiteId);
-        continue;
-      }
-      const { pageOk, imageOk, facebookOk, pageReason, imageReason, facebookReason } = outcome.value;
-      const reason = facebookReason ?? (pageOk ? imageReason : pageReason);
-      if (!facebookOk || reason !== null) {
-        const key = reason ?? 'page_network';
-        reasons.set(key, (reasons.get(key) ?? 0) + 1);
-        if (examples.length < WARM_REASON_LOG_LIMIT) examples.push({ url: target.url, reason: key });
-      }
-      if (!pageOk || !imageOk || !facebookOk) failed.push(target.articleSiteId);
-      if (facebookOk) warmed.push(target.articleSiteId);
-      if (facebookReason === 'facebook_rate_limited') rateLimited = true;
-    }
-    if (rateLimited) {
-      truncated += targets.length - offset - WARM_BATCH_SIZE;
-      break;
-    }
-  }
-  const context = { attempted, warmed: warmed.length, failed: failed.length, reasons: Object.fromEntries(reasons) };
-  if (failed.length > 0) {
-    logEvent('warn', { event: 'delivery.social_warm.incomplete', context: { ...context, examples, truncated } });
-  }
-  if (truncated > 0) {
-    logEvent('warn', { event: 'delivery.social_warm.truncated', context: { ...context, truncated, budgetMs: WARM_BUDGET_MS } });
-  }
-  if (rateLimited) {
-    logEvent('error', { event: 'delivery.social_warm.rate_limited', context });
-  }
-  if (attempted > 0 && warmed.length === 0) {
-    logEvent('error', { event: 'delivery.social_warm.stalled', context });
-  } else if (failed.length === 0 && truncated === 0) {
-    logEvent('info', { event: 'delivery.social_warm.complete', context: { attempted, durationMs: Date.now() - startedAt } });
-  }
-  return { warmed, failed, rateLimited };
-}
-
-/**
- * Serve the ledger's due article URLs and record the ones Meta accepted.
- *
- * @remarks Never throws. A ledger or provider failure leaves its targets due,
- * so the next dispatch retries them instead of losing the single warm each URL
- * is allowed. Targets Meta refused are recorded through the cooldown instead,
- * so one permanently unreachable URL cannot occupy the oldest-first window on
- * every tick.
- */
-async function drainDueSocialWarm(ledger: SocialWarmLedger, warmer: Pick<SocialWarmer, 'warmArticle'>, now: Date): Promise<void> {
-  let due: readonly SocialWarmTarget[];
-  try {
-    due = await ledger.dueTargets(WARM_QUEUE_LIMIT);
-  } catch {
-    logEvent('warn', { event: 'delivery.social_warm.due_failed' });
-    return;
-  }
-  if (due.length === 0) return;
-  const { warmed, failed } = await drainSocialWarm(due, warmer);
-  if (warmed.length > 0) {
-    try {
-      await ledger.markWarmed(warmed, now);
-    } catch {
-      logEvent('warn', { event: 'delivery.social_warm.mark_failed', context: { attempted: warmed.length } });
-    }
-  }
-  if (failed.length > 0) {
-    try {
-      await ledger.markAttempted(failed, now);
-    } catch {
-      logEvent('warn', { event: 'delivery.social_warm.cooldown_failed', context: { attempted: failed.length } });
-    }
-  }
-}
-
 export function planInvalidation(mutation: NetworkMutation): InvalidationPlan {
   const hostnames = mutation.kind === 'hostname' ? [mutation.previousHostname, mutation.currentHostname].filter((value): value is string => value !== null) : [mutation.hostname];
   const articleSlugs = mutation.kind === 'article' || mutation.kind === 'publication' ? [mutation.articleSlug] : mutation.kind === 'publisher' ? [...mutation.articleSlugs] : [];
@@ -192,10 +70,10 @@ export function planInvalidation(mutation: NetworkMutation): InvalidationPlan {
 /**
  * Dispatch claimed invalidation tasks through Next cache and edge purge.
  *
- * @remarks One edge purge per batch (unique URLs across tasks): per-host per-task purges would trigger a thundering-herd to the origin, while the edge TTL is only 60 seconds. A purge failure does not fail the task; Next revalidate is the primary mechanism and the edge recovers on its own within one TTL. The purge set is bounded by `PURGE_URL_BUDGET` and ordered so article URLs are never the ones deferred. A poison task does not stop the batch: a failed complete is recorded via fail, and a fail that also fails counts as stranded. Social warming runs after the tasks are handled, so a page whose purge just landed is warm before a scraper reaches it, and it no longer waits for a completed task: gating it on one left the queue frozen whenever publishing paused, and 4,020 published articles sat never-warmed with a single due target untouched since 2026-09-27. Per-target pacing is the cooldown's job, not the dispatcher's. Warming is best-effort, so a warm failure never affects the summary.
+ * @remarks One edge purge per batch (unique URLs across tasks): per-host per-task purges would trigger a thundering-herd to the origin, while the edge TTL is only 60 seconds. A purge failure does not fail the task; Next revalidate is the primary mechanism and the edge recovers on its own within one TTL. The purge set is bounded by `PURGE_URL_BUDGET` and ordered so article URLs are never the ones deferred. A poison task does not stop the batch: a failed complete is recorded via fail, and a fail that also fails counts as stranded.
  */
 export class InvalidationDispatcher {
-  constructor(private readonly repository: Pick<DeliveryRepository, 'claimInvalidations' | 'completeInvalidation' | 'failInvalidation'>, private readonly nextCache: NextCacheInvalidationPort, private readonly cloudflare: CloudflareAuthorityPort, private readonly retryDelaysSeconds: readonly number[], private readonly maxAttempts: number, private readonly socialWarm: Pick<SocialWarmer, 'warmArticle'> | null = null, private readonly warmLedger: SocialWarmLedger | null = null) {}
+  constructor(private readonly repository: Pick<DeliveryRepository, 'claimInvalidations' | 'completeInvalidation' | 'failInvalidation'>, private readonly nextCache: NextCacheInvalidationPort, private readonly cloudflare: CloudflareAuthorityPort, private readonly retryDelaysSeconds: readonly number[], private readonly maxAttempts: number) {}
 
   async dispatch(now: Date, limit: number): Promise<{ completed: number; failed: number; stranded: number }> {
     const tasks = await this.repository.claimInvalidations(now.toISOString(), limit);
@@ -228,9 +106,6 @@ export class InvalidationDispatcher {
           stranded += 1;
         }
       }
-    }
-    if (this.socialWarm !== null && this.warmLedger !== null) {
-      await drainDueSocialWarm(this.warmLedger, this.socialWarm, now);
     }
     return { completed, failed, stranded };
   }
