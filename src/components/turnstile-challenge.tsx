@@ -87,23 +87,32 @@ function loadScript(): Promise<void> {
 }
 
 /**
- * Reports whether a Turnstile site key is configured for public forms.
+ * Resolve the site key a form should challenge against.
  *
- * @returns True when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is non-empty.
+ * @param sitekey - Caller-supplied key, used by tenant surfaces that read it from their own record.
+ * @returns That key when non-empty, otherwise the single-widget `NEXT_PUBLIC_TURNSTILE_SITE_KEY`.
+ * @remarks Cloudflare caps one widget at ten authorized hostnames, so a tenant
+ * network spanning more apexes than that needs a key per apex rather than one
+ * global value. Auth surfaces have a single host and keep the environment
+ * variable; the tenant report form passes the key its domain record names.
  */
-export function isTurnstileConfigured(): boolean {
-  return (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '').trim().length > 0;
+export function resolveTurnstileSitekey(sitekey?: string | null): string {
+  const explicit = sitekey?.trim() ?? '';
+  if (explicit !== '') return explicit;
+  return (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '').trim();
 }
 
 /**
  * Tracks a single Turnstile challenge for a form.
  *
+ * @param sitekey - Site key the form challenges against; defaults to the environment value.
  * @returns Token state with helpers to gate submits and reset the widget after each attempt, since Cloudflare consumes the token once.
  */
-export function useTurnstileChallenge() {
+export function useTurnstileChallenge(sitekey?: string | null) {
+  const resolved = resolveTurnstileSitekey(sitekey);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [challengeNonce, setChallengeNonce] = useState(0);
-  const turnstilePending = isTurnstileConfigured() && captchaToken === null;
+  const turnstilePending = resolved !== '' && captchaToken === null;
 
   const resetChallenge = (): void => {
     setCaptchaToken(null);
@@ -122,33 +131,36 @@ export function useTurnstileChallenge() {
 /**
  * Renders the Cloudflare Turnstile challenge inside a form.
  *
- * @param onToken - Receives the one-time token on success, or null when it expires or the widget errors.
- * @param fallback - Replaces the default retry card when the challenge script cannot load; receives a retry callback.
+ * @param props.onToken - Receives the one-time token on success, or null when it expires or the widget errors.
+ * @param props.sitekey - Site key the form challenges against; defaults to the environment value.
+ * @param props.fallback - Replaces the default retry card when the challenge script cannot load; receives a retry callback.
  * @returns Nothing when no site key is configured, the widget host, or the failure notice with a retry control.
  * @remarks The widget is a courtesy to the reader, never the enforcement point: the server
  * re-verifies the token, so a form that submits early or with no widget at all is refused there.
  */
 export function TurnstileChallenge({
   onToken,
+  sitekey,
   fallback = defaultFailureNotice,
 }: {
   readonly onToken: (token: string | null) => void;
+  readonly sitekey?: string | null;
   readonly fallback?: (retry: () => void) => ReactNode;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const sitekey = (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '').trim();
+  const resolvedSitekey = resolveTurnstileSitekey(sitekey);
   const [loadFailed, setLoadFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (sitekey === '' || hostRef.current === null) return;
+    if (resolvedSitekey === '' || hostRef.current === null) return;
     let widgetId: string | null = null;
     let cancelled = false;
     loadScript()
       .then(() => {
         if (cancelled || hostRef.current === null || window.turnstile === undefined) return;
         widgetId = window.turnstile.render(hostRef.current, {
-          sitekey,
+          sitekey: resolvedSitekey,
           callback: (token: string) => onToken(token),
           'expired-callback': () => onToken(null),
           'error-callback': () => onToken(null),
@@ -161,9 +173,9 @@ export function TurnstileChallenge({
       cancelled = true;
       if (widgetId !== null && window.turnstile !== undefined) window.turnstile.remove(widgetId);
     };
-  }, [sitekey, attempt, onToken]);
+  }, [resolvedSitekey, attempt, onToken]);
 
-  if (sitekey === '') return null;
+  if (resolvedSitekey === '') return null;
   if (loadFailed) {
     return (
       <>

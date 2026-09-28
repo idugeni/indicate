@@ -2,6 +2,7 @@ import 'server-only';
 
 import { z } from 'zod';
 
+import { TURNSTILE_SITEKEY_PATTERN } from '@/core/security/turnstile-contract';
 import { normalizeConfiguredHostname } from '@/core/hostname/normalize-configured-hostname';
 import { BOOTSTRAP_ENVIRONMENTS, type BootstrapEnvironment, type SchemaGateMode } from '@/core/config/bootstrap/bootstrap-env';
 import { SecretString } from '@/core/config/secret-string';
@@ -71,6 +72,7 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'GOOGLE_SITE_VERIFICATION',
   'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
   'TURNSTILE_SECRET_KEY',
+  'TURNSTILE_REPORT_SECRETS',
 ]);
 
 const hostnameSchema = z
@@ -88,6 +90,55 @@ const hostnameSchema = z
 const secretSchema = z.string().min(SECRET_MIN_LENGTH, 'secret_too_short');
 /** Unchanged in production: a placeholder that survived copy-paste from `.env.example` is not a credential. */
 const PLACEHOLDER_SECRET_PATTERN = /(?:change[ -]?me|example|placeholder|replace|sentinel|development|test-secret)/iu;
+
+/**
+ * Per-widget Siteverify secrets, one JSON object keyed by site key.
+ *
+ * @remarks Cloudflare caps a widget at ten authorized hostnames, so a network
+ * spanning hundreds of apexes needs several widgets, and a token verifies only
+ * under the secret of the widget that minted it. The route therefore has to pick
+ * the right secret per request, which a single-valued variable cannot express.
+ * Keys are validated as site keys and values as secrets, so a malformed map
+ * fails at boot rather than silently verifying nothing on the intake path.
+ */
+const turnstileReportSecrets = z
+  .string()
+  .min(2, 'secret_too_short')
+  .transform((raw, context) => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      context.addIssue({ code: 'custom', message: 'turnstile_secrets_not_json' });
+      return z.NEVER;
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      context.addIssue({ code: 'custom', message: 'turnstile_secrets_not_object' });
+      return z.NEVER;
+    }
+    const entries = Object.entries(parsed as Record<string, unknown>);
+    if (entries.length === 0) {
+      context.addIssue({ code: 'custom', message: 'turnstile_secrets_empty' });
+      return z.NEVER;
+    }
+    const map: Record<string, string> = {};
+    for (const [sitekey, secret] of entries) {
+      if (!TURNSTILE_SITEKEY_PATTERN.test(sitekey)) {
+        context.addIssue({ code: 'custom', path: [sitekey], message: 'turnstile_sitekey_malformed' });
+        return z.NEVER;
+      }
+      if (typeof secret !== 'string' || secret.length < SECRET_MIN_LENGTH) {
+        context.addIssue({ code: 'custom', path: [sitekey], message: 'secret_too_short' });
+        return z.NEVER;
+      }
+      if (PLACEHOLDER_SECRET_PATTERN.test(secret)) {
+        context.addIssue({ code: 'custom', path: [sitekey], message: 'turnstile_secret_placeholder' });
+        return z.NEVER;
+      }
+      map[sitekey] = secret;
+    }
+    return map;
+  });
 const httpsUrlSchema = z.url().refine((value) => value.startsWith('https://'), 'https_required');
 
 const SUPABASE_POOLER_HOST_SUFFIX = '.pooler.supabase.com';
@@ -132,6 +183,7 @@ const bootstrapSchema = z
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(8).optional(),
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
     TURNSTILE_SECRET_KEY: secretSchema.optional(),
+    TURNSTILE_REPORT_SECRETS: turnstileReportSecrets.optional(),
     DEFAULT_LOCALE: z.string().regex(/^[a-z]{2}-[A-Z]{2}$/).default('id-ID'),
     SITE_DEFAULT_ASSET_URL: httpsUrlSchema.default('https://indicate.website/assets/default.png'),
     SUPABASE_PROJECT_REF: z.string().regex(/^[a-z0-9]{8,32}$/).optional(),
@@ -297,6 +349,8 @@ export interface BootstrapConfig {
     readonly cronSecret: SecretString;
     /** Cloudflare Turnstile Siteverify secret; null when public forms run without a server-side challenge. */
     readonly turnstileSecretKey: SecretString | null;
+    /** Siteverify secret per tenant report widget, keyed by site key; null when no widget is configured. */
+    readonly turnstileReportSecrets: ReadonlyMap<string, SecretString> | null;
   }>;
 }
 
@@ -360,6 +414,9 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       genericWebhookSecret: SecretString.fromPlain(value.GENERIC_WEBHOOK_SECRET),
       cronSecret: SecretString.fromPlain(value.CRON_SECRET),
       turnstileSecretKey: value.TURNSTILE_SECRET_KEY === undefined ? null : SecretString.fromPlain(value.TURNSTILE_SECRET_KEY),
+      turnstileReportSecrets: value.TURNSTILE_REPORT_SECRETS === undefined
+        ? null
+        : new Map(Object.entries(value.TURNSTILE_REPORT_SECRETS).map(([sitekey, secret]) => [sitekey, SecretString.fromPlain(secret)])),
     }),
   } as BootstrapConfig);
 }

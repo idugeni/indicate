@@ -25,11 +25,18 @@ npm-facing.
   Cloudflare-side fault answers 503 so a verification outage never reads as a
   reader being blocked for bot reasons. The submit button is deliberately not
   gated on a pending challenge, so a blocked challenge script cannot make the
-  form unsubmittable. Enforcement is configured by the new server-only
-  `TURNSTILE_SECRET_KEY`; without it the intake stays unchallenged and relies on
-  the existing per-host and per-IP rate limits. The site key and the secret are
-  validated as a pair, and the placeholder pattern now also covers
-  `replace-with-...` values pasted from `.env.example`.
+  form unsubmittable.
+- Per-apex Turnstile coverage for the report form (migration v218). Cloudflare
+  authorizes at most ten hostnames per widget, so the 134 tenant apexes need
+  fourteen widgets; `domains.report_challenge_sitekey` records which widget
+  serves which apex and `TURNSTILE_REPORT_SECRETS` holds each widget's
+  Siteverify secret keyed by site key. The route resolves the tenant from the
+  request host and verifies with that apex's secret only, so the
+  `cf-turnstile-sitekey` header selects a secret rather than granting one. A
+  domain with no widget, or a widget with no provisioned secret, runs
+  unchallenged under the existing rate limits instead of refusing readers.
+  Adding a tenant stays DB-only: create a widget, add the apex, set the column,
+  add the secret.
 - The Turnstile widget moved from `src/modules/auth/components/turnstile-field.tsx`
   to `src/components/turnstile-challenge.tsx` with an injectable failure notice,
   so the auth forms and the tenant report form share one loader instead of two

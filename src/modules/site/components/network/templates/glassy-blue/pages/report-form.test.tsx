@@ -4,6 +4,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 import { GlassyBlueReportForm } from '@/modules/site/components/network/templates/glassy-blue/pages/report-form';
 
+const SITEKEY = '0x4AAAAAAFHN_lpLqmLytOD5';
+
 afterEach(() => {
   cleanup();
   delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -13,8 +15,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function setup(articleSlug: string | null = 'berita-utama') {
-  return render(<GlassyBlueReportForm articleSlug={articleSlug} />);
+function setup(articleSlug: string | null = 'berita-utama', challengeSitekey: string | null = null) {
+  return render(<GlassyBlueReportForm articleSlug={articleSlug} challengeSitekey={challengeSitekey} />);
 }
 
 function fillValidReport() {
@@ -23,8 +25,11 @@ function fillValidReport() {
 }
 
 async function solveChallenge(token: string) {
-  const script = document.head.querySelector('script[src*="turnstile"]');
-  if (script === null) throw new Error('turnstile_script_missing');
+  const script = await waitFor(() => {
+    const found = document.head.querySelector<HTMLScriptElement>('script[src*="turnstile"]');
+    if (found === null) throw new Error('turnstile_script_missing');
+    return found;
+  });
   let renders = 0;
   window.turnstile = {
     render: (_element, options) => {
@@ -94,35 +99,34 @@ describe('GlassyBlueReportForm submit', () => {
 
 describe('GlassyBlueReportForm challenge', () => {
   it('mengirim token widget pada header challenge', async () => {
-    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'kunci-uji';
     const fetch = vi.fn(async () => new Response('{}', { status: 200 }));
     vi.stubGlobal('fetch', fetch);
-    setup();
+    setup('berita-utama', SITEKEY);
     await solveChallenge('token-uji');
     fillValidReport();
     fireEvent.click(screen.getByRole('button', { name: /kirim laporan/i }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/network/reports', expect.objectContaining({ method: 'POST' })));
     expect(sentHeaders(fetch)['cf-turnstile-response']).toBe('token-uji');
+    expect(sentHeaders(fetch)['cf-turnstile-sitekey']).toBe(SITEKEY);
     expect(await screen.findByText(/laporan diterima/i)).toBeDefined();
   });
 
   it('menyarankan muat ulang verifikasi saat challenge ditolak server', async () => {
-    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'kunci-uji';
     vi.stubGlobal('fetch', vi.fn(async () => new Response('err', { status: 403 })));
-    setup();
+    setup('berita-utama', SITEKEY);
     fillValidReport();
     fireEvent.click(screen.getByRole('button', { name: /kirim laporan/i }));
     expect(await screen.findByText(/verifikasi keamanan gagal/i)).toBeDefined();
   });
 
-  it('tetap mengirim tanpa header challenge saat widget tidak dikonfigurasi', async () => {
-    delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  it('tetap mengirim tanpa header challenge saat tenant belum punya widget', async () => {
     const fetch = vi.fn(async () => new Response('{}', { status: 200 }));
     vi.stubGlobal('fetch', fetch);
-    setup();
+    setup('berita-utama', null);
     fillValidReport();
     fireEvent.click(screen.getByRole('button', { name: /kirim laporan/i }));
     await waitFor(() => expect(fetch).toHaveBeenCalled());
     expect(sentHeaders(fetch)['cf-turnstile-response']).toBeUndefined();
+    expect(sentHeaders(fetch)['cf-turnstile-sitekey']).toBeUndefined();
   });
 });

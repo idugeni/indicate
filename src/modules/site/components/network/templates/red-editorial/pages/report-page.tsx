@@ -6,12 +6,13 @@ import { RedEditorialReportForm } from '@/modules/site/components/network/templa
 export interface RedEditorialReportProps {
   readonly site: NetworkSiteData;
   readonly articleSlug: string | null;
+  readonly challengeSitekey: string | null;
 }
 
 /**
  * Formulir laporan pelanggaran tenant; artikel terkait opsional via query.
  */
-export function RedEditorialReport({ site, articleSlug }: RedEditorialReportProps) {
+export function RedEditorialReport({ site, articleSlug, challengeSitekey }: RedEditorialReportProps) {
   return (
     <RedEditorialShell site={site} path="/report">
       <RedEditorialContainer className="max-w-3xl py-8 md:py-12">
@@ -25,7 +26,7 @@ export function RedEditorialReport({ site, articleSlug }: RedEditorialReportProp
           Laporan pelanggaran ditinjau redaksi paling lambat 1x24 jam. Konten yang terbukti melanggar hukum ditarik dan dicatat penanganannya.
         </p>
         <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-7">
-          <RedEditorialReportForm articleSlug={articleSlug} />
+          <RedEditorialReportForm articleSlug={articleSlug} challengeSitekey={challengeSitekey} />
         </div>
       </RedEditorialContainer>
     </RedEditorialShell>

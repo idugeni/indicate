@@ -12,10 +12,32 @@ export type ReportChallengeGate =
   | { readonly allowed: false; readonly enforced: true; readonly denial: ReportChallengeDenial };
 
 /**
+ * Pick the Siteverify secret matching the widget that minted the token.
+ *
+ * @param params.sitekey - Site key the tenant's own domain record names, or null when it has no widget.
+ * @param params.secrets - Configured per-widget secrets keyed by site key.
+ * @returns The matching secret, or null when the tenant has no widget or its secret is absent.
+ * @remarks A token is valid only under the secret of the widget that issued it, and
+ * the client is not trusted to name that widget: the site key comes from the
+ * tenant record resolved from the request host, and a token presented for any
+ * other widget simply fails verification there. A tenant whose widget has no
+ * secret provisioned is left unchallenged rather than refused, so a missing
+ * secret degrades the channel to its rate limits instead of deleting it.
+ */
+export function reportChallengeSecret(params: {
+  readonly sitekey: string | null;
+  readonly secrets: ReadonlyMap<string, string>;
+}): string | null {
+  if (params.sitekey === null) return null;
+  return params.secrets.get(params.sitekey) ?? null;
+}
+
+/**
  * Re-verify the reader's Turnstile token before a report body is parsed.
  *
- * @param params.secret - Siteverify secret from runtime config; null runs intake unchallenged.
- * @param params.headers - Incoming request headers carrying the widget token.
+ * @param params.sitekey - Site key from the tenant's domain record, or null when unprovisioned.
+ * @param params.secrets - Configured per-widget secrets keyed by site key.
+ * @param params.headers - Incoming request headers carrying the token and site key.
  * @param params.clientIp - Cloudflare-supplied client IP, or null when the edge supplied none.
  * @param params.verify - Injected verifier for tests; defaults to the Siteverify client.
  * @returns Allowed (with whether verification actually ran), or a denial carrying its HTTP status.
@@ -27,7 +49,8 @@ export type ReportChallengeGate =
  * rather than the route having to track replay state of its own.
  */
 export async function enforceReportIntakeChallenge(params: {
-  readonly secret: string | null;
+  readonly sitekey: string | null;
+  readonly secrets: ReadonlyMap<string, string>;
   readonly headers: Headers;
   readonly clientIp: string | null;
   readonly verify?: (input: {
@@ -36,10 +59,11 @@ export async function enforceReportIntakeChallenge(params: {
     readonly remoteIp: string | null;
   }) => Promise<TurnstileVerdict>;
 }): Promise<ReportChallengeGate> {
-  if (params.secret === null || params.secret.trim() === '') return { allowed: true, enforced: false };
+  const secret = reportChallengeSecret({ sitekey: params.sitekey, secrets: params.secrets });
+  if (secret === null) return { allowed: true, enforced: false };
   const verify = params.verify ?? ((input) => verifyTurnstileToken(input));
   const verdict = await verify({
-    secret: params.secret,
+    secret,
     token: params.headers.get(TURNSTILE_TOKEN_HEADER),
     remoteIp: params.clientIp,
   });
@@ -48,3 +72,5 @@ export async function enforceReportIntakeChallenge(params: {
   if (verdict.outcome === 'rejected') return { allowed: false, enforced: true, denial: { outcome: 'rejected', status: 403 } };
   return { allowed: false, enforced: true, denial: { outcome: 'unavailable', status: 503 } };
 }
+
+

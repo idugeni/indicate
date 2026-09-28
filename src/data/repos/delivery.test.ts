@@ -117,6 +117,7 @@ function harness(handlers: {
   readonly categories?: readonly unknown[];
   readonly brand?: readonly unknown[] | readonly (readonly unknown[])[];
   readonly publicHost?: string | null;
+  readonly reportSitekey?: readonly unknown[];
 }) {
   const selectLog: SelectLog[] = [];
   const limitLog: number[] = [];
@@ -153,6 +154,7 @@ function harness(handlers: {
             if (keys.includes('bodyExcerpt')) return chainable(articles, limitLog);
             if (keys.includes('body') && keys.includes('slug')) return chainable(feed, limitLog);
             if (only('slug', 'name')) return chainable(handlers.categories ?? [], limitLog);
+            if (only('sitekey')) return chainable(handlers.reportSitekey ?? [{ sitekey: null }], limitLog);
             return chainable([], limitLog);
           };
         return () => transaction;
@@ -163,6 +165,24 @@ function harness(handlers: {
   const repository = new DrizzleDeliveryRepository(database as never, 'https://portal.example/brand/default.jpg', handlers.publicHost ?? null);
   return { repository, selectLog, limitLog };
 }
+
+describe('loadReportChallengeSitekey', () => {
+  it('membaca satu kolom dari domain tenant', async () => {
+    const { repository, selectLog } = harness({ reportSitekey: [{ sitekey: '0x4AAAAAAFHN_lpLqmLytOD5' }] });
+    expect(await repository.loadReportChallengeSitekey({ ...CONTEXT })).toBe('0x4AAAAAAFHN_lpLqmLytOD5');
+    expect(selectLog).toEqual([{ keys: ['sitekey'] }]);
+  });
+
+  it('null saat domain belum punya widget', async () => {
+    const { repository } = harness({ reportSitekey: [{ sitekey: null }] });
+    expect(await repository.loadReportChallengeSitekey({ ...CONTEXT })).toBe(null);
+  });
+
+  it('null saat baris domain tidak ada', async () => {
+    const { repository } = harness({ reportSitekey: [] });
+    expect(await repository.loadReportChallengeSitekey({ ...CONTEXT })).toBe(null);
+  });
+});
 
 describe('readSite projection', () => {
   it('listing tidak memilih body penuh dan tidak query galeri', async () => {

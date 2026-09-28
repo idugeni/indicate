@@ -76,8 +76,16 @@ export interface RuntimeConfig {
     readonly webhookReplayTtlSeconds: number;
     readonly genericWebhookSecret: string;
     readonly cronSecret: string;
-    /** Cloudflare Turnstile Siteverify secret; null when report intake runs unchallenged. */
+    /** Cloudflare Turnstile Siteverify secret for single-widget surfaces; null when unconfigured. */
     readonly turnstileSecretKey: string | null;
+    /**
+     * Siteverify secret per tenant report widget, keyed by site key.
+     *
+     * @remarks One widget covers at most ten authorized hostnames, so a tenant
+     * network needs several and a token verifies only under the secret of the
+     * widget that minted it.
+     */
+    readonly turnstileReportSecrets: ReadonlyMap<string, string>;
   };
   readonly cache: {
     readonly defaultTtlSeconds: number;

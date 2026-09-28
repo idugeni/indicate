@@ -70,7 +70,8 @@ async function handlePOST(request: Request) {
       return NextResponse.json(createPublicError('RATE_LIMITED', 'Request limit exceeded. Retry later.', requestId, { retryAfterSeconds: [throttle.retryAfterSeconds] }), { status: 429, headers: { ...noStore, 'Retry-After': throttle.retryAfterSeconds } });
     }
     const challenge = await enforceReportIntakeChallenge({
-      secret: context.config.security.turnstileSecretKey,
+      sitekey: await composition.repository.loadReportChallengeSitekey(result.context),
+      secrets: context.config.security.turnstileReportSecrets,
       headers: requestHeaders,
       clientIp,
     });

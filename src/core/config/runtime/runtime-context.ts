@@ -135,6 +135,9 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
       genericWebhookSecret: bootstrap.credentials.genericWebhookSecret.reveal(),
       cronSecret: bootstrap.credentials.cronSecret.reveal(),
       turnstileSecretKey: bootstrap.credentials.turnstileSecretKey?.reveal() ?? null,
+      turnstileReportSecrets: new Map(
+        [...(bootstrap.credentials.turnstileReportSecrets ?? [])].map(([sitekey, secret]) => [sitekey, secret.reveal()]),
+      ),
     }),
     cache: Object.freeze({
       defaultTtlSeconds: policies.cache.publicCacheSeconds,

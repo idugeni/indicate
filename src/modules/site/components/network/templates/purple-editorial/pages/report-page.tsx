@@ -6,12 +6,13 @@ import { PurpleEditorialReportForm } from '@/modules/site/components/network/tem
 export interface PurpleEditorialReportProps {
   readonly site: NetworkSiteData;
   readonly articleSlug: string | null;
+  readonly challengeSitekey: string | null;
 }
 
 /**
  * Formulir laporan pelanggaran tenant; artikel terkait opsional via query.
  */
-export function PurpleEditorialReport({ site, articleSlug }: PurpleEditorialReportProps) {
+export function PurpleEditorialReport({ site, articleSlug, challengeSitekey }: PurpleEditorialReportProps) {
   return (
     <PurpleEditorialShell site={site} path="/report">
       <PurpleEditorialContainer className="max-w-3xl py-8 md:py-12">
@@ -25,7 +26,7 @@ export function PurpleEditorialReport({ site, articleSlug }: PurpleEditorialRepo
           Laporan pelanggaran ditinjau redaksi paling lambat 1x24 jam. Konten yang terbukti melanggar hukum ditarik dan dicatat penanganannya.
         </p>
         <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-7">
-          <PurpleEditorialReportForm articleSlug={articleSlug} />
+          <PurpleEditorialReportForm articleSlug={articleSlug} challengeSitekey={challengeSitekey} />
         </div>
       </PurpleEditorialContainer>
     </PurpleEditorialShell>

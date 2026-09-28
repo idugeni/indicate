@@ -45,7 +45,7 @@ function classifyFailure(payload: SiteverifyPayload): TurnstileVerdict {
 /**
  * Validate a Cloudflare Turnstile token against the Siteverify API.
  *
- * @param params.secret - Siteverify secret; null or empty disables verification and yields `unverified`.
+ * @param params.secret - Siteverify secret of the widget that minted the token; null disables verification.
  * @param params.token - Widget token carried by the `cf-turnstile-response` header; null when the client sent none.
  * @param params.remoteIp - Cloudflare-supplied client IP, or null to omit `remoteip`.
  * @param params.timeoutMs - Abort deadline for the Siteverify call; default 5 s.

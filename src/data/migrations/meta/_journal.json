@@ -1520,6 +1520,13 @@
       "when": 1790602400000,
       "tag": "20260928100000_drop_social_warm",
       "breakpoints": true
+    },
+    {
+      "idx": 217,
+      "version": "7",
+      "when": 1790603200000,
+      "tag": "20260928110000_report_challenge_sitekey",
+      "breakpoints": true
     }
   ]
 }

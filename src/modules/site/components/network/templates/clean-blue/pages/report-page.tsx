@@ -6,12 +6,13 @@ import { CleanBlueReportForm } from '@/modules/site/components/network/templates
 export interface CleanBlueReportProps {
   readonly site: NetworkSiteData;
   readonly articleSlug: string | null;
+  readonly challengeSitekey: string | null;
 }
 
 /**
  * Formulir laporan pelanggaran tenant; artikel terkait opsional via query.
  */
-export function CleanBlueReport({ site, articleSlug }: CleanBlueReportProps) {
+export function CleanBlueReport({ site, articleSlug, challengeSitekey }: CleanBlueReportProps) {
   return (
     <CleanBlueShell site={site} path="/report">
       <CleanBlueContainer className="max-w-3xl py-8 md:py-12">
@@ -25,7 +26,7 @@ export function CleanBlueReport({ site, articleSlug }: CleanBlueReportProps) {
           Laporan pelanggaran ditinjau redaksi paling lambat 1x24 jam. Konten yang terbukti melanggar hukum ditarik dan dicatat penanganannya.
         </p>
         <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-7">
-          <CleanBlueReportForm articleSlug={articleSlug} />
+          <CleanBlueReportForm articleSlug={articleSlug} challengeSitekey={challengeSitekey} />
         </div>
       </CleanBlueContainer>
     </CleanBlueShell>

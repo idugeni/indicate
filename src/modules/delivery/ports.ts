@@ -54,6 +54,13 @@ export interface DeliveryRepository {
    */
   loadSiteCategories(context: ResolvedSiteContext, limit: number): Promise<readonly SiteCategory[]>;
   /**
+   * Turnstile site key authorizing this tenant's report form.
+   *
+   * @param context - Resolved tenant hostname context.
+   * @returns The apex's widget site key, or null when the domain has no widget yet.
+   */
+  loadReportChallengeSitekey(context: ResolvedSiteContext): Promise<string | null>;
+  /**
    * Resolve published article id by slug without loading body or gallery.
    *
    * @param context - Resolved tenant hostname context.

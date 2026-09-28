@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { ReportPage } from '@/modules/site/components/network/network-listing';
+import { deliveryComposition } from '@/modules/delivery';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 import { normalizeArticleSlug } from '@/modules/site/slug-allocator';
 
@@ -20,5 +21,7 @@ export default async function ReportPageRoute({ searchParams }: Props) {
   const resolved = await searchParams;
   const slug = normalizeArticleSlug(resolved.artikel);
   const site = await resolveNetworkSite(slug === null ? {} : { articleSlug: slug }, '/report');
-  return <ReportPage site={site} articleSlug={slug} />;
+  const { repository } = await deliveryComposition();
+  const challengeSitekey = await repository.loadReportChallengeSitekey(site.context);
+  return <ReportPage site={site} articleSlug={slug} challengeSitekey={challengeSitekey} />;
 }

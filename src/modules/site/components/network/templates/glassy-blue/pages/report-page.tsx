@@ -6,12 +6,13 @@ import { GlassyBlueReportForm } from '@/modules/site/components/network/template
 export interface GlassyBlueReportProps {
   readonly site: NetworkSiteData;
   readonly articleSlug: string | null;
+  readonly challengeSitekey: string | null;
 }
 
 /**
  * Formulir laporan pelanggaran tenant; artikel terkait opsional via query.
  */
-export function GlassyBlueReport({ site, articleSlug }: GlassyBlueReportProps) {
+export function GlassyBlueReport({ site, articleSlug, challengeSitekey }: GlassyBlueReportProps) {
   return (
     <GlassyBlueShell site={site} path="/report">
       <GlassyBlueContainer className="max-w-3xl py-8 md:py-12">
@@ -25,7 +26,7 @@ export function GlassyBlueReport({ site, articleSlug }: GlassyBlueReportProps) {
           Laporan pelanggaran ditinjau redaksi paling lambat 1x24 jam. Konten yang terbukti melanggar hukum ditarik dan dicatat penanganannya.
         </p>
         <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-7">
-          <GlassyBlueReportForm articleSlug={articleSlug} />
+          <GlassyBlueReportForm articleSlug={articleSlug} challengeSitekey={challengeSitekey} />
         </div>
       </GlassyBlueContainer>
     </GlassyBlueShell>

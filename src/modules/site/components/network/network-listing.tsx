@@ -451,6 +451,8 @@ export function SearchPage(props: SearchPageProps) {
 export interface ReportPageProps {
   readonly site: NetworkSiteData;
   readonly articleSlug: string | null;
+  /** Turnstile site key from the tenant's domain record; null when the tenant has no widget yet. */
+  readonly challengeSitekey: string | null;
 }
 
 /**

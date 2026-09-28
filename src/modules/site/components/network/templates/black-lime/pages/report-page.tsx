@@ -6,12 +6,13 @@ import { BlackLimeReportForm } from '@/modules/site/components/network/templates
 export interface BlackLimeReportProps {
   readonly site: NetworkSiteData;
   readonly articleSlug: string | null;
+  readonly challengeSitekey: string | null;
 }
 
 /**
  * Formulir laporan pelanggaran tenant; artikel terkait opsional via query.
  */
-export function BlackLimeReport({ site, articleSlug }: BlackLimeReportProps) {
+export function BlackLimeReport({ site, articleSlug, challengeSitekey }: BlackLimeReportProps) {
   return (
     <BlackLimeShell site={site} path="/report">
       <BlackLimeContainer className="max-w-3xl py-8 md:py-12">
@@ -25,7 +26,7 @@ export function BlackLimeReport({ site, articleSlug }: BlackLimeReportProps) {
           Laporan pelanggaran ditinjau redaksi paling lambat 1x24 jam. Konten yang terbukti melanggar hukum ditarik dan dicatat penanganannya.
         </p>
         <div className="mt-6 rounded-2xl bg-[#131711] p-5 shadow-sm ring-1 ring-[#242b1f]/60 sm:p-7">
-          <BlackLimeReportForm articleSlug={articleSlug} />
+          <BlackLimeReportForm articleSlug={articleSlug} challengeSitekey={challengeSitekey} />
         </div>
       </BlackLimeContainer>
     </BlackLimeShell>

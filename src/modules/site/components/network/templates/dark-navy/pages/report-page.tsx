@@ -6,12 +6,13 @@ import { DarkNavyReportForm } from '@/modules/site/components/network/templates/
 export interface DarkNavyReportProps {
   readonly site: NetworkSiteData;
   readonly articleSlug: string | null;
+  readonly challengeSitekey: string | null;
 }
 
 /**
  * Formulir laporan pelanggaran tenant; artikel terkait opsional via query.
  */
-export function DarkNavyReport({ site, articleSlug }: DarkNavyReportProps) {
+export function DarkNavyReport({ site, articleSlug, challengeSitekey }: DarkNavyReportProps) {
   return (
     <DarkNavyShell site={site} path="/report">
       <DarkNavyContainer className="max-w-3xl py-8 md:py-12">
@@ -25,7 +26,7 @@ export function DarkNavyReport({ site, articleSlug }: DarkNavyReportProps) {
           Laporan pelanggaran ditinjau redaksi paling lambat 1x24 jam. Konten yang terbukti melanggar hukum ditarik dan dicatat penanganannya.
         </p>
         <div className="mt-6 rounded-2xl bg-[#0e1a33] p-5 shadow-sm ring-1 ring-[#1b2c4f]/60 sm:p-7">
-          <DarkNavyReportForm articleSlug={articleSlug} />
+          <DarkNavyReportForm articleSlug={articleSlug} challengeSitekey={challengeSitekey} />
         </div>
       </DarkNavyContainer>
     </DarkNavyShell>

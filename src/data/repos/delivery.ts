@@ -345,6 +345,26 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
    * @param slug - Normalized article slug.
    * @returns Article id when published on the site, otherwise null.
    */
+  /**
+   * Turnstile site key authorizing this tenant's report form.
+   *
+   * @param context - Resolved tenant hostname context.
+   * @returns The apex's widget site key, or null when the domain has no widget yet.
+   * @remarks One indexed read on the domain primary key, taken on the report page
+   * and report intake only. The site key is public by construction, so it rides
+   * the public tenant transaction rather than a privileged read.
+   */
+  async loadReportChallengeSitekey(context: ResolvedSiteContext): Promise<string | null> {
+    return this.database.transaction(async (transaction) => {
+      await this.publicTenant(transaction, context);
+      const rows = await transaction.select({ sitekey: domains.reportChallengeSitekey })
+        .from(domains)
+        .where(and(eq(domains.organizationId, context.organizationId), eq(domains.id, context.domainId), eq(domains.status, 'active')))
+        .limit(1);
+      return rows[0]?.sitekey ?? null;
+    });
+  }
+
   async resolveArticleId(context: ResolvedSiteContext, slug: string): Promise<string | null> {
     return this.database.transaction(async (transaction) => {
       await this.publicTenant(transaction, context);

@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import type { ReactElement } from 'react';
 
-import { isTurnstileConfigured } from '@/components/turnstile-challenge';
+import { resolveTurnstileSitekey } from '@/components/turnstile-challenge';
+
+const WIDGET = '0x4AAAAAAFHN_lpLqmLytOD5';
 
 afterEach(() => {
   cleanup();
@@ -15,27 +17,40 @@ afterEach(() => {
 });
 
 /** Fresh module per test: the script loader memoizes one in-flight promise process-wide. */
-async function renderChallenge(onToken: (token: string | null) => void): Promise<HTMLElement> {
+async function renderChallenge(props: { readonly sitekey?: string | null }): Promise<HTMLScriptElement> {
   const { TurnstileChallenge } = await import('@/components/turnstile-challenge');
-  const element: ReactElement = <TurnstileChallenge onToken={onToken} />;
+  const element: ReactElement = <TurnstileChallenge onToken={vi.fn()} {...props} />;
   render(element);
-  const script = document.head.querySelector<HTMLScriptElement>('script[src*="turnstile"]');
-  if (script === null) throw new Error('turnstile_script_missing');
-  return script;
+  return waitFor(() => {
+    const script = document.head.querySelector<HTMLScriptElement>('script[src*="turnstile"]');
+    if (script === null) throw new Error('turnstile_script_missing');
+    return script;
+  });
 }
 
-describe('isTurnstileConfigured', () => {
-  it('false tanpa kunci situs dan true dengan kunci situs', async () => {
+describe('resolveTurnstileSitekey', () => {
+  it('memakai kunci yang diberikan pemanggil bila ada', () => {
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'kunci-lingkungan';
+    expect(resolveTurnstileSitekey(WIDGET)).toBe(WIDGET);
+    expect(resolveTurnstileSitekey(`  ${WIDGET}  `)).toBe(WIDGET);
+  });
+
+  it('jatuh ke kunci lingkungan untuk surface satu widget', () => {
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'kunci-lingkungan';
+    expect(resolveTurnstileSitekey()).toBe('kunci-lingkungan');
+    expect(resolveTurnstileSitekey(null)).toBe('kunci-lingkungan');
+    expect(resolveTurnstileSitekey('   ')).toBe('kunci-lingkungan');
+  });
+
+  it('kosong tanpa kunci lingkungan dan tanpa kunci pemanggil', () => {
     delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-    const { isTurnstileConfigured: readFresh } = await import('@/components/turnstile-challenge');
-    expect(readFresh()).toBe(false);
-    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'kunci-uji';
-    expect(isTurnstileConfigured()).toBe(true);
+    expect(resolveTurnstileSitekey()).toBe('');
+    expect(resolveTurnstileSitekey(null)).toBe('');
   });
 });
 
 describe('TurnstileChallenge', () => {
-  it('tidak merender apa pun saat kunci situs belum dikonfigurasi', async () => {
+  it('tidak merender apa pun saat tidak ada kunci situs', async () => {
     delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
     const { TurnstileChallenge } = await import('@/components/turnstile-challenge');
     const { container } = render(<TurnstileChallenge onToken={vi.fn()} />);
@@ -43,18 +58,27 @@ describe('TurnstileChallenge', () => {
   });
 
   it('merender wadah widget dan meneruskan token dari widget', async () => {
-    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'kunci-uji';
     const onToken = vi.fn();
-    const script = await renderChallenge(onToken);
-    expect(script.parentElement).not.toBe(null);
+    const { TurnstileChallenge } = await import('@/components/turnstile-challenge');
+    render(<TurnstileChallenge onToken={onToken} sitekey={WIDGET} />);
+    const script = await waitFor(() => {
+      const found = document.head.querySelector<HTMLScriptElement>('script[src*="turnstile"]');
+      if (found === null) throw new Error('turnstile_script_missing');
+      return found;
+    });
     window.turnstile = { render: (_element, options) => { options.callback('token-uji'); return 'widget-1'; }, remove: () => {} };
     script.dispatchEvent(new Event('load'));
     await waitFor(() => expect(onToken).toHaveBeenCalledWith('token-uji'));
   });
 
+  it('merender widget dari kunci lingkungan saat pemanggil tidak menunjuk widget', async () => {
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'kunci-lingkungan';
+    const script = await renderChallenge({});
+    expect(script).not.toBe(null);
+  });
+
   it('menampilkan pemberitahuan muat ulang saat skrip challenge ditolak', async () => {
-    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'kunci-uji';
-    const script = await renderChallenge(vi.fn());
+    const script = await renderChallenge({ sitekey: WIDGET });
     script.dispatchEvent(new Event('error'));
     expect(await screen.findByRole('alert')).toBeDefined();
     expect(screen.getByRole('button', { name: /muat ulang verifikasi/i })).toBeDefined();

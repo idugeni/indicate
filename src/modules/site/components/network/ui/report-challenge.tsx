@@ -21,17 +21,24 @@ function failureNotice(retry: () => void) {
 /**
  * Turnstile challenge for a tenant report form, themed like the surrounding fields.
  *
- * @param onToken - Receives the one-time token, or null when the widget expires or errors.
+ * @param props.onToken - Receives the one-time token, or null when the widget expires or errors.
+ * @param props.sitekey - Site key the tenant's domain record names, or null when the tenant has no widget yet.
  * @returns Nothing when no site key is configured, the widget, or a tenant-toned notice with a retry control when the script cannot load.
  * @remarks The submit button is deliberately not blocked while the challenge is pending: Cloudflare
  * issues a token in a fraction of a second on a healthy connection, so gating the button would turn a
  * blocked challenge script into a form nobody can submit. The server re-verifies the token on every
  * request, which is where an unverified submission is refused.
  */
-export function ReportChallengeField({ onToken }: { readonly onToken: (token: string | null) => void }) {
+export function ReportChallengeField({
+  onToken,
+  sitekey,
+}: {
+  readonly onToken: (token: string | null) => void;
+  readonly sitekey: string | null;
+}) {
   return (
     <div className="flex justify-center">
-      <TurnstileChallenge onToken={onToken} fallback={failureNotice} />
+      <TurnstileChallenge onToken={onToken} sitekey={sitekey} fallback={failureNotice} />
     </div>
   );
 }

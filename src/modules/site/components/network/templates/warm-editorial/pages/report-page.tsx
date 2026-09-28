@@ -6,12 +6,13 @@ import { WarmEditorialReportForm } from '@/modules/site/components/network/templ
 export interface WarmEditorialReportProps {
   readonly site: NetworkSiteData;
   readonly articleSlug: string | null;
+  readonly challengeSitekey: string | null;
 }
 
 /**
  * Formulir laporan pelanggaran tenant; artikel terkait opsional via query.
  */
-export function WarmEditorialReport({ site, articleSlug }: WarmEditorialReportProps) {
+export function WarmEditorialReport({ site, articleSlug, challengeSitekey }: WarmEditorialReportProps) {
   return (
     <WarmEditorialShell site={site} path="/report">
       <WarmEditorialContainer className="max-w-3xl py-8 md:py-12">
@@ -25,7 +26,7 @@ export function WarmEditorialReport({ site, articleSlug }: WarmEditorialReportPr
           Laporan pelanggaran ditinjau redaksi paling lambat 1x24 jam. Konten yang terbukti melanggar hukum ditarik dan dicatat penanganannya.
         </p>
         <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-7">
-          <WarmEditorialReportForm articleSlug={articleSlug} />
+          <WarmEditorialReportForm articleSlug={articleSlug} challengeSitekey={challengeSitekey} />
         </div>
       </WarmEditorialContainer>
     </WarmEditorialShell>

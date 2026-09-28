@@ -4,7 +4,7 @@ import { useId, useState, type FormEvent } from 'react';
 
 import { Spinner } from '@/components/ui/spinner';
 import { useTurnstileChallenge } from '@/components/turnstile-challenge';
-import { TURNSTILE_TOKEN_HEADER } from '@/core/security/turnstile-contract';
+import { TURNSTILE_SITEKEY_HEADER, TURNSTILE_TOKEN_HEADER } from '@/core/security/turnstile-contract';
 import { TemplateButton, TemplateInput, TemplateLabel, TemplateMenuSelect, TemplateNotice, TemplateTextarea } from '@/modules/site/components/network/ui/field';
 import { ReportChallengeField } from '@/modules/site/components/network/ui/report-challenge';
 
@@ -17,7 +17,7 @@ const CATEGORIES = [
   { value: 'other', label: 'Lainnya' },
 ] as const;
 
-export function BlackLimeReportForm({ articleSlug }: { readonly articleSlug: string | null }) {
+export function BlackLimeReportForm({ articleSlug, challengeSitekey }: { readonly articleSlug: string | null; readonly challengeSitekey: string | null }) {
   const contactId = useId();
   const categoryId = useId();
   const detailsId = useId();
@@ -28,7 +28,7 @@ export function BlackLimeReportForm({ articleSlug }: { readonly articleSlug: str
   const [error, setError] = useState<string | null>(null);
   const [ticket, setTicket] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  const { captchaToken, challengeNonce, resetChallenge, onChallengeToken } = useTurnstileChallenge();
+  const { captchaToken, challengeNonce, resetChallenge, onChallengeToken } = useTurnstileChallenge(challengeSitekey);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -44,7 +44,9 @@ export function BlackLimeReportForm({ articleSlug }: { readonly articleSlug: str
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(captchaToken === null ? {} : { [TURNSTILE_TOKEN_HEADER]: captchaToken }),
+          ...(captchaToken === null
+            ? {}
+            : { [TURNSTILE_SITEKEY_HEADER]: challengeSitekey ?? '', [TURNSTILE_TOKEN_HEADER]: captchaToken }),
         },
         body: JSON.stringify({ articleSlug, contact: contact.trim(), category, details: details.trim(), articleUrl: null }),
       });
@@ -110,7 +112,7 @@ export function BlackLimeReportForm({ articleSlug }: { readonly articleSlug: str
           className="mt-1.5 block w-full appearance-none rounded-xl px-3.5 py-2.5 font-sans text-base focus:outline-none sm:text-sm"
         />
       </div>
-      <ReportChallengeField key={challengeNonce} onToken={onChallengeToken} />
+      <ReportChallengeField key={challengeNonce} onToken={onChallengeToken} sitekey={challengeSitekey} />
       {error ? (
         <TemplateNotice tone="error" title="Gagal mengirim laporan">{error}</TemplateNotice>
       ) : null}

@@ -150,6 +150,11 @@ export const domains = pgTable('domains', {
   normalizedHostname: text('normalized_hostname').notNull(),
   status: recordStatus('status').default('inactive').notNull(),
   cloudflareZoneId: text('cloudflare_zone_id'),
+  /**
+   * Turnstile widget authorizing this apex's report form; null runs the form
+   * unchallenged. An apex entry also authorizes its regional and city subdomains.
+   */
+  reportChallengeSitekey: text('report_challenge_sitekey'),
   /** `regional` domains must keep at least one region portal and one city portal (DB-enforced). */
   siteTopology: domainSiteTopology('site_topology').default('national').notNull(),
   routingVersion: integer('routing_version').default(1).notNull(),

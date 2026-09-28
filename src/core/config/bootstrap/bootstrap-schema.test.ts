@@ -92,6 +92,36 @@ describe('validateBootstrapConfig gagal', () => {
     expect(result.config.credentials.turnstileSecretKey?.reveal()).toBe('secret-turnstile-uji');
   });
 
+  it('menerima peta secret widget laporan dan menolaknya saat rusak', () => {
+    const sitekey = '0x4AAAAAAFHN_lpLqmLytOD5';
+    const other = '0x4AAAAAAFHOAAQPpr6CqLFW';
+    const valid = validateBootstrapConfig({
+      ...validEnv(),
+      TURNSTILE_REPORT_SECRETS: JSON.stringify({
+        [sitekey]: 'secret-widget-satu-yang-panjang',
+        [other]: 'secret-widget-dua-yang-panjang',
+      }),
+    });
+    expect(valid.success).toBe(true);
+    if (!valid.success) return;
+    expect(valid.config.credentials.turnstileReportSecrets?.get(sitekey)?.reveal()).toBe('secret-widget-satu-yang-panjang');
+
+    for (const [label, value, category] of [
+      ['bukan json', 'bukan-json', 'turnstile_secrets_not_json'],
+      ['bukan objek', '["secret-yang-panjang"]', 'turnstile_secrets_not_object'],
+      ['kosong', '{}', 'turnstile_secrets_empty'],
+      ['kunci bukan sitekey', JSON.stringify({ 'bukan-sitekey': 'secret-widget-yang-panjang' }), 'turnstile_sitekey_malformed'],
+      ['nilai terlalu pendek', JSON.stringify({ [sitekey]: 'pendek' }), 'secret_too_short'],
+      ['nilai placeholder', JSON.stringify({ [sitekey]: 'replace-with-turnstile-secret' }), 'turnstile_secret_placeholder'],
+    ] as const) {
+      const result = validateBootstrapConfig({ ...validEnv(), TURNSTILE_REPORT_SECRETS: value });
+      expect(result.success, label).toBe(false);
+      if (!result.success) {
+        expect(result.issues.some((issue) => issue.category === category), label).toBe(true);
+      }
+    }
+  });
+
   it('menolak pasangan turnstile yang timpang agar intake tidak tanpa verifikasi', () => {
     const secretOnly = validateBootstrapConfig({ ...validEnv(), TURNSTILE_SECRET_KEY: 'secret-turnstile-uji' });
     expect(secretOnly.success).toBe(false);
