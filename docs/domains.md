@@ -279,12 +279,23 @@ terjangkau dari halaman kategori mana pun, dan `articleSection` pada JSON-LD
 NewsArticle, `section` OpenGraph, serta `<category>` RSS semuanya dilewati.
 Migration `20260926200000_default_article_category.sql` men-seed kategori
 `Umum` (slug `umum`) untuk 60 organisasi yang punya publisher; `Drill Expire`
-tidak punya publisher dan tidak mendapat kategori.
+tidak punya publisher dan tidak mendapat kategori. Label itu kemudian diganti
+menjadi `Berita` (slug `berita`) oleh migration
+`20260928070000_default_article_category_berita.sql` (ledger 216): `Umum` dibaca
+"umum sekaligus miscellaneous", jadi editor melewatinya, dan karena komposer
+memilihnya otomatis, setiap artikel yang tidak dikategorikan secara sengaja
+berakhir di keranjang yang tidak pernah dibuka. Baris di-*rename* di tempat,
+bukan dihapus lalu di-seed ulang, sehingga `categories.id` tidak pernah
+berpindah dan seluruh `articles.category_id` serta `article_categories` tidak
+tersentuh. `Pengelola Platform` sudah punya kategori `Berita` aktif berisi 30
+artikel, jadi `categories_organization_slug_unique` menggagalkan rename buta di
+sana; baris seed miliknya diarsipkan dan `Berita` yang sudah ada dipakai sebagai
+default.
 `TenantBusinessService.resolveArticleCategoryIds` mengisi slug itu sebelum
 write, jadi artikel tidak lagi bisa tersimpan tanpa kategori walau pemanggil
-API kosongkan field, dan komposer menampilkan `Umum` sebagai pilihan efektif
-`(1 dipilih · Umum)` tanpa mencentangnya — memilih kategori lain tidak
-menambah tag `Umum`. Fallback kedua adalah kategori aktif pertama
+API kosongkan field, dan komposer menampilkan `Berita` sebagai pilihan efektif
+`(1 dipilih · Berita)` tanpa mencentangnya — memilih kategori lain tidak
+menambah tag `Berita`. Fallback kedua adalah kategori aktif pertama
 urutan nama, dan tenant tanpa kategori apa pun ditolak `INVALID_INPUT` alih-alih
 menyimpan null.
 

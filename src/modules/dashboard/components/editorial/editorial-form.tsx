@@ -243,10 +243,12 @@ export function ArticleCreateForm({
     const seen = new Set(activeCategories.map((category) => category.id));
     return [...activeCategories, ...extraCategories.filter((category) => !seen.has(category.id))];
   }, [activeCategories, extraCategories]);
-  const defaultCategoryId = useMemo(
-    () => allCategories.find((category) => category.slug === DEFAULT_CATEGORY_SLUG)?.id ?? allCategories[0]?.id ?? null,
+  const defaultCategory = useMemo(
+    () => allCategories.find((category) => category.slug === DEFAULT_CATEGORY_SLUG) ?? allCategories[0] ?? null,
     [allCategories],
   );
+  const defaultCategoryId = defaultCategory?.id ?? null;
+  const defaultCategoryName = defaultCategory?.name ?? null;
   const authorOptions = useMemo(
     () => (model?.authors ?? []).filter((a) => a.status === undefined || a.status === 'active').map((a) => ({ value: a.id, label: a.displayName })),
     [model?.authors],
@@ -790,10 +792,10 @@ export function ArticleCreateForm({
 
               <div className="space-y-1.5">
                 <Label htmlFor={categoryInputId} className="font-mono text-xs text-paper-dim">
-                  Kategori ({effectiveCategoryIds.length} dipilih{effectiveCategoryIds.length === categoryIds.length ? '' : ' · Umum'})
+                  Kategori ({effectiveCategoryIds.length} dipilih{effectiveCategoryIds.length === categoryIds.length || defaultCategoryName === null ? '' : ` · ${defaultCategoryName}`})
                 </Label>
                 <p className="m-0 font-mono text-[11px] text-paper-faint">
-                  Ketik untuk mencari; bila tidak ada, tombol tambah muncul di dalam daftar. Boleh lebih dari satu; yang pertama jadi kategori utama. Wajib — tanpa pilihan, artikel memakai “Umum”.
+                  Ketik untuk mencari; bila tidak ada, tombol tambah muncul di dalam daftar. Boleh lebih dari satu; yang pertama jadi kategori utama. Wajib — tanpa pilihan, artikel memakai{defaultCategoryName === null ? ' kategori bawaan tenant' : ` “${defaultCategoryName}”`}.
                 </p>
                 <CategoryCombobox
                   id={categoryInputId}

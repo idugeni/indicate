@@ -1506,6 +1506,13 @@
       "when": 1790597000000,
       "tag": "20260928060000_article_updated_at_restore",
       "breakpoints": true
+    },
+    {
+      "idx": 215,
+      "version": "7",
+      "when": 1790598808000,
+      "tag": "20260928070000_default_article_category_berita",
+      "breakpoints": true
     }
   ]
 }

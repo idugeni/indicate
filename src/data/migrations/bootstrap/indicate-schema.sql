@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (215 migrations):
+-- Reviewed sources, in journal order (216 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -229,6 +229,7 @@
 --   213  20260928040000_publisher_dedupe_and_article_dates  ledger sha256:003ab0533d4f999eb718c1a1da1573c04d4624bb1becea3aec837ec433e0a314
 --   214  20260928050000_publisher_provenance_audit  ledger sha256:c89571253d69d135e056fb4e0e2ac682372015ebea421d5b682e9edf60e3ed9b
 --   215  20260928060000_article_updated_at_restore  ledger sha256:d644af1766e59173b94d44c315767d135f6e21ad339f3ff96b86c9093df9ccbe
+--   216  20260928070000_default_article_category_berita  ledger sha256:5fed13cb8f761e79e353417ff3a915d36d36ab6a7be014e2294efda161f12d4d
 
 BEGIN;
 
@@ -18146,4 +18147,111 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (215, 'article_updated_at_restore', 'sha256:3667c5652edeadffc32296b693a5a0d28eeb87a0ab346a97c7fb94e2cca01fef');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('d644af1766e59173b94d44c315767d135f6e21ad339f3ff96b86c9093df9ccbe', 1790597000000);
+
+-- ----------------------------------------------------------------------
+-- 20260928070000_default_article_category_berita
+-- ----------------------------------------------------------------------
+-- Relabel the default article category from `Umum` (slug `umum`) to `Berita`
+-- (slug `berita`).
+--
+-- Ledger 206 seeded `Umum` into every organization that owns a publisher so an
+-- article could never be filed under no category. The label was the wrong call
+-- for an Indonesian newsroom: `Umum` reads as "general" and "miscellaneous" in
+-- one word, so an editor skims past it, and the composer pre-selects it, which
+-- means every story nobody deliberately filed landed in a bucket nobody
+-- browses. `Berita` is the desk an editor expects an unfiled story to sit in.
+--
+-- The row is renamed in place instead of being deleted and re-seeded so the
+-- category id never moves; that leaves every `articles.category_id` and
+-- `article_categories` row untouched. All sixty seeded rows were still
+-- unreferenced when this was written, but renaming in place makes that not
+-- matter.
+--
+-- One organization (`Pengelola Platform`) already owned an active `Berita`
+-- category carrying 30 articles of its own. `categories_organization_slug_unique`
+-- makes a blind rename collide there, so that organization's seeded row is
+-- archived instead: its existing `Berita` already is the label the default
+-- wants, and the duplicate is retired rather than renamed onto the same slug.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+DO $$
+DECLARE
+  referenced integer;
+BEGIN
+  SELECT count(*) INTO referenced
+    FROM public.categories AS seeded
+   WHERE seeded.slug = 'umum'
+     AND (EXISTS (SELECT 1 FROM public.articles WHERE articles.category_id = seeded.id)
+       OR EXISTS (SELECT 1 FROM public.article_categories WHERE article_categories.category_id = seeded.id));
+
+  IF referenced <> 0 THEN
+    RAISE EXCEPTION 'default_category_berita_blocked: % umum categories are still referenced by articles', referenced;
+  END IF;
+END;
+$$;
+UPDATE public.categories AS seeded
+   SET status = 'archived'::public.record_status,
+       version = seeded.version + 1,
+       updated_at = now()
+  FROM public.categories AS keeper
+ WHERE keeper.organization_id = seeded.organization_id
+   AND keeper.slug = 'berita'
+   AND keeper.status = 'active'::public.record_status
+   AND seeded.slug = 'umum'
+   AND seeded.status = 'active'::public.record_status
+   AND seeded.id <> keeper.id;
+UPDATE public.categories
+   SET name = 'Berita',
+       slug = 'berita',
+       version = version + 1,
+       updated_at = now()
+ WHERE slug = 'umum'
+   AND status = 'active'::public.record_status
+   AND NOT EXISTS (
+     SELECT 1 FROM public.categories AS keeper
+      WHERE keeper.organization_id = public.categories.organization_id
+        AND keeper.slug = 'berita'
+   );
+DO $$
+DECLARE
+  expected integer;
+  resolved integer;
+  missing integer;
+  leftover integer;
+BEGIN
+  SELECT count(*) INTO expected
+    FROM (SELECT DISTINCT organization_id FROM public.publishers) AS publisher_org;
+
+  SELECT count(*) INTO resolved
+    FROM public.categories
+   WHERE slug = 'berita'
+     AND status = 'active'
+     AND EXISTS (SELECT 1 FROM public.publishers AS p WHERE p.organization_id = categories.organization_id);
+
+  SELECT count(*) INTO missing
+    FROM (SELECT DISTINCT organization_id FROM public.publishers) AS publisher_org
+   WHERE NOT EXISTS (
+     SELECT 1 FROM public.categories AS c
+      WHERE c.organization_id = publisher_org.organization_id
+        AND c.slug = 'berita'
+        AND c.status = 'active'
+   );
+
+  SELECT count(*) INTO leftover
+    FROM public.categories
+   WHERE slug = 'umum'
+     AND status = 'active';
+
+  IF missing <> 0 OR leftover <> 0 THEN
+    RAISE EXCEPTION 'default_category_berita_incomplete: % publishing organizations without an active berita category, % active umum rows left', missing, leftover;
+  END IF;
+
+  RAISE NOTICE 'default_category_berita_done: % publishing organizations, % berita categories', expected, resolved;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (216, 'default_article_category_berita', 'sha256:37cff4dd0fa5725d116fc7c4a9f156a5bc812c61bf20ee0dd87d15ea24762c31');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5fed13cb8f761e79e353417ff3a915d36d36ab6a7be014e2294efda161f12d4d', 1790598808000);
 COMMIT;

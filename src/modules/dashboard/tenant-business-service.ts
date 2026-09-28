@@ -1081,7 +1081,7 @@ export class TenantBusinessService {
    * A categoryless article is unreachable: the category listings, the nav, and
    * the author profile all filter on a non-null slug, and the NewsArticle
    * `articleSection`, the OpenGraph `section`, and the RSS `<category>` element
-   * are omitted outright. So the write path fills the seeded `Umum` category
+   * are omitted outright. So the write path fills the seeded `Berita` category
    * instead of storing null, which also covers API callers that omit the field.
    *
    * @param state - Tenant state holding the organization categories.

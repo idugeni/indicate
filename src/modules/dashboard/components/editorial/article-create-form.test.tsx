@@ -48,7 +48,7 @@ const DATA = {
     { id: 'p-2', name: 'Penerbit Arsip', status: 'archived' },
   ],
   categories: [
-    { id: 'c-0', name: 'Umum', slug: 'umum', status: 'active' },
+    { id: 'c-0', name: 'Berita', slug: 'berita', status: 'active' },
     { id: 'c-1', name: 'Politik', slug: 'politik', status: 'active' },
     { id: 'c-2', name: 'Ekonomi', slug: 'ekonomi', status: 'active' },
     { id: 'c-3', name: 'Arsip Lama', slug: 'arsip-lama', status: 'archived' },
@@ -224,9 +224,9 @@ describe('Formulir tulis artikel', () => {
     );
   });
 
-  it('mengirim kategori umum saat tidak ada yang dipilih', async () => {
+  it('mengirim kategori berita saat tidak ada yang dipilih', async () => {
     const { submit, container } = setup({});
-    expect(screen.getByLabelText(/Kategori \(1 dipilih · Umum\)/)).toBeDefined();
+    expect(screen.getByLabelText(/Kategori \(1 dipilih · Berita\)/)).toBeDefined();
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
     fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
     fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });

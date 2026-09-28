@@ -32,7 +32,7 @@ function harness(collections: Record<string, readonly unknown[]> = {}) {
   const state: Record<string, unknown> = { organizationId: 'org-1' };
   for (const key of COLLECTIONS) state[key] = [...(collections[key] ?? [])];
   if (collections.categories === undefined) {
-    state.categories = [{ id: ID4, name: 'Umum', slug: 'umum', status: 'active' }];
+    state.categories = [{ id: ID4, name: 'Berita', slug: 'berita', status: 'active' }];
   }
   const appendAudit = vi.fn();
   const repository = {
@@ -177,12 +177,12 @@ describe('TenantBusinessService affiliations memberships articles', () => {
     expect((state.memberships as { userId: string }[]).some((membership) => membership.userId === ID)).toBe(true);
   });
 
-  it('mengisi kategori umum saat artikel dibuat tanpa kategori', async () => {
+  it('mengisi kategori berita saat artikel dibuat tanpa kategori', async () => {
     const { service } = harness({
       regions: [{ id: ID2, status: 'active' }],
       categories: [
         { id: ID3, name: 'Politik', slug: 'politik', status: 'active' },
-        { id: ID4, name: 'Umum', slug: 'umum', status: 'active' },
+        { id: ID4, name: 'Berita', slug: 'berita', status: 'active' },
       ],
     });
     const result = await service.createArticle(actor, {
@@ -234,7 +234,7 @@ describe('TenantBusinessService affiliations memberships articles', () => {
 
   it('memberi kabar grup saat artikel dibuat', async () => {
     const notifyArticleCreated = vi.fn(async () => undefined);
-    const state: Record<string, unknown> = { organizationId: 'org-1', regions: [{ id: ID2, status: 'active' }], categories: [{ id: ID4, name: 'Umum', slug: 'umum', status: 'active' }], articles: [] as unknown[] };
+    const state: Record<string, unknown> = { organizationId: 'org-1', regions: [{ id: ID2, status: 'active' }], categories: [{ id: ID4, name: 'Berita', slug: 'berita', status: 'active' }], articles: [] as unknown[] };
     for (const key of COLLECTIONS) state[key] ??= [];
     const repository = {
       execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {

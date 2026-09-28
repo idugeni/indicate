@@ -148,9 +148,10 @@ export interface CategoryRecord extends VersionedRecord {
  * and the NewsArticle `articleSection` are driven by a non-null
  * `categorySlug`/`categoryName`, so a categoryless article disappears from the
  * nav, the author profile, and the structured data at once. Seeded per
- * organization by `20260926200000_default_article_category.sql`.
+ * organization by `20260926200000_default_article_category.sql`, then relabelled
+ * from `umum` to `berita` by `20260928070000_default_article_category_berita.sql`.
  */
-export const DEFAULT_CATEGORY_SLUG = 'umum';
+export const DEFAULT_CATEGORY_SLUG = 'berita';
 
 export interface AuthorRecord extends VersionedRecord {
   readonly displayName: string;
