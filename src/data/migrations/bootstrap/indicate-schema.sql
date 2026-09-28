@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (212 migrations):
+-- Reviewed sources, in journal order (215 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -226,6 +226,9 @@
 --   210  20260927200000_social_warm_cooldown  ledger sha256:f839abb021c7cde156fe1473efe70961be54d4486ce98d23be3d778efc965d7b
 --   211  20260928020000_purge_unreferenced_media_placeholders  ledger sha256:811e79a23a53f2d9aae2e19e827052d11cd1b966c10a4bcfc2c8fc4c8342aea7
 --   212  20260928030000_media_object_key_reconciliation_reader  ledger sha256:b6cb21b47d9490fb11ce811f48cdddba7e9f0fa46b2f94d5fc6beb76a08ca339
+--   213  20260928040000_publisher_dedupe_and_article_dates  ledger sha256:003ab0533d4f999eb718c1a1da1573c04d4624bb1becea3aec837ec433e0a314
+--   214  20260928050000_publisher_provenance_audit  ledger sha256:c89571253d69d135e056fb4e0e2ac682372015ebea421d5b682e9edf60e3ed9b
+--   215  20260928060000_article_updated_at_restore  ledger sha256:d644af1766e59173b94d44c315767d135f6e21ad339f3ff96b86c9093df9ccbe
 
 BEGIN;
 
@@ -17859,4 +17862,288 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (212, 'media_object_key_reconciliation_reader', 'sha256:4e866b10ad9a9cdabc60ec5ae9bae0832c8fae0367f9808cdcec997262175ef6');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b6cb21b47d9490fb11ce811f48cdddba7e9f0fa46b2f94d5fc6beb76a08ca339', 1790564400000);
+
+-- ----------------------------------------------------------------------
+-- 20260928040000_publisher_dedupe_and_article_dates
+-- ----------------------------------------------------------------------
+-- Drop the orphaned publisher batch, carry its city metadata forward, and close
+-- the two gaps that let the duplicate provisioning pass land unnoticed.
+--
+-- The 59 unit publishers were written twice. The 2026-09-08 pass wrote one
+-- publisher per unit inside that unit's own tenant organization; the 2026-09-13
+-- pass wrote the same 59 names again inside the platform organization and is the
+-- one the 7,906 official_affiliations rows point at. The first pass therefore
+-- holds the only copy of `contacts.city` and has no referrer at all: no article,
+-- no affiliation, no audit row, and none of its 59 organizations owns a site.
+-- The second pass lost `city` when the R2 logo backfill rewrote `contacts`, so
+-- the deletion merges that single field forward rather than dropping it with the
+-- row.
+--
+-- `logoUrl` is deliberately not merged. The first pass points at per-unit logos
+-- that are all archived, while the second pass points at the active shared
+-- organization asset, so copying the field would repoint 59 verified publishers
+-- at media that no longer serves.
+--
+-- The unique constraint could not have prevented the original incident, because
+-- the two passes landed in different organizations. It closes the same hole
+-- within one organization, which is where a re-run of the centralized pass would
+-- collide.
+--
+-- `articles.published_at` was left null by the import even though every article
+-- has published assignments carrying the editorial date. Delivery renders the
+-- assignment timestamp, so the column does not change a rendered page today, but
+-- a null editorial date is not a state any sort, export, or reader of the table
+-- can survive.
+--
+-- The guard refuses to run unless the shape is exactly the one audited: 118 unit
+-- rows over 59 names, and no referrer of any kind on the older row of each name.
+
+DO $migration$
+DECLARE
+  unit_rows integer;
+  unit_names integer;
+  orphan_referrers integer;
+BEGIN
+  WITH ranked AS (
+    SELECT
+      id,
+      name,
+      row_number() OVER (PARTITION BY name ORDER BY created_at, id) AS rank_in_name
+    FROM public.publishers
+    WHERE type = 'correctional_institution'
+  )
+  SELECT
+    count(*),
+    count(DISTINCT name),
+    count(*) FILTER (
+      WHERE rank_in_name = 1
+        AND (
+          EXISTS (SELECT 1 FROM public.articles AS article WHERE article.publisher_id = ranked.id)
+          OR EXISTS (SELECT 1 FROM public.official_affiliations AS affiliation WHERE affiliation.publisher_id = ranked.id)
+          OR EXISTS (
+            SELECT 1
+            FROM public.audit_logs AS log
+            WHERE log.target_id = ranked.id::text
+          )
+        )
+    )
+  INTO unit_rows, unit_names, orphan_referrers
+  FROM ranked;
+
+  IF unit_rows <> 118 OR unit_names <> 59 OR orphan_referrers <> 0 THEN
+    RAISE EXCEPTION
+      'publisher_dedupe_unexpected_shape: rows=% names=% orphan_referrers=%',
+      unit_rows, unit_names, orphan_referrers;
+  END IF;
+
+  WITH ranked AS (
+    SELECT
+      id,
+      name,
+      contacts,
+      row_number() OVER (PARTITION BY name ORDER BY created_at, id) AS rank_in_name
+    FROM public.publishers
+    WHERE type = 'correctional_institution'
+  )
+  UPDATE public.publishers AS live
+  SET contacts = live.contacts || jsonb_build_object('city', orphan.contacts ->> 'city'),
+      updated_at = now()
+  FROM ranked AS orphan
+  WHERE orphan.rank_in_name = 1
+    AND orphan.contacts ->> 'city' IS NOT NULL
+    AND live.type = 'correctional_institution'
+    AND live.name = orphan.name
+    AND NOT (live.contacts ? 'city');
+
+  WITH ranked AS (
+    SELECT
+      id,
+      row_number() OVER (PARTITION BY name ORDER BY created_at, id) AS rank_in_name
+    FROM public.publishers
+    WHERE type = 'correctional_institution'
+  )
+  DELETE FROM public.publishers AS publisher
+  USING ranked
+  WHERE ranked.id = publisher.id
+    AND ranked.rank_in_name = 1;
+END
+$migration$;
+
+ALTER TABLE public.publishers
+  ADD CONSTRAINT publishers_org_name_unique UNIQUE (organization_id, name);
+
+UPDATE public.articles AS article
+SET published_at = assignment.published_at
+FROM (
+  SELECT article_id, min(published_at) AS published_at
+  FROM public.article_sites
+  WHERE state = 'published'
+    AND published_at IS NOT NULL
+  GROUP BY article_id
+) AS assignment
+WHERE assignment.article_id = article.id
+  AND article.published_at IS NULL;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (213, 'publisher_dedupe_and_article_dates', 'sha256:3bb7328c1f3bb1c167b9335f37869f8de735cd997aa673060429610a97dc5332');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('003ab0533d4f999eb718c1a1da1573c04d4624bb1becea3aec837ec433e0a314', 1790593200000);
+
+-- ----------------------------------------------------------------------
+-- 20260928050000_publisher_provenance_audit
+-- ----------------------------------------------------------------------
+-- Record the provenance of the 60 publishers that were provisioned outside the
+-- application layer, so the audit trail stops contradicting the data.
+--
+-- `hygiene:publishers` flags a verified, active publisher with no audit row as
+-- something the application layer would never produce, and it was right: the 59
+-- unit publishers and the platform publisher were written by a bulk load, not by
+-- the dashboard. The rows claim `verification_status = 'verified'`, which the
+-- application only ever sets after a membership-backed verification, so the
+-- verified state currently has no evidence behind it.
+--
+-- This records what actually happened rather than inventing an approval. The
+-- actor is `system`, the entry point is `worker`, and the action names the real
+-- mechanism, so the row documents an out-of-band load instead of fabricating a
+-- human decision that never occurred. `after` carries the batch the row came
+-- from so the original timestamp survives in the record even though the chain
+-- trigger overwrites `occurred_at` with the moment of writing.
+--
+-- The insert is additive and idempotent: a publisher that already has a trail is
+-- skipped, so re-running the migration cannot duplicate history. The table is
+-- append-only, and the chain trigger signs each row as it lands.
+--
+-- This does not make the load legitimate. It makes the gap visible and dated,
+-- which is the part a reader of the audit log can act on.
+
+DO $migration$
+DECLARE
+  untrailed integer;
+  to_record integer;
+BEGIN
+  SELECT count(*) INTO untrailed
+  FROM public.publishers AS publisher
+  WHERE publisher.status = 'active'
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.audit_logs AS log
+      WHERE log.target_type = 'publisher'
+        AND log.target_id = publisher.id::text
+    );
+
+  SELECT count(*) INTO to_record
+  FROM public.publishers;
+
+  IF untrailed <> to_record THEN
+    RAISE EXCEPTION
+      'publisher_provenance_partial: % of % active publishers still lack a trail',
+      untrailed, to_record;
+  END IF;
+
+  INSERT INTO public.audit_logs (
+    organization_id,
+    id,
+    actor_type,
+    actor_id,
+    entry_point,
+    action,
+    target_type,
+    target_id,
+    outcome,
+    changed_fields,
+    before,
+    after,
+    request_id
+  )
+  SELECT
+    publisher.organization_id,
+    gen_random_uuid(),
+    'system',
+    'db:publisher-provenance',
+    'worker',
+    'publisher.provisioned_out_of_band',
+    'publisher',
+    publisher.id::text,
+    'succeeded',
+    ARRAY['status', 'verification_status'],
+    NULL,
+    jsonb_build_object(
+      'name', publisher.name,
+      'type', publisher.type,
+      'verification_status', publisher.verification_status,
+      'provenance', 'bulk-load-outside-application',
+      'evidence_reference', publisher.evidence_reference,
+      'provisioned_at', publisher.created_at
+    ),
+    'db:publisher-provenance'
+  FROM public.publishers AS publisher
+  WHERE publisher.status = 'active'
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.audit_logs AS log
+      WHERE log.target_type = 'publisher'
+        AND log.target_id = publisher.id::text
+    );
+END
+$migration$;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (214, 'publisher_provenance_audit', 'sha256:d77e774f15e1aa349f9c82be2e0c9fffbe62039d243b51bebb3a083c1b9aeff3');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c89571253d69d135e056fb4e0e2ac682372015ebea421d5b682e9edf60e3ed9b', 1790596800000);
+
+-- ----------------------------------------------------------------------
+-- 20260928060000_article_updated_at_restore
+-- ----------------------------------------------------------------------
+-- Undo the editorial timestamp that the publisher-dedupe migration stamped onto
+-- all 30 articles.
+--
+-- That migration backfilled `articles.published_at` from the published
+-- assignments. The correction was right, but `articles_touch_updated_at` fires on
+-- any row change, so the backfill also rewrote `articles.updated_at` to the moment
+-- it ran. Delivery renders `updatedAt` as the "Diperbarui" line, so every article
+-- page started claiming it had been revised today even though nothing had been
+-- edited. The stored value before the backfill was a single bulk timestamp from
+-- the 2026-09-27 import, so the per-row `created_at` is the closest truthful
+-- record of when each article was last touched.
+--
+-- The trigger has to stand down for the write, because it would otherwise stamp
+-- the row again. It is disabled and re-enabled inside the same transaction, so a
+-- failure anywhere rolls the whole migration back with the trigger still armed.
+--
+-- The guard matches the exact timestamp the backfill produced. A row edited since
+-- then carries a different value and is left alone, so this can never overwrite a
+-- real editorial change that happened after the backfill.
+
+DO $migration$
+DECLARE
+  stamped integer;
+  total integer;
+BEGIN
+  SELECT count(*) INTO stamped
+  FROM public.articles
+  WHERE updated_at = '2026-09-28 11:21:12.472508+00'::timestamptz;
+
+  SELECT count(*) INTO total FROM public.articles;
+
+  IF stamped <> total THEN
+    RAISE EXCEPTION
+      'article_updated_at_restore_unexpected_shape: stamped=% total=%',
+      stamped, total;
+  END IF;
+
+  ALTER TABLE public.articles DISABLE TRIGGER articles_touch_updated_at;
+
+  UPDATE public.articles
+  SET updated_at = created_at
+  WHERE updated_at = '2026-09-28 11:21:12.472508+00'::timestamptz;
+
+  ALTER TABLE public.articles ENABLE TRIGGER articles_touch_updated_at;
+END
+$migration$;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (215, 'article_updated_at_restore', 'sha256:3667c5652edeadffc32296b693a5a0d28eeb87a0ab346a97c7fb94e2cca01fef');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('d644af1766e59173b94d44c315767d135f6e21ad339f3ff96b86c9093df9ccbe', 1790597000000);
 COMMIT;
