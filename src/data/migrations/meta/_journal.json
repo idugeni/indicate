@@ -1471,6 +1471,13 @@
       "when": 1790503200000,
       "tag": "20260927200000_social_warm_cooldown",
       "breakpoints": true
+    },
+    {
+      "idx": 210,
+      "version": "7",
+      "when": 1790560800000,
+      "tag": "20260928020000_purge_unreferenced_media_placeholders",
+      "breakpoints": true
     }
   ]
 }
