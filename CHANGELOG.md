@@ -15,11 +15,6 @@ npm-facing.
 
 ### Added
 
-- Facebook card pre-warm sweep: an hourly cron hands one bounded batch of tenant
-  homepages to Meta's scrape endpoint, and a Redis cursor carries the fleet
-  position between runs. Apex portals are swept before region and city hosts. A
-  Meta app-level rejection halts the batch and leaves the cursor on the
-  unattempted host. See `docs/architecture.md` §12.6.
 - Crawler access to the tenant media surface: `robots.txt` now carves
   `/api/network/media/` out of the `/api/` catch-all, because it is the only
   crawler-facing image surface. A blocked prefix made `facebookexternalhit` refuse
@@ -157,6 +152,16 @@ npm-facing.
 
 ### Changed
 
+- The Facebook/Meta integration is gone (v217). Removed the Graph API pre-scrape
+  (hourly fleet sweep plus the one-shot per-article ledger), the `fb:app_id`
+  metadata tag, the `FB_APP_TOKEN` credential, and the `social` runtime config
+  slice, with the matching cron entry, modules, repositories, tests, and
+  `.env.example` block. The Open Graph surface is untouched and stays
+  platform-independent: `generateMetadata()`, `og:image`, Twitter cards, the
+  robots carve-out for `/api/network/media/`, and R2 delivery on the tenant host
+  are what a crawler actually reads, and none of them authenticate to a third
+  party. Dropping `FB_APP_TOKEN` from the environment is now safe — the schema
+  no longer recognizes it.
 - Vercel Web Analytics is gone from the root layout. It carried no `track()`
   call, no custom event, and no property, so it fed only the raw traffic tab in
   the Vercel dashboard while the product's own view analytics ran entirely

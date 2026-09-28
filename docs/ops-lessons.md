@@ -135,8 +135,8 @@ melaporkannya sebagai gambar rusak.
 
 Verifikasi yang membedakan: unduh byte dan decode (bukan hanya cek magic
 byte), lalu `curl` robots.txt dan cari prefiks URL aset. Warm-up internal
-(`social-warm.ts`) memakai fetch biasa sehingga selalu hijau — ia tidak
-mempertahankan robots.txt, jadi ia tidak bisa menangkap kelas bug ini.
+memakai fetch biasa sehingga selalu hijau — ia tidak memperlakukan robots.txt,
+jadi ia tidak bisa menangkap kelas bug ini.
 
 Aturan: setiap URL yang dialuskan ke crawler (og:image, cover artikel, galeri,
 sitemap `image:`) harus lolos robots. Dua jalan, pilih sesuai sifatnya:
@@ -147,105 +147,35 @@ sitemap `image:`) harus lolos robots. Dua jalan, pilih sesuai sifatnya:
 - satu aset identik per site (favicon, logo) → pindah ke path stabil di luar
   `/api/` seperti `brand-icons.ts` (lihat pelajaran 7).
 
-Setelah robots berubah, bersihkan cache edge `robots.txt` (`s-maxage=3600`),
-lalu scrape ulang `robots.txt` di debugger Meta sebelum halaman — Meta
-menyimpan salinan robots-nya sendiri, jadi satu kali scrape setelah perbaikan
-bisa masih ditolak. Pemanasan internal (`social-warm.ts`) memakai fetch biasa
-sehingga selalu hijau — ia tidak mempertahankan robots.txt, jadi ia tidak
-bisa menangkap kelas bug ini.
+Setelah robots berubah, bersihkan cache edge `robots.txt` (`s-maxage=3600`).
+Cache scraper ikut kedaluwarsa sendiri sesuai age-nya, jadi tidak ada langkah
+pemanasan aplikasi yang perlu dijalankan manual.
 
-Setelah pelajaran 12, tidak ada kode yang bisa menyegarkan kartunya untuk
-artikel lama: satu URL hanya diberi tahu Meta sekali seumur hidup. Scraping
-manual di Sharing Debugger adalah satu-satunya obat, dan itu konsekuensi yang
+## 12. Pre-scrape pihak ketiga: jangan mildewati pipeline sendirian
+
+Dulu ada ledger satu-shot di `article_sites` (`social_warmed_at`, cooldown,
+index parsial, tiga helper `SECURITY DEFINER`) plus satu cron
+`facebook-prewarm`, semuanya untuk menyerahkan URL ke backend scrape Meta satu
+kali seumur hidup artikel. Migrasi 217 menghapus seluruhnya.
+
+Yang terbukti mahal: ledger itu tidak pernah kosong. Per 2026-09-27, 4.020 dari
+4.020 baris published masih `social_warmed_at IS NULL`, dan itu bukan karena
+Meta menolak — melainkan karena warmer hanya dipasang kalau `FB_APP_TOKEN` ada.
+Artinya biaya produksi (dua migrasi, tiga helper, satu cron, tiga kolom,
+cooldown berlipat) dibayar penuh untuk fitur yang secara default mati, dan
+kegagalannya tidak terlihat karena tidak ada URL yang pernah dicoba.
+
+Aturan: sebelum menambah pemanasan untuk pihak ketiga, hitung dulu biaya
+failurnya dan dari mana fitur itu gagal diam-diam. Tanpa kredensial tidak ada
+panggilan, dan tanpa panggilan tidak perlu ledger. Yang benar-benar menahan
+kartu tetap deliverable: `og:title`/`og:description`/`og:image` yang benar,
+robots yang mengizinkan crawler, dan byte gambar yang tersaji dari host sendiri.
+Itu platform-independent, tidak bisa dimatikan kuota pihak ketiga, dan tidak
+butuh kredensial apa pun.
+
+Kartu yang sudah ter-cache di sisi scraper tidak bisa disegarkan dari dalam
+aplikasi; membagikan ulang link adalah satu-satunya obat. Itu konsekuensi yang
 disepakati, bukan bug yang menunggu perbaikan.
-
-Peringatan Meta berikutnya setelah `og:image` hijau adalah `Missing Properties:
-fb:app_id`.itu bukan error, cuma tanda insights Meta dan atribut link tidak
-tersedia. Sumbernya sudah ada: `FB_APP_TOKEN` berformat `APP_ID|APP_SECRET`
-(divalidasi `fb_app_token_malformed` di `bootstrap-schema.ts`). Hanya separuh
-ID yang boleh jadi metadata dokumen — `tenantFacebook()` di `seo.ts` memotong
-sebelum `|`, dan half secret tetap hanya dipakai pemanggil Graph API. Tag
-ditambahkan per-surface tenant lewat `...tenantFacebookMetadata()` di
-`network-runtime.ts`, bukan di `src/app/layout.tsx` yang metadata-nya statis
-(secret tidak ada saat build, dan layout itu sengaja bebas baca host/DB).
-
-## 12. FB debugger: satu kali per URL, saat pertama tayang
-
-Dulu setiap mutasi yang menyangkut artikel menyerahkan URL-nya kembali ke backend
-scrape Meta: publish, unpublish, `article.changed`, `article_site.changed`,
-perubahan publisher/affiliation/category/author, aktivasi/arsip/metadata media.
-Artinya satu edit kecil, atau satu penggantian nama publisher yang menyapu
-seluruh artikel milik penerbit itu, membakar kuota aplikasi untuk meng-scrape
-ulang URL yang Meta sudah cache sekitar 30 hari. Pemicu yang paling sering adalah
-yang paling boros, dan itu kebalikan dari yang desirable.
-
-Keputusan: satu pemanggilan Meta per URL publik, sekali seumur hidup artikel, pada
-saat URL itu pertama kali tayang. Scanner lain (WhatsApp, Telegram, Slack, Google)
-tidak butuh scrape ulang — mereka diambil saat orang benar-benar membagikan link.
-
-**Penanda ada di `article_sites`, bukan di `articles`.** Satu baris `article_sites`
-= satu pasang (artikel, site) = satu URL `https://{host}/{slug}`. Kalau penandanya
-di artikel, `article_site.changed` yang menugaskan artikel lama ke situs baru akan
-terlewat: URL-nya benar-benar baru dan belum pernah disentuh Meta, padahal
-artikelnya bukan baru.
-
-**Marker di database, bukan Redis.** Redis di repo ini akselerasi, tidak pernah
-otoritas durable; ledger one-shot yang hilang hanya menimbulkan satu scrape ulang,
-bukan kehilangan permanen — tapi hanya kalau penanda ditulis *setelah* Meta
-menerima URL. Kalau ditulis lebih dulu, satu outage token akan membuang satu-satunya
-warm yang dimiliki selamanya. `mark_social_warm_targets` hanya mengisi NULL, jadi
-dispatcher yang tumpang tindih tidak saling menimpa dan panggilannya idempoten.
-
-**Backfill = `published_at`.** Artikel yang sudah live sebelum migrasi 200
-dipertahankan dengan cache yang sudah dimiliki Meta, daripada menghabiskan satu
-unit kuota per artikel saat pertama kali diedit. Akibatnya himpunan "due" sama dengan
-"dipublikasikan sejak migrasi" — persis yang dikuras warmer.
-
-**Reset saat ditarik.** `transitionTarget` dan `unpublishTargets` mengosongkan
-penanda saat target jadi `unpublished`, karena URL-nya kembali mati lalu hidup
-lagi saat republish dan Meta perlu diberi tahu sekali lagi.
-
-Antrean due dibaca *oldest-first* oleh `due_social_warm_targets`, jadi URL yang
-warm-nya gagal atau terpotong oleh anggaran dispatch dilayani sebelum URL yang
-lebih baru, dan tetap due untuk menit berikutnya. Pemanasan hanya jalan setelah
-minimal satu task selesai, supaya halaman yang di-scrape bukan hasil edge purge
-yang belum mendarat. Tanpa `FB_APP_TOKEN` warmer tidak dipasang sama sekali:
-tidak ada yang bisa dihangatkan, jadi tidak ada panggilan sia-sia.
-
-Urutan *oldest-first* itu sendiri pernah jadi cacat, bukan fitur: karena target
-hanya ditandai setelah Meta menerimanya, satu URL yang tidak pernah berhasil
-menahan jendela forever. Produksi membuktikannya — 4.020 dari 4.020 baris
-`article_sites` published masih `social_warmed_at IS NULL` per 2026-09-27, dan
-64 slot tiap tick dipenuhi batch 2026-07-28 yang sama, sehingga artikel yang
-baru published berdiri di posisi 4.021 dan tidak pernah masuk jendela. Migrasi
-210 menambah `social_warm_attempts` + `social_warm_next_attempt_at` supaya
-target yang gagal didorong keluar jendela (30 detik, berlipat, cap 7 hari) alih-alih
-menjadi kepala antrean selamanya.
-
-Konsekuensi yang diterima secara sadar: menyunting judul, gambar, atau nama
-penulis tidak memberi tahu Meta. Kartu yang sudah di-cache tetap isi lama sampai
-Meta meng-scrape sendiri atau link dibagikan ulang. Lebih buruk, perbaikan
-`robots.txt` tidak memperbaiki artikel lama — sesuai pelajaran 11, scrape manual
-lewat Sharing Debugger (urutkan `robots.txt` dulu, baru halamannya) bukan lagi
-workaround sementara, melainkan satu-satunya obat, selamanya.
-
-Sweep `/api/internal/maintenance/facebook-prewarm` (`17 * * * *`) tetap khusus
-homepage `https://{host}/` dan tidak tersentuh perubahan ini; `read_runtime_config_active_sites()`
-tidak memuat artikel. Index parsial `article_sites_social_warm_due_idx` hanya
-memuat baris published yang belum bertanda; sejak migrasi 210 susunannya
-`social_warm_next_attempt_at NULLS FIRST, published_at, id`, dan backlog lama
-diparkir seminggu sehingga jendela oldest-first kosong dan tidak lagi menahan
-artikel yang baru published.
-
-Kalau pemanasan gagal tanpa membuka dispatch, event yang muncul:
-`delivery.social_warm.due_failed` (ledger tidak terbaca),
-`delivery.social_warm.mark_failed` (penandaan gagal, target tetap due), dan
-`delivery.social_warm.cooldown_failed` (dorong cooldown gagal). Ketiganya
-sengaja tidak dilempar: warmer bersifat best-effort dan tidak boleh menggagalkan
-task invalidasi. `delivery.social_warm.stalled` adalah satu-satunya peringatan
-berlevel `error`: ia menyala hanya ketika `attempted > 0` tetapi tidak ada satu
-pun URL yang diterima Meta, yaitu kondisi yang diam-diam mematikan seluruh fitur
-dan tidak boleh berlama-lama tanpa terlihat.
 
 ## 13. Komentar migrasi adalah klaim, bukan catatan
 
