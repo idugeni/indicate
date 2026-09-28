@@ -105,6 +105,11 @@ npm-facing.
 
 ### Fixed
 
+- `POST /api/network/reports` reports an intake outage as HTTP 503 instead of
+  collapsing it into 404, which told a complainant their report was addressed
+  when nothing was stored and hid a broken channel from whoever would otherwise
+  notice. All remaining outcome codes stay 404 so tenant content is never
+  disclosed.
 - The daily `/api/health` keep-alive cron that
   `docs/production-readiness-runbook.md` requires was missing from
   `vercel.json`. The route reads the configuration snapshot from Postgres on
@@ -199,6 +204,30 @@ npm-facing.
   group-specific `_composition/` roots and per-segment `loading.tsx` /
   `error.tsx` conventions.
 - Route group layouts gained appropriate error boundaries and loading states.
+
+### Security
+
+- Public report intake carries a second, per-client-IP rate-limit bucket
+  alongside the per-host one. The per-host bucket alone let a single caller
+  exhaust a tenant's whole allowance and lock out every legitimate complainant
+  for the window. The per-IP key uses `extractPlatformIp` (Cloudflare-supplied
+  only) and is skipped rather than replaced by a shared key when no edge IP is
+  present, so direct non-edge access degrades to the per-host bound. Both
+  buckets are enforced before the body is read and both fail closed.
+- `content_reports.article_url` is validated as an absolute `http`/`https` URL at
+  intake instead of a length-bounded string, closing a latent stored-XSS and
+  open-redirect vector: the value is stored and shipped to the dashboard
+  moderation queue, where a bare string bound admitted `javascript:` and `data:`
+  payloads. The shared schema lives in `reportIntakeSchema` and
+  `reportSubmitSchema` so the route and the service cannot drift.
+- `/report?artikel=` and the intake body now share one canonical article-slug
+  normalizer, which caps at `SLUG_MAX_LENGTH` (100, the same bound the dashboard
+  and database enforce) and rejects anything that could never be a stored slug.
+  Previously the report path accepted any printable string up to 200 characters.
+- The report-intake catch-all no longer swallows the underlying error: intake
+  failures emit a `network.report.intake_failed` error event, so a database or
+  Redis regression is visible in telemetry instead of only as a status-code
+  count.
 
 ## [0.1.0] - 2026-09-02
 

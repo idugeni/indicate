@@ -16,7 +16,7 @@ Forbidden on listing paths:
 - joining the `media` gallery per article;
 - calling `NetworkContentService.load()` with an `articleSlug` only to test existence.
 
-Use `NetworkContentService.resolveArticleId()` instead. It runs one indexed lookup (`SELECT articles.id ... LIMIT 1` with `published/active/publishedAt` predicates, `src/data/repos/delivery.ts:304`) inside the public tenant context. Reference implementation: `POST /api/network/reports` (`src/app/api/network/reports/route.ts:55`) resolves the reported slug to an id without touching body or gallery.
+Use `NetworkContentService.resolveArticleId()` instead. It runs one indexed lookup (`SELECT articles.id ... LIMIT 1` with `published/active/publishedAt` predicates, `src/data/repos/delivery.ts:304`) inside the public tenant context. Reference implementation: `POST /api/network/reports` (`src/app/api/network/reports/route.ts:58`) resolves the reported slug to an id without touching body or gallery.
 
 Budget enforced by `scripts/perf/listing-payload.mjs`: 100 lean items must stay under 150 KB (`BUDGET_BYTES = 150 * 1024`). Measured locally: full projection ~208 KB vs lean ~61 KB (~70% saving). CI (`npm run perf`, job `perf` in `.github/workflows/quality-gate.yml`) fails the build on breach (exit 1).
 
@@ -55,5 +55,5 @@ When adding a tenant-visible mutation: build a `NetworkMutation`, call `planInva
 ```sh
 npm run typecheck
 npm run perf
-npx vitest run src/app/api/network/reports/route.test.ts src/modules/delivery/network-content-service.test.ts src/modules/delivery/invalidation.test.ts
+npx vitest run src/app/api/network/reports/route.test.ts src/modules/moderation/report-intake-throttle.test.ts src/modules/moderation/schemas.test.ts src/modules/site/slug-allocator.test.ts src/modules/delivery/network-content-service.test.ts src/modules/delivery/invalidation.test.ts
 ```

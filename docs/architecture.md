@@ -694,6 +694,8 @@ Rate-limit identity is:
 
 Validated bounded policies use atomic Redis operations. Security-sensitive mutation and webhook routes fail closed if enforcement is unavailable. Only explicitly classified low-risk public reads may use conservative fallback behavior. Excess requests return HTTP 429 and bounded retry guidance.
 
+Unauthenticated write channels that owe availability to the public — today `POST /api/network/reports` — carry two buckets rather than one. A per-host bucket bounds aggregate load on the tenant, and a second, tighter per-client-IP bucket bounds the damage a single caller can do to that tenant: with only the per-host bucket, one caller can exhaust a tenant's entire allowance and lock out every legitimate complainant for the window. Both are enforced before any request body is read, both fail closed, and the per-IP bucket is skipped (never replaced by a shared key) when Cloudflare supplies no `cf-connecting-ip`, so direct non-edge access degrades to the per-host bound instead of failing. The per-IP allowance is set loose enough for shared egress (office NAT, carrier CGNAT) to report without colliding.
+
 ## 16. Audit architecture
 
 Audit Logs are append-only tenant records containing actor type/ID, Organization, entry point, action, target type/ID where safe, outcome, timestamp, request ID, changed fields, and redacted before/after values.
