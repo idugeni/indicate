@@ -98,10 +98,30 @@ const readArticleBuffer = cache(async (organizationId: string, siteId: string, a
 });
 
 /**
+ * Cache-selector path for one content query.
+ *
+ * @param query - Sanitized content selector.
+ * @returns Key path that names the rows the selector resolves to.
+ * @remarks The requesting path never reaches the repository: `content.load`
+ * forwards it only into the cache identity, so every machine surface that asks
+ * for the same selector (`/`, `/rss.xml`, `/sitemap.xml`,
+ * `/news-sitemap.xml`, `/llms.txt`) used to occupy its own entry in both cache
+ * layers and repay one full site read per entry. Keying on the selector instead
+ * collapses them into a single entry per host while staying bounded: the
+ * selector set is closed, unlike the request-path set.
+ */
+function selectorCachePath(query: NetworkContentQuery): string {
+  if (query.articleSlug !== undefined) return `/article/${query.articleSlug}`;
+  if (query.categorySlug !== undefined) return `/category/${query.categorySlug}`;
+  if (query.tag !== undefined) return `/tag/${query.tag}`;
+  return '/';
+}
+
+/**
  * Per-host tenant content in the Next cache. Tags use the same vocabulary as
  * `planInvalidation()` (`host:`/`site:`/`org:`/`article:`) so the existing invalidation dispatcher
  * (publish/unpublish/media/hostname) fans out automatically with no
- * dispatcher changes. Cache keys cover context + query + path + locale.
+ * dispatcher changes. Cache keys cover context + query + selector + locale.
  */
 async function loadFreshNetworkSite(
   context: ResolvedSiteContext,
@@ -145,6 +165,9 @@ async function loadCachedSearchSite(
  * via `cache()` so `generateMetadata()` + page components + neighbor lookups
  * share one context without duplicate transactions. Search queries use the
  * `seconds` loader so unbounded keys never inhabit the minute cache.
+ * `path` only reaches a cache key, and only for search; every other selector is
+ * keyed by `selectorCachePath`, so the requesting path cannot split one host's
+ * listing across five entries.
  */
 export async function resolveNetworkSite(query: NetworkContentQuery = {}, path = '/'): Promise<NetworkSiteData> {
   const { config } = await getDeliveryComposition();
@@ -157,9 +180,10 @@ export async function resolveNetworkSite(query: NetworkContentQuery = {}, path =
   };
   const bypassed = await readBypassed(context.organizationId, context.siteId);
   const loader = sanitized.search === undefined ? loadCachedNetworkSite : loadCachedSearchSite;
+  const selector = sanitized.search === undefined ? selectorCachePath(sanitized) : path;
   const site = bypassed
-    ? await loadFreshNetworkSite(context, sanitized, path, config.seo.defaultLocale)
-    : await loader(context, sanitized, path, config.seo.defaultLocale);
+    ? await loadFreshNetworkSite(context, sanitized, selector, config.seo.defaultLocale)
+    : await loader(context, sanitized, selector, config.seo.defaultLocale);
   if (site === null) notFound();
   if (sanitized.articleSlug === undefined) return site;
   const head = site.articles[0];
