@@ -1,6 +1,6 @@
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-blue/chrome/shell';
-import { SoftBlueContainer } from '@/modules/site/components/network/templates/soft-blue/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { SoftBlueSearchForm, SoftBlueSearchResults } from '@/modules/site/components/network/templates/soft-blue/pages/search-form';
 
@@ -15,11 +15,11 @@ export interface SoftBlueSearchProps {
 export function SoftBlueSearch({ site, query }: SoftBlueSearchProps) {
   return (
     <SoftBlueShell site={site} path="/search">
-      <SoftBlueContainer className="space-y-6 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <StatusLine count={site.articles.length} title="Pencarian" />
         <SoftBlueSearchForm query={query} />
         <SoftBlueSearchResults articles={site.articles} query={query} />
-      </SoftBlueContainer>
+      </Container>
     </SoftBlueShell>
   );
 }

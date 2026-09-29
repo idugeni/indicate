@@ -3,7 +3,7 @@ import { buildSeoDocument } from '@/modules/site/seo';
 import { ABOUT_TRUST_LINKS, deriveAboutCategories } from '@/modules/site/about-profile';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GlassyBlueShell } from '@/modules/site/components/network/templates/glassy-blue/chrome/shell';
-import { GlassyBlueContainer } from '@/modules/site/components/network/templates/glassy-blue/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { GlassyBlueJsonLd } from '@/modules/site/components/network/templates/glassy-blue/seo/json-ld';
 
 export interface GlassyBlueAboutProps {
@@ -23,7 +23,7 @@ export function GlassyBlueAbout({ site, title, description, path = '/' }: Glassy
   const categories = deriveAboutCategories(site);
   return (
     <GlassyBlueShell site={site} path={path}>
-      <GlassyBlueContainer className="space-y-6 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <div>
           <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-slate-900">
             <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1f7cff]" />
@@ -87,7 +87,7 @@ export function GlassyBlueAbout({ site, title, description, path = '/' }: Glassy
             ))}
           </ul>
         </section>
-      </GlassyBlueContainer>
+      </Container>
       <GlassyBlueJsonLd schemas={seo.jsonLd} />
     </GlassyBlueShell>
   );

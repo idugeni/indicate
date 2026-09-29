@@ -8,7 +8,7 @@ import { OrangeModernPicks } from '@/modules/site/components/network/templates/o
 import { OrangeModernArchivePager } from '@/modules/site/components/network/templates/orange-modern/cards/archive-pager';
 import { OrangeModernNewsletter } from '@/modules/site/components/network/templates/orange-modern/cards/newsletter';
 import { OrangeModernJsonLd } from '@/modules/site/components/network/templates/orange-modern/seo/json-ld';
-import { OrangeModernContainer } from '@/modules/site/components/network/templates/orange-modern/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { OrangeModernEmpty } from '@/modules/site/components/network/templates/orange-modern/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
@@ -36,7 +36,7 @@ export function OrangeModernListing({ site, title, description, path, indexable 
 
   return (
     <OrangeModernShell site={site} path={path ?? '/'}>
-      <OrangeModernContainer className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <OrangeModernTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
@@ -61,7 +61,7 @@ export function OrangeModernListing({ site, title, description, path, indexable 
             />
           </>
         )}
-      </OrangeModernContainer>
+      </Container>
       <OrangeModernJsonLd schemas={seo.jsonLd} />
     </OrangeModernShell>
   );

@@ -3,7 +3,7 @@ import { COMPANY_NAME, channelAction, channelHandle, isPrimaryContact, resolveCo
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimeShell } from '@/modules/site/components/network/templates/black-lime/chrome/shell';
-import { BlackLimeContainer } from '@/modules/site/components/network/templates/black-lime/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { BlackLimeEmpty } from '@/modules/site/components/network/templates/black-lime/ui/empty';
 import { BlackLimeJsonLd } from '@/modules/site/components/network/templates/black-lime/seo/json-ld';
 
@@ -25,7 +25,7 @@ export function BlackLimeContact({ site, title, description, path = '/' }: Black
   const socials = channels.filter((channel) => !isPrimaryContact(channel.key));
   return (
     <BlackLimeShell site={site} path={path}>
-      <BlackLimeContainer className="space-y-6 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <div>
           <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-[#f2f5e9]">
             <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#c5f82a]" />
@@ -99,7 +99,7 @@ export function BlackLimeContact({ site, title, description, path = '/' }: Black
             )}
           </div>
         )}
-      </BlackLimeContainer>
+      </Container>
       <BlackLimeJsonLd schemas={seo.jsonLd} />
     </BlackLimeShell>
   );

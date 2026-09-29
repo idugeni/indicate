@@ -1,6 +1,6 @@
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-blue/chrome/shell';
-import { SoftBlueContainer } from '@/modules/site/components/network/templates/soft-blue/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { SoftBlueReportForm } from '@/modules/site/components/network/templates/soft-blue/pages/report-form';
 
 export interface SoftBlueReportProps {
@@ -15,7 +15,7 @@ export interface SoftBlueReportProps {
 export function SoftBlueReport({ site, articleSlug, challengeSitekey }: SoftBlueReportProps) {
   return (
     <SoftBlueShell site={site} path="/report">
-      <SoftBlueContainer className="max-w-3xl py-8 md:py-12">
+      <Container className="max-w-3xl py-8 md:py-12">
         <p className="m-0 font-sans text-xs font-medium uppercase tracking-wider text-slate-600">
           Kepercayaan & keamanan
         </p>
@@ -28,7 +28,7 @@ export function SoftBlueReport({ site, articleSlug, challengeSitekey }: SoftBlue
         <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-7">
           <SoftBlueReportForm articleSlug={articleSlug} challengeSitekey={challengeSitekey} />
         </div>
-      </SoftBlueContainer>
+      </Container>
     </SoftBlueShell>
   );
 }

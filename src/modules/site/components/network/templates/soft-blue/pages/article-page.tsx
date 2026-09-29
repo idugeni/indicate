@@ -12,7 +12,7 @@ import { EditorialImage } from '@/modules/site/components/editorial-image';
 import { SoftBlueJsonLd } from '@/modules/site/components/network/templates/soft-blue/seo/json-ld';
 import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-blue/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/soft-blue/ui/author-avatar';
-import { SoftBlueContainer } from '@/modules/site/components/network/templates/soft-blue/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { SoftBlueShareButtons } from '@/modules/site/components/network/templates/soft-blue/cards/share-buttons';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
@@ -46,7 +46,7 @@ export function SoftBlueArticle({
         siteId={site.context.siteId}
         articleSiteId={article.articleSiteId}
       />
-      <SoftBlueContainer className="py-8 md:py-12">
+      <Container className="py-8 md:py-12">
         <article>
           <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 font-sans text-xs text-slate-600">
             <Link href="/" className="transition-colors hover:text-[#2563eb]">
@@ -322,7 +322,7 @@ export function SoftBlueArticle({
               Laporkan konten
             </Link>
           </aside>
-        </SoftBlueContainer>
+        </Container>
       <SoftBlueJsonLd schemas={seo.jsonLd} />
     </SoftBlueShell>
   );

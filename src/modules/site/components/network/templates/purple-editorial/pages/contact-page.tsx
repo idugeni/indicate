@@ -3,7 +3,7 @@ import { COMPANY_NAME, channelAction, channelHandle, isPrimaryContact, resolveCo
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { PurpleEditorialShell } from '@/modules/site/components/network/templates/purple-editorial/chrome/shell';
-import { PurpleEditorialContainer } from '@/modules/site/components/network/templates/purple-editorial/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { PurpleEditorialEmpty } from '@/modules/site/components/network/templates/purple-editorial/ui/empty';
 import { PurpleEditorialJsonLd } from '@/modules/site/components/network/templates/purple-editorial/seo/json-ld';
 
@@ -25,7 +25,7 @@ export function PurpleEditorialContact({ site, title, description, path = '/' }:
   const socials = channels.filter((channel) => !isPrimaryContact(channel.key));
   return (
     <PurpleEditorialShell site={site} path={path}>
-      <PurpleEditorialContainer className="space-y-6 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <div>
           <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-slate-900">
             <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#7c3aed]" />
@@ -99,7 +99,7 @@ export function PurpleEditorialContact({ site, title, description, path = '/' }:
             )}
           </div>
         )}
-      </PurpleEditorialContainer>
+      </Container>
       <PurpleEditorialJsonLd schemas={seo.jsonLd} />
     </PurpleEditorialShell>
   );

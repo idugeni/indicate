@@ -9,7 +9,7 @@ import { GlassyBluePicks } from '@/modules/site/components/network/templates/gla
 import { GlassyBlueArchivePager } from '@/modules/site/components/network/templates/glassy-blue/cards/archive-pager';
 import { GlassyBlueNewsletter } from '@/modules/site/components/network/templates/glassy-blue/cards/newsletter';
 import { GlassyBlueJsonLd } from '@/modules/site/components/network/templates/glassy-blue/seo/json-ld';
-import { GlassyBlueContainer } from '@/modules/site/components/network/templates/glassy-blue/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { GlassyBlueEmpty } from '@/modules/site/components/network/templates/glassy-blue/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
@@ -39,7 +39,7 @@ export async function GlassyBlueListing({ site, title, description, path, indexa
 
   return (
     <GlassyBlueShell site={site} path={path ?? '/'}>
-      <GlassyBlueContainer className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <GlassyBlueTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
@@ -66,7 +66,7 @@ export async function GlassyBlueListing({ site, title, description, path, indexa
             />
           </>
         )}
-      </GlassyBlueContainer>
+      </Container>
       <GlassyBlueJsonLd schemas={seo.jsonLd} />
     </GlassyBlueShell>
   );

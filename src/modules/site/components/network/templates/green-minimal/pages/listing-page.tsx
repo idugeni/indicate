@@ -7,7 +7,7 @@ import { GreenMinimalLatest } from '@/modules/site/components/network/templates/
 import { GreenMinimalArchivePager } from '@/modules/site/components/network/templates/green-minimal/cards/archive-pager';
 import { GreenMinimalNewsletter } from '@/modules/site/components/network/templates/green-minimal/cards/newsletter';
 import { GreenMinimalJsonLd } from '@/modules/site/components/network/templates/green-minimal/seo/json-ld';
-import { GreenMinimalContainer } from '@/modules/site/components/network/templates/green-minimal/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { GreenMinimalEmpty } from '@/modules/site/components/network/templates/green-minimal/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
@@ -33,7 +33,7 @@ export function GreenMinimalListing({ site, title, description, path, indexable 
 
   return (
     <GreenMinimalShell site={site} path={path ?? '/'}>
-      <GreenMinimalContainer className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <GreenMinimalTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
@@ -50,7 +50,7 @@ export function GreenMinimalListing({ site, title, description, path, indexable 
             />
           </>
         )}
-      </GreenMinimalContainer>
+      </Container>
       <GreenMinimalJsonLd schemas={seo.jsonLd} />
     </GreenMinimalShell>
   );

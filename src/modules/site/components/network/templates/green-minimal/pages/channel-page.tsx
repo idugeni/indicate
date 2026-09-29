@@ -1,7 +1,7 @@
 import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GreenMinimalShell } from '@/modules/site/components/network/templates/green-minimal/chrome/shell';
-import { GreenMinimalContainer } from '@/modules/site/components/network/templates/green-minimal/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { GreenMinimalEmpty } from '@/modules/site/components/network/templates/green-minimal/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { GreenMinimalPicks } from '@/modules/site/components/network/templates/green-minimal/cards/picks';
@@ -28,7 +28,7 @@ export function GreenMinimalChannel({ site, kicker, title, description, path = '
   const archive = lead ? rest.slice(2) : [];
   return (
     <GreenMinimalShell site={site} path={path}>
-      <GreenMinimalContainer className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
           <p className="m-0 inline-block rounded-full bg-[#1d7a38]/10 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-[#1d7a38]">
@@ -52,7 +52,7 @@ export function GreenMinimalChannel({ site, kicker, title, description, path = '
             <GreenMinimalArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
-      </GreenMinimalContainer>
+      </Container>
       <GreenMinimalJsonLd schemas={seo.jsonLd} />
     </GreenMinimalShell>
   );

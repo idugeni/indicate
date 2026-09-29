@@ -8,7 +8,7 @@ import { WarmEditorialPicks } from '@/modules/site/components/network/templates/
 import { WarmEditorialArchivePager } from '@/modules/site/components/network/templates/warm-editorial/cards/archive-pager';
 import { WarmEditorialNewsletter } from '@/modules/site/components/network/templates/warm-editorial/cards/newsletter';
 import { WarmEditorialJsonLd } from '@/modules/site/components/network/templates/warm-editorial/seo/json-ld';
-import { WarmEditorialContainer } from '@/modules/site/components/network/templates/warm-editorial/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { WarmEditorialEmpty } from '@/modules/site/components/network/templates/warm-editorial/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
@@ -36,7 +36,7 @@ export function WarmEditorialListing({ site, title, description, path, indexable
 
   return (
     <WarmEditorialShell site={site} path={path ?? '/'}>
-      <WarmEditorialContainer className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <WarmEditorialTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
@@ -54,7 +54,7 @@ export function WarmEditorialListing({ site, title, description, path, indexable
             />
           </>
         )}
-      </WarmEditorialContainer>
+      </Container>
       <WarmEditorialJsonLd schemas={seo.jsonLd} />
     </WarmEditorialShell>
   );

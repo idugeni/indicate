@@ -3,7 +3,7 @@ import { buildSeoDocument } from '@/modules/site/seo';
 import { ABOUT_TRUST_LINKS, deriveAboutCategories } from '@/modules/site/about-profile';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { DarkNavyShell } from '@/modules/site/components/network/templates/dark-navy/chrome/shell';
-import { DarkNavyContainer } from '@/modules/site/components/network/templates/dark-navy/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { DarkNavyJsonLd } from '@/modules/site/components/network/templates/dark-navy/seo/json-ld';
 
 export interface DarkNavyAboutProps {
@@ -23,7 +23,7 @@ export function DarkNavyAbout({ site, title, description, path = '/' }: DarkNavy
   const categories = deriveAboutCategories(site);
   return (
     <DarkNavyShell site={site} path={path}>
-      <DarkNavyContainer className="space-y-6 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <div>
           <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-[#eaf0fb]">
             <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#2f7bff]" />
@@ -87,7 +87,7 @@ export function DarkNavyAbout({ site, title, description, path = '/' }: DarkNavy
             ))}
           </ul>
         </section>
-      </DarkNavyContainer>
+      </Container>
       <DarkNavyJsonLd schemas={seo.jsonLd} />
     </DarkNavyShell>
   );

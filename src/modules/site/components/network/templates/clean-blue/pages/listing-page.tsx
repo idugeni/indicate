@@ -7,7 +7,7 @@ import { CleanBluePicks } from '@/modules/site/components/network/templates/clea
 import { CleanBlueArchivePager } from '@/modules/site/components/network/templates/clean-blue/cards/archive-pager';
 import { CleanBlueNewsletter } from '@/modules/site/components/network/templates/clean-blue/cards/newsletter';
 import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/seo/json-ld';
-import { CleanBlueContainer } from '@/modules/site/components/network/templates/clean-blue/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { CleanBlueEmpty } from '@/modules/site/components/network/templates/clean-blue/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
@@ -32,7 +32,7 @@ export function CleanBlueListing({ site, title, description, path, indexable }: 
 
   return (
     <CleanBlueShell site={site} path={path ?? '/'}>
-      <CleanBlueContainer className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <CleanBlueTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
@@ -49,7 +49,7 @@ export function CleanBlueListing({ site, title, description, path, indexable }: 
             />
           </>
         )}
-      </CleanBlueContainer>
+      </Container>
       <CleanBlueJsonLd schemas={seo.jsonLd} />
     </CleanBlueShell>
   );

@@ -1,6 +1,6 @@
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { RedEditorialShell } from '@/modules/site/components/network/templates/red-editorial/chrome/shell';
-import { RedEditorialContainer } from '@/modules/site/components/network/templates/red-editorial/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { RedEditorialReportForm } from '@/modules/site/components/network/templates/red-editorial/pages/report-form';
 
 export interface RedEditorialReportProps {
@@ -15,7 +15,7 @@ export interface RedEditorialReportProps {
 export function RedEditorialReport({ site, articleSlug, challengeSitekey }: RedEditorialReportProps) {
   return (
     <RedEditorialShell site={site} path="/report">
-      <RedEditorialContainer className="max-w-3xl py-8 md:py-12">
+      <Container className="max-w-3xl py-8 md:py-12">
         <p className="m-0 font-sans text-xs font-medium uppercase tracking-wider text-slate-600">
           Kepercayaan & keamanan
         </p>
@@ -28,7 +28,7 @@ export function RedEditorialReport({ site, articleSlug, challengeSitekey }: RedE
         <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-7">
           <RedEditorialReportForm articleSlug={articleSlug} challengeSitekey={challengeSitekey} />
         </div>
-      </RedEditorialContainer>
+      </Container>
     </RedEditorialShell>
   );
 }

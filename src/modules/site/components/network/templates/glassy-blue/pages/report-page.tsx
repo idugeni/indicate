@@ -1,6 +1,6 @@
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GlassyBlueShell } from '@/modules/site/components/network/templates/glassy-blue/chrome/shell';
-import { GlassyBlueContainer } from '@/modules/site/components/network/templates/glassy-blue/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { GlassyBlueReportForm } from '@/modules/site/components/network/templates/glassy-blue/pages/report-form';
 
 export interface GlassyBlueReportProps {
@@ -15,7 +15,7 @@ export interface GlassyBlueReportProps {
 export function GlassyBlueReport({ site, articleSlug, challengeSitekey }: GlassyBlueReportProps) {
   return (
     <GlassyBlueShell site={site} path="/report">
-      <GlassyBlueContainer className="max-w-3xl py-8 md:py-12">
+      <Container className="max-w-3xl py-8 md:py-12">
         <p className="m-0 font-sans text-xs font-medium uppercase tracking-wider text-slate-600">
           Kepercayaan & keamanan
         </p>
@@ -28,7 +28,7 @@ export function GlassyBlueReport({ site, articleSlug, challengeSitekey }: Glassy
         <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-7">
           <GlassyBlueReportForm articleSlug={articleSlug} challengeSitekey={challengeSitekey} />
         </div>
-      </GlassyBlueContainer>
+      </Container>
     </GlassyBlueShell>
   );
 }

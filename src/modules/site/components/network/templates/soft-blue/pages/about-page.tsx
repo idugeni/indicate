@@ -3,7 +3,7 @@ import { buildSeoDocument } from '@/modules/site/seo';
 import { ABOUT_TRUST_LINKS, deriveAboutCategories } from '@/modules/site/about-profile';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-blue/chrome/shell';
-import { SoftBlueContainer } from '@/modules/site/components/network/templates/soft-blue/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { SoftBlueJsonLd } from '@/modules/site/components/network/templates/soft-blue/seo/json-ld';
 
 export interface SoftBlueAboutProps {
@@ -23,7 +23,7 @@ export function SoftBlueAbout({ site, title, description, path = '/' }: SoftBlue
   const categories = deriveAboutCategories(site);
   return (
     <SoftBlueShell site={site} path={path}>
-      <SoftBlueContainer className="space-y-6 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <div>
           <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-slate-900">
             <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#2563eb]" />
@@ -87,7 +87,7 @@ export function SoftBlueAbout({ site, title, description, path = '/' }: SoftBlue
             ))}
           </ul>
         </section>
-      </SoftBlueContainer>
+      </Container>
       <SoftBlueJsonLd schemas={seo.jsonLd} />
     </SoftBlueShell>
   );

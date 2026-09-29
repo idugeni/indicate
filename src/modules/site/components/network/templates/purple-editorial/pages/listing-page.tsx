@@ -8,7 +8,7 @@ import { PurpleEditorialPicks } from '@/modules/site/components/network/template
 import { PurpleEditorialArchivePager } from '@/modules/site/components/network/templates/purple-editorial/cards/archive-pager';
 import { PurpleEditorialNewsletter } from '@/modules/site/components/network/templates/purple-editorial/cards/newsletter';
 import { PurpleEditorialJsonLd } from '@/modules/site/components/network/templates/purple-editorial/seo/json-ld';
-import { PurpleEditorialContainer } from '@/modules/site/components/network/templates/purple-editorial/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { PurpleEditorialEmpty } from '@/modules/site/components/network/templates/purple-editorial/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
@@ -36,7 +36,7 @@ export function PurpleEditorialListing({ site, title, description, path, indexab
 
   return (
     <PurpleEditorialShell site={site} path={path ?? '/'}>
-      <PurpleEditorialContainer className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <PurpleEditorialTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
@@ -54,7 +54,7 @@ export function PurpleEditorialListing({ site, title, description, path, indexab
             />
           </>
         )}
-      </PurpleEditorialContainer>
+      </Container>
       <PurpleEditorialJsonLd schemas={seo.jsonLd} />
     </PurpleEditorialShell>
   );

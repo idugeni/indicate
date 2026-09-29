@@ -3,7 +3,7 @@ import { buildSeoDocument } from '@/modules/site/seo';
 import { ABOUT_TRUST_LINKS, deriveAboutCategories } from '@/modules/site/about-profile';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GreenMinimalShell } from '@/modules/site/components/network/templates/green-minimal/chrome/shell';
-import { GreenMinimalContainer } from '@/modules/site/components/network/templates/green-minimal/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { GreenMinimalJsonLd } from '@/modules/site/components/network/templates/green-minimal/seo/json-ld';
 
 export interface GreenMinimalAboutProps {
@@ -23,7 +23,7 @@ export function GreenMinimalAbout({ site, title, description, path = '/' }: Gree
   const categories = deriveAboutCategories(site);
   return (
     <GreenMinimalShell site={site} path={path}>
-      <GreenMinimalContainer className="space-y-6 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <div>
           <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-slate-900">
             <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1d7a38]" />
@@ -87,7 +87,7 @@ export function GreenMinimalAbout({ site, title, description, path = '/' }: Gree
             ))}
           </ul>
         </section>
-      </GreenMinimalContainer>
+      </Container>
       <GreenMinimalJsonLd schemas={seo.jsonLd} />
     </GreenMinimalShell>
   );

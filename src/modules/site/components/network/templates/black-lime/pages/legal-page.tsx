@@ -6,7 +6,7 @@ import type { DocSectionItem } from '@/modules/site/components/layout/doc-sectio
 import { TENANT_RELATED_DOCS } from '@/modules/site/legal-documents';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimeShell } from '@/modules/site/components/network/templates/black-lime/chrome/shell';
-import { BlackLimeContainer } from '@/modules/site/components/network/templates/black-lime/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { BlackLimeJsonLd } from '@/modules/site/components/network/templates/black-lime/seo/json-ld';
 
 export interface BlackLimeLegalProps {
@@ -26,7 +26,7 @@ export function BlackLimeLegal({ site, title, description, path = '/', sections,
   const seo = buildSeoDocument(site, { path });
   return (
     <BlackLimeShell site={site} path={path}>
-      <BlackLimeContainer className="space-y-6 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <div>
           <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-[#f2f5e9]">
             <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#c5f82a]" />
@@ -95,7 +95,7 @@ export function BlackLimeLegal({ site, title, description, path = '/', sections,
             </article>
           ))}
         </div>
-      </BlackLimeContainer>
+      </Container>
       <BlackLimeJsonLd schemas={seo.jsonLd} />
     </BlackLimeShell>
   );

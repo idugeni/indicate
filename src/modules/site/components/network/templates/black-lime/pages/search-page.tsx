@@ -1,6 +1,6 @@
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimeShell } from '@/modules/site/components/network/templates/black-lime/chrome/shell';
-import { BlackLimeContainer } from '@/modules/site/components/network/templates/black-lime/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { BlackLimeSearchForm, BlackLimeSearchResults } from '@/modules/site/components/network/templates/black-lime/pages/search-form';
 
@@ -15,11 +15,11 @@ export interface BlackLimeSearchProps {
 export function BlackLimeSearch({ site, query }: BlackLimeSearchProps) {
   return (
     <BlackLimeShell site={site} path="/search">
-      <BlackLimeContainer className="space-y-6 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <StatusLine count={site.articles.length} title="Pencarian" />
         <BlackLimeSearchForm query={query} />
         <BlackLimeSearchResults articles={site.articles} query={query} />
-      </BlackLimeContainer>
+      </Container>
     </BlackLimeShell>
   );
 }

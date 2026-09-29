@@ -1,7 +1,7 @@
 import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { OrangeModernShell } from '@/modules/site/components/network/templates/orange-modern/chrome/shell';
-import { OrangeModernContainer } from '@/modules/site/components/network/templates/orange-modern/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { OrangeModernEmpty } from '@/modules/site/components/network/templates/orange-modern/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { OrangeModernPicks } from '@/modules/site/components/network/templates/orange-modern/cards/picks';
@@ -28,7 +28,7 @@ export function OrangeModernChannel({ site, kicker, title, description, path = '
   const archive = lead ? rest.slice(2) : [];
   return (
     <OrangeModernShell site={site} path={path}>
-      <OrangeModernContainer className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
           <p className="m-0 inline-block rounded-full bg-[#ea580c]/10 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-[#ea580c]">
@@ -52,7 +52,7 @@ export function OrangeModernChannel({ site, kicker, title, description, path = '
             <OrangeModernArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
-      </OrangeModernContainer>
+      </Container>
       <OrangeModernJsonLd schemas={seo.jsonLd} />
     </OrangeModernShell>
   );

@@ -6,7 +6,7 @@ import type { DocSectionItem } from '@/modules/site/components/layout/doc-sectio
 import { TENANT_RELATED_DOCS } from '@/modules/site/legal-documents';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { WarmEditorialShell } from '@/modules/site/components/network/templates/warm-editorial/chrome/shell';
-import { WarmEditorialContainer } from '@/modules/site/components/network/templates/warm-editorial/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { WarmEditorialJsonLd } from '@/modules/site/components/network/templates/warm-editorial/seo/json-ld';
 
 export interface WarmEditorialLegalProps {
@@ -26,7 +26,7 @@ export function WarmEditorialLegal({ site, title, description, path = '/', secti
   const seo = buildSeoDocument(site, { path });
   return (
     <WarmEditorialShell site={site} path={path}>
-      <WarmEditorialContainer className="space-y-6 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <div>
           <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-slate-900">
             <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#b4532a]" />
@@ -95,7 +95,7 @@ export function WarmEditorialLegal({ site, title, description, path = '/', secti
             </article>
           ))}
         </div>
-      </WarmEditorialContainer>
+      </Container>
       <WarmEditorialJsonLd schemas={seo.jsonLd} />
     </WarmEditorialShell>
   );

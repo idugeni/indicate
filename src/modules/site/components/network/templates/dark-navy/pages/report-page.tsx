@@ -1,6 +1,6 @@
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { DarkNavyShell } from '@/modules/site/components/network/templates/dark-navy/chrome/shell';
-import { DarkNavyContainer } from '@/modules/site/components/network/templates/dark-navy/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { DarkNavyReportForm } from '@/modules/site/components/network/templates/dark-navy/pages/report-form';
 
 export interface DarkNavyReportProps {
@@ -15,7 +15,7 @@ export interface DarkNavyReportProps {
 export function DarkNavyReport({ site, articleSlug, challengeSitekey }: DarkNavyReportProps) {
   return (
     <DarkNavyShell site={site} path="/report">
-      <DarkNavyContainer className="max-w-3xl py-8 md:py-12">
+      <Container className="max-w-3xl py-8 md:py-12">
         <p className="m-0 font-sans text-xs font-medium uppercase tracking-wider text-[#9aa9c4]">
           Kepercayaan & keamanan
         </p>
@@ -28,7 +28,7 @@ export function DarkNavyReport({ site, articleSlug, challengeSitekey }: DarkNavy
         <div className="mt-6 rounded-2xl bg-[#0e1a33] p-5 shadow-sm ring-1 ring-[#1b2c4f]/60 sm:p-7">
           <DarkNavyReportForm articleSlug={articleSlug} challengeSitekey={challengeSitekey} />
         </div>
-      </DarkNavyContainer>
+      </Container>
     </DarkNavyShell>
   );
 }

@@ -1,6 +1,6 @@
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
-import { CleanBlueContainer } from '@/modules/site/components/network/templates/clean-blue/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { CleanBlueSearchForm, CleanBlueSearchResults } from '@/modules/site/components/network/templates/clean-blue/pages/search-form';
 
@@ -15,11 +15,11 @@ export interface CleanBlueSearchProps {
 export function CleanBlueSearch({ site, query }: CleanBlueSearchProps) {
   return (
     <CleanBlueShell site={site} path="/search">
-      <CleanBlueContainer className="space-y-6 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <StatusLine count={site.articles.length} title="Pencarian" />
         <CleanBlueSearchForm query={query} />
         <CleanBlueSearchResults articles={site.articles} query={query} />
-      </CleanBlueContainer>
+      </Container>
     </CleanBlueShell>
   );
 }

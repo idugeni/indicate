@@ -1,6 +1,6 @@
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
-import { CleanBlueContainer } from '@/modules/site/components/network/templates/clean-blue/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { CleanBlueReportForm } from '@/modules/site/components/network/templates/clean-blue/pages/report-form';
 
 export interface CleanBlueReportProps {
@@ -15,7 +15,7 @@ export interface CleanBlueReportProps {
 export function CleanBlueReport({ site, articleSlug, challengeSitekey }: CleanBlueReportProps) {
   return (
     <CleanBlueShell site={site} path="/report">
-      <CleanBlueContainer className="max-w-3xl py-8 md:py-12">
+      <Container className="max-w-3xl py-8 md:py-12">
         <p className="m-0 font-sans text-xs font-medium uppercase tracking-wider text-slate-600">
           Kepercayaan & keamanan
         </p>
@@ -28,7 +28,7 @@ export function CleanBlueReport({ site, articleSlug, challengeSitekey }: CleanBl
         <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-7">
           <CleanBlueReportForm articleSlug={articleSlug} challengeSitekey={challengeSitekey} />
         </div>
-      </CleanBlueContainer>
+      </Container>
     </CleanBlueShell>
   );
 }

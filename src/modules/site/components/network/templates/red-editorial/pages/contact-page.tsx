@@ -3,7 +3,7 @@ import { COMPANY_NAME, channelAction, channelHandle, isPrimaryContact, resolveCo
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { RedEditorialShell } from '@/modules/site/components/network/templates/red-editorial/chrome/shell';
-import { RedEditorialContainer } from '@/modules/site/components/network/templates/red-editorial/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { RedEditorialEmpty } from '@/modules/site/components/network/templates/red-editorial/ui/empty';
 import { RedEditorialJsonLd } from '@/modules/site/components/network/templates/red-editorial/seo/json-ld';
 
@@ -25,7 +25,7 @@ export function RedEditorialContact({ site, title, description, path = '/' }: Re
   const socials = channels.filter((channel) => !isPrimaryContact(channel.key));
   return (
     <RedEditorialShell site={site} path={path}>
-      <RedEditorialContainer className="space-y-6 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <div>
           <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-slate-900">
             <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#b91c1c]" />
@@ -99,7 +99,7 @@ export function RedEditorialContact({ site, title, description, path = '/' }: Re
             )}
           </div>
         )}
-      </RedEditorialContainer>
+      </Container>
       <RedEditorialJsonLd schemas={seo.jsonLd} />
     </RedEditorialShell>
   );

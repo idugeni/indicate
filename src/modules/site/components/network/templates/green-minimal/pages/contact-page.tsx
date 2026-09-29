@@ -3,7 +3,7 @@ import { COMPANY_NAME, channelAction, channelHandle, isPrimaryContact, resolveCo
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GreenMinimalShell } from '@/modules/site/components/network/templates/green-minimal/chrome/shell';
-import { GreenMinimalContainer } from '@/modules/site/components/network/templates/green-minimal/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { GreenMinimalEmpty } from '@/modules/site/components/network/templates/green-minimal/ui/empty';
 import { GreenMinimalJsonLd } from '@/modules/site/components/network/templates/green-minimal/seo/json-ld';
 
@@ -25,7 +25,7 @@ export function GreenMinimalContact({ site, title, description, path = '/' }: Gr
   const socials = channels.filter((channel) => !isPrimaryContact(channel.key));
   return (
     <GreenMinimalShell site={site} path={path}>
-      <GreenMinimalContainer className="space-y-6 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <div>
           <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-slate-900">
             <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1d7a38]" />
@@ -99,7 +99,7 @@ export function GreenMinimalContact({ site, title, description, path = '/' }: Gr
             )}
           </div>
         )}
-      </GreenMinimalContainer>
+      </Container>
       <GreenMinimalJsonLd schemas={seo.jsonLd} />
     </GreenMinimalShell>
   );

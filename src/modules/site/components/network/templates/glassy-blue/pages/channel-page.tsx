@@ -1,7 +1,7 @@
 import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GlassyBlueShell } from '@/modules/site/components/network/templates/glassy-blue/chrome/shell';
-import { GlassyBlueContainer } from '@/modules/site/components/network/templates/glassy-blue/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { GlassyBlueEmpty } from '@/modules/site/components/network/templates/glassy-blue/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { GlassyBluePicks } from '@/modules/site/components/network/templates/glassy-blue/cards/picks';
@@ -28,7 +28,7 @@ export function GlassyBlueChannel({ site, kicker, title, description, path = '/'
   const archive = lead ? rest.slice(2) : [];
   return (
     <GlassyBlueShell site={site} path={path}>
-      <GlassyBlueContainer className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
           <p className="m-0 inline-block rounded-full bg-[#1f7cff]/10 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-[#1f7cff]">
@@ -52,7 +52,7 @@ export function GlassyBlueChannel({ site, kicker, title, description, path = '/'
             <GlassyBlueArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
-      </GlassyBlueContainer>
+      </Container>
       <GlassyBlueJsonLd schemas={seo.jsonLd} />
     </GlassyBlueShell>
   );

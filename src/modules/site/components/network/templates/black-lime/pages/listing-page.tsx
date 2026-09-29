@@ -8,7 +8,7 @@ import { BlackLimePicks } from '@/modules/site/components/network/templates/blac
 import { BlackLimeArchivePager } from '@/modules/site/components/network/templates/black-lime/cards/archive-pager';
 import { BlackLimeNewsletter } from '@/modules/site/components/network/templates/black-lime/cards/newsletter';
 import { BlackLimeJsonLd } from '@/modules/site/components/network/templates/black-lime/seo/json-ld';
-import { BlackLimeContainer } from '@/modules/site/components/network/templates/black-lime/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { BlackLimeEmpty } from '@/modules/site/components/network/templates/black-lime/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
@@ -44,7 +44,7 @@ export function BlackLimeListing({ site, title, description, path, indexable }: 
 
   return (
     <BlackLimeShell site={site} path={path ?? '/'}>
-      <BlackLimeContainer className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <BlackLimeTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
@@ -71,7 +71,7 @@ export function BlackLimeListing({ site, title, description, path, indexable }: 
             />
           </>
         )}
-      </BlackLimeContainer>
+      </Container>
       <BlackLimeJsonLd schemas={seo.jsonLd} />
     </BlackLimeShell>
   );

@@ -8,6 +8,6 @@ import type { ReactNode } from 'react';
  * @param className - Tambahan kelas utilitas.
  * @returns Kontainer tenant.
  */
-export function BlackLimeContainer({ children, className = '' }: { readonly children: ReactNode; readonly className?: string }) {
+export function Container({ children, className = '' }: { readonly children: ReactNode; readonly className?: string }) {
   return <div className={`mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 sm:px-6 ${className}`}>{children}</div>;
 }

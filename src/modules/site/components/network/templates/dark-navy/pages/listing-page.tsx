@@ -8,7 +8,7 @@ import { DarkNavyMostRead } from '@/modules/site/components/network/templates/da
 import { DarkNavyArchivePager } from '@/modules/site/components/network/templates/dark-navy/cards/archive-pager';
 import { DarkNavyNewsletter } from '@/modules/site/components/network/templates/dark-navy/cards/newsletter';
 import { DarkNavyJsonLd } from '@/modules/site/components/network/templates/dark-navy/seo/json-ld';
-import { DarkNavyContainer } from '@/modules/site/components/network/templates/dark-navy/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { DarkNavyEmpty } from '@/modules/site/components/network/templates/dark-navy/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
@@ -43,7 +43,7 @@ export function DarkNavyListing({ site, title, description, path, indexable }: L
 
   return (
     <DarkNavyShell site={site} path={path ?? '/'}>
-      <DarkNavyContainer className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <DarkNavyTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
@@ -68,7 +68,7 @@ export function DarkNavyListing({ site, title, description, path, indexable }: L
             />
           </>
         )}
-      </DarkNavyContainer>
+      </Container>
       <DarkNavyJsonLd schemas={seo.jsonLd} />
     </DarkNavyShell>
   );

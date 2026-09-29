@@ -1,7 +1,7 @@
 import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { RedEditorialShell } from '@/modules/site/components/network/templates/red-editorial/chrome/shell';
-import { RedEditorialContainer } from '@/modules/site/components/network/templates/red-editorial/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { RedEditorialEmpty } from '@/modules/site/components/network/templates/red-editorial/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { RedEditorialPicks } from '@/modules/site/components/network/templates/red-editorial/cards/picks';
@@ -28,7 +28,7 @@ export function RedEditorialChannel({ site, kicker, title, description, path = '
   const archive = lead ? rest.slice(2) : [];
   return (
     <RedEditorialShell site={site} path={path}>
-      <RedEditorialContainer className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
           <p className="m-0 inline-block rounded-full bg-[#b91c1c]/10 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-[#b91c1c]">
@@ -52,7 +52,7 @@ export function RedEditorialChannel({ site, kicker, title, description, path = '
             <RedEditorialArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
-      </RedEditorialContainer>
+      </Container>
       <RedEditorialJsonLd schemas={seo.jsonLd} />
     </RedEditorialShell>
   );

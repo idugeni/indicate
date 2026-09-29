@@ -6,7 +6,7 @@ import type { DocSectionItem } from '@/modules/site/components/layout/doc-sectio
 import { TENANT_RELATED_DOCS } from '@/modules/site/legal-documents';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { OrangeModernShell } from '@/modules/site/components/network/templates/orange-modern/chrome/shell';
-import { OrangeModernContainer } from '@/modules/site/components/network/templates/orange-modern/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { OrangeModernJsonLd } from '@/modules/site/components/network/templates/orange-modern/seo/json-ld';
 
 export interface OrangeModernLegalProps {
@@ -26,7 +26,7 @@ export function OrangeModernLegal({ site, title, description, path = '/', sectio
   const seo = buildSeoDocument(site, { path });
   return (
     <OrangeModernShell site={site} path={path}>
-      <OrangeModernContainer className="space-y-6 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <div>
           <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-slate-900">
             <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#ea580c]" />
@@ -95,7 +95,7 @@ export function OrangeModernLegal({ site, title, description, path = '/', sectio
             </article>
           ))}
         </div>
-      </OrangeModernContainer>
+      </Container>
       <OrangeModernJsonLd schemas={seo.jsonLd} />
     </OrangeModernShell>
   );

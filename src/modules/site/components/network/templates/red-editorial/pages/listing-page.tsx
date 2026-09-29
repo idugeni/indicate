@@ -7,7 +7,7 @@ import { RedEditorialPicks } from '@/modules/site/components/network/templates/r
 import { RedEditorialArchivePager } from '@/modules/site/components/network/templates/red-editorial/cards/archive-pager';
 import { RedEditorialNewsletter } from '@/modules/site/components/network/templates/red-editorial/cards/newsletter';
 import { RedEditorialJsonLd } from '@/modules/site/components/network/templates/red-editorial/seo/json-ld';
-import { RedEditorialContainer } from '@/modules/site/components/network/templates/red-editorial/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { RedEditorialEmpty } from '@/modules/site/components/network/templates/red-editorial/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
@@ -33,7 +33,7 @@ export function RedEditorialListing({ site, title, description, path, indexable 
 
   return (
     <RedEditorialShell site={site} path={path ?? '/'}>
-      <RedEditorialContainer className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <RedEditorialTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
@@ -50,7 +50,7 @@ export function RedEditorialListing({ site, title, description, path, indexable 
             />
           </>
         )}
-      </RedEditorialContainer>
+      </Container>
       <RedEditorialJsonLd schemas={seo.jsonLd} />
     </RedEditorialShell>
   );

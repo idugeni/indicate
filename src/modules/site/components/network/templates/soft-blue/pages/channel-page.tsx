@@ -1,7 +1,7 @@
 import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-blue/chrome/shell';
-import { SoftBlueContainer } from '@/modules/site/components/network/templates/soft-blue/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { SoftBlueEmpty } from '@/modules/site/components/network/templates/soft-blue/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { SoftBluePicks } from '@/modules/site/components/network/templates/soft-blue/cards/picks';
@@ -28,7 +28,7 @@ export function SoftBlueChannel({ site, kicker, title, description, path = '/', 
   const archive = lead ? rest.slice(2) : [];
   return (
     <SoftBlueShell site={site} path={path}>
-      <SoftBlueContainer className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
           <p className="m-0 inline-block rounded-full bg-[#2563eb]/10 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-[#2563eb]">
@@ -52,7 +52,7 @@ export function SoftBlueChannel({ site, kicker, title, description, path = '/', 
             <SoftBlueArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
-      </SoftBlueContainer>
+      </Container>
       <SoftBlueJsonLd schemas={seo.jsonLd} />
     </SoftBlueShell>
   );

@@ -3,7 +3,7 @@ import { COMPANY_NAME, channelAction, channelHandle, isPrimaryContact, resolveCo
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-blue/chrome/shell';
-import { SoftBlueContainer } from '@/modules/site/components/network/templates/soft-blue/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { SoftBlueEmpty } from '@/modules/site/components/network/templates/soft-blue/ui/empty';
 import { SoftBlueJsonLd } from '@/modules/site/components/network/templates/soft-blue/seo/json-ld';
 
@@ -25,7 +25,7 @@ export function SoftBlueContact({ site, title, description, path = '/' }: SoftBl
   const socials = channels.filter((channel) => !isPrimaryContact(channel.key));
   return (
     <SoftBlueShell site={site} path={path}>
-      <SoftBlueContainer className="space-y-6 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <div>
           <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-slate-900">
             <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#2563eb]" />
@@ -99,7 +99,7 @@ export function SoftBlueContact({ site, title, description, path = '/' }: SoftBl
             )}
           </div>
         )}
-      </SoftBlueContainer>
+      </Container>
       <SoftBlueJsonLd schemas={seo.jsonLd} />
     </SoftBlueShell>
   );

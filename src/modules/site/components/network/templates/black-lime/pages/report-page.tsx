@@ -1,6 +1,6 @@
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimeShell } from '@/modules/site/components/network/templates/black-lime/chrome/shell';
-import { BlackLimeContainer } from '@/modules/site/components/network/templates/black-lime/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { BlackLimeReportForm } from '@/modules/site/components/network/templates/black-lime/pages/report-form';
 
 export interface BlackLimeReportProps {
@@ -15,7 +15,7 @@ export interface BlackLimeReportProps {
 export function BlackLimeReport({ site, articleSlug, challengeSitekey }: BlackLimeReportProps) {
   return (
     <BlackLimeShell site={site} path="/report">
-      <BlackLimeContainer className="max-w-3xl py-8 md:py-12">
+      <Container className="max-w-3xl py-8 md:py-12">
         <p className="m-0 font-sans text-xs font-medium uppercase tracking-wider text-[#a3ad9a]">
           Kepercayaan & keamanan
         </p>
@@ -28,7 +28,7 @@ export function BlackLimeReport({ site, articleSlug, challengeSitekey }: BlackLi
         <div className="mt-6 rounded-2xl bg-[#131711] p-5 shadow-sm ring-1 ring-[#242b1f]/60 sm:p-7">
           <BlackLimeReportForm articleSlug={articleSlug} challengeSitekey={challengeSitekey} />
         </div>
-      </BlackLimeContainer>
+      </Container>
     </BlackLimeShell>
   );
 }

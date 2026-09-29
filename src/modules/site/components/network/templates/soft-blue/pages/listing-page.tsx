@@ -7,7 +7,7 @@ import { SoftBluePicks } from '@/modules/site/components/network/templates/soft-
 import { SoftBlueArchivePager } from '@/modules/site/components/network/templates/soft-blue/cards/archive-pager';
 import { SoftBlueNewsletter } from '@/modules/site/components/network/templates/soft-blue/cards/newsletter';
 import { SoftBlueJsonLd } from '@/modules/site/components/network/templates/soft-blue/seo/json-ld';
-import { SoftBlueContainer } from '@/modules/site/components/network/templates/soft-blue/ui/container';
+import { Container } from '@/modules/site/components/network/ui/container';
 import { SoftBlueEmpty } from '@/modules/site/components/network/templates/soft-blue/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
@@ -32,7 +32,7 @@ export function SoftBlueListing({ site, title, description, path, indexable }: L
 
   return (
     <SoftBlueShell site={site} path={path ?? '/'}>
-      <SoftBlueContainer className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <SoftBlueTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
@@ -49,7 +49,7 @@ export function SoftBlueListing({ site, title, description, path, indexable }: L
             />
           </>
         )}
-      </SoftBlueContainer>
+      </Container>
       <SoftBlueJsonLd schemas={seo.jsonLd} />
     </SoftBlueShell>
   );
