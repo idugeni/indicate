@@ -153,7 +153,7 @@ describe('authorizePublicMedia organization article images', () => {
  * occurrence of that identifier to the condition under test.
  */
 function compileCondition(condition: unknown): { readonly text: string; readonly params: readonly unknown[] } {
-  const built = new QueryBuilder().select({ probe: media.id }).from(media).where(condition as SQL).toSQL();
+  const built = new QueryBuilder().select({ probe: media.id }).from(media).where(condition as SQL).limit(1).toSQL();
   return { text: built.sql, params: built.params };
 }
 
@@ -165,7 +165,7 @@ function compileCondition(condition: unknown): { readonly text: string; readonly
  * what makes the tenant assertion meaningful rather than vacuous.
  */
 function compileAssignmentCondition(condition: unknown): { readonly text: string; readonly params: readonly unknown[] } {
-  const built = new QueryBuilder().select({ probe: articleSites.id }).from(articleSites).where(condition as SQL).toSQL();
+  const built = new QueryBuilder().select({ probe: articleSites.id }).from(articleSites).where(condition as SQL).limit(1).toSQL();
   return { text: built.sql, params: built.params };
 }
 
