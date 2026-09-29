@@ -13,7 +13,7 @@ import { BlackLimeJsonLd } from '@/modules/site/components/network/templates/bla
 import { BlackLimeShell } from '@/modules/site/components/network/templates/black-lime/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/black-lime/ui/author-avatar';
 import { BlackLimeShareButtons } from '@/modules/site/components/network/templates/black-lime/cards/share-buttons';
-import { BlackLimeViewBeacon } from '@/modules/site/components/network/templates/black-lime/cards/view-beacon';
+import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimePicks } from '@/modules/site/components/network/templates/black-lime/cards/picks';
 import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
@@ -40,7 +40,7 @@ export function BlackLimeArticle({
 
   return (
     <BlackLimeShell site={site} path={`/${article.slug}`}>
-      <BlackLimeViewBeacon
+      <ViewBeacon
         organizationId={site.context.organizationId}
         siteId={site.context.siteId}
         articleSiteId={article.articleSiteId}

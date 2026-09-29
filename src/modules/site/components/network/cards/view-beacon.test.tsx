@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, waitFor } from '@testing-library/react';
 
-import { PurpleEditorialViewBeacon } from '@/modules/site/components/network/templates/purple-editorial/cards/view-beacon';
+import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 
 const O = '123e4567-e89b-12d3-a456-426614174000';
 const S = '123e4567-e89b-12d3-a456-426614174001';
@@ -18,10 +18,10 @@ afterEach(() => {
   cleanup();
 });
 
-describe('PurpleEditorialViewBeacon', () => {
+describe('ViewBeacon', () => {
   it('mengirim beacon sekali saat mount', () => {
     const send = installBeacon(true);
-    const { container } = render(<PurpleEditorialViewBeacon organizationId={O} siteId={S} articleSiteId={A} />);
+    const { container } = render(<ViewBeacon organizationId={O} siteId={S} articleSiteId={A} />);
     expect(container.firstChild).toBe(null);
     expect(send).toHaveBeenCalledTimes(1);
     const calls = send.mock.calls as unknown as Array<[string, string]>;
@@ -35,7 +35,7 @@ describe('PurpleEditorialViewBeacon', () => {
     const original = globalThis.fetch;
     globalThis.fetch = fetchMock as typeof fetch;
     try {
-      render(<PurpleEditorialViewBeacon organizationId={O} siteId={S} articleSiteId={A} />);
+      render(<ViewBeacon organizationId={O} siteId={S} articleSiteId={A} />);
       await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ method: 'POST' })));
     } finally {
       globalThis.fetch = original;
@@ -44,7 +44,7 @@ describe('PurpleEditorialViewBeacon', () => {
 
   it('diam untuk id tidak valid', () => {
     const send = installBeacon(true);
-    render(<PurpleEditorialViewBeacon organizationId="bukan-uuid" siteId={S} articleSiteId={A} />);
+    render(<ViewBeacon organizationId="bukan-uuid" siteId={S} articleSiteId={A} />);
     expect(send).not.toHaveBeenCalled();
   });
 });

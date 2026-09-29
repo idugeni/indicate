@@ -13,7 +13,7 @@ import { PurpleEditorialJsonLd } from '@/modules/site/components/network/templat
 import { PurpleEditorialShell } from '@/modules/site/components/network/templates/purple-editorial/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/purple-editorial/ui/author-avatar';
 import { PurpleEditorialShareButtons } from '@/modules/site/components/network/templates/purple-editorial/cards/share-buttons';
-import { PurpleEditorialViewBeacon } from '@/modules/site/components/network/templates/purple-editorial/cards/view-beacon';
+import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { PurpleEditorialPicks } from '@/modules/site/components/network/templates/purple-editorial/cards/picks';
 import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
@@ -40,7 +40,7 @@ export function PurpleEditorialArticle({
 
   return (
     <PurpleEditorialShell site={site} path={`/${article.slug}`}>
-      <PurpleEditorialViewBeacon
+      <ViewBeacon
         organizationId={site.context.organizationId}
         siteId={site.context.siteId}
         articleSiteId={article.articleSiteId}

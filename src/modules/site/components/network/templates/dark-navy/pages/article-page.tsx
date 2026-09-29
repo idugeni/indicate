@@ -13,7 +13,7 @@ import { DarkNavyJsonLd } from '@/modules/site/components/network/templates/dark
 import { DarkNavyShell } from '@/modules/site/components/network/templates/dark-navy/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/dark-navy/ui/author-avatar';
 import { DarkNavyShareButtons } from '@/modules/site/components/network/templates/dark-navy/cards/share-buttons';
-import { DarkNavyViewBeacon } from '@/modules/site/components/network/templates/dark-navy/cards/view-beacon';
+import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { DarkNavyPicks } from '@/modules/site/components/network/templates/dark-navy/cards/picks';
 import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
@@ -40,7 +40,7 @@ export function DarkNavyArticle({
 
   return (
     <DarkNavyShell site={site} path={`/${article.slug}`}>
-      <DarkNavyViewBeacon
+      <ViewBeacon
         organizationId={site.context.organizationId}
         siteId={site.context.siteId}
         articleSiteId={article.articleSiteId}

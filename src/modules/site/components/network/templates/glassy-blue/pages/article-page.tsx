@@ -13,7 +13,7 @@ import { GlassyBlueJsonLd } from '@/modules/site/components/network/templates/gl
 import { GlassyBlueShell } from '@/modules/site/components/network/templates/glassy-blue/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/glassy-blue/ui/author-avatar';
 import { GlassyBlueShareButtons } from '@/modules/site/components/network/templates/glassy-blue/cards/share-buttons';
-import { GlassyBlueViewBeacon } from '@/modules/site/components/network/templates/glassy-blue/cards/view-beacon';
+import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { GlassyBluePicks } from '@/modules/site/components/network/templates/glassy-blue/cards/picks';
 import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
@@ -40,7 +40,7 @@ export function GlassyBlueArticle({
 
   return (
     <GlassyBlueShell site={site} path={`/${article.slug}`}>
-      <GlassyBlueViewBeacon
+      <ViewBeacon
         organizationId={site.context.organizationId}
         siteId={site.context.siteId}
         articleSiteId={article.articleSiteId}

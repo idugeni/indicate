@@ -13,7 +13,7 @@ import { GreenMinimalJsonLd } from '@/modules/site/components/network/templates/
 import { GreenMinimalShell } from '@/modules/site/components/network/templates/green-minimal/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/green-minimal/ui/author-avatar';
 import { GreenMinimalShareButtons } from '@/modules/site/components/network/templates/green-minimal/cards/share-buttons';
-import { GreenMinimalViewBeacon } from '@/modules/site/components/network/templates/green-minimal/cards/view-beacon';
+import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { GreenMinimalPicks } from '@/modules/site/components/network/templates/green-minimal/cards/picks';
 import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
@@ -40,7 +40,7 @@ export function GreenMinimalArticle({
 
   return (
     <GreenMinimalShell site={site} path={`/${article.slug}`}>
-      <GreenMinimalViewBeacon
+      <ViewBeacon
         organizationId={site.context.organizationId}
         siteId={site.context.siteId}
         articleSiteId={article.articleSiteId}

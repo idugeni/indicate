@@ -13,7 +13,7 @@ import { RedEditorialJsonLd } from '@/modules/site/components/network/templates/
 import { RedEditorialShell } from '@/modules/site/components/network/templates/red-editorial/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/red-editorial/ui/author-avatar';
 import { RedEditorialShareButtons } from '@/modules/site/components/network/templates/red-editorial/cards/share-buttons';
-import { RedEditorialViewBeacon } from '@/modules/site/components/network/templates/red-editorial/cards/view-beacon';
+import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { RedEditorialPicks } from '@/modules/site/components/network/templates/red-editorial/cards/picks';
 import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
@@ -40,7 +40,7 @@ export function RedEditorialArticle({
 
   return (
     <RedEditorialShell site={site} path={`/${article.slug}`}>
-      <RedEditorialViewBeacon
+      <ViewBeacon
         organizationId={site.context.organizationId}
         siteId={site.context.siteId}
         articleSiteId={article.articleSiteId}

@@ -11,7 +11,7 @@ import { serializePageviewBeacon } from '@/modules/site/pageview-contract';
  */
 const ENDPOINT = getPageviewEndpoint();
 
-export function DarkNavyViewBeacon({
+export function ViewBeacon({
   organizationId,
   siteId,
   articleSiteId,

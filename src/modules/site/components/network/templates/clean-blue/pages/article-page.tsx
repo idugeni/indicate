@@ -13,7 +13,7 @@ import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/cle
 import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/clean-blue/ui/author-avatar';
 import { CleanBlueShareButtons } from '@/modules/site/components/network/templates/clean-blue/cards/share-buttons';
-import { CleanBlueViewBeacon } from '@/modules/site/components/network/templates/clean-blue/cards/view-beacon';
+import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/cards/picks';
 import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
@@ -40,7 +40,7 @@ export function CleanBlueArticle({
 
   return (
     <CleanBlueShell site={site} path={`/${article.slug}`}>
-      <CleanBlueViewBeacon
+      <ViewBeacon
         organizationId={site.context.organizationId}
         siteId={site.context.siteId}
         articleSiteId={article.articleSiteId}

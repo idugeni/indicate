@@ -13,7 +13,7 @@ import { WarmEditorialJsonLd } from '@/modules/site/components/network/templates
 import { WarmEditorialShell } from '@/modules/site/components/network/templates/warm-editorial/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/warm-editorial/ui/author-avatar';
 import { WarmEditorialShareButtons } from '@/modules/site/components/network/templates/warm-editorial/cards/share-buttons';
-import { WarmEditorialViewBeacon } from '@/modules/site/components/network/templates/warm-editorial/cards/view-beacon';
+import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { WarmEditorialPicks } from '@/modules/site/components/network/templates/warm-editorial/cards/picks';
 import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
@@ -40,7 +40,7 @@ export function WarmEditorialArticle({
 
   return (
     <WarmEditorialShell site={site} path={`/${article.slug}`}>
-      <WarmEditorialViewBeacon
+      <ViewBeacon
         organizationId={site.context.organizationId}
         siteId={site.context.siteId}
         articleSiteId={article.articleSiteId}

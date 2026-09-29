@@ -13,7 +13,7 @@ import { OrangeModernJsonLd } from '@/modules/site/components/network/templates/
 import { OrangeModernShell } from '@/modules/site/components/network/templates/orange-modern/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/orange-modern/ui/author-avatar';
 import { OrangeModernShareButtons } from '@/modules/site/components/network/templates/orange-modern/cards/share-buttons';
-import { OrangeModernViewBeacon } from '@/modules/site/components/network/templates/orange-modern/cards/view-beacon';
+import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { OrangeModernPicks } from '@/modules/site/components/network/templates/orange-modern/cards/picks';
 import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
@@ -40,7 +40,7 @@ export function OrangeModernArticle({
 
   return (
     <OrangeModernShell site={site} path={`/${article.slug}`}>
-      <OrangeModernViewBeacon
+      <ViewBeacon
         organizationId={site.context.organizationId}
         siteId={site.context.siteId}
         articleSiteId={article.articleSiteId}

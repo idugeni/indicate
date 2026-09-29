@@ -14,7 +14,7 @@ import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-
 import { AuthorAvatar } from '@/modules/site/components/network/templates/soft-blue/ui/author-avatar';
 import { SoftBlueContainer } from '@/modules/site/components/network/templates/soft-blue/ui/container';
 import { SoftBlueShareButtons } from '@/modules/site/components/network/templates/soft-blue/cards/share-buttons';
-import { SoftBlueViewBeacon } from '@/modules/site/components/network/templates/soft-blue/cards/view-beacon';
+import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBluePicks } from '@/modules/site/components/network/templates/soft-blue/cards/picks';
 import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
@@ -41,7 +41,7 @@ export function SoftBlueArticle({
 
   return (
     <SoftBlueShell site={site} path={`/${article.slug}`}>
-      <SoftBlueViewBeacon
+      <ViewBeacon
         organizationId={site.context.organizationId}
         siteId={site.context.siteId}
         articleSiteId={article.articleSiteId}
