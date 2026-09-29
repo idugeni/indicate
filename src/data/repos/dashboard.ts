@@ -398,12 +398,16 @@ export class DrizzleDashboardRepository implements DashboardRepository {
             AND (${to}::timestamptz IS NULL OR COALESCE(j.finalized_at, j.updated_at) <= ${to}::timestamptz)
           ORDER BY at DESC LIMIT 8`),
         transaction.execute<{ id: string; label: string; status: string; at: Date | string }>(sql`
-          SELECT s.id AS id, ar.title AS label, s.state AS status, s.state_occurred_at AS at
-          FROM article_sites s
-          JOIN articles ar ON ar.organization_id = ${orgId} AND ar.id = s.article_id
-          WHERE s.organization_id = ${orgId}
-            AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
-            AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)
+          SELECT id, label, status, at FROM (
+            SELECT DISTINCT ON (s.article_id)
+                   ar.id AS id, ar.title AS label, s.state AS status, s.state_occurred_at AS at
+            FROM article_sites s
+            JOIN articles ar ON ar.organization_id = ${orgId} AND ar.id = s.article_id
+            WHERE s.organization_id = ${orgId}
+              AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
+              AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)
+            ORDER BY s.article_id, s.state_occurred_at DESC
+          ) recent
           ORDER BY at DESC LIMIT 8`),
         transaction.execute<{ id: string; label: string; status: string; at: Date | string }>(sql`
           SELECT a.id AS id, a.title AS label, a.status AS status, a.created_at AS at
