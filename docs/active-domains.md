@@ -23,23 +23,39 @@ publishing targets 0); `.env` lokal pengirim baru; asosiasi Vercel `api.`/`webho
 dilepas (51 domain; apex lama dipertahankan untuk redirect); DNS/route lama tetap dual-serve.
 2026-09-26: apex lama memicu warning "Invalid Configuration" di dashboard Vercel
 (DNS proxied Cloudflare); asosiasi dilepas sekalian (redirect 100% di edge CF,
-terverifikasi tetap 308) — project kini 50 domain.
+terverifikasi tetap 308). Angka asosiasi project dicatat di bagian
+[Status Vercel](#status-vercel), bukan per-baris kronologi.
 Template email Auth live disinkron via `supabase config push` (13 konten + admin_email baru).
 Gap SMTP 2026-09-25: key lama terikat domain lama (Resend 400); dibuat key baru
 `sending_access` domain baru, dipasang di `.env`, Vercel, dan SMTP Auth; uji API + recovery OK.
 Key server baru aktif penuh setelah redeploy berikutnya.
-Status Vercel per 2026-09-25: project memiliki 213 asosiasi, seluruh asosiasi tenant
-104 apex exact + 104 wildcard `verified:true`; 10 hostname `wonosobo.*` tetap
-DB-only dan tidak memiliki exact Vercel. Kuota Pro/unlimited tidak lagi
-menghambat onboarding.
+Status Vercel per 2026-09-29: project memiliki 273 asosiasi, seluruhnya
+`verified:true`. Rinciannya di bagian [Status Vercel](#status-vercel).
 > **Related:** [domains](domains.md) · [cloudflare baseline](cloudflare-baseline.md) · [release checklist](release-checklist.md)
 
 ## Status Vercel
 
-Project `indicate` memiliki **213 asosiasi**, dengan 104 exact + 104 wildcard
-untuk seluruh apex tenant. Semua asosiasi tenant `verified:true`; hostname
-regional `wonosobo.*` tidak memiliki exact association. Lima asosiasi sisanya
-adalah surface control-plane/redirect. Vercel Pro/unlimited terverifikasi.
+Satu-satunya angka yang berlaku, dihitung live dari
+`list_project_domains` (team `safenca` = `team_HvgOzoFV92X1vjzqQkczC8kK`,
+project `indicate`, paginasikan sampai habis, `redirects=false`) pada
+**2026-09-29**:
+
+| Kelompok | Jumlah | `verified` |
+|---|---|---|
+| Apex tenant, exact | 134 | 134 |
+| Wildcard tenant `*.{apex}` | 135 | 135 |
+| Control-plane (`indicate.website`, `api.`, `webhook.`) | 3 | 3 |
+| `vercel.app` (host tetap) | 1 | 1 |
+| **Total asosiasi** | **273** | **273 verified, 0 unverified** |
+
+Hostname regional (`wonosobo.*`, `{city}.{apex}`) tidak punya exact
+association; semuanya dilayani wildcard apexnya, jadi menambah kota tidak
+menyentuh Vercel. Sebarannya cocok dengan
+[domains](domains.md): 134 apex, masing-masing dengan exact + wildcard.
+
+Tiga angka lain pernah tertulis untuk keadaan yang sama — 50, 213, dan 222 —
+dan ketiganya basi. Angka di sini berlaku sampai batch domain berikutnya;
+setelah itu hitung ulang, jangan menebak dari dokumen ini.
 
 `docs.indicate.web.id` tetap dipensiunkan dan tidak dipulihkan sebagai tenant.
 DNS dan redirect edge tetap menjadi tanggung jawab Cloudflare.

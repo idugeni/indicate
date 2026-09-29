@@ -33,9 +33,15 @@ WORM opsional, satu resource Upstash Redis.
       masih dibaca deployment sebelumnya (aturan expand → backfill →
       verify → contract). Bila ada perubahan destruktif, siapkan migrasi
       forward perbaikan, bukan revert metadata.
-- [ ] Kuota domain Vercel: project di 50/50 (`docs/active-domains.md`).
-      Rilis yang menambah domain butuh penaikan limit dulu — rilis kode
-      tidak membuka slot.
+- [ ] Domain Vercel: hitung **live** dari `list_project_domains`
+      (`teamId team_HvgOzoFV92X1vjzqQkczC8kK`, project `indicate`, paginasikan
+      sampai habis) dan pastikan `verified: false` = 0. Jangan pakai angka
+      yang tertulis di dokumen mana pun — angkanya basi dalam hitungan
+      minggu, dan tiga dokumen pernah berbeda: 50, 213, dan 222 untuk
+      keadaan yang sama. Acuan: 273 asosiasi (2026-09-29) = 134 apex exact +
+      135 wildcard + 3 control-plane + 1 `vercel.app`. Plan Pro tidak
+      membatasi jumlah custom domain, jadi yang dicek adalah verifikasi,
+      bukan kuota.
 - [ ] Secret/env production lengkap via server-only environment; tidak ada
       kredensial di argumen perintah, log, atau file repo.
 - [ ] Cron `vercel.json` tidak terhapus (reconciler publishing/delivery,

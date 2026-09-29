@@ -296,6 +296,14 @@ npm-facing.
   manual inspection — so it went stale on the first schema change while still
   reading as authoritative. `docs/migrations.md` now points at the rule that
   actually governs column coverage in `AGENTS.md`.
+- Three different Vercel domain counts were live at once — 50 in the release
+  checklist, 213 in the activation ledger, 222 in the multi-tenant archive —
+  for one project that actually holds **273 associations, all verified**
+  (134 tenant apexes exact, 135 tenant wildcards, 3 control-plane hosts, 1
+  `vercel.app`, counted live on 2026-09-29). A checklist asserting 50/50 while
+  the project holds 273 is a gate that misleads the operator reading it, so the
+  checklist now enumerates the count from the Vercel API rather than quoting a
+  stored number, and `docs/active-domains.md` holds the one dated breakdown.
 
 ## [0.1.0] - 2026-09-02
 
