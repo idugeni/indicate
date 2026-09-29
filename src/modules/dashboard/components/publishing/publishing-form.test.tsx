@@ -36,6 +36,9 @@ function expandFirstTarget(): void {
   fireEvent.click(screen.getAllByRole('button', { name: /^varian$/i })[0]!);
 }
 
+/** `userEvent` types character by character, so these specs need more headroom than the 5s default. */
+const USER_EVENT_TIMEOUT_MS = 20000;
+
 describe('PublishingForm publish', () => {
   it('menerbitkan ke site tercentang dan menampilkan status', async () => {
     const command = vi.fn(async (action: string) => (action === 'publication.request' ? STATUS : null));
@@ -135,7 +138,7 @@ describe('PublishingForm suggest and status', () => {
 
     await user.click(screen.getByRole('button', { name: /ulangi yang gagal/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith('publication.retry', { jobId: 'job-1' }), { timeout: 15000 });
-  });
+  }, USER_EVENT_TIMEOUT_MS);
 
   it('menarik yang tayang hanya setelah konfirmasi', async () => {
     const user = userEvent.setup();
@@ -152,7 +155,7 @@ describe('PublishingForm suggest and status', () => {
     vi.stubGlobal('confirm', vi.fn(() => true));
     await user.click(screen.getByRole('button', { name: /tarik yang tayang/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith('publication.unpublish', { jobId: 'job-1' }), { timeout: 5000 });
-  });
+  }, USER_EVENT_TIMEOUT_MS);
 
   it('menampilkan galat status yang ramah', async () => {
     setup(vi.fn(async () => null));
@@ -179,7 +182,7 @@ describe('PublishingForm suggest and status', () => {
     vi.stubGlobal('confirm', vi.fn(() => true));
     await user.click(screen.getByRole('button', { name: /^nonindeks$/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith('publication.setSiteRobots', { articleSiteId: 'as-1', directive: 'noindex' }), { timeout: 5000 });
-  });
+  }, USER_EVENT_TIMEOUT_MS);
 });
 
 describe('PublishingForm daftar situs tujuan', () => {
