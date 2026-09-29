@@ -59,12 +59,15 @@ Schema changes follow expand, backfill, verify, and contract across compatible r
 
 `audit_logs` is insert-only by design and is never swept: rows accumulate permanently and are exported to WORM storage (`audit_worm_export`, `src/modules/audit/audit-worm-export.ts`) by the daily cron `/api/internal/maintenance/worm-export` (`30 5 * * *` UTC). That cron was absent from `vercel.json` between 2026-09-22 and 2026-10-01, so no `worm/` object was written after 2026-09-12 until it was restored; the missed days are recovered per date with `?date=YYYY-MM-DD`, which the route accepts because the bucket is `worm-indefinite` locked and existing keys are skipped. Verify coverage by the `worm/<YYYY-MM-DD>/` prefixes in the bucket, not by `retention_runs`, whose rows are stamped with the run time. No scheduled DELETE exists for it. `retention_sweep()` compacts operational queues (`org_invitations`, `webhook_replay_claims`, `object_cleanup_tasks`, `invalidation_tasks`, `publication_transition_receipts`), keeps only the cache bypasses that are currently active, and keeps `media_key_reservations` honest: a reservation past its deadline that never produced a `media` row is flipped to `expired`, and a `used` reservation with no `media` row after a three-day grace is deleted as an upload that never landed. A portal bypasses the cache only while its invalidation is in flight, so the sweep deletes a `cache_bypasses` row once the bypass is off: `readBypassed()` already treats a missing row as "not bypassing", which keeps the table meaning "is this portal bypassing right now" instead of growing to one row per portal forever. The grace is three days because an upload is authorized for minutes, so three days is roughly four hundred times the real window. An expired reservation keeps its row as an audit trail, which is why the object key carries a partial unique index (`WHERE status <> 'expired'`): without it the `ON CONFLICT DO NOTHING` in `reserveMediaCandidate` would answer `occupied` for that key forever. Orphan history for removed categories is deleted by explicit forward migration (precedent: `20260925030000_retention_runs_drop_telegram_history.sql`).
 
-## Schema audit
+## Column coverage
 
-A column-level audit of the live database against the application lives in
-[schema-audit.md](schema-audit.md). It records which columns are read through
-raw SQL rather than Drizzle, which are reserved for unwired features, and which
-tables were retired in migration 191 as unreachable from any code.
+No column-level audit is maintained. The earlier hand-audit was retired on
+2026-09-29: its numbers were produced by manual inspection with no generator
+behind them, so every schema or query change invalidated it silently, and a
+stale table of "unused" columns is worse than none. The rule that governs which
+columns a change may reach lives in `AGENTS.md` under "Database access &
+egress" — projection minimum, tenant-scoped reads, and the six-step change
+gate. A retired table leaves its trace in the migration that dropped it.
 
 ## Ledger gap at 187
 

@@ -280,6 +280,23 @@ npm-facing.
   Redis regression is visible in telemetry instead of only as a status-code
   count.
 
+### Removed
+
+- Ten per-template `README.md` files under
+  `src/modules/site/components/network/templates/`. All ten were 23 lines and
+  differed only in the title line; the folder map, the `@/`-only import rule,
+  the `--tpl-*` form-control contract, the `network-listing.tsx` switch
+  registration, and the pure-`lib/` requirement are all stated once in
+  `docs/templates.md`, which is now the single place to look.
+- `docs/plans/audit-remediation-2026-09-24.md`. Every phase was executed and
+  checked off; the outcomes it recorded are already in this changelog, and a
+  finished plan document is history that a reader can mistake for a backlog.
+- `docs/schema-audit.md`. `docs/README.md` labelled it "Generated", but the
+  document stated that no generator exists and that its numbers came from
+  manual inspection — so it went stale on the first schema change while still
+  reading as authoritative. `docs/migrations.md` now points at the rule that
+  actually governs column coverage in `AGENTS.md`.
+
 ## [0.1.0] - 2026-09-02
 
 ### Added

@@ -24,8 +24,6 @@
 | [domains](domains.md) | Living | Indicate-related domain inventory. |
 | [active domains](active-domains.md) | Living ledger | Activation/deactivation ledger; update on every change. |
 | [ops lessons](ops-lessons.md) | Living | Incident-derived procedures (tenant context, Supavisor sessions). |
-| [plans/audit remediation 2026-09-24](plans/audit-remediation-2026-09-24.md) | Approved-plan | Full 6-phase remediation plan from the 2026-09-24 six-area audit. |
-| [schema audit](schema-audit.md) | Generated | Column-level audit of production schema against application code. Regenerate after schema migrations. |
 | [regions](regions.md) | Living | Single source for province geography in `regions` (naming rules + 38-row roster). |
 | [vercel multi-tenant archive](vercel-multi-tenant/README.md) | Archive 2026-09-24 | Verbatim Vercel multi-tenant platform docs (10 pages) for internal reference. Upstream wins on conflict; excluded from `lint:md` and link checks. |
 
