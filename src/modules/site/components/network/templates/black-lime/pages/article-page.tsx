@@ -16,7 +16,7 @@ import { BlackLimeShareButtons } from '@/modules/site/components/network/templat
 import { BlackLimeViewBeacon } from '@/modules/site/components/network/templates/black-lime/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimePicks } from '@/modules/site/components/network/templates/black-lime/cards/picks';
-import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/templates/black-lime/lib/format';
+import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 export function BlackLimeArticle({
   site,

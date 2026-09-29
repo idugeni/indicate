@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/clean-blue/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/clean-blue/ui/author-avatar';
-import { articleImage, readingMinutes } from '@/modules/site/components/network/templates/clean-blue/lib/format';
+import { articleImage, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { CleanBlueHeroActions } from '@/modules/site/components/network/templates/clean-blue/cards/hero-actions';
 
 export function CleanBlueHero({ article }: { readonly article: ArticleListItem }) {

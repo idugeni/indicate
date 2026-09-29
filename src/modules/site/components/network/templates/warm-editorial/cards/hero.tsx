@@ -6,7 +6,7 @@ import { ArrowRight, MapPin } from 'lucide-react';
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/warm-editorial/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/warm-editorial/ui/author-avatar';
-import { articleImage, readingMinutes } from '@/modules/site/components/network/templates/warm-editorial/lib/format';
+import { articleImage, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { WarmEditorialHeroActions } from '@/modules/site/components/network/templates/warm-editorial/cards/hero-actions';
 
 export function WarmEditorialHero({ article }: { readonly article: ArticleListItem }) {

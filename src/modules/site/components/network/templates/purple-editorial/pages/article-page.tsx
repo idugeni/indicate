@@ -16,7 +16,7 @@ import { PurpleEditorialShareButtons } from '@/modules/site/components/network/t
 import { PurpleEditorialViewBeacon } from '@/modules/site/components/network/templates/purple-editorial/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { PurpleEditorialPicks } from '@/modules/site/components/network/templates/purple-editorial/cards/picks';
-import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/templates/purple-editorial/lib/format';
+import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 export function PurpleEditorialArticle({
   site,

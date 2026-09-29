@@ -4,7 +4,7 @@ import { unstable_cache } from 'next/cache';
 
 import { deliveryComposition } from '@/modules/delivery';
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { categoryNav, type CategoryNavItem } from '@/modules/site/components/network/templates/purple-editorial/lib/nav';
+import { categoryNav, type CategoryNavItem } from '@/modules/site/components/network/ui/nav';
 
 /**
  * Navigasi kategori yang IDENTIK di semua halaman (header + footer).

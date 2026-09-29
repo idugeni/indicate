@@ -16,7 +16,7 @@ import { GreenMinimalShareButtons } from '@/modules/site/components/network/temp
 import { GreenMinimalViewBeacon } from '@/modules/site/components/network/templates/green-minimal/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { GreenMinimalPicks } from '@/modules/site/components/network/templates/green-minimal/cards/picks';
-import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/templates/green-minimal/lib/format';
+import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 export function GreenMinimalArticle({
   site,

@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/green-minimal/lib/format';
+import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/green-minimal/theme';
 import { ArticleMeta } from '@/modules/site/components/network/templates/green-minimal/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/green-minimal/ui/author-avatar';

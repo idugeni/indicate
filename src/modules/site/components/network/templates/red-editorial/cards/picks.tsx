@@ -5,7 +5,7 @@ import { ArrowRight, TrendingUp } from 'lucide-react';
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { RedEditorialPickCard } from '@/modules/site/components/network/templates/red-editorial/cards/pick-card';
 import { SectionHeading } from '@/modules/site/components/network/templates/red-editorial/ui/section-heading';
-import { articleImage, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/red-editorial/lib/format';
+import { articleImage, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 const GRID_SIZE = 4;
 const POPULAR_SIZE = 5;

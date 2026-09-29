@@ -16,7 +16,7 @@ import { WarmEditorialShareButtons } from '@/modules/site/components/network/tem
 import { WarmEditorialViewBeacon } from '@/modules/site/components/network/templates/warm-editorial/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { WarmEditorialPicks } from '@/modules/site/components/network/templates/warm-editorial/cards/picks';
-import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/templates/warm-editorial/lib/format';
+import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 export function WarmEditorialArticle({
   site,

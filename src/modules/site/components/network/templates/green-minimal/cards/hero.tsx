@@ -6,7 +6,7 @@ import { ArrowRight, MapPin } from 'lucide-react';
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/green-minimal/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/green-minimal/ui/author-avatar';
-import { articleImage, readingMinutes } from '@/modules/site/components/network/templates/green-minimal/lib/format';
+import { articleImage, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 export function GreenMinimalHero({ article }: { readonly article: ArticleListItem }) {
   const src = articleImage(article);

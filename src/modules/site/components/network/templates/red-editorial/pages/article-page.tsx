@@ -16,7 +16,7 @@ import { RedEditorialShareButtons } from '@/modules/site/components/network/temp
 import { RedEditorialViewBeacon } from '@/modules/site/components/network/templates/red-editorial/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { RedEditorialPicks } from '@/modules/site/components/network/templates/red-editorial/cards/picks';
-import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/templates/red-editorial/lib/format';
+import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 export function RedEditorialArticle({
   site,

@@ -1,7 +1,7 @@
 import { CalendarDays, Clock3, Eye } from 'lucide-react';
 
-import { formatDate, formatFullViews } from '@/modules/site/components/network/templates/purple-editorial/lib/format';
-import type { DateVariant } from '@/modules/site/components/network/templates/purple-editorial/lib/format';
+import { formatDate, formatFullViews } from '@/modules/site/components/network/ui/format';
+import type { DateVariant } from '@/modules/site/components/network/ui/format';
 
 /**
  * Baris meta artikel berikon: tanggal, lama baca, angka views penuh.

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { formatDate, tickerHeadline } from '@/modules/site/components/network/templates/soft-blue/lib/format';
+import { formatDate, tickerHeadline } from '@/modules/site/components/network/ui/format';
 import { TICKER_INTERVAL_MS, TICKER_MAX_ITEMS, tickerPauseLabel, useTickerRotation } from '@/modules/site/components/network/ui/ticker-rotation';
 
 export function SoftBlueTicker({ articles }: { readonly articles: readonly ArticleListItem[] }) {

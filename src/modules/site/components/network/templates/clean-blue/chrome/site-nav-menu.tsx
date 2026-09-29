@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import type { CategoryNavItem } from '@/modules/site/components/network/templates/clean-blue/lib/nav';
+import type { CategoryNavItem } from '@/modules/site/components/network/ui/nav';
 
 const MAX_VISIBLE_CATEGORIES = 4;
 

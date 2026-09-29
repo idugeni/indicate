@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Share2 } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/red-editorial/lib/format';
+import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/red-editorial/ui/author-avatar';
 
 export function RedEditorialPickCard({ article, index }: { readonly article: ArticleListItem; readonly index: number }) {

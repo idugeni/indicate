@@ -8,7 +8,7 @@ import { ArrowRight, MapPin } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { RedEditorialHeroActions } from '@/modules/site/components/network/templates/red-editorial/cards/hero-actions';
-import { articleImage, formatFullViews, formatDate, readingMinutes } from '@/modules/site/components/network/templates/red-editorial/lib/format';
+import { articleImage, formatFullViews, formatDate, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 const ROTATE_MS = 6000;
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { makeNetworkArticle, makeNetworkSite } from '@/modules/delivery/network-test-fixtures';
-import { categoryNav } from '@/modules/site/components/network/templates/clean-blue/lib/nav';
+import { categoryNav } from '@/modules/site/components/network/ui/nav';
 
 describe('categoryNav', () => {
   it('pakai navigasi eksplisit bila diisi, dibatasi limit', () => {

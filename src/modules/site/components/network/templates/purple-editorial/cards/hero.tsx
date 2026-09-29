@@ -6,7 +6,7 @@ import { ArrowRight, MapPin } from 'lucide-react';
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/purple-editorial/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/purple-editorial/ui/author-avatar';
-import { articleImage, readingMinutes } from '@/modules/site/components/network/templates/purple-editorial/lib/format';
+import { articleImage, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { PurpleEditorialHeroActions } from '@/modules/site/components/network/templates/purple-editorial/cards/hero-actions';
 
 export function PurpleEditorialHero({ article }: { readonly article: ArticleListItem }) {

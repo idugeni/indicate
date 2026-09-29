@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { TrendingUp } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/black-lime/lib/format';
+import { articleImage, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 export function BlackLimeQuotePanel({ siteName, quote }: { readonly siteName: string; readonly quote: string }) {
   return (

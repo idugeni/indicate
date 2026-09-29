@@ -17,7 +17,7 @@ import { SoftBlueShareButtons } from '@/modules/site/components/network/template
 import { SoftBlueViewBeacon } from '@/modules/site/components/network/templates/soft-blue/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBluePicks } from '@/modules/site/components/network/templates/soft-blue/cards/picks';
-import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/templates/soft-blue/lib/format';
+import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 export function SoftBlueArticle({
   site,

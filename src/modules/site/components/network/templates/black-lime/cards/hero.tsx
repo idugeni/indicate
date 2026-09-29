@@ -6,7 +6,7 @@ import { ArrowRight, ArrowUpRight, MapPin } from 'lucide-react';
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/black-lime/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/black-lime/ui/author-avatar';
-import { articleImage, readingMinutes } from '@/modules/site/components/network/templates/black-lime/lib/format';
+import { articleImage, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 export function BlackLimeHero({ article }: { readonly article: ArticleListItem }) {
   const src = articleImage(article);

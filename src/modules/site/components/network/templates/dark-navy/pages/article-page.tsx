@@ -16,7 +16,7 @@ import { DarkNavyShareButtons } from '@/modules/site/components/network/template
 import { DarkNavyViewBeacon } from '@/modules/site/components/network/templates/dark-navy/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { DarkNavyPicks } from '@/modules/site/components/network/templates/dark-navy/cards/picks';
-import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/templates/dark-navy/lib/format';
+import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 export function DarkNavyArticle({
   site,

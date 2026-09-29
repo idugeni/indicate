@@ -16,7 +16,7 @@ import { GlassyBlueShareButtons } from '@/modules/site/components/network/templa
 import { GlassyBlueViewBeacon } from '@/modules/site/components/network/templates/glassy-blue/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { GlassyBluePicks } from '@/modules/site/components/network/templates/glassy-blue/cards/picks';
-import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/templates/glassy-blue/lib/format';
+import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 export function GlassyBlueArticle({
   site,

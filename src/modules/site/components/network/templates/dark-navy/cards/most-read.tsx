@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Flame } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/dark-navy/lib/format';
+import { articleImage, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 export function DarkNavyMostRead({ articles }: { readonly articles: readonly ArticleListItem[] }) {
   const items = articles.slice(0, 5);

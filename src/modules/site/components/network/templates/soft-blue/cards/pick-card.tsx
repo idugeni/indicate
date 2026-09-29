@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/soft-blue/lib/format';
+import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/soft-blue/theme';
 import { ArticleMeta } from '@/modules/site/components/network/templates/soft-blue/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/soft-blue/ui/author-avatar';

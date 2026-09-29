@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Cpu, Globe, HeartHandshake, Landmark, LayoutGrid, Tag, TrendingUp, Trophy, type LucideIcon } from 'lucide-react';
 
-import type { CategoryNavItem } from '@/modules/site/components/network/templates/glassy-blue/lib/nav';
+import type { CategoryNavItem } from '@/modules/site/components/network/ui/nav';
 
 function pillIcon(label: string): LucideIcon {
   const key = label.toLowerCase();

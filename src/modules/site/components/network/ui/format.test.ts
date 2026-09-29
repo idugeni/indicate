@@ -11,7 +11,7 @@ import {
   readingMinutes,
   tickerHeadline,
   tickerTime,
-} from '@/modules/site/components/network/templates/black-lime/lib/format';
+} from '@/modules/site/components/network/ui/format';
 
 describe('articleImage', () => {
   it('prioritaskan thumbnail, lalu gambar utama, lalu fallback lokal', () => {

@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { SectionHeading } from '@/modules/site/components/network/templates/glassy-blue/ui/section-heading';
-import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/templates/glassy-blue/lib/format';
+import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/glassy-blue/theme';
 
 /**

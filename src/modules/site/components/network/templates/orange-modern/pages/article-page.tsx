@@ -16,7 +16,7 @@ import { OrangeModernShareButtons } from '@/modules/site/components/network/temp
 import { OrangeModernViewBeacon } from '@/modules/site/components/network/templates/orange-modern/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { OrangeModernPicks } from '@/modules/site/components/network/templates/orange-modern/cards/picks';
-import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/templates/orange-modern/lib/format';
+import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 export function OrangeModernArticle({
   site,

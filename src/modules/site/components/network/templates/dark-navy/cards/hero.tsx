@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { articleImage, formatFullViews, formatDate, readingMinutes } from '@/modules/site/components/network/templates/dark-navy/lib/format';
+import { articleImage, formatFullViews, formatDate, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/dark-navy/ui/author-avatar';
 
 const ROTATE_MS = 6000;

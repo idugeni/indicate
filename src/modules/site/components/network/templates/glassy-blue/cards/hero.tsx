@@ -9,7 +9,7 @@ import { ArrowRight, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/glassy-blue/ui/article-meta';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/glassy-blue/ui/author-avatar';
-import { articleImage, readingMinutes } from '@/modules/site/components/network/templates/glassy-blue/lib/format';
+import { articleImage, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { GlassyBlueHeroActions } from '@/modules/site/components/network/templates/glassy-blue/cards/hero-actions';
 
 const ROTATE_MS = 6000;
