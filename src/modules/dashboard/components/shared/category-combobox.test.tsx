@@ -17,13 +17,10 @@ const CATEGORIES = [
 function setup(options: {
   value?: readonly string[];
   onValueChange?: (ids: readonly string[]) => void;
-  onCreateCategory?: (name: string) => Promise<string | null>;
+  onCreateCategory?: (name: string) => string | null;
 } = {}) {
   const onValueChange = vi.fn((ids: readonly string[]) => options.onValueChange?.(ids));
-  const onCreateCategory = vi.fn(async (name: string) => {
-    if (options.onCreateCategory) return options.onCreateCategory(name);
-    return null;
-  });
+  const onCreateCategory = vi.fn((name: string) => options.onCreateCategory?.(name) ?? null);
   render(
     <>
       <label htmlFor="kategori">Kategori</label>
@@ -61,7 +58,7 @@ describe('CategoryCombobox', () => {
 
   it('membuat kategori baru lewat Enter saat tidak ada yang cocok', async () => {
     const user = userEvent.setup();
-    const onCreateCategory = vi.fn(async () => 'c-9');
+    const onCreateCategory = vi.fn(() => 'c-9');
     setup({ onCreateCategory });
     await user.click(screen.getByLabelText('Kategori'));
     await user.type(screen.getByLabelText('Kategori'), 'Olahraga');
@@ -77,7 +74,7 @@ describe('CategoryCombobox', () => {
           categories={CATEGORIES}
           value={['c-2']}
           onValueChange={() => {}}
-          onCreateCategory={async () => null}
+          onCreateCategory={() => null}
         />
       </form>,
     );

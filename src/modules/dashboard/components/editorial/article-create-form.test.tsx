@@ -1,41 +1,52 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { ArticleCreateForm } from '@/modules/dashboard/components/editorial/editorial-form';
 
 vi.mock('@/modules/dashboard/components/editorial/rich-text-editor', () => ({
   RichTextEditor: ({
+    initialDoc,
     onDocChange,
   }: {
+    readonly initialDoc?: unknown;
     readonly onDocChange: (change: { readonly doc: unknown; readonly text: string }) => void;
-  }) => (
-    <textarea
-      aria-label="Isi Artikel"
-      onChange={(event) => {
-        const text = event.target.value;
-        onDocChange({
-          doc: {
-            type: 'doc',
-            content:
-              text.trim() === ''
-                ? [{ type: 'paragraph' }]
-                : [{ type: 'paragraph', content: [{ type: 'text', text }] }],
-          },
-          text,
-        });
-      }}
-    />
-  ),
+  }) => {
+    const initial = initialDoc as { readonly content?: readonly { readonly content?: readonly { readonly text?: unknown }[] }[] } | null | undefined;
+    const initialText = (initial?.content ?? [])
+      .map((node) => (node.content ?? []).map((leaf) => (typeof leaf.text === 'string' ? leaf.text : '')).join(''))
+      .join(' ');
+    return (
+      <textarea
+        aria-label="Isi Artikel"
+        defaultValue={initialText}
+        onChange={(event) => {
+          const text = event.target.value;
+          onDocChange({
+            doc: {
+              type: 'doc',
+              content:
+                text.trim() === ''
+                  ? [{ type: 'paragraph' }]
+                  : [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+            },
+            text,
+          });
+        }}
+      />
+    );
+  },
 }));
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), promise: vi.fn((task: Promise<unknown>) => task) },
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn(), promise: vi.fn((task: Promise<unknown>) => task) },
 }));
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
+  vi.useRealTimers();
 });
 
 const DATA = {
@@ -67,6 +78,7 @@ const DATA = {
 function setup(overrides: {
   submit?: (payload: unknown) => Promise<unknown>;
   command?: (action: string, payload: unknown) => Promise<unknown>;
+  organizationId?: string;
 }) {
   const submit = vi.fn(async (payload: unknown) => (overrides.submit ? overrides.submit(payload) : null));
   const cmd = vi.fn(async (action: string, payload: unknown) => {
@@ -79,8 +91,10 @@ function setup(overrides: {
       ),
     };
   });
-  const { container } = render(<ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} />);
-  return { submit, cmd, container };
+  const { container, unmount } = render(
+    <ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} organizationId={overrides.organizationId} />,
+  );
+  return { submit, cmd, container, unmount };
 }
 
 async function pilihWilayahWonosobo(): Promise<void> {
@@ -225,7 +239,7 @@ describe('Formulir tulis artikel', () => {
           canonicalUrl: 'https://sumber.example/rilis',
           authorId: 'a-1',
           status: 'draft',
-          scheduledAt: undefined,
+          scheduledAt: null,
         }),
       ),
     );
@@ -283,7 +297,7 @@ describe('Formulir tulis artikel', () => {
     );
   });
 
-  it('membuat kategori baru lewat tombol cerdas di dalam combobox', async () => {
+  it('menunda kategori baru ke server sampai artikel disimpan', async () => {
     const user = userEvent.setup();
     const submit = vi.fn(async () => null);
     const cmd = vi.fn(async (action: string) => (action === 'category.create' ? { id: 'c-9' } : {}));
@@ -292,17 +306,100 @@ describe('Formulir tulis artikel', () => {
     await user.type(screen.getByLabelText(/Kategori/), 'Olahraga');
     await waitFor(() => expect(screen.queryByRole('option')).toBeNull());
     await user.click(screen.getByRole('button', { name: /Tambah.*Olahraga.*kategori baru/ }));
-    await waitFor(() =>
-      expect(cmd).toHaveBeenCalledWith('category.create', { name: 'Olahraga', slug: 'olahraga' }),
-    );
+    await waitFor(() => expect(screen.getByText('Olahraga')).toBeDefined());
+    expect(cmd).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
     fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
     fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
+      expect(cmd).toHaveBeenCalledWith('category.create', { name: 'Olahraga', slug: 'olahraga' }),
+    );
+    await waitFor(() =>
       expect(submit).toHaveBeenCalledWith(expect.objectContaining({ categoryIds: ['c-9'] })),
     );
+  });
+
+  it('menahan artikel saat kategori baru gagal dibuat', async () => {
+    const user = userEvent.setup();
+    const submit = vi.fn(async () => null);
+    const cmd = vi.fn(async () => null);
+    const { container } = render(<ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} />);
+    await user.click(screen.getByLabelText(/Kategori/));
+    await user.type(screen.getByLabelText(/Kategori/), 'Olahraga');
+    await user.click(await screen.findByRole('button', { name: /Tambah.*Olahraga.*kategori baru/ }));
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await pilihWilayahWonosobo();
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() => expect(cmd).toHaveBeenCalledWith('category.create', { name: 'Olahraga', slug: 'olahraga' }));
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it('menyimpan artikel tanpa sumber', async () => {
+    const { submit, container } = setup({});
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await pilihWilayahWonosobo();
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({ source: '' })));
+  });
+
+  it('menolak simpan dan menampilkan pesan Indonesia saat isi kaya tidak valid', async () => {
+    const { submit, container } = setup({});
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await pilihWilayahWonosobo();
+    await act(async () => {
+      screen.getByLabelText('Isi Artikel').dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() => expect(submit).not.toHaveBeenCalled());
+  });
+
+  it('menulis draft ke localStorage lalu memulihkannya saat form dibuka lagi', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const first = setup({ organizationId: 'org-1' });
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Belum Selesai' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Kantor' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Paragraf yang belum rampung.' } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_500); });
+    const stored = window.localStorage.getItem('indicate:article-draft:org-1');
+    expect(stored).not.toBeNull();
+    expect(JSON.parse(stored as string)).toMatchObject({ titleText: 'Belum Selesai', source: 'Rilis Kantor' });
+    first.unmount();
+
+    render(<ArticleCreateForm data={DATA} onSubmit={vi.fn(async () => null)} command={vi.fn(async () => ({}))} organizationId="org-1" />);
+    expect((screen.getByLabelText('Judul Artikel') as HTMLInputElement).value).toBe('Belum Selesai');
+    expect((screen.getByLabelText('Sumber', { selector: 'input' }) as HTMLInputElement).value).toBe('Rilis Kantor');
+    expect((screen.getByLabelText('Isi Artikel') as HTMLTextAreaElement).value).toBe('Paragraf yang belum rampung.');
+  });
+
+  it('tidak menulis draft milik tenant lain', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    setup({ organizationId: 'org-1' });
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Rahasia Tenant' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi.' } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_500); });
+    expect(window.localStorage.getItem('indicate:article-draft:org-1')).not.toBeNull();
+    expect(window.localStorage.getItem('indicate:article-draft:org-2')).toBeNull();
+  });
+
+  it('menghapus draft setelah artikel tersimpan', async () => {
+    const { container } = setup({ organizationId: 'org-1', submit: async () => ({ id: 'art-1', slug: 'judul-uji' }) });
+    await pilihWilayahWonosobo();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_500); });
+    expect(window.localStorage.getItem('indicate:article-draft:org-1')).not.toBeNull();
+    await act(async () => {
+      fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(window.localStorage.getItem('indicate:article-draft:org-1')).toBeNull();
   });
 
   it('mengirim URL sampul luar tanpa unggahan', async () => {

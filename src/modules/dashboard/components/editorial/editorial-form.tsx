@@ -39,6 +39,20 @@ import { findMatchingCategoryId, localDateTimeToIso, slugify } from '@/modules/d
 import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { SLUG_MAX_LENGTH, TAG_MAX_COUNT, normalizeTagList } from '@/modules/site/slug-allocator';
 import type { TipTapDoc, TipTapNode } from '@/modules/site/tiptap-document';
+import { isTipTapDoc } from '@/modules/site/tiptap-document';
+import { describeBodyJsonProblem } from '@/modules/dashboard/components/editorial/body-json-diagnostics';
+import {
+  buildArticlePayload,
+  buildAutosavePayload,
+  persistDraftArticle,
+  type AutosavedDraft,
+} from '@/modules/dashboard/components/editorial/article-persistence';
+import {
+  clearArticleDraft,
+  readArticleDraft,
+  useArticleDraftMirror,
+  type ArticleDraft,
+} from '@/modules/dashboard/components/editorial/use-article-draft';
 import { ArticlePreview } from '@/modules/dashboard/components/editorial/article-preview';
 import { RichTextEditor } from '@/modules/dashboard/components/editorial/rich-text-editor';
 import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
@@ -78,6 +92,20 @@ const MODE_HINTS: Record<'tulis' | 'pratinjau' | 'sumber', string> = {
   pratinjau: 'Tampilan artikel seperti di situs. Kembali ke Tulis untuk mengubah.',
   sumber: 'Teks polos yang dibuat otomatis untuk arsip dan RSS — hanya baca.',
 };
+
+/** Awalan id kategori yang masih hidup di memori dan belum ada di server. */
+const PENDING_CATEGORY_PREFIX = 'new:';
+
+/**
+ * Jeda autosave ke server.
+ *
+ * @remarks Sengaja 60 detik, bukan 15. Setiap `article.update` menulis satu baris
+ * `audit_logs`, jadi autosave 15 detik berarti sekitar 240 baris audit per jam
+ * per editor. `audit_logs` sudah tercatat sebagai tabel besar yang pembacaannya
+ * belum seluruhnya berbatas, jadi angka ini dipilih agar tidak memperbesar
+ * masalah yang sedang ditangani, bukan agar terasa paling responsif.
+ */
+const AUTOSAVE_DEBOUNCE_MS = 60_000;
 
 /**
  * Bilah ukur panjang metadata terhadap rentang tampil idealnya.
@@ -123,16 +151,20 @@ function SeoMeter({
  * @param data - Opsi wilayah, penerbit, kategori, penulis, dan artikel existing untuk saran tag.
  * @param onSubmit - Menyimpan `article.create`; media upload memakai command opsional.
  * @param command - Perintah workspace untuk unggah media editor kaya; tanpa ini unggahan gagal eksplisit.
+ * @param organizationId - Tenant pemilik draft. Kosong mematikan cermin `localStorage`;
+ *   layar produksi selalu meneruskannya, dan kunci draft tidak pernah lintas tenant.
  * @returns Kanvas artikel terbuka + inspektor lengket (status, SEO, atribusi, sampul, sumber).
  */
 export function ArticleCreateForm({
   data,
   onSubmit,
   command,
+  organizationId = '',
 }: {
   readonly data: unknown;
   readonly onSubmit: (payload: unknown) => Promise<unknown>;
   readonly command?: (action: string, payload: unknown) => Promise<unknown>;
+  readonly organizationId?: string | undefined;
 }) {
   const model = data as {
     readonly regions?: readonly RegionEntity[];
@@ -187,6 +219,13 @@ export function ArticleCreateForm({
   const [richResetKey, setRichResetKey] = useState(0);
   const [isSubmitting, startSubmitTransition] = useTransition();
   const [publishOnSave, setPublishOnSave] = useState(true);
+  const [source, setSource] = useState('');
+  const [canonicalUrl, setCanonicalUrl] = useState('');
+  const [tags, setTags] = useState<readonly string[]>([]);
+  const [autosavedDraft, setAutosavedDraft] = useState<AutosavedDraft | null>(null);
+  const [autosaveNotice, setAutosaveNotice] = useState<string | null>(null);
+  const [rawScheduleInput, setRawScheduleInput] = useState('');
+  const restoredDraftRef = useRef(false);
 
   const liveSites = useMemo(() => model?.sites ?? [], [model?.sites]);
   const publicationScope = useMemo<PublicationScope>(() => {
@@ -299,9 +338,140 @@ export function ArticleCreateForm({
     }
   }, [publisherId, authorId, defaultAuthorId]);
 
-  const effectiveCategoryIds = categoryIds.length > 0
-    ? categoryIds
-    : defaultCategoryId === null ? [] : [defaultCategoryId];
+  const effectiveCategoryIds = useMemo(
+    () => (categoryIds.length > 0 ? categoryIds : defaultCategoryId === null ? [] : [defaultCategoryId]),
+    [categoryIds, defaultCategoryId],
+  );
+  const serverCategoryIds = useMemo(
+    () => effectiveCategoryIds.filter((id) => !id.startsWith(PENDING_CATEGORY_PREFIX)),
+    [effectiveCategoryIds],
+  );
+  const bodyJsonProblem = useMemo(() => describeBodyJsonProblem(bodyJsonDraft), [bodyJsonDraft]);
+
+  const formSnapshot = useMemo(() => ({
+    slug,
+    titleText,
+    descriptionText,
+    bodyText,
+    bodyJson: bodyJsonDraft,
+    source,
+    canonicalUrl,
+    coverUrl,
+    tags,
+    status,
+    rawSchedule: rawScheduleInput,
+    provinceId,
+    cityId,
+    publisherId,
+    authorId,
+    categoryIds: effectiveCategoryIds,
+    leadMediaId: featuredId,
+  }), [
+    slug, titleText, descriptionText, bodyText, bodyJsonDraft, source, canonicalUrl,
+    coverUrl, tags, status, rawScheduleInput, provinceId, cityId, publisherId,
+    authorId, effectiveCategoryIds, featuredId,
+  ]);
+
+  const draftSnapshot = useMemo<ArticleDraft | null>(() => {
+    if (organizationId === '') return null;
+    const meaningful = titleText.trim() !== '' || bodyText.trim() !== '' || bodyJsonDraft !== null;
+    return meaningful
+      ? {
+        version: 1,
+        savedAt: new Date().toISOString(),
+        slug,
+        slugTouched,
+        status,
+        categoryIds,
+        extraCategories,
+        publisherId,
+        authorId,
+        provinceId,
+        cityId,
+        titleText,
+        descriptionText,
+        bodyText,
+        bodyJson: bodyJsonDraft,
+        source,
+        canonicalUrl,
+        coverUrl,
+        tags,
+        publishOnSave,
+      }
+      : null;
+  }, [
+    organizationId, titleText, bodyText, bodyJsonDraft, slug, slugTouched, status,
+    categoryIds, extraCategories, publisherId, authorId, provinceId, cityId,
+    descriptionText, source, canonicalUrl, coverUrl, tags, publishOnSave,
+  ]);
+
+  useEffect(() => {
+    if (restoredDraftRef.current || organizationId === '') return;
+    restoredDraftRef.current = true;
+    const stored = readArticleDraft(organizationId);
+    if (stored === null) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- one-time hydration restore, not a state sync loop. `localStorage` does not exist during SSR, so a lazy `useState` initializer would read `null` on the server and the stored draft on the client, producing a hydration mismatch. Reading browser storage once on mount is the only way to restore it without diverging the first render. */
+    setSlug(stored.slug);
+    setSlugTouched(stored.slugTouched);
+    setStatus(stored.status);
+    setCategoryIds(stored.categoryIds);
+    setExtraCategories(stored.extraCategories);
+    setPublisherId(stored.publisherId);
+    setAuthorId(stored.authorId);
+    setProvinceId(stored.provinceId);
+    setCityId(stored.cityId);
+    setTitleText(stored.titleText);
+    setDescriptionText(stored.descriptionText);
+    setBodyText(stored.bodyText);
+    setBodyJsonDraft(isTipTapDoc(stored.bodyJson) ? stored.bodyJson : null);
+    setSource(stored.source);
+    setCanonicalUrl(stored.canonicalUrl);
+    setCoverUrl(stored.coverUrl);
+    setTags(stored.tags);
+    setPublishOnSave(stored.publishOnSave);
+    setRichResetKey((key) => key + 1);
+    toast.info(`Draf artikel dipulihkan: "${stored.titleText.trim() === '' ? 'tanpa judul' : stored.titleText.trim()}".`);
+  }, [organizationId]);
+
+  // Declared after the restore effect on purpose: React runs effects in
+  // declaration order, so the mirror must not be armed before the stored draft
+  // has been read back into state.
+  useArticleDraftMirror(organizationId, draftSnapshot);
+
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const snapshotRef = useRef(formSnapshot);
+  const autosavedRef = useRef(autosavedDraft);
+
+  useEffect(() => {
+    snapshotRef.current = formSnapshot;
+  }, [formSnapshot]);
+  useEffect(() => {
+    autosavedRef.current = autosavedDraft;
+  }, [autosavedDraft]);
+
+  useEffect(() => {
+    if (command === undefined || isSubmitting) return;
+    if (buildAutosavePayload(formSnapshot, serverCategoryIds) === null) return;
+    if (autosaveTimerRef.current !== null) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      autosaveTimerRef.current = null;
+      void (async () => {
+        const active = command;
+        const payload = buildAutosavePayload(snapshotRef.current, serverCategoryIds);
+        if (payload === null || active === undefined) return;
+        const saved = await persistDraftArticle(active, payload, autosavedRef.current);
+        if (saved === null) {
+          setAutosaveNotice('Draf terakhir belum tersimpan ke server. Isi tetap aman di peramban ini.');
+          return;
+        }
+        setAutosavedDraft(saved);
+        setAutosaveNotice(`Draf tersimpan ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}.`);
+      })();
+    }, AUTOSAVE_DEBOUNCE_MS);
+    return () => {
+      if (autosaveTimerRef.current !== null) clearTimeout(autosaveTimerRef.current);
+    };
+  }, [formSnapshot, serverCategoryIds, command, isSubmitting]);
 
   const selectedPublisher = useMemo(
     () => (model?.publishers ?? []).find((p) => p.id === publisherId) ?? null,
@@ -331,7 +501,7 @@ export function ArticleCreateForm({
     setSlug(value);
   };
 
-  const handleCreateCategory = async (rawName: string): Promise<string | null> => {
+  const handleCreateCategory = (rawName: string): string | null => {
     const name = rawName.trim();
     if (name === '') {
       toast.error('Isi nama kategori dulu.');
@@ -344,30 +514,55 @@ export function ArticleCreateForm({
       toast.info(`Kategori "${label}" sudah ada — dipilih otomatis.`);
       return matched;
     }
+    const pendingId = `${PENDING_CATEGORY_PREFIX}${crypto.randomUUID()}`;
+    setExtraCategories((prev) => (prev.some((category) => category.id === pendingId) ? prev : [...prev, { id: pendingId, name, slug: slugify(name), status: 'active', version: 1 }]));
+    setCategoryIds((prev) => (prev.includes(pendingId) ? prev : [...prev, pendingId]));
+    return pendingId;
+  };
+
+  /**
+   * Ubah kategori lokal (belum tersimpan) menjadi id server saat artikel disimpan.
+   *
+   * @param ids - Id kategori terpilih; yang berawalan `new:` masih lokal.
+   * @returns Id server dalam urutan yang sama, atau null bila ada yang gagal.
+   */
+  const persistPendingCategories = async (ids: readonly string[]): Promise<readonly string[] | null> => {
+    if (!ids.some((id) => id.startsWith(PENDING_CATEGORY_PREFIX))) return ids;
     if (command === undefined) {
-      toast.error('Tambah kategori tidak tersedia di pratinjau.');
+      toast.error('Kategori baru tidak dapat disimpan dari layar ini.');
       return null;
     }
-    // `command` never rejects: it resolves to null on every swallowed failure
-    // and already toasts the real reason, so this only has to interpret null.
-    const created = (await command('category.create', { name, slug: slugify(name) })) as { readonly id?: unknown } | null;
-    const newId = typeof created?.id === 'string' ? created.id : null;
-    if (newId === null) {
-      // `command` resolves to null whenever it swallows a failure, and the
-      // server may already have committed the row. Claiming "gagal" here would
-      // push the editor to retype a name that is now taken, so name the real
-      // ambiguity instead of asserting a rollback that never happened.
-      toast.error('Kategori tidak terkonfirmasi. Periksa daftar kategori — nama itu mungkin sudah tersimpan.');
-      return null;
+    const resolved: string[] = [];
+    for (const id of ids) {
+      if (!id.startsWith(PENDING_CATEGORY_PREFIX)) {
+        resolved.push(id);
+        continue;
+      }
+      const pending = extraCategories.find((category) => category.id === id);
+      if (pending === undefined) return null;
+      let created: { readonly id?: unknown } | null;
+      try {
+        created = (await command('category.create', { name: pending.name, slug: slugify(pending.name) })) as { readonly id?: unknown } | null;
+      } catch (error) {
+        toast.error(error instanceof Error && error.message !== '' ? error.message : `Kategori "${pending.name}" gagal disimpan.`);
+        return null;
+      }
+      const newId = typeof created?.id === 'string' ? created.id : null;
+      if (newId === null) {
+        // A rejected org switch can leave the row committed, so re-check the
+        // server-backed list before telling the editor the category is missing.
+        // `allCategories` would match the pending chip against itself and hand
+        // back a `new:` id the server has never seen.
+        const settled = findMatchingCategoryId(activeCategories, pending.name);
+        if (settled === null) return null;
+        resolved.push(settled);
+        setExtraCategories((prev) => prev.filter((category) => category.id !== id));
+        continue;
+      }
+      resolved.push(newId);
+      setExtraCategories((prev) => prev.filter((category) => category.id !== id));
     }
-    setExtraCategories((prev) =>
-      prev.some((category) => category.id === newId)
-        ? prev
-        : [...prev, { id: newId, name, slug: slugify(name), status: 'active', version: 1 }],
-    );
-    setCategoryIds((prev) => (prev.includes(newId) ? prev : [...prev, newId]));
-    toast.success(`Kategori "${name}" ditambahkan dan dipilih.`);
-    return newId;
+    return resolved;
   };
 
   const handleFeaturedFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -413,10 +608,14 @@ export function ArticleCreateForm({
     setSavingFeaturedMeta(true);
     try {
       const updated = (await command('media.update', { mediaId: featuredId, expectedVersion: featuredVersion, ...patch })) as { readonly version?: unknown } | null;
-      setFeaturedVersion(typeof updated?.version === 'number' ? updated.version : featuredVersion + 1);
+      if (updated === null) {
+        toast.warning('Penyimpanan dibatalkan karena organisasi aktif berubah.');
+        return;
+      }
+      setFeaturedVersion(typeof updated.version === 'number' ? updated.version : featuredVersion + 1);
       toast.success('Metadata sampul disimpan.');
-    } catch {
-      toast.error('Gagal menyimpan metadata sampul. Coba lagi.');
+    } catch (error) {
+      toast.error(error instanceof Error && error.message !== '' ? error.message : 'Gagal menyimpan metadata sampul. Coba lagi.');
     } finally {
       setSavingFeaturedMeta(false);
     }
@@ -508,18 +707,13 @@ export function ArticleCreateForm({
   const handleCreateArticle = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
-    const formData = new FormData(form);
-    const optional = (key: string): string | undefined => {
-      const trimmed = String(formData.get(key) ?? '').trim();
-      return trimmed === '' ? undefined : trimmed;
-    };
-    const rawSchedule = String(formData.get('scheduledAt') ?? '');
-    const title = String(formData.get('title') ?? '').trim();
+    const rawSchedule = rawScheduleInput;
+    const title = titleText.trim();
     if (title === '') {
       toast.error('Isi judul artikel dulu.');
       return;
     }
-    const slugValue = String(formData.get('slug') ?? '').trim();
+    const slugValue = slug.trim();
     if (slugValue === '') {
       toast.error('Isi slug URL dulu.');
       return;
@@ -528,12 +722,13 @@ export function ArticleCreateForm({
       toast.error('Slug hanya boleh huruf kecil, angka, dan strip.');
       return;
     }
-    if (String(formData.get('provinceId') ?? '').trim() === '') {
+    if (provinceId === null) {
       toast.error('Pilih wilayah dulu.');
       return;
     }
-    if (String(formData.get('source') ?? '').trim() === '') {
-      toast.error('Isi sumber dulu.');
+    if (bodyJsonProblem !== null) {
+      setMode('tulis');
+      toast.error(`Isi artikel ditolak: ${bodyJsonProblem}`);
       return;
     }
     if (status === 'scheduled' && rawSchedule === '') {
@@ -552,38 +747,41 @@ export function ArticleCreateForm({
     }
 
     startSubmitTransition(async () => {
-      const payloadSlug = String(formData.get('slug') ?? '').trim();
-      const description = optional('excerpt');
-      const pickedCity = String(formData.get('cityId') ?? '').trim();
-      const created = (await onSubmit({
-        regionId: pickedCity === '' ? formData.get('provinceId') : pickedCity,
-        publisherId: formData.get('publisherId') || null,
-        categoryIds: effectiveCategoryIds,
-        authorId: formData.get('authorId') || null,
-        leadMediaId: formData.get('leadMediaId') || null,
-        slug: payloadSlug,
-        title: String(formData.get('title') ?? '').trim(),
-        excerpt: description,
-        canonicalUrl: optional('canonicalUrl'),
-        coverImageUrl: optional('coverImageUrl'),
-        body: trimmedBody.slice(0, 200_000),
-        bodyJson: bodyJsonDraft,
-        source: String(formData.get('source') ?? '').trim(),
-        tags: normalizeTagList(String(formData.get('tags') ?? '').split(',')).slice(0, TAG_MAX_COUNT),
-        status,
-        scheduledAt,
-      })) as { readonly id?: string; readonly slug?: string } | null;
-      if (created !== null && typeof created.slug === 'string' && created.slug !== payloadSlug) {
+      const payloadSlug = slugValue;
+      const categoryIds = await persistPendingCategories(effectiveCategoryIds);
+      if (categoryIds === null) {
+        toast.error('Kategori baru belum tersimpan. Periksa kategori yang ditandai, lalu coba Simpan lagi.');
+        return;
+      }
+      const payload = buildArticlePayload({ ...formSnapshot, status, rawSchedule }, categoryIds);
+      let created: { readonly id?: string; readonly slug?: string } | null;
+      try {
+        created = autosavedDraft !== null && command !== undefined
+          ? await command('article.update', { ...payload, id: autosavedDraft.id, expectedVersion: autosavedDraft.version }) as { readonly id?: string; readonly slug?: string }
+          : await onSubmit(payload) as { readonly id?: string; readonly slug?: string };
+      } catch (error) {
+        // The article may already exist server-side, so keep the draft instead
+        // of clearing the form and reporting a rollback that never happened.
+        toast.error(error instanceof Error && error.message !== '' ? error.message : 'Artikel gagal disimpan.');
+        return;
+      }
+      if (created === null) {
+        toast.warning('Penyimpanan dibatalkan karena organisasi aktif berubah. Tulis ulang bila perlu.');
+        return;
+      }
+      if (typeof created.slug === 'string' && created.slug !== payloadSlug) {
         toast.info(`Slug "${payloadSlug}" sudah dipakai — disimpan sebagai "${created.slug}".`);
       }
-      if (willPublish && created !== null && typeof created.id === 'string') {
+      if (willPublish && typeof created.id === 'string') {
         await publishCreatedArticle(created.id, status === 'scheduled', scheduledAt);
       }
+      if (organizationId !== '') clearArticleDraft(organizationId);
       form.reset();
       setSlug('');
       setSlugTouched(false);
       setStatus('draft');
-      setCategoryIds(defaultCategoryId === null ? [] : [defaultCategoryId]);
+      setCategoryIds([]);
+      setExtraCategories([]);
       setPublisherId(null);
       setProvinceId(null);
       setCityId(null);
@@ -593,6 +791,12 @@ export function ArticleCreateForm({
       setDescriptionText('');
       setMode('tulis');
       setBodyText('');
+      setSource('');
+      setCanonicalUrl('');
+      setTags([]);
+      setRawScheduleInput('');
+      setAutosavedDraft(null);
+      setAutosaveNotice(null);
       setFeaturedId(null);
       setFeaturedName('');
       setFeaturedPreviewUrl(null);
@@ -628,6 +832,8 @@ export function ArticleCreateForm({
             type="datetime-local"
             required
             disabled={isSubmitting}
+            value={rawScheduleInput}
+            onChange={(e) => setRawScheduleInput(e.target.value)}
             aria-label="Jadwal terbit"
             className="h-8 w-auto rounded border-hairline-strong bg-bg px-2 font-mono text-xs text-paper focus-visible:ring-brass"
           />
@@ -660,6 +866,11 @@ export function ArticleCreateForm({
             {targetSiteIds.length.toLocaleString('id-ID')} {targetLabel}
           </span>
         ) : null}
+        {autosaveNotice === null ? null : (
+          <span className="font-mono text-[11px] text-paper-faint" aria-live="polite">
+            {autosaveNotice}
+          </span>
+        )}
         <span className="flex-1" />
         <Button type="submit" variant="default" disabled={isSubmitting}>
           {isSubmitting ? (
@@ -683,6 +894,7 @@ export function ArticleCreateForm({
                 name="title"
                 required
                 disabled={isSubmitting}
+                value={titleText}
                 onChange={(e) => handleTitleChange(e.target.value)}
                 placeholder="Tulis tajuk berita di sini…"
                 className="h-11 rounded-lg border-hairline-strong bg-bg px-3.5 font-serif text-lg font-semibold tracking-tight text-paper transition-colors duration-180 placeholder:font-sans placeholder:text-sm placeholder:font-normal hover:border-hairline focus-visible:border-brass focus-visible:ring-brass"
@@ -739,6 +951,7 @@ export function ArticleCreateForm({
                 id={excerptInputId}
                 name="excerpt"
                 disabled={isSubmitting}
+                value={descriptionText}
                 onChange={(e) => setDescriptionText(e.target.value)}
                 placeholder="Satu-dua kalimat inti berita..."
                 className="min-h-[64px] rounded border border-hairline-strong bg-bg p-3 font-sans text-xs leading-relaxed text-paper transition-colors duration-180 hover:border-hairline focus:border-brass focus:outline-none"
@@ -791,12 +1004,18 @@ export function ArticleCreateForm({
                   ))}
                 </div>
               </div>
-              <p className="m-0 pb-2 font-mono text-[11px] text-paper-faint" role="note">
+              <p className="m-0 font-mono text-[11px] text-paper-faint" role="note">
                 {MODE_HINTS[mode]}
               </p>
+              {bodyJsonProblem === null ? null : (
+                <p className="m-0 font-mono text-[11px] text-error" role="alert">
+                  {bodyJsonProblem}
+                </p>
+              )}
               {mode === 'tulis' ? (
                 <RichTextEditor
                   key={richResetKey}
+                  initialDoc={bodyJsonDraft}
                   onDocChange={handleRichChange}
                   command={command ?? (async () => { throw new Error('Unggahan media tidak tersedia di pratinjau.'); })}
                   labelledBy={`${bodyInputId}-label`}
@@ -916,7 +1135,7 @@ export function ArticleCreateForm({
                   Kategori ({effectiveCategoryIds.length} dipilih{effectiveCategoryIds.length === categoryIds.length || defaultCategoryName === null ? '' : ` · ${defaultCategoryName}`})
                 </Label>
                 <p className="m-0 font-mono text-[11px] text-paper-faint">
-                  Ketik untuk mencari; bila tidak ada, tombol tambah muncul di dalam daftar. Boleh lebih dari satu; yang pertama jadi kategori utama. Wajib — tanpa pilihan, artikel memakai{defaultCategoryName === null ? ' kategori bawaan tenant' : ` “${defaultCategoryName}”`}.
+                  Ketik untuk mencari; bila tidak ada, tekan Enter atau tombol tambah di dalam daftar — kategori baru disimpan ke server hanya saat artikel disimpan. Boleh lebih dari satu; yang pertama jadi kategori utama. Wajib — tanpa pilihan, artikel memakai{defaultCategoryName === null ? ' kategori bawaan tenant' : ` “${defaultCategoryName}”`}.
                 </p>
                 <CategoryCombobox
                   id={categoryInputId}
@@ -968,6 +1187,8 @@ export function ArticleCreateForm({
                   placeholder="cth: wonosobo, pertanian, apbd"
                   suggestions={tagSuggestions}
                   maxItems={TAG_MAX_COUNT}
+                  value={tags}
+                  onValueChange={setTags}
                   normalizeValue={(raw) => {
                     const first = normalizeTagList([raw])[0];
                     return typeof first === 'string' ? first : '';
@@ -1141,11 +1362,15 @@ export function ArticleCreateForm({
                 <Input
                   id={sourceInputId}
                   name="source"
-                  required
                   disabled={isSubmitting}
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
                   placeholder="cth: Rilis Resmi Dinas Kominfo Wonosobo"
                   className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
                 />
+                <p className="m-0 font-mono text-[11px] text-paper-faint">
+                  Opsional. Kosongkan bila atribusi mengikuti penulis atau penerbit.
+                </p>
               </div>
 
               <Separator />
@@ -1158,6 +1383,8 @@ export function ArticleCreateForm({
                   id={canonicalInputId}
                   name="canonicalUrl"
                   disabled={isSubmitting}
+                  value={canonicalUrl}
+                  onChange={(e) => setCanonicalUrl(e.target.value)}
                   placeholder="https://sumber-resmi.example/rilis/..."
                   className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
                 />

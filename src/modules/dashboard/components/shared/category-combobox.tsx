@@ -44,12 +44,14 @@ function smartFilter(
  * "Politik & Hukum". Bila tidak ada yang cocok persis, popup menampilkan
  * tombol `Tambah "X" sebagai kategori baru`; Enter tanpa sorotan berperilaku
  * sama. Chip pertama adalah kategori primer (badge ★). Nilai terkirim
- * sebagai hidden input `categoryIds` terurut.
+ * sebagai hidden input `categoryIds` terurut. `onCreateCategory` wajib
+ * sinkron karena hanya mendaftarkan nama di state lokal; persistence
+ * dititipkan pemanggil agar tidak menyentuh server sebelum artikel disimpan.
  * @param id - Id input untuk asosiasi label.
  * @param categories - Ranah kategori aktif tenant.
  * @param value - Id terpilih terurut; pertama adalah primer.
  * @param onValueChange - Dipanggil dengan daftar id berikutnya.
- * @param onCreateCategory - Membuat kategori dari nama bebas; kembalikan id baru atau null bila gagal.
+ * @param onCreateCategory - Mendaftarkan kategori dari nama bebas secara lokal; kembalikan id baru atau null bila ditolak.
  * @param placeholder - Petunjuk saat kosong.
  * @param disabled - Kunci input.
  * @returns Pemilih kategori chip ala control-room.
@@ -67,7 +69,7 @@ export function CategoryCombobox({
   readonly categories: readonly CategoryChoice[];
   readonly value: readonly string[];
   readonly onValueChange: (ids: readonly string[]) => void;
-  readonly onCreateCategory: (name: string) => Promise<string | null>;
+  readonly onCreateCategory: (name: string) => string | null;
   readonly placeholder?: string | undefined;
   readonly disabled?: boolean | undefined;
 }) {
@@ -112,7 +114,7 @@ export function CategoryCombobox({
     setQuery('');
   };
 
-  const createFromQuery = async () => {
+  const createFromQuery = () => {
     const name = query.trim();
     if (name === '') return;
     const matched =
@@ -122,7 +124,7 @@ export function CategoryCombobox({
       selectId(matched.id);
       return;
     }
-    const createdId = await onCreateCategory(name);
+    const createdId = onCreateCategory(name);
     if (createdId !== null) selectId(createdId);
   };
 
@@ -174,7 +176,7 @@ export function CategoryCombobox({
               const highlighted = event.currentTarget.getAttribute('aria-activedescendant');
               if (highlighted !== null) return;
               event.preventDefault();
-              void createFromQuery();
+              createFromQuery();
             } else if (event.key === 'Backspace' && event.currentTarget.value === '' && value.length > 0) {
               event.preventDefault();
               commit(value.slice(0, -1));
@@ -205,7 +207,7 @@ export function CategoryCombobox({
             {trimmedQuery !== '' && exactMatch === null ? (
               <button
                 type="button"
-                onClick={() => void createFromQuery()}
+                onClick={createFromQuery}
                 className="flex w-full cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 font-mono text-xs text-paper outline-none hover:bg-bg-raised-2 focus-visible:ring-2 focus-visible:ring-brass"
               >
                 <PlusIcon className="size-3.5 flex-none text-brass" aria-hidden="true" />
