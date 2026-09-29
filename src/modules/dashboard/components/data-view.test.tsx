@@ -71,6 +71,56 @@ describe('Tampilan data koleksi', () => {
     expect(reload).toHaveBeenCalledTimes(1);
   });
 
+  it('menyatakan batas server sebagai "terbaru", bukan sebagai total', () => {
+    const rows = Array.from({ length: 500 }, (_unused, index) => ({
+      id: `log-${index}`,
+      action: 'media.access.authorize',
+      targetType: 'media',
+      outcome: 'succeeded',
+      occurredAt: '2026-09-26T10:15:00.000Z',
+      changedFields: [],
+      before: null,
+      after: null,
+    }));
+    render(<DataView view="audit" data={{ auditLogs: rows }} currentPage={1} onPageChange={vi.fn()} onRefresh={vi.fn()} />);
+    expect(screen.getByText('500 terbaru')).toBeDefined();
+    expect(screen.queryByText('500 data')).toBeNull();
+    expect(screen.getByText(/dari 500 termuat/)).toBeDefined();
+  });
+
+  it('menyatakan jumlah sebenarnya saat belum mencapai batas server', () => {
+    render(
+      <DataView
+        view="audit"
+        data={{ auditLogs: [{ id: 'log-1', action: 'x.y', targetType: 'media', outcome: 'succeeded', occurredAt: '2026-09-26T10:15:00.000Z', changedFields: [], before: null, after: null }] }}
+        currentPage={1}
+        onPageChange={vi.fn()}
+        onRefresh={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('1 data')).toBeDefined();
+    expect(screen.queryByText(/termuat/)).toBeNull();
+  });
+
+  it('menyembunyikan kolom Status saat proyeksi tidak punya field status', () => {
+    render(
+      <DataView
+        view="configuration"
+        data={{
+          siteSettings: [
+            { id: 'ss-1', siteId: 's-1', name: 'Jurnalism - Jawa Tengah', version: 2, description: 'x' },
+          ],
+        }}
+        currentPage={1}
+        onPageChange={vi.fn()}
+        onRefresh={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Jurnalism - Jawa Tengah')).toBeDefined();
+    expect(screen.queryByText('Status')).toBeNull();
+    expect(screen.queryByText('UNKNOWN')).toBeNull();
+  });
+
   it('merender tabel situs dengan penomoran halaman', () => {
     const handlePageChange = vi.fn();
     render(

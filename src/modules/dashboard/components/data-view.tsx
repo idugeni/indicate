@@ -181,6 +181,27 @@ function StatusMark({ status }: { readonly status: string }) {
   );
 }
 
+/**
+ * Server row ceilings per collection.
+ *
+ * @remarks A table that loaded exactly this many rows is showing a truncated
+ * page, so the count must read as "the newest N", not as the collection total.
+ * Measuring the real total would need an unbounded scan of a table that only
+ * grows, which `AGENTS.md` §"Database access & egress" rules out; the filters
+ * on these views are the deliberate way to reach older rows.
+ */
+const COLLECTION_LIMITS: Readonly<Record<string, number>> = {
+  auditLogs: 500,
+  invalidationTasks: 100,
+  objectCleanupTasks: 100,
+  mediaKeyReservations: 100,
+  cacheBypasses: 100,
+  transitionReceipts: 100,
+  webhookReplayClaims: 100,
+  sites: 200,
+  siteSettings: 200,
+};
+
 const COLLECTION_LABELS: Readonly<Record<string, string>> = {
   publishers: 'Penerbit',
   affiliations: 'Afiliasi Resmi',
@@ -560,6 +581,13 @@ function CollectionTable({
   const editorConfig = command === undefined ? undefined : getEditorConfig(collectionKey);
   const formattedTitle = collectionLabel(collectionKey);
   const memoData = useMemo(() => [...rawItems], [rawItems]);
+  const hasStatusSignal = useMemo(() => memoData.some((item) => resolveRowStatus(item) !== 'unknown'), [memoData]);
+  // `site_settings` and similar projections carry no status field at all, so the
+  // column would render `UNKNOWN` on every row forever; default it off instead.
+  const effectiveColumnVisibility = useMemo<ColumnVisibilityState>(
+    () => (hasStatusSignal ? columnVisibility : { status: false, ...columnVisibility }),
+    [hasStatusSignal, columnVisibility],
+  );
 
   const copyToClipboard = async (text: string, label: string): Promise<void> => {
     try {
@@ -719,7 +747,7 @@ function CollectionTable({
         },
       },
     ] satisfies ColumnDef<DashboardFeatures, CollectionItem>[],
-    state: { sorting, rowSelection, columnVisibility },
+    state: { sorting, rowSelection, columnVisibility: effectiveColumnVisibility },
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility,
@@ -727,6 +755,11 @@ function CollectionTable({
   });
 
   const totalItems = rawItems.length;
+  const collectionLimit = COLLECTION_LIMITS[collectionKey];
+  const isTruncated = collectionLimit !== undefined && totalItems >= collectionLimit;
+  const itemCountLabel = isTruncated
+    ? `${totalItems.toLocaleString('id-ID')} terbaru`
+    : `${totalItems.toLocaleString('id-ID')} data`;
   const visibleColumnCount = table.getVisibleLeafColumns().length;
   const editingItem =
     editingId === null
@@ -802,13 +835,13 @@ function CollectionTable({
           </h2>
         ) : (
           <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
-            {totalItems.toLocaleString('id-ID')} data
+            {itemCountLabel}
           </p>
         )}
         <div className="flex items-center gap-3">
           {showTitle ? (
             <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
-              {totalItems.toLocaleString('id-ID')} data
+              {itemCountLabel}
             </p>
           ) : null}
           {totalItems > 0 ? (
@@ -913,7 +946,8 @@ function CollectionTable({
           <div className="min-w-0">
             <Table className="w-full table-fixed text-sm">
               <caption className="sr-only">
-                {formattedTitle}: {totalItems.toLocaleString('id-ID')} data, halaman {safePage} dari {totalPages}
+                {formattedTitle}: {itemCountLabel}, halaman {safePage} dari {totalPages}
+                {isTruncated ? ' — hanya baris terbaru yang dimuat; gunakan filter untuk menjelajah riwayat yang lebih lama' : ''}
               </caption>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -992,8 +1026,8 @@ function CollectionTable({
       {totalItems > 0 ? (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <span role="status" aria-live="polite" aria-atomic="true" className="font-mono text-[11px] tabular-nums text-paper-faint">
-            {startIndex + 1}–{Math.min(startIndex + PAGE_SIZE, totalItems)} dari{' '}
-            {totalItems}
+            {startIndex + 1}–{Math.min(startIndex + PAGE_SIZE, totalItems)} dari {totalItems}
+            {isTruncated ? ' termuat' : ''}
           </span>
 
           <Pagination className="mx-0 w-auto">
