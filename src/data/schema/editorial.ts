@@ -150,6 +150,7 @@ export const articles = pgTable('articles', {
   index('articles_organization_category_idx').on(table.organizationId, table.categoryId),
   index('articles_organization_lead_media_idx').on(table.organizationId, table.leadMediaId).where(sql`${table.leadMediaId} IS NOT NULL`),
   check('articles_version_positive', sql`${table.version} > 0`),
+  check('articles_slug_shape', sql`char_length(${table.slug}) BETWEEN 1 AND 300 AND ${table.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'`),
 ]);
 
 /**

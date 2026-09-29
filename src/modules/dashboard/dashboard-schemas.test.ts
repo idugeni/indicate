@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ARTICLE_TITLE_MAX,
   articleCreateSchema,
   assignmentSchema,
   categoryCreateSchema,
@@ -13,6 +14,7 @@ import {
   tagRemoveSchema,
   tagRenameSchema,
 } from '@/modules/dashboard/schemas';
+import { SLUG_MAX_LENGTH } from '@/modules/site/slug-allocator';
 
 const ID = '0199a2b3-4c5d-7e8f-9012-3456789abcde';
 const HASH = 'a'.repeat(64);
@@ -60,6 +62,19 @@ describe('articleCreateSchema', () => {
 
   it('menolak slug tanpa alfanumerik', () => {
     expect(articleCreateSchema.safeParse({ ...article, slug: '!!!' }).success).toBe(false);
+  });
+
+  it('menyamakan batas slug dengan batas judul agar slug memuat judul utuh', () => {
+    expect(SLUG_MAX_LENGTH).toBe(ARTICLE_TITLE_MAX);
+    const parsed = articleCreateSchema.safeParse({ ...article, slug: 'a'.repeat(ARTICLE_TITLE_MAX + 40) });
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) throw new Error('expected ok');
+    expect(parsed.data.slug).toBe('a'.repeat(ARTICLE_TITLE_MAX));
+  });
+
+  it('mempertahankan batas pendek untuk slug kategori dan wilayah', () => {
+    expect(categoryCreateSchema.safeParse({ name: 'Politik', slug: 'a'.repeat(100) }).success).toBe(true);
+    expect(categoryCreateSchema.safeParse({ name: 'Politik', slug: 'a'.repeat(101) }).success).toBe(false);
   });
 
   it('mengkanonik tag: lowercase, hyphen, dedupe, buang kosong', () => {

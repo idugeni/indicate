@@ -17,6 +17,15 @@ export type TargetRow = typeof publishingJobTargets.$inferSelect;
 export type ReceiptRow = typeof publicationTransitionReceipts.$inferSelect;
 export type CleanupRow = typeof objectCleanupTasks.$inferSelect;
 
+/**
+ * Columns `mapCleanup` reads.
+ *
+ * @remarks Narrower than `CleanupRow` on purpose: dashboard projections select
+ * only these, so the mapper must not demand reconciliation bookkeeping that
+ * those callers never fetched. See `AGENTS.md` §"Database access & egress".
+ */
+export type CleanupProjection = Pick<CleanupRow, 'id' | 'organizationId' | 'objectKey' | 'reason' | 'status' | 'attempts' | 'nextAttemptAt' | 'sanitizedFailure'>;
+
 const iso = (value: Date) => value.toISOString();
 const optionalIso = (value: Date | null) => value?.toISOString() ?? null;
 
@@ -54,7 +63,7 @@ export function mapReceipt(row: ReceiptRow): TransitionReceiptRecord {
   return { id: row.id, organizationId: row.organizationId, transitionId: row.transitionId, jobId: row.jobId, targetId: row.targetId, fromState: row.fromState, toState: row.toState, fencingToken: row.fencingToken, acknowledgedAt: optionalIso(row.acknowledgedAt), createdAt: iso(row.createdAt) };
 }
 
-export function mapCleanup(row: CleanupRow): CleanupTaskRecord {
+export function mapCleanup(row: CleanupProjection): CleanupTaskRecord {
   return { id: row.id, organizationId: row.organizationId, objectKey: row.objectKey, reason: row.reason, status: row.status, attempts: row.attempts, nextAttemptAt: iso(row.nextAttemptAt), sanitizedFailure: row.sanitizedFailure ?? null };
 }
 

@@ -14,6 +14,15 @@ import {
 type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
+/**
+ * Row ceiling for one control-plane content table.
+ *
+ * @remarks Far above the current maxima (13 FAQs, 4 quotes), so the editor is
+ * unchanged today while the read stays bounded as content accumulates. See
+ * `AGENTS.md` §"Database access & egress".
+ */
+const CONTENT_MAX_ROWS = 500;
+
 export class ContentAdminAccessDeniedError extends Error {
   constructor() { super('Content administration requires a platform grant.'); }
 }
@@ -43,14 +52,26 @@ export class DrizzleContentAdminRepository {
     });
   }
 
+  /**
+   * Control-plane content rows for the platform content editor.
+   *
+   * @remarks Every read is projected to the columns the editor renders and
+   * capped, so growing a content table cannot turn this into a full read. When
+   * a table outgrows its ceiling, add keyset pagination to that editor tab
+   * instead of raising the number; see `AGENTS.md` §"Database access & egress".
+   *
+   * @param authUserId - Supabase Auth user id backing the platform grant.
+   * @param localUserId - Local user id checked against the platform permission.
+   * @returns Quotes, FAQs, showcase entries, contact channels, and template presets.
+   */
   async listContent(authUserId: string, localUserId: string) {
     return this.platform(authUserId, localUserId, async (tx) => {
       const [quotes, faqRows, showcase, channels, templates] = await Promise.all([
-        tx.select().from(testimonials),
-        tx.select().from(faqs),
-        tx.select().from(mediaShowcase),
-        tx.select().from(contactChannels),
-        tx.select().from(templatePresets),
+        tx.select({ id: testimonials.id, quote: testimonials.quote, author: testimonials.author, role: testimonials.role, media: testimonials.media, sortOrder: testimonials.sortOrder, active: testimonials.active }).from(testimonials).orderBy(testimonials.sortOrder, testimonials.id).limit(CONTENT_MAX_ROWS),
+        tx.select({ id: faqs.id, question: faqs.question, answer: faqs.answer, category: faqs.category, sortOrder: faqs.sortOrder, active: faqs.active }).from(faqs).orderBy(faqs.sortOrder, faqs.id).limit(CONTENT_MAX_ROWS),
+        tx.select({ id: mediaShowcase.id, name: mediaShowcase.name, sortOrder: mediaShowcase.sortOrder, active: mediaShowcase.active }).from(mediaShowcase).orderBy(mediaShowcase.sortOrder, mediaShowcase.id).limit(CONTENT_MAX_ROWS),
+        tx.select({ key: contactChannels.key, title: contactChannels.title, description: contactChannels.description, href: contactChannels.href, sortOrder: contactChannels.sortOrder }).from(contactChannels).orderBy(contactChannels.sortOrder, contactChannels.key).limit(CONTENT_MAX_ROWS),
+        tx.select({ id: templatePresets.id, name: templatePresets.name, description: templatePresets.description, category: templatePresets.category }).from(templatePresets).orderBy(templatePresets.id).limit(CONTENT_MAX_ROWS),
       ]);
       return Object.freeze({ quotes, faqRows, showcase, channels, templates });
     });

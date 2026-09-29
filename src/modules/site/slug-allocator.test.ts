@@ -16,8 +16,8 @@ describe('normalizeSlugCandidate', () => {
   });
 
   it('memotong ke batas maksimum tanpa ekor strip', () => {
-    const slug = normalizeSlugCandidate(`${'a'.repeat(120)} ---`);
-    expect(slug.length).toBeLessThanOrEqual(100);
+    const slug = normalizeSlugCandidate(`${'a'.repeat(SLUG_MAX_LENGTH + 20)} ---`);
+    expect(slug.length).toBe(SLUG_MAX_LENGTH);
     expect(slug.endsWith('-')).toBe(false);
   });
 });
@@ -96,5 +96,12 @@ describe('allocateUniqueSlug', () => {
   it('menghormati batas panjang kustom', () => {
     const slug = allocateUniqueSlug(['pendek'], 'slug-yang-sangat-panjang-sekali', 12);
     expect(slug.length).toBeLessThanOrEqual(12);
+  });
+
+  it('memotong stem agar akhiran tetap di dalam batas kanonik', () => {
+    const base = 'a'.repeat(SLUG_MAX_LENGTH);
+    const slug = allocateUniqueSlug([base], base);
+    expect(slug.endsWith('-2')).toBe(true);
+    expect(slug.length).toBe(SLUG_MAX_LENGTH);
   });
 });

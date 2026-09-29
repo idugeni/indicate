@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (218 migrations):
+-- Reviewed sources, in journal order (219 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -232,6 +232,7 @@
 --   216  20260928070000_default_article_category_berita  ledger sha256:5fed13cb8f761e79e353417ff3a915d36d36ab6a7be014e2294efda161f12d4d
 --   217  20260928100000_drop_social_warm  ledger sha256:2100aeae7e052359c5b6b53ce7c4f4880bc1645cc3d47a151650b62c642c3b91
 --   218  20260928110000_report_challenge_sitekey  ledger sha256:b9e03709a5fe094cb37edd42d3033f7f45c033ed434eba8379949b2d389290bc
+--   219  20260929010000_articles_slug_shape  ledger sha256:362cf39c9d2359143a1e82b9e2b26564339a05b4b870af28d74809ff93224f87
 
 BEGIN;
 
@@ -18483,4 +18484,38 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (218, 'report_challenge_sitekey', 'sha256:3a28a97cbef227636c37a639bed6d71f8183e3a2a239a2dda5a585cacced6b04');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b9e03709a5fe094cb37edd42d3033f7f45c033ed434eba8379949b2d389290bc', 1790603200000);
+
+-- ----------------------------------------------------------------------
+-- 20260929010000_articles_slug_shape
+-- ----------------------------------------------------------------------
+-- Bound `articles.slug` in the database, matching the dashboard schema.
+--
+-- The application has always capped a slug at 100 characters, but the column
+-- itself was unconstrained text: a write that arrived through SQL rather than
+-- the Zod schema could store a slug that `normalizeArticleSlug` then refused to
+-- read, so the article existed and its public route 404'd. That bound is now 300
+-- characters so a slug can carry a whole article title, and the constraint below
+-- makes the database the place that refuses anything longer or non-kebab-case.
+--
+-- The upper bound is deliberately finite rather than unbounded. The unique index
+-- `articles_organization_slug_unique` is a btree over `(organization_id, slug)`,
+-- and a btree tuple fails to fit past roughly 2704 bytes, so an unbounded slug
+-- would turn a long title into a hard insert error instead of a validation
+-- error. 300 ASCII characters leaves the index with a wide margin.
+--
+-- The constraint is validated on creation and verified to match all 43 existing
+-- rows before this migration was written: longest slug is 100 characters, and
+-- every slug already satisfies the kebab-case pattern.
+
+ALTER TABLE public.articles
+  DROP CONSTRAINT IF EXISTS articles_slug_shape;
+
+ALTER TABLE public.articles
+  ADD CONSTRAINT articles_slug_shape
+  CHECK (char_length(slug) BETWEEN 1 AND 300 AND slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$');
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (219, 'articles_slug_shape', 'sha256:b7be10447d62028c571b44989cf387628127dbeb1a208bbdf6b76347cbc241e8');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('362cf39c9d2359143a1e82b9e2b26564339a05b4b870af28d74809ff93224f87', 1790643600000);
 COMMIT;

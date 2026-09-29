@@ -193,6 +193,21 @@ npm-facing.
 
 ### Changed
 
+- An article slug now spans up to 300 characters instead of 100, so a slug can
+  carry a whole article title instead of being cut mid-word (v219).
+  `SLUG_MAX_LENGTH` is pinned to `ARTICLE_TITLE_MAX` and a test holds the two
+  equal, so the title and the slug can no longer drift apart. The editor's slug
+  field carries the same bound as `maxLength`, uniqueness suffixes (`-2`, `-3`)
+  are trimmed into the same budget, and over-long input is truncated rather than
+  refused, which is how the schema already behaved. Category and region slugs keep
+  the 100-character bound because they name fixed taxonomy, not an article.
+  Migration v219 adds `articles_slug_shape`, the first database-level guard on
+  the column: until now the bound lived only in Zod, so a write arriving through
+  SQL could store a slug that `normalizeArticleSlug` then refused to read and the
+  article's public route 404'd. The 300 ceiling is deliberate rather than
+  unbounded — `articles_organization_slug_unique` is a btree, and a btree tuple
+  stops fitting past roughly 2704 bytes, which would turn a long title into a hard
+  insert error instead of a validation error.
 - The Facebook/Meta integration is gone (v217). Removed the Graph API pre-scrape
   (hourly fleet sweep plus the one-shot per-article ledger), the `fb:app_id`
   metadata tag, the `FB_APP_TOKEN` credential, and the `social` runtime config

@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
@@ -14,6 +14,15 @@ type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 type RawTimestamp = Date | string;
 const POSTGRES_TIMESTAMP = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?(Z|([+-])(\d{2})(?::?(\d{2}))?)$/;
+
+/**
+ * Row ceiling for the dashboard API-key list.
+ *
+ * @remarks A tenant issues keys one at a time, so this is a growth guard on
+ * key rotation history rather than a truncation path. See `AGENTS.md`
+ * §"Database access & egress".
+ */
+const API_KEY_LIST_MAX_ROWS = 500;
 
 export function normalizeIntegrationsTimestamp(value: RawTimestamp): string {
   if (value instanceof Date) {
@@ -124,7 +133,7 @@ export class DrizzleIntegrationsRepository implements IntegrationsRepository {
   async revokeApiKey(actor: AuthorizedTenantActorContext, id: string, expectedVersion: number, now: string) {
     return this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorize(tx, actor, INTEGRATIONS_PERMISSIONS.apiKeyManage); const rows = await tx.select().from(apiKeys).where(and(eq(apiKeys.organizationId, actor.organizationId), eq(apiKeys.id, id))).limit(1).for('update'); const prior = rows[0]; if (prior === undefined) throw new IntegrationsAccessDeniedError(); if (prior.version !== expectedVersion) throw new IntegrationsConflictError(); if (prior.status !== 'active') return publicApiKeyRecord(mapKey(prior)); const changed = await tx.update(apiKeys).set({ status: 'revoked', version: prior.version + 1, updatedAt: new Date(now) }).where(and(eq(apiKeys.organizationId, actor.organizationId), eq(apiKeys.id, id), eq(apiKeys.version, expectedVersion))).returning(); if (changed.length !== 1) throw new IntegrationsConflictError(); await this.audit(tx, actor, actor.organizationId, 'api_key.revoke', 'api_key', id, { status: 'revoked' }, new Date(now)); return publicApiKeyRecord(mapKey(changed[0]!)); });
   }
-  async listApiKeys(actor: AuthorizedTenantActorContext) { return this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorizeAny(tx, actor, [INTEGRATIONS_PERMISSIONS.apiKeyRead, INTEGRATIONS_PERMISSIONS.apiKeyManage]); return (await tx.select().from(apiKeys).where(eq(apiKeys.organizationId, actor.organizationId))).map((row) => publicApiKeyRecord(mapKey(row))); }); }
+  async listApiKeys(actor: AuthorizedTenantActorContext) { return this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorizeAny(tx, actor, [INTEGRATIONS_PERMISSIONS.apiKeyRead, INTEGRATIONS_PERMISSIONS.apiKeyManage]); const rows = await tx.select().from(apiKeys).where(eq(apiKeys.organizationId, actor.organizationId)).orderBy(desc(apiKeys.createdAt)).limit(API_KEY_LIST_MAX_ROWS); return rows.map((row) => publicApiKeyRecord(mapKey(row))); }); }
   async findApiKeyByLookupId(lookupId: string): Promise<StoredApiKey | null> { const rows = await this.database.execute<RawApiKeyRow>(sql`SELECT * FROM indicate_private.resolve_api_key_lookup(${lookupId})`); return rows[0] === undefined ? null : mapRawKey(rows[0]); }
   async recordApiKeyUse(organizationId: string, id: string, now: string): Promise<void> { await this.database.transaction(async (tx) => { await this.context(tx, organizationId, id, 'api-key-authentication'); await tx.update(apiKeys).set({ lastUsedAt: new Date(now), updatedAt: new Date(now) }).where(and(eq(apiKeys.organizationId, organizationId), eq(apiKeys.id, id), eq(apiKeys.status, 'active'), or(isNull(apiKeys.expiresAt), gt(apiKeys.expiresAt, new Date(now))))); }); }
 

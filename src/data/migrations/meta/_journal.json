@@ -1527,6 +1527,13 @@
       "when": 1790603200000,
       "tag": "20260928110000_report_challenge_sitekey",
       "breakpoints": true
+    },
+    {
+      "idx": 218,
+      "version": "7",
+      "when": 1790643600000,
+      "tag": "20260929010000_articles_slug_shape",
+      "breakpoints": true
     }
   ]
 }

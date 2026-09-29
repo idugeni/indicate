@@ -37,7 +37,7 @@ import type {
 } from '@/modules/dashboard/components/shared/types';
 import { findMatchingCategoryId, localDateTimeToIso, slugify } from '@/modules/dashboard/components/shared/form-utils';
 import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
-import { TAG_MAX_COUNT, normalizeTagList } from '@/modules/site/slug-allocator';
+import { SLUG_MAX_LENGTH, TAG_MAX_COUNT, normalizeTagList } from '@/modules/site/slug-allocator';
 import type { TipTapDoc, TipTapNode } from '@/modules/site/tiptap-document';
 import { ArticlePreview } from '@/modules/dashboard/components/editorial/article-preview';
 import { RichTextEditor } from '@/modules/dashboard/components/editorial/rich-text-editor';
@@ -707,6 +707,7 @@ export function ArticleCreateForm({
                   value={slug}
                   onChange={(e) => handleSlugChange(e.target.value)}
                   pattern="[a-z0-9-]+"
+                  maxLength={SLUG_MAX_LENGTH}
                   placeholder="judul-artikel-terkini"
                   className="h-8 rounded border-hairline-strong bg-bg pr-2.5 pl-8 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
                 />

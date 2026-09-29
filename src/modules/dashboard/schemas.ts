@@ -7,7 +7,7 @@ import {
   SEO_TITLE_MAX,
   SEO_TITLE_MIN,
 } from '@/modules/site/seo-validation';
-import { TAG_MAX_COUNT, normalizeSlugCandidate, normalizeTagCandidate, normalizeTagList } from '@/modules/site/slug-allocator';
+import { SLUG_MAX_LENGTH, SLUG_PATTERN, TAG_MAX_COUNT, normalizeSlugCandidate, normalizeTagCandidate, normalizeTagList } from '@/modules/site/slug-allocator';
 import { MASTER_TEMPLATE_PRESETS } from '@/ui/themes';
 
 const TEMPLATE_IDS = new Set(MASTER_TEMPLATE_PRESETS.map((preset) => preset.id));
@@ -25,9 +25,14 @@ function normalizeSlugInput(value: unknown): unknown {
   return normalizeSlugCandidate(value);
 }
 
-const slug = z.preprocess(normalizeSlugInput, z.string().trim().min(1).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/));
+/** Category and region slugs name fixed taxonomy, so they keep the short bound. */
+const TAXONOMY_SLUG_MAX_LENGTH = 100;
+/** Article slugs follow the title instead; `SLUG_MAX_LENGTH` is pinned to this bound. */
+export const ARTICLE_TITLE_MAX = 300;
+const slug = z.preprocess(normalizeSlugInput, z.string().trim().min(1).max(TAXONOMY_SLUG_MAX_LENGTH).regex(SLUG_PATTERN));
 const RESERVED_ARTICLE_SLUGS = new Set(['articles', 'categories', 'tags', 'search', 'report', 'tentang', 'kontak', 'kebijakan-privasi', 'syarat-ketentuan', 'privacy', 'terms', 'about', 'contact', 'services', 'pricing', 'faq', 'api', 'dashboard', 'auth', 'sign-in', 'domain-pending']);
-const articleSlug = slug.refine((value) => !RESERVED_ARTICLE_SLUGS.has(value), 'Slug ini dicadangkan untuk rute portal.');
+const articleSlug = z.preprocess(normalizeSlugInput, z.string().trim().min(1).max(SLUG_MAX_LENGTH).regex(SLUG_PATTERN))
+  .refine((value) => !RESERVED_ARTICLE_SLUGS.has(value), 'Slug ini dicadangkan untuk rute portal.');
 const hostname = z.string().trim().toLowerCase().min(3).max(253).regex(/^(?=.{3,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/);
 
 export const domainCreateSchema = z.object({ normalizedHostname: hostname, status: lifecycleStatus.default('inactive'), siteTopology: z.enum(['national', 'regional']).default('national') }).strict();
@@ -137,7 +142,7 @@ export const articleCreateSchema = z.object({
   leadMediaId: id.nullable().optional(),
   coverImageUrl: z.string().trim().max(2000).nullish(),
   slug: articleSlug,
-  title: z.string().trim().min(1).max(300),
+  title: z.string().trim().min(1).max(ARTICLE_TITLE_MAX),
   excerpt: z.string().trim().min(1).max(500).nullish(),
   canonicalUrl: z.string().trim().max(2000).nullish(),
   body: z.string().trim().min(1).max(200_000),

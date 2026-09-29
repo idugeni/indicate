@@ -1,4 +1,4 @@
-import type { AuditRecord, PublishingState } from '@/modules/dashboard/models';
+import type { PublishingState } from '@/modules/dashboard/models';
 
 export type { PublishingState };
 
@@ -200,18 +200,24 @@ export interface PublishingArticleSiteRef {
   readonly version: number;
 }
 
+/**
+ * Bounded, column-projected view of one tenant for the dashboard publishing surfaces.
+ *
+ * @remarks Every collection carries a row ceiling and every field maps to a
+ * projected column, so this projection can never become a whole-table dump.
+ * Audit records, article-site assignments, media assets, and transition
+ * receipts are deliberately absent: `GET /api/dashboard/publishing` never
+ * rendered them, and reading them cost 15.4 MB per call on the platform
+ * organization. `AGENTS.md` §"Database access & egress" governs additions.
+ */
 export interface PublishingTenantSnapshot {
   readonly organizationId: string;
   readonly articles: readonly PublishingArticleRef[];
   readonly domains: readonly PublishingDomainRef[];
   readonly sites: readonly PublishingSiteRef[];
-  readonly articleSites: readonly PublishingArticleSiteRef[];
   readonly reservations: readonly MediaReservationRecord[];
-  readonly media: readonly MediaAssetRecord[];
   readonly cleanupTasks: readonly CleanupTaskRecord[];
   readonly invalidationIntents: readonly InvalidationIntentRecord[];
   readonly jobs: readonly PublicationJobRecord[];
   readonly targets: readonly PublicationTargetRecord[];
-  readonly transitionReceipts: readonly TransitionReceiptRecord[];
-  readonly auditLogs: readonly AuditRecord[];
 }

@@ -53,6 +53,36 @@ import {
 type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 const SYSTEM_REQUEST = 'publishing-reconciler';
+
+/**
+ * Row ceilings for `snapshot()`, the single whole-tenant read in this repository.
+ *
+ * @remarks Sized above the current production maxima (4,422 sites, 1,040
+ * invalidation tasks, 369 reservations) so the dashboard is unchanged today,
+ * while keeping the read bounded if a tenant grows past them. Exceeding one is
+ * a signal to add keyset pagination to that consumer, not to raise the number.
+ * See `AGENTS.md` §"Database access & egress".
+ */
+const SNAPSHOT_MAX_ARTICLES = 500;
+const SNAPSHOT_MAX_SITES = 5_000;
+const SNAPSHOT_MAX_DOMAINS = 250;
+const SNAPSHOT_MAX_SETTINGS = 5_000;
+const SNAPSHOT_MAX_RESERVATIONS = 500;
+const SNAPSHOT_MAX_CLEANUP_TASKS = 500;
+const SNAPSHOT_MAX_INVALIDATION_INTENTS = 2_000;
+const SNAPSHOT_MAX_JOBS = 200;
+const SNAPSHOT_MAX_TARGETS = 5_000;
+
+/** Row ceiling for the dashboard media library; see `listMedia()`. */
+const MEDIA_LIST_MAX_ROWS = 1_000;
+
+/**
+ * Row ceiling for one job's targets, read for update.
+ *
+ * @remarks A job fans out to at most the configured publication batch size
+ * (100), so this is a growth guard rather than a truncation path.
+ */
+const JOB_TARGET_MAX_ROWS = 500;
 export class DrizzlePublishingRepository implements PublishingRepository {
   constructor(private readonly database: Database) {}
 
@@ -257,10 +287,22 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       return mapMedia(rows[0]!);
     });
   }
+  /**
+   * Tenant media library for the dashboard media view.
+   *
+   * @remarks Reserved rows are excluded in SQL and the result is capped, so a
+   * tenant with a long media history cannot turn this into an unbounded read.
+   * Passing the ceiling to the caller would require keyset pagination on the
+   * media view; see `AGENTS.md` §"Database access & egress".
+   *
+   * @param actor - Authorized tenant actor.
+   * @returns Active and archived media, newest first.
+   */
   async listMedia(actor: AuthorizedTenantActorContext) {
     return this.database.transaction(async (transaction) => {
       await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.mediaRead);
-      return (await transaction.select().from(media).where(eq(media.organizationId, actor.organizationId))).filter((row) => row.state !== 'reserved').map(mapMedia);
+      const rows = await transaction.select().from(media).where(and(eq(media.organizationId, actor.organizationId), sql`${media.state} <> 'reserved'`)).orderBy(desc(media.createdAt)).limit(MEDIA_LIST_MAX_ROWS);
+      return rows.map(mapMedia);
     });
   }
   async authorizeTenantMedia(actor: AuthorizedTenantActorContext, mediaId: string) {
@@ -558,7 +600,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       }
       if (job.dispatchStatus !== 'pending') return;
       if (!retryable) {
-        const targets = await transaction.select().from(publishingJobTargets).where(and(eq(publishingJobTargets.organizationId, organizationId), eq(publishingJobTargets.jobId, jobId))).for('update');
+        const targets = await transaction.select({ id: publishingJobTargets.id, articleSiteId: publishingJobTargets.articleSiteId, state: publishingJobTargets.state, attempt: publishingJobTargets.attempt }).from(publishingJobTargets).where(and(eq(publishingJobTargets.organizationId, organizationId), eq(publishingJobTargets.jobId, jobId))).orderBy(publishingJobTargets.id).limit(JOB_TARGET_MAX_ROWS).for('update');
         for (const target of targets) {
           if (target.state === 'published' || target.state === 'failed') continue;
           if (target.state === 'queued') {
@@ -720,7 +762,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       await this.context(transaction, organizationId, jobId, SYSTEM_REQUEST);
       const rows = await transaction.select().from(publishingJobs).where(and(eq(publishingJobs.organizationId, organizationId), eq(publishingJobs.id, jobId), eq(publishingJobs.state, 'processing'), lte(publishingJobs.leaseExpiresAt, sql`clock_timestamp()`))).limit(1).for('update');
       const job = rows[0]; if (job === undefined) return;
-      const runningTargets = await transaction.select().from(publishingJobTargets).where(and(eq(publishingJobTargets.organizationId, organizationId), eq(publishingJobTargets.jobId, jobId), eq(publishingJobTargets.state, 'processing'))).for('update');
+      const runningTargets = await transaction.select({ id: publishingJobTargets.id, articleSiteId: publishingJobTargets.articleSiteId, attempt: publishingJobTargets.attempt }).from(publishingJobTargets).where(and(eq(publishingJobTargets.organizationId, organizationId), eq(publishingJobTargets.jobId, jobId), eq(publishingJobTargets.state, 'processing'))).orderBy(publishingJobTargets.id).limit(JOB_TARGET_MAX_ROWS).for('update');
       for (const target of runningTargets) {
         const exhausted = target.attempt >= maxAttempts; const state = exhausted ? 'failed' as const : 'retrying' as const;
         await transaction.update(publishingJobTargets).set({ state, nextAttemptAt: new Date(now), finishedAt: exhausted ? new Date(now) : null, sanitizedError: { code: exhausted ? 'retry_exhausted' : 'lease_expired' }, updatedAt: new Date(now) }).where(and(eq(publishingJobTargets.organizationId, organizationId), eq(publishingJobTargets.id, target.id), eq(publishingJobTargets.state, 'processing')));
@@ -797,40 +839,50 @@ export class DrizzlePublishingRepository implements PublishingRepository {
     });
   }
 
+  /**
+   * Whole-tenant reference data behind the dashboard publishing surfaces.
+   *
+   * @remarks This is the one read that spans an entire organization, so it is
+   * bounded twice over: every collection carries a row ceiling, and every
+   * select projects only the columns the dashboard renders. It previously read
+   * all thirteen tables with `select()`, which shipped the whole `audit_logs`
+   * table (13,179 rows, 15.4 MB on the platform organization) on a single GET
+   * for a field no caller reads. `article_sites`, `media`, and transition
+   * receipts were dropped for the same reason: `GET /api/dashboard/publishing`
+   * renders jobs, targets, articles, domains, sites, reservations, cleanup
+   * tasks, and invalidation intents, and nothing else.
+   *
+   * The ceilings are a growth guard, not pagination. When a tenant outgrows
+   * one, that collection needs keyset pagination on its consumer path rather
+   * than a larger number here - see `AGENTS.md` §"Database access & egress".
+   *
+   * @param organizationId - Tenant whose publishing surface is rendered.
+   * @param regionScopeId - Restricts the result to one region when the actor is region-scoped.
+   * @returns The dashboard projection, or null when the organization does not exist.
+   */
   async snapshot(organizationId: string, regionScopeId: string | null = null): Promise<PublishingTenantSnapshot | null> {
     return this.database.transaction(async (transaction) => {
       await this.context(transaction, organizationId, 'publishing-snapshot', SYSTEM_REQUEST);
       const organization = await transaction.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).limit(1); if (organization.length === 0) return null;
-      const [articleRows, siteRows, domainRows, settingsRows, relationRows, reservationRows, mediaRows, cleanupRows, invalidationRows, jobRows, targetRows, receiptRows, auditRows] = await Promise.all([
-        transaction.select().from(articles).where(eq(articles.organizationId, organizationId)),
-        transaction.select().from(sites).where(eq(sites.organizationId, organizationId)),
-        transaction.select().from(domains).where(eq(domains.organizationId, organizationId)),
-        transaction.select().from(siteSettings).where(eq(siteSettings.organizationId, organizationId)),
-        transaction.select().from(articleSites).where(eq(articleSites.organizationId, organizationId)),
-        transaction.select().from(mediaKeyReservations).where(eq(mediaKeyReservations.organizationId, organizationId)),
-        transaction.select().from(media).where(eq(media.organizationId, organizationId)),
-        transaction.select().from(objectCleanupTasks).where(eq(objectCleanupTasks.organizationId, organizationId)),
-        transaction.select().from(invalidationTasks).where(eq(invalidationTasks.organizationId, organizationId)),
-        transaction.select().from(publishingJobs).where(eq(publishingJobs.organizationId, organizationId)),
-        transaction.select({ target: publishingJobTargets, siteId: articleSites.siteId }).from(publishingJobTargets).innerJoin(articleSites, and(eq(articleSites.organizationId, publishingJobTargets.organizationId), eq(articleSites.id, publishingJobTargets.articleSiteId))).where(eq(publishingJobTargets.organizationId, organizationId)),
-        transaction.select().from(publicationTransitionReceipts).where(eq(publicationTransitionReceipts.organizationId, organizationId)),
-        transaction.select().from(auditLogs).where(eq(auditLogs.organizationId, organizationId)),
+      const lock = regionScopeId ?? null;
+      const scope = lock === null ? undefined : eq(regions.id, lock);
+      const [articleRows, siteRows, domainRows, settingsRows, reservationRows, cleanupRows, invalidationRows, jobRows, targetRows] = await Promise.all([
+        transaction.select({ id: articles.id, regionId: articles.regionId, status: articles.status, scheduledAt: articles.scheduledAt, leadMediaId: articles.leadMediaId, title: articles.title, slug: articles.slug }).from(articles).where(eq(articles.organizationId, organizationId)).orderBy(desc(articles.createdAt)).limit(SNAPSHOT_MAX_ARTICLES),
+        transaction.select({ id: sites.id, regionId: sites.regionId, domainId: sites.domainId, normalizedHostname: sites.normalizedHostname, status: sites.status, activationState: sites.activationState }).from(sites).where(eq(sites.organizationId, organizationId)).orderBy(sites.normalizedHostname).limit(SNAPSHOT_MAX_SITES),
+        transaction.select({ id: domains.id, normalizedHostname: domains.normalizedHostname, status: domains.status, siteTopology: domains.siteTopology }).from(domains).where(eq(domains.organizationId, organizationId)).orderBy(domains.normalizedHostname).limit(SNAPSHOT_MAX_DOMAINS),
+        transaction.select({ siteId: siteSettings.siteId, logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId, defaultMediaId: siteSettings.defaultMediaId }).from(siteSettings).where(eq(siteSettings.organizationId, organizationId)).limit(SNAPSHOT_MAX_SETTINGS),
+        transaction.select({ id: mediaKeyReservations.id, organizationId: mediaKeyReservations.organizationId, objectKey: mediaKeyReservations.objectKey, purpose: mediaKeyReservations.purpose, articleId: mediaKeyReservations.articleId, siteId: mediaKeyReservations.siteId, organizationAsset: mediaKeyReservations.organizationAsset, expectedMediaType: mediaKeyReservations.expectedMediaType, expectedSizeBytes: mediaKeyReservations.expectedSizeBytes, expectedChecksum: mediaKeyReservations.expectedChecksum, status: mediaKeyReservations.status, expiresAt: mediaKeyReservations.expiresAt, createdAt: mediaKeyReservations.createdAt, updatedAt: mediaKeyReservations.updatedAt }).from(mediaKeyReservations).where(eq(mediaKeyReservations.organizationId, organizationId)).orderBy(desc(mediaKeyReservations.createdAt)).limit(SNAPSHOT_MAX_RESERVATIONS),
+        transaction.select({ id: objectCleanupTasks.id, organizationId: objectCleanupTasks.organizationId, objectKey: objectCleanupTasks.objectKey, reason: objectCleanupTasks.reason, status: objectCleanupTasks.status, attempts: objectCleanupTasks.attempts, nextAttemptAt: objectCleanupTasks.nextAttemptAt, sanitizedFailure: objectCleanupTasks.sanitizedFailure }).from(objectCleanupTasks).where(eq(objectCleanupTasks.organizationId, organizationId)).orderBy(desc(objectCleanupTasks.createdAt)).limit(SNAPSHOT_MAX_CLEANUP_TASKS),
+        transaction.select({ id: invalidationTasks.id, siteId: invalidationTasks.siteId, reason: invalidationTasks.reason, tags: invalidationTasks.tags, status: invalidationTasks.status }).from(invalidationTasks).where(and(eq(invalidationTasks.organizationId, organizationId), scope ?? sql`true`)).orderBy(desc(invalidationTasks.createdAt)).limit(SNAPSHOT_MAX_INVALIDATION_INTENTS),
+        transaction.select().from(publishingJobs).where(eq(publishingJobs.organizationId, organizationId)).orderBy(desc(publishingJobs.createdAt)).limit(SNAPSHOT_MAX_JOBS),
+        transaction.select({ target: publishingJobTargets, siteId: articleSites.siteId }).from(publishingJobTargets).innerJoin(articleSites, and(eq(articleSites.organizationId, publishingJobTargets.organizationId), eq(articleSites.id, publishingJobTargets.articleSiteId))).where(eq(publishingJobTargets.organizationId, organizationId)).limit(SNAPSHOT_MAX_TARGETS),
       ]);
       const settingsBySite = new Map(settingsRows.map((row) => [row.siteId, [row.logoMediaId, row.faviconMediaId, row.defaultMediaId].filter((value): value is string => value !== null)]));
-      const lock = regionScopeId ?? null;
-      const articleRegion = new Map(articleRows.map((row) => [row.id, row.regionId] as const));
-      const siteRegion = new Map(siteRows.map((row) => [row.id, row.regionId] as const));
-      const articleVisible = (articleId: string) => lock === null || articleRegion.get(articleId) === lock;
-      const siteVisible = (siteId: string) => lock === null || siteRegion.get(siteId) === null || siteRegion.get(siteId) === lock;
-      const ownerVisible = (owner: { readonly kind: string; readonly articleId?: string; readonly siteId?: string }) => {
-        if (lock === null || owner.kind === 'organization') return true;
-        if (owner.kind === 'article') return owner.articleId !== undefined && articleVisible(owner.articleId);
-        if (owner.kind === 'site') return owner.siteId !== undefined && siteVisible(owner.siteId);
-        return true;
-      };
-      const visibleArticles = articleRows.filter((row) => articleVisible(row.id));
+      const articleVisible = (row: { readonly id: string; readonly regionId: string }) => lock === null || row.regionId === lock;
+      const siteVisible = (row: { readonly id: string; readonly regionId: string | null }) => lock === null || row.regionId === null || row.regionId === lock;
+      const visibleArticles = articleRows.filter(articleVisible);
       const visibleArticleIds = new Set(visibleArticles.map((row) => row.id));
-      const visibleSites = siteRows.filter((row) => siteVisible(row.id));
+      const visibleSites = siteRows.filter(siteVisible);
       const visibleSiteIds = new Set(visibleSites.map((row) => row.id));
       const visibleJobs = jobRows.filter((row) => visibleArticleIds.has(row.articleId));
       const visibleJobIds = new Set(visibleJobs.map((row) => row.id));
@@ -839,11 +891,11 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         articles: visibleArticles.map((row) => ({ id: row.id, organizationId, active: row.status === 'active', status: row.status, scheduledAt: optionalIso(row.scheduledAt), leadMediaId: row.leadMediaId, title: row.title, slug: row.slug })),
         sites: visibleSites.map((row) => ({ id: row.id, organizationId, active: row.status === 'active' && row.activationState === 'active', normalizedHostname: row.normalizedHostname, domainId: row.domainId, settingsMediaIds: settingsBySite.get(row.id) ?? [] })),
         domains: domainRows.map((row) => ({ id: row.id, organizationId, normalizedHostname: row.normalizedHostname, status: row.status, siteTopology: row.siteTopology })),
-        articleSites: relationRows.filter((row) => visibleArticleIds.has(row.articleId) || visibleSiteIds.has(row.siteId)).map((row) => ({ id: row.id, organizationId, articleId: row.articleId, siteId: row.siteId, active: row.active, state: row.state, publishedUrl: row.publishedUrl, publishedAt: optionalIso(row.publishedAt), version: row.version })),
-        reservations: reservationRows.map(mapReservation).filter((row) => ownerVisible(row.owner)), media: mediaRows.filter((row) => row.state !== 'reserved').map(mapMedia).filter((asset) => ownerVisible(asset.owner)), cleanupTasks: cleanupRows.map(mapCleanup),
+        reservations: reservationRows.map(mapReservation).filter((row) => row.owner.kind === 'organization' || (row.owner.kind === 'article' && visibleArticleIds.has(row.owner.articleId)) || (row.owner.kind === 'site' && visibleSiteIds.has(row.owner.siteId))),
+        cleanupTasks: cleanupRows.map(mapCleanup),
         invalidationIntents: invalidationRows.filter((row) => visibleSiteIds.has(row.siteId)).map((row) => ({ id: row.id, organizationId, siteId: row.siteId, reason: row.reason, tags: row.tags, status: row.status })),
-        jobs: visibleJobs.map(mapJob), targets: targetRows.filter(({ target }) => visibleJobIds.has(target.jobId)).map(({ target, siteId }) => mapTarget({ ...target, siteId })), transitionReceipts: receiptRows.map(mapReceipt),
-        auditLogs: auditRows.flatMap((row) => row.actorType === 'telegram' || row.entryPoint === 'telegram' ? [] : [{ id: row.id, organizationId, actorType: row.actorType, actorId: row.actorId, entryPoint: row.entryPoint, action: row.action, targetType: row.targetType, targetId: row.targetId, outcome: row.outcome, changedFields: row.changedFields, before: row.before ?? null, after: row.after ?? null, requestId: row.requestId, occurredAt: iso(row.occurredAt) }]),
+        jobs: visibleJobs.map(mapJob),
+        targets: targetRows.filter(({ target }) => visibleJobIds.has(target.jobId)).map(({ target, siteId }) => mapTarget({ ...target, siteId })),
       };
     });
   }

@@ -1,4 +1,9 @@
-export const SLUG_MAX_LENGTH = 100;
+/**
+ * Maximum length of a stored article slug. Equal to the article title bound
+ * (`ARTICLE_TITLE_MAX` in `@/modules/dashboard/schemas`) so a slug can always
+ * carry the whole title; uniqueness suffixes are trimmed into the same budget.
+ */
+export const SLUG_MAX_LENGTH = 300;
 export const TAG_MAX_LENGTH = 60;
 export const TAG_MAX_COUNT = 10;
 export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
