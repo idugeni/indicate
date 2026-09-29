@@ -4,6 +4,7 @@ import { useId, useMemo, useState } from 'react';
 import { ChevronDown, Newspaper } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
+import { useDashboardPage } from '@/modules/dashboard/components/shared/use-dashboard-query';
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -108,6 +109,7 @@ function PortalList({ hostnames }: { readonly hostnames: readonly string[] }) {
  * kombinasi; cocok untuk volume redaksi kini, dievaluasi ulang bila puluhan ribu.
  */
 export function ArticleArchive({ data }: { readonly data: unknown }) {
+  const [page, setPage] = useDashboardPage('archivePage');
   const model = data as {
     readonly articles?: readonly ArchiveArticle[];
     readonly categories?: readonly ArchiveCategory[];
@@ -131,7 +133,6 @@ export function ArticleArchive({ data }: { readonly data: unknown }) {
   const [tag, setTag] = useState('');
   const [site, setSite] = useState('');
   const [status, setStatus] = useState('');
-  const [page, setPage] = useState(1);
 
   const categoryNames = useMemo(() => new Map(categories.map((item) => [item.id, item.name] as const)), [categories]);
   const siteHostnames = useMemo(() => new Map(sites.map((item) => [item.id, item.normalizedHostname] as const)), [sites]);

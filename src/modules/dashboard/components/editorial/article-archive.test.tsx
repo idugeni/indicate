@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { ArticleArchive } from '@/modules/dashboard/components/editorial/article-archive';
+
+vi.mock('nuqs', async () => (await import('@/test/stubs/nuqs')).nuqsStub());
 
 afterEach(() => {
   cleanup();

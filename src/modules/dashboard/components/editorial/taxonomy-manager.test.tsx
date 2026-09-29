@@ -5,6 +5,8 @@ import userEvent from '@testing-library/user-event';
 
 import { TaxonomyManager } from '@/modules/dashboard/components/editorial/taxonomy-manager';
 
+vi.mock('nuqs', async () => (await import('@/test/stubs/nuqs')).nuqsStub());
+
 afterEach(() => {
   cleanup();
 });

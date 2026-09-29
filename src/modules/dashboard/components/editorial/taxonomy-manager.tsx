@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { FolderKanban, Hash, Pencil, Plus, Trash2 } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
+import { useDashboardPage } from '@/modules/dashboard/components/shared/use-dashboard-query';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { slugify } from '@/modules/dashboard/components/shared/form-utils';
@@ -112,9 +113,9 @@ export function TaxonomyManager({
 
   const [categoryQuery, setCategoryQuery] = useState('');
   const [categoryStatus, setCategoryStatus] = useState('');
-  const [categoryPage, setCategoryPage] = useState(1);
+  const [categoryPage, setCategoryPage] = useDashboardPage('categoryPage');
   const [tagQuery, setTagQuery] = useState('');
-  const [tagPage, setTagPage] = useState(1);
+  const [tagPage, setTagPage] = useDashboardPage('tagPage');
 
   const [isCreating, startCreateTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();

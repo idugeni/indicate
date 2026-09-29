@@ -6,6 +6,7 @@ import { Link2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
+import { useDashboardPage } from '@/modules/dashboard/components/shared/use-dashboard-query';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { formatMoment } from '@/modules/dashboard/components/shared/format-moment';
 import { PublishedUrlBlock } from '@/modules/dashboard/components/publishing/published-url-block';
@@ -116,7 +117,7 @@ function formatPublishedAt(value: string | null): string {
  */
 export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useDashboardPage('publishedPage');
   const model = (typeof data === 'object' && data !== null ? data : {}) as {
     readonly articles?: readonly ArticleInput[];
     readonly sites?: readonly SiteInput[];

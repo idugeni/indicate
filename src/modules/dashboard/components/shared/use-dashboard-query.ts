@@ -22,13 +22,19 @@ export function useDashboardView(): readonly [View, (next: View) => void] {
 }
 
 /**
- * Sync the active table page with `?page=` so pagination is shareable.
+ * Sync one table's page with a query parameter so links stay shareable and the
+ * browser back button steps through pages.
  *
+ * @param key - Query parameter name; pass a distinct key when one view shows
+ *   more than one pager, as the taxonomy manager does for categories and tags.
  * @returns Pair of page number (minimum 1) and history-replacing setter.
+ * @remarks Every dashboard pager goes through here. A pager that held its page
+ * in component state looked identical but lost the link on reload and made the
+ * back button leave the view instead of stepping back a page.
  */
-export function useDashboardPage(): readonly [number, (next: number) => void] {
+export function useDashboardPage(key = 'page'): readonly [number, (next: number) => void] {
   const [page, setPageQuery] = useQueryState(
-    'page',
+    key,
     parseAsInteger.withDefault(1).withOptions({ scroll: false, history: 'replace' }),
   );
   const setPage = useCallback((next: number) => {
