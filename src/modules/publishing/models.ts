@@ -217,6 +217,25 @@ export interface PublishingAssignmentRef {
 }
 
 /**
+ * Collections a `snapshot()` call can be asked to read.
+ *
+ * @remarks The dashboard media library and the publishing queue render disjoint
+ * halves of the projection. Naming the collections keeps a read from paying for
+ * rows the caller discards, which `AGENTS.md` §"Database access & egress"
+ * counts as egress spent for nothing.
+ */
+export type PublishingSnapshotCollection =
+  | 'articles'
+  | 'sites'
+  | 'domains'
+  | 'reservations'
+  | 'cleanupTasks'
+  | 'invalidationIntents'
+  | 'jobs'
+  | 'targets'
+  | 'articleSites';
+
+/**
  * Bounded, column-projected view of one tenant for the dashboard publishing surfaces.
  *
  * @remarks Every collection carries a row ceiling and every field maps to a

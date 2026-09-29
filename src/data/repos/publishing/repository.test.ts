@@ -3,8 +3,27 @@ import { and, eq } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 
-import { DrizzlePublishingRepository } from '@/data/repos/publishing/repository';
-import { articleSites, auditLogs, media, objectCleanupTasks } from '@/data/schema';
+import {
+  DrizzlePublishingRepository,
+  MEDIA_SNAPSHOT_COLLECTIONS,
+  PUBLISHING_SNAPSHOT_COLLECTIONS,
+} from '@/data/repos/publishing/repository';
+import {
+  articleSites,
+  articles,
+  auditLogs,
+  domains,
+  invalidationTasks,
+  media,
+  mediaKeyReservations,
+  objectCleanupTasks,
+  organizations,
+  publishingJobs,
+  publishingJobTargets,
+  siteSettings,
+  sites,
+} from '@/data/schema';
+import type { PublishingSnapshotCollection } from '@/modules/publishing/ports';
 
 const CONTEXT = {
   organizationId: 'o1',
@@ -222,42 +241,78 @@ describe('isolasi tenant pada SQL yang dihasilkan', () => {
 /**
  * Drive `snapshot()` through a recording transaction.
  *
- * @remarks `snapshot()` reads the tenant row first, then issues its collections
- * in a single `Promise.all`, so the results are queued in source order: the
- * organization probe, then articles, sites, domains, settings, reservations,
- * cleanup tasks, invalidation intents, jobs, targets, and assignments.
+ * @remarks Results are keyed by table rather than queued by call order:
+ * `snapshot()` skips the select for any collection the caller did not request,
+ * so a positional queue would hand each fixture to the wrong query as soon as
+ * anything was filtered out.
  */
-function snapshotHarness(assignments: readonly Record<string, unknown>[]) {
+function snapshotHarness(
+  assignments: readonly Record<string, unknown>[],
+  collections?: ReadonlySet<PublishingSnapshotCollection>,
+) {
   const article = { id: 'a1', regionId: null, status: 'active', scheduledAt: null, leadMediaId: null, title: 'Artikel Uji', slug: 'artikel-uji' };
   const site = { id: 's1', regionId: null, domainId: 'd1', normalizedHostname: 'portal.example', status: 'active', activationState: 'active' };
-  const queue: readonly unknown[][] = [
-    [{ id: 'o1' }], [article], [site], [], [], [], [], [], [], [], [...assignments],
-  ];
-  let cursor = 0;
+  // Keyed by table, not by cursor: `snapshot()` skips the selects whose
+  // collection was not requested, so a positional queue would hand each result
+  // to the wrong query once anything is filtered out.
+  const results: Record<string, unknown[]> = {
+    organizations: [{ id: 'o1' }],
+    articles: [article],
+    sites: [site],
+    domains: [],
+    siteSettings: [],
+    mediaKeyReservations: [],
+    objectCleanupTasks: [],
+    invalidationTasks: [],
+    publishingJobs: [],
+    publishingJobTargets: [],
+    articleSites: [...assignments],
+  };
+  const nameOf = new Map<unknown, string>(
+    Object.entries({
+      organizations,
+      articles,
+      sites,
+      domains,
+      siteSettings,
+      mediaKeyReservations,
+      objectCleanupTasks,
+      invalidationTasks,
+      publishingJobs,
+      publishingJobTargets,
+      articleSites,
+    }).map(([name, table]) => [table, name]),
+  );
+  let pending: readonly unknown[] = [];
   const recorded: RecordedQueryCall[] = [];
   const chainable: Record<string, (...args: readonly unknown[]) => unknown> = {};
   for (const method of ['from', 'where', 'innerJoin', 'leftJoin', 'orderBy', 'for', 'limit']) {
     chainable[method] = (...args: readonly unknown[]) => {
       recorded.push({ method, args });
-      return method === 'limit' ? Promise.resolve(queue[Math.min(cursor++, queue.length - 1)] ?? []) : chainable;
+      if (method === 'from') pending = results[nameOf.get(args[0]) ?? ''] ?? [];
+      return method === 'limit' ? Promise.resolve(pending) : chainable;
     };
   }
   const transaction = { execute: async () => [], select: () => chainable };
   const database = { transaction: async (callback: (tx: unknown) => unknown) => callback(transaction) };
-  return { repository: new DrizzlePublishingRepository(database as never), recorded };
+  const repository = new DrizzlePublishingRepository(database as never);
+  return {
+    repository,
+    recorded,
+    snapshot: () => repository.snapshot('o1', null, collections),
+  };
 }
 
 describe('snapshot() memuat assignment artikel-situs untuk form Penyaluran', () => {
   it('mengembalikan baris assignment sehingga "Isi jumlah tayang" punya situs tujuan', async () => {
     const assignments = [{ id: 'as-1', articleId: 'a1', siteId: 's1', state: 'published', active: true }];
-    const { repository } = snapshotHarness(assignments);
-    const snapshot = await repository.snapshot('o1', null);
-    expect(snapshot?.articleSites).toEqual(assignments);
+    const { snapshot } = snapshotHarness(assignments);
+    expect((await snapshot())?.articleSites).toEqual(assignments);
   });
 
   it('membatasi query assignment dan menguncinya ke organisasi pemanggil', async () => {
-    const { repository, recorded } = snapshotHarness([]);
-    await repository.snapshot('o1', null);
+    const { recorded, snapshot } = snapshotHarness([]);
+    await snapshot();
     expect(recorded.filter((call) => call.method === 'limit').length).toBeGreaterThanOrEqual(1);
     for (const condition of recorded.filter((call) => call.method === 'where').map((call) => call.args[0])) {
       const { params } = compileAssignmentCondition(condition);
@@ -272,8 +327,34 @@ describe('snapshot() memuat assignment artikel-situs untuk form Penyaluran', () 
 
   it('menyembunyikan assignment yang artikelnya di luar cakupan', async () => {
     const assignments = [{ id: 'as-1', articleId: 'a-luar', siteId: 's1', state: 'published', active: true }];
-    const { repository } = snapshotHarness(assignments);
-    const snapshot = await repository.snapshot('o1', null);
-    expect(snapshot?.articleSites).toEqual([]);
+    const { snapshot } = snapshotHarness(assignments);
+    expect((await snapshot())?.articleSites).toEqual([]);
+  });
+});
+
+describe('snapshot() hanya membaca koleksi yang diminta', () => {
+  it('tidak menanyakan tabel yang tidak ada dalam daftar koleksi', async () => {
+    const { recorded, snapshot } = snapshotHarness([], MEDIA_SNAPSHOT_COLLECTIONS);
+    await snapshot();
+    const tables = recorded.filter((call) => call.method === 'from').map((call) => call.args[0]);
+    expect(tables).not.toContain(mediaKeyReservations);
+    expect(tables).not.toContain(objectCleanupTasks);
+    expect(tables).not.toContain(invalidationTasks);
+    expect(tables).not.toContain(publishingJobs);
+  });
+
+  it('koleksi yang tidak diminta kembali kosong, bukan data basi', async () => {
+    const { snapshot } = snapshotHarness([{ id: 'as-1', articleId: 'a1', siteId: 's1', state: 'published', active: true }], MEDIA_SNAPSHOT_COLLECTIONS);
+    const result = await snapshot();
+    expect(result?.articleSites).toEqual([]);
+    expect(result?.jobs).toEqual([]);
+  });
+
+  it('koleksi yang diminta tetap terisi', async () => {
+    const { snapshot } = snapshotHarness([{ id: 'as-1', articleId: 'a1', siteId: 's1', state: 'published', active: true }], PUBLISHING_SNAPSHOT_COLLECTIONS);
+    const result = await snapshot();
+    expect(result?.articleSites).toHaveLength(1);
+    expect(result?.articles).toHaveLength(1);
+    expect(result?.sites).toHaveLength(1);
   });
 });

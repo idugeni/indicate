@@ -2,7 +2,7 @@ import type { AuthorizedTenantActorContext, HostnameContext } from '@/core/opera
 import type { CascadeSiteLevel } from '@/modules/site/site-cascade';
 import type {
   ClaimedCleanupTask, MediaAssetRecord, MediaOwner, MediaReservationRecord, PublicationJobRecord,
-  PublicationOptions, PublicationOverride, PublicationStatusProjection, PublicationTargetRecord, PublishingState, PublishingTenantSnapshot, TargetTransitionCommit,
+  PublicationOptions, PublicationOverride, PublicationStatusProjection, PublicationTargetRecord, PublishingSnapshotCollection, PublishingState, PublishingTenantSnapshot, TargetTransitionCommit,
   TransitionReceiptRecord, WorkerClaim,
 } from '@/modules/publishing/models';
 
@@ -128,6 +128,8 @@ export interface ArticleSiteRobotsResult {
   readonly version: number;
 }
 
+export type { PublishingSnapshotCollection };
+
 export interface PublishingRepository {
   reserveMediaCandidate(actor: AuthorizedTenantActorContext, input: ReserveMediaCandidate): Promise<ReservationCandidateResult>;
   markReservationOccupied(actor: AuthorizedTenantActorContext, reservationId: string, now: string): Promise<void>;
@@ -164,7 +166,15 @@ export interface PublishingRepository {
   claimCleanupTasks(now: string, limit: number, claimToken: string, claimExpiresAt: string): Promise<readonly ClaimedCleanupTask[]>;
   completeCleanupTask(organizationId: string, taskId: string, claimToken: string, now: string): Promise<void>;
   failCleanupTask(organizationId: string, taskId: string, claimToken: string, retryable: boolean, nextAt: string, failure: Readonly<Record<string, unknown>>, now: string): Promise<void>;
-  snapshot(organizationId: string, regionScopeId?: string | null): Promise<PublishingTenantSnapshot | null>;
+  /**
+   * Read one tenant's dashboard publishing projection.
+   *
+   * @param organizationId - Tenant to project.
+   * @param regionScopeId - Restricts the result to one region when the actor is region-scoped.
+   * @param collections - Collections to read; omitted collections come back empty and cost no query.
+   * @returns The projection, or null when the organization does not exist.
+   */
+  snapshot(organizationId: string, regionScopeId?: string | null, collections?: ReadonlySet<PublishingSnapshotCollection>): Promise<PublishingTenantSnapshot | null>;
 }
 
 export type TargetPublicationOutcome =

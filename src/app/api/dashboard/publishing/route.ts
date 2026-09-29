@@ -13,7 +13,11 @@ import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from 
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
-import { DrizzlePublishingRepository } from '@/data/repos/publishing/repository';
+import {
+  DrizzlePublishingRepository,
+  MEDIA_SNAPSHOT_COLLECTIONS,
+  PUBLISHING_SNAPSHOT_COLLECTIONS,
+} from '@/data/repos/publishing/repository';
 import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
 import { UpstashPublicationQueueAdapter } from '@/integrations/redis/upstash-publication-queue';
 import { UuidGenerator } from '@/core/system/uuid-generator';
@@ -91,15 +95,17 @@ async function handleGET(request: Request) {
   if (!parsed.success) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await contextFor(parsed.data.organizationId, requestId); if (isError(context)) return NextResponse.json(context, { status: statusFor(context) });
   {
-    const snapshot = await context.repository.snapshot(context.actor.organizationId, context.actor.regionScopeId ?? null);
-    if (snapshot === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     if (parsed.data.view === 'media') {
+      const snapshot = await context.repository.snapshot(context.actor.organizationId, context.actor.regionScopeId ?? null, MEDIA_SNAPSHOT_COLLECTIONS);
+      if (snapshot === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
       const listed = await context.media.list(context.actor); if (!listed.ok) return NextResponse.json(listed.error, { status: statusFor(listed.error) });
-      return NextResponse.json({ media: listed.value, reservations: snapshot.reservations, cleanupTasks: snapshot.cleanupTasks, articles: snapshot.articles, domains: snapshot.domains, sites: snapshot.sites, invalidationIntents: snapshot.invalidationIntents });
+      return NextResponse.json({ media: listed.value, articles: snapshot.articles, sites: snapshot.sites });
     }
     if (!context.actor.permissionSet.has(PUBLISHING_PERMISSIONS.publishingRead)) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     if (parsed.data.jobId !== undefined) { const result = await context.publication.status(context.actor, { jobId: parsed.data.jobId }); return result.ok ? NextResponse.json(result.value) : NextResponse.json(result.error, { status: statusFor(result.error) }); }
-    return NextResponse.json({ jobs: snapshot.jobs, targets: snapshot.targets, articles: snapshot.articles, domains: snapshot.domains, sites: snapshot.sites, articleSites: snapshot.articleSites });
+    const snapshot = await context.repository.snapshot(context.actor.organizationId, context.actor.regionScopeId ?? null, PUBLISHING_SNAPSHOT_COLLECTIONS);
+    if (snapshot === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+    return NextResponse.json({ articles: snapshot.articles, domains: snapshot.domains, sites: snapshot.sites, articleSites: snapshot.articleSites });
   }
 }
 
