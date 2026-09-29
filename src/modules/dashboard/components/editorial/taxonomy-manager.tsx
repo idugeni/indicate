@@ -4,6 +4,7 @@ import { useId, useMemo, useRef, useState, useTransition, type FormEvent } from 
 import { toast } from 'sonner';
 import { FolderKanban, Hash, Pencil, Plus, Trash2 } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { slugify } from '@/modules/dashboard/components/shared/form-utils';
@@ -22,13 +23,6 @@ import {
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
 
 interface TaxonomyCategory {
   readonly id: string;
@@ -47,7 +41,7 @@ interface TaxonomyTag {
 const MANAGER_PAGE_SIZE = 12;
 
 /**
- * Render the range counter and pager for one managed list.
+ * Render the pager for one managed list, sized by the manager's page size.
  *
  * @param total - Rows matching the current filter.
  * @param page - Current 1-based page, already clamped to the page count.
@@ -69,54 +63,16 @@ function ManagerPagination({
   readonly noun: string;
   readonly onPageChange: (page: number) => void;
 }) {
-  if (total === 0) return null;
-  const first = (page - 1) * MANAGER_PAGE_SIZE + 1;
-  const last = Math.min(page * MANAGER_PAGE_SIZE, total);
-  const atStart = page <= 1;
-  const atEnd = page >= pageCount;
   return (
-    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-      <span role="status" aria-live="polite" aria-atomic="true" className="font-mono text-[11px] tabular-nums text-paper-faint">
-        {first}–{last} dari {total}
-      </span>
-      <Pagination className="mx-0 w-auto">
-        <PaginationContent className="gap-4">
-          <PaginationItem>
-            <PaginationPrevious
-              text="Sebelumnya"
-              href="#"
-              aria-label={`Ke halaman ${noun} sebelumnya`}
-              aria-disabled={atStart}
-              tabIndex={atStart ? -1 : 0}
-              onClick={(event) => {
-                event.preventDefault();
-                if (!atStart) onPageChange(page - 1);
-              }}
-              className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${atStart ? 'pointer-events-none opacity-40' : 'cursor-pointer'}`}
-            />
-          </PaginationItem>
-          <PaginationItem>
-            <span className="font-mono text-[11px] tabular-nums text-paper-faint">
-              {page} / {pageCount}
-            </span>
-          </PaginationItem>
-          <PaginationItem>
-            <PaginationNext
-              text="Berikutnya"
-              href="#"
-              aria-label={`Ke halaman ${noun} berikutnya`}
-              aria-disabled={atEnd}
-              tabIndex={atEnd ? -1 : 0}
-              onClick={(event) => {
-                event.preventDefault();
-                if (!atEnd) onPageChange(page + 1);
-              }}
-              className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${atEnd ? 'pointer-events-none opacity-40' : 'cursor-pointer'}`}
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
-    </div>
+    <DashboardPager
+      startIndex={(page - 1) * MANAGER_PAGE_SIZE}
+      visibleCount={Math.min(MANAGER_PAGE_SIZE, total - (page - 1) * MANAGER_PAGE_SIZE)}
+      total={total}
+      page={page}
+      pageCount={pageCount}
+      noun={noun}
+      onPageChange={onPageChange}
+    />
   );
 }
 

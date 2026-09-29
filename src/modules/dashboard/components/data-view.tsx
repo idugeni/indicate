@@ -31,15 +31,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
+import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
 import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
 import { formatMoment } from '@/modules/dashboard/components/shared/format-moment';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
 import {
   Table,
   TableBody,
@@ -758,8 +752,7 @@ function CollectionTable({
   const itemCountLabel = isTruncated
     ? `${totalItems.toLocaleString('id-ID')} terbaru`
     : `${totalItems.toLocaleString('id-ID')} data`;
-  const visibleColumnCount = table.getVisibleLeafColumns().length;
-  const editingItem =
+  const visibleColumnCount = table.getVisibleLeafColumns().length;  const editingItem =
     editingId === null
       ? null
       : (memoData.find(
@@ -1022,52 +1015,15 @@ function CollectionTable({
       )}
 
       {totalItems > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <span role="status" aria-live="polite" aria-atomic="true" className="font-mono text-[11px] tabular-nums text-paper-faint">
-            {startIndex + 1}–{Math.min(startIndex + PAGE_SIZE, totalItems)} dari {totalItems}
-            {isTruncated ? ' termuat' : ''}
-          </span>
-
-          <Pagination className="mx-0 w-auto">
-            <PaginationContent className="gap-4">
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  aria-label="Ke halaman sebelumnya"
-                  aria-disabled={safePage <= 1}
-                  tabIndex={safePage <= 1 ? -1 : 0}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (safePage > 1) handlePageChange(safePage - 1);
-                  }}
-                  className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${
-                    safePage <= 1 ? 'pointer-events-none opacity-40' : 'cursor-pointer'
-                  }`}
-                />
-              </PaginationItem>
-              <PaginationItem>
-                <span className="font-mono text-[11px] tabular-nums text-paper-faint">
-                  {safePage} / {totalPages}
-                </span>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  aria-label="Ke halaman berikutnya"
-                  aria-disabled={safePage >= totalPages}
-                  tabIndex={safePage >= totalPages ? -1 : 0}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (safePage < totalPages) handlePageChange(safePage + 1);
-                  }}
-                  className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${
-                    safePage >= totalPages ? 'pointer-events-none opacity-40' : 'cursor-pointer'
-                  }`}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
+        <DashboardPager
+          startIndex={startIndex}
+          visibleCount={Math.min(PAGE_SIZE, totalItems - startIndex)}
+          total={totalItems}
+          page={safePage}
+          pageCount={totalPages}
+          onPageChange={handlePageChange}
+          note={isTruncated ? 'termuat' : undefined}
+        />
       ) : null}
     </section>
   );

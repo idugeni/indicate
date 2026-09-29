@@ -4,14 +4,8 @@ import { useMemo, useState } from 'react';
 import { Link2 } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
+import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { formatMoment } from '@/modules/dashboard/components/shared/format-moment';
 import { PublishedUrlBlock } from '@/modules/dashboard/components/publishing/published-url-block';
@@ -183,48 +177,14 @@ export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
             </SectionCard>
           ))}
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span role="status" aria-live="polite" aria-atomic="true" className="font-mono text-[11px] tabular-nums text-paper-faint">
-              {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} dari {filtered.length}
-            </span>
-            <Pagination className="mx-0 w-auto">
-              <PaginationContent className="gap-4">
-                <PaginationItem>
-                  <PaginationPrevious
-                    text="Sebelumnya"
-                    href="#"
-                    aria-label="Ke halaman sebelumnya"
-                    aria-disabled={safePage <= 1}
-                    tabIndex={safePage <= 1 ? -1 : 0}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      if (safePage > 1) setPage(safePage - 1);
-                    }}
-                    className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${safePage <= 1 ? 'pointer-events-none opacity-40' : 'cursor-pointer'}`}
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <span className="font-mono text-[11px] tabular-nums text-paper-faint">
-                    {safePage} / {pageCount}
-                  </span>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext
-                    text="Berikutnya"
-                    href="#"
-                    aria-label="Ke halaman berikutnya"
-                    aria-disabled={safePage >= pageCount}
-                    tabIndex={safePage >= pageCount ? -1 : 0}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      if (safePage < pageCount) setPage(safePage + 1);
-                    }}
-                    className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${safePage >= pageCount ? 'pointer-events-none opacity-40' : 'cursor-pointer'}`}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
+          <DashboardPager
+            startIndex={(safePage - 1) * PAGE_SIZE}
+            visibleCount={visible.length}
+            total={filtered.length}
+            page={safePage}
+            pageCount={pageCount}
+            onPageChange={setPage}
+          />
         </>
       )}
     </div>
