@@ -675,6 +675,8 @@ The rules that follow from the same measurement:
 
 Supabase publishes no egress figure through its Management API: the CLI has no usage command, and none of the 115 documented API paths covers it. The live numbers behind this section therefore come from `pg_stat_statements` row counts plus a direct wire-size measurement of each read, not from the dashboard.
 
+**How to query is a binding policy, not a preference.** The rules that govern authoring any query in this codebase — bounded and paginated reads, minimum column projection, no full-table dump for hydration/snapshot/diff/reconciliation/cron/cold start, cache never legitimising a bad query, the IDENTIFY → BOUND → CACHE → FREQUENCY → VERIFY → BLOCK gate, and the requirement to label derived estimates as derived — live in `AGENTS.md` §"Database access & egress" and bind every agent and human. The operational runbook is [architecture-rules](architecture-rules.md) §5. The paragraph above records the budget and the measurements that justify it; it does not replace the policy.
+
 ## 14. SEO architecture
 
 A pure Absolute URL Builder accepts only Hostname Context and canonical path; untrusted request host values never reach it. A pure SEO Document Builder produces escaped title/description, canonical, Open Graph, NewsArticle, Breadcrumb, Organization, and WebSite models. Dedicated serializers emit HTML metadata, robots text, sitemap XML, RSS XML, and safe JSON-LD.

@@ -139,6 +139,11 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run perf
+      # Hard gate for AGENTS.md §"Database access & egress": no unbounded
+      # select().from() may be introduced, and whole-set reads may only shrink
+      # against the committed ratchet in scripts/perf/db-access-budget.mjs.
+      - name: database-access budget
+        run: npm run perf:db-access
 
   docs:
     runs-on: ubuntu-26.04

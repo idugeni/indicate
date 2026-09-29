@@ -2,6 +2,18 @@
 
 Source of truth: `docs/migrations.md`, `src/data/`.
 
+**Query-authoring policy is mandatory and lives in the repo-root
+`AGENTS.md`, section "Database access & egress" (WAJIB).** Read it before
+creating or reviewing any repository, query, cache, cron, or data-access
+change. In short: PostgreSQL is source of truth, not a read-distribution
+layer — no unscoped `SELECT` on growable tables, no `SELECT *` on a hot
+path, no full-table dump for hydration/snapshot/diff/reconciliation/cron/cold
+start, tenant reads always bounded and paginated, and `snapshot` / `load` /
+`readComplete` are HIGH RISK names that need row count, payload, caller
+graph, frequency, and production calls/day before use. Egress facts and
+budget: `docs/architecture.md` §13.4. Operational runbook:
+`docs/architecture-rules.md` §5.
+
 ## Layout
 
 - `src/data/schema/` — Drizzle table definitions: `billing`, `content`, `editorial`, `identity`, `operations`, `runtime-config`.

@@ -50,6 +50,45 @@ Two layers, two owners:
 
 When adding a tenant-visible mutation: build a `NetworkMutation`, call `planInvalidation()`, persist via `createInvalidation()` in the committing transaction. Do not call `revalidateTag`/`revalidatePath` inline from the CMS route (exception: the marketing `site-content` tag with hourly TTL, invalidated directly in `src/app/api/dashboard/content/route.ts:139`).
 
+## 5. Database access & egress policy
+
+**Canonical rules live in `AGENTS.md` → "Database access & egress"
+(WAJIB).** That section binds every agent and human before creating,
+modifying, approving, or reviewing data-access code. This subsection is the
+operational entry point; it deliberately does not restate the rules, so
+there is exactly one place to change them.
+
+The short version for contributors:
+
+- PostgreSQL is source of truth, not a read-distribution layer. Bytes out of
+  the database spend the 5 GB unified egress quota ([architecture](architecture.md)
+  §13.4 for the budget facts).
+- No unscoped `SELECT` on growable tables, no `SELECT *` on a hot path, no
+  full-table dump for hydration / snapshot / diff / reconciliation /
+  indexing / cache warming / cron / cold start. Tenant reads are bounded by
+  `organizationId` / `siteId` / business scope and always paginated.
+- `snapshot`, `load`, `readComplete`, `getAll`, `listAll` are HIGH RISK
+  names: check row count, payload, caller graph, per-request and
+  per-instance frequency, cold start, cron frequency, and production
+  calls/day before adding or calling one.
+- A cache never legitimises a bad or unbounded query. A hit must actually
+  prevent the DB query, the fallback must not become a full read, the TTL
+  must be sane, the key scope must not leak, and an invalidation path must
+  exist.
+- Before any data-access change: run the IDENTIFY → BOUND → CACHE →
+  FREQUENCY → VERIFY → BLOCK gate and record worst-case calls/day and
+  rows/day. Production scale is the baseline; dev/test size is never the
+  justification. Treat any estimated increase as a regression until proven
+  otherwise.
+- After the change: `typecheck`, `lint`, affected tests, `build`, then
+  compare before/after calls, rows/call, total rows, payload, cache
+  hit/miss, and connection churn. Never claim an egress reduction without
+  evidence, and label derived estimates as derived.
+
+Measured offenders already in the tree are catalogued in `AGENTS.md` §8.
+Fixing them is separate work; this rule exists so the next change does not
+add to them.
+
 ## Verification
 
 ```sh

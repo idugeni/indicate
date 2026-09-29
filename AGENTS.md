@@ -57,6 +57,8 @@ Use the connected tools when they help. Retrieval beats memory, but nothing here
 - **Skills**: load via the skill tool when the task matches. Key triggers:
   any repo code → `indicate-conventions`; any Supabase work → `supabase`
   (+ `supabase-postgres-best-practices` for schema/SQL/RLS/index work);
+  any repository, query, cache, cron, or data-access change → read
+  `AGENTS.md` "Database access & egress" (WAJIB) before writing code;
   Drizzle ORM on Postgres → `drizzle-best-practices`; any Cloudflare
   task → `cloudflare`; Upstash Redis client work → `upstash-redis-js`;
   React/Next.js perf or composition → `vercel-react-best-practices` /
@@ -272,6 +274,220 @@ mode" di bawah. Langgar = angka tidak layak dipercaya sebelum diulang.
    provisioned vs serving, jumlah kota/provinsi, bentuk hostname apex, dan
    apakah `view_count` observed atau seeded. `hygiene:publishers` audited
    markup penerbit dengan pola yang sama.
+
+## Database access & egress (WAJIB — bukan relaxed mode)
+
+Bagian ini mengikat setiap agen AI dan manusia sebelum **membuat,
+memodifikasi, menyetujui, atau mereview** kode yang menyentuh database.
+Tidak dicover oleh "relaxed mode" di bawah. Sumber faktualnya ada di
+`docs/architecture.md` §13.4 (egress budget) dan `docs/architecture-rules.md`
+§5 (runbook operasional); **bagian ini adalah kanon kebijakan, kedua
+dokumen itu merujuk ke sini, bukan sebaliknya.**
+
+### 0. Premis
+
+- **PostgreSQL/Supabase adalah source of truth, bukan read-distribution
+  layer.** Bytes yang keluar dari database adalah konsumsi kuota, bukan
+  harga delivering. Setiap baris yang keluar tanpa filter adalah ciri bug,
+  bukan gaya penulisan.
+- Plan Free memakai kuota egress terpadu 5 GB yang dipakai bersama
+  Database, Auth, dan Shared Pooler. Melampaui kuota memasukkan organisasi
+  ke grace period, jadi ini **budget availability**, bukan baris biaya.
+- Prinsip default, berlaku bila tidak ada alasan teknis tertulis:
+  **READ LESS · FETCH ONCE · QUERY BY SCOPE · PAGINATE EVERYTHING THAT
+  CAN GROW · CACHE APPROPRIATELY · NEVER FULL-TABLE DUMP**
+
+### 1. Larangan keras
+
+1. **DILARANG** `SELECT` tanpa scope/filter pada tabel yang dapat tumbuh.
+2. **DILARANG** `SELECT *` (Drizzle `transaction.select()` tanpa projection)
+   pada application hot path.
+3. **DILARANG** full-table dump untuk hydration, snapshot, diff,
+   reconciliation, indexing, cache warming, comparison, dashboard, cron,
+   cold start, atau background job. Tidak ada pengecualian "cuma dev".
+4. **DILARANG** mengambil seluruh tenant lalu memfilter di memory. Query
+   tenant WAJIB terikat pada `organizationId` / `siteId` / `tenantId` atau
+   business scope yang relevan.
+5. **DILARANG** menarik ribuan baris untuk memakai sebagian kecil. Kalau
+   consumer butuh 8 baris, query harus mengembalikan 8 baris.
+6. **DILARANG** N+1. Pakai `join`, batched query, atau read model.
+7. **DILARANG** fetch duplikat dalam satu request ketika data sudah tersedia
+   dari request context, hasil repository, React `cache()`, memoization,
+   Redis, atau layer cache lain.
+8. **DILARANG** full read (tanpa pagination/filter) untuk data besar di hot
+   path: `audit_logs`, history, events, jobs, invalidation records,
+   operational logs, dan seluruh tenant-wide collection.
+9. **DILARANG** connection churn: jangan buka koneksi PostgreSQL baru yang
+   tidak perlu. Pakai pooler + reuse dengan konfigurasi yang sesuai.
+10. **DILARANG** polling agresif bila event-driven, cache, atau interval
+    yang masuk akal sudah tersedia.
+
+### 2. Bentuk query yang wajib
+
+- **Projection minimum.** Setiap query mengambil kolom minimum yang benar
+  benar dibutuhkan. `colors`, `social_links`, `seo`, `navigation` (JSONB) dan
+  `before`/`after` (JSONB) adalah byte mahal — jangan ikut terbawa oleh
+  `SELECT *`.
+- **Pagination wajib** untuk setiap collection/list yang dapat bertambah:
+  cursor/keyset pagination, `LIMIT` yang punya justifikasi tertulis, atau
+  filter berbasis tenant/site/org/state/time. Pilihannya, bukan opsional.
+- **Diff dan agregasi di SQL**, bukan load-everything → process-in-memory →
+  persist. Kalau persisannya bisa jadi `INSERT ... ON CONFLICT`,
+  `UPDATE ... FROM`, `DELETE ... WHERE`, atau window function, tulis itu.
+- **Dashboard/API/repository memakai projection per view atau use-case.**
+  Jangan memuat seluruh tabel hanya karena satu consumer butuh sebagian
+  kecil. Kalau butuh judul saja, pakai ringkasan; kalau butuh satu tenant
+  record, pakai satu tenant record.
+- **Multi-tenant config/read-model:** jangan reload seluruh `sites` /
+  `site_settings` pada request atau cold start bila incremental read,
+  shared cache, atau per-site cache bisa dipakai.
+- **Cron dan background job** wajib punya scope bounded, frequency
+  justification, idempotency, dan query terbatas. Scan penuh berulang
+  tanpa alasan eksplisit plus evidence dilarang.
+- **Media/file/image delivery** tidak boleh melakukan DB lookup per request
+  bila object bisa disajikan langsung lewat R2/CDN. Database tidak boleh
+  menjadi bottleneck delivery untuk asset yang pemetaannya deterministik.
+
+### 3. Cache: syarat, bukan pembegoalan
+
+Data relatif statis dan read-heavy boleh dilayani Upstash Redis, Next.js
+Data Cache (`'use cache'` / `unstable_cache`), Cloudflare cache, atau read
+model lain yang sudah tersedia di repo.
+
+**Cache TIDAK BOLEH jadi alasan mempertahankan query database yang buruk
+atau unbounded.** Sebelum mengandalkan cache, agent wajib memastikan:
+
+1. hit benar-benar mencegah query DB (bukan hanya mencegah render);
+2. fallback path tidak berubah menjadi full-table read;
+3. TTL masuk akal dan freshness tetap dijamin oleh mekanisme yang sudah
+   ada (mis. revision di dalam cache key, bukan jam);
+4. scope cache key benar — tidak bocor lintas tenant/site;
+5. invalidation path tersedia dan terbukti ada.
+
+Cache yang tidak cukup juga bukan alasan: **jangan memindahkan seluruh
+dataset ke Redis hanya demi mengurangi egress.** Minimalkan rows dan
+columns dulu, baru cache read model yang memang cocok.
+
+### 4. Metode berisiko tinggi
+
+Repository method bernama `snapshot`, `load`, `readComplete`, `getAll`,
+`listAll`, atau pola sejenis **diperlakukan sebagai HIGH RISK**. Sebelum
+membuat atau memakainya, agent wajib memeriksa dan menuliskan:
+
+- row count aktual (bukan asumsi) dan bytes/row;
+- payload size per panggilan;
+- caller graph (siapa memanggil, dari hot path mana);
+- frequency per request dan frequency per instance;
+- cold-start behavior;
+- cron frequency bila dipanggil cron;
+- estimasi production calls/day dan rows/day.
+
+### 5. Gerbang perubahan database (wajib, sebelum implementasi)
+
+Setiap perubahan data-access wajib menjalankan enam langkah ini dan
+mencatat hasilnya di PR:
+
+1. **IDENTIFY** — tabel, kolom, filter, expected rows, payload, frequency,
+   callers.
+2. **BOUND** — query dibatasi business scope + pagination.
+3. **CACHE** — hanya bila langkah 1-2 tidak cukup dan syarat §3 terpenuhi.
+4. **FREQUENCY** — trace seluruh caller termasuk cron dan cold start.
+5. **VERIFY** — generated SQL, lalu `pg_stat_statements` / database logs /
+   observability bila tersedia.
+6. **BLOCK** — implementasi diblokir bila ditemukan unbounded full-table
+   read atau large snapshot tanpa alasan kuat.
+
+Sebelum melakukan perubahan, agent WAJIB membaca: schema, indexes,
+repository callers, cache layer, invalidation mechanism, runtime behavior,
+deployment model, dan production scale.
+
+**Production scale adalah baseline.** Ukuran development/test tidak pernah
+menjadi alasan bahwa sebuah query aman. Query yang sekarang kecil tetap
+wajib dipaginate/filter bila dataset-nya dapat tumbuh tanpa batas.
+
+### 6. Estimasi dan klaim
+
+- Untuk setiap perubahan yang memengaruhi query volume, agent wajib
+  memperkirakan **worst-case calls/day dan rows/day** serta mengidentifikasi
+  sumber egress potensial **sebelum** implementasi.
+- Bila estimasi menunjukkan peningkatan query count, rows returned,
+  connection count, payload size, atau egress, **treat as regression sampai
+  terbukti sebaliknya.**
+- Agent **DILARANG mengklaim egress reduction tanpa evidence.** Wajib
+  membedakan secara eksplisit: *observed metrics*, *derived estimates*,
+  *assumptions*, dan *belum terverifikasi*.
+- Setiap implementation plan yang menyentuh database wajib menyertakan:
+  query-scope analysis, cache strategy, invalidation strategy,
+  caller-frequency analysis, rollback path, verification plan.
+
+### 7. Verifikasi setelah perubahan
+
+Wajib menjalankan `npm run typecheck`, `npm run lint`, test terdampak, dan
+`npm run build`. Bila tersedia, verifikasi production dengan
+`pg_stat_statements`, database logs, runtime logs, Redis metrics,
+Vercel/Cloudflare observability, dan Supabase usage/egress.
+
+Bandingkan before/after: calls, rows/call, total rows, payload, cache
+hit/miss, dan connection churn.
+
+Untuk pengukuran ulang yang apples-to-apples, reset window dulu
+(`select pg_stat_statements_reset();`), catat baseline `sum(calls)` dan
+`sum(rows)` beserta `now()`, tunggu ≥48 jam, lalu hitung rows/day dengan
+`sum(rows) / jam sejak reset × bytes-per-row`. Angka selalu boleh
+diberi label *derived*, tidak pernah *observed*, kecuali dibaca langsung
+dari sumber usage.
+
+### 8. Penegakan: apa yang sudah jadi pagar, bukan sekadar dokumen
+
+Aturan di bagian ini punya tiga lapis automate. Agent yang melanggar aturan
+dengar-butuh tidak akan lolos merge.
+
+| Lapis | Mechanisme | Menangkap apa |
+|---|---|---|
+| Lint error | `db-access/no-unbounded-select` di `eslint.config.mjs`, aturan dari `scripts/eslint/db-access.mjs` | `select().from()` tanpa proyeksi kolom dan tanpa `.limit()` di chain — **error**, bukan warning |
+| Budget ratchet | `npm run perf:db-access` (`scripts/perf/db-access-budget.mjs`) | read yang **sudah** diproyeksi tapi tetap tanpa batas; jumlah per berkas hanya boleh turun |
+| PR gate | `.github/PULL_REQUEST_TEMPLATE.md` §"Database-access gate" | IDENTIFY/BOUND/CACHE/FREQUENCY/VERIFY/BLOCK + worst-case calls/day dan rows/day, yang tidak bisa dicek mesin |
+
+Aturan `.limit()` adalah satu-satunya penanda `bounded` yang dikenali.
+`where`, `orderBy`, `for('update')`, dan `.get()` **tidak** membatasi: semua
+tetap mengembalikan seluruh himpunan yang cocok. Itu sebabnya `snapshot()` dan
+`load()` tetap terbaca sebagai read penuh meski sudah memfilter
+`organizationId`.
+
+Budget ratchet di `scripts/perf/db-access-budget.mjs` mengikat 8 berkas pada
+nilai terukur hari ini. Nilai itu **pagar, bukan persetujuan**: Turunkan
+saat pemiliknya diperbaiki, dan menaikkan angka selalu regresi. Kalau sebuah
+read perlu melewati budget, jawabannya pagination atau filter — bukan
+mengedit angka.
+
+### 9. Pelaku known di tree ini (konteks — bukan-fix)
+
+Pola berikut sudah terukur mengirim baris keluar tanpa batas. Jangan
+melanjutkannya, jangan menambah pemanggil, dan jangan beralasan "kecil
+sekarang":
+
+| Pelaku | Lokasi | Mengapa berbahaya |
+|---|---|---|
+| `snapshot()` membaca seluruh `audit_logs` | `src/data/repos/publishing/repository.ts:817` | 13.179 baris × ±1.224 B per panggilan, dari satu GET dashboard |
+| `snapshot()` membaca seluruh `invalidation_tasks` | `src/data/repos/publishing/repository.ts:813` | payload ~3.096 B/baris, dan pemanggil tidak memakainya |
+| `load()` memuat 17 tabel penuh | `src/data/repos/dashboard.ts:243` | whole-tenant hydration untuk diff in-memory |
+| `load()` memuat `site_settings` penuh | `src/data/repos/dashboard.ts:250` | JSONB `colors`/`seo`/`navigation` per 4.422 situs |
+| `readComplete()` reload config penuh | `src/data/repos/runtime-config/reader.ts:21` | cold start tiap instance = full read |
+| `readCategories()` per load halaman | `src/data/repos/delivery.ts:305` | ~60 baris × frekuensi tinggi, belum shared-cached per org |
+| `isCacheBypassed()` di luar branch yang butuh | `src/data/repos/delivery.ts:314` | round trip yang berulang |
+| TTL config 300 s memaksa refresh sering | `src/core/config/runtime/runtime-constants.ts:1` | shared TTL harus jadi penahan, bukan jam |
+| `idle_timeout` 600 s masih menyisakan churn | `src/data/client.ts:42` | katalog `pg_type` ditarik ulang per koneksi |
+
+Status enforcement per pelaku: `snapshot()` sudah dibatasi dan diproyeksi
+(ceilings `SNAPSHOT_MAX_*`), `listMedia()` dan content admin sudah dibatasi.
+`load()` **sengaja** dibiarkan tanpa ceiling karena `execute()` melakukan
+diff dari state tersebut — menambahkan `LIMIT` akan memotong diff dan
+menghapus record yang masih hidup. Perbaikannya adalah memindahkan diff ke
+SQL, bukan menambah angka. Reads lain di daftar tetap terbuka dan tercatat
+di budget ratchet.
+
+Perbaikan untuk semua ini adalah pekerjaan terpisah; tugas ini hanya
+menetapkan policy plus pagar automate.
 
 ## Owner overrides (rules stay flexible)
 

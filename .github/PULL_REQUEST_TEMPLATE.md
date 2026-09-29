@@ -20,6 +20,47 @@ Closes #
 - [ ] No migration included
 - [ ] Forward-only migration included in `src/data/migrations/` (hand-written, reviewed)
 
+## Database-access gate (mandatory when a query is added or changed)
+
+Complete this section if the diff touches `src/data/repos/**`, `src/data/client.ts`,
+`src/data/schema/**`, any `select`/`execute` call, a cache layer, a cron entry in
+`vercel.json`, or media delivery. It is enforced by `npm run lint` and
+`npm run perf:db-access`; the questions below are the parts a machine cannot
+check. Canonical rules: `AGENTS.md` §"Database access & egress".
+
+<!-- IDENTIFY / BOUND / CACHE / FREQUENCY / VERIFY / BLOCK -->
+
+- [ ] **IDENTIFY** — Tables, columns, filters, expected rows, payload size, and
+      every caller (including cron and cold start) are named below.
+- [ ] **BOUND** — Each new read is scoped to a tenant/site/org/business key and
+      paginated, keyset-bounded, or carries a `LIMIT` whose justification is
+      written here. No unbounded `select().from()` was added.
+- [ ] **CACHE** — If cached: a hit actually skips the database query, the
+      fallback is not a full read, the TTL is justified, the key scope cannot
+      leak across tenants, and an invalidation path exists.
+- [ ] **FREQUENCY** — Worst-case calls/day and rows/day are estimated below.
+      An increase in query count, rows, connections, or payload is treated as a
+      regression until proven otherwise.
+- [ ] **VERIFY** — Generated SQL was inspected, and `pg_stat_statements` or
+      equivalent was checked where available.
+- [ ] **BLOCK** — No unbounded full-table read or large snapshot was introduced
+      without a written, evidence-backed reason.
+
+```text
+Tables touched      :
+Expected rows/read  :
+Payload per call    :
+Callers (hot path)  :
+Callers (cron)      :
+Cold-start reads    :
+Worst-case calls/day:
+Worst-case rows/day :
+Cache strategy      :
+Invalidation        :
+```
+
+- [ ] `npm run perf:db-access` passes (no new whole-set read; budget not exceeded)
+
 ## Verification (recommended — relaxed 2026-09-14)
 
 Paste evidence when practical — PRs without a green gate on the head commit may
@@ -28,12 +69,14 @@ still merge with explicit owner sign-off and a recorded risk note.
 ```text
 npm run typecheck  # result:
 npm run lint       # result:
+npm run perf       # result:
 npm run build      # result:
 GET /api/health    # valid configuration before/after (for runtime or migration changes):
 ```
 
 - [ ] `npm run typecheck` passes
 - [ ] `npm run lint` passes with zero warnings
+- [ ] `npm run perf` passes (listing payload, cold start, DB-access budget)
 - [ ] `npm run build` (production) passes
 - [ ] `GET /api/health` reports valid configuration (if runtime/migration touched)
 

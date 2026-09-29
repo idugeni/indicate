@@ -168,6 +168,28 @@ migration, release, and secret boundaries.
 Import boundaries are advisory in relaxed mode. If you are unsure where code
 belongs, mirror the existing layer and note it in the PR.
 
+### Database access and egress (mandatory policy)
+
+The binding rules live in `AGENTS.md` §"Database access & egress" (WAJIB);
+that file is the single source and is not restated here. In scope: any
+repository method, query, cache layer, cron, or media delivery path.
+
+Because the project shares a 5 GB unified Supabase egress quota, the short
+version is: PostgreSQL is source of truth rather than a read-distribution
+layer, every tenant-scoped read is bounded and paginated with a minimum
+column projection, no query is allowed to dump a whole table for hydration,
+snapshot, diff, reconciliation, cron, or cold start, and a cache may not be
+used to justify keeping a bad query. Repository methods named `snapshot`,
+`load`, or `readComplete` are treated as high risk and require row count,
+payload, caller graph, frequency, and production calls/day before use.
+
+Every data-access pull request runs the IDENTIFY → BOUND → CACHE →
+FREQUENCY → VERIFY → BLOCK gate, states worst-case calls/day and rows/day,
+and reports before/after call and row counts. Contributors must not claim
+an egress reduction without evidence, and must label derived estimates as
+derived. Budget facts: [docs/architecture.md](docs/architecture.md) §13.4.
+Runbook: [docs/architecture-rules.md](docs/architecture-rules.md) §5.
+
 ### App Router conventions (advisory)
 
 - Route groups `(site)`, `(network)`, `(auth)`, `(dashboard)` organize without

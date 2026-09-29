@@ -4,6 +4,7 @@ import nextPlugin from '@next/eslint-plugin-next';
 import reactHooks from 'eslint-plugin-react-hooks';
 import importX from 'eslint-plugin-import-x';
 import tseslint from 'typescript-eslint';
+import dbAccess from './scripts/eslint/db-access.mjs';
 
 export default defineConfig([
   {
@@ -47,6 +48,27 @@ export default defineConfig([
     rules: {
       'no-restricted-imports': 'off',
     },
+  },
+  {
+    // Build and QA tooling runs from Node with no bundler alias resolution, so
+    // `scripts/perf` importing `scripts/eslint` is relative by necessity. Scoped
+    // to tooling only; `src/**` keeps the alias rule.
+    name: 'indicate/scripts',
+    files: ['scripts/**/*.mjs'],
+    rules: {
+      'no-restricted-imports': 'off',
+    },
+  },
+  {
+    // Runtime database boundary: a read of every matching row spends the
+    // shared Supabase egress quota, so an unbounded select is an error, not a
+    // warning. Canonical rules: AGENTS.md §"Database access & egress".
+    // The rule is deliberately independent from `@typescript-eslint` so a
+    // type-checker upgrade cannot silently drop it.
+    name: 'indicate/db-access',
+    files: ['src/**/*.{ts,tsx}'],
+    plugins: { 'db-access': dbAccess },
+    rules: dbAccess.configs.recommended.rules,
   },
   {
     name: 'indicate/typescript',
