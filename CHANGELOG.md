@@ -15,6 +15,16 @@ npm-facing.
 
 ### Added
 
+- Terms and privacy consent on the two forms that take personal data. The
+  tenant report form now ships a shadcn `Checkbox` that must be ticked before
+  the report is sent, linking to that tenant's own `/syarat-ketentuan` and
+  `/kebijakan-privasi`; `/sign-up` does the same against `/terms` and
+  `/privacy` and records `terms_accepted_at` in Supabase user metadata at the
+  moment of acceptance, so the record travels with the account. Tenancy comes
+  from `TemplateCheckbox` in `src/modules/site/components/network/ui/field.tsx`,
+  which restates the shadcn checked colors against `--tpl-*` because the
+  dashboard `--primary` token a tenant page never sets.
+
 - `Hasil Tayang` dashboard view: every published article with its live portal
   URLs, numbered in a code block and copyable for WhatsApp. Reads the same
   editorial payload the article archive uses, so a row it lists is one a
@@ -36,6 +46,19 @@ npm-facing.
   reader being blocked for bot reasons. The submit button is deliberately not
   gated on a pending challenge, so a blocked challenge script cannot make the
   form unsubmittable.
+- The Turnstile widget is now armed on form completeness instead of loading on
+  page view. `useTurnstileChallenge` takes the form's own readiness, and
+  `TurnstileChallenge` takes the same flag, so the Cloudflare script and widget
+  stay unmounted until a reader has actually filled something in — across the
+  four auth leaves and all ten tenant report-form templates. A page view, a
+  bounce, and a half-typed form now cost no third-party script, no iframe, and
+  no solve, and the latency the widget adds lands while the reader is still
+  reading their own text instead of on the click. Arming latches, so editing a
+  field back under its threshold cannot tear down a solve already in flight.
+  A submit that beats the solve waits up to 2 s for the token
+  (`waitForChallengeToken`) rather than racing the server into a 403, and the
+  report form reserves the widget's slot so arming it does not shove the submit
+  button down the page. The server remains the only enforcement point.
 - Per-apex Turnstile coverage for the report form (migration v218). Cloudflare
   authorizes at most ten hostnames per widget, so the 134 tenant apexes need
   fourteen widgets; `domains.report_challenge_sitekey` records which widget

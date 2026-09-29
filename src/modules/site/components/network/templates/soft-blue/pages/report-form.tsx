@@ -6,6 +6,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useTurnstileChallenge } from '@/components/turnstile-challenge';
 import { TURNSTILE_SITEKEY_HEADER, TURNSTILE_TOKEN_HEADER } from '@/core/security/turnstile-contract';
 import { TemplateButton, TemplateInput, TemplateLabel, TemplateMenuSelect, TemplateNotice, TemplateTextarea } from '@/modules/site/components/network/ui/field';
+import { ReportConsentField } from '@/modules/site/components/network/ui/consent-field';
 import { ReportChallengeField } from '@/modules/site/components/network/ui/report-challenge';
 
 const CATEGORIES = [
@@ -24,11 +25,14 @@ export function SoftBlueReportForm({ articleSlug, challengeSitekey }: { readonly
   const [contact, setContact] = useState('');
   const [category, setCategory] = useState<string>('copyright');
   const [details, setDetails] = useState('');
+  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ticket, setTicket] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  const { captchaToken, challengeNonce, resetChallenge, onChallengeToken } = useTurnstileChallenge(challengeSitekey);
+  const complete = contact.trim().length >= 3 && details.trim().length >= 10 && consent;
+  const { captchaToken, challengeNonce, waitForChallengeToken, resetChallenge, onChallengeToken } =
+    useTurnstileChallenge(challengeSitekey, complete);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -37,16 +41,21 @@ export function SoftBlueReportForm({ articleSlug, challengeSitekey }: { readonly
       setError('Lengkapi kontak dan uraian (min. 10 karakter).');
       return;
     }
+    if (!consent) {
+      setError('Centang persetujuan Syarat & Ketentuan dan Kebijakan Privasi.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
+      const token = captchaToken ?? (await waitForChallengeToken());
       const response = await fetch('/api/network/reports', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(captchaToken === null
+          ...(token === null
             ? {}
-            : { [TURNSTILE_SITEKEY_HEADER]: challengeSitekey ?? '', [TURNSTILE_TOKEN_HEADER]: captchaToken }),
+            : { [TURNSTILE_SITEKEY_HEADER]: challengeSitekey ?? '', [TURNSTILE_TOKEN_HEADER]: token }),
         },
         body: JSON.stringify({ articleSlug, contact: contact.trim(), category, details: details.trim(), articleUrl: null }),
       });
@@ -112,7 +121,13 @@ export function SoftBlueReportForm({ articleSlug, challengeSitekey }: { readonly
           className="mt-1.5 block w-full appearance-none rounded-xl px-3.5 py-2.5 font-sans text-base focus:outline-none sm:text-sm"
         />
       </div>
-      <ReportChallengeField key={challengeNonce} onToken={onChallengeToken} sitekey={challengeSitekey} />
+      <ReportConsentField checked={consent} onCheckedChange={setConsent} disabled={busy} />
+      <ReportChallengeField
+        key={challengeNonce}
+        armed={complete}
+        onToken={onChallengeToken}
+        sitekey={challengeSitekey}
+      />
       {error ? (
         <TemplateNotice tone="error" title="Gagal mengirim laporan">{error}</TemplateNotice>
       ) : null}

@@ -3,6 +3,7 @@ import { CircleCheck, TriangleAlert } from 'lucide-react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -90,6 +91,27 @@ export function TemplateSelect({ className, ...props }: ComponentProps<'select'>
 export interface TemplateOption {
   readonly value: string;
   readonly label: string;
+}
+
+/**
+ * Consent checkbox following the active template theme via `--tpl-*`.
+ *
+ * @param props - Forwarded shadcn checkbox props.
+ * @returns Checkbox immune to the `.dark` root; colors from the shell.
+ * @remarks The shadcn default paints the ticked state from the dashboard `--primary`
+ * token, which a tenant shell does not define, so the checked colors are restated
+ * against `--tpl-*` here instead of inheriting a token the page never sets.
+ */
+export function TemplateCheckbox({ className, ...props }: ComponentProps<typeof Checkbox>) {
+  return (
+    <Checkbox
+      {...props}
+      className={cn(
+        'border-[var(--tpl-ring,#e2e8f0)] bg-[var(--tpl-canvas,#f5f8fd)] [color-scheme:var(--tpl-scheme,light)] focus-visible:border-[var(--tpl-primary,#1a5fd0)] focus-visible:ring-[var(--tpl-primary-soft,#e8f0fe)] data-checked:border-[var(--tpl-primary,#1a5fd0)] data-checked:bg-[var(--tpl-primary,#1a5fd0)] data-checked:text-[var(--tpl-on-primary,#ffffff)]',
+        className,
+      )}
+    />
+  );
 }
 
 /**

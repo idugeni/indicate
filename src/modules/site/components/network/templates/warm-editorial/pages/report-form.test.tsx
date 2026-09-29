@@ -22,6 +22,7 @@ function setup(articleSlug: string | null = 'berita-utama', challengeSitekey: st
 function fillValidReport() {
   fireEvent.change(screen.getByLabelText(/kontak anda/i), { target: { value: 'warga@example.test' } });
   fireEvent.change(screen.getByLabelText(/uraian spesifik/i), { target: { value: 'Uraian yang cukup panjang untuk validasi.' } });
+  fireEvent.click(screen.getByRole('checkbox', { name: /menyetujui Syarat/i }));
 }
 
 async function solveChallenge(token: string) {
@@ -62,6 +63,17 @@ describe('WarmEditorialReportForm validation', () => {
     setup(null);
     expect(screen.queryByText(/artikel:/i)).toBe(null);
   });
+
+  it('menolak laporan tanpa persetujuan syarat dan privasi', () => {
+    const fetch = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetch);
+    setup();
+    fireEvent.change(screen.getByLabelText(/kontak anda/i), { target: { value: 'warga@example.test' } });
+    fireEvent.change(screen.getByLabelText(/uraian spesifik/i), { target: { value: 'Uraian yang cukup panjang untuk validasi.' } });
+    fireEvent.click(screen.getByRole('button', { name: /kirim laporan/i }));
+    expect(screen.getByText(/centang persetujuan/i)).toBeDefined();
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });
 
 describe('WarmEditorialReportForm submit', () => {
@@ -77,6 +89,7 @@ describe('WarmEditorialReportForm submit', () => {
     fireEvent.click(option);
     expect(trigger.textContent).toMatch(/misinformasi \/ hoaks/i);
     fireEvent.change(screen.getByLabelText(/uraian spesifik/i), { target: { value: 'Paragraf kedua memuat klaim tanpa sumber yang jelas.' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: /menyetujui Syarat/i }));
     fireEvent.click(screen.getByRole('button', { name: /kirim laporan/i }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(
       '/api/network/reports',
@@ -90,20 +103,24 @@ describe('WarmEditorialReportForm submit', () => {
   it('menampilkan galat ramah saat server menolak', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('err', { status: 429 })));
     setup();
-    fireEvent.change(screen.getByLabelText(/kontak anda/i), { target: { value: 'warga@example.test' } });
-    fireEvent.change(screen.getByLabelText(/uraian spesifik/i), { target: { value: 'Uraian yang cukup panjang untuk validasi.' } });
+    fillValidReport();
     fireEvent.click(screen.getByRole('button', { name: /kirim laporan/i }));
     expect(await screen.findByText(/terlalu banyak laporan/i)).toBeDefined();
   });
 });
 
-describe('ReportForm challenge', () => {
+describe('WarmEditorialReportForm challenge', () => {
+  it('menunda skrip challenge sampai form lengkap', () => {
+    setup('berita-utama', SITEKEY);
+    expect(document.head.querySelector('script[src*="turnstile"]')).toBe(null);
+  });
+
   it('mengirim token widget pada header challenge', async () => {
     const fetch = vi.fn(async () => new Response('{}', { status: 200 }));
     vi.stubGlobal('fetch', fetch);
     setup('berita-utama', SITEKEY);
-    await solveChallenge('token-uji');
     fillValidReport();
+    await solveChallenge('token-uji');
     fireEvent.click(screen.getByRole('button', { name: /kirim laporan/i }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/network/reports', expect.objectContaining({ method: 'POST' })));
     expect(sentHeaders(fetch)['cf-turnstile-response']).toBe('token-uji');
@@ -116,7 +133,7 @@ describe('ReportForm challenge', () => {
     setup('berita-utama', SITEKEY);
     fillValidReport();
     fireEvent.click(screen.getByRole('button', { name: /kirim laporan/i }));
-    expect(await screen.findByText(/verifikasi keamanan gagal/i)).toBeDefined();
+    expect(await screen.findByText(/verifikasi keamanan gagal/i, undefined, { timeout: 6000 })).toBeDefined();
   });
 
   it('tetap mengirim tanpa header challenge saat tenant belum punya widget', async () => {
