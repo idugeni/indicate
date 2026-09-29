@@ -4,6 +4,13 @@ import { useMemo, useState } from 'react';
 import { Link2 } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { PublishedUrlBlock } from '@/modules/dashboard/components/publishing/published-url-block';
@@ -35,6 +42,9 @@ interface ArticleSiteInput {
   readonly publishedUrl?: string | null;
   readonly publishedAt?: string | null;
 }
+
+/** Article cards rendered per pass. Matches the editorial archive page size. */
+const PAGE_SIZE = 20;
 
 /**
  * Group every live portal URL per article, newest article first.
@@ -103,13 +113,17 @@ function formatPublishedAt(value: string | null): string {
  * Page listing every published article with its live URLs, ready to share.
  *
  * @param props.data - Editorial workspace payload (articles, sites, articleSites).
- * @returns One card per published article, each with a numbered copyable block.
+ * @returns One card per published article, each with a numbered copyable block, 20 per page.
  * @remarks Reads the state that is already durable, so the page shows the real
  * result without waiting on the publication worker: rows it lists are the ones
- * the reader can open right now.
+ * the reader can open right now. Pagination is by article rather than by URL so
+ * a card's copyable block stays whole; one article can carry every portal in the
+ * network, and splitting a block would break the paste-into-chat workflow the
+ * page exists for.
  */
 export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
   const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
   const model = (typeof data === 'object' && data !== null ? data : {}) as {
     readonly articles?: readonly ArticleInput[];
     readonly sites?: readonly SiteInput[];
@@ -126,11 +140,17 @@ export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
   );
 
   const needle = query.trim().toLowerCase();
-  const visible = needle === ''
-    ? published
-    : published.filter((entry) => entry.title.toLowerCase().includes(needle) || entry.slug.toLowerCase().includes(needle));
+  const filtered = useMemo(
+    () => (needle === ''
+      ? published
+      : published.filter((entry) => entry.title.toLowerCase().includes(needle) || entry.slug.toLowerCase().includes(needle))),
+    [published, needle],
+  );
 
   const totalUrls = published.reduce((sum, entry) => sum + entry.urls.length, 0);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const visible = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="space-y-4">
@@ -142,7 +162,7 @@ export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
           <Input
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => { setQuery(event.target.value); setPage(1); }}
             placeholder="Cari judul atau slug artikel"
             aria-label="Cari artikel yang tayang"
             className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
@@ -150,18 +170,63 @@ export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
         </div>
       </SectionCard>
 
-      {visible.length === 0 ? (
+      {filtered.length === 0 ? (
         <EmptyState
           title={published.length === 0 ? 'Belum ada artikel yang tayang.' : 'Tidak ada artikel yang cocok.'}
           description={published.length === 0 ? 'Kirim artikel dari Antrean Penerbitan; hasilnya muncul di sini sendiri.' : 'Ubah kata kunci pencarian.'}
         />
       ) : (
-        visible.map((entry) => (
-          <SectionCard key={entry.articleId} icon={Link2} title={entry.title} eyebrow={formatPublishedAt(entry.publishedAt)}>
-            <p className="m-0 mb-2.5 font-mono text-[11px] text-paper-faint">/{entry.slug}</p>
-            <PublishedUrlBlock title={entry.title} urls={entry.urls} />
-          </SectionCard>
-        ))
+        <>
+          {visible.map((entry) => (
+            <SectionCard key={entry.articleId} icon={Link2} title={entry.title} eyebrow={formatPublishedAt(entry.publishedAt)}>
+              <p className="m-0 mb-2.5 font-mono text-[11px] text-paper-faint">/{entry.slug}</p>
+              <PublishedUrlBlock title={entry.title} urls={entry.urls} />
+            </SectionCard>
+          ))}
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span role="status" aria-live="polite" aria-atomic="true" className="font-mono text-[11px] tabular-nums text-paper-faint">
+              {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} dari {filtered.length}
+            </span>
+            <Pagination className="mx-0 w-auto">
+              <PaginationContent className="gap-4">
+                <PaginationItem>
+                  <PaginationPrevious
+                    text="Sebelumnya"
+                    href="#"
+                    aria-label="Ke halaman sebelumnya"
+                    aria-disabled={safePage <= 1}
+                    tabIndex={safePage <= 1 ? -1 : 0}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      if (safePage > 1) setPage(safePage - 1);
+                    }}
+                    className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${safePage <= 1 ? 'pointer-events-none opacity-40' : 'cursor-pointer'}`}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <span className="font-mono text-[11px] tabular-nums text-paper-faint">
+                    {safePage} / {pageCount}
+                  </span>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationNext
+                    text="Berikutnya"
+                    href="#"
+                    aria-label="Ke halaman berikutnya"
+                    aria-disabled={safePage >= pageCount}
+                    tabIndex={safePage >= pageCount ? -1 : 0}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      if (safePage < pageCount) setPage(safePage + 1);
+                    }}
+                    className={`px-0 font-sans text-xs text-paper transition-colors hover:text-brass ${safePage >= pageCount ? 'pointer-events-none opacity-40' : 'cursor-pointer'}`}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        </>
       )}
     </div>
   );

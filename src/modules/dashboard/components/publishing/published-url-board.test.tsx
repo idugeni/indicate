@@ -98,3 +98,56 @@ describe('PublishedUrlBoard', () => {
     expect(screen.getByText('Belum ada artikel yang tayang.')).toBeDefined();
   });
 });
+
+const pagedArticles = Array.from({ length: 25 }, (_unused, index) => ({
+  id: `art-${index}`,
+  title: `Berita ${String(index).padStart(2, '0')}`,
+  slug: `berita-${String(index).padStart(2, '0')}`,
+  publishedAt: '2026-09-20T10:00:00.000Z',
+}));
+const pagedArticleSites = pagedArticles.map((article) => ({
+  articleId: article.id,
+  siteId: 'site-a',
+  state: 'published',
+  publishedUrl: null,
+  publishedAt: article.publishedAt,
+}));
+const pagedData = { articles: pagedArticles, sites: SITES, articleSites: pagedArticleSites };
+
+describe('PublishedUrlBoard pagination', () => {
+  it('merender 20 kartu per halaman dan sisa artikel di halaman berikutnya', () => {
+    render(<PublishedUrlBoard data={pagedData} />);
+    expect(screen.getByRole('status').textContent).toBe('1–20 dari 25');
+    expect(screen.getByText('Berita 19')).toBeDefined();
+    expect(screen.queryByText('Berita 20')).toBeNull();
+
+    fireEvent.click(screen.getByLabelText('Ke halaman berikutnya'));
+    expect(screen.getByRole('status').textContent).toBe('21–25 dari 25');
+    expect(screen.getByText('Berita 20')).toBeDefined();
+    expect(screen.queryByText('Berita 19')).toBeNull();
+  });
+
+  it('menonaktifkan navigasi di kedua batas', () => {
+    render(<PublishedUrlBoard data={pagedData} />);
+    expect(screen.getByLabelText('Ke halaman sebelumnya').getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByLabelText('Ke halaman berikutnya').getAttribute('aria-disabled')).toBe('false');
+
+    fireEvent.click(screen.getByLabelText('Ke halaman berikutnya'));
+    expect(screen.getByLabelText('Ke halaman sebelumnya').getAttribute('aria-disabled')).toBe('false');
+    expect(screen.getByLabelText('Ke halaman berikutnya').getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('menyorot satu blok URL utuh per artikel, tidak memotong antarhalaman', () => {
+    render(<PublishedUrlBoard data={pagedData} />);
+    expect(screen.getByLabelText('Daftar URL untuk Berita 00').textContent).toContain('1. https://alpha.example/berita-00');
+  });
+
+  it('kembali ke halaman pertama saat kata kunci berubah', () => {
+    render(<PublishedUrlBoard data={pagedData} />);
+    fireEvent.click(screen.getByLabelText('Ke halaman berikutnya'));
+    expect(screen.getByRole('status').textContent).toBe('21–25 dari 25');
+
+    fireEvent.change(screen.getByLabelText('Cari artikel yang tayang'), { target: { value: 'Berita 00' } });
+    expect(screen.getByRole('status').textContent).toBe('1–1 dari 1');
+  });
+});
