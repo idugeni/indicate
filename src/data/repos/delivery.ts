@@ -537,9 +537,9 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
   }
 
   private mapTask(row: typeof invalidationTasks.$inferSelect): InvalidationTask { return { id: row.id, organizationId: row.organizationId, siteId: row.siteId, previousHostname: row.previousHostname, currentHostname: row.currentHostname, tags: row.tags, paths: row.paths, urls: row.urls, reason: row.reason, attempts: row.attempts, nextAttemptAt: iso(row.nextAttemptAt), status: row.status, claimToken: row.reconciliationClaimToken, claimExpiresAt: row.reconciliationClaimExpiresAt === null ? null : iso(row.reconciliationClaimExpiresAt), sanitizedFailure: row.sanitizedFailure ?? null }; }
-  async claimInvalidations(now: string, limit: number): Promise<readonly InvalidationTask[]> {
+  async claimInvalidations(now: string, limit: number, leaseSeconds: number): Promise<readonly InvalidationTask[]> {
     const token = crypto.randomUUID();
-    const claimExpiresAt = new Date(Date.parse(now) + 30_000).toISOString();
+    const claimExpiresAt = new Date(Date.parse(now) + leaseSeconds * 1_000).toISOString();
     const rows = await this.database.execute<typeof invalidationTasks.$inferSelect>(sql`
       SELECT
         organization_id AS "organizationId", id, site_id AS "siteId",

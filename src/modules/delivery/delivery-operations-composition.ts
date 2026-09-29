@@ -45,6 +45,6 @@ export async function deliveryOperationsComposition() {
       ? undefined
       : new UpstashHostnameCache(new UpstashSnapshotStore({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })),
     process.env.NEXT_PHASE !== 'phase-production-build');
-  const invalidation = new InvalidationDispatcher(repository, new NextCacheInvalidationAdapter(), cloudflare, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts);
+  const invalidation = new InvalidationDispatcher(repository, new NextCacheInvalidationAdapter(), cloudflare, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts, config.publishing.leaseSeconds);
   return { config, runtime, repository, provisioning, invalidation };
 }

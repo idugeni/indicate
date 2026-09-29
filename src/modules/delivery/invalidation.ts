@@ -12,6 +12,36 @@ export type NetworkMutation =
 
 const sitePaths = ['/', '/kebijakan-privasi', '/syarat-ketentuan', '/tentang', '/kontak', '/search', '/robots.txt', '/sitemap.xml', '/rss.xml', '/llms.txt', '/news-sitemap.xml', '/tenant-home', '/report'];
 const HOST_TAG_PREFIX = 'host:';
+
+/**
+ * Run `worker` over `items` keeping at most `limit` calls in flight, preserving input order.
+ *
+ * @param items - Work items to process.
+ * @param limit - Maximum number of concurrent calls; must be at least 1.
+ * @param worker - Per-item operation; its resolved value is returned in input order.
+ * @returns One result per item, in the order the items were given.
+ * @throws {RangeError} If `limit` is below 1.
+ *
+ * @remarks A dispatch batch is bounded by the claim lease, so a sequential loop
+ * over `batch_size` tasks can outlive the lease it was claimed under. The claim
+ * SQL then re-selects the same rows with a fresh token and the batch repeats
+ * forever without completing anything. Overlapping a few calls keeps the batch
+ * inside the lease. The ceiling stays well under `DEFAULT_POOL_MAX` because each
+ * step awaits the database, and a saturated pool does not reject queued queries,
+ * it never dispatches them.
+ */
+async function mapWithConcurrency<T, R>(items: readonly T[], limit: number, worker: (item: T) => Promise<R>): Promise<readonly R[]> {
+  if (limit < 1) throw new RangeError('limit must be at least 1');
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (let index = cursor++; index < items.length; index = cursor++) {
+      results[index] = await worker(items[index] as T);
+    }
+  });
+  await Promise.all(runners);
+  return results;
+}
 const ARTICLE_TAG_PREFIX = 'article:';
 /**
  * Hard ceiling on exact-URL purges per dispatch.
@@ -73,10 +103,10 @@ export function planInvalidation(mutation: NetworkMutation): InvalidationPlan {
  * @remarks One edge purge per batch (unique URLs across tasks): per-host per-task purges would trigger a thundering-herd to the origin, while the edge TTL is only 60 seconds. A purge failure does not fail the task; Next revalidate is the primary mechanism and the edge recovers on its own within one TTL. The purge set is bounded by `PURGE_URL_BUDGET` and ordered so article URLs are never the ones deferred. A poison task does not stop the batch: a failed complete is recorded via fail, and a fail that also fails counts as stranded.
  */
 export class InvalidationDispatcher {
-  constructor(private readonly repository: Pick<DeliveryRepository, 'claimInvalidations' | 'completeInvalidation' | 'failInvalidation'>, private readonly nextCache: NextCacheInvalidationPort, private readonly cloudflare: CloudflareAuthorityPort, private readonly retryDelaysSeconds: readonly number[], private readonly maxAttempts: number) {}
+  constructor(private readonly repository: Pick<DeliveryRepository, 'claimInvalidations' | 'completeInvalidation' | 'failInvalidation'>, private readonly nextCache: NextCacheInvalidationPort, private readonly cloudflare: CloudflareAuthorityPort, private readonly retryDelaysSeconds: readonly number[], private readonly maxAttempts: number, private readonly leaseSeconds: number) {}
 
   async dispatch(now: Date, limit: number): Promise<{ completed: number; failed: number; stranded: number }> {
-    const tasks = await this.repository.claimInvalidations(now.toISOString(), limit);
+    const tasks = await this.repository.claimInvalidations(now.toISOString(), limit, this.leaseSeconds);
     const urls = purgeOrder(tasks);
     const budgeted = urls.slice(0, PURGE_URL_BUDGET);
     const deferred = urls.length - budgeted.length;
@@ -91,21 +121,28 @@ export class InvalidationDispatcher {
       logEvent('warn', { event: 'delivery.invalidation.purge_deferred', context: { requested: urls.length, purged: budgeted.length, deferred, budget: PURGE_URL_BUDGET } });
     }
     let completed = 0; let failed = 0; let stranded = 0;
-    for (const task of tasks) {
+    const outcomes = await mapWithConcurrency(tasks, 4, async (task) => {
       let step = 'revalidate';
       try {
         await this.nextCache.revalidateTags(task.tags); await this.nextCache.revalidatePaths(task.paths);
         step = 'complete';
-        await this.repository.completeInvalidation(task, now.toISOString()); completed += 1;
+        await this.repository.completeInvalidation(task, now.toISOString());
+        return 'completed' as const;
       } catch {
         try {
           const terminal = task.attempts + 1 >= this.maxAttempts;
           const seconds = this.retryDelaysSeconds[Math.min(task.attempts, this.retryDelaysSeconds.length - 1)] ?? 60;
-          await this.repository.failInvalidation(task, { code: 'provider_unavailable', step }, new Date(now.getTime() + seconds * 1_000).toISOString(), terminal, now.toISOString()); failed += 1;
+          await this.repository.failInvalidation(task, { code: 'provider_unavailable', step }, new Date(now.getTime() + seconds * 1_000).toISOString(), terminal, now.toISOString());
+          return 'failed' as const;
         } catch {
-          stranded += 1;
+          return 'stranded' as const;
         }
       }
+    });
+    for (const outcome of outcomes) {
+      if (outcome === 'completed') completed += 1;
+      else if (outcome === 'failed') failed += 1;
+      else stranded += 1;
     }
     return { completed, failed, stranded };
   }

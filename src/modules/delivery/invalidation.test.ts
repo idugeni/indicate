@@ -64,6 +64,7 @@ function harness(options: { readonly purgeFails?: boolean; readonly revalidateFa
     cloudflare as unknown as CloudflareAuthorityPort,
     [5],
     5,
+    300,
   );
   return { dispatcher, repository, cloudflare, failures };
 }
@@ -99,6 +100,34 @@ describe('InvalidationDispatcher', () => {
     expect(repository.failInvalidation).toHaveBeenCalledTimes(1);
   });
 
+  it('menyerahkan lease dari policy ke claim, bukan durasi tetap', async () => {
+    const { dispatcher, repository } = harness({});
+    await dispatcher.dispatch(new Date(), 10);
+    expect(repository.claimInvalidations).toHaveBeenCalledWith(expect.any(String), 10, 300);
+  });
+
+  it('menjalankan task batch secara tumpang tindih agar muat dalam lease', async () => {
+    const tasks = Array.from({ length: 12 }, (_, index) => task(`task-${index}`, []));
+    let inFlight = 0;
+    let peak = 0;
+    const repository = {
+      claimInvalidations: vi.fn(async () => tasks),
+      completeInvalidation: vi.fn(async () => {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        inFlight -= 1;
+      }),
+      failInvalidation: vi.fn(async () => {}),
+    };
+    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
+    const cloudflare = { purgeExactUrls: vi.fn(async (_urls: readonly string[]) => {}), purgeHostname: vi.fn(async () => {}) };
+    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, 300);
+    await expect(dispatcher.dispatch(new Date(), 100)).resolves.toEqual({ completed: 12, failed: 0, stranded: 0 });
+    expect(peak).toBeGreaterThan(1);
+    expect(peak).toBeLessThanOrEqual(4);
+  });
+
   it('mencakup path statis baru pada rencana invalidasi', () => {
     const plan = planInvalidation({ kind: 'site_settings', organizationId: 'org-1', siteId: 'site-1', hostname: 'tenant.example' });
     expect(plan.paths).toEqual(expect.arrayContaining(['/llms.txt', '/news-sitemap.xml', '/tenant-home', '/report']));
@@ -114,7 +143,7 @@ describe('InvalidationDispatcher', () => {
     };
     const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
     const cloudflare = { purgeExactUrls: vi.fn(async (_urls: readonly string[]) => {}), purgeHostname: vi.fn(async () => {}) };
-    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5);
+    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, 300);
     await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
     const purged = vi.mocked(cloudflare.purgeExactUrls).mock.calls[0]?.[0] as readonly string[];
     expect(purged).toHaveLength(300);
@@ -133,7 +162,7 @@ describe('InvalidationDispatcher', () => {
     };
     const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
     const cloudflare = { purgeExactUrls: vi.fn(async (_urls: readonly string[]) => {}), purgeHostname: vi.fn(async () => {}) };
-    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5);
+    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, 300);
     await dispatcher.dispatch(new Date(), 10);
     const purged = vi.mocked(cloudflare.purgeExactUrls).mock.calls[0]?.[0] as readonly string[];
     expect(purged[0]).toBe(articleUrl);
