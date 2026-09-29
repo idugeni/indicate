@@ -35,7 +35,8 @@ import type {
   PublisherEntity,
   RegionEntity,
 } from '@/modules/dashboard/components/shared/types';
-import { findMatchingCategoryId, localDateTimeToIso, slugify } from '@/modules/dashboard/components/shared/form-utils';
+import { findMatchingCategoryId, localDateTimeToIso } from '@/modules/dashboard/components/shared/form-utils';
+import { slugify } from '@/modules/site/slugify';
 import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { SLUG_MAX_LENGTH, TAG_MAX_COUNT, normalizeTagList } from '@/modules/site/slug-allocator';
 import type { TipTapDoc, TipTapNode } from '@/modules/site/tiptap-document';

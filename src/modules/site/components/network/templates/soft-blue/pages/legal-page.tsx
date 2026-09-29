@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 import { buildSeoDocument } from '@/modules/site/seo';
-import { slugify } from '@/modules/site/components/layout/slugify';
+import { slugify } from '@/modules/site/slugify';
 import type { DocSectionItem } from '@/modules/site/components/layout/doc-section';
 import { TENANT_RELATED_DOCS } from '@/modules/site/legal-documents';
 import type { NetworkSiteData } from '@/modules/delivery/models';

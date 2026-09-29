@@ -8,7 +8,7 @@ import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-
 import { useDashboardPage } from '@/modules/dashboard/components/shared/use-dashboard-query';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
-import { slugify } from '@/modules/dashboard/components/shared/form-utils';
+import { slugify } from '@/modules/site/slugify';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {

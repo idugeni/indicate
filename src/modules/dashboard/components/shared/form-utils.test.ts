@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { findMatchingCategoryId, generateIdempotencyUuid, isoToLocalDateTimeInput, localDateTimeToIso, normalizeCategoryKey, slugify } from '@/modules/dashboard/components/shared/form-utils';
+import { findMatchingCategoryId, generateIdempotencyUuid, isoToLocalDateTimeInput, localDateTimeToIso, normalizeCategoryKey } from '@/modules/dashboard/components/shared/form-utils';
+import { slugify } from '@/modules/site/slugify';
 
 describe('slugify', () => {
   it('menurunkan huruf dan mengganti spasi dengan strip', () => {

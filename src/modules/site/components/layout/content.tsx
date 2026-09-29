@@ -50,7 +50,7 @@ import {
 import type { NavigationLink } from '@/ui/site/marketing-content';
 import { cn } from '@/ui/cn';
 import type { DocSectionItem } from '@/modules/site/components/layout/doc-section';
-import { slugify } from '@/modules/site/components/layout/slugify';
+import { slugify } from '@/modules/site/slugify';
 
 /** Single public content width (max-w-6xl); text rhythm lives in typography. */
 export function Container({

@@ -10,7 +10,7 @@ import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/compon
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { createInviteSecret, formatInviteCode, hashInviteCode } from '@/modules/dashboard/components/shared/invite-code';
-import { slugify } from '@/modules/dashboard/components/shared/form-utils';
+import { slugify } from '@/modules/site/slugify';
 
 export function CustomerManagement({
   command,
