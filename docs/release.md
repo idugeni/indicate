@@ -3,7 +3,7 @@
 > **Status:** Advisory (longgar sejak 2026-09-14 — checklist yang direkomendasikan, bukan gate keras).
 > **Owner:** Platform team.
 > **Trigger:** setiap rilis dan setiap keputusan rollback.
-> **Related:** [migrations](migrations.md) · [cloudflare baseline](cloudflare-baseline.md) · [active domains](active-domains.md) · [architecture](architecture.md)
+> **Related:** [migrations](migrations.md) · [cloudflare baseline](cloudflare-baseline.md) · [domains](domains.md) · [architecture](architecture.md)
 > **Menggantikan:** `production-readiness-runbook.md` dan `release-checklist.md`, dihapus 2026-09-29.
 
 Gabungan dua dokumen yang sebelumnya terpisah: runbook readiness/rollback
@@ -217,7 +217,7 @@ node scripts/qa/preview-headers.mjs
       dan `/sign-in` `private, no-store, max-age=0`, seal anonim
       fail-closed 404.
 - [ ] Ulangi untuk minimal 1 apex + 1 regional kedua
-      (contoh daftar hidup di [active domains](active-domains.md)) — cache dan
+      (contoh daftar hidup di [domains](domains.md)) — cache dan
       isolasi bersifat per-host.
 - [ ] `GET /api/health` valid (configuration + snapshot version).
 - [ ] Bila rilis menyentuh billing: ulangi skrip dengan
@@ -244,7 +244,7 @@ node scripts/qa/preview-headers.mjs
    hit ratio jatuh + origin transfer naik = lapis cache (cek
    `invalidation_tasks` macet); 404 massal 1 host = mapping
    Site/hostname atau asosiasi domain Vercel
-   ([active domains](active-domains.md)).
+   ([domains](domains.md)).
 3. Bila 1 tenant terpengaruh dan tenant lain sehat, tangani sebagai
    insiden mapping/konten tenant tersebut (reconciler, revalidasi,
    purge selektif tag/path) sebelum mempertimbangkan rollback global.

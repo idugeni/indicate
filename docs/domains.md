@@ -1,44 +1,56 @@
-# Inventaris domain Indicate
+# Domain Indicate
 
-> **Status:** Living document (advisory).
+> **Status:** Living document.
 > **Owner:** Platform team.
-> **Role:** satu-satunya tempat yang menyebut **domain mana yang terdaftar** dan status kepemilikannya, plus angka total terkini. Kapan tiap aktivasi terjadi dicatat di [active domains](active-domains.md) sebagai kronologi bertanggal.
-> **Last verified:** 2026-09-26 (Cloudflare API + DB `sites` + Vercel MCP + HTTP 104/104 apex and 10/10 regional `200`; RDAP PANDI + delegasi NS publik terverifikasi untuk 10 domain Exabytes baru di bagian C).
-> **Related:** [active domains](active-domains.md) · [cloudflare baseline](cloudflare-baseline.md)
+> **Role:** satu-satunya tempat yang menyebut domain mana yang terdaftar, kapan setiap aktivasi terjadi, dan berapa banyak yang benar-benar hidup. Inventaris dan kronologi digabung di sini karena keduanya menyebut objek yang sama — membacanya sebagai dua dokumen berarti menghitung dua kali dan menghasilkan dua angka.
+> **Last verified:** 2026-09-29.
+> **Related:** [cloudflare baseline](cloudflare-baseline.md) · [release](release.md) · [regions](regions.md) · [architecture](architecture.md)
 
-Hanya domain terkait Indicate yang dicatat di sini — proyek-proyek lain
-milik pemilik sengaja tidak dimasukkan. Zona tenant Indicate = **134 apex**
-(satu zona per apex, sesuai bagian A sampai D). Total zona live seluruh akun
-Cloudflare belum diverifikasi ulang setelah batch 2026-09-26: angka lama 131
-(104 zona tenant + zona proyek lain) sudah tidak berlaku karena 30 apex
-ditambahkan, dan connection Cloudflare yang tersedia untuk audit docs ini
-menunjuk akun lain (69 zona tenant, tanpa `indicate.website`). Verifikasi ulang
-nilai akun perlu akses ke akun Cloudflare pemilik.
+## Angka terkini
 
-Tenant live di DB: **4422 site = 134 apex + 134 site region + 4154 site kota**, dengan rantai `apex → region → city` eksplisit (`sites.site_level` + `sites.parent_site_id`) dan `domains.site_topology = 'regional'` untuk seluruh 134 domain, ditegakkan DB. Keputusan owner 2026-09-25: semua domain memakai Jawa Tengah untuk sementara, jadi tiap domain punya `jawa-tengah.{apex}` plus roster 31 kab/kota (`{city}.{apex}`). 134 apex memiliki exact + wildcard Vercel terverifikasi (total project 273 asosiasi, rincian di [active domains](active-domains.md#status-vercel)); 4288 portal turunan dilayani wildcard regional tanpa exact Vercel.
-Domain utama: `indicate.website` (bukan tenant; migrasi dari `indicate.web.id` 2026-09-24, dual-serve).
-Inventaris tercatat 134 apex: seluruhnya tenant live per 2026-09-26
-(104 zona lama di bagian A + B, 10 Exabytes baru di bagian C, 20 Exabytes
-batch kedua di bagian D).
+Hitung live, bukan disalin dari dokumen. Tiga sumber, tiga hal berbeda — jangan
+dicampur jadi satu angka "jumlah domain":
 
-## A. IDWebHost — batch 2026-09-16 + domain utama
+| Yang dihitung | Nilai (2026-09-29) | Sumber | provisioned / observed |
+|---|---|---|---|
+| Apex tenant | 134 | `select count(*) from sites where site_level = 'apex'` | provisioned |
+| Site di DB | 4422 = 134 apex + 134 region + 4154 city, 4422/4422 `active` | `sites` | provisioned dan aktif |
+| Asosiasi domain Vercel | 273, **0 unverified** = 134 apex exact + 135 wildcard + 3 control-plane + 1 `vercel.app` | `list_project_domains`, team `safenca`, project `indicate` | provisioned |
+| Zona Cloudflare tenant | 134 | `GET /zones` | provisioned |
 
-Batch 31 domain dibuatkan zona Cloudflare + NS diganti ke Cloudflare pada
-2026-09-16; semua `active` per verifikasi sore harinya. Batch kedua 13 domain
-(sela7perkara, rona24, bentara9, pijar7kata, titik9wacana, cermin24berita,
-simpul7perkara, bidik24perkara, sigi9perkara, timbang7perkara, arsip24publik,
-bilik7wacana, jaring9perkara) dibeli + dibuatkan zona + NS diganti malam
-2026-09-16; delegasi terverifikasi + CF `active` 21:31 WIB. Batch ketiga
-36 domain (pendarkata s.d. sorotwacana, ID 1080157–1080192, sudah dimiliki)
-dibuatkan zona + NS diganti malam yang sama; delegasi 36/36 terverifikasi
-22:18 WIB, CF 36/36 `active`. Batch keempat 14 domain (transpas s.d.
-nalarharian, ID 1080206–1080219, dibeli 2026-09-16) dibuatkan zona + NS
-diganti malam yang sama; delegasi 14/14 terverifikasi + CF 14/14 `active`
-23:36 WIB. Kolom Tenant diisi setelah penunjukan eksplisit pemilik; seluruh 104 apex pada tabel A kini aktif live per verifikasi 2026-09-25.
-Domain `penamerdeka.my.id` (ID 1082181, didaftarkan 2026-09-18) dibuatkan
-zona + NS diganti ke Cloudflare pada 2026-09-18; CF `active` per verifikasi
-MCP 2026-09-18, baseline diselaraskan maksimal mengikuti
-`docs/cloudflare-baseline.md`.
+Empat angka ini pernah berbeda satu sama lain (50, 213, 222 untuk Vercel) karena
+masing-masing dihitung pada hari yang berbeda lalu ditulis sebagai fakta
+permanen. Kalau butuh angka saat ini, hitung ulang dari sumbernya. Angka di
+atas bertanggal dan hanya berlaku sampai batch domain berikutnya.
+
+Peta tenant: setiap apex punya `jawa-tengah.{apex}` (region) plus 31
+`{city}.{apex}`, dirantai eksplisit lewat `sites.site_level` +
+`sites.parent_site_id`, dengan `domains.site_topology = 'regional'` untuk
+seluruh 134 domain. 4288 portal turunan dilayani wildcard apex tanpa exact
+Vercel, jadi menambah kota tidak menyentuh Vercel sama sekali.
+
+## Aturan
+
+- Hanya domain terkait Indicate yang tercatat; proyek lain milik pemilik
+  sengaja tidak dimasukkan (keputusan 2026-09-16).
+- Tidak ada domain yang otomatis jadi tenant. Kolom Tenant? hanya diisi dari
+  penunjukan eksplisit pemilik.
+- Refresh: ekspor panel registrar + `GET /zones` Cloudflare + RDAP untuk
+  tanggal registrar lain; perbarui tanggal verifikasi di header.
+- Registrar assigning NS adalah Cloudflare, bukan Vercel. Wildcard
+  `*.apex` terbit lewat delegasi `_acme-challenge` per apex, bukan wildcard
+  global — lihat [arsip multi-tenant Vercel](vercel-multi-tenant/README.md).
+- 59 organisasi customer (UPT Jateng) tetap 0 site: mereka tidak punya hostname
+  sendiri, melainkan berafiliasi ke portal kota lewat
+  `official_affiliations`. Kebutuhan 59 slot hostname yang pernah diestimasi
+  sudah tidak berlaku dan bukan bagian dari inventaris aktif.
+
+## A. IDWebHost, batch 2026-09-16 + domain utama
+
+104 domain zona dibuat dan NS diganti ke Cloudflare pada 2026-09-16 dalam empat
+batch (31, 13, 36, 14), semuanya `active` per verifikasi. Batch kelima,
+`penamerdeka.my.id` (ID 1082181), 2026-09-18. Seluruh 104 apex pada tabel ini
+aktif live per verifikasi 2026-09-25.
 
 | Domain | Terdaftar | Kedaluwarsa | IDW | CF | Tenant? |
 |---|---|---|---|---|---|
@@ -58,7 +70,7 @@ MCP 2026-09-18, baseline diselaraskan maksimal mengikuti
 | denyutpublik.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
 | faktura.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
 | garisfakta.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
-| gatrapublik.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
+| gatrapublik.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
 | gerbanginvestigasi.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
 | gerbangkata.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
 | guratfakta.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
@@ -117,7 +129,7 @@ MCP 2026-09-18, baseline diselaraskan maksimal mengikuti
 | sigapta.my.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
 | sigi9perkara.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
 | simpul7perkara.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
-| sinarperkara.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
+| sinarperkara.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
 | sorotwacana.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
 | suarabening.biz.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
 | suarabening.web.id | 2026-09-16 | 2027-09-16 | Aktif | active | YA (apex live) |
@@ -142,82 +154,26 @@ MCP 2026-09-18, baseline diselaraskan maksimal mengikuti
 
 ## B. Exabytes, batch 2026-09-03 — tenant live
 
-| Domain | Terdaftar | Kedaluwarsa | Tenant? |
-|---|---|---|---|
-| fakta01.my.id | 2026-09-03 | 2027-09-03 | YA (apex live) |
-| jurnalism.web.id | 2026-09-03 | 2027-09-03 | YA (apex live) |
-| kabar360.biz.id | 2026-09-03 | 2027-09-03 | YA (apex live) |
-| liputan99.web.id | 2026-09-03 | 2027-09-03 | YA (apex live) |
-| nusantara24.web.id | 2026-09-03 | 2027-09-03 | YA (apex live) |
-| pantaunusantara.web.id | 2026-09-03 | 2027-09-03 | YA (apex live) |
-| suarafakta24.biz.id | 2026-09-03 | 2027-09-03 | YA (apex live) |
-| wartakini7.web.id | 2026-09-03 | 2027-09-03 | YA (apex live) |
-| wawasannusa.biz.id | 2026-09-03 | 2027-09-03 | YA (apex live) |
+Sembilan apex, masing-masing dengan regional `wonosobo.{apex}` juga live
+(tercakup zona apex masing-masing, tanpa exact Vercel sendiri).
 
-Regional live: `wonosobo.fakta01.my.id`, `wonosobo.jurnalism.web.id`,
-`wonosobo.kabar360.biz.id`, `wonosobo.liputan99.web.id`,
-`wonosobo.nusantara24.web.id`, `wonosobo.pantaunusantara.web.id`,
-`wonosobo.penamerdeka.my.id`, `wonosobo.suarafakta24.biz.id`,
-`wonosobo.wartakini7.web.id`,
-`wonosobo.wawasannusa.biz.id` (tercakup zona apex masing-masing).
+| Domain | Terdaftar | Kedaluwarsa | Template | Tenant? |
+|---|---|---|---|---|
+| fakta01.my.id | 2026-09-03 | 2027-09-03 | dark-navy | YA (apex live) |
+| jurnalism.web.id | 2026-09-03 | 2027-09-03 | red-editorial | YA (apex live) |
+| kabar360.biz.id | 2026-09-03 | 2027-09-03 | soft-blue | YA (apex live) |
+| liputan99.web.id | 2026-09-03 | 2027-09-03 | glassy-blue | YA (apex live) |
+| nusantara24.web.id | 2026-09-03 | 2027-09-03 | orange-modern | YA (apex live) |
+| pantaunusantara.web.id | 2026-09-03 | 2027-09-03 | warm-editorial | YA (apex live) |
+| suarafakta24.biz.id | 2026-09-03 | 2027-09-03 | clean-blue | YA (apex live) |
+| wartakini7.web.id | 2026-09-03 | 2027-09-03 | green-minimal | YA (apex live) |
+| wawasannusa.biz.id | 2026-09-03 | 2027-09-03 | black-lime | YA (apex live) |
+| penamerdeka.my.id | 2026-09-18 | 2027-09-18 | purple-editorial | YA (apex live) |
 
-## C. Exabytes, batch 2026-09-25 — 330/330 LIVE
+## C. Exabytes, batch 2026-09-25 — 10 apex
 
-10 domain didaftarkan Exabytes pada 2026-09-25, kedaluwarsa 2027-09-25
-(RDAP PANDI), ID Exabytes 347916–347925. NS diubah ke Cloudflare
-2026-09-26; delegasi terverifikasi publik di 10/10 hostname
-(`joan.ns.cloudflare.com` + `kanye.ns.cloudflare.com`).
-
-**Infra siap 2026-09-26.** 10/10 zona Cloudflare `active` dengan baseline
-identik 104 zona tenant — 56/56 setting cocok termuat HSTS
-(`max_age=15552000`, `include_subdomains`, `nosniff`) + `early_hints=on`
-(keduanya default Free perlu di-set manual; lihat
-`docs/cloudflare-baseline.md`), Bot Fight Mode + AI-block off, Page
-Shield, 3 ruleset (2/1/4), 9 DNS record (apex + wildcard CNAME proxied
-ke Vercel, CAA ×4, SPF, DMARC rua unik, DKIM-null). Universal SSL
-`active` (Let's Encrypt) mencakup apex + wildcard di 10/10 zona.
-Vercel: exact + wildcard ditambahkan untuk 10 apex, **20/20
-`verified: true`**.
-
-**Onboarding tenant selesai 2026-09-26** — 330 site: 10 apex + 10 region
-Jawa Tengah + 310 city (31 × 10). Platform 3.432 → **3.762 site**, apex
-104 → **114**. 330/330 `active/active`; 330/330 `site_settings` dengan
-nama, deskripsi, dan `seo_default_description` unik (330/330 distinct).
-30 objek R2: `site-default` 1200×630 (OG card), `site-logo` +
-`site-favicon` 512×512 dari gradient huruf awal; huruf S dipakai bersama
-`SudutIndonesia`/`SuaraPublik` dengan 2 upload terpisah. Portal turunan
-mewarisi `default_media_id` apex dan tetap `logo_media_id`/
-`favicon_media_id` `NULL` (320/320) agar cascade berjalan. 330 task
-invalidasi `media.activated` dipurge reconciler `scope=invalidation` →
-330 `completed`, 0 `failed`.
-
-**Verifikasi HTTP akhir 2026-09-26.** Sweep **330/330 `200`**, seluruhnya
-branded, 0 failure, 0 `noindex` (10 apex + 10 `jawa-tengah.*` + 310
-`{city}.*`). Aset brand `logo.png`, `icon.png`, `apple-touch-icon.png`,
-`manifest.webmanifest`, `robots.txt`, `sitemap.xml`, `rss.xml` `200` di
-10/10 apex. Subdomain acak → `200` branded-404 `noindex` (aman, tidak
-bocor tenant lain). Isolasi tenant terverifikasi: halaman kota
-`wonosobo.sudutindonesia.web.id` tidak memuat brand `SuaraPublik` dan
-sebaliknya. Record `_acme-challenge` dibersihkan 10/10 setelah cert
-terbit.
-
-**Dua akar masalah yang ditemukan saat onboarding (keduanya sudah
-diatasi):**
-
-1. Apex `200` tapi 320 portal `525`. Diagnosis awal saya salah — saya
-   menyangka menunggu deploy sertifikat wildcard Cloudflare. Terbukti:
-   TLS edge: cert Cloudflare sudah `active` dan valid (SAN
-   `*.sudutindonesia.web.id`). Penyebab sebenarnya **origin TLS**:
-   Vercel hanya auto-issued cert **apex**, tidak wildcard, sehingga
-   `ssl=strict` gagal handshake untuk hostname turunan. Cert wildcard
-   Vercel diterbitkan via ACME **DNS-01** (`certs issue --challenge-only`
-   → TXT `_acme-challenge` di Cloudflare → `certs issue`). Sekarang
-   apex + wildcard cert `20/20`.
-2. `525`/`526` gone, tapi apex masih `200` unknown-host `noindex`.
-   Penyebabnya bukan cache — `tenant-home` ter-prerender ISR
-   (`x-nextjs-prerender: 1`). Karena onboarding manual melewati saga,
-   tidak ada task invalidasi. 330 task `media.activated` +
-   purge reconciler `scope=invalidation` → 330 `completed`, 0 `failed`.
+ID Exabytes 347916–347925, kedaluwarsa 2027-09-25 (RDAP PANDI). NS dipindah
+dari parking Masterweb ke Cloudflare 2026-09-26, delegasi terverifikasi 10/10.
 
 | Domain | ID Exabytes | Brand | Template | CF | Vercel | Apex HTTP |
 |---|---|---|---|---|---|---|
@@ -228,138 +184,102 @@ diatasi):**
 | suarapublik.biz.id | 347920 | SuaraPublik | soft-blue | active | verified | 200 |
 | berandanasional.web.id | 347921 | BerandaNasional | green-minimal | active | verified | 200 |
 | kabarutama.web.id | 347922 | KabarUtama | warm-editorial | active | verified | 200 |
-| fokusrakyat.my.id | 347923 | FokusRakyat | black-lime | active | verified | 200 |
+| fokustrakyat.my.id | 347923 | FokusRakyat | black-lime | active | verified | 200 |
 | pusatmedia.biz.id | 347924 | PusatMedia | purple-editorial | active | verified | 200 |
 | wartapersada.my.id | 347925 | WartaPersada | clean-blue | active | verified | 200 |
 
-Template tersebar 1 per template sehingga distribusi apex menjadi 10–12 per
-template (sebelumnya 9–11). Keterangan: 5 `.web.id`, 3 `.my.id`,
-2 `.biz.id`.
+330 site (10 apex + 10 region Jawa Tengah + 310 city), sweep HTTP 330/330
+`200` branded, 0 `noindex`. 5 `.web.id`, 3 `.my.id`, 2 `.biz.id`.
 
-**Klaim institusi resmi (`official_affiliations`) 2026-09-26.** 590 baris
-ditambahkan (10 domain × 59 klaim) dengan menyalin pemetaan kanonik dari
-salah satu domain yang sudah ada — pemetaan itu terbukti **seragam di
-seluruh 104 domain lama** (`distinct publisher set = 1`, `distinct
-publisher→city map = 1`, 59 baris per domain, 29 kota dari 31; `karanganyar`
-dan `sukoharjo` tidak diklaim di domain mana pun). Setelah replika:
-`official_affiliations` 6.136 → **6.726**, domain tercakup 104 → **114**,
-dan fingerprint pemetaan **tetap `distinct = 1` di 114 domain** — tidak
-ada penyimpangan. 59 institution × 59 publisher terverifikasi, seluruh
-baris `active`, `verified_at` terisi, `claim_scopes = ['site_name']`,
-`evidence_reference = 'direktori-resmi'`, `organization_id` konsisten.
+## D. Exabytes, batch 2026-09-25 #2 — 20 apex
 
-Catatan: `verified_at` untuk batch ini di-set `now()` (verifikasi dilalui
-untuk 10 portal ini pada 2026-09-26), bukan menyalin timestamp batch lama
-`2026-09-25 14:18:29`. Klaim tidak muncul di halaman beranda — baik di
-domain baru maupun domain lama — karena `officialAffiliations` hanya
-ikut pada query artikel, bukan halaman beranda; ini perilaku yang sama
-persis dengan domain lama, bukan gap.
+ID Exabytes 347929–347948 (kontigu, tanpa celah). NS dialihkan dan read-back
+20/20 di panel Exabytes. 19 zona dapat pair NS `joan`/`kanye`;
+`pikiranpublik.web.id` mendapat pair `ivan`/`tia` — Cloudflare menetapkan pair
+acak per zona, jadi pair harus dibaca dari API, bukan diasumsikan.
 
-**Bentuk tabel 2026-09-26.** `official_affiliations` menyimpan satu klaim
-per portal, jadi 59 klaim institusi-kota tereplikasi ke 134 domain =
-**7.906 baris untuk 59 fakta** (semua replika identik: `version = 1`,
-`claim_scopes`, `evidence_reference`, `active` sama, nol drift). Daftar
-dasbor karena itu meringkas per klaim: `listPublishers` mengelompokkan
-`(publisher, kota, institution)` dan mengembalikan satu baris per klaim
-lengkap dengan `cityName` + `portalCount`, capped 500 dengan
-`affiliationTotal` / `affiliationRowTotal` untuk membuka sisanya lewat
-`?search=`. `updateAffiliation` ikut fans out ke seluruh replika klaim
-yang sama (kunci: publisher + institution + kota) supaya mengedit satu
-baris tidak meninggalkan 133 portal lain dengan klaim lama. `listPublishers`
-tidak lagi mengirim `sites` — `PublisherForm` tidak pernah membacanya, dan
-4.422 baris portal cukup diwakili lewat `portalCount`.
+Lensamata, pikiranpublik, suaradata, fokustrakyat, lensakita24, sudutfakta7,
+narasipublik, titikberita9, mediasatu24, ruangredaksi, resonansi, eksposur,
+aspirasi, refleksi, sintesa, proyeksi, observasi, konstelasi, artikulasi,
+interpretasi — semuanya bereksensi `.web.id` atau `.my.id` atau `.biz.id`
+sesuai daftar registrar.
 
-**Kategori default artikel 2026-09-26 (ledger 206).**
-`articles.category_id` dulu nullable dan komposer membiarkan field itu kosong,
-jadi artikel bisa tersimpan tanpa kategori. Semua konsumen turun kualitas di
-kasus itu: chip kategori dan segmen breadcrumb dihilangkan
-(`templates/*/pages/article-page.tsx`), nav dan profil penulis membangun
-daftar kategori dari `categorySlug IS NOT NULL` sehingga artikel tidak
-terjangkau dari halaman kategori mana pun, dan `articleSection` pada JSON-LD
-NewsArticle, `section` OpenGraph, serta `<category>` RSS semuanya dilewati.
-Migration `20260926200000_default_article_category.sql` men-seed kategori
-`Umum` (slug `umum`) untuk 60 organisasi yang punya publisher; `Drill Expire`
-tidak punya publisher dan tidak mendapat kategori. Label itu kemudian diganti
-menjadi `Berita` (slug `berita`) oleh migration
-`20260928070000_default_article_category_berita.sql` (ledger 216): `Umum` dibaca
-"umum sekaligus miscellaneous", jadi editor melewatinya, dan karena komposer
-memilihnya otomatis, setiap artikel yang tidak dikategorikan secara sengaja
-berakhir di keranjang yang tidak pernah dibuka. Baris di-*rename* di tempat,
-bukan dihapus lalu di-seed ulang, sehingga `categories.id` tidak pernah
-berpindah dan seluruh `articles.category_id` serta `article_categories` tidak
-tersentuh. `Pengelola Platform` sudah punya kategori `Berita` aktif berisi 30
-artikel, jadi `categories_organization_slug_unique` menggagalkan rename buta di
-sana; baris seed miliknya diarsipkan dan `Berita` yang sudah ada dipakai sebagai
-default.
-`TenantBusinessService.resolveArticleCategoryIds` mengisi slug itu sebelum
-write, jadi artikel tidak lagi bisa tersimpan tanpa kategori walau pemanggil
-API kosongkan field, dan komposer menampilkan `Berita` sebagai pilihan efektif
-`(1 dipilih · Berita)` tanpa mencentangnya — memilih kategori lain tidak
-menambah tag `Berita`. Fallback kedua adalah kategori aktif pertama
-urutan nama, dan tenant tanpa kategori apa pun ditolak `INVALID_INPUT` alih-alih
-menyimpan null.
+Yang diverifikasi per batch, bukan per domain: 19/20 zona `active`, baseline
+56/56 setting identik, 40 asosiasi Vercel dengan 40/40 sertifikat (apex +
+wildcard) terbit lewat ACME DNS-01, apex `200` dengan `robots=index, follow`
+dan judul branded. Distribusi template 2 per template, bukan per domain.
 
-**Brand portal di `publishers` dihapus 2026-09-26 (ledger 205).** 9 baris
-`independent_publisher` (Kabar360, Liputan99, Nusantara24, PantauNusantara,
-SuaraFakta24, WartaKini7, Fakta01, Jurnalism, WawasanNusa) adalah apex label
-portal, bukan newsroom: masing-masing mencerminkan 33 baris `sites` dan
-`logoUrl`-nya menunjuk media yang sama dengan `site_settings.logo_media_id`
-apex. Semuanya `archived`, 0 artikel, 0 afiliasi. Migration
-`20260926190000_publisher_brand_removal.sql` menghapus berdasarkan bentuk
-(archived + tak dirujuk + ter-mirror site), bukan daftar nama, dengan guard
-yang gagal keras bila ada `independent_publisher` tanpa sejarah publikasi
-yang bukan brand portal. `publishers` kini 118 = 118 `correctional_institution`.
-
-## D. Exabytes, batch 2026-09-25 (#2) — 20 apex, 660 site
-
-20 domain didaftarkan Exabytes 2026-09-25, ID Exabytes 347929–347948
-(kontigu, tidak ada celah): lensamata, pikiranpublik, suaradata,
-fokusrakyat, lensakita24, sudutfakta7, narasipublik, titikberita9,
-mediasatu24, ruangredaksi, resonansi, eksposur, aspirasi, refleksi,
-sintesa, proyeksi, observasi, konstelasi, artikulasi, interpretasi.
-
-NS dialihkan ke Cloudflare 2026-09-26 dan diverifikasi read-back 20/20 di
-panel Exabytes. 19 zona memakai pair `joan`/`kanye`; `pikiranpublik.web.id`
-mendapat pair `ivan`/`tia` dari Cloudflare dan NS-nya mengikuti pair itu —
-Cloudflare menetapkan pair acak per zona, jadi pair harus dibaca dari API,
-bukan diasumsikan.
-
-**Satu koreksi nama dari daftar awal.** `pemikiranpublik.web.id` tidak
-pernah ada; domain sebenarnya `pikiranpublik.web.id` (ID 347930, RDAP
-PANDI sudah terbit). Ketahuan karena guard membandingkan judul halaman
-detail Exabytes dengan hostname yang diharapkan sebelum mengubah NS —
-tanpa guard itu, NS akan dipasang ke domain yang salah.
-
-`fokustrakyat.web.id` **bukan** koreksi nama: domain dengan ejaan itu
-tidak pernah ada. Daftar pemilik sudah benar sejak awal
-(`fokusrakyat.web.id`, "fokus" + "rakyat") dan itu yang tercatat di
-Exabytes, RDAP PANDI, DB, Vercel, Cloudflare, dan R2. Auditori ejaan atas
-seluruh text column DB, Vercel domains + certs, zona + DNS Cloudflare,
-dan seluruh objek R2 memberi 0 hit untuk varian `fokustrakyat`.
-
-Baseline Cloudflare identik 104+10 zona lama (56/56 setting, HSTS +
-`early_hints`, bot, Page Shield, 3 ruleset, 9 DNS record). Vercel exact +
-wildcard 40/40, cert apex + wildcard terbit 40/40 lewat ACME DNS-01.
-Platform 3.762 → **4.422 site**, apex 114 → **134**. 660/660 `active/active`,
-660/660 `site_settings` unik, 60 objek R2, 1.180 klaim
+660 site, 660/660 `active/active`, 660 settings unik, 60 objek R2, 1.180 klaim
 `official_affiliations` (20 × 59) dengan fingerprint pemetaan tetap
-`distinct = 1` di 134 domain.
+`distinct = 1` di 134 domain. Sweep akhir 19 domain yang bisa di-resolve:
+758/760 `200`, 0 unknown-host, 0 `noindex`; dua sisanya
+(`rembang`/`surakarta.ruangredaksi`) `DNS` hanya saat 16 request paralel,
+serial 4/4 `200`.
 
-Template tersebar rata 2 per template (10 template × 2).
+**`fokustrakyat.web.id` masih `pending` di Cloudflare.** PANDI mengembalikan
+NXDOMAIN walau RDAP mengonfirmasi terdaftar (registered 2026-09-25) — lag
+publikasi delegasi di sisi registry, bukan konfigurasi. NS di registrar sudah
+terverifikasi.
 
-`fokusrakyat.web.id` masih `pending` di Cloudflare: PANDI mengembalikan
-NXDOMAIN untuk domain tersebut walau RDAP mengonfirmasi terdaftar
-(registered 2026-09-25). Ini lag publikasi delegasi di sisi registry,
-bukan konfigurasi — NS di registrar sudah `joan`/`kanye` terverifikasi.
+**`pemikiranpublik.web.id` tidak pernah ada.** Daftar awal salah; domain
+sesungguhnya `pikiranpublik.web.id` (ID 347930). Ketahuan karena guard
+membandingkan judul halaman detail Exabytes dengan hostname yang diharapkan
+sebelum mengubah NS — tanpa guard itu, NS terpasang ke domain yang salah.
+Sebaliknya, `fokustrakyat.web.id` **bukan** koreksi nama: daftar pemilik
+sudah benar sejak awal dan itu yang tercatat di Exabytes, RDAP PANDI, DB,
+Vercel, Cloudflare, dan R2.
 
-## Aturan main
+---
 
-- Hanya domain terkait Indicate yang tercatat di sini; proyek lain milik
-  pemilik tidak dimasukkan (keputusan 2026-09-16).
-- Tidak ada domain yang otomatis jadi tenant. Kolom Tenant? hanya diisi
-  dari penunjukan eksplisit pemilik; penunjukan 2026-09-25 mengaktifkan
-  seluruh 104 apex tenant yang terdaftar.
-- Refresh: ekspor panel registrar + `GET /zones` Cloudflare + RDAP untuk
-  tanggal registrar lain; perbarui tanggal verifikasi di atas.
-- Bot Fight Mode: aktif di 104/104 zona (`enable_js` + `fight_mode`,
-  2026-09-17, terverifikasi baca-balik per zona).
+## Kronologi aktivasi
+
+Satu baris per batch. Angka platform adalah total site setelah batch itu, bukan
+total yang berlaku sekarang — total terkini ada di bagian atas.
+
+| Tanggal | Batch | Hasil |
+|---|---|---|
+| 2026-09-02 | Migration domain utama | `indicate.website` cut over dari `indicate.web.id`; redirect 308 apex/`www` lama, dual-serve `api`/`webhook`/`media`/`pv`. Pensiun domain lama 2026-09-25: DB nol referensi host lama, asosiasi Vercel lama dilepas, redirect tetap 100% di edge Cloudflare. |
+| 2026-09-03 | Exabytes #1 (9 apex) | 9 apex + 10 regional Wonosobo live; template tersebar 1 per template. |
+| 2026-09-16 | IDWebHost (104 apex) | Empat batch domain dibuat, NS diganti, delegasi terverifikasi. |
+| 2026-09-17 | WAF rollout | WAF 2-rule + Page Shield di 104/104 zona; Bot Fight Mode aktif 104/104. |
+| 2026-09-18 | `penamerdeka.my.id` | Apex ke-10 Exabytes, template `purple-editorial`. |
+| 2026-09-19 | 25 apex IDWebHost → portal | 25 apex masuk sebagai tenant aktif dengan brand penuh. Platform → 104 site. |
+| 2026-09-20 | `jejakkebenaran.my.id` | Apex ke-36, template `red-editorial`. |
+| 2026-09-20 | 26 domain stok | 26 domain masuk Vercel `verified` tanpa site; menyajikan landing generik branded, tanpa kebocoran tenant. |
+| 2026-09-25 | 104 apex diaktifkan | Penunjukan eksplisit pemilik mengaktifkan seluruh 104 apex IDWebHost. Tidak ada backlog tersisa. |
+| 2026-09-25 | Exabytes #2 (10 apex) | 330 site, platform 3.432 → 3.762. |
+| 2026-09-26 | Exabytes #3 (20 apex) | 660 site, platform 3.762 → 4.422, apex 114 → 134. |
+
+### Rekonsiliasi Wonosobo
+
+`wonosobo.fakta01.my.id` tercatat satu jejak aktivasi `failed` terminal (5×,
+13 Sep 2026, `dependency_unavailable`) — tetapi hostname ini live di tiga
+lapis: site DB `active/active`, domain Vercel `verified: true`, HTTP `200`
+merender penuh. Artinya aktivasi terjadi di luar saga setelah kegagalan itu.
+Baris jejak dibiarkan sebagai riwayat (tidak ditulis ulang) dan saga TIDAK
+dijalankan ulang, karena kegagalan terminal akan menonaktifkan site yang sedang
+live (`failActivation` terminal → `status inactive`).
+
+## Insiden yang punya pelajaran
+
+Dua penyebab akar yang muncul berulang di setiap batch onboarding. Prosedur
+lengkapnya ada di [ops lessons](ops-lessons.md):
+
+1. **`525` pada portal turunan sementara apex `200`.** Bukan soal menunggu
+   sertifikat wildcard Cloudflare — cert edge sudah `active` dan SAN-nya
+   mencakup wildcard. Penyebabnya **origin TLS**: Vercel hanya auto-issue
+   sertifikat apex, jadi `ssl=strict` gagal handshake untuk hostname turunan.
+   Solusinya sertifikat wildcard Vercel via ACME **DNS-01** (TXT
+   `_acme-challenge` di Cloudflare), satu per apex.
+2. **Apex `200` tapi unknown-host `noindex` setelah `525`/`526` hilang.** Bukan
+   cache — `tenant-home` ter-prerender ISR (`x-nextjs-prerender: 1`), dan
+   onboarding manual melewati saga sehingga tidak ada task invalidasi. Diperbaiki
+   dengan task `media.activated` + purge reconciler `scope=invalidation`.
+
+Dua cacat onboarding batch #3 yang juga tercatat di
+[cloudflare baseline](cloudflare-baseline.md): task invalidasi hanya memuat
+base path sehingga `/logo.png`, `/icon.png`, `/apple-touch-icon.png` menyimpan
+404 basi di cache ISR (gejala khas: `manifest` `200` tapi ketiganya `404`); dan
+`media.object_key` yang tertulis dengan tanggal berbeda dari objek R2 yang
+sesungguhnya ada membuat route media `404` meski beranda tetap `200` — diperbaiki
+dengan membaca key asli dari R2 dan `HeadObject` tiap key sebelum menulis DB.

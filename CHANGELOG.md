@@ -319,6 +319,21 @@ npm-facing.
   completed seven-stage sequence, the eleven decision boundaries, and the
   2026-08-30 pre-launch confirmations. The header now states plainly that §21
   binds nothing while §1-20 do.
+- `docs/domains.md` and `docs/active-domains.md` merged into one
+  `docs/domains.md`. The two described the same 134 apexes from opposite ends —
+  one as a registrar inventory, the other as a dated activation log — and the
+  2026-09-25 and 2026-09-26 Exabytes batches were written out in both, twice
+  each, with the same two root causes restated. The merged file keeps the
+  inventory tables, the live counts, and the rules, and reduces the log to one
+  row per onboarding batch.
+- Three data-model changes that had accumulated inside the domain inventory
+  moved here, because no reader looking for a domain list is looking for them:
+  `articles.category_id` gained a `Berita` default after `Umum` was renamed in
+  place (v216), so an uncategorised article can no longer land in a bucket
+  nobody opens; the nine `independent_publisher` brand rows were archived,
+  leaving `publishers` at 118 institutions; and `official_affiliations` stores
+  one row per portal, so 59 institution facts are 7,906 rows and the dashboard
+  groups them back by `(publisher, city, institution)`.
 
 ## [0.1.0] - 2026-09-02
 

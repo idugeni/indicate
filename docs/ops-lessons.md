@@ -2,7 +2,7 @@
 
 > **Status:** Living document — ditulis 2026-09-19 dari insiden nyata, perbarui tiap ada insiden baru.
 > **Owner:** Platform team.
-> **Related:** [migrations](migrations.md) · [active domains](active-domains.md)
+> **Related:** [migrations](migrations.md) · [domains](domains.md)
 
 ## 1. Tulis ke Supabase via MCP: selalu transaksi eksplisit + konteks tenant
 
@@ -59,7 +59,7 @@ aktor `system`, `request_id ops:<batch>`). Bersihkan objek yatim
 (`o/{org}/p/...`, artikel ke prefix `pub/`); format `sites/{siteId}/...`
 di atas adalah tata letak legacy yang tetap valid.
 
-## 7. Favicon tenant vs Google: robots + stabilitas URL
+## 5. Favicon tenant vs Google: robots + stabilitas URL
 
 Insiden: favicon tenant tidak tampil di hasil pencarian (ikon generik).
 Dua lapis penyebab, keduanya terverifikasi live:
@@ -75,7 +75,7 @@ stabil ber-cache panjang tanpa signature; jangan pernah menaruh URL
 bertanda-tangan di `<link rel="icon">`. Dimensi favicon wajib square ≥48px
 terverifikasi (kolom `media.width_px/height_px`), bukan asumsi.
 
-## 8. Skop token R2 mengikat per bucket
+## 6. Skop token R2 mengikat per bucket
 
 Kredensial S3 R2 (`R2_ACCESS_KEY_ID`) bisa terkunci ke bucket tertentu.
 Adapter memakai SATU kredensial untuk KEDUA bucket media (routing by
@@ -86,7 +86,7 @@ Pengelolaan skop hanya via dashboard (tidak ada API publik).
 Urutannya: tambah skop → salin + verifikasi ETag → flip
 `shared_deployment_config` → uji baca-tulis → hapus bucket lama.
 
-## 9. Proteksi branch vs direct push solo
+## 7. Proteksi branch vs direct push solo
 
 `required_status_checks` pada proteksi branch MENOLAK direct push
 ("Required status check is expected") — check hanya bisa hijau untuk
@@ -95,7 +95,7 @@ proteksi = tanpa force-push + tanpa hapus branch + enforce admin SAJA;
 gate tetap jalan tiap push sebagai penanda. Jangan pasang status-check
 wajib kecuali alur pindah ke PR.
 
-## 10. Pagination MCP + klaim versi migrasi lintas sesi
+## 8. Pagination MCP + klaim versi migrasi lintas sesi
 
 - MCP `cloudflare-api` list R2 me-return 20 objek per halaman TANPA
   cursor terekspos — untuk inventarisasi penuh pakai REST langsung
@@ -107,18 +107,21 @@ wajib kecuali alur pindah ke PR.
   baca tail `_journal.json` DAN `max(version)` live — tabrakan pernah
   terjadi (v164 ganda) dan hanya ketahuan saat apply.
 
-## 5. Fakta kapasitas (terverifikasi API, bukan asumsi)
+## 9. Fakta kapasitas (terverifikasi API, bukan asumsi)
 
 Limit domain Vercel adalah Pro unlimited (soft-cap 100 ribu; kuota Hobby 50
 sudah ditinggalkan saat upgrade). Setiap apex makan 1 slot exact + 1 slot
 wildcard; regional satu-label DB-only tanpa slot. Target CNAME project stabil (`58a0c0dd872d3769.vercel-dns-017.com`,
 proxied) dipakai ulang untuk semua zona.
 
-## 6. Ledger md adalah definition-of-done
+## 10. Ledger md adalah definition-of-done
 
 Setiap perubahan domain/hostname wajib dicatat di
-`docs/active-domains.md` (status DB + Vercel + HTTP + kuota) pada giliran
-yang sama — bukan belakangan.
+[`docs/domains.md`](domains.md) pada giliran yang sama — bukan belakangan.
+Status DB, Vercel, dan HTTP masuk baris kronologi; angka total terkini hanya
+punya satu tempat, yaitu bagian "Angka terkini" di header file itu, karena
+menyalinnya ke beberapa dokumen hanya menghasilkan beberapa angka berbeda untuk
+keadaan yang sama.
 
 ## 11. "Corrupted Image" Meta = robots, bukan gambar rusak
 
