@@ -90,6 +90,14 @@
         "semgrep",
         "mcp"
       ]
+    },
+    "gsc": {
+      "command": "uvx",
+      "args": [
+        "--python",
+        "3.13",
+        "mcp-search-console"
+      ]
     }
   }
 }

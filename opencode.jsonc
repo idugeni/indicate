@@ -133,6 +133,36 @@
           "semgrep",
           "mcp"
         ]
+      },
+      "gsc": {
+        // Search Console MCP. Credential TIDAK ditulis di sini. Nilai
+        // GSC_OAUTH_CLIENT_SECRETS_FILE adalah path absolut ke file OAuth
+        // client Google, jadi hanya berlaku di satu mesin; ia dibaca dari
+        // process environment. Kontrak nilainya ada di .env.example. OAuth
+        // flow menyimpan token sendiri di direktori config platform OpenCode,
+        // bukan di workspace.
+        //
+        // `uvx` dipin ke interpreter 3.13 untuk alasan yang sama seperti
+        // semgrep di atas: Python sistem 3.14 tidak ada di jalur dukungan
+        // server ini, dan pin ini membuat install tidak menyentuh environment
+        // utama. Package-nya mempin `mcp[cli]<2.0.0` sejak 0.3.3 karena SDK
+        // 2.0 menghapus modul `mcp.server.fastmcp`.
+        //
+        // GSC_ALLOW_DESTRUCTIVE sengaja tidak di-set. Tanpa itu `add_site`,
+        // `delete_site`, dan `delete_sitemap` mati, dan MCP ini tidak bisa
+        // menulis apa pun ke Search Console maupun ke Postgres. Script
+        // `npm run gsc:verify` tetap satu-satunya jalur yang boleh
+        // mendaftarkan property dan submit sitemap, karena itu menulis DNS TXT
+        // lewat Cloudflare.
+        "type": "local",
+        "command": [
+          "cmd",
+          "/c",
+          "uvx",
+          "--python",
+          "3.13",
+          "mcp-search-console"
+        ]
       }
     }
   }
