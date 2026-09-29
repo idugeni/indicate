@@ -9,6 +9,15 @@ In repositories indexed by CodeGraph (a `.codegraph/` directory exists at the re
 If there is no `.codegraph/` directory, skip CodeGraph entirely — indexing is the user's decision.
 <!-- CODEGRAPH_END -->
 
+## Division of labour
+
+This file is the rulebook: every rule that binds a change in this repository
+lives here. [`CLAUDE.md`](CLAUDE.md) is the reference card beside it — route
+groups, path aliases, file naming, commands, the config map — and deliberately
+holds no rules. Keep it that way: a rule stated in two files is a rule that will
+disagree with itself, and the disagreement ships. When a change touches code
+shape, update the card; when it touches a rule, update this file.
+
 ## Tool use (MCP + skills)
 
 Use the connected tools when they help. Retrieval beats memory, but nothing here blocks progress.

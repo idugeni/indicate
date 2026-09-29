@@ -2,6 +2,20 @@
 
 Multi-tenant media syndication platform — one central Dashboard operating many news domains from a single shared deployment. Conventions below are recommended defaults; deviations are allowed with owner sign-off and a brief note.
 
+> **This file is the reference card, not the rulebook.** It answers "where does
+> this live" — route groups, path aliases, file naming, the commands, the config
+> map. Every rule that binds a change lives in [`AGENTS.md`](AGENTS.md): comment
+> hygiene, the `@/` import rule, database access and egress, commit format,
+> unoptimized images, and the owner-override path. Do not restate a rule here.
+> If this file and `AGENTS.md` ever disagree, `AGENTS.md` wins and this file is
+> the one that gets corrected.
+>
+> Claims in this file are facts about the tree, so they rot silently. Verify
+> before trusting: the Node version comes from `package.json` `engines` and
+> `.nvmrc`, the aliases from `tsconfig.json` and `components.json`, the route
+> tree from `src/app/`. The managed block at the end is written by `next dev`,
+> not by hand.
+
 ## Tech stack
 
 Exact pins live in `package.json`; the majors below are the contract.
