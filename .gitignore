@@ -56,3 +56,6 @@ kemenimipas/
 
 # Scratch operasional: SQL/JSON/cert hasil generator, dibuang per sesi
 tmp/
+
+# Skrip dan query sekali pakai di root repo
+_tmp-*
