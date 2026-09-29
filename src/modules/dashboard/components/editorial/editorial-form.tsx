@@ -348,10 +348,16 @@ export function ArticleCreateForm({
       toast.error('Tambah kategori tidak tersedia di pratinjau.');
       return null;
     }
+    // `command` never rejects: it resolves to null on every swallowed failure
+    // and already toasts the real reason, so this only has to interpret null.
     const created = (await command('category.create', { name, slug: slugify(name) })) as { readonly id?: unknown } | null;
     const newId = typeof created?.id === 'string' ? created.id : null;
     if (newId === null) {
-      toast.error('Gagal menambah kategori.');
+      // `command` resolves to null whenever it swallows a failure, and the
+      // server may already have committed the row. Claiming "gagal" here would
+      // push the editor to retype a name that is now taken, so name the real
+      // ambiguity instead of asserting a rollback that never happened.
+      toast.error('Kategori tidak terkonfirmasi. Periksa daftar kategori — nama itu mungkin sudah tersimpan.');
       return null;
     }
     setExtraCategories((prev) =>
