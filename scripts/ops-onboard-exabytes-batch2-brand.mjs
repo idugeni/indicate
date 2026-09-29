@@ -3,6 +3,10 @@
  * Exabytes batch-2 apex tenants to the private R2 bucket and print a compact
  * manifest. Database writes happen through the privileged migration path
  * because the runtime pooler role is subject to RLS on `media`.
+ *
+ * `--bucket <name>` is required. Brand keys carry no `pub/` prefix, so they
+ * belong in the private bucket, and that name is read from
+ * `public.shared_deployment_config` rather than hardcoded here.
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -13,7 +17,16 @@ import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ORG = '7e27727d-b59f-4d24-998e-1bee6eeb3fa0';
 const ACCOUNT = '2fa5c3941e008ed06e4b41d7342d3fa9';
-const BUCKET = 'indicate-media-private';
+
+function argValue(flag) {
+  const index = process.argv.indexOf(flag);
+  return index < 0 ? null : process.argv[index + 1] ?? null;
+}
+
+const BUCKET = argValue('--bucket');
+if (BUCKET === null) {
+  throw new Error('--bucket <name> is required; the private bucket name is not hardcoded');
+}
 
 const TENANTS = [
   ['lensamata.web.id', '65772c41-9db2-446a-ba48-05b7aef21b16', 'l'],

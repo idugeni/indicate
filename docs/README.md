@@ -8,8 +8,7 @@
 
 | Document | Status | Contents |
 |---|---|---|
-| [architecture](architecture.md) | Approved 2026-08-30 | MVP topology, invariants, deployment and hostname design. Sections 1-20 are binding. Code wins on conflict. |
-| [architecture policy](architecture-policy.md) | Advisory | Owner relaxations from 2026-09-14, decision boundaries, and the pre-launch approval record. Split out of `architecture.md`; nothing here binds a build. |
+| [architecture](architecture.md) | Approved 2026-08-30 | MVP topology, invariants, deployment and hostname design. Sections 1-20 are binding; §21 holds the advisory registers (owner relaxations, decision boundaries, approval record) and binds nothing. Code wins on conflict. |
 | [architecture rules](architecture-rules.md) | Advisory | Performance and caching rules for contributors. |
 | [templates](templates.md) | Advisory | Ten public news templates in `src/modules/site/components/network/templates/`. |
 

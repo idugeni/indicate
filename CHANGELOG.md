@@ -312,6 +312,13 @@ npm-facing.
   the staged-monitoring table, per-tenant triage, and both rollback paths under
   three headings: readiness, release order, rollback. Ten cross-references were
   repointed.
+- `docs/architecture-policy.md` folded back into `docs/architecture.md` §21. It
+  had been split out three days earlier, so a reader of the architecture
+  document had to open a second file to learn which parts of it actually bound
+  their build. The content is unchanged in substance: quality architecture, the
+  completed seven-stage sequence, the eleven decision boundaries, and the
+  2026-08-30 pre-launch confirmations. The header now states plainly that §21
+  binds nothing while §1-20 do.
 
 ## [0.1.0] - 2026-09-02
 

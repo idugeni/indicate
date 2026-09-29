@@ -1,14 +1,14 @@
 # Indicate MVP Architecture
 
-> **Status:** Approved (2026-08-30). Sections 1 to 20 are the binding design.
+> **Status:** Approved (2026-08-30). Sections 1 to 20 are the binding design; section 21 is advisory and binds nothing.
 > **Owner:** Platform team.
 > **Source of truth:** the codebase (`src/core/config/bootstrap/bootstrap-schema.ts`, `src/proxy.ts`, `src/data/migrations/meta/_journal.json`). On conflict, code wins.
-> **Related:** [architecture policy](architecture-policy.md) (advisory relaxations and the 2026-08-30 approval record, moved out of this file on 2026-09-26) · [migrations](migrations.md) · [release](release.md) · [architecture rules](architecture-rules.md) · [templates](templates.md)
+> **Related:** [migrations](migrations.md) · [release](release.md) · [architecture rules](architecture-rules.md) · [templates](templates.md) · [domains](domains.md)
 
 ## Review status
 
 - **Scope of this version:** Architecture summary. This document does not itself perform application, dependency, infrastructure, or deployment changes.
-- **What is binding here:** sections 1 to 20. Relaxed advisory defaults and the pre-launch approval record live in [architecture policy](architecture-policy.md), so a reader of this file is never unsure which parts constrain a build.
+- **What is binding here:** sections 1 to 20. The owner's relaxations, the decision boundaries, and the 2026-08-30 pre-launch approval record are in §21, so a reader of this file is never unsure which parts constrain a build.
 
 ## 1. Architecture summary
 
@@ -807,3 +807,43 @@ Additional Central Java regions use the same data path without source changes.
 ### 20.4 Rollback
 
 Rollback points the single Vercel project at the last schema-compatible application deployment. Forward-fix migrations are preferred after irreversible schema change. Durable activation, invalidation, queue, cleanup, and audit intent remains recoverable. Rollback never creates another topology or transfers Cloudflare nameserver authority.
+
+## 21. Advisory registers (not binding)
+
+**Nothing in this section constrains a build.** Sections 1 to 20 are the design; this is the record of what the owner relaxed, which defaults need a written reason, and what was confirmed before launch. It lives here rather than in a separate file because a reader of this document should never have to open a second file to learn which parts bind them. The owner's standing decisions and the deviation path are also stated in `AGENTS.md`, which is the copy that binds every agent and human.
+
+### 21.1 Quality architecture (relaxed 2026-09-14)
+
+Recommended deterministic single-run checks: TypeScript typecheck; lint; migration and environment checks; client-bundle and artifact secret scans. Every tenant-sensitive stage should verify same-organization success, absent-resource denial, cross-organization denial, and mutation/audit failure atomicity. Any cross-organization content, media, cache, credential, job, analytics, or audit result warns rather than hard-failing the stage in relaxed mode.
+
+### 21.2 Implementation sequence (completed)
+
+The MVP was built in seven stages — Foundation; Tenancy; Dashboard; Publishing; Delivery; Integrations; Release — starting with Wonosobo, Magelang, and Semarang. Each stage ideally followed the prior stage's quality gate, and stages were allowed to overlap or reorder with a brief recorded rationale. Implementation could begin without waiting for document approval. The sequence is history now and constrains nothing.
+
+### 21.3 Decision boundaries (defaults that need a reason)
+
+Each of these overlaps an invariant in §2. They cost more than they look, so they need a reason rather than a permission. The deviation path is the same one `AGENTS.md` states: the owner's stated request is the approval, the reason is recorded in the same commit as a `Deviates:` trailer, and the section describing the old default is updated. No full requirements revision is required, and no CI job checks the trailer.
+
+- additional tenant applications, Vercel projects, Supabase projects/databases/Auth instances, R2 buckets, Redis resources, public templates, or deployments;
+- Vercel nameserver delegation, Vercel DNS authority, or Vercel wildcard-domain registration;
+- another primary database, ORM, Auth provider, object store, queue, DNS provider, host, CSS/component system, messaging platform, validation library, unit-test framework, or end-to-end framework;
+- direct tenant SQL from transport adapters;
+- browser access to privileged database or provider credentials;
+- a public R2 bucket or prefix-wide authorization;
+- tenant selection from request bodies or fallback hostname matching;
+- Redis or cron as the durable publication authority: a recoverable projection, never the only record;
+- database transactions held open during provider calls, which pins a pooled connection for the provider's latency;
+- unbounded retries or long-running workers, neither of which a serverless deadline can absorb;
+- mutation success when the required Audit Log did not commit, which makes a successful change unauditable.
+
+### 21.4 Pre-launch confirmations (approval record, 2026-08-30)
+
+These operational confirmations were required at the applicable implementation or promotion stage:
+
+1. **Domain operations:** every active apex Site is associated exactly with the one Vercel project plus a wildcard with an issued certificate, while Cloudflare retains nameserver and DNS authority. Regionals stay DB-only.
+2. **Provider capacity:** the Vercel plan supports the projected domain count (exact plus wildcard; unlimited on Pro, only traffic is metered), cron frequency, execution duration, and the unbounded domain-plus-regional-Site scale target.
+3. **TLS convention:** one-label regional hostnames fit Cloudflare certificate coverage and Full (strict) origin validation succeeds.
+4. **Numeric runtime bounds:** retry attempts and delays, lease durations, worker batch and deadline, media limits, signed URL TTLs, cache TTLs, rate limits, webhook freshness, and replay retention.
+5. **Credential ownership:** least-privilege roles, storage, rotation, and incident ownership for Cloudflare, Vercel, Supabase runtime and migration, R2, Upstash, webhook, and cron secrets.
+6. **Database defenses:** the composite-foreign-key, transaction-local context, RLS defense-in-depth, append-only audit grants and trigger, and transaction-pooler approach.
+7. **Recovery objectives:** operational alerting and response expectations for pending activation, dispatch gaps, expired leases, invalidation bypass, and cleanup backlogs.

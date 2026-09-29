@@ -30,7 +30,7 @@ describe('assertDistinctR2Buckets', () => {
       privateBucket: 'indicate-audit-worm',
       publicBucket: 'indicate-media-public',
       auditBucket: 'indicate-audit-worm',
-    })).toThrow(/r2_bucket_role_conflict.*both audit and private/);
+    })).toThrow(/r2_bucket_role_conflict.*both private and audit/);
   });
 
   it('menolak bucket privat yang memakai nama bucket publik', () => {
@@ -38,6 +38,6 @@ describe('assertDistinctR2Buckets', () => {
       privateBucket: 'indicate-media-public',
       publicBucket: 'indicate-media-public',
       auditBucket: null,
-    })).toThrow(/r2_bucket_role_conflict.*both public and private/);
+    })).toThrow(/r2_bucket_role_conflict.*both private and public/);
   });
 });
