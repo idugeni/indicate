@@ -5,7 +5,7 @@ import { templateThemeStyle } from '@/modules/site/components/network/ui/templat
 import { BLACK_LIME } from '@/modules/site/components/network/templates/black-lime/theme';
 import { BlackLimeHeader } from '@/modules/site/components/network/templates/black-lime/chrome/site-header';
 import { BlackLimeFooter } from '@/modules/site/components/network/templates/black-lime/chrome/site-footer';
-import { BlackLimeBackToTop } from '@/modules/site/components/network/templates/black-lime/chrome/back-to-top';
+import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
 
 /**
  * Single template shell: skip-link + header + main + footer + back-to-top,
@@ -34,7 +34,7 @@ export function BlackLimeShell({
         {children}
       </main>
       <BlackLimeFooter site={site} />
-      <BlackLimeBackToTop />
+      <TemplateBackToTop />
     </div>
   );
 }

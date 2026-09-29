@@ -5,7 +5,7 @@ import { templateThemeStyle } from '@/modules/site/components/network/ui/templat
 import { ORANGE_MODERN } from '@/modules/site/components/network/templates/orange-modern/theme';
 import { OrangeModernHeader } from '@/modules/site/components/network/templates/orange-modern/chrome/site-header';
 import { OrangeModernFooter } from '@/modules/site/components/network/templates/orange-modern/chrome/site-footer';
-import { OrangeModernBackToTop } from '@/modules/site/components/network/templates/orange-modern/chrome/back-to-top';
+import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
 
 /**
  * Cangkang tunggal template: skip-link + header + main + footer + back-to-top
@@ -34,7 +34,7 @@ export function OrangeModernShell({
         {children}
       </main>
       <OrangeModernFooter site={site} />
-      <OrangeModernBackToTop />
+      <TemplateBackToTop />
     </div>
   );
 }

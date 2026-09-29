@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
-import { SoftBlueBackToTop } from '@/modules/site/components/network/templates/soft-blue/chrome/back-to-top';
+import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
 import { scrollToTop } from '@/ui/scroll';
 
 vi.mock('@/ui/scroll', () => ({ scrollToTop: vi.fn() }));
@@ -16,21 +16,21 @@ beforeEach(() => {
   vi.mocked(scrollToTop).mockClear();
 });
 
-describe('SoftBlueBackToTop', () => {
+describe('BackToTop', () => {
   it('null sebelum menggulir jauh', () => {
-    const { container } = render(<SoftBlueBackToTop />);
+    const { container } = render(<TemplateBackToTop />);
     expect(container.firstChild).toBe(null);
   });
 
   it('muncul setelah menggulir melewati ambang', () => {
-    render(<SoftBlueBackToTop />);
+    render(<TemplateBackToTop />);
     Object.defineProperty(window, 'scrollY', { value: 700, configurable: true, writable: true });
     fireEvent.scroll(window);
     expect(screen.getByRole('button', { name: 'Kembali ke atas' })).toBeDefined();
   });
 
   it('memanggil scrollToTop saat diklik', () => {
-    render(<SoftBlueBackToTop />);
+    render(<TemplateBackToTop />);
     Object.defineProperty(window, 'scrollY', { value: 700, configurable: true, writable: true });
     fireEvent.scroll(window);
     fireEvent.click(screen.getByRole('button', { name: 'Kembali ke atas' }));

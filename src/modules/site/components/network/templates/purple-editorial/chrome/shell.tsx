@@ -5,7 +5,7 @@ import { templateThemeStyle } from '@/modules/site/components/network/ui/templat
 import { PURPLE_EDITORIAL } from '@/modules/site/components/network/templates/purple-editorial/theme';
 import { PurpleEditorialHeader } from '@/modules/site/components/network/templates/purple-editorial/chrome/site-header';
 import { PurpleEditorialFooter } from '@/modules/site/components/network/templates/purple-editorial/chrome/site-footer';
-import { PurpleEditorialBackToTop } from '@/modules/site/components/network/templates/purple-editorial/chrome/back-to-top';
+import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
 
 /**
  * Cangkang tunggal template: skip-link + header + main + footer + back-to-top
@@ -34,7 +34,7 @@ export function PurpleEditorialShell({
         {children}
       </main>
       <PurpleEditorialFooter site={site} />
-      <PurpleEditorialBackToTop />
+      <TemplateBackToTop />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { templateThemeStyle } from '@/modules/site/components/network/ui/templat
 import { SOFT_BLUE } from '@/modules/site/components/network/templates/soft-blue/theme';
 import { SoftBlueHeader } from '@/modules/site/components/network/templates/soft-blue/chrome/site-header';
 import { SoftBlueFooter } from '@/modules/site/components/network/templates/soft-blue/chrome/site-footer';
-import { SoftBlueBackToTop } from '@/modules/site/components/network/templates/soft-blue/chrome/back-to-top';
+import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
 
 /**
  * Cangkang tunggal template: skip-link + header + main + footer + back-to-top
@@ -34,7 +34,7 @@ export function SoftBlueShell({
         {children}
       </main>
       <SoftBlueFooter site={site} />
-      <SoftBlueBackToTop />
+      <TemplateBackToTop />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { templateThemeStyle } from '@/modules/site/components/network/ui/templat
 import { GLASSY_BLUE } from '@/modules/site/components/network/templates/glassy-blue/theme';
 import { GlassyBlueHeader } from '@/modules/site/components/network/templates/glassy-blue/chrome/site-header';
 import { GlassyBlueFooter } from '@/modules/site/components/network/templates/glassy-blue/chrome/site-footer';
-import { GlassyBlueBackToTop } from '@/modules/site/components/network/templates/glassy-blue/chrome/back-to-top';
+import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
 
 /**
  * Single template shell: skip-link + header + main + footer + back-to-top,
@@ -34,7 +34,7 @@ export function GlassyBlueShell({
         {children}
       </main>
       <GlassyBlueFooter site={site} />
-      <GlassyBlueBackToTop />
+      <TemplateBackToTop />
     </div>
   );
 }

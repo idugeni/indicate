@@ -5,7 +5,7 @@ import { templateThemeStyle } from '@/modules/site/components/network/ui/templat
 import { GREEN_MINIMAL } from '@/modules/site/components/network/templates/green-minimal/theme';
 import { GreenMinimalHeader } from '@/modules/site/components/network/templates/green-minimal/chrome/site-header';
 import { GreenMinimalFooter } from '@/modules/site/components/network/templates/green-minimal/chrome/site-footer';
-import { GreenMinimalBackToTop } from '@/modules/site/components/network/templates/green-minimal/chrome/back-to-top';
+import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
 
 /**
  * Cangkang tunggal template: skip-link + header + main + footer + back-to-top
@@ -34,7 +34,7 @@ export function GreenMinimalShell({
         {children}
       </main>
       <GreenMinimalFooter site={site} />
-      <GreenMinimalBackToTop />
+      <TemplateBackToTop />
     </div>
   );
 }

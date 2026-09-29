@@ -5,7 +5,7 @@ import { templateThemeStyle } from '@/modules/site/components/network/ui/templat
 import { CLEAN_BLUE } from '@/modules/site/components/network/templates/clean-blue/theme';
 import { CleanBlueHeader } from '@/modules/site/components/network/templates/clean-blue/chrome/site-header';
 import { CleanBlueFooter } from '@/modules/site/components/network/templates/clean-blue/chrome/site-footer';
-import { CleanBlueBackToTop } from '@/modules/site/components/network/templates/clean-blue/chrome/back-to-top';
+import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
 
 /**
  * Single template shell: skip-link + header + main + footer + back-to-top,
@@ -34,7 +34,7 @@ export function CleanBlueShell({
         {children}
       </main>
       <CleanBlueFooter site={site} />
-      <CleanBlueBackToTop />
+      <TemplateBackToTop />
     </div>
   );
 }

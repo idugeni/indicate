@@ -5,7 +5,7 @@ import { templateThemeStyle } from '@/modules/site/components/network/ui/templat
 import { RED_EDITORIAL } from '@/modules/site/components/network/templates/red-editorial/theme';
 import { RedEditorialHeader } from '@/modules/site/components/network/templates/red-editorial/chrome/site-header';
 import { RedEditorialFooter } from '@/modules/site/components/network/templates/red-editorial/chrome/site-footer';
-import { RedEditorialBackToTop } from '@/modules/site/components/network/templates/red-editorial/chrome/back-to-top';
+import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
 
 /**
  * Cangkang tunggal template: skip-link + header + main + footer + back-to-top
@@ -34,7 +34,7 @@ export function RedEditorialShell({
         {children}
       </main>
       <RedEditorialFooter site={site} />
-      <RedEditorialBackToTop />
+      <TemplateBackToTop />
     </div>
   );
 }

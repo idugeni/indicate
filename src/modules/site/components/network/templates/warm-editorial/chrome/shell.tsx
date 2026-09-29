@@ -5,7 +5,7 @@ import { templateThemeStyle } from '@/modules/site/components/network/ui/templat
 import { WARM_EDITORIAL } from '@/modules/site/components/network/templates/warm-editorial/theme';
 import { WarmEditorialHeader } from '@/modules/site/components/network/templates/warm-editorial/chrome/site-header';
 import { WarmEditorialFooter } from '@/modules/site/components/network/templates/warm-editorial/chrome/site-footer';
-import { WarmEditorialBackToTop } from '@/modules/site/components/network/templates/warm-editorial/chrome/back-to-top';
+import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
 
 /**
  * Single template shell: skip-link + header + main + footer + back-to-top,
@@ -34,7 +34,7 @@ export function WarmEditorialShell({
         {children}
       </main>
       <WarmEditorialFooter site={site} />
-      <WarmEditorialBackToTop />
+      <TemplateBackToTop />
     </div>
   );
 }

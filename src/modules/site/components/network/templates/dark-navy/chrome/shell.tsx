@@ -5,7 +5,7 @@ import { templateThemeStyle } from '@/modules/site/components/network/ui/templat
 import { DARK_NAVY } from '@/modules/site/components/network/templates/dark-navy/theme';
 import { DarkNavyHeader } from '@/modules/site/components/network/templates/dark-navy/chrome/site-header';
 import { DarkNavyFooter } from '@/modules/site/components/network/templates/dark-navy/chrome/site-footer';
-import { DarkNavyBackToTop } from '@/modules/site/components/network/templates/dark-navy/chrome/back-to-top';
+import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
 
 /**
  * Single template shell: skip-link + header + main + footer + back-to-top,
@@ -34,7 +34,7 @@ export function DarkNavyShell({
         {children}
       </main>
       <DarkNavyFooter site={site} />
-      <DarkNavyBackToTop />
+      <TemplateBackToTop />
     </div>
   );
 }
