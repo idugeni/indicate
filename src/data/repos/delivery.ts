@@ -239,7 +239,15 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       const shell = await this.readSettings(transaction, context);
       if (shell === null) return null;
 
-      const conditions = [eq(articles.organizationId, context.organizationId), eq(articleSites.organizationId, context.organizationId), sql`${articleSites.siteId} in ${lineageSiteIds(context)}`, eq(articleSites.state, 'published'), eq(articleSites.active, true), eq(articles.status, 'active'), isNotNull(articleSites.publishedAt)];
+      // An article detail is served only by the site that owns the assignment. Listings,
+      // feeds and sitemaps stay on the lineage, so a region or apex keeps showing its
+      // cities' articles and links to them, but the article URL on an ancestor does not
+      // resolve: one article, one live URL, and that URL is the owning site's. `href` and
+      // the canonical already point there, so the ancestor copy is pure duplicate.
+      const scope = query.articleSlug === undefined
+        ? sql`${articleSites.siteId} in ${lineageSiteIds(context)}`
+        : eq(articleSites.siteId, context.siteId);
+      const conditions = [eq(articles.organizationId, context.organizationId), eq(articleSites.organizationId, context.organizationId), scope, eq(articleSites.state, 'published'), eq(articleSites.active, true), eq(articles.status, 'active'), isNotNull(articleSites.publishedAt)];
       if (query.articleSlug !== undefined) conditions.push(eq(articles.slug, query.articleSlug));
       if (query.categorySlug !== undefined) conditions.push(eq(categories.slug, query.categorySlug));
       if (query.tag !== undefined) conditions.push(sql`${articles.tags} @> ARRAY[${query.tag}]::text[]`);
