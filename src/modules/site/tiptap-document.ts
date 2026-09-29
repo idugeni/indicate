@@ -385,6 +385,48 @@ export function isTipTapDoc(value: unknown): value is TipTapDoc {
 }
 
 /**
+ * Buang atribut bernilai `null` dari satu kumpulan atribut.
+ *
+ * @param attrs - Atribut node atau mark hasil serialisasi editor.
+ * @returns Atribut asli bila tidak ada nilai null, `{...}` bila tersisa sebagian, atau null bila kosong.
+ */
+function compactAttrs(attrs: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> | null {
+  const kept = Object.entries(attrs).filter(([, value]) => value !== null && value !== undefined);
+  if (kept.length === Object.keys(attrs).length) return attrs;
+  return kept.length === 0 ? null : Object.fromEntries(kept);
+}
+
+/**
+ * Buang atribut bernilai `null` dari satu node, mark, dan seluruh keturunannya.
+ *
+ * @param node - Node hasil serialisasi editor.
+ * @returns Node asli bila tidak ada atribut null; selain itu salinan ringkas.
+ * @remarks ProseMirror menyertakan seluruh atribut skema saat `toJSON()`, jadi
+ * paragraf yang tidak diratakan tetap membawa `textAlign: null` dan teks tanpa
+ * warna tetap membawa `textStyle.color: null`. Keduanya berarti "tidak diset",
+ * bukan "tidak valid", dan tidak perlu ikut tersimpan.
+ */
+function compactTipTapNode(node: TipTapNode): TipTapNode {
+  const attrs = isRecord(node.attrs) ? compactAttrs(node.attrs) : null;
+  const marks = node.marks?.map((mark) => {
+    const markAttrs = isRecord(mark.attrs) ? compactAttrs(mark.attrs) : null;
+    return markAttrs === null ? (isRecord(mark.attrs) ? { type: mark.type } : mark) : { ...mark, attrs: markAttrs };
+  });
+  const content = node.content?.map(compactTipTapNode);
+  const shrank =
+    attrs !== (isRecord(node.attrs) ? node.attrs : null)
+    || (marks !== undefined && marks.some((mark, index) => mark !== node.marks?.[index]))
+    || (content !== undefined && content.some((child, index) => child !== node.content?.[index]));
+  if (!shrank) return node;
+  const next: Record<string, unknown> = { ...node };
+  if (attrs === null) delete next.attrs;
+  else next.attrs = attrs;
+  if (marks !== undefined) next.marks = marks;
+  if (content !== undefined) next.content = content;
+  return next as unknown as TipTapNode;
+}
+
+/**
  * Validate a TipTap document against the editorial allowlist and size bounds.
  *
  * @param value - Candidate parsed JSON.
@@ -412,7 +454,7 @@ export function validateTipTapDoc(value: unknown): { readonly ok: true; readonly
         }
         if (mark.type === 'textStyle') {
           const color = isRecord(mark.attrs) ? mark.attrs.color : undefined;
-          if (color !== undefined && (typeof color !== 'string' || !COLOR_PATTERN.test(color))) return 'invalid-text-color';
+          if (color !== undefined && color !== null && (typeof color !== 'string' || !COLOR_PATTERN.test(color))) return 'invalid-text-color';
         }
       }
       return null;
@@ -421,11 +463,11 @@ export function validateTipTapDoc(value: unknown): { readonly ok: true; readonly
       const level = isRecord(node.attrs) ? node.attrs.level : undefined;
       if (level !== 1 && level !== 2 && level !== 3 && level !== 4 && level !== 5 && level !== 6) return 'invalid-heading-level';
       const align = isRecord(node.attrs) ? node.attrs.textAlign : undefined;
-      if (align !== undefined && (typeof align !== 'string' || !TEXT_ALIGN_VALUES.has(align))) return 'invalid-text-align';
+      if (align !== undefined && align !== null && (typeof align !== 'string' || !TEXT_ALIGN_VALUES.has(align))) return 'invalid-text-align';
     }
     if (node.type === 'paragraph') {
       const align = isRecord(node.attrs) ? node.attrs.textAlign : undefined;
-      if (align !== undefined && (typeof align !== 'string' || !TEXT_ALIGN_VALUES.has(align))) return 'invalid-text-align';
+      if (align !== undefined && align !== null && (typeof align !== 'string' || !TEXT_ALIGN_VALUES.has(align))) return 'invalid-text-align';
     }
     if (node.type === 'table') {
       const children = node.content ?? [];
@@ -478,7 +520,8 @@ export function validateTipTapDoc(value: unknown): { readonly ok: true; readonly
     const failure = visit(child, 1);
     if (failure !== null) return { ok: false, reason: failure };
   }
-  return { ok: true, doc: { type: 'doc', content } };
+  const compacted = content.map((node) => compactTipTapNode(node));
+  return { ok: true, doc: { type: 'doc', content: compacted } };
 }
 
 /**

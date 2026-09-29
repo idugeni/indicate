@@ -190,6 +190,22 @@ describe('validateTipTapDoc', () => {
     expect(validateTipTapDoc({ type: 'doc', content: [{ type: 'table', content: [wide] }] }).ok).toBe(false);
   });
 
+  it('menerima atribut null hasil serialisasi ProseMirror dan membuangnya', () => {
+    const result = validateTipTapDoc({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'Rata kiri' }] },
+        { type: 'heading', attrs: { level: 2, textAlign: 'center' }, content: [{ type: 'text', text: 'Judul' }] },
+        { type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'Merah', marks: [{ type: 'textStyle', attrs: { color: null } }] }] },
+      ],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.doc.content?.[0]).toEqual({ type: 'paragraph', content: [{ type: 'text', text: 'Rata kiri' }] });
+    expect(result.doc.content?.[1]).toMatchObject({ attrs: { level: 2, textAlign: 'center' } });
+    expect(result.doc.content?.[2]?.content?.[0]).toEqual({ type: 'text', text: 'Merah', marks: [{ type: 'textStyle' }] });
+  });
+
   it('menerima sematan sosial kanonis dan menolak src asing', () => {
     const good = {
       type: 'doc',
