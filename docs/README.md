@@ -43,7 +43,6 @@ dokumen mana pun, termasuk dari sini.
 | [templates/sow template](templates/sow-template.md) | Template | Statement of Work for custom enterprise work. |
 | `tenants/` | Per-tenant notes | Lowercase per-tenant records (e.g. `upt-jateng.md`). |
 | `templates/brand/` | Locked | Brand-letter masters; `gradient/` is read byte-wise by the `tenant-onboarding` skill — do not delete or rename. `original/` is the same master archive. |
-| `assets/` | Figures | SVGs referenced by documents. |
 
 ## Root community files (stay `UPPERCASE.md`)
 
