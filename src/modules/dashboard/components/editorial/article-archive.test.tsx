@@ -24,8 +24,24 @@ describe('ArticleArchive', () => {
     render(<ArticleArchive data={DATA} />);
     expect(screen.getByText('Banjir Wonosobo')).toBeDefined();
     expect(screen.getByText('APBD Jateng')).toBeDefined();
-    expect(screen.getAllByText('fakta01.my.id')).toHaveLength(1);
     expect(screen.getByText('1–2 dari 2')).toBeDefined();
+  });
+
+  it('menyembunyikan hostname di balik penghitung portal', async () => {
+    const user = userEvent.setup();
+    render(<ArticleArchive data={DATA} />);
+    const toggle = screen.getByLabelText('Tampilkan daftar 1 portal');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('fakta01.my.id')).toBeNull();
+
+    await user.click(toggle);
+    expect(screen.getAllByText('fakta01.my.id')).toHaveLength(1);
+    expect(screen.getByLabelText('Sembunyikan daftar portal').getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('tidak memanggil interaksi ulang untuk tiap viewport', () => {
+    render(<ArticleArchive data={DATA} />);
+    expect(screen.getAllByLabelText('Tampilkan daftar 1 portal')).toHaveLength(1);
   });
 
   it('menyaring lewat cari dan kategori', async () => {

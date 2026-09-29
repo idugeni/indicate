@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useMemo, useState } from 'react';
-import { Newspaper } from 'lucide-react';
+import { ChevronDown, Newspaper } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { Input } from '@/components/ui/input';
@@ -65,6 +65,44 @@ function formatDate(value: string | null): string {
   const time = new Date(value).getTime();
   if (Number.isNaN(time)) return '—';
   return new Date(time).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/**
+ * Portal count that reveals the hostname list on demand.
+ *
+ * @param props.hostnames - Portal hostnames carrying the article, already sorted.
+ * @returns A toggle plus, when open, a height-capped multi-column list.
+ * @remarks One article reaches every portal in the network, so listing the
+ * hostnames inline turned each table row into thousands of pixels of wrapped
+ * text. The count stays in the row; the list is bounded by `max-h` so opening
+ * one row cannot make the page tall again.
+ */
+function PortalList({ hostnames }: { readonly hostnames: readonly string[] }) {
+  const [open, setOpen] = useState(false);
+  if (hostnames.length === 0) return <span className="text-paper-faint">—</span>;
+  return (
+    <div className="min-w-0">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-label={open ? `Sembunyikan daftar portal` : `Tampilkan daftar ${hostnames.length} portal`}
+        className="inline-flex items-center gap-1 rounded border border-hairline-strong bg-bg-raised px-1.5 py-0.5 font-mono text-[11px] tabular-nums text-paper-dim transition-colors hover:border-brass hover:text-brass focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass"
+      >
+        {hostnames.length} portal
+        <ChevronDown className={`h-3 w-3 flex-none transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+      </button>
+      {open ? (
+        <div className="mt-1.5 max-h-40 overflow-y-auto rounded border border-hairline bg-bg p-1.5">
+          <ul className="m-0 grid list-none grid-cols-1 gap-x-3 gap-y-0.5 p-0 sm:grid-cols-2">
+            {hostnames.map((hostname) => (
+              <li key={hostname} className="truncate font-mono text-[10px] leading-relaxed text-paper-dim">{hostname}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 /**
@@ -206,10 +244,9 @@ export function ArticleArchive({ data }: { readonly data: unknown }) {
             <TableCaption className="sr-only">Arsip artikel lintas portal</TableCaption>
             <TableHeader>
               <TableRow className="border-b border-hairline hover:bg-transparent">
-                <TableHead className="px-2 py-2 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">Judul</TableHead>
-                <TableHead className="hidden px-2 py-2 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint lg:table-cell lg:w-32">Portal</TableHead>
+                <TableHead className="px-2 py-2 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint">Judul &amp; portal</TableHead>
                 <TableHead className="hidden px-2 py-2 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint lg:table-cell lg:w-28">Kategori</TableHead>
-                <TableHead className="hidden px-2 py-2 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint lg:table-cell lg:w-32">Tag</TableHead>
+                <TableHead className="hidden px-2 py-2 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint lg:table-cell lg:w-40">Tag</TableHead>
                 <TableHead className="w-16 px-2 py-2 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint sm:w-20">Status</TableHead>
                 <TableHead className="hidden px-2 py-2 font-mono text-[11px] font-medium uppercase tracking-wider text-paper-faint sm:table-cell sm:w-24">Terbit</TableHead>
               </TableRow>
@@ -224,19 +261,21 @@ export function ArticleArchive({ data }: { readonly data: unknown }) {
                 return (
                   <TableRow key={article.id} className="border-b border-hairline align-top last:border-0">
                     <TableCell className="min-w-0 whitespace-normal px-2 py-2">
-                      <p className="m-0 break-words font-medium text-paper">{article.title}</p>
+                      <p className="m-0 line-clamp-2 break-words font-medium text-paper">{article.title}</p>
                       <p className="m-0 break-all font-mono text-[11px] text-paper-faint">/{article.slug}</p>
-                      <p className="m-0 mt-1 break-words font-sans text-xs leading-relaxed text-paper-dim lg:hidden">
-                        {portalNames.join(', ') || '—'} · {categoryLabels.join(', ') || '—'}
+                      <div className="mt-1.5">
+                        <PortalList hostnames={portalNames} />
+                      </div>
+                      <p className="m-0 mt-1 break-words font-sans text-xs text-paper-dim lg:hidden">
+                        {categoryLabels.join(', ') || '—'}
                       </p>
                       <p className="m-0 mt-0.5 break-words font-sans text-xs text-paper-faint lg:hidden">
                         {tagLabels}
                         <span className="sm:hidden"> · {formatDate(article.publishedAt)}</span>
                       </p>
                     </TableCell>
-                    <TableCell className="hidden break-words whitespace-normal px-2 py-2 text-paper-dim lg:table-cell">{portalNames.join(', ') || '—'}</TableCell>
                     <TableCell className="hidden break-words whitespace-normal px-2 py-2 text-paper-dim lg:table-cell">{categoryLabels.join(', ') || '—'}</TableCell>
-                    <TableCell className="hidden break-words whitespace-normal px-2 py-2 text-paper-dim lg:table-cell">{tagLabels}</TableCell>
+                    <TableCell className="hidden whitespace-normal px-2 py-2 text-paper-dim lg:table-cell"><p className="m-0 line-clamp-2 break-words">{tagLabels}</p></TableCell>
                     <TableCell className="break-words whitespace-normal px-2 py-2 text-paper-dim">{STATUS_LABELS[article.status] ?? article.status}</TableCell>
                     <TableCell className="hidden whitespace-nowrap px-2 py-2 tabular-nums text-paper-dim sm:table-cell">{formatDate(article.publishedAt)}</TableCell>
                   </TableRow>
