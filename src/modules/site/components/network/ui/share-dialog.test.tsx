@@ -52,4 +52,15 @@ describe('TemplateShareButton', () => {
     });
     expect(await screen.findByText('Tautan tersalin!')).toBeDefined();
   });
+
+  it('menampilkan lima kanal dalam satu baris di semua lebar layar', async () => {
+    render(<TemplateShareButton slug="berita-x" title="Judul X" className="tombol" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Bagikan artikel' }));
+    const list = (await screen.findByRole('dialog')).querySelector('ul');
+    expect(list).not.toBeNull();
+    // Lima kanal dalam lima kolom sejak lebar terkecil: `grid-cols-3 sm:grid-cols-5`
+    // membelahnya 3 + 2 menjadi dua baris di ponsel.
+    expect(list?.className).toContain('grid-cols-5');
+    expect(list?.className).not.toContain('grid-cols-3');
+  });
 });

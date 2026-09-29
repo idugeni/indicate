@@ -105,7 +105,7 @@ export function TemplateShareButton({ slug, title, className }: TemplateShareBut
               {title}
             </DialogDescription>
           </div>
-          <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0 sm:grid-cols-5">
+          <ul className="m-0 grid list-none grid-cols-5 gap-1 p-0 sm:gap-2">
             {channels.map(({ label, href, Icon, circle }) => (
               <li key={label} className="m-0 min-w-0 p-0">
                 <a
@@ -114,7 +114,7 @@ export function TemplateShareButton({ slug, title, className }: TemplateShareBut
                   rel={href.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
                   aria-label={`Bagikan ke ${label}`}
                   title={`Bagikan ke ${label}`}
-                  className="group flex min-w-0 flex-col items-center gap-1.5 rounded-xl px-1 py-3 font-sans text-[11px] font-semibold text-[var(--tpl-muted,#475569)] transition-colors hover:bg-[var(--tpl-primary-soft,#e8f0fe)] hover:text-[var(--tpl-primary,#1a5fd0)]"
+                  className="group flex min-w-0 flex-col items-center gap-1 rounded-xl px-0.5 py-3 font-sans text-[10px] font-semibold text-[var(--tpl-muted,#475569)] transition-colors hover:bg-[var(--tpl-primary-soft,#e8f0fe)] hover:text-[var(--tpl-primary,#1a5fd0)] sm:gap-1.5 sm:px-1 sm:text-[11px]"
                 >
                   <span className={`flex h-10 w-10 items-center justify-center rounded-full text-white transition-colors ${circle}`}>
                     <Icon className="h-4 w-4" aria-hidden="true" />
