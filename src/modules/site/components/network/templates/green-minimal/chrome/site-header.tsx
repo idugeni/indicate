@@ -5,7 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GreenMinimalHeaderBar } from '@/modules/site/components/network/templates/green-minimal/chrome/header-bar';
 import { GreenMinimalTopBar } from '@/modules/site/components/network/templates/green-minimal/chrome/top-bar';
 import { GreenMinimalDesktopNav, GreenMinimalMobileNav } from '@/modules/site/components/network/templates/green-minimal/chrome/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/templates/green-minimal/server/site-nav';
+import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
  * 3-column navbar: [brand as needed | flexible menu | actions as needed].

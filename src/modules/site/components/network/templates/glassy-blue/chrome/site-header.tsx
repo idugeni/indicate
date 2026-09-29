@@ -5,7 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GlassyBlueHeaderBar } from '@/modules/site/components/network/templates/glassy-blue/chrome/header-bar';
 import { GlassyBlueTopBar } from '@/modules/site/components/network/templates/glassy-blue/chrome/top-bar';
 import { GlassyBlueDesktopNav, GlassyBlueMobileNav } from '@/modules/site/components/network/templates/glassy-blue/chrome/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/templates/glassy-blue/server/site-nav';
+import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
  * 3-column navbar: [brand as needed | flexible menu | actions as needed].

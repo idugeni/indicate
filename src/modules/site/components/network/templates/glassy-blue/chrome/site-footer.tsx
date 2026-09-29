@@ -5,7 +5,7 @@ import { Rss } from 'lucide-react';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { COMPANY_NAME, SOCIAL_ORDER } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
-import { getSiteCategoryNav } from '@/modules/site/components/network/templates/glassy-blue/server/site-nav';
+import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 import { GlassyBlueStoreBadges } from '@/modules/site/components/network/templates/glassy-blue/chrome/store-badges';
 
 const ABOUT_LINKS = [

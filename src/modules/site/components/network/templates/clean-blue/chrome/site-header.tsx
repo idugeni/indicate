@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { CleanBlueHeaderBar } from '@/modules/site/components/network/templates/clean-blue/chrome/header-bar';
 import { CleanBlueDesktopNav, CleanBlueMobileNav } from '@/modules/site/components/network/templates/clean-blue/chrome/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/templates/clean-blue/server/site-nav';
+import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
  * 3-column navbar: [brand as needed | flexible menu | actions as needed].

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimeHeaderBar } from '@/modules/site/components/network/templates/black-lime/chrome/header-bar';
 import { BlackLimeDesktopNav, BlackLimeMobileNav } from '@/modules/site/components/network/templates/black-lime/chrome/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/templates/black-lime/server/site-nav';
+import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
  * 3-column navbar: [brand as needed | flexible menu | actions as needed].

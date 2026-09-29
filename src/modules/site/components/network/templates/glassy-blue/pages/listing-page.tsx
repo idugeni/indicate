@@ -12,7 +12,7 @@ import { GlassyBlueJsonLd } from '@/modules/site/components/network/templates/gl
 import { GlassyBlueContainer } from '@/modules/site/components/network/templates/glassy-blue/ui/container';
 import { GlassyBlueEmpty } from '@/modules/site/components/network/templates/glassy-blue/ui/empty';
 import { GlassyBlueStatusLine } from '@/modules/site/components/network/templates/glassy-blue/ui/status-line';
-import { getSiteCategoryNav } from '@/modules/site/components/network/templates/glassy-blue/server/site-nav';
+import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 export interface ListingProps {
   readonly site: NetworkSiteData;

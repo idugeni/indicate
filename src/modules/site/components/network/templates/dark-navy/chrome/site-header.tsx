@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { DarkNavyHeaderBar } from '@/modules/site/components/network/templates/dark-navy/chrome/header-bar';
 import { DarkNavyDesktopNav, DarkNavyMobileNav } from '@/modules/site/components/network/templates/dark-navy/chrome/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/templates/dark-navy/server/site-nav';
+import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
  * 3-column navbar: [brand as needed | flexible menu | actions as needed].

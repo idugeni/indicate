@@ -5,7 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { WarmEditorialHeaderBar } from '@/modules/site/components/network/templates/warm-editorial/chrome/header-bar';
 import { WarmEditorialTopBar } from '@/modules/site/components/network/templates/warm-editorial/chrome/top-bar';
 import { WarmEditorialDesktopNav, WarmEditorialMobileNav } from '@/modules/site/components/network/templates/warm-editorial/chrome/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/templates/warm-editorial/server/site-nav';
+import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
  * 3-column navbar: [brand as needed | flexible menu | actions as needed].

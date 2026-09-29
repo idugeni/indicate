@@ -5,7 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { PurpleEditorialHeaderBar } from '@/modules/site/components/network/templates/purple-editorial/chrome/header-bar';
 import { PurpleEditorialTopBar } from '@/modules/site/components/network/templates/purple-editorial/chrome/top-bar';
 import { PurpleEditorialDesktopNav, PurpleEditorialMobileNav } from '@/modules/site/components/network/templates/purple-editorial/chrome/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/templates/purple-editorial/server/site-nav';
+import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
  * 3-column navbar: [brand as needed | flexible menu | actions as needed].

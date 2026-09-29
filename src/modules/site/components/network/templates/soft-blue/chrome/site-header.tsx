@@ -5,7 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBlueHeaderBar } from '@/modules/site/components/network/templates/soft-blue/chrome/header-bar';
 import { SoftBlueTopBar } from '@/modules/site/components/network/templates/soft-blue/chrome/top-bar';
 import { SoftBlueDesktopNav, SoftBlueMobileNav } from '@/modules/site/components/network/templates/soft-blue/chrome/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/templates/soft-blue/server/site-nav';
+import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
  * 3-column navbar: [brand as needed | flexible menu | actions as needed].

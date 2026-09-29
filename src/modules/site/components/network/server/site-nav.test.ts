@@ -6,7 +6,7 @@ vi.mock('@/modules/delivery', () => ({
 }));
 
 import { makeNetworkArticle, makeNetworkSite } from '@/modules/delivery/network-test-fixtures';
-import { getSiteCategoryNav } from '@/modules/site/components/network/templates/red-editorial/server/site-nav';
+import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 describe('getSiteCategoryNav', () => {
   it('memakai navigasi eksplisit situs apa adanya', async () => {

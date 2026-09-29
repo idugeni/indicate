@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { RedEditorialHeaderBar } from '@/modules/site/components/network/templates/red-editorial/chrome/header-bar';
 import { RedEditorialDesktopNav, RedEditorialMobileNav } from '@/modules/site/components/network/templates/red-editorial/chrome/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/templates/red-editorial/server/site-nav';
+import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
  * 3-column navbar: [brand as needed | flexible menu | actions as needed].

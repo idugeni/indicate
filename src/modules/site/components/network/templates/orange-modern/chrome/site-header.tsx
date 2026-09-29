@@ -5,7 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { OrangeModernHeaderBar } from '@/modules/site/components/network/templates/orange-modern/chrome/header-bar';
 import { OrangeModernTopBar } from '@/modules/site/components/network/templates/orange-modern/chrome/top-bar';
 import { OrangeModernDesktopNav, OrangeModernMobileNav } from '@/modules/site/components/network/templates/orange-modern/chrome/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/templates/orange-modern/server/site-nav';
+import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
  * 3-column navbar: [brand as needed | flexible menu | actions as needed].
