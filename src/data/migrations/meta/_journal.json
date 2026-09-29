@@ -1548,6 +1548,48 @@
       "when": 1790730000000,
       "tag": "20260930020000_archive_unreferenced_inline_media",
       "breakpoints": true
+    },
+    {
+      "idx": 221,
+      "version": "7",
+      "when": 1790733600000,
+      "tag": "20260930030000_ai_control_plane",
+      "breakpoints": true
+    },
+    {
+      "idx": 222,
+      "version": "7",
+      "when": 1790737200000,
+      "tag": "20260930040000_ai_manage_permission",
+      "breakpoints": true
+    },
+    {
+      "idx": 223,
+      "version": "7",
+      "when": 1790740800000,
+      "tag": "20260930050000_document_embeddings",
+      "breakpoints": true
+    },
+    {
+      "idx": 224,
+      "version": "7",
+      "when": 1790744400000,
+      "tag": "20260930060000_ai_semantic_cache",
+      "breakpoints": true
+    },
+    {
+      "idx": 225,
+      "version": "7",
+      "when": 1790748000000,
+      "tag": "20260930070000_document_embeddings_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 226,
+      "version": "7",
+      "when": 1790751600000,
+      "tag": "20260930080000_ai_request_logs_org",
+      "breakpoints": true
     }
   ]
 }

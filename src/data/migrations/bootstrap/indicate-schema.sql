@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (221 migrations):
+-- Reviewed sources, in journal order (227 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -235,6 +235,12 @@
 --   219  20260929010000_articles_slug_shape  ledger sha256:362cf39c9d2359143a1e82b9e2b26564339a05b4b870af28d74809ff93224f87
 --   220  20260930010000_drop_ops_backup_site_settings_seo  ledger sha256:56fea97d09427649672f23028d69f611378466fd8714524b271069474c5e5b33
 --   221  20260930020000_archive_unreferenced_inline_media  ledger sha256:305afb64d28fb8112a3de58b165c973fd2dac3d77868a18b4834d6e3e1defd67
+--   222  20260930030000_ai_control_plane  ledger sha256:1ffd283f10e01b5737ba0dc99c8ce6d84c8611cbd6984d7c26bb4f26f31ae69d
+--   223  20260930040000_ai_manage_permission  ledger sha256:4d076bdcd3d4b34672b8e25ac24076d87d366ca59da33d67c184555dcd7ef056
+--   224  20260930050000_document_embeddings  ledger sha256:3d7d0d82e6454a748fd47a51874989a07e8d20a9bf589bda9ac39f31bb925f46
+--   225  20260930060000_ai_semantic_cache  ledger sha256:d28016b202bb62315f0def183375be53067f3e6dc4a67e85c269760e9f3bdff2
+--   226  20260930070000_document_embeddings_hardening  ledger sha256:2ac32c05b65c462a1146d8da1d96922d5a9bc8f50943499be65a15d3a0d861a4
+--   227  20260930080000_ai_request_logs_org  ledger sha256:a1caffd3b6ce1f3c9ae69d7454d0cd2a439ae04882ce75c5ae1bacdfd4d96407
 
 BEGIN;
 
@@ -18769,4 +18775,446 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (221, 'archive_unreferenced_inline_media', 'sha256:0fb6ff7775331a58fb0d2570128e184aef93892c222e4288ac7b4c474a83125d');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('305afb64d28fb8112a3de58b165c973fd2dac3d77868a18b4834d6e3e1defd67', 1790730000000);
+
+-- ----------------------------------------------------------------------
+-- 20260930030000_ai_control_plane
+-- ----------------------------------------------------------------------
+-- Fase 0: AI control-plane schema (full-DB, no new env).
+--
+-- Seven tables reverse-modelled from the reference AI pool (credential records
+-- with health telemetry, rotation policy, model directory, request telemetry,
+-- insight triage, DB-only master secret):
+--   ai_providers, ai_models, ai_credentials, ai_routing_policies,
+--   ai_request_logs (append-only), ai_query_insights, ai_master_secrets.
+-- ai_credentials.organization_id NULL means a platform-global pooled key.
+--
+-- Envelope is AES-256 via pgcrypto OpenPGP (`pgp_sym_encrypt`), keyed by the
+-- single active ai_master_secrets row. The application never reads that row:
+-- only indicate_private.encrypt_ai_key / decrypt_ai_key (SECURITY DEFINER,
+-- EXECUTE to indicate_runtime) touch it, and the table carries no policy and
+-- no grant, so every other role is denied by default. No master value is
+-- seeded here; provisioning happens out of band and both functions fail closed
+-- while no active row exists.
+--
+-- ai_request_logs is insert-only: SELECT + INSERT policies and grants only, no
+-- UPDATE or DELETE anywhere. The remaining five tables follow the internal
+-- config pattern (sole runtime_accessor policy TO indicate_runtime). Seeds
+-- below hold no secrets: one provider, the model directory, and the default
+-- rotation row, all ON CONFLICT DO NOTHING for replay safety.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+DO $extension$
+BEGIN
+  BEGIN
+    EXECUTE 'CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions';
+  EXCEPTION WHEN OTHERS THEN
+    EXECUTE 'CREATE EXTENSION IF NOT EXISTS pgcrypto';
+  END;
+END
+$extension$;
+DO $types$
+BEGIN
+  CREATE TYPE public.ai_credential_status AS ENUM ('active', 'inactive', 'disabled', 'exhausted', 'invalid', 'cooldown');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END
+$types$;
+DO $types$
+BEGIN
+  CREATE TYPE public.ai_rotation_strategy AS ENUM ('round_robin', 'random', 'least_used', 'lowest_error_rate', 'priority_based', 'health_aware');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END
+$types$;
+CREATE TABLE IF NOT EXISTS public.ai_providers (
+  id text PRIMARY KEY,
+  name text NOT NULL,
+  description text NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  is_primary boolean NOT NULL DEFAULT false,
+  priority integer NOT NULL DEFAULT 100,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ai_providers_priority_nonnegative CHECK (priority >= 0)
+);
+CREATE TABLE IF NOT EXISTS public.ai_models (
+  id text PRIMARY KEY,
+  provider_id text NOT NULL REFERENCES public.ai_providers(id) ON DELETE RESTRICT,
+  model_name text NOT NULL,
+  display_name text NOT NULL,
+  description text NULL,
+  context_window integer NOT NULL,
+  input_token_limit integer NULL,
+  output_token_limit integer NULL,
+  supported_modalities text[] NOT NULL,
+  release_stage text NULL,
+  rpm_limit integer NULL,
+  tpm_limit integer NULL,
+  rpd_limit integer NULL,
+  task_recommendation text NULL,
+  supports_tools boolean NOT NULL DEFAULT false,
+  supports_vision boolean NOT NULL DEFAULT false,
+  is_default boolean NOT NULL DEFAULT false,
+  is_active boolean NOT NULL DEFAULT true,
+  priority integer NOT NULL DEFAULT 100,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ai_models_provider_model_unique UNIQUE (provider_id, model_name),
+  CONSTRAINT ai_models_window_positive CHECK (context_window > 0),
+  CONSTRAINT ai_models_priority_nonnegative CHECK (priority >= 0)
+);
+CREATE TABLE IF NOT EXISTS public.ai_credentials (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  provider_id text NOT NULL REFERENCES public.ai_providers(id) ON DELETE RESTRICT,
+  label text NOT NULL,
+  key_encrypted text NOT NULL,
+  key_masked text NOT NULL,
+  status public.ai_credential_status NOT NULL DEFAULT 'active',
+  priority integer NOT NULL DEFAULT 1,
+  weight integer NOT NULL DEFAULT 100,
+  cooldown_until timestamp with time zone NULL,
+  last_used_at timestamp with time zone NULL,
+  last_success_at timestamp with time zone NULL,
+  last_failure_at timestamp with time zone NULL,
+  last_error_message text NULL,
+  last_error_class text NULL,
+  total_requests integer NOT NULL DEFAULT 0,
+  successful_requests integer NOT NULL DEFAULT 0,
+  failed_requests integer NOT NULL DEFAULT 0,
+  rate_limit_count integer NOT NULL DEFAULT 0,
+  quota_exhausted_count integer NOT NULL DEFAULT 0,
+  avg_latency_ms integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ai_credentials_label_length CHECK (length(label) BETWEEN 1 AND 200),
+  CONSTRAINT ai_credentials_priority_positive CHECK (priority >= 1),
+  CONSTRAINT ai_credentials_weight_nonnegative CHECK (weight >= 0),
+  CONSTRAINT ai_credentials_counters_nonnegative CHECK (total_requests >= 0 AND successful_requests >= 0 AND failed_requests >= 0 AND rate_limit_count >= 0 AND quota_exhausted_count >= 0 AND avg_latency_ms >= 0)
+);
+CREATE TABLE IF NOT EXISTS public.ai_routing_policies (
+  id text PRIMARY KEY,
+  rotation_strategy public.ai_rotation_strategy NOT NULL DEFAULT 'health_aware',
+  primary_provider_id text NULL REFERENCES public.ai_providers(id) ON DELETE RESTRICT,
+  fallback_provider_id text NULL REFERENCES public.ai_providers(id) ON DELETE RESTRICT,
+  default_model text NOT NULL,
+  fallback_model text NOT NULL,
+  max_retries integer NOT NULL DEFAULT 5,
+  per_key_retry_limit integer NOT NULL DEFAULT 2,
+  cooldown_duration_sec integer NOT NULL DEFAULT 60,
+  request_timeout_ms integer NOT NULL DEFAULT 60000,
+  global_concurrency_limit integer NOT NULL DEFAULT 100,
+  version integer NOT NULL DEFAULT 1,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ai_routing_policies_singleton CHECK (id = 'default'),
+  CONSTRAINT ai_routing_policies_retry_bounds CHECK (max_retries BETWEEN 1 AND 10 AND per_key_retry_limit BETWEEN 1 AND 5),
+  CONSTRAINT ai_routing_policies_cooldown_bounds CHECK (cooldown_duration_sec BETWEEN 10 AND 3600),
+  CONSTRAINT ai_routing_policies_timeout_bounds CHECK (request_timeout_ms BETWEEN 1000 AND 300000),
+  CONSTRAINT ai_routing_policies_concurrency_bounds CHECK (global_concurrency_limit BETWEEN 1 AND 1000),
+  CONSTRAINT ai_routing_policies_version_positive CHECK (version > 0)
+);
+CREATE TABLE IF NOT EXISTS public.ai_request_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  correlation_id text NULL,
+  channel text NOT NULL DEFAULT 'web',
+  provider_id text NOT NULL,
+  model_name text NOT NULL,
+  credential_id uuid NULL REFERENCES public.ai_credentials(id) ON DELETE SET NULL,
+  status text NOT NULL,
+  retry_count integer NOT NULL DEFAULT 0,
+  latency_ms integer NOT NULL DEFAULT 0,
+  prompt_tokens integer NOT NULL DEFAULT 0,
+  completion_tokens integer NOT NULL DEFAULT 0,
+  total_tokens integer NOT NULL DEFAULT 0,
+  tools_executed text[] NULL,
+  error_class text NULL,
+  error_message text NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ai_request_logs_status_known CHECK (status IN ('success', 'failed', 'blocked')),
+  CONSTRAINT ai_request_logs_counters_nonnegative CHECK (retry_count >= 0 AND latency_ms >= 0 AND prompt_tokens >= 0 AND completion_tokens >= 0 AND total_tokens >= 0)
+);
+CREATE TABLE IF NOT EXISTS public.ai_query_insights (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  query text NOT NULL,
+  channel text NOT NULL DEFAULT 'web',
+  status text NOT NULL DEFAULT 'open',
+  feedback_reason text NULL,
+  model_used text NULL,
+  suggested_action text NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ai_query_insights_query_length CHECK (length(query) BETWEEN 1 AND 1000)
+);
+CREATE TABLE IF NOT EXISTS public.ai_master_secrets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  secret text NOT NULL,
+  version integer NOT NULL DEFAULT 1,
+  is_active boolean NOT NULL DEFAULT true,
+  rotated_at timestamp with time zone NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ai_master_secrets_secret_length CHECK (length(secret) >= 32),
+  CONSTRAINT ai_master_secrets_version_positive CHECK (version > 0)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ai_master_secrets_single_active_unique ON public.ai_master_secrets (is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS ai_models_provider_idx ON public.ai_models (provider_id);
+CREATE INDEX IF NOT EXISTS ai_credentials_provider_status_priority_idx ON public.ai_credentials (provider_id, status, priority);
+CREATE INDEX IF NOT EXISTS ai_credentials_cooldown_idx ON public.ai_credentials (cooldown_until);
+CREATE INDEX IF NOT EXISTS ai_credentials_org_provider_idx ON public.ai_credentials (organization_id, provider_id);
+CREATE INDEX IF NOT EXISTS ai_request_logs_created_status_idx ON public.ai_request_logs (created_at, status);
+CREATE INDEX IF NOT EXISTS ai_request_logs_credential_idx ON public.ai_request_logs (credential_id);
+CREATE INDEX IF NOT EXISTS ai_query_insights_created_idx ON public.ai_query_insights (created_at);
+CREATE INDEX IF NOT EXISTS ai_query_insights_status_idx ON public.ai_query_insights (status);
+INSERT INTO public.ai_providers (id, name, description, is_active, is_primary, priority, created_at, updated_at)
+VALUES ('gemini', 'Google Gemini', 'Google AI Studio generative models', true, true, 1, now(), now())
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.ai_models (id, provider_id, model_name, display_name, description, context_window, output_token_limit, supported_modalities, rpm_limit, tpm_limit, task_recommendation, supports_tools, supports_vision, is_default, is_active, priority, created_at, updated_at)
+VALUES
+  ('gemini-3.7-flash', 'gemini', 'gemini-3.7-flash', 'Gemini 3.7 Flash', 'Heavy regulatory analysis and hybrid reasoning', 2097152, 65536, ARRAY['text'], 15, 1000000, 'heavy analysis', true, true, false, true, 30, now(), now()),
+  ('gemini-3.6-flash', 'gemini', 'gemini-3.6-flash', 'Gemini 3.6 Flash', 'Default public chat workhorse', 1048576, 65536, ARRAY['text'], 15, 1000000, 'default chat', true, true, true, true, 10, now(), now()),
+  ('gemini-2.5-pro', 'gemini', 'gemini-2.5-pro', 'Gemini 2.5 Pro', 'Annual document deep dives', 2097152, 65536, ARRAY['text'], 2, 32000, 'document review', true, true, false, true, 40, now(), now()),
+  ('gemini-2.5-flash', 'gemini', 'gemini-2.5-flash', 'Gemini 2.5 Flash', 'Secondary failover engine', 1048576, 65536, ARRAY['text'], 15, 1000000, 'failover', true, true, false, true, 20, now(), now()),
+  ('gemini-3.1-flash-lite', 'gemini', 'gemini-3.1-flash-lite', 'Gemini 3.1 Flash-Lite', 'Metadata extraction and auto-tagging', 1048576, 65536, ARRAY['text'], 30, 2000000, 'extraction', true, true, false, true, 50, now(), now()),
+  ('deep-research-preview', 'gemini', 'deep-research-preview', 'Deep Research Agent', 'Autonomous complaint investigation research', 1048576, 65536, ARRAY['text'], 5, 200000, 'research', true, false, false, true, 60, now(), now()),
+  ('gemini-embedding-2', 'gemini', 'gemini-embedding-2', 'Gemini Embedding 2', 'Multimodal vector embedding', 8192, NULL, ARRAY['text', 'image'], 60, 5000000, 'embeddings', false, false, false, true, 70, now(), now())
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.ai_routing_policies (id, rotation_strategy, primary_provider_id, fallback_provider_id, default_model, fallback_model, max_retries, per_key_retry_limit, cooldown_duration_sec, request_timeout_ms, global_concurrency_limit, version, updated_at)
+VALUES ('default', 'health_aware', 'gemini', NULL, 'gemini-2.5-flash', 'gemini-2.5-flash', 5, 2, 60, 60000, 100, 1, now())
+ON CONFLICT (id) DO NOTHING;
+ALTER TABLE public.ai_providers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_providers FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS runtime_accessor ON public.ai_providers;
+CREATE POLICY runtime_accessor ON public.ai_providers FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.ai_providers FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_providers TO indicate_runtime;
+ALTER TABLE public.ai_models ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_models FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS runtime_accessor ON public.ai_models;
+CREATE POLICY runtime_accessor ON public.ai_models FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.ai_models FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_models TO indicate_runtime;
+ALTER TABLE public.ai_credentials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_credentials FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS runtime_accessor ON public.ai_credentials;
+CREATE POLICY runtime_accessor ON public.ai_credentials FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.ai_credentials FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_credentials TO indicate_runtime;
+ALTER TABLE public.ai_routing_policies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_routing_policies FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS runtime_accessor ON public.ai_routing_policies;
+CREATE POLICY runtime_accessor ON public.ai_routing_policies FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.ai_routing_policies FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_routing_policies TO indicate_runtime;
+ALTER TABLE public.ai_request_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_request_logs FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS runtime_insert ON public.ai_request_logs;
+CREATE POLICY runtime_insert ON public.ai_request_logs FOR INSERT TO indicate_runtime WITH CHECK (true);
+DROP POLICY IF EXISTS runtime_select ON public.ai_request_logs;
+CREATE POLICY runtime_select ON public.ai_request_logs FOR SELECT TO indicate_runtime USING (true);
+REVOKE ALL ON public.ai_request_logs FROM PUBLIC;
+GRANT SELECT, INSERT ON public.ai_request_logs TO indicate_runtime;
+ALTER TABLE public.ai_query_insights ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_query_insights FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS runtime_accessor ON public.ai_query_insights;
+CREATE POLICY runtime_accessor ON public.ai_query_insights FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.ai_query_insights FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_query_insights TO indicate_runtime;
+ALTER TABLE public.ai_master_secrets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_master_secrets FORCE ROW LEVEL SECURITY;
+REVOKE ALL ON public.ai_master_secrets FROM PUBLIC;
+CREATE OR REPLACE FUNCTION indicate_private.encrypt_ai_key(p_plain text)
+RETURNS text
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_master text;
+BEGIN
+  IF p_plain IS NULL OR p_plain = '' THEN
+    RETURN '';
+  END IF;
+  SELECT secret INTO v_master FROM public.ai_master_secrets WHERE is_active = true ORDER BY version DESC LIMIT 1;
+  IF v_master IS NULL THEN
+    RAISE EXCEPTION 'ai master secret not provisioned' USING ERRCODE = '42501';
+  END IF;
+  RETURN encode(pgp_sym_encrypt(p_plain, v_master), 'base64');
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.encrypt_ai_key(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.encrypt_ai_key(text) TO indicate_runtime;
+CREATE OR REPLACE FUNCTION indicate_private.decrypt_ai_key(p_cipher text)
+RETURNS text
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_master text;
+BEGIN
+  IF p_cipher IS NULL OR p_cipher = '' THEN
+    RETURN '';
+  END IF;
+  SELECT secret INTO v_master FROM public.ai_master_secrets WHERE is_active = true ORDER BY version DESC LIMIT 1;
+  IF v_master IS NULL THEN
+    RAISE EXCEPTION 'ai master secret not provisioned' USING ERRCODE = '42501';
+  END IF;
+  RETURN pgp_sym_decrypt(decode(p_cipher, 'base64'), v_master)::text;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.decrypt_ai_key(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.decrypt_ai_key(text) TO indicate_runtime;
+DO $touch$
+DECLARE target record;
+BEGIN
+  FOR target IN
+    SELECT columns.table_name AS name
+      FROM information_schema.columns
+      JOIN information_schema.tables
+        ON tables.table_schema = columns.table_schema
+       AND tables.table_name = columns.table_name
+     WHERE columns.table_schema = 'public'
+       AND columns.column_name = 'updated_at'
+       AND tables.table_type = 'BASE TABLE'
+       AND columns.table_name LIKE 'ai\_%'
+     ORDER BY columns.table_name
+  LOOP
+    EXECUTE format(
+      'CREATE OR REPLACE TRIGGER %I BEFORE UPDATE ON public.%I FOR EACH ROW WHEN ((old.* IS DISTINCT FROM new.*)) EXECUTE FUNCTION indicate_private.touch_updated_at()',
+      left(target.name || '_touch_updated_at', 63),
+      target.name
+    );
+  END LOOP;
+END
+$touch$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (222, 'ai_control_plane', 'sha256:dcd23fc402dc8819ed56c97b6a263302d6d322006b0d6ee5c8e8b3c8360afc14');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('1ffd283f10e01b5737ba0dc99c8ce6d84c8611cbd6984d7c26bb4f26f31ae69d', 1790733600000);
+
+-- ----------------------------------------------------------------------
+-- 20260930040000_ai_manage_permission
+-- ----------------------------------------------------------------------
+-- Seed the platform AI grant for the dashboard AI Control Plane view.
+-- Forward-only; replay-safe via ON CONFLICT DO NOTHING. Grants to platform
+-- roles happen through the existing role-permission assignment flow.
+
+INSERT INTO public.permissions(id, organization_id, name, scope, description)
+VALUES ('00000000-0000-4000-8000-000000006004', NULL, 'platform.ai.manage', 'platform', 'Manage AI assistant credentials and routing policy')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4d076bdcd3d4b34672b8e25ac24076d87d366ca59da33d67c184555dcd7ef056', 1790737200000);
+
+-- ----------------------------------------------------------------------
+-- 20260930050000_document_embeddings
+-- ----------------------------------------------------------------------
+-- Document embeddings untuk pencarian semantik arsip (rancangan bertahap dasbor AI).
+-- ai_request_logs sudah milik control plane (src/data/schema/ai.ts) dan tidak dibuat ulang di sini.
+-- Embedding disimpan jsonb agar tidak bergantung ekstensi pgvector; migrasi ke vector
+-- menyusul bersama transport embedding bila control plane menyediakannya.
+-- Diterapkan manual sesuai docs/migrations.md; entri _journal menyusul.
+
+CREATE TABLE IF NOT EXISTS document_embeddings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE RESTRICT,
+  article_id uuid NULL,
+  chunk text NOT NULL,
+  embedding jsonb NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT document_embeddings_chunk_nonempty CHECK (char_length(chunk) BETWEEN 1 AND 2000)
+);
+
+CREATE INDEX IF NOT EXISTS document_embeddings_org_article_idx
+  ON document_embeddings (organization_id, article_id);
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('3d7d0d82e6454a748fd47a51874989a07e8d20a9bf589bda9ac39f31bb925f46', 1790740800000);
+
+-- ----------------------------------------------------------------------
+-- 20260930060000_ai_semantic_cache
+-- ----------------------------------------------------------------------
+-- Fase lanjutan: cache semantik respons AI per tenant (full-DB, tanpa env baru).
+--
+-- Satu baris menyimpan satu respons model untuk satu prompt yang dinormalisasi,
+-- dikunci oleh sha256 hex (prompt ternormalisasi + nama model) di `prompt_hash`.
+-- `organization_id` NULL menandai entri global bersama; baris tenant hanya boleh
+-- dibaca lewat filter aplikasi `(organization_id IS NULL OR organization_id = $org)`
+-- di `src/modules/ai/ai-semantic-cache.ts`, sejajar dengan pola kredensial global
+-- di `20260930030000_ai_control_plane.sql`. Vektor embedding menyusul bersama
+-- transport embedding; kolom ini hanya menyimpan teks respons agar arsip ILIKE
+-- dan cache hit tidak bergantung ekstensi pgvector.
+-- Tanpa secrets: hanya teks respons yang sudah diredaksi yang disimpan.
+CREATE TABLE IF NOT EXISTS public.ai_semantic_cache (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  model_name text NOT NULL,
+  prompt_hash text NOT NULL,
+  prompt_prefix text NOT NULL,
+  response_text text NOT NULL,
+  hits integer NOT NULL DEFAULT 0,
+  expires_at timestamp with time zone NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ai_semantic_cache_model_name_shape CHECK (char_length(model_name) BETWEEN 1 AND 200),
+  CONSTRAINT ai_semantic_cache_prompt_hash_shape CHECK (prompt_hash ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT ai_semantic_cache_prompt_prefix_shape CHECK (char_length(prompt_prefix) BETWEEN 1 AND 300),
+  CONSTRAINT ai_semantic_cache_response_shape CHECK (char_length(response_text) BETWEEN 1 AND 8000),
+  CONSTRAINT ai_semantic_cache_hits_nonnegative CHECK (hits >= 0)
+);
+DO $ai_semantic_cache_unique$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ai_semantic_cache_org_model_hash_unique') THEN
+    ALTER TABLE public.ai_semantic_cache
+      ADD CONSTRAINT ai_semantic_cache_org_model_hash_unique UNIQUE NULLS NOT DISTINCT (organization_id, model_name, prompt_hash);
+  END IF;
+END
+$ai_semantic_cache_unique$;
+CREATE INDEX IF NOT EXISTS ai_semantic_cache_expires_idx ON public.ai_semantic_cache (expires_at);
+ALTER TABLE public.ai_semantic_cache ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_semantic_cache FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS runtime_accessor ON public.ai_semantic_cache;
+CREATE POLICY runtime_accessor ON public.ai_semantic_cache FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.ai_semantic_cache FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_semantic_cache TO indicate_runtime;
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('d28016b202bb62315f0def183375be53067f3e6dc4a67e85c269760e9f3bdff2', 1790744400000);
+
+-- ----------------------------------------------------------------------
+-- 20260930070000_document_embeddings_hardening
+-- ----------------------------------------------------------------------
+-- Hardening document_embeddings tanpa recreate (tabel milik 20260930050000).
+--
+-- Tabel ini menampung potongan artikel per tenant untuk pencarian arsip dasbor AI
+-- (`chunk` ILIKE sebagai fallback sampai transport embedding tiba). Cakupan tenant
+-- ditegakkan di lapisan aplikasi (setiap query memfilter `organization_id`, sejajar
+-- dengan pola kredensial di `20260930030000_ai_control_plane.sql`); RLS di sini
+-- mengikuti pola control plane internal: deny default, satu-satunya akses runtime
+-- lewat policy `runtime_accessor` untuk `indicate_runtime`. Indeks kedua melayani
+-- pola baca arsip (`organization_id` + `created_at DESC`); check panjang chunk
+-- dijaga idempoten via DO block karena 050000 sudah mendefinisikannya.
+ALTER TABLE public.document_embeddings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.document_embeddings FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS runtime_accessor ON public.document_embeddings;
+CREATE POLICY runtime_accessor ON public.document_embeddings FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+REVOKE ALL ON public.document_embeddings FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.document_embeddings TO indicate_runtime;
+CREATE INDEX IF NOT EXISTS document_embeddings_org_created_idx ON public.document_embeddings (organization_id, created_at DESC);
+DO $document_embeddings_chunk_check$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'document_embeddings_chunk_nonempty') THEN
+    ALTER TABLE public.document_embeddings
+      ADD CONSTRAINT document_embeddings_chunk_nonempty CHECK (char_length(chunk) BETWEEN 1 AND 2000);
+  END IF;
+END
+$document_embeddings_chunk_check$;
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2ac32c05b65c462a1146d8da1d96922d5a9bc8f50943499be65a15d3a0d861a4', 1790748000000);
+
+-- ----------------------------------------------------------------------
+-- 20260930080000_ai_request_logs_org
+-- ----------------------------------------------------------------------
+-- Atribusi log request AI per organisasi (full-DB, tanpa env baru).
+--
+-- `ai_request_logs` lahir tanpa `organization_id` di
+-- `20260930030000_ai_control_plane.sql`, sehingga ringkasan token per organisasi
+-- (`getTokenUsageByOrg`) tidak punya kunci agregat. Kolom ini NULL-able agar
+-- insert lama tanpa kolom tetap aman, dan baris pra-migrasi terbaca sebagai grup
+-- global (NULL) di agregat.
+ALTER TABLE public.ai_request_logs
+  ADD COLUMN IF NOT EXISTS organization_id uuid NULL REFERENCES public.organizations(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS ai_request_logs_org_created_idx ON public.ai_request_logs (organization_id, created_at DESC);
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a1caffd3b6ce1f3c9ae69d7454d0cd2a439ae04882ce75c5ae1bacdfd4d96407', 1790751600000);
 COMMIT;

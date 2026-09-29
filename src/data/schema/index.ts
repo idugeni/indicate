@@ -4,3 +4,6 @@ export * from '@/data/schema/operations';
 export * from '@/data/schema/runtime-config';
 export * from '@/data/schema/content';
 export * from '@/data/schema/billing';
+export * from '@/data/schema/ai';
+export * from '@/data/schema/ai-cache';
+export * from '@/data/schema/ai-embeddings';
