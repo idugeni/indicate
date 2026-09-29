@@ -69,8 +69,11 @@ export function BlackLimeMostRead({ articles }: { readonly articles: readonly Ar
                     {article.title}
                   </Link>
                 </h3>
-                <p className="m-0 mt-1 font-sans text-xs tabular-nums text-slate-500">
-                  {formatFullViews(article.viewCount)} pembaca · {readingMinutes(article)} mnt baca
+                <p className="m-0 mt-1 flex flex-wrap items-center gap-x-1.5 font-sans text-xs text-slate-500">
+                  <span className="max-w-full truncate font-bold text-slate-200">{article.attribution}</span>
+                  <span className="tabular-nums">
+                    {formatFullViews(article.viewCount)} pembaca · {readingMinutes(article)} mnt baca
+                  </span>
                 </p>
               </div>
               <Image

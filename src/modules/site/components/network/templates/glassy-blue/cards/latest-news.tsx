@@ -73,6 +73,7 @@ export function GlassyBlueLatestNews({
                   </span>
                   <span className="grid min-w-0 content-center gap-1.5">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1 font-sans text-[11px]">
+                      <span className="max-w-[16rem] truncate font-bold text-slate-800">{article.attribution}</span>
                       {article.categoryName === null ? null : (
                         <span className="rounded-md px-1.5 py-0.5 font-bold" style={badge}>
                           {article.categoryName}
@@ -110,6 +111,9 @@ export function GlassyBlueLatestNews({
                 Perspektif
               </p>
               <h3 className="m-0 font-sans text-2xl font-extrabold leading-tight tracking-tight text-white">
+                <span className="mb-1 block text-xs font-bold uppercase tracking-[0.14em] text-white/80">
+                  {spotlight.attribution}
+                </span>
                 <Link href={spotlight.href} className="hover:underline">
                   {spotlight.title}
                 </Link>

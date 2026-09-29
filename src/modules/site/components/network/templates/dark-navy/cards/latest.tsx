@@ -59,6 +59,7 @@ export function DarkNavyLatest({
               </Link>
               <div className="min-w-0 flex-1">
                 <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 font-sans text-[11px]">
+                  <span className="max-w-[16rem] truncate font-bold text-[#eaf0fb]/80">{article.attribution}</span>
                   {article.categoryName === null ? null : (
                     <span className="inline-block rounded-md px-2 py-0.5 font-bold" style={badge}>
                       {article.categoryName}

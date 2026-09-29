@@ -57,6 +57,7 @@ export function GreenMinimalLatest({
               </Link>
               <div className="min-w-0">
                 <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 font-sans text-[11px] font-bold uppercase tracking-wider">
+                  <span className="max-w-[16rem] truncate normal-case tracking-normal text-slate-800">{article.attribution}</span>
                   {article.categoryName === null ? null : (
                     <span className="text-[#1d7a38]">{article.categoryName}</span>
                   )}

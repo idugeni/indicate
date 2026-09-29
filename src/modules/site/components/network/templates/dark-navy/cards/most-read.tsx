@@ -41,8 +41,11 @@ export function DarkNavyMostRead({ articles }: { readonly articles: readonly Art
                     {article.title}
                   </Link>
                 </h3>
-                <p className="m-0 mt-1 font-sans text-xs tabular-nums text-[#5f6f8c]">
-                  {formatFullViews(article.viewCount)} pembaca · {readingMinutes(article)} mnt baca
+                <p className="m-0 mt-1 flex flex-wrap items-center gap-x-1.5 font-sans text-xs text-[#5f6f8c]">
+                  <span className="max-w-full truncate font-bold text-[#eaf0fb]/80">{article.attribution}</span>
+                  <span className="tabular-nums">
+                    {formatFullViews(article.viewCount)} pembaca · {readingMinutes(article)} mnt baca
+                  </span>
                 </p>
               </div>
               <Image
