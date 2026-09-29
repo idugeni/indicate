@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { groupFaqItems, toFaqGridItems } from '@/modules/site/components/layout/content';
-
 describe('toFaqGridItems', () => {
   it('memakai kategori NULL sebagai Umum', () => {
     const items = toFaqGridItems([{ id: 'a', question: 'Q', answer: 'A', category: null }]);

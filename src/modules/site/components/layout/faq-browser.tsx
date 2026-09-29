@@ -4,12 +4,8 @@ import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 
 import {
-  FaqAccordion,
-  groupFaqItems,
-  slugify,
-  type FaqGridItem,
-} from '@/modules/site/components/layout/content';
-
+  FaqAccordion, groupFaqItems, type FaqGridItem } from '@/modules/site/components/layout/content';
+import { slugify } from '@/modules/site/components/layout/slugify';
 /**
  * Renders topic chips plus the FAQ search box above grouped accordions.
  *

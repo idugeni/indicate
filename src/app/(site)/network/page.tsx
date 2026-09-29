@@ -7,13 +7,7 @@ import { getNetworkSites } from '@/modules/content/site-content';
 import { buildDirectoryJsonLd, groupRegionalByCity, splitSites } from '@/modules/site/components/directory/directory-helpers';
 import { NetworkExplorer } from '@/modules/site/components/directory/network-explorer';
 import {
-  FeatureGrid,
-  HeaderPrimaryCta,
-  HeaderSecondaryCta,
-  Section,
-  StatBand,
-  withIcons,
-} from '@/modules/site/components/layout/content';
+  FeatureGrid, HeaderPrimaryCta, HeaderSecondaryCta, Section, StatBand, withIcons } from '@/modules/site/components/layout/content';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
 const GUIDE_ITEMS = Object.freeze([

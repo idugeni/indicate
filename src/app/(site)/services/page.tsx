@@ -3,18 +3,7 @@ import type { Metadata } from 'next';
 import { CAPABILITIES, GUARANTEES, USE_CASES, VALUE_PROPOSITIONS, WORKFLOW_STEPS } from '@/ui/site/marketing-content';
 import { siteMetadata } from '@/ui/site/metadata-guard';
 import {
-  CAPABILITY_ICONS,
-  CARD_CLASS,
-  FeatureGrid,
-  GUARANTEE_ICONS,
-  HeaderPrimaryCta,
-  HeaderSecondaryCta,
-  ICON_BOX_CLASS,
-  Section,
-  USE_CASE_ICONS,
-  VALUE_ICONS,
-  withIcons,
-} from '@/modules/site/components/layout/content';
+  CAPABILITY_ICONS, CARD_CLASS, FeatureGrid, GUARANTEE_ICONS, HeaderPrimaryCta, HeaderSecondaryCta, ICON_BOX_CLASS, Section, USE_CASE_ICONS, VALUE_ICONS, withIcons } from '@/modules/site/components/layout/content';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
 const DESCRIPTION =

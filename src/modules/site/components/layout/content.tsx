@@ -49,6 +49,8 @@ import {
 } from '@/components/ui/accordion';
 import type { NavigationLink } from '@/ui/site/marketing-content';
 import { cn } from '@/ui/cn';
+import type { DocSectionItem } from '@/modules/site/components/layout/doc-section';
+import { slugify } from '@/modules/site/components/layout/slugify';
 
 /** Single public content width (max-w-6xl); text rhythm lives in typography. */
 export function Container({
@@ -64,14 +66,6 @@ export function Container({
       {children}
     </div>
   );
-}
-
-export function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9\u00C0-\u024F\s-]/gu, '')
-    .trim()
-    .replace(/[\s-]+/g, '-');
 }
 
 export const CARD_CLASS =
@@ -485,11 +479,6 @@ export function FeatureGrid({
       {children}
     </div>
   );
-}
-
-export interface DocSectionItem {
-  readonly heading: string;
-  readonly body: string;
 }
 
 /**

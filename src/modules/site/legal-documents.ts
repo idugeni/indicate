@@ -1,4 +1,4 @@
-import type { DocSectionItem } from '@/modules/site/components/layout/content';
+import type { DocSectionItem } from '@/modules/site/components/layout/doc-section';
 import { PRIVACY_SECTIONS, TERMS_SECTIONS } from '@/ui/site/marketing-content';
 
 export interface TenantLegalDoc {

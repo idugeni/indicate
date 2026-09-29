@@ -3,15 +3,7 @@ import type { Metadata } from 'next';
 import { ABOUT_PRINCIPLES, ABOUT_STORY, SERVICE_SUMMARY } from '@/ui/site/marketing-content';
 import { siteMetadata } from '@/ui/site/metadata-guard';
 import {
-  FeatureGrid,
-  HeaderPrimaryCta,
-  HeaderSecondaryCta,
-  PRINCIPLE_ICONS,
-  Prose,
-  Section,
-  StatBand,
-  withIcons,
-} from '@/modules/site/components/layout/content';
+  FeatureGrid, HeaderPrimaryCta, HeaderSecondaryCta, PRINCIPLE_ICONS, Prose, Section, StatBand, withIcons } from '@/modules/site/components/layout/content';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
 const DESCRIPTION =

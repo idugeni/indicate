@@ -5,12 +5,7 @@ import { siteMetadata } from '@/ui/site/metadata-guard';
 import { getPartnerOrganizations } from '@/modules/content/site-content';
 import { PartnersExplorer } from '@/modules/site/components/directory/partners-explorer';
 import {
-  HeaderPrimaryCta,
-  HeaderSecondaryCta,
-  PrimaryCta,
-  SecondaryCta,
-  Section,
-} from '@/modules/site/components/layout/content';
+  HeaderPrimaryCta, HeaderSecondaryCta, PrimaryCta, SecondaryCta, Section } from '@/modules/site/components/layout/content';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
 const DESCRIPTION =

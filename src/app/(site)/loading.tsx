@@ -1,7 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { Container } from '@/modules/site/components/layout/content';
-
 /**
  * Site suspense skeleton (page content only; SiteShell comes from the group layout).
  * Full-viewport overlay: Next holds the scroll position during pending navigation, so

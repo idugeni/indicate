@@ -4,16 +4,7 @@ import { getContactChannels, getFaqs } from '@/modules/content/site-content';
 import { WhatsAppCard } from '@/modules/site/components/pricing/whatsapp-card';
 import { CONTACT_CHECKLIST, GUARANTEES } from '@/ui/site/marketing-content';
 import {
-  CHANNEL_ICONS,
-  FaqAccordion,
-  FeatureGrid,
-  GUARANTEE_ICONS,
-  HeaderPrimaryCta,
-  Prose,
-  Section,
-  toFaqGridItems,
-  withIcons,
-} from '@/modules/site/components/layout/content';
+  CHANNEL_ICONS, FaqAccordion, FeatureGrid, GUARANTEE_ICONS, HeaderPrimaryCta, Prose, Section, toFaqGridItems, withIcons } from '@/modules/site/components/layout/content';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
 
 const DESCRIPTION =

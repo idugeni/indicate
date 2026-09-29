@@ -3,17 +3,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Mail, MessageCircle, Send } from 'lucide-react';
 import {
-  LEGAL_ROUTES,
-  SERVICE_NAME,
-  SERVICE_TAGLINE,
-  type NavigationLink,
-} from '@/ui/site/marketing-content';
+  LEGAL_ROUTES, SERVICE_NAME, SERVICE_TAGLINE, type NavigationLink, } from '@/ui/site/marketing-content';
 import { getContactChannels, type FeatureItem } from '@/modules/content/site-content';
 import { SOCIAL_ORDER, resolveContactChannels, socialBrandColor, socialBrandForeground } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { currentYear } from '@/modules/site/current-year';
 import { Container, PrimaryCta, SecondaryCta } from '@/modules/site/components/layout/content';
-
 interface FooterColumn {
   readonly heading: string;
   readonly label: string;

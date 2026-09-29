@@ -1,5 +1,4 @@
-import type { DocSectionItem } from '@/modules/site/components/layout/content';
-
+import type { DocSectionItem } from '@/modules/site/components/layout/doc-section';
 export interface LegalVariables {
   readonly domain: string;
   readonly siteName: string;

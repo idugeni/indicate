@@ -1,5 +1,5 @@
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
-import type { DocSectionItem } from '@/modules/site/components/layout/content';
+import type { DocSectionItem } from '@/modules/site/components/layout/doc-section';
 import { normalizeTemplateId } from '@/modules/site/components/network/templates/listing-shared';
 import { CleanBlueListing, type ListingProps } from '@/modules/site/components/network/templates/clean-blue/pages/listing-page';
 import { CleanBlueArticle } from '@/modules/site/components/network/templates/clean-blue/pages/article-page';
