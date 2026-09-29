@@ -3,7 +3,7 @@
 > **Status:** Approved (2026-08-30). Sections 1 to 20 are the binding design.
 > **Owner:** Platform team.
 > **Source of truth:** the codebase (`src/core/config/bootstrap/bootstrap-schema.ts`, `src/proxy.ts`, `src/data/migrations/meta/_journal.json`). On conflict, code wins.
-> **Related:** [architecture policy](architecture-policy.md) (advisory relaxations and the 2026-08-30 approval record, moved out of this file on 2026-09-26) · [migrations](migrations.md) · [production readiness runbook](production-readiness-runbook.md) · [architecture rules](architecture-rules.md) · [templates](templates.md)
+> **Related:** [architecture policy](architecture-policy.md) (advisory relaxations and the 2026-08-30 approval record, moved out of this file on 2026-09-26) · [migrations](migrations.md) · [release](release.md) · [architecture rules](architecture-rules.md) · [templates](templates.md)
 
 ## Review status
 

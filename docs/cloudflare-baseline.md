@@ -3,7 +3,7 @@
 > **Status:** Living document.
 > **Owner:** Platform team.
 > **Last verified:** 2026-09-26 via API and HTTP (audit 134 tenant zones).
-> **Related:** [domains](domains.md) · [active domains](active-domains.md) · [production readiness runbook](production-readiness-runbook.md)
+> **Related:** [domains](domains.md) · [active domains](active-domains.md) · [release](release.md)
 
 Acuan kanonis per zona + checklist zona baru + ritme tinjauan.
 

@@ -26,7 +26,6 @@ export interface StoredObjectRef {
 }
 
 export interface ObjectStoragePort extends HealthCheckPort {
-  readonly bucketCount: 1;
   headExact(key: string): Promise<StoredObjectMetadata | null>;
   getExact(key: string): Promise<{ readonly contentType: string; readonly body: Uint8Array } | null>;
   authorizeExactPut(key: string, contentType: string, checksumSha256: string, expiresInSeconds: number): Promise<ExactObjectAuthorization>;

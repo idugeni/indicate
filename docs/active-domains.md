@@ -31,7 +31,7 @@ Gap SMTP 2026-09-25: key lama terikat domain lama (Resend 400); dibuat key baru
 Key server baru aktif penuh setelah redeploy berikutnya.
 Status Vercel per 2026-09-29: project memiliki 273 asosiasi, seluruhnya
 `verified:true`. Rinciannya di bagian [Status Vercel](#status-vercel).
-> **Related:** [domains](domains.md) · [cloudflare baseline](cloudflare-baseline.md) · [release checklist](release-checklist.md)
+> **Related:** [domains](domains.md) · [cloudflare baseline](cloudflare-baseline.md) · [release](release.md)
 
 ## Status Vercel
 

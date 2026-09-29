@@ -304,6 +304,14 @@ npm-facing.
   the project holds 273 is a gate that misleads the operator reading it, so the
   checklist now enumerates the count from the Vercel API rather than quoting a
   stored number, and `docs/active-domains.md` holds the one dated breakdown.
+- `docs/production-readiness-runbook.md` and `docs/release-checklist.md` merged
+  into `docs/release.md`. Both described one event — readiness, release order,
+  and rollback — and the rollback procedure was written out twice, with the
+  checklist explicitly labelling itself a complement to the runbook. The merged
+  file keeps every check, the WORM owner-gated item, the smoke-test command,
+  the staged-monitoring table, per-tenant triage, and both rollback paths under
+  three headings: readiness, release order, rollback. Ten cross-references were
+  repointed.
 
 ## [0.1.0] - 2026-09-02
 

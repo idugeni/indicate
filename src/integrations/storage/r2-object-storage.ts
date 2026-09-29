@@ -21,7 +21,6 @@ export interface R2ObjectStorageConfig {
 const PUBLIC_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 export class R2ObjectStorageAdapter implements ObjectStoragePort {
-  readonly bucketCount = 1 as const;
   private readonly client: S3Client;
   private readonly now: () => Date;
 
@@ -34,6 +33,14 @@ export class R2ObjectStorageAdapter implements ObjectStoragePort {
     });
   }
 
+  /**
+   * Resolve the bucket that owns a key.
+   *
+   * @remarks Public keys land in the private bucket when no public bucket is
+   * configured, which is the state of every non-production deployment. Reads
+   * still resolve there, so bytes stay reachable and the only symptom is
+   * `object_in_wrong_bucket` drift once production reconciliation runs.
+   */
   private bucketFor(key: string): string {
     if (isPublicObjectKey(key) && this.config.publicBucketName !== null) return this.config.publicBucketName;
     return this.config.bucketName;

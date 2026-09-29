@@ -79,5 +79,5 @@ Security fixes follow the same promotion guidance as any release:
   (`src/data/migrations/`), then confirm `GET /api/health` reports a valid
   configuration before and after when practical.
 - Prefer promoting the already-built artifact to the existing Vercel project.
-- Verify against [production readiness and rollback](docs/production-readiness-runbook.md)
+- Verify against [production readiness and rollback](docs/release.md)
   before routing traffic. See also [migration operations](docs/migrations.md).

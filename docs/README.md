@@ -18,8 +18,7 @@
 | Document | Status | Contents |
 |---|---|---|
 | [migrations](migrations.md) | Advisory | Forward-only Drizzle/PostgreSQL procedure, promotion gate, Supabase roles. |
-| [production readiness runbook](production-readiness-runbook.md) | Advisory | Pre-promotion checks and rollback. Read-only, warns instead of blocking. |
-| [release checklist](release-checklist.md) | Advisory | Release order: pre-release → promote → smoke test → monitor → rollback. |
+| [release](release.md) | Advisory | Readiness checks, release order (pre-release → promote → smoke → monitor), and rollback. Read-only, warns instead of blocking. |
 | [cloudflare baseline](cloudflare-baseline.md) | Living | Canonical per-zone values, new-zone checklist, review cadence. |
 | [domains](domains.md) | Living | Indicate-related domain inventory. |
 | [active domains](active-domains.md) | Living ledger | Activation/deactivation ledger; update on every change. |

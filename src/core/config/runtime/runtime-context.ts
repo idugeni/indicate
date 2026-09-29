@@ -8,7 +8,7 @@ import { RuntimeConfigSnapshotCache } from '@/core/system/runtime-config-snapsho
 import { UpstashSnapshotStore } from '@/integrations/redis/upstash-snapshot-store';
 import { HrTimeMonotonicClock } from '@/core/system/monotonic-clock';
 import { getSharedRuntimeDatabase } from '@/data/client';
-import { deriveRedisNamespace } from '@/core/config/runtime/derived-values';
+import { assertDistinctR2Buckets, deriveRedisNamespace } from '@/core/config/runtime/derived-values';
 import { RuntimeConfigReadError } from '@/modules/persisted-config/ports';
 import type { RuntimeConfig } from '@/core/config/runtime/runtime-schema';
 
@@ -64,6 +64,11 @@ export async function invalidateServerRuntimeConfig(environment: string): Promis
 function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigSnapshot): RuntimeConfig {
   const shared = snapshot.sharedDeployment;
   const policies = snapshot.policies;
+  assertDistinctR2Buckets({
+    privateBucket: shared.r2BucketName,
+    publicBucket: bootstrap.credentials.r2PublicBucketName,
+    auditBucket: bootstrap.credentials.r2AuditBucketName,
+  });
   return Object.freeze({
     environment: bootstrap.environment,
     schemaGateMode: bootstrap.schemaGateMode,

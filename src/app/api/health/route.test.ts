@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const audit = { current: { bucketName: 'indicate-audit-worm' } as { bucketName: string } | null };
+const publicBucket = { current: 'indicate-media-public' as string | null };
 
 vi.mock('next/server', () => ({
   connection: async () => {},
@@ -11,7 +12,7 @@ vi.mock('@/core/config/runtime/runtime-context', () => ({
   getServerRuntimeContext: async () => ({
     bootstrap: { environment: 'production' },
     snapshot: { configurationVersion: 3 },
-    config: { r2: { audit: audit.current } },
+    config: { r2: { audit: audit.current, publicBucketName: publicBucket.current } },
   }),
 }));
 
@@ -28,6 +29,7 @@ async function healthBody(): Promise<Record<string, unknown>> {
 describe('GET /api/health', () => {
   beforeEach(() => {
     audit.current = { bucketName: 'indicate-audit-worm' };
+    publicBucket.current = 'indicate-media-public';
   });
 
   it('melaporkan ekspor audit terkonfigurasi', async () => {
@@ -43,5 +45,14 @@ describe('GET /api/health', () => {
   it('menyatakan ekspor audit tidak terkonfigurasi saat bucket kosong', async () => {
     audit.current = null;
     expect((await healthBody()).auditExport).toBe('unconfigured');
+  });
+
+  it('melaporkan bucket media publik terkonfigurasi', async () => {
+    expect((await healthBody()).publicMediaBucket).toBe('configured');
+  });
+
+  it('menyatakan bucket media publik tidak terkonfigurasi', async () => {
+    publicBucket.current = null;
+    expect((await healthBody()).publicMediaBucket).toBe('unconfigured');
   });
 });

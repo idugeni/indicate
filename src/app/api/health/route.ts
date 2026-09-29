@@ -26,6 +26,16 @@ async function handleGET() {
        * inside the cron that fails.
        */
       auditExport: context.config.r2.audit === null ? 'unconfigured' : 'configured',
+      /**
+       * Whether `pub/` keys get their own bucket.
+       *
+       * @remarks Without a public bucket the storage adapter routes `pub/`
+       * keys into the private bucket, and every read still resolves, so nothing
+       * fails — the only trace is reconciliation drift nobody is watching.
+       * Production separates media serving from private bytes; a deployment
+       * that quietly stopped doing so is reporting itself here instead.
+       */
+      publicMediaBucket: context.config.r2.publicBucketName === null ? 'unconfigured' : 'configured',
     },
     {
       headers: {

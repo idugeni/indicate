@@ -20,13 +20,16 @@
  * `LastModified` change.
  *
  * Modes:
- *   node scripts/fix-private-media-cache-control.mjs
+ *   node scripts/fix-private-media-cache-control.mjs --bucket <name>
  *     lists offending objects and changes nothing.
- *   node scripts/fix-private-media-cache-control.mjs --apply
+ *   node scripts/fix-private-media-cache-control.mjs --bucket <name> --apply
  *     rewrites each one with `private, no-store`.
  *
- * `--bucket <name>` overrides `indicate-media-private`. Credentials come from
- * the repo `.env` (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`).
+ * `--bucket` is required and never defaulted: the private bucket name lives in
+ * `public.shared_deployment_config`, so a hardcoded copy here would keep
+ * rewriting a bucket the application no longer reads once that row changes.
+ * Credentials come from the repo `.env` (`R2_ACCESS_KEY_ID`,
+ * `R2_SECRET_ACCESS_KEY`).
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -35,7 +38,6 @@ import { GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCom
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ACCOUNT_ID = '2fa5c3941e008ed06e4b41d7342d3fa9';
-const DEFAULT_BUCKET = 'indicate-media-private';
 const PRIVATE_CACHE_CONTROL = 'private, no-store';
 
 function loadEnvFile(path) {
@@ -92,7 +94,10 @@ if (accessKeyId === undefined || secretAccessKey === undefined) {
   throw new Error('R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY must be set in .env');
 }
 
-const bucket = argValue('--bucket') ?? DEFAULT_BUCKET;
+const bucket = argValue('--bucket');
+if (bucket === null) {
+  throw new Error('--bucket <name> is required; the private bucket name is not hardcoded');
+}
 const apply = process.argv.includes('--apply');
 const client = new S3Client({
   region: 'auto',

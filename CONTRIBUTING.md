@@ -333,7 +333,7 @@ reads, so widening the allowlist is a decision, not a default.
    through the pooled runtime credential before activation.
 4. Review every migration body for drift against the typed schema before
    promotion. Full procedures: [docs/migrations.md](docs/migrations.md) and
-   [docs/production-readiness-runbook.md](docs/production-readiness-runbook.md).
+   [docs/release.md](docs/release.md).
 
 ## Security
 
@@ -384,7 +384,7 @@ When making structural changes, consider updating these files:
 | `docs/architecture.md` | System topology, layer responsibilities (sections 1-20) |
 | `docs/architecture-policy.md` | Advisory relaxations, decision boundaries, approval record |
 | `docs/migrations.md` | Migration or rollback procedure changes |
-| `docs/production-readiness-runbook.md` | Readiness or rollback changes |
+| `docs/release.md` | Readiness, release order, or rollback changes |
 | `src/app/globals.css` + `src/components/ui/` | Visual tokens, component specs (if adding UI) |
 | `CHANGELOG.md` | Notable changes under `[Unreleased]` |
 | `.env.example` | Runtime contract changes (placeholders only) |
