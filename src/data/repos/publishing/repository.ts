@@ -72,6 +72,18 @@ const SNAPSHOT_MAX_CLEANUP_TASKS = 500;
 const SNAPSHOT_MAX_INVALIDATION_INTENTS = 2_000;
 const SNAPSHOT_MAX_JOBS = 200;
 const SNAPSHOT_MAX_TARGETS = 5_000;
+/**
+ * Row ceiling for article-to-site assignments on the publishing surface.
+ *
+ * @remarks `ArticleDistributeForm` seeds per-site view counts only for the
+ * article an operator has selected, so it needs `articleId` and `siteId` and
+ * nothing else. The pairing count grows with articles x sites, so the read
+ * stays projected to those two columns and capped, newest first so a truncated
+ * result is stable rather than arbitrary; a tenant that outgrows the cap needs
+ * a per-article query, not a larger ceiling - see `AGENTS.md` §"Database access
+ * & egress".
+ */
+const SNAPSHOT_MAX_ASSIGNMENTS = 5_000;
 
 /** Row ceiling for the dashboard media library; see `listMedia()`. */
 const MEDIA_LIST_MAX_ROWS = 1_000;
@@ -847,10 +859,15 @@ export class DrizzlePublishingRepository implements PublishingRepository {
    * select projects only the columns the dashboard renders. It previously read
    * all thirteen tables with `select()`, which shipped the whole `audit_logs`
    * table (13,179 rows, 15.4 MB on the platform organization) on a single GET
-   * for a field no caller reads. `article_sites`, `media`, and transition
-   * receipts were dropped for the same reason: `GET /api/dashboard/publishing`
-   * renders jobs, targets, articles, domains, sites, reservations, cleanup
-   * tasks, and invalidation intents, and nothing else.
+   * for a field no caller reads. `media` and transition receipts were dropped
+   * for the same reason: `GET /api/dashboard/publishing` renders jobs, targets,
+   * articles, domains, sites, assignments, reservations, cleanup tasks, and
+   * invalidation intents, and nothing else.
+   *
+   * `article_sites` is read again, projected to the two columns the distributing
+   * form actually consumes. It had been dropped on the belief that nothing read
+   * it, but `ArticleDistributeForm` uses it to seed per-site view counts, so the
+   * "Isi jumlah tayang" control always rejected its own submission.
    *
    * The ceilings are a growth guard, not pagination. When a tenant outgrows
    * one, that collection needs keyset pagination on its consumer path rather
@@ -866,7 +883,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       const organization = await transaction.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).limit(1); if (organization.length === 0) return null;
       const lock = regionScopeId ?? null;
       const scope = lock === null ? undefined : eq(regions.id, lock);
-      const [articleRows, siteRows, domainRows, settingsRows, reservationRows, cleanupRows, invalidationRows, jobRows, targetRows] = await Promise.all([
+      const [articleRows, siteRows, domainRows, settingsRows, reservationRows, cleanupRows, invalidationRows, jobRows, targetRows, assignmentRows] = await Promise.all([
         transaction.select({ id: articles.id, regionId: articles.regionId, status: articles.status, scheduledAt: articles.scheduledAt, leadMediaId: articles.leadMediaId, title: articles.title, slug: articles.slug }).from(articles).where(eq(articles.organizationId, organizationId)).orderBy(desc(articles.createdAt)).limit(SNAPSHOT_MAX_ARTICLES),
         transaction.select({ id: sites.id, regionId: sites.regionId, domainId: sites.domainId, normalizedHostname: sites.normalizedHostname, status: sites.status, activationState: sites.activationState }).from(sites).where(eq(sites.organizationId, organizationId)).orderBy(sites.normalizedHostname).limit(SNAPSHOT_MAX_SITES),
         transaction.select({ id: domains.id, normalizedHostname: domains.normalizedHostname, status: domains.status, siteTopology: domains.siteTopology }).from(domains).where(eq(domains.organizationId, organizationId)).orderBy(domains.normalizedHostname).limit(SNAPSHOT_MAX_DOMAINS),
@@ -876,6 +893,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         transaction.select({ id: invalidationTasks.id, siteId: invalidationTasks.siteId, reason: invalidationTasks.reason, tags: invalidationTasks.tags, status: invalidationTasks.status }).from(invalidationTasks).where(and(eq(invalidationTasks.organizationId, organizationId), scope ?? sql`true`)).orderBy(desc(invalidationTasks.createdAt)).limit(SNAPSHOT_MAX_INVALIDATION_INTENTS),
         transaction.select().from(publishingJobs).where(eq(publishingJobs.organizationId, organizationId)).orderBy(desc(publishingJobs.createdAt)).limit(SNAPSHOT_MAX_JOBS),
         transaction.select({ target: publishingJobTargets, siteId: articleSites.siteId }).from(publishingJobTargets).innerJoin(articleSites, and(eq(articleSites.organizationId, publishingJobTargets.organizationId), eq(articleSites.id, publishingJobTargets.articleSiteId))).where(eq(publishingJobTargets.organizationId, organizationId)).limit(SNAPSHOT_MAX_TARGETS),
+        transaction.select({ id: articleSites.id, articleId: articleSites.articleId, siteId: articleSites.siteId, state: articleSites.state, active: articleSites.active }).from(articleSites).where(eq(articleSites.organizationId, organizationId)).orderBy(desc(articleSites.createdAt)).limit(SNAPSHOT_MAX_ASSIGNMENTS),
       ]);
       const settingsBySite = new Map(settingsRows.map((row) => [row.siteId, [row.logoMediaId, row.faviconMediaId, row.defaultMediaId].filter((value): value is string => value !== null)]));
       const articleVisible = (row: { readonly id: string; readonly regionId: string }) => lock === null || row.regionId === lock;
@@ -896,6 +914,9 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         invalidationIntents: invalidationRows.filter((row) => visibleSiteIds.has(row.siteId)).map((row) => ({ id: row.id, organizationId, siteId: row.siteId, reason: row.reason, tags: row.tags, status: row.status })),
         jobs: visibleJobs.map(mapJob),
         targets: targetRows.filter(({ target }) => visibleJobIds.has(target.jobId)).map(({ target, siteId }) => mapTarget({ ...target, siteId })),
+        articleSites: assignmentRows
+          .filter((row) => visibleArticleIds.has(row.articleId) && visibleSiteIds.has(row.siteId))
+          .map((row) => ({ id: row.id, articleId: row.articleId, siteId: row.siteId, state: row.state, active: row.active })),
       };
     });
   }

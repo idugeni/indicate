@@ -99,7 +99,7 @@ async function handleGET(request: Request) {
     }
     if (!context.actor.permissionSet.has(PUBLISHING_PERMISSIONS.publishingRead)) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     if (parsed.data.jobId !== undefined) { const result = await context.publication.status(context.actor, { jobId: parsed.data.jobId }); return result.ok ? NextResponse.json(result.value) : NextResponse.json(result.error, { status: statusFor(result.error) }); }
-    return NextResponse.json({ jobs: snapshot.jobs, targets: snapshot.targets, articles: snapshot.articles, domains: snapshot.domains, sites: snapshot.sites });
+    return NextResponse.json({ jobs: snapshot.jobs, targets: snapshot.targets, articles: snapshot.articles, domains: snapshot.domains, sites: snapshot.sites, articleSites: snapshot.articleSites });
   }
 }
 

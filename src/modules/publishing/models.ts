@@ -201,14 +201,35 @@ export interface PublishingArticleSiteRef {
 }
 
 /**
+ * Assignment columns the dashboard distributing form consumes.
+ *
+ * @remarks Narrower than {@link PublishingArticleSiteRef} on purpose: the
+ * publishing snapshot projects only what `ArticleDistributeForm` reads when it
+ * seeds per-site view counts, so no canonical URL or version column leaves the
+ * database for a form that ignores them.
+ */
+export interface PublishingAssignmentRef {
+  readonly id: string;
+  readonly articleId: string;
+  readonly siteId: string;
+  readonly state: PublishingState;
+  readonly active: boolean;
+}
+
+/**
  * Bounded, column-projected view of one tenant for the dashboard publishing surfaces.
  *
  * @remarks Every collection carries a row ceiling and every field maps to a
  * projected column, so this projection can never become a whole-table dump.
- * Audit records, article-site assignments, media assets, and transition
- * receipts are deliberately absent: `GET /api/dashboard/publishing` never
- * rendered them, and reading them cost 15.4 MB per call on the platform
- * organization. `AGENTS.md` §"Database access & egress" governs additions.
+ * Audit records, media assets, and transition receipts are deliberately absent:
+ * `GET /api/dashboard/publishing` never rendered them, and reading them cost
+ * 15.4 MB per call on the platform organization. `AGENTS.md` §"Database access
+ * & egress" governs additions.
+ *
+ * Article-site assignments are present, but only as {@link PublishingAssignmentRef}.
+ * They were dropped once on the belief that no caller read them; the
+ * distributing form did, so the "Isi jumlah tayang" control always rejected its
+ * own submission.
  */
 export interface PublishingTenantSnapshot {
   readonly organizationId: string;
@@ -220,4 +241,5 @@ export interface PublishingTenantSnapshot {
   readonly invalidationIntents: readonly InvalidationIntentRecord[];
   readonly jobs: readonly PublicationJobRecord[];
   readonly targets: readonly PublicationTargetRecord[];
+  readonly articleSites: readonly PublishingAssignmentRef[];
 }

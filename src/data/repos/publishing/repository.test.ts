@@ -4,7 +4,7 @@ import type { SQL } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 
 import { DrizzlePublishingRepository } from '@/data/repos/publishing/repository';
-import { auditLogs, media, objectCleanupTasks } from '@/data/schema';
+import { articleSites, auditLogs, media, objectCleanupTasks } from '@/data/schema';
 
 const CONTEXT = {
   organizationId: 'o1',
@@ -138,6 +138,18 @@ function compileCondition(condition: unknown): { readonly text: string; readonly
   return { text: built.sql, params: built.params };
 }
 
+/**
+ * Compile a recorded condition that was written against `article_sites`.
+ *
+ * @remarks `compileCondition` projects from `media`, so an assignment condition
+ * would not mention `"article_id"` at all. Compiling against the real table is
+ * what makes the tenant assertion meaningful rather than vacuous.
+ */
+function compileAssignmentCondition(condition: unknown): { readonly text: string; readonly params: readonly unknown[] } {
+  const built = new QueryBuilder().select({ probe: articleSites.id }).from(articleSites).where(condition as SQL).toSQL();
+  return { text: built.sql, params: built.params };
+}
+
 describe('archiveMedia menjadwalkan penghapusan objek', () => {
   it('mencatat object_cleanup_tasks untuk kunci yang diarsipkan', async () => {
     const archived = { ...mediaRow(), state: 'archived', version: 2 };
@@ -204,5 +216,64 @@ describe('isolasi tenant pada SQL yang dihasilkan', () => {
     const { text, params } = compileCondition(unscoped);
     expect(text).not.toContain('"organization_id"');
     expect(params).not.toContain(CONTEXT.organizationId);
+  });
+});
+
+/**
+ * Drive `snapshot()` through a recording transaction.
+ *
+ * @remarks `snapshot()` reads the tenant row first, then issues its collections
+ * in a single `Promise.all`, so the results are queued in source order: the
+ * organization probe, then articles, sites, domains, settings, reservations,
+ * cleanup tasks, invalidation intents, jobs, targets, and assignments.
+ */
+function snapshotHarness(assignments: readonly Record<string, unknown>[]) {
+  const article = { id: 'a1', regionId: null, status: 'active', scheduledAt: null, leadMediaId: null, title: 'Artikel Uji', slug: 'artikel-uji' };
+  const site = { id: 's1', regionId: null, domainId: 'd1', normalizedHostname: 'portal.example', status: 'active', activationState: 'active' };
+  const queue: readonly unknown[][] = [
+    [{ id: 'o1' }], [article], [site], [], [], [], [], [], [], [], [...assignments],
+  ];
+  let cursor = 0;
+  const recorded: RecordedQueryCall[] = [];
+  const chainable: Record<string, (...args: readonly unknown[]) => unknown> = {};
+  for (const method of ['from', 'where', 'innerJoin', 'leftJoin', 'orderBy', 'for', 'limit']) {
+    chainable[method] = (...args: readonly unknown[]) => {
+      recorded.push({ method, args });
+      return method === 'limit' ? Promise.resolve(queue[Math.min(cursor++, queue.length - 1)] ?? []) : chainable;
+    };
+  }
+  const transaction = { execute: async () => [], select: () => chainable };
+  const database = { transaction: async (callback: (tx: unknown) => unknown) => callback(transaction) };
+  return { repository: new DrizzlePublishingRepository(database as never), recorded };
+}
+
+describe('snapshot() memuat assignment artikel-situs untuk form Penyaluran', () => {
+  it('mengembalikan baris assignment sehingga "Isi jumlah tayang" punya situs tujuan', async () => {
+    const assignments = [{ id: 'as-1', articleId: 'a1', siteId: 's1', state: 'published', active: true }];
+    const { repository } = snapshotHarness(assignments);
+    const snapshot = await repository.snapshot('o1', null);
+    expect(snapshot?.articleSites).toEqual(assignments);
+  });
+
+  it('membatasi query assignment dan menguncinya ke organisasi pemanggil', async () => {
+    const { repository, recorded } = snapshotHarness([]);
+    await repository.snapshot('o1', null);
+    expect(recorded.filter((call) => call.method === 'limit').length).toBeGreaterThanOrEqual(1);
+    for (const condition of recorded.filter((call) => call.method === 'where').map((call) => call.args[0])) {
+      const { params } = compileAssignmentCondition(condition);
+      expect(params).toContain('o1');
+    }
+  });
+
+  it('kontrol negatif: condition tanpa predikat tenant terdeteksi hilang', () => {
+    const unscoped = eq(articleSites.id, 'as-1');
+    expect(compileAssignmentCondition(unscoped).params).not.toContain('o1');
+  });
+
+  it('menyembunyikan assignment yang artikelnya di luar cakupan', async () => {
+    const assignments = [{ id: 'as-1', articleId: 'a-luar', siteId: 's1', state: 'published', active: true }];
+    const { repository } = snapshotHarness(assignments);
+    const snapshot = await repository.snapshot('o1', null);
+    expect(snapshot?.articleSites).toEqual([]);
   });
 });
