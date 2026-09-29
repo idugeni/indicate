@@ -1015,7 +1015,7 @@ export class TenantBusinessService {
       const slug = allocateUniqueSlug(transaction.state.articles.map(({ slug }) => slug), value.slug);
       const distinctCategoryIds = this.resolveArticleCategoryIds(transaction.state, value.categoryIds ?? []);
       const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId ?? null, null, 'leadMediaId', 'article-cover');
-      const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, leadMediaId, coverImageUrl: value.coverImageUrl ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, bodyJson: requireValidBodyJson(value.bodyJson), scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null };
+      const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, leadMediaId, coverImageUrl: value.coverImageUrl ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, bodyJson: requireValidBodyJson(value.bodyJson), source: value.source ?? '', scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null };
       transaction.state.articles.push(record); this.syncArticleCategories(transaction.state, record.id, distinctCategoryIds); this.audit(transaction, 'article.create', 'article', record.id, null, record);
       return record;
     }});
@@ -1039,7 +1039,7 @@ export class TenantBusinessService {
         ? (value.categoryId === before.categoryId ? existingCategoryIds : (value.categoryId === null ? [] : [value.categoryId]))
         : value.categoryIds);
       const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId, before.leadMediaId ?? null, 'leadMediaId', 'article-cover');
-      const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, authorId: value.authorId, leadMediaId, coverImageUrl: value.coverImageUrl === undefined ? before.coverImageUrl : (value.coverImageUrl ?? null), slug: value.slug, title: value.title, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, body: value.body, bodyJson: value.bodyJson === undefined ? before.bodyJson : requireValidBodyJson(value.bodyJson), source: value.source, tags: [...value.tags], status: value.status, scheduledAt: value.scheduledAt ?? null, version: before.version + 1, updatedAt: now };
+      const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, authorId: value.authorId, leadMediaId, coverImageUrl: value.coverImageUrl === undefined ? before.coverImageUrl : (value.coverImageUrl ?? null), slug: value.slug, title: value.title, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, body: value.body, bodyJson: value.bodyJson === undefined ? before.bodyJson : requireValidBodyJson(value.bodyJson), source: value.source ?? before.source, tags: [...value.tags], status: value.status, scheduledAt: value.scheduledAt ?? null, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.articles, after); this.syncArticleCategories(transaction.state, after.id, distinctCategoryIds); this.audit(transaction, 'article.update', 'article', after.id, before, after); return after;
     }});
   }
@@ -1209,7 +1209,7 @@ export class TenantBusinessService {
         return {
           ...article,
           sourceAttribution: publisher === undefined
-            ? { attribution: article.source, independent: false, institutionName: null, claimScopes: [] }
+            ? { attribution: article.source.trim() === '' ? 'Redaksi' : article.source, independent: false, institutionName: null, claimScopes: [] }
             : buildNetworkPublisherClaim(publisher, state.affiliations, siteId),
         };
       });

@@ -416,6 +416,16 @@ describe('TenantBusinessService affiliations memberships articles', () => {
     expect(refused.ok).toBe(false);
     if (refused.ok) throw new Error('expected error');
     expect(refused.error.error.code).toBe('INVALID_INPUT');
+
+    const noSource = await service.createArticle(actor, {
+      regionId: ID2,
+      slug: 'berita-tanpa-sumber',
+      title: 'Judul Artikel Yang Cukup Panjang',
+      body: 'Isi artikel yang cukup panjang untuk lolos validasi.',
+    });
+    expect(noSource.ok).toBe(true);
+    if (!noSource.ok) throw new Error('expected ok');
+    expect(noSource.value.source).toBe('');
   });
 });
 

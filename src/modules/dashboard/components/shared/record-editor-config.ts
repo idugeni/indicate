@@ -188,7 +188,7 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
       { key: 'publisherId', label: 'Penerbit', kind: 'select', optionSource: 'publishers', allowEmpty: true, emptyLabel: 'Tanpa penerbit' },
       { key: 'categoryId', label: 'Kategori', kind: 'select', optionSource: 'categories', allowEmpty: true, emptyLabel: 'Tanpa kategori' },
       { key: 'authorId', label: 'Penulis', kind: 'select', optionSource: 'authors', allowEmpty: true, emptyLabel: 'Tanpa penulis' },
-      { key: 'source', label: 'Sumber', kind: 'text', required: true },
+      { key: 'source', label: 'Sumber', kind: 'text', required: false, placeholder: 'Kosong = tidak dinyatakan' },
       { key: 'status', label: 'Status', kind: 'select', required: true, options: ARTICLE_STATUS_OPTIONS },
       { key: 'excerpt', label: 'Deskripsi (opsional)', kind: 'textarea', placeholder: 'Ringkasan ≤ 500 karakter; kosong = dari isi' },
       { key: 'canonicalUrl', label: 'URL kanonis (opsional)', kind: 'text', placeholder: 'https://…' },
