@@ -91,7 +91,16 @@ describe('formatDate dan tickerTime', () => {
   });
 
   it('tanggal valid diformat gaya id-ID Asia/Jakarta', () => {
-    expect(formatDate('2026-09-14T10:00:00.000Z', 'medium')).toMatch(/Sep 2026/);
+    expect(formatDate('2026-09-14T10:00:00.000Z', 'short')).toMatch(/Sep 2026/);
     expect(tickerTime('2026-09-14T10:00:00.000Z')).toMatch(/^\d{2}\.\d{2}$/);
+  });
+
+  it('short tanpa hari, long memuat hari dan bulan penuh', () => {
+    expect(formatDate('2026-09-14T10:00:00.000Z', 'short')).toBe('14 Sep 2026');
+    expect(formatDate('2026-09-14T10:00:00.000Z', 'long')).toBe('Senin, 14 September 2026');
+  });
+
+  it('varian default adalah short untuk area sempit', () => {
+    expect(formatDate('2026-09-14T10:00:00.000Z')).toBe(formatDate('2026-09-14T10:00:00.000Z', 'short'));
   });
 });

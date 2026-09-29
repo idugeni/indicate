@@ -62,7 +62,7 @@ export function GreenMinimalLatest({
                   )}
                   <span aria-hidden="true" className="text-slate-300">·</span>
                   <span className="font-medium normal-case tracking-normal text-slate-500">
-                    {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
+                    {formatDate(article.publishedAt, 'short')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
                   </span>
                 </p>
                 <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-lg font-bold leading-snug text-[#10231a]">

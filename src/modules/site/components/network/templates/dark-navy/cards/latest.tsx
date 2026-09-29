@@ -65,7 +65,7 @@ export function DarkNavyLatest({
                     </span>
                   )}
                   <span className="tabular-nums text-[#5f6f8c]">
-                    {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
+                    {formatDate(article.publishedAt, 'short')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
                   </span>
                 </p>
                 <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-base font-bold leading-snug text-[#eaf0fb] sm:text-lg">

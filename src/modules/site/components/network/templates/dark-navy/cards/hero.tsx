@@ -90,7 +90,7 @@ export function DarkNavyHero({ articles }: { readonly articles: readonly Article
               Baca Selengkapnya
             </Link>
             <span className="hidden font-sans text-xs tabular-nums text-[#eaf0fb]/70 sm:inline">
-              {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
+              {formatDate(article.publishedAt, 'long')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
             </span>
           </p>
           {count > 1 ? (

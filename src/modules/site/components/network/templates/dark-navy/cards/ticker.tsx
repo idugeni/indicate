@@ -51,8 +51,8 @@ export function DarkNavyTicker({ articles }: { readonly articles: readonly Artic
       </p>
       <time dateTime={article.updatedAt} className="flex-none font-sans text-xs tabular-nums text-[var(--tpl-muted,#9aa9c4)] sm:block">
         {article.updatedAt !== article.publishedAt
-          ? `Diperbarui ${formatDate(article.updatedAt, 'medium')}`
-          : formatDate(article.publishedAt, 'medium')}
+          ? `Diperbarui ${formatDate(article.updatedAt, 'short')}`
+          : formatDate(article.publishedAt, 'short')}
       </time>
       <div className="flex items-center justify-between gap-2 sm:contents">
         {items.length > 1 ? (

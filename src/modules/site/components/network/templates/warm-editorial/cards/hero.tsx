@@ -38,7 +38,7 @@ export function WarmEditorialHero({ article }: { readonly article: ArticleListIt
             <p className="m-0 truncate font-sans text-sm font-bold text-[var(--tpl-ink,#231208)]">
               {publisherName}
             </p>
-            <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} />
+            <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} dateVariant="long" />
           </div>
         </div>
         <div className="mt-6 flex flex-wrap items-center gap-3">

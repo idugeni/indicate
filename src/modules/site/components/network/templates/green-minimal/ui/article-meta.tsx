@@ -1,6 +1,7 @@
 import { CalendarDays, Clock3, Eye } from 'lucide-react';
 
 import { formatDate, formatFullViews } from '@/modules/site/components/network/templates/green-minimal/lib/format';
+import type { DateVariant } from '@/modules/site/components/network/templates/green-minimal/lib/format';
 
 /**
  * Baris meta artikel berikon: tanggal, lama baca, angka views penuh.
@@ -8,16 +9,19 @@ import { formatDate, formatFullViews } from '@/modules/site/components/network/t
  * @param publishedAt - Timestamp ISO terbit.
  * @param reading - Estimasi menit baca.
  * @param viewCount - Jumlah view mentah.
+ * @param dateVariant - Varian tanggal; `long` untuk area lega seperti hero.
  * @returns Baris meta aksesibel.
  */
 export function ArticleMeta({
   publishedAt,
   reading,
   viewCount,
+  dateVariant = 'short',
 }: {
   readonly publishedAt: string;
   readonly reading: number;
   readonly viewCount: number;
+  readonly dateVariant?: DateVariant;
 }) {
   const item = 'inline-flex items-center gap-1.5';
   const icon = 'h-3.5 w-3.5 text-slate-400';
@@ -25,7 +29,7 @@ export function ArticleMeta({
     <span className="flex flex-wrap items-center gap-x-3.5 gap-y-1 font-sans text-xs tabular-nums text-slate-600">
       <span className={item}>
         <CalendarDays className={icon} aria-hidden="true" />
-        {formatDate(publishedAt, 'medium')}
+        {formatDate(publishedAt, dateVariant)}
       </span>
       <span className={item}>
         <Clock3 className={icon} aria-hidden="true" />

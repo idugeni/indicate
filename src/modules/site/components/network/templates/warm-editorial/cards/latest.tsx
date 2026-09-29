@@ -96,7 +96,7 @@ export function WarmEditorialLatest({
                       </span>
                     )}
                     <span className="tabular-nums text-slate-500">
-                      {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
+                      {formatDate(article.publishedAt, 'short')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
                     </span>
                   </p>
                   <h3 className="m-0 mt-1.5 line-clamp-2 font-serif text-[17px] font-bold leading-snug text-slate-900">

@@ -51,8 +51,8 @@ export function GreenMinimalTicker({ articles }: { readonly articles: readonly A
       </p>
       <time dateTime={article.updatedAt} className="hidden flex-none font-sans text-xs tabular-nums text-slate-600 sm:block">
         {article.updatedAt !== article.publishedAt
-          ? `Diperbarui ${formatDate(article.updatedAt, 'medium')}`
-          : formatDate(article.publishedAt, 'medium')}
+          ? `Diperbarui ${formatDate(article.updatedAt, 'short')}`
+          : formatDate(article.publishedAt, 'short')}
       </time>
       <div className="flex items-center justify-between gap-2 sm:contents">
         {items.length > 1 ? (

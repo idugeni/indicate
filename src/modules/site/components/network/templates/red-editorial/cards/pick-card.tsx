@@ -46,7 +46,7 @@ export function RedEditorialPickCard({ article, index }: { readonly article: Art
         </p>
         <p className="m-0 mt-auto flex items-center justify-between gap-3 pt-4">
           <span className="text-xs tabular-nums text-[#ac9393]">
-            <time dateTime={article.publishedAt}>{formatDate(article.publishedAt, 'medium')}</time>
+            <time dateTime={article.publishedAt}>{formatDate(article.publishedAt, 'short')}</time>
             {' · '}
             {reading} mnt baca
             {' · '}

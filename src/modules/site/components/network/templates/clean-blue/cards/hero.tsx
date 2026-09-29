@@ -54,7 +54,7 @@ export function CleanBlueHero({ article }: { readonly article: ArticleListItem }
               <p className="m-0 truncate font-sans text-sm font-bold text-slate-900">
                 {publisherName}
               </p>
-              <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} />
+              <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} dateVariant="long" />
             </div>
           </div>
           <CleanBlueHeroActions slug={article.slug} title={article.title} />

@@ -102,18 +102,36 @@ export function authorDisplayName(article: ArticleListItem): string {
 }
 
 /**
- * Format tanggal ringkas id-ID gaya contoh ("14 Sep 2026").
+ * Varian tanggal sesuai ruang yang tersedia di area tampil.
+ *
+ * @remarks
+ * `short` untuk kolom sempit, `long` untuk panel meta yang lega.
+ */
+export type DateVariant = 'short' | 'long';
+
+const DATE_STYLE_BY_VARIANT: Readonly<Record<DateVariant, 'medium' | 'full'>> = {
+  short: 'medium',
+  long: 'full',
+};
+
+/**
+ * Format tanggal id-ID dalam dua varian.
+ *
+ * @remarks
+ * `short` ("14 Sep 2026") untuk area sempit seperti ticker, kartu daftar, dan
+ * grid statistik artikel. `long` ("Senin, 14 September 2026") untuk area lega
+ * seperti byline artikel dan hero.
  *
  * @param isoString - Timestamp ISO.
- * @param dateStyle - Gaya tanggal Intl.
+ * @param variant - Varian tampilan; default `short` untuk area sempit.
  * @returns Tanggal terformat atau string asli bila gagal parse.
  */
-export function formatDate(isoString: string, dateStyle: 'medium' | 'full' = 'medium'): string {
+export function formatDate(isoString: string, variant: DateVariant = 'short'): string {
   try {
     const parsedDate = new Date(isoString);
     if (Number.isNaN(parsedDate.getTime())) return isoString;
     return new Intl.DateTimeFormat('id-ID', {
-      dateStyle,
+      dateStyle: DATE_STYLE_BY_VARIANT[variant],
       timeZone: TIME_ZONE_ID,
     }).format(parsedDate);
   } catch {

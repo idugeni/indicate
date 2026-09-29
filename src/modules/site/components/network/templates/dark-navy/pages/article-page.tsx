@@ -87,7 +87,7 @@ export function DarkNavyArticle({
                 <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-sans text-xs tabular-nums text-[#9aa9c4]">
                   <span className="inline-flex items-center gap-1">
                     <Calendar className="h-3 w-3" aria-hidden="true" />
-                    <time dateTime={article.publishedAt}>{formatDate(article.publishedAt, 'medium')}</time>
+                    <time dateTime={article.publishedAt}>{formatDate(article.publishedAt, 'long')}</time>
                   </span>
                   <span aria-hidden="true">·</span>
                   <span>{reading} menit baca</span>
@@ -209,7 +209,7 @@ export function DarkNavyArticle({
               <div className="bg-[#0e1a33] px-3 py-2.5 text-center">
                 <dt className="font-sans text-[10px] uppercase tracking-wider text-[#5f6f8c]">Terbit</dt>
                 <dd className="m-0 mt-0.5 font-sans text-xs font-bold tabular-nums text-[#eaf0fb]">
-                  <time dateTime={article.publishedAt}>{formatDate(article.publishedAt, 'medium')}</time>
+                  <time dateTime={article.publishedAt}>{formatDate(article.publishedAt, 'short')}</time>
                 </dd>
               </div>
               <div className="bg-[#0e1a33] px-3 py-2.5 text-center">

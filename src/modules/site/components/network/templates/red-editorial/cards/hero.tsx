@@ -68,7 +68,7 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
             {article.description}
           </p>
           <p className="m-0 mt-3 font-sans text-xs tabular-nums text-[var(--tpl-faint,#ac9393)]">
-            {formatDate(article.publishedAt, 'medium')} · {reading} mnt baca · {formatFullViews(article.viewCount)} pembaca
+            {formatDate(article.publishedAt, 'long')} · {reading} mnt baca · {formatFullViews(article.viewCount)} pembaca
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link

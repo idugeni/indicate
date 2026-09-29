@@ -79,7 +79,7 @@ export function GlassyBlueLatestNews({
                         </span>
                       )}
                       <span className="tabular-nums text-slate-500">
-                        {formatDate(article.publishedAt, 'medium')} · {readingMinutes(article)} menit baca · {formatFullViews(article.viewCount)} pembaca
+                        {formatDate(article.publishedAt, 'short')} · {readingMinutes(article)} menit baca · {formatFullViews(article.viewCount)} pembaca
                       </span>
                     </span>
                     <span className="line-clamp-2 font-sans text-[15px] font-bold leading-snug text-slate-900 group-hover:text-[#1f7cff]">
@@ -118,7 +118,7 @@ export function GlassyBlueLatestNews({
                 {spotlight.description}
               </p>
               <p className="m-0 font-sans text-xs tabular-nums text-white/75">
-                {formatDate(spotlight.publishedAt, 'medium')} · {readingMinutes(spotlight)} menit baca · {formatFullViews(spotlight.viewCount)} pembaca
+                {formatDate(spotlight.publishedAt, 'long')} · {readingMinutes(spotlight)} menit baca · {formatFullViews(spotlight.viewCount)} pembaca
               </p>
               <p className="m-0 mt-1">
                 <Link
