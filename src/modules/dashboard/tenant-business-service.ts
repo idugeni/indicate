@@ -1,11 +1,10 @@
 import type { z } from 'zod';
-import { createHash } from 'node:crypto';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type {
   ActivationAttemptRecord, AnalyticsProjection, ArticleFilter, ArticleRecord, ArticleSiteRecord, AuditFilter, AuditRecord, AuthorRecord, CategoryRecord,
   DashboardProjection, DomainRecord, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, MembershipRecord, OfficialAffiliationRecord, OperationsProjection, PublisherRecord, NetworkPublisherClaim,
-  RegionRecord, RetentionRunRecord, RoleListItem, RoleRecord, SiteLevel, SiteRecord, SiteSettingsRecord, DashboardTenantState,
+  RegionRecord, RetentionRunRecord, RoleRecord, SiteLevel, SiteRecord, SiteSettingsRecord, DashboardTenantState,
 } from '@/modules/dashboard/models';
 import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
@@ -15,14 +14,23 @@ import {
 import type { IdentifierGenerator } from '@/core/system/ports';
 import { allocateUniqueSlug } from '@/modules/site/slug-allocator';
 import { unresolvedCascadeAncestors } from '@/modules/site/site-cascade';
-import { regionScopeCovers, type ScopeGeography } from '@/modules/site/region-scope';
-import { validateTipTapDoc } from '@/modules/site/tiptap-document';
+import { regionScopeCovers } from '@/modules/site/region-scope';
 import {
   DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction,
 } from '@/modules/dashboard/ports';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import { logEvent } from '@/core/observability/logger';
 import type { Result } from '@/core/result';
+import {
+  DashboardValidationError, driverErrorContext, errorIdentity, fieldErrors, safeErrorMessage,
+} from '@/modules/dashboard/tenant-service-errors';
+import {
+  assignmentDigest, changedFields, defined, publicRecord, replaceById, requirePublisherNameAvailable,
+  requireRecord, requireValidBodyJson, requireVersion, roleJson,
+} from '@/modules/dashboard/tenant-service-records';
+import {
+  articleInScope, regionLock, requireArticleInScope, requireLockedRegionValue, requireSiteInScope, requireUnrestrictedRegion, siteInScope,
+} from '@/modules/dashboard/tenant-service-scope';
 import {
   affiliationSchema, affiliationUpdateSchema, analyticsFilterSchema, articleCreateSchema, articleFilterSchema, articleTransitionSchema, articleUpdateSchema, assignmentSchema,
   auditFilterSchema, authorCreateSchema, authorUpdateSchema, categoryCreateSchema, categoryDeleteSchema, categoryUpdateSchema,
@@ -33,140 +41,6 @@ import {
 
 interface ClockLike { now(): Date }
 interface VersionInput { readonly id: string; readonly expectedVersion: number }
-class DashboardValidationError extends Error {
-  constructor(readonly fields: Readonly<Record<string, readonly string[]>>) { super('Dashboard validation failed'); }
-}
-
-function fieldErrors(error: z.ZodError): Readonly<Record<string, readonly string[]>> {
-  const output: Record<string, string[]> = {};
-  for (const issue of error.issues) {
-    const path = issue.path.join('.') || 'request';
-    output[path] = [...(output[path] ?? []), issue.message];
-  }
-  return output;
-}
-
-function changedFields(before: Readonly<Record<string, unknown>>, after: Readonly<Record<string, unknown>>): readonly string[] {
-  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
-  return [...keys].filter((key) => JSON.stringify(before[key]) !== JSON.stringify(after[key])).sort();
-}
-
-function publicRecord(value: object): Readonly<Record<string, unknown>> {
-  return Object.fromEntries(Object.entries(value).filter(([key]) => !['createdAt', 'updatedAt'].includes(key)));
-}
-
-/**
- * Pin a portal assignment set without dumping it.
- *
- * @remarks An article can be assigned to every portal in the network, so the
- * id list runs to thousands of entries and a full `before` plus `after` pair
- * costs hundreds of kilobytes per audit row — bytes the daily WORM export
- * mirrors verbatim, once per write, for a payload that repeated almost exactly
- * across every write of the same article. The count plus a digest over the
- * sorted ids still pins the exact set, so a verifier can prove what the set was
- * at that point in the chain, while the ids that actually moved travel once in
- * the delta.
- *
- * @param siteIds - Assigned site ids, already deduplicated and sorted.
- * @returns Size and SHA-256 digest of the newline-joined ids.
- */
-function assignmentDigest(siteIds: readonly string[]): { readonly siteCount: number; readonly siteIdsSha256: string } {
-  return { siteCount: siteIds.length, siteIdsSha256: createHash('sha256').update(siteIds.join('\n')).digest('hex') };
-}
-
-function roleJson(role: RoleRecord): RoleListItem {
-  return { ...role, permissions: [...role.permissions] };
-}
-
-function defined<T extends object>(value: T): T {
-  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as T;
-}
-
-/** Batas panjang pesan agar satu error tidak membanjiri telemetry. */
-const ERROR_MESSAGE_LIMIT = 300;
-
-/** Kedalaman rantai `cause` yang ditelusuri. */
-const ERROR_CAUSE_DEPTH = 4;
-
-/**
- * Klasifikasikan satu error untuk log lewat nama konstruktor aslinya.
- *
- * @param error - Error yang ditangkap dari lapisan repositori.
- * @returns Nama konstruktor, atau `NonError` bila bukan objek Error.
- * @remarks `error.name` saja tidak cukup. Drizzle dan `TypeError` sama-sama
- * bisa melaporkan `name` sebagai `Error`, sehingga setiap kegagalan terlihat
- * identik di log. Nama konstruktor yang membedakan keduanya.
- */
-function errorIdentity(error: unknown): string {
-  if (!(error instanceof Error)) return 'NonError';
-  return error.constructor.name === 'Object' ? 'Error' : error.constructor.name;
-}
-
-/**
- * Ambil metadata driver yang aman-log dari seluruh rantai penyebab.
- *
- * @param error - Error yang ditangkap dari lapisan repositori.
- * @returns Field log dari rantai `cause` (`code`, `table`, `column`,
- * `constraint`), diambil dari lapisan terdalam yang punya nilai.
- * @remarks Pesan, `detail`, dan argumen query tidak pernah ikut agar PII
- * tidak bocor ke telemetry. Menelusuri `cause` penting karena
- * `DrizzleQueryError` menyimpan error Postgres di sana, sehingga `code` asli
- * sebelumnya hilang dari log.
- */
-function driverErrorContext(error: Error): { readonly [key: string]: string } {
-  const fields: Record<string, string> = {};
-  const seen = new Set<unknown>();
-  let current: unknown = error;
-  for (let depth = 0; depth < ERROR_CAUSE_DEPTH; depth += 1) {
-    if (typeof current !== 'object' || current === null || seen.has(current)) break;
-    seen.add(current);
-    const record = current as Record<string, unknown>;
-    for (const key of ['code', 'table', 'column', 'constraint'] as const) {
-      const value = record[key];
-      if (typeof value === 'string' && value !== '' && fields[key] === undefined) {
-        fields[key] = value.slice(0, ERROR_MESSAGE_LIMIT);
-      }
-    }
-    current = record.cause;
-  }
-  return fields;
-}
-
-/**
- * Ambil pesan error yang aman-log.
- *
- * @param error - Error yang ditangkap dari lapisan repositori.
- * @returns Potongan pesan, atau `undefined` bila error berasal dari driver.
- * @remarks Error yang dilempar kode aplikasi sendiri, misalnya
- * `schema_gate_unsatisfied: applied=... required=...`, hanya memuat nomor
- * versi dan aman dicatat. Pesan itulah satu-satunya petunjuk yang membuat
- * kegagalan bisa ditindaklanjuti. Error dari driver Postgres tidak ikut karena
- * `message`-nya bisa memuat constraint, kolom, dan cuplikan baris;
- * `errorIdentity` sudah menjembatani kasus itu.
- */
-function safeErrorMessage(error: unknown): string | undefined {
-  if (!(error instanceof Error)) return undefined;
-  const driverFields = ['code', 'constraint', 'table', 'column', 'severity', 'detail'];
-  const record = error as unknown as Record<string, unknown>;
-  if (driverFields.some((key) => typeof record[key] === 'string')) return undefined;
-  const message = error.message.trim();
-  if (message === '') return undefined;
-  return message.length > ERROR_MESSAGE_LIMIT ? `${message.slice(0, ERROR_MESSAGE_LIMIT)}…` : message;
-}
-
-function requireRecord<T extends { readonly id: string }>(values: readonly T[], id: string): T {
-  const value = values.find((candidate) => candidate.id === id);
-  if (value === undefined) throw new DashboardAccessDeniedError();
-  return value;
-}
-
-function requireVersion<T extends { readonly version: number }>(value: T, expected: number): void {
-  if (value.version !== expected) throw new DashboardConflictError();
-}
-
-function regionLock(actor: AuthorizedTenantActorContext): string | null {
-  return actor.regionScopeId ?? null;
-}
 
 /**
  * Group notification port invoked by the article service when a draft is created.
@@ -178,73 +52,11 @@ export interface ArticleCreatedNotifier {
   notifyArticleCreated(input: { readonly organizationId: string; readonly articleId: string; readonly title: string }): Promise<void>;
 }
 
-function requireUnrestrictedRegion(actor: AuthorizedTenantActorContext): void {
-  if (regionLock(actor) !== null) throw new DashboardAccessDeniedError();
-}
-
-function requireSiteInScope(state: DashboardTenantState, siteId: string, actor: AuthorizedTenantActorContext): SiteRecord {
-  const site = requireRecord(state.sites, siteId);
-  if (!regionScopeCovers(regionLock(actor), site.regionId, state.regions)) throw new DashboardAccessDeniedError();
-  return site;
-}
-
-function requireArticleInScope(state: DashboardTenantState, articleId: string, actor: AuthorizedTenantActorContext): ArticleRecord {
-  const article = requireRecord(state.articles, articleId);
-  if (!regionScopeCovers(regionLock(actor), article.regionId, state.regions)) throw new DashboardAccessDeniedError();
-  return article;
-}
-
-function requireLockedRegionValue(state: DashboardTenantState, actor: AuthorizedTenantActorContext, regionId: string): void {
-  if (!regionScopeCovers(regionLock(actor), regionId, state.regions)) throw new DashboardAccessDeniedError();
-}
-
-function requireValidBodyJson(value: unknown): Record<string, unknown> | null {
-  if (value === undefined || value === null) return null;
-  const result = validateTipTapDoc(value);
-  if (!result.ok) throw new DashboardValidationError({ bodyJson: [`Dokumen teks kaya tidak valid (${result.reason}).`] });
-  return result.doc as unknown as Record<string, unknown>;
-}
-
-function normalizeHostnameCandidate(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]/gu, '');
-}
-
-function requirePublisherNameAvailable(
-  state: { readonly sites: readonly { readonly normalizedHostname: string }[]; readonly domains: readonly { readonly normalizedHostname: string }[] },
-  name: string,
-): void {
-  const folded = normalizeHostnameCandidate(name);
-  if (folded === '') return;
-  const matches = (hostname: string): boolean => {
-    const clean = hostname.toLowerCase().trim();
-    if (normalizeHostnameCandidate(clean) === folded) return true;
-    return false;
-  };
-  const domainLabels = state.domains.map((domain) => domain.normalizedHostname.toLowerCase().trim().split('.')[0] ?? '');
-  if (state.sites.some((site) => matches(site.normalizedHostname)) || state.domains.some((domain) => matches(domain.normalizedHostname)) || domainLabels.some((label) => label !== '' && normalizeHostnameCandidate(label) === folded)) {
-    throw new DashboardValidationError({ name: ['Nama menyerupai domain/situs tenant; gunakan nama institusi resmi.'] });
-  }
-}
-
-function siteInScope(site: { readonly regionId: string | null }, lock: string | null, geography: readonly ScopeGeography[]): boolean {
-  return regionScopeCovers(lock, site.regionId, geography);
-}
-
 const SITE_LEVEL_RANK: Readonly<Record<SiteLevel, number>> = Object.freeze({ apex: 0, region: 1, city: 2 });
 
 const CONFIGURATION_SITE_LIMIT = 200;
 
 const PUBLISHER_AFFILIATION_LIMIT = 500;
-
-function articleInScope(article: { readonly regionId: string }, lock: string | null, geography: readonly ScopeGeography[]): boolean {
-  return regionScopeCovers(lock, article.regionId, geography);
-}
-
-function replaceById<T extends { readonly id: string }>(values: T[], next: T): void {
-  const index = values.findIndex(({ id }) => id === next.id);
-  if (index < 0) throw new DashboardAccessDeniedError();
-  values[index] = next;
-}
 
 export class TenantBusinessService {
   constructor(
