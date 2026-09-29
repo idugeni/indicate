@@ -360,6 +360,10 @@ dokumen itu merujuk ke sini, bukan sebaliknya.**
 - **Media/file/image delivery** tidak boleh melakukan DB lookup per request
   bila object bisa disajikan langsung lewat R2/CDN. Database tidak boleh
   menjadi bottleneck delivery untuk asset yang pemetaannya deterministik.
+- **Kolom katalog dibaca, bukan ditebak.** Sebelum menyebut kolom pada
+  `information_schema`, `pg_*`, atau tabel yang belum pernah disentuh di sesi
+  ini, baca dulu definisinya: `select column_name from information_schema.columns where table_schema='public' and table_name=...`. Menebak nama kolom adalah sumber kegagalan paling sering di query inspeksi, dan tiap tebakan salah adalah satu eksekusi server-side yang tetap menghabiskan kuota.
+- **Query gagal diubah bentuknya, bukan diulang.** Retry dengan query yang sama atau sepele beda bukan diagnosa: ia membayar eksekusi kedua untuk jawaban yang sama. Setelah satu kegagalan, ubah strukturnya — `pg_proc`/`pg_views` sebagai tool terpisah, `pg_depend` untuk dependensi, `information_schema` untuk bentuk — atau berhenti dan laporkan. Query inspeksi yang gagal diulang berulang kali adalah pemborosan kuota yang terlihat sebagai "MCP tidak stabil", padahal penyebabnya bentuk query.
 
 ### 3. Cache: syarat, bukan pembegoalan
 
