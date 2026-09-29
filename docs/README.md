@@ -4,6 +4,17 @@
 > **Owner:** Platform team.
 > **Naming rule:** root files stay `UPPERCASE.md` (GitHub community standard); everything under `docs/` uses `kebab-case.md`.
 
+## Dua aturan yang membuat dokumen ini tetap berguna
+
+**Satu fakta, satu tempat.** Kalau sebuah angka atau prosedur hanya benar di satu
+file, file itu yang mengaturnya. Angka yang sama di dua dokumen hampir pasti akan
+berbeda satu hari, dan yang salah akan dipakai sebagai acuan.
+
+**Angka selalu bertanggal dan menyebut sumbernya.** Angka yang ditulis tanpa
+tanggal dan tanpa cara menghitungnya akan basi tanpa ada yang menyadarinya.
+Kalau butuh angka hari ini, hitung ulang dari sumber; jangan menyalin dari
+dokumen mana pun, termasuk dari sini.
+
 ## Architecture and design
 
 | Document | Status | Contents |
@@ -19,7 +30,7 @@
 | [migrations](migrations.md) | Advisory | Forward-only Drizzle/PostgreSQL procedure, promotion gate, Supabase roles. |
 | [release](release.md) | Advisory | Readiness checks, release order (pre-release → promote → smoke → monitor), and rollback. Read-only, warns instead of blocking. |
 | [cloudflare baseline](cloudflare-baseline.md) | Living | Canonical per-zone values, new-zone checklist, review cadence. |
-| [domains](domains.md) | Living | Indicate-related domain inventory. |
+| [domains](domains.md) | Living | Domain inventory, live counts, and the activation ledger. The one place that says how many domains, sites, and Vercel associations exist. |
 | [ops lessons](ops-lessons.md) | Living | Incident-derived procedures (tenant context, Supavisor sessions). |
 | [regions](regions.md) | Living | Single source for province geography in `regions` (naming rules + 38-row roster). |
 | [vercel multi-tenant archive](vercel-multi-tenant/README.md) | Archive 2026-09-24 | Verbatim Vercel multi-tenant platform docs (10 pages) for internal reference. Upstream wins on conflict; excluded from `lint:md` and link checks. |
