@@ -10,7 +10,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
-import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
@@ -147,15 +146,16 @@ function DatePicker({
 /**
  * Render data filter controls.
  *
- * @remarks Analytics only has date-range filters (from/to) per analyticsFilterSchema;
- * the configuration view filters the portal listing by hostname or site name.
+ * @remarks Only views whose payload the workspace endpoint filters from the
+ * query string are accepted; `DashboardViewPanel` decides which those are, so
+ * this component never has to render itself empty. Analytics filters by
+ * date range (from/to) per `analyticsFilterSchema`, while configuration and
+ * publishers filter their listing by hostname or institution.
  */
 export function FilterControls({ view, data, onApply }: FilterControlsProps) {
   const [preset, setPreset] = useState<string[]>([]);
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
-
-  if (view !== 'editorial' && view !== 'audit' && view !== 'analytics' && view !== 'configuration' && view !== 'publishers') return null;
 
   const model = data as ReferenceModel | null;
   const portalCount = view === 'configuration' ? configurationCountNote(model) : null;
@@ -244,65 +244,7 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
           handleApply(event.currentTarget);
         }}
       >
-        <div className={view === 'editorial' ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]' : view === 'analytics' ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto]' : view === 'configuration' || view === 'publishers' ? 'grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,26rem)_auto] sm:items-end' : 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]'}>
-          {view === 'editorial' ? (
-            <>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="filter-region" className="font-sans text-xs font-medium text-paper-dim">
-                  Wilayah
-                </Label>
-                <SearchCombobox
-                  id="filter-region"
-                  name="regionId"
-                  placeholder="Semua wilayah"
-                  allowEmpty
-                  emptyLabel="Semua wilayah"
-                  options={(model?.regions ?? []).map((item) => ({ value: item.id, label: item.name }))}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="filter-site" className="font-sans text-xs font-medium text-paper-dim">
-                  Situs
-                </Label>
-                <SearchCombobox
-                  id="filter-site"
-                  name="siteId"
-                  placeholder="Semua situs"
-                  allowEmpty
-                  emptyLabel="Semua situs"
-                  options={(model?.sites ?? []).map((item) => ({ value: item.id, label: item.normalizedHostname }))}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="filter-category" className="font-sans text-xs font-medium text-paper-dim">
-                  Kategori
-                </Label>
-                <SearchCombobox
-                  id="filter-category"
-                  name="categoryId"
-                  placeholder="Semua kategori"
-                  allowEmpty
-                  emptyLabel="Semua kategori"
-                  options={(model?.categories ?? []).map((item) => ({ value: item.id, label: item.name }))}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="filter-search" className="font-sans text-xs font-medium text-paper-dim">
-                  Cari judul
-                </Label>
-                <Input
-                  id="filter-search"
-                  name="search"
-                  placeholder="Ketik judul…"
-                  className="h-9 border-hairline-strong bg-bg px-2 font-sans text-xs text-paper transition-colors duration-180 hover:border-paper-faint focus-visible:ring-brass"
-                />
-              </div>
-            </>
-          ) : null}
-
+        <div className={view === 'analytics' ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto]' : 'grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,26rem)_auto] sm:items-end'}>
           {view === 'configuration' || view === 'publishers' ? (
             <div className="flex min-w-0 flex-col gap-1.5">
               <Label htmlFor="filter-portal" className="font-sans text-xs font-medium text-paper-dim">

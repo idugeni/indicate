@@ -9,30 +9,17 @@ afterEach(() => {
 });
 
 describe('Kontrol filter', () => {
-  it('tidak merender apa pun untuk tampilan dasbor', () => {
-    const { container } = render(<FilterControls view="dashboard" data={null} onApply={vi.fn()} />);
-    expect(container.firstChild).toBe(null);
-  });
-
-  it('merender empat medan untuk tampilan redaksi', () => {
-    render(<FilterControls view="editorial" data={null} onApply={vi.fn()} />);
-    expect(screen.getByLabelText('Wilayah')).toBeDefined();
-    expect(screen.getByLabelText('Situs')).toBeDefined();
-    expect(screen.getByLabelText('Kategori')).toBeDefined();
-    expect(screen.getByLabelText('Cari judul')).toBeDefined();
-  });
-
   it('meneruskan query pencarian saat diterapkan', () => {
     const onApply = vi.fn();
-    render(<FilterControls view="editorial" data={null} onApply={onApply} />);
-    fireEvent.change(screen.getByLabelText('Cari judul'), { target: { value: 'kabar' } });
+    render(<FilterControls view="configuration" data={null} onApply={onApply} />);
+    fireEvent.change(screen.getByLabelText('Cari portal'), { target: { value: 'semarang' } });
     fireEvent.click(screen.getByRole('button', { name: 'Terapkan' }));
-    expect(onApply).toHaveBeenCalledWith(expect.stringContaining('search=kabar'));
+    expect(onApply).toHaveBeenCalledWith(expect.stringContaining('search=semarang'));
   });
 
   it('mengosongkan query saat filter dibersihkan', () => {
     const onApply = vi.fn();
-    render(<FilterControls view="editorial" data={null} onApply={onApply} />);
+    render(<FilterControls view="configuration" data={null} onApply={onApply} />);
     fireEvent.click(screen.getByRole('button', { name: 'Bersihkan filter' }));
     expect(onApply).toHaveBeenCalledWith('');
   });
