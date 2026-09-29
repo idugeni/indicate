@@ -8,7 +8,8 @@ import { ArrowRight } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, formatFullViews, formatDate, readingMinutes } from '@/modules/site/components/network/ui/format';
-import { AuthorAvatar } from '@/modules/site/components/network/templates/dark-navy/ui/author-avatar';
+import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { DARK_NAVY } from '@/modules/site/components/network/templates/dark-navy/theme';
 
 const ROTATE_MS = 6000;
 
@@ -71,7 +72,7 @@ export function DarkNavyHero({ articles }: { readonly articles: readonly Article
         </p>
         <p className="m-0 mt-3 flex min-w-0 items-center gap-2.5">
           <span className="flex-none rounded-full bg-white/90 p-0.5">
-            <AuthorAvatar name={publisherName} avatarUrl={article.publisherLogoUrl} size="sm" />
+            <AuthorAvatar skin={DARK_NAVY.authorAvatar} name={publisherName} avatarUrl={article.publisherLogoUrl} size="sm" />
           </span>
           <span className="m-0 truncate font-sans text-sm font-bold text-white">
             {publisherName}

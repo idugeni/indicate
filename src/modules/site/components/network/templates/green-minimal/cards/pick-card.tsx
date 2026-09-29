@@ -7,7 +7,8 @@ import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/green-minimal/theme';
 import { ArticleMeta } from '@/modules/site/components/network/templates/green-minimal/ui/article-meta';
-import { AuthorAvatar } from '@/modules/site/components/network/templates/green-minimal/ui/author-avatar';
+import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { GREEN_MINIMAL } from '@/modules/site/components/network/templates/green-minimal/theme';
 
 export function GreenMinimalPickCard({ article, index }: { readonly article: ArticleListItem; readonly index: number }) {
   const src = articleImage(article);
@@ -49,7 +50,7 @@ export function GreenMinimalPickCard({ article, index }: { readonly article: Art
         </CardDescription>
       </CardHeader>
       <CardContent className="flex items-center gap-2.5 px-5 pb-1">
-        <AuthorAvatar name={publisherName} avatarUrl={article.publisherLogoUrl} size="sm" />
+        <AuthorAvatar skin={GREEN_MINIMAL.authorAvatar} name={publisherName} avatarUrl={article.publisherLogoUrl} size="sm" />
         <p className="m-0 truncate font-sans text-xs font-bold text-slate-800">
           {publisherName}
         </p>

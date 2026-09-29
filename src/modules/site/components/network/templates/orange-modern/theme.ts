@@ -22,6 +22,10 @@ export const ORANGE_MODERN = {
     panelBackground: '#ffffff',
     inputId: 'orange-modern-search',
   },
+  authorAvatar: {
+    ring: '#e2e8f0',
+    primary: '#ea580c',
+  },
 } as const;
 
 const BADGE_STYLES = [

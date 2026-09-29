@@ -24,6 +24,10 @@ export const RED_EDITORIAL = {
     panelBackground: '#ffffff',
     inputId: 'red-editorial-search',
   },
+  authorAvatar: {
+    ring: '#e2e8f0',
+    primary: '#b91c1c',
+  },
 } as const;
 
 const BADGE_STYLES = [

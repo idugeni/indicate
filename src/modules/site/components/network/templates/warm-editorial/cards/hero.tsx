@@ -5,7 +5,8 @@ import { ArrowRight, MapPin } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/warm-editorial/ui/article-meta';
-import { AuthorAvatar } from '@/modules/site/components/network/templates/warm-editorial/ui/author-avatar';
+import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { WARM_EDITORIAL } from '@/modules/site/components/network/templates/warm-editorial/theme';
 import { articleImage, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { WarmEditorialHeroActions } from '@/modules/site/components/network/templates/warm-editorial/cards/hero-actions';
 
@@ -33,7 +34,7 @@ export function WarmEditorialHero({ article }: { readonly article: ArticleListIt
           {article.description}
         </p>
         <div className="mt-4 flex min-w-0 items-center gap-3">
-          <AuthorAvatar name={publisherName} avatarUrl={article.publisherLogoUrl} size="md" />
+          <AuthorAvatar skin={WARM_EDITORIAL.authorAvatar} name={publisherName} avatarUrl={article.publisherLogoUrl} size="md" />
           <div className="grid min-w-0 gap-1">
             <p className="m-0 truncate font-sans text-sm font-bold text-[var(--tpl-ink,#231208)]">
               {publisherName}

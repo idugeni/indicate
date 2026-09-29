@@ -4,7 +4,8 @@ import { Share2 } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
-import { AuthorAvatar } from '@/modules/site/components/network/templates/red-editorial/ui/author-avatar';
+import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { RED_EDITORIAL } from '@/modules/site/components/network/templates/red-editorial/theme';
 
 export function RedEditorialPickCard({ article, index }: { readonly article: ArticleListItem; readonly index: number }) {
   const src = articleImage(article);
@@ -39,7 +40,7 @@ export function RedEditorialPickCard({ article, index }: { readonly article: Art
           {article.description}
         </p>
         <p className="m-0 mt-3 flex min-w-0 items-center gap-2.5">
-          <AuthorAvatar name={publisherName} avatarUrl={article.publisherLogoUrl} size="sm" />
+          <AuthorAvatar skin={RED_EDITORIAL.authorAvatar} name={publisherName} avatarUrl={article.publisherLogoUrl} size="sm" />
           <span className="m-0 truncate font-sans text-xs font-bold text-slate-800">
             {publisherName}
           </span>

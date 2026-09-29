@@ -4,7 +4,8 @@ import Link from 'next/link';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/clean-blue/ui/article-meta';
-import { AuthorAvatar } from '@/modules/site/components/network/templates/clean-blue/ui/author-avatar';
+import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { CLEAN_BLUE } from '@/modules/site/components/network/templates/clean-blue/theme';
 import { articleImage, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { CleanBlueHeroActions } from '@/modules/site/components/network/templates/clean-blue/cards/hero-actions';
 
@@ -49,7 +50,7 @@ export function CleanBlueHero({ article }: { readonly article: ArticleListItem }
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-4">
           <div className="flex min-w-0 items-center gap-3">
-            <AuthorAvatar name={publisherName} avatarUrl={article.publisherLogoUrl} size="md" />
+            <AuthorAvatar skin={CLEAN_BLUE.authorAvatar} name={publisherName} avatarUrl={article.publisherLogoUrl} size="md" />
             <div className="grid min-w-0 gap-1">
               <p className="m-0 truncate font-sans text-sm font-bold text-slate-900">
                 {publisherName}

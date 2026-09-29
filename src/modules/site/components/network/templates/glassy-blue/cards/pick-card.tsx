@@ -7,7 +7,8 @@ import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/glassy-blue/theme';
 import { ArticleMeta } from '@/modules/site/components/network/templates/glassy-blue/ui/article-meta';
-import { AuthorAvatar } from '@/modules/site/components/network/templates/glassy-blue/ui/author-avatar';
+import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { GLASSY_BLUE } from '@/modules/site/components/network/templates/glassy-blue/theme';
 
 /**
  * Kartu Berita Pilihan 3 kolom: gambar rounded, badge pastel, panah lingkaran.
@@ -58,7 +59,7 @@ export function GlassyBluePickCard({ article, index }: { readonly article: Artic
         </CardDescription>
       </CardHeader>
       <CardContent className="flex items-center gap-2.5 px-5 pb-1">
-        <AuthorAvatar name={publisherName} avatarUrl={article.publisherLogoUrl} size="sm" />
+        <AuthorAvatar skin={GLASSY_BLUE.authorAvatar} name={publisherName} avatarUrl={article.publisherLogoUrl} size="sm" />
         <p className="m-0 truncate font-sans text-xs font-bold text-slate-800">
           {publisherName}
         </p>

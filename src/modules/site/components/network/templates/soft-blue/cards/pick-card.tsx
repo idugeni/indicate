@@ -6,7 +6,8 @@ import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/soft-blue/theme';
 import { ArticleMeta } from '@/modules/site/components/network/templates/soft-blue/ui/article-meta';
-import { AuthorAvatar } from '@/modules/site/components/network/templates/soft-blue/ui/author-avatar';
+import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { SOFT_BLUE } from '@/modules/site/components/network/templates/soft-blue/theme';
 
 export function SoftBluePickCard({ article, index }: { readonly article: ArticleListItem; readonly index: number }) {
   const src = articleImage(article);
@@ -45,7 +46,7 @@ export function SoftBluePickCard({ article, index }: { readonly article: Article
           </Link>
         </h3>
         <p className="m-0 mt-2 flex min-w-0 items-center gap-2.5">
-          <AuthorAvatar name={publisherName} avatarUrl={article.publisherLogoUrl} size="sm" />
+          <AuthorAvatar skin={SOFT_BLUE.authorAvatar} name={publisherName} avatarUrl={article.publisherLogoUrl} size="sm" />
           <span className="m-0 truncate font-sans text-xs font-bold text-slate-800">
             {publisherName}
           </span>

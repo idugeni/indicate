@@ -5,7 +5,8 @@ import { ArrowRight, MapPin } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/purple-editorial/ui/article-meta';
-import { AuthorAvatar } from '@/modules/site/components/network/templates/purple-editorial/ui/author-avatar';
+import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { PURPLE_EDITORIAL } from '@/modules/site/components/network/templates/purple-editorial/theme';
 import { articleImage, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { PurpleEditorialHeroActions } from '@/modules/site/components/network/templates/purple-editorial/cards/hero-actions';
 
@@ -59,7 +60,7 @@ export function PurpleEditorialHero({ article }: { readonly article: ArticleList
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-4">
           <div className="flex min-w-0 items-center gap-3">
-            <AuthorAvatar name={publisherName} avatarUrl={article.publisherLogoUrl} size="md" />
+            <AuthorAvatar skin={PURPLE_EDITORIAL.authorAvatar} name={publisherName} avatarUrl={article.publisherLogoUrl} size="md" />
             <div className="grid min-w-0 gap-1">
               <p className="m-0 truncate font-sans text-sm font-bold text-slate-900">
                 {publisherName}

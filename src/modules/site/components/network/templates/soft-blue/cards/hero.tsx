@@ -4,7 +4,8 @@ import Link from 'next/link';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/soft-blue/ui/article-meta';
-import { AuthorAvatar } from '@/modules/site/components/network/templates/soft-blue/ui/author-avatar';
+import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { SOFT_BLUE } from '@/modules/site/components/network/templates/soft-blue/theme';
 import { articleImage, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { SoftBlueHeroActions } from '@/modules/site/components/network/templates/soft-blue/cards/hero-actions';
 
@@ -50,7 +51,7 @@ export function SoftBlueHero({ article }: { readonly article: ArticleListItem })
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-4">
           <div className="flex min-w-0 items-center gap-3">
-            <AuthorAvatar name={publisherName} avatarUrl={article.publisherLogoUrl} size="md" />
+            <AuthorAvatar skin={SOFT_BLUE.authorAvatar} name={publisherName} avatarUrl={article.publisherLogoUrl} size="md" />
             <div className="grid min-w-0 gap-1">
               <p className="m-0 truncate font-sans text-sm font-bold text-slate-900">
                 {publisherName}

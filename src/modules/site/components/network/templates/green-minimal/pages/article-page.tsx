@@ -11,7 +11,8 @@ import { ArticleGallery } from '@/modules/site/components/article-gallery';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { GreenMinimalShell } from '@/modules/site/components/network/templates/green-minimal/chrome/shell';
-import { AuthorAvatar } from '@/modules/site/components/network/templates/green-minimal/ui/author-avatar';
+import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { GREEN_MINIMAL } from '@/modules/site/components/network/templates/green-minimal/theme';
 import { GreenMinimalShareButtons } from '@/modules/site/components/network/templates/green-minimal/cards/share-buttons';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
@@ -79,7 +80,7 @@ export function GreenMinimalArticle({
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 sm:px-5">
             <p className="m-0 flex min-w-0 items-center gap-3">
-              <AuthorAvatar name={bylineName} avatarUrl={article.publisherLogoUrl} size="md" />
+              <AuthorAvatar skin={GREEN_MINIMAL.authorAvatar} name={bylineName} avatarUrl={article.publisherLogoUrl} size="md" />
               <span className="min-w-0">
                 <span className="block truncate font-sans text-sm font-bold text-slate-900">
                   {bylineName}

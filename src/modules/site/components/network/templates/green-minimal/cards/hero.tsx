@@ -5,7 +5,8 @@ import { ArrowRight, MapPin } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/green-minimal/ui/article-meta';
-import { AuthorAvatar } from '@/modules/site/components/network/templates/green-minimal/ui/author-avatar';
+import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { GREEN_MINIMAL } from '@/modules/site/components/network/templates/green-minimal/theme';
 import { articleImage, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 export function GreenMinimalHero({ article }: { readonly article: ArticleListItem }) {
@@ -43,7 +44,7 @@ export function GreenMinimalHero({ article }: { readonly article: ArticleListIte
             </span>
           </Link>
           <div className="flex min-w-0 items-center gap-3">
-            <AuthorAvatar name={publisherName} avatarUrl={article.publisherLogoUrl} size="md" />
+            <AuthorAvatar skin={GREEN_MINIMAL.authorAvatar} name={publisherName} avatarUrl={article.publisherLogoUrl} size="md" />
             <div className="grid min-w-0 gap-1">
               <p className="m-0 truncate font-sans text-sm font-bold text-[var(--tpl-ink,#10231a)]">
                 {publisherName}

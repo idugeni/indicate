@@ -22,6 +22,10 @@ export const DARK_NAVY = {
     panelBackground: '#0e1a33',
     inputId: 'dark-navy-search',
   },
+  authorAvatar: {
+    ring: '#1b2c4f',
+    primary: '#2f7bff',
+  },
 } as const;
 
 const BADGE_STYLES = [

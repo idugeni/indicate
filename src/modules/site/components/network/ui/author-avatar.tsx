@@ -8,11 +8,18 @@ import Image from 'next/image';
  * @param size - Ukuran tampilan.
  * @returns Avatar bulat penulis.
  */
+export interface AuthorAvatarSkin {
+  readonly ring: string;
+  readonly primary: string;
+}
+
 export function AuthorAvatar({
+  skin,
   name,
   avatarUrl,
   size,
 }: {
+  readonly skin: AuthorAvatarSkin;
   readonly name: string;
   readonly avatarUrl: string | null;
   readonly size: 'md' | 'sm';
@@ -29,7 +36,7 @@ export function AuthorAvatar({
         loading="lazy"
         width={side}
         height={side}
-        className={`${dimension} flex-none rounded-full object-cover ring-1 ring-slate-200`}
+        className={`${dimension} flex-none rounded-full object-cover ring-1 ring-[${skin.ring}]`}
       />
     );
   }
@@ -37,7 +44,7 @@ export function AuthorAvatar({
   return (
     <span
       aria-hidden="true"
-      className={`${dimension} flex flex-none items-center justify-center rounded-full bg-[#1f7cff]/10 font-sans font-bold text-[#1f7cff]`}
+      className={`${dimension} flex flex-none items-center justify-center rounded-full bg-[${skin.primary}]/10 font-sans font-bold text-[${skin.primary}]`}
     >
       {initial}
     </span>

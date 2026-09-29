@@ -22,6 +22,10 @@ export const WARM_EDITORIAL = {
     panelBackground: '#ffffff',
     inputId: 'warm-editorial-search',
   },
+  authorAvatar: {
+    ring: '#e2e8f0',
+    primary: '#b4532a',
+  },
 } as const;
 
 const BADGE_STYLES = [

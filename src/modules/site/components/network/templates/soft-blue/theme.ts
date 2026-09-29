@@ -22,6 +22,10 @@ export const SOFT_BLUE = {
     panelBackground: '#ffffff',
     inputId: 'soft-blue-search',
   },
+  authorAvatar: {
+    ring: '#e2e8f0',
+    primary: '#2563eb',
+  },
 } as const;
 
 const BADGE_STYLES = [

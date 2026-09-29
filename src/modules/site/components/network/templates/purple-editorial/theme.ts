@@ -22,6 +22,10 @@ export const PURPLE_EDITORIAL = {
     panelBackground: '#ffffff',
     inputId: 'purple-editorial-search',
   },
+  authorAvatar: {
+    ring: '#e2e8f0',
+    primary: '#7c3aed',
+  },
 } as const;
 
 const BADGE_STYLES = [

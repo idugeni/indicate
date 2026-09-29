@@ -11,7 +11,8 @@ import { ArticleGallery } from '@/modules/site/components/article-gallery';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { BlackLimeShell } from '@/modules/site/components/network/templates/black-lime/chrome/shell';
-import { AuthorAvatar } from '@/modules/site/components/network/templates/black-lime/ui/author-avatar';
+import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { BLACK_LIME } from '@/modules/site/components/network/templates/black-lime/theme';
 import { BlackLimeShareButtons } from '@/modules/site/components/network/templates/black-lime/cards/share-buttons';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
@@ -79,7 +80,7 @@ export function BlackLimeArticle({
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#131711] p-4 shadow-sm ring-1 ring-[#242b1f]/60 sm:px-5">
             <p className="m-0 flex min-w-0 items-center gap-3">
-              <AuthorAvatar name={bylineName} avatarUrl={article.publisherLogoUrl} size="md" />
+              <AuthorAvatar skin={BLACK_LIME.authorAvatar} name={bylineName} avatarUrl={article.publisherLogoUrl} size="md" />
               <span className="min-w-0">
                 <span className="block truncate font-sans text-sm font-bold text-[#f2f5e9]">
                   {bylineName}

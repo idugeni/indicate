@@ -23,6 +23,10 @@ export const BLACK_LIME = {
     panelBackground: '#0a0c07',
     inputId: 'black-lime-search',
   },
+  authorAvatar: {
+    ring: '#242b1f',
+    primary: '#c5f82a',
+  },
 } as const;
 
 const BADGE_STYLES = [

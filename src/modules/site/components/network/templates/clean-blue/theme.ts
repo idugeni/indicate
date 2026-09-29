@@ -22,6 +22,10 @@ export const CLEAN_BLUE = {
     panelBackground: '#ffffff',
     inputId: 'clean-blue-search',
   },
+  authorAvatar: {
+    ring: '#e2e8f0',
+    primary: '#1a5fd0',
+  },
 } as const;
 
 const BADGE_STYLES = [

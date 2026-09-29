@@ -22,6 +22,10 @@ export const GREEN_MINIMAL = {
     panelBackground: '#ffffff',
     inputId: 'green-minimal-search',
   },
+  authorAvatar: {
+    ring: '#e2e8f0',
+    primary: '#1d7a38',
+  },
 } as const;
 
 const BADGE_STYLES = [

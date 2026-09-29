@@ -11,7 +11,8 @@ import { ArticleGallery } from '@/modules/site/components/article-gallery';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
-import { AuthorAvatar } from '@/modules/site/components/network/templates/clean-blue/ui/author-avatar';
+import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { CLEAN_BLUE } from '@/modules/site/components/network/templates/clean-blue/theme';
 import { CleanBlueShareButtons } from '@/modules/site/components/network/templates/clean-blue/cards/share-buttons';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
@@ -79,7 +80,7 @@ export function CleanBlueArticle({
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 sm:px-5">
             <p className="m-0 flex min-w-0 items-center gap-3">
-              <AuthorAvatar name={bylineName} avatarUrl={article.publisherLogoUrl} size="md" />
+              <AuthorAvatar skin={CLEAN_BLUE.authorAvatar} name={bylineName} avatarUrl={article.publisherLogoUrl} size="md" />
               <span className="min-w-0">
                 <span className="block truncate font-sans text-sm font-bold text-slate-900">
                   {bylineName}
