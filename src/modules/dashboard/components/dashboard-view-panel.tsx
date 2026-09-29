@@ -77,6 +77,12 @@ const MediaLibrary = dynamic(
  * or which fetch their own endpoint entirely. Rendering `DataView` underneath
  * them only repeats the same rows in a generic table — or renders a skeleton for
  * a payload that was never going to arrive — so these views stay single-surface.
+ *
+ * @remarks `published` is here for a second reason: its payload is
+ * `editorial.list`, whose domain projection carries only `{ id, normalizedHostname }`
+ * and whose `articleSites` rows carry only ids. The generic table then showed
+ * `UNKNOWN` for every domain and a raw UUID for every assignment, which reads as
+ * broken data rather than as a thin projection.
  */
 const VIEW_WITHOUT_RAW_COLLECTIONS: ReadonlySet<View> = new Set<View>([
   'articles',
@@ -87,6 +93,7 @@ const VIEW_WITHOUT_RAW_COLLECTIONS: ReadonlySet<View> = new Set<View>([
   'media',
   'moderation',
   'publishing',
+  'published',
   'settings',
   'taxonomy',
 ]);
