@@ -3,7 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag } from 'lucide-react';
 
-import { buildSeoDocument } from '@/modules/site/seo';
+import { buildSeoDocument, resolveArticleCanonical } from '@/modules/site/seo';
 import { resolvePublisherChannels } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
@@ -35,7 +35,7 @@ export function WarmEditorialArticle({
   const featuredSrc = article.imageUrl ?? article.thumbnailUrl ?? '/assets/article-fallback.webp';
   const reading = readingMinutes(article);
   const bylineName = article.attribution;
-  const canonical = `https://${site.context.normalizedHostname}/${article.slug}`;
+  const canonical = resolveArticleCanonical(site, `/${article.slug}`, article);
   const publisherChannels = resolvePublisherChannels(article.publisherSocials);
 
   return (
