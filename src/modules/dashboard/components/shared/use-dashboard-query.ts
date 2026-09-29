@@ -3,27 +3,7 @@
 import { useCallback } from 'react';
 import { parseAsInteger, parseAsStringEnum, useQueryState } from 'nuqs';
 
-import type { View } from '@/modules/dashboard/components/dashboard-types';
-
-const VIEWS = [
-  'dashboard',
-  'configuration',
-  'publishers',
-  'editorial',
-  'taxonomy',
-  'articles',
-  'media',
-  'publishing',
-  'published',
-  'analytics',
-  'audit',
-  'operations',
-  'settings',
-  'customers',
-  'content',
-  'billing',
-  'moderation',
-] as const;
+import { ALL_VIEWS, type View } from '@/modules/dashboard/components/view-registry';
 
 /**
  * Sync the active dashboard tab with `?view=` so links are shareable.
@@ -33,7 +13,7 @@ const VIEWS = [
 export function useDashboardView(): readonly [View, (next: View) => void] {
   const [view, setViewQuery] = useQueryState(
     'view',
-    parseAsStringEnum([...VIEWS]).withDefault('dashboard').withOptions({ scroll: false, history: 'push' }),
+    parseAsStringEnum([...ALL_VIEWS]).withDefault('dashboard').withOptions({ scroll: false, history: 'push' }),
   );
   const setView = useCallback((next: View) => {
     void setViewQuery(next);

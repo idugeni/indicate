@@ -3,28 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Command } from 'cmdk';
-import {
-  BarChart3,
-  Building2,
-  CornerDownLeft,
-  CreditCard,
-  FileText,
-  Flag,
-  FolderKanban,
-  Globe,
-  KeyRound,
-  LayoutDashboard,
-  Megaphone,
-  Newspaper,
-  RefreshCw,
-  Search,
-  Settings,
-  Share2,
-  ShieldAlert,
-  Tags,
-  Users,
-  X,
-} from 'lucide-react';
+import { CornerDownLeft, Search, Settings, X } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -34,45 +13,64 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { groupTitle, VIEW_REGISTRY, visibleNavGroups, type View } from '@/modules/dashboard/components/view-registry';
 
 interface CommandAction {
-  id: string;
-  label: string;
-  category: 'Redaksi' | 'Infrastruktur' | 'Sistem';
-  href: string;
-  icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>;
+  readonly id: string;
+  readonly label: string;
+  readonly category: string;
+  readonly href: string;
+  readonly icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>;
 }
 
-const COMMAND_ACTIONS: readonly CommandAction[] = [
-  { id: 'overview', label: 'Beranda', category: 'Redaksi', href: '/dashboard', icon: LayoutDashboard },
-  { id: 'editorial', label: 'Manajemen Artikel & Konten', category: 'Redaksi', href: '/dashboard?view=editorial', icon: FileText },
-  { id: 'articles', label: 'Arsip Berita Lintas Portal', category: 'Redaksi', href: '/dashboard?view=articles', icon: Newspaper },
-  { id: 'taxonomy', label: 'Kelola Kategori & Tag', category: 'Redaksi', href: '/dashboard?view=taxonomy', icon: Tags },
-  { id: 'publishing', label: 'Antrean Penerbitan', category: 'Redaksi', href: '/dashboard?view=publishing', icon: Share2 },
-  { id: 'media', label: 'Media', category: 'Redaksi', href: '/dashboard?view=media', icon: FolderKanban },
-  { id: 'content', label: 'Konten Website', category: 'Redaksi', href: '/dashboard?view=content', icon: Megaphone },
-  { id: 'domains', label: 'Domain & Wilayah', category: 'Infrastruktur', href: '/dashboard?view=configuration', icon: Globe },
-  { id: 'publishers', label: 'Daftar Lembaga Penerbit', category: 'Infrastruktur', href: '/dashboard?view=publishers', icon: Users },
-  { id: 'analytics', label: 'Statistik & Grafik', category: 'Infrastruktur', href: '/dashboard?view=analytics', icon: BarChart3 },
-  { id: 'settings', label: 'Koneksi & Kunci Akses', category: 'Sistem', href: '/dashboard?view=settings', icon: KeyRound },
-  { id: 'billing', label: 'Langganan', category: 'Sistem', href: '/dashboard?view=billing', icon: CreditCard },
-  { id: 'audit', label: 'Riwayat Keamanan', category: 'Sistem', href: '/dashboard?view=audit', icon: ShieldAlert },
-  { id: 'operations', label: 'Tugas Latar Belakang', category: 'Sistem', href: '/dashboard?view=operations', icon: RefreshCw },
-  { id: 'moderation', label: 'Laporan & Data Pengguna', category: 'Sistem', href: '/dashboard?view=moderation', icon: Flag },
-  { id: 'customers', label: 'Kelola Pelanggan', category: 'Sistem', href: '/dashboard?view=customers', icon: Building2 },
-  { id: 'auth', label: 'Masuk & Sesi Pengguna', category: 'Sistem', href: '/sign-in', icon: Settings },
-];
+/** Sign-in lives outside the workspace, so it stays an explicit entry rather than a registry view. */
+const AUTH_ACTION: CommandAction = {
+  id: 'auth',
+  label: 'Masuk & Sesi Pengguna',
+  category: groupTitle('system'),
+  href: '/sign-in',
+  icon: Settings,
+};
+
+function viewAction(view: View, group: string): CommandAction {
+  const { label, icon } = VIEW_REGISTRY[view];
+  return { id: view, label, category: group, href: view === 'dashboard' ? '/dashboard' : `/dashboard?view=${view}`, icon };
+}
+
+/**
+ * Build the palette entries for the active organization.
+ *
+ * @param permissions - Union of org and platform permissions; gates the entries the sidebar hides.
+ * @returns One command per reachable view, in sidebar order, plus the sign-in route.
+ */
+function buildActions(permissions: ReadonlySet<string>): readonly CommandAction[] {
+  return [
+    ...visibleNavGroups(permissions).flatMap((group) => group.views.map((view) => viewAction(view, group.title))),
+    AUTH_ACTION,
+  ];
+}
 
 /**
  * Render palet perintah navigasi dashboard.
  *
- * @remarks Defensive: Base UI scroll-lock can stick when the dialog unmounts mid-exit (e.g. selecting an item that navigates to another layout).
+ * @remarks Entries are derived from the view registry and gated by the same
+ * permission set as the sidebar, so the palette can never offer a route the
+ * navigation hides. Defensive: Base UI scroll-lock can stick when the dialog
+ * unmounts mid-exit (e.g. selecting an item that navigates to another layout).
  */
-export function CommandPalette({ showTrigger = true }: { readonly showTrigger?: boolean }) {
+export function CommandPalette({
+  showTrigger = true,
+  permissions,
+}: {
+  readonly showTrigger?: boolean;
+  readonly permissions: ReadonlySet<string>;
+}) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
 
   const router = useRouter();
+
+  const actions = React.useMemo(() => buildActions(permissions), [permissions]);
 
   React.useEffect(() => () => {
     document.documentElement.style.removeProperty('overflow');
@@ -95,13 +93,13 @@ export function CommandPalette({ showTrigger = true }: { readonly showTrigger?: 
 
   const filtered = React.useMemo(() => {
     const cleanQuery = query.trim().toLowerCase();
-    if (!cleanQuery) return COMMAND_ACTIONS;
-    return COMMAND_ACTIONS.filter(
+    if (!cleanQuery) return actions;
+    return actions.filter(
       (cmd) =>
         cmd.label.toLowerCase().includes(cleanQuery) ||
         cmd.category.toLowerCase().includes(cleanQuery)
     );
-  }, [query]);
+  }, [query, actions]);
 
   const handleSelect = React.useCallback(
     (href: string) => {
@@ -152,7 +150,7 @@ export function CommandPalette({ showTrigger = true }: { readonly showTrigger?: 
                 onValueChange={setQuery}
                 placeholder="Ketik rute tujuan, modul, atau perintah..."
                 aria-label="Cari perintah atau rute Dashboard"
-                className="h-11 w-full border-0 bg-transparent px-3 font-mono text-xs text-paper placeholder:text-paper-faint focus:outline-none"
+                className="h-11 flex-1 border-0 bg-transparent px-3 font-mono text-xs text-paper placeholder:text-paper-faint focus:outline-none"
                 autoFocus
               />
               {query ? (

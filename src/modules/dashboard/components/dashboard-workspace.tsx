@@ -36,13 +36,13 @@ import {
 import { DashboardFooter } from '@/modules/dashboard/components/dashboard-footer';
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
 import { useDashboardPage, useDashboardView } from '@/modules/dashboard/components/shared/use-dashboard-query';
+import { viewLabel } from '@/modules/dashboard/components/view-registry';
 import {
-  ALL_NAV_ITEMS,
   DASHBOARD_TOOLTIP_CONTENT,
   DashboardNavList,
   DashboardSidebar,
 } from '@/modules/dashboard/components/dashboard-sidebar';
-import { DashboardViewPanel, VIEW_WITHOUT_RAW_COLLECTIONS } from '@/modules/dashboard/components/dashboard-view-panel';
+import { DashboardViewPanel, VIEWS_WITHOUT_RAW_COLLECTIONS } from '@/modules/dashboard/components/dashboard-view-panel';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
 
 export type { OrganizationOption } from '@/modules/dashboard/components/dashboard-types';
@@ -414,7 +414,7 @@ export function DashboardWorkspace({
               <BreadcrumbItem className="min-w-0">
                 <BreadcrumbPage className="truncate font-medium text-paper">
                   <span key={view} className="block animate-in truncate fade-in duration-200">
-                    {ALL_NAV_ITEMS.find((item) => item.view === view)?.label}
+                    {viewLabel(view)}
                   </span>
                 </BreadcrumbPage>
               </BreadcrumbItem>
@@ -422,7 +422,7 @@ export function DashboardWorkspace({
           </Breadcrumb>
 
           <div className="ml-auto flex flex-none items-center gap-1.5">
-            <CommandPalette />
+            <CommandPalette permissions={activePermissions} />
             <p className="m-0 hidden items-center gap-2 rounded-md border border-hairline bg-bg-raised px-2.5 py-1.5 font-mono text-xs tabular-nums text-paper-dim md:inline-flex">
               <span className="relative flex h-1.5 w-1.5 flex-none" aria-hidden="true">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-75" />
@@ -531,10 +531,9 @@ export function DashboardWorkspace({
           view={view}
           data={data}
           organizationId={organizationId}
-          activeOrganization={activeOrganization}
           permissions={activePermissions}
           error={error}
-          showSkeleton={!VIEW_WITHOUT_RAW_COLLECTIONS.has(view) && busy && !data}
+          showSkeleton={!VIEWS_WITHOUT_RAW_COLLECTIONS.has(view) && busy && !data}
           currentPage={currentPage}
           command={command}
           onDismissError={dismissError}

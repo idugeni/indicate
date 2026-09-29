@@ -48,7 +48,6 @@ const ORGANIZATIONS = [
   {
     id: 'org-1',
     name: 'Org Uji',
-    records: ['domain.read', 'article.read'],
     role: 'admin',
     permissions: [],
   },
@@ -93,7 +92,6 @@ describe('Dashboard workspace', () => {
     expect(screen.getByText('Indicate')).toBeDefined();
     expect(screen.getByText('Redaktur Uji')).toBeDefined();
     expect(await screen.findByText('Ringkasan Ekosistem Redaksi')).toBeDefined();
-    expect(screen.getByText('Akses: domain.read · article.read')).toBeDefined();
   });
 
   it('collapses and expands the sidebar through the edge rail', () => {

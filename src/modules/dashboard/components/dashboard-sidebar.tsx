@@ -2,25 +2,6 @@
 
 import { memo, useId, useState } from 'react';
 import Image from 'next/image';
-import {
-  BarChart3,
-  CreditCard,
-  FileText,
-  Flag,
-  FolderKanban,
-  Globe,
-  KeyRound,
-  LayoutDashboard,
-  Link2,
-  Megaphone,
-  Newspaper,
-  RefreshCw,
-  Settings,
-  Share2,
-  ShieldAlert,
-  Tags,
-  Users,
-} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -29,65 +10,16 @@ import { DashboardAvatar } from '@/modules/dashboard/components/dashboard-avatar
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
 import { SidebarResizeRail } from '@/modules/dashboard/components/shared/sidebar-resize-rail';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
-import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
-import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
-import type { NavGroup, OrganizationOption, View } from '@/modules/dashboard/components/dashboard-types';
+import { VIEW_REGISTRY, visibleNavGroups } from '@/modules/dashboard/components/view-registry';
+import type { OrganizationOption, View } from '@/modules/dashboard/components/dashboard-types';
 import { cn } from '@/ui/cn';
 
 const SIDEBAR_WIDTH = 256;
 const SIDEBAR_COLLAPSED_WIDTH = 64;
 
-const CONTENT_MANAGE_PERMISSION = INTEGRATIONS_PERMISSIONS.contentManage;
-
 /** Dark dashboard tooltip: content and its arrow share the raised surface. */
 export const DASHBOARD_TOOLTIP_CONTENT =
   'border border-hairline bg-bg-raised font-sans text-xs text-paper [&>div]:bg-bg-raised';
-
-const NAV_GROUPS: readonly NavGroup[] = [
-  {
-    id: 'overview',
-    title: 'Ringkasan',
-    items: [
-      { view: 'dashboard', label: 'Beranda', icon: LayoutDashboard },
-      { view: 'analytics', label: 'Statistik & Grafik', icon: BarChart3 },
-    ],
-  },
-  {
-    id: 'editorial',
-    title: 'Redaksi & Konten',
-    items: [
-      { view: 'editorial', label: 'Tulis Berita', icon: FileText },
-      { view: 'articles', label: 'Arsip Berita', icon: Newspaper },
-      { view: 'taxonomy', label: 'Kategori & Tag', icon: Tags },
-      { view: 'publishers', label: 'Daftar Penerbit', icon: Users },
-      { view: 'media', label: 'Media', icon: FolderKanban },
-    ],
-  },
-  {
-    id: 'publishing',
-    title: 'Penerbitan',
-    items: [
-      { view: 'publishing', label: 'Antrean Penerbitan', icon: Share2 },
-      { view: 'published', label: 'Hasil Tayang', icon: Link2 },
-    ],
-  },
-  {
-    id: 'system',
-    title: 'Pengaturan Sistem',
-    items: [
-      { view: 'configuration', label: 'Domain & Wilayah', icon: Globe },
-      { view: 'settings', label: 'Koneksi & Kunci Akses', icon: KeyRound, requiredPermission: INTEGRATIONS_PERMISSIONS.apiKeyRead },
-      { view: 'billing', label: 'Langganan', icon: CreditCard, requiredPermission: INTEGRATIONS_PERMISSIONS.subscriptionRead },
-      { view: 'audit', label: 'Riwayat Keamanan', icon: ShieldAlert, requiredPermission: DASHBOARD_PERMISSIONS.auditRead },
-      { view: 'operations', label: 'Tugas Latar Belakang', icon: RefreshCw, requiredPermission: DASHBOARD_PERMISSIONS.auditRead },
-      { view: 'moderation', label: 'Laporan & Data Pengguna', icon: Flag, requiredPermission: DASHBOARD_PERMISSIONS.auditRead },
-      { view: 'customers', label: 'Kelola Pelanggan', icon: Settings, requiredPermission: INTEGRATIONS_PERMISSIONS.superAdmin },
-      { view: 'content', label: 'Konten Website', icon: Megaphone, requiredPermission: CONTENT_MANAGE_PERMISSION },
-    ],
-  },
-];
-
-export const ALL_NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
 
 /**
  * Render the sidebar navigation items, grouped and permission gated.
@@ -110,13 +42,7 @@ export function DashboardNavList({
 }) {
   return (
     <>
-      {NAV_GROUPS.map((group, groupIndex) => {
-        const visibleItems = group.items.filter(
-          (item) =>
-            item.requiredPermission === undefined ||
-            permissions.has(item.requiredPermission),
-        );
-        if (visibleItems.length === 0) return null;
+      {visibleNavGroups(permissions).map((group, groupIndex) => {
         return (
         <div
           key={group.id}
@@ -132,21 +58,21 @@ export function DashboardNavList({
             </h3>
           )}
           <div className="space-y-0.5">
-            {visibleItems.map((item) => {
-              const isActive = view === item.view;
-              const Icon = item.icon;
+            {group.views.map((navView) => {
+              const { label, icon: Icon } = VIEW_REGISTRY[navView];
+              const isActive = view === navView;
 
               if (collapsed) {
                 return (
-                  <Tooltip key={item.view}>
+                  <Tooltip key={navView}>
                     <TooltipTrigger
                       render={
                         <Button
                           type="button"
                           variant="ghost"
                           aria-current={isActive ? 'page' : undefined}
-                          aria-label={item.label}
-                          onClick={() => onSelect(item.view)}
+                          aria-label={label}
+                          onClick={() => onSelect(navView)}
                           className={`mx-auto flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
                             isActive
                               ? 'bg-bg-raised-3 text-paper'
@@ -161,7 +87,7 @@ export function DashboardNavList({
                       }
                     />
                     <TooltipContent side="right" className={DASHBOARD_TOOLTIP_CONTENT}>
-                      {item.label}
+                      {label}
                     </TooltipContent>
                   </Tooltip>
                 );
@@ -169,11 +95,11 @@ export function DashboardNavList({
 
               return (
                 <Button
-                  key={item.view}
+                  key={navView}
                   type="button"
                   variant="ghost"
                   aria-current={isActive ? 'page' : undefined}
-                  onClick={() => onSelect(item.view)}
+                  onClick={() => onSelect(navView)}
                   className={`flex w-full items-center justify-start gap-2.5 rounded-md px-2.5 py-1.5 text-left font-sans text-[13px] font-normal transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
                     isActive
                       ? 'bg-bg-raised-3 font-medium text-paper'
@@ -184,12 +110,7 @@ export function DashboardNavList({
                     className={`h-4 w-4 flex-none ${isActive ? 'text-paper' : 'text-paper-faint'}`}
                     aria-hidden="true"
                   />
-                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                  {item.badge ? (
-                    <span className="flex-none rounded-full bg-bg-raised-2 px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-paper-dim">
-                      {typeof item.badge === 'object' ? item.badge.label : item.badge}
-                    </span>
-                  ) : null}
+                  <span className="min-w-0 flex-1 truncate">{label}</span>
                 </Button>
               );
             })}

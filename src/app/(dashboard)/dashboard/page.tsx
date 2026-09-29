@@ -67,7 +67,6 @@ async function DashboardBody() {
     return {
       id,
       name,
-      records: [],
       ...(membership === undefined
         ? {}
         : {

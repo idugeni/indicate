@@ -16,11 +16,8 @@ import {
   DashboardFormSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
 import type { EmailStatus } from '@/modules/dashboard/components/settings/integration-settings';
-import {
-  VIEW_METADATA_REGISTRY,
-  type OrganizationOption,
-  type View,
-} from '@/modules/dashboard/components/dashboard-types';
+import { VIEW_REGISTRY, VIEWS_WITHOUT_RAW_COLLECTIONS } from '@/modules/dashboard/components/view-registry';
+import type { View } from '@/modules/dashboard/components/dashboard-types';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 
 const ConfigurationPanel = dynamic(
@@ -72,31 +69,6 @@ const MediaLibrary = dynamic(
   () => import('@/modules/dashboard/components/publishing/media-library').then((module) => ({ default: module.MediaLibrary })),
   { loading: () => <DashboardFormSkeleton /> },
 );
-/**
- * Views whose own panel already presents every collection the payload carries,
- * or which fetch their own endpoint entirely. Rendering `DataView` underneath
- * them only repeats the same rows in a generic table — or renders a skeleton for
- * a payload that was never going to arrive — so these views stay single-surface.
- *
- * @remarks `published` is here for a second reason: its payload is
- * `editorial.list`, whose domain projection carries only `{ id, normalizedHostname }`
- * and whose `articleSites` rows carry only ids. The generic table then showed
- * `UNKNOWN` for every domain and a raw UUID for every assignment, which reads as
- * broken data rather than as a thin projection.
- */
-const VIEW_WITHOUT_RAW_COLLECTIONS: ReadonlySet<View> = new Set<View>([
-  'articles',
-  'billing',
-  'configuration',
-  'content',
-  'editorial',
-  'media',
-  'moderation',
-  'publishing',
-  'published',
-  'settings',
-  'taxonomy',
-]);
 const PublisherForm = dynamic(
   () => import('@/modules/dashboard/components/editorial/publisher-form').then((module) => ({ default: module.PublisherForm })),
   { loading: () => <DashboardFormSkeleton /> },
@@ -134,11 +106,12 @@ const ProfileForm = dynamic(
   { loading: () => <DashboardFormSkeleton /> },
 );
 
-const FALLBACK_METADATA = {
-  title: 'Ruang Kerja Redaksi',
-  eyebrow: 'Sistem',
-  description: 'Modul sistem INDICATE.',
-};
+/** Views whose payload the server filters from the query string, so `FilterControls` owns real inputs there. */
+const SERVER_FILTER_VIEWS: ReadonlySet<View> = new Set<View>(['analytics', 'audit', 'configuration', 'publishers']);
+
+function hasServerFilters(view: View): boolean {
+  return SERVER_FILTER_VIEWS.has(view);
+}
 
 /**
  * Render the active dashboard view: page header, error notice, filters, the
@@ -156,7 +129,6 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   view,
   data,
   organizationId,
-  activeOrganization,
   permissions,
   error,
   showSkeleton,
@@ -171,7 +143,6 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   readonly view: View;
   readonly data: unknown;
   readonly organizationId: string;
-  readonly activeOrganization: OrganizationOption | undefined;
   readonly permissions: ReadonlySet<string>;
   readonly error: string | null;
   /** True only while the first payload for this scope is still in flight. */
@@ -184,7 +155,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   readonly onRefresh: () => void;
   readonly onSelectView: (view: View) => void;
 }) {
-  const metadata = VIEW_METADATA_REGISTRY[view] ?? FALLBACK_METADATA;
+  const metadata = VIEW_REGISTRY[view];
 
   /** Tab-scoped tables: a tab lists only the collections it owns instead of the whole payload. */
   const collectionTables = (keys: readonly string[]) => (
@@ -241,13 +212,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         </Alert>
       ) : null}
 
-      {activeOrganization && activeOrganization.records.length > 0 ? (
-        <p className="font-mono text-[11px] tabular-nums text-paper-faint">
-          Akses: {activeOrganization.records.join(' · ')}
-        </p>
-      ) : null}
-
-      {view === 'editorial' ? null : <FilterControls view={view} data={data} onApply={onFilterApply} />}
+      {hasServerFilters(view) ? <FilterControls view={view} data={data} onApply={onFilterApply} /> : null}
 
       <PanelErrorBoundary key={`forms:${organizationId}:${view}`} name={metadata.title}>
       {view === 'publishers' ? <PublisherForm data={data} command={command} /> : null}
@@ -256,6 +221,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           data={data}
           onSubmit={(payload) => command('article.create', payload)}
           command={command}
+          organizationId={organizationId}
         />
       ) : null}
       {view === 'taxonomy' ? <TaxonomyManager data={data} command={command} /> : null}
@@ -330,7 +296,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       {view === 'content' ? <ContentManager /> : null}
       </PanelErrorBoundary>
 
-      {VIEW_WITHOUT_RAW_COLLECTIONS.has(view) ? null : showSkeleton ? (
+      {VIEWS_WITHOUT_RAW_COLLECTIONS.has(view) ? null : showSkeleton ? (
         view === 'dashboard' ? <DashboardContentSkeleton /> : <DashboardCollectionsSkeleton />
       ) : (
         <PanelErrorBoundary key={`data:${organizationId}:${view}`} name={`${metadata.title} — data`}>
@@ -351,4 +317,4 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   );
 });
 
-export { DashboardViewPanel, VIEW_WITHOUT_RAW_COLLECTIONS };
+export { DashboardViewPanel, VIEWS_WITHOUT_RAW_COLLECTIONS };
