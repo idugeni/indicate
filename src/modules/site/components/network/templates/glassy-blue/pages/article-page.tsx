@@ -13,7 +13,7 @@ import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { GlassyBlueShell } from '@/modules/site/components/network/templates/glassy-blue/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
 import { GLASSY_BLUE } from '@/modules/site/components/network/templates/glassy-blue/theme';
-import { GlassyBlueShareButtons } from '@/modules/site/components/network/templates/glassy-blue/cards/share-buttons';
+import { ShareButtons } from '@/modules/site/components/network/cards/share-buttons';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { GlassyBluePicks } from '@/modules/site/components/network/templates/glassy-blue/cards/picks';
@@ -100,7 +100,7 @@ export function GlassyBlueArticle({
                 </span>
               </span>
             </p>
-            <GlassyBlueShareButtons article={article} canonical={canonical} />
+            <ShareButtons skin={GLASSY_BLUE.shareButtons} article={article} canonical={canonical} />
           </div>
           </header>
 

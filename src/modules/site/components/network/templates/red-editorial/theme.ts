@@ -28,6 +28,11 @@ export const RED_EDITORIAL = {
     ring: '#e2e8f0',
     primary: '#b91c1c',
   },
+  shareButtons: {
+    muted: '#475569',
+    ring: '#e2e8f0',
+    xText: '#000000',
+  },
 } as const;
 
 const BADGE_STYLES = [

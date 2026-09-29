@@ -26,6 +26,11 @@ export const ORANGE_MODERN = {
     ring: '#e2e8f0',
     primary: '#ea580c',
   },
+  shareButtons: {
+    muted: '#475569',
+    ring: '#e2e8f0',
+    xText: '#000000',
+  },
 } as const;
 
 const BADGE_STYLES = [

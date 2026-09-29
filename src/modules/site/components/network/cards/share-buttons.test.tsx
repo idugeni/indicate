@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import { makeNetworkArticle } from '@/modules/delivery/network-test-fixtures';
-import { RedEditorialShareButtons } from '@/modules/site/components/network/templates/red-editorial/cards/share-buttons';
+import { ShareButtons } from '@/modules/site/components/network/cards/share-buttons';
+
+const SKIN = { muted: '#475569', ring: '#e2e8f0', xText: '#000000' } as const;
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -24,9 +26,9 @@ beforeEach(() => {
 const artikel = makeNetworkArticle({ id: 'a9', slug: 'berita-utama', title: 'Judul Uji Coba' });
 const kanonis = 'https://portal.contoh/berita-utama';
 
-describe('RedEditorialShareButtons', () => {
+describe('ShareButtons', () => {
   it('menampilkan tautan ke semua kanal', () => {
-    render(<RedEditorialShareButtons article={artikel} canonical={kanonis} />);
+    render(<ShareButtons skin={SKIN} article={artikel} canonical={kanonis} />);
     expect(screen.getByRole('link', { name: 'Bagikan ke WhatsApp' }).getAttribute('href')).toContain('wa.me');
     expect(screen.getByRole('link', { name: 'Bagikan ke X' }).getAttribute('href')).toContain('x.com');
     expect(screen.getByRole('link', { name: 'Bagikan ke Facebook' }).getAttribute('href')).toContain('facebook.com');
@@ -35,7 +37,7 @@ describe('RedEditorialShareButtons', () => {
   });
 
   it('menyalin tautan dan menampilkan status tersalin', async () => {
-    render(<RedEditorialShareButtons article={artikel} canonical={kanonis} />);
+    render(<ShareButtons skin={SKIN} article={artikel} canonical={kanonis} />);
     fireEvent.click(screen.getByRole('button', { name: 'Salin tautan artikel' }));
     const { toast } = await import('sonner');
     await vi.waitFor(() => {

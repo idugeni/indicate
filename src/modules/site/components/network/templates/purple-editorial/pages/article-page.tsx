@@ -13,7 +13,7 @@ import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { PurpleEditorialShell } from '@/modules/site/components/network/templates/purple-editorial/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
 import { PURPLE_EDITORIAL } from '@/modules/site/components/network/templates/purple-editorial/theme';
-import { PurpleEditorialShareButtons } from '@/modules/site/components/network/templates/purple-editorial/cards/share-buttons';
+import { ShareButtons } from '@/modules/site/components/network/cards/share-buttons';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { PurpleEditorialPicks } from '@/modules/site/components/network/templates/purple-editorial/cards/picks';
@@ -100,7 +100,7 @@ export function PurpleEditorialArticle({
                 </span>
               </span>
             </p>
-            <PurpleEditorialShareButtons article={article} canonical={canonical} />
+            <ShareButtons skin={PURPLE_EDITORIAL.shareButtons} article={article} canonical={canonical} />
           </div>
           </header>
 

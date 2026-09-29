@@ -13,7 +13,7 @@ import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { OrangeModernShell } from '@/modules/site/components/network/templates/orange-modern/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
 import { ORANGE_MODERN } from '@/modules/site/components/network/templates/orange-modern/theme';
-import { OrangeModernShareButtons } from '@/modules/site/components/network/templates/orange-modern/cards/share-buttons';
+import { ShareButtons } from '@/modules/site/components/network/cards/share-buttons';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { OrangeModernPicks } from '@/modules/site/components/network/templates/orange-modern/cards/picks';
@@ -100,7 +100,7 @@ export function OrangeModernArticle({
                 </span>
               </span>
             </p>
-            <OrangeModernShareButtons article={article} canonical={canonical} />
+            <ShareButtons skin={ORANGE_MODERN.shareButtons} article={article} canonical={canonical} />
           </div>
           </header>
 

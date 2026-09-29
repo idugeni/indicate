@@ -26,6 +26,11 @@ export const CLEAN_BLUE = {
     ring: '#e2e8f0',
     primary: '#1a5fd0',
   },
+  shareButtons: {
+    muted: '#475569',
+    ring: '#e2e8f0',
+    xText: '#000000',
+  },
 } as const;
 
 const BADGE_STYLES = [

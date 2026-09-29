@@ -13,7 +13,7 @@ import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { DarkNavyShell } from '@/modules/site/components/network/templates/dark-navy/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
 import { DARK_NAVY } from '@/modules/site/components/network/templates/dark-navy/theme';
-import { DarkNavyShareButtons } from '@/modules/site/components/network/templates/dark-navy/cards/share-buttons';
+import { ShareButtons } from '@/modules/site/components/network/cards/share-buttons';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { DarkNavyPicks } from '@/modules/site/components/network/templates/dark-navy/cards/picks';
@@ -100,7 +100,7 @@ export function DarkNavyArticle({
                 </span>
               </span>
             </p>
-            <DarkNavyShareButtons article={article} canonical={canonical} />
+            <ShareButtons skin={DARK_NAVY.shareButtons} article={article} canonical={canonical} />
           </div>
           </header>
 

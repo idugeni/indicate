@@ -13,7 +13,7 @@ import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
 import { CLEAN_BLUE } from '@/modules/site/components/network/templates/clean-blue/theme';
-import { CleanBlueShareButtons } from '@/modules/site/components/network/templates/clean-blue/cards/share-buttons';
+import { ShareButtons } from '@/modules/site/components/network/cards/share-buttons';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/cards/picks';
@@ -100,7 +100,7 @@ export function CleanBlueArticle({
                 </span>
               </span>
             </p>
-            <CleanBlueShareButtons article={article} canonical={canonical} />
+            <ShareButtons skin={CLEAN_BLUE.shareButtons} article={article} canonical={canonical} />
           </div>
           </header>
 

@@ -13,7 +13,7 @@ import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { WarmEditorialShell } from '@/modules/site/components/network/templates/warm-editorial/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
 import { WARM_EDITORIAL } from '@/modules/site/components/network/templates/warm-editorial/theme';
-import { WarmEditorialShareButtons } from '@/modules/site/components/network/templates/warm-editorial/cards/share-buttons';
+import { ShareButtons } from '@/modules/site/components/network/cards/share-buttons';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { WarmEditorialPicks } from '@/modules/site/components/network/templates/warm-editorial/cards/picks';
@@ -100,7 +100,7 @@ export function WarmEditorialArticle({
                 </span>
               </span>
             </p>
-            <WarmEditorialShareButtons article={article} canonical={canonical} />
+            <ShareButtons skin={WARM_EDITORIAL.shareButtons} article={article} canonical={canonical} />
           </div>
           </header>
 

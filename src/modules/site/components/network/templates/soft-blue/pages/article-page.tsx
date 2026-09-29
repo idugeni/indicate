@@ -14,7 +14,7 @@ import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-
 import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
 import { SOFT_BLUE } from '@/modules/site/components/network/templates/soft-blue/theme';
 import { Container } from '@/modules/site/components/network/ui/container';
-import { SoftBlueShareButtons } from '@/modules/site/components/network/templates/soft-blue/cards/share-buttons';
+import { ShareButtons } from '@/modules/site/components/network/cards/share-buttons';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBluePicks } from '@/modules/site/components/network/templates/soft-blue/cards/picks';
@@ -101,7 +101,7 @@ export function SoftBlueArticle({
                 </span>
               </span>
             </p>
-            <SoftBlueShareButtons article={article} canonical={canonical} />
+            <ShareButtons skin={SOFT_BLUE.shareButtons} article={article} canonical={canonical} />
           </div>
           </header>
 

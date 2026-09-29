@@ -11,7 +11,23 @@ import type { ArticleListItem } from '@/modules/delivery/models';
  * Telegram outlines that fill on hover, neutral email, plus copy link
  * (clipboard + toast).
  */
-export function CleanBlueShareButtons({ article, canonical }: { readonly article: ArticleListItem; readonly canonical: string }) {
+export interface ShareButtonsSkin {
+  readonly muted: string;
+  readonly ring: string;
+  readonly xText: string;
+}
+
+/**
+ * Row of share buttons: filled WhatsApp primary, brand-tinted X/Facebook/
+ * Telegram outlines that fill on hover, neutral email, plus copy link
+ * (clipboard + toast).
+ *
+ * @param skin - Neutral text, ring, and X glyph colours from the template theme.
+ * @param article - Article being shared.
+ * @param canonical - Canonical URL of the article.
+ * @returns Share channel row.
+ */
+export function ShareButtons({ skin, article, canonical }: { readonly skin: ShareButtonsSkin; readonly article: ArticleListItem; readonly canonical: string }) {
   const shareText = encodeURIComponent(`${article.title} ${canonical}`);
 
   const copy = async () => {
@@ -24,10 +40,10 @@ export function CleanBlueShareButtons({ article, canonical }: { readonly article
   };
 
   const round =
-    'flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[var(--tpl-primary,#1a5fd0)]';
+    `flex h-9 w-9 items-center justify-center rounded-full text-[${skin.muted}] ring-1 ring-[${skin.ring}] transition-colors hover:text-[var(--tpl-primary)]`;
   const channel =
-    'flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-slate-200 transition-colors hover:text-white hover:ring-transparent';
-  const xChannel = `${channel} text-black hover:bg-black`;
+    `flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-[${skin.ring}] transition-colors hover:text-white hover:ring-transparent`;
+  const xChannel = `${channel} text-[${skin.xText}] hover:bg-black`;
   const facebookChannel = `${channel} text-[#1877F2] hover:bg-[#1877F2]`;
   const telegramChannel = `${channel} text-[#229ED9] hover:bg-[#229ED9]`;
 
@@ -38,7 +54,7 @@ export function CleanBlueShareButtons({ article, canonical }: { readonly article
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Bagikan ke WhatsApp"
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--tpl-primary,#1a5fd0)] text-white transition-colors hover:bg-[var(--tpl-primary-dark,#155cb8)]"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--tpl-primary)] text-white transition-colors hover:bg-[var(--tpl-primary-dark)]"
       >
         <FaWhatsapp className="h-4 w-4" aria-hidden="true" />
       </a>

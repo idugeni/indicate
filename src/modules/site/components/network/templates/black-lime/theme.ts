@@ -27,6 +27,11 @@ export const BLACK_LIME = {
     ring: '#242b1f',
     primary: '#c5f82a',
   },
+  shareButtons: {
+    muted: '#a3ad9a',
+    ring: '#242b1f',
+    xText: '#ffffff',
+  },
 } as const;
 
 const BADGE_STYLES = [

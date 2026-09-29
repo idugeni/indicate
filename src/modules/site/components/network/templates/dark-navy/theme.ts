@@ -26,6 +26,11 @@ export const DARK_NAVY = {
     ring: '#1b2c4f',
     primary: '#2f7bff',
   },
+  shareButtons: {
+    muted: '#9aa9c4',
+    ring: '#1b2c4f',
+    xText: '#ffffff',
+  },
 } as const;
 
 const BADGE_STYLES = [

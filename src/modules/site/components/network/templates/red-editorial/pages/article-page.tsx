@@ -13,7 +13,7 @@ import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { RedEditorialShell } from '@/modules/site/components/network/templates/red-editorial/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
 import { RED_EDITORIAL } from '@/modules/site/components/network/templates/red-editorial/theme';
-import { RedEditorialShareButtons } from '@/modules/site/components/network/templates/red-editorial/cards/share-buttons';
+import { ShareButtons } from '@/modules/site/components/network/cards/share-buttons';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { RedEditorialPicks } from '@/modules/site/components/network/templates/red-editorial/cards/picks';
@@ -100,7 +100,7 @@ export function RedEditorialArticle({
                 </span>
               </span>
             </p>
-            <RedEditorialShareButtons article={article} canonical={canonical} />
+            <ShareButtons skin={RED_EDITORIAL.shareButtons} article={article} canonical={canonical} />
           </div>
           </header>
 
