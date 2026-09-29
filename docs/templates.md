@@ -26,7 +26,7 @@ netral — boundary Suspense tidak punya konteks Site, jadi loader per-template
 
 ```text
 <id>/
-  template.ts, theme.ts          # identitas + palet mandiri (bukan site_settings.colors)
+  theme.ts                       # palet mandiri (bukan site_settings.colors)
   lib/format.ts, lib/nav.ts      # pure helpers (tanggal/views/baca/nav)
   server/site-nav.ts             # navigasi kategori cached, server-only
   chrome/                        # shell, site-header, header-bar, search-panel,
