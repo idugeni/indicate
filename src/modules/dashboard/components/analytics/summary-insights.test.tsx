@@ -9,12 +9,20 @@ afterEach(() => {
 });
 
 describe('Corong konversi', () => {
-  it('merender tiga tahap dengan laju konversi', () => {
-    render(<ConversionFunnel active={10} tasks={8} succeeded={6} />);
+  it('merender tiga tahap dengan fan-out portal, bukan persen artikel', () => {
+    render(<ConversionFunnel active={10} deliveries={1340} succeeded={1340} />);
     expect(screen.getByText('Corong konversi')).toBeDefined();
     expect(screen.getByText('Artikel aktif')).toBeDefined();
-    expect(screen.getByText('80% dari artikel')).toBeDefined();
-    expect(screen.getByText('75% dari tugas')).toBeDefined();
+    expect(screen.getByText('Portal tujuan')).toBeDefined();
+    expect(screen.getByText('Rata-rata 134 portal per artikel')).toBeDefined();
+    expect(screen.getByText('100% dari portal')).toBeDefined();
+    expect(screen.queryByText(/dari artikel$/)).toBeNull();
+  });
+
+  it('menyembunyikan rasio saat belum ada artikel aktif', () => {
+    render(<ConversionFunnel active={0} deliveries={0} succeeded={0} />);
+    expect(screen.queryByText('Rata-rata 134 portal per artikel')).toBeNull();
+    expect(screen.getByText('— dari portal')).toBeDefined();
   });
 });
 

@@ -108,7 +108,7 @@ export function ActivityCalendar({ series }: { readonly series: readonly TaskDay
             Kalender aktivitas
           </h2>
           <p className="m-0 mt-0.5 font-mono text-[11px] tabular-nums text-paper-faint">
-            {totalAll.toLocaleString('id-ID')} tugas dalam rentang
+            {totalAll.toLocaleString('id-ID')} portal dalam rentang
           </p>
         </div>
         <ToggleGroup

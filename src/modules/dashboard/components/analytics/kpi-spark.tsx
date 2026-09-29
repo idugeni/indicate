@@ -81,8 +81,8 @@ function SparkCard({
 /**
  * Render three trailing-7-day KPIs with sparklines.
  *
- * @param series - Daily buckets from the analytics projection.
- * @returns KPI grid for success, tasks, and failures.
+ * @param series - Daily portal-delivery buckets from the analytics projection.
+ * @returns KPI grid for delivered portals, total portal targets, and failures.
  */
 export function KpiSparkline({ series }: { readonly series: readonly TaskDay[] }) {
   const current = series.slice(-7);
@@ -91,7 +91,7 @@ export function KpiSparkline({ series }: { readonly series: readonly TaskDay[] }
     <div className="grid h-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-3">
       <SparkCard label="Sukses 7 hari" current={current} previous={previous} color={COLOR_PUBLISHED} pick={(point) => point.diterbitkan} />
       <SparkCard
-        label="Tugas 7 hari"
+        label="Portal 7 hari"
         current={current}
         previous={previous}
         color={COLOR_QUEUED}

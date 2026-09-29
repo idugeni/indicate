@@ -381,7 +381,7 @@ export function PrimaryBento({
     key: analytics?.articleLabels?.[point.key] ?? truncateLabel(point.key, 28),
     count: point.views,
   }));
-  const funnelTasks = analytics?.totalPenyaluran ?? (succeeded + failed);
+  const funnelDeliveries = analytics?.totalPenyaluran ?? (succeeded + failed);
   if (analytics !== null && !hasAnalyticsSignal(analytics)) {
     return (
       <div className="col-span-full min-w-0">
@@ -395,7 +395,7 @@ export function PrimaryBento({
         <KpiSparkline series={series} />
       </div>
       <SummaryCharts jobs={jobs} succeeded={succeeded} failed={failed} active={active} archived={archived} />
-      <ConversionFunnel active={active} tasks={funnelTasks} succeeded={succeeded} className="sm:col-span-2 lg:col-span-8" />
+      <ConversionFunnel active={active} deliveries={funnelDeliveries} succeeded={succeeded} className="sm:col-span-2 lg:col-span-8" />
       <SuccessRate succeeded={succeeded} failed={failed} className="sm:col-span-2 lg:col-span-4" />
       <div className="min-w-0 sm:col-span-2 lg:col-span-7">
         <PublicationTrend series={series} />

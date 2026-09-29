@@ -10,32 +10,41 @@ function percent(value: number, base: number): string {
   return `${Math.round((value / base) * 100)}%`;
 }
 
+function fanOut(deliveries: number, articles: number): string {
+  if (articles <= 0) return '—';
+  return `Rata-rata ${Math.round(deliveries / articles).toLocaleString('id-ID')} portal per artikel`;
+}
+
 /**
- * Render an editorial conversion funnel from articles to successful outcomes.
+ * Render an editorial conversion funnel from articles to successful portal deliveries.
  *
- * @param active - Active articles ready for delivery.
- * @param tasks - Queued publishing tasks.
- * @param succeeded - Successful site outcomes.
- * @param className - Parent-grid bento span.
- * @returns Three ordered stages with inter-stage conversion rates.
+ * @param props.active - Active articles ready for delivery.
+ * @param props.deliveries - Portal assignments the articles resolved to.
+ * @param props.succeeded - Site outcomes that reached `published`.
+ * @param props.className - Parent-grid bento span.
+ * @returns Three ordered stages: articles, portal targets, live outcomes.
+ * @remarks The middle stage is a fan-out, not a conversion rate: one article
+ * reaches every portal in the network, so the ratio is read as "N portal per
+ * artikel". Rendering it as a percentage produced values like `13400%`, and
+ * calling it "Tugas antrean" collided with the queue card, which counts jobs.
  */
 export function ConversionFunnel({
   active,
-  tasks,
+  deliveries,
   succeeded,
   className,
 }: {
   readonly active: number;
-  readonly tasks: number;
+  readonly deliveries: number;
   readonly succeeded: number;
   readonly className?: string;
 }) {
   const stages = [
     { label: 'Artikel aktif', value: active, note: 'Naskah siap salur' },
-    { label: 'Tugas antrean', value: tasks, note: `${percent(tasks, active)} dari artikel` },
-    { label: 'Hasil sukses', value: succeeded, note: `${percent(succeeded, tasks)} dari tugas` },
+    { label: 'Portal tujuan', value: deliveries, note: fanOut(deliveries, active) },
+    { label: 'Hasil sukses', value: succeeded, note: `${percent(succeeded, deliveries)} dari portal` },
   ];
-  const max = Math.max(active, tasks, succeeded, 1);
+  const max = Math.max(active, deliveries, succeeded, 1);
   return (
     <section
       aria-label="Corong konversi"

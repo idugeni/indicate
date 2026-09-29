@@ -50,7 +50,7 @@ export function PublicationTrend({ series }: { readonly series: readonly TaskDay
             Tren publikasi
           </h2>
           <p className="m-0 mt-0.5 font-sans text-xs text-paper-faint">
-            Tugas diterbitkan, gagal, dan antre per hari
+            Penyaluran terbit, gagal, dan antre per hari
           </p>
         </div>
         <ToggleGroup
