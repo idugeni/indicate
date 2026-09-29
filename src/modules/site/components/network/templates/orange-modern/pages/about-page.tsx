@@ -4,7 +4,7 @@ import { ABOUT_TRUST_LINKS, deriveAboutCategories } from '@/modules/site/about-p
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { OrangeModernShell } from '@/modules/site/components/network/templates/orange-modern/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
-import { OrangeModernJsonLd } from '@/modules/site/components/network/templates/orange-modern/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface OrangeModernAboutProps {
   readonly site: NetworkSiteData;
@@ -88,7 +88,7 @@ export function OrangeModernAbout({ site, title, description, path = '/' }: Oran
           </ul>
         </section>
       </Container>
-      <OrangeModernJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </OrangeModernShell>
   );
 }

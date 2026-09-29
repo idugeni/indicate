@@ -9,7 +9,7 @@ import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
 import { ArticleGallery } from '@/modules/site/components/article-gallery';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
-import { WarmEditorialJsonLd } from '@/modules/site/components/network/templates/warm-editorial/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { WarmEditorialShell } from '@/modules/site/components/network/templates/warm-editorial/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/warm-editorial/ui/author-avatar';
 import { WarmEditorialShareButtons } from '@/modules/site/components/network/templates/warm-editorial/cards/share-buttons';
@@ -322,7 +322,7 @@ export function WarmEditorialArticle({
             </Link>
           </aside>
         </div>
-      <WarmEditorialJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </WarmEditorialShell>
   );
 }

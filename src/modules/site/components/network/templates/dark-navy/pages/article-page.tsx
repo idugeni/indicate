@@ -9,7 +9,7 @@ import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
 import { ArticleGallery } from '@/modules/site/components/article-gallery';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
-import { DarkNavyJsonLd } from '@/modules/site/components/network/templates/dark-navy/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { DarkNavyShell } from '@/modules/site/components/network/templates/dark-navy/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/dark-navy/ui/author-avatar';
 import { DarkNavyShareButtons } from '@/modules/site/components/network/templates/dark-navy/cards/share-buttons';
@@ -322,7 +322,7 @@ export function DarkNavyArticle({
             </Link>
           </aside>
         </div>
-      <DarkNavyJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </DarkNavyShell>
   );
 }

@@ -7,7 +7,7 @@ import { PurpleEditorialLatest } from '@/modules/site/components/network/templat
 import { PurpleEditorialPicks } from '@/modules/site/components/network/templates/purple-editorial/cards/picks';
 import { PurpleEditorialArchivePager } from '@/modules/site/components/network/templates/purple-editorial/cards/archive-pager';
 import { PurpleEditorialNewsletter } from '@/modules/site/components/network/templates/purple-editorial/cards/newsletter';
-import { PurpleEditorialJsonLd } from '@/modules/site/components/network/templates/purple-editorial/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { PurpleEditorialEmpty } from '@/modules/site/components/network/templates/purple-editorial/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
@@ -55,7 +55,7 @@ export function PurpleEditorialListing({ site, title, description, path, indexab
           </>
         )}
       </Container>
-      <PurpleEditorialJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </PurpleEditorialShell>
   );
 }

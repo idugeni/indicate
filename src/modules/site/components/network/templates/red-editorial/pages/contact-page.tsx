@@ -5,7 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { RedEditorialShell } from '@/modules/site/components/network/templates/red-editorial/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { RedEditorialEmpty } from '@/modules/site/components/network/templates/red-editorial/ui/empty';
-import { RedEditorialJsonLd } from '@/modules/site/components/network/templates/red-editorial/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface RedEditorialContactProps {
   readonly site: NetworkSiteData;
@@ -100,7 +100,7 @@ export function RedEditorialContact({ site, title, description, path = '/' }: Re
           </div>
         )}
       </Container>
-      <RedEditorialJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </RedEditorialShell>
   );
 }

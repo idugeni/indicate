@@ -9,7 +9,7 @@ import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
 import { ArticleGallery } from '@/modules/site/components/article-gallery';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
-import { SoftBlueJsonLd } from '@/modules/site/components/network/templates/soft-blue/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-blue/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/soft-blue/ui/author-avatar';
 import { Container } from '@/modules/site/components/network/ui/container';
@@ -323,7 +323,7 @@ export function SoftBlueArticle({
             </Link>
           </aside>
         </Container>
-      <SoftBlueJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </SoftBlueShell>
   );
 }

@@ -7,7 +7,7 @@ import { TENANT_RELATED_DOCS } from '@/modules/site/legal-documents';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-blue/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
-import { SoftBlueJsonLd } from '@/modules/site/components/network/templates/soft-blue/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface SoftBlueLegalProps {
   readonly site: NetworkSiteData;
@@ -96,7 +96,7 @@ export function SoftBlueLegal({ site, title, description, path = '/', sections, 
           ))}
         </div>
       </Container>
-      <SoftBlueJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </SoftBlueShell>
   );
 }

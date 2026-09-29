@@ -4,7 +4,7 @@ import { ABOUT_TRUST_LINKS, deriveAboutCategories } from '@/modules/site/about-p
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GlassyBlueShell } from '@/modules/site/components/network/templates/glassy-blue/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
-import { GlassyBlueJsonLd } from '@/modules/site/components/network/templates/glassy-blue/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface GlassyBlueAboutProps {
   readonly site: NetworkSiteData;
@@ -88,7 +88,7 @@ export function GlassyBlueAbout({ site, title, description, path = '/' }: Glassy
           </ul>
         </section>
       </Container>
-      <GlassyBlueJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </GlassyBlueShell>
   );
 }

@@ -6,7 +6,7 @@ import { RedEditorialEmpty } from '@/modules/site/components/network/templates/r
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { RedEditorialPicks } from '@/modules/site/components/network/templates/red-editorial/cards/picks';
 import { RedEditorialArchivePager } from '@/modules/site/components/network/templates/red-editorial/cards/archive-pager';
-import { RedEditorialJsonLd } from '@/modules/site/components/network/templates/red-editorial/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface RedEditorialChannelProps {
   readonly site: NetworkSiteData;
@@ -53,7 +53,7 @@ export function RedEditorialChannel({ site, kicker, title, description, path = '
           </>
         )}
       </Container>
-      <RedEditorialJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </RedEditorialShell>
   );
 }

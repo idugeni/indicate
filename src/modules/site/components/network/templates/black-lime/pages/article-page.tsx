@@ -9,7 +9,7 @@ import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
 import { ArticleGallery } from '@/modules/site/components/article-gallery';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
-import { BlackLimeJsonLd } from '@/modules/site/components/network/templates/black-lime/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { BlackLimeShell } from '@/modules/site/components/network/templates/black-lime/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/black-lime/ui/author-avatar';
 import { BlackLimeShareButtons } from '@/modules/site/components/network/templates/black-lime/cards/share-buttons';
@@ -322,7 +322,7 @@ export function BlackLimeArticle({
             </Link>
           </aside>
         </div>
-      <BlackLimeJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </BlackLimeShell>
   );
 }

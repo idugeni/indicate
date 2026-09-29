@@ -5,7 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimeShell } from '@/modules/site/components/network/templates/black-lime/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { BlackLimeEmpty } from '@/modules/site/components/network/templates/black-lime/ui/empty';
-import { BlackLimeJsonLd } from '@/modules/site/components/network/templates/black-lime/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface BlackLimeContactProps {
   readonly site: NetworkSiteData;
@@ -100,7 +100,7 @@ export function BlackLimeContact({ site, title, description, path = '/' }: Black
           </div>
         )}
       </Container>
-      <BlackLimeJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </BlackLimeShell>
   );
 }

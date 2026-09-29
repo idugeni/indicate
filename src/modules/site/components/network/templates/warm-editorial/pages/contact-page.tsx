@@ -5,7 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { WarmEditorialShell } from '@/modules/site/components/network/templates/warm-editorial/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { WarmEditorialEmpty } from '@/modules/site/components/network/templates/warm-editorial/ui/empty';
-import { WarmEditorialJsonLd } from '@/modules/site/components/network/templates/warm-editorial/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface WarmEditorialContactProps {
   readonly site: NetworkSiteData;
@@ -100,7 +100,7 @@ export function WarmEditorialContact({ site, title, description, path = '/' }: W
           </div>
         )}
       </Container>
-      <WarmEditorialJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </WarmEditorialShell>
   );
 }

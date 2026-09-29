@@ -5,7 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GreenMinimalShell } from '@/modules/site/components/network/templates/green-minimal/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { GreenMinimalEmpty } from '@/modules/site/components/network/templates/green-minimal/ui/empty';
-import { GreenMinimalJsonLd } from '@/modules/site/components/network/templates/green-minimal/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface GreenMinimalContactProps {
   readonly site: NetworkSiteData;
@@ -100,7 +100,7 @@ export function GreenMinimalContact({ site, title, description, path = '/' }: Gr
           </div>
         )}
       </Container>
-      <GreenMinimalJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </GreenMinimalShell>
   );
 }

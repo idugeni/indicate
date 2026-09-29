@@ -9,7 +9,7 @@ import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
 import { ArticleGallery } from '@/modules/site/components/article-gallery';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
-import { PurpleEditorialJsonLd } from '@/modules/site/components/network/templates/purple-editorial/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { PurpleEditorialShell } from '@/modules/site/components/network/templates/purple-editorial/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/purple-editorial/ui/author-avatar';
 import { PurpleEditorialShareButtons } from '@/modules/site/components/network/templates/purple-editorial/cards/share-buttons';
@@ -322,7 +322,7 @@ export function PurpleEditorialArticle({
             </Link>
           </aside>
         </div>
-      <PurpleEditorialJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </PurpleEditorialShell>
   );
 }

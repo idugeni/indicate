@@ -6,7 +6,7 @@ import { WarmEditorialEmpty } from '@/modules/site/components/network/templates/
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { WarmEditorialPicks } from '@/modules/site/components/network/templates/warm-editorial/cards/picks';
 import { WarmEditorialArchivePager } from '@/modules/site/components/network/templates/warm-editorial/cards/archive-pager';
-import { WarmEditorialJsonLd } from '@/modules/site/components/network/templates/warm-editorial/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface WarmEditorialChannelProps {
   readonly site: NetworkSiteData;
@@ -53,7 +53,7 @@ export function WarmEditorialChannel({ site, kicker, title, description, path = 
           </>
         )}
       </Container>
-      <WarmEditorialJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </WarmEditorialShell>
   );
 }

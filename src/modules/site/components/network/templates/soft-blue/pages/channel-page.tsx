@@ -6,7 +6,7 @@ import { SoftBlueEmpty } from '@/modules/site/components/network/templates/soft-
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { SoftBluePicks } from '@/modules/site/components/network/templates/soft-blue/cards/picks';
 import { SoftBlueArchivePager } from '@/modules/site/components/network/templates/soft-blue/cards/archive-pager';
-import { SoftBlueJsonLd } from '@/modules/site/components/network/templates/soft-blue/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface SoftBlueChannelProps {
   readonly site: NetworkSiteData;
@@ -53,7 +53,7 @@ export function SoftBlueChannel({ site, kicker, title, description, path = '/', 
           </>
         )}
       </Container>
-      <SoftBlueJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </SoftBlueShell>
   );
 }

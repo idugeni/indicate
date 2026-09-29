@@ -6,7 +6,7 @@ import { OrangeModernEmpty } from '@/modules/site/components/network/templates/o
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { OrangeModernPicks } from '@/modules/site/components/network/templates/orange-modern/cards/picks';
 import { OrangeModernArchivePager } from '@/modules/site/components/network/templates/orange-modern/cards/archive-pager';
-import { OrangeModernJsonLd } from '@/modules/site/components/network/templates/orange-modern/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface OrangeModernChannelProps {
   readonly site: NetworkSiteData;
@@ -53,7 +53,7 @@ export function OrangeModernChannel({ site, kicker, title, description, path = '
           </>
         )}
       </Container>
-      <OrangeModernJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </OrangeModernShell>
   );
 }

@@ -8,7 +8,7 @@ import { GlassyBlueLatestNews } from '@/modules/site/components/network/template
 import { GlassyBluePicks } from '@/modules/site/components/network/templates/glassy-blue/cards/picks';
 import { GlassyBlueArchivePager } from '@/modules/site/components/network/templates/glassy-blue/cards/archive-pager';
 import { GlassyBlueNewsletter } from '@/modules/site/components/network/templates/glassy-blue/cards/newsletter';
-import { GlassyBlueJsonLd } from '@/modules/site/components/network/templates/glassy-blue/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { GlassyBlueEmpty } from '@/modules/site/components/network/templates/glassy-blue/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
@@ -67,7 +67,7 @@ export async function GlassyBlueListing({ site, title, description, path, indexa
           </>
         )}
       </Container>
-      <GlassyBlueJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </GlassyBlueShell>
   );
 }

@@ -6,7 +6,7 @@ import { CleanBlueHero } from '@/modules/site/components/network/templates/clean
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/cards/picks';
 import { CleanBlueArchivePager } from '@/modules/site/components/network/templates/clean-blue/cards/archive-pager';
 import { CleanBlueNewsletter } from '@/modules/site/components/network/templates/clean-blue/cards/newsletter';
-import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { CleanBlueEmpty } from '@/modules/site/components/network/templates/clean-blue/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
@@ -50,7 +50,7 @@ export function CleanBlueListing({ site, title, description, path, indexable }: 
           </>
         )}
       </Container>
-      <CleanBlueJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </CleanBlueShell>
   );
 }

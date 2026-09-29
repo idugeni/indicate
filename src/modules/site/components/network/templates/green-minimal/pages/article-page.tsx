@@ -9,7 +9,7 @@ import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
 import { ArticleGallery } from '@/modules/site/components/article-gallery';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
-import { GreenMinimalJsonLd } from '@/modules/site/components/network/templates/green-minimal/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { GreenMinimalShell } from '@/modules/site/components/network/templates/green-minimal/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/green-minimal/ui/author-avatar';
 import { GreenMinimalShareButtons } from '@/modules/site/components/network/templates/green-minimal/cards/share-buttons';
@@ -322,7 +322,7 @@ export function GreenMinimalArticle({
             </Link>
           </aside>
         </div>
-      <GreenMinimalJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </GreenMinimalShell>
   );
 }

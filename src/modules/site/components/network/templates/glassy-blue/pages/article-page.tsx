@@ -9,7 +9,7 @@ import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
 import { ArticleGallery } from '@/modules/site/components/article-gallery';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
-import { GlassyBlueJsonLd } from '@/modules/site/components/network/templates/glassy-blue/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { GlassyBlueShell } from '@/modules/site/components/network/templates/glassy-blue/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/glassy-blue/ui/author-avatar';
 import { GlassyBlueShareButtons } from '@/modules/site/components/network/templates/glassy-blue/cards/share-buttons';
@@ -322,7 +322,7 @@ export function GlassyBlueArticle({
             </Link>
           </aside>
         </div>
-      <GlassyBlueJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </GlassyBlueShell>
   );
 }

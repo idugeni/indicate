@@ -5,7 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { CleanBlueEmpty } from '@/modules/site/components/network/templates/clean-blue/ui/empty';
-import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface CleanBlueContactProps {
   readonly site: NetworkSiteData;
@@ -100,7 +100,7 @@ export function CleanBlueContact({ site, title, description, path = '/' }: Clean
           </div>
         )}
       </Container>
-      <CleanBlueJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </CleanBlueShell>
   );
 }

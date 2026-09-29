@@ -7,7 +7,7 @@ import { TENANT_RELATED_DOCS } from '@/modules/site/legal-documents';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { PurpleEditorialShell } from '@/modules/site/components/network/templates/purple-editorial/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
-import { PurpleEditorialJsonLd } from '@/modules/site/components/network/templates/purple-editorial/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface PurpleEditorialLegalProps {
   readonly site: NetworkSiteData;
@@ -96,7 +96,7 @@ export function PurpleEditorialLegal({ site, title, description, path = '/', sec
           ))}
         </div>
       </Container>
-      <PurpleEditorialJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </PurpleEditorialShell>
   );
 }

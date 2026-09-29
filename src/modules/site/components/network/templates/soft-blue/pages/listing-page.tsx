@@ -6,7 +6,7 @@ import { SoftBlueHero } from '@/modules/site/components/network/templates/soft-b
 import { SoftBluePicks } from '@/modules/site/components/network/templates/soft-blue/cards/picks';
 import { SoftBlueArchivePager } from '@/modules/site/components/network/templates/soft-blue/cards/archive-pager';
 import { SoftBlueNewsletter } from '@/modules/site/components/network/templates/soft-blue/cards/newsletter';
-import { SoftBlueJsonLd } from '@/modules/site/components/network/templates/soft-blue/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { SoftBlueEmpty } from '@/modules/site/components/network/templates/soft-blue/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
@@ -50,7 +50,7 @@ export function SoftBlueListing({ site, title, description, path, indexable }: L
           </>
         )}
       </Container>
-      <SoftBlueJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </SoftBlueShell>
   );
 }

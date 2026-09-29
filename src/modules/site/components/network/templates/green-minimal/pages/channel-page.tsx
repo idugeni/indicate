@@ -6,7 +6,7 @@ import { GreenMinimalEmpty } from '@/modules/site/components/network/templates/g
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { GreenMinimalPicks } from '@/modules/site/components/network/templates/green-minimal/cards/picks';
 import { GreenMinimalArchivePager } from '@/modules/site/components/network/templates/green-minimal/cards/archive-pager';
-import { GreenMinimalJsonLd } from '@/modules/site/components/network/templates/green-minimal/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface GreenMinimalChannelProps {
   readonly site: NetworkSiteData;
@@ -53,7 +53,7 @@ export function GreenMinimalChannel({ site, kicker, title, description, path = '
           </>
         )}
       </Container>
-      <GreenMinimalJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </GreenMinimalShell>
   );
 }

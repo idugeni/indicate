@@ -7,7 +7,7 @@ import { OrangeModernLatest } from '@/modules/site/components/network/templates/
 import { OrangeModernPicks } from '@/modules/site/components/network/templates/orange-modern/cards/picks';
 import { OrangeModernArchivePager } from '@/modules/site/components/network/templates/orange-modern/cards/archive-pager';
 import { OrangeModernNewsletter } from '@/modules/site/components/network/templates/orange-modern/cards/newsletter';
-import { OrangeModernJsonLd } from '@/modules/site/components/network/templates/orange-modern/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { OrangeModernEmpty } from '@/modules/site/components/network/templates/orange-modern/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
@@ -62,7 +62,7 @@ export function OrangeModernListing({ site, title, description, path, indexable 
           </>
         )}
       </Container>
-      <OrangeModernJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </OrangeModernShell>
   );
 }

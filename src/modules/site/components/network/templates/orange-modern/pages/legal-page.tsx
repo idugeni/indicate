@@ -7,7 +7,7 @@ import { TENANT_RELATED_DOCS } from '@/modules/site/legal-documents';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { OrangeModernShell } from '@/modules/site/components/network/templates/orange-modern/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
-import { OrangeModernJsonLd } from '@/modules/site/components/network/templates/orange-modern/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface OrangeModernLegalProps {
   readonly site: NetworkSiteData;
@@ -96,7 +96,7 @@ export function OrangeModernLegal({ site, title, description, path = '/', sectio
           ))}
         </div>
       </Container>
-      <OrangeModernJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </OrangeModernShell>
   );
 }

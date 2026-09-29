@@ -5,7 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { OrangeModernShell } from '@/modules/site/components/network/templates/orange-modern/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { OrangeModernEmpty } from '@/modules/site/components/network/templates/orange-modern/ui/empty';
-import { OrangeModernJsonLd } from '@/modules/site/components/network/templates/orange-modern/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface OrangeModernContactProps {
   readonly site: NetworkSiteData;
@@ -100,7 +100,7 @@ export function OrangeModernContact({ site, title, description, path = '/' }: Or
           </div>
         )}
       </Container>
-      <OrangeModernJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </OrangeModernShell>
   );
 }

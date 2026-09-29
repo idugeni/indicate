@@ -5,7 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { DarkNavyShell } from '@/modules/site/components/network/templates/dark-navy/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { DarkNavyEmpty } from '@/modules/site/components/network/templates/dark-navy/ui/empty';
-import { DarkNavyJsonLd } from '@/modules/site/components/network/templates/dark-navy/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface DarkNavyContactProps {
   readonly site: NetworkSiteData;
@@ -100,7 +100,7 @@ export function DarkNavyContact({ site, title, description, path = '/' }: DarkNa
           </div>
         )}
       </Container>
-      <DarkNavyJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </DarkNavyShell>
   );
 }

@@ -9,7 +9,7 @@ import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
 import { ArticleGallery } from '@/modules/site/components/article-gallery';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
-import { RedEditorialJsonLd } from '@/modules/site/components/network/templates/red-editorial/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { RedEditorialShell } from '@/modules/site/components/network/templates/red-editorial/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/red-editorial/ui/author-avatar';
 import { RedEditorialShareButtons } from '@/modules/site/components/network/templates/red-editorial/cards/share-buttons';
@@ -322,7 +322,7 @@ export function RedEditorialArticle({
             </Link>
           </aside>
         </div>
-      <RedEditorialJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </RedEditorialShell>
   );
 }

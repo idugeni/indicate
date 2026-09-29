@@ -4,7 +4,7 @@ import { ABOUT_TRUST_LINKS, deriveAboutCategories } from '@/modules/site/about-p
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { RedEditorialShell } from '@/modules/site/components/network/templates/red-editorial/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
-import { RedEditorialJsonLd } from '@/modules/site/components/network/templates/red-editorial/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface RedEditorialAboutProps {
   readonly site: NetworkSiteData;
@@ -88,7 +88,7 @@ export function RedEditorialAbout({ site, title, description, path = '/' }: RedE
           </ul>
         </section>
       </Container>
-      <RedEditorialJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </RedEditorialShell>
   );
 }

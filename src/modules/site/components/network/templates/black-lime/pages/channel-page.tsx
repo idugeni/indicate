@@ -6,7 +6,7 @@ import { BlackLimeEmpty } from '@/modules/site/components/network/templates/blac
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { BlackLimePicks } from '@/modules/site/components/network/templates/black-lime/cards/picks';
 import { BlackLimeArchivePager } from '@/modules/site/components/network/templates/black-lime/cards/archive-pager';
-import { BlackLimeJsonLd } from '@/modules/site/components/network/templates/black-lime/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface BlackLimeChannelProps {
   readonly site: NetworkSiteData;
@@ -53,7 +53,7 @@ export function BlackLimeChannel({ site, kicker, title, description, path = '/',
           </>
         )}
       </Container>
-      <BlackLimeJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </BlackLimeShell>
   );
 }

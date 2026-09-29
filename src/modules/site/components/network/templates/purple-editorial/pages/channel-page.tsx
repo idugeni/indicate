@@ -6,7 +6,7 @@ import { PurpleEditorialEmpty } from '@/modules/site/components/network/template
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { PurpleEditorialPicks } from '@/modules/site/components/network/templates/purple-editorial/cards/picks';
 import { PurpleEditorialArchivePager } from '@/modules/site/components/network/templates/purple-editorial/cards/archive-pager';
-import { PurpleEditorialJsonLd } from '@/modules/site/components/network/templates/purple-editorial/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface PurpleEditorialChannelProps {
   readonly site: NetworkSiteData;
@@ -53,7 +53,7 @@ export function PurpleEditorialChannel({ site, kicker, title, description, path 
           </>
         )}
       </Container>
-      <PurpleEditorialJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </PurpleEditorialShell>
   );
 }

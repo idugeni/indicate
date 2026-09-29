@@ -11,7 +11,7 @@ function escapeJsonLd(value: unknown): string {
  * @param schemas - Daftar skema SEO siap serialisasi.
  * @returns Elemen script JSON-LD atau null bila kosong.
  */
-export function BlackLimeJsonLd({ schemas }: { readonly schemas: readonly Readonly<Record<string, unknown>>[] }) {
+export function JsonLd({ schemas }: { readonly schemas: readonly Readonly<Record<string, unknown>>[] }) {
   if (schemas.length === 0) return null;
   return (
     <script

@@ -7,7 +7,7 @@ import { TENANT_RELATED_DOCS } from '@/modules/site/legal-documents';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimeShell } from '@/modules/site/components/network/templates/black-lime/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
-import { BlackLimeJsonLd } from '@/modules/site/components/network/templates/black-lime/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface BlackLimeLegalProps {
   readonly site: NetworkSiteData;
@@ -96,7 +96,7 @@ export function BlackLimeLegal({ site, title, description, path = '/', sections,
           ))}
         </div>
       </Container>
-      <BlackLimeJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </BlackLimeShell>
   );
 }

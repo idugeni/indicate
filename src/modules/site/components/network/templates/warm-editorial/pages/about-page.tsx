@@ -4,7 +4,7 @@ import { ABOUT_TRUST_LINKS, deriveAboutCategories } from '@/modules/site/about-p
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { WarmEditorialShell } from '@/modules/site/components/network/templates/warm-editorial/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
-import { WarmEditorialJsonLd } from '@/modules/site/components/network/templates/warm-editorial/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface WarmEditorialAboutProps {
   readonly site: NetworkSiteData;
@@ -88,7 +88,7 @@ export function WarmEditorialAbout({ site, title, description, path = '/' }: War
           </ul>
         </section>
       </Container>
-      <WarmEditorialJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </WarmEditorialShell>
   );
 }

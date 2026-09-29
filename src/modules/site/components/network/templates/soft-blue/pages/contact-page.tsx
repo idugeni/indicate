@@ -5,7 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-blue/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { SoftBlueEmpty } from '@/modules/site/components/network/templates/soft-blue/ui/empty';
-import { SoftBlueJsonLd } from '@/modules/site/components/network/templates/soft-blue/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface SoftBlueContactProps {
   readonly site: NetworkSiteData;
@@ -100,7 +100,7 @@ export function SoftBlueContact({ site, title, description, path = '/' }: SoftBl
           </div>
         )}
       </Container>
-      <SoftBlueJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </SoftBlueShell>
   );
 }

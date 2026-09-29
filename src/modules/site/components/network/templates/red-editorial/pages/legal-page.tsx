@@ -7,7 +7,7 @@ import { TENANT_RELATED_DOCS } from '@/modules/site/legal-documents';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { RedEditorialShell } from '@/modules/site/components/network/templates/red-editorial/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
-import { RedEditorialJsonLd } from '@/modules/site/components/network/templates/red-editorial/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface RedEditorialLegalProps {
   readonly site: NetworkSiteData;
@@ -96,7 +96,7 @@ export function RedEditorialLegal({ site, title, description, path = '/', sectio
           ))}
         </div>
       </Container>
-      <RedEditorialJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </RedEditorialShell>
   );
 }

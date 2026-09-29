@@ -6,7 +6,7 @@ import { RedEditorialHero } from '@/modules/site/components/network/templates/re
 import { RedEditorialPicks } from '@/modules/site/components/network/templates/red-editorial/cards/picks';
 import { RedEditorialArchivePager } from '@/modules/site/components/network/templates/red-editorial/cards/archive-pager';
 import { RedEditorialNewsletter } from '@/modules/site/components/network/templates/red-editorial/cards/newsletter';
-import { RedEditorialJsonLd } from '@/modules/site/components/network/templates/red-editorial/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { RedEditorialEmpty } from '@/modules/site/components/network/templates/red-editorial/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
@@ -51,7 +51,7 @@ export function RedEditorialListing({ site, title, description, path, indexable 
           </>
         )}
       </Container>
-      <RedEditorialJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </RedEditorialShell>
   );
 }

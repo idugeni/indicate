@@ -4,7 +4,7 @@ import { ABOUT_TRUST_LINKS, deriveAboutCategories } from '@/modules/site/about-p
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-blue/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
-import { SoftBlueJsonLd } from '@/modules/site/components/network/templates/soft-blue/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface SoftBlueAboutProps {
   readonly site: NetworkSiteData;
@@ -88,7 +88,7 @@ export function SoftBlueAbout({ site, title, description, path = '/' }: SoftBlue
           </ul>
         </section>
       </Container>
-      <SoftBlueJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </SoftBlueShell>
   );
 }

@@ -6,7 +6,7 @@ import { GlassyBlueEmpty } from '@/modules/site/components/network/templates/gla
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { GlassyBluePicks } from '@/modules/site/components/network/templates/glassy-blue/cards/picks';
 import { GlassyBlueArchivePager } from '@/modules/site/components/network/templates/glassy-blue/cards/archive-pager';
-import { GlassyBlueJsonLd } from '@/modules/site/components/network/templates/glassy-blue/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface GlassyBlueChannelProps {
   readonly site: NetworkSiteData;
@@ -53,7 +53,7 @@ export function GlassyBlueChannel({ site, kicker, title, description, path = '/'
           </>
         )}
       </Container>
-      <GlassyBlueJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </GlassyBlueShell>
   );
 }

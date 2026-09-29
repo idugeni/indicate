@@ -7,7 +7,7 @@ import { WarmEditorialLatest } from '@/modules/site/components/network/templates
 import { WarmEditorialPicks } from '@/modules/site/components/network/templates/warm-editorial/cards/picks';
 import { WarmEditorialArchivePager } from '@/modules/site/components/network/templates/warm-editorial/cards/archive-pager';
 import { WarmEditorialNewsletter } from '@/modules/site/components/network/templates/warm-editorial/cards/newsletter';
-import { WarmEditorialJsonLd } from '@/modules/site/components/network/templates/warm-editorial/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { WarmEditorialEmpty } from '@/modules/site/components/network/templates/warm-editorial/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
@@ -55,7 +55,7 @@ export function WarmEditorialListing({ site, title, description, path, indexable
           </>
         )}
       </Container>
-      <WarmEditorialJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </WarmEditorialShell>
   );
 }

@@ -6,7 +6,7 @@ import { DarkNavyEmpty } from '@/modules/site/components/network/templates/dark-
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { DarkNavyPicks } from '@/modules/site/components/network/templates/dark-navy/cards/picks';
 import { DarkNavyArchivePager } from '@/modules/site/components/network/templates/dark-navy/cards/archive-pager';
-import { DarkNavyJsonLd } from '@/modules/site/components/network/templates/dark-navy/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface DarkNavyChannelProps {
   readonly site: NetworkSiteData;
@@ -53,7 +53,7 @@ export function DarkNavyChannel({ site, kicker, title, description, path = '/', 
           </>
         )}
       </Container>
-      <DarkNavyJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </DarkNavyShell>
   );
 }

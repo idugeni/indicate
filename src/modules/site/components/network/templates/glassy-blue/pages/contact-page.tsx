@@ -5,7 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GlassyBlueShell } from '@/modules/site/components/network/templates/glassy-blue/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { GlassyBlueEmpty } from '@/modules/site/components/network/templates/glassy-blue/ui/empty';
-import { GlassyBlueJsonLd } from '@/modules/site/components/network/templates/glassy-blue/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface GlassyBlueContactProps {
   readonly site: NetworkSiteData;
@@ -100,7 +100,7 @@ export function GlassyBlueContact({ site, title, description, path = '/' }: Glas
           </div>
         )}
       </Container>
-      <GlassyBlueJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </GlassyBlueShell>
   );
 }

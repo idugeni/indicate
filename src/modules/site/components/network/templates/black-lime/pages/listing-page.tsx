@@ -7,7 +7,7 @@ import { BlackLimeMostRead, BlackLimeQuotePanel } from '@/modules/site/component
 import { BlackLimePicks } from '@/modules/site/components/network/templates/black-lime/cards/picks';
 import { BlackLimeArchivePager } from '@/modules/site/components/network/templates/black-lime/cards/archive-pager';
 import { BlackLimeNewsletter } from '@/modules/site/components/network/templates/black-lime/cards/newsletter';
-import { BlackLimeJsonLd } from '@/modules/site/components/network/templates/black-lime/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { BlackLimeEmpty } from '@/modules/site/components/network/templates/black-lime/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
@@ -72,7 +72,7 @@ export function BlackLimeListing({ site, title, description, path, indexable }: 
           </>
         )}
       </Container>
-      <BlackLimeJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </BlackLimeShell>
   );
 }

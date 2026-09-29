@@ -4,7 +4,7 @@ import { ABOUT_TRUST_LINKS, deriveAboutCategories } from '@/modules/site/about-p
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { DarkNavyShell } from '@/modules/site/components/network/templates/dark-navy/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
-import { DarkNavyJsonLd } from '@/modules/site/components/network/templates/dark-navy/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface DarkNavyAboutProps {
   readonly site: NetworkSiteData;
@@ -88,7 +88,7 @@ export function DarkNavyAbout({ site, title, description, path = '/' }: DarkNavy
           </ul>
         </section>
       </Container>
-      <DarkNavyJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </DarkNavyShell>
   );
 }

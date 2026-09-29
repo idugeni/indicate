@@ -9,7 +9,7 @@ import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
 import { ArticleGallery } from '@/modules/site/components/article-gallery';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
-import { OrangeModernJsonLd } from '@/modules/site/components/network/templates/orange-modern/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { OrangeModernShell } from '@/modules/site/components/network/templates/orange-modern/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/templates/orange-modern/ui/author-avatar';
 import { OrangeModernShareButtons } from '@/modules/site/components/network/templates/orange-modern/cards/share-buttons';
@@ -322,7 +322,7 @@ export function OrangeModernArticle({
             </Link>
           </aside>
         </div>
-      <OrangeModernJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </OrangeModernShell>
   );
 }

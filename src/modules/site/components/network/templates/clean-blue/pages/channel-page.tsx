@@ -6,7 +6,7 @@ import { CleanBlueEmpty } from '@/modules/site/components/network/templates/clea
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/cards/picks';
 import { CleanBlueArchivePager } from '@/modules/site/components/network/templates/clean-blue/cards/archive-pager';
-import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/seo/json-ld';
+import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface CleanBlueChannelProps {
   readonly site: NetworkSiteData;
@@ -53,7 +53,7 @@ export function CleanBlueChannel({ site, kicker, title, description, path = '/',
           </>
         )}
       </Container>
-      <CleanBlueJsonLd schemas={seo.jsonLd} />
+      <JsonLd schemas={seo.jsonLd} />
     </CleanBlueShell>
   );
 }
