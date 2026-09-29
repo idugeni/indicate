@@ -9,7 +9,7 @@ import { SoftBlueNewsletter } from '@/modules/site/components/network/templates/
 import { SoftBlueJsonLd } from '@/modules/site/components/network/templates/soft-blue/seo/json-ld';
 import { SoftBlueContainer } from '@/modules/site/components/network/templates/soft-blue/ui/container';
 import { SoftBlueEmpty } from '@/modules/site/components/network/templates/soft-blue/ui/empty';
-import { SoftBlueStatusLine } from '@/modules/site/components/network/templates/soft-blue/ui/status-line';
+import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
 export interface ListingProps {
   readonly site: NetworkSiteData;
@@ -33,7 +33,7 @@ export function SoftBlueListing({ site, title, description, path, indexable }: L
   return (
     <SoftBlueShell site={site} path={path ?? '/'}>
       <SoftBlueContainer className="space-y-8 py-6 md:py-8">
-        <SoftBlueStatusLine count={site.articles.length} title={title} />
+        <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <SoftBlueTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
           <SoftBlueEmpty title={title} />

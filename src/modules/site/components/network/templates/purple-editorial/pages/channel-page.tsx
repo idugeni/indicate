@@ -3,7 +3,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { PurpleEditorialShell } from '@/modules/site/components/network/templates/purple-editorial/chrome/shell';
 import { PurpleEditorialContainer } from '@/modules/site/components/network/templates/purple-editorial/ui/container';
 import { PurpleEditorialEmpty } from '@/modules/site/components/network/templates/purple-editorial/ui/empty';
-import { PurpleEditorialStatusLine } from '@/modules/site/components/network/templates/purple-editorial/ui/status-line';
+import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { PurpleEditorialPicks } from '@/modules/site/components/network/templates/purple-editorial/cards/picks';
 import { PurpleEditorialArchivePager } from '@/modules/site/components/network/templates/purple-editorial/cards/archive-pager';
 import { PurpleEditorialJsonLd } from '@/modules/site/components/network/templates/purple-editorial/seo/json-ld';
@@ -29,7 +29,7 @@ export function PurpleEditorialChannel({ site, kicker, title, description, path 
   return (
     <PurpleEditorialShell site={site} path={path}>
       <PurpleEditorialContainer className="space-y-8 py-6 md:py-8">
-        <PurpleEditorialStatusLine count={site.articles.length} title={title} />
+        <StatusLine count={site.articles.length} title={title} />
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
           <p className="m-0 inline-block rounded-full bg-[#7c3aed]/10 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-[#7c3aed]">
             {kicker}

@@ -9,7 +9,7 @@ import { RedEditorialNewsletter } from '@/modules/site/components/network/templa
 import { RedEditorialJsonLd } from '@/modules/site/components/network/templates/red-editorial/seo/json-ld';
 import { RedEditorialContainer } from '@/modules/site/components/network/templates/red-editorial/ui/container';
 import { RedEditorialEmpty } from '@/modules/site/components/network/templates/red-editorial/ui/empty';
-import { RedEditorialStatusLine } from '@/modules/site/components/network/templates/red-editorial/ui/status-line';
+import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
 export interface ListingProps {
   readonly site: NetworkSiteData;
@@ -34,7 +34,7 @@ export function RedEditorialListing({ site, title, description, path, indexable 
   return (
     <RedEditorialShell site={site} path={path ?? '/'}>
       <RedEditorialContainer className="space-y-8 py-6 md:py-8">
-        <RedEditorialStatusLine count={site.articles.length} title={title} />
+        <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <RedEditorialTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
           <RedEditorialEmpty title={title} />

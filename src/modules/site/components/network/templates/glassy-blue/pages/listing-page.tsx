@@ -11,7 +11,7 @@ import { GlassyBlueNewsletter } from '@/modules/site/components/network/template
 import { GlassyBlueJsonLd } from '@/modules/site/components/network/templates/glassy-blue/seo/json-ld';
 import { GlassyBlueContainer } from '@/modules/site/components/network/templates/glassy-blue/ui/container';
 import { GlassyBlueEmpty } from '@/modules/site/components/network/templates/glassy-blue/ui/empty';
-import { GlassyBlueStatusLine } from '@/modules/site/components/network/templates/glassy-blue/ui/status-line';
+import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 export interface ListingProps {
@@ -40,7 +40,7 @@ export async function GlassyBlueListing({ site, title, description, path, indexa
   return (
     <GlassyBlueShell site={site} path={path ?? '/'}>
       <GlassyBlueContainer className="space-y-8 py-6 md:py-8">
-        <GlassyBlueStatusLine count={site.articles.length} title={title} />
+        <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <GlassyBlueTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
           <GlassyBlueEmpty title={title} />

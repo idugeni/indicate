@@ -3,7 +3,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { RedEditorialShell } from '@/modules/site/components/network/templates/red-editorial/chrome/shell';
 import { RedEditorialContainer } from '@/modules/site/components/network/templates/red-editorial/ui/container';
 import { RedEditorialEmpty } from '@/modules/site/components/network/templates/red-editorial/ui/empty';
-import { RedEditorialStatusLine } from '@/modules/site/components/network/templates/red-editorial/ui/status-line';
+import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { RedEditorialPicks } from '@/modules/site/components/network/templates/red-editorial/cards/picks';
 import { RedEditorialArchivePager } from '@/modules/site/components/network/templates/red-editorial/cards/archive-pager';
 import { RedEditorialJsonLd } from '@/modules/site/components/network/templates/red-editorial/seo/json-ld';
@@ -29,7 +29,7 @@ export function RedEditorialChannel({ site, kicker, title, description, path = '
   return (
     <RedEditorialShell site={site} path={path}>
       <RedEditorialContainer className="space-y-8 py-6 md:py-8">
-        <RedEditorialStatusLine count={site.articles.length} title={title} />
+        <StatusLine count={site.articles.length} title={title} />
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
           <p className="m-0 inline-block rounded-full bg-[#b91c1c]/10 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-[#b91c1c]">
             {kicker}

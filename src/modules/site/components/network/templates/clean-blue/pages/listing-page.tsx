@@ -9,7 +9,7 @@ import { CleanBlueNewsletter } from '@/modules/site/components/network/templates
 import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/seo/json-ld';
 import { CleanBlueContainer } from '@/modules/site/components/network/templates/clean-blue/ui/container';
 import { CleanBlueEmpty } from '@/modules/site/components/network/templates/clean-blue/ui/empty';
-import { CleanBlueStatusLine } from '@/modules/site/components/network/templates/clean-blue/ui/status-line';
+import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
 export interface ListingProps {
   readonly site: NetworkSiteData;
@@ -33,7 +33,7 @@ export function CleanBlueListing({ site, title, description, path, indexable }: 
   return (
     <CleanBlueShell site={site} path={path ?? '/'}>
       <CleanBlueContainer className="space-y-8 py-6 md:py-8">
-        <CleanBlueStatusLine count={site.articles.length} title={title} />
+        <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <CleanBlueTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
           <CleanBlueEmpty title={title} />

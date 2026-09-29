@@ -3,7 +3,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
 import { CleanBlueContainer } from '@/modules/site/components/network/templates/clean-blue/ui/container';
 import { CleanBlueEmpty } from '@/modules/site/components/network/templates/clean-blue/ui/empty';
-import { CleanBlueStatusLine } from '@/modules/site/components/network/templates/clean-blue/ui/status-line';
+import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/cards/picks';
 import { CleanBlueArchivePager } from '@/modules/site/components/network/templates/clean-blue/cards/archive-pager';
 import { CleanBlueJsonLd } from '@/modules/site/components/network/templates/clean-blue/seo/json-ld';
@@ -29,7 +29,7 @@ export function CleanBlueChannel({ site, kicker, title, description, path = '/',
   return (
     <CleanBlueShell site={site} path={path}>
       <CleanBlueContainer className="space-y-8 py-6 md:py-8">
-        <CleanBlueStatusLine count={site.articles.length} title={title} />
+        <StatusLine count={site.articles.length} title={title} />
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
           <p className="m-0 inline-block rounded-full bg-[#1a5fd0]/10 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-[#1a5fd0]">
             {kicker}

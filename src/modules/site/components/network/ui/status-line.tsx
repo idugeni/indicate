@@ -5,7 +5,7 @@
  * @param title - Judul konteks halaman.
  * @returns Elemen status aksesibel.
  */
-export function BlackLimeStatusLine({ count, title }: { readonly count: number; readonly title: string }) {
+export function StatusLine({ count, title }: { readonly count: number; readonly title: string }) {
   return (
     <p className="sr-only" role="status">
       {count === 0 ? `Tidak ada artikel pada ${title}.` : `Menampilkan ${count} artikel pada ${title}.`}

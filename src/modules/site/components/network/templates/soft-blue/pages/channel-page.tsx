@@ -3,7 +3,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-blue/chrome/shell';
 import { SoftBlueContainer } from '@/modules/site/components/network/templates/soft-blue/ui/container';
 import { SoftBlueEmpty } from '@/modules/site/components/network/templates/soft-blue/ui/empty';
-import { SoftBlueStatusLine } from '@/modules/site/components/network/templates/soft-blue/ui/status-line';
+import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { SoftBluePicks } from '@/modules/site/components/network/templates/soft-blue/cards/picks';
 import { SoftBlueArchivePager } from '@/modules/site/components/network/templates/soft-blue/cards/archive-pager';
 import { SoftBlueJsonLd } from '@/modules/site/components/network/templates/soft-blue/seo/json-ld';
@@ -29,7 +29,7 @@ export function SoftBlueChannel({ site, kicker, title, description, path = '/', 
   return (
     <SoftBlueShell site={site} path={path}>
       <SoftBlueContainer className="space-y-8 py-6 md:py-8">
-        <SoftBlueStatusLine count={site.articles.length} title={title} />
+        <StatusLine count={site.articles.length} title={title} />
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
           <p className="m-0 inline-block rounded-full bg-[#2563eb]/10 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-[#2563eb]">
             {kicker}

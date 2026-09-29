@@ -10,7 +10,7 @@ import { PurpleEditorialNewsletter } from '@/modules/site/components/network/tem
 import { PurpleEditorialJsonLd } from '@/modules/site/components/network/templates/purple-editorial/seo/json-ld';
 import { PurpleEditorialContainer } from '@/modules/site/components/network/templates/purple-editorial/ui/container';
 import { PurpleEditorialEmpty } from '@/modules/site/components/network/templates/purple-editorial/ui/empty';
-import { PurpleEditorialStatusLine } from '@/modules/site/components/network/templates/purple-editorial/ui/status-line';
+import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
 export interface ListingProps {
   readonly site: NetworkSiteData;
@@ -37,7 +37,7 @@ export function PurpleEditorialListing({ site, title, description, path, indexab
   return (
     <PurpleEditorialShell site={site} path={path ?? '/'}>
       <PurpleEditorialContainer className="space-y-8 py-6 md:py-8">
-        <PurpleEditorialStatusLine count={site.articles.length} title={title} />
+        <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <PurpleEditorialTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
           <PurpleEditorialEmpty title={title} />

@@ -3,7 +3,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { DarkNavyShell } from '@/modules/site/components/network/templates/dark-navy/chrome/shell';
 import { DarkNavyContainer } from '@/modules/site/components/network/templates/dark-navy/ui/container';
 import { DarkNavyEmpty } from '@/modules/site/components/network/templates/dark-navy/ui/empty';
-import { DarkNavyStatusLine } from '@/modules/site/components/network/templates/dark-navy/ui/status-line';
+import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { DarkNavyPicks } from '@/modules/site/components/network/templates/dark-navy/cards/picks';
 import { DarkNavyArchivePager } from '@/modules/site/components/network/templates/dark-navy/cards/archive-pager';
 import { DarkNavyJsonLd } from '@/modules/site/components/network/templates/dark-navy/seo/json-ld';
@@ -29,7 +29,7 @@ export function DarkNavyChannel({ site, kicker, title, description, path = '/', 
   return (
     <DarkNavyShell site={site} path={path}>
       <DarkNavyContainer className="space-y-8 py-6 md:py-8">
-        <DarkNavyStatusLine count={site.articles.length} title={title} />
+        <StatusLine count={site.articles.length} title={title} />
         <div className="rounded-2xl bg-[#0e1a33] p-5 shadow-sm ring-1 ring-[#1b2c4f]/60 sm:p-6">
           <p className="m-0 inline-block rounded-full bg-[#2f7bff]/10 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-[#2f7bff]">
             {kicker}

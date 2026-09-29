@@ -3,7 +3,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { OrangeModernShell } from '@/modules/site/components/network/templates/orange-modern/chrome/shell';
 import { OrangeModernContainer } from '@/modules/site/components/network/templates/orange-modern/ui/container';
 import { OrangeModernEmpty } from '@/modules/site/components/network/templates/orange-modern/ui/empty';
-import { OrangeModernStatusLine } from '@/modules/site/components/network/templates/orange-modern/ui/status-line';
+import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { OrangeModernPicks } from '@/modules/site/components/network/templates/orange-modern/cards/picks';
 import { OrangeModernArchivePager } from '@/modules/site/components/network/templates/orange-modern/cards/archive-pager';
 import { OrangeModernJsonLd } from '@/modules/site/components/network/templates/orange-modern/seo/json-ld';
@@ -29,7 +29,7 @@ export function OrangeModernChannel({ site, kicker, title, description, path = '
   return (
     <OrangeModernShell site={site} path={path}>
       <OrangeModernContainer className="space-y-8 py-6 md:py-8">
-        <OrangeModernStatusLine count={site.articles.length} title={title} />
+        <StatusLine count={site.articles.length} title={title} />
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
           <p className="m-0 inline-block rounded-full bg-[#ea580c]/10 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-[#ea580c]">
             {kicker}

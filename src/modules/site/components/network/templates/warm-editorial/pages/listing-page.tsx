@@ -10,7 +10,7 @@ import { WarmEditorialNewsletter } from '@/modules/site/components/network/templ
 import { WarmEditorialJsonLd } from '@/modules/site/components/network/templates/warm-editorial/seo/json-ld';
 import { WarmEditorialContainer } from '@/modules/site/components/network/templates/warm-editorial/ui/container';
 import { WarmEditorialEmpty } from '@/modules/site/components/network/templates/warm-editorial/ui/empty';
-import { WarmEditorialStatusLine } from '@/modules/site/components/network/templates/warm-editorial/ui/status-line';
+import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
 export interface ListingProps {
   readonly site: NetworkSiteData;
@@ -37,7 +37,7 @@ export function WarmEditorialListing({ site, title, description, path, indexable
   return (
     <WarmEditorialShell site={site} path={path ?? '/'}>
       <WarmEditorialContainer className="space-y-8 py-6 md:py-8">
-        <WarmEditorialStatusLine count={site.articles.length} title={title} />
+        <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <WarmEditorialTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
           <WarmEditorialEmpty title={title} />

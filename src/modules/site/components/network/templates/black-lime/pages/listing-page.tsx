@@ -10,7 +10,7 @@ import { BlackLimeNewsletter } from '@/modules/site/components/network/templates
 import { BlackLimeJsonLd } from '@/modules/site/components/network/templates/black-lime/seo/json-ld';
 import { BlackLimeContainer } from '@/modules/site/components/network/templates/black-lime/ui/container';
 import { BlackLimeEmpty } from '@/modules/site/components/network/templates/black-lime/ui/empty';
-import { BlackLimeStatusLine } from '@/modules/site/components/network/templates/black-lime/ui/status-line';
+import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
 export interface ListingProps {
   readonly site: NetworkSiteData;
@@ -45,7 +45,7 @@ export function BlackLimeListing({ site, title, description, path, indexable }: 
   return (
     <BlackLimeShell site={site} path={path ?? '/'}>
       <BlackLimeContainer className="space-y-8 py-6 md:py-8">
-        <BlackLimeStatusLine count={site.articles.length} title={title} />
+        <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <BlackLimeTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
           <BlackLimeEmpty title={title} />

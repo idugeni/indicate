@@ -3,7 +3,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimeShell } from '@/modules/site/components/network/templates/black-lime/chrome/shell';
 import { BlackLimeContainer } from '@/modules/site/components/network/templates/black-lime/ui/container';
 import { BlackLimeEmpty } from '@/modules/site/components/network/templates/black-lime/ui/empty';
-import { BlackLimeStatusLine } from '@/modules/site/components/network/templates/black-lime/ui/status-line';
+import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { BlackLimePicks } from '@/modules/site/components/network/templates/black-lime/cards/picks';
 import { BlackLimeArchivePager } from '@/modules/site/components/network/templates/black-lime/cards/archive-pager';
 import { BlackLimeJsonLd } from '@/modules/site/components/network/templates/black-lime/seo/json-ld';
@@ -29,7 +29,7 @@ export function BlackLimeChannel({ site, kicker, title, description, path = '/',
   return (
     <BlackLimeShell site={site} path={path}>
       <BlackLimeContainer className="space-y-8 py-6 md:py-8">
-        <BlackLimeStatusLine count={site.articles.length} title={title} />
+        <StatusLine count={site.articles.length} title={title} />
         <div className="rounded-2xl bg-[#131711] p-5 shadow-sm ring-1 ring-[#242b1f]/60 sm:p-6">
           <p className="m-0 inline-block rounded-full bg-[#c5f82a]/10 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-[#c5f82a]">
             {kicker}

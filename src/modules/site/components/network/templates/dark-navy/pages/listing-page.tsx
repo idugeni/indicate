@@ -10,7 +10,7 @@ import { DarkNavyNewsletter } from '@/modules/site/components/network/templates/
 import { DarkNavyJsonLd } from '@/modules/site/components/network/templates/dark-navy/seo/json-ld';
 import { DarkNavyContainer } from '@/modules/site/components/network/templates/dark-navy/ui/container';
 import { DarkNavyEmpty } from '@/modules/site/components/network/templates/dark-navy/ui/empty';
-import { DarkNavyStatusLine } from '@/modules/site/components/network/templates/dark-navy/ui/status-line';
+import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
 export interface ListingProps {
   readonly site: NetworkSiteData;
@@ -44,7 +44,7 @@ export function DarkNavyListing({ site, title, description, path, indexable }: L
   return (
     <DarkNavyShell site={site} path={path ?? '/'}>
       <DarkNavyContainer className="space-y-8 py-6 md:py-8">
-        <DarkNavyStatusLine count={site.articles.length} title={title} />
+        <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <DarkNavyTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
           <DarkNavyEmpty title={title} />
