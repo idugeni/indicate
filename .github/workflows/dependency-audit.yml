@@ -1,0 +1,60 @@
+name: Dependency Audit
+
+on:
+  schedule:
+    # 21:30 UTC Monday = 04:30 Asia/Jakarta. Sits after the 03:00 Dependabot
+    # window and after the 04:00 Release Quality Gate, so it reports only what
+    # is still missing an hour after both had their chance.
+    - cron: '30 21 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  outdated:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      # Dependabot is the mechanism that proposes the change; this job never
+      # commits. It answers the one question automation cannot: is the manifest
+      # actually current, given that Dependabot has opened nothing since
+      # 2026-09-13 while releases kept landing. `--no-cache` is mandatory —
+      # ncu caches for 15 minutes by default and a cached run reports a
+      # manifest state that is no longer on disk.
+      - name: Collect outdated dependencies
+        id: ncu
+        run: |
+          npx -y npm-check-updates --no-cache > ncu.txt 2>&1 || true
+          cat ncu.txt
+          if grep -q 'upgrade package.json' ncu.txt; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            {
+              echo 'Opened by the weekly Dependency Audit. Apply with `npm run deps:check`, then `npx npm-check-updates -u && npm install`, then the Release Quality Gate.'
+              echo
+              echo '```'
+              cat ncu.txt
+              echo '```'
+            } > report.md
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Refresh the rolling report
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ steps.ncu.outputs.found }}" != "true" ]; then
+            echo "manifest is current"
+            exit 0
+          fi
+          open=$(gh issue list --state open --search 'in:title Dependency updates available' --json number --jq '.[0].number // empty')
+          if [ -n "$open" ]; then
+            gh issue edit "$open" --body-file report.md
+          else
+            gh issue create --title 'Dependency updates available' --label dependencies --body-file report.md
+          fi

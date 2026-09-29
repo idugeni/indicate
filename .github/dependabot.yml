@@ -13,6 +13,19 @@ updates:
       timezone: Asia/Jakarta
     open-pull-requests-limit: 5
     labels: [dependencies]
+    # Default `auto` classifies npm entries as libraries and therefore widens
+    # the lockfile only: `^3.1141.0` survives untouched while 3.1142.0 lands in
+    # package-lock.json, and an exact pin such as next 16.3.6 degrades into
+    # `16.3.6 || 16.3.7`. `increase` rewrites the range to the released version,
+    # which is the owner preference and keeps exact pins exact.
+    versioning-strategy: increase
+    # One PR per minor/patch batch instead of one PR per dependency, so a busy
+    # release week cannot exhaust open-pull-requests-limit and strand the rest.
+    # Majors stay ungrouped so they get reviewed on their own.
+    groups:
+      npm-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
     commit-message:
       prefix: chore
       include: scope

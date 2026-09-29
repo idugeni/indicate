@@ -56,7 +56,8 @@
     "audit:gsc": "node scripts/gsc-verification-audit.mjs",
     "audit:gsc:verify": "node scripts/gsc-verification-audit.mjs --verify",
     "gsc:verify": "node scripts/gsc-verify-domains.mjs",
-    "audit:production": "npm audit --omit=dev --audit-level=high"
+    "audit:production": "npm audit --omit=dev --audit-level=high",
+    "deps:check": "npx -y npm-check-updates"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1141.0",
