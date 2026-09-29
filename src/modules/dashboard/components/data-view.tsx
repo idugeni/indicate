@@ -32,6 +32,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
+import { formatMoment } from '@/modules/dashboard/components/shared/format-moment';
 import {
   Pagination,
   PaginationContent,
@@ -144,12 +145,9 @@ function nestedCustomer(item: Record<string, unknown>): Record<string, unknown> 
   return typeof customer === 'object' && customer !== null ? (customer as Record<string, unknown>) : null;
 }
 
-const AUDIT_MOMENT = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
-
 /** Absolute moment for an audit row; an unparsable value is passed through unchanged. */
 function formatAuditMoment(value: string): string {
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : AUDIT_MOMENT.format(parsed);
+  return formatMoment(value) ?? value;
 }
 
 /**

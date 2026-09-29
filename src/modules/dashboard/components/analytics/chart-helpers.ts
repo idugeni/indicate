@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
-import type { AnalyticsProjection, TaskDay } from '@/modules/dashboard/models';
+import type { AnalyticsPoint, AnalyticsProjection, PublisherFlow, TaskDay } from '@/modules/dashboard/models';
 
 export const COLOR_PUBLISHED = '#5fcbb0';
 export const COLOR_FAILED = '#d9705f';
@@ -72,6 +72,70 @@ export function truncateLabel(value: string, max = 20): string {
 
 function isQuietTaskDay(point: TaskDay): boolean {
   return point.diterbitkan === 0 && point.gagal === 0 && point.antre === 0;
+}
+
+/**
+ * Resolve dimension IDs to display labels using a projection's label maps.
+ *
+ * @param rows - Raw dimension points; missing dimensions read as empty.
+ * @param labels - ID-to-name label map, or undefined when unavailable.
+ * @returns Points whose keys are display labels, truncated to fit chart axes.
+ */
+export function withLabels(
+  rows: readonly AnalyticsPoint[] | undefined,
+  labels: Readonly<Record<string, string>> | undefined,
+): readonly AnalyticsPoint[] {
+  return (rows ?? []).map((point) => ({ key: labels?.[point.key] ?? truncateLabel(point.key, 24), count: point.count }));
+}
+
+/**
+ * Resolve one site id to its display name, truncated to fit a chart axis.
+ *
+ * @param id - Site id from a projection point.
+ * @param siteLabels - Tenant's site label map, or undefined when unavailable.
+ * @returns Site display name, or a truncated id when the tenant has no label.
+ */
+export function siteLabel(id: string, siteLabels: Readonly<Record<string, string>> | undefined): string {
+  return siteLabels?.[id] ?? truncateLabel(id, 18);
+}
+
+/**
+ * Replace the site half of a `site:state` outcome key with its display name.
+ *
+ * @param points - Outcome points keyed `siteId:state`.
+ * @param siteLabels - Tenant's site label map, or undefined when unavailable.
+ * @returns Points keyed `siteName:state`; a key without a separator is unchanged.
+ */
+export function labelOutcomes(
+  points: readonly AnalyticsPoint[] | undefined,
+  siteLabels: Readonly<Record<string, string>> | undefined,
+): readonly AnalyticsPoint[] {
+  return (points ?? []).map((point) => {
+    const separatorIndex = point.key.indexOf(':');
+    if (separatorIndex < 0) return point;
+    return { key: `${siteLabel(point.key.slice(0, separatorIndex), siteLabels)}:${point.key.slice(separatorIndex + 1)}`, count: point.count };
+  });
+}
+
+/**
+ * Replace publisher and site ids in publisher flow legs with display names.
+ *
+ * @param flows - Publisher to site to outcome flow legs from the projection.
+ * @param publisherLabels - Tenant's publisher label map.
+ * @param siteLabels - Tenant's site label map.
+ * @returns The same legs, labelled for display.
+ */
+export function labelFlows(
+  flows: readonly PublisherFlow[] | undefined,
+  publisherLabels: Readonly<Record<string, string>> | undefined,
+  siteLabels: Readonly<Record<string, string>> | undefined,
+): readonly PublisherFlow[] {
+  return (flows ?? []).map((flow) => ({
+    penerbit: publisherLabels?.[flow.penerbit] ?? truncateLabel(flow.penerbit, 16),
+    situs: siteLabel(flow.situs, siteLabels),
+    hasil: flow.hasil,
+    jumlah: flow.jumlah,
+  }));
 }
 
 /**

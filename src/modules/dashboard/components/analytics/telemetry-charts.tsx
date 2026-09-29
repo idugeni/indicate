@@ -4,7 +4,7 @@ import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts';
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { AnalyticsProjection } from '@/modules/dashboard/models';
-import { categoryColor } from '@/modules/dashboard/components/analytics/chart-helpers';
+import { categoryColor, truncateLabel } from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 interface Dimension {
@@ -14,10 +14,6 @@ interface Dimension {
 }
 
 const ROW_LIMIT = 10;
-
-function truncateLabel(value: string): string {
-  return value.length > 20 ? `${value.slice(0, 19)}…` : value;
-}
 
 /**
  * Render network telemetry distributions as bar charts.

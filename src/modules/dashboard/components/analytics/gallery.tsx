@@ -11,23 +11,16 @@ import { TreeMap } from '@/modules/dashboard/components/analytics/treemap';
 import { TelemetryCharts } from '@/modules/dashboard/components/analytics/telemetry-charts';
 import { StackedTasks } from '@/modules/dashboard/components/analytics/stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { truncateLabel, hasAnalyticsSignal, NO_PUBLICATION_TITLE, NO_PUBLICATION_DESCRIPTION } from '@/modules/dashboard/components/analytics/chart-helpers';
+import {
+  hasAnalyticsSignal,
+  labelFlows,
+  labelOutcomes,
+  withLabels,
+  NO_PUBLICATION_TITLE,
+  NO_PUBLICATION_DESCRIPTION,
+} from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
-import type { AnalyticsPoint, AnalyticsProjection, PublisherFlow } from '@/modules/dashboard/models';
-
-/**
- * Resolve dimension IDs to human-readable labels using the projection label maps.
- *
- * @param rows - Raw dimension points from the analytics projection.
- * @param labels - ID-to-name label map, or undefined when unavailable.
- * @returns Points with labeled keys; foreign IDs truncated to fit charts.
- */
-function withLabels(
-  rows: readonly AnalyticsPoint[] | undefined,
-  labels: Readonly<Record<string, string>> | undefined,
-): readonly AnalyticsPoint[] {
-  return (rows ?? []).map((point) => ({ key: labels?.[point.key] ?? truncateLabel(point.key, 24), count: point.count }));
-}
+import type { AnalyticsProjection } from '@/modules/dashboard/models';
 
 /**
  * Render the Statistics & Charts visual gallery from a single projection.
@@ -37,18 +30,8 @@ function withLabels(
  */
 export function TelemetryGallery({ data }: { readonly data: AnalyticsProjection }) {
   const series = data.penyaluranHarian ?? data.tugasHarian ?? [];
-  const siteName = (id: string): string => data.siteLabels?.[id] ?? truncateLabel(id, 18);
-  const labeledOutcomes = (data.outcomesBySiteAndState ?? []).map((point) => {
-    const separatorIndex = point.key.indexOf(':');
-    if (separatorIndex < 0) return point;
-    return { key: `${siteName(point.key.slice(0, separatorIndex))}:${point.key.slice(separatorIndex + 1)}`, count: point.count };
-  });
-  const labeledFlows: readonly PublisherFlow[] = (data.arusPenerbit ?? []).map((flow) => ({
-    penerbit: data.publisherLabels?.[flow.penerbit] ?? truncateLabel(flow.penerbit, 16),
-    situs: siteName(flow.situs),
-    hasil: flow.hasil,
-    jumlah: flow.jumlah,
-  }));
+  const labeledOutcomes = labelOutcomes(data.outcomesBySiteAndState, data.siteLabels);
+  const labeledFlows = labelFlows(data.arusPenerbit, data.publisherLabels, data.siteLabels);
   const labeledProjection: AnalyticsProjection = {
     ...data,
     articlesByRegion: withLabels(data.articlesByRegion, data.regionLabels),

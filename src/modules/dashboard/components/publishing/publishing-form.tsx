@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { generateIdempotencyUuid, isoToLocalDateTimeInput, localDateTimeToIso } from '@/modules/dashboard/components/shared/form-utils';
+import { formatMoment } from '@/modules/dashboard/components/shared/format-moment';
 import type { PublicationStatusProjection, PublishingState } from '@/modules/publishing/models';
 
 const STATE_LABELS: Readonly<Record<PublishingState, string>> = {
@@ -30,9 +31,7 @@ type PublishMode = 'now' | 'scheduled';
 const SITE_PAGE_SIZE = 40;
 
 function formatScheduleTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+  return formatMoment(value) ?? value;
 }
 
 function TargetStateBadge({ state }: { readonly state: PublishingState }) {

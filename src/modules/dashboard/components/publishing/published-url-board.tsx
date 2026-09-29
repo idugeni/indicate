@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/pagination';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { formatMoment } from '@/modules/dashboard/components/shared/format-moment';
 import { PublishedUrlBlock } from '@/modules/dashboard/components/publishing/published-url-block';
 
 export interface PublishedArticleUrls {
@@ -103,10 +104,8 @@ export function collectPublishedUrls(input: {
 }
 
 function formatPublishedAt(value: string | null): string {
-  if (value === null) return 'Waktu tayang tidak tercatat';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return `Tayang ${new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(date)}`;
+  const moment = formatMoment(value);
+  return moment === null ? 'Waktu tayang tidak tercatat' : `Tayang ${moment}`;
 }
 
 /**

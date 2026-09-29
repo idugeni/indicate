@@ -6,7 +6,18 @@ import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Scatter, ScatterCh
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { AnalyticsProjection, ViewDay, ViewsPoint } from '@/modules/dashboard/models';
-import { categoryColor, hasAnalyticsSignal, truncateLabel, weekdayLabel, NO_PUBLICATION_TITLE, NO_PUBLICATION_DESCRIPTION } from '@/modules/dashboard/components/analytics/chart-helpers';
+import {
+  categoryColor,
+  hasAnalyticsSignal,
+  labelFlows,
+  labelOutcomes,
+  siteLabel,
+  truncateLabel,
+  weekdayLabel,
+  withLabels,
+  NO_PUBLICATION_TITLE,
+  NO_PUBLICATION_DESCRIPTION,
+} from '@/modules/dashboard/components/analytics/chart-helpers';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { ActivityCalendar, ActivityHeatmap } from '@/modules/dashboard/components/analytics/heatmap';
 import { KpiSparkline } from '@/modules/dashboard/components/analytics/kpi-spark';
@@ -363,20 +374,9 @@ export function PrimaryBento({
   const series = analytics?.penyaluranHarian ?? analytics?.tugasHarian ?? [];
   const views = analytics?.viewsHarian ?? [];
   const outcomes = analytics?.outcomesBySiteAndState ?? [];
-  const siteName = (id: string): string => analytics?.siteLabels?.[id] ?? truncateLabel(id, 18);
-  const labeledOutcomes = outcomes.map((point) => {
-    const separatorIndex = point.key.indexOf(':');
-    if (separatorIndex < 0) return point;
-    return { key: `${siteName(point.key.slice(0, separatorIndex))}:${point.key.slice(separatorIndex + 1)}`, count: point.count };
-  });
-  const withLabels = (rows: readonly { readonly key: string; readonly count: number }[] | undefined, labels: Readonly<Record<string, string>> | undefined) =>
-    (rows ?? []).map((point) => ({ key: labels?.[point.key] ?? truncateLabel(point.key, 24), count: point.count }));
-  const labeledFlows = (analytics?.arusPenerbit ?? []).map((flow) => ({
-    penerbit: analytics?.publisherLabels?.[flow.penerbit] ?? truncateLabel(flow.penerbit, 16),
-    situs: siteName(flow.situs),
-    hasil: flow.hasil,
-    jumlah: flow.jumlah,
-  }));
+  const siteName = (id: string): string => siteLabel(id, analytics?.siteLabels);
+  const labeledOutcomes = labelOutcomes(outcomes, analytics?.siteLabels);
+  const labeledFlows = labelFlows(analytics?.arusPenerbit, analytics?.publisherLabels, analytics?.siteLabels);
   const articleTree = (analytics?.viewsByArticle ?? []).map((point) => ({
     key: analytics?.articleLabels?.[point.key] ?? truncateLabel(point.key, 28),
     count: point.views,
@@ -434,6 +434,7 @@ export function PrimaryBento({
       <TopRanked title="Kategori teratas" rows={withLabels(analytics?.articlesByCategory, analytics?.categoryLabels)} className="sm:col-span-1 lg:col-span-3" />
       <TopRanked title="Situs teratas" rows={withLabels(analytics?.articlesBySite, analytics?.siteLabels)} className="sm:col-span-1 lg:col-span-3" />
       <TopRanked title="Penerbit teratas" rows={withLabels(analytics?.articlesByPublisher, analytics?.publisherLabels)} className="sm:col-span-1 lg:col-span-3" />
+
     </div>
   );
 }
