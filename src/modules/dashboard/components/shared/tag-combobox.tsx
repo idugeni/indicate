@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Combobox } from '@base-ui/react/combobox';
-import { XIcon } from 'lucide-react';
+import { PlusIcon, XIcon } from 'lucide-react';
 
 import {
   createSuggestionCache,
@@ -21,7 +21,10 @@ const EMPTY_TAGS: readonly string[] = [];
  * nameless so Base UI emits no competing per-value inputs. Typing filters
  * ranked suggestions; Enter or comma adds the typed tag when nothing is
  * highlighted, Backspace on an empty query drops the last chip, and Escape
- * closes the popup. Uncontrolled mode follows native `form.reset()`.
+ * closes the popup. The popup also renders an explicit `Tambah "X" sebagai
+ * topik baru` button, because Enter alone is unavailable on mobile keyboards
+ * that reserve the key for newline or form submit. Uncontrolled mode follows
+ * native `form.reset()`.
  * @param id - Input id for label association.
  * @param name - Hidden field name carrying comma-joined tags.
  * @param value - Controlled tags; omit for uncontrolled use.
@@ -33,6 +36,7 @@ const EMPTY_TAGS: readonly string[] = [];
  * @param maxItems - Maximum tags kept; defaults to 10.
  * @param normalizeValue - Canonicalize raw text; defaults to trimming.
  * @param noResultsLabel - Empty-list text; defaults to an Indonesian prompt.
+ * @param addLabel - Create-button text; `{query}` is replaced with the typed tag.
  * @param onValueChange - Called with the next tag list.
  * @returns Chip input matching the control-room surface.
  */
@@ -47,7 +51,8 @@ export function TagCombobox({
   disabled = false,
   maxItems = 10,
   normalizeValue = (raw: string) => raw.trim(),
-  noResultsLabel = 'Tekan Enter untuk menambah tag baru.',
+  noResultsLabel = 'Ketik untuk mencari atau menambah topik.',
+  addLabel = 'Tambah "{query}" sebagai topik baru',
   onValueChange,
 }: {
   readonly id?: string | undefined;
@@ -61,6 +66,7 @@ export function TagCombobox({
   readonly maxItems?: number | undefined;
   readonly normalizeValue?: ((raw: string) => string) | undefined;
   readonly noResultsLabel?: string | undefined;
+  readonly addLabel?: string | undefined;
   readonly onValueChange?: ((tags: readonly string[]) => void) | undefined;
 }) {
   const controlled = value !== undefined;
@@ -116,6 +122,9 @@ export function TagCombobox({
     setQuery('');
     return true;
   };
+
+  const pendingTag = normalizeValue(query);
+  const canAddPending = pendingTag !== '' && !tags.includes(pendingTag) && tags.length < maxItems;
 
   return (
     <Combobox.Root<string, true, LabeledOption>
@@ -189,6 +198,16 @@ export function TagCombobox({
                 </Combobox.Item>
               )}
             </Combobox.List>
+            {canAddPending ? (
+              <button
+                type="button"
+                onClick={() => addRaw(query)}
+                className="flex w-full cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 font-mono text-xs text-paper outline-none hover:bg-bg-raised-2 focus-visible:ring-2 focus-visible:ring-brass"
+              >
+                <PlusIcon className="size-3.5 flex-none text-brass" aria-hidden="true" />
+                <span className="truncate">{addLabel.replace('{query}', pendingTag)}</span>
+              </button>
+            ) : null}
           </Combobox.Popup>
         </Combobox.Positioner>
       </Combobox.Portal>

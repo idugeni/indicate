@@ -41,4 +41,29 @@ describe('TagCombobox', () => {
     expect(screen.queryByText('dua')).toBeNull();
     expect(screen.getByText('satu')).toBeDefined();
   });
+
+  it('menambah topik lewat tombol popup tanpa keyboard', async () => {
+    const user = userEvent.setup();
+    render(<TagCombobox name="tags" placeholder="cth" suggestions={['perdesa']} defaultValue={[]} />);
+    const input = screen.getByPlaceholderText('cth');
+    await user.click(input);
+    await user.type(input, 'agr');
+    const add = await screen.findByRole('button', { name: /Tambah "agr" sebagai topik baru/ });
+    await user.click(add);
+    expect(screen.getByText('agr')).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Tambah "agr"/ })).toBeNull();
+  });
+
+  it('menyembunyikan tombol tambah saat topik sudah dipilih', async () => {
+    const user = userEvent.setup();
+    render(<TagCombobox name="tags" placeholder="cth" suggestions={['agr']} defaultValue={['agr']} />);
+    // A selected tag hides the placeholder, so reach the input by role instead.
+    const input = screen.getByRole('combobox');
+    await user.click(input);
+    await user.type(input, 'agr');
+    // 'agr' is already a chip, so it is filtered out of the pool and must not
+    // be offered as a create action either.
+    expect(screen.queryByRole('option', { name: 'agr' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /sebagai topik baru/ })).toBeNull();
+  });
 });
