@@ -63,6 +63,7 @@
     "@aws-sdk/client-s3": "^3.1141.0",
     "@aws-sdk/s3-request-presigner": "^3.1141.0",
     "@base-ui/react": "^1.8.0",
+    "@google/genai": "2.24.0",
     "@shadcn/react": "^0.3.1",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
@@ -95,7 +96,7 @@
     "heic2any": "^0.0.4",
     "input-otp": "^1.5.0",
     "lucide-react": "^1.48.0",
-    "next": "16.3.6",
+    "next": "16.4.0-canary.52",
     "nuqs": "^2.10.1",
     "postgres": "^3.4.9",
     "react": "19.3.0",
@@ -115,7 +116,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "@next/eslint-plugin-next": "16.3.6",
+    "@next/eslint-plugin-next": "16.4.0-canary.52",
     "@tailwindcss/postcss": "4.3.3",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
