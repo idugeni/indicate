@@ -6,7 +6,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { COMPANY_NAME, SOCIAL_ORDER } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
-import { GreenMinimalStoreBadges } from '@/modules/site/components/network/templates/green-minimal/chrome/store-badges';
+import { StoreBadges } from '@/modules/site/components/network/chrome/store-badges';
 
 const ABOUT_LINKS = [
   { label: 'Profil', href: '/tentang' },
@@ -107,7 +107,7 @@ export async function GreenMinimalFooter({ site }: { readonly site: NetworkSiteD
           <p className="m-0 mt-4 font-sans text-sm leading-relaxed text-slate-600">
             Dapatkan pengalaman membaca berita yang lebih baik di perangkat mobile Anda.
           </p>
-          <GreenMinimalStoreBadges />
+          <StoreBadges />
         </div>
       </div>
 

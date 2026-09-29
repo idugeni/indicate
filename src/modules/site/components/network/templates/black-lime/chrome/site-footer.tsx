@@ -6,7 +6,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { COMPANY_NAME, SOCIAL_ORDER } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
-import { BlackLimeStoreBadges } from '@/modules/site/components/network/templates/black-lime/chrome/store-badges';
+import { StoreBadges } from '@/modules/site/components/network/chrome/store-badges';
 
 const ABOUT_LINKS = [
   { label: 'Profil', href: '/tentang' },
@@ -107,7 +107,7 @@ export async function BlackLimeFooter({ site }: { readonly site: NetworkSiteData
           <p className="m-0 mt-4 font-sans text-sm leading-relaxed text-slate-400">
             Dapatkan pengalaman membaca berita yang lebih baik di perangkat mobile Anda.
           </p>
-          <BlackLimeStoreBadges />
+          <StoreBadges />
         </div>
       </div>
 

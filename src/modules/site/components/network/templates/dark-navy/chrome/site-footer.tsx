@@ -6,7 +6,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { COMPANY_NAME, SOCIAL_ORDER } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
-import { DarkNavyStoreBadges } from '@/modules/site/components/network/templates/dark-navy/chrome/store-badges';
+import { StoreBadges } from '@/modules/site/components/network/chrome/store-badges';
 
 const ABOUT_LINKS = [
   { label: 'Profil', href: '/tentang' },
@@ -107,7 +107,7 @@ export async function DarkNavyFooter({ site }: { readonly site: NetworkSiteData 
           <p className="m-0 mt-4 font-sans text-sm leading-relaxed text-[#9aa9c4]">
             Dapatkan pengalaman membaca berita yang lebih baik di perangkat mobile Anda.
           </p>
-          <DarkNavyStoreBadges />
+          <StoreBadges />
         </div>
       </div>
 

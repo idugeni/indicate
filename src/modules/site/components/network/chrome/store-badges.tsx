@@ -1,7 +1,7 @@
 import Image from 'next/image';
 
 /** Linkless app store badges: visuals respond to hover, clicks are no-ops. */
-export function PurpleEditorialStoreBadges() {
+export function StoreBadges() {
   return (
     <p className="m-0 mt-4 flex max-w-64 flex-wrap items-center gap-2">
       <span
