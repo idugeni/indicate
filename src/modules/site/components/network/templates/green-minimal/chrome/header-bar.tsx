@@ -5,7 +5,8 @@ import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Menu, Search } from 'lucide-react';
 
 import { GreenMinimalMobileSidebar } from '@/modules/site/components/network/templates/green-minimal/chrome/mobile-sidebar';
-import { GreenMinimalSearchPanel } from '@/modules/site/components/network/templates/green-minimal/chrome/search-panel';
+import { TemplateSearchPanel } from '@/modules/site/components/network/chrome/search-panel';
+import { GREEN_MINIMAL } from '@/modules/site/components/network/templates/green-minimal/theme';
 
 const subscribeMounted = (): (() => void) => () => {};
 const getMountedSnapshot = (): boolean => true;
@@ -74,7 +75,7 @@ export function GreenMinimalHeaderBar({
       </div>
 
       {searchOpen ? (
-        <GreenMinimalSearchPanel
+        <TemplateSearchPanel skin={GREEN_MINIMAL.searchPanel}
           query={query}
           onQueryChange={setQuery}
           onClose={() => setSearchOpen(false)}

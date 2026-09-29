@@ -17,6 +17,11 @@ export const GLASSY_BLUE = {
   card: '#ffffff',
   ring: '#d6e5fb',
   scheme: 'light',
+  searchPanel: {
+    panelBorder: '#f1f5f9',
+    panelBackground: '#ffffff',
+    inputId: 'glassy-blue-search',
+  },
 } as const;
 
 const BADGE_STYLES = [

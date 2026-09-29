@@ -17,6 +17,11 @@ export const CLEAN_BLUE = {
   card: '#ffffff',
   ring: '#e2e8f0',
   scheme: 'light',
+  searchPanel: {
+    panelBorder: '#f1f5f9',
+    panelBackground: '#ffffff',
+    inputId: 'clean-blue-search',
+  },
 } as const;
 
 const BADGE_STYLES = [

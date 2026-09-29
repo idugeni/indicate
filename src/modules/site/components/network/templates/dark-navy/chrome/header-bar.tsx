@@ -5,7 +5,8 @@ import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Menu, Search } from 'lucide-react';
 
 import { DarkNavyMobileSidebar } from '@/modules/site/components/network/templates/dark-navy/chrome/mobile-sidebar';
-import { DarkNavySearchPanel } from '@/modules/site/components/network/templates/dark-navy/chrome/search-panel';
+import { TemplateSearchPanel } from '@/modules/site/components/network/chrome/search-panel';
+import { DARK_NAVY } from '@/modules/site/components/network/templates/dark-navy/theme';
 
 const subscribeMounted = (): (() => void) => () => {};
 const getMountedSnapshot = (): boolean => true;
@@ -74,7 +75,7 @@ export function DarkNavyHeaderBar({
       </div>
 
       {searchOpen ? (
-        <DarkNavySearchPanel
+        <TemplateSearchPanel skin={DARK_NAVY.searchPanel}
           query={query}
           onQueryChange={setQuery}
           onClose={() => setSearchOpen(false)}

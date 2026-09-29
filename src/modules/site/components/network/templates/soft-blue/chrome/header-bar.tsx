@@ -5,7 +5,8 @@ import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Menu, Search } from 'lucide-react';
 
 import { SoftBlueMobileSidebar } from '@/modules/site/components/network/templates/soft-blue/chrome/mobile-sidebar';
-import { SoftBlueSearchPanel } from '@/modules/site/components/network/templates/soft-blue/chrome/search-panel';
+import { TemplateSearchPanel } from '@/modules/site/components/network/chrome/search-panel';
+import { SOFT_BLUE } from '@/modules/site/components/network/templates/soft-blue/theme';
 
 const subscribeMounted = (): (() => void) => () => {};
 const getMountedSnapshot = (): boolean => true;
@@ -74,7 +75,7 @@ export function SoftBlueHeaderBar({
       </div>
 
       {searchOpen ? (
-        <SoftBlueSearchPanel
+        <TemplateSearchPanel skin={SOFT_BLUE.searchPanel}
           query={query}
           onQueryChange={setQuery}
           onClose={() => setSearchOpen(false)}

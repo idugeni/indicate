@@ -3,9 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { createRef, useRef, useState } from 'react';
 
-import { CleanBlueSearchPanel } from '@/modules/site/components/network/templates/clean-blue/chrome/search-panel';
+import { TemplateSearchPanel } from '@/modules/site/components/network/chrome/search-panel';
 
 const pushMock = vi.hoisted(() => vi.fn());
+
+const SKIN = { panelBorder: '#f1f5f9', panelBackground: '#ffffff', inputId: 'shared-search' } as const;
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
@@ -27,7 +29,8 @@ function TestPanel({ onClose }: { readonly onClose: () => void }) {
   const [value, setValue] = useState('');
   const fieldRef = useRef<HTMLInputElement>(null);
   return (
-    <CleanBlueSearchPanel
+    <TemplateSearchPanel
+        skin={SKIN}
       query={value}
       onQueryChange={setValue}
       onClose={onClose}
@@ -41,7 +44,7 @@ function emptyRef() {
   return createRef<HTMLInputElement>();
 }
 
-describe('CleanBlueSearchPanel', () => {
+describe('TemplateSearchPanel', () => {
   it('mengetik memperbarui nilai', () => {
     render(<TestPanel onClose={vi.fn()} />);
     const searchInput = screen.getByLabelText('Cari berita');
@@ -58,7 +61,8 @@ describe('CleanBlueSearchPanel', () => {
 
   it('submit kosong mengarah ke pencarian umum', () => {
     render(
-      <CleanBlueSearchPanel
+      <TemplateSearchPanel
+        skin={SKIN}
         query="   "
         onQueryChange={vi.fn()}
         onClose={vi.fn()}

@@ -17,6 +17,11 @@ export const WARM_EDITORIAL = {
   card: '#ffffff',
   ring: '#e9d5c0',
   scheme: 'light',
+  searchPanel: {
+    panelBorder: '#f1f5f9',
+    panelBackground: '#ffffff',
+    inputId: 'warm-editorial-search',
+  },
 } as const;
 
 const BADGE_STYLES = [

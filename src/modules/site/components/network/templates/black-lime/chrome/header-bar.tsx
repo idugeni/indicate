@@ -4,7 +4,8 @@ import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Menu, Search } from 'lucide-react';
 
 import { BlackLimeMobileSidebar } from '@/modules/site/components/network/templates/black-lime/chrome/mobile-sidebar';
-import { BlackLimeSearchPanel } from '@/modules/site/components/network/templates/black-lime/chrome/search-panel';
+import { TemplateSearchPanel } from '@/modules/site/components/network/chrome/search-panel';
+import { BLACK_LIME } from '@/modules/site/components/network/templates/black-lime/theme';
 
 const subscribeMounted = (): (() => void) => () => {};
 const getMountedSnapshot = (): boolean => true;
@@ -67,7 +68,7 @@ export function BlackLimeHeaderBar({
       </div>
 
       {searchOpen ? (
-        <BlackLimeSearchPanel
+        <TemplateSearchPanel skin={BLACK_LIME.searchPanel}
           query={query}
           onQueryChange={setQuery}
           onClose={() => setSearchOpen(false)}

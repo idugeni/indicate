@@ -5,7 +5,8 @@ import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Menu, Search } from 'lucide-react';
 
 import { GlassyBlueMobileSidebar } from '@/modules/site/components/network/templates/glassy-blue/chrome/mobile-sidebar';
-import { GlassyBlueSearchPanel } from '@/modules/site/components/network/templates/glassy-blue/chrome/search-panel';
+import { TemplateSearchPanel } from '@/modules/site/components/network/chrome/search-panel';
+import { GLASSY_BLUE } from '@/modules/site/components/network/templates/glassy-blue/theme';
 
 const subscribeMounted = (): (() => void) => () => {};
 const getMountedSnapshot = (): boolean => true;
@@ -74,7 +75,7 @@ export function GlassyBlueHeaderBar({
       </div>
 
       {searchOpen ? (
-        <GlassyBlueSearchPanel
+        <TemplateSearchPanel skin={GLASSY_BLUE.searchPanel}
           query={query}
           onQueryChange={setQuery}
           onClose={() => setSearchOpen(false)}

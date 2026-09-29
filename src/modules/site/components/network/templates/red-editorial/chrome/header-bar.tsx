@@ -5,7 +5,8 @@ import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Menu, Search } from 'lucide-react';
 
 import { RedEditorialMobileSidebar } from '@/modules/site/components/network/templates/red-editorial/chrome/mobile-sidebar';
-import { RedEditorialSearchPanel } from '@/modules/site/components/network/templates/red-editorial/chrome/search-panel';
+import { TemplateSearchPanel } from '@/modules/site/components/network/chrome/search-panel';
+import { RED_EDITORIAL } from '@/modules/site/components/network/templates/red-editorial/theme';
 
 const subscribeMounted = (): (() => void) => () => {};
 const getMountedSnapshot = (): boolean => true;
@@ -74,7 +75,7 @@ export function RedEditorialHeaderBar({
       </div>
 
       {searchOpen ? (
-        <RedEditorialSearchPanel
+        <TemplateSearchPanel skin={RED_EDITORIAL.searchPanel}
           query={query}
           onQueryChange={setQuery}
           onClose={() => setSearchOpen(false)}

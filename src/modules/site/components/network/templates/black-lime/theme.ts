@@ -18,6 +18,11 @@ export const BLACK_LIME = {
   ring: '#242b1f',
   onPrimary: '#0a0c07',
   scheme: 'dark',
+  searchPanel: {
+    panelBorder: '#242b1f',
+    panelBackground: '#0a0c07',
+    inputId: 'black-lime-search',
+  },
 } as const;
 
 const BADGE_STYLES = [

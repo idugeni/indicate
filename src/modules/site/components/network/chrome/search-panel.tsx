@@ -6,9 +6,16 @@ import { X } from 'lucide-react';
 
 import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
 
+export interface SearchPanelSkin {
+  readonly panelBorder: string;
+  readonly panelBackground: string;
+  readonly inputId: string;
+}
+
 /**
  * Expandable search panel below the desktop header.
  *
+ * @param skin - Panel colours and input id supplied by the active template theme.
  * @param query - Controlled input value.
  * @param onQueryChange - Input change handler.
  * @param onClose - Panel close handler.
@@ -16,13 +23,15 @@ import { TemplateButton, TemplateInput } from '@/modules/site/components/network
  * @param onFocusReturn - Return focus to the trigger button on close.
  * @returns In-flow template search form.
  */
-export function GlassyBlueSearchPanel({
+export function TemplateSearchPanel({
+  skin,
   query,
   onQueryChange,
   onClose,
   inputRef,
   onFocusReturn,
 }: {
+  readonly skin: SearchPanelSkin;
   readonly query: string;
   readonly onQueryChange: (value: string) => void;
   readonly onClose: () => void;
@@ -52,14 +61,14 @@ export function GlassyBlueSearchPanel({
   };
 
   return (
-    <div className="ticker-enter border-t border-slate-100 bg-white">
+    <div className={`ticker-enter border-t border-[${skin.panelBorder}] bg-[${skin.panelBackground}]`}>
       <form role="search" onSubmit={submit} className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-3 sm:px-6">
-        <label htmlFor="glassy-blue-search" className="sr-only">
+        <label htmlFor="{skin.inputId}" className="sr-only">
           Cari berita
         </label>
         <TemplateInput
           ref={inputRef}
-          id="glassy-blue-search"
+          id="{skin.inputId}"
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           onKeyDown={(event) => {

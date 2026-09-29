@@ -19,6 +19,11 @@ export const RED_EDITORIAL = {
   card: '#ffffff',
   ring: '#ecd3d3',
   scheme: 'light',
+  searchPanel: {
+    panelBorder: '#f1f5f9',
+    panelBackground: '#ffffff',
+    inputId: 'red-editorial-search',
+  },
 } as const;
 
 const BADGE_STYLES = [

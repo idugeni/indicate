@@ -4,7 +4,8 @@ import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Menu, Search } from 'lucide-react';
 
 import { WarmEditorialMobileSidebar } from '@/modules/site/components/network/templates/warm-editorial/chrome/mobile-sidebar';
-import { WarmEditorialSearchPanel } from '@/modules/site/components/network/templates/warm-editorial/chrome/search-panel';
+import { TemplateSearchPanel } from '@/modules/site/components/network/chrome/search-panel';
+import { WARM_EDITORIAL } from '@/modules/site/components/network/templates/warm-editorial/theme';
 
 const subscribeMounted = (): (() => void) => () => {};
 const getMountedSnapshot = (): boolean => true;
@@ -67,7 +68,7 @@ export function WarmEditorialHeaderBar({
       </div>
 
       {searchOpen ? (
-        <WarmEditorialSearchPanel
+        <TemplateSearchPanel skin={WARM_EDITORIAL.searchPanel}
           query={query}
           onQueryChange={setQuery}
           onClose={() => setSearchOpen(false)}

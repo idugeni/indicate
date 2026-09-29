@@ -17,6 +17,11 @@ export const DARK_NAVY = {
   card: '#0e1a33',
   ring: '#1b2c4f',
   scheme: 'dark',
+  searchPanel: {
+    panelBorder: '#1b2c4f',
+    panelBackground: '#0e1a33',
+    inputId: 'dark-navy-search',
+  },
 } as const;
 
 const BADGE_STYLES = [

@@ -17,6 +17,11 @@ export const SOFT_BLUE = {
   card: '#ffffff',
   ring: '#d3e2fb',
   scheme: 'light',
+  searchPanel: {
+    panelBorder: '#f1f5f9',
+    panelBackground: '#ffffff',
+    inputId: 'soft-blue-search',
+  },
 } as const;
 
 const BADGE_STYLES = [

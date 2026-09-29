@@ -5,7 +5,8 @@ import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Menu, Search } from 'lucide-react';
 
 import { PurpleEditorialMobileSidebar } from '@/modules/site/components/network/templates/purple-editorial/chrome/mobile-sidebar';
-import { PurpleEditorialSearchPanel } from '@/modules/site/components/network/templates/purple-editorial/chrome/search-panel';
+import { TemplateSearchPanel } from '@/modules/site/components/network/chrome/search-panel';
+import { PURPLE_EDITORIAL } from '@/modules/site/components/network/templates/purple-editorial/theme';
 
 const subscribeMounted = (): (() => void) => () => {};
 const getMountedSnapshot = (): boolean => true;
@@ -74,7 +75,7 @@ export function PurpleEditorialHeaderBar({
       </div>
 
       {searchOpen ? (
-        <PurpleEditorialSearchPanel
+        <TemplateSearchPanel skin={PURPLE_EDITORIAL.searchPanel}
           query={query}
           onQueryChange={setQuery}
           onClose={() => setSearchOpen(false)}

@@ -17,6 +17,11 @@ export const PURPLE_EDITORIAL = {
   card: '#ffffff',
   ring: '#ddd3f8',
   scheme: 'light',
+  searchPanel: {
+    panelBorder: '#f1f5f9',
+    panelBackground: '#ffffff',
+    inputId: 'purple-editorial-search',
+  },
 } as const;
 
 const BADGE_STYLES = [

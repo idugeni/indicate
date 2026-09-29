@@ -4,7 +4,8 @@ import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Menu, Search } from 'lucide-react';
 
 import { CleanBlueMobileSidebar } from '@/modules/site/components/network/templates/clean-blue/chrome/mobile-sidebar';
-import { CleanBlueSearchPanel } from '@/modules/site/components/network/templates/clean-blue/chrome/search-panel';
+import { TemplateSearchPanel } from '@/modules/site/components/network/chrome/search-panel';
+import { CLEAN_BLUE } from '@/modules/site/components/network/templates/clean-blue/theme';
 
 const subscribeMounted = (): (() => void) => () => {};
 const getMountedSnapshot = (): boolean => true;
@@ -67,7 +68,7 @@ export function CleanBlueHeaderBar({
       </div>
 
       {searchOpen ? (
-        <CleanBlueSearchPanel
+        <TemplateSearchPanel skin={CLEAN_BLUE.searchPanel}
           query={query}
           onQueryChange={setQuery}
           onClose={() => setSearchOpen(false)}

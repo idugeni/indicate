@@ -5,7 +5,8 @@ import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Menu, Search } from 'lucide-react';
 
 import { OrangeModernMobileSidebar } from '@/modules/site/components/network/templates/orange-modern/chrome/mobile-sidebar';
-import { OrangeModernSearchPanel } from '@/modules/site/components/network/templates/orange-modern/chrome/search-panel';
+import { TemplateSearchPanel } from '@/modules/site/components/network/chrome/search-panel';
+import { ORANGE_MODERN } from '@/modules/site/components/network/templates/orange-modern/theme';
 
 const subscribeMounted = (): (() => void) => () => {};
 const getMountedSnapshot = (): boolean => true;
@@ -74,7 +75,7 @@ export function OrangeModernHeaderBar({
       </div>
 
       {searchOpen ? (
-        <OrangeModernSearchPanel
+        <TemplateSearchPanel skin={ORANGE_MODERN.searchPanel}
           query={query}
           onQueryChange={setQuery}
           onClose={() => setSearchOpen(false)}

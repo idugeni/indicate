@@ -17,6 +17,11 @@ export const ORANGE_MODERN = {
   card: '#ffffff',
   ring: '#f2dcc9',
   scheme: 'light',
+  searchPanel: {
+    panelBorder: '#f1f5f9',
+    panelBackground: '#ffffff',
+    inputId: 'orange-modern-search',
+  },
 } as const;
 
 const BADGE_STYLES = [

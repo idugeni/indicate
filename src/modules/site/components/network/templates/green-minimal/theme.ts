@@ -17,6 +17,11 @@ export const GREEN_MINIMAL = {
   card: '#ffffff',
   ring: '#d9e7de',
   scheme: 'light',
+  searchPanel: {
+    panelBorder: '#f1f5f9',
+    panelBackground: '#ffffff',
+    inputId: 'green-minimal-search',
+  },
 } as const;
 
 const BADGE_STYLES = [
