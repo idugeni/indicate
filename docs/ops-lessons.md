@@ -128,7 +128,7 @@ keadaan yang sama.
 Insiden: debugger Facebook melaporkan `og:image ... could not be processed as
 an image` untuk `jurnalism.web.id` padahal URL-nya 200 + `image/png`.
 
-Byte PNG-nya terbukti sehat: 71.174 byte, signature `89 50 4e 47`, seluruh
+Byte PNG-nya terbukti sehat: 71174 byte, signature `89 50 4e 47`, seluruh
 CRC chunk OK, IDAT inflate bersih, 1200x630 RGBA, identik di empat fetch
 berturut-turut, tanpa `Content-Encoding` apa pun. Penyebab sebenarnya ada di
 robots.txt, bukan di berkas: `Disallow: /api/` menutup
@@ -161,8 +161,8 @@ index parsial, tiga helper `SECURITY DEFINER`) plus satu cron
 `facebook-prewarm`, semuanya untuk menyerahkan URL ke backend scrape Meta satu
 kali seumur hidup artikel. Migrasi 217 menghapus seluruhnya.
 
-Yang terbukti mahal: ledger itu tidak pernah kosong. Per 2026-09-27, 4.020 dari
-4.020 baris published masih `social_warmed_at IS NULL`, dan itu bukan karena
+Yang terbukti mahal: ledger itu tidak pernah kosong. Per 2026-09-27, 4020 dari
+4020 baris published masih `social_warmed_at IS NULL`, dan itu bukan karena
 Meta menolak — melainkan karena warmer hanya dipasang kalau `FB_APP_TOKEN` ada.
 Artinya biaya produksi (dua migrasi, tiga helper, satu cron, tiga kolom,
 cooldown berlipat) dibayar penuh untuk fitur yang secara default mati, dan

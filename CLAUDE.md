@@ -16,7 +16,7 @@ Exact pins live in `package.json`; the majors below are the contract.
 | Object storage | Cloudflare R2 (private) |
 | Cache/queue | Upstash Redis |
 | Auth | Supabase Auth |
-| Runtime | Node.js >= 22, ESM |
+| Runtime | Node.js 24, ESM (`engines` + `.nvmrc` both pin 24) |
 
 ## Architecture
 

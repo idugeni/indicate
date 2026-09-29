@@ -263,7 +263,11 @@ mode" di bawah. Langgar = angka tidak layak dipercaya sebelum diulang.
 4. Angka yang berasal dari satu eksekusi query tidak boleh dirangkum ulang
    dengan satuan berbeda. `count(*)` dari `sites` tetap `sites`, bukan
    "portal yang tayang" dan bukan "domain yang aktif".
-5. Untuk skala portal dan geografi, jalankan audit yang sudah ada alih-alih
+5. **Tulis angka tanpa pemisah ribuan.** `4422`, bukan `4.422` dan bukan
+   `4,422`. Titik dan koma sama-sama dipakai sebagai desimal di dalam
+   dokumen teknis ini, jadi pemisah ribuan membuat satu angka bisa dibaca
+   sebagai dua. Format ini berlaku di markdown, komentar, dan pesan commit.
+6. Untuk skala portal dan geografi, jalankan audit yang sudah ada alih-alih
    menyusun query sendiri:
 
    ```text
@@ -468,10 +472,10 @@ sekarang":
 
 | Pelaku | Lokasi | Mengapa berbahaya |
 |---|---|---|
-| `snapshot()` membaca seluruh `audit_logs` | `src/data/repos/publishing/repository.ts:817` | 13.179 baris × ±1.224 B per panggilan, dari satu GET dashboard |
-| `snapshot()` membaca seluruh `invalidation_tasks` | `src/data/repos/publishing/repository.ts:813` | payload ~3.096 B/baris, dan pemanggil tidak memakainya |
+| `snapshot()` membaca seluruh `audit_logs` | `src/data/repos/publishing/repository.ts:817` | 13179 baris × ±1224 B per panggilan, dari satu GET dashboard |
+| `snapshot()` membaca seluruh `invalidation_tasks` | `src/data/repos/publishing/repository.ts:813` | payload ~3096 B/baris, dan pemanggil tidak memakainya |
 | `load()` memuat 17 tabel penuh | `src/data/repos/dashboard.ts:243` | whole-tenant hydration untuk diff in-memory |
-| `load()` memuat `site_settings` penuh | `src/data/repos/dashboard.ts:250` | JSONB `colors`/`seo`/`navigation` per 4.422 situs |
+| `load()` memuat `site_settings` penuh | `src/data/repos/dashboard.ts:250` | JSONB `colors`/`seo`/`navigation` per 4422 situs |
 | `readComplete()` reload config penuh | `src/data/repos/runtime-config/reader.ts:21` | cold start tiap instance = full read |
 | `readCategories()` per load halaman | `src/data/repos/delivery.ts:305` | ~60 baris × frekuensi tinggi, belum shared-cached per org |
 | `isCacheBypassed()` di luar branch yang butuh | `src/data/repos/delivery.ts:314` | round trip yang berulang |

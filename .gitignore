@@ -20,12 +20,16 @@ semantic-review/
 .gemini/
 .claude/
 
-# Bundle skill AI pihak ketiga (reproducible via skills-lock.json, 25 entri).
-# Skill milik repo tetap ter-track via negasi.
+# Bundle skill AI pihak ketiga (reproducible via skills-lock.json, 34 entri —
+# hitung ulang dengan `node -e "console.log(Object.keys(require('./skills-lock.json').skills).length)"`,
+# jangan salin angka dari komentar ini).
+# Empat skill milik repo tetap ter-track lewat negasi di bawah; skill fourth-party
+# yang juga tidak ada di lock tetap untracked.
 .agents/skills/*
 !.agents/skills/indicate-conventions/
 !.agents/skills/tenant-onboarding/
 !.agents/skills/agent-discipline/
+!.agents/skills/apple-hig/
 # 7 skill desain lokal opsional TANPA pin (sengaja: banner-design, brand,
 # design, design-system, slides, ui-styling, ui-ux-pro-max). Berfungsi lokal,
 # tidak ikut fresh clone. Jangan hapus, jangan tulis hash manual ke

@@ -209,7 +209,7 @@ Yang diverifikasi per batch, bukan per domain: 19/20 zona `active`, baseline
 wildcard) terbit lewat ACME DNS-01, apex `200` dengan `robots=index, follow`
 dan judul branded. Distribusi template 2 per template, bukan per domain.
 
-660 site, 660/660 `active/active`, 660 settings unik, 60 objek R2, 1.180 klaim
+660 site, 660/660 `active/active`, 660 settings unik, 60 objek R2, 1180 klaim
 `official_affiliations` (20 × 59) dengan fingerprint pemetaan tetap
 `distinct = 1` di 134 domain. Sweep akhir 19 domain yang bisa di-resolve:
 758/760 `200`, 0 unknown-host, 0 `noindex`; dua sisanya
@@ -247,8 +247,8 @@ total yang berlaku sekarang — total terkini ada di bagian atas.
 | 2026-09-20 | `jejakkebenaran.my.id` | Apex ke-36, template `red-editorial`. |
 | 2026-09-20 | 26 domain stok | 26 domain masuk Vercel `verified` tanpa site; menyajikan landing generik branded, tanpa kebocoran tenant. |
 | 2026-09-25 | 104 apex diaktifkan | Penunjukan eksplisit pemilik mengaktifkan seluruh 104 apex IDWebHost. Tidak ada backlog tersisa. |
-| 2026-09-25 | Exabytes #2 (10 apex) | 330 site, platform 3.432 → 3.762. |
-| 2026-09-26 | Exabytes #3 (20 apex) | 660 site, platform 3.762 → 4.422, apex 114 → 134. |
+| 2026-09-25 | Exabytes #2 (10 apex) | 330 site, platform 3432 → 3762. |
+| 2026-09-26 | Exabytes #3 (20 apex) | 660 site, platform 3762 → 4422, apex 114 → 134. |
 
 ### Rekonsiliasi Wonosobo
 

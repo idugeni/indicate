@@ -26,7 +26,7 @@ compatible license in the PR.
 
 | Requirement | Version | Purpose |
 |---|---|---|
-| Node.js | >= 22 | Runtime and builds |
+| Node.js | 24 | Runtime and builds (`engines` + `.nvmrc` are the authority) |
 | npm | Bundled with Node | Dependency management (`package-lock.json` is authoritative) |
 | PostgreSQL | 17 | Durable tenant, editorial, publication, and audit state (via Supabase) |
 
