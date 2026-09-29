@@ -100,26 +100,13 @@ export function planInvalidation(mutation: NetworkMutation): InvalidationPlan {
 /**
  * Dispatch claimed invalidation tasks through Next cache and edge purge.
  *
- * @remarks One edge purge per batch (unique URLs across tasks): per-host per-task purges would trigger a thundering-herd to the origin, while the edge TTL is only 60 seconds. A purge failure does not fail the task; Next revalidate is the primary mechanism and the edge recovers on its own within one TTL. The purge set is bounded by `PURGE_URL_BUDGET` and ordered so article URLs are never the ones deferred. A poison task does not stop the batch: a failed complete is recorded via fail, and a fail that also fails counts as stranded.
+ * @remarks One edge purge per batch (unique URLs across tasks): per-host per-task purges would trigger a thundering-herd to the origin, while the edge TTL is only 60 seconds. A purge failure does not fail the task; Next revalidate is the primary mechanism and the edge recovers on its own within one TTL. The purge therefore runs after the task loop, not before it: a purge call that stalls used to consume the whole invocation before a single task was completed, so the batch was reclaimed mid-flight and repeated forever with no progress. The purge set is bounded by `PURGE_URL_BUDGET` and ordered so article URLs are never the ones deferred. A poison task does not stop the batch: a failed complete is recorded via fail, and a fail that also fails counts as stranded.
  */
 export class InvalidationDispatcher {
   constructor(private readonly repository: Pick<DeliveryRepository, 'claimInvalidations' | 'completeInvalidation' | 'failInvalidation'>, private readonly nextCache: NextCacheInvalidationPort, private readonly cloudflare: CloudflareAuthorityPort, private readonly retryDelaysSeconds: readonly number[], private readonly maxAttempts: number, private readonly leaseSeconds: number) {}
 
   async dispatch(now: Date, limit: number): Promise<{ completed: number; failed: number; stranded: number }> {
     const tasks = await this.repository.claimInvalidations(now.toISOString(), limit, this.leaseSeconds);
-    const urls = purgeOrder(tasks);
-    const budgeted = urls.slice(0, PURGE_URL_BUDGET);
-    const deferred = urls.length - budgeted.length;
-    if (budgeted.length > 0) {
-      try {
-        await this.cloudflare.purgeExactUrls(budgeted);
-      } catch {
-        /* left to expire via the edge TTL; the task still completes below */
-      }
-    }
-    if (deferred > 0) {
-      logEvent('warn', { event: 'delivery.invalidation.purge_deferred', context: { requested: urls.length, purged: budgeted.length, deferred, budget: PURGE_URL_BUDGET } });
-    }
     let completed = 0; let failed = 0; let stranded = 0;
     const outcomes = await mapWithConcurrency(tasks, 4, async (task) => {
       let step = 'revalidate';
@@ -143,6 +130,19 @@ export class InvalidationDispatcher {
       if (outcome === 'completed') completed += 1;
       else if (outcome === 'failed') failed += 1;
       else stranded += 1;
+    }
+    const urls = purgeOrder(tasks);
+    const budgeted = urls.slice(0, PURGE_URL_BUDGET);
+    const deferred = urls.length - budgeted.length;
+    if (budgeted.length > 0) {
+      try {
+        await this.cloudflare.purgeExactUrls(budgeted);
+      } catch {
+        /* left to expire via the edge TTL; the tasks are already completed above */
+      }
+    }
+    if (deferred > 0) {
+      logEvent('warn', { event: 'delivery.invalidation.purge_deferred', context: { requested: urls.length, purged: budgeted.length, deferred, budget: PURGE_URL_BUDGET } });
     }
     return { completed, failed, stranded };
   }

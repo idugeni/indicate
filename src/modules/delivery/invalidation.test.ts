@@ -128,6 +128,28 @@ describe('InvalidationDispatcher', () => {
     expect(peak).toBeLessThanOrEqual(4);
   });
 
+  it('menyelesaikan task walau purge edge macet, karena purge jalan belakangan', async () => {
+    const order: string[] = [];
+    const repository = {
+      claimInvalidations: vi.fn(async () => [task('task-1', ['https://tenant.example/'])]),
+      completeInvalidation: vi.fn(async () => {
+        order.push('complete');
+      }),
+      failInvalidation: vi.fn(async () => {}),
+    };
+    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
+    const cloudflare = {
+      purgeExactUrls: vi.fn(async (_urls: readonly string[]) => {
+        order.push('purge');
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }),
+      purgeHostname: vi.fn(async () => {}),
+    };
+    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, 300);
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
+    expect(order).toEqual(['complete', 'purge']);
+  });
+
   it('mencakup path statis baru pada rencana invalidasi', () => {
     const plan = planInvalidation({ kind: 'site_settings', organizationId: 'org-1', siteId: 'site-1', hostname: 'tenant.example' });
     expect(plan.paths).toEqual(expect.arrayContaining(['/llms.txt', '/news-sitemap.xml', '/tenant-home', '/report']));
