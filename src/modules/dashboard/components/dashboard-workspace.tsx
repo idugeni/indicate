@@ -80,6 +80,8 @@ function resolveApiEndpoint(target: View | string): 'publishing' | 'integrations
   if (
     target === 'settings' ||
     target === 'customers' ||
+    target === 'ai' ||
+    target.startsWith('ai.') ||
     target.startsWith('api-key.') ||
     target.startsWith('customer.') ||
     target.startsWith('email.') ||
@@ -258,7 +260,7 @@ export function DashboardWorkspace({
       });
       return;
     }
-    if (view === 'content' || view === 'billing' || view === 'moderation') {
+    if (view === 'content' || view === 'billing' || view === 'moderation' || view === 'ai') {
       void Promise.resolve().then(() => {
         setPayload(null);
         setBusy(false);

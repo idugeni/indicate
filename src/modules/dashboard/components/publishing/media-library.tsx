@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { AiMediaAnalyze } from '@/modules/ai/components/ai-media-analyze';
 import { formatBytes } from '@/modules/publishing/compress-image';
 
 /** The uploader carries the compression pipeline, so it only loads once opened. */
@@ -63,6 +64,7 @@ interface LibraryModel {
 interface MediaLibraryProps {
   readonly data: unknown;
   readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly organizationId?: string | undefined;
 }
 
 interface Folder {
@@ -117,7 +119,7 @@ function ownerLabel(media: LibraryMedia, model: LibraryModel | null): string {
  * authorization per asset, so a library of hundreds of rows never signs hundreds
  * of URLs on load.
  */
-export function MediaLibrary({ data, command }: MediaLibraryProps) {
+export function MediaLibrary({ data, command, organizationId }: MediaLibraryProps) {
   const model = data as LibraryModel | null;
   const searchId = useId();
   const purposeId = useId();
@@ -212,6 +214,7 @@ export function MediaLibrary({ data, command }: MediaLibraryProps) {
       </section>
 
       {uploading ? <MediaForm data={data} command={command} /> : null}
+      <AiMediaAnalyze organizationId={organizationId} onDraft={(draft) => { toast.info(draft.alt === '' ? `Draf visual: ${draft.title}` : `Alt: ${draft.alt}`); }} />
 
       <section aria-label="Folder media" className="flex flex-wrap gap-1.5">
         {folders.map((entry) => {

@@ -15,6 +15,7 @@ describe('INTEGRATIONS_PERMISSIONS', () => {
     expect(INTEGRATIONS_PERMISSIONS.superAdmin).toBe('platform.super_admin');
     expect(INTEGRATIONS_PERMISSIONS.customerAdmin).toBe('platform.customer.admin');
     expect(INTEGRATIONS_PERMISSIONS.contentManage).toBe('platform.content.manage');
+    expect(INTEGRATIONS_PERMISSIONS.aiManage).toBe('platform.ai.manage');
     expect(INTEGRATIONS_PERMISSIONS.runtimeConfigManage).toBe('platform.runtime_config.manage');
     expect(INTEGRATIONS_PERMISSIONS.siteSettingsManage).toBe('site_settings.manage');
   });
@@ -34,6 +35,7 @@ describe('INTEGRATIONS_PLATFORM_PERMISSION_NAMES', () => {
     expect([...INTEGRATIONS_PLATFORM_PERMISSION_NAMES]).toEqual([
       'platform.super_admin',
       'platform.customer.admin',
+      'platform.ai.manage',
     ]);
   });
 });

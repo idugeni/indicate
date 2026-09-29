@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { AiModerationAssist } from '@/modules/ai/components/ai-moderation-assist';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { formatDate, formatRelative } from '@/modules/dashboard/components/shared/dashboard-dates';
 
@@ -274,6 +275,10 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               </p>
               {report.status === 'received' || report.status === 'under_review' ? (
                 <div className="mt-1.5 flex flex-col gap-1.5">
+                  <AiModerationAssist
+                    organizationId={organizationId} category={report.reasonCategory} details={report.details}
+                    onReply={(draft) => setDecisionNote((prev) => ({ ...prev, [report.id]: draft }))}
+                  />
                   <Input
                     type="text" value={decisionNote[report.id] ?? ''} disabled={busy}
                     onChange={(event) => setDecisionNote((prev) => ({ ...prev, [report.id]: event.target.value }))}

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
+import { AiService } from '@/modules/integrations/ai-service';
 import { ApiKeyService } from '@/modules/integrations/api-key-service';
 import { CustomerService } from '@/modules/integrations/customer-service';
 import { EmailTestService } from '@/modules/integrations/email-test-service';
@@ -14,6 +15,7 @@ import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from 
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
+import { DrizzleAiRepository } from '@/data/repos/ai';
 import { DrizzleIntegrationsRepository } from '@/data/repos/integrations';
 import { createResendEmailApiAdapter } from '@/integrations/email/resend-email-api';
 import { UuidGenerator } from '@/core/system/uuid-generator';
@@ -23,7 +25,7 @@ import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
 
-const querySchema = z.object({ organizationId: z.uuid(), view: z.enum(['settings', 'customers']), customerId: z.uuid().optional() });
+const querySchema = z.object({ organizationId: z.uuid(), view: z.enum(['settings', 'customers', 'ai']), customerId: z.uuid().optional() });
 const commandSchema = z.object({ organizationId: z.uuid(), action: z.string().min(1).max(100), payload: z.unknown() }).strict();
 /**
  * Maps an integrations envelope to its HTTP status.
@@ -32,7 +34,7 @@ const commandSchema = z.object({ organizationId: z.uuid(), action: z.string().mi
  * @returns Status code honoring 429 for rate-limited webhook traffic.
  */
 export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
-interface Context { readonly actor: AuthorizedTenantActorContext; readonly repository: DrizzleIntegrationsRepository; readonly apiKeys: ApiKeyService; readonly customers: CustomerService; readonly emailTest: EmailTestService; readonly emailStatus: { readonly configured: boolean; readonly defaultFrom: string | null; readonly webhook: boolean }; readonly rateLimits: RateLimitService; readonly policy: { allowance: number; windowSeconds: number; failureMode: 'closed' } }
+interface Context { readonly actor: AuthorizedTenantActorContext; readonly repository: DrizzleIntegrationsRepository; readonly apiKeys: ApiKeyService; readonly ai: AiService; readonly customers: CustomerService; readonly emailTest: EmailTestService; readonly emailStatus: { readonly configured: boolean; readonly defaultFrom: string | null; readonly webhook: boolean }; readonly rateLimits: RateLimitService; readonly policy: { allowance: number; windowSeconds: number; failureMode: 'closed' } }
 type ContextResult = Context | PublicErrorEnvelope; const isError = (value: ContextResult): value is PublicErrorEnvelope => 'error' in value;
 
 async function contextFor(organizationId: string, requestId: string): Promise<ContextResult> {
@@ -43,7 +45,7 @@ async function contextFor(organizationId: string, requestId: string): Promise<Co
   const membership = await authorization.findActiveMembership(organizationId, local.value.id); if (membership === null || !membership.roleActive) { return createNonDisclosingDenial(requestId); }
   const actor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), regionScopeId: membership.regionId ?? null, entryPoint: 'dashboard', requestId }; const repository = new DrizzleIntegrationsRepository(runtime.db); const identifiers = new UuidGenerator();
   const emailPort = config.email === null ? null : createResendEmailApiAdapter(config.email.apiKey, config.email.defaultFrom);
-  return { actor, repository, apiKeys: new ApiKeyService(repository, identifiers), customers: new CustomerService(repository, identifiers), emailTest: new EmailTestService(emailPort), emailStatus: config.email === null ? Object.freeze({ configured: false as const, defaultFrom: null, webhook: false as const }) : Object.freeze({ configured: true as const, defaultFrom: config.email.defaultFrom, webhook: config.email.webhookSecret !== null }), rateLimits: new RateLimitService(new UpstashRateLimitAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })), policy: { ...config.rateLimits.mutation, failureMode: 'closed' } };
+  return { actor, repository, apiKeys: new ApiKeyService(repository, identifiers), ai: new AiService(new DrizzleAiRepository(runtime.db)), customers: new CustomerService(repository, identifiers), emailTest: new EmailTestService(emailPort), emailStatus: config.email === null ? Object.freeze({ configured: false as const, defaultFrom: null, webhook: false as const }) : Object.freeze({ configured: true as const, defaultFrom: config.email.defaultFrom, webhook: config.email.webhookSecret !== null }), rateLimits: new RateLimitService(new UpstashRateLimitAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })), policy: { ...config.rateLimits.mutation, failureMode: 'closed' } };
 }
 function response(error: PublicErrorEnvelope) { const retry = error.error.fields?.retryAfterSeconds?.[0]; return NextResponse.json(error, { status: statusFor(error), ...(retry === undefined ? {} : { headers: { 'Retry-After': retry } }) }); }
 
@@ -52,6 +54,7 @@ async function handleGET(request: Request) {
   const context = await contextFor(parsed.data.organizationId, requestId); if (isError(context)) return response(context);
   {
     if (parsed.data.view === 'customers') { const result = parsed.data.customerId === undefined ? await context.customers.list(context.actor) : await context.customers.read(context.actor, parsed.data.customerId); return result.ok ? NextResponse.json(result.value) : response(result.error); }
+    if (parsed.data.view === 'ai') { const result = await context.ai.overview(context.actor); return result.ok ? NextResponse.json(result.value) : response(result.error); }
     const [keys, subscription] = await Promise.all([context.apiKeys.list(context.actor), context.customers.readSubscription(context.actor)]); if (!keys.ok) return response(keys.error); if (!subscription.ok) return response(subscription.error); return NextResponse.json({ apiKeys: keys.value, subscription: subscription.value, email: context.emailStatus });
   }
 }
@@ -66,6 +69,10 @@ async function handlePOST(request: Request) {
     const actions: Readonly<Record<string, (payload: unknown) => Promise<Result<unknown, PublicErrorEnvelope>>>> = {
       'api-key.issue': (payload) => context.apiKeys.issue(context.actor, payload), 'api-key.rotate': (payload) => context.apiKeys.rotate(context.actor, payload), 'api-key.revoke': (payload) => context.apiKeys.revoke(context.actor, payload),
       'email.test': (payload) => context.emailTest.send(context.actor, payload),
+      'ai.credential.create': (payload) => context.ai.createCredential(context.actor, payload), 'ai.credential.test': (payload) => context.ai.testCredential(context.actor, payload), 'ai.credential.toggle': (payload) => context.ai.toggleCredential(context.actor, payload), 'ai.credential.delete': (payload) => context.ai.deleteCredential(context.actor, payload),
+      'ai.policy.update': (payload) => context.ai.updatePolicy(context.actor, payload),
+      'ai.master.provision': (payload) => context.ai.provisionMaster(context.actor, payload),
+      'ai.insight.report': (payload) => context.ai.reportInsight(context.actor, payload), 'ai.insight.resolve': (payload) => context.ai.resolveInsight(context.actor, payload),
       'customer.create': (payload) => context.customers.create(context.actor, payload), 'customer.update': (payload) => context.customers.update(context.actor, payload), 'subscription.update': (payload) => context.customers.updateSubscription(context.actor, payload), 'membership.assign-first': (payload) => context.customers.assignFirstAdmin(context.actor, payload),
     };
     const action = actions[parsed.data.action]; if (action === undefined) return response(createPublicError('INVALID_INPUT', 'Unknown Integrations command.', requestId)); const result = await action(parsed.data.payload); return result.ok ? NextResponse.json(result.value) : response(result.error);

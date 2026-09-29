@@ -9,6 +9,8 @@ export const INTEGRATIONS_PERMISSIONS = Object.freeze({
   customerAdmin: 'platform.customer.admin',
   /** Manage dynamic marketing content and theme presets (platform scope). */
   contentManage: 'platform.content.manage',
+  /** Manage AI assistant credentials and routing policy (platform scope). */
+  aiManage: 'platform.ai.manage',
   /** Mutate shared runtime configuration and provider mappings (platform scope). */
   runtimeConfigManage: 'platform.runtime_config.manage',
   /** Mutate Site Settings for a Site (platform scope, checked per tenant). */
@@ -21,4 +23,4 @@ export const INTEGRATIONS_TENANT_PERMISSION_NAMES = Object.freeze([
   INTEGRATIONS_PERMISSIONS.subscriptionRead,
   INTEGRATIONS_PERMISSIONS.subscriptionManage,
 ] as const);
-export const INTEGRATIONS_PLATFORM_PERMISSION_NAMES = Object.freeze([INTEGRATIONS_PERMISSIONS.superAdmin, INTEGRATIONS_PERMISSIONS.customerAdmin] as const);
+export const INTEGRATIONS_PLATFORM_PERMISSION_NAMES = Object.freeze([INTEGRATIONS_PERMISSIONS.superAdmin, INTEGRATIONS_PERMISSIONS.customerAdmin, INTEGRATIONS_PERMISSIONS.aiManage] as const);

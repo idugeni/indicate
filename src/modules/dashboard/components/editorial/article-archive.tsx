@@ -8,6 +8,7 @@ import { useDashboardPage } from '@/modules/dashboard/components/shared/use-dash
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AiArchiveSearch } from '@/modules/ai/components/ai-archive-search';
 import {
   Table,
   TableBody,
@@ -108,7 +109,7 @@ function PortalList({ hostnames }: { readonly hostnames: readonly string[] }) {
  * @remarks Seluruh penyaringan sisi-klien agar satu muatan melayani semua
  * kombinasi; cocok untuk volume redaksi kini, dievaluasi ulang bila puluhan ribu.
  */
-export function ArticleArchive({ data }: { readonly data: unknown }) {
+export function ArticleArchive({ data, organizationId }: { readonly data: unknown; readonly organizationId?: string | undefined }) {
   const [page, setPage] = useDashboardPage('archivePage');
   const model = data as {
     readonly articles?: readonly ArchiveArticle[];
@@ -179,6 +180,7 @@ export function ArticleArchive({ data }: { readonly data: unknown }) {
 
   return (
     <SectionCard icon={Newspaper} title={`Arsip berita (${filtered.length})`} eyebrow="Lintas portal">
+      <div className="mb-4"><AiArchiveSearch organizationId={organizationId} /></div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="space-y-2">
           <Label htmlFor={searchId}>Cari judul/slug</Label>

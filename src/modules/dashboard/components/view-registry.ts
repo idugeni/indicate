@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import {
   BarChart3,
+  Bot,
   Building2,
   CreditCard,
   FileText,
@@ -44,7 +45,8 @@ export type View =
   | 'customers'
   | 'content'
   | 'billing'
-  | 'moderation';
+  | 'moderation'
+  | 'ai';
 
 export interface ViewMetadata {
   /** Short label for navigation chrome: sidebar, breadcrumb, command palette. */
@@ -158,6 +160,11 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
     label: 'Konten Website', title: 'Konten Website', eyebrow: 'Halaman Publik', group: 'system',
     description: 'Testimoni, tanya-jawab, dan kontak yang tampil di situs publik.',
     icon: Megaphone, requiredPermission: INTEGRATIONS_PERMISSIONS.contentManage, suppressesRawCollections: true,
+  },
+  ai: {
+    label: 'Asisten AI', title: 'Asisten AI', eyebrow: 'Kontrol AI', group: 'system',
+    description: 'Kelola kredensial dan routing model asisten AI.',
+    icon: Bot, requiredPermission: INTEGRATIONS_PERMISSIONS.aiManage, suppressesRawCollections: true,
   },
 };
 

@@ -26,6 +26,7 @@ import { StatusMatrix } from '@/modules/dashboard/components/analytics/matrix';
 import { TreeMap } from '@/modules/dashboard/components/analytics/treemap';
 import { SankeyFlow } from '@/modules/dashboard/components/analytics/sankey';
 import { ConversionFunnel, TopRanked } from '@/modules/dashboard/components/analytics/summary-insights';
+import { AiInsightNarrative } from '@/modules/ai/components/ai-insight-narrative';
 import { SummaryCharts, SuccessRate } from '@/modules/dashboard/components/analytics/summary-charts';
 import { PublicationTrend } from '@/modules/dashboard/components/analytics/trend';
 
@@ -363,6 +364,7 @@ export function PrimaryBento({
   active,
   archived,
   analytics,
+  organizationId,
 }: {
   readonly jobs: Readonly<Record<string, number>>;
   readonly succeeded: number;
@@ -370,6 +372,7 @@ export function PrimaryBento({
   readonly active: number;
   readonly archived: number;
   readonly analytics: AnalyticsProjection | null;
+  readonly organizationId?: string | undefined;
 }) {
   const series = analytics?.penyaluranHarian ?? analytics?.tugasHarian ?? [];
   const views = analytics?.viewsHarian ?? [];
@@ -396,6 +399,16 @@ export function PrimaryBento({
       </div>
       <SummaryCharts jobs={jobs} succeeded={succeeded} failed={failed} active={active} archived={archived} />
       <ConversionFunnel active={active} deliveries={funnelDeliveries} succeeded={succeeded} className="sm:col-span-2 lg:col-span-8" />
+      <div className="min-w-0 rounded-lg border border-hairline bg-bg-raised p-5 sm:col-span-2 lg:col-span-4">
+        <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">Narasi AI</h2>
+        <p className="m-0 mt-1 font-sans text-xs text-paper-faint">Ringkasan dari angka dasbor ini; tanpa klaim di luar sumber.</p>
+        <div className="mt-2">
+          <AiInsightNarrative
+            organizationId={organizationId}
+            summary={`Artikel aktif: ${active}. Portal tujuan: ${funnelDeliveries}. Hasil sukses: ${succeeded}. Gagal: ${failed}. Diarsipkan: ${archived}.`}
+          />
+        </div>
+      </div>
       <SuccessRate succeeded={succeeded} failed={failed} className="sm:col-span-2 lg:col-span-4" />
       <div className="min-w-0 sm:col-span-2 lg:col-span-7">
         <PublicationTrend series={series} />

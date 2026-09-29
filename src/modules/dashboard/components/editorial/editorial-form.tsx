@@ -56,6 +56,7 @@ import {
 } from '@/modules/dashboard/components/editorial/use-article-draft';
 import { ArticlePreview } from '@/modules/dashboard/components/editorial/article-preview';
 import { RichTextEditor } from '@/modules/dashboard/components/editorial/rich-text-editor';
+import { AiDraftAssist, type EditorialDraft } from '@/modules/ai/components/ai-draft-assist';
 import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
 import { chunkPublicationTargets, selectPublicationTargets } from '@/modules/dashboard/components/editorial/publication-batch';
 import type { PublicationScope, PublishTargetSite } from '@/modules/dashboard/components/editorial/publication-batch';
@@ -502,6 +503,17 @@ export function ArticleCreateForm({
     setSlug(value);
   };
 
+  const applyAiDraft = (draft: EditorialDraft) => {
+    handleTitleChange(draft.title);
+    if (draft.excerpt !== '') setDescriptionText(draft.excerpt);
+    if (draft.content !== '') {
+      void navigator.clipboard?.writeText(draft.content).catch(() => undefined);
+      toast.info('Judul, slug, dan deskripsi terisi; isi draf tersalin — tempel ke editor.');
+    } else {
+      toast.success('Judul, slug, dan deskripsi terisi dari draf AI.');
+    }
+  };
+
   const handleCreateCategory = (rawName: string): string | null => {
     const name = rawName.trim();
     if (name === '') {
@@ -886,6 +898,7 @@ export function ArticleCreateForm({
         <div className="min-w-0 space-y-10 rounded-lg border border-hairline bg-bg-raised p-5 sm:p-8">
           <div className="space-y-6">
             <p className="m-0 font-sans text-xl font-bold tracking-tight text-paper sm:text-2xl">Artikel baru</p>
+            <AiDraftAssist organizationId={organizationId} currentTitle={titleText} currentBody={bodyText} onDraft={applyAiDraft} />
             <Field>
               <Label htmlFor={titleInputId} className="font-mono text-xs text-paper-dim">
                 Judul Artikel

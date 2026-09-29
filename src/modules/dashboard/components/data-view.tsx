@@ -80,6 +80,8 @@ interface DataViewProps {
   readonly command?: (action: string, payload: unknown) => Promise<unknown>;
   /** Switch modules from inside content (quick actions, guides); when absent, navigation buttons are hidden. */
   readonly onSelectView?: (view: View) => void;
+  /** Tenant scope for additive AI assists; absent disables them. */
+  readonly organizationId?: string | undefined;
 }
 
 function StatusMark({ status }: { readonly status: string }) {
@@ -105,6 +107,7 @@ export function DataView({
   collections: onlyCollections,
   command,
   onSelectView,
+  organizationId,
 }: DataViewProps) {
   if (data === null || data === undefined) {
     return view === 'dashboard' ? <DashboardContentSkeleton /> : <DashboardCollectionsSkeleton />;
@@ -225,6 +228,7 @@ export function DataView({
           active={activeArticles}
           archived={archivedArticles}
           analytics={analytics}
+          organizationId={organizationId}
         />
 
         {onSelectView === undefined ? null : (

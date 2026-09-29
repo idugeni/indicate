@@ -56,6 +56,10 @@ const IntegrationSettings = dynamic(
   () => import('@/modules/dashboard/components/settings/integration-settings').then((module) => ({ default: module.IntegrationSettings })),
   { loading: () => <DashboardFormSkeleton /> },
 );
+const AiManagementPanel = dynamic(
+  () => import('@/modules/dashboard/components/settings/ai-management-panel').then((module) => ({ default: module.AiManagementPanel })),
+  { loading: () => <DashboardFormSkeleton /> },
+);
 function selectEmailStatus(data: unknown): EmailStatus | null {
   if (typeof data !== 'object' || data === null || !('email' in data)) return null;
   const email = (data as { readonly email?: unknown }).email;
@@ -167,6 +171,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       onPageChange={onPageChange}
       onRefresh={onRefresh}
       command={command}
+      organizationId={organizationId}
     />
   );
 
@@ -224,8 +229,8 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           organizationId={organizationId}
         />
       ) : null}
-      {view === 'taxonomy' ? <TaxonomyManager data={data} command={command} /> : null}
-      {view === 'articles' ? <ArticleArchive data={data} /> : null}
+      {view === 'taxonomy' ? <TaxonomyManager data={data} command={command} organizationId={organizationId} /> : null}
+      {view === 'articles' ? <ArticleArchive data={data} organizationId={organizationId} /> : null}
       {view === 'configuration' ? (
         <Tabs defaultValue="domain" className="w-full">
           <TabsList aria-label="Bagian infrastruktur" className="max-w-full overflow-x-auto overflow-y-clip">
@@ -257,7 +262,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           </TabsContent>
         </Tabs>
       ) : null}
-      {view === 'media' ? <MediaLibrary data={data} command={command} /> : null}
+      {view === 'media' ? <MediaLibrary data={data} command={command} organizationId={organizationId} /> : null}
       {view === 'published' ? <PublishedUrlBoard data={data} /> : null}
       {view === 'publishing' ? (
         <div className="grid gap-6">
@@ -292,6 +297,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       ) : null}
       {view === 'billing' ? <BillingPanel organizationId={organizationId} permissions={[...permissions]} /> : null}
       {view === 'moderation' ? <ModerationPanel organizationId={organizationId} /> : null}
+      {view === 'ai' ? <AiManagementPanel organizationId={organizationId} command={command} /> : null}
       {view === 'customers' ? <CustomerManagement command={command} /> : null}
       {view === 'content' ? <ContentManager /> : null}
       </PanelErrorBoundary>
@@ -308,6 +314,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           onRefresh={onRefresh}
           command={command}
           onSelectView={onSelectView}
+          organizationId={organizationId}
         />
         </PanelErrorBoundary>
       )}

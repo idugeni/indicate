@@ -24,6 +24,7 @@ import {
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AiTagSuggest } from '@/modules/ai/components/ai-tag-suggest';
 
 interface TaxonomyCategory {
   readonly id: string;
@@ -89,9 +90,11 @@ function ManagerPagination({
 export function TaxonomyManager({
   data,
   command,
+  organizationId,
 }: {
   readonly data: unknown;
   readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly organizationId?: string | undefined;
 }) {
   const model = data as {
     readonly categories?: readonly TaxonomyCategory[];
@@ -258,6 +261,7 @@ export function TaxonomyManager({
       </SectionCard>
 
       <SectionCard icon={Hash} title="Rapikan tag" eyebrow="Gabung & hapus">
+        <AiTagSuggest organizationId={organizationId} title={categoryQuery} body={tags.map((item) => item.tag).join(', ')} onApply={(suggestion) => { toast.info(suggestion.tags.length > 0 ? `Saran AI: ${suggestion.tags.join(', ')}` : 'AI tidak memberi saran baru.'); }} />
         <form ref={renameFormRef} noValidate onSubmit={handleRenameTag} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor={renameFromId}>Tag asal</Label>
