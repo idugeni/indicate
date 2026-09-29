@@ -1,6 +1,6 @@
 'use client';
 
-import { TurnstileChallenge } from '@/components/turnstile-challenge';
+import { resolveTurnstileSitekey, TurnstileChallenge } from '@/components/turnstile-challenge';
 import { TemplateNotice } from '@/modules/site/components/network/ui/field';
 
 function failureNotice(retry: () => void) {
@@ -23,22 +23,27 @@ function failureNotice(retry: () => void) {
  *
  * @param props.onToken - Receives the one-time token, or null when the widget expires or errors.
  * @param props.sitekey - Site key the tenant's domain record names, or null when the tenant has no widget yet.
+ * @param props.armed - Whether the reader has filled the form; the widget stays unmounted until then.
  * @returns Nothing when no site key is configured, the widget, or a tenant-toned notice with a retry control when the script cannot load.
  * @remarks The submit button is deliberately not blocked while the challenge is pending: Cloudflare
  * issues a token in a fraction of a second on a healthy connection, so gating the button would turn a
  * blocked challenge script into a form nobody can submit. The server re-verifies the token on every
- * request, which is where an unverified submission is refused.
+ * request, which is where an unverified submission is refused. The slot keeps its height while the
+ * widget is absent so arming the challenge does not shove the submit button down as the reader types.
  */
 export function ReportChallengeField({
   onToken,
   sitekey,
+  armed,
 }: {
   readonly onToken: (token: string | null) => void;
   readonly sitekey: string | null;
+  readonly armed: boolean;
 }) {
+  const reserved = resolveTurnstileSitekey(sitekey) !== '';
   return (
-    <div className="flex justify-center">
-      <TurnstileChallenge onToken={onToken} sitekey={sitekey} fallback={failureNotice} />
+    <div className={reserved ? 'flex min-h-16 justify-center' : 'flex justify-center'}>
+      <TurnstileChallenge armed={armed} onToken={onToken} sitekey={sitekey} fallback={failureNotice} />
     </div>
   );
 }

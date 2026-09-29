@@ -26,6 +26,8 @@ afterEach(() => {
   refreshMock.mockReset();
   passwordMock.mockReset();
   delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  document.head.querySelectorAll('script[src*="turnstile"]').forEach((node) => node.remove());
+  delete window.turnstile;
 });
 
 describe('Formulir masuk kata sandi', () => {
@@ -74,14 +76,23 @@ describe('Formulir masuk kata sandi', () => {
     );
   });
 
-  it('menonaktifkan submit dan menahan request sampai turnstile terverifikasi', async () => {
+  it('menahan request sampai turnstile terverifikasi setelah form terisi', async () => {
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'kunci-uji';
     render(<SignInForm />);
-    expect(screen.getByRole('button', { name: /masuk ke dashboard/i }).hasAttribute('disabled')).toBe(true);
+    const submit = screen.getByRole('button', { name: /masuk ke dashboard/i });
+    expect(submit.hasAttribute('disabled')).toBe(false);
     fireEvent.change(screen.getByLabelText('Alamat email'), { target: { value: 'nama@wartanusantara.net' } });
     fireEvent.change(screen.getByLabelText('Kata sandi'), { target: { value: 'rahasia123' } });
+    await waitFor(() => expect(submit.hasAttribute('disabled')).toBe(true));
     fireEvent.submit(screen.getByLabelText('Alamat email').closest('form') as HTMLFormElement);
     expect(await screen.findByText('Selesaikan verifikasi keamanan terlebih dahulu.')).toBeDefined();
     expect(passwordMock).not.toHaveBeenCalled();
+  });
+
+  it('tidak memuat skrip challenge sebelum form terisi lengkap', () => {
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'kunci-uji';
+    render(<SignInForm />);
+    fireEvent.change(screen.getByLabelText('Alamat email'), { target: { value: 'nama@wartanusantara.net' } });
+    expect(document.head.querySelector('script[src*="turnstile"]')).toBe(null);
   });
 });

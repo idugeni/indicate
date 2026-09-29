@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 interface TurnstileRenderOptions {
   readonly sitekey: string;
@@ -21,6 +21,14 @@ declare global {
 }
 
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+
+/** How long a submit waits for a challenge that was only just armed before giving up and letting the server rule. */
+const CHALLENGE_GRACE_MS = 2000;
+
+interface ChallengeWaiter {
+  readonly resolve: (token: string | null) => void;
+  readonly timer: ReturnType<typeof setTimeout>;
+}
 
 const defaultFailureNotice: (retry: () => void) => ReactNode = (retry) => (
   <div className="rounded border border-[#e2ded2] bg-white px-4 py-3 text-center" role="alert">
@@ -103,28 +111,72 @@ export function resolveTurnstileSitekey(sitekey?: string | null): string {
 }
 
 /**
- * Tracks a single Turnstile challenge for a form.
+ * Tracks a single Turnstile challenge for a form, arming it only once the form is worth challenging.
  *
  * @param sitekey - Site key the form challenges against; defaults to the environment value.
- * @returns Token state with helpers to gate submits and reset the widget after each attempt, since Cloudflare consumes the token once.
+ * @param armed - Whether the form already holds everything a reader meant to submit.
+ * @returns Token state with helpers to gate submits, await a token still being solved, and reset the widget after each attempt, since Cloudflare consumes the token once.
+ * @remarks A widget costs a Cloudflare script, a third-party iframe, and a solve on
+ * every page view, including the readers who bounce without submitting anything. Arming
+ * the challenge on completeness keeps that cost on the intent path and gives the reader
+ * the widget's latency while they are still reading their own text, instead of on the
+ * click. `waitForChallengeToken` closes the remaining gap: a reader who submits in the
+ * same second the form becomes complete waits briefly for the token rather than having
+ * the server refuse the report for arriving without one.
  */
-export function useTurnstileChallenge(sitekey?: string | null) {
+export function useTurnstileChallenge(sitekey?: string | null, armed = true) {
   const resolved = resolveTurnstileSitekey(sitekey);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [challengeNonce, setChallengeNonce] = useState(0);
-  const turnstilePending = resolved !== '' && captchaToken === null;
+  const waiters = useRef<ChallengeWaiter[]>([]);
+  const turnstilePending = armed && resolved !== '' && captchaToken === null;
 
-  const resetChallenge = (): void => {
+  const onChallengeToken = useCallback((token: string | null): void => {
+    setCaptchaToken(token);
+    if (token === null) return;
+    const settled = waiters.current;
+    waiters.current = [];
+    for (const waiter of settled) {
+      clearTimeout(waiter.timer);
+      waiter.resolve(token);
+    }
+  }, []);
+
+  const waitForChallengeToken = useCallback(
+    (timeoutMs = CHALLENGE_GRACE_MS): Promise<string | null> =>
+      new Promise((resolve) => {
+        if (captchaToken !== null) {
+          resolve(captchaToken);
+          return;
+        }
+        if (!armed || resolved === '') {
+          resolve(null);
+          return;
+        }
+        const waiter: ChallengeWaiter = {
+          resolve,
+          timer: setTimeout(() => {
+            waiters.current = waiters.current.filter((entry) => entry !== waiter);
+            resolve(null);
+          }, timeoutMs),
+        };
+        waiters.current = [...waiters.current, waiter];
+      }),
+    [armed, captchaToken, resolved],
+  );
+
+  const resetChallenge = useCallback((): void => {
     setCaptchaToken(null);
     setChallengeNonce((value) => value + 1);
-  };
+  }, []);
 
   return {
     captchaToken,
     challengeNonce,
     turnstilePending,
+    waitForChallengeToken,
     resetChallenge,
-    onChallengeToken: setCaptchaToken,
+    onChallengeToken,
   } as const;
 }
 
@@ -134,26 +186,34 @@ export function useTurnstileChallenge(sitekey?: string | null) {
  * @param props.onToken - Receives the one-time token on success, or null when it expires or the widget errors.
  * @param props.sitekey - Site key the form challenges against; defaults to the environment value.
  * @param props.fallback - Replaces the default retry card when the challenge script cannot load; receives a retry callback.
- * @returns Nothing when no site key is configured, the widget host, or the failure notice with a retry control.
+ * @param props.armed - Whether the form is complete enough to challenge; the script and widget stay unmounted until it is.
+ * @returns Nothing when the form is not armed yet or no site key is configured, the widget host, or the failure notice with a retry control.
  * @remarks The widget is a courtesy to the reader, never the enforcement point: the server
  * re-verifies the token, so a form that submits early or with no widget at all is refused there.
+ * Arming latches: once a reader has filled the form, the widget stays mounted, so typing back
+ * and forth over a field threshold cannot tear down a solve that is already running.
  */
 export function TurnstileChallenge({
   onToken,
   sitekey,
   fallback = defaultFailureNotice,
+  armed = true,
 }: {
   readonly onToken: (token: string | null) => void;
   readonly sitekey?: string | null;
   readonly fallback?: (retry: () => void) => ReactNode;
+  readonly armed?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const resolvedSitekey = resolveTurnstileSitekey(sitekey);
+  const [engaged, setEngaged] = useState(armed);
   const [loadFailed, setLoadFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
+  if (armed && !engaged) setEngaged(true);
+
   useEffect(() => {
-    if (resolvedSitekey === '' || hostRef.current === null) return;
+    if (!engaged || resolvedSitekey === '' || hostRef.current === null) return;
     let widgetId: string | null = null;
     let cancelled = false;
     loadScript()
@@ -173,9 +233,9 @@ export function TurnstileChallenge({
       cancelled = true;
       if (widgetId !== null && window.turnstile !== undefined) window.turnstile.remove(widgetId);
     };
-  }, [resolvedSitekey, attempt, onToken]);
+  }, [engaged, resolvedSitekey, attempt, onToken]);
 
-  if (resolvedSitekey === '') return null;
+  if (!engaged || resolvedSitekey === '') return null;
   if (loadFailed) {
     return (
       <>

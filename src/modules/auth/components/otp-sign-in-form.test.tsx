@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { OtpSignInForm } from '@/modules/auth/components/otp-sign-in-form';
 
@@ -63,11 +63,13 @@ describe('Formulir masuk kode OTP', () => {
     expect(screen.getByRole('button', { name: /kirim kode masuk/i })).toBeDefined();
   });
 
-  it('menahan pengiriman kode sampai turnstile terverifikasi', async () => {
+  it('menahan pengiriman kode sampai turnstile terverifikasi setelah email terisi', async () => {
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'kunci-uji';
     render(<OtpSignInForm />);
-    expect(screen.getByRole('button', { name: /kirim kode masuk/i }).hasAttribute('disabled')).toBe(true);
+    const submit = screen.getByRole('button', { name: /kirim kode masuk/i });
+    expect(submit.hasAttribute('disabled')).toBe(false);
     fireEvent.change(screen.getByLabelText('Alamat email'), { target: { value: 'nama@wartanusantara.net' } });
+    await waitFor(() => expect(submit.hasAttribute('disabled')).toBe(true));
     fireEvent.submit(screen.getByLabelText('Alamat email').closest('form') as HTMLFormElement);
     expect(await screen.findByText('Selesaikan verifikasi keamanan terlebih dahulu.')).toBeDefined();
     expect(otpMock).not.toHaveBeenCalled();

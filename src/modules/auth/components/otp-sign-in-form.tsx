@@ -22,8 +22,9 @@ export function OtpSignInForm() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const ready = email.trim().includes('@');
   const { captchaToken, challengeNonce, turnstilePending, resetChallenge, onChallengeToken } =
-    useTurnstileChallenge();
+    useTurnstileChallenge(undefined, ready);
   const [cooldown, setCooldown] = useState(0);
   const verifyingRef = useRef(false);
 
@@ -140,7 +141,7 @@ export function OtpSignInForm() {
               className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white"
             />
           </div>
-          <TurnstileChallenge key={challengeNonce} onToken={onChallengeToken} />
+          <TurnstileChallenge armed={ready} key={challengeNonce} onToken={onChallengeToken} />
           <AuthSubmit busy={busy} busyLabel="Mengirim kode..." icon={ArrowRight} disabled={turnstilePending}>
             Kirim kode masuk
           </AuthSubmit>
@@ -192,7 +193,7 @@ export function OtpSignInForm() {
             </InputOTPGroup>
           </InputOTP>
         </div>
-        <TurnstileChallenge key={challengeNonce} onToken={onChallengeToken} />
+        <TurnstileChallenge armed={ready} key={challengeNonce} onToken={onChallengeToken} />
         <AuthSubmit busy={busy} busyLabel="Memverifikasi..." icon={ArrowRight}>
           Masuk
         </AuthSubmit>

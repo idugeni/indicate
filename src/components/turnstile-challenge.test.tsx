@@ -77,6 +77,28 @@ describe('TurnstileChallenge', () => {
     expect(script).not.toBe(null);
   });
 
+  it('tidak memuat skrip challenge sebelum form armed', async () => {
+    const { TurnstileChallenge } = await import('@/components/turnstile-challenge');
+    const { container } = render(<TurnstileChallenge onToken={vi.fn()} sitekey={WIDGET} armed={false} />);
+    expect(container.firstChild).toBe(null);
+    expect(document.head.querySelector('script[src*="turnstile"]')).toBe(null);
+  });
+
+  it('memuat skrip challenge begitu form armed', async () => {
+    const { TurnstileChallenge } = await import('@/components/turnstile-challenge');
+    const onToken = vi.fn();
+    const { rerender } = render(<TurnstileChallenge onToken={onToken} sitekey={WIDGET} armed={false} />);
+    rerender(<TurnstileChallenge onToken={onToken} sitekey={WIDGET} armed />);
+    await waitFor(() =>
+      expect(document.head.querySelector<HTMLScriptElement>('script[src*="turnstile"]')).not.toBe(null),
+    );
+    const script = document.head.querySelector<HTMLScriptElement>('script[src*="turnstile"]');
+    if (script === null) throw new Error('turnstile_script_missing');
+    window.turnstile = { render: (_element, options) => { options.callback('token-uji'); return 'widget-1'; }, remove: () => {} };
+    script.dispatchEvent(new Event('load'));
+    await waitFor(() => expect(onToken).toHaveBeenCalledWith('token-uji'));
+  });
+
   it('menampilkan pemberitahuan muat ulang saat skrip challenge ditolak', async () => {
     const script = await renderChallenge({ sitekey: WIDGET });
     script.dispatchEvent(new Event('error'));

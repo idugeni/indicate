@@ -1,8 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
@@ -15,11 +17,13 @@ export function SignUpForm() {
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const ready = displayName.trim() !== '' && email.trim().includes('@') && password.length >= 8 && consent;
   const { captchaToken, challengeNonce, turnstilePending, resetChallenge, onChallengeToken } =
-    useTurnstileChallenge();
+    useTurnstileChallenge(undefined, ready);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -36,6 +40,11 @@ export function SignUpForm() {
       setBusy(false);
       return;
     }
+    if (!consent) {
+      setError('Setujui Syarat & Ketentuan serta Kebijakan Privasi untuk membuat akun.');
+      setBusy(false);
+      return;
+    }
     if (turnstilePending) {
       setError('Selesaikan verifikasi keamanan terlebih dahulu.');
       setBusy(false);
@@ -49,7 +58,7 @@ export function SignUpForm() {
         email: target,
         password,
         options: {
-          data: { display_name: displayName.trim() },
+          data: { display_name: displayName.trim(), terms_accepted_at: new Date().toISOString() },
           emailRedirectTo: `${siteUrl}/auth/callback?next=%2Fdashboard`,
           ...(captchaToken === null ? {} : { captchaToken }),
         },
@@ -105,7 +114,20 @@ export function SignUpForm() {
             <p className="m-0 mt-1.5 font-sans text-xs text-[#5f6b7a]">Minimal 8 karakter.</p>
           </div>
 
-          <TurnstileChallenge key={challengeNonce} onToken={onChallengeToken} />
+          <label className="flex cursor-pointer items-start gap-2.5 font-sans text-xs leading-relaxed text-[#5f6b7a]">
+            <Checkbox
+              checked={consent}
+              onCheckedChange={setConsent}
+              disabled={busy}
+              className="mt-0.5 border-[#1a2430]/20 data-checked:border-[#8a5f1c] data-checked:bg-[#8a5f1c] data-checked:text-white"
+            />
+            <span>
+              Saya menyetujui <Link href="/terms" className="font-semibold text-[#8a5f1c] hover:underline">Syarat &amp; Ketentuan</Link>{' '}
+              dan <Link href="/privacy" className="font-semibold text-[#8a5f1c] hover:underline">Kebijakan Privasi</Link> Indicate.
+            </span>
+          </label>
+
+          <TurnstileChallenge armed={ready} key={challengeNonce} onToken={onChallengeToken} />
           <AuthSubmit busy={busy} busyLabel="Mendaftarkan..." icon={ArrowRight} disabled={turnstilePending}>
             Buat Akun
           </AuthSubmit>

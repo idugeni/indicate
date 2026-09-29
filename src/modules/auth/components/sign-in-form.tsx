@@ -18,8 +18,9 @@ export function SignInForm() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const ready = email.trim().includes('@') && password.length > 0;
   const { captchaToken, challengeNonce, turnstilePending, resetChallenge, onChallengeToken } =
-    useTurnstileChallenge();
+    useTurnstileChallenge(undefined, ready);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -91,7 +92,7 @@ export function SignInForm() {
           </div>
         </div>
 
-        <TurnstileChallenge key={challengeNonce} onToken={onChallengeToken} />
+        <TurnstileChallenge armed={ready} key={challengeNonce} onToken={onChallengeToken} />
 
         <AuthSubmit busy={busy} busyLabel="Masuk..." icon={ArrowRight} disabled={turnstilePending}>
           Masuk ke Dashboard
