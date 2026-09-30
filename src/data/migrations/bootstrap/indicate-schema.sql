@@ -245,8 +245,8 @@
 --   229  20260930100000_ai_pgcrypto_search_path  ledger sha256:115f395151b14136370b1a32639715bae7bf63157c3706ac9c74003c3034ff67
 --   230  20260930110000_ai_models_38_defaults  ledger sha256:54c2c0175b6a9db0c1179e852c6728c363886b76b4d7cf46c74d79365837660e
 --   231  20260930120000_dashboard_access_keys_grants  ledger sha256:bf0e12b3ac1a63dd589cac0b54b66f74b0ed8dd6aa77c096be1dbe06bbdb21dd
---   232  20260930130000_article_revisions_delete_grant  ledger sha256:a0c48e2d5153f05f3d208888c3f2549dbaf6282f6b19e992c71e6711134defbf
---   233  20260930140000_fk_covering_indexes  ledger sha256:d66cf0d0b5f4e5f676eb426fd443c3154beca28d7fd08a4aeb6888a9383a93c7
+--   232  20260930130000_article_revisions_delete_grant  ledger sha256:f495e66ba12d8bdbca0b5fbe7be4af19bfbfe6c67be606e468d5020738ed4e79
+--   233  20260930140000_fk_covering_indexes  ledger sha256:37e33820cad3dec22ee59289544b42d4e47e3fd10c13e0e5605aceb40b743ca3
 
 BEGIN;
 
@@ -19382,7 +19382,7 @@ GRANT DELETE ON public.article_revisions TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (232, 'article_revisions_delete_grant', 'sha256:25a127ccc20ddb07144e347251e80c4de5edfd0b2f8e0922838bba7834879d4f');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a0c48e2d5153f05f3d208888c3f2549dbaf6282f6b19e992c71e6711134defbf', 1790773200000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f495e66ba12d8bdbca0b5fbe7be4af19bfbfe6c67be606e468d5020738ed4e79', 1790773200000);
 
 -- ----------------------------------------------------------------------
 -- 20260930140000_fk_covering_indexes
@@ -19399,5 +19399,5 @@ CREATE INDEX IF NOT EXISTS ai_routing_policies_fallback_provider_idx ON public.a
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (233, 'fk_covering_indexes', 'sha256:7aef372626c821c17160bbdd5cecf86572e1783d350c0620210a315fd5ff86ae');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('d66cf0d0b5f4e5f676eb426fd443c3154beca28d7fd08a4aeb6888a9383a93c7', 1790776800000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('37e33820cad3dec22ee59289544b42d4e47e3fd10c13e0e5605aceb40b743ca3', 1790776800000);
 COMMIT;
