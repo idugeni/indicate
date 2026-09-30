@@ -203,10 +203,10 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       {error ? (
         <Alert
           variant="destructive"
-          className="flex animate-in items-start gap-3 border-l-2 border-error bg-error/[0.06] px-4 py-3 fade-in slide-in-from-top-2 duration-200"
+          className="flex animate-in items-center gap-3 border-l-2 border-error bg-error/[0.06] px-4 py-3 fade-in slide-in-from-top-2 duration-200"
         >
           <AlertDescription className="flex-1 font-sans text-sm text-paper">{error}</AlertDescription>
-          <AlertAction>
+          <AlertAction className="top-1/2 -translate-y-1/2">
             <Button
               type="button"
               variant="ghost"

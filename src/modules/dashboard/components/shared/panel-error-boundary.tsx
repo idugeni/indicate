@@ -31,7 +31,7 @@ export class PanelErrorBoundary extends Component<
         <Alert variant="destructive">
           <AlertTitle>{this.props.name} gagal dimuat.</AlertTitle>
           <AlertDescription>{this.state.message}</AlertDescription>
-          <AlertAction>
+          <AlertAction className="top-1/2 -translate-y-1/2">
             <Button type="button" variant="outline" size="sm" onClick={this.reset}>
               Coba lagi
             </Button>
