@@ -111,4 +111,25 @@ describe('Primary bento', () => {
     render(<ViewsBubbles rows={ANALYTICS.viewsBySite ?? []} label={(id) => ANALYTICS.siteLabels?.[id] ?? id} />);
     expect(screen.getByText('Gelembung tayangan')).toBeDefined();
   });
+
+  it('mengisi penuh setiap baris grid 12 kolom di desktop', () => {
+    const { container } = render(
+      <PrimaryBento jobs={{}} succeeded={2} failed={0} active={2} archived={0} analytics={ANALYTICS} />,
+    );
+    const grid = container.firstChild as HTMLElement | null;
+    const spans = [...(grid?.children ?? [])].map((child) => {
+      const match = /lg:col-span-(\d+)/.exec((child as HTMLElement).className ?? '');
+      return match === null ? 12 : Number(match[1]);
+    });
+    expect(spans.length).toBeGreaterThan(0);
+    let used = 0;
+    for (const span of spans) {
+      if (used + span > 12) {
+        expect(used).toBe(12);
+        used = 0;
+      }
+      used += span;
+    }
+    expect(used).toBe(12);
+  });
 });

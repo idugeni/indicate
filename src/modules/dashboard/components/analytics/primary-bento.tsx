@@ -410,22 +410,22 @@ export function PrimaryBento({
         </div>
       </div>
       <SuccessRate succeeded={succeeded} failed={failed} className="sm:col-span-2 lg:col-span-4" />
-      <div className="min-w-0 sm:col-span-2 lg:col-span-7">
+      <div className="min-w-0 sm:col-span-2 lg:col-span-8">
         <PublicationTrend series={series} />
       </div>
-      <div className="min-w-0 sm:col-span-2 lg:col-span-5">
+      <div className="min-w-0 sm:col-span-2 lg:col-span-6">
         <ViewsLine series={views} />
       </div>
       <div className="min-w-0 sm:col-span-1 lg:col-span-6">
         <SiteStack results={outcomes} label={siteName} />
       </div>
-      <div className="min-w-0 sm:col-span-1 lg:col-span-6">
+      <div className="min-w-0 sm:col-span-1 lg:col-span-5">
         <SiteViewsBar rows={analytics?.viewsBySite ?? []} label={siteName} />
       </div>
       <div className="min-w-0 sm:col-span-2 lg:col-span-7">
         <ActivityHeatmap cells={analytics?.aktivitasPerJam ?? []} />
       </div>
-      <div className="min-w-0 sm:col-span-2 lg:col-span-5">
+      <div className="min-w-0 sm:col-span-2 lg:col-span-12">
         <ActivityCalendar series={series} />
       </div>
       <div className="min-w-0 col-span-full sm:col-span-2 lg:col-span-12">
