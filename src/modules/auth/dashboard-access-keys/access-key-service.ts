@@ -12,7 +12,8 @@ import { accessKeyIssueSchema, accessKeyRevokeSchema } from '@/modules/auth/dash
 const derive = promisify(scrypt);
 const PREFIX = 'inda';
 const HASH_BYTES = 64;
-const MAX_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+/** Dated keys cap at one year; null expiry means permanent until revoked. */
+const MAX_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 
 export interface AccessKeyCredentialMaterial {
   readonly plaintext: string;
@@ -135,14 +136,6 @@ export class DashboardAccessKeyService {
     );
   }
 
-  private expiryFor(raw: string | null): Result<string, PublicErrorEnvelope> | null {
-    const now = this.clock.now().getTime();
-    if (raw === null) return { ok: true, value: new Date(now + MAX_TTL_MS).toISOString() };
-    const at = new Date(raw).getTime();
-    if (!Number.isFinite(at)) return null;
-    return { ok: true, value: new Date(at).toISOString() };
-  }
-
   /**
    * Issue a reusable login key bound to the issuing member.
    *
@@ -150,6 +143,9 @@ export class DashboardAccessKeyService {
    * @param localUserId - Local user id the key authenticates as.
    * @param raw - Untrusted issuance payload.
    * @returns Issued key with its once-visible plaintext credential.
+   * @remarks A null expiry mints a permanent key that lives until revoked;
+   * dated keys cap at one year. Permanent bearers are audit-logged and die
+   * with the owner's membership, so prefer them only for owner tooling.
    */
   async issue(
     actor: AuthorizedTenantActorContext,
@@ -162,9 +158,9 @@ export class DashboardAccessKeyService {
     }
     if (!this.canManage(actor)) return this.denied(actor, 'access_key.issue.denied');
     const now = this.clock.now();
-    let expiresAt: string;
+    let expiresAt: string | null;
     if (parsed.data.expiresAt === null) {
-      expiresAt = new Date(now.getTime() + MAX_TTL_MS).toISOString();
+      expiresAt = null;
     } else {
       const at = new Date(parsed.data.expiresAt).getTime();
       if (!Number.isFinite(at) || at <= now.getTime()) {
@@ -178,8 +174,8 @@ export class DashboardAccessKeyService {
       if (at - now.getTime() > MAX_TTL_MS) {
         return {
           ok: false,
-          error: createPublicError('INVALID_INPUT', 'Masa berlaku maksimal 30 hari.', actor.requestId, {
-            expiresAt: ['Expiry must be within 30 days.'],
+          error: createPublicError('INVALID_INPUT', 'Masa berlaku maksimal 365 hari.', actor.requestId, {
+            expiresAt: ['Expiry must be within 365 days.'],
           }),
         };
       }
@@ -187,10 +183,6 @@ export class DashboardAccessKeyService {
     }
     try {
       const material = createAccessKeyMaterial();
-      const check = this.expiryFor(expiresAt);
-      if (check === null || !check.ok) {
-        return { ok: false, error: createPublicError('INVALID_INPUT', 'Masa berlaku tidak valid.', actor.requestId) };
-      }
       const stored: NewStoredAccessKey = {
         id: this.identifiers.create(),
         organizationId: actor.organizationId,
@@ -199,7 +191,7 @@ export class DashboardAccessKeyService {
         name: parsed.data.name,
         salt: material.salt,
         verificationHash: await deriveAccessKeyHash(parseAccessKeyCredential(material.plaintext)!.secret, material.salt),
-        expiresAt: check.value,
+        expiresAt,
         now: now.toISOString(),
       };
       const key = await this.repository.createAccessKey(actor, stored);

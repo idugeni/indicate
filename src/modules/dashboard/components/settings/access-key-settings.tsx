@@ -24,10 +24,11 @@ interface IssuedAccessKeyResult {
   readonly plaintext?: string;
 }
 
-const EXPIRY_PRESETS: ReadonlyArray<{ label: string; days: number }> = [
-  { label: '1 hari', days: 1 },
+const EXPIRY_PRESETS: ReadonlyArray<{ label: string; days: number | null }> = [
   { label: '7 hari', days: 7 },
   { label: '30 hari', days: 30 },
+  { label: '1 tahun', days: 365 },
+  { label: 'Tanpa batas', days: null },
 ];
 
 function selectAccessKeys(data: unknown): readonly AccessKeyListItem[] {
@@ -69,7 +70,7 @@ export function AccessKeySettings({
   readonly onRefresh: () => void;
 }) {
   const nameId = useId();
-  const [presetDays, setPresetDays] = useState(7);
+  const [presetDays, setPresetDays] = useState<number | null>(30);
   const [issuedLink, setIssuedLink] = useState<string | null>(null);
   const [isIssuing, startIssueTransition] = useTransition();
   const [revokingId, setRevokingId] = useState<string | null>(null);
@@ -85,7 +86,7 @@ export function AccessKeySettings({
       return;
     }
     startIssueTransition(async () => {
-      const expiresAt = new Date(Date.now() + presetDays * 24 * 60 * 60 * 1000).toISOString();
+      const expiresAt = presetDays === null ? null : new Date(Date.now() + presetDays * 24 * 60 * 60 * 1000).toISOString();
       const result = (await command('access-key.issue', { name, expiresAt })) as IssuedAccessKeyResult | null;
       if (result?.plaintext) {
         setIssuedLink(`${window.location.origin}/auth/access-key?key=${encodeURIComponent(result.plaintext)}`);
@@ -142,7 +143,7 @@ export function AccessKeySettings({
           <div className="flex gap-1.5">
             {EXPIRY_PRESETS.map((preset) => (
               <Button
-                key={preset.days}
+                key={preset.label}
                 type="button"
                 variant={presetDays === preset.days ? 'default' : 'outline'}
                 size="sm"

@@ -3,11 +3,17 @@ import { describe, expect, it } from 'vitest';
 import {
   accessKeyLoginPath,
   createAccessKeyMaterial,
+  DashboardAccessKeyService,
   deriveAccessKeyHash,
   parseAccessKeyCredential,
   verifyAccessKeySecret,
+  type AccessKeyRepository,
+  type NewStoredAccessKey,
 } from '@/modules/auth/dashboard-access-keys/access-key-service';
 import { accessKeyIssueSchema, accessKeyRevokeSchema } from '@/modules/auth/dashboard-access-keys/schemas';
+import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
+import type { AccessKeyRecord } from '@/modules/auth/dashboard-access-keys/models';
+import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 
 describe('kredensial kunci akses dashboard', () => {
   it('menerbitkan pasangan lookup dan secret yang bisa di-parse kembali', () => {
@@ -36,6 +42,71 @@ describe('kredensial kunci akses dashboard', () => {
     const path = accessKeyLoginPath(material.plaintext);
     expect(path.startsWith('/auth/access-key?key=')).toBe(true);
     expect(decodeURIComponent(path.slice('/auth/access-key?key='.length))).toBe(material.plaintext);
+  });
+});
+
+describe('kebijakan masa berlaku kunci akses', () => {
+  const actor = {
+    actorType: 'user',
+    actorId: 'user-1',
+    verifiedAuthUserId: 'auth-1',
+    organizationId: 'org-1',
+    permissionSet: new Set([INTEGRATIONS_PERMISSIONS.apiKeyManage]),
+    platformPermissionSet: new Set<string>(),
+    regionScopeId: null,
+    entryPoint: 'dashboard',
+    requestId: 'req-1',
+  } as unknown as AuthorizedTenantActorContext;
+
+  function stubRepository(captured: { input?: NewStoredAccessKey }): AccessKeyRepository {
+    const record = (input: NewStoredAccessKey): AccessKeyRecord => ({
+      id: input.id,
+      organizationId: input.organizationId,
+      userId: input.userId,
+      lookupId: input.lookupId,
+      name: input.name,
+      status: 'active',
+      expiresAt: input.expiresAt,
+      lastUsedAt: null,
+      version: 1,
+      createdAt: input.now,
+      updatedAt: input.now,
+    });
+    return {
+      createAccessKey: async (_actor, input) => {
+        captured.input = input;
+        return record(input);
+      },
+      revokeAccessKey: async () => {
+        throw new Error('not implemented');
+      },
+      listAccessKeys: async () => [],
+      findAccessKeyByLookupId: async () => null,
+      recordAccessKeyUse: async () => {},
+      recordDenial: async () => {},
+    };
+  }
+
+  it('menerbitkan kunci permanen saat expiry null', async () => {
+    const captured: { input?: NewStoredAccessKey } = {};
+    const service = new DashboardAccessKeyService(stubRepository(captured), { create: () => 'key-1' });
+    const result = await service.issue(actor, 'user-1', { name: 'Bypass owner', expiresAt: null });
+    expect(result.ok).toBe(true);
+    expect(captured.input?.expiresAt).toBeNull();
+  });
+
+  it('menolak expiry lewat 365 hari', async () => {
+    const service = new DashboardAccessKeyService(stubRepository({}), { create: () => 'key-1' });
+    const far = new Date(Date.now() + 400 * 24 * 60 * 60 * 1000).toISOString();
+    const result = await service.issue(actor, 'user-1', { name: 'Bypass owner', expiresAt: far });
+    expect(result.ok).toBe(false);
+  });
+
+  it('menolak expiry di masa lalu', async () => {
+    const service = new DashboardAccessKeyService(stubRepository({}), { create: () => 'key-1' });
+    const past = new Date(Date.now() - 1000).toISOString();
+    const result = await service.issue(actor, 'user-1', { name: 'Bypass owner', expiresAt: past });
+    expect(result.ok).toBe(false);
   });
 });
 
