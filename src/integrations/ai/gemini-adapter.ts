@@ -19,6 +19,34 @@ function resolveThinkingLevel(budget: number | undefined): 'LOW' | 'MEDIUM' | 'H
   return 'HIGH';
 }
 
+const UPSTREAM_DETAIL_LIMIT = 300;
+const GEMINI_KEY_PATTERN = /AIza[0-9A-Za-z_-]{10,}/g;
+
+/**
+ * Describe a provider failure without losing the signal or leaking the key.
+ *
+ * `classifyAiError` routes on substrings such as `429` or `quota exceeded`, and
+ * `ai_credentials.last_error_message` is what an operator reads, so a bare
+ * `catch` that replaced the message with a constant turned every real provider
+ * fault into the same unactionable `application_error`. The key is redacted
+ * because the detail is persisted and echoed into logs.
+ *
+ * @param error - Thrown SDK or transport error.
+ * @param secret - Plain API key that must never reach the message.
+ * @returns Single-line detail carrying the HTTP status when the SDK reported one.
+ */
+function describeUpstreamError(error: unknown, secret: string): string {
+  const status = (error as { readonly status?: unknown } | null | undefined)?.status;
+  const raw = error instanceof Error ? error.message : String(error ?? '');
+  const redacted = (secret === '' ? raw : raw.split(secret).join('[redacted]')).replace(
+    GEMINI_KEY_PATTERN,
+    '[redacted]',
+  );
+  const detail = redacted.replace(/\s+/g, ' ').trim().slice(0, UPSTREAM_DETAIL_LIMIT);
+  const prefix = typeof status === 'number' ? `http ${status}` : 'no status';
+  return detail === '' ? prefix : `${prefix}: ${detail}`;
+}
+
 function buildConfig(promptData: AiChatPrompt, modelName: string): Record<string, unknown> {
   const config: Record<string, unknown> = {};
   if (promptData.systemInstruction !== undefined) config.systemInstruction = promptData.systemInstruction;
@@ -120,12 +148,14 @@ function isStreamAborted(options: GeminiStreamOptions | undefined): boolean {
 /**
  * Runs one streamed Gemini chat turn with an explicitly provided router key.
  *
+ * @remarks Key format does not select an API version; see {@link executeGeminiAdapter}.
  * @param plainKey - Decrypted API key from the router database, never from environment.
  * @param modelName - Gemini model identifier owned by the router model config.
  * @param promptData - Prompt, history, and generation controls.
  * @param options - Abort signal plus an optional per-delta callback for SSE fan-out.
  * @returns Full model text, token usage when the provider reports it, and no tool calls.
- * @throws {Error} When the provider rejects the request or the signal aborts; the message never carries key material.
+ * @throws {Error} When the provider rejects the request or the signal aborts; the message
+ * carries the upstream status and detail with the key redacted, never key material.
  */
 export async function executeGeminiStream(
   plainKey: string,
@@ -138,9 +168,7 @@ export async function executeGeminiStream(
   const images = promptData.images ?? [];
   if (images.length > MAX_IMAGES) throw new Error('Gemini adapter supports at most 4 images per request.');
   if ((promptData.audio ?? []).length > 1) throw new Error('Gemini adapter supports at most 1 audio input per request.');
-  const client = new GoogleGenAI(
-    plainKey.startsWith('AQ.') ? { apiKey: plainKey, apiVersion: 'v1alpha' } : { apiKey: plainKey },
-  );
+  const client = new GoogleGenAI({ apiKey: plainKey });
   const contents = buildContents(promptData);
   let stream: AsyncIterable<unknown>;
   try {
@@ -149,8 +177,8 @@ export async function executeGeminiStream(
       contents,
       config: buildConfig(promptData, modelName),
     })) as AsyncIterable<unknown>;
-  } catch {
-    throw new Error('Gemini stream request failed.');
+  } catch (error) {
+    throw new Error(`Gemini stream request failed (${describeUpstreamError(error, plainKey)}).`);
   }
   let text = '';
   let tokensUsage: AiAdapterResponse['tokensUsage'];
@@ -167,7 +195,7 @@ export async function executeGeminiStream(
     }
   } catch (error) {
     if (error instanceof Error && error.message === 'Gemini stream aborted.') throw error;
-    throw new Error('Gemini stream interrupted.');
+    throw new Error(`Gemini stream interrupted (${describeUpstreamError(error, plainKey)}).`);
   }
   return {
     text: text === '' ? 'Informasi telah diproses oleh sistem.' : text,
@@ -199,6 +227,26 @@ function collectInlineData(response: {
   return out;
 }
 
+/**
+ * Run one non-streaming generation against the Gemini API.
+ *
+ * @remarks Both Gemini API key formats are constructed identically, with no
+ * `apiVersion` override. Google is migrating standard keys to authorization
+ * keys, and the API key guide states that auth keys are "restricted to the
+ * Generative Language API (Gemini API) by default" — the same host and path as
+ * standard keys — while `generateContent` is documented only under `v1beta`,
+ * which is also the SDK default. Forcing `v1alpha` for `AQ.` keys therefore
+ * pointed at an undocumented path and failed every authorization key in the
+ * pool. See https://ai.google.dev/gemini-api/docs/api-key and
+ * https://ai.google.dev/api/generate-content.
+ * @param plainKey - Decrypted Gemini API key, either standard or authorization format.
+ * @param modelName - Gemini model identifier owned by the router model config.
+ * @param promptData - Prompt, history, and generation controls.
+ * @param toolExecutor - Optional executor for provider tool calls.
+ * @returns Model text, token usage, inline media, and the tool names executed.
+ * @throws {Error} When the provider rejects the request; the message carries the
+ * upstream status and detail with the key redacted, never key material.
+ */
 export async function executeGeminiAdapter(
   plainKey: string,
   modelName: string,
@@ -209,9 +257,7 @@ export async function executeGeminiAdapter(
   const images = promptData.images ?? [];
   if (images.length > MAX_IMAGES) throw new Error('Gemini adapter supports at most 4 images per request.');
   if ((promptData.audio ?? []).length > 1) throw new Error('Gemini adapter supports at most 1 audio input per request.');
-  const client = new GoogleGenAI(
-    plainKey.startsWith('AQ.') ? { apiKey: plainKey, apiVersion: 'v1alpha' } : { apiKey: plainKey },
-  );
+  const client = new GoogleGenAI({ apiKey: plainKey });
   const contents = buildContents(promptData);
   const executedTools: string[] = [];
   const toolResults: Record<string, unknown> = {};
@@ -219,8 +265,8 @@ export async function executeGeminiAdapter(
   let response;
   try {
     response = await client.models.generateContent({ model: modelName, contents, config: buildConfig(promptData, modelName) });
-  } catch {
-    throw new Error('Gemini request failed.');
+  } catch (error) {
+    throw new Error(`Gemini request failed (${describeUpstreamError(error, plainKey)}).`);
   }
   let turns = 0;
   while (useTools && response.functionCalls !== undefined && response.functionCalls.length > 0 && turns < MAX_TOOL_TURNS) {

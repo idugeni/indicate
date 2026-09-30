@@ -37,20 +37,24 @@ describe('executeGeminiAdapter', () => {
     state.calls.length = 0;
   });
 
-  it('mengirim kunci router ke konstruktor tanpa versi alpha untuk kunci klasik', async () => {
+  it('mengirim kunci router ke konstruktor tanpa override versi untuk kunci klasik', async () => {
     state.responses.push(okResponse());
     const result = await executeGeminiAdapter('AIza-classic-key', 'gemini-2.5-flash', { prompt: 'hai' });
     expect(state.ctorArgs[0]).toMatchObject({ apiKey: 'AIza-classic-key' });
-    expect(state.ctorArgs[0]).not.toMatchObject({ apiVersion: 'v1alpha' });
+    expect(state.ctorArgs[0]).not.toHaveProperty('apiVersion');
     expect(result.text).toBe('halo');
     expect(result.tokensUsage).toEqual({ prompt: 10, completion: 5, total: 15 });
     expect(result.toolCallsExecuted).toEqual([]);
   });
 
-  it('memakai v1alpha untuk kunci AQ dot', async () => {
+  it('tidak memaksa versi api untuk kunci auth AQ dot', async () => {
+    // Auth keys are restricted to the Generative Language API, the same host and
+    // path as standard keys, and generateContent is documented only under v1beta.
+    // https://ai.google.dev/gemini-api/docs/api-key
     state.responses.push(okResponse());
-    await executeGeminiAdapter('AQ.secret-key', 'gemini-2.5-flash', { prompt: 'hai' });
-    expect(state.ctorArgs[0]).toMatchObject({ apiVersion: 'v1alpha' });
+    await executeGeminiAdapter('AQ.auth-key', 'gemini-3.8-flash', { prompt: 'hai' });
+    expect(state.ctorArgs[0]).toMatchObject({ apiKey: 'AQ.auth-key' });
+    expect(state.ctorArgs[0]).not.toHaveProperty('apiVersion');
   });
 
   it('menonaktifkan tools secara default tanpa kunci tools di config', async () => {
@@ -146,6 +150,32 @@ describe('executeGeminiAdapter', () => {
       expect(String(error)).not.toContain(secret);
     }
     await expect(executeGeminiAdapter('', 'gemini-2.5-flash', { prompt: 'hai' })).rejects.toThrow();
+  });
+
+  it('mempertahankan status dan pesan upstream agar galat bisa diklasifikasi', async () => {
+    const upstream = Object.assign(new Error('Quota exceeded for quota metric'), { status: 429 });
+    state.responses.push(upstream);
+    await expect(executeGeminiAdapter('AIza-classic-key', 'gemini-3.8-flash', { prompt: 'hai' })).rejects.toThrowError(
+      /http 429: Quota exceeded/,
+    );
+  });
+
+  it('melaporkan ketiadaan status alih-alih menyembunyikan detail', async () => {
+    state.responses.push(new Error('socket hang up'));
+    await expect(executeGeminiAdapter('AIza-classic-key', 'gemini-3.8-flash', { prompt: 'hai' })).rejects.toThrowError(
+      /no status: socket hang up/,
+    );
+  });
+
+  it('meredaksi kunci yang muncul di pesan upstream', async () => {
+    state.responses.push(new Error('denied for key AIza-leaked-in-message-98765'));
+    try {
+      await executeGeminiAdapter('AIza-classic-key', 'gemini-2.5-flash', { prompt: 'hai' });
+      expect.unreachable('harus melempar');
+    } catch (error) {
+      expect(String(error)).not.toContain('AIza-leaked-in-message-98765');
+      expect(String(error)).toContain('[redacted]');
+    }
   });
 
   it('meneruskan responseModalities dan speechConfig ke config', async () => {
