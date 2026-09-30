@@ -45,7 +45,6 @@ async function handleGET(request: Request) {
   const noStore = { 'Cache-Control': 'private, no-store' };
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
   const repository = new DrizzleStatusRepository(runtime.db);
-  const supabaseUrl = getPublicConfig(process.env).supabaseUrl.replace(/\/$/, '');
 
   const history = await repository.lastTwoPerComponent();
   const byComponent = new Map<StatusComponent, ProbeResult[]>();
@@ -89,7 +88,11 @@ async function handleGET(request: Request) {
       if (state.status !== 'healthy') throw new Error(state.category);
     }),
     checkAuth: timed(async () => {
-      const response = await fetch(`${supabaseUrl}/auth/v1/health`, { signal: AbortSignal.timeout(5000) });
+      const publicConfig = getPublicConfig(process.env);
+      const response = await fetch(`${publicConfig.supabaseUrl.replace(/\/$/, '')}/auth/v1/health`, {
+        headers: { apikey: publicConfig.supabasePublishableKey },
+        signal: AbortSignal.timeout(5000),
+      });
       if (!response.ok) throw new Error(`auth health ${response.status}`);
     }),
     checkDelivery: timed(async () => {
