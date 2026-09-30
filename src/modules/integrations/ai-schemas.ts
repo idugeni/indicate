@@ -25,7 +25,7 @@ export const aiPolicyUpdateSchema = z.object({
   rotationStrategy: z.enum(['health_aware', 'round_robin', 'least_used', 'lowest_error_rate', 'priority_based', 'random']),
   defaultModel: z.string().trim().min(1).max(120),
   fallbackProviderId: z.string().trim().min(1).max(120).nullable().default(null),
-  fallbackModel: z.string().trim().min(1).max(120).default('gemini-2.5-flash'),
+  fallbackModel: z.string().trim().min(1).max(120).default('gemini-3.6-flash'),
   maxRetries: z.number().int().min(1).max(10),
   cooldownDurationSec: z.number().int().min(10).max(3600),
 }).strict();

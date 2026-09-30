@@ -76,7 +76,7 @@ describe('aiPolicyUpdateSchema fallback terkonfigurasi', () => {
       cooldownDurationSec: 60,
     });
     expect(parsed.fallbackProviderId).toBeNull();
-    expect(parsed.fallbackModel).toBe('gemini-2.5-flash');
+    expect(parsed.fallbackModel).toBe('gemini-3.6-flash');
   });
 
   it('menerima rantai fallback eksplisit', () => {

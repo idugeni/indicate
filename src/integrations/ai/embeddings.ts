@@ -1,7 +1,7 @@
 import 'server-only';
 
 /** Default embedding model for archive semantic search. */
-export const GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
+export const GEMINI_EMBEDDING_MODEL = 'gemini-embedding-2';
 
 /** Hard ceiling per embedding batch; the reindex path never exceeds it. */
 export const EMBED_MAX_BATCH = 20;

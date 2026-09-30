@@ -24,6 +24,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { AiMediaAnalyze } from '@/modules/ai/components/ai-media-analyze';
+import { AiCoverGenerator } from '@/modules/ai/components/ai-cover-generator';
+import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
 import { formatBytes } from '@/modules/publishing/compress-image';
 
 /** The uploader carries the compression pipeline, so it only loads once opened. */
@@ -135,6 +137,24 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
   const [preview, setPreview] = useState<{ readonly url: string; readonly headers: Record<string, string> } | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewName, setPreviewName] = useState('');
+  const [savingCover, setSavingCover] = useState(false);
+
+  const handleGeneratedCover = (image: { readonly mimeType: string; readonly base64: string }) => {
+    if (savingCover) return;
+    setSavingCover(true);
+    void (async () => {
+      try {
+        const bytes = Uint8Array.from(atob(image.base64), (char) => char.charCodeAt(0));
+        const file = new File([bytes], `ai-cover-${Date.now()}.png`, { type: image.mimeType });
+        await uploadEditorImage(file, { kind: 'organization' }, command, { purpose: 'article-cover' });
+        toast.success('Cover AI tersimpan di pustaka organisasi.');
+      } catch {
+        toast.error('Gagal menyimpan cover AI ke pustaka.');
+      } finally {
+        setSavingCover(false);
+      }
+    })();
+  };
 
   const media = useMemo(() => model?.media ?? [], [model]);
   const purposes = useMemo(() => [...new Set(media.map((item) => item.purpose))].sort(), [media]);
@@ -215,6 +235,7 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
 
       {uploading ? <MediaForm data={data} command={command} /> : null}
       <AiMediaAnalyze organizationId={organizationId} onDraft={(draft) => { toast.info(draft.alt === '' ? `Draf visual: ${draft.title}` : `Alt: ${draft.alt}`); }} />
+      <AiCoverGenerator organizationId={organizationId} onImage={(image) => handleGeneratedCover(image)} />
 
       <section aria-label="Folder media" className="flex flex-wrap gap-1.5">
         {folders.map((entry) => {

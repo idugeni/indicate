@@ -58,7 +58,7 @@ export interface AiTestResult {
 }
 
 const FALLBACK_MODELS: readonly AiModelEntry[] = [
-  { modelName: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash', releaseStage: 'stable', contextWindow: 1048576, outputTokenLimit: 65536, rpmLimit: 15, tpmLimit: 1000000, rpdLimit: 1500, supportsTools: true, isDefault: true },
+  { modelName: 'gemini-3.8-flash', displayName: 'Gemini 3.8 Flash', releaseStage: 'stable', contextWindow: 1048576, outputTokenLimit: 65536, rpmLimit: null, tpmLimit: null, rpdLimit: null, supportsTools: true, isDefault: true },
 ];
 
 function errorClassForStatus(status: number): string {

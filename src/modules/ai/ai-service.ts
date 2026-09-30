@@ -67,6 +67,7 @@ export interface AiAdapterResult {
     | undefined;
   readonly toolCallsExecuted: readonly string[];
   readonly toolResults?: Record<string, unknown> | undefined;
+  readonly inlineData?: readonly { readonly mimeType: string; readonly base64: string }[] | undefined;
 }
 
 /** Optional semantic-cache boundary consulted before the provider chain. */
@@ -227,7 +228,8 @@ export async function executeAiQuery(
   const historyLength = promptData.history?.length ?? 0;
   const targetModel = promptData.modelOverride ?? policy.defaultModel;
   const hasImages = (promptData.images?.length ?? 0) > 0;
-  if (deps.cache !== undefined && !hasImages && historyLength <= 2 && promptData.prompt.length >= 6) {
+  const wantsMedia = (promptData.responseModalities?.length ?? 0) > 0;
+  if (deps.cache !== undefined && !hasImages && !wantsMedia && historyLength <= 2 && promptData.prompt.length >= 6) {
     const hit = await deps.cache.lookup(promptData.prompt, targetModel).catch(() => null);
     if (hit !== null) {
       await log({
@@ -361,7 +363,7 @@ export async function executeAiQuery(
           toolsExecuted: [...result.toolCallsExecuted],
         });
 
-        if (deps.cache !== undefined && !hasImages && result.text.length > 20) {
+        if (deps.cache !== undefined && !hasImages && !wantsMedia && result.text.length > 20) {
           deps.cache
             .store(promptData.prompt, result.text, modelName, 86400)
             .catch(() => undefined);
@@ -378,6 +380,9 @@ export async function executeAiQuery(
           toolCallsExecuted: [...result.toolCallsExecuted],
           toolResults: result.toolResults,
           tokensUsage: result.tokensUsage,
+          ...(result.inlineData === undefined || result.inlineData.length === 0
+            ? {}
+            : { inlineData: result.inlineData.map((item) => ({ mimeType: item.mimeType, base64: item.base64 })) }),
         };
       } catch (error) {
         const latencyMs = clock().getTime() - startedAt;

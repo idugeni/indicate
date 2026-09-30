@@ -425,7 +425,7 @@ export function DashboardWorkspace({
           </Breadcrumb>
 
           <div className="ml-auto flex flex-none items-center gap-1.5">
-            <CommandPalette permissions={activePermissions} />
+            <CommandPalette permissions={activePermissions} organizationId={organizationId} />
             <p className="m-0 hidden items-center gap-2 rounded-md border border-hairline bg-bg-raised px-2.5 py-1.5 font-mono text-xs tabular-nums text-paper-dim md:inline-flex">
               <span className="relative flex h-1.5 w-1.5 flex-none" aria-hidden="true">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-75" />

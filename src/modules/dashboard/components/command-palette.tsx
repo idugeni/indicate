@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Command } from 'cmdk';
-import { CornerDownLeft, Search, Settings, X } from 'lucide-react';
+import { CornerDownLeft, Search, Settings, Sparkles, X } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { groupTitle, VIEW_REGISTRY, visibleNavGroups, type View } from '@/modules/dashboard/components/view-registry';
+import { AiAssistantDialog } from '@/modules/ai/components/ai-assistant-dialog';
 
 interface CommandAction {
   readonly id: string;
@@ -61,12 +62,15 @@ function buildActions(permissions: ReadonlySet<string>): readonly CommandAction[
 export function CommandPalette({
   showTrigger = true,
   permissions,
+  organizationId,
 }: {
   readonly showTrigger?: boolean;
   readonly permissions: ReadonlySet<string>;
+  readonly organizationId?: string | undefined;
 }) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
+  const [assistantOpen, setAssistantOpen] = React.useState(false);
 
   const router = useRouter();
 
@@ -100,6 +104,14 @@ export function CommandPalette({
         cmd.category.toLowerCase().includes(cleanQuery)
     );
   }, [query, actions]);
+
+  const assistantVisible = React.useMemo(() => {
+    const cleanQuery = query.trim().toLowerCase();
+    if (cleanQuery === '') return true;
+    return ['tanya asisten ai redaksi', 'ai', 'asisten ai', 'tanya redaksi', 'kopilot', 'bantuan ai'].some((text) =>
+      text.includes(cleanQuery),
+    );
+  }, [query]);
 
   const handleSelect = React.useCallback(
     (href: string) => {
@@ -182,6 +194,30 @@ export function CommandPalette({
               <Command.Empty className="py-8 text-center font-sans text-xs text-paper-faint">
                 Tidak ada perintah atau rute yang cocok dengan kata kunci.
               </Command.Empty>
+              {assistantVisible ? (
+              <Command.Item
+                value="assistant-chat"
+                keywords={['asisten ai', 'tanya redaksi', 'kopilot', 'bantuan ai']}
+                onSelect={() => { setOpen(false); setQuery(''); setAssistantOpen(true); }}
+                aria-label="Tanya Asisten AI Redaksi"
+                className="group/cmd-item flex w-full cursor-pointer items-center justify-between gap-2 rounded border border-transparent bg-transparent px-3 py-2 text-left text-paper-dim transition-colors duration-180 hover:text-paper data-[selected=true]:border-hairline-strong data-[selected=true]:bg-bg-raised-2 data-[selected=true]:text-paper"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-6 w-6 flex-none items-center justify-center rounded border border-hairline bg-bg text-paper-faint group-data-[selected=true]/cmd-item:border-brass/40 group-data-[selected=true]/cmd-item:bg-bg group-data-[selected=true]/cmd-item:text-brass-soft">
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                  </div>
+                  <span className="truncate font-sans text-xs font-medium text-paper">
+                    Tanya Asisten AI Redaksi
+                  </span>
+                </div>
+                <div className="flex flex-none items-center gap-2">
+                  <Badge variant="outline" className="border-hairline bg-bg px-1.5 py-0.5 font-mono text-[10px] text-paper-faint">
+                    AI
+                  </Badge>
+                  <CornerDownLeft className="h-3 w-3 text-brass opacity-0 group-data-[selected=true]/cmd-item:opacity-100" aria-hidden="true" />
+                </div>
+              </Command.Item>
+              ) : null}
               {filtered.map((cmd) => {
                 const Icon = cmd.icon;
 
@@ -225,6 +261,7 @@ export function CommandPalette({
           </Command>
         </DialogContent>
       </Dialog>
+      <AiAssistantDialog organizationId={organizationId} open={assistantOpen} onOpenChange={setAssistantOpen} />
     </>
   );
 }

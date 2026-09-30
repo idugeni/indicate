@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useRef, useTransition, type FormEvent } from 'react';
+import { useId, useRef, useState, useTransition, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import {
   Check,
@@ -14,6 +14,7 @@ import { suggestAttributionLabel } from '@/modules/dashboard/components/editoria
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AiPublisherVerify } from '@/modules/ai/components/ai-publisher-verify';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import type { PublisherEntity } from '@/modules/dashboard/components/shared/types';
 
@@ -27,9 +28,11 @@ const VERIFICATION_STATUS_LABELS: Readonly<Record<string, string>> = {
 export function PublisherForm({
   data,
   command,
+  organizationId,
 }: {
   readonly data: unknown;
   readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly organizationId?: string | undefined;
 }) {
   const model = data as {
     readonly publishers?: readonly PublisherEntity[];
@@ -49,6 +52,18 @@ export function PublisherForm({
   const [isVerifying, startVerifyTransition] = useTransition();
   const lastSuggestedAttribution = useRef('');
   const createFormRef = useRef<HTMLFormElement | null>(null);
+  const verifyFormRef = useRef<HTMLFormElement | null>(null);
+  const [verifyPublisherId, setVerifyPublisherId] = useState('');
+  const [verifyEvidence, setVerifyEvidence] = useState('');
+  const verifyPublisherName = model?.publishers?.find((item) => item.id === (verifyPublisherId || (model?.publishers?.[0]?.id ?? '')))?.name ?? '';
+
+  const applyAssessmentReason = (recommendation: string) => {
+    const reasonInput = verifyFormRef.current?.elements.namedItem('reason');
+    if (reasonInput instanceof HTMLInputElement && reasonInput.value.trim() === '' && recommendation.trim() !== '') {
+      reasonInput.value = recommendation.trim().slice(0, 300);
+      toast.info('Saran AI dimasukkan ke catatan — tinjau sebelum menerapkan keputusan.');
+    }
+  };
 
   const refreshAttributionSuggestion = (form: HTMLFormElement) => {
     const nameInput = form.elements.namedItem('name');
@@ -216,7 +231,7 @@ export function PublisherForm({
 
       <SectionCard icon={ShieldCheck} title="Verifikasi & status" eyebrow="Tata kelola">
 
-        <form noValidate onSubmit={handleVerify} className="space-y-3">
+        <form noValidate onSubmit={handleVerify} ref={verifyFormRef} className="space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor={verifyPubId} className="font-mono text-xs text-paper-dim">
               Pilih Penerbit
@@ -226,6 +241,7 @@ export function PublisherForm({
               name="publisherId"
               disabled={isVerifying}
               defaultValue={model?.publishers?.[0]?.id ?? ''}
+              onValueChange={(next) => setVerifyPublisherId(next ?? '')}
               placeholder="Pilih penerbit"
               options={(model?.publishers ?? []).map((item) => ({ value: item.id, label: `${item.name} · [${VERIFICATION_STATUS_LABELS[item.verificationStatus] ?? item.verificationStatus}]` }))}
             />
@@ -257,6 +273,7 @@ export function PublisherForm({
               id={verifyEvidenceId}
               name="evidenceReference"
               disabled={isVerifying}
+              onChange={(event) => setVerifyEvidence(event.target.value)}
               placeholder="cth: audit-memo-jtw-001"
               className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
             />
@@ -291,6 +308,12 @@ export function PublisherForm({
             </Button>
           </div>
         </form>
+        <AiPublisherVerify
+          organizationId={organizationId}
+          publisherName={verifyPublisherName}
+          evidence={verifyEvidence}
+          onAssessment={(assessment) => applyAssessmentReason(assessment.recommendation)}
+        />
       </SectionCard>
     </div>
   );

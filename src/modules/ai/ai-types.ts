@@ -169,6 +169,18 @@ export interface AiChatImage {
   readonly mimeType: string;
 }
 
+export interface AiChatAudio {
+  readonly base64: string;
+  readonly mimeType: string;
+}
+
+export type AiResponseModality = 'TEXT' | 'IMAGE' | 'AUDIO';
+
+export interface AiInlineData {
+  readonly mimeType: string;
+  readonly base64: string;
+}
+
 /**
  * Caller-supplied generation request.
  *
@@ -194,6 +206,9 @@ export interface AiChatPrompt {
   readonly safetySettings?: AiSafetySetting[] | undefined;
   readonly enableTools?: boolean | undefined;
   readonly images?: readonly AiChatImage[] | undefined;
+  readonly audio?: readonly AiChatAudio[] | undefined;
+  readonly responseModalities?: readonly AiResponseModality[] | undefined;
+  readonly speechVoiceName?: string | undefined;
   readonly channel?: AiAccessChannel | undefined;
   readonly callerRole?: AiCallerRole | undefined;
   readonly correlationId?: string | undefined;
@@ -210,6 +225,7 @@ export interface AiGenerationResult {
   readonly retryCount: number;
   readonly toolCallsExecuted: readonly string[];
   readonly toolResults?: Record<string, unknown> | undefined;
+  readonly inlineData?: readonly AiInlineData[] | undefined;
   readonly tokensUsage?:
     | {
         readonly prompt: number;

@@ -185,7 +185,11 @@ async function runQuery(callerRole: AiCallerRole, organizationId: string | undef
   readonly maxOutputTokens: number;
   readonly responseMimeType?: string;
   readonly images?: readonly AiChatImage[] | undefined;
-}): Promise<{ readonly ok: true; readonly text: string } | { readonly ok: false; readonly error: string }> {
+  readonly audio?: readonly { readonly base64: string; readonly mimeType: string }[] | undefined;
+  readonly modelOverride?: string | undefined;
+  readonly responseModalities?: readonly ('TEXT' | 'IMAGE' | 'AUDIO')[] | undefined;
+  readonly speechVoiceName?: string | undefined;
+}): Promise<{ readonly ok: true; readonly text: string; readonly inlineData?: readonly { readonly mimeType: string; readonly base64: string }[] } | { readonly ok: false; readonly error: string }> {
   const scanned = scanPrompt(query.prompt);
   if (!scanned.ok) return { ok: false, error: scanned.reason };
   if (configured === null) return { ok: false, error: BUSY_MESSAGE };
@@ -200,9 +204,17 @@ async function runQuery(callerRole: AiCallerRole, organizationId: string | undef
     callerRole,
     enableTools: false,
     ...(query.images === undefined ? {} : { images: [...query.images] }),
+    ...(query.audio === undefined ? {} : { audio: [...query.audio] }),
+    ...(query.modelOverride === undefined ? {} : { modelOverride: query.modelOverride }),
+    ...(query.responseModalities === undefined ? {} : { responseModalities: [...query.responseModalities] }),
+    ...(query.speechVoiceName === undefined ? {} : { speechVoiceName: query.speechVoiceName }),
   });
-  if (result.error !== undefined || result.text.trim() === '') return { ok: false, error: BUSY_MESSAGE };
-  return { ok: true, text: result.text };
+  if (result.error !== undefined || (result.text.trim() === '' && (result.inlineData?.length ?? 0) === 0)) return { ok: false, error: BUSY_MESSAGE };
+  return {
+    ok: true,
+    text: result.text,
+    ...(result.inlineData === undefined || result.inlineData.length === 0 ? {} : { inlineData: result.inlineData }),
+  };
 }
 
 const DRAFT_SYSTEM = [

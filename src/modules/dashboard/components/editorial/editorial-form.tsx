@@ -40,7 +40,7 @@ import { slugify } from '@/modules/site/slugify';
 import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { SLUG_MAX_LENGTH, TAG_MAX_COUNT, normalizeTagList } from '@/modules/site/slug-allocator';
 import type { TipTapDoc, TipTapNode } from '@/modules/site/tiptap-document';
-import { isTipTapDoc } from '@/modules/site/tiptap-document';
+import { isTipTapDoc, tiptapToText, TIPTAP_MAX_NODES } from '@/modules/site/tiptap-document';
 import { describeBodyJsonProblem } from '@/modules/dashboard/components/editorial/body-json-diagnostics';
 import {
   buildArticlePayload,
@@ -57,6 +57,9 @@ import {
 import { ArticlePreview } from '@/modules/dashboard/components/editorial/article-preview';
 import { RichTextEditor } from '@/modules/dashboard/components/editorial/rich-text-editor';
 import { AiDraftAssist, type EditorialDraft } from '@/modules/ai/components/ai-draft-assist';
+import { AiSeoAssist, type SeoApplySelection } from '@/modules/ai/components/ai-seo-assist';
+import { AiTtsPanel } from '@/modules/ai/components/ai-tts-panel';
+import { AiTranscribePanel } from '@/modules/ai/components/ai-transcribe-panel';
 import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
 import { chunkPublicationTargets, selectPublicationTargets } from '@/modules/dashboard/components/editorial/publication-batch';
 import type { PublicationScope, PublishTargetSite } from '@/modules/dashboard/components/editorial/publication-batch';
@@ -514,6 +517,24 @@ export function ArticleCreateForm({
     }
   };
 
+  const applyAiSeo = (selection: SeoApplySelection) => {
+    if (selection.title !== undefined && selection.title !== '') handleTitleChange(selection.title);
+    if (selection.slug !== undefined && selection.slug !== '') handleSlugChange(selection.slug);
+    const description = selection.metaDescription ?? selection.excerpt ?? '';
+    if (description !== '') setDescriptionText(description);
+    toast.success('Saran SEO diterapkan ke formulir.');
+  };
+
+  const applyTranscript = (transcript: string) => {
+    const lines = transcript.split('\n').map((line) => line.trim()).filter((line) => line !== '');
+    if (lines.length === 0) return;
+    const nodes = lines.map((line) => ({ type: 'paragraph', content: [{ type: 'text', text: line.slice(0, 2000) }] }));
+    const merged: TipTapDoc = { type: 'doc', content: [...(bodyJsonDraft?.content ?? []), ...nodes].slice(-TIPTAP_MAX_NODES) };
+    handleRichChange({ doc: merged, text: tiptapToText(merged) });
+    setRichResetKey((key) => key + 1);
+    toast.success('Transkrip ditambahkan ke isi artikel.');
+  };
+
   const handleCreateCategory = (rawName: string): string | null => {
     const name = rawName.trim();
     if (name === '') {
@@ -899,6 +920,8 @@ export function ArticleCreateForm({
           <div className="space-y-6">
             <p className="m-0 font-sans text-xl font-bold tracking-tight text-paper sm:text-2xl">Artikel baru</p>
             <AiDraftAssist organizationId={organizationId} currentTitle={titleText} currentBody={bodyText} onDraft={applyAiDraft} />
+            <AiSeoAssist organizationId={organizationId} currentTitle={titleText} currentBody={bodyText} onApply={applyAiSeo} />
+            <AiTtsPanel organizationId={organizationId} sourceText={bodyText} />
             <Field>
               <Label htmlFor={titleInputId} className="font-mono text-xs text-paper-dim">
                 Judul Artikel
@@ -1026,6 +1049,7 @@ export function ArticleCreateForm({
                   {bodyJsonProblem}
                 </p>
               )}
+              <AiTranscribePanel organizationId={organizationId} onTranscript={applyTranscript} />
               {mode === 'tulis' ? (
                 <RichTextEditor
                   key={richResetKey}

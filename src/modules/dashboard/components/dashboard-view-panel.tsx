@@ -224,7 +224,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       {hasServerFilters(view) ? <FilterControls view={view} data={data} onApply={onFilterApply} /> : null}
 
       <PanelErrorBoundary key={`forms:${organizationId}:${view}`} name={metadata.title}>
-      {view === 'publishers' ? <PublisherForm data={data} command={command} /> : null}
+      {view === 'publishers' ? <PublisherForm data={data} command={command} organizationId={organizationId} /> : null}
       {view === 'editorial' ? (
         <ArticleCreateForm
           data={data}

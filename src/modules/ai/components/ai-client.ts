@@ -7,7 +7,13 @@ export type AiAction =
   | 'moderation-reply'
   | 'vision-draft'
   | 'insight-narrative'
-  | 'semantic-search';
+  | 'semantic-search'
+  | 'seo-suggest'
+  | 'cover-image'
+  | 'tts-speak'
+  | 'transcribe-audio'
+  | 'publisher-verify'
+  | 'assistant-chat';
 
 /**
  * Memanggil rute bantuan AI dasbor.

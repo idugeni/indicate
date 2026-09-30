@@ -26,7 +26,7 @@ describe('embedTexts', () => {
     expect(vectors[0]).toEqual([1, 0, 0]);
     expect(vectors[1]).toEqual([0, 1, 0, 0, 0]);
     expect(seen).toHaveLength(2);
-    expect(seen[0]?.url).toContain('gemini-embedding-001:embedContent');
+    expect(seen[0]?.url).toContain('gemini-embedding-2:embedContent');
     expect((seen[0]?.init.headers as Record<string, string>)['x-goog-api-key']).toBe('kunci');
     expect(seen[0]?.init.method).toBe('POST');
     expect(vi.mocked(fetchImpl)).toHaveBeenCalledTimes(2);

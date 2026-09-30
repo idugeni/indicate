@@ -1,8 +1,9 @@
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
+import { reindexArticleEmbeddings } from '@/modules/ai/ai-embeddings';
 import { readAccessKeyCookie } from '@/modules/auth/dashboard-access-keys/cookie';
 import { resolveAccessKeyActor } from '@/modules/auth/dashboard-access-keys/resolve-access-key-actor';
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
@@ -133,6 +134,31 @@ async function handleGET(request: Request) {
     return result.ok ? NextResponse.json(result.value) : NextResponse.json(result.error, { status: responseStatus(result.error) });
 }
 
+/**
+ * Refresh one article's semantic index after the response is sent.
+ *
+ * @param organizationId - Tenant owning the article.
+ * @param value - Command result carrying the saved article id.
+ * @remarks Best-effort via `after()`: index freshness never fails a save,
+ * and one article's chunks bound the provider and database cost.
+ */
+function scheduleArticleReindex(organizationId: string, value: unknown): void {
+  if (typeof value !== 'object' || value === null) return;
+  const articleId = (value as { readonly id?: unknown }).id;
+  if (typeof articleId !== 'string' || articleId === '') return;
+  after(() => {
+    void (async () => {
+      try {
+        const context = await getServerRuntimeContext();
+        const runtime = getSharedRuntimeDatabase(context.bootstrap);
+        await reindexArticleEmbeddings(runtime.db, { organizationId, articleId });
+      } catch {
+        /* Stale vectors stay queryable; the next save retries. */
+      }
+    })();
+  });
+}
+
 async function handlePOST(request: Request) {
   const requestId = resolveRequestId(request);
   if (denyCrossSiteMutation(request)) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
@@ -151,6 +177,9 @@ async function handlePOST(request: Request) {
     };
     const action = actions[parsed.data.action]; if (action === undefined) return NextResponse.json(createPublicError('INVALID_INPUT', 'Unknown command.', requestId), { status: 400 });
     const result = await action(parsed.data.payload);
+    if (result.ok && (parsed.data.action === 'article.create' || parsed.data.action === 'article.update')) {
+      scheduleArticleReindex(parsed.data.organizationId, result.value);
+    }
     if (!result.ok) return NextResponse.json(result.error, { status: responseStatus(result.error) });
     if (parsed.data.action === 'site.cache.purge') {
       try {

@@ -147,4 +147,50 @@ describe('executeGeminiAdapter', () => {
     }
     await expect(executeGeminiAdapter('', 'gemini-2.5-flash', { prompt: 'hai' })).rejects.toThrow();
   });
+
+  it('meneruskan responseModalities dan speechConfig ke config', async () => {
+    state.responses.push(okResponse());
+    await executeGeminiAdapter('AIza-classic-key', 'gemini-3.8-flash-tts', {
+      prompt: 'Halo.',
+      responseModalities: ['AUDIO'],
+      speechVoiceName: 'Kore',
+    });
+    const config = state.calls[0]?.config as Record<string, unknown>;
+    expect(config.responseModalities).toEqual(['AUDIO']);
+    expect(config.speechConfig).toMatchObject({ voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } });
+  });
+
+  it('mengekstrak inlineData gambar dan audio dari kandidat', async () => {
+    state.responses.push(
+      okResponse({
+        text: undefined,
+        candidates: [
+          {
+            content: {
+              parts: [
+                { text: 'cover' },
+                { inlineData: { data: 'aW1hZ2U=', mimeType: 'image/png' } },
+                { inlineData: { data: 'YXVkaW8=', mimeType: 'audio/wav' } },
+                { inlineData: { data: '', mimeType: 'image/png' } },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    const result = await executeGeminiAdapter('AIza-classic-key', 'gemini-3.1-flash-image', {
+      prompt: 'Buat cover.',
+      responseModalities: ['TEXT', 'IMAGE'],
+    });
+    expect(result.inlineData).toEqual([
+      { mimeType: 'image/png', base64: 'aW1hZ2U=' },
+      { mimeType: 'audio/wav', base64: 'YXVkaW8=' },
+    ]);
+  });
+
+  it('menghilangkan inlineData saat respons hanya teks', async () => {
+    state.responses.push(okResponse());
+    const result = await executeGeminiAdapter('AIza-classic-key', 'gemini-2.5-flash', { prompt: 'hai' });
+    expect(result.inlineData).toBeUndefined();
+  });
 });

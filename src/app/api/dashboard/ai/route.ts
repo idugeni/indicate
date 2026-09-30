@@ -4,6 +4,8 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
+import { DASHBOARD_ACCESS_KEY_COOKIE } from '@/modules/auth/dashboard-access-keys/cookie';
+import { resolveAccessKeyActor } from '@/modules/auth/dashboard-access-keys/resolve-access-key-actor';
 import type { ActorContext } from '@/core/operation-context';
 import { getPublicConfig } from '@/core/config/public-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
@@ -16,6 +18,12 @@ import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import { configureAiUsage, buildDraftArticleInput, draftModerationReply, generateArticleDraft, narrateInsights, ocVisionDraft, scanPrompt, suggestTags, summarizeReport } from '@/modules/ai/ai-usage';
+import { configureAiSeo, suggestSeo } from '@/modules/ai/ai-seo';
+import { configureAiCover, generateCoverImage } from '@/modules/ai/ai-cover';
+import { configureAiTts, synthesizeSpeech } from '@/modules/ai/ai-tts';
+import { configureAiTranscribe, transcribeAudio } from '@/modules/ai/ai-transcribe';
+import { configurePublisherVerify, verifyPublisher } from '@/modules/ai/ai-verify';
+import { configureAiAssistant, assistantChat } from '@/modules/ai/ai-assistant';
 import { createAiSemanticCache } from '@/modules/ai/ai-semantic-cache';
 import { SEMANTIC_CANDIDATE_LIMIT, reindexArticleEmbeddings, toSemanticCandidate } from '@/modules/ai/ai-embeddings';
 import type { AiDb } from '@/modules/ai/ai-types';
@@ -42,6 +50,12 @@ const commandSchema = z.object({
     'insight-narrative',
     'semantic-search',
     'embeddings-reindex',
+    'seo-suggest',
+    'cover-image',
+    'tts-speak',
+    'transcribe-audio',
+    'publisher-verify',
+    'assistant-chat',
   ]),
   payload: z.record(z.string(), z.unknown()),
 }).strict();
@@ -73,7 +87,10 @@ async function serviceDeps(organizationId?: string | undefined): Promise<AiServi
             ...(prompt.maxOutputTokens === undefined ? {} : { maxOutputTokens: prompt.maxOutputTokens }),
             ...(prompt.responseMimeType === undefined ? {} : { responseMimeType: prompt.responseMimeType }),
             ...(prompt.images === undefined ? {} : { images: prompt.images.map((image) => ({ base64: image.base64, mimeType: image.mimeType })) }),
+            ...(prompt.audio === undefined ? {} : { audio: prompt.audio.map((item) => ({ base64: item.base64, mimeType: item.mimeType })) }),
             ...(prompt.enableTools === undefined ? {} : { enableTools: prompt.enableTools }),
+            ...(prompt.responseModalities === undefined ? {} : { responseModalities: [...prompt.responseModalities] }),
+            ...(prompt.speechVoiceName === undefined ? {} : { speechVoiceName: prompt.speechVoiceName }),
           };
           const result = await inner.execute(apiKey, modelName, adapted);
           return {
@@ -81,6 +98,7 @@ async function serviceDeps(organizationId?: string | undefined): Promise<AiServi
             tokensUsage: result.tokensUsage === undefined ? undefined : { ...result.tokensUsage },
             toolCallsExecuted: [...result.toolCallsExecuted],
             toolResults: result.toolResults === undefined ? undefined : { ...result.toolResults },
+            inlineData: result.inlineData === undefined ? undefined : result.inlineData.map((item) => ({ ...item })),
           };
         },
       };
@@ -96,7 +114,23 @@ async function sessionFor(organizationId: string, requestId: string): Promise<{ 
     cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }),
   });
   const identity = await auth.verifyCookieSession();
-  if (identity === null) return createNonDisclosingDenial(requestId);
+  if (identity === null) {
+    const bearer = cookieStore.get(DASHBOARD_ACCESS_KEY_COOKIE)?.value ?? null;
+    if (bearer !== null) {
+      const keyContext = await getServerRuntimeContext();
+      const keyRuntime = getSharedRuntimeDatabase(keyContext.bootstrap);
+      const resolved = await resolveAccessKeyActor(keyRuntime.db, bearer, requestId).catch(() => null);
+      if (resolved !== null && resolved.actor.organizationId === organizationId) {
+        return {
+          actor: {
+            actorType: 'user', actorId: resolved.actor.actorId, verifiedAuthUserId: resolved.identity.authUserId, organizationId,
+            permissionSet: new Set(), platformPermissionSet: new Set(), entryPoint: 'dashboard', requestId,
+          },
+        };
+      }
+    }
+    return createNonDisclosingDenial(requestId);
+  }
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
   const authorization = new DrizzleAuthorizationRepository(runtime.db);
@@ -277,7 +311,14 @@ async function handlePOST(request: Request) {
   const session = await sessionFor(parsed.data.organizationId, requestId);
   if ('error' in session) return response(session);
   const { organizationId, action, payload } = parsed.data;
-  configureAiUsage(await serviceDeps(organizationId));
+  const deps = await serviceDeps(organizationId);
+  configureAiUsage(deps);
+  configureAiSeo(deps);
+  configureAiCover(deps);
+  configureAiTts(deps);
+  configureAiTranscribe(deps);
+  configurePublisherVerify(deps);
+  configureAiAssistant(deps);
   try {
     switch (action) {
       case 'draft-article': {
@@ -366,6 +407,35 @@ async function handlePOST(request: Request) {
         return result.ok
           ? NextResponse.json({ ok: true, chunks: result.chunks, embedded: result.embedded })
           : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
+      }
+      case 'seo-suggest': {
+        const result = await suggestSeo({ title: str(payload.title, 200), body: str(payload.body, 8000), organizationId });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
+      }
+      case 'cover-image': {
+        const aspect = payload.aspectRatio === '1:1' || payload.aspectRatio === '9:16' ? payload.aspectRatio : '16:9';
+        const result = await generateCoverImage({ title: str(payload.title, 200), style: str(payload.style, 120), aspectRatio: aspect, organizationId });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
+      }
+      case 'tts-speak': {
+        const result = await synthesizeSpeech({ text: str(payload.text, 4000), voice: str(payload.voice, 40), organizationId });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
+      }
+      case 'transcribe-audio': {
+        const result = await transcribeAudio({ base64: str(payload.base64, 10_000_000), mimeType: str(payload.mimeType, 60), organizationId });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
+      }
+      case 'publisher-verify': {
+        const result = await verifyPublisher({ name: str(payload.name, 300), evidence: str(payload.evidence, 4000), organizationId });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
+      }
+      case 'assistant-chat': {
+        const messages = Array.isArray(payload.messages) ? payload.messages : [];
+        const result = await assistantChat({ messages, organizationId });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
+      }
+      default: {
+        return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'Aksi AI ini belum tersedia.', requestId));
       }
     }
   } catch {

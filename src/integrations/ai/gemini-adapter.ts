@@ -35,6 +35,12 @@ function buildConfig(promptData: AiChatPrompt, modelName: string): Record<string
     config.stopSequences = [...promptData.stopSequences];
   }
   if (promptData.responseMimeType !== undefined) config.responseMimeType = promptData.responseMimeType;
+  if (promptData.responseModalities !== undefined && promptData.responseModalities.length > 0) {
+    config.responseModalities = [...promptData.responseModalities];
+  }
+  if (promptData.speechVoiceName !== undefined && promptData.speechVoiceName !== '') {
+    config.speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: promptData.speechVoiceName } } };
+  }
   if (promptData.responseSchema !== undefined) config.responseSchema = promptData.responseSchema;
   if (promptData.thinkingConfig !== undefined) {
     const budget = promptData.thinkingConfig.thinkingBudget;
@@ -70,6 +76,9 @@ function buildContents(promptData: AiChatPrompt): Array<{ role: string; parts: A
   const userParts: Array<Record<string, unknown>> = [{ text: promptData.prompt }];
   for (const image of promptData.images ?? []) {
     userParts.push({ inlineData: { data: image.base64, mimeType: image.mimeType } });
+  }
+  for (const audio of promptData.audio ?? []) {
+    userParts.push({ inlineData: { data: audio.base64, mimeType: audio.mimeType } });
   }
   contents.push({ role: 'user', parts: userParts });
   return contents;
@@ -128,6 +137,7 @@ export async function executeGeminiStream(
   if (isStreamAborted(options)) throw new Error('Gemini stream aborted.');
   const images = promptData.images ?? [];
   if (images.length > MAX_IMAGES) throw new Error('Gemini adapter supports at most 4 images per request.');
+  if ((promptData.audio ?? []).length > 1) throw new Error('Gemini adapter supports at most 1 audio input per request.');
   const client = new GoogleGenAI(
     plainKey.startsWith('AQ.') ? { apiKey: plainKey, apiVersion: 'v1alpha' } : { apiKey: plainKey },
   );
@@ -165,6 +175,30 @@ export async function executeGeminiStream(
     ...(tokensUsage === undefined ? {} : { tokensUsage }),
   };
 }
+/**
+ * Collects binary parts (generated image/audio) from a generation response.
+ *
+ * @param response - SDK generation response with candidate parts.
+ * @returns Inline payloads in response order; empty when text-only.
+ */
+function collectInlineData(response: {
+  readonly candidates?: ReadonlyArray<{ readonly content?: { readonly parts?: ReadonlyArray<unknown> } | undefined }> | undefined;
+}): Array<{ mimeType: string; base64: string }> {
+  const out: Array<{ mimeType: string; base64: string }> = [];
+  for (const candidate of response.candidates ?? []) {
+    for (const part of candidate.content?.parts ?? []) {
+      if (typeof part !== 'object' || part === null) continue;
+      const inline = (part as { readonly inlineData?: unknown }).inlineData;
+      if (typeof inline !== 'object' || inline === null) continue;
+      const record = inline as Record<string, unknown>;
+      if (typeof record.data === 'string' && record.data !== '' && typeof record.mimeType === 'string' && record.mimeType !== '') {
+        out.push({ mimeType: record.mimeType, base64: record.data });
+      }
+    }
+  }
+  return out;
+}
+
 export async function executeGeminiAdapter(
   plainKey: string,
   modelName: string,
@@ -174,6 +208,7 @@ export async function executeGeminiAdapter(
   if (plainKey.length === 0) throw new Error('Gemini adapter requires a router-provided key.');
   const images = promptData.images ?? [];
   if (images.length > MAX_IMAGES) throw new Error('Gemini adapter supports at most 4 images per request.');
+  if ((promptData.audio ?? []).length > 1) throw new Error('Gemini adapter supports at most 1 audio input per request.');
   const client = new GoogleGenAI(
     plainKey.startsWith('AQ.') ? { apiKey: plainKey, apiVersion: 'v1alpha' } : { apiKey: plainKey },
   );
@@ -218,6 +253,7 @@ export async function executeGeminiAdapter(
     }
   }
   const usage = response.usageMetadata;
+  const inlineData = collectInlineData(response);
   const tokensUsage =
     usage === undefined
       ? undefined
@@ -227,12 +263,18 @@ export async function executeGeminiAdapter(
           total: usage.totalTokenCount ?? 0,
         };
   if (tokensUsage === undefined) {
-    return { text: response.text ?? 'Informasi telah diproses oleh sistem.', toolCallsExecuted: executedTools, toolResults };
+    return {
+      text: response.text ?? 'Informasi telah diproses oleh sistem.',
+      toolCallsExecuted: executedTools,
+      toolResults,
+      ...(inlineData.length === 0 ? {} : { inlineData }),
+    };
   }
   return {
     text: response.text ?? 'Informasi telah diproses oleh sistem.',
     toolCallsExecuted: executedTools,
     toolResults,
     tokensUsage,
+    ...(inlineData.length === 0 ? {} : { inlineData }),
   };
 }

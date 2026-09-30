@@ -28,6 +28,18 @@ export interface AiChatImage {
   readonly mimeType: string;
 }
 
+export interface AiChatAudio {
+  readonly base64: string;
+  readonly mimeType: string;
+}
+
+export type AiResponseModality = 'TEXT' | 'IMAGE' | 'AUDIO';
+
+export interface AiInlineData {
+  readonly mimeType: string;
+  readonly base64: string;
+}
+
 export interface AiChatPrompt {
   readonly prompt: string;
   readonly history?: readonly AiChatMessage[];
@@ -46,6 +58,9 @@ export interface AiChatPrompt {
   readonly safetySettings?: readonly AiSafetySetting[];
   readonly enableTools?: boolean;
   readonly images?: readonly AiChatImage[];
+  readonly audio?: readonly AiChatAudio[] | undefined;
+  readonly responseModalities?: readonly AiResponseModality[] | undefined;
+  readonly speechVoiceName?: string | undefined;
 }
 
 export interface AiTokensUsage {
@@ -59,6 +74,7 @@ export interface AiAdapterResponse {
   readonly toolCallsExecuted: readonly string[];
   readonly toolResults?: Readonly<Record<string, unknown>>;
   readonly tokensUsage?: AiTokensUsage;
+  readonly inlineData?: readonly AiInlineData[] | undefined;
 }
 
 export interface AiProviderAdapter {
