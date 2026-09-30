@@ -61,6 +61,11 @@ import {
   useArticleDraftMirror,
   type ArticleDraft,
 } from '@/modules/dashboard/components/editorial/use-article-draft';
+import {
+  clearAutosaveReference,
+  readAutosaveReference,
+  writeAutosaveReference,
+} from '@/modules/dashboard/components/editorial/autosave-reference';
 import { ArticlePreview } from '@/modules/dashboard/components/editorial/article-preview';
 import { RichTextEditor } from '@/modules/dashboard/components/editorial/rich-text-editor';
 import { callAi } from '@/modules/ai/components/ai-client';
@@ -451,7 +456,14 @@ export function ArticleCreateForm({
     setTags(stored.tags);
     setPublishOnSave(stored.publishOnSave);
     setRichResetKey((key) => key + 1);
-    toast.info(`Draf artikel dipulihkan: "${stored.titleText.trim() === '' ? 'tanpa judul' : stored.titleText.trim()}".`);
+    const restoredTitle = stored.titleText.trim() === '' ? 'tanpa judul' : stored.titleText.trim();
+    // A draft whose body is gone is not a restore. Saying so beats handing back
+    // an empty editor under a success toast.
+    const restoredBody = stored.bodyText.trim() !== ''
+      || (isTipTapDoc(stored.bodyJson) && (stored.bodyJson.content ?? []).length > 0);
+    toast.info(restoredBody
+      ? `Draf artikel dipulihkan: "${restoredTitle}".`
+      : `Judul draf "${restoredTitle}" dipulihkan, tapi isinya kosong di peramban ini. Isi lengkapnya masih ada di draf server — buka Arsip Artikel untuk mengambilnya kembali.`);
   }, [organizationId]);
 
   // Declared after the restore effect on purpose: React runs effects in
@@ -462,6 +474,7 @@ export function ArticleCreateForm({
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const snapshotRef = useRef(formSnapshot);
   const autosavedRef = useRef(autosavedDraft);
+  const restoredAutosaveRef = useRef(false);
 
   useEffect(() => {
     snapshotRef.current = formSnapshot;
@@ -469,6 +482,18 @@ export function ArticleCreateForm({
   useEffect(() => {
     autosavedRef.current = autosavedDraft;
   }, [autosavedDraft]);
+
+  useEffect(() => {
+    if (restoredAutosaveRef.current || organizationId === '') return;
+    restoredAutosaveRef.current = true;
+    const reference = readAutosaveReference(organizationId);
+    if (reference === null) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- one-time hydration restore of a browser-stored reference, for the same reason as the draft restore above. */
+    // The ref is assigned alongside the state so the first autosave after a
+    // reload updates the existing row instead of creating a duplicate one.
+    autosavedRef.current = reference;
+    setAutosavedDraft(reference);
+  }, [organizationId]);
 
   useEffect(() => {
     if (command === undefined || isSubmitting) return;
@@ -486,13 +511,14 @@ export function ArticleCreateForm({
           return;
         }
         setAutosavedDraft(saved);
+        writeAutosaveReference(organizationId, saved);
         setAutosaveNotice(`Draf tersimpan ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}.`);
       })();
     }, AUTOSAVE_DEBOUNCE_MS);
     return () => {
       if (autosaveTimerRef.current !== null) clearTimeout(autosaveTimerRef.current);
     };
-  }, [formSnapshot, serverCategoryIds, command, isSubmitting]);
+  }, [formSnapshot, serverCategoryIds, command, isSubmitting, organizationId]);
 
   const selectedPublisher = useMemo(
     () => (model?.publishers ?? []).find((p) => p.id === publisherId) ?? null,
@@ -1038,7 +1064,10 @@ export function ArticleCreateForm({
       if (willPublish && typeof created.id === 'string') {
         await publishCreatedArticle(created.id, status === 'scheduled', scheduledAt, backdateIso, initialViews);
       }
-      if (organizationId !== '') clearArticleDraft(organizationId);
+      if (organizationId !== '') {
+        clearArticleDraft(organizationId);
+        clearAutosaveReference(organizationId);
+      }
       form.reset();
       setSlug('');
       setSlugTouched(false);

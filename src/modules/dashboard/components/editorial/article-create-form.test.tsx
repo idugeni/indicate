@@ -402,6 +402,92 @@ describe('Formulir tulis artikel', () => {
     expect(window.localStorage.getItem('indicate:article-draft:org-1')).toBeNull();
   });
 
+  it('memperbarui draf autosave yang sama alih-alih membuat duplikat setelah dimuat ulang', async () => {
+    // Kegagalan yang ditemukan: rujukan autosave hanya hidup di memori, jadi
+    // setiap muatan halaman memanggil article.create dan meninggalkan baris
+    // draf kembar di server.
+    const saved = vi.fn(async (action: string) => (
+      action === 'article.create'
+        ? { id: 'art-draf-1', slug: 'judul-uji', version: 1 }
+        : {}
+    ));
+    const first = setup({ organizationId: 'org-1', command: saved });
+    await pilihWilayahWonosobo();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(61_000); });
+    expect(saved.mock.calls.filter(([action]) => action === 'article.create')).toHaveLength(1);
+    first.unmount();
+
+    setup({ organizationId: 'org-1', command: saved });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita terbaru.' } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(61_000); });
+
+    expect(saved.mock.calls.filter(([action]) => action === 'article.create')).toHaveLength(1);
+    expect(saved.mock.calls.filter(([action]) => action === 'article.update')).toHaveLength(1);
+  });
+
+  it('menyimpan ulang isi yang dipulihkan agar draf peramban tidak tertinggal kosong', async () => {
+    window.localStorage.setItem('indicate:article-draft:org-1', JSON.stringify({
+      version: 1,
+      savedAt: new Date().toISOString(),
+      slug: 'judul-uji',
+      slugTouched: true,
+      status: 'draft',
+      categoryIds: [],
+      extraCategories: [],
+      publisherId: null,
+      authorId: null,
+      provinceId: 'r-1',
+      cityId: 'r-2',
+      titleText: 'Judul Uji',
+      descriptionText: '',
+      bodyText: 'Isi berita lengkap.',
+      bodyJson: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Isi berita lengkap.' }] }] },
+      source: '',
+      canonicalUrl: '',
+      coverUrl: '',
+      tags: [],
+      publishOnSave: false,
+    }));
+
+    const { toast } = await import('sonner');
+    setup({ organizationId: 'org-1' });
+    expect(screen.getByLabelText('Judul Artikel')).toBeDefined();
+    expect(vi.mocked(toast.info)).toHaveBeenCalledWith(expect.stringContaining('Draf artikel dipulihkan'));
+    expect(vi.mocked(toast.info)).not.toHaveBeenCalledWith(expect.stringContaining('isinya kosong'));
+  });
+
+  it('memberi tahu saat draf dipulihkan tanpa isi, alih-alih editor kosong', async () => {
+    window.localStorage.setItem('indicate:article-draft:org-1', JSON.stringify({
+      version: 1,
+      savedAt: new Date().toISOString(),
+      slug: 'judul-uji',
+      slugTouched: true,
+      status: 'draft',
+      categoryIds: [],
+      extraCategories: [],
+      publisherId: null,
+      authorId: null,
+      provinceId: 'r-1',
+      cityId: 'r-2',
+      titleText: 'Petik Hasil Pembinaan',
+      descriptionText: '',
+      bodyText: '',
+      bodyJson: null,
+      source: '',
+      canonicalUrl: '',
+      coverUrl: '',
+      tags: [],
+      publishOnSave: false,
+    }));
+
+    const { toast } = await import('sonner');
+    setup({ organizationId: 'org-1' });
+    expect(vi.mocked(toast.info)).toHaveBeenCalledWith(expect.stringContaining('isinya kosong di peramban ini'));
+  });
+
   it('mengirim URL sampul luar tanpa unggahan', async () => {
     const { submit, container } = setup({});
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
