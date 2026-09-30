@@ -85,8 +85,8 @@ const TaxonomyManager = dynamic(
   () => import('@/modules/dashboard/components/editorial/taxonomy-manager').then((module) => ({ default: module.TaxonomyManager })),
   { loading: () => <DashboardFormSkeleton /> },
 );
-const ArticleArchive = dynamic(
-  () => import('@/modules/dashboard/components/editorial/article-archive').then((module) => ({ default: module.ArticleArchive })),
+const ArticleManager = dynamic(
+  () => import('@/modules/dashboard/components/editorial/article-manager').then((module) => ({ default: module.ArticleManager })),
   { loading: () => <DashboardFormSkeleton /> },
 );
 const PublishingForm = dynamic(
@@ -234,7 +234,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         />
       ) : null}
       {view === 'taxonomy' ? <TaxonomyManager data={data} command={command} organizationId={organizationId} /> : null}
-      {view === 'articles' ? <ArticleArchive data={data} organizationId={organizationId} /> : null}
+      {view === 'articles' ? <ArticleManager data={data} command={command} onRefresh={onRefresh} /> : null}
       {view === 'configuration' ? (
         <Tabs defaultValue="domain" className="w-full">
           <TabsList aria-label="Bagian infrastruktur" className="max-w-full overflow-x-auto overflow-y-clip">

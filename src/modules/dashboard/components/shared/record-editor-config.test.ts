@@ -33,9 +33,9 @@ describe('getEditorConfig', () => {
     }
   });
 
-  it('mendaftarkan transisi arsip dan pulihkan untuk artikel', () => {
+  it('mendaftarkan transisi arsip, pulihkan, dan hapus untuk artikel', () => {
     const transitions = getEditorConfig('articles')?.transitions ?? [];
-    expect(transitions.map((item) => item.action)).toEqual(['article.archive', 'article.restore']);
+    expect(transitions.map((item) => item.action)).toEqual(['article.archive', 'article.restore', 'article.delete']);
   });
 
   it('mengembalikan undefined untuk koleksi tak dikenal', () => {

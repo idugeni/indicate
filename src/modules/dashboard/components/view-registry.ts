@@ -92,8 +92,8 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
     icon: FileText, suppressesRawCollections: true,
   },
   articles: {
-    label: 'Arsip Berita', title: 'Arsip Berita Lintas Portal', eyebrow: 'Semua Portal', group: 'editorial',
-    description: 'Jelajahi seluruh artikel jaringan dengan cari, saring, dan halaman.',
+    label: 'Kelola Artikel', title: 'Kelola Artikel Lintas Portal', eyebrow: 'Semua Portal', group: 'editorial',
+    description: 'Kelola seluruh artikel jaringan: cari, saring, ubah, dan arsipkan.',
     icon: Newspaper, suppressesRawCollections: true,
   },
   taxonomy: {

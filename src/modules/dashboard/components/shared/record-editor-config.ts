@@ -198,6 +198,7 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
     transitions: [
       { action: 'article.archive', label: 'Arsipkan', whenStatus: ['draft', 'active'] },
       { action: 'article.restore', label: 'Pulihkan ke draf', whenStatus: ['archived'] },
+      { action: 'article.delete', label: 'Hapus permanen', whenStatus: ['draft', 'archived'] },
     ],
   },
   roles: {
