@@ -755,17 +755,24 @@ describe('Formulir tulis artikel', () => {
     const { submit, container } = setup({});
     await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
     await user.click(await screen.findByRole('option', { name: 'Terjadwal' }));
-    fireEvent.change(screen.getByLabelText('Jadwal terbit'), { target: { value: '2026-09-23T10:00' } });
+    await user.click(screen.getByRole('button', { name: 'Jadwal terbit' }));
+    await user.click(await screen.findByRole('button', { name: 'Besok' }));
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
     fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
     fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const pad = (part: number) => String(part).padStart(2, '0');
+    const prefix = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
     await waitFor(() =>
       expect(submit).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'scheduled', scheduledAt: new Date('2026-09-23T10:00').toISOString() }),
+        expect.objectContaining({ status: 'scheduled' }),
       ),
     );
+    const payload = vi.mocked(submit).mock.calls[0]?.[0] as { readonly scheduledAt?: string } | undefined;
+    expect(typeof payload?.scheduledAt === 'string' && payload.scheduledAt.startsWith(prefix)).toBe(true);
   });
 
   it('slug mengikuti judul kata per kata sampai disentuh manual', async () => {
@@ -781,5 +788,189 @@ describe('Formulir tulis artikel', () => {
     await user.type(slug, 'banjir-custom');
     await user.type(title, ' 2026');
     expect(slug.value).toBe('banjir-custom');
+  });
+
+  it('menerbitkan backdate kemarin dengan tayangan awal kustom', async () => {
+    const user = userEvent.setup();
+    const { cmd, container } = setup({ submit: async () => ({ id: 'art-baru', slug: 'judul-uji' }) });
+    await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await pilihWilayahWonosobo();
+    await user.click(screen.getByRole('button', { name: 'Tanggal terbit' }));
+    await user.click(await screen.findByRole('button', { name: 'Kemarin' }));
+    fireEvent.change(screen.getByLabelText(/Tayangan awal/), { target: { value: '5000' } });
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() => {
+      const request = cmd.mock.calls.find(([action]) => action === 'publication.request');
+      const publishAt = (request?.[1] as { readonly publishAt?: string } | undefined)?.publishAt;
+      expect(typeof publishAt === 'string' && new Date(publishAt).getTime() < Date.now()).toBe(true);
+    });
+    await waitFor(() =>
+      expect(cmd).toHaveBeenCalledWith('article.sites.views.set', {
+        articleId: 'art-baru',
+        siteId: 's-city-1',
+        viewCount: 5000,
+      }),
+    );
+  });
+
+  it('mencegah tanggal masa depan pada mode terbit langsung', async () => {
+    const user = userEvent.setup();
+    setup({ submit: async () => ({ id: 'art-baru', slug: 'judul-uji' }) });
+    await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
+    await user.click(screen.getByRole('button', { name: 'Tanggal terbit' }));
+    expect((await screen.findByRole('button', { name: 'Besok' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((await screen.findByRole('button', { name: 'Kemarin' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('melewatkan tayangan awal saat dikosongkan agar seeding bawaan jalan', async () => {
+    const user = userEvent.setup();
+    const { cmd, container } = setup({ submit: async () => ({ id: 'art-baru', slug: 'judul-uji' }) });
+    await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await pilihWilayahWonosobo();
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() => {
+      expect(cmd.mock.calls.find(([action]) => action === 'publication.request')).toBeDefined();
+    });
+    expect(cmd.mock.calls.find(([action]) => action === 'article.sites.views.set')).toBeUndefined();
+  });
+
+  it('menaikkan dan menurunkan tayangan awal lewat tombol stepper', async () => {
+    const user = userEvent.setup();
+    setup({ organizationId: 'org-1' });
+    await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
+    const field = screen.getByLabelText(/Tayangan awal/) as HTMLInputElement;
+    await user.click(screen.getByRole('button', { name: 'Tambah tayangan awal' }));
+    expect(field.value).toBe('100');
+    await user.click(screen.getByRole('button', { name: 'Tambah tayangan awal' }));
+    expect(field.value).toBe('200');
+    await user.click(screen.getByRole('button', { name: 'Kurangi tayangan awal' }));
+    expect(field.value).toBe('100');
+  });
+
+  function mockAiFetch(handler: (body: Record<string, unknown>) => unknown) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: unknown, init?: { readonly body?: unknown }) => ({
+        ok: true,
+        json: async () => handler(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>),
+      })),
+    );
+  }
+
+  it('menyempurnakan judul inline dan memakai varian pilihan', async () => {
+    const user = userEvent.setup();
+    setup({ organizationId: 'org-1' });
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Banjir' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Air surut.' } });
+    mockAiFetch(() => ({ result: { titles: ['Banjir Surut di Wonosobo', 'Warga Kembali'], metaDescription: '', slug: '', excerpt: '' } }));
+
+    await user.click(screen.getByRole('button', { name: 'Sempurnakan judul' }));
+    await waitFor(() => expect(screen.queryByText('Banjir Surut di Wonosobo')).not.toBeNull());
+    await user.click(screen.getAllByRole('button', { name: 'Pakai' })[0]!);
+    expect((screen.getByLabelText('Judul Artikel') as HTMLInputElement).value).toBe('Banjir Surut di Wonosobo');
+  });
+
+  it('membuat deskripsi inline saat masih kosong', async () => {
+    const user = userEvent.setup();
+    setup({ organizationId: 'org-1' });
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Banjir' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Air surut.' } });
+    mockAiFetch(() => ({ result: { titles: [], metaDescription: 'Air di Wonosobo surut.', slug: '', excerpt: '' } }));
+
+    await user.click(screen.getByRole('button', { name: 'Buatkan deskripsi' }));
+    await waitFor(() =>
+      expect((screen.getByLabelText('Deskripsi') as HTMLTextAreaElement).value).toBe('Air di Wonosobo surut.'),
+    );
+  });
+
+  it('menyempurnakan deskripsi yang sudah terisi', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async (_url: unknown, _init?: { readonly body?: unknown }) => ({
+      ok: true,
+      json: async () => ({ result: { titles: [], metaDescription: 'Air di Wonosobo telah surut total.', slug: '', excerpt: '' } }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    setup({ organizationId: 'org-1' });
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Banjir' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Air surut.' } });
+    fireEvent.change(screen.getByLabelText('Deskripsi'), { target: { value: 'Air surut.' } });
+
+    await user.click(screen.getByRole('button', { name: 'Sempurnakan deskripsi' }));
+    await waitFor(() =>
+      expect((screen.getByLabelText('Deskripsi') as HTMLTextAreaElement).value).toBe('Air di Wonosobo telah surut total.'),
+    );
+    const sent = JSON.parse(String(vi.mocked(fetchMock).mock.calls[0]?.[1]?.body ?? '{}')) as {
+      readonly payload?: { readonly current?: string };
+    };
+    expect(sent.payload?.current).toBe('Air surut.');
+  });
+
+  it('memoles isi inline dan menerapkannya ke editor', async () => {
+    const user = userEvent.setup();
+    setup({ organizationId: 'org-1' });
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Banjir' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Air jelek.' } });
+    mockAiFetch(() => ({ body: 'Air sudah surut dengan baik.' }));
+
+    await user.click(screen.getByRole('button', { name: /poles isi/i }));
+    await waitFor(() => expect(screen.queryByText(/Air sudah surut dengan baik/)).not.toBeNull());
+    await user.click(screen.getByRole('button', { name: /terapkan ke isi/i }));
+    await waitFor(() =>
+      expect((screen.getByLabelText('Isi Artikel') as HTMLTextAreaElement).value).toContain('Air sudah surut dengan baik.'),
+    );
+  });
+
+  it('melengkapi kategori dan topik otomatis dari isi', async () => {
+    const user = userEvent.setup();
+    const { submit, container } = setup({ organizationId: 'org-1', submit: async () => ({ id: 'art-baru', slug: 'judul-uji' }) });
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'APBD Wonosobo' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Anggaran disahkan.' } });
+    await pilihWilayahWonosobo();
+    mockAiFetch(() => ({ classification: { categories: ['Ekonomi'], tags: ['apbd'] } }));
+
+    await user.click(screen.getByRole('button', { name: /lengkapi otomatis/i }));
+    await waitFor(() => expect(submit).not.toHaveBeenCalled());
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({ categoryIds: ['c-2'], tags: expect.arrayContaining(['apbd']) }),
+      ),
+    );
+  });
+
+  it('mengubah audio menjadi berita lengkap siap formulir', async () => {
+    const user = userEvent.setup();
+    setup({ organizationId: 'org-1' });
+    mockAiFetch(() => ({
+      article: {
+        draft: { title: 'Gotong Royong', excerpt: 'Warga bergotong royong.', content: 'Warga bergotong royong membersihkan selokan.', slug: 'gotong-royong' },
+        classification: { categories: ['Ekonomi'], tags: ['gotong-royong'] },
+      },
+    }));
+
+    await user.click(screen.getByRole('button', { name: /audio jadi berita/i }));
+    const [fileInput] = Array.from(document.querySelectorAll('input[type="file"]')).filter((el) =>
+      (el.getAttribute('aria-label') ?? '').includes('dijadikan berita'),
+    );
+    expect(fileInput).toBeDefined();
+    const file = new File(['pura-pura-audio'], 'wawancara.webm', { type: 'audio/webm' });
+    await user.upload(fileInput as HTMLInputElement, file);
+    await waitFor(() =>
+      expect((screen.getByLabelText('Judul Artikel') as HTMLInputElement).value).toBe('Gotong Royong'),
+    );
+    await waitFor(() =>
+      expect((screen.getByLabelText('Isi Artikel') as HTMLTextAreaElement).value).toContain('membersihkan selokan'),
+    );
   });
 });

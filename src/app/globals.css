@@ -805,3 +805,14 @@
   .network-brand small { max-width: 16rem; }
   .public-search > div { align-items: stretch; flex-direction: column; }
 }
+
+/* Dashboard date picker: selected day wears brass so it reads as a choice,
+   not as the muted today marker, in both light and dark control surfaces. */
+.dtf-calendar [data-selected-single="true"] {
+  background-color: var(--color-brass);
+  color: var(--color-bg);
+}
+.dtf-calendar [data-selected-single="true"]:hover {
+  background-color: var(--color-brass);
+  color: var(--color-bg);
+}
