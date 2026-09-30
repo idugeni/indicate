@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (230 migrations):
+-- Reviewed sources, in journal order (231 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -244,6 +244,7 @@
 --   228  20260930090000_dashboard_access_keys  ledger sha256:07fd90ed71d21ac0968b4aae516331199bf5339f929e32adc69ef68c883382ef
 --   229  20260930100000_ai_pgcrypto_search_path  ledger sha256:115f395151b14136370b1a32639715bae7bf63157c3706ac9c74003c3034ff67
 --   230  20260930110000_ai_models_38_defaults  ledger sha256:54c2c0175b6a9db0c1179e852c6728c363886b76b4d7cf46c74d79365837660e
+--   231  20260930120000_dashboard_access_keys_grants  ledger sha256:bf0e12b3ac1a63dd589cac0b54b66f74b0ed8dd6aa77c096be1dbe06bbdb21dd
 
 BEGIN;
 
@@ -19347,4 +19348,20 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (230, 'ai_models_38_defaults', 'sha256:022cd799a2a8ac919f097d97eb8bb2eba218cdfedba61cd1b3a6f9a5888a6287');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('54c2c0175b6a9db0c1179e852c6728c363886b76b4d7cf46c74d79365837660e', 1790766000000);
+
+-- ----------------------------------------------------------------------
+-- 20260930120000_dashboard_access_keys_grants
+-- ----------------------------------------------------------------------
+-- Grant runtime table access for dashboard access keys.
+--
+-- New tables do not inherit the blanket grant from the security migration,
+-- so this explicit grant is required (same pattern as the AI control-plane
+-- tables). Least-privilege scope: the application selects, inserts, and
+-- updates access-key rows; nothing ever deletes them. Row isolation stays
+-- with the tenant_isolation RLS policy.
+GRANT SELECT, INSERT, UPDATE ON public.dashboard_access_keys TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (231, 'dashboard_access_keys_grants', 'sha256:d1d068f4d05ab43f7b7af10d009269183462d7a79630a77abe9b9675aedede1f');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('bf0e12b3ac1a63dd589cac0b54b66f74b0ed8dd6aa77c096be1dbe06bbdb21dd', 1790769600000);
 COMMIT;
