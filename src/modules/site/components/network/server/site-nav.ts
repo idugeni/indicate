@@ -12,6 +12,11 @@ import { categoryNav, type CategoryNavItem } from '@/modules/site/components/net
  * @param site - Data situs tenant aktif.
  * @param limit - Batas jumlah kanal.
  * @returns Navigasi eksplisit, kategori DB cached, atau derivasi artikel.
+ * @remarks Kunci cache sengaja tanpa versi konten: kategori hanya berubah
+ * lewat mutasi dashboard, dan setiap mutasi kategori merevalidasi tag
+ * `org:` lewat DashboardCacheInvalidator — jadi TTL 24 jam di sini
+ * hanyalah backstop, bukan jendela basi. Tanpa ini setiap
+ * revalidasi 1800 detik mengulang baca `categories` ~22 ribu kali sehari.
  */
 export async function getSiteCategoryNav(site: NetworkSiteData, limit = 6): Promise<readonly CategoryNavItem[]> {
   if (site.settings.navigation.length > 0) {
@@ -24,7 +29,7 @@ export async function getSiteCategoryNav(site: NetworkSiteData, limit = 6): Prom
       [`site-nav:${context.normalizedHostname}:${context.siteId}:${context.routingVersion}:${context.contentVersion}`],
       {
         tags: [`host:${context.normalizedHostname}`, `site:${context.siteId}`, `org:${context.organizationId}`],
-        revalidate: 1800,
+        revalidate: 86400,
       },
     );
     const rows = await cached();

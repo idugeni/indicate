@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
+import { orgTag } from '@/modules/dashboard/cache-tags';
 import type {
   ActivationAttemptRecord, AnalyticsProjection, ArticleFilter, ArticleRecord, ArticleSiteRecord, AuditFilter, AuditRecord, AuthorRecord, CategoryRecord,
   DashboardProjection, DomainRecord, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, MembershipRecord, OfficialAffiliationRecord, OperationsProjection, PublisherRecord, NetworkPublisherClaim,
@@ -52,6 +53,16 @@ export interface ArticleCreatedNotifier {
   notifyArticleCreated(input: { readonly organizationId: string; readonly articleId: string; readonly title: string }): Promise<void>;
 }
 
+/**
+ * Bust Next cache tags after a committed dashboard mutation.
+ *
+ * @param tags - Cache tags to revalidate once the mutation commits.
+ * @returns Nothing; implementations never throw so a purge failure cannot fail the mutation it follows.
+ */
+export interface DashboardCacheInvalidator {
+  revalidateTags(tags: readonly string[]): Promise<void>;
+}
+
 const SITE_LEVEL_RANK: Readonly<Record<SiteLevel, number>> = Object.freeze({ apex: 0, region: 1, city: 2 });
 
 const CONFIGURATION_SITE_LIMIT = 200;
@@ -64,6 +75,7 @@ export class TenantBusinessService {
     private readonly identifiers: IdentifierGenerator,
     private readonly clock: ClockLike = { now: () => new Date() },
     private readonly notifier: ArticleCreatedNotifier | null = null,
+    private readonly cacheInvalidator: DashboardCacheInvalidator | null = null,
   ) {}
 
   private invalid(actor: AuthorizedTenantActorContext, error: z.ZodError): Result<never, PublicErrorEnvelope> {
@@ -124,11 +136,13 @@ export class TenantBusinessService {
   private async mutate<Input, Output>(input: {
     actor: AuthorizedTenantActorContext; permission: string; action: string; targetType: string; schema: z.ZodType<Input>; raw: unknown;
     execute: (transaction: DashboardTransaction, value: Input, now: string) => Output | Promise<Output>;
+    revalidateTags?: readonly string[];
   }): Promise<Result<Output, PublicErrorEnvelope>> {
     const parsed = input.schema.safeParse(input.raw);
     if (!parsed.success) return this.invalid(input.actor, parsed.error);
     try {
       const value = await this.repository.execute(input.actor, input.permission, (transaction) => input.execute(transaction, parsed.data, this.clock.now().toISOString()));
+      await this.revalidateCommitted(input);
       return { ok: true, value };
     } catch (error) {
       if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', input.actor.requestId, error.fields) };
@@ -136,6 +150,26 @@ export class TenantBusinessService {
       if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', input.actor.requestId) };
       if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, input.actor.requestId) };
       return this.internal(input.actor, error, 'dashboard.mutation.failed', input.action, input.targetType, input.permission);
+    }
+  }
+
+  /**
+   * Revalidate cache tags after a mutation commits.
+   *
+   * @param input - Mutation actor, action, and tags to bust.
+   * @returns Nothing; a purge failure is telemetry, never a mutation failure.
+   */
+  private async revalidateCommitted(input: { actor: AuthorizedTenantActorContext; action: string; revalidateTags?: readonly string[] }): Promise<void> {
+    const tags = input.revalidateTags;
+    if (this.cacheInvalidator === null || tags === undefined || tags.length === 0) return;
+    try {
+      await this.cacheInvalidator.revalidateTags(tags);
+    } catch (error) {
+      logEvent('warn', {
+        event: 'dashboard.cache.invalidate_failed',
+        requestId: input.actor.requestId,
+        context: { action: input.action, name: errorIdentity(error) },
+      });
     }
   }
 
@@ -669,14 +703,14 @@ export class TenantBusinessService {
   }
 
   createCategory(actor: AuthorizedTenantActorContext, raw: unknown) {
-    return this.mutate({ actor, raw, schema: categoryCreateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'category.create', targetType: 'category', execute: (transaction, value, now) => {
+    return this.mutate({ actor, raw, schema: categoryCreateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'category.create', targetType: 'category', revalidateTags: [orgTag(actor.organizationId)], execute: (transaction, value, now) => {
       if (transaction.state.categories.some(({ slug }) => slug === value.slug)) throw new DashboardConflictError();
       const record: CategoryRecord = { ...this.base(actor, now), ...value }; transaction.state.categories.push(record); this.audit(transaction, 'category.create', 'category', record.id, null, record); return record;
     }});
   }
 
   updateCategory(actor: AuthorizedTenantActorContext, raw: unknown) {
-    return this.mutate({ actor, raw, schema: categoryUpdateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'category.update', targetType: 'category', execute: (transaction, value, now) => {
+    return this.mutate({ actor, raw, schema: categoryUpdateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'category.update', targetType: 'category', revalidateTags: [orgTag(actor.organizationId)], execute: (transaction, value, now) => {
       const before = requireRecord(transaction.state.categories, value.id); requireVersion(before, value.expectedVersion);
       const after: CategoryRecord = { ...before, name: value.name, slug: value.slug, status: value.status, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.categories, after); this.audit(transaction, 'category.update', 'category', after.id, before, after); return after;
@@ -684,7 +718,7 @@ export class TenantBusinessService {
   }
 
   deleteCategory(actor: AuthorizedTenantActorContext, raw: unknown) {
-    return this.mutate({ actor, raw, schema: categoryDeleteSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'category.delete', targetType: 'category', execute: (transaction, value, now) => {
+    return this.mutate({ actor, raw, schema: categoryDeleteSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'category.delete', targetType: 'category', revalidateTags: [orgTag(actor.organizationId)], execute: (transaction, value, now) => {
       const before = requireRecord(transaction.state.categories, value.id); requireVersion(before, value.expectedVersion);
       const lock = regionLock(actor);
       const detached = transaction.state.articles.filter((article) => article.categoryIds.includes(value.id) || article.categoryId === value.id);

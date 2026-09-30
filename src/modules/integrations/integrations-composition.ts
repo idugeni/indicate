@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
+import { NextDashboardCacheInvalidator } from '@/modules/dashboard/dashboard-dal';
 import { MediaService } from '@/modules/publishing/media-service';
 import { PublicationService } from '@/modules/publishing/publication-service';
 import { PublicationWorker } from '@/modules/publishing/publication-worker';
@@ -39,7 +40,7 @@ export function createProductionIntegrations(config: RuntimeConfig, bootstrap: B
       ? null
       : new ResendWebhookService(repository, createResendEventVerifier(config.email.apiKey, config.email.webhookSecret));
   const sharedFactory = { create: () => ({
-    articles: new TenantBusinessService(dashboard, identifiers, undefined, undefined),
+    articles: new TenantBusinessService(dashboard, identifiers, undefined, undefined, new NextDashboardCacheInvalidator()),
     media: new MediaService(publishing, storage, identifiers, { maxBytes: config.r2.maxBytes, allowedTypes: config.r2.allowedTypes, uploadTtlSeconds: config.r2.uploadTtlSeconds, readTtlSeconds: config.r2.readTtlSeconds }),
     publication: new PublicationService(publishing, queue, identifiers, { maxAttempts: config.publishing.maxAttempts, delaysSeconds: config.publishing.retryDelaysSeconds }),
   }) };

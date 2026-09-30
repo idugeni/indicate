@@ -1,12 +1,12 @@
 import 'server-only';
 
 import { and, eq, inArray } from 'drizzle-orm';
-import { unstable_cache } from 'next/cache';
+import { revalidateTag, unstable_cache } from 'next/cache';
 
 import { getBootstrapConfig } from '@/core/config/bootstrap/bootstrap-config';
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
 import type { LocalUserIdentity, MembershipAuthorization } from '@/modules/auth/rbac';
-import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
+import { TenantBusinessService, type DashboardCacheInvalidator } from '@/modules/dashboard/tenant-business-service';
 import type { AnalyticsProjection, DashboardSnapshot, DashboardProjection } from '@/modules/dashboard/models';
 import { analyticsFilterSchema } from '@/modules/dashboard/schemas';
 import { createPublicError, type PublicErrorEnvelope } from '@/core/errors';
@@ -59,6 +59,19 @@ function permissionFingerprint(permissions: readonly string[]): string {
     hash = ((hash << 5) + hash + sorted.charCodeAt(index)) | 0;
   }
   return (hash >>> 0).toString(16);
+}
+
+/**
+ * Bust Next cache tags from dashboard mutations.
+ *
+ * @remarks Production DashboardCacheInvalidator: runs inside Route Handlers
+ * and Server Actions where revalidateTag is scoped. Unit tests pass null
+ * instead, so no Next runtime leaks into the service layer.
+ */
+export class NextDashboardCacheInvalidator implements DashboardCacheInvalidator {
+  async revalidateTags(tags: readonly string[]): Promise<void> {
+    for (const tag of tags) revalidateTag(tag, 'max');
+  }
 }
 
 function resolveDashboardStore(): UpstashSnapshotStore | null {
@@ -168,7 +181,7 @@ async function mergePageviewBuffer(organizationId: string, projection: Analytics
 async function loadDashboardProjectionFromDatabase(input: ProjectionInput): Promise<DashboardProjection> {
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
-  const service = new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator(), undefined, undefined);
+  const service = new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator(), undefined, undefined, new NextDashboardCacheInvalidator());
   const actor: AuthorizedTenantActorContext = {
     actorType: 'user',
     actorId: input.actorId,
@@ -207,7 +220,7 @@ function loadDashboardProjection(input: ProjectionInput): Promise<DashboardProje
 async function loadAnalyticsProjectionFromDatabase(input: AnalyticsInput): Promise<AnalyticsProjection> {
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
-  const service = new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator(), undefined, undefined);
+  const service = new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator(), undefined, undefined, new NextDashboardCacheInvalidator());
   const actor: AuthorizedTenantActorContext = {
     actorType: 'user',
     actorId: input.actorId,
