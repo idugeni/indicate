@@ -16,3 +16,5 @@ CREATE TABLE IF NOT EXISTS document_embeddings (
 
 CREATE INDEX IF NOT EXISTS document_embeddings_org_article_idx
   ON document_embeddings (organization_id, article_id);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (224, 'document_embeddings', 'sha256:5f4dc7adb91e016cb04d47b937021670531b21d262a8245902d268640ee51033');

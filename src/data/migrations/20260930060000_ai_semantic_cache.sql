@@ -40,3 +40,5 @@ DROP POLICY IF EXISTS runtime_accessor ON public.ai_semantic_cache;--> statement
 CREATE POLICY runtime_accessor ON public.ai_semantic_cache FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);--> statement-breakpoint
 REVOKE ALL ON public.ai_semantic_cache FROM PUBLIC;--> statement-breakpoint
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_semantic_cache TO indicate_runtime;--> statement-breakpoint
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (225, 'ai_semantic_cache', 'sha256:86c244fd7b6188a9506a6b61bc7fa47c447b4c9c8c62d57ce898cc1a38ebedfc');

@@ -23,3 +23,5 @@ BEGIN
   END IF;
 END
 $document_embeddings_chunk_check$;--> statement-breakpoint
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (226, 'document_embeddings_hardening', 'sha256:fb7999a1eabeb3399800294bd7b138f1a1a17ece167c617e424942627600375a');
