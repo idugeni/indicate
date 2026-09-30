@@ -265,6 +265,28 @@ export const apiKeys = pgTable('api_keys', {
   check('api_keys_bounded_identity', sql`length(${table.lookupId}) BETWEEN 16 AND 128 AND length(${table.name}) BETWEEN 1 AND 120`),
 ]);
 
+export const dashboardAccessKeys = pgTable('dashboard_access_keys', {
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  id: uuid('id').notNull(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  lookupId: text('lookup_id').notNull(),
+  name: text('name').notNull(),
+  salt: text('salt').notNull(),
+  verificationHash: text('verification_hash').notNull(),
+  status: apiKeyStatus('status').default('active').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  version: integer('version').default(1).notNull(),
+  ...timestamps,
+}, (table) => [
+  primaryKey({ name: 'dashboard_access_keys_pk', columns: [table.organizationId, table.id] }),
+  unique('dashboard_access_keys_lookup_id_unique').on(table.lookupId),
+  index('dashboard_access_keys_organization_status_idx').on(table.organizationId, table.status),
+  index('dashboard_access_keys_organization_user_idx').on(table.organizationId, table.userId),
+  check('dashboard_access_keys_version_positive', sql`${table.version} > 0`),
+  check('dashboard_access_keys_bounded_identity', sql`length(${table.lookupId}) BETWEEN 16 AND 128 AND length(${table.name}) BETWEEN 1 AND 120`),
+]);
+
 export const privacyRequests = pgTable('privacy_requests', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
   id: uuid('id').primaryKey().defaultRandom(),

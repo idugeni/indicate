@@ -83,6 +83,7 @@ function resolveApiEndpoint(target: View | string): 'publishing' | 'integrations
     target === 'ai' ||
     target.startsWith('ai.') ||
     target.startsWith('api-key.') ||
+    target.startsWith('access-key.') ||
     target.startsWith('customer.') ||
     target.startsWith('email.') ||
     target.startsWith('subscription.')

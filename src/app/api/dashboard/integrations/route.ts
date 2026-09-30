@@ -3,6 +3,10 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
+import { DASHBOARD_ACCESS_KEY_COOKIE } from '@/modules/auth/dashboard-access-keys/cookie';
+import { resolveAccessKeyActor } from '@/modules/auth/dashboard-access-keys/resolve-access-key-actor';
+import { DashboardAccessKeyService } from '@/modules/auth/dashboard-access-keys/access-key-service';
+import { DrizzleDashboardAccessKeyRepository } from '@/data/repos/dashboard-access-keys';
 import { AiService } from '@/modules/integrations/ai-service';
 import { ApiKeyService } from '@/modules/integrations/api-key-service';
 import { CustomerService } from '@/modules/integrations/customer-service';
@@ -34,18 +38,30 @@ const commandSchema = z.object({ organizationId: z.uuid(), action: z.string().mi
  * @returns Status code honoring 429 for rate-limited webhook traffic.
  */
 export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
-interface Context { readonly actor: AuthorizedTenantActorContext; readonly repository: DrizzleIntegrationsRepository; readonly apiKeys: ApiKeyService; readonly ai: AiService; readonly customers: CustomerService; readonly emailTest: EmailTestService; readonly emailStatus: { readonly configured: boolean; readonly defaultFrom: string | null; readonly webhook: boolean }; readonly rateLimits: RateLimitService; readonly policy: { allowance: number; windowSeconds: number; failureMode: 'closed' } }
+interface Context { readonly actor: AuthorizedTenantActorContext; readonly localUserId: string; readonly repository: DrizzleIntegrationsRepository; readonly apiKeys: ApiKeyService; readonly accessKeys: DashboardAccessKeyService; readonly ai: AiService; readonly customers: CustomerService; readonly emailTest: EmailTestService; readonly emailStatus: { readonly configured: boolean; readonly defaultFrom: string | null; readonly webhook: boolean }; readonly rateLimits: RateLimitService; readonly policy: { allowance: number; windowSeconds: number; failureMode: 'closed' } }
 type ContextResult = Context | PublicErrorEnvelope; const isError = (value: ContextResult): value is PublicErrorEnvelope => 'error' in value;
 
 async function contextFor(organizationId: string, requestId: string): Promise<ContextResult> {
   const cookieStore = await cookies();
   const publicConfig = getPublicConfig(process.env); const auth = createSupabaseSsrAuthAdapter({ url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey, cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }) });
-  const identity = await auth.verifyCookieSession(); if (identity === null) return createNonDisclosingDenial(requestId);
-  const context = await getServerRuntimeContext(); const config = context.config; const runtime = getSharedRuntimeDatabase(context.bootstrap); const authorization = new DrizzleAuthorizationRepository(runtime.db); const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator()); if (!local.ok) { return createNonDisclosingDenial(requestId); }
-  const membership = await authorization.findActiveMembership(organizationId, local.value.id); if (membership === null || !membership.roleActive) { return createNonDisclosingDenial(requestId); }
-  const actor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), regionScopeId: membership.regionId ?? null, entryPoint: 'dashboard', requestId }; const repository = new DrizzleIntegrationsRepository(runtime.db); const identifiers = new UuidGenerator();
+  const identity = await auth.verifyCookieSession();
+  const context = await getServerRuntimeContext(); const config = context.config; const runtime = getSharedRuntimeDatabase(context.bootstrap); const authorization = new DrizzleAuthorizationRepository(runtime.db);
+  const identifiers = new UuidGenerator();
+  const repository = new DrizzleIntegrationsRepository(runtime.db);
+  const accessKeys = new DashboardAccessKeyService(new DrizzleDashboardAccessKeyRepository(runtime.db), identifiers);
   const emailPort = config.email === null ? null : createResendEmailApiAdapter(config.email.apiKey, config.email.defaultFrom);
-  return { actor, repository, apiKeys: new ApiKeyService(repository, identifiers), ai: new AiService(new DrizzleAiRepository(runtime.db)), customers: new CustomerService(repository, identifiers), emailTest: new EmailTestService(emailPort), emailStatus: config.email === null ? Object.freeze({ configured: false as const, defaultFrom: null, webhook: false as const }) : Object.freeze({ configured: true as const, defaultFrom: config.email.defaultFrom, webhook: config.email.webhookSecret !== null }), rateLimits: new RateLimitService(new UpstashRateLimitAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })), policy: { ...config.rateLimits.mutation, failureMode: 'closed' } };
+  const shared = { repository, apiKeys: new ApiKeyService(repository, identifiers), accessKeys, ai: new AiService(new DrizzleAiRepository(runtime.db)), customers: new CustomerService(repository, identifiers), emailTest: new EmailTestService(emailPort), emailStatus: config.email === null ? Object.freeze({ configured: false as const, defaultFrom: null, webhook: false as const }) : Object.freeze({ configured: true as const, defaultFrom: config.email.defaultFrom, webhook: config.email.webhookSecret !== null }), rateLimits: new RateLimitService(new UpstashRateLimitAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })), policy: { ...config.rateLimits.mutation, failureMode: 'closed' as const } };
+  if (identity === null) {
+    const bearer = cookieStore.get(DASHBOARD_ACCESS_KEY_COOKIE)?.value ?? null;
+    if (bearer === null) return createNonDisclosingDenial(requestId);
+    const resolved = await resolveAccessKeyActor(runtime.db, bearer, requestId).catch(() => null);
+    if (resolved === null || resolved.actor.organizationId !== organizationId) return createNonDisclosingDenial(requestId);
+    return { actor: resolved.actor, localUserId: resolved.localUser.id, ...shared };
+  }
+  const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator()); if (!local.ok) { return createNonDisclosingDenial(requestId); }
+  const membership = await authorization.findActiveMembership(organizationId, local.value.id); if (membership === null || !membership.roleActive) { return createNonDisclosingDenial(requestId); }
+  const actor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), regionScopeId: membership.regionId ?? null, entryPoint: 'dashboard', requestId };
+  return { actor, localUserId: local.value.id, ...shared };
 }
 function response(error: PublicErrorEnvelope) { const retry = error.error.fields?.retryAfterSeconds?.[0]; return NextResponse.json(error, { status: statusFor(error), ...(retry === undefined ? {} : { headers: { 'Retry-After': retry } }) }); }
 
@@ -55,7 +71,7 @@ async function handleGET(request: Request) {
   {
     if (parsed.data.view === 'customers') { const result = parsed.data.customerId === undefined ? await context.customers.list(context.actor) : await context.customers.read(context.actor, parsed.data.customerId); return result.ok ? NextResponse.json(result.value) : response(result.error); }
     if (parsed.data.view === 'ai') { const result = await context.ai.overview(context.actor); return result.ok ? NextResponse.json(result.value) : response(result.error); }
-    const [keys, subscription] = await Promise.all([context.apiKeys.list(context.actor), context.customers.readSubscription(context.actor)]); if (!keys.ok) return response(keys.error); if (!subscription.ok) return response(subscription.error); return NextResponse.json({ apiKeys: keys.value, subscription: subscription.value, email: context.emailStatus });
+    const [keys, accessKeys, subscription] = await Promise.all([context.apiKeys.list(context.actor), context.accessKeys.list(context.actor), context.customers.readSubscription(context.actor)]); if (!keys.ok) return response(keys.error); if (!accessKeys.ok) return response(accessKeys.error); if (!subscription.ok) return response(subscription.error); return NextResponse.json({ apiKeys: keys.value, accessKeys: accessKeys.value, subscription: subscription.value, email: context.emailStatus });
   }
 }
 
@@ -68,6 +84,7 @@ async function handlePOST(request: Request) {
     const limited = await context.rateLimits.enforce(context.rateLimits.authenticatedKey('dashboard-mutation', context.actor), context.policy, requestId); if (!limited.ok) return response(limited.error);
     const actions: Readonly<Record<string, (payload: unknown) => Promise<Result<unknown, PublicErrorEnvelope>>>> = {
       'api-key.issue': (payload) => context.apiKeys.issue(context.actor, payload), 'api-key.rotate': (payload) => context.apiKeys.rotate(context.actor, payload), 'api-key.revoke': (payload) => context.apiKeys.revoke(context.actor, payload),
+      'access-key.issue': (payload) => context.accessKeys.issue(context.actor, context.localUserId, payload), 'access-key.revoke': (payload) => context.accessKeys.revoke(context.actor, payload),
       'email.test': (payload) => context.emailTest.send(context.actor, payload),
       'ai.credential.create': (payload) => context.ai.createCredential(context.actor, payload), 'ai.credential.test': (payload) => context.ai.testCredential(context.actor, payload), 'ai.credential.toggle': (payload) => context.ai.toggleCredential(context.actor, payload), 'ai.credential.delete': (payload) => context.ai.deleteCredential(context.actor, payload),
       'ai.policy.update': (payload) => context.ai.updatePolicy(context.actor, payload),

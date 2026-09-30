@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (227 migrations):
+-- Reviewed sources, in journal order (228 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -236,11 +236,12 @@
 --   220  20260930010000_drop_ops_backup_site_settings_seo  ledger sha256:56fea97d09427649672f23028d69f611378466fd8714524b271069474c5e5b33
 --   221  20260930020000_archive_unreferenced_inline_media  ledger sha256:305afb64d28fb8112a3de58b165c973fd2dac3d77868a18b4834d6e3e1defd67
 --   222  20260930030000_ai_control_plane  ledger sha256:1ffd283f10e01b5737ba0dc99c8ce6d84c8611cbd6984d7c26bb4f26f31ae69d
---   223  20260930040000_ai_manage_permission  ledger sha256:4d076bdcd3d4b34672b8e25ac24076d87d366ca59da33d67c184555dcd7ef056
---   224  20260930050000_document_embeddings  ledger sha256:3d7d0d82e6454a748fd47a51874989a07e8d20a9bf589bda9ac39f31bb925f46
---   225  20260930060000_ai_semantic_cache  ledger sha256:d28016b202bb62315f0def183375be53067f3e6dc4a67e85c269760e9f3bdff2
---   226  20260930070000_document_embeddings_hardening  ledger sha256:2ac32c05b65c462a1146d8da1d96922d5a9bc8f50943499be65a15d3a0d861a4
---   227  20260930080000_ai_request_logs_org  ledger sha256:a1caffd3b6ce1f3c9ae69d7454d0cd2a439ae04882ce75c5ae1bacdfd4d96407
+--   223  20260930040000_ai_manage_permission  ledger sha256:174df6233fd56230be5f1709d8f39d603bc0e999752c348fc3b034c87b851062
+--   224  20260930050000_document_embeddings  ledger sha256:b8253c101fb760667509ba0c9d38d2c6744bf8450dc77ea2e96589c4970e9fdb
+--   225  20260930060000_ai_semantic_cache  ledger sha256:a54b04d28b4da7cbee072bab118007901046cbcf1814729377e1b8190f8dca69
+--   226  20260930070000_document_embeddings_hardening  ledger sha256:6b01978c98cd819fdb00af649be68e968f758c8b34778a589628da3d1fea2cfa
+--   227  20260930080000_ai_request_logs_org  ledger sha256:5368b1097d3a4ef4d5367ad6d2d53aad1e57d4c9bf05294d2e165778d1308a70
+--   228  20260930090000_dashboard_access_keys  ledger sha256:07fd90ed71d21ac0968b4aae516331199bf5339f929e32adc69ef68c883382ef
 
 BEGIN;
 
@@ -19096,8 +19097,10 @@ INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('1ffd2
 INSERT INTO public.permissions(id, organization_id, name, scope, description)
 VALUES ('00000000-0000-4000-8000-000000006004', NULL, 'platform.ai.manage', 'platform', 'Manage AI assistant credentials and routing policy')
 ON CONFLICT DO NOTHING;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (223, 'ai_manage_permission', 'sha256:e235f3b6846eb58b7772df2f1f5da6647866cb17eb8d533a144e1ec13aa568e4');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('4d076bdcd3d4b34672b8e25ac24076d87d366ca59da33d67c184555dcd7ef056', 1790737200000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('174df6233fd56230be5f1709d8f39d603bc0e999752c348fc3b034c87b851062', 1790737200000);
 
 -- ----------------------------------------------------------------------
 -- 20260930050000_document_embeddings
@@ -19120,8 +19123,10 @@ CREATE TABLE IF NOT EXISTS document_embeddings (
 
 CREATE INDEX IF NOT EXISTS document_embeddings_org_article_idx
   ON document_embeddings (organization_id, article_id);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (224, 'document_embeddings', 'sha256:5f4dc7adb91e016cb04d47b937021670531b21d262a8245902d268640ee51033');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('3d7d0d82e6454a748fd47a51874989a07e8d20a9bf589bda9ac39f31bb925f46', 1790740800000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b8253c101fb760667509ba0c9d38d2c6744bf8450dc77ea2e96589c4970e9fdb', 1790740800000);
 
 -- ----------------------------------------------------------------------
 -- 20260930060000_ai_semantic_cache
@@ -19168,8 +19173,10 @@ DROP POLICY IF EXISTS runtime_accessor ON public.ai_semantic_cache;
 CREATE POLICY runtime_accessor ON public.ai_semantic_cache FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
 REVOKE ALL ON public.ai_semantic_cache FROM PUBLIC;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_semantic_cache TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (225, 'ai_semantic_cache', 'sha256:86c244fd7b6188a9506a6b61bc7fa47c447b4c9c8c62d57ce898cc1a38ebedfc');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('d28016b202bb62315f0def183375be53067f3e6dc4a67e85c269760e9f3bdff2', 1790744400000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a54b04d28b4da7cbee072bab118007901046cbcf1814729377e1b8190f8dca69', 1790744400000);
 
 -- ----------------------------------------------------------------------
 -- 20260930070000_document_embeddings_hardening
@@ -19199,8 +19206,10 @@ BEGIN
   END IF;
 END
 $document_embeddings_chunk_check$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (226, 'document_embeddings_hardening', 'sha256:fb7999a1eabeb3399800294bd7b138f1a1a17ece167c617e424942627600375a');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2ac32c05b65c462a1146d8da1d96922d5a9bc8f50943499be65a15d3a0d861a4', 1790748000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6b01978c98cd819fdb00af649be68e968f758c8b34778a589628da3d1fea2cfa', 1790748000000);
 
 -- ----------------------------------------------------------------------
 -- 20260930080000_ai_request_logs_org
@@ -19215,6 +19224,79 @@ INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2ac32
 ALTER TABLE public.ai_request_logs
   ADD COLUMN IF NOT EXISTS organization_id uuid NULL REFERENCES public.organizations(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS ai_request_logs_org_created_idx ON public.ai_request_logs (organization_id, created_at DESC);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (227, 'ai_request_logs_org', 'sha256:174d8f794a727857b5c0a0310031dba0fa1994497f03d19c28ecaa6e49731eb7');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a1caffd3b6ce1f3c9ae69d7454d0cd2a439ae04882ce75c5ae1bacdfd4d96407', 1790751600000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5368b1097d3a4ef4d5367ad6d2d53aad1e57d4c9bf05294d2e165778d1308a70', 1790751600000);
+
+-- ----------------------------------------------------------------------
+-- 20260930090000_dashboard_access_keys
+-- ----------------------------------------------------------------------
+-- Kunci akses dashboard sekali-klik (login tanpa kata sandi, reusable + revoke).
+--
+-- Terikat ke (organisasi, pembuat): hak yang berlaku saat dipakai selalu
+-- di-resolve ulang dari membership aktif pembuat, sehingga pencabutan
+-- membership otomatis mencabut akses. Secret tidak pernah disimpan plain;
+-- kolom verification_hash memakai scrypt seperti api_keys.
+CREATE TABLE IF NOT EXISTS "dashboard_access_keys" (
+  "organization_id" uuid NOT NULL REFERENCES "public"."organizations"("id") ON DELETE cascade,
+  "id" uuid NOT NULL,
+  "user_id" uuid NOT NULL REFERENCES "public"."users"("id") ON DELETE cascade,
+  "lookup_id" text NOT NULL,
+  "name" text NOT NULL,
+  "salt" text NOT NULL,
+  "verification_hash" text NOT NULL,
+  "status" "api_key_status" DEFAULT 'active' NOT NULL,
+  "expires_at" timestamp with time zone,
+  "last_used_at" timestamp with time zone,
+  "version" integer DEFAULT 1 NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "dashboard_access_keys_pk" PRIMARY KEY("organization_id","id"),
+  CONSTRAINT "dashboard_access_keys_lookup_id_unique" UNIQUE("lookup_id"),
+  CONSTRAINT "dashboard_access_keys_version_positive" CHECK ("version" > 0),
+  CONSTRAINT "dashboard_access_keys_bounded_identity" CHECK (length("lookup_id") BETWEEN 16 AND 128 AND length("name") BETWEEN 1 AND 120)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "dashboard_access_keys_lookup_id_unique" ON "dashboard_access_keys" USING btree ("lookup_id");
+CREATE INDEX IF NOT EXISTS "dashboard_access_keys_organization_status_idx" ON "dashboard_access_keys" USING btree ("organization_id","status");
+CREATE INDEX IF NOT EXISTS "dashboard_access_keys_organization_user_idx" ON "dashboard_access_keys" USING btree ("organization_id","user_id");
+ALTER TABLE "dashboard_access_keys" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "dashboard_access_keys" FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON "dashboard_access_keys";
+CREATE POLICY tenant_isolation ON "dashboard_access_keys"
+  USING (organization_id = indicate_private.current_organization_id())
+  WITH CHECK (organization_id = indicate_private.current_organization_id());
+CREATE OR REPLACE FUNCTION indicate_private.resolve_dashboard_access_key_lookup(p_lookup_id text)
+  RETURNS TABLE(organization_id uuid, id uuid, user_id uuid, lookup_id text, name text, salt text, verification_hash text, status api_key_status, expires_at timestamp with time zone, last_used_at timestamp with time zone, version integer, created_at timestamp with time zone, updated_at timestamp with time zone)
+  LANGUAGE sql
+  STABLE SECURITY DEFINER
+  SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  SELECT k.organization_id, k.id, k.user_id, k.lookup_id, k.name, k.salt,
+         k.verification_hash, k.status, k.expires_at, k.last_used_at,
+         k.version, k.created_at, k.updated_at
+  FROM public.dashboard_access_keys k WHERE k.lookup_id = p_lookup_id LIMIT 1
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.resolve_dashboard_access_key_lookup(p_lookup_id text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.resolve_dashboard_access_key_lookup(p_lookup_id text) TO indicate_runtime;
+CREATE OR REPLACE FUNCTION indicate_private.resolve_dashboard_access_key_identity(p_lookup_id text)
+  RETURNS TABLE(organization_id uuid, key_id uuid, user_id uuid, auth_user_id uuid, display_name text, avatar_url text, user_status record_status, key_status api_key_status, expires_at timestamp with time zone, last_used_at timestamp with time zone, salt text, verification_hash text, membership_status record_status, role_id uuid, role_tier role_tier, role_active boolean)
+  LANGUAGE sql
+  STABLE SECURITY DEFINER
+  SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+  SELECT k.organization_id, k.id, u.id, u.auth_user_id, u.display_name, u.avatar_url, u.status,
+         k.status, k.expires_at, k.last_used_at, k.salt, k.verification_hash, m.status, m.role_id, r.tier, r.active
+  FROM public.dashboard_access_keys k
+  JOIN public.users u ON u.id = k.user_id
+  LEFT JOIN public.memberships m ON m.organization_id = k.organization_id AND m.user_id = k.user_id
+  LEFT JOIN public.roles r ON r.organization_id = m.organization_id AND r.id = m.role_id
+  WHERE k.lookup_id = p_lookup_id LIMIT 1
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.resolve_dashboard_access_key_identity(p_lookup_id text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.resolve_dashboard_access_key_identity(p_lookup_id text) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (228, 'dashboard_access_keys', 'sha256:940ee06512c184fe1b934f7c2825772e9a11d28e60695ab50a75962c5d7e4cdb');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('07fd90ed71d21ac0968b4aae516331199bf5339f929e32adc69ef68c883382ef', 1790755200000);
 COMMIT;

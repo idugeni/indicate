@@ -6,6 +6,8 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { resolveVerifiedUserOrganizations } from '@/modules/auth/resolve-authenticated-user';
+import { DASHBOARD_ACCESS_KEY_COOKIE } from '@/modules/auth/dashboard-access-keys/cookie';
+import { resolveAccessKeyActor } from '@/modules/auth/dashboard-access-keys/resolve-access-key-actor';
 import { getDashboardSnapshot } from '@/modules/dashboard';
 import { getPublicConfig } from '@/core/config/public-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
@@ -51,7 +53,8 @@ async function DashboardBody() {
       },
     }),
   });
-  const identity = await auth.verifyCookieSession(); if (identity === null) redirect('/sign-in?auth=required');
+  const identity = await auth.verifyCookieSession();
+  if (identity === null) return <AccessKeyDashboardBody cookieStore={cookieStore} />;
   const displayName = identity.displayName;
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
@@ -115,4 +118,43 @@ async function DashboardBody() {
       : await getDashboardSnapshot(firstOrganization.id, identity, { localUser, membership: firstMembership });
   const avatarRef = localUser.avatarUrl ?? identity.avatarUrl;
   return <DashboardWorkspace displayName={displayName} avatarUrl={avatarRef} organizations={organizations} initialDashboard={initialDashboard} />;
+}
+
+async function AccessKeyDashboardBody({ cookieStore }: { readonly cookieStore: Awaited<ReturnType<typeof cookies>> }) {
+  const bearer = cookieStore.get(DASHBOARD_ACCESS_KEY_COOKIE)?.value ?? null;
+  if (bearer === null) redirect('/sign-in?auth=required');
+  const context = await getServerRuntimeContext();
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  const resolved = await resolveAccessKeyActor(runtime.db, bearer, crypto.randomUUID(), new Date()).catch(() => null);
+  if (resolved === null) redirect('/sign-in?auth=required');
+  const repository = new DrizzleAuthorizationRepository(runtime.db);
+  const organizationsForUser = await repository.listActiveOrganizationsForUser(resolved.identity.authUserId);
+  const bound = organizationsForUser.find(({ id }) => id === resolved.actor.organizationId);
+  if (bound === undefined) redirect('/sign-in?auth=inactive');
+  const organizations: readonly OrganizationOption[] = [
+    {
+      id: bound.id,
+      name: bound.name,
+      role: resolved.membership.roleTier,
+      permissions: [...resolved.membership.orgPermissions, ...resolved.membership.platformPermissions],
+    },
+  ];
+  const sessionIdentity = {
+    authUserId: resolved.identity.authUserId,
+    displayName: resolved.displayName,
+    avatarUrl: resolved.avatarUrl,
+    email: null,
+  };
+  const initialDashboard = await getDashboardSnapshot(bound.id, sessionIdentity, {
+    localUser: resolved.localUser,
+    membership: resolved.membership,
+  });
+  return (
+    <DashboardWorkspace
+      displayName={resolved.displayName}
+      avatarUrl={resolved.localUser.avatarUrl ?? resolved.avatarUrl}
+      organizations={organizations}
+      initialDashboard={initialDashboard}
+    />
+  );
 }

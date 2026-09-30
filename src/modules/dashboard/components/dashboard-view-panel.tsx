@@ -56,6 +56,10 @@ const IntegrationSettings = dynamic(
   () => import('@/modules/dashboard/components/settings/integration-settings').then((module) => ({ default: module.IntegrationSettings })),
   { loading: () => <DashboardFormSkeleton /> },
 );
+const AccessKeySettings = dynamic(
+  () => import('@/modules/dashboard/components/settings/access-key-settings').then((module) => ({ default: module.AccessKeySettings })),
+  { loading: () => <DashboardFormSkeleton /> },
+);
 const AiManagementPanel = dynamic(
   () => import('@/modules/dashboard/components/settings/ai-management-panel').then((module) => ({ default: module.AiManagementPanel })),
   { loading: () => <DashboardFormSkeleton /> },
@@ -284,7 +288,8 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           <TabsContent keepMounted value="koneksi">
             <div className="space-y-6">
               <IntegrationSettings command={command} isPlatform={permissions.has(INTEGRATIONS_PERMISSIONS.superAdmin) || permissions.has(INTEGRATIONS_PERMISSIONS.customerAdmin)} email={selectEmailStatus(data)} />
-              {collectionTables(['apiKeys'])}
+              <AccessKeySettings command={command} data={data} onRefresh={onRefresh} />
+              {collectionTables(['apiKeys', 'accessKeys'])}
             </div>
           </TabsContent>
           <TabsContent keepMounted value="profil">

@@ -120,6 +120,7 @@ export const COLLECTION_LABELS: Readonly<Record<string, string>> = {
   sites: 'Situs',
   records: 'Pelanggan',
   apiKeys: 'Kunci API',
+  accessKeys: 'Kunci Akses Dashboard',
   domains: 'Domain',
   regions: 'Wilayah',
   siteSettings: 'Pengaturan Situs',

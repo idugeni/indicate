@@ -6,6 +6,7 @@ import { createHardenedSupabaseCookieStore, createSupabaseSsrAuthAdapter } from 
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { safeRedirectPath } from '@/core/security/safe-redirect-path';
 import { createNonDisclosingDenial } from '@/core/errors';
+import { renderClearedAccessKeyCookie } from '@/modules/auth/dashboard-access-keys/cookie';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 
@@ -41,9 +42,16 @@ async function handlePOST(request: NextRequest) {
     cookies: withSupabaseCookies(cookieStore),
   });
   await auth.signOut();
+  try {
+    cookieStore.delete('indicate-access-key');
+  } catch {
+    /* Cookie delete can fail during RSC render; header fallback below still clears it. */
+  }
   const rawNext = request.nextUrl.searchParams.get('next');
   const destination = resolveSignOutDestination(rawNext);
-  return NextResponse.redirect(new URL(destination, request.url), { status: 303 });
+  const response = NextResponse.redirect(new URL(destination, request.url), { status: 303 });
+  response.headers.append('Set-Cookie', renderClearedAccessKeyCookie());
+  return response;
 }
 
 export const POST = withApiAccess('POST /auth/sign-out', handlePOST);

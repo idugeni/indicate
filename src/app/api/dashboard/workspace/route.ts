@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
+import { readAccessKeyCookie } from '@/modules/auth/dashboard-access-keys/cookie';
+import { resolveAccessKeyActor } from '@/modules/auth/dashboard-access-keys/resolve-access-key-actor';
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
 import { fetchCachedAnalytics, fetchCachedDashboard, NextDashboardCacheInvalidator } from '@/modules/dashboard/dashboard-dal';
 import { getPublicConfig } from '@/core/config/public-config';
@@ -49,7 +51,25 @@ async function contextFor(organizationId: string, requestId: string, headers: He
   const cookieStore = await cookies();
   const publicConfig = getPublicConfig(process.env);
   const auth = createSupabaseSsrAuthAdapter({ url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey, cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }) });
-  const identity = await auth.verifyCookieSession(); if (identity === null) return createNonDisclosingDenial(requestId);
+  const identity = await auth.verifyCookieSession();
+  if (identity === null) {
+    const bearer = readAccessKeyCookie(headers.get('cookie'));
+    if (bearer !== null) {
+      const keyContext = await getServerRuntimeContext();
+      const keyRuntime = getSharedRuntimeDatabase(keyContext.bootstrap);
+      const resolved = await resolveAccessKeyActor(keyRuntime.db, bearer, requestId).catch(() => null);
+      if (resolved !== null && resolved.actor.organizationId === organizationId) {
+        if (isPlatformOnlyWithoutTicket({ orgPermissionCount: resolved.actor.permissionSet.size, platformPermissionCount: resolved.actor.platformPermissionSet?.size ?? 0, headers })) {
+          return createNonDisclosingDenial(requestId);
+        }
+        return {
+          actor: resolved.actor,
+          service: new TenantBusinessService(new DrizzleDashboardRepository(keyRuntime.db), new UuidGenerator(), undefined, undefined, new NextDashboardCacheInvalidator()),
+        };
+      }
+    }
+    return createNonDisclosingDenial(requestId);
+  }
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
   const authorization = new DrizzleAuthorizationRepository(runtime.db);
