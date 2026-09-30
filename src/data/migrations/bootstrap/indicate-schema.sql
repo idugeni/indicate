@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (228 migrations):
+-- Reviewed sources, in journal order (230 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -242,6 +242,8 @@
 --   226  20260930070000_document_embeddings_hardening  ledger sha256:6b01978c98cd819fdb00af649be68e968f758c8b34778a589628da3d1fea2cfa
 --   227  20260930080000_ai_request_logs_org  ledger sha256:5368b1097d3a4ef4d5367ad6d2d53aad1e57d4c9bf05294d2e165778d1308a70
 --   228  20260930090000_dashboard_access_keys  ledger sha256:07fd90ed71d21ac0968b4aae516331199bf5339f929e32adc69ef68c883382ef
+--   229  20260930100000_ai_pgcrypto_search_path  ledger sha256:115f395151b14136370b1a32639715bae7bf63157c3706ac9c74003c3034ff67
+--   230  20260930110000_ai_models_38_defaults  ledger sha256:54c2c0175b6a9db0c1179e852c6728c363886b76b4d7cf46c74d79365837660e
 
 BEGIN;
 
@@ -19299,4 +19301,50 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (228, 'dashboard_access_keys', 'sha256:940ee06512c184fe1b934f7c2825772e9a11d28e60695ab50a75962c5d7e4cdb');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('07fd90ed71d21ac0968b4aae516331199bf5339f929e32adc69ef68c883382ef', 1790755200000);
+
+-- ----------------------------------------------------------------------
+-- 20260930100000_ai_pgcrypto_search_path
+-- ----------------------------------------------------------------------
+-- Perbaiki search_path fungsi envelope AI agar pgcrypto ketemu.
+--
+-- `pgp_sym_encrypt`/`pgp_sym_decrypt` hidup di skema `extensions`, tetapi
+-- `encrypt_ai_key`/`decrypt_ai_key` dikunci ke search_path tanpa `extensions`,
+-- sehingga setiap issue/test kredensial gagal closed dengan 42883. ALTER ini
+-- idempotent: aman dijalankan ulang saat apply berurutan.
+ALTER FUNCTION indicate_private.encrypt_ai_key(text) SET search_path TO pg_catalog, public, indicate_private, extensions;
+ALTER FUNCTION indicate_private.decrypt_ai_key(text) SET search_path TO pg_catalog, public, indicate_private, extensions;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (229, 'ai_pgcrypto_search_path', 'sha256:e89c926628f9a53c895153199dad035a903b5b73c8cf8a7b84be17bd509a9293');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('115f395151b14136370b1a32639715bae7bf63157c3706ac9c74003c3034ff67', 1790762400000);
+
+-- ----------------------------------------------------------------------
+-- 20260930110000_ai_models_38_defaults
+-- ----------------------------------------------------------------------
+-- Refresh direktori model AI ke generasi 3.x + jadikan 3.8-flash default.
+--
+-- Angka konteks/limit di bawah diverifikasi dari GET /v1beta/models live.
+-- Baris memakai ON CONFLICT DO NOTHING agar apply ulang aman; UPDATE
+-- idempotent. Routing default pindah dari gemini-2.5-flash (404 untuk akun
+-- baru) ke gemini-3.8-flash dengan fallback gemini-3.6-flash.
+INSERT INTO public.ai_models (id, provider_id, model_name, display_name, description, context_window, input_token_limit, output_token_limit, supported_modalities, release_stage, rpm_limit, tpm_limit, rpd_limit, task_recommendation, supports_tools, supports_vision, is_default, is_active, priority)
+VALUES
+  ('gemini-3.8-flash', 'gemini', 'gemini-3.8-flash', 'Gemini 3.8 Flash', 'Flagship Flash for coding, agents, and enterprise workflows', 1048576, 1048576, 65536, ARRAY['text','image','audio','video'], 'stable', NULL, NULL, NULL, 'default chat', true, true, true, true, 5),
+  ('gemini-3.5-flash', 'gemini', 'gemini-3.5-flash', 'Gemini 3.5 Flash', 'Routine high-throughput workloads', 1048576, 1048576, 65536, ARRAY['text','image','audio','video'], 'stable', NULL, NULL, NULL, 'general chat', true, true, false, true, 35),
+  ('gemini-3.5-flash-lite', 'gemini', 'gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite', 'Fastest cheapest high-volume execution', 1048576, 1048576, 65536, ARRAY['text','image','audio','video'], 'stable', NULL, NULL, NULL, 'high volume', true, true, false, true, 55),
+  ('gemini-3.1-flash-image', 'gemini', 'gemini-3.1-flash-image', 'Nano Banana 2', 'Fast high-efficiency image generation and editing', 65536, 65536, 65536, ARRAY['text','image'], 'stable', NULL, NULL, NULL, 'image generation', false, true, false, true, 80),
+  ('gemini-3.1-flash-lite-image', 'gemini', 'gemini-3.1-flash-lite-image', 'Nano Banana 2 Lite', 'Ultra-low-latency image generation for interactive use', 65536, 65536, 65536, ARRAY['text','image'], 'stable', NULL, NULL, NULL, 'image generation', false, true, false, true, 85),
+  ('gemini-3.8-flash-tts', 'gemini', 'gemini-3.8-flash-tts', 'Gemini 3.8 Flash TTS', 'Studio-grade text-to-speech across 130 languages', 8192, 8192, 16384, ARRAY['text','audio'], 'stable', NULL, NULL, NULL, 'speech synthesis', false, false, false, true, 90),
+  ('gemini-3.5-transcribe', 'gemini', 'gemini-3.5-transcribe', 'Gemini 3.5 Transcribe', 'Speech-to-text with diarization and word timestamps', 98304, 98304, 32768, ARRAY['audio','text'], 'stable', NULL, NULL, NULL, 'transcription', false, false, false, true, 95)
+ON CONFLICT (id) DO NOTHING;
+UPDATE public.ai_models SET context_window = 1048576, input_token_limit = 1048576, updated_at = now()
+  WHERE id IN ('gemini-3.7-flash', 'gemini-2.5-pro') AND context_window != 1048576;
+UPDATE public.ai_models SET is_default = (id = 'gemini-3.8-flash'), updated_at = now()
+  WHERE is_default = true OR id = 'gemini-3.8-flash';
+UPDATE public.ai_routing_policies SET default_model = 'gemini-3.8-flash', fallback_model = 'gemini-3.6-flash', updated_at = now()
+  WHERE id = 'default';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (230, 'ai_models_38_defaults', 'sha256:022cd799a2a8ac919f097d97eb8bb2eba218cdfedba61cd1b3a6f9a5888a6287');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('54c2c0175b6a9db0c1179e852c6728c363886b76b4d7cf46c74d79365837660e', 1790766000000);
 COMMIT;

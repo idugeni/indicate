@@ -1597,6 +1597,20 @@
       "when": 1790755200000,
       "tag": "20260930090000_dashboard_access_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 228,
+      "version": "7",
+      "when": 1790762400000,
+      "tag": "20260930100000_ai_pgcrypto_search_path",
+      "breakpoints": true
+    },
+    {
+      "idx": 229,
+      "version": "7",
+      "when": 1790766000000,
+      "tag": "20260930110000_ai_models_38_defaults",
+      "breakpoints": true
     }
   ]
 }
