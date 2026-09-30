@@ -1,7 +1,8 @@
 import 'server-only';
 
 import { executeAiQuery, type AiServiceDeps } from '@/modules/ai/ai-service';
-import { scanPrompt, stripCodeFence } from '@/modules/ai/ai-usage';
+import { scanPrompt, stripCodeFence, parseArticleDraft, type ArticleDraft } from '@/modules/ai/ai-usage';
+import { parseClassification, type ArticleClassification } from '@/modules/ai/ai-polish';
 
 const BUSY_MESSAGE = 'Layanan AI sedang sibuk. Silakan coba lagi.';
 
@@ -109,4 +110,73 @@ export async function transcribeAudio(input: {
   const transcript = parseTranscript(result.text);
   if (transcript === null) return { ok: false, error: BUSY_MESSAGE };
   return { ok: true, transcript };
+}
+
+export interface TranscribedArticle {
+  readonly transcript: string;
+  readonly draft: ArticleDraft;
+  readonly classification: ArticleClassification;
+}
+
+const ARTICLE_SYSTEM = [
+  'Kamu adalah jurnalis redaksi jaringan media multi-portal Indonesia.',
+  'Susun naskah berita formal dan faktual dari transkrip wawancara berikut.',
+  'Tulis formal, tanpa clickbait, tanpa mengarang angka, nama, atau kutipan di luar transkrip.',
+  'Gunakan placeholder [Nama, Jabatan] bila kutipan dibutuhkan.',
+  'Keluarkan JSON murni tanpa pagar kode:',
+  '{"title":"...","excerpt":"...","content":"...","slug_suggestion":"..."}',
+].join('\n');
+
+/**
+ * Mengubah rekaman audio menjadi naskah berita lengkap siap isi formulir.
+ *
+ * @param input.base64 - Audio base64 (boleh data URL), dibatasi 10 juta karakter.
+ * @param input.mimeType - Tipe MIME audio dari allowlist.
+ * @param input.categories - Nama kategori yang boleh dipilih klasifikasi.
+ * @param input.organizationId - Organisasi untuk cakupan kredensial dan audit.
+ * @returns Transkrip, draf (judul, kutipan, isi, slug), dan klasifikasi; atau pesan galat aman.
+ */
+export async function transcribeToArticle(input: {
+  readonly base64: string;
+  readonly mimeType: string;
+  readonly categories: readonly string[];
+  readonly organizationId?: string;
+}): Promise<{ readonly ok: true; readonly article: TranscribedArticle } | { readonly ok: false; readonly error: string }> {
+  const transcribed = await transcribeAudio({
+    base64: input.base64,
+    mimeType: input.mimeType,
+    ...(input.organizationId === undefined ? {} : { organizationId: input.organizationId }),
+  });
+  if (!transcribed.ok) return transcribed;
+  if (configured === null) return { ok: false, error: BUSY_MESSAGE };
+  const allowed = [...new Set(input.categories.map((name) => name.trim()).filter((name) => name !== ''))].slice(0, 80);
+  const draftResult = await executeAiQuery(configured, {
+    prompt: `Susun naskah berita dari transkrip berikut:\n\n${transcribed.transcript.slice(0, 8000)}`,
+    organizationId: input.organizationId ?? null,
+    systemInstruction: ARTICLE_SYSTEM,
+    temperature: 0.7,
+    maxOutputTokens: 4096,
+    responseMimeType: 'application/json',
+    channel: 'web',
+    callerRole: 'editor',
+    enableTools: false,
+  });
+  if (draftResult.error !== undefined || draftResult.text.trim() === '') return { ok: false, error: BUSY_MESSAGE };
+  const draft = parseArticleDraft(draftResult.text, 'Hasil transkrip');
+  if (draft === null) return { ok: false, error: BUSY_MESSAGE };
+  const classifyResult = await executeAiQuery(configured, {
+    prompt: `Klasifikasikan artikel berikut.\n\nJudul: ${draft.title}\n\nIsi:\n${draft.content.slice(0, 8000)}\n\nDaftar kategori:\n${allowed.map((name) => `- ${name}`).join('\n')}`,
+    organizationId: input.organizationId ?? null,
+    systemInstruction: 'Kamu adalah editor taksonomi jaringan media Indonesia. Pilih hingga 3 kategori dari daftar (nama persis), urut paling relevan. Jangan mengarang di luar daftar. Sarankan tag slug kecil bertanda hubung, maksimal 10. Keluarkan JSON murni: {"categories":["..."],"tags":["..."]}',
+    temperature: 0.3,
+    maxOutputTokens: 512,
+    responseMimeType: 'application/json',
+    channel: 'web',
+    callerRole: 'editor',
+    enableTools: false,
+  });
+  const classification = classifyResult.error !== undefined
+    ? { categories: [], tags: [] as readonly string[] }
+    : (parseClassification(classifyResult.text, allowed) ?? { categories: [], tags: [] as readonly string[] });
+  return { ok: true, article: { transcript: transcribed.transcript, draft, classification } };
 }

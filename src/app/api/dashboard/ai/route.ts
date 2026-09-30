@@ -19,9 +19,10 @@ import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import { configureAiUsage, buildDraftArticleInput, draftModerationReply, generateArticleDraft, narrateInsights, ocVisionDraft, scanPrompt, suggestTags, summarizeReport } from '@/modules/ai/ai-usage';
 import { configureAiSeo, suggestSeo } from '@/modules/ai/ai-seo';
+import { classifyArticle, polishBody } from '@/modules/ai/ai-polish';
 import { configureAiCover, generateCoverImage } from '@/modules/ai/ai-cover';
 import { configureAiTts, synthesizeSpeech } from '@/modules/ai/ai-tts';
-import { configureAiTranscribe, transcribeAudio } from '@/modules/ai/ai-transcribe';
+import { configureAiTranscribe, transcribeAudio, transcribeToArticle } from '@/modules/ai/ai-transcribe';
 import { configurePublisherVerify, verifyPublisher } from '@/modules/ai/ai-verify';
 import { configureAiAssistant, assistantChat } from '@/modules/ai/ai-assistant';
 import { createAiSemanticCache } from '@/modules/ai/ai-semantic-cache';
@@ -51,9 +52,12 @@ const commandSchema = z.object({
     'semantic-search',
     'embeddings-reindex',
     'seo-suggest',
+    'polish-body',
+    'classify-article',
     'cover-image',
     'tts-speak',
     'transcribe-audio',
+    'transcribe-to-article',
     'publisher-verify',
     'assistant-chat',
   ]),
@@ -409,7 +413,18 @@ async function handlePOST(request: Request) {
           : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
       }
       case 'seo-suggest': {
-        const result = await suggestSeo({ title: str(payload.title, 200), body: str(payload.body, 8000), organizationId });
+        const result = await suggestSeo({ title: str(payload.title, 200), body: str(payload.body, 8000), current: str(payload.current, 400), organizationId });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
+      }
+      case 'polish-body': {
+        const result = await polishBody({ title: str(payload.title, 200), body: str(payload.body, 8000), organizationId });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
+      }
+      case 'classify-article': {
+        const categories = Array.isArray(payload.categories)
+          ? payload.categories.filter((item): item is string => typeof item === 'string').slice(0, 80)
+          : [];
+        const result = await classifyArticle({ title: str(payload.title, 200), body: str(payload.body, 8000), categories, organizationId });
         return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
       }
       case 'cover-image': {
@@ -423,6 +438,13 @@ async function handlePOST(request: Request) {
       }
       case 'transcribe-audio': {
         const result = await transcribeAudio({ base64: str(payload.base64, 10_000_000), mimeType: str(payload.mimeType, 60), organizationId });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
+      }
+      case 'transcribe-to-article': {
+        const categories = Array.isArray(payload.categories)
+          ? payload.categories.filter((item): item is string => typeof item === 'string').slice(0, 80)
+          : [];
+        const result = await transcribeToArticle({ base64: str(payload.base64, 10_000_000), mimeType: str(payload.mimeType, 60), categories, organizationId });
         return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
       }
       case 'publisher-verify': {

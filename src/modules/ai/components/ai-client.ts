@@ -9,9 +9,12 @@ export type AiAction =
   | 'insight-narrative'
   | 'semantic-search'
   | 'seo-suggest'
+  | 'polish-body'
+  | 'classify-article'
   | 'cover-image'
   | 'tts-speak'
   | 'transcribe-audio'
+  | 'transcribe-to-article'
   | 'publisher-verify'
   | 'assistant-chat';
 

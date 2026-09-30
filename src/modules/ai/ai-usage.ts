@@ -4,7 +4,7 @@ import { executeAiQuery, type AiServiceDeps } from '@/modules/ai/ai-service';
 import type { AiCallerRole, AiChatImage } from '@/modules/ai/ai-types';
 import { slugify } from '@/modules/site/slugify';
 
-const BUSY_MESSAGE = 'Layanan AI sedang sibuk. Silakan coba lagi.';
+export const BUSY_MESSAGE = 'Layanan AI sedang sibuk. Silakan coba lagi.';
 
 let configured: AiServiceDeps | null = null;
 
@@ -178,7 +178,15 @@ export function parseModerationAnalysis(text: string): ModerationAnalysis | null
   };
 }
 
-async function runQuery(callerRole: AiCallerRole, organizationId: string | undefined, query: {
+/**
+ * Menjalankan satu query AI staf dengan guard rahasia dan budget.
+ *
+ * @param callerRole - Peran pemanggil untuk audit dan guardrail.
+ * @param organizationId - Organisasi untuk cakupan kredensial dan audit.
+ * @param query - Prompt dan kontrol generasi; media diteruskan apa adanya.
+ * @returns Teks plus muatan media bila diminta, atau pesan sibuk yang aman.
+ */
+export async function runQuery(callerRole: AiCallerRole, organizationId: string | undefined, query: {
   readonly prompt: string;
   readonly systemInstruction: string;
   readonly temperature: number;
