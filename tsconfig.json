@@ -58,6 +58,12 @@
   "exclude": [
     "node_modules",
     "tmp",
-    "_tmp-*"
+    "_tmp-*",
+    // The dev server writes its own route validators under `.next/dev/types`
+    // with hashed route keys that no longer match the built routes, so leaving
+    // them in the program fails `npm run build` on image metadata routes that
+    // the build validator does not check at all. `.next/types` stays included,
+    // so build-time route typing is unaffected.
+    ".next/dev"
   ]
 }
