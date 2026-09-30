@@ -14,6 +14,7 @@ import {
   Pilcrow,
   Plus,
   RefreshCw,
+  Save,
   Send,
   Share2,
   SlidersHorizontal,
@@ -114,17 +115,6 @@ const MODE_HINTS: Record<'tulis' | 'pratinjau' | 'sumber', string> = {
 const PENDING_CATEGORY_PREFIX = 'new:';
 
 /**
- * Jeda autosave ke server.
- *
- * @remarks Sengaja 60 detik, bukan 15. Setiap `article.update` menulis satu baris
- * `audit_logs`, jadi autosave 15 detik berarti sekitar 240 baris audit per jam
- * per editor. `audit_logs` sudah tercatat sebagai tabel besar yang pembacaannya
- * belum seluruhnya berbatas, jadi angka ini dipilih agar tidak memperbesar
- * masalah yang sedang ditangani, bukan agar terasa paling responsif.
- */
-const AUTOSAVE_DEBOUNCE_MS = 60_000;
-
-/**
  * Bilah ukur panjang metadata terhadap rentang tampil idealnya.
  *
  * @param label - Nama medan (Judul/Deskripsi).
@@ -167,7 +157,7 @@ function SeoMeter({
  *
  * @param data - Opsi wilayah, penerbit, kategori, penulis, dan artikel existing untuk saran tag.
  * @param onSubmit - Menyimpan `article.create`; media upload memakai command opsional.
- * @param command - Perintah workspace untuk unggah media editor kaya; tanpa ini unggahan gagal eksplisit.
+ * @param command - Perintah workspace untuk simpan draf eksplisit dan unggah media editor kaya; tanpa ini keduanya gagal eksplisit.
  * @param organizationId - Tenant pemilik draft. Kosong mematikan cermin `localStorage`;
  *   layar produksi selalu meneruskannya, dan kunci draft tidak pernah lintas tenant.
  * @returns Kanvas artikel terbuka + inspektor lengket (status, SEO, atribusi, sampul, sumber).
@@ -471,14 +461,10 @@ export function ArticleCreateForm({
   // has been read back into state.
   useArticleDraftMirror(organizationId, draftSnapshot);
 
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const snapshotRef = useRef(formSnapshot);
   const autosavedRef = useRef(autosavedDraft);
   const restoredAutosaveRef = useRef(false);
+  const [savingDraft, setSavingDraft] = useState(false);
 
-  useEffect(() => {
-    snapshotRef.current = formSnapshot;
-  }, [formSnapshot]);
   useEffect(() => {
     autosavedRef.current = autosavedDraft;
   }, [autosavedDraft]);
@@ -489,36 +475,51 @@ export function ArticleCreateForm({
     const reference = readAutosaveReference(organizationId);
     if (reference === null) return;
     /* eslint-disable react-hooks/set-state-in-effect -- one-time hydration restore of a browser-stored reference, for the same reason as the draft restore above. */
-    // The ref is assigned alongside the state so the first autosave after a
-    // reload updates the existing row instead of creating a duplicate one.
+    // The ref is assigned alongside the state so an explicit draft save after
+    // a reload updates the existing row instead of creating a duplicate one.
     autosavedRef.current = reference;
     setAutosavedDraft(reference);
   }, [organizationId]);
 
-  useEffect(() => {
-    if (command === undefined || isSubmitting) return;
-    if (buildAutosavePayload(formSnapshot, serverCategoryIds) === null) return;
-    if (autosaveTimerRef.current !== null) clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = setTimeout(() => {
-      autosaveTimerRef.current = null;
-      void (async () => {
-        const active = command;
-        const payload = buildAutosavePayload(snapshotRef.current, serverCategoryIds);
-        if (payload === null || active === undefined) return;
-        const saved = await persistDraftArticle(active, payload, autosavedRef.current);
+  /**
+   * Simpan draf ke server hanya atas klik eksplisit.
+   *
+   * @remarks Mengetik, me-refresh, atau memuat ulang tidak pernah menulis baris
+   * server; cermin `localStorage` yang menanggung pemulihan peramban. Draf
+   * server ada hanya setelah redakteur menekan tombol ini atau submit.
+   */
+  const saveDraftToServer = () => {
+    if (command === undefined || isSubmitting || savingDraft) return;
+    if (buildAutosavePayload(formSnapshot, serverCategoryIds) === null) {
+      toast.error('Lengkapi slug, wilayah, judul, dan isi sebelum menyimpan draf.');
+      return;
+    }
+    setSavingDraft(true);
+    void (async () => {
+      try {
+        const categoryIds = await persistPendingCategories(effectiveCategoryIds);
+        if (categoryIds === null) return;
+        const payload = buildAutosavePayload(formSnapshot, categoryIds);
+        if (payload === null) return;
+        let existing = autosavedRef.current;
+        if (existing === null) {
+          const match = (model?.articles ?? []).find((item) => item.status === 'draft' && item.slug === String(payload.slug ?? ''));
+          if (match !== undefined) existing = { id: match.id, version: match.version, slug: match.slug };
+        }
+        const saved = await persistDraftArticle(command, payload, existing);
         if (saved === null) {
-          setAutosaveNotice('Draf terakhir belum tersimpan ke server. Isi tetap aman di peramban ini.');
+          toast.error('Draf gagal tersimpan ke server. Isi tetap aman di peramban ini.');
           return;
         }
+        autosavedRef.current = saved;
         setAutosavedDraft(saved);
         writeAutosaveReference(organizationId, saved);
-        setAutosaveNotice(`Draf tersimpan ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}.`);
-      })();
-    }, AUTOSAVE_DEBOUNCE_MS);
-    return () => {
-      if (autosaveTimerRef.current !== null) clearTimeout(autosaveTimerRef.current);
-    };
-  }, [formSnapshot, serverCategoryIds, command, isSubmitting, organizationId]);
+        setAutosaveNotice(`Draf tersimpan ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}. Lanjut tulis atau ambil dari Arsip Artikel.`);
+      } finally {
+        setSavingDraft(false);
+      }
+    })();
+  };
 
   const selectedPublisher = useMemo(
     () => (model?.publishers ?? []).find((p) => p.id === publisherId) ?? null,
@@ -1173,6 +1174,14 @@ export function ArticleCreateForm({
           </span>
         )}
         <span className="flex-1" />
+        <Button type="button" variant="outline" disabled={isSubmitting || savingDraft || command === undefined} onClick={saveDraftToServer}>
+          {savingDraft ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+          ) : (
+            <Save className="h-3.5 w-3.5" aria-hidden="true" />
+          )}
+          <span>{autosavedDraft === null ? 'Simpan ke server' : 'Perbarui di server'}</span>
+        </Button>
         <Button type="submit" variant="default" disabled={isSubmitting}>
           {isSubmitting ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />

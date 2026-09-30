@@ -402,30 +402,61 @@ describe('Formulir tulis artikel', () => {
     expect(window.localStorage.getItem('indicate:article-draft:org-1')).toBeNull();
   });
 
-  it('memperbarui draf autosave yang sama alih-alih membuat duplikat setelah dimuat ulang', async () => {
-    // Kegagalan yang ditemukan: rujukan autosave hanya hidup di memori, jadi
-    // setiap muatan halaman memanggil article.create dan meninggalkan baris
-    // draf kembar di server.
-    const saved = vi.fn(async (action: string) => (
-      action === 'article.create'
-        ? { id: 'art-draf-1', slug: 'judul-uji', version: 1 }
-        : {}
-    ));
-    const first = setup({ organizationId: 'org-1', command: saved });
+  it('tidak menulis baris server saat mengetik atau menunggu tanpa klik simpan', async () => {
+    const saved = vi.fn(async () => ({ id: 'art-draf-1', slug: 'judul-uji', version: 1 }));
+    setup({ organizationId: 'org-1', command: saved });
     await pilihWilayahWonosobo();
     vi.useFakeTimers({ shouldAdvanceTime: true });
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
     fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
-    await act(async () => { await vi.advanceTimersByTimeAsync(61_000); });
-    expect(saved.mock.calls.filter(([action]) => action === 'article.create')).toHaveLength(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(120_000); });
+    expect(saved).not.toHaveBeenCalled();
+  });
+
+  it('membuat draf sekali lalu memperbarui draf yang sama pada klik berikut dan setelah muat ulang', async () => {
+    const saved = vi.fn(async (action: string) => (
+      action === 'article.create'
+        ? { id: 'art-draf-1', slug: 'judul-uji', version: 1 }
+        : { id: 'art-draf-1', slug: 'judul-uji', version: 2 }
+    ));
+    const user = userEvent.setup();
+    const first = setup({ organizationId: 'org-1', command: saved });
+    await pilihWilayahWonosobo();
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await user.click(screen.getByRole('button', { name: 'Simpan ke server' }));
+    await waitFor(() => expect(saved.mock.calls.filter(([action]) => action === 'article.create')).toHaveLength(1));
+    await user.click(screen.getByRole('button', { name: 'Perbarui di server' }));
+    await waitFor(() => expect(saved.mock.calls.filter(([action]) => action === 'article.update')).toHaveLength(1));
     first.unmount();
 
     setup({ organizationId: 'org-1', command: saved });
+    await pilihWilayahWonosobo();
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
     fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita terbaru.' } });
-    await act(async () => { await vi.advanceTimersByTimeAsync(61_000); });
+    await user.click(screen.getByRole('button', { name: 'Perbarui di server' }));
+    await waitFor(() => expect(saved.mock.calls.filter(([action]) => action === 'article.create')).toHaveLength(1));
+    expect(saved.mock.calls.filter(([action]) => action === 'article.update')).toHaveLength(2);
+  });
 
-    expect(saved.mock.calls.filter(([action]) => action === 'article.create')).toHaveLength(1);
-    expect(saved.mock.calls.filter(([action]) => action === 'article.update')).toHaveLength(1);
+  it('memakai ulang draf server berslug sama saat rujukan peramban hilang', async () => {
+    const saved = vi.fn(async (action: string) => (
+      action === 'article.create'
+        ? { id: 'art-draf-1', slug: 'judul-uji', version: 1 }
+        : { id: 'art-draf-1', slug: 'judul-uji', version: 2 }
+    ));
+    const user = userEvent.setup();
+    const dataWithDraft = {
+      ...DATA,
+      articles: [{ id: 'art-draf-1', regionId: 'r-2', publisherId: null, categoryId: null, authorId: null, slug: 'judul-uji', title: 'Judul Uji', body: 'Isi lama.', source: '', version: 1, status: 'draft' }],
+    };
+    render(<ArticleCreateForm data={dataWithDraft} onSubmit={vi.fn(async () => null)} command={saved} organizationId="org-1" />);
+    await pilihWilayahWonosobo();
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await user.click(screen.getByRole('button', { name: 'Simpan ke server' }));
+    await waitFor(() => expect(saved.mock.calls.filter(([action]) => action === 'article.update')).toHaveLength(1));
+    expect(saved.mock.calls.filter(([action]) => action === 'article.create')).toHaveLength(0);
   });
 
   it('menyimpan ulang isi yang dipulihkan agar draf peramban tidak tertinggal kosong', async () => {
