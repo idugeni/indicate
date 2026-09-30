@@ -1639,6 +1639,13 @@
       "when": 1790780400000,
       "tag": "20260930150000_ai_master_secrets_runtime",
       "breakpoints": true
+    },
+    {
+      "idx": 234,
+      "version": "7",
+      "when": 1790784000000,
+      "tag": "20260930160000_retention_windows_tighten",
+      "breakpoints": true
     }
   ]
 }

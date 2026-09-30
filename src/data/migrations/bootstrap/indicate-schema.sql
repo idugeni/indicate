@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (234 migrations):
+-- Reviewed sources, in journal order (235 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -248,6 +248,7 @@
 --   232  20260930130000_article_revisions_delete_grant  ledger sha256:f495e66ba12d8bdbca0b5fbe7be4af19bfbfe6c67be606e468d5020738ed4e79
 --   233  20260930140000_fk_covering_indexes  ledger sha256:37e33820cad3dec22ee59289544b42d4e47e3fd10c13e0e5605aceb40b743ca3
 --   234  20260930150000_ai_master_secrets_runtime  ledger sha256:9fa0e0c96504169bd85e7a5b9a616af4d6834be660af0464b5f666a9c9bec7b6
+--   235  20260930160000_retention_windows_tighten  ledger sha256:fe6725b3b9804176b2331c872fdef2f888b26de62010732969b1865868f730e4
 
 BEGIN;
 
@@ -19420,4 +19421,95 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (234, 'ai_master_secrets_runtime', 'sha256:0c6803467646cc3851db7620d90c12a71412e5f2b02b9e50ca3d3bc86e790dce');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('9fa0e0c96504169bd85e7a5b9a616af4d6834be660af0464b5f666a9c9bec7b6', 1790780400000);
+
+-- ----------------------------------------------------------------------
+-- 20260930160000_retention_windows_tighten
+-- ----------------------------------------------------------------------
+-- Perketat jendela retensi baris terminal dari 90 hari ke 30 hari.
+--
+-- Dashboard snapshot membaca invalidation_tasks tanpa filter umur
+-- (orderBy createdAt desc limit 2000), sehingga baris completed yang lebih
+-- tua dari 2000 termuda sudah tidak dibaca siapa pun jauh sebelum 90 hari.
+-- Menurunkan ambang object_cleanup_tasks, invalidation_tasks, dan
+-- publication_transition_receipts ke 30 hari membatasi steady state sekitar
+-- tiga kali lebih kecil tanpa mengubah bacaan dasbor hari ini. Guard
+-- litigation hold dan klausa keep-latest-per-job tidak berubah; kategori
+-- undangan, klaim replay, cache bypass, dan reservasi media tidak disentuh.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE OR REPLACE FUNCTION indicate_private.retention_sweep()
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $$
+DECLARE v_total integer := 0; v_count integer; v_started timestamptz := now();
+BEGIN
+  DELETE FROM public.org_invitations WHERE ((accepted_at IS NOT NULL AND accepted_at < now() - interval '90 days') OR (accepted_at IS NULL AND expires_at < now() - interval '90 days')) AND NOT indicate_private.is_org_held(org_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('org_invitations', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.webhook_replay_claims WHERE expires_at < now() AND (organization_id IS NULL OR NOT indicate_private.is_org_held(organization_id));
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('webhook_replay_claims', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.object_cleanup_tasks WHERE status = 'completed' AND updated_at < now() - interval '30 days' AND NOT indicate_private.is_org_held(organization_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('object_cleanup_tasks', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.invalidation_tasks WHERE status IN ('completed', 'failed') AND updated_at < now() - interval '30 days' AND NOT indicate_private.is_org_held(organization_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('invalidation_tasks', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.cache_bypasses AS bypass
+   WHERE NOT bypass.bypass
+     AND NOT indicate_private.is_org_held(bypass.organization_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('cache_bypasses', v_count, v_started, now());
+  v_total := v_total + v_count;
+  DELETE FROM public.publication_transition_receipts r
+   WHERE r.created_at < now() - interval '30 days'
+     AND NOT indicate_private.is_org_held(r.organization_id)
+     AND NOT EXISTS (
+       SELECT 1 FROM public.publication_transition_receipts latest
+        WHERE latest.organization_id = r.organization_id
+          AND latest.job_id = r.job_id
+          AND (latest.created_at, latest.id) > (r.created_at, r.id)
+     );
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('publication_transition_receipts', v_count, v_started, now());
+  v_total := v_total + v_count;
+  UPDATE public.media_key_reservations AS reservation
+     SET status = 'expired', updated_at = now()
+   WHERE reservation.status IN ('reserved', 'occupied')
+     AND reservation.expires_at < now()
+     AND NOT EXISTS (
+       SELECT 1 FROM public.media AS asset
+        WHERE asset.organization_id = reservation.organization_id
+          AND asset.object_key = reservation.object_key
+     )
+     AND NOT indicate_private.is_org_held(reservation.organization_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  v_total := v_total + v_count;
+  DELETE FROM public.media_key_reservations AS reservation
+   WHERE reservation.status = 'used'
+     AND reservation.updated_at < now() - interval '3 days'
+     AND NOT EXISTS (
+       SELECT 1 FROM public.media AS asset
+        WHERE asset.organization_id = reservation.organization_id
+          AND asset.object_key = reservation.object_key
+     )
+     AND NOT indicate_private.is_org_held(reservation.organization_id);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  v_total := v_total + v_count;
+  INSERT INTO public.retention_runs(category, purged_count, started_at, finished_at) VALUES ('media_key_reservations', v_count, v_started, now());
+  RETURN v_total;
+END;
+$$;
+SELECT indicate_private.retention_sweep();
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (235, 'retention_windows_tighten', 'sha256:7a8ef401f4c981fb5f0d02b6d1eedb0263b8f30abbb7706ffaf08c4049165de8');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('fe6725b3b9804176b2331c872fdef2f888b26de62010732969b1865868f730e4', 1790784000000);
 COMMIT;
