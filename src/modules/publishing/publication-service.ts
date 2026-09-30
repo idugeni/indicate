@@ -96,12 +96,12 @@ export class PublicationService {
     if (candidate === null) return now;
     if (candidate === undefined) return null;
     const publishAt = new Date(candidate);
-    if (Number.isNaN(publishAt.getTime()) || publishAt.getTime() <= now.getTime()) return null;
+    if (Number.isNaN(publishAt.getTime())) return null;
     return publishAt;
   }
 
   private invalidPublishTime(actor: AuthorizedTenantActorContext): Result<never, PublicErrorEnvelope> {
-    return { ok: false, error: createPublicError('INVALID_INPUT', 'Waktu publish harus valid dan berada di masa depan.', actor.requestId) };
+    return { ok: false, error: createPublicError('INVALID_INPUT', 'Waktu publish tidak valid.', actor.requestId) };
   }
 
   async request(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<PublicationStatusProjection, PublicErrorEnvelope>> {

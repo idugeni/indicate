@@ -407,13 +407,15 @@ describe('PublicationService request outcomes', () => {
     expect(queue.schedule).toHaveBeenCalledWith('org-1:job-1', new Date(publishAt));
   });
 
-  it('menolak publishAt yang sudah lewat', async () => {
-    const { service, repository } = harness();
+  it('menerima publishAt yang sudah lewat sebagai terbit langsung backdate', async () => {
+    const { service, repository, queue } = harness();
     const result = await service.request(actor, { ...singleRequest, publishAt: '2026-09-18T13:59:00.000Z' });
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected error');
-    expect(result.error.error.code).toBe('INVALID_INPUT');
-    expect(repository.acceptPublication).not.toHaveBeenCalled();
+    expect(result.ok).toBe(true);
+    expect(queue.schedule).toHaveBeenCalledWith('org-1:job-1', new Date('2026-09-18T13:59:00.000Z'));
+    expect(repository.acceptPublication).toHaveBeenCalledWith(
+      actor,
+      expect.objectContaining({ publishAt: '2026-09-18T13:59:00.000Z' }),
+    );
   });
 
   it('tetap berhasil saat penjadwalan gagal dan mencatat kegagalan dispatch', async () => {
