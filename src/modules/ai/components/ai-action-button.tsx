@@ -13,7 +13,8 @@ export type AiActionButtonProps = {
    */
   readonly busy: boolean;
   readonly idleLabel: string;
-  readonly icon: LucideIcon;
+  /** Omit for a text-only action such as "Terapkan semua". */
+  readonly icon?: LucideIcon;
   readonly onClick: () => void;
   readonly disabled?: boolean;
   /** `primary` fills brass for a field's main action; `secondary` keeps a raised outline. */
@@ -38,7 +39,7 @@ export type AiActionButtonProps = {
 export function AiActionButton({
   busy,
   idleLabel,
-  icon: Icon,
+  icon,
   onClick,
   disabled = false,
   tone = 'secondary',
@@ -47,6 +48,7 @@ export function AiActionButton({
   className,
   ref,
 }: AiActionButtonProps) {
+  const Icon = icon;
   return (
     <Button
       ref={ref}
@@ -60,18 +62,29 @@ export function AiActionButton({
       data-slot="ai-action"
       className={cn(
         'gap-1.5 font-sans transition-colors duration-180',
+        // A filled brass surface needs dark text in every state. `brass-soft`
+        // text on `brass` measures 1.38:1, so the busy tint applies to the
+        // raised surface only, and the primary keeps `text-bg` while busy.
         tone === 'primary'
-          ? 'border border-brass/60 bg-brass text-bg hover:bg-brass-soft'
-          : 'border border-hairline-strong bg-bg-raised text-paper hover:bg-bg-raised-2',
-        busy && 'cursor-progress border-brass text-brass-soft',
-        busy && tone === 'secondary' && 'bg-bg-raised-2',
-        busy && 'ai-busy-glow',
+          ? busy
+            ? 'border border-brass bg-brass text-bg'
+            : 'border border-brass/60 bg-brass text-bg hover:bg-brass-soft'
+          : busy
+            ? 'border border-brass bg-bg-raised-2 text-brass-soft'
+            : 'border border-hairline-strong bg-bg-raised text-paper hover:bg-bg-raised-2',
+        busy && 'cursor-progress',
+        // A sibling held back by a running action must read as inert, never as
+        // busy: flat surface, no brass tint, no glow, and no spinner because
+        // only a busy button renders one.
+        disabled && tone === 'primary' && 'border-hairline-strong bg-bg-raised text-paper-dim hover:bg-bg-raised-2',
+        disabled && tone === 'secondary' && 'border-hairline bg-bg text-paper-faint hover:bg-bg',
+        busy && tone === 'secondary' && 'ai-busy-glow',
         className,
       )}
     >
       {busy ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-      ) : (
+      ) : Icon === undefined ? null : (
         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
       )}
       <span>{busy ? 'Memproses…' : idleLabel}</span>

@@ -68,6 +68,7 @@ import { AiActionButton, AiPending } from '@/modules/ai/components/ai-action-but
 import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
 import { chunkPublicationTargets, selectPublicationTargets } from '@/modules/dashboard/components/editorial/publication-batch';
 import { AppTooltip } from '@/ui/app-tooltip';
+import { useAiSlot } from '@/modules/dashboard/components/editorial/use-ai-slot';
 import type { PublicationScope, PublishTargetSite } from '@/modules/dashboard/components/editorial/publication-batch';
 import { COVER_COMPRESS, formatBytes } from '@/modules/publishing/compress-image';
 
@@ -566,16 +567,14 @@ export function ArticleCreateForm({
 
   const aiReady = organizationId !== undefined && organizationId !== '';
   const [titleVariants, setTitleVariants] = useState<readonly string[] | null>(null);
-  const [seoBusy, setSeoBusy] = useState<'idle' | 'titles' | 'description'>('idle');
   const [polished, setPolished] = useState('');
-  const [polishBusy, setPolishBusy] = useState(false);
   const [polishRounds, setPolishRounds] = useState(0);
-  const [classifyBusy, setClassifyBusy] = useState(false);
-  const [transcriptBusy, setTranscriptBusy] = useState(false);
+  const { action: aiAction, claim: claimAi, release: releaseAi } = useAiSlot();
 
-  const refineTitles = () => {
-    if (!aiReady || titleText.trim() === '' || seoBusy !== 'idle') return;
-    setSeoBusy('titles');
+  const generatingTitles = aiAction === 'title' || aiAction === 'title-variants';
+
+  const refineTitles = (action: 'title' | 'title-variants') => {
+    if (!aiReady || titleText.trim() === '' || !claimAi(action)) return;
     void (async () => {
       try {
         const result = (await callAi(organizationId, 'seo-suggest', { title: titleText.trim(), body: bodyText.trim() })) as {
@@ -589,14 +588,13 @@ export function ArticleCreateForm({
       } catch (err) {
         toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
       } finally {
-        setSeoBusy('idle');
+        releaseAi();
       }
     })();
   };
 
   const refineDescription = () => {
-    if (!aiReady || seoBusy !== 'idle') return;
-    setSeoBusy('description');
+    if (!aiReady || !claimAi('description')) return;
     void (async () => {
       try {
         const result = (await callAi(organizationId, 'seo-suggest', {
@@ -613,14 +611,13 @@ export function ArticleCreateForm({
       } catch (err) {
         toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
       } finally {
-        setSeoBusy('idle');
+        releaseAi();
       }
     })();
   };
 
   const polishBodyInline = () => {
-    if (!aiReady || bodyText.trim() === '' || polishBusy) return;
-    setPolishBusy(true);
+    if (!aiReady || bodyText.trim() === '' || !claimAi('polish')) return;
     void (async () => {
       try {
         const result = (await callAi(organizationId, 'polish-body', { title: titleText.trim(), body: bodyText.trim() })) as {
@@ -634,18 +631,18 @@ export function ArticleCreateForm({
       } catch (err) {
         toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
       } finally {
-        setPolishBusy(false);
+        releaseAi();
       }
     })();
   };
 
   const transcribeFileInline = (file: File | null) => {
-    if (file === null || !aiReady || transcriptBusy) return;
+    if (file === null || !aiReady) return;
     if (file.size > 10_000_000) {
       toast.error('Berkas audio maksimal 10 MB.');
       return;
     }
-    setTranscriptBusy(true);
+    if (!claimAi('transcribe')) return;
     void (async () => {
       try {
         const base64 = await new Promise<string>((resolve, reject) => {
@@ -694,14 +691,13 @@ export function ArticleCreateForm({
       } catch (err) {
         toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
       } finally {
-        setTranscriptBusy(false);
+        releaseAi();
       }
     })();
   };
 
   const classifyInline = () => {
-    if (!aiReady || bodyText.trim() === '' || classifyBusy) return;
-    setClassifyBusy(true);
+    if (!aiReady || bodyText.trim() === '' || !claimAi('classify')) return;
     void (async () => {
       try {
         const result = (await callAi(organizationId, 'classify-article', {
@@ -729,7 +725,7 @@ export function ArticleCreateForm({
       } catch (err) {
         toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
       } finally {
-        setClassifyBusy(false);
+        releaseAi();
       }
     })();
   };
@@ -1182,13 +1178,13 @@ export function ArticleCreateForm({
                 <span className="flex flex-none items-center gap-2">
                   <AppTooltip label="Sempurnakan judul dengan AI">
                     <AiActionButton
-                      busy={seoBusy === 'titles'}
+                      busy={aiAction === 'title'}
                       idleLabel="Sempurnakan"
                       icon={Sparkles}
                       size="xs"
                       tone="primary"
-                      disabled={!aiReady || titleText.trim() === '' || seoBusy !== 'idle'}
-                      onClick={refineTitles}
+                      disabled={!aiReady || titleText.trim() === ''}
+                      onClick={() => refineTitles('title')}
                       ariaLabel="Sempurnakan judul"
                     />
                   </AppTooltip>
@@ -1200,7 +1196,7 @@ export function ArticleCreateForm({
                   </span>
                 </span>
               </div>
-              {seoBusy === 'titles' && titleVariants === null ? <AiPending label="Menyusun varian judul" rows={[100, 80]} /> : null}
+              {generatingTitles && titleVariants === null ? <AiPending label="Menyusun varian judul" rows={[100, 80]} /> : null}
               {titleVariants !== null ? (
                 <ul className="m-0 list-none space-y-1 p-0">
                   {titleVariants.map((item) => (
@@ -1216,12 +1212,12 @@ export function ArticleCreateForm({
                   <li>
                     <AppTooltip label="Minta varian judul lain">
                       <AiActionButton
-                        busy={seoBusy === 'titles'}
+                        busy={aiAction === 'title-variants'}
                         idleLabel="Buat ulang varian"
                         icon={RefreshCw}
                         size="xs"
-                        disabled={!aiReady || seoBusy !== 'idle'}
-                        onClick={refineTitles}
+                        disabled={!aiReady}
+                        onClick={() => refineTitles('title-variants')}
                       />
                     </AppTooltip>
                   </li>
@@ -1264,12 +1260,12 @@ export function ArticleCreateForm({
                       : 'Sempurnakan deskripsi yang ada dengan AI'}
                   >
                     <AiActionButton
-                      busy={seoBusy === 'description'}
+                      busy={aiAction === 'description'}
                       idleLabel={descriptionText.trim() === '' ? 'Buatkan' : 'Sempurnakan'}
                       icon={Sparkles}
                       size="xs"
                       tone="primary"
-                      disabled={!aiReady || (titleText.trim() === '' && bodyText.trim() === '' && descriptionText.trim() === '') || seoBusy !== 'idle'}
+                      disabled={!aiReady || (titleText.trim() === '' && bodyText.trim() === '' && descriptionText.trim() === '')}
                       onClick={refineDescription}
                       ariaLabel={descriptionText.trim() === '' ? 'Buatkan deskripsi' : 'Sempurnakan deskripsi'}
                     />
@@ -1342,22 +1338,22 @@ export function ArticleCreateForm({
                 </span>
                 <AppTooltip label="Poles alur dan EYD isi dengan AI tanpa mengubah fakta">
                   <AiActionButton
-                    busy={polishBusy}
+                    busy={aiAction === 'polish'}
                     idleLabel={polishRounds === 0 ? 'Poles isi' : 'Poles ulang'}
                     icon={WandSparkles}
                     size="xs"
                     tone="primary"
-                    disabled={!aiReady || bodyText.trim() === '' || polishBusy}
+                    disabled={!aiReady || bodyText.trim() === ''}
                     onClick={polishBodyInline}
                   />
                 </AppTooltip>
                 <AppTooltip label="Transkripsikan rekaman menjadi berita lengkap siap isi formulir">
                   <AiActionButton
-                    busy={transcriptBusy}
+                    busy={aiAction === 'transcribe'}
                     idleLabel="Audio jadi berita"
                     icon={Newspaper}
                     size="xs"
-                    disabled={!aiReady || transcriptBusy}
+                    disabled={!aiReady}
                     onClick={() => document.getElementById(transcribeFullInputId)?.click()}
                   />
                 </AppTooltip>
@@ -1378,7 +1374,7 @@ export function ArticleCreateForm({
                   {bodyJsonProblem}
                 </p>
               )}
-              {polishBusy && polished === '' ? <AiPending label="Memoles alur dan EYD" /> : null}
+              {aiAction === 'polish' && polished === '' ? <AiPending label="Memoles alur dan EYD" /> : null}
               {polished !== '' ? (
                 <div className="space-y-1.5 rounded border border-hairline bg-bg p-2.5">
                   <p className="m-0 font-sans text-xs font-medium text-paper">
@@ -1573,17 +1569,17 @@ export function ArticleCreateForm({
                   </Label>
                   <AppTooltip label="Isi kategori dan topik otomatis dari isi dengan AI" side="left">
                     <AiActionButton
-                      busy={classifyBusy}
+                      busy={aiAction === 'classify'}
                       idleLabel="Lengkapi otomatis"
                       icon={Tags}
                       size="xs"
                       tone="primary"
-                      disabled={!aiReady || bodyText.trim() === '' || classifyBusy}
+                      disabled={!aiReady || bodyText.trim() === ''}
                       onClick={classifyInline}
                     />
                   </AppTooltip>
                 </div>
-                {classifyBusy ? <AiPending label="Mengklasifikasi kategori dan tag" rows={[100, 72]} /> : null}
+                {aiAction === 'classify' ? <AiPending label="Mengklasifikasi kategori dan tag" rows={[100, 72]} /> : null}
                 <p className="m-0 font-mono text-[11px] text-paper-faint">
                   Ketik untuk mencari; bila tidak ada, tekan Enter atau tombol tambah di dalam daftar — kategori baru disimpan ke server hanya saat artikel disimpan. Boleh lebih dari satu; yang pertama jadi kategori utama. Wajib — tanpa pilihan, artikel memakai{defaultCategoryName === null ? ' kategori bawaan tenant' : ` “${defaultCategoryName}”`}.
                 </p>

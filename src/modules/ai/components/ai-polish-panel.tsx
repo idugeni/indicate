@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { ListChecks, Tags, WandSparkles } from 'lucide-react';
+import { Check, ListChecks, Tags, WandSparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { Button } from '@/components/ui/button';
 import { AiActionButton, AiPending } from '@/modules/ai/components/ai-action-button';
 import { callAi } from '@/modules/ai/components/ai-client';
 
@@ -154,9 +153,7 @@ export function AiPolishPanel({
           <p className="m-0 max-h-40 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-paper-dim">
             {polished.slice(0, 1200)}
           </p>
-          <Button type="button" size="sm" variant="outline" onClick={() => onApply({ body: polished })}>
-            <span>Terapkan ke isi</span>
-          </Button>
+          <AiActionButton busy={false} idleLabel="Terapkan ke isi" icon={Check} tone="primary" onClick={() => onApply({ body: polished })} />
         </div>
       ) : null}
       {classification !== null ? (
@@ -168,9 +165,7 @@ export function AiPolishPanel({
               {classification.tags.length > 0 ? ` — ${classification.tags.join(', ')}` : ''}
             </span>
           </p>
-          <Button type="button" size="sm" variant="outline" onClick={applyClassification}>
-            <span>Terapkan klasifikasi</span>
-          </Button>
+          <AiActionButton busy={false} idleLabel="Terapkan klasifikasi" icon={Check} tone="primary" onClick={applyClassification} />
         </div>
       ) : null}
       <p className="m-0 font-sans text-[11px] text-paper-faint">Hasil hanya mengisi formulir untuk ditinjau editor; tidak menyimpan otomatis.</p>

@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { RefreshCw, Search } from 'lucide-react';
+import { Check, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { Button } from '@/components/ui/button';
 import { AiActionButton, AiPending } from '@/modules/ai/components/ai-action-button';
 import { callAi } from '@/modules/ai/components/ai-client';
 import { AppTooltip } from '@/ui/app-tooltip';
@@ -100,44 +99,35 @@ export function AiSeoAssist({
             {suggestion.titles.map((item) => (
               <li key={item} className="flex items-center justify-between gap-2">
                 <span className="min-w-0 flex-1 truncate font-sans text-xs text-paper">{item}</span>
-                <Button type="button" size="sm" variant="ghost" onClick={() => onApply({ title: item })}>
-                  <span>Pakai judul</span>
-                </Button>
+                <AiActionButton busy={false} idleLabel="Pakai judul" size="xs" onClick={() => onApply({ title: item })} />
               </li>
             ))}
           </ul>
           {suggestion.metaDescription !== '' ? (
             <div className="flex items-center justify-between gap-2">
               <span className="min-w-0 flex-1 truncate font-sans text-[11px] text-paper-dim">{suggestion.metaDescription}</span>
-              <Button type="button" size="sm" variant="ghost" onClick={() => onApply({ metaDescription: suggestion.metaDescription })}>
-                <span>Pakai deskripsi</span>
-              </Button>
+              <AiActionButton busy={false} idleLabel="Pakai deskripsi" size="xs" onClick={() => onApply({ metaDescription: suggestion.metaDescription })} />
             </div>
           ) : null}
           {suggestion.slug !== '' ? (
             <div className="flex items-center justify-between gap-2">
               <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-paper-dim">{suggestion.slug}</span>
-              <Button type="button" size="sm" variant="ghost" onClick={() => onApply({ slug: suggestion.slug })}>
-                <span>Pakai slug</span>
-              </Button>
+              <AiActionButton busy={false} idleLabel="Pakai slug" size="xs" onClick={() => onApply({ slug: suggestion.slug })} />
             </div>
           ) : null}
           {suggestion.excerpt !== '' ? (
             <div className="flex items-center justify-between gap-2">
               <span className="min-w-0 flex-1 truncate font-sans text-[11px] text-paper-dim">{suggestion.excerpt}</span>
-              <Button type="button" size="sm" variant="ghost" onClick={() => onApply({ excerpt: suggestion.excerpt })}>
-                <span>Pakai kutipan</span>
-              </Button>
+              <AiActionButton busy={false} idleLabel="Pakai kutipan" size="xs" onClick={() => onApply({ excerpt: suggestion.excerpt })} />
             </div>
           ) : null}
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
+          <AiActionButton
+            busy={false}
+            idleLabel="Terapkan semua"
+            icon={Check}
+            tone="primary"
             onClick={() => onApply({ title: suggestion.titles[0], metaDescription: suggestion.metaDescription, slug: suggestion.slug, excerpt: suggestion.excerpt })}
-          >
-            <span>Terapkan semua</span>
-          </Button>
+          />
           <p className="m-0 font-sans text-[11px] text-paper-faint">Hasil hanya mengisi formulir untuk ditinjau editor; tidak menyimpan otomatis.</p>
         </div>
       ) : null}
