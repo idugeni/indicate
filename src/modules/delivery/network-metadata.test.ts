@@ -218,6 +218,11 @@ describe('utility surfaces stay non-indexable', () => {
     const metadata = await networkMetadata('/');
     expect(metadata.robots).toMatchObject({ index: true, follow: true });
   });
+
+  it('melempar not-found agar slug milik portal lain berstatus 404', async () => {
+    load.mockResolvedValue(makeNetworkSite([]));
+    await expect(networkMetadata('/milik-kota-lain', { articleSlug: 'milik-kota-lain' })).rejects.toThrow(/404/);
+  });
 });
 
 

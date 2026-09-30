@@ -14,7 +14,6 @@ import {
   Pilcrow,
   Plus,
   RefreshCw,
-  Save,
   Send,
   Share2,
   SlidersHorizontal,
@@ -48,25 +47,9 @@ import { slugify } from '@/modules/site/slugify';
 import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { SLUG_MAX_LENGTH, TAG_MAX_COUNT, normalizeTagList } from '@/modules/site/slug-allocator';
 import type { TipTapDoc, TipTapNode } from '@/modules/site/tiptap-document';
-import { isTipTapDoc, tiptapToText, TIPTAP_MAX_NODES } from '@/modules/site/tiptap-document';
+import { tiptapToText, TIPTAP_MAX_NODES } from '@/modules/site/tiptap-document';
 import { describeBodyJsonProblem } from '@/modules/dashboard/components/editorial/body-json-diagnostics';
-import {
-  buildArticlePayload,
-  buildAutosavePayload,
-  persistDraftArticle,
-  type AutosavedDraft,
-} from '@/modules/dashboard/components/editorial/article-persistence';
-import {
-  clearArticleDraft,
-  readArticleDraft,
-  useArticleDraftMirror,
-  type ArticleDraft,
-} from '@/modules/dashboard/components/editorial/use-article-draft';
-import {
-  clearAutosaveReference,
-  readAutosaveReference,
-  writeAutosaveReference,
-} from '@/modules/dashboard/components/editorial/autosave-reference';
+import { buildArticlePayload } from '@/modules/dashboard/components/editorial/article-persistence';
 import { ArticlePreview } from '@/modules/dashboard/components/editorial/article-preview';
 import { RichTextEditor } from '@/modules/dashboard/components/editorial/rich-text-editor';
 import { callAi } from '@/modules/ai/components/ai-client';
@@ -157,9 +140,8 @@ function SeoMeter({
  *
  * @param data - Opsi wilayah, penerbit, kategori, penulis, dan artikel existing untuk saran tag.
  * @param onSubmit - Menyimpan `article.create`; media upload memakai command opsional.
- * @param command - Perintah workspace untuk simpan draf eksplisit dan unggah media editor kaya; tanpa ini keduanya gagal eksplisit.
- * @param organizationId - Tenant pemilik draft. Kosong mematikan cermin `localStorage`;
- *   layar produksi selalu meneruskannya, dan kunci draft tidak pernah lintas tenant.
+ * @param command - Perintah workspace untuk unggah media editor kaya; tanpa ini unggahan gagal eksplisit.
+ * @param organizationId - Tenant pemilik permintaan AI; kosong mematikan fitur AI.
  * @returns Kanvas artikel terbuka + inspektor lengket (status, SEO, atribusi, sampul, sumber).
  */
 export function ArticleCreateForm({
@@ -229,8 +211,6 @@ export function ArticleCreateForm({
   const [source, setSource] = useState('');
   const [canonicalUrl, setCanonicalUrl] = useState('');
   const [tags, setTags] = useState<readonly string[]>([]);
-  const [autosavedDraft, setAutosavedDraft] = useState<AutosavedDraft | null>(null);
-  const [autosaveNotice, setAutosaveNotice] = useState<string | null>(null);
   const [rawScheduleInput, setRawScheduleInput] = useState('');
   const [rawPublishDateInput, setRawPublishDateInput] = useState('');
   const [viewsInput, setViewsInput] = useState('');
@@ -241,8 +221,6 @@ export function ArticleCreateForm({
     const next = Math.min(1_000_000_000, Math.max(0, current + delta));
     setViewsInput(String(next));
   };
-  const restoredDraftRef = useRef(false);
-
   const liveSites = useMemo(() => model?.sites ?? [], [model?.sites]);
   const publicationScope = useMemo<PublicationScope>(() => {
     const pickedCity = model?.regions?.find((region) => region.id === cityId);
@@ -358,10 +336,6 @@ export function ArticleCreateForm({
     () => (categoryIds.length > 0 ? categoryIds : defaultCategoryId === null ? [] : [defaultCategoryId]),
     [categoryIds, defaultCategoryId],
   );
-  const serverCategoryIds = useMemo(
-    () => effectiveCategoryIds.filter((id) => !id.startsWith(PENDING_CATEGORY_PREFIX)),
-    [effectiveCategoryIds],
-  );
   const bodyJsonProblem = useMemo(() => describeBodyJsonProblem(bodyJsonDraft), [bodyJsonDraft]);
 
   const formSnapshot = useMemo(() => ({
@@ -387,139 +361,6 @@ export function ArticleCreateForm({
     coverUrl, tags, status, rawScheduleInput, provinceId, cityId, publisherId,
     authorId, effectiveCategoryIds, featuredId,
   ]);
-
-  const draftSnapshot = useMemo<ArticleDraft | null>(() => {
-    if (organizationId === '') return null;
-    const meaningful = titleText.trim() !== '' || bodyText.trim() !== '' || bodyJsonDraft !== null;
-    return meaningful
-      ? {
-        version: 1,
-        savedAt: new Date().toISOString(),
-        slug,
-        slugTouched,
-        status,
-        categoryIds,
-        extraCategories,
-        publisherId,
-        authorId,
-        provinceId,
-        cityId,
-        titleText,
-        descriptionText,
-        bodyText,
-        bodyJson: bodyJsonDraft,
-        source,
-        canonicalUrl,
-        coverUrl,
-        tags,
-        publishOnSave,
-      }
-      : null;
-  }, [
-    organizationId, titleText, bodyText, bodyJsonDraft, slug, slugTouched, status,
-    categoryIds, extraCategories, publisherId, authorId, provinceId, cityId,
-    descriptionText, source, canonicalUrl, coverUrl, tags, publishOnSave,
-  ]);
-
-  useEffect(() => {
-    if (restoredDraftRef.current || organizationId === '') return;
-    restoredDraftRef.current = true;
-    const stored = readArticleDraft(organizationId);
-    if (stored === null) return;
-    /* eslint-disable react-hooks/set-state-in-effect -- one-time hydration restore, not a state sync loop. `localStorage` does not exist during SSR, so a lazy `useState` initializer would read `null` on the server and the stored draft on the client, producing a hydration mismatch. Reading browser storage once on mount is the only way to restore it without diverging the first render. */
-    setSlug(stored.slug);
-    setSlugTouched(stored.slugTouched);
-    setStatus(stored.status);
-    setCategoryIds(stored.categoryIds);
-    setExtraCategories(stored.extraCategories);
-    setPublisherId(stored.publisherId);
-    setAuthorId(stored.authorId);
-    setProvinceId(stored.provinceId);
-    setCityId(stored.cityId);
-    setTitleText(stored.titleText);
-    setDescriptionText(stored.descriptionText);
-    setBodyText(stored.bodyText);
-    setBodyJsonDraft(isTipTapDoc(stored.bodyJson) ? stored.bodyJson : null);
-    setSource(stored.source);
-    setCanonicalUrl(stored.canonicalUrl);
-    setCoverUrl(stored.coverUrl);
-    setTags(stored.tags);
-    setPublishOnSave(stored.publishOnSave);
-    setRichResetKey((key) => key + 1);
-    const restoredTitle = stored.titleText.trim() === '' ? 'tanpa judul' : stored.titleText.trim();
-    // A draft whose body is gone is not a restore. Saying so beats handing back
-    // an empty editor under a success toast.
-    const restoredBody = stored.bodyText.trim() !== ''
-      || (isTipTapDoc(stored.bodyJson) && (stored.bodyJson.content ?? []).length > 0);
-    toast.info(restoredBody
-      ? `Draf artikel dipulihkan: "${restoredTitle}".`
-      : `Judul draf "${restoredTitle}" dipulihkan, tapi isinya kosong di peramban ini. Isi lengkapnya masih ada di draf server — buka Arsip Artikel untuk mengambilnya kembali.`);
-  }, [organizationId]);
-
-  // Declared after the restore effect on purpose: React runs effects in
-  // declaration order, so the mirror must not be armed before the stored draft
-  // has been read back into state.
-  useArticleDraftMirror(organizationId, draftSnapshot);
-
-  const autosavedRef = useRef(autosavedDraft);
-  const restoredAutosaveRef = useRef(false);
-  const [savingDraft, setSavingDraft] = useState(false);
-
-  useEffect(() => {
-    autosavedRef.current = autosavedDraft;
-  }, [autosavedDraft]);
-
-  useEffect(() => {
-    if (restoredAutosaveRef.current || organizationId === '') return;
-    restoredAutosaveRef.current = true;
-    const reference = readAutosaveReference(organizationId);
-    if (reference === null) return;
-    /* eslint-disable react-hooks/set-state-in-effect -- one-time hydration restore of a browser-stored reference, for the same reason as the draft restore above. */
-    // The ref is assigned alongside the state so an explicit draft save after
-    // a reload updates the existing row instead of creating a duplicate one.
-    autosavedRef.current = reference;
-    setAutosavedDraft(reference);
-  }, [organizationId]);
-
-  /**
-   * Simpan draf ke server hanya atas klik eksplisit.
-   *
-   * @remarks Mengetik, me-refresh, atau memuat ulang tidak pernah menulis baris
-   * server; cermin `localStorage` yang menanggung pemulihan peramban. Draf
-   * server ada hanya setelah redakteur menekan tombol ini atau submit.
-   */
-  const saveDraftToServer = () => {
-    if (command === undefined || isSubmitting || savingDraft) return;
-    if (buildAutosavePayload(formSnapshot, serverCategoryIds) === null) {
-      toast.error('Lengkapi slug, wilayah, judul, dan isi sebelum menyimpan draf.');
-      return;
-    }
-    setSavingDraft(true);
-    void (async () => {
-      try {
-        const categoryIds = await persistPendingCategories(effectiveCategoryIds);
-        if (categoryIds === null) return;
-        const payload = buildAutosavePayload(formSnapshot, categoryIds);
-        if (payload === null) return;
-        let existing = autosavedRef.current;
-        if (existing === null) {
-          const match = (model?.articles ?? []).find((item) => item.status === 'draft' && item.slug === String(payload.slug ?? ''));
-          if (match !== undefined) existing = { id: match.id, version: match.version, slug: match.slug };
-        }
-        const saved = await persistDraftArticle(command, payload, existing);
-        if (saved === null) {
-          toast.error('Draf gagal tersimpan ke server. Isi tetap aman di peramban ini.');
-          return;
-        }
-        autosavedRef.current = saved;
-        setAutosavedDraft(saved);
-        writeAutosaveReference(organizationId, saved);
-        setAutosaveNotice(`Draf tersimpan ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}. Lanjut tulis atau ambil dari Arsip Artikel.`);
-      } finally {
-        setSavingDraft(false);
-      }
-    })();
-  };
 
   const selectedPublisher = useMemo(
     () => (model?.publishers ?? []).find((p) => p.id === publisherId) ?? null,
@@ -1046,9 +887,7 @@ export function ArticleCreateForm({
       const payload = buildArticlePayload({ ...formSnapshot, status, rawSchedule }, categoryIds);
       let created: { readonly id?: string; readonly slug?: string } | null;
       try {
-        created = autosavedDraft !== null && command !== undefined
-          ? await command('article.update', { ...payload, id: autosavedDraft.id, expectedVersion: autosavedDraft.version }) as { readonly id?: string; readonly slug?: string }
-          : await onSubmit(payload) as { readonly id?: string; readonly slug?: string };
+        created = await onSubmit(payload) as { readonly id?: string; readonly slug?: string };
       } catch (error) {
         // The article may already exist server-side, so keep the draft instead
         // of clearing the form and reporting a rollback that never happened.
@@ -1064,10 +903,6 @@ export function ArticleCreateForm({
       }
       if (willPublish && typeof created.id === 'string') {
         await publishCreatedArticle(created.id, status === 'scheduled', scheduledAt, backdateIso, initialViews);
-      }
-      if (organizationId !== '') {
-        clearArticleDraft(organizationId);
-        clearAutosaveReference(organizationId);
       }
       form.reset();
       setSlug('');
@@ -1090,8 +925,6 @@ export function ArticleCreateForm({
       setRawScheduleInput('');
       setRawPublishDateInput('');
       setViewsInput('');
-      setAutosavedDraft(null);
-      setAutosaveNotice(null);
       setFeaturedId(null);
       setFeaturedName('');
       setFeaturedPreviewUrl(null);
@@ -1168,20 +1001,7 @@ export function ArticleCreateForm({
             {targetSiteIds.length.toLocaleString('id-ID')} {targetLabel}
           </span>
         ) : null}
-        {autosaveNotice === null ? null : (
-          <span className="font-mono text-[11px] text-paper-faint" aria-live="polite">
-            {autosaveNotice}
-          </span>
-        )}
         <span className="flex-1" />
-        <Button type="button" variant="outline" disabled={isSubmitting || savingDraft || command === undefined} onClick={saveDraftToServer}>
-          {savingDraft ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-          ) : (
-            <Save className="h-3.5 w-3.5" aria-hidden="true" />
-          )}
-          <span>{autosavedDraft === null ? 'Simpan ke server' : 'Perbarui di server'}</span>
-        </Button>
         <Button type="submit" variant="default" disabled={isSubmitting}>
           {isSubmitting ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />

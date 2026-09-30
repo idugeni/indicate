@@ -2,17 +2,14 @@ import { SLUG_MAX_LENGTH, TAG_MAX_COUNT, normalizeTagList } from '@/modules/site
 import type { TipTapDoc } from '@/modules/site/tiptap-document';
 import { localDateTimeToIso } from '@/modules/dashboard/components/shared/form-utils';
 
-/** Autosave tidak pernah menerbitkan, jadi statusnya dipaksa di sini. */
-const AUTOSAVE_STATUS = 'draft';
+/** Panjang isi maksimum yang diterima server. */
 const ARTICLE_BODY_MAX = 200_000;
-const SLUG_SHAPE = /^[a-z0-9-]+$/u;
 
 /**
- * Isian form yang dipakai bersama oleh autosave dan submit.
+ * Isian form yang dipakai submit artikel.
  *
- * @remarks Sengaja tidak membaca `FormData`: autosave dipicu dari `useEffect`
- * yang tidak punya akses ke event form, jadi sumber kebenaran tunggal harus
- * state React.
+ * @remarks Sengaja tidak membaca `FormData`: submit membangun payload dari
+ * state React sebagai sumber kebenaran tunggal.
  */
 export interface ArticleFormSnapshot {
   readonly slug: string;
@@ -33,20 +30,6 @@ export interface ArticleFormSnapshot {
   readonly categoryIds: readonly string[];
   readonly leadMediaId: string | null;
 }
-
-/**
- * Rujukan artikel yang sudah tersimpan oleh autosave.
- */
-export interface AutosavedDraft {
-  readonly id: string;
-  readonly version: number;
-  readonly slug: string;
-}
-
-/**
- * Perintah workspace dashboard; menolak dilawan dan mengembalikan null saat gagal.
- */
-export type ArticleCommand = (action: string, payload: unknown) => Promise<unknown>;
 
 function optionalText(value: string): string | undefined {
   const trimmed = value.trim();
@@ -83,64 +66,4 @@ export function buildArticlePayload(
     status: snapshot.status,
     scheduledAt,
   };
-}
-
-/**
- * Susun payload autosave dari snapshot form.
- *
- * @param snapshot - Isian form saat ini.
- * @param serverCategoryIds - Id kategori yang sudah ada di server saja.
- * @returns Payload autosave, atau null bila form belum cukup lengkap untuk disimpan.
- * @remarks Kategori lokal (`new:`) sengaja dikecualikan. Membuatnya di sini akan
- * melanggar janji bahwa kategori baru tidak menyentuh server sebelum artikel
- * disimpan; nama yang diketik tetap ada di cermin `localStorage` sehingga tidak
- * hilang saat tab dimuat ulang.
- * @remarks Syarat lengkap mengikuti `articleCreateSchema`: slug, judul, isi, dan
- * wilayah. Tanpa wilayah, `articleCreateSchema` menolak apa pun yang dikirim.
- */
-export function buildAutosavePayload(
-  snapshot: ArticleFormSnapshot,
-  serverCategoryIds: readonly string[],
-): Record<string, unknown> | null {
-  const slug = snapshot.slug.trim();
-  if (slug === '' || !SLUG_SHAPE.test(slug)) return null;
-  if ((snapshot.cityId ?? snapshot.provinceId) === null) return null;
-  if (snapshot.titleText.trim() === '') return null;
-  if (snapshot.bodyText.trim() === '') return null;
-  const payload = buildArticlePayload(
-    { ...snapshot, status: AUTOSAVE_STATUS, rawSchedule: '' },
-    serverCategoryIds,
-  );
-  return { ...payload, scheduledAt: null };
-}
-
-/**
- * Tulis artikel sebagai draft baru, atau perbarui draft autosave yang sudah ada.
- *
- * @param command - Perintah workspace dashboard.
- * @param payload - Payload artikel dari `buildArticlePayload`.
- * @param existing - Draft hasil autosave sebelumnya; null berarti buat baru.
- * @returns Rujukan draft tersimpan, atau null bila gagal atau organisasi berganti.
- * @remarks Percabangan create/update dipusatkan di sini supaya autosave dan
- * submit tidak pernah berbeda tentang payload yang sama.
- */
-export async function persistDraftArticle(
-  command: ArticleCommand,
-  payload: Record<string, unknown>,
-  existing: AutosavedDraft | null,
-): Promise<AutosavedDraft | null> {
-  try {
-    const raw = existing === null
-      ? await command('article.create', payload)
-      : await command('article.update', { ...payload, id: existing.id, expectedVersion: existing.version });
-    const record = raw as { readonly id?: unknown; readonly slug?: unknown; readonly version?: unknown } | null;
-    if (record === null || typeof record.id !== 'string') return null;
-    return {
-      id: record.id,
-      version: typeof record.version === 'number' ? record.version : (existing?.version ?? 1) + 1,
-      slug: typeof record.slug === 'string' ? record.slug : (existing?.slug ?? ''),
-    };
-  } catch {
-    return null;
-  }
 }

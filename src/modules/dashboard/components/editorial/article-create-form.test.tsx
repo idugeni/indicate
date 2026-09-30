@@ -359,50 +359,20 @@ describe('Formulir tulis artikel', () => {
     await waitFor(() => expect(submit).not.toHaveBeenCalled());
   });
 
-  it('menulis draft ke localStorage lalu memulihkannya saat form dibuka lagi', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+  it('membuka form selalu kosong walau sebelumnya sempat mengisi', async () => {
     const first = setup({ organizationId: 'org-1' });
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Belum Selesai' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Kantor' } });
     fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Paragraf yang belum rampung.' } });
-    await act(async () => { await vi.advanceTimersByTimeAsync(1_500); });
-    const stored = window.localStorage.getItem('indicate:article-draft:org-1');
-    expect(stored).not.toBeNull();
-    expect(JSON.parse(stored as string)).toMatchObject({ titleText: 'Belum Selesai', source: 'Rilis Kantor' });
+    expect(window.localStorage.getItem('indicate:article-draft:org-1')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Simpan ke server' })).toBeNull();
     first.unmount();
 
     render(<ArticleCreateForm data={DATA} onSubmit={vi.fn(async () => null)} command={vi.fn(async () => ({}))} organizationId="org-1" />);
-    expect((screen.getByLabelText('Judul Artikel') as HTMLInputElement).value).toBe('Belum Selesai');
-    expect((screen.getByLabelText('Sumber', { selector: 'input' }) as HTMLInputElement).value).toBe('Rilis Kantor');
-    expect((screen.getByLabelText('Isi Artikel') as HTMLTextAreaElement).value).toBe('Paragraf yang belum rampung.');
+    expect((screen.getByLabelText('Judul Artikel') as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('Isi Artikel') as HTMLTextAreaElement).value).toBe('');
   });
 
-  it('tidak menulis draft milik tenant lain', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    setup({ organizationId: 'org-1' });
-    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Rahasia Tenant' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi.' } });
-    await act(async () => { await vi.advanceTimersByTimeAsync(1_500); });
-    expect(window.localStorage.getItem('indicate:article-draft:org-1')).not.toBeNull();
-    expect(window.localStorage.getItem('indicate:article-draft:org-2')).toBeNull();
-  });
-
-  it('menghapus draft setelah artikel tersimpan', async () => {
-    const { container } = setup({ organizationId: 'org-1', submit: async () => ({ id: 'art-1', slug: 'judul-uji' }) });
-    await pilihWilayahWonosobo();
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
-    await act(async () => { await vi.advanceTimersByTimeAsync(1_500); });
-    expect(window.localStorage.getItem('indicate:article-draft:org-1')).not.toBeNull();
-    await act(async () => {
-      fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
-      await vi.advanceTimersByTimeAsync(1_500);
-    });
-    expect(window.localStorage.getItem('indicate:article-draft:org-1')).toBeNull();
-  });
-
-  it('tidak menulis baris server saat mengetik atau menunggu tanpa klik simpan', async () => {
+  it('tidak menulis baris server saat mengetik atau menunggu tanpa submit', async () => {
     const saved = vi.fn(async () => ({ id: 'art-draf-1', slug: 'judul-uji', version: 1 }));
     setup({ organizationId: 'org-1', command: saved });
     await pilihWilayahWonosobo();
@@ -411,112 +381,6 @@ describe('Formulir tulis artikel', () => {
     fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
     await act(async () => { await vi.advanceTimersByTimeAsync(120_000); });
     expect(saved).not.toHaveBeenCalled();
-  });
-
-  it('membuat draf sekali lalu memperbarui draf yang sama pada klik berikut dan setelah muat ulang', async () => {
-    const saved = vi.fn(async (action: string) => (
-      action === 'article.create'
-        ? { id: 'art-draf-1', slug: 'judul-uji', version: 1 }
-        : { id: 'art-draf-1', slug: 'judul-uji', version: 2 }
-    ));
-    const user = userEvent.setup();
-    const first = setup({ organizationId: 'org-1', command: saved });
-    await pilihWilayahWonosobo();
-    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
-    await user.click(screen.getByRole('button', { name: 'Simpan ke server' }));
-    await waitFor(() => expect(saved.mock.calls.filter(([action]) => action === 'article.create')).toHaveLength(1));
-    await user.click(screen.getByRole('button', { name: 'Perbarui di server' }));
-    await waitFor(() => expect(saved.mock.calls.filter(([action]) => action === 'article.update')).toHaveLength(1));
-    first.unmount();
-
-    setup({ organizationId: 'org-1', command: saved });
-    await pilihWilayahWonosobo();
-    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita terbaru.' } });
-    await user.click(screen.getByRole('button', { name: 'Perbarui di server' }));
-    await waitFor(() => expect(saved.mock.calls.filter(([action]) => action === 'article.create')).toHaveLength(1));
-    expect(saved.mock.calls.filter(([action]) => action === 'article.update')).toHaveLength(2);
-  });
-
-  it('memakai ulang draf server berslug sama saat rujukan peramban hilang', async () => {
-    const saved = vi.fn(async (action: string) => (
-      action === 'article.create'
-        ? { id: 'art-draf-1', slug: 'judul-uji', version: 1 }
-        : { id: 'art-draf-1', slug: 'judul-uji', version: 2 }
-    ));
-    const user = userEvent.setup();
-    const dataWithDraft = {
-      ...DATA,
-      articles: [{ id: 'art-draf-1', regionId: 'r-2', publisherId: null, categoryId: null, authorId: null, slug: 'judul-uji', title: 'Judul Uji', body: 'Isi lama.', source: '', version: 1, status: 'draft' }],
-    };
-    render(<ArticleCreateForm data={dataWithDraft} onSubmit={vi.fn(async () => null)} command={saved} organizationId="org-1" />);
-    await pilihWilayahWonosobo();
-    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
-    await user.click(screen.getByRole('button', { name: 'Simpan ke server' }));
-    await waitFor(() => expect(saved.mock.calls.filter(([action]) => action === 'article.update')).toHaveLength(1));
-    expect(saved.mock.calls.filter(([action]) => action === 'article.create')).toHaveLength(0);
-  });
-
-  it('menyimpan ulang isi yang dipulihkan agar draf peramban tidak tertinggal kosong', async () => {
-    window.localStorage.setItem('indicate:article-draft:org-1', JSON.stringify({
-      version: 1,
-      savedAt: new Date().toISOString(),
-      slug: 'judul-uji',
-      slugTouched: true,
-      status: 'draft',
-      categoryIds: [],
-      extraCategories: [],
-      publisherId: null,
-      authorId: null,
-      provinceId: 'r-1',
-      cityId: 'r-2',
-      titleText: 'Judul Uji',
-      descriptionText: '',
-      bodyText: 'Isi berita lengkap.',
-      bodyJson: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Isi berita lengkap.' }] }] },
-      source: '',
-      canonicalUrl: '',
-      coverUrl: '',
-      tags: [],
-      publishOnSave: false,
-    }));
-
-    const { toast } = await import('sonner');
-    setup({ organizationId: 'org-1' });
-    expect(screen.getByLabelText('Judul Artikel')).toBeDefined();
-    expect(vi.mocked(toast.info)).toHaveBeenCalledWith(expect.stringContaining('Draf artikel dipulihkan'));
-    expect(vi.mocked(toast.info)).not.toHaveBeenCalledWith(expect.stringContaining('isinya kosong'));
-  });
-
-  it('memberi tahu saat draf dipulihkan tanpa isi, alih-alih editor kosong', async () => {
-    window.localStorage.setItem('indicate:article-draft:org-1', JSON.stringify({
-      version: 1,
-      savedAt: new Date().toISOString(),
-      slug: 'judul-uji',
-      slugTouched: true,
-      status: 'draft',
-      categoryIds: [],
-      extraCategories: [],
-      publisherId: null,
-      authorId: null,
-      provinceId: 'r-1',
-      cityId: 'r-2',
-      titleText: 'Petik Hasil Pembinaan',
-      descriptionText: '',
-      bodyText: '',
-      bodyJson: null,
-      source: '',
-      canonicalUrl: '',
-      coverUrl: '',
-      tags: [],
-      publishOnSave: false,
-    }));
-
-    const { toast } = await import('sonner');
-    setup({ organizationId: 'org-1' });
-    expect(vi.mocked(toast.info)).toHaveBeenCalledWith(expect.stringContaining('isinya kosong di peramban ini'));
   });
 
   it('mengirim URL sampul luar tanpa unggahan', async () => {

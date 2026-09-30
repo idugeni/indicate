@@ -4,7 +4,7 @@ import { cacheLife, cacheTag } from 'next/cache';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
-import { buildSeoDocument, indexableRobots, nonIndexableRobots, notFoundMetadata, tenantBrand, tenantFavicon } from '@/modules/site/seo';
+import { buildSeoDocument, indexableRobots, nonIndexableRobots, tenantBrand, tenantFavicon } from '@/modules/site/seo';
 import type { NetworkContentQuery, NetworkSiteData, RequestClassification, ResolvedSiteContext } from '@/modules/delivery/models';
 import type { RobotsDirective } from '@/modules/site/seo';
 import { isNetworkArticle } from '@/modules/delivery/models';
@@ -297,7 +297,7 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
   const article = candidate !== undefined && isNetworkArticle(candidate) ? candidate : undefined;
 
   if (query.articleSlug !== undefined && article === undefined) {
-    return notFoundMetadata();
+    notFound();
   }
 
   if (query.search !== undefined) {
