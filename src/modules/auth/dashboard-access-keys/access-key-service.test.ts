@@ -34,7 +34,12 @@ describe('kredensial kunci akses dashboard', () => {
     const parsed = parseAccessKeyCredential(material.plaintext)!;
     const hash = await deriveAccessKeyHash(parsed.secret, material.salt);
     await expect(verifyAccessKeySecret(parsed.secret, material.salt, hash)).resolves.toBe(true);
-    await expect(verifyAccessKeySecret(`${parsed.secret.slice(0, -1)}A`, material.salt, hash)).resolves.toBe(false);
+    // The secret is base64url over 32 random bytes, so its last character is
+    // uniform over 64 symbols. Substituting a fixed "A" would rebuild the
+    // original secret once in 64 runs and assert the opposite of the intent.
+    const last = parsed.secret.slice(-1);
+    const tampered = `${parsed.secret.slice(0, -1)}${last === 'A' ? 'B' : 'A'}`;
+    await expect(verifyAccessKeySecret(tampered, material.salt, hash)).resolves.toBe(false);
   });
 
   it('membangun path login sekali-klik yang aman URL', () => {
