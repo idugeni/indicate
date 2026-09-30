@@ -71,13 +71,14 @@ export class DrizzleStatusRepository {
    * @returns Per komponen maksimal dua baris terbaru.
    */
   async lastTwoPerComponent(): Promise<readonly StatusCheckRow[]> {
-    const ranked = await this.database.execute<{ readonly id: string; readonly component: string; readonly health: string; readonly latency_ms: number | null; readonly detail: string | null; readonly checked_at: Date; readonly rn: number }>(sql`
-      SELECT id, component, health, latency_ms, detail, checked_at,
-        row_number() OVER (PARTITION BY component ORDER BY checked_at DESC) AS rn
-      FROM ${statusChecks}
+    const ranked = await this.database.execute<{ readonly id: string; readonly component: string; readonly health: string; readonly latency_ms: number | null; readonly detail: string | null; readonly checked_at: Date }>(sql`
+      SELECT id, component, health, latency_ms, detail, checked_at FROM (
+        SELECT id, component, health, latency_ms, detail, checked_at,
+          row_number() OVER (PARTITION BY component ORDER BY checked_at DESC) AS rn
+        FROM ${statusChecks}
+      ) AS ranked WHERE rn <= 2
     `);
     return ranked
-      .filter((row) => row.rn <= 2)
       .slice(0, CHECK_READ_MAX_ROWS)
       .map((row) => ({
         id: row.id,
