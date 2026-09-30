@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (233 migrations):
+-- Reviewed sources, in journal order (234 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -247,6 +247,7 @@
 --   231  20260930120000_dashboard_access_keys_grants  ledger sha256:bf0e12b3ac1a63dd589cac0b54b66f74b0ed8dd6aa77c096be1dbe06bbdb21dd
 --   232  20260930130000_article_revisions_delete_grant  ledger sha256:f495e66ba12d8bdbca0b5fbe7be4af19bfbfe6c67be606e468d5020738ed4e79
 --   233  20260930140000_fk_covering_indexes  ledger sha256:37e33820cad3dec22ee59289544b42d4e47e3fd10c13e0e5605aceb40b743ca3
+--   234  20260930150000_ai_master_secrets_runtime  ledger sha256:9fa0e0c96504169bd85e7a5b9a616af4d6834be660af0464b5f666a9c9bec7b6
 
 BEGIN;
 
@@ -19400,4 +19401,23 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (233, 'fk_covering_indexes', 'sha256:7aef372626c821c17160bbdd5cecf86572e1783d350c0620210a315fd5ff86ae');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('37e33820cad3dec22ee59289544b42d4e47e3fd10c13e0e5605aceb40b743ca3', 1790776800000);
+
+-- ----------------------------------------------------------------------
+-- 20260930150000_ai_master_secrets_runtime
+-- ----------------------------------------------------------------------
+-- Runtime access for the global AI master secret.
+--
+-- `ai_master_secrets` is a global singleton (no organization column) read and
+-- rotated server-side only. RLS is enabled with no policy, so the runtime role
+-- silently reads zero rows and provisioning looks permanently absent. Mirror
+-- the `runtime_accessor` convention from the other AI control-plane tables.
+-- Least-privilege scope: select, insert, and update only; rows are deactivated
+-- on rotation, never deleted. `anon`/`authenticated` hold no grants on this
+-- table, so the Data API stays closed regardless of this policy.
+GRANT SELECT, INSERT, UPDATE ON public.ai_master_secrets TO indicate_runtime;
+CREATE POLICY runtime_accessor ON public.ai_master_secrets FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (234, 'ai_master_secrets_runtime', 'sha256:0c6803467646cc3851db7620d90c12a71412e5f2b02b9e50ca3d3bc86e790dce');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('9fa0e0c96504169bd85e7a5b9a616af4d6834be660af0464b5f666a9c9bec7b6', 1790780400000);
 COMMIT;

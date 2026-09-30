@@ -1632,6 +1632,13 @@
       "when": 1790776800000,
       "tag": "20260930140000_fk_covering_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 233,
+      "version": "7",
+      "when": 1790780400000,
+      "tag": "20260930150000_ai_master_secrets_runtime",
+      "breakpoints": true
     }
   ]
 }
