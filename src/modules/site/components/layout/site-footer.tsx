@@ -9,6 +9,7 @@ import { SOCIAL_ORDER, resolveContactChannels, socialBrandColor, socialBrandFore
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { currentYear } from '@/modules/site/current-year';
 import { Container, PrimaryCta, SecondaryCta } from '@/modules/site/components/layout/content';
+import { TemplateTooltip } from '@/modules/site/components/network/ui/template-tooltip';
 interface FooterColumn {
   readonly heading: string;
   readonly label: string;
@@ -154,18 +155,18 @@ function SiteFooterView({ year, channels }: { readonly year: number | null; read
           {socials.map((channel) => {
             const Icon = channelIcon(channel.key);
             return (
-              <a
-                key={channel.key}
-                href={channel.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`Indicate di ${channel.label}`}
-                title={channel.label}
-                style={{ '--social-brand': socialBrandColor(channel.key), '--social-fg': socialBrandForeground(channel.key) } as CSSProperties}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-[#4c5b6b] ring-1 ring-[#e2ded2] transition-colors duration-180 hover:bg-[var(--social-brand)] hover:text-[var(--social-fg)] hover:ring-transparent"
-              >
-                <Icon className="h-4 w-4" aria-hidden="true" />
-              </a>
+              <TemplateTooltip key={channel.key} label={channel.label}>
+                <a
+                  href={channel.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Indicate di ${channel.label}`}
+                  style={{ '--social-brand': socialBrandColor(channel.key), '--social-fg': socialBrandForeground(channel.key) } as CSSProperties}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-[#4c5b6b] ring-1 ring-[#e2ded2] transition-colors duration-180 hover:bg-[var(--social-brand)] hover:text-[var(--social-fg)] hover:ring-transparent"
+                >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                </a>
+              </TemplateTooltip>
             );
           })}
         </Container>

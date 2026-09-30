@@ -29,7 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { AppTooltip } from '@/ui/app-tooltip';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
 import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
@@ -531,21 +531,14 @@ function CollectionTable({
           );
           return (
             <DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <DropdownMenuTrigger
-                      className="inline-flex h-7 w-7 items-center justify-center text-paper-faint transition-colors duration-180 hover:bg-bg-raised-2 hover:text-paper focus:outline-none"
-                      aria-label={`Aksi untuk ${name}`}
-                    >
-                      <MoreVertical className="h-4 w-4" aria-hidden="true" />
-                    </DropdownMenuTrigger>
-                  }
-                />
-                <TooltipContent className="border border-hairline bg-bg-raised font-sans text-xs text-paper">
-                  {`Aksi untuk ${name}`}
-                </TooltipContent>
-              </Tooltip>
+              <AppTooltip label={`Aksi untuk ${name}`}>
+                <DropdownMenuTrigger
+                  className="inline-flex h-7 w-7 items-center justify-center text-paper-faint transition-colors duration-180 hover:bg-bg-raised-2 hover:text-paper focus:outline-none"
+                  aria-label={`Aksi untuk ${name}`}
+                >
+                  <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                </DropdownMenuTrigger>
+              </AppTooltip>
               <DropdownMenuContent
                 align="end"
                 className="border border-hairline bg-bg-raised p-1 font-sans text-xs shadow-none"

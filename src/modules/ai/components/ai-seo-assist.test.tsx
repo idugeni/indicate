@@ -29,7 +29,7 @@ const SUGGESTION = {
 describe('AiSeoAssist', () => {
   it('menonaktifkan tombol tanpa organizationId atau tanpa judul dan isi', () => {
     render(<AiSeoAssist currentTitle="" currentBody="" onApply={() => {}} />);
-    expect((screen.getByRole('button', { name: /saran judul/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: /sempurnakan seo/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('menampilkan saran tanpa menerapkan otomatis lalu menerapkan pilihan editor', async () => {
@@ -39,7 +39,7 @@ describe('AiSeoAssist', () => {
     const user = userEvent.setup();
     render(<AiSeoAssist organizationId="org-1" currentTitle="Banjir" currentBody="Air surut." onApply={onApply} />);
 
-    await user.click(screen.getByRole('button', { name: /saran judul/i }));
+    await user.click(screen.getByRole('button', { name: /sempurnakan seo/i }));
     await waitFor(() => expect(mocked).toHaveBeenCalledWith('org-1', 'seo-suggest', { title: 'Banjir', body: 'Air surut.' }));
     await waitFor(() => expect(screen.queryByText('Banjir Surut di Wonosobo')).not.toBeNull());
     expect(onApply).not.toHaveBeenCalled();
@@ -61,7 +61,19 @@ describe('AiSeoAssist', () => {
     const user = userEvent.setup();
     render(<AiSeoAssist organizationId="org-1" currentTitle="Banjir" currentBody="" onApply={() => {}} />);
 
-    await user.click(screen.getByRole('button', { name: /saran judul/i }));
+    await user.click(screen.getByRole('button', { name: /sempurnakan seo/i }));
     await waitFor(() => expect(screen.queryByRole('alert')?.textContent ?? '').toContain('sibuk'));
+  });
+
+  it('meminta varian baru saat tombol buat ulang diklik', async () => {
+    const mocked = vi.mocked(callAi);
+    mocked.mockResolvedValue({ result: SUGGESTION });
+    const user = userEvent.setup();
+    render(<AiSeoAssist organizationId="org-1" currentTitle="Banjir" currentBody="Air surut." onApply={() => {}} />);
+
+    await user.click(screen.getByRole('button', { name: /sempurnakan seo/i }));
+    await waitFor(() => expect(screen.queryByText('Banjir Surut di Wonosobo')).not.toBeNull());
+    await user.click(screen.getByRole('button', { name: /buat ulang varian/i }));
+    await waitFor(() => expect(mocked).toHaveBeenCalledTimes(2));
   });
 });

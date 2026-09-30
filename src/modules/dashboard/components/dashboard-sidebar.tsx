@@ -5,21 +5,17 @@ import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DashboardAvatar } from '@/modules/dashboard/components/dashboard-avatar';
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
 import { SidebarResizeRail } from '@/modules/dashboard/components/shared/sidebar-resize-rail';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
 import { VIEW_REGISTRY, visibleNavGroups } from '@/modules/dashboard/components/view-registry';
 import type { OrganizationOption, View } from '@/modules/dashboard/components/dashboard-types';
+import { AppTooltip } from '@/ui/app-tooltip';
 import { cn } from '@/ui/cn';
 
 const SIDEBAR_WIDTH = 256;
 const SIDEBAR_COLLAPSED_WIDTH = 64;
-
-/** Dark dashboard tooltip: content and its arrow share the raised surface. */
-export const DASHBOARD_TOOLTIP_CONTENT =
-  'border border-hairline bg-bg-raised font-sans text-xs text-paper [&>div]:bg-bg-raised';
 
 /**
  * Render the sidebar navigation items, grouped and permission gated.
@@ -64,32 +60,25 @@ export function DashboardNavList({
 
               if (collapsed) {
                 return (
-                  <Tooltip key={navView}>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          aria-current={isActive ? 'page' : undefined}
-                          aria-label={label}
-                          onClick={() => onSelect(navView)}
-                          className={`mx-auto flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
-                            isActive
-                              ? 'bg-bg-raised-3 text-paper'
-                              : 'text-paper-dim hover:bg-bg-raised-2 hover:text-paper'
-                          }`}
-                        >
-                          <Icon
-                            className={`h-4 w-4 flex-none ${isActive ? 'text-paper' : 'text-paper-faint'}`}
-                            aria-hidden="true"
-                          />
-                        </Button>
-                      }
-                    />
-                    <TooltipContent side="right" className={DASHBOARD_TOOLTIP_CONTENT}>
-                      {label}
-                    </TooltipContent>
-                  </Tooltip>
+                  <AppTooltip key={navView} label={label} side="right">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      aria-current={isActive ? 'page' : undefined}
+                      aria-label={label}
+                      onClick={() => onSelect(navView)}
+                      className={`mx-auto flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
+                        isActive
+                          ? 'bg-bg-raised-3 text-paper'
+                          : 'text-paper-dim hover:bg-bg-raised-2 hover:text-paper'
+                      }`}
+                    >
+                      <Icon
+                        className={`h-4 w-4 flex-none ${isActive ? 'text-paper' : 'text-paper-faint'}`}
+                        aria-hidden="true"
+                      />
+                    </Button>
+                  </AppTooltip>
                 );
               }
 

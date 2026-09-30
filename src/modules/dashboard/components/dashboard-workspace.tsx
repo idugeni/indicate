@@ -2,10 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import {
-  Menu,
-  RefreshCw,
-} from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DashboardAvatar } from '@/modules/dashboard/components/dashboard-avatar';
@@ -26,7 +23,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 import {
   type DashboardSnapshot,
@@ -38,7 +35,6 @@ import { OrganizationSwitcher } from '@/modules/dashboard/components/organizatio
 import { useDashboardPage, useDashboardView } from '@/modules/dashboard/components/shared/use-dashboard-query';
 import { viewLabel } from '@/modules/dashboard/components/view-registry';
 import {
-  DASHBOARD_TOOLTIP_CONTENT,
   DashboardNavList,
   DashboardSidebar,
 } from '@/modules/dashboard/components/dashboard-sidebar';
@@ -433,23 +429,15 @@ export function DashboardWorkspace({
               </span>
               <LiveClock />
             </p>
-            <Tooltip>
-              <TooltipTrigger
-                type="button"
-                disabled={busy}
-                onClick={refreshActiveView}
-                aria-label="Muat ulang data"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-paper-dim transition-colors duration-150 hover:bg-bg-raised-2 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 disabled:opacity-50"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`}
-                  aria-hidden="true"
-                />
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className={`${DASHBOARD_TOOLTIP_CONTENT} p-2`}>
-                {busy ? 'Memuat…' : 'Muat ulang data'}
-              </TooltipContent>
-            </Tooltip>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={refreshActiveView}
+            >
+              <span>{busy ? 'Memuat…' : 'Refresh'}</span>
+            </Button>
           </div>
         </header>
 

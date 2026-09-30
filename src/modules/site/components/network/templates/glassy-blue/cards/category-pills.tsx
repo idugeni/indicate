@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Cpu, Globe, HeartHandshake, Landmark, LayoutGrid, Tag, TrendingUp, Trophy, type LucideIcon } from 'lucide-react';
 
 import type { CategoryNavItem } from '@/modules/site/components/network/ui/nav';
+import { TemplateTooltip } from '@/modules/site/components/network/ui/template-tooltip';
 
 function pillIcon(label: string): LucideIcon {
   const key = label.toLowerCase();
@@ -56,14 +57,15 @@ export function GlassyBlueCategoryPills({
             </Link>
           );
         })}
-        <Link
-          href="/search"
-          aria-label="Telusuri semua kategori"
-          title="Telusuri semua kategori"
-          className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200/80 transition-colors hover:text-[#1f7cff]"
-        >
-          <LayoutGrid className="h-4 w-4" aria-hidden="true" />
-        </Link>
+        <TemplateTooltip label="Telusuri semua kategori">
+          <Link
+            href="/search"
+            aria-label="Telusuri semua kategori"
+            className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200/80 transition-colors hover:text-[#1f7cff]"
+          >
+            <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </TemplateTooltip>
       </div>
     </nav>
   );

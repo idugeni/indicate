@@ -9,20 +9,27 @@ import {
   ImagePlus,
   Link2,
   Loader2,
+  Minus,
+  Newspaper,
   Pilcrow,
+  Plus,
+  RefreshCw,
   Send,
   Share2,
   SlidersHorizontal,
+  Sparkles,
+  Tags,
   Type,
+  WandSparkles,
 } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { DateTimeField } from '@/modules/dashboard/components/shared/date-time-field';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CategoryCombobox } from '@/modules/dashboard/components/shared/category-combobox';
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { rankTags } from '@/modules/dashboard/components/shared/suggestion-cache';
@@ -56,12 +63,10 @@ import {
 } from '@/modules/dashboard/components/editorial/use-article-draft';
 import { ArticlePreview } from '@/modules/dashboard/components/editorial/article-preview';
 import { RichTextEditor } from '@/modules/dashboard/components/editorial/rich-text-editor';
-import { AiDraftAssist, type EditorialDraft } from '@/modules/ai/components/ai-draft-assist';
-import { AiSeoAssist, type SeoApplySelection } from '@/modules/ai/components/ai-seo-assist';
-import { AiTtsPanel } from '@/modules/ai/components/ai-tts-panel';
-import { AiTranscribePanel } from '@/modules/ai/components/ai-transcribe-panel';
+import { callAi } from '@/modules/ai/components/ai-client';
 import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
 import { chunkPublicationTargets, selectPublicationTargets } from '@/modules/dashboard/components/editorial/publication-batch';
+import { AppTooltip } from '@/ui/app-tooltip';
 import type { PublicationScope, PublishTargetSite } from '@/modules/dashboard/components/editorial/publication-batch';
 import { COVER_COMPRESS, formatBytes } from '@/modules/publishing/compress-image';
 
@@ -185,8 +190,8 @@ export function ArticleCreateForm({
   const publisherSelectId = useId();
   const authorSelectId = useId();
   const statusSelectId = useId();
-  const scheduleInputId = useId();
-  const slugInputId = useId();
+  const viewsInputId = useId();
+  const transcribeFullInputId = useId();  const slugInputId = useId();
   const titleInputId = useId();
   const sourceInputId = useId();
   const canonicalInputId = useId();
@@ -230,6 +235,15 @@ export function ArticleCreateForm({
   const [autosavedDraft, setAutosavedDraft] = useState<AutosavedDraft | null>(null);
   const [autosaveNotice, setAutosaveNotice] = useState<string | null>(null);
   const [rawScheduleInput, setRawScheduleInput] = useState('');
+  const [rawPublishDateInput, setRawPublishDateInput] = useState('');
+  const [viewsInput, setViewsInput] = useState('');
+
+  const bumpViews = (delta: number) => {
+    const current = viewsInput.trim() === '' ? 0 : Number(viewsInput);
+    if (!Number.isInteger(current)) return;
+    const next = Math.min(1_000_000_000, Math.max(0, current + delta));
+    setViewsInput(String(next));
+  };
   const restoredDraftRef = useRef(false);
 
   const liveSites = useMemo(() => model?.sites ?? [], [model?.sites]);
@@ -506,25 +520,6 @@ export function ArticleCreateForm({
     setSlug(value);
   };
 
-  const applyAiDraft = (draft: EditorialDraft) => {
-    handleTitleChange(draft.title);
-    if (draft.excerpt !== '') setDescriptionText(draft.excerpt);
-    if (draft.content !== '') {
-      void navigator.clipboard?.writeText(draft.content).catch(() => undefined);
-      toast.info('Judul, slug, dan deskripsi terisi; isi draf tersalin — tempel ke editor.');
-    } else {
-      toast.success('Judul, slug, dan deskripsi terisi dari draf AI.');
-    }
-  };
-
-  const applyAiSeo = (selection: SeoApplySelection) => {
-    if (selection.title !== undefined && selection.title !== '') handleTitleChange(selection.title);
-    if (selection.slug !== undefined && selection.slug !== '') handleSlugChange(selection.slug);
-    const description = selection.metaDescription ?? selection.excerpt ?? '';
-    if (description !== '') setDescriptionText(description);
-    toast.success('Saran SEO diterapkan ke formulir.');
-  };
-
   const applyTranscript = (transcript: string) => {
     const lines = transcript.split('\n').map((line) => line.trim()).filter((line) => line !== '');
     if (lines.length === 0) return;
@@ -533,6 +528,209 @@ export function ArticleCreateForm({
     handleRichChange({ doc: merged, text: tiptapToText(merged) });
     setRichResetKey((key) => key + 1);
     toast.success('Transkrip ditambahkan ke isi artikel.');
+  };
+
+  const applyPolishedBody = (polished: string) => {
+    const paragraphs = polished.split('\n').map((line) => line.trim()).filter((line) => line !== '');
+    if (paragraphs.length === 0) return;
+    const remaining = [...paragraphs];
+    const rewrite = (nodes: readonly TipTapNode[]): TipTapNode[] =>
+      nodes.map((node) => {
+        if (node.type === 'paragraph' || node.type === 'heading') {
+          const next = remaining.shift();
+          if (next === undefined) return node;
+          return { ...node, content: [{ type: 'text', text: next.slice(0, 2000) }] };
+        }
+        if (node.content !== undefined) return { ...node, content: rewrite(node.content) };
+        return node;
+      });
+    const base = bodyJsonDraft?.content ?? [];
+    const content = [...rewrite(base), ...remaining.map((line) => ({ type: 'paragraph', content: [{ type: 'text', text: line.slice(0, 2000) }] }))].slice(-TIPTAP_MAX_NODES);
+    const merged: TipTapDoc = { type: 'doc', content };
+    handleRichChange({ doc: merged, text: tiptapToText(merged) });
+    setRichResetKey((key) => key + 1);
+    toast.success('Isi poles diterapkan; gambar dan sematan tidak berubah.');
+  };
+
+  const applyClassification = (selection: { readonly categoryIds?: readonly string[] | undefined; readonly tags?: readonly string[] | undefined }) => {
+    if (selection.categoryIds !== undefined && selection.categoryIds.length > 0) {
+      setCategoryIds([...selection.categoryIds]);
+    }
+    const tags = selection.tags ?? [];
+    if (tags.length > 0) {
+      setTags((prev) => [...prev, ...tags.filter((tag) => !prev.includes(tag))].slice(0, TAG_MAX_COUNT));
+    }
+    toast.success('Kategori dan topik terisi dari klasifikasi AI.');
+  };
+
+  const aiReady = organizationId !== undefined && organizationId !== '';
+  const [titleVariants, setTitleVariants] = useState<readonly string[] | null>(null);
+  const [seoBusy, setSeoBusy] = useState(false);
+  const [polished, setPolished] = useState('');
+  const [polishBusy, setPolishBusy] = useState(false);
+  const [polishRounds, setPolishRounds] = useState(0);
+  const [classifyBusy, setClassifyBusy] = useState(false);
+  const [transcriptBusy, setTranscriptBusy] = useState(false);
+
+  const refineTitles = () => {
+    if (!aiReady || titleText.trim() === '' || seoBusy) return;
+    setSeoBusy(true);
+    void (async () => {
+      try {
+        const result = (await callAi(organizationId, 'seo-suggest', { title: titleText.trim(), body: bodyText.trim() })) as {
+          readonly result?: { readonly titles?: readonly string[] };
+        };
+        const titles = Array.isArray(result.result?.titles)
+          ? result.result.titles.filter((item): item is string => typeof item === 'string' && item.trim() !== '').slice(0, 3)
+          : [];
+        if (titles.length === 0) throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
+        setTitleVariants(titles);
+      } catch (err) {
+        toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+      } finally {
+        setSeoBusy(false);
+      }
+    })();
+  };
+
+  const refineDescription = () => {
+    if (!aiReady || seoBusy) return;
+    setSeoBusy(true);
+    void (async () => {
+      try {
+        const result = (await callAi(organizationId, 'seo-suggest', {
+          title: titleText.trim(),
+          body: bodyText.trim(),
+          current: descriptionText.trim(),
+        })) as {
+          readonly result?: { readonly metaDescription?: string };
+        };
+        const meta = typeof result.result?.metaDescription === 'string' ? result.result.metaDescription.trim().slice(0, 160) : '';
+        if (meta === '') throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
+        setDescriptionText(meta);
+        toast.success('Deskripsi disempurnakan AI.');
+      } catch (err) {
+        toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+      } finally {
+        setSeoBusy(false);
+      }
+    })();
+  };
+
+  const polishBodyInline = () => {
+    if (!aiReady || bodyText.trim() === '' || polishBusy) return;
+    setPolishBusy(true);
+    void (async () => {
+      try {
+        const result = (await callAi(organizationId, 'polish-body', { title: titleText.trim(), body: bodyText.trim() })) as {
+          readonly body?: string;
+        };
+        if (typeof result.body !== 'string' || result.body.trim() === '') {
+          throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
+        }
+        setPolished(result.body.trim());
+        setPolishRounds((count) => count + 1);
+      } catch (err) {
+        toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+      } finally {
+        setPolishBusy(false);
+      }
+    })();
+  };
+
+  const transcribeFileInline = (file: File | null) => {
+    if (file === null || !aiReady || transcriptBusy) return;
+    if (file.size > 10_000_000) {
+      toast.error('Berkas audio maksimal 10 MB.');
+      return;
+    }
+    setTranscriptBusy(true);
+    void (async () => {
+      try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const output = String(reader.result ?? '');
+            const comma = output.indexOf(',');
+            resolve(comma < 0 ? output : output.slice(comma + 1));
+          };
+          reader.onerror = () => reject(new Error('Gagal membaca berkas audio.'));
+          reader.readAsDataURL(file);
+        });
+        const result = (await callAi(organizationId, 'transcribe-to-article', {
+          base64,
+          mimeType: file.type || 'audio/webm',
+          categories: allCategories.map((category) => category.name),
+        })) as {
+          readonly article?: {
+            readonly draft?: { readonly title?: string; readonly excerpt?: string; readonly content?: string; readonly slug?: string };
+            readonly classification?: { readonly categories?: readonly string[]; readonly tags?: readonly string[] };
+          };
+        };
+        const draft = result.article?.draft;
+        if (draft === undefined) throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
+        if (titleText.trim() === '' && typeof draft.title === 'string' && draft.title.trim() !== '') {
+          handleTitleChange(draft.title.trim().slice(0, 160));
+        }
+        if (descriptionText.trim() === '' && typeof draft.excerpt === 'string' && draft.excerpt.trim() !== '') {
+          setDescriptionText(draft.excerpt.trim().slice(0, 400));
+        }
+        if (typeof draft.content === 'string' && draft.content.trim() !== '') {
+          applyTranscript(draft.content.trim());
+        }
+        const rawCategories = Array.isArray(result.article?.classification?.categories) ? result.article.classification.categories : [];
+        const ids = [...new Set(
+          rawCategories
+            .filter((item): item is string => typeof item === 'string')
+            .map((name) => allCategories.find((category) => category.name.toLowerCase() === name.trim().toLowerCase())?.id)
+            .filter((id): id is string => id !== undefined),
+        )].slice(0, 3);
+        const tags = Array.isArray(result.article?.classification?.tags)
+          ? result.article.classification.tags.filter((item): item is string => typeof item === 'string')
+          : [];
+        applyClassification({ ...(ids.length === 0 ? {} : { categoryIds: ids }), ...(tags.length === 0 ? {} : { tags }) });
+        toast.success('Berita dari audio terisi penuh — tinjau sebelum menyimpan.');
+      } catch (err) {
+        toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+      } finally {
+        setTranscriptBusy(false);
+      }
+    })();
+  };
+
+  const classifyInline = () => {
+    if (!aiReady || bodyText.trim() === '' || classifyBusy) return;
+    setClassifyBusy(true);
+    void (async () => {
+      try {
+        const result = (await callAi(organizationId, 'classify-article', {
+          title: titleText.trim(),
+          body: bodyText.trim(),
+          categories: allCategories.map((category) => category.name),
+        })) as {
+          readonly classification?: { readonly categories?: readonly string[]; readonly category?: string | null; readonly tags?: readonly string[] };
+        };
+        const raw = Array.isArray(result.classification?.categories)
+          ? result.classification.categories
+          : typeof result.classification?.category === 'string'
+            ? [result.classification.category]
+            : [];
+        const ids = [...new Set(
+          raw
+            .filter((item): item is string => typeof item === 'string')
+            .map((name) => allCategories.find((category) => category.name.toLowerCase() === name.trim().toLowerCase())?.id)
+            .filter((id): id is string => id !== undefined),
+        )].slice(0, 3);
+        const tags = Array.isArray(result.classification?.tags)
+          ? result.classification.tags.filter((item): item is string => typeof item === 'string')
+          : [];
+        applyClassification({ ...(ids.length === 0 ? {} : { categoryIds: ids }), ...(tags.length === 0 ? {} : { tags }) });
+      } catch (err) {
+        toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+      } finally {
+        setClassifyBusy(false);
+      }
+    })();
   };
 
   const handleCreateCategory = (rawName: string): string | null => {
@@ -693,7 +891,7 @@ export function ArticleCreateForm({
    * The article exists before any of this runs, so a failure leaves it publishable
    * from the queue rather than losing the writing.
    */
-  const publishCreatedArticle = async (articleId: string, scheduled: boolean, scheduledAt: string | null | undefined) => {
+  const publishCreatedArticle = async (articleId: string, scheduled: boolean, scheduledAt: string | null | undefined, backdateIso: string | null, initialViews: number | null) => {
     if (command === undefined) {
       toast.error('Artikel tersimpan, tetapi perintah publikasi tidak tersedia di layar ini.');
       return;
@@ -705,6 +903,7 @@ export function ArticleCreateForm({
     const batches = chunkPublicationTargets(targetSiteIds);
     const idempotencyPrefix = crypto.randomUUID();
     let dispatched = 0;
+    let viewsFailed = 0;
     try {
       for (const [index, batch] of batches.entries()) {
         const suggested = (await command('publication.suggest', { articleId, siteIds: batch })) as {
@@ -719,16 +918,28 @@ export function ArticleCreateForm({
           siteIds: batch,
           idempotencyKey: `${idempotencyPrefix}:${index}`,
           options: { mode: scheduled ? 'scheduled' : 'immediate' },
-          publishAt: scheduled ? (scheduledAt ?? null) : null,
+          publishAt: scheduled ? (scheduledAt ?? null) : (backdateIso ?? null),
           overrides,
         });
         dispatched += batch.length;
+        if (initialViews !== null) {
+          for (const siteId of batch) {
+            try {
+              await command('article.sites.views.set', { articleId, siteId, viewCount: initialViews });
+            } catch {
+              viewsFailed += 1;
+            }
+          }
+        }
       }
       toast.success(
         scheduled
           ? `Terjadwal ke ${dispatched.toLocaleString('id-ID')} portal.`
           : `Dikirim ke ${dispatched.toLocaleString('id-ID')} portal. Buka Hasil Tayang untuk menyalin URL.`,
       );
+      if (viewsFailed > 0) {
+        toast.info(`${viewsFailed.toLocaleString('id-ID')} portal gagal diset tayangan awal — atur manual dari Hasil Tayang.`);
+      }
     } catch {
       toast.error(
         dispatched === 0
@@ -774,6 +985,27 @@ export function ArticleCreateForm({
       toast.error('Jadwal terbit tidak valid.');
       return;
     }
+    let backdateIso: string | null = null;
+    if (status === 'active' && rawPublishDateInput.trim() !== '') {
+      backdateIso = localDateTimeToIso(rawPublishDateInput);
+      if (backdateIso === null) {
+        toast.error('Tanggal terbit tidak valid.');
+        return;
+      }
+      if (new Date(backdateIso).getTime() > Date.now()) {
+        toast.error('Tanggal terbit masa depan — gunakan status Terjadwal.');
+        return;
+      }
+    }
+    let initialViews: number | null = null;
+    if (viewsInput.trim() !== '') {
+      const parsedViews = Number(viewsInput.trim());
+      if (!Number.isInteger(parsedViews) || parsedViews < 0 || parsedViews > 1_000_000_000) {
+        toast.error('Tayangan awal harus angka 0 sampai 1.000.000.000.');
+        return;
+      }
+      initialViews = parsedViews;
+    }
     const trimmedBody = bodyText.trim();
     if (trimmedBody === '') {
       toast.error('Isi artikel masih kosong. Tulis dulu di tab Tulis.');
@@ -807,7 +1039,7 @@ export function ArticleCreateForm({
         toast.info(`Slug "${payloadSlug}" sudah dipakai — disimpan sebagai "${created.slug}".`);
       }
       if (willPublish && typeof created.id === 'string') {
-        await publishCreatedArticle(created.id, status === 'scheduled', scheduledAt);
+        await publishCreatedArticle(created.id, status === 'scheduled', scheduledAt, backdateIso, initialViews);
       }
       if (organizationId !== '') clearArticleDraft(organizationId);
       form.reset();
@@ -829,6 +1061,8 @@ export function ArticleCreateForm({
       setCanonicalUrl('');
       setTags([]);
       setRawScheduleInput('');
+      setRawPublishDateInput('');
+      setViewsInput('');
       setAutosavedDraft(null);
       setAutosaveNotice(null);
       setFeaturedId(null);
@@ -860,29 +1094,36 @@ export function ArticleCreateForm({
           ariaLabel="Status artikel"
         />
         {status === 'scheduled' ? (
-          <Input
-            id={scheduleInputId}
-            name="scheduledAt"
-            type="datetime-local"
-            required
-            disabled={isSubmitting}
+          <DateTimeField
             value={rawScheduleInput}
-            onChange={(e) => setRawScheduleInput(e.target.value)}
-            aria-label="Jadwal terbit"
-            className="h-8 w-auto rounded border-hairline-strong bg-bg px-2 font-mono text-xs text-paper focus-visible:ring-brass"
+            onChange={setRawScheduleInput}
+            disabled={isSubmitting}
+            ariaLabel="Jadwal terbit"
+            mode="future"
           />
         ) : null}
-        <span className="flex items-center gap-1.5" title={`Judul ${titleText.length}/60 · Deskripsi ${descriptionText.length}/160`}>
-          <span
-            aria-hidden="true"
-            className={`h-2 w-2 rounded-full ${titleText.length === 0 ? 'bg-hairline-strong' : titleText.length <= 60 ? 'bg-signal' : titleText.length <= 100 ? 'bg-brass' : 'bg-error'}`}
+        {status === 'active' ? (
+          <DateTimeField
+            value={rawPublishDateInput}
+            onChange={setRawPublishDateInput}
+            disabled={isSubmitting}
+            ariaLabel="Tanggal terbit"
+            mode="past"
           />
-          <span
-            aria-hidden="true"
-            className={`h-2 w-2 rounded-full ${descriptionText.length === 0 ? 'bg-hairline-strong' : descriptionText.length < 120 ? 'bg-brass' : descriptionText.length <= 160 ? 'bg-signal' : 'bg-error'}`}
-          />
-          <span className="font-mono text-[11px] tabular-nums text-paper-faint">{editorStats.words} kata</span>
-        </span>
+        ) : null}
+        <AppTooltip label={`Judul ${titleText.length}/60 · Deskripsi ${descriptionText.length}/160`}>
+          <span className="flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              className={`h-2 w-2 rounded-full ${titleText.length === 0 ? 'bg-hairline-strong' : titleText.length <= 60 ? 'bg-signal' : titleText.length <= 100 ? 'bg-brass' : 'bg-error'}`}
+            />
+            <span
+              aria-hidden="true"
+              className={`h-2 w-2 rounded-full ${descriptionText.length === 0 ? 'bg-hairline-strong' : descriptionText.length < 120 ? 'bg-brass' : descriptionText.length <= 160 ? 'bg-signal' : 'bg-error'}`}
+            />
+            <span className="font-mono text-[11px] tabular-nums text-paper-faint">{editorStats.words} kata</span>
+          </span>
+        </AppTooltip>
         <span className="flex items-center gap-2">
           <Checkbox
             id={publishOnSaveId}
@@ -919,9 +1160,6 @@ export function ArticleCreateForm({
         <div className="min-w-0 space-y-10 rounded-lg border border-hairline bg-bg-raised p-5 sm:p-8">
           <div className="space-y-6">
             <p className="m-0 font-sans text-xl font-bold tracking-tight text-paper sm:text-2xl">Artikel baru</p>
-            <AiDraftAssist organizationId={organizationId} currentTitle={titleText} currentBody={bodyText} onDraft={applyAiDraft} />
-            <AiSeoAssist organizationId={organizationId} currentTitle={titleText} currentBody={bodyText} onApply={applyAiSeo} />
-            <AiTtsPanel organizationId={organizationId} sourceText={bodyText} />
             <Field>
               <Label htmlFor={titleInputId} className="font-mono text-xs text-paper-dim">
                 Judul Artikel
@@ -940,13 +1178,50 @@ export function ArticleCreateForm({
                 <FieldDescription className="font-mono text-[11px] text-paper-faint">
                   ±60 karakter tampil penuh sebagai judul di hasil cari; selebihnya bisa terpotong mengikuti lebar layar.
                 </FieldDescription>
-                <span
-                  aria-live="polite"
-                  className={`flex-none font-mono text-[11px] tabular-nums ${titleText.length === 0 ? 'text-paper-faint' : titleText.length <= 60 ? 'text-signal' : titleText.length <= 100 ? 'text-brass' : 'text-error'}`}
-                >
-                  {titleText.length}/60
+                <span className="flex flex-none items-center gap-2">
+                  <AppTooltip label="Sempurnakan judul dengan AI">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      disabled={!aiReady || titleText.trim() === '' || seoBusy}
+                      onClick={refineTitles}
+                      aria-label="Sempurnakan judul"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{seoBusy ? 'Memproses…' : 'Sempurnakan'}</span>
+                    </Button>
+                  </AppTooltip>
+                  <span
+                    aria-live="polite"
+                    className={`font-mono text-[11px] tabular-nums ${titleText.length === 0 ? 'text-paper-faint' : titleText.length <= 60 ? 'text-signal' : titleText.length <= 100 ? 'text-brass' : 'text-error'}`}
+                  >
+                    {titleText.length}/60
+                  </span>
                 </span>
               </div>
+              {titleVariants !== null ? (
+                <ul className="m-0 list-none space-y-1 p-0">
+                  {titleVariants.map((item) => (
+                    <li key={item} className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 flex-1 truncate font-sans text-xs text-paper">{item}</span>
+                      <span className="flex flex-none items-center gap-1">
+                        <Button type="button" variant="ghost" size="xs" onClick={() => handleTitleChange(item)}>
+                          <span>Pakai</span>
+                        </Button>
+                      </span>
+                    </li>
+                  ))}
+                  <li>
+                    <AppTooltip label="Minta varian judul lain">
+                      <Button type="button" variant="ghost" size="xs" disabled={!aiReady || seoBusy} onClick={refineTitles}>
+                        <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>Buat ulang varian</span>
+                      </Button>
+                    </AppTooltip>
+                  </li>
+                </ul>
+              ) : null}
             </Field>
             <Field>
               <Label htmlFor={slugInputId} className="font-mono text-xs text-paper-dim">
@@ -977,11 +1252,30 @@ export function ArticleCreateForm({
                 <Label htmlFor={excerptInputId} className="font-mono text-xs text-paper-dim">
                   Deskripsi
                 </Label>
+                <span className="flex flex-none items-center gap-2">
+                  <AppTooltip
+                    label={descriptionText.trim() === ''
+                      ? 'Buatkan deskripsi dari judul dan isi dengan AI'
+                      : 'Sempurnakan deskripsi yang ada dengan AI'}
+                  >
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      disabled={!aiReady || (titleText.trim() === '' && bodyText.trim() === '' && descriptionText.trim() === '') || seoBusy}
+                      onClick={refineDescription}
+                      aria-label={descriptionText.trim() === '' ? 'Buatkan deskripsi' : 'Sempurnakan deskripsi'}
+                    >
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{descriptionText.trim() === '' ? 'Buatkan' : 'Sempurnakan'}</span>
+                    </Button>
+                  </AppTooltip>
                 <span
                   aria-live="polite"
                   className={`font-mono text-[11px] tabular-nums ${descriptionText.length === 0 ? 'text-paper-faint' : descriptionText.length < 120 ? 'text-brass' : descriptionText.length <= 160 ? 'text-signal' : 'text-error'}`}
                 >
                   {descriptionText.length === 0 ? 'auto' : `${descriptionText.length}/160`}
+                </span>
                 </span>
               </div>
               <Textarea
@@ -1018,38 +1312,89 @@ export function ArticleCreateForm({
                 </span>
                 <div role="tablist" aria-label="Mode editor" className="flex gap-1 rounded-md border border-hairline bg-bg-raised p-0.5">
                   {MODE_TABS.map((tab) => (
-                    <Tooltip key={tab.value}>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            type="button"
-                            role="tab"
-                            aria-selected={mode === tab.value}
-                            variant={mode === tab.value ? 'default' : 'ghost'}
-                            size="xs"
-                            onClick={() => setMode(tab.value)}
-                            disabled={isSubmitting}
-                          >
-                            <span>{tab.label}</span>
-                          </Button>
-                        }
-                      />
-                      <TooltipContent side="top" className="border border-hairline bg-bg-raised p-2 font-mono text-xs text-paper">
-                        {tab.tip}
-                      </TooltipContent>
-                    </Tooltip>
+                    <AppTooltip key={tab.value} label={tab.tip} side="top">
+                      <Button
+                        type="button"
+                        role="tab"
+                        aria-selected={mode === tab.value}
+                        variant={mode === tab.value ? 'default' : 'ghost'}
+                        size="xs"
+                        onClick={() => setMode(tab.value)}
+                        disabled={isSubmitting}
+                      >
+                        <span>{tab.label}</span>
+                      </Button>
+                    </AppTooltip>
                   ))}
                 </div>
               </div>
               <p className="m-0 font-mono text-[11px] text-paper-faint" role="note">
                 {MODE_HINTS[mode]}
               </p>
+              <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-hairline/70 bg-bg px-2 py-1.5" aria-label="Bantuan AI untuk isi">
+                <span className="mr-1 flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-paper-faint">
+                  <Sparkles className="h-3 w-3 text-brass" aria-hidden="true" />
+                  <span>AI</span>
+                </span>
+                <AppTooltip label="Poles alur dan EYD isi dengan AI tanpa mengubah fakta">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    disabled={!aiReady || bodyText.trim() === '' || polishBusy}
+                    onClick={polishBodyInline}
+                  >
+                    <WandSparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>{polishBusy ? 'Memoles…' : polishRounds === 0 ? 'Poles isi' : 'Poles ulang'}</span>
+                  </Button>
+                </AppTooltip>
+                <AppTooltip label="Transkripsikan rekaman menjadi berita lengkap siap isi formulir">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    disabled={!aiReady || transcriptBusy}
+                    onClick={() => document.getElementById(transcribeFullInputId)?.click()}
+                  >
+                    <Newspaper className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>{transcriptBusy ? 'Mentranskrip…' : 'Audio jadi berita'}</span>
+                  </Button>
+                </AppTooltip>
+                <input
+                  id={transcribeFullInputId}
+                  type="file"
+                  accept="audio/*"
+                  className="sr-only"
+                  aria-label="Pilih berkas audio untuk dijadikan berita"
+                  onChange={(event) => {
+                    transcribeFileInline(event.target.files?.[0] ?? null);
+                    event.target.value = '';
+                  }}
+                />
+              </div>
               {bodyJsonProblem === null ? null : (
                 <p className="m-0 font-mono text-[11px] text-error" role="alert">
                   {bodyJsonProblem}
                 </p>
               )}
-              <AiTranscribePanel organizationId={organizationId} onTranscript={applyTranscript} />
+              {polished !== '' ? (
+                <div className="space-y-1.5 rounded border border-hairline bg-bg p-2.5">
+                  <p className="m-0 font-sans text-xs font-medium text-paper">
+                    Isi poles{polishRounds > 1 ? ` (ronde ${polishRounds})` : ''} — tinjau sebelum diterapkan
+                  </p>
+                  <p className="m-0 max-h-40 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-paper-dim">
+                    {polished.slice(0, 1200)}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Button type="button" variant="outline" size="xs" onClick={() => { applyPolishedBody(polished); setPolished(''); }}>
+                      <span>Terapkan ke isi</span>
+                    </Button>
+                    <Button type="button" variant="ghost" size="xs" onClick={() => setPolished('')}>
+                      <span>Buang</span>
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               {mode === 'tulis' ? (
                 <RichTextEditor
                   key={richResetKey}
@@ -1088,6 +1433,57 @@ export function ArticleCreateForm({
               <p className="m-0 font-mono text-[11px] text-paper-faint">
                 Tulis seperti dokumen biasa — tombol Gambar menyisipkan foto otomatis ke media. Teks polos untuk arsip dan RSS dibuat otomatis.
               </p>
+              {willPublish ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor={viewsInputId} className="font-mono text-xs text-paper-dim">
+                    Tayangan awal per portal (opsional)
+                  </Label>
+                  <div className="flex h-8 items-center rounded border border-hairline-strong bg-bg transition-colors duration-180 hover:border-hairline focus-within:border-brass">
+                    <input
+                      id={viewsInputId}
+                      name="initialViews"
+                      inputMode="numeric"
+                      disabled={isSubmitting}
+                      value={viewsInput}
+                      onChange={(e) => setViewsInput(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))}
+                      placeholder="cth: 2500 — kosong mengikuti seeding bawaan"
+                      aria-label="Tayangan awal (opsional — kosong mengikuti logika seeding)"
+                      className="h-full min-w-0 flex-1 bg-transparent px-2.5 font-mono text-xs text-paper outline-none placeholder:text-paper-faint"
+                    />
+                    <span aria-hidden="true" className="h-5 w-px flex-none bg-hairline-strong" />
+                    <AppTooltip label="Kurangi 100" side="top">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        disabled={isSubmitting}
+                        onClick={() => bumpViews(-100)}
+                        aria-label="Kurangi tayangan awal"
+                        className="flex-none rounded-none"
+                      >
+                        <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+                      </Button>
+                    </AppTooltip>
+                    <span aria-hidden="true" className="h-5 w-px flex-none bg-hairline-strong" />
+                    <AppTooltip label="Tambah 100" side="top">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        disabled={isSubmitting}
+                        onClick={() => bumpViews(100)}
+                        aria-label="Tambah tayangan awal"
+                        className="flex-none rounded-none"
+                      >
+                        <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                      </Button>
+                    </AppTooltip>
+                  </div>
+                  <p className="m-0 font-mono text-[11px] text-paper-faint">
+                    Dikosongkan: tayangan awal mengikuti logika seeding (1000–12000 acak). Diisi: angka ini dipakai apa adanya.
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -1169,9 +1565,23 @@ export function ArticleCreateForm({
               <Separator />
 
               <div className="space-y-1.5">
-                <Label htmlFor={categoryInputId} className="font-mono text-xs text-paper-dim">
-                  Kategori ({effectiveCategoryIds.length} dipilih{effectiveCategoryIds.length === categoryIds.length || defaultCategoryName === null ? '' : ` · ${defaultCategoryName}`})
-                </Label>
+                <div className="flex items-baseline justify-between gap-2">
+                  <Label htmlFor={categoryInputId} className="font-mono text-xs text-paper-dim">
+                    Kategori ({effectiveCategoryIds.length} dipilih{effectiveCategoryIds.length === categoryIds.length || defaultCategoryName === null ? '' : ` · ${defaultCategoryName}`})
+                  </Label>
+                  <AppTooltip label="Isi kategori dan topik otomatis dari isi dengan AI" side="left">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      disabled={!aiReady || bodyText.trim() === '' || classifyBusy}
+                      onClick={classifyInline}
+                    >
+                      <Tags className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{classifyBusy ? 'Mengklasifikasi…' : 'Lengkapi otomatis'}</span>
+                    </Button>
+                  </AppTooltip>
+                </div>
                 <p className="m-0 font-mono text-[11px] text-paper-faint">
                   Ketik untuk mencari; bila tidak ada, tekan Enter atau tombol tambah di dalam daftar — kategori baru disimpan ke server hanya saat artikel disimpan. Boleh lebih dari satu; yang pertama jadi kategori utama. Wajib — tanpa pilihan, artikel memakai{defaultCategoryName === null ? ' kategori bawaan tenant' : ` “${defaultCategoryName}”`}.
                 </p>
@@ -1268,7 +1678,6 @@ export function ArticleCreateForm({
                           onClick={handleFocalPick}
                           disabled={isSubmitting || uploadingFeatured || savingFeaturedMeta}
                           aria-label="Pilih titik fokus sampul"
-                          title="Klik untuk menentukan titik fokus crop"
                           className="relative block w-full cursor-crosshair overflow-hidden rounded border border-hairline"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element -- dashboard preview only; public delivery uses EditorialImage */}

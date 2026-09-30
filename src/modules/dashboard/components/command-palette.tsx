@@ -8,11 +8,7 @@ import { CornerDownLeft, Search, Settings, Sparkles, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { AppTooltip } from '@/ui/app-tooltip';
 import { groupTitle, VIEW_REGISTRY, visibleNavGroups, type View } from '@/modules/dashboard/components/view-registry';
 import { AiAssistantDialog } from '@/modules/ai/components/ai-assistant-dialog';
 
@@ -125,25 +121,18 @@ export function CommandPalette({
   return (
     <>
       {showTrigger ? (
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setOpen(true)}
-                aria-haspopup="dialog"
-                aria-label="Buka navigasi cepat"
-              >
-                <Search className="h-4 w-4 text-brass" aria-hidden="true" />
-              </Button>
-            }
-          />
-          <TooltipContent className="border border-hairline bg-bg-raised p-2 font-mono text-xs text-paper">
-            Navigasi cepat (Ctrl+K)
-          </TooltipContent>
-        </Tooltip>
+        <AppTooltip label="Navigasi cepat (Ctrl+K)">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => setOpen(true)}
+            aria-haspopup="dialog"
+            aria-label="Buka navigasi cepat"
+          >
+            <Search className="h-4 w-4 text-brass" aria-hidden="true" />
+          </Button>
+        </AppTooltip>
       ) : null}
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -166,19 +155,16 @@ export function CommandPalette({
                 autoFocus
               />
               {query ? (
-                <Tooltip>
-                  <TooltipTrigger
+                <AppTooltip label="Bersihkan kata kunci pencarian">
+                  <button
                     type="button"
                     onClick={() => setQuery('')}
                     className="flex h-6 w-6 flex-none items-center justify-center rounded text-paper-faint hover:text-paper"
                     aria-label="Bersihkan pencarian"
                   >
                     <X className="h-3.5 w-3.5" aria-hidden="true" />
-                  </TooltipTrigger>
-                  <TooltipContent className="rounded border border-hairline bg-bg-raised p-2 font-mono text-xs text-paper">
-                    Bersihkan kata kunci pencarian
-                  </TooltipContent>
-                </Tooltip>
+                  </button>
+                </AppTooltip>
               ) : null}
             </div>
 

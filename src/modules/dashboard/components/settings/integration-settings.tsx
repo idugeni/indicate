@@ -14,6 +14,7 @@ import { SectionCard } from '@/modules/dashboard/components/shared/section-card'
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AppTooltip } from '@/ui/app-tooltip';
 
 export interface EmailStatus {
   readonly configured: boolean;
@@ -220,7 +221,11 @@ export function IntegrationSettings({
           ].map((row) => (
             <div key={row.label} className="flex items-baseline justify-between gap-3 py-1.5">
               <dt className="font-sans text-[11px] text-paper-dim">{row.label}</dt>
-              <dd className={`m-0 min-w-0 truncate text-right text-xs font-medium text-paper ${row.mono ? 'font-mono' : ''}`} title={row.value}>{row.value}</dd>
+              <dd className={`m-0 min-w-0 truncate text-right text-xs font-medium text-paper ${row.mono ? 'font-mono' : ''}`}>
+                <AppTooltip label={row.value} side="left">
+                  <span className="block truncate">{row.value}</span>
+                </AppTooltip>
+              </dd>
             </div>
           ))}
         </dl>

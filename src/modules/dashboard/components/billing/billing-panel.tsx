@@ -13,6 +13,7 @@ import { SINGLE_INVOICE_AMOUNT_IDR } from '@/modules/billing/schemas';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { formatDate } from '@/modules/dashboard/components/shared/dashboard-dates';
+import { AppTooltip } from '@/ui/app-tooltip';
 
 interface InvoiceRow {
   readonly id: string;
@@ -284,7 +285,11 @@ export function BillingPanel({
                 ].map((stat) => (
                   <div key={stat.label} className="min-w-0 border-t border-hairline/60 py-1.5">
                     <dt className="truncate font-mono text-[10px] uppercase tracking-wider text-paper-faint">{stat.label}</dt>
-                    <dd className="m-0 mt-0.5 truncate font-mono text-xs tabular-nums text-paper" title={stat.value}>{stat.value}</dd>
+                    <dd className="m-0 mt-0.5 truncate font-mono text-xs tabular-nums text-paper">
+                      <AppTooltip label={stat.value} side="top">
+                        <span className="block truncate">{stat.value}</span>
+                      </AppTooltip>
+                    </dd>
                   </div>
                 ))}
               </dl>
@@ -319,7 +324,9 @@ export function BillingPanel({
               <Badge variant="outline" className={`flex-none font-mono text-[9px] uppercase tracking-wider ${tone}`}>
                 {invoice.status === 'paid' ? 'Lunas' : invoice.status === 'unpaid' ? 'Belum bayar' : 'Batal'}
               </Badge>
-              <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-paper" title={invoice.number}>{invoice.number}</span>
+              <AppTooltip label={invoice.number} side="top">
+                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-paper">{invoice.number}</span>
+              </AppTooltip>
               <span className="flex-none font-mono text-[11px] tabular-nums text-paper-dim">{formatIdr(invoice.amountIdr)}</span>
               <span className="min-w-0 flex-none font-mono text-[10px] tabular-nums text-paper-faint">
                 {invoice.status === 'unpaid'

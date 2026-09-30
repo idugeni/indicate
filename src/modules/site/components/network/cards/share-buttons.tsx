@@ -5,6 +5,7 @@ import { FaFacebookF, FaTelegram, FaWhatsapp, FaXTwitter } from 'react-icons/fa6
 import { toast } from 'sonner';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
+import { TemplateTooltip } from '@/modules/site/components/network/ui/template-tooltip';
 
 /**
  * Row of share buttons: filled WhatsApp primary, brand-tinted X/Facebook/
@@ -92,15 +93,16 @@ export function ShareButtons({ skin, article, canonical }: { readonly skin: Shar
       >
         <Mail className="h-4 w-4" aria-hidden="true" />
       </a>
-      <button
-        type="button"
-        onClick={() => void copy()}
-        aria-label="Salin tautan artikel"
-        title="Salin tautan"
-        className={round}
-      >
-        <Link2 className="h-4 w-4" aria-hidden="true" />
-      </button>
+      <TemplateTooltip label="Salin tautan">
+        <button
+          type="button"
+          onClick={() => void copy()}
+          aria-label="Salin tautan artikel"
+          className={round}
+        >
+          <Link2 className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </TemplateTooltip>
     </p>
   );
 }

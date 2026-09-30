@@ -6,6 +6,7 @@ import { Flag, Send, Square, ThumbsDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { AppTooltip } from '@/ui/app-tooltip';
 
 interface ChatTurn {
   readonly role: 'user' | 'assistant';
@@ -129,28 +130,30 @@ export function AiAssistantDialog({
                   </p>
                   {turn.role === 'assistant' && feedback[index] !== 'sent' ? (
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={feedback[index] === 'sending' || !canSend}
-                        onClick={() => void sendFeedback(index, 'thumbs-down')}
-                        title="Laporkan balasan kurang membantu"
-                      >
-                        <ThumbsDown className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>{feedback[index] === 'sending' ? 'Mengirim…' : 'Kurang membantu'}</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={feedback[index] === 'sending' || !canSend}
-                        onClick={() => void sendFeedback(index, 'flag-inaccurate')}
-                        title="Tandai balasan tidak akurat"
-                      >
-                        <Flag className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>Tandai</span>
-                      </Button>
+                      <AppTooltip label="Laporkan balasan kurang membantu">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={feedback[index] === 'sending' || !canSend}
+                          onClick={() => void sendFeedback(index, 'thumbs-down')}
+                        >
+                          <ThumbsDown className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>{feedback[index] === 'sending' ? 'Mengirim…' : 'Kurang membantu'}</span>
+                        </Button>
+                      </AppTooltip>
+                      <AppTooltip label="Tandai balasan tidak akurat">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={feedback[index] === 'sending' || !canSend}
+                          onClick={() => void sendFeedback(index, 'flag-inaccurate')}
+                        >
+                          <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>Tandai</span>
+                        </Button>
+                      </AppTooltip>
                     </div>
                   ) : null}
                   {turn.role === 'assistant' && feedback[index] === 'sent' ? (
@@ -183,15 +186,19 @@ export function AiAssistantDialog({
               className="h-9 font-sans text-xs"
             />
             {busy ? (
-              <Button type="button" size="sm" variant="outline" onClick={stop} title="Hentikan balasan">
-                <Square className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Stop</span>
-              </Button>
+              <AppTooltip label="Hentikan balasan" side="top">
+                <Button type="button" size="sm" variant="outline" onClick={stop}>
+                  <Square className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Stop</span>
+                </Button>
+              </AppTooltip>
             ) : (
-              <Button type="submit" size="sm" variant="outline" disabled={sendDisabled} title="Kirim pertanyaan">
-                <Send className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Kirim</span>
-              </Button>
+              <AppTooltip label="Kirim pertanyaan" side="top">
+                <Button type="submit" size="sm" variant="outline" disabled={sendDisabled}>
+                  <Send className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Kirim</span>
+                </Button>
+              </AppTooltip>
             )}
           </form>
           {organizationId === undefined || organizationId === '' ? (

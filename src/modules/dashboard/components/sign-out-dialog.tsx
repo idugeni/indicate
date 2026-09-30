@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AppTooltip } from '@/ui/app-tooltip';
 
 /**
  * Logout runs a destructive POST only after explicit confirm.
@@ -39,14 +39,9 @@ export function SignOutDialog({ mode, trigger }: { readonly mode: 'icon' | 'butt
   return (
     <AlertDialog>
       {mode === 'icon' ? (
-        <TooltipProvider delay={150}>
-          <Tooltip>
-            <TooltipTrigger render={<AlertDialogTrigger render={iconTrigger} />} />
-            <TooltipContent side="right" className="border border-hairline bg-bg-raised font-sans text-xs text-paper [&>div]:bg-bg-raised">
-              Keluar dari workspace
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <AppTooltip label="Keluar dari workspace" side="right">
+          <AlertDialogTrigger render={iconTrigger} />
+        </AppTooltip>
       ) : (
         <AlertDialogTrigger className="inline-flex items-center justify-center rounded border border-hairline-strong bg-transparent px-5 py-2.5 font-sans text-sm font-medium text-paper-dim transition-colors duration-180 hover:text-paper">
           Keluar

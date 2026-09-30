@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { generateIdempotencyUuid, isoToLocalDateTimeInput, localDateTimeToIso } from '@/modules/dashboard/components/shared/form-utils';
 import { formatMoment } from '@/modules/dashboard/components/shared/format-moment';
+import { AppTooltip } from '@/ui/app-tooltip';
 import type { PublicationStatusProjection, PublishingState } from '@/modules/publishing/models';
 
 const STATE_LABELS: Readonly<Record<PublishingState, string>> = {
@@ -443,18 +444,19 @@ export function PublishingForm({
               value={idempotencyKey}
               className="h-5 min-w-0 flex-1 border-0 bg-transparent px-0 font-mono text-[10px] tracking-tight text-paper-dim focus-visible:ring-0"
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="xs"
-              aria-label="Regenerasi kunci pengiriman"
-              title="Regenerasi kunci pengiriman"
-              onClick={handleGenerateKey}
-              disabled={isPublishing}
-              className="h-5 flex-none px-1 text-brass"
-            >
-              <RefreshCw className="h-3 w-3" aria-hidden="true" />
-            </Button>
+            <AppTooltip label="Regenerasi kunci pengiriman" side="top">
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                aria-label="Regenerasi kunci pengiriman"
+                onClick={handleGenerateKey}
+                disabled={isPublishing}
+                className="h-5 flex-none px-1 text-brass"
+              >
+                <RefreshCw className="h-3 w-3" aria-hidden="true" />
+              </Button>
+            </AppTooltip>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
@@ -499,7 +501,11 @@ export function PublishingForm({
             ].map((row) => (
               <div key={row.label} className="flex items-baseline justify-between gap-3 py-1.5">
                 <dt className="font-mono text-[10px] uppercase tracking-wider text-paper-faint">{row.label}</dt>
-                <dd className="m-0 min-w-0 truncate text-right font-sans text-xs text-paper" title={row.value}>{row.value}</dd>
+                <dd className="m-0 min-w-0 truncate text-right font-sans text-xs text-paper">
+                  <AppTooltip label={row.value} side="left">
+                    <span className="block truncate">{row.value}</span>
+                  </AppTooltip>
+                </dd>
               </div>
             ))}
           </dl>

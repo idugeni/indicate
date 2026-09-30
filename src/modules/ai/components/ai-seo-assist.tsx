@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { callAi } from '@/modules/ai/components/ai-client';
+import { AppTooltip } from '@/ui/app-tooltip';
 
 export interface SeoApplySelection {
   readonly title?: string | undefined;
@@ -69,10 +70,19 @@ export function AiSeoAssist({
   return (
     <section aria-label="Bantuan SEO AI" className="space-y-2 rounded border border-hairline bg-bg p-3">
       <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">Bantuan SEO AI</p>
-      <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => void run()}>
-        <Search className="h-3.5 w-3.5" aria-hidden="true" />
-        <span>{busy ? 'Memproses…' : 'Saran judul/meta/slug'}</span>
-      </Button>
+      <div className="flex flex-wrap gap-1.5">
+        <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => void run()}>
+          <Search className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>{busy ? 'Memproses…' : suggestion === null ? 'Sempurnakan SEO' : 'Sempurnakan ulang'}</span>
+        </Button>
+        {suggestion !== null && !busy ? (
+          <AppTooltip label="Minta varian judul dan deskripsi lain">
+            <Button type="button" size="sm" variant="ghost" disabled={disabled} onClick={() => void run()}>
+              <span>Buat ulang varian</span>
+            </Button>
+          </AppTooltip>
+        ) : null}
+      </div>
       {error !== null ? <p className="m-0 font-sans text-xs text-error" role="alert">{error}</p> : null}
       {suggestion !== null ? (
         <div className="space-y-2">

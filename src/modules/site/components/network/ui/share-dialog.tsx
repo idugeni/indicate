@@ -6,6 +6,7 @@ import { FaFacebookF, FaTelegram, FaWhatsapp, FaXTwitter } from 'react-icons/fa6
 import { toast } from 'sonner';
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { TemplateTooltip } from '@/modules/site/components/network/ui/template-tooltip';
 import { cn } from '@/ui/cn';
 
 /**
@@ -80,15 +81,16 @@ export function TemplateShareButton({ slug, title, className }: TemplateShareBut
 
   return (
     <>
-      <button
-        type="button"
-        onClick={openShare}
-        aria-label="Bagikan artikel"
-        title="Bagikan artikel"
-        className={className}
-      >
-        <Share2 className="h-4 w-4" aria-hidden="true" />
-      </button>
+      <TemplateTooltip label="Bagikan artikel">
+        <button
+          type="button"
+          onClick={openShare}
+          aria-label="Bagikan artikel"
+          className={className}
+        >
+          <Share2 className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </TemplateTooltip>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           aria-label="Pilih kanal bagikan"
@@ -113,7 +115,6 @@ export function TemplateShareButton({ slug, title, className }: TemplateShareBut
                   target={href.startsWith('mailto:') ? undefined : '_blank'}
                   rel={href.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
                   aria-label={`Bagikan ke ${label}`}
-                  title={`Bagikan ke ${label}`}
                   className="group flex min-w-0 flex-col items-center gap-1 rounded-xl px-0.5 py-3 font-sans text-[10px] font-semibold text-[var(--tpl-muted,#475569)] transition-colors hover:bg-[var(--tpl-primary-soft,#e8f0fe)] hover:text-[var(--tpl-primary,#1a5fd0)] sm:gap-1.5 sm:px-1 sm:text-[11px]"
                 >
                   <span className={`flex h-10 w-10 items-center justify-center rounded-full text-white transition-colors ${circle}`}>

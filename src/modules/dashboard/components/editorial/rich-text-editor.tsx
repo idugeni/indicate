@@ -21,11 +21,11 @@ import { ChevronDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { MediaOwner } from '@/modules/publishing/models';
 import { detectDriveEmbed, detectSocialEmbed, extractYouTubeId, isSafeLinkUrl, isTipTapDoc, type TipTapDoc } from '@/modules/site/tiptap-document';
 import { DriveEmbed, FacebookEmbed, InstagramEmbed, TikTokEmbed, TwitterEmbed } from '@/modules/dashboard/components/editorial/embed-nodes';
 import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
+import { AppTooltip } from '@/ui/app-tooltip';
 
 export interface RichTextDocChange {
   readonly doc: TipTapDoc;
@@ -249,20 +249,12 @@ export function RichTextEditor({
   }
 
   const busy = disabled || uploading || editor === null;
-  const TOOLTIP_CONTENT = 'border border-hairline bg-bg-raised p-2 font-mono text-xs text-paper';
   const toggle = (label: string, active: boolean, run: () => void, tip: string, ariaLabel = label, disabled = busy) => (
-    <Tooltip key={label}>
-      <TooltipTrigger
-        render={
-          <Button type="button" variant="outline" size="xs" aria-pressed={active} aria-label={ariaLabel} disabled={disabled} onClick={run}>
-            {label}
-          </Button>
-        }
-      />
-      <TooltipContent side="top" className={TOOLTIP_CONTENT}>
-        {tip}
-      </TooltipContent>
-    </Tooltip>
+    <AppTooltip key={label} label={tip} side="top">
+      <Button type="button" variant="outline" size="xs" aria-pressed={active} aria-label={ariaLabel} disabled={disabled} onClick={run}>
+        {label}
+      </Button>
+    </AppTooltip>
   );
 
   return (
@@ -288,34 +280,20 @@ export function RichTextEditor({
               setLinkDraft(typeof editor.getAttributes('link').href === 'string' ? (editor.getAttributes('link').href as string) : '');
               setLinkOpen((open) => !open);
             }, 'Sisip atau ubah tautan')}
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button type="button" variant="outline" size="xs" aria-label="Unggah gambar" disabled={busy} onClick={() => fileRef.current?.click()}>
-                    {uploading ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : null}
-                    Gambar
-                  </Button>
-                }
-              />
-              <TooltipContent side="top" className={TOOLTIP_CONTENT}>
-                Unggah gambar ke R2
-              </TooltipContent>
-            </Tooltip>
+            <AppTooltip label="Unggah gambar ke R2" side="top">
+              <Button type="button" variant="outline" size="xs" aria-label="Unggah gambar" disabled={busy} onClick={() => fileRef.current?.click()}>
+                {uploading ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : null}
+                Gambar
+              </Button>
+            </AppTooltip>
             </div>
             <Separator orientation="vertical" className="h-5" />
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button type="button" variant="outline" size="xs" aria-expanded={advancedOpen} aria-controls={`${toolbarId}-advanced`} disabled={busy} onClick={() => setAdvancedOpen((open) => !open)}>
-                    <ChevronDown className={`h-3 w-3 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-                    Lanjutan
-                  </Button>
-                }
-              />
-              <TooltipContent side="top" className={TOOLTIP_CONTENT}>
-                {advancedOpen ? 'Sembunyikan format lanjutan' : 'Tampilkan format lanjutan'}
-              </TooltipContent>
-            </Tooltip>
+            <AppTooltip label={advancedOpen ? 'Sembunyikan format lanjutan' : 'Tampilkan format lanjutan'} side="top">
+              <Button type="button" variant="outline" size="xs" aria-expanded={advancedOpen} aria-controls={`${toolbarId}-advanced`} disabled={busy} onClick={() => setAdvancedOpen((open) => !open)}>
+                <ChevronDown className={`h-3 w-3 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                Lanjutan
+              </Button>
+            </AppTooltip>
           </>
         )}
       </div>
@@ -327,27 +305,20 @@ export function RichTextEditor({
             {toggle('Garis Bawah', editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'Garis bawah (Ctrl+U)')}
             {toggle('Kode Sebaris', editor.isActive('code'), () => editor.chain().focus().toggleCode().run(), 'Kode sebaris')}
             {toggle('Stabilo', editor.isActive('highlight'), () => editor.chain().focus().toggleHighlight().run(), 'Stabilo')}
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-hairline bg-bg-raised px-1.5 py-1 font-sans text-[11px] text-paper-dim transition-colors hover:text-paper">
-                    <span aria-hidden="true" className="inline-block h-3 w-3 rounded-sm border border-hairline" style={{ backgroundColor: editor.getAttributes('textStyle').color ?? 'transparent' }} />
-                    Warna
-                    <input
-                      type="color"
-                      aria-label="Warna teks"
-                      disabled={busy}
-                      value={typeof editor.getAttributes('textStyle').color === 'string' ? (editor.getAttributes('textStyle').color as string) : '#000000'}
-                      onChange={(event) => editor.chain().focus().setColor(event.target.value).run()}
-                      className="sr-only"
-                    />
-                  </label>
-                }
-              />
-              <TooltipContent side="top" className={TOOLTIP_CONTENT}>
-                Warna teks pilihan
-              </TooltipContent>
-            </Tooltip>
+            <AppTooltip label="Warna teks pilihan" side="top">
+              <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-hairline bg-bg-raised px-1.5 py-1 font-sans text-[11px] text-paper-dim transition-colors hover:text-paper">
+                <span aria-hidden="true" className="inline-block h-3 w-3 rounded-sm border border-hairline" style={{ backgroundColor: editor.getAttributes('textStyle').color ?? 'transparent' }} />
+                Warna
+                <input
+                  type="color"
+                  aria-label="Warna teks"
+                  disabled={busy}
+                  value={typeof editor.getAttributes('textStyle').color === 'string' ? (editor.getAttributes('textStyle').color as string) : '#000000'}
+                  onChange={(event) => editor.chain().focus().setColor(event.target.value).run()}
+                  className="sr-only"
+                />
+              </label>
+            </AppTooltip>
             {toggle('Reset', false, () => editor.chain().focus().unsetColor().run(), 'Kembalikan warna bawaan', 'Hapus warna teks')}
             </div>
             <Separator orientation="vertical" className="h-5" />

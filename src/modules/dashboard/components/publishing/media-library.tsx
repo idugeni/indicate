@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { AppTooltip } from '@/ui/app-tooltip';
 import { AiMediaAnalyze } from '@/modules/ai/components/ai-media-analyze';
 import { AiCoverGenerator } from '@/modules/ai/components/ai-cover-generator';
 import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
@@ -344,8 +345,10 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
                   )}
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5 p-1.5">
-                  <p className="m-0 truncate font-mono text-[11px] font-medium text-paper" title={fileNameOf(item.objectKey)}>
-                    {fileNameOf(item.objectKey)}
+                  <p className="m-0 truncate font-mono text-[11px] font-medium text-paper">
+                    <AppTooltip label={fileNameOf(item.objectKey)} side="top">
+                      <span className="block truncate">{fileNameOf(item.objectKey)}</span>
+                    </AppTooltip>
                   </p>
                   <p className="m-0 truncate font-mono text-[10px] tabular-nums text-paper-faint">
                     {formatBytes(item.sizeBytes)}
@@ -354,9 +357,9 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
                       : ''}
                   </p>
                   <div className="mt-auto flex items-center justify-between gap-1 pt-0.5">
-                    <span className="truncate font-sans text-[10px] text-paper-dim" title={ownerLabel(item, model)}>
-                      {ownerLabel(item, model)}
-                    </span>
+                    <AppTooltip label={ownerLabel(item, model)} side="top">
+                      <span className="block truncate font-sans text-[10px] text-paper-dim">{ownerLabel(item, model)}</span>
+                    </AppTooltip>
                     <Button
                       type="button"
                       variant="ghost"
@@ -391,7 +394,11 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
                 {visible.map((item) => (
                   <TableRow key={item.id} className="border-b border-hairline/60 hover:bg-bg-raised-2">
                     <TableCell className="min-w-0 px-2 py-1">
-                      <p className="m-0 truncate font-mono text-[11px] text-paper" title={fileNameOf(item.objectKey)}>{fileNameOf(item.objectKey)}</p>
+                      <p className="m-0 truncate font-mono text-[11px] text-paper">
+                        <AppTooltip label={fileNameOf(item.objectKey)} side="top">
+                          <span className="block truncate">{fileNameOf(item.objectKey)}</span>
+                        </AppTooltip>
+                      </p>
                     </TableCell>
                     <TableCell className="min-w-0 truncate px-2 py-1 font-sans text-[11px] text-paper-dim">{ownerLabel(item, model)}</TableCell>
                     <TableCell className="hidden px-2 py-1 font-mono text-[10px] tabular-nums text-paper-dim sm:table-cell">{formatBytes(item.sizeBytes)}</TableCell>

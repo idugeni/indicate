@@ -13,6 +13,7 @@ import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { AppTooltip } from '@/ui/app-tooltip';
 
 interface CredentialRow {
   readonly id: string;
@@ -595,18 +596,26 @@ export function AiManagementPanel({
                     <TableCell className="font-mono text-[11px] text-paper-faint">{formatTime(row.lastUsedAt)}</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
-                        <Button type="button" variant="ghost" size="icon-sm" title="Uji kredensial" aria-label={`Uji ${row.label}`} disabled={busy} onClick={() => void runCommand('ai.credential.test', { credentialId: row.id }, 'Hasil uji tercatat di penghitung kredensial.')}>
-                          <Play className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon-sm" title={row.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'} aria-label={`${row.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'} ${row.label}`} disabled={busy} onClick={() => void runCommand('ai.credential.toggle', { credentialId: row.id, status: row.status === 'active' ? 'disabled' : 'active' }, 'Status kredensial diperbarui.')}>
-                          <Power className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon-sm" title="Cooldown manual" aria-label={`Cooldown ${row.label}`} disabled={busy} onClick={() => void runCommand('ai.credential.toggle', { credentialId: row.id, status: 'cooldown' }, 'Kredensial masuk cooldown.')}>
-                          <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon-sm" title="Hapus" aria-label={`Hapus ${row.label}`} disabled={busy} className="hover:text-error" onClick={() => { if (window.confirm(`Hapus kredensial ${row.label}?`)) void runCommand('ai.credential.delete', { credentialId: row.id }, 'Kredensial dihapus.'); }}>
-                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
+                        <AppTooltip label="Uji kredensial" side="top">
+                          <Button type="button" variant="ghost" size="icon-sm" aria-label={`Uji ${row.label}`} disabled={busy} onClick={() => void runCommand('ai.credential.test', { credentialId: row.id }, 'Hasil uji tercatat di penghitung kredensial.')}>
+                            <Play className="h-3.5 w-3.5" aria-hidden="true" />
+                          </Button>
+                        </AppTooltip>
+                        <AppTooltip label={row.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'} side="top">
+                          <Button type="button" variant="ghost" size="icon-sm" aria-label={`${row.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'} ${row.label}`} disabled={busy} onClick={() => void runCommand('ai.credential.toggle', { credentialId: row.id, status: row.status === 'active' ? 'disabled' : 'active' }, 'Status kredensial diperbarui.')}>
+                            <Power className="h-3.5 w-3.5" aria-hidden="true" />
+                          </Button>
+                        </AppTooltip>
+                        <AppTooltip label="Cooldown manual" side="top">
+                          <Button type="button" variant="ghost" size="icon-sm" aria-label={`Cooldown ${row.label}`} disabled={busy} onClick={() => void runCommand('ai.credential.toggle', { credentialId: row.id, status: 'cooldown' }, 'Kredensial masuk cooldown.')}>
+                            <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                          </Button>
+                        </AppTooltip>
+                        <AppTooltip label="Hapus" side="top">
+                          <Button type="button" variant="ghost" size="icon-sm" aria-label={`Hapus ${row.label}`} disabled={busy} className="hover:text-error" onClick={() => { if (window.confirm(`Hapus kredensial ${row.label}?`)) void runCommand('ai.credential.delete', { credentialId: row.id }, 'Kredensial dihapus.'); }}>
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                          </Button>
+                        </AppTooltip>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -730,7 +739,11 @@ export function AiManagementPanel({
                 {visibleInsights.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell className="font-mono text-[11px] text-paper-faint">{formatTime(row.createdAt)}</TableCell>
-                    <TableCell className="max-w-60 truncate font-sans text-xs text-paper" title={row.query}>{row.query}</TableCell>
+                    <TableCell className="max-w-60 truncate font-sans text-xs text-paper">
+                      <AppTooltip label={row.query} side="top">
+                        <span className="block truncate">{row.query}</span>
+                      </AppTooltip>
+                    </TableCell>
                     <TableCell className="font-sans text-xs capitalize text-paper-dim">{row.channel}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`font-mono text-[10px] uppercase ${statusTone(row.status)}`}>{row.status}</Badge>

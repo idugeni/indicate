@@ -6,6 +6,7 @@ import { Menu, Search } from 'lucide-react';
 
 import { DarkNavyMobileSidebar } from '@/modules/site/components/network/templates/dark-navy/chrome/mobile-sidebar';
 import { TemplateSearchPanel } from '@/modules/site/components/network/chrome/search-panel';
+import { TemplateTooltip } from '@/modules/site/components/network/ui/template-tooltip';
 import { DARK_NAVY } from '@/modules/site/components/network/templates/dark-navy/theme';
 
 const subscribeMounted = (): (() => void) => () => {};
@@ -50,27 +51,30 @@ export function DarkNavyHeaderBar({
           >
             Langganan
           </Link>
-          <button
-            ref={searchButtonRef}
-            type="button"
-            onClick={() => setSearchOpen((value) => !value)}
-            aria-expanded={searchOpen}
-            aria-label={searchOpen ? 'Tutup pencarian' : 'Cari berita'}
-            title={searchOpen ? 'Tutup pencarian' : 'Cari berita'}
-            className="hidden h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#2f7bff)] font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#1a5fd0)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#2f7bff)] lg:flex"
-          >
-            <Search className="h-4 w-4" aria-hidden="true" />
-          </button>
-          <button
-            ref={menuButtonRef}
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            aria-expanded={sidebarOpen}
-            aria-label="Buka menu"
-            className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-[var(--tpl-muted,#9aa9c4)] ring-1 ring-[var(--tpl-ring,#1b2c4f)] transition-colors hover:text-[var(--tpl-primary,#2f7bff)] lg:hidden"
-          >
-            <Menu className="h-4 w-4" aria-hidden="true" />
-          </button>
+          <TemplateTooltip label={searchOpen ? 'Tutup pencarian' : 'Cari berita'}>
+            <button
+              ref={searchButtonRef}
+              type="button"
+              onClick={() => setSearchOpen((value) => !value)}
+              aria-expanded={searchOpen}
+              aria-label={searchOpen ? 'Tutup pencarian' : 'Cari berita'}
+              className="hidden h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#2f7bff)] font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#1a5fd0)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#2f7bff)] lg:flex"
+            >
+              <Search className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </TemplateTooltip>
+          <TemplateTooltip label="Buka menu">
+            <button
+              ref={menuButtonRef}
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              aria-expanded={sidebarOpen}
+              aria-label="Buka menu"
+              className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-[var(--tpl-muted,#9aa9c4)] ring-1 ring-[var(--tpl-ring,#1b2c4f)] transition-colors hover:text-[var(--tpl-primary,#2f7bff)] lg:hidden"
+            >
+              <Menu className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </TemplateTooltip>
         </div>
       </div>
 

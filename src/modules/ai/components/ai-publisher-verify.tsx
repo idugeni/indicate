@@ -6,6 +6,7 @@ import { Flag, ShieldCheck, ThumbsDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { callAi } from '@/modules/ai/components/ai-client';
+import { AppTooltip } from '@/ui/app-tooltip';
 
 type PublisherRiskLevel = 'rendah' | 'sedang' | 'tinggi';
 
@@ -125,14 +126,18 @@ export function AiPublisherVerify({
           <p className="m-0 font-sans text-[11px] text-paper-faint">Masukan tercatat. Terima kasih.</p>
         ) : (
           <div className="flex flex-wrap items-center gap-1.5">
-            <Button type="button" size="sm" variant="ghost" disabled={busy || feedback === 'sending'} onClick={() => void sendFeedback('thumbs-down')} title="Laporkan hasil kurang membantu">
-              <ThumbsDown className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>{feedback === 'sending' ? 'Mengirim…' : 'Kurang membantu'}</span>
-            </Button>
-            <Button type="button" size="sm" variant="ghost" disabled={busy || feedback === 'sending'} onClick={() => void sendFeedback('flag-inaccurate')} title="Tandai hasil tidak akurat">
-              <Flag className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Tandai</span>
-            </Button>
+            <AppTooltip label="Laporkan hasil kurang membantu">
+              <Button type="button" size="sm" variant="ghost" disabled={busy || feedback === 'sending'} onClick={() => void sendFeedback('thumbs-down')}>
+                <ThumbsDown className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>{feedback === 'sending' ? 'Mengirim…' : 'Kurang membantu'}</span>
+              </Button>
+            </AppTooltip>
+            <AppTooltip label="Tandai hasil tidak akurat">
+              <Button type="button" size="sm" variant="ghost" disabled={busy || feedback === 'sending'} onClick={() => void sendFeedback('flag-inaccurate')}>
+                <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Tandai</span>
+              </Button>
+            </AppTooltip>
           </div>
         )
       ) : null}

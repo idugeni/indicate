@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag } 
 import { buildSeoDocument, resolveArticleCanonical } from '@/modules/site/seo';
 import { resolvePublisherChannels } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
+import { TemplateTooltip } from '@/modules/site/components/network/ui/template-tooltip';
 import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
 import { ArticleGallery } from '@/modules/site/components/article-gallery';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
@@ -191,17 +192,17 @@ export function DarkNavyArticle({
                 {publisherChannels.map((channel) => {
                   const Icon = channelIcon(channel.key);
                   return (
-                    <a
-                      key={channel.key}
-                      href={channel.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`${article.attribution} di ${channel.label}`}
-                      title={channel.label}
-                      className="flex h-9 w-9 items-center justify-center rounded-full text-[#9aa9c4] ring-1 ring-[#1b2c4f] transition-colors hover:text-[#2f7bff]"
-                    >
-                      <Icon className="h-4 w-4" aria-hidden="true" />
-                    </a>
+                    <TemplateTooltip key={channel.key} label={channel.label}>
+                      <a
+                        href={channel.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`${article.attribution} di ${channel.label}`}
+                        className="flex h-9 w-9 items-center justify-center rounded-full text-[#9aa9c4] ring-1 ring-[#1b2c4f] transition-colors hover:text-[#2f7bff]"
+                      >
+                        <Icon className="h-4 w-4" aria-hidden="true" />
+                      </a>
+                    </TemplateTooltip>
                   );
                 })}
               </p>

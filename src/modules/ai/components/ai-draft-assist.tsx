@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { callAi } from '@/modules/ai/components/ai-client';
 import { parseStreamedDraft, useAiStream } from '@/modules/ai/components/use-ai-stream';
+import { AppTooltip } from '@/ui/app-tooltip';
 
 export interface EditorialDraft {
   readonly title: string;
@@ -117,17 +118,20 @@ export function AiDraftAssist({
           <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
           <span>{active ? 'Memproses…' : 'Generate draf'}</span>
         </Button>
-        <Button
-          type="button" size="sm" variant="ghost" disabled={disabled || (currentTitle ?? '').trim() === ''}
-          onClick={() => void run(currentTitle ?? '', (currentBody ?? '').slice(0, 2000))}
-          title="Susun ulang judul, slug, dan deskripsi dari isi saat ini"
-        >
-          <span>{active ? 'Memproses…' : 'Perbaiki judul/slug/deskripsi'}</span>
-        </Button>
-        {streaming ? (
-          <Button type="button" size="sm" variant="ghost" onClick={abortStream} title="Batalkan streaming draf">
-            <span>Batal</span>
+        <AppTooltip label="Susun ulang judul, slug, dan deskripsi dari isi saat ini">
+          <Button
+            type="button" size="sm" variant="ghost" disabled={disabled || (currentTitle ?? '').trim() === ''}
+            onClick={() => void run(currentTitle ?? '', (currentBody ?? '').slice(0, 2000))}
+          >
+            <span>{active ? 'Memproses…' : 'Perbaiki judul/slug/deskripsi'}</span>
           </Button>
+        </AppTooltip>
+        {streaming ? (
+          <AppTooltip label="Batalkan streaming draf">
+            <Button type="button" size="sm" variant="ghost" onClick={abortStream}>
+              <span>Batal</span>
+            </Button>
+          </AppTooltip>
         ) : null}
       </div>
       {streaming ? (
@@ -140,14 +144,18 @@ export function AiDraftAssist({
       {lastTopic.trim() !== '' && feedback !== 'sent' ? (
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="font-sans text-[11px] text-paper-faint">Hasil kurang pas?</span>
-          <Button type="button" size="sm" variant="ghost" disabled={feedback === 'sending'} onClick={() => void sendFeedback('thumbs-down')} title="Laporkan hasil kurang membantu">
-            <ThumbsDown className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>{feedback === 'sending' ? 'Mengirim…' : 'Kurang membantu'}</span>
-          </Button>
-          <Button type="button" size="sm" variant="ghost" disabled={feedback === 'sending'} onClick={() => void sendFeedback('flag-inaccurate')} title="Tandai hasil tidak akurat">
-            <Flag className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>Tandai</span>
-          </Button>
+          <AppTooltip label="Laporkan hasil kurang membantu">
+            <Button type="button" size="sm" variant="ghost" disabled={feedback === 'sending'} onClick={() => void sendFeedback('thumbs-down')}>
+              <ThumbsDown className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>{feedback === 'sending' ? 'Mengirim…' : 'Kurang membantu'}</span>
+            </Button>
+          </AppTooltip>
+          <AppTooltip label="Tandai hasil tidak akurat">
+            <Button type="button" size="sm" variant="ghost" disabled={feedback === 'sending'} onClick={() => void sendFeedback('flag-inaccurate')}>
+              <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>Tandai</span>
+            </Button>
+          </AppTooltip>
         </div>
       ) : null}
       {feedback === 'sent' ? <p className="m-0 font-sans text-[11px] text-paper-faint">Masukan tercatat. Terima kasih.</p> : null}

@@ -5,6 +5,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import importX from 'eslint-plugin-import-x';
 import tseslint from 'typescript-eslint';
 import dbAccess from './scripts/eslint/db-access.mjs';
+import noNativeTooltip from './scripts/eslint/no-native-tooltip.mjs';
 
 export default defineConfig([
   {
@@ -69,6 +70,16 @@ export default defineConfig([
     files: ['src/**/*.{ts,tsx}'],
     plugins: { 'db-access': dbAccess },
     rules: dbAccess.configs.recommended.rules,
+  },
+  {
+    // Hover hints belong to the shadcn Tooltip, not the browser's `title`:
+    // native titles are unreachable by keyboard and become the accessible
+    // name of any control missing an `aria-label`. Kept independent from
+    // `@typescript-eslint` for the same reason as `indicate/db-access`.
+    name: 'indicate/tooltip',
+    files: ['src/**/*.{ts,tsx}'],
+    plugins: { tooltip: noNativeTooltip },
+    rules: noNativeTooltip.configs.recommended.rules,
   },
   {
     name: 'indicate/typescript',

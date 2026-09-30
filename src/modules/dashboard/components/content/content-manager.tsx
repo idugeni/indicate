@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AppTooltip } from '@/ui/app-tooltip';
 
 type FieldKind = 'text' | 'textarea' | 'number' | 'checkbox' | 'json' | 'color';
 interface FieldDef { readonly key: string; readonly label: string; readonly kind: FieldKind; readonly required?: boolean }
@@ -231,11 +232,15 @@ export function ContentManager() {
                   return (
                     <section key={rowId} aria-label={titleFor(t, row)} className="rounded border border-hairline bg-bg-raised p-3">
                       <div className="flex items-baseline justify-between gap-2">
-                        <p className="m-0 min-w-0 flex-1 truncate font-sans text-xs font-medium text-paper" title={titleFor(t, row)}>
-                          {titleFor(t, row)}
+                        <p className="m-0 min-w-0 flex-1 truncate font-sans text-xs font-medium text-paper">
+                          <AppTooltip label={titleFor(t, row)} side="top">
+                            <span className="block truncate">{titleFor(t, row)}</span>
+                          </AppTooltip>
                         </p>
-                        <p className="m-0 flex-none truncate font-mono text-[10px] tabular-nums text-paper-faint" title={rowId}>
-                          {rowId}
+                        <p className="m-0 flex-none truncate font-mono text-[10px] tabular-nums text-paper-faint">
+                          <AppTooltip label={rowId} side="top">
+                            <span className="block truncate">{rowId}</span>
+                          </AppTooltip>
                         </p>
                       </div>
                       <div className="mt-2 grid gap-2 sm:grid-cols-2">

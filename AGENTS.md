@@ -211,6 +211,32 @@ transformasi `/_next/image`:
 2. Setiap `<Image>` dari `next/image` wajib prop `unoptimized`
    (pertahanan lapis kedua bila saklar global berubah).
 
+## Hover hint (WAJIB — bukan relaxed mode)
+
+Petunjuk hover memakai tooltip shadcn (`@/components/ui/tooltip`), tidak
+pernah atribut `title` bawaan browser.
+
+1. `title` pada elemen DOM adalah **error** (`tooltip/no-native-tooltip` dari
+   `scripts/eslint/no-native-tooltip.mjs`, didaftarkan di `eslint.config.mjs`
+   sebagai `indicate/tooltip`).
+2. Komponen kapital hanya diperiksa bila ia meneruskan props ke DOM; daftar
+   bawaannya ada di `DEFAULT_DOM_FORWARDING` dan itu tempat resmi untuk
+   menambah cakupan. Properti `title` yang isi konten — `SectionCard`,
+   `EmptyState`, `PageHeader`, `OgCard`, `TopRanked`, `Donut`,
+   `ArticleGallery` — bukan tooltip dan tidak boleh dibungkus.
+3. Sisi publik memakai `TemplateTooltip`
+   (`@/modules/site/components/network/ui/template-tooltip`) dengan trigger
+   lewat `children`, supaya komponen server tidak mengirim elemen `render`
+   melewati batas RSC. Sisi app memakai `Tooltip` + `TooltipTrigger
+   render={<Button ... />}` langsung.
+4. Warna chip bukan satu string yang disalin: `APP_TOOLTIP_CONTENT` dan
+   `TEMPLATE_TOOLTIP_CONTENT` di `@/ui/tooltip`.
+5. Kontrol icon-only **wajib** punya `aria-label` eksplisit. Tooltip bukan
+   pengganti accessible name; `title` yang lama sering menjadi satu-satunya
+   nama yang terbaca screen reader.
+6. Batas yang diketahui: spread (`<div {...props} />`) tidak terdeteksi tanpa
+   informasi tipe.
+
 ## Komit (WAJIB — bukan relaxed mode)
 
 Bagian ini mengikat setiap agen AI dan manusia. Tidak dicover oleh
