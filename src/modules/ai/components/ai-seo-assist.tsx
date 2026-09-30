@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Search } from 'lucide-react';
+import { RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { AiActionButton, AiPending } from '@/modules/ai/components/ai-action-button';
 import { callAi } from '@/modules/ai/components/ai-client';
 import { AppTooltip } from '@/ui/app-tooltip';
 
@@ -71,19 +72,28 @@ export function AiSeoAssist({
     <section aria-label="Bantuan SEO AI" className="space-y-2 rounded border border-hairline bg-bg p-3">
       <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">Bantuan SEO AI</p>
       <div className="flex flex-wrap gap-1.5">
-        <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => void run()}>
-          <Search className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>{busy ? 'Memproses…' : suggestion === null ? 'Sempurnakan SEO' : 'Sempurnakan ulang'}</span>
-        </Button>
+        <AiActionButton
+          busy={busy}
+          idleLabel={suggestion === null ? 'Sempurnakan SEO' : 'Sempurnakan ulang'}
+          icon={Search}
+          tone="primary"
+          disabled={disabled}
+          onClick={() => void run()}
+        />
         {suggestion !== null && !busy ? (
           <AppTooltip label="Minta varian judul dan deskripsi lain">
-            <Button type="button" size="sm" variant="ghost" disabled={disabled} onClick={() => void run()}>
-              <span>Buat ulang varian</span>
-            </Button>
+            <AiActionButton
+              busy={false}
+              idleLabel="Buat ulang varian"
+              icon={RefreshCw}
+              disabled={disabled}
+              onClick={() => void run()}
+            />
           </AppTooltip>
         ) : null}
       </div>
       {error !== null ? <p className="m-0 font-sans text-xs text-error" role="alert">{error}</p> : null}
+      {busy ? <AiPending label="Menyusun judul, deskripsi, dan slug" /> : null}
       {suggestion !== null ? (
         <div className="space-y-2">
           <ul className="m-0 list-none space-y-1 p-0">

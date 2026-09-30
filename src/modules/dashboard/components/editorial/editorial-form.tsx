@@ -64,6 +64,7 @@ import {
 import { ArticlePreview } from '@/modules/dashboard/components/editorial/article-preview';
 import { RichTextEditor } from '@/modules/dashboard/components/editorial/rich-text-editor';
 import { callAi } from '@/modules/ai/components/ai-client';
+import { AiActionButton, AiPending } from '@/modules/ai/components/ai-action-button';
 import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
 import { chunkPublicationTargets, selectPublicationTargets } from '@/modules/dashboard/components/editorial/publication-batch';
 import { AppTooltip } from '@/ui/app-tooltip';
@@ -565,7 +566,7 @@ export function ArticleCreateForm({
 
   const aiReady = organizationId !== undefined && organizationId !== '';
   const [titleVariants, setTitleVariants] = useState<readonly string[] | null>(null);
-  const [seoBusy, setSeoBusy] = useState(false);
+  const [seoBusy, setSeoBusy] = useState<'idle' | 'titles' | 'description'>('idle');
   const [polished, setPolished] = useState('');
   const [polishBusy, setPolishBusy] = useState(false);
   const [polishRounds, setPolishRounds] = useState(0);
@@ -573,8 +574,8 @@ export function ArticleCreateForm({
   const [transcriptBusy, setTranscriptBusy] = useState(false);
 
   const refineTitles = () => {
-    if (!aiReady || titleText.trim() === '' || seoBusy) return;
-    setSeoBusy(true);
+    if (!aiReady || titleText.trim() === '' || seoBusy !== 'idle') return;
+    setSeoBusy('titles');
     void (async () => {
       try {
         const result = (await callAi(organizationId, 'seo-suggest', { title: titleText.trim(), body: bodyText.trim() })) as {
@@ -588,14 +589,14 @@ export function ArticleCreateForm({
       } catch (err) {
         toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
       } finally {
-        setSeoBusy(false);
+        setSeoBusy('idle');
       }
     })();
   };
 
   const refineDescription = () => {
-    if (!aiReady || seoBusy) return;
-    setSeoBusy(true);
+    if (!aiReady || seoBusy !== 'idle') return;
+    setSeoBusy('description');
     void (async () => {
       try {
         const result = (await callAi(organizationId, 'seo-suggest', {
@@ -612,7 +613,7 @@ export function ArticleCreateForm({
       } catch (err) {
         toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
       } finally {
-        setSeoBusy(false);
+        setSeoBusy('idle');
       }
     })();
   };
@@ -1180,17 +1181,16 @@ export function ArticleCreateForm({
                 </FieldDescription>
                 <span className="flex flex-none items-center gap-2">
                   <AppTooltip label="Sempurnakan judul dengan AI">
-                    <Button
-                      type="button"
-                      variant="ghost"
+                    <AiActionButton
+                      busy={seoBusy === 'titles'}
+                      idleLabel="Sempurnakan"
+                      icon={Sparkles}
                       size="xs"
-                      disabled={!aiReady || titleText.trim() === '' || seoBusy}
+                      tone="primary"
+                      disabled={!aiReady || titleText.trim() === '' || seoBusy !== 'idle'}
                       onClick={refineTitles}
-                      aria-label="Sempurnakan judul"
-                    >
-                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>{seoBusy ? 'Memproses…' : 'Sempurnakan'}</span>
-                    </Button>
+                      ariaLabel="Sempurnakan judul"
+                    />
                   </AppTooltip>
                   <span
                     aria-live="polite"
@@ -1200,6 +1200,7 @@ export function ArticleCreateForm({
                   </span>
                 </span>
               </div>
+              {seoBusy === 'titles' && titleVariants === null ? <AiPending label="Menyusun varian judul" rows={[100, 80]} /> : null}
               {titleVariants !== null ? (
                 <ul className="m-0 list-none space-y-1 p-0">
                   {titleVariants.map((item) => (
@@ -1214,10 +1215,14 @@ export function ArticleCreateForm({
                   ))}
                   <li>
                     <AppTooltip label="Minta varian judul lain">
-                      <Button type="button" variant="ghost" size="xs" disabled={!aiReady || seoBusy} onClick={refineTitles}>
-                        <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>Buat ulang varian</span>
-                      </Button>
+                      <AiActionButton
+                        busy={seoBusy === 'titles'}
+                        idleLabel="Buat ulang varian"
+                        icon={RefreshCw}
+                        size="xs"
+                        disabled={!aiReady || seoBusy !== 'idle'}
+                        onClick={refineTitles}
+                      />
                     </AppTooltip>
                   </li>
                 </ul>
@@ -1258,17 +1263,16 @@ export function ArticleCreateForm({
                       ? 'Buatkan deskripsi dari judul dan isi dengan AI'
                       : 'Sempurnakan deskripsi yang ada dengan AI'}
                   >
-                    <Button
-                      type="button"
-                      variant="ghost"
+                    <AiActionButton
+                      busy={seoBusy === 'description'}
+                      idleLabel={descriptionText.trim() === '' ? 'Buatkan' : 'Sempurnakan'}
+                      icon={Sparkles}
                       size="xs"
-                      disabled={!aiReady || (titleText.trim() === '' && bodyText.trim() === '' && descriptionText.trim() === '') || seoBusy}
+                      tone="primary"
+                      disabled={!aiReady || (titleText.trim() === '' && bodyText.trim() === '' && descriptionText.trim() === '') || seoBusy !== 'idle'}
                       onClick={refineDescription}
-                      aria-label={descriptionText.trim() === '' ? 'Buatkan deskripsi' : 'Sempurnakan deskripsi'}
-                    >
-                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>{descriptionText.trim() === '' ? 'Buatkan' : 'Sempurnakan'}</span>
-                    </Button>
+                      ariaLabel={descriptionText.trim() === '' ? 'Buatkan deskripsi' : 'Sempurnakan deskripsi'}
+                    />
                   </AppTooltip>
                 <span
                   aria-live="polite"
@@ -1337,28 +1341,25 @@ export function ArticleCreateForm({
                   <span>AI</span>
                 </span>
                 <AppTooltip label="Poles alur dan EYD isi dengan AI tanpa mengubah fakta">
-                  <Button
-                    type="button"
-                    variant="ghost"
+                  <AiActionButton
+                    busy={polishBusy}
+                    idleLabel={polishRounds === 0 ? 'Poles isi' : 'Poles ulang'}
+                    icon={WandSparkles}
                     size="xs"
+                    tone="primary"
                     disabled={!aiReady || bodyText.trim() === '' || polishBusy}
                     onClick={polishBodyInline}
-                  >
-                    <WandSparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>{polishBusy ? 'Memoles…' : polishRounds === 0 ? 'Poles isi' : 'Poles ulang'}</span>
-                  </Button>
+                  />
                 </AppTooltip>
                 <AppTooltip label="Transkripsikan rekaman menjadi berita lengkap siap isi formulir">
-                  <Button
-                    type="button"
-                    variant="ghost"
+                  <AiActionButton
+                    busy={transcriptBusy}
+                    idleLabel="Audio jadi berita"
+                    icon={Newspaper}
                     size="xs"
                     disabled={!aiReady || transcriptBusy}
                     onClick={() => document.getElementById(transcribeFullInputId)?.click()}
-                  >
-                    <Newspaper className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>{transcriptBusy ? 'Mentranskrip…' : 'Audio jadi berita'}</span>
-                  </Button>
+                  />
                 </AppTooltip>
                 <input
                   id={transcribeFullInputId}
@@ -1377,6 +1378,7 @@ export function ArticleCreateForm({
                   {bodyJsonProblem}
                 </p>
               )}
+              {polishBusy && polished === '' ? <AiPending label="Memoles alur dan EYD" /> : null}
               {polished !== '' ? (
                 <div className="space-y-1.5 rounded border border-hairline bg-bg p-2.5">
                   <p className="m-0 font-sans text-xs font-medium text-paper">
@@ -1570,18 +1572,18 @@ export function ArticleCreateForm({
                     Kategori ({effectiveCategoryIds.length} dipilih{effectiveCategoryIds.length === categoryIds.length || defaultCategoryName === null ? '' : ` · ${defaultCategoryName}`})
                   </Label>
                   <AppTooltip label="Isi kategori dan topik otomatis dari isi dengan AI" side="left">
-                    <Button
-                      type="button"
-                      variant="ghost"
+                    <AiActionButton
+                      busy={classifyBusy}
+                      idleLabel="Lengkapi otomatis"
+                      icon={Tags}
                       size="xs"
+                      tone="primary"
                       disabled={!aiReady || bodyText.trim() === '' || classifyBusy}
                       onClick={classifyInline}
-                    >
-                      <Tags className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>{classifyBusy ? 'Mengklasifikasi…' : 'Lengkapi otomatis'}</span>
-                    </Button>
+                    />
                   </AppTooltip>
                 </div>
+                {classifyBusy ? <AiPending label="Mengklasifikasi kategori dan tag" rows={[100, 72]} /> : null}
                 <p className="m-0 font-mono text-[11px] text-paper-faint">
                   Ketik untuk mencari; bila tidak ada, tekan Enter atau tombol tambah di dalam daftar — kategori baru disimpan ke server hanya saat artikel disimpan. Boleh lebih dari satu; yang pertama jadi kategori utama. Wajib — tanpa pilihan, artikel memakai{defaultCategoryName === null ? ' kategori bawaan tenant' : ` “${defaultCategoryName}”`}.
                 </p>

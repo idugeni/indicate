@@ -755,8 +755,29 @@
     to { transform: scaleX(1); }
   }
 
+  .ai-shimmer {
+    background-image: linear-gradient(90deg, var(--bg-raised-2) 0%, var(--bg-raised-3) 50%, var(--bg-raised-2) 100%);
+    background-size: 200% 100%;
+    animation: ai-shimmer 1.4s ease-in-out infinite;
+  }
+
+  @keyframes ai-shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+
+  .ai-busy-glow {
+    animation: ai-busy-glow 1.6s ease-in-out infinite;
+  }
+
+  @keyframes ai-busy-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgb(204 154 68 / 0%); }
+    50% { box-shadow: 0 0 0 3px rgb(204 154 68 / 0.28); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .ticker-progress { animation: none; }
+    .ai-shimmer, .ai-busy-glow { animation: none; }
   }
 
   .gallery-rail,

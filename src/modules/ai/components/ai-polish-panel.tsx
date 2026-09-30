@@ -5,6 +5,7 @@ import { ListChecks, Tags, WandSparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { AiActionButton, AiPending } from '@/modules/ai/components/ai-action-button';
 import { callAi } from '@/modules/ai/components/ai-client';
 
 export interface PolishApplySelection {
@@ -125,16 +126,25 @@ export function AiPolishPanel({
     <section aria-label="Penyempurna AI" className="space-y-2 rounded border border-hairline bg-bg p-3">
       <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">Penyempurna AI</p>
       <div className="flex flex-wrap gap-1.5">
-        <Button type="button" size="sm" variant="outline" disabled={!ready} onClick={() => void runPolish()}>
-          <WandSparkles className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>{busy === 'polish' ? 'Memoles…' : rounds === 0 ? 'Poles isi' : 'Poles ulang'}</span>
-        </Button>
-        <Button type="button" size="sm" variant="outline" disabled={!ready} onClick={() => void runClassify()}>
-          <Tags className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>{busy === 'classify' ? 'Mengklasifikasi…' : 'Lengkapi kategori & topik'}</span>
-        </Button>
+        <AiActionButton
+          busy={busy === 'polish'}
+          idleLabel={rounds === 0 ? 'Poles isi' : 'Poles ulang'}
+          icon={WandSparkles}
+          tone="primary"
+          disabled={!ready}
+          onClick={() => void runPolish()}
+        />
+        <AiActionButton
+          busy={busy === 'classify'}
+          idleLabel="Lengkapi kategori & topik"
+          icon={Tags}
+          disabled={!ready}
+          onClick={() => void runClassify()}
+        />
       </div>
       {error !== null ? <p className="m-0 font-sans text-xs text-error" role="alert">{error}</p> : null}
+      {busy === 'polish' && polished === '' ? <AiPending label="Memoles alur dan EYD" /> : null}
+      {busy === 'classify' && classification === null ? <AiPending label="Mengklasifikasi kategori dan tag" rows={[100, 72]} /> : null}
       {polished !== '' ? (
         <div className="space-y-1.5">
           <p className="m-0 flex items-center gap-1.5 font-sans text-xs font-medium text-paper">
