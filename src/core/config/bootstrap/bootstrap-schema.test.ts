@@ -26,6 +26,7 @@ describe('validateBootstrapConfig sukses', () => {
     expect(result.success).toBe(true);
     if (!result.success) return;
     expect(result.config.controlHosts.dashboard).toBe('indicate.website');
+    expect(result.config.controlHosts.status).toBe('status.indicate.website');
     expect(result.config.database.directUrl.reveal()).toBe('postgresql://user:pass@localhost:5432/indicate');
     expect(result.config.credentials.resendApiKey).toBe(null);
   });

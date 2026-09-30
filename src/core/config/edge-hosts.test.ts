@@ -8,6 +8,7 @@ describe('getControlHosts', () => {
       dashboard: 'indicate.website',
       api: 'api.indicate.website',
       webhook: 'webhook.indicate.website',
+      status: 'status.indicate.website',
     });
   });
 

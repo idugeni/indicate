@@ -236,7 +236,7 @@ export async function proxy(request: NextRequest) {
     auditEdgeDeny(request, 'dashboard.platform_token.denied');
     return deny(404, request.headers);
   }
-  const { dashboard, api, webhook } = getControlHosts();
+  const { dashboard, api, webhook, status } = getControlHosts();
 
   if (path === '/docs' || path.startsWith('/docs/')) return deny(404, request.headers);
 
@@ -252,6 +252,15 @@ export async function proxy(request: NextRequest) {
   if (parsed.hostname === webhook) {
     if (path !== '/api/health' && !path.startsWith('/api/webhooks/')) return deny(404, request.headers);
     return nextWithCorrelation(request);
+  }
+  if (parsed.hostname === status) {
+    if (path === '/') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/status';
+      return NextResponse.rewrite(url);
+    }
+    if (path === '/status' || path === '/api/status' || path === '/api/health') return nextWithCorrelation(request);
+    return deny(404, request.headers);
   }
   const alias = TENANT_ALIASES[path];
   if (alias !== undefined) {

@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (235 migrations):
+-- Reviewed sources, in journal order (236 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -249,6 +249,7 @@
 --   233  20260930140000_fk_covering_indexes  ledger sha256:37e33820cad3dec22ee59289544b42d4e47e3fd10c13e0e5605aceb40b743ca3
 --   234  20260930150000_ai_master_secrets_runtime  ledger sha256:9fa0e0c96504169bd85e7a5b9a616af4d6834be660af0464b5f666a9c9bec7b6
 --   235  20260930160000_retention_windows_tighten  ledger sha256:fe6725b3b9804176b2331c872fdef2f888b26de62010732969b1865868f730e4
+--   236  20260930170000_status_tables  ledger sha256:5c504527e7ebf64f4d623f603699dbf129aa97947538b5b2e785475207b7e4ee
 
 BEGIN;
 
@@ -19512,4 +19513,58 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (235, 'retention_windows_tighten', 'sha256:7a8ef401f4c981fb5f0d02b6d1eedb0263b8f30abbb7706ffaf08c4049165de8');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('fe6725b3b9804176b2331c872fdef2f888b26de62010732969b1865868f730e4', 1790784000000);
+
+-- ----------------------------------------------------------------------
+-- 20260930170000_status_tables
+-- ----------------------------------------------------------------------
+-- Status page tables: probe results, daily rollups, auto incidents.
+--
+-- Global singleton telemetry (no organization column); reads and writes run
+-- server-side only. Least-privilege scope mirrors the AI control-plane
+-- convention: full access for the runtime role, nothing for anon or
+-- authenticated, row isolation unnecessary without tenant rows.
+CREATE TABLE public.status_checks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  component text NOT NULL,
+  health text NOT NULL,
+  latency_ms integer,
+  detail text,
+  checked_at timestamptz DEFAULT now() NOT NULL
+);
+CREATE INDEX status_checks_component_checked_idx ON public.status_checks (component, checked_at);
+CREATE TABLE public.status_daily (
+  component text NOT NULL,
+  day text NOT NULL,
+  uptime_pct real NOT NULL,
+  checks integer DEFAULT 0 NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT status_daily_pk PRIMARY KEY (component, day)
+);
+CREATE TABLE public.status_incidents (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  component text,
+  title text NOT NULL,
+  detail text,
+  status text DEFAULT 'open' NOT NULL,
+  started_at timestamptz DEFAULT now() NOT NULL,
+  resolved_at timestamptz,
+  updates jsonb DEFAULT '[]'::jsonb NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  updated_at timestamptz DEFAULT now() NOT NULL
+);
+CREATE INDEX status_incidents_status_started_idx ON public.status_incidents (status, started_at);
+ALTER TABLE public.status_checks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.status_daily ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.status_incidents ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.status_checks TO indicate_runtime;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.status_daily TO indicate_runtime;
+GRANT SELECT, INSERT, UPDATE ON public.status_incidents TO indicate_runtime;
+CREATE POLICY runtime_accessor ON public.status_checks FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+CREATE POLICY runtime_accessor ON public.status_daily FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+CREATE POLICY runtime_accessor ON public.status_incidents FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (236, 'status_tables', 'sha256:98a588a39f8645c8e75d4b21ead0db9c4dfb5ec8b8e8fb81bb63fadae8948370');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5c504527e7ebf64f4d623f603699dbf129aa97947538b5b2e785475207b7e4ee', 1790787600000);
 COMMIT;

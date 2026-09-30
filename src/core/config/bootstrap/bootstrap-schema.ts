@@ -38,6 +38,7 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'DASHBOARD_HOST',
   'API_HOST',
   'WEBHOOK_HOST',
+  'STATUS_HOST',
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
@@ -176,6 +177,7 @@ const bootstrapSchema = z
     DASHBOARD_HOST: hostnameSchema.default('indicate.website'),
     API_HOST: hostnameSchema.default('api.indicate.website'),
     WEBHOOK_HOST: hostnameSchema.default('webhook.indicate.website'),
+    STATUS_HOST: hostnameSchema.default('status.indicate.website'),
 
     NEXT_PUBLIC_SUPABASE_URL: httpsUrlSchema,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(8).optional(),
@@ -253,7 +255,7 @@ const bootstrapSchema = z
         message: 'r2_public_incomplete',
       });
     }
-    const controlHosts = [value.DASHBOARD_HOST, value.API_HOST, value.WEBHOOK_HOST];
+    const controlHosts = [value.DASHBOARD_HOST, value.API_HOST, value.WEBHOOK_HOST, value.STATUS_HOST];
     if (new Set(controlHosts).size !== controlHosts.length) {
       context.addIssue({ code: 'custom', path: ['DASHBOARD_HOST'], message: 'control_hosts_must_be_distinct' });
     }
@@ -283,6 +285,7 @@ export interface BootstrapConfig {
     readonly dashboard: string;
     readonly api: string;
     readonly webhook: string;
+    readonly status: string;
     readonly reserved: ReadonlySet<string>;
   }>;
   readonly seo: Readonly<{
@@ -356,7 +359,8 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       dashboard: value.DASHBOARD_HOST,
       api: value.API_HOST,
       webhook: value.WEBHOOK_HOST,
-      reserved: new Set([value.DASHBOARD_HOST, value.API_HOST, value.WEBHOOK_HOST]),
+      status: value.STATUS_HOST,
+      reserved: new Set([value.DASHBOARD_HOST, value.API_HOST, value.WEBHOOK_HOST, value.STATUS_HOST]),
     }),
     seo: Object.freeze({
       defaultLocale: value.DEFAULT_LOCALE,

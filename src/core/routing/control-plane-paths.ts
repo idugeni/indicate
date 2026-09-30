@@ -9,6 +9,7 @@ export const SERVICE_PATHS: readonly string[] = Object.freeze([
   '/contact',
   '/privacy',
   '/terms',
+  '/status',
 ]);
 
 /** Exact or segment match, so tenant paths that merely share a prefix stay reachable. */

@@ -7,3 +7,4 @@ export * from '@/data/schema/billing';
 export * from '@/data/schema/ai';
 export * from '@/data/schema/ai-cache';
 export * from '@/data/schema/ai-embeddings';
+export * from '@/data/schema/status';

@@ -62,6 +62,18 @@ describe('proxy control surfaces', () => {
     expect((await proxy(request(HOSTS.dashboard, '/dashboard'))).status).toBe(200);
     expect((await proxy(request(HOSTS.api, '/api/v1/commands'))).status).toBe(200);
     expect((await proxy(request(HOSTS.webhook, '/api/webhooks/resend'))).status).toBe(200);
+    expect((await proxy(request(HOSTS.status, '/status'))).status).toBe(200);
+    expect((await proxy(request(HOSTS.status, '/api/status'))).status).toBe(200);
+  });
+
+  it('menulis ulang akar host status ke halaman status', async () => {
+    const response = await proxy(request(HOSTS.status, '/'));
+    expect(response.status).toBe(200);
+  });
+
+  it('menolak path lain di host status', async () => {
+    expect((await proxy(request(HOSTS.status, '/dashboard'))).status).toBe(404);
+    expect((await proxy(request(HOSTS.status, '/api/dashboard/workspace'))).status).toBe(404);
   });
 });
 

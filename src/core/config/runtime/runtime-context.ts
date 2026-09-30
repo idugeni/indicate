@@ -76,6 +76,7 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
       dashboard: bootstrap.controlHosts.dashboard,
       api: bootstrap.controlHosts.api,
       webhook: bootstrap.controlHosts.webhook,
+      status: bootstrap.controlHosts.status,
       reserved: new Set(bootstrap.controlHosts.reserved),
     }),
     supabase: Object.freeze({

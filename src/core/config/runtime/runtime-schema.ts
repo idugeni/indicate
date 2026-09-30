@@ -12,6 +12,7 @@ export interface RuntimeConfig {
     readonly dashboard: string;
     readonly api: string;
     readonly webhook: string;
+    readonly status: string;
     readonly reserved: ReadonlySet<string>;
   };
   readonly supabase: {
