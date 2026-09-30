@@ -1618,6 +1618,20 @@
       "when": 1790769600000,
       "tag": "20260930120000_dashboard_access_keys_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 231,
+      "version": "7",
+      "when": 1790773200000,
+      "tag": "20260930130000_article_revisions_delete_grant",
+      "breakpoints": true
+    },
+    {
+      "idx": 232,
+      "version": "7",
+      "when": 1790776800000,
+      "tag": "20260930140000_fk_covering_indexes",
+      "breakpoints": true
     }
   ]
 }

@@ -7,8 +7,9 @@ import { regionScopeCovers } from '@/modules/site/region-scope';
 import type { ActivityHour, RecentActivity, AnalyticsProjection, PublisherFlow, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, DateWindow, OperationsProjection, RetentionRunRecord, TaskDay } from '@/modules/dashboard/models';
 import { DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
 import { redact } from '@/core/security/redaction';
+import { DashboardValidationError } from '@/modules/dashboard/tenant-service-errors';
 import {
-  apiKeys, articleCategories, articleRevisions, articleSites, articles, auditLogs, authors, cacheBypasses, categories, domainActivationAttempts, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks, officialAffiliations, organizations,
+  apiKeys, articleCategories, articleRevisions, articleSites, articles, auditLogs, authors, cacheBypasses, categories, contentReports, domainActivationAttempts, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks, officialAffiliations, organizations,
   permissions, publicationTransitionReceipts, publishers, publishingJobs, publishingJobTargets, regions, rolePermissions, roles, sites, siteSettings, users, webhookReplayClaims,
 } from '@/data/schema';
 import type * as schema from '@/data/schema';
@@ -1031,6 +1032,19 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       for (const chunk of insertChunks(state.articleCategories)) {
         await transaction.insert(articleCategories).values(chunk.map((row) => ({ organizationId: state.organizationId, articleId: row.articleId, categoryId: row.categoryId, position: row.position }))).onConflictDoNothing();
       }
+    }
+    const removedArticleIds = [...index.priorArticles.keys()].filter((id) => !index.currentArticles.has(id));
+    for (const articleId of removedArticleIds) {
+      const [reportRows, mediaRows, reservationRows] = await Promise.all([
+        transaction.select({ id: contentReports.id }).from(contentReports).where(and(eq(contentReports.organizationId, state.organizationId), eq(contentReports.articleId, articleId))).limit(1),
+        transaction.select({ id: media.id }).from(media).where(and(eq(media.organizationId, state.organizationId), eq(media.articleId, articleId))).limit(1),
+        transaction.select({ id: mediaKeyReservations.id }).from(mediaKeyReservations).where(and(eq(mediaKeyReservations.organizationId, state.organizationId), eq(mediaKeyReservations.articleId, articleId))).limit(1),
+      ]);
+      if (reportRows.length > 0) throw new DashboardValidationError({ contentReports: ['Artikel dengan laporan moderasi tidak bisa dihapus permanen; arsipkan saja.'] });
+      if (mediaRows.length > 0) throw new DashboardValidationError({ media: ['Hapus dulu media milik artikel ini dari Media sebelum hapus permanen.'] });
+      if (reservationRows.length > 0) throw new DashboardValidationError({ mediaKeyReservations: ['Reservasi unggahan artikel ini masih aktif; coba lagi setelah kedaluwarsa.'] });
+      await transaction.delete(articleRevisions).where(and(eq(articleRevisions.organizationId, state.organizationId), eq(articleRevisions.articleId, articleId)));
+      await transaction.delete(articles).where(and(eq(articles.organizationId, state.organizationId), eq(articles.id, articleId)));
     }
     await this.recordArticleRevisions(transaction, actorId, before, index);
     if (changedArticles.length > 0) await this.syncArticleGalleryMetadata(transaction, changedArticles, state.organizationId);

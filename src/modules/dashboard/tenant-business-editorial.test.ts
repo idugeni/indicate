@@ -25,7 +25,7 @@ const actor = {
 
 const COLLECTIONS = [
   'domains', 'regions', 'sites', 'siteSettings', 'roles', 'memberships',
-  'publishers', 'affiliations', 'categories', 'authors', 'articles', 'articleCategories', 'articleSites', 'media',
+  'publishers', 'affiliations', 'categories', 'authors', 'articles', 'articleCategories', 'articleSites', 'media', 'publishingJobs',
 ] as const;
 
 function harness(collections: Record<string, readonly unknown[]> = {}) {
@@ -491,5 +491,61 @@ describe('TenantBusinessService assignment saat pembuatan', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('expected ok');
     expect(state.articleSites as unknown[]).toHaveLength(0);
+  });
+});
+
+describe('TenantBusinessService hapus artikel', () => {
+  const draftRow = (overrides: Record<string, unknown> = {}) => ({
+    id: ID,
+    organizationId: 'org-1',
+    regionId: ID2,
+    slug: 'draf-lama',
+    title: 'Draf Lama Yang Cukup Panjang',
+    body: 'Isi draf yang cukup panjang.',
+    source: 'Humas',
+    tags: [],
+    status: 'draft',
+    version: 1,
+    publisherId: null,
+    categoryId: null,
+    authorId: null,
+    ...overrides,
+  });
+
+  it('menghapus draf dan relasi kategorinya', async () => {
+    const { service, state } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+      articles: [draftRow()],
+      articleCategories: [{ articleId: ID, categoryId: ID4, position: 1 }],
+    });
+    const result = await service.deleteArticle(actor, { id: ID, expectedVersion: 1 });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value).toEqual({ id: ID });
+    expect(state.articles as unknown[]).toHaveLength(0);
+    expect(state.articleCategories as unknown[]).toHaveLength(0);
+  });
+
+  it('menolak hapus artikel tayang', async () => {
+    const { service } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+      articles: [draftRow({ status: 'active' })],
+    });
+    const result = await service.deleteArticle(actor, { id: ID, expectedVersion: 1 });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
+  });
+
+  it('menolak hapus saat masih ada penugasan portal', async () => {
+    const { service } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+      articles: [draftRow()],
+      articleSites: [{ id: ID3, articleId: ID, siteId: 'site-1' }],
+    });
+    const result = await service.deleteArticle(actor, { id: ID, expectedVersion: 1 });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
   });
 });

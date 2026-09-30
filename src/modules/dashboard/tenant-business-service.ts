@@ -33,7 +33,7 @@ import {
   articleInScope, regionLock, requireArticleInScope, requireLockedRegionValue, requireSiteInScope, requireUnrestrictedRegion, siteInScope,
 } from '@/modules/dashboard/tenant-service-scope';
 import {
-  affiliationSchema, affiliationUpdateSchema, analyticsFilterSchema, articleCreateSchema, articleFilterSchema, articleTransitionSchema, articleUpdateSchema, assignmentSchema,
+  affiliationSchema, affiliationUpdateSchema, analyticsFilterSchema, articleCreateSchema, articleDeleteSchema, articleFilterSchema, articleTransitionSchema, articleUpdateSchema, assignmentSchema,
   auditFilterSchema, authorCreateSchema, authorUpdateSchema, categoryCreateSchema, categoryDeleteSchema, categoryUpdateSchema,
   domainCreateSchema, domainUpdateSchema, invitationCreateSchema, invitationRevokeSchema, isKnownTemplateId, membershipSchema, publisherCreateSchema, publisherDecisionSchema,
   publisherUpdateSchema, regionCreateSchema, regionUpdateSchema, roleCreateSchema, roleUpdateSchema,
@@ -953,6 +953,35 @@ export class TenantBusinessService {
       const before = requireArticleInScope(transaction.state, value.id, actor); requireVersion(before, value.expectedVersion);
       const after: ArticleRecord = { ...before, status, archivedAt: status === 'archived' ? now : null, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.articles, after); this.audit(transaction, action, 'article', after.id, before, after); return after;
+    }});
+  }
+
+  /**
+   * Hapus permanen satu artikel beserta relasi kategorinya.
+   *
+   * @param actor - Konteks tenant terotorisasi.
+   * @param raw - `{ id, expectedVersion }` yang divalidasi `articleDeleteSchema`.
+   * @returns Id artikel yang dihapus.
+   * @throws {DashboardValidationError} Bila status masih tayang/terjadwal, masih
+   * punya penugasan portal, atau sudah punya riwayat job penerbitan. Revisi ikut
+   * terhapus; laporan moderasi, media milik, dan reservasi media menahan hapus
+   * di lapisan persistensi dan dilaporkan sebagai galat validasi.
+   */
+  deleteArticle(actor: AuthorizedTenantActorContext, raw: unknown) {
+    return this.mutate({ actor, raw, schema: articleDeleteSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.delete', targetType: 'article', execute: (transaction, value: VersionInput) => {
+      const before = requireArticleInScope(transaction.state, value.id, actor); requireVersion(before, value.expectedVersion);
+      if (before.status !== 'draft' && before.status !== 'archived') {
+        throw new DashboardValidationError({ status: ['Arsipkan dulu artikel tayang atau terjadwal sebelum dihapus permanen.'] });
+      }
+      if (transaction.state.articleSites.some((row) => row.articleId === before.id)) {
+        throw new DashboardValidationError({ articleSites: ['Lepas dulu penugasan portal artikel ini sebelum dihapus permanen.'] });
+      }
+      if (transaction.state.publishingJobs.some((row) => row.articleId === before.id)) {
+        throw new DashboardValidationError({ publishingJobs: ['Artikel dengan riwayat job penerbitan tidak bisa dihapus permanen; arsipkan saja.'] });
+      }
+      transaction.state.articles = transaction.state.articles.filter((row) => row.id !== before.id);
+      this.syncArticleCategories(transaction.state, before.id, []);
+      this.audit(transaction, 'article.delete', 'article', before.id, before, null); return { id: before.id };
     }});
   }
 
