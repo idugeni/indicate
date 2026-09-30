@@ -8,6 +8,7 @@ import {
   COMPONENT_LABELS,
   STATUS_COMPONENTS,
   overallHealth,
+  withLoadTimeout,
   type ComponentHealth,
   type StatusComponent,
 } from '@/modules/status/status-probe';
@@ -133,7 +134,28 @@ interface IncidentView {
 }
 
 export default async function StatusPage() {
-  const snapshot = await loadCachedStatus();
+  const snapshot = await withLoadTimeout(loadCachedStatus());
+  if (snapshot === null) {
+    return (
+      <PublicPage
+        eyebrow="Status"
+        title="Status layanan Indicate"
+        description={DESCRIPTION}
+        meta={['Pemeriksaan timed out']}
+        trail={[{ href: '/', label: 'Beranda' }]}
+        actions={<HeaderSecondaryCta href="/contact">Laporkan Gangguan</HeaderSecondaryCta>}
+      >
+        <Section title="Kondisi saat ini" description="Pemeriksaan otomatis setiap lima menit ke seluruh komponen." eyebrow="Live">
+          <div className="rounded-lg border border-brass/40 bg-brass/10 p-4 sm:p-5">
+            <p className="m-0 font-sans text-base font-semibold text-brass sm:text-lg">Data status tak dapat dimuat</p>
+            <p className="m-0 mt-1 font-sans text-sm text-paper-dim">
+              Pemuatan melebihi batas waktu — kemungkinan antrean database sedang padat. Muat ulang halaman untuk mencoba lagi.
+            </p>
+          </div>
+        </Section>
+      </PublicPage>
+    );
+  }
   const overall = OVERALL_COPY[snapshot.overall];
   const open = snapshot.incidents.filter((incident) => incident.status === 'open');
   const resolved = snapshot.incidents.filter((incident) => incident.status !== 'open');

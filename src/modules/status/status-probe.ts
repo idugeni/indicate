@@ -226,3 +226,29 @@ export function overallHealth(results: readonly ProbeResult[]): ComponentHealth 
   }
   return worst;
 }
+
+/** Batas muat snapshot status agar halaman tak pernah gantung. */
+export const SNAPSHOT_TIMEOUT_MS = 12_000;
+
+/**
+ * Jalankan pemuatan dengan batas waktu.
+ *
+ * @param work - Pemuatan yang dibatasi.
+ * @param ms - Batas milidetik; default `SNAPSHOT_TIMEOUT_MS`.
+ * @returns Hasil pemuatan, atau null bila melewati batas.
+ * @remarks Halaman status harus terdegradasi, bukan menggantung: pool yang
+ * jenuh tidak boleh menahan respons selamanya.
+ */
+export async function withLoadTimeout<T>(work: Promise<T>, ms = SNAPSHOT_TIMEOUT_MS): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      work,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), ms);
+      }),
+    ]);
+  } finally {
+    if (timer !== null) clearTimeout(timer);
+  }
+}
