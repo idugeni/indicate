@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (231 migrations):
+-- Reviewed sources, in journal order (233 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -245,6 +245,8 @@
 --   229  20260930100000_ai_pgcrypto_search_path  ledger sha256:115f395151b14136370b1a32639715bae7bf63157c3706ac9c74003c3034ff67
 --   230  20260930110000_ai_models_38_defaults  ledger sha256:54c2c0175b6a9db0c1179e852c6728c363886b76b4d7cf46c74d79365837660e
 --   231  20260930120000_dashboard_access_keys_grants  ledger sha256:bf0e12b3ac1a63dd589cac0b54b66f74b0ed8dd6aa77c096be1dbe06bbdb21dd
+--   232  20260930130000_article_revisions_delete_grant  ledger sha256:a0c48e2d5153f05f3d208888c3f2549dbaf6282f6b19e992c71e6711134defbf
+--   233  20260930140000_fk_covering_indexes  ledger sha256:d66cf0d0b5f4e5f676eb426fd443c3154beca28d7fd08a4aeb6888a9383a93c7
 
 BEGIN;
 
@@ -19364,4 +19366,38 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (231, 'dashboard_access_keys_grants', 'sha256:d1d068f4d05ab43f7b7af10d009269183462d7a79630a77abe9b9675aedede1f');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('bf0e12b3ac1a63dd589cac0b54b66f74b0ed8dd6aa77c096be1dbe06bbdb21dd', 1790769600000);
+
+-- ----------------------------------------------------------------------
+-- 20260930130000_article_revisions_delete_grant
+-- ----------------------------------------------------------------------
+-- Grant runtime delete on article revisions for permanent article removal.
+--
+-- `article.delete` removes an article's revision snapshots before removing the
+-- article row itself. The blanket grant from the security migration predates
+-- this table's current privilege set, so the runtime role holds SELECT/INSERT
+-- but no DELETE here (same pattern as the dashboard access-key grants).
+-- Least-privilege scope: delete only; row isolation stays with the
+-- tenant_isolation RLS policy (cmd ALL).
+GRANT DELETE ON public.article_revisions TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (232, 'article_revisions_delete_grant', 'sha256:25a127ccc20ddb07144e347251e80c4de5edfd0b2f8e0922838bba7834879d4f');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a0c48e2d5153f05f3d208888c3f2549dbaf6282f6b19e992c71e6711134defbf', 1790773200000);
+
+-- ----------------------------------------------------------------------
+-- 20260930140000_fk_covering_indexes
+-- ----------------------------------------------------------------------
+-- Covering indexes for single-column foreign keys flagged by the advisor.
+--
+-- A composite index does not cover an FK on its non-leftmost column, so
+-- `dashboard_access_keys(user_id)` and both AI routing provider references
+-- need their own leftmost indexes. Tiny tables, same pattern as the other
+-- single-column FK indexes in this schema.
+CREATE INDEX IF NOT EXISTS dashboard_access_keys_user_idx ON public.dashboard_access_keys (user_id);
+CREATE INDEX IF NOT EXISTS ai_routing_policies_primary_provider_idx ON public.ai_routing_policies (primary_provider_id);
+CREATE INDEX IF NOT EXISTS ai_routing_policies_fallback_provider_idx ON public.ai_routing_policies (fallback_provider_id);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (233, 'fk_covering_indexes', 'sha256:7aef372626c821c17160bbdd5cecf86572e1783d350c0620210a315fd5ff86ae');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('d66cf0d0b5f4e5f676eb426fd443c3154beca28d7fd08a4aeb6888a9383a93c7', 1790776800000);
 COMMIT;
