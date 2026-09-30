@@ -22,6 +22,8 @@ export const controlPlaneRobots = (host: string) => [
   'Disallow: /sign-in',
   'Disallow: /auth',
   'Disallow: /api/',
+  'Disallow: /mcp',
+  'Disallow: /.webmcp/',
   'Disallow: /domain-pending',
   'Disallow: /categories',
   'Disallow: /kebijakan-privasi',

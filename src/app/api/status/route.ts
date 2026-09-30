@@ -8,7 +8,6 @@ import {
   COMPONENT_LABELS,
   STATUS_COMPONENTS,
   overallHealth,
-  withLoadTimeout,
   type StatusComponent,
 } from '@/modules/status/status-probe';
 
@@ -16,13 +15,7 @@ import {
 const HISTORY_DAYS = 90;
 
 async function handleGET() {
-  const snapshot = await withLoadTimeout(loadSnapshot());
-  if (snapshot === null) {
-    return NextResponse.json(
-      { status: 'unknown', reason: 'snapshot timeout', generatedAt: new Date().toISOString() },
-      { status: 503, headers: { 'Cache-Control': 'no-store' } },
-    );
-  }
+  const snapshot = await loadSnapshot();
   return NextResponse.json(snapshot, {
     headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
   });

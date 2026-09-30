@@ -7,7 +7,6 @@ import {
   overallHealth,
   runProbes,
   summarizeUptime,
-  withLoadTimeout,
   type ComponentHealth,
   type ProbeDeps,
   type StatusComponent,
@@ -121,16 +120,6 @@ describe('summarizeUptime', () => {
     const summaries = summarizeUptime([], 'database', 3, new Date('2026-09-30T12:00:00.000Z'));
     expect(summaries.map((summary) => summary.day)).toEqual(['2026-09-28', '2026-09-29', '2026-09-30']);
     expect(summaries.every((summary) => summary.uptimePct === null)).toBe(true);
-  });
-});
-
-describe('withLoadTimeout', () => {
-  it('mengembalikan hasil saat selesai sebelum batas', async () => {
-    await expect(withLoadTimeout(Promise.resolve('siap'), 50)).resolves.toBe('siap');
-  });
-
-  it('mengembalikan null saat melewati batas', async () => {
-    await expect(withLoadTimeout(new Promise(() => undefined), 5)).resolves.toBeNull();
   });
 });
 

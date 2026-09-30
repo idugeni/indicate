@@ -3,6 +3,7 @@ import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Toaster } from '@/components/ui/sonner';
+import { WEBMCP_BRIDGE_PATH, WEBMCP_DEFAULT_PACKS, WEBMCP_MCP_PATH } from '@/modules/webmcp/bridge-source';
 import { SERVICE_SUMMARY } from '@/ui/site/marketing-content';
 import { cn } from '@/ui/cn';
 import './globals.css';
@@ -130,6 +131,7 @@ export default function RootLayout({
       )}
     >
       <body className="min-h-screen supports-[min-height:100svh]:min-h-svh bg-bg text-paper antialiased">
+        <script type="module" async src={WEBMCP_BRIDGE_PATH} data-packs={WEBMCP_DEFAULT_PACKS} data-mcp-url={WEBMCP_MCP_PATH} />
         {children}
         <Toaster />
         <SpeedInsights />

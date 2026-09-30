@@ -416,6 +416,8 @@ export function serializeRobots(site: {
     'Disallow: /search',
     'Disallow: /report',
     'Disallow: /api/',
+    'Disallow: /mcp',
+    'Disallow: /.webmcp/',
     'Disallow: /dashboard',
     'Disallow: /auth',
     'Disallow: /sign-in',

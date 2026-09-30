@@ -8,7 +8,6 @@ import {
   COMPONENT_LABELS,
   STATUS_COMPONENTS,
   overallHealth,
-  withLoadTimeout,
   type ComponentHealth,
   type StatusComponent,
 } from '@/modules/status/status-probe';
@@ -21,8 +20,6 @@ const DESCRIPTION = 'Kondisi langsung seluruh layanan Indicate: database, cache,
 export function generateMetadata(): Metadata {
   return siteMetadata('Status Layanan', DESCRIPTION, '/status');
 }
-
-const loadCachedStatus = unstable_cache(loadStatus, ['status-snapshot'], { revalidate: 60, tags: ['status'] });
 
 const OVERALL_COPY: Readonly<Record<ComponentHealth, { readonly title: string; readonly tone: string; readonly text: string }>> = {
   ok: {
@@ -65,7 +62,23 @@ interface ComponentView {
   readonly days: readonly { readonly day: string; readonly uptimePct: number | null }[];
 }
 
-async function loadStatus(): Promise<{ readonly overall: ComponentHealth; readonly components: readonly ComponentView[]; readonly incidents: readonly IncidentView[]; readonly generatedAt: string }> {
+interface IncidentView {
+  readonly id: string;
+  readonly title: string;
+  readonly status: string;
+  readonly startedAt: string;
+  readonly resolvedAt: string | null;
+  readonly updates: readonly { readonly at: string; readonly text: string }[];
+}
+
+interface StatusSnapshot {
+  readonly overall: ComponentHealth;
+  readonly components: readonly ComponentView[];
+  readonly incidents: readonly IncidentView[];
+  readonly generatedAt: string;
+}
+
+async function loadSnapshot(): Promise<StatusSnapshot> {
   const context = await getServerRuntimeContext();
   const repository = new DrizzleStatusRepository(getSharedRuntimeDatabase(context.bootstrap).db);
   const [latest, incidents, daily] = await Promise.all([
@@ -124,102 +137,95 @@ async function loadStatus(): Promise<{ readonly overall: ComponentHealth; readon
   };
 }
 
-interface IncidentView {
-  readonly id: string;
-  readonly title: string;
-  readonly status: string;
-  readonly startedAt: string;
-  readonly resolvedAt: string | null;
-  readonly updates: readonly { readonly at: string; readonly text: string }[];
+const loadCachedSnapshot = unstable_cache(loadSnapshot, ['status-snapshot'], { revalidate: 60, tags: ['status'] });
+
+function StatusBanner({ snapshot }: { readonly snapshot: StatusSnapshot }) {
+  const overall = OVERALL_COPY[snapshot.overall];
+  return (
+    <div className={`rounded-lg border p-4 sm:p-5 ${overall.tone}`}>
+      <p className="m-0 font-sans text-base font-semibold sm:text-lg">{overall.title}</p>
+      <p className="m-0 mt-1 font-sans text-sm opacity-90">{overall.text}</p>
+      <p className="m-0 mt-1 font-mono text-[11px] opacity-75">Diperbarui {formatMoment(snapshot.generatedAt)}</p>
+    </div>
+  );
+}
+
+function ComponentList({ snapshot }: { readonly snapshot: StatusSnapshot }) {
+  return (
+    <ul className="m-0 mt-4 list-none space-y-3 p-0">
+      {snapshot.components.map((item) => (
+        <li key={item.component} className="rounded-lg border border-hairline bg-bg-raised p-3.5 sm:p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="m-0 font-sans text-sm font-semibold text-paper">{COMPONENT_LABELS[item.component]}</p>
+            <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
+              {item.health === 'unknown' ? 'belum ada data' : `${item.health === 'ok' ? 'operasional' : item.health === 'degraded' ? 'menurun' : 'mati'}${item.latencyMs === null ? '' : ` · ${item.latencyMs} ms`}`}
+              {item.uptime90 === null ? '' : ` · ${item.uptime90.toFixed(2)}% / 90 hari`}
+            </p>
+          </div>
+          <div className="mt-2 flex gap-[2px]" aria-label={`Uptime 90 hari ${COMPONENT_LABELS[item.component]}`}>
+            {item.days.map((cell) => (
+              <span key={cell.day} aria-hidden="true" className={`h-6 min-w-0 flex-1 rounded-[2px] ${barTone(cell.uptimePct)}`} />
+            ))}
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function IncidentList({ snapshot }: { readonly snapshot: StatusSnapshot }) {
+  const open = snapshot.incidents.filter((incident) => incident.status === 'open');
+  const resolved = snapshot.incidents.filter((incident) => incident.status !== 'open');
+  return (
+    <>
+      {open.length > 0 ? (
+        <ul className="m-0 list-none space-y-3 p-0">
+          {open.map((incident) => (
+            <li key={incident.id} className="rounded-lg border border-error/40 bg-error/[0.06] p-3.5 sm:p-4">
+              <p className="m-0 font-sans text-sm font-semibold text-paper">{incident.title}</p>
+              <p className="m-0 mt-0.5 font-mono text-[11px] text-paper-faint">Sejak {formatMoment(incident.startedAt)}</p>
+              <IncidentUpdates updates={incident.updates} />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="m-0 font-sans text-sm text-paper-dim">Tidak ada insiden terbuka.</p>
+      )}
+      {resolved.length > 0 ? (
+        <ul className="m-0 mt-4 list-none space-y-3 p-0">
+          {resolved.map((incident) => (
+            <li key={incident.id} className="rounded-lg border border-hairline bg-bg-raised p-3.5 sm:p-4">
+              <p className="m-0 font-sans text-sm font-semibold text-paper">{incident.title}</p>
+              <p className="m-0 mt-0.5 font-mono text-[11px] text-paper-faint">
+                {formatMoment(incident.startedAt)}{incident.resolvedAt === null ? '' : ` → ${formatMoment(incident.resolvedAt)}`}
+              </p>
+              <IncidentUpdates updates={incident.updates} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </>
+  );
 }
 
 export default async function StatusPage() {
-  const snapshot = await withLoadTimeout(loadCachedStatus());
-  if (snapshot === null) {
-    return (
-      <PublicPage
-        eyebrow="Status"
-        title="Status layanan Indicate"
-        description={DESCRIPTION}
-        meta={['Pemeriksaan timed out']}
-        trail={[{ href: '/', label: 'Beranda' }]}
-        actions={<HeaderSecondaryCta href="/contact">Laporkan Gangguan</HeaderSecondaryCta>}
-      >
-        <Section title="Kondisi saat ini" description="Pemeriksaan otomatis setiap lima menit ke seluruh komponen." eyebrow="Live">
-          <div className="rounded-lg border border-brass/40 bg-brass/10 p-4 sm:p-5">
-            <p className="m-0 font-sans text-base font-semibold text-brass sm:text-lg">Data status tak dapat dimuat</p>
-            <p className="m-0 mt-1 font-sans text-sm text-paper-dim">
-              Pemuatan melebihi batas waktu — kemungkinan antrean database sedang padat. Muat ulang halaman untuk mencoba lagi.
-            </p>
-          </div>
-        </Section>
-      </PublicPage>
-    );
-  }
-  const overall = OVERALL_COPY[snapshot.overall];
-  const open = snapshot.incidents.filter((incident) => incident.status === 'open');
-  const resolved = snapshot.incidents.filter((incident) => incident.status !== 'open');
+  const snapshot = await loadCachedSnapshot();
   return (
     <PublicPage
       eyebrow="Status"
       title="Status layanan Indicate"
       description={DESCRIPTION}
-      meta={[overall.title, `Diperbarui ${formatMoment(snapshot.generatedAt)}`]}
+      meta={['Pemeriksaan otomatis lima menitan', 'Insiden otomatis tanpa input manual']}
       trail={[{ href: '/', label: 'Beranda' }]}
       actions={<HeaderSecondaryCta href="/contact">Laporkan Gangguan</HeaderSecondaryCta>}
     >
       <Section title="Kondisi saat ini" description="Pemeriksaan otomatis setiap lima menit ke seluruh komponen." eyebrow="Live">
-        <div className={`rounded-lg border p-4 sm:p-5 ${overall.tone}`}>
-          <p className="m-0 font-sans text-base font-semibold sm:text-lg">{overall.title}</p>
-          <p className="m-0 mt-1 font-sans text-sm opacity-90">{overall.text}</p>
-        </div>
-        <ul className="m-0 mt-4 list-none space-y-3 p-0">
-          {snapshot.components.map((item) => (
-            <li key={item.component} className="rounded-lg border border-hairline bg-bg-raised p-3.5 sm:p-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="m-0 font-sans text-sm font-semibold text-paper">{COMPONENT_LABELS[item.component]}</p>
-                <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
-                  {item.health === 'unknown' ? 'belum ada data' : `${item.health === 'ok' ? 'operasional' : item.health === 'degraded' ? 'menurun' : 'mati'}${item.latencyMs === null ? '' : ` · ${item.latencyMs} ms`}`}
-                  {item.uptime90 === null ? '' : ` · ${item.uptime90.toFixed(2)}% / 90 hari`}
-                </p>
-              </div>
-              <div className="mt-2 flex gap-[2px]" aria-label={`Uptime 90 hari ${COMPONENT_LABELS[item.component]}`}>
-                {item.days.map((cell) => (
-                  <span key={cell.day} aria-hidden="true" className={`h-6 min-w-0 flex-1 rounded-[2px] ${barTone(cell.uptimePct)}`} />
-                ))}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <StatusBanner snapshot={snapshot} />
+        <ComponentList snapshot={snapshot} />
         <p className="m-0 mt-3 font-mono text-[11px] text-paper-faint">Hijau 99.9%+, hijau pudar 99%+, kuning 95%+, merah di bawahnya, abu-abu tanpa data.</p>
       </Section>
       <Section title="Insiden" description="Dibuka dan ditutup otomatis oleh evaluasi probe; tanpa penulisan manual." eyebrow="Riwayat">
-        {open.length > 0 ? (
-          <ul className="m-0 list-none space-y-3 p-0">
-            {open.map((incident) => (
-              <li key={incident.id} className="rounded-lg border border-error/40 bg-error/[0.06] p-3.5 sm:p-4">
-                <p className="m-0 font-sans text-sm font-semibold text-paper">{incident.title}</p>
-                <p className="m-0 mt-0.5 font-mono text-[11px] text-paper-faint">Sejak {formatMoment(incident.startedAt)}</p>
-                <IncidentUpdates updates={incident.updates} />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="m-0 font-sans text-sm text-paper-dim">Tidak ada insiden terbuka.</p>
-        )}
-        {resolved.length > 0 ? (
-          <ul className="m-0 mt-4 list-none space-y-3 p-0">
-            {resolved.map((incident) => (
-              <li key={incident.id} className="rounded-lg border border-hairline bg-bg-raised p-3.5 sm:p-4">
-                <p className="m-0 font-sans text-sm font-semibold text-paper">{incident.title}</p>
-                <p className="m-0 mt-0.5 font-mono text-[11px] text-paper-faint">
-                  {formatMoment(incident.startedAt)}{incident.resolvedAt === null ? '' : ` → ${formatMoment(incident.resolvedAt)}`}
-                </p>
-                <IncidentUpdates updates={incident.updates} />
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        <IncidentList snapshot={snapshot} />
       </Section>
     </PublicPage>
   );

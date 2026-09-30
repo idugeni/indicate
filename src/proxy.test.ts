@@ -129,6 +129,10 @@ describe('proxy tenant surfaces', () => {
     expect(matcher.test('/api/v1/commands')).toBe(true);
   });
 
+  it('mencakup bridge webmcp berekstensi .js dalam matcher edge', async () => {
+    expect(proxyConfig.matcher.some((pattern) => pattern.includes('.webmcp'))).toBe(true);
+  });
+
   it('menolak permukaan auth di host tenant', async () => {
     expect((await proxy(request('portal.example', '/sign-up'))).status).toBe(404);
     expect((await proxy(request('portal.example', '/forgot-password'))).status).toBe(404);
