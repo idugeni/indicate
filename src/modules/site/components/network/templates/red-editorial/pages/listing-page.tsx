@@ -1,7 +1,6 @@
 import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { RedEditorialShell } from '@/modules/site/components/network/templates/red-editorial/chrome/shell';
-import { RedEditorialTicker } from '@/modules/site/components/network/templates/red-editorial/cards/ticker';
 import { RedEditorialHero } from '@/modules/site/components/network/templates/red-editorial/cards/hero';
 import { RedEditorialPicks } from '@/modules/site/components/network/templates/red-editorial/cards/picks';
 import { RedEditorialArchivePager } from '@/modules/site/components/network/templates/red-editorial/cards/archive-pager';
@@ -20,7 +19,7 @@ export interface ListingProps {
 }
 
 /**
- * Red Editorial (merah serif) — template full mandiri: header, ticker, hero, kartu
+ * Red Editorial (merah serif) — template full mandiri: header, hero, kartu
  * pilihan, newsletter, dan footer milik template sendiri dengan palet
  * hardcoded. Sengaja TIDAK memakai `NetworkTemplate` bersama maupun
  * `site_settings.colors`, agar tampil persis seperti contoh.
@@ -35,7 +34,6 @@ export function RedEditorialListing({ site, title, description, path, indexable 
     <RedEditorialShell site={site} path={path ?? '/'}>
       <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
-        {site.articles.length > 0 ? <RedEditorialTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
           <RedEditorialEmpty title={title} />
         ) : (

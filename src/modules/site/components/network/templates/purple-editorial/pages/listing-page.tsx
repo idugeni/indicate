@@ -1,7 +1,6 @@
 import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { PurpleEditorialShell } from '@/modules/site/components/network/templates/purple-editorial/chrome/shell';
-import { PurpleEditorialTicker } from '@/modules/site/components/network/templates/purple-editorial/cards/ticker';
 import { PurpleEditorialHero } from '@/modules/site/components/network/templates/purple-editorial/cards/hero';
 import { PurpleEditorialLatest } from '@/modules/site/components/network/templates/purple-editorial/cards/latest';
 import { PurpleEditorialPicks } from '@/modules/site/components/network/templates/purple-editorial/cards/picks';
@@ -21,7 +20,7 @@ export interface ListingProps {
 }
 
 /**
- * Purple Digital Editorial (ungu) — template full mandiri: header, ticker, hero, kartu
+ * Purple Digital Editorial (ungu) — template full mandiri: header, hero, kartu
  * pilihan, newsletter, dan footer milik template sendiri dengan palet
  * hardcoded. Sengaja TIDAK memakai `NetworkTemplate` bersama maupun
  * `site_settings.colors`, agar tampil persis seperti contoh.
@@ -38,7 +37,6 @@ export function PurpleEditorialListing({ site, title, description, path, indexab
     <PurpleEditorialShell site={site} path={path ?? '/'}>
       <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
-        {site.articles.length > 0 ? <PurpleEditorialTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
           <PurpleEditorialEmpty title={title} />
         ) : (

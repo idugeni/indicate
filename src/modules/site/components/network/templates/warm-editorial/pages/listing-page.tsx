@@ -1,7 +1,6 @@
 import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { WarmEditorialShell } from '@/modules/site/components/network/templates/warm-editorial/chrome/shell';
-import { WarmEditorialTicker } from '@/modules/site/components/network/templates/warm-editorial/cards/ticker';
 import { WarmEditorialHero } from '@/modules/site/components/network/templates/warm-editorial/cards/hero';
 import { WarmEditorialLatest } from '@/modules/site/components/network/templates/warm-editorial/cards/latest';
 import { WarmEditorialPicks } from '@/modules/site/components/network/templates/warm-editorial/cards/picks';
@@ -21,7 +20,7 @@ export interface ListingProps {
 }
 
 /**
- * Warm Editorial (terakota serif) — template full mandiri: header, ticker, hero, kartu
+ * Warm Editorial (terakota serif) — template full mandiri: header, hero, kartu
  * pilihan, newsletter, dan footer milik template sendiri dengan palet
  * hardcoded. Sengaja TIDAK memakai `NetworkTemplate` bersama maupun
  * `site_settings.colors`, agar tampil persis seperti contoh.
@@ -38,7 +37,6 @@ export function WarmEditorialListing({ site, title, description, path, indexable
     <WarmEditorialShell site={site} path={path ?? '/'}>
       <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
-        {site.articles.length > 0 ? <WarmEditorialTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (
           <WarmEditorialEmpty title={title} />
         ) : (
