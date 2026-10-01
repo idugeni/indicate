@@ -14,6 +14,7 @@ import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { formatDate } from '@/modules/dashboard/components/shared/dashboard-dates';
 import { AppTooltip } from '@/ui/app-tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface InvoiceRow {
   readonly id: string;
@@ -75,6 +76,7 @@ export function BillingPanel({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [preview, setPreview] = useState<InvoiceRow | null>(null);
+  const isInitialLoading = state === null && invoices.length === 0 && error === null;
 
   const reload = useCallback(async () => {
     setBusy(true);
@@ -259,21 +261,44 @@ export function BillingPanel({
           <section aria-label="Status langganan" className="rounded border border-hairline bg-bg-raised p-3">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <span className="font-mono text-[10px] uppercase tracking-wider text-paper-faint">Status langganan</span>
-              <span className="font-sans text-base font-semibold tracking-tight text-paper">{stateLabel(state)}</span>
+              {isInitialLoading ? (
+                <span role="status" aria-label="Memuat status langganan">
+                  <Skeleton className="h-5 w-24 bg-bg-raised-2" />
+                  <span className="sr-only">Memuat status langganan…</span>
+                </span>
+              ) : (
+                <span className="font-sans text-base font-semibold tracking-tight text-paper">
+                  {state === null ? 'Gagal dimuat' : stateLabel(state)}
+                </span>
+              )}
             </div>
             {state !== null && state !== 'platform' && state !== 'active' ? (
               <p className="m-0 mt-1.5 font-sans text-[11px] leading-relaxed text-paper-dim">
                 Organisasi tidak aktif tidak bisa menulis atau menerbitkan. Hubungi administrator untuk aktivasi.
               </p>
             ) : null}
-            {busy ? <p className="m-0 mt-1 font-sans text-[11px] text-paper-faint">Memuat…</p> : null}
+            {busy && !isInitialLoading ? (
+              <p role="status" className="m-0 mt-1 animate-pulse font-sans text-[11px] text-paper-faint">
+                Menyegarkan…
+              </p>
+            ) : null}
             {error ? <FormNotice tone="error">{error}</FormNotice> : null}
             {notice ? <FormNotice tone="success">{notice}</FormNotice> : null}
           </section>
 
           <section aria-label="Ringkasan faktur" className="rounded border border-hairline bg-bg-raised p-3">
             <span className="font-mono text-[10px] uppercase tracking-wider text-paper-faint">Ringkasan faktur</span>
-            {invoices.length === 0 ? (
+            {isInitialLoading ? (
+              <div role="status" aria-label="Memuat ringkasan faktur" className="m-0 mt-1.5 grid grid-cols-2 gap-x-5 sm:grid-cols-4">
+                <span className="sr-only">Memuat ringkasan faktur…</span>
+                {[0, 1, 2, 3].map((index) => (
+                  <div key={index} className="min-w-0 border-t border-hairline/60 py-1.5" aria-hidden="true">
+                    <Skeleton className="h-2.5 w-16 bg-bg-raised-2" />
+                    <Skeleton className="mt-1.5 h-3.5 w-24 bg-bg-raised-2" />
+                  </div>
+                ))}
+              </div>
+            ) : invoices.length === 0 ? (
               <EmptyState compact title="Belum ada faktur tercatat untuk organisasi ini." className="mt-1" />
             ) : (
               <dl className="m-0 mt-1.5 grid grid-cols-2 gap-x-5 sm:grid-cols-4">
@@ -313,7 +338,18 @@ export function BillingPanel({
             {invoices.length.toLocaleString('id-ID')} faktur · {formatIdr(paidTotal + openTotal)} tercatat
           </span>
         </div>
-        {invoices.length === 0 ? (
+        {isInitialLoading ? (
+          <div role="status" aria-label="Memuat daftar faktur" className="m-0 mt-1.5 grid list-none gap-0 p-0">
+            <span className="sr-only">Memuat daftar faktur…</span>
+            {[0, 1, 2].map((index) => (
+              <div key={index} className="flex items-center gap-3 border-t border-hairline/60 py-2 first:border-t-0" aria-hidden="true">
+                <Skeleton className="h-5 w-16 flex-none rounded-full bg-bg-raised-2" />
+                <Skeleton className="h-3.5 min-w-0 flex-1 bg-bg-raised-2" />
+                <Skeleton className="h-3 w-20 flex-none bg-bg-raised-2" />
+              </div>
+            ))}
+          </div>
+        ) : invoices.length === 0 ? (
           <EmptyState compact title="Belum ada faktur. Catat lewat tab Admin." className="mt-1" />
         ) : (
         <ul className="m-0 mt-1.5 grid list-none gap-0 p-0">

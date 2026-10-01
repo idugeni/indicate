@@ -92,6 +92,19 @@ describe('Panel langganan', () => {
     expect(screen.getByRole('button', { name: 'Unduh' })).toBeDefined();
   });
 
+  it('menampilkan kerangka saat status masih dimuat', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        await new Promise(() => {});
+        return { ok: true, json: async () => ({}) };
+      }),
+    );
+    render(<BillingPanel organizationId="org-1" permissions={[]} />);
+    expect(screen.getByLabelText('Memuat status langganan')).toBeDefined();
+    expect(screen.getByLabelText('Memuat ringkasan faktur')).toBeDefined();
+  });
+
   it('menampilkan pesan kosong saat belum ada faktur', async () => {
     stubBilling('suspended', []);
     render(<BillingPanel organizationId="org-1" permissions={[]} />);
