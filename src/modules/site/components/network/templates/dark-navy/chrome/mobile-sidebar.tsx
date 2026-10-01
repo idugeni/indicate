@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 
@@ -113,13 +112,10 @@ export function DarkNavyMobileSidebar({
         <nav aria-label="Navigasi seluler" className="flex-1 overflow-y-auto px-4 py-4" onClick={onClose}>
           {children}
         </nav>
-        <div className="flex-none border-t border-[var(--tpl-ring,#1b2c4f)] px-5 py-4" onClick={onClose}>
-          <ul className="m-0 grid list-none grid-cols-2 gap-x-3 gap-y-2 p-0 font-sans text-xs">
-            <li><Link href="/tentang" className="text-[var(--tpl-faint,#5f6f8c)] transition-colors hover:text-[var(--tpl-primary,#2f7bff)]">Tentang</Link></li>
-            <li><Link href="/kontak" className="text-[var(--tpl-faint,#5f6f8c)] transition-colors hover:text-[var(--tpl-primary,#2f7bff)]">Kontak</Link></li>
-            <li><Link href="/kebijakan-privasi" className="text-[var(--tpl-faint,#5f6f8c)] transition-colors hover:text-[var(--tpl-primary,#2f7bff)]">Kebijakan Privasi</Link></li>
-            <li><Link href="/syarat-ketentuan" className="text-[var(--tpl-faint,#5f6f8c)] transition-colors hover:text-[var(--tpl-primary,#2f7bff)]">Syarat & Ketentuan</Link></li>
-          </ul>
+        <div className="flex-none border-t border-[var(--tpl-ring,#1b2c4f)] bg-white/[0.02] px-5 py-4">
+          <p className="m-0 font-sans text-xs leading-relaxed text-[#9aa9c4]">
+            Semua halaman informasi tersedia di menu <span className="font-semibold text-[#eaf0fb]">Informasi</span> di atas.
+          </p>
         </div>
       </div>
     </div>,

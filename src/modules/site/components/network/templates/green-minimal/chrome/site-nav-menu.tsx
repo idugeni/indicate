@@ -14,8 +14,6 @@ import {
   CATEGORY_INDEX_HREF,
   CATEGORY_INDEX_LABEL,
   CATEGORY_NAV_VISIBLE_COUNT,
-  categoryDotColor,
-  categorySlugFromHref,
   isCategoryNavActive,
   splitCategoryNav,
   withCategoryIndex,
@@ -37,21 +35,11 @@ const INFO_ICONS: Readonly<Record<string, LucideIcon>> = {
 };
 
 function linkClass(active: boolean): string {
-  return `inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 font-sans text-sm transition-colors ${
+  return `inline-flex items-center whitespace-nowrap rounded-full px-3 py-2 font-sans text-sm transition-colors ${
     active
       ? 'font-semibold text-[#1d7a38] underline decoration-2 underline-offset-4'
       : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900'
   }`;
-}
-
-function CategoryDot({ href, slug }: { readonly href: string; readonly slug?: string | undefined }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="h-1.5 w-1.5 flex-none rounded-full"
-      style={{ backgroundColor: categoryDotColor(slug ?? categorySlugFromHref(href)) }}
-    />
-  );
 }
 
 export function GreenMinimalDesktopNav({ categories, path }: { readonly categories: readonly CategoryNavItem[]; readonly path: string }) {
@@ -75,7 +63,6 @@ export function GreenMinimalDesktopNav({ categories, path }: { readonly categori
                 aria-current={active ? 'page' : undefined}
                 className={linkClass(active)}
               >
-                <CategoryDot href={item.href} slug={item.slug} />
                 {item.label}
               </Link>
             </li>
@@ -93,15 +80,20 @@ export function GreenMinimalDesktopNav({ categories, path }: { readonly categori
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="center"
-                sideOffset={8}
-                className="w-[34rem] border-slate-200 bg-white p-5 shadow-xl"
+                sideOffset={10}
+                className="w-[min(40rem,calc(100vw-2rem))] rounded-2xl border-slate-200 bg-white p-6 shadow-2xl"
               >
-                <div className="grid grid-cols-[minmax(0,1fr)_160px] gap-6">
-                  <div>
-                    <p className="m-0 px-1.5 font-sans text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Kanal liputan
-                    </p>
-                    <ul className="m-0 mt-2 grid list-none grid-cols-2 gap-1 p-0">
+                <div className="grid gap-6 sm:grid-cols-[minmax(0,1fr)_170px]">
+                  <div className="min-w-0">
+                    <div className="flex items-center justify-between gap-3 px-1.5">
+                      <p className="m-0 font-sans text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        Kanal liputan
+                      </p>
+                      <span className="flex-none rounded-full bg-[#e0f0e5] px-2 py-0.5 font-sans text-[11px] font-bold text-[#1d7a38]">
+                        {overflow.length} kanal
+                      </span>
+                    </div>
+                    <ul className="m-0 mt-3 grid list-none gap-1.5 p-0 sm:grid-cols-2">
                       {overflow.map((item) => {
                         const active = isCategoryNavActive(path, item.href);
                         return (
@@ -109,31 +101,37 @@ export function GreenMinimalDesktopNav({ categories, path }: { readonly categori
                             <DropdownMenuLinkItem
                               render={<Link href={item.href} />}
                               aria-current={active ? 'page' : undefined}
-                              className={`font-sans no-underline ${
+                              className={`rounded-xl px-3 py-2 font-sans font-medium no-underline ${
                                 active
                                   ? 'bg-[#e0f0e5] font-semibold text-[#1d7a38] underline decoration-2 underline-offset-4'
                                   : 'text-slate-700 hover:bg-[#e0f0e5] hover:text-[#1d7a38]'
                               }`}
                             >
-                              <CategoryDot href={item.href} slug={item.slug} />
                               {item.label}
                             </DropdownMenuLinkItem>
                           </li>
                         );
                       })}
                     </ul>
+                    <DropdownMenuLinkItem
+                      render={<Link href={CATEGORY_INDEX_HREF} />}
+                      aria-current={isCategoryNavActive(path, CATEGORY_INDEX_HREF) ? 'page' : undefined}
+                      className="mt-3 rounded-xl px-3 py-2 font-sans text-[13px] font-bold text-[#1d7a38] no-underline hover:bg-[#e0f0e5]"
+                    >
+                      Lihat semua kanal →
+                    </DropdownMenuLinkItem>
                   </div>
-                  <div className="border-l border-slate-200 pl-5">
+                  <div className="border-t border-slate-200 pt-5 sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0">
                     <p className="m-0 px-1.5 font-sans text-[11px] font-bold uppercase tracking-wider text-slate-400">
                       Informasi
                     </p>
-                    <ul className="m-0 mt-2 grid list-none gap-1 p-0">
+                    <ul className="m-0 mt-3 grid list-none gap-1 p-0">
                       {INFO_LINKS.map((item) => (
                         <li key={item.href} className="m-0 p-0">
                           <DropdownMenuLinkItem
                             render={<Link href={item.href} />}
                             aria-current={isCategoryNavActive(path, item.href) ? 'page' : undefined}
-                            className={`font-sans no-underline ${
+                            className={`rounded-xl px-3 py-2 font-sans no-underline ${
                               isCategoryNavActive(path, item.href)
                                 ? 'bg-[#e0f0e5] font-semibold text-[#1d7a38] underline decoration-2 underline-offset-4'
                                 : 'text-slate-700 hover:bg-[#e0f0e5] hover:text-[#1d7a38]'
@@ -188,16 +186,13 @@ export function GreenMinimalMobileNav({ categories, path }: { readonly categorie
         <ul className="m-0 mt-2 list-none space-y-1 p-0">
           {indexed.map((item) => {
             const active = isCategoryNavActive(path, item.href);
-            const dot =
-              item.href === CATEGORY_INDEX_HREF ? null : <CategoryDot href={item.href} slug={item.slug} />;
             return (
               <li key={`${item.href}:${item.label}`} className="m-0 p-0">
                 <Link
                   href={item.href}
                   aria-current={active ? 'page' : undefined}
-                  className={`flex items-center gap-2.5 rounded-xl px-4 py-2.5 font-sans text-sm font-medium ${active ? 'bg-[#e0f0e5] text-[#1d7a38] underline decoration-2 underline-offset-4' : 'text-slate-700 hover:bg-slate-100'}`}
+                  className={`flex items-center rounded-xl px-4 py-2.5 font-sans text-sm font-medium ${active ? 'bg-[#e0f0e5] text-[#1d7a38] underline decoration-2 underline-offset-4' : 'text-slate-700 hover:bg-slate-100'}`}
                 >
-                  {dot}
                   {item.label}
                 </Link>
               </li>

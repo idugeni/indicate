@@ -7,14 +7,14 @@ export interface CategoryNavItem {
 }
 
 /**
- * Maksimum kanal yang dirender navbar (5 inline + 2 di "Lainnya").
+ * Maksimum kanal yang dirender navbar (3 inline + sisanya di "Lainnya").
  */
 export const CATEGORY_NAV_LIMIT = 7;
 
 /**
  * Maksimum kanal yang tampil inline di desktop sebelum masuk "Lainnya".
  */
-export const CATEGORY_NAV_VISIBLE_COUNT = 5;
+export const CATEGORY_NAV_VISIBLE_COUNT = 3;
 
 /**
  * Path daftar kanal A–Z penuh, selalu menjadi item terakhir navbar.

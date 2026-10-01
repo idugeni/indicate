@@ -4,7 +4,6 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { normalizeTemplateId } from '@/modules/site/components/network/templates/listing-shared';
 import { Container } from '@/modules/site/components/network/ui/container';
 import {
-  categoryDotColor,
   categoryFrequencyRank,
   type CategoryNavItem,
 } from '@/modules/site/components/network/ui/nav';
@@ -158,11 +157,6 @@ export function IndexContent({
                       href={item.href}
                       className="flex items-center gap-2.5 rounded-xl bg-[var(--tpl-card)] px-4 py-3 font-sans text-sm font-semibold text-[var(--tpl-ink)] ring-1 ring-[var(--tpl-ring)] transition-colors hover:text-[var(--tpl-primary)]"
                     >
-                      <span
-                        aria-hidden="true"
-                        className="h-2 w-2 flex-none rounded-full"
-                        style={{ backgroundColor: categoryDotColor(slug) }}
-                      />
                       <span className="min-w-0 flex-1 truncate">{item.label}</span>
                       <span className="flex-none font-mono text-[11px] font-medium tabular-nums text-[var(--tpl-muted)]">
                         {count} artikel

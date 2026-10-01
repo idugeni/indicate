@@ -29,13 +29,16 @@ describe('CategoryNavStrip', () => {
     expect(active.getAttribute('class')).toMatch(/underline/);
   });
 
-  it('warnai dot dari hash slug', () => {
+  it('tanpa indikator dot warna', () => {
     render(<CategoryNavStrip categories={kanal(2)} path="/" />);
     const nav = screen.getByRole('navigation', { name: 'Kanal liputan' });
     const dots = nav.querySelectorAll('span[aria-hidden="true"]');
-    expect(dots.length).toBeGreaterThan(0);
-    for (const dot of dots) {
-      expect(dot.getAttribute('style')).toMatch(/background-color/);
-    }
+    expect(dots.length).toBe(0);
+  });
+
+  it('tersembunyi pada sm ke atas', () => {
+    render(<CategoryNavStrip categories={kanal(2)} path="/" />);
+    const nav = screen.getByRole('navigation', { name: 'Kanal liputan' });
+    expect(nav.getAttribute('class')).toMatch(/sm:hidden/);
   });
 });

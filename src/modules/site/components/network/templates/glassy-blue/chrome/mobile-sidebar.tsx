@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 
@@ -113,13 +112,10 @@ export function GlassyBlueMobileSidebar({
         <nav aria-label="Navigasi seluler" className="flex-1 overflow-y-auto px-4 py-4" onClick={onClose}>
           {children}
         </nav>
-        <div className="flex-none border-t border-slate-100 px-5 py-4" onClick={onClose}>
-          <ul className="m-0 grid list-none grid-cols-2 gap-x-3 gap-y-2 p-0 font-sans text-xs">
-            <li><Link href="/tentang" className="text-slate-500 transition-colors hover:text-[var(--tpl-primary,#1f7cff)]">Tentang</Link></li>
-            <li><Link href="/kontak" className="text-slate-500 transition-colors hover:text-[var(--tpl-primary,#1f7cff)]">Kontak</Link></li>
-            <li><Link href="/kebijakan-privasi" className="text-slate-500 transition-colors hover:text-[var(--tpl-primary,#1f7cff)]">Kebijakan Privasi</Link></li>
-            <li><Link href="/syarat-ketentuan" className="text-slate-500 transition-colors hover:text-[var(--tpl-primary,#1f7cff)]">Syarat & Ketentuan</Link></li>
-          </ul>
+        <div className="flex-none border-t border-slate-100 bg-slate-50/60 px-5 py-4">
+          <p className="m-0 font-sans text-xs leading-relaxed text-slate-500">
+            Semua halaman informasi tersedia di menu <span className="font-semibold text-slate-700">Informasi</span> di atas.
+          </p>
         </div>
       </div>
     </div>,

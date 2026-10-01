@@ -70,7 +70,7 @@ export function GreenMinimalHeaderBar({
               onClick={() => setSidebarOpen(true)}
               aria-expanded={sidebarOpen}
               aria-label="Buka menu"
-              className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[var(--tpl-primary,#1d7a38)] lg:hidden"
+              className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#1d7a38)] text-white shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#145c2a)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#1d7a38)] lg:hidden"
             >
               <Menu className="h-4 w-4" aria-hidden="true" />
             </button>

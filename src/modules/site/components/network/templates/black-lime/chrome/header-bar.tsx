@@ -63,7 +63,7 @@ export function BlackLimeHeaderBar({
               onClick={() => setSidebarOpen(true)}
               aria-expanded={sidebarOpen}
               aria-label="Buka menu"
-              className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-slate-400 ring-1 ring-[var(--tpl-ring,#242b1f)] transition-colors hover:text-[var(--tpl-primary,#c5f82a)] lg:hidden"
+              className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#c5f82a)] text-[var(--tpl-on-primary,#0a0c07)] shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#9ecb14)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#c5f82a)] lg:hidden"
             >
               <Menu className="h-4 w-4" aria-hidden="true" />
             </button>
