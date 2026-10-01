@@ -22,6 +22,12 @@ export interface RuntimeConfig {
     readonly accountId: string;
     readonly apiToken: string;
     readonly originSecret: string;
+    /** AI Gateway slug; null keeps Gemini traffic direct. */
+    readonly aiGatewaySlug: string | null;
+    /** Gateway cache TTL in seconds; null applies the 24-hour transport default. */
+    readonly aiGatewayCacheTtlSeconds: number | null;
+    /** Workers AI embedding model override; null uses the transport default. */
+    readonly aiEmbeddingModel: string | null;
   };
   readonly vercel: {
     readonly projectId: string;

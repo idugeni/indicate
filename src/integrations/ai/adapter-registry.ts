@@ -1,20 +1,31 @@
 import 'server-only';
 
 import type { AiAdapterResponse, AiChatPrompt, AiProviderAdapter } from '@/integrations/ai/ai-prompt';
+import type { CloudflareGatewayConfig } from '@/integrations/ai/gateway/cloudflare/cloudflare-gateway';
 import { executeGeminiAdapter } from '@/integrations/ai/gemini-adapter';
 import { OpenAiCompatibleAdapter } from '@/integrations/ai/openai-compatible-adapter';
+import { VERCEL_GATEWAY_BASE_URL } from '@/integrations/ai/gateway/vercel/vercel-gateway';
 
-class GeminiAdapterWrapper implements AiProviderAdapter {
+/**
+ * Gemini adapter bound to an optional Cloudflare AI Gateway route.
+ *
+ * @remarks The default instance stays direct; the dashboard route builds a
+ * gateway-bound instance when bootstrap configures a gateway slug.
+ */
+export class GeminiAdapterWrapper implements AiProviderAdapter {
   readonly providerId = 'gemini';
 
+  constructor(private readonly gateway: CloudflareGatewayConfig | null = null) {}
+
   execute(plainKey: string, modelName: string, promptData: AiChatPrompt): Promise<AiAdapterResponse> {
-    return executeGeminiAdapter(plainKey, modelName, promptData);
+    return executeGeminiAdapter(plainKey, modelName, promptData, undefined, this.gateway);
   }
 }
 
 const adapters: ReadonlyMap<string, AiProviderAdapter> = new Map<string, AiProviderAdapter>([
   ['gemini', new GeminiAdapterWrapper()],
   ['openai-compatible', new OpenAiCompatibleAdapter()],
+  ['vercel-gateway', new OpenAiCompatibleAdapter('vercel-gateway', VERCEL_GATEWAY_BASE_URL)],
 ]);
 
 /**

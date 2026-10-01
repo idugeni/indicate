@@ -26,17 +26,19 @@ import { configureAiTranscribe, transcribeAudio, transcribeToArticle } from '@/m
 import { configurePublisherVerify, verifyPublisher } from '@/modules/ai/ai-verify';
 import { configureAiAssistant, assistantChat } from '@/modules/ai/ai-assistant';
 import { createAiSemanticCache } from '@/modules/ai/ai-semantic-cache';
-import { SEMANTIC_CANDIDATE_LIMIT, reindexArticleEmbeddings, toSemanticCandidate } from '@/modules/ai/ai-embeddings';
+import { SEMANTIC_CANDIDATE_LIMIT, embedQueryVector, reindexArticleEmbeddings, toSemanticCandidate, type WorkersAiCredentials } from '@/modules/ai/ai-embeddings';
 import type { AiDb } from '@/modules/ai/ai-types';
 import type { AiServiceDeps } from '@/modules/ai/ai-service';
 import type { AiChatPrompt as ServicePrompt } from '@/modules/ai/ai-types';
 import { createAiBudgetGuard, redactSecrets } from '@/modules/ai/ai-security';
 import { createAiModelRateLimitStore } from '@/modules/ai/ai-rate-limit';
-import { getAiAdapter } from '@/integrations/ai/adapter-registry';
+import { resolveCloudflareGatewayConfig, type CloudflareGatewayConfig } from '@/integrations/ai/gateway/cloudflare/cloudflare-gateway';
+import { GeminiAdapterWrapper, getAiAdapter } from '@/integrations/ai/adapter-registry';
 import { executeGeminiStream } from '@/integrations/ai/gemini-adapter';
-import { embedTexts, rankSemanticCandidates, type SemanticCandidate } from '@/integrations/ai/embeddings';
+import { createVercelGatewayBudgetGuard } from '@/integrations/ai/gateway/vercel/vercel-gateway';
+import { rankSemanticCandidates, type SemanticCandidate } from '@/integrations/ai/embeddings';
 import { decryptAiKey } from '@/modules/ai/ai-crypto';
-import { classifyAiError, getActiveRoutingPolicy, getAvailableCredentials, recordKeyFailure, recordKeySuccess, resolveApiKey } from '@/modules/ai/ai-router';
+import { classifyAiError, getActiveRoutingPolicy, getAvailableCredentials, recordKeyFailure, recordKeySuccess } from '@/modules/ai/ai-router';
 import type { AiChatPrompt as AdapterPrompt } from '@/integrations/ai/ai-prompt';
 
 const commandSchema = z.object({
@@ -75,15 +77,28 @@ async function serviceDeps(organizationId?: string | undefined): Promise<AiServi
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
   const redis = context.config.redis;
+  const gateway: CloudflareGatewayConfig | null = resolveCloudflareGatewayConfig({
+    accountId: context.config.cloudflare.accountId,
+    gatewaySlug: context.config.cloudflare.aiGatewaySlug,
+    ...(context.config.cloudflare.aiGatewayCacheTtlSeconds === null
+      ? {}
+      : { cacheTtlSeconds: context.config.cloudflare.aiGatewayCacheTtlSeconds }),
+  });
+  const vercelBudget = createVercelGatewayBudgetGuard({ url: redis.url, token: redis.token });
   return {
     db: runtime.db,
     budget: createAiBudgetGuard({ url: redis.url, token: redis.token, namespace: redis.namespace }),
     rateLimit: { store: createAiModelRateLimitStore({ url: redis.url, token: redis.token }) },
     cache: createAiSemanticCache(runtime.db, { organizationId: organizationId ?? null }),
     resolveAdapter: (providerId: string) => {
-      const inner = getAiAdapter(providerId);
+      const inner = providerId === 'gemini' && gateway !== null ? new GeminiAdapterWrapper(gateway) : getAiAdapter(providerId);
       return {
         execute: async (apiKey: string, modelName: string, prompt: ServicePrompt) => {
+          if (providerId === 'vercel-gateway') {
+            const budgetScope = `${prompt.organizationId ?? 'global'}:${modelName}`;
+            const verdict = await vercelBudget.check(budgetScope);
+            if (!verdict.allowed) throw new Error('Vercel AI Gateway monthly budget exceeded.');
+          }
           const adapted: AdapterPrompt = {
             prompt: prompt.prompt,
             ...(prompt.systemInstruction === undefined ? {} : { systemInstruction: prompt.systemInstruction }),
@@ -97,6 +112,10 @@ async function serviceDeps(organizationId?: string | undefined): Promise<AiServi
             ...(prompt.speechVoiceName === undefined ? {} : { speechVoiceName: prompt.speechVoiceName }),
           };
           const result = await inner.execute(apiKey, modelName, adapted);
+          if (providerId === 'vercel-gateway') {
+            const budgetScope = `${prompt.organizationId ?? 'global'}:${modelName}`;
+            await vercelBudget.record(budgetScope, result.tokensUsage?.total ?? 0);
+          }
           return {
             text: result.text,
             tokensUsage: result.tokensUsage === undefined ? undefined : { ...result.tokensUsage },
@@ -182,15 +201,21 @@ function toRowArray(value: unknown): readonly unknown[] {
   return [];
 }
 
-async function embedQueryVector(db: AiDb, organizationId: string, query: string): Promise<readonly number[] | null> {
-  try {
-    const plainKey = await resolveApiKey(db, 'gemini', { organizationId });
-    if (plainKey === null) return null;
-    const vectors = await embedTexts(plainKey, [query]);
-    return vectors[0] ?? null;
-  } catch {
-    return null;
-  }
+type ServerRuntimeContext = Awaited<ReturnType<typeof getServerRuntimeContext>>;
+
+/**
+ * Builds Workers AI embedding credentials from the assembled runtime config.
+ *
+ * @param context - Server runtime context carrying the Cloudflare account scope.
+ * @returns Account credentials honoring the configured embedding model override.
+ */
+function workersAiConfigFor(context: ServerRuntimeContext): WorkersAiCredentials {
+  const embeddingModel = context.config.cloudflare.aiEmbeddingModel;
+  return {
+    accountId: context.config.cloudflare.accountId,
+    apiToken: context.config.cloudflare.apiToken,
+    ...(embeddingModel === null ? {} : { model: embeddingModel }),
+  };
 }
 
 async function handleDraftArticleStream(
@@ -221,6 +246,14 @@ async function handleDraftArticleStream(
     return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'Layanan AI sedang sibuk. Silakan coba lagi.', requestId));
   }
   const startedAt = Date.now();
+  const gatewayContext = await getServerRuntimeContext();
+  const gateway = resolveCloudflareGatewayConfig({
+    accountId: gatewayContext.config.cloudflare.accountId,
+    gatewaySlug: gatewayContext.config.cloudflare.aiGatewaySlug,
+    ...(gatewayContext.config.cloudflare.aiGatewayCacheTtlSeconds === null
+      ? {}
+      : { cacheTtlSeconds: gatewayContext.config.cloudflare.aiGatewayCacheTtlSeconds }),
+  });
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       const encoder = new TextEncoder();
@@ -246,6 +279,7 @@ async function handleDraftArticleStream(
             {
               signal: requestSignal,
               onChunk: (delta) => send(null, { delta: redactSecrets(delta) }),
+              ...(gateway === null ? {} : { gateway }),
             },
           );
           const latencyMs = Date.now() - startedAt;
@@ -358,7 +392,10 @@ async function handlePOST(request: Request) {
         if (query.length < 3) return response(createPublicError('INVALID_INPUT', 'Kueri minimal 3 karakter.', requestId));
         const context = await getServerRuntimeContext();
         const runtime = getSharedRuntimeDatabase(context.bootstrap);
-        const queryVector = await embedQueryVector(runtime.db, organizationId, query);
+        const queryVector = await embedQueryVector(runtime.db, organizationId, query, {
+          provider: 'auto',
+          workersAi: workersAiConfigFor(context),
+        });
         if (queryVector !== null) {
           try {
             const value = await runtime.db.execute(sql`
@@ -407,9 +444,13 @@ async function handlePOST(request: Request) {
         if (!articleId.success) return response(createPublicError('INVALID_INPUT', 'articleId tidak valid.', requestId));
         const context = await getServerRuntimeContext();
         const runtime = getSharedRuntimeDatabase(context.bootstrap);
-        const result = await reindexArticleEmbeddings(runtime.db, { organizationId, articleId: articleId.data });
+        const result = await reindexArticleEmbeddings(
+          runtime.db,
+          { organizationId, articleId: articleId.data },
+          { provider: 'auto', workersAi: workersAiConfigFor(context) },
+        );
         return result.ok
-          ? NextResponse.json({ ok: true, chunks: result.chunks, embedded: result.embedded })
+          ? NextResponse.json({ ok: true, chunks: result.chunks, embedded: result.embedded, embeddingProvider: result.embeddingProvider })
           : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
       }
       case 'seo-suggest': {

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { unstable_cache } from 'next/cache';
+import Link from 'next/link';
 
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
@@ -13,10 +14,18 @@ import {
 } from '@/modules/status/status-probe';
 import { siteMetadata } from '@/ui/site/metadata-guard';
 
+import { getControlHosts } from '@/core/config/edge-hosts';
+
 const DESCRIPTION = 'Kondisi langsung seluruh layanan Indicate: database, cache, penyimpanan, autentikasi, penerbitan, AI, dan API — beserta riwayat insiden.';
 
 export function generateMetadata(): Metadata {
-  return siteMetadata('Status Layanan', DESCRIPTION, '/status');
+  const canonical = `https://${getControlHosts().status}/`;
+  const base = siteMetadata('Status Layanan', DESCRIPTION, '/status');
+  return {
+    ...base,
+    alternates: { canonical, languages: { 'id-ID': canonical } },
+    openGraph: { ...base.openGraph, url: canonical },
+  };
 }
 
 const OVERALL_DOT: Readonly<Record<ComponentHealth, string>> = {
@@ -252,8 +261,8 @@ export default async function StatusPage() {
           </section>
         </main>
         <footer className="mt-10 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-hairline pt-4 font-mono text-[11px] text-paper-faint">
-          <a className="hover:text-paper" href="/">indicate.website</a>
-          <a className="hover:text-paper" href="/api/status">JSON</a>
+          <Link className="hover:text-paper" href="/">indicate.website</Link>
+          <Link className="hover:text-paper" href="/api/status">JSON</Link>
           <span className="ml-auto tabular-nums">Diperbarui {formatMoment(snapshot.generatedAt)}</span>
         </footer>
       </div>

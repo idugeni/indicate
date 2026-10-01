@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SQL } from 'drizzle-orm';
 
-import { reindexArticleEmbeddings, toSemanticCandidate } from '@/modules/ai/ai-embeddings';
+import { reindexArticleEmbeddings, embedArticleChunks, embedQueryVector, toSemanticCandidate } from '@/modules/ai/ai-embeddings';
 import type { AiDb } from '@/modules/ai/ai-types';
 
 const ORG = '11111111-1111-4111-8111-111111111111';
@@ -128,6 +128,55 @@ describe('reindexArticleEmbeddings transport', () => {
     if (!result.ok) return;
     expect(result.embedded).toBe(0);
     expect(db.vectors).toEqual([]);
+  });
+});
+
+describe('embedArticleChunks provider order', () => {
+  const workersAi = { accountId: 'acct-1', apiToken: 'token-1' };
+  const workersOk = (): ((input: string, init?: RequestInit) => Promise<Response>) =>
+    vi.fn(async () => new Response(JSON.stringify({ success: true, result: { data: [[0.7, 0.7]] } }), { status: 200 }));
+  const workersNull = (): ((input: string, init?: RequestInit) => Promise<Response>) =>
+    vi.fn(async () => new Response(JSON.stringify({ success: false }), { status: 200 }));
+
+  it('memakai Workers AI dulu saat sehat tanpa menyentuh Gemini', async () => {
+    const db = makeFakeDb(true);
+    const geminiFetch = vi.fn(async () => new Response(JSON.stringify({ embedding: { values: [0.1] } }), { status: 200 }));
+    const resolved = await embedArticleChunks(['arsip panen'], db, ORG, {
+      provider: 'auto',
+      workersAi,
+      workersAiFetchImpl: workersOk(),
+      fetchImpl: geminiFetch,
+    });
+    expect(resolved.provider).toBe('workers-ai');
+    expect(resolved.vectors).toEqual([[0.7, 0.7]]);
+    expect(geminiFetch).not.toHaveBeenCalled();
+  });
+
+  it('jatuh ke Gemini saat Workers AI mengembalikan null semua', async () => {
+    const db = makeFakeDb(true);
+    const geminiFetch = vi.fn(async () => new Response(JSON.stringify({ embedding: { values: [0.2, 0.3] } }), { status: 200 }));
+    const vector = await embedQueryVector(db, ORG, 'panen raya', {
+      provider: 'auto',
+      workersAi,
+      workersAiFetchImpl: workersNull(),
+      fetchImpl: geminiFetch,
+    });
+    expect(vector).toEqual([0.2, 0.3]);
+    expect(geminiFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('provider gemini eksplisit tidak menyentuh Workers AI', async () => {
+    const db = makeFakeDb(true);
+    const workersFetch = vi.fn(async () => new Response(JSON.stringify({ success: true, result: { data: [[0.9]] } }), { status: 200 }));
+    const geminiFetch = vi.fn(async () => new Response(JSON.stringify({ embedding: { values: [0.4] } }), { status: 200 }));
+    const resolved = await embedArticleChunks(['panen'], db, ORG, {
+      provider: 'gemini',
+      workersAi,
+      workersAiFetchImpl: workersFetch,
+      fetchImpl: geminiFetch,
+    });
+    expect(resolved.provider).toBe('gemini');
+    expect(workersFetch).not.toHaveBeenCalled();
   });
 });
 

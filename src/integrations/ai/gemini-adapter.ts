@@ -3,6 +3,12 @@ import 'server-only';
 import { GoogleGenAI } from '@google/genai';
 
 import type { AiAdapterResponse, AiChatPrompt, AiToolExecutor } from '@/integrations/ai/ai-prompt';
+import {
+  buildCloudflareGatewayBaseUrl,
+  buildCloudflareGatewayHeaders,
+  CLOUDFLARE_GATEWAY_GOOGLE_PATH,
+  type CloudflareGatewayConfig,
+} from '@/integrations/ai/gateway/cloudflare/cloudflare-gateway';
 
 const MAX_TOOL_TURNS = 3;
 const MAX_HISTORY_MESSAGES = 6;
@@ -139,6 +145,28 @@ export function extractStreamText(chunk: unknown): string {
 export interface GeminiStreamOptions {
   readonly signal?: AbortSignal | undefined;
   readonly onChunk?: ((delta: string) => void) | undefined;
+  readonly gateway?: CloudflareGatewayConfig | null | undefined;
+}
+
+/**
+ * Builds SDK transport overrides routing one turn through Cloudflare AI Gateway.
+ *
+ * @param gateway - Resolved gateway routing; null or undefined keeps the direct Google host.
+ * @returns `httpOptions` for the SDK client, or undefined when direct.
+ */
+export function buildGeminiHttpOptions(
+  gateway: CloudflareGatewayConfig | null | undefined,
+): { readonly baseUrl?: string; readonly headers?: Record<string, string> } | undefined {
+  if (gateway === null || gateway === undefined) return undefined;
+  return {
+    baseUrl: buildCloudflareGatewayBaseUrl(gateway, CLOUDFLARE_GATEWAY_GOOGLE_PATH),
+    headers: buildCloudflareGatewayHeaders(gateway),
+  };
+}
+
+function createGeminiClient(plainKey: string, gateway: CloudflareGatewayConfig | null | undefined): GoogleGenAI {
+  const httpOptions = buildGeminiHttpOptions(gateway);
+  return new GoogleGenAI({ apiKey: plainKey, ...(httpOptions === undefined ? {} : { httpOptions }) });
 }
 
 function isStreamAborted(options: GeminiStreamOptions | undefined): boolean {
@@ -168,7 +196,7 @@ export async function executeGeminiStream(
   const images = promptData.images ?? [];
   if (images.length > MAX_IMAGES) throw new Error('Gemini adapter supports at most 4 images per request.');
   if ((promptData.audio ?? []).length > 1) throw new Error('Gemini adapter supports at most 1 audio input per request.');
-  const client = new GoogleGenAI({ apiKey: plainKey });
+  const client = createGeminiClient(plainKey, options?.gateway);
   const contents = buildContents(promptData);
   let stream: AsyncIterable<unknown>;
   try {
@@ -243,6 +271,7 @@ function collectInlineData(response: {
  * @param modelName - Gemini model identifier owned by the router model config.
  * @param promptData - Prompt, history, and generation controls.
  * @param toolExecutor - Optional executor for provider tool calls.
+ * @param gateway - Optional Cloudflare AI Gateway routing for cache and spend observability.
  * @returns Model text, token usage, inline media, and the tool names executed.
  * @throws {Error} When the provider rejects the request; the message carries the
  * upstream status and detail with the key redacted, never key material.
@@ -252,12 +281,13 @@ export async function executeGeminiAdapter(
   modelName: string,
   promptData: AiChatPrompt,
   toolExecutor?: AiToolExecutor,
+  gateway?: CloudflareGatewayConfig | null | undefined,
 ): Promise<AiAdapterResponse> {
   if (plainKey.length === 0) throw new Error('Gemini adapter requires a router-provided key.');
   const images = promptData.images ?? [];
   if (images.length > MAX_IMAGES) throw new Error('Gemini adapter supports at most 4 images per request.');
   if ((promptData.audio ?? []).length > 1) throw new Error('Gemini adapter supports at most 1 audio input per request.');
-  const client = new GoogleGenAI({ apiKey: plainKey });
+  const client = createGeminiClient(plainKey, gateway);
   const contents = buildContents(promptData);
   const executedTools: string[] = [];
   const toolResults: Record<string, unknown> = {};

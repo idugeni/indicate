@@ -47,6 +47,21 @@ describe('executeGeminiAdapter', () => {
     expect(result.toolCallsExecuted).toEqual([]);
   });
 
+  it('meneruskan baseUrl gateway dan header cache saat gateway dikonfigurasi', async () => {
+    state.responses.push(okResponse());
+    await executeGeminiAdapter('AIza-classic-key', 'gemini-2.5-flash', { prompt: 'hai' }, undefined, {
+      accountId: 'acct',
+      gatewaySlug: 'redaksi',
+    });
+    expect(state.ctorArgs[0]).toMatchObject({
+      apiKey: 'AIza-classic-key',
+      httpOptions: {
+        baseUrl: 'https://gateway.ai.cloudflare.com/v1/acct/redaksi/google-ai-studio',
+        headers: { 'cf-aig-cache-ttl': '86400' },
+      },
+    });
+  });
+
   it('tidak memaksa versi api untuk kunci auth AQ dot', async () => {
     // Auth keys are restricted to the Generative Language API, the same host and
     // path as standard keys, and generateContent is documented only under v1beta.

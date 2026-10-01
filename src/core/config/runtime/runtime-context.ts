@@ -86,6 +86,9 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
       accountId: shared.cloudflareAccountId,
       apiToken: bootstrap.credentials.cloudflareApiToken.reveal(),
       originSecret: bootstrap.credentials.cloudflareOriginSecret.reveal(),
+      aiGatewaySlug: bootstrap.credentials.cloudflareAiGatewaySlug,
+      aiGatewayCacheTtlSeconds: bootstrap.credentials.cloudflareAiGatewayCacheTtlSeconds,
+      aiEmbeddingModel: bootstrap.credentials.cloudflareAiEmbeddingModel,
     }),
     vercel: Object.freeze({
       projectId: shared.vercelProjectId,

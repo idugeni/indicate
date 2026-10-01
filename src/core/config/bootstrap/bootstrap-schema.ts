@@ -49,6 +49,9 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'DATABASE_DIRECT_URL',
   'CLOUDFLARE_API_TOKEN',
   'CLOUDFLARE_ORIGIN_SECRET',
+  'CLOUDFLARE_AI_GATEWAY_SLUG',
+  'CLOUDFLARE_AI_GATEWAY_CACHE_TTL_SECONDS',
+  'CLOUDFLARE_AI_EMBEDDING_MODEL',
   'VERCEL_API_TOKEN',
   'VERCEL_SPEND_WEBHOOK_SECRET',
   'VERCEL_DEPLOY_WEBHOOK_SECRET',
@@ -192,6 +195,19 @@ const bootstrapSchema = z
 
     CLOUDFLARE_API_TOKEN: secretSchema,
     CLOUDFLARE_ORIGIN_SECRET: secretSchema,
+    CLOUDFLARE_AI_GATEWAY_SLUG: z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/)
+      .optional(),
+    CLOUDFLARE_AI_GATEWAY_CACHE_TTL_SECONDS: z
+      .string()
+      .regex(/^\d{1,7}$/)
+      .optional(),
+    CLOUDFLARE_AI_EMBEDDING_MODEL: z
+      .string()
+      .min(3)
+      .max(120)
+      .optional(),
     VERCEL_API_TOKEN: secretSchema,
     VERCEL_SPEND_WEBHOOK_SECRET: secretSchema.optional(),
     VERCEL_DEPLOY_WEBHOOK_SECRET: secretSchema.optional(),
@@ -306,6 +322,12 @@ export interface BootstrapConfig {
   readonly credentials: Readonly<{
     readonly cloudflareApiToken: SecretString;
     readonly cloudflareOriginSecret: SecretString;
+    /** AI Gateway slug routing Gemini traffic through cache and spend observability; null keeps direct. */
+    readonly cloudflareAiGatewaySlug: string | null;
+    /** Gateway cache TTL in seconds; null applies the 24-hour transport default. */
+    readonly cloudflareAiGatewayCacheTtlSeconds: number | null;
+    /** Workers AI embedding model override; null uses `@cf/baai/bge-base-en-v1.5`. */
+    readonly cloudflareAiEmbeddingModel: string | null;
     readonly vercelApiToken: SecretString;
     /** Vercel Spend Management webhook signing secret; null when the endpoint is disabled. */
     readonly vercelSpendWebhookSecret: SecretString | null;
@@ -379,6 +401,12 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
     credentials: Object.freeze({
       cloudflareApiToken: SecretString.fromPlain(value.CLOUDFLARE_API_TOKEN),
       cloudflareOriginSecret: SecretString.fromPlain(value.CLOUDFLARE_ORIGIN_SECRET),
+      cloudflareAiGatewaySlug: value.CLOUDFLARE_AI_GATEWAY_SLUG ?? null,
+      cloudflareAiGatewayCacheTtlSeconds:
+        value.CLOUDFLARE_AI_GATEWAY_CACHE_TTL_SECONDS === undefined
+          ? null
+          : Math.min(Math.max(Number.parseInt(value.CLOUDFLARE_AI_GATEWAY_CACHE_TTL_SECONDS, 10), 60), 2592000),
+      cloudflareAiEmbeddingModel: value.CLOUDFLARE_AI_EMBEDDING_MODEL ?? null,
       vercelApiToken: SecretString.fromPlain(value.VERCEL_API_TOKEN),
       vercelSpendWebhookSecret: value.VERCEL_SPEND_WEBHOOK_SECRET === undefined ? null : SecretString.fromPlain(value.VERCEL_SPEND_WEBHOOK_SECRET),
       vercelDeployWebhookSecret: value.VERCEL_DEPLOY_WEBHOOK_SECRET === undefined ? null : SecretString.fromPlain(value.VERCEL_DEPLOY_WEBHOOK_SECRET),

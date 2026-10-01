@@ -14,6 +14,12 @@ describe('getAiAdapter', () => {
     await expect(adapter.execute('', 'model', { prompt: 'hai' })).rejects.toThrow(/router-provided key/);
   });
 
+  it('mendaftarkan vercel-gateway di atas AI Gateway tanpa kunci', async () => {
+    const adapter = getAiAdapter('vercel-gateway');
+    expect(adapter.providerId).toBe('vercel-gateway');
+    await expect(adapter.execute('', 'model', { prompt: 'hai' })).rejects.toThrow(/router-provided key/);
+  });
+
   it('menolak provider tak dikenal', () => {
     expect(() => getAiAdapter('unknown-provider')).toThrow(/Unknown AI provider/);
   });

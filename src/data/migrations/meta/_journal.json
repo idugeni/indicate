@@ -1653,6 +1653,13 @@
       "when": 1790787600000,
       "tag": "20260930170000_status_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 236,
+      "version": "7",
+      "when": 1790791200000,
+      "tag": "20261001000000_ai_free_tier_gateways",
+      "breakpoints": true
     }
   ]
 }

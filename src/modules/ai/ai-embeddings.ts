@@ -4,6 +4,10 @@ import { sql } from 'drizzle-orm';
 
 import { embedTexts, type EmbedFetch } from '@/integrations/ai/embeddings';
 import type { SemanticCandidate } from '@/integrations/ai/embeddings';
+import {
+  WORKERS_AI_DEFAULT_EMBEDDING_MODEL,
+  embedTextsViaWorkersAi,
+} from '@/integrations/ai/gateway/workers-ai/workers-ai-embedding';
 import { resolveApiKey } from '@/modules/ai/ai-router';
 import type { AiDb } from '@/modules/ai/ai-types';
 
@@ -20,6 +24,27 @@ export const SEMANTIC_CANDIDATE_LIMIT = 100;
 export interface ReindexEmbeddingsOptions {
   readonly fetchImpl?: EmbedFetch | undefined;
   readonly embedModel?: string | undefined;
+  readonly provider?: EmbeddingProvider | undefined;
+  readonly workersAiFetchImpl?: EmbedFetch | undefined;
+  readonly workersAi?: WorkersAiCredentials | undefined;
+}
+
+/** Urutan provider embedding; `auto` memakai Workers AI dulu lalu Gemini. */
+export type EmbeddingProvider = 'gemini' | 'workers-ai' | 'auto';
+
+/** Kredensial Workers AI dari runtime config; kunci tak pernah dicatat. */
+export interface WorkersAiCredentials {
+  readonly accountId: string;
+  readonly apiToken: string;
+  readonly model?: string | undefined;
+}
+
+/** Konfigurasi embedding untuk satu kueri arsip. */
+export interface QueryEmbeddingConfig {
+  readonly provider?: EmbeddingProvider | undefined;
+  readonly fetchImpl?: EmbedFetch | undefined;
+  readonly workersAiFetchImpl?: EmbedFetch | undefined;
+  readonly workersAi?: WorkersAiCredentials | undefined;
 }
 
 function toRowArray(value: unknown): readonly unknown[] {
@@ -95,6 +120,79 @@ export function toSemanticCandidate(row: unknown): SemanticCandidate | null {
 }
 
 /**
+ * Embeds one batch, preferring Workers AI before the Gemini transport.
+ *
+ * @param chunks - Truncated article chunks, at most 20 entries.
+ * @param db - Runtime database port for Gemini key resolution.
+ * @param organizationId - Tenant scope for the Gemini credential lookup.
+ * @param options - Provider order plus injectable transports for tests.
+ * @returns Vectors aligned with the input plus the provider that filled them.
+ */
+export async function embedArticleChunks(
+  chunks: readonly string[],
+  db: AiDb,
+  organizationId: string,
+  options?: ReindexEmbeddingsOptions | undefined,
+): Promise<{ readonly vectors: Array<readonly number[] | null>; readonly provider: 'workers-ai' | 'gemini' | 'none' }> {
+  const provider = options?.provider ?? 'auto';
+  const empty = chunks.map(() => null);
+  if (chunks.length === 0) return { vectors: [], provider: 'none' };
+  if ((provider === 'workers-ai' || provider === 'auto') && options?.workersAi !== undefined) {
+    try {
+      const vectors = await embedTextsViaWorkersAi(
+        {
+          accountId: options.workersAi.accountId,
+          apiToken: options.workersAi.apiToken,
+          model: options.workersAi.model ?? WORKERS_AI_DEFAULT_EMBEDDING_MODEL,
+        },
+        chunks,
+        { ...(options.workersAiFetchImpl === undefined ? {} : { fetchImpl: options.workersAiFetchImpl }) },
+      );
+      if (vectors.some((vector) => vector !== null)) return { vectors, provider: 'workers-ai' };
+      if (provider === 'workers-ai') return { vectors, provider: 'workers-ai' };
+    } catch {
+      if (provider === 'workers-ai') return { vectors: [...empty], provider: 'workers-ai' };
+    }
+  }
+  if (provider === 'workers-ai') return { vectors: [...empty], provider: 'workers-ai' };
+  try {
+    const plainKey = await resolveApiKey(db, 'gemini', { organizationId });
+    if (plainKey === null) return { vectors: [...empty], provider: 'none' };
+    const vectors = await embedTexts(plainKey, chunks, {
+      ...(options?.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
+      ...(options?.embedModel === undefined ? {} : { model: options.embedModel }),
+    });
+    return { vectors, provider: vectors.some((vector) => vector !== null) ? 'gemini' : 'none' };
+  } catch {
+    return { vectors: [...empty], provider: 'none' };
+  }
+}
+
+/**
+ * Embeds one archive query, preferring Workers AI before the Gemini transport.
+ *
+ * @param db - Runtime database port for Gemini key resolution.
+ * @param organizationId - Tenant scope for the Gemini credential lookup.
+ * @param query - Raw archive query text.
+ * @param config - Provider order plus injectable transports for tests.
+ * @returns Query vector, or null when no provider could embed it.
+ */
+export async function embedQueryVector(
+  db: AiDb,
+  organizationId: string,
+  query: string,
+  config?: QueryEmbeddingConfig | undefined,
+): Promise<readonly number[] | null> {
+  const { vectors } = await embedArticleChunks([query], db, organizationId, {
+    ...(config?.provider === undefined ? {} : { provider: config.provider }),
+    ...(config?.fetchImpl === undefined ? {} : { fetchImpl: config.fetchImpl }),
+    ...(config?.workersAiFetchImpl === undefined ? {} : { workersAiFetchImpl: config.workersAiFetchImpl }),
+    ...(config?.workersAi === undefined ? {} : { workersAi: config.workersAi }),
+  });
+  return vectors[0] ?? null;
+}
+
+/**
  * Indeks ulang satu artikel milik organisasi ke `document_embeddings`.
  *
  * @param db - Port database runtime.
@@ -111,7 +209,7 @@ export async function reindexArticleEmbeddings(
   db: AiDb,
   input: { readonly organizationId: string; readonly articleId: string },
   options?: ReindexEmbeddingsOptions | undefined,
-): Promise<{ readonly ok: true; readonly chunks: number; readonly embedded: number } | { readonly ok: false; readonly error: string }> {
+): Promise<{ readonly ok: true; readonly chunks: number; readonly embedded: number; readonly embeddingProvider: 'workers-ai' | 'gemini' | 'none' } | { readonly ok: false; readonly error: string }> {
   try {
     const value = await db.execute(
       sql`select id, title, excerpt, body from articles where organization_id = ${input.organizationId}::uuid and id = ${input.articleId}::uuid limit 1`,
@@ -130,14 +228,11 @@ export async function reindexArticleEmbeddings(
       sql`delete from document_embeddings where organization_id = ${input.organizationId}::uuid and article_id = ${input.articleId}::uuid`,
     );
     let vectors: Array<readonly number[] | null> = chunks.map(() => null);
+    let embeddingProvider: 'workers-ai' | 'gemini' | 'none' = 'none';
     try {
-      const plainKey = await resolveApiKey(db, 'gemini', { organizationId: input.organizationId });
-      if (plainKey !== null) {
-        vectors = await embedTexts(plainKey, chunks, {
-          ...(options?.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
-          ...(options?.embedModel === undefined ? {} : { model: options.embedModel }),
-        });
-      }
+      const resolved = await embedArticleChunks(chunks, db, input.organizationId, options);
+      vectors = resolved.vectors;
+      embeddingProvider = resolved.provider;
     } catch {
       vectors = chunks.map(() => null);
     }
@@ -151,7 +246,7 @@ export async function reindexArticleEmbeddings(
     await db.execute(
       sql`insert into document_embeddings (organization_id, article_id, chunk, embedding) values ${sql.join(values, sql`, `)}`,
     );
-    return { ok: true, chunks: chunks.length, embedded };
+    return { ok: true, chunks: chunks.length, embedded, embeddingProvider };
   } catch {
     return { ok: false, error: 'Indeks semantik belum tersedia; gunakan pencarian judul/slug.' };
   }

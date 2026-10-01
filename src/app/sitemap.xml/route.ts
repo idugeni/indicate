@@ -14,7 +14,7 @@ import { deliveryComposition } from '@/modules/delivery';
  */
 export function controlPlaneSitemap(host: string): string {
   const today = new Date().toISOString().slice(0, 10);
-  const entries = ['/', ...SERVICE_PATHS]
+  const entries = ['/', ...SERVICE_PATHS.filter((path) => path !== '/status')]
     .map(
       (path) =>
         `  <url><loc>https://${host}${path}</loc><lastmod>${today}</lastmod><changefreq>${path === '/' ? 'daily' : 'weekly'}</changefreq><priority>${path === '/' ? '1.0' : '0.7'}</priority></url>`,

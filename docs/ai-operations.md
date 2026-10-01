@@ -12,6 +12,8 @@ by design (`bootstrap-schema.ts` rejects unknown `AI_*` keys in production).
 | Schema (7 tables + 2 enums) | `src/data/schema/ai.ts`, `ai-cache.ts`, `ai-embeddings.ts` |
 | Router, service, guardrails | `src/modules/ai/` (`ai-router.ts`, `ai-service.ts`, `ai-security.ts`, `ai-crypto.ts`) |
 | Provider adapter (Gemini) | `src/integrations/ai/gemini-adapter.ts` (only `@google/genai` import) |
+| Provider adapter (Vercel Gateway) | `vercel-gateway` in `src/integrations/ai/adapter-registry.ts` (OpenAI-compatible, `https://ai-gateway.vercel.sh/v1`) |
+| Gateway transports | `src/integrations/ai/gateway/` (`cloudflare/`, `workers-ai/`, `vercel/` — one folder per gateway) |
 | Budget guard (Redis) | `src/integrations/ai/ai-budget.ts` (250k tokens/day, 60 req/hour, fail-open) |
 | Dashboard repo + commands | `src/data/repos/ai.ts`, `src/modules/integrations/ai-service.ts` |
 | Dashboard view | View `ai` in `view-registry.ts`, `ai-management-panel.tsx` |
@@ -27,6 +29,28 @@ by design (`bootstrap-schema.ts` rejects unknown `AI_*` keys in production).
 3. Grant `platform.ai.manage` to platform roles through the role-permission flow.
 4. Add the first provider key in the panel (label + secret + priority),
    then use Test to validate before marking active.
+5. Apply migration 237 (`ai_free_tier_gateways`) for the `workers-ai` and
+   `vercel-gateway` provider rows, then add their keys in the same panel.
+   Set `vercel-gateway` as fallback provider to carry non-critical
+   editorial load on the monthly free tier.
+
+## Free-tier gateways
+
+- Cloudflare AI Gateway (optional, transport only): set
+  `CLOUDFLARE_AI_GATEWAY_SLUG` to route Gemini chat/stream through
+  `google-ai-studio` with a `cf-aig-cache-ttl` header (default 24h).
+  Repeated editorial prompts then hit cache instead of Gemini quota.
+  Provider auth stays BYOK from `ai_credentials`; unset keeps direct.
+- Workers AI embeddings (automatic with fallback): reindex and
+  semantic-search embed via `@cf/baai/bge-base-en-v1.5` first (free
+  Neurons allocation), then Gemini when Workers returns all-null.
+  Override the model with `CLOUDFLARE_AI_EMBEDDING_MODEL`. Postgres
+  `document_embeddings` stays the source of truth.
+- Vercel AI Gateway (provider `vercel-gateway`): OpenAI-compatible
+  endpoint for the monthly free-tier model subset. Spend is capped per
+  organization+model at 500k tokens/month in Redis
+  (`ai:vercel-gateway:tokens:*`, fail-open); the gateway itself returns
+  `429`/`403` past the free tier and the router cools the key down.
 
 ## Rotation and cooldown
 
@@ -72,5 +96,7 @@ table aggregates requests, tokens, and blocked calls over 7/30 days.
 
 Panel reads are projected + limited (credentials 8/page server-side 200 cap,
 logs 10/page server-side 50 cap, analytics sample 1000). Cache hit costs
-1 read + 1 hits write; reindex costs ≤22 rows per article. See `AGENTS.md`
+1 read + 1 hits write; reindex costs ≤22 rows per article. Gateway cache
+hits cost no provider call at all; the Vercel monthly budget adds 1 Redis
+read per `vercel-gateway` call plus 1 write on success. See `AGENTS.md`
 Database access and egress before adding new AI reads.

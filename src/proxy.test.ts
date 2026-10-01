@@ -66,14 +66,16 @@ describe('proxy control surfaces', () => {
     expect((await proxy(request(HOSTS.status, '/api/status'))).status).toBe(200);
   });
 
-  it('mengalihkan akar host status ke url kanonis', async () => {
-    const response = await proxy(request(HOSTS.status, '/'));
-    expect(response.status).toBe(308);
-    expect(response.headers.get('location')).toContain('/status');
+  it('menulis ulang akar host status dan mengalihkan path status host utama', async () => {
+    const root = await proxy(request(HOSTS.status, '/'));
+    expect(root.status).toBe(200);
+    const canonical = await proxy(request(HOSTS.dashboard, '/status'));
+    expect(canonical.status).toBe(308);
+    expect(canonical.headers.get('location')).toContain(HOSTS.status);
   });
 
   it('menolak path lain di host status', async () => {
-    expect((await proxy(request(HOSTS.status, '/dashboard'))).status).toBe(308);
+    expect((await proxy(request(HOSTS.status, '/dashboard'))).status).toBe(404);
     expect((await proxy(request(HOSTS.status, '/api/dashboard/workspace'))).status).toBe(404);
   });
 });
