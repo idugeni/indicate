@@ -1,8 +1,25 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { BillingPanel } from '@/modules/dashboard/components/billing/billing-panel';
+
+const CUSTOMERS = [
+  {
+    customer: {
+      id: 'org-2',
+      name: 'Rutan Wonosobo',
+      slug: 'rutan-wonosobo',
+      status: 'active',
+      customerMetadata: {},
+      version: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+    subscription: null,
+  },
+];
 
 function stubBilling(state: string, invoices: unknown[]) {
   vi.stubGlobal(
@@ -11,6 +28,7 @@ function stubBilling(state: string, invoices: unknown[]) {
       const url = String(input);
       if (url.includes('scope=subscription-state')) return { ok: true, json: async () => ({ state }) };
       if (url.includes('scope=invoices')) return { ok: true, json: async () => invoices };
+      if (url.includes('view=customers') && !url.includes('customerId=')) return { ok: true, json: async () => CUSTOMERS };
       return { ok: true, json: async () => ({}) };
     }),
   );
@@ -33,6 +51,7 @@ function stubBillingWithCapture(state: string, invoices: unknown[]) {
       }
       if (url.includes('scope=subscription-state')) return { ok: true, json: async () => ({ state }) };
       if (url.includes('scope=invoices')) return { ok: true, json: async () => invoices };
+      if (url.includes('view=customers') && !url.includes('customerId=')) return { ok: true, json: async () => CUSTOMERS };
       return { ok: true, json: async () => ({}) };
     }),
   );
@@ -85,7 +104,7 @@ describe('Panel langganan', () => {
   it('menampilkan status aktif dan daftar faktur', async () => {
     stubBilling('active', INVOICES);
     render(<BillingPanel organizationId="org-1" permissions={[]} />);
-    expect(await screen.findByText('Aktif')).toBeDefined();
+    expect((await screen.findAllByText('Aktif')).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('tab', { name: 'Faktur' }));
     expect(await screen.findByText(/IND-ORG-2601-0001-AB12/)).toBeDefined();
     expect(screen.getByText(/Lunas/)).toBeDefined();
@@ -108,7 +127,7 @@ describe('Panel langganan', () => {
   it('menampilkan pesan kosong saat belum ada faktur', async () => {
     stubBilling('suspended', []);
     render(<BillingPanel organizationId="org-1" permissions={[]} />);
-    expect(await screen.findByText('Ditangguhkan')).toBeDefined();
+    expect((await screen.findAllByText('Ditangguhkan')).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('tab', { name: 'Faktur' }));
     expect(await screen.findByText('Belum ada faktur. Catat lewat tab Admin.')).toBeDefined();
   });
@@ -165,12 +184,14 @@ describe('Panel langganan', () => {
   });
 
   it('mencatat faktur lewat envelope billing', async () => {
+    const user = userEvent.setup();
     const posts = stubBillingWithCapture('active', []);
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
     fireEvent.click(screen.getByRole('tab', { name: 'Admin' }));
     await screen.findByText(/Catat faktur \(pembayaran manual terkonfirmasi\)/);
-    fireEvent.change(screen.getByPlaceholderText('ID organisasi…'), { target: { value: 'org-2' } });
+    await user.click(screen.getByPlaceholderText('Cari organisasi untuk faktur…'));
+    await user.click(await screen.findByRole('option', { name: 'Rutan Wonosobo · rutan-wonosobo' }));
     fireEvent.click(screen.getByRole('button', { name: 'Catat faktur' }));
     expect(await screen.findByText('Faktur tercatat.')).toBeDefined();
     expect(confirm).toHaveBeenCalledWith(expect.stringContaining('Rp550.000'));
@@ -178,6 +199,24 @@ describe('Panel langganan', () => {
     expect(post?.body.action).toBe('invoice.create');
     expect(post?.body.payload).toMatchObject({ organizationId: 'org-2', amountIdr: 550000 });
     expect(posts.some((call) => call.url === '/api/dashboard/integrations')).toBe(false);
+  });
+
+  it('menerapkan status langganan ke organisasi pilihan combobox', async () => {
+    const user = userEvent.setup();
+    const posts = stubBillingWithCapture('active', []);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<BillingPanel organizationId="org-1" permissions={['platform.super_admin']} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Admin' }));
+    await screen.findByText(/Ubah status \(pembayaran manual di luar sistem\)/);
+    await user.click(screen.getByPlaceholderText('Cari organisasi untuk status…'));
+    await user.click(await screen.findByRole('option', { name: 'Rutan Wonosobo · rutan-wonosobo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Terapkan status' }));
+    expect(await screen.findByText('Status langganan tersimpan: active.')).toBeDefined();
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('Rutan Wonosobo'));
+    const post = posts.find(
+      (call) => call.url === '/api/dashboard/integrations' && call.body.action === 'subscription.update',
+    );
+    expect(post?.body.payload).toMatchObject({ organizationId: 'org-2', status: 'active' });
   });
 
   it('membatalkan faktur lewat envelope billing', async () => {
