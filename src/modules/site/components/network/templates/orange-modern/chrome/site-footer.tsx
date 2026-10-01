@@ -6,6 +6,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { COMPANY_NAME, SOCIAL_ORDER } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
+import { GooglePreferredSourceLink } from '@/modules/site/components/network/chrome/google-preferred-source';
 import { StoreBadges } from '@/modules/site/components/network/chrome/store-badges';
 
 const ABOUT_LINKS = [
@@ -74,6 +75,12 @@ export async function OrangeModernFooter({ site }: { readonly site: NetworkSiteD
               </Link>
             </p>
           ) : null}
+          <p className="m-0 mt-4 flex flex-wrap items-center gap-2">
+            <GooglePreferredSourceLink
+              site={site}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#ea580c]"
+            />
+          </p>
         </div>
 
         <nav aria-label="Kategori">
