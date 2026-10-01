@@ -41,39 +41,40 @@ const DATA = {
 describe('MediaLibrary', () => {
   it('menampilkan ringkasan persis dan folder according kepemilikan', () => {
     render(<MediaLibrary data={DATA} command={vi.fn()} />);
-    expect(screen.getByText('Gudang aset jaringan')).toBeDefined();
-    expect(screen.getByRole('region', { name: 'Ringkasan pustaka media' }).textContent).toContain('3 aset · 293 KB · 3 aktif · 0 diarsipkan');
-    expect(screen.getByText('3 dari 3 aset')).toBeDefined();
-    expect(screen.getByRole('button', { name: /Semua media/ })).toBeDefined();
+    expect(screen.getByText('Pustaka Media & Repositori Aset')).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Ringkasan pustaka media' }).textContent).toContain('3 aset · 293 KB · 3 aktif · 0 arsip');
+    expect(screen.getByText(/3 dari 3 aset dalam filter/)).toBeDefined();
+    expect(screen.getByRole('button', { name: /Semua Media/ })).toBeDefined();
     expect(screen.getByRole('button', { name: /Organisasi/ })).toBeDefined();
     expect(screen.getByRole('button', { name: /Artikel/ })).toBeDefined();
-    expect(screen.getByRole('button', { name: /Situs/ })).toBeDefined();
+    expect(screen.getByRole('button', { name: /Portal Regional/ })).toBeDefined();
   });
 
   it('menyaring folder dan mencari nama berkas', async () => {
     const user = userEvent.setup();
     render(<MediaLibrary data={DATA} command={vi.fn()} />);
-    await user.click(screen.getByRole('button', { name: /Situs/ }));
-    expect(screen.getByText('1 dari 3 aset')).toBeDefined();
+    await user.click(screen.getByRole('button', { name: /Portal Regional/ }));
+    expect(screen.getByText(/Menampilkan 1 dari 1 aset dalam filter/)).toBeDefined();
     expect(screen.getByText('wonosobo.fakta01.my.id')).toBeDefined();
-    await user.click(screen.getByRole('button', { name: /Semua media/ }));
-    expect(screen.getByText('3 dari 3 aset')).toBeDefined();
-    await user.type(screen.getByLabelText('Cari aset'), 'berkas-3');
-    expect(screen.getByText('1 dari 3 aset')).toBeDefined();
+    await user.click(screen.getByRole('button', { name: /Semua Media/ }));
+    expect(screen.getByText(/Menampilkan 3 dari 3 aset dalam filter/)).toBeDefined();
+    await user.type(screen.getByLabelText('Cari Berkas'), 'berkas-3');
+    expect(screen.getByText(/Menampilkan 1 dari 1 aset dalam filter/)).toBeDefined();
     expect(screen.queryByText('berkas-1.png')).toBeNull();
   });
 
   it('menampilkan semua folder sebagai meta dalam', () => {
     render(<MediaLibrary data={{ media: [], articles: [], sites: [] }} command={vi.fn()} />);
-    expect(screen.getByText(/Belum ada aset\. Unggah foto pertama/)).toBeDefined();
+    expect(screen.getByText(/Belum ada aset dalam pustaka/)).toBeDefined();
   });
 
   it('meminta izin akses satu aset saat pratinjau ditekan', async () => {
     const user = userEvent.setup();
     const command = vi.fn(async () => ({ url: 'https://r2.example/berkas', requiredHeaders: { 'x-amz': 'sig' } }));
     render(<MediaLibrary data={DATA} command={command} />);
-    await user.click(screen.getAllByRole('button', { name: /Pratinjau/ })[0]!);
+    await user.click(screen.getByRole('button', { name: 'Tampilan daftar' }));
+    await user.click(screen.getAllByRole('button', { name: 'Buka' })[0]!);
     await waitFor(() => expect(command).toHaveBeenCalledWith('media.read', { mediaId: 'm-1' }));
-    expect(await screen.findByAltText('berkas-1.png')).toBeDefined();
+    expect((await screen.findAllByAltText('berkas-1.png')).length).toBeGreaterThan(0);
   });
 });

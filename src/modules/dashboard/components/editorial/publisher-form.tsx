@@ -1,12 +1,23 @@
 'use client';
 
-import { useId, useRef, useState, useTransition, type FormEvent } from 'react';
+import {
+  useId,
+  useMemo,
+  useState,
+  useTransition,
+  type FormEvent,
+} from 'react';
 import { toast } from 'sonner';
 import {
   Check,
+  CheckCircle2,
+  Clock3,
   Loader2,
   Plus,
+  ShieldAlert,
   ShieldCheck,
+  Sparkles,
+  XCircle,
 } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
@@ -18,25 +29,63 @@ import { AiPublisherVerify } from '@/modules/ai/components/ai-publisher-verify';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import type { PublisherEntity } from '@/modules/dashboard/components/shared/types';
 
-const VERIFICATION_STATUS_LABELS: Readonly<Record<string, string>> = {
-  unverified: 'Belum diverifikasi',
-  pending: 'Menunggu verifikasi',
-  verified: 'Terverifikasi',
-  rejected: 'Ditolak',
+interface PublisherFormProps {
+  readonly data: unknown;
+  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly organizationId?: string | undefined;
+}
+
+interface PublisherContainerModel {
+  readonly publishers?: readonly PublisherEntity[];
+}
+
+const VERIFICATION_STATUS_META: Readonly<
+  Record<
+    string,
+    {
+      readonly label: string;
+      readonly icon: typeof CheckCircle2;
+      readonly badgeClassName: string;
+    }
+  >
+> = {
+  unverified: {
+    label: 'Belum diverifikasi',
+    icon: Clock3,
+    badgeClassName: 'border-hairline-strong bg-bg text-paper-dim',
+  },
+  pending: {
+    label: 'Menunggu verifikasi',
+    icon: Clock3,
+    badgeClassName: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+  },
+  verified: {
+    label: 'Terverifikasi',
+    icon: CheckCircle2,
+    badgeClassName: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+  },
+  rejected: {
+    label: 'Ditolak',
+    icon: XCircle,
+    badgeClassName: 'border-rose-500/30 bg-rose-500/10 text-rose-400',
+  },
+};
+
+const FALLBACK_VERIFICATION_META = {
+  label: 'Belum diverifikasi',
+  icon: Clock3,
+  badgeClassName: 'border-hairline-strong bg-bg text-paper-dim',
 };
 
 export function PublisherForm({
   data,
   command,
   organizationId,
-}: {
-  readonly data: unknown;
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
-  readonly organizationId?: string | undefined;
-}) {
-  const model = data as {
-    readonly publishers?: readonly PublisherEntity[];
-  } | null;
+}: PublisherFormProps) {
+  const publishers = useMemo(
+    () => (data as PublisherContainerModel | null)?.publishers ?? [],
+    [data],
+  );
 
   const createNameId = useId();
   const createTypeId = useId();
@@ -50,104 +99,156 @@ export function PublisherForm({
 
   const [isCreating, startCreateTransition] = useTransition();
   const [isVerifying, startVerifyTransition] = useTransition();
-  const lastSuggestedAttribution = useRef('');
-  const createFormRef = useRef<HTMLFormElement | null>(null);
-  const verifyFormRef = useRef<HTMLFormElement | null>(null);
+
+  const [createName, setCreateName] = useState('');
+  const [createType, setCreateType] = useState('independent_publisher');
+  const [createAttribution, setCreateAttribution] = useState('');
+  const [createEvidence, setCreateEvidence] = useState('');
+
   const [verifyPublisherId, setVerifyPublisherId] = useState('');
+  const [verifyDecision, setVerifyDecision] = useState('publisher.submit');
   const [verifyEvidence, setVerifyEvidence] = useState('');
-  const verifyPublisherName = model?.publishers?.find((item) => item.id === (verifyPublisherId || (model?.publishers?.[0]?.id ?? '')))?.name ?? '';
+  const [verifyReason, setVerifyReason] = useState('');
 
-  const applyAssessmentReason = (recommendation: string) => {
-    const reasonInput = verifyFormRef.current?.elements.namedItem('reason');
-    if (reasonInput instanceof HTMLInputElement && reasonInput.value.trim() === '' && recommendation.trim() !== '') {
-      reasonInput.value = recommendation.trim().slice(0, 300);
-      toast.info('Saran AI dimasukkan ke catatan — tinjau sebelum menerapkan keputusan.');
+  const activePublisher = useMemo(() => {
+    if (publishers.length === 0) return null;
+    return (
+      publishers.find((item) => item.id === verifyPublisherId) ??
+      publishers[0] ??
+      null
+    );
+  }, [publishers, verifyPublisherId]);
+
+  const publisherOptions = useMemo(() => {
+    return publishers.map((item) => {
+      const statusLabel =
+        VERIFICATION_STATUS_META[item.verificationStatus]?.label ??
+        item.verificationStatus;
+      return {
+        value: item.id,
+        label: `${item.name} (${statusLabel})`,
+      };
+    });
+  }, [publishers]);
+
+  const activeStatusMeta =
+    (activePublisher
+      ? VERIFICATION_STATUS_META[activePublisher.verificationStatus]
+      : undefined) ??
+    VERIFICATION_STATUS_META.unverified ??
+    FALLBACK_VERIFICATION_META;
+
+  const ActiveStatusIcon = activeStatusMeta.icon;
+
+  const handleApplySuggestion = () => {
+    if (createName.trim() === '') {
+      toast.info('Ketik nama resmi media terlebih dahulu untuk membuat saran.');
+      return;
+    }
+    const suggestion = suggestAttributionLabel(createName, createType);
+    setCreateAttribution(suggestion);
+  };
+
+  const handleAssessmentReason = (recommendation: string) => {
+    const trimmed = recommendation.trim();
+    if (trimmed === '') return;
+
+    if (verifyReason.trim() === '') {
+      setVerifyReason(trimmed.slice(0, 300));
+      toast.info('Rekomendasi AI diterapkan ke catatan keputusan.');
     }
   };
 
-  const refreshAttributionSuggestion = (form: HTMLFormElement) => {
-    const nameInput = form.elements.namedItem('name');
-    const typeInput = form.elements.namedItem('type');
-    const attributionInput = form.elements.namedItem('attributionLabel');
-    if (
-      !(nameInput instanceof HTMLInputElement) ||
-      (!(typeInput instanceof HTMLSelectElement) && !(typeInput instanceof HTMLInputElement)) ||
-      !(attributionInput instanceof HTMLInputElement)
-    ) {
-      return;
-    }
-    const current = attributionInput.value.trim();
-    if (current !== '' && current !== lastSuggestedAttribution.current) {
-      return;
-    }
-    const suggestion = suggestAttributionLabel(nameInput.value, typeInput.value);
-    lastSuggestedAttribution.current = suggestion;
-    attributionInput.value = suggestion;
-  };
-
-  const handleCreate = (event: FormEvent<HTMLFormElement>) => {
+  const handleCreateSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const name = String(formData.get('name') ?? '').trim();
-    const attributionLabel = String(formData.get('attributionLabel') ?? '').trim();
-    if (name === '') {
-      toast.error('Isi nama penerbit dulu.');
+    const cleanName = createName.trim();
+    const cleanAttr = createAttribution.trim();
+
+    if (cleanName === '') {
+      toast.error('Nama resmi penerbit wajib diisi.');
       return;
     }
-    if (attributionLabel === '') {
-      toast.error('Isi label atribusi dulu.');
+
+    if (cleanAttr === '') {
+      toast.error('Label atribusi tampilan wajib diisi.');
       return;
     }
 
     startCreateTransition(async () => {
-      await command('publisher.create', {
-        name,
-        type: formData.get('type'),
-        attributionLabel,
-        contacts: {},
-        evidenceReference: String(formData.get('evidenceReference') ?? '').trim() || null,
-      });
-      form.reset();
+      try {
+        await command('publisher.create', {
+          name: cleanName,
+          type: createType,
+          attributionLabel: cleanAttr,
+          contacts: {},
+          evidenceReference: createEvidence.trim() || null,
+        });
+
+        toast.success(`Penerbit ${cleanName} berhasil didaftarkan.`);
+        setCreateName('');
+        setCreateAttribution('');
+        setCreateEvidence('');
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Gagal mendaftarkan penerbit baru.';
+        toast.error(message);
+      }
     });
   };
 
-  const handleVerify = (event: FormEvent<HTMLFormElement>) => {
+  const handleVerifySubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const publisherId = String(formData.get('publisherId'));
-    const publisher = model?.publishers?.find((p) => p.id === publisherId);
 
-    if (!publisher) {
-      toast.error('Pilih penerbit dulu.');
+    if (!activePublisher) {
+      toast.error('Pilih penerbit target terlebih dahulu.');
       return;
     }
-    const decision = String(formData.get('decision'));
-    const reason = String(formData.get('reason') ?? '').trim();
-    if (decision === 'publisher.reject' && reason === '') {
-      toast.error('Alasan wajib diisi bila menolak.');
+
+    const cleanReason = verifyReason.trim();
+    if (verifyDecision === 'publisher.reject' && cleanReason === '') {
+      toast.error('Catatan alasan wajib diisi saat menolak penerbit.');
       return;
     }
 
     startVerifyTransition(async () => {
-      await command(String(formData.get('decision')), {
-        id: publisher.id,
-        expectedVersion: publisher.version,
-        evidenceReference: String(formData.get('evidenceReference') ?? '').trim() || undefined,
-        reason: String(formData.get('reason') ?? '').trim() || undefined,
-      });
-      form.reset();
+      try {
+        await command(verifyDecision, {
+          id: activePublisher.id,
+          expectedVersion: activePublisher.version,
+          evidenceReference: verifyEvidence.trim() || undefined,
+          reason: cleanReason || undefined,
+        });
+
+        toast.success('Keputusan tata kelola berhasil diterapkan.');
+        setVerifyReason('');
+        setVerifyEvidence('');
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Gagal memproses keputusan verifikasi.';
+        toast.error(message);
+      }
     });
   };
 
   return (
-    <div className="grid items-start gap-4 md:grid-cols-2">
-      <SectionCard icon={Plus} title="Penerbit baru" eyebrow="Registrasi">
-
-        <form ref={createFormRef} noValidate onSubmit={handleCreate} className="space-y-3">
+    <div className="grid items-start gap-5 md:grid-cols-2">
+      <SectionCard
+        icon={Plus}
+        title="Penerbit Baru"
+        eyebrow="Registrasi Entitas"
+      >
+        <form
+          noValidate
+          onSubmit={handleCreateSubmit}
+          className="flex flex-col gap-4"
+        >
           <div className="space-y-1.5">
-            <Label htmlFor={createNameId} className="font-mono text-xs text-paper-dim">
+            <Label
+              htmlFor={createNameId}
+              className="font-mono text-xs uppercase tracking-wider text-paper-dim"
+            >
               Nama Resmi Media / Lembaga
             </Label>
             <Input
@@ -155,165 +256,268 @@ export function PublisherForm({
               name="name"
               required
               disabled={isCreating}
-              placeholder="cth: Radar Jawa Tengah Sentral"
-              onBlur={(event) => {
-                if (event.currentTarget.form !== null) refreshAttributionSuggestion(event.currentTarget.form);
+              value={createName}
+              onChange={(event) => setCreateName(event.target.value)}
+              onBlur={() => {
+                if (createAttribution.trim() === '' && createName.trim() !== '') {
+                  setCreateAttribution(suggestAttributionLabel(createName, createType));
+                }
               }}
-              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              placeholder="cth: Radar Jawa Tengah Sentral"
+              className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-sans text-xs text-paper transition duration-150 placeholder:text-paper-dim/50 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor={createTypeId} className="font-mono text-xs text-paper-dim">
-              Jenis Penerbit
+            <Label
+              htmlFor={createTypeId}
+              className="font-mono text-xs uppercase tracking-wider text-paper-dim"
+            >
+              Klasifikasi Penerbit
             </Label>
             <DashboardSelect
               id={createTypeId}
               name="type"
               disabled={isCreating}
               defaultValue="independent_publisher"
+              value={createType}
               placeholder="Pilih jenis penerbit"
-              onValueChange={() => {
-                const form = createFormRef.current;
-                if (form !== null) refreshAttributionSuggestion(form);
+              onValueChange={(val) => {
+                const nextType = val ?? 'independent_publisher';
+                setCreateType(nextType);
+                if (createName.trim() !== '') {
+                  setCreateAttribution(suggestAttributionLabel(createName, nextType));
+                }
               }}
             >
-              <DashboardSelectItem value="independent_publisher">Penerbit Independen Regional</DashboardSelectItem>
-              <DashboardSelectItem value="government_institution">Institusi / Lembaga Kedinasan</DashboardSelectItem>
-              <DashboardSelectItem value="company">Badan Usaha / Korporasi Media</DashboardSelectItem>
+              <DashboardSelectItem value="independent_publisher">
+                Penerbit Independen Regional
+              </DashboardSelectItem>
+              <DashboardSelectItem value="government_institution">
+                Institusi / Lembaga Kedinasan
+              </DashboardSelectItem>
+              <DashboardSelectItem value="company">
+                Badan Usaha / Korporasi Media
+              </DashboardSelectItem>
             </DashboardSelect>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor={createAttrId} className="font-mono text-xs text-paper-dim">
-              Nama Tampil
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor={createAttrId}
+                className="font-mono text-xs uppercase tracking-wider text-paper-dim"
+              >
+                Nama Tampil & Atribusi
+              </Label>
+              <button
+                type="button"
+                onClick={handleApplySuggestion}
+                disabled={isCreating || createName.trim() === ''}
+                className="inline-flex items-center gap-1 font-mono text-[11px] text-brass transition hover:underline disabled:pointer-events-none disabled:opacity-40"
+              >
+                <Sparkles className="h-3 w-3" />
+                <span>Format Otomatis</span>
+              </button>
+            </div>
             <Input
               id={createAttrId}
               name="attributionLabel"
               required
               disabled={isCreating}
-              placeholder="cth: Redaksi Wonosobo News"
-              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              value={createAttribution}
+              onChange={(event) => setCreateAttribution(event.target.value)}
+              placeholder="cth: Redaksi Radar Jateng Sentral"
+              className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-sans text-xs text-paper transition duration-150 placeholder:text-paper-dim/50 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor={createEvidenceId} className="font-mono text-xs text-paper-dim">
-              Referensi Bukti Legalitas / Sertifikat (Opsional)
+            <Label
+              htmlFor={createEvidenceId}
+              className="font-mono text-xs uppercase tracking-wider text-paper-dim"
+            >
+              Referensi Bukti Legalitas
             </Label>
             <Input
               id={createEvidenceId}
               name="evidenceReference"
               disabled={isCreating}
+              value={createEvidence}
+              onChange={(event) => setCreateEvidence(event.target.value)}
               placeholder="cth: ref-dewanpers-2026-09"
-              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-mono text-xs text-paper transition duration-150 placeholder:text-paper-dim/50 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
             />
           </div>
 
-          <div className="pt-2">
-            <Button
-              type="submit"
-              variant="default"
-              disabled={isCreating}
-              className="w-full"
-            >
-              {isCreating ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              ) : (
-                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-              )}
-              <span>Daftarkan Penerbit</span>
-            </Button>
-          </div>
+          <Button
+            type="submit"
+            disabled={isCreating}
+            className="mt-2 w-full gap-2 text-xs font-medium"
+          >
+            {isCreating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            <span>Daftarkan Penerbit</span>
+          </Button>
         </form>
       </SectionCard>
 
-      <SectionCard icon={ShieldCheck} title="Verifikasi & status" eyebrow="Tata kelola">
-
-        <form noValidate onSubmit={handleVerify} ref={verifyFormRef} className="space-y-3">
+      <SectionCard
+        icon={ShieldCheck}
+        title="Verifikasi & Status"
+        eyebrow="Tata Kelola Entitas"
+      >
+        <form
+          noValidate
+          onSubmit={handleVerifySubmit}
+          className="flex flex-col gap-4"
+        >
           <div className="space-y-1.5">
-            <Label htmlFor={verifyPubId} className="font-mono text-xs text-paper-dim">
-              Pilih Penerbit
+            <Label
+              htmlFor={verifyPubId}
+              className="font-mono text-xs uppercase tracking-wider text-paper-dim"
+            >
+              Penerbit Target
             </Label>
             <SearchCombobox
               id={verifyPubId}
               name="publisherId"
               disabled={isVerifying}
-              defaultValue={model?.publishers?.[0]?.id ?? ''}
+              defaultValue={activePublisher?.id ?? ''}
               onValueChange={(next) => setVerifyPublisherId(next ?? '')}
-              placeholder="Pilih penerbit"
-              options={(model?.publishers ?? []).map((item) => ({ value: item.id, label: `${item.name} · [${VERIFICATION_STATUS_LABELS[item.verificationStatus] ?? item.verificationStatus}]` }))}
+              placeholder="Cari atau pilih penerbit..."
+              options={publisherOptions}
             />
           </div>
 
+          {activePublisher && (
+            <div className="flex items-center justify-between rounded-md border border-hairline-strong bg-bg/60 p-2.5">
+              <div className="min-w-0 pr-2">
+                <p className="truncate font-sans text-xs font-medium text-paper">
+                  {activePublisher.name}
+                </p>
+                <p className="font-mono text-[10px] text-paper-dim">
+                  ID: {activePublisher.id.slice(0, 12)}... · Versi {activePublisher.version}
+                </p>
+              </div>
+              <div
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[10px] ${activeStatusMeta.badgeClassName}`}
+              >
+                <ActiveStatusIcon className="h-3 w-3" />
+                <span>{activeStatusMeta.label}</span>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1.5">
-            <Label htmlFor={verifyDecisionId} className="font-mono text-xs text-paper-dim">
-              Keputusan
+            <Label
+              htmlFor={verifyDecisionId}
+              className="font-mono text-xs uppercase tracking-wider text-paper-dim"
+            >
+              Keputusan Tata Kelola
             </Label>
             <DashboardSelect
               id={verifyDecisionId}
               name="decision"
               disabled={isVerifying}
               defaultValue="publisher.submit"
-              placeholder="Pilih keputusan"
+              value={verifyDecision}
+              placeholder="Pilih keputusan verifikasi"
+              onValueChange={(val) => setVerifyDecision(val ?? 'publisher.submit')}
             >
-              <DashboardSelectItem value="publisher.submit">Kirim untuk Verifikasi</DashboardSelectItem>
-              <DashboardSelectItem value="publisher.approve">Setujui & Verifikasi</DashboardSelectItem>
-              <DashboardSelectItem value="publisher.reject">Tolak</DashboardSelectItem>
-              <DashboardSelectItem value="publisher.archive">Arsipkan</DashboardSelectItem>
+              <DashboardSelectItem value="publisher.submit">
+                Kirim untuk Verifikasi
+              </DashboardSelectItem>
+              <DashboardSelectItem value="publisher.approve">
+                Setujui & Terbitkan Status Resmi
+              </DashboardSelectItem>
+              <DashboardSelectItem value="publisher.reject">
+                Tolak Pengajuan
+              </DashboardSelectItem>
+              <DashboardSelectItem value="publisher.archive">
+                Arsipkan Entitas
+              </DashboardSelectItem>
             </DashboardSelect>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor={verifyEvidenceId} className="font-mono text-xs text-paper-dim">
-              Bukti Pendukung
+            <Label
+              htmlFor={verifyEvidenceId}
+              className="font-mono text-xs uppercase tracking-wider text-paper-dim"
+            >
+              Dokumen Audit / Bukti Pendukung
             </Label>
             <Input
               id={verifyEvidenceId}
               name="evidenceReference"
               disabled={isVerifying}
+              value={verifyEvidence}
               onChange={(event) => setVerifyEvidence(event.target.value)}
               placeholder="cth: audit-memo-jtw-001"
-              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-mono text-xs text-paper transition duration-150 placeholder:text-paper-dim/50 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor={verifyReasonId} className="font-mono text-xs text-paper-dim">
-              Catatan / Alasan Penolakan
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor={verifyReasonId}
+                className="font-mono text-xs uppercase tracking-wider text-paper-dim"
+              >
+                Catatan Evaluasi / Alasan Penolakan
+              </Label>
+              <span className="font-mono text-[10px] text-paper-dim">
+                {verifyReason.length}/300
+              </span>
+            </div>
             <Input
               id={verifyReasonId}
               name="reason"
+              maxLength={300}
               disabled={isVerifying}
-              placeholder="Wajib diisi bila memilih Tolak."
-              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              value={verifyReason}
+              onChange={(event) => setVerifyReason(event.target.value)}
+              placeholder={
+                verifyDecision === 'publisher.reject'
+                  ? 'Alasan wajib disertakan untuk keputusan penolakan'
+                  : 'Catatan tambahan peninjauan audit'
+              }
+              className={`h-9 rounded-md border-hairline-strong bg-bg px-3 font-sans text-xs text-paper transition duration-150 placeholder:text-paper-dim/50 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass ${
+                verifyDecision === 'publisher.reject' && verifyReason.trim() === ''
+                  ? 'border-rose-500/40'
+                  : ''
+              }`}
             />
           </div>
 
-          <div className="pt-2">
-            <Button
-              type="submit"
-              variant="outline"
-              disabled={isVerifying}
-              className="w-full"
-            >
-              {isVerifying ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              ) : (
-                <Check className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
-              )}
-              <span>Terapkan Keputusan</span>
-            </Button>
-          </div>
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={isVerifying}
+            className="mt-2 w-full gap-2 text-xs font-medium"
+          >
+            {isVerifying ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : verifyDecision === 'publisher.reject' ? (
+              <ShieldAlert className="h-4 w-4 text-rose-400" />
+            ) : (
+              <Check className="h-4 w-4 text-brass" />
+            )}
+            <span>Terapkan Keputusan</span>
+          </Button>
         </form>
-        <AiPublisherVerify
-          organizationId={organizationId}
-          publisherName={verifyPublisherName}
-          evidence={verifyEvidence}
-          onAssessment={(assessment) => applyAssessmentReason(assessment.recommendation)}
-        />
+
+        <div className="mt-5 border-t border-hairline pt-4">
+          <AiPublisherVerify
+            organizationId={organizationId}
+            publisherName={activePublisher?.name ?? ''}
+            evidence={verifyEvidence}
+            onAssessment={(assessment) => handleAssessmentReason(assessment.recommendation)}
+          />
+        </div>
       </SectionCard>
     </div>
   );

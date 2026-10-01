@@ -26,8 +26,14 @@ describe('formatPublishedUrlBlock', () => {
 
   it('tanpa judul agar salinan WA bersih', () => {
     expect(formatPublishedUrlBlock({ title: 'Judul Berita', urls: ['https://a.example/slug'] })).toBe(
-      'Judul Berita\n\n1. https://a.example/slug',
+      '1. https://a.example/slug',
     );
+  });
+
+  it('menyertakan judul saat diminta', () => {
+    expect(
+      formatPublishedUrlBlock({ title: 'Judul Berita', urls: ['https://a.example/slug'], includeTitle: true }),
+    ).toBe('Judul Berita\n\n1. https://a.example/slug');
   });
 });
 
@@ -39,21 +45,21 @@ describe('PublishedUrlBlock', () => {
 
   it('menyembunyikan daftar URL secara default dan menampilkannya saat dibuka', () => {
     render(<PublishedUrlBlock title="Judul Berita" urls={['https://a.example/slug', 'https://b.example/slug']} />);
-    expect(screen.queryByLabelText('Daftar URL untuk Judul Berita')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /lihat url/i }));
-    const block = screen.getByLabelText('Daftar URL untuk Judul Berita').textContent;
-    expect(block).toBe('1. https://a.example/slug\n2. https://b.example/slug');
-    expect(screen.getByText('2 URL tayang')).toBeDefined();
+    expect(screen.queryByText('https://a.example/slug')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /buka detail/i }));
+    expect(screen.getByText('https://a.example/slug')).toBeDefined();
+    expect(screen.getByText('https://b.example/slug')).toBeDefined();
+    expect(screen.getByText('2 URL Tayang')).toBeDefined();
   });
 
   it('menyalin blok lengkap ke clipboard', async () => {
     const writeText = stubClipboard();
     const urls = Array.from({ length: 500 }, (_, index) => `https://portal-${index}.example/slug`);
     render(<PublishedUrlBlock title="Judul Berita" urls={urls} />);
-    fireEvent.click(screen.getByRole('button', { name: /salin untuk whatsapp/i }));
+    fireEvent.click(screen.getByRole('button', { name: /salin siaran/i }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     const copied = writeText.mock.calls[0]![0];
-    expect(copied.split('\n')).toHaveLength(500);
+    expect(copied.split('\n')).toHaveLength(502);
     expect(copied).toContain('500. https://portal-499.example/slug');
   });
 
@@ -64,7 +70,7 @@ describe('PublishedUrlBlock', () => {
     });
     const { toast } = await import('sonner');
     render(<PublishedUrlBlock title="Judul Berita" urls={['https://a.example/slug']} />);
-    fireEvent.click(screen.getByRole('button', { name: /salin untuk whatsapp/i }));
+    fireEvent.click(screen.getByRole('button', { name: /salin siaran/i }));
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
   });
 });

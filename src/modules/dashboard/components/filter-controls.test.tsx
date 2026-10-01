@@ -12,7 +12,7 @@ describe('Kontrol filter', () => {
   it('meneruskan query pencarian saat diterapkan', () => {
     const onApply = vi.fn();
     render(<FilterControls view="configuration" data={null} onApply={onApply} />);
-    fireEvent.change(screen.getByLabelText('Cari portal'), { target: { value: 'semarang' } });
+    fireEvent.change(screen.getByLabelText('Pencarian Portal'), { target: { value: 'semarang' } });
     fireEvent.click(screen.getByRole('button', { name: 'Terapkan' }));
     expect(onApply).toHaveBeenCalledWith(expect.stringContaining('search=semarang'));
   });
@@ -20,15 +20,16 @@ describe('Kontrol filter', () => {
   it('mengosongkan query saat filter dibersihkan', () => {
     const onApply = vi.fn();
     render(<FilterControls view="configuration" data={null} onApply={onApply} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Bersihkan filter' }));
+    fireEvent.change(screen.getByLabelText('Pencarian Portal'), { target: { value: 'semarang' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Bersihkan seluruh filter' }));
     expect(onApply).toHaveBeenCalledWith('');
   });
 
   it('merender medan audit untuk tampilan log keamanan', () => {
     render(<FilterControls view="audit" data={null} onApply={vi.fn()} />);
-    expect(screen.getByLabelText('Pelaku (ID)')).toBeDefined();
-    expect(screen.getByLabelText('Jenis Aksi')).toBeDefined();
-    expect(screen.getByLabelText('Hasil')).toBeDefined();
+    expect(screen.getByLabelText('ID Pelaku')).toBeDefined();
+    expect(screen.getByLabelText('Tipe Aksi')).toBeDefined();
+    expect(screen.getByLabelText('Status Eksekusi')).toBeDefined();
   });
 
   it('mencari portal dan melaporkan jumlah sebenarnya pada tampilan konfigurasi', () => {
@@ -40,9 +41,9 @@ describe('Kontrol filter', () => {
         onApply={onApply}
       />,
     );
-    expect(screen.getByLabelText('Cari portal')).toBeDefined();
+    expect(screen.getByLabelText('Pencarian Portal')).toBeDefined();
     expect(screen.getByText(/Menampilkan 1 dari 3\.432 portal/)).toBeDefined();
-    fireEvent.change(screen.getByLabelText('Cari portal'), { target: { value: 'semarang' } });
+    fireEvent.change(screen.getByLabelText('Pencarian Portal'), { target: { value: 'semarang' } });
     fireEvent.click(screen.getByRole('button', { name: 'Terapkan' }));
     expect(onApply).toHaveBeenCalledWith(expect.stringContaining('search=semarang'));
   });
@@ -50,8 +51,8 @@ describe('Kontrol filter', () => {
   it('menerapkan preset rentang cepat untuk tampilan telemetri', () => {
     const onApply = vi.fn();
     render(<FilterControls view="analytics" data={null} onApply={onApply} />);
-    expect(screen.getByLabelText('Dari tanggal')).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: '7 hari' }));
+    expect(screen.getByLabelText('Dari Tanggal')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: '7 Hari Terakhir' }));
     expect(onApply).toHaveBeenCalledWith(expect.stringContaining('from='));
     expect(onApply).toHaveBeenCalledWith(expect.stringContaining('to='));
   });

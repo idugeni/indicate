@@ -24,16 +24,16 @@ describe('PublisherForm attribution suggestion', () => {
     setup(vi.fn(async () => undefined));
     const name = screen.getByPlaceholderText(/radar jawa tengah sentral/i);
     fireEvent.change(name, { target: { value: 'RUTAN KELAS II B WONOSOBO' } });
-    await user.click(screen.getByLabelText(/jenis penerbit/i));
+    await user.click(screen.getByLabelText(/klasifikasi penerbit/i));
     await user.click(await screen.findByRole('option', { name: 'Institusi / Lembaga Kedinasan' }));
     fireEvent.blur(name);
-    expect((screen.getByPlaceholderText(/redaksi wonosobo news/i) as HTMLInputElement).value).toBe('Humas Rutan Wonosobo');
+    expect((screen.getByPlaceholderText(/redaksi radar jateng/i) as HTMLInputElement).value).toBe('Humas Rutan Wonosobo');
   });
 
   it('mempertahankan label yang ditulis manual', () => {
     setup(vi.fn(async () => undefined));
     const name = screen.getByPlaceholderText(/radar jawa tengah sentral/i);
-    const attribution = screen.getByPlaceholderText(/redaksi wonosobo news/i);
+    const attribution = screen.getByPlaceholderText(/redaksi radar jateng/i);
     fireEvent.change(attribution, { target: { value: 'Label Manual' } });
     fireEvent.change(name, { target: { value: 'RUTAN KELAS II B WONOSOBO' } });
     fireEvent.blur(name);
@@ -60,8 +60,8 @@ describe('PublisherForm submit', () => {
     const user = userEvent.setup();
     const command = vi.fn(async () => ({ id: 'pub-1' }));
     setup(command);
-    await user.click(screen.getByLabelText('Keputusan'));
-    await user.click(await screen.findByRole('option', { name: 'Setujui & Verifikasi' }));
+    await user.click(screen.getByLabelText(/keputusan tata kelola/i));
+    await user.click(await screen.findByRole('option', { name: 'Setujui & Terbitkan Status Resmi' }));
     fireEvent.click(screen.getByRole('button', { name: /terapkan keputusan/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'publisher.approve',

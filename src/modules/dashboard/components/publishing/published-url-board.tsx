@@ -1,8 +1,21 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Link2 } from 'lucide-react';
+import { useId, useMemo, useState } from 'react';
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  Globe,
+  Link2,
+  Radio,
+  Search,
+  Share2,
+  X,
+} from 'lucide-react';
+import { toast } from 'sonner';
 
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
@@ -10,6 +23,8 @@ import { useDashboardPage } from '@/modules/dashboard/components/shared/use-dash
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { formatMoment } from '@/modules/dashboard/components/shared/format-moment';
 import { PublishedUrlBlock } from '@/modules/dashboard/components/publishing/published-url-block';
+import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { AppTooltip } from '@/ui/app-tooltip';
 
 export interface PublishedArticleUrls {
   readonly articleId: string;
@@ -39,22 +54,10 @@ interface ArticleSiteInput {
   readonly publishedAt?: string | null;
 }
 
-/** Article cards rendered per pass. Matches the editorial archive page size. */
+type SortOption = 'newest' | 'oldest' | 'most-syndicated' | 'alphabetical';
+
 const PAGE_SIZE = 20;
 
-/**
- * Group every live portal URL per article, newest article first.
- *
- * @param input.articles - Articles in the caller's scope.
- * @param input.sites - Portal hostnames, keyed by site id.
- * @param input.articleSites - Assignment rows carrying the publication state.
- * @returns One entry per article that has at least one live URL, sorted newest first.
- * @remarks Only `published` rows count: an assignment that is still queued or
- * failed has no URL to share, and listing it would promise a link that 404s.
- * The URL falls back to `https://{hostname}/{slug}` — the shape the public
- * article route actually serves — so a row whose `published_url` was never
- * written still yields the address a reader can open.
- */
 export function collectPublishedUrls(input: {
   readonly articles: readonly ArticleInput[];
   readonly sites: readonly SiteInput[];
@@ -72,7 +75,11 @@ export function collectPublishedUrls(input: {
     const url = row.publishedUrl ?? `https://${host}/${article.slug}`;
     const bucket = urlsByArticle.get(row.articleId) ?? { urls: [], publishedAt: null };
     bucket.urls.push(url);
-    if (row.publishedAt !== null && row.publishedAt !== undefined && (bucket.publishedAt === null || row.publishedAt > bucket.publishedAt)) {
+    if (
+      row.publishedAt !== null &&
+      row.publishedAt !== undefined &&
+      (bucket.publishedAt === null || row.publishedAt > bucket.publishedAt)
+    ) {
       bucket.publishedAt = row.publishedAt;
     }
     urlsByArticle.set(row.articleId, bucket);
@@ -82,13 +89,15 @@ export function collectPublishedUrls(input: {
     .flatMap(([articleId, bucket]) => {
       const article = articleById.get(articleId);
       if (article === undefined) return [];
-      return [{
-        articleId,
-        title: article.title,
-        slug: article.slug,
-        publishedAt: bucket.publishedAt ?? article.publishedAt ?? null,
-        urls: [...new Set(bucket.urls)].sort((left, right) => left.localeCompare(right)),
-      }];
+      return [
+        {
+          articleId,
+          title: article.title,
+          slug: article.slug,
+          publishedAt: bucket.publishedAt ?? article.publishedAt ?? null,
+          urls: [...new Set(bucket.urls)].sort((left, right) => left.localeCompare(right)),
+        },
+      ];
     })
     .sort((left, right) => {
       if (left.publishedAt === right.publishedAt) return left.title.localeCompare(right.title, 'id-ID');
@@ -100,24 +109,18 @@ export function collectPublishedUrls(input: {
 
 function formatPublishedAt(value: string | null): string {
   const moment = formatMoment(value);
-  return moment === null ? 'Waktu tayang tidak tercatat' : `Tayang ${moment}`;
+  return moment === null ? 'Jadwal belum tercatat' : `Tayang ${moment}`;
 }
 
-/**
- * Page listing every published article with its live URLs, ready to share.
- *
- * @param props.data - Editorial workspace payload (articles, sites, articleSites).
- * @returns One compact card per published article with a collapsed copyable block, 20 per page.
- * @remarks Reads the state that is already durable, so the page shows the real
- * result without waiting on the publication worker: rows it lists are the ones
- * the reader can open right now. Pagination is by article rather than by URL so
- * a card's copyable block stays whole; one article can carry every portal in the
- * network, and splitting a block would break the paste-into-chat workflow the
- * page exists for.
- */
 export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
+  const searchInputId = useId();
+  const sortSelectId = useId();
+
   const [query, setQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<SortOption>('newest');
+  const [copiedSlugId, setCopiedSlugId] = useState<string | null>(null);
   const [page, setPage] = useDashboardPage('publishedPage');
+
   const model = (typeof data === 'object' && data !== null ? data : {}) as {
     readonly articles?: readonly ArticleInput[];
     readonly sites?: readonly SiteInput[];
@@ -125,68 +128,291 @@ export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
   };
 
   const published = useMemo(
-    () => collectPublishedUrls({
-      articles: model.articles ?? [],
-      sites: model.sites ?? [],
-      articleSites: model.articleSites ?? [],
-    }),
+    () =>
+      collectPublishedUrls({
+        articles: model.articles ?? [],
+        sites: model.sites ?? [],
+        articleSites: model.articleSites ?? [],
+      }),
     [model.articles, model.sites, model.articleSites],
   );
 
   const needle = query.trim().toLowerCase();
-  const filtered = useMemo(
-    () => (needle === ''
-      ? published
-      : published.filter((entry) => entry.title.toLowerCase().includes(needle) || entry.slug.toLowerCase().includes(needle))),
-    [published, needle],
+
+  const filteredAndSorted = useMemo(() => {
+    const result =
+      needle === ''
+        ? [...published]
+        : published.filter(
+          (entry) =>
+            entry.title.toLowerCase().includes(needle) ||
+            entry.slug.toLowerCase().includes(needle),
+        );
+
+    switch (sortOrder) {
+      case 'oldest':
+        result.sort((a, b) => {
+          if (a.publishedAt === b.publishedAt) return a.title.localeCompare(b.title, 'id-ID');
+          if (a.publishedAt === null) return 1;
+          if (b.publishedAt === null) return -1;
+          return a.publishedAt.localeCompare(b.publishedAt);
+        });
+        break;
+      case 'most-syndicated':
+        result.sort((a, b) => {
+          if (b.urls.length === a.urls.length) {
+            return (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '');
+          }
+          return b.urls.length - a.urls.length;
+        });
+        break;
+      case 'alphabetical':
+        result.sort((a, b) => a.title.localeCompare(b.title, 'id-ID'));
+        break;
+      case 'newest':
+      default:
+        result.sort((a, b) => {
+          if (a.publishedAt === b.publishedAt) return a.title.localeCompare(b.title, 'id-ID');
+          if (a.publishedAt === null) return 1;
+          if (b.publishedAt === null) return -1;
+          return b.publishedAt.localeCompare(a.publishedAt);
+        });
+        break;
+    }
+
+    return result;
+  }, [published, needle, sortOrder]);
+
+  const totalUrls = useMemo(
+    () => published.reduce((sum, entry) => sum + entry.urls.length, 0),
+    [published],
   );
 
-  const totalUrls = published.reduce((sum, entry) => sum + entry.urls.length, 0);
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const averageSyndication = useMemo(() => {
+    if (published.length === 0) return '0';
+    return (totalUrls / published.length).toFixed(1);
+  }, [published, totalUrls]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredAndSorted.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
-  const visible = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const visible = filteredAndSorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const handleCopySlug = (articleId: string, slug: string) => {
+    void navigator.clipboard.writeText(slug);
+    setCopiedSlugId(articleId);
+    toast.success(`Slug “${slug}” disalin ke papan klip.`);
+    setTimeout(() => setCopiedSlugId(null), 2000);
+  };
+
+  const handleCopyAllSummary = () => {
+    if (filteredAndSorted.length === 0) return;
+    const payload = filteredAndSorted
+      .slice(0, 50)
+      .map((entry) => `${entry.title}\n${entry.urls.join('\n')}`)
+      .join('\n\n---\n\n');
+
+    void navigator.clipboard.writeText(payload);
+    toast.success(`Daftar tautan ${Math.min(filteredAndSorted.length, 50)} artikel disalin.`);
+  };
 
   return (
-    <div className="space-y-4">
-      <SectionCard icon={Link2} title="Hasil Tayang" eyebrow="Siap dishare">
-        <div className="space-y-3">
-          <p className="m-0 font-sans text-xs text-paper-dim">
-            {published.length.toLocaleString('id-ID')} artikel tayang di {totalUrls.toLocaleString('id-ID')} portal. Salin satu blok per artikel untuk ditempel ke WhatsApp.
-          </p>
-          <Input
-            type="search"
-            value={query}
-            onChange={(event) => { setQuery(event.target.value); setPage(1); }}
-            placeholder="Cari judul atau slug artikel"
-            aria-label="Cari artikel yang tayang"
-            className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
-          />
+    <div className="flex flex-col gap-5">
+      <SectionCard
+        icon={Link2}
+        title="Distribusi Siaran & Tautan Tayang"
+        eyebrow="Monitoring Sindikasi Publikasi"
+      >
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="rounded-md border border-hairline bg-bg p-3">
+              <div className="flex items-center gap-2 text-paper-dim">
+                <Radio className="h-3.5 w-3.5 text-brass" />
+                <span className="font-mono text-[10px] uppercase tracking-wider">Artikel Tayang</span>
+              </div>
+              <p className="mt-1 font-mono text-base font-semibold tabular-nums text-paper">
+                {published.length.toLocaleString('id-ID')}
+              </p>
+            </div>
+
+            <div className="rounded-md border border-hairline bg-bg p-3">
+              <div className="flex items-center gap-2 text-paper-dim">
+                <Globe className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="font-mono text-[10px] uppercase tracking-wider">Tautan Portal Aktif</span>
+              </div>
+              <p className="mt-1 font-mono text-base font-semibold tabular-nums text-paper">
+                {totalUrls.toLocaleString('id-ID')}
+              </p>
+            </div>
+
+            <div className="col-span-2 rounded-md border border-hairline bg-bg p-3 sm:col-span-1">
+              <div className="flex items-center gap-2 text-paper-dim">
+                <Share2 className="h-3.5 w-3.5 text-brass" />
+                <span className="font-mono text-[10px] uppercase tracking-wider">Rata-Rata Sebaran</span>
+              </div>
+              <p className="mt-1 font-mono text-base font-semibold tabular-nums text-paper">
+                {averageSyndication} <span className="font-sans text-xs font-normal text-paper-dim">portal/berita</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex flex-1 flex-col gap-1.5">
+              <label
+                htmlFor={searchInputId}
+                className="font-mono text-xs uppercase tracking-wider text-paper-dim"
+              >
+                Cari Berita
+              </label>
+              <div className="relative flex items-center">
+                <Search className="pointer-events-none absolute left-3 h-3.5 w-3.5 text-paper-dim" />
+                <Input
+                  id={searchInputId}
+                  type="search"
+                  value={query}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Ketik judul artikel atau kode slug..."
+                  className="h-9 rounded-md border-hairline-strong bg-bg pl-9 pr-8 font-sans text-xs text-paper placeholder:text-paper-dim/50 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
+                />
+                {query !== '' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery('');
+                      setPage(1);
+                    }}
+                    className="absolute right-2.5 rounded p-0.5 text-paper-dim hover:text-paper"
+                    aria-label="Bersihkan pencarian"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex w-full flex-col gap-1.5 sm:w-56">
+              <label
+                htmlFor={sortSelectId}
+                className="font-mono text-xs uppercase tracking-wider text-paper-dim"
+              >
+                Urutan Tampilan
+              </label>
+              <DashboardSelect
+                id={sortSelectId}
+                value={sortOrder}
+                onValueChange={(val) => setSortOrder((val as SortOption) ?? 'newest')}
+                placeholder="Pilih urutan"
+              >
+                <DashboardSelectItem value="newest">Terbaru Ditayangkan</DashboardSelectItem>
+                <DashboardSelectItem value="oldest">Terlama Ditayangkan</DashboardSelectItem>
+                <DashboardSelectItem value="most-syndicated">Jaringan Portal Terbanyak</DashboardSelectItem>
+                <DashboardSelectItem value="alphabetical">Abjad Judul (A-Z)</DashboardSelectItem>
+              </DashboardSelect>
+            </div>
+
+            {filteredAndSorted.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCopyAllSummary}
+                className="h-9 shrink-0 gap-1.5 rounded-md border-hairline-strong px-3 font-sans text-xs hover:border-hairline"
+              >
+                <Copy className="h-3.5 w-3.5 text-brass" />
+                <span className="hidden md:inline">Salin Batch Laman</span>
+                <span className="md:hidden">Salin</span>
+              </Button>
+            )}
+          </div>
         </div>
       </SectionCard>
 
-      {filtered.length === 0 ? (
+      {filteredAndSorted.length === 0 ? (
         <EmptyState
-          title={published.length === 0 ? 'Belum ada artikel yang tayang.' : 'Tidak ada artikel yang cocok.'}
-          description={published.length === 0 ? 'Kirim artikel dari Antrean Penerbitan; hasilnya muncul di sini sendiri.' : 'Ubah kata kunci pencarian.'}
+          title={published.length === 0 ? 'Belum ada artikel yang tayang di jaringan' : 'Tidak ada berita yang cocok'}
+          description={
+            published.length === 0
+              ? 'Artikel yang disetujui dan disiarkan melalui antrean penerbitan akan muncul secara otomatis di sini.'
+              : 'Coba ubah kata kunci pencarian atau bersihkan filter.'
+          }
         />
       ) : (
-        <>
-          {visible.map((entry) => (
-            <SectionCard key={entry.articleId} icon={Link2} title={entry.title} eyebrow={formatPublishedAt(entry.publishedAt)}>
-              <p className="m-0 mb-2.5 font-mono text-[11px] text-paper-faint">/{entry.slug}</p>
-              <PublishedUrlBlock title={entry.title} urls={entry.urls} />
-            </SectionCard>
-          ))}
+        <div className="flex flex-col gap-3.5">
+          <div className="flex items-center justify-between px-1">
+            <span className="font-mono text-xs text-paper-dim">
+              Menampilkan {visible.length.toLocaleString('id-ID')} dari {filteredAndSorted.length.toLocaleString('id-ID')} artikel tersindikasi
+            </span>
+          </div>
 
-          <DashboardPager
-            startIndex={(safePage - 1) * PAGE_SIZE}
-            visibleCount={visible.length}
-            total={filtered.length}
-            page={safePage}
-            pageCount={pageCount}
-            onPageChange={setPage}
-          />
-        </>
+          {visible.map((entry) => {
+            const isSlugCopied = copiedSlugId === entry.articleId;
+            const primaryUrl = entry.urls[0];
+
+            return (
+              <SectionCard
+                key={entry.articleId}
+                icon={Link2}
+                title={entry.title}
+                eyebrow={formatPublishedAt(entry.publishedAt)}
+              >
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline/60 pb-2">
+                    <div className="flex items-center gap-1.5">
+                      <AppTooltip label="Klik untuk menyalin slug">
+                        <button
+                          type="button"
+                          onClick={() => handleCopySlug(entry.articleId, entry.slug)}
+                          className="group inline-flex items-center gap-1 rounded bg-bg px-2 py-0.5 font-mono text-[11px] text-paper-dim transition hover:bg-bg-raised hover:text-paper"
+                        >
+                          <span>/{entry.slug}</span>
+                          {isSlugCopied ? (
+                            <Check className="h-3 w-3 text-emerald-400" />
+                          ) : (
+                            <Copy className="h-3 w-3 opacity-60 group-hover:opacity-100" />
+                          )}
+                        </button>
+                      </AppTooltip>
+
+                      <Badge
+                        variant="outline"
+                        className="border-brass/30 bg-brass/10 font-mono text-[10px] text-brass"
+                      >
+                        {entry.urls.length} Portal Aktif
+                      </Badge>
+                    </div>
+
+                    {primaryUrl && (
+                      <a
+                        href={primaryUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 font-mono text-[11px] text-paper-dim transition hover:text-brass"
+                      >
+                        <span>Kunjungi Portal Utama</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+
+                  <PublishedUrlBlock title={entry.title} urls={entry.urls} />
+                </div>
+              </SectionCard>
+            );
+          })}
+
+          <div className="mt-2 border-t border-hairline/60 pt-2">
+            <DashboardPager
+              startIndex={(safePage - 1) * PAGE_SIZE}
+              visibleCount={visible.length}
+              total={filteredAndSorted.length}
+              page={safePage}
+              pageCount={pageCount}
+              onPageChange={setPage}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

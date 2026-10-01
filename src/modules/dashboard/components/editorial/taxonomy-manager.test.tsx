@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { TaxonomyManager } from '@/modules/dashboard/components/editorial/taxonomy-manager';
@@ -37,9 +37,9 @@ describe('TaxonomyManager', () => {
     const user = userEvent.setup();
     const command = vi.fn(async () => ({}));
     setup(command);
-    await user.type(screen.getByLabelText('Nama kategori'), 'Olahraga');
-    await user.type(screen.getByLabelText(/Kode kategori/), 'olahraga');
-    await user.click(screen.getByRole('button', { name: 'Tambah kategori' }));
+    await user.type(screen.getByLabelText('Nama Kategori'), 'Olahraga');
+    expect((screen.getByLabelText('Slug URL') as HTMLInputElement).value).toBe('olahraga');
+    await user.click(screen.getByRole('button', { name: 'Daftarkan Kategori' }));
     await waitFor(() => expect(command).toHaveBeenCalledWith('category.create', { name: 'Olahraga', slug: 'olahraga' }));
   });
 
@@ -48,7 +48,7 @@ describe('TaxonomyManager', () => {
     const command = vi.fn(async () => ({}));
     setup(command);
     await user.click(screen.getByRole('button', { name: 'Hapus kategori Ekonomi' }));
-    await user.click(await screen.findByRole('button', { name: 'Ya, hapus kategori' }));
+    await user.click(await screen.findByRole('button', { name: 'Ya, Hapus Kategori' }));
     await waitFor(() => expect(command).toHaveBeenCalledWith('category.delete', { id: 'c-2', expectedVersion: 3 }));
   });
 
@@ -65,11 +65,11 @@ describe('TaxonomyManager', () => {
     const user = userEvent.setup();
     const command = vi.fn(async () => ({}));
     setup(command);
-    await user.click(screen.getByLabelText('Tag asal'));
-    await user.click(await screen.findByRole('option', { name: 'harga-emas' }));
-    await user.type(screen.getByLabelText('Tag tujuan'), 'logam-mulia');
-    await user.click(screen.getByRole('button', { name: 'Ubah nama di semua artikel' }));
-    await waitFor(() => expect(command).toHaveBeenCalledWith('tag.rename', { from: 'harga-emas', to: 'logam-mulia' }));
+    await user.click(screen.getByLabelText('Tag Asal'));
+    await user.click(await screen.findByRole('option', { name: '#harga-emas (2 artikel)' }));
+    await user.type(screen.getByLabelText('Tag Tujuan'), 'logammulia');
+    await user.click(screen.getByRole('button', { name: 'Perbarui Nama Tag' }));
+    await waitFor(() => expect(command).toHaveBeenCalledWith('tag.rename', { from: 'harga-emas', to: 'logammulia' }));
   });
 
   it('menghapus tag setelah konfirmasi', async () => {
@@ -77,7 +77,7 @@ describe('TaxonomyManager', () => {
     const command = vi.fn(async () => ({}));
     setup(command);
     await user.click(screen.getByRole('button', { name: 'Hapus tag politik' }));
-    await user.click(await screen.findByRole('button', { name: 'Ya, hapus tag' }));
+    await user.click(await screen.findByRole('button', { name: 'Ya, Hapus Tag' }));
     await waitFor(() => expect(command).toHaveBeenCalledWith('tag.remove', { tag: 'politik' }));
   });
 
@@ -86,9 +86,10 @@ describe('TaxonomyManager', () => {
     const command = vi.fn(async () => ({}));
     setup(command);
     await user.click(screen.getByRole('button', { name: 'Ubah kategori Politik' }));
-    await user.clear(screen.getByLabelText('Ubah nama'));
-    await user.type(screen.getByLabelText('Ubah nama'), 'Politik Baru');
-    await user.click(screen.getByRole('button', { name: 'Simpan perubahan' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.clear(within(dialog).getByLabelText('Nama Kategori'));
+    await user.type(within(dialog).getByLabelText('Nama Kategori'), 'Politik Baru');
+    await user.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'category.update',
       expect.objectContaining({ id: 'c-1', expectedVersion: 1, name: 'Politik Baru' }),
@@ -111,7 +112,7 @@ describe('TaxonomyManager', () => {
   it('menyaring kanal lewat cari dan status', async () => {
     const user = userEvent.setup();
     render(<TaxonomyManager data={DATA} command={async () => ({})} />);
-    await user.type(screen.getByLabelText('Cari kanal'), 'eko');
+    await user.type(screen.getByLabelText('Cari Kategori'), 'eko');
     expect(screen.queryByText('Politik')).toBeNull();
     expect(screen.getByText('Ekonomi')).toBeDefined();
   });
@@ -120,8 +121,8 @@ describe('TaxonomyManager', () => {
     const { container } = render(
       <TaxonomyManager data={{ categories: [], tags: [] }} command={async () => ({})} />,
     );
-    expect(screen.getByText('Belum ada kanal kategori. Buat dari formulir di atas.')).toBeDefined();
-    expect(screen.getByText('Belum ada tag topik. Tag muncul sendiri setelah artikel memakai kolom tag.')).toBeDefined();
+    expect(screen.getByText('Belum ada kanal kategori yang dibuat')).toBeDefined();
+    expect(screen.getByText('Belum ada tag yang digunakan dalam artikel')).toBeDefined();
     expect(screen.queryByRole('button', { name: /Ke halaman kanal sebelumnya/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /Ke halaman tag berikutnya/ })).toBeNull();
     expect(container.textContent).not.toContain('0–0 dari 0');
@@ -130,8 +131,8 @@ describe('TaxonomyManager', () => {
   it('menyalahkan saringan, bukan data, saat kanal ada tetapi tidak cocok', async () => {
     const user = userEvent.setup();
     render(<TaxonomyManager data={DATA} command={async () => ({})} />);
-    await user.type(screen.getByLabelText('Cari kanal'), 'tidak-ada-sama-sekali');
-    expect(screen.getByText('Tidak ada kanal yang cocok. Longgarkan saringan atau buat dari formulir di atas.')).toBeDefined();
+    await user.type(screen.getByLabelText('Cari Kategori'), 'tidak-ada-sama-sekali');
+    expect(screen.getByText('Tidak ada kategori yang cocok dengan filter')).toBeDefined();
     expect(screen.getByRole('button', { name: /Ke halaman tag sebelumnya/ })).toBeDefined();
   });
 });

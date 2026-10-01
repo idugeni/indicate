@@ -77,28 +77,28 @@ describe('PublishedUrlBoard', () => {
   it('merender satu kartu ringkas per artikel dengan blok yang bisa dibuka', () => {
     render(<PublishedUrlBoard data={{ articles: ARTICLES, sites: SITES, articleSites: ARTICLE_SITES }} />);
     expect(screen.getByText('Berita Pertama')).toBeDefined();
-    expect(screen.getByText('2 URL tayang')).toBeDefined();
-    expect(screen.queryByLabelText('Daftar URL untuk Berita Pertama')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /lihat url/i }));
-    expect(screen.getByLabelText('Daftar URL untuk Berita Pertama').textContent).toContain('1. https://alpha.example/berita-pertama');
+    expect(screen.getByText('2 URL Tayang')).toBeDefined();
+    expect(screen.queryByText('https://alpha.example/berita-pertama')).toBeNull();
+    fireEvent.click(screen.getAllByRole('button', { name: /buka detail/i })[0]!);
+    expect(screen.getByText('https://alpha.example/berita-pertama')).toBeDefined();
   });
 
   it('menyaring artikel berdasarkan judul dan slug', () => {
     render(<PublishedUrlBoard data={{ articles: ARTICLES, sites: SITES, articleSites: ARTICLE_SITES }} />);
-    fireEvent.change(screen.getByLabelText('Cari artikel yang tayang'), { target: { value: 'tidak-ada' } });
-    expect(screen.getByText('Tidak ada artikel yang cocok.')).toBeDefined();
-    fireEvent.change(screen.getByLabelText('Cari artikel yang tayang'), { target: { value: 'berita-pertama' } });
+    fireEvent.change(screen.getByLabelText('Cari Berita'), { target: { value: 'tidak-ada' } });
+    expect(screen.getByText('Tidak ada berita yang cocok')).toBeDefined();
+    fireEvent.change(screen.getByLabelText('Cari Berita'), { target: { value: 'berita-pertama' } });
     expect(screen.getByText('Berita Pertama')).toBeDefined();
   });
 
   it('menyatakan kosong saat belum ada yang tayang', () => {
     render(<PublishedUrlBoard data={{ articles: ARTICLES, sites: SITES, articleSites: [] }} />);
-    expect(screen.getByText('Belum ada artikel yang tayang.')).toBeDefined();
+    expect(screen.getByText('Belum ada artikel yang tayang di jaringan')).toBeDefined();
   });
 
   it('tahan payload rusak tanpa melempar', () => {
     render(<PublishedUrlBoard data={null} />);
-    expect(screen.getByText('Belum ada artikel yang tayang.')).toBeDefined();
+    expect(screen.getByText('Belum ada artikel yang tayang di jaringan')).toBeDefined();
   });
 });
 
@@ -142,8 +142,8 @@ describe('PublishedUrlBoard pagination', () => {
 
   it('menyorot satu blok URL utuh per artikel setelah dibuka, tidak memotong antarhalaman', () => {
     render(<PublishedUrlBoard data={pagedData} />);
-    fireEvent.click(screen.getAllByRole('button', { name: /lihat url/i })[0]!);
-    expect(screen.getByLabelText('Daftar URL untuk Berita 00').textContent).toContain('1. https://alpha.example/berita-00');
+    fireEvent.click(screen.getAllByRole('button', { name: /buka detail/i })[0]!);
+    expect(screen.getByText('https://alpha.example/berita-00')).toBeDefined();
   });
 
   it('kembali ke halaman pertama saat kata kunci berubah', () => {
@@ -151,7 +151,7 @@ describe('PublishedUrlBoard pagination', () => {
     fireEvent.click(screen.getByLabelText('Ke halaman berikutnya'));
     expect(screen.getByRole('status').textContent).toBe('21–25 dari 25');
 
-    fireEvent.change(screen.getByLabelText('Cari artikel yang tayang'), { target: { value: 'Berita 00' } });
+    fireEvent.change(screen.getByLabelText('Cari Berita'), { target: { value: 'Berita 00' } });
     expect(screen.getByRole('status').textContent).toBe('1–1 dari 1');
   });
 });
