@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
 
 import { getControlHosts } from '@/core/config/edge-hosts';
-import { config as proxyConfig, proxy } from '@/proxy';
+import { config as proxyConfig, indexNowKeyFileResponse, isIndexNowKeyFile, proxy } from '@/proxy';
 
 const HOSTS = getControlHosts();
 
@@ -200,5 +200,36 @@ describe('proxy cache-control', () => {
     const invalid = await proxy(request('-buruk-.example', '/'));
     expect(invalid.status).toBe(400);
     expect(invalid.headers.get('cache-control')).toContain('private, no-store');
+  });
+});
+
+describe('proxy indexnow', () => {
+  it('mengenali file kunci indexnow', () => {
+    expect(isIndexNowKeyFile('/abc12345.txt')).toBe(true);
+    expect(isIndexNowKeyFile('/berita-utama')).toBe(false);
+    expect(isIndexNowKeyFile('/logo.png')).toBe(false);
+  });
+
+  it('menyajikan kunci yang cocok dengan cache edge lama', async () => {
+    const response = indexNowKeyFileResponse('/abc12345.txt', 'abc12345');
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('abc12345');
+    expect(response.headers.get('cache-control')).toContain('s-maxage=86400');
+  });
+
+  it('menolak kunci yang tidak cocok atau nonaktif', async () => {
+    expect(indexNowKeyFileResponse('/lain.txt', 'abc12345').status).toBe(404);
+    expect(indexNowKeyFileResponse('/abc12345.txt', null).status).toBe(404);
+  });
+
+  it('menyajikan file kunci dari edge tanpa origin', async () => {
+    process.env.INDEXNOW_KEY = 'abc12345';
+    try {
+      const response = await proxy(request('portal.example', '/abc12345.txt'));
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain('text/plain');
+    } finally {
+      delete process.env.INDEXNOW_KEY;
+    }
   });
 });

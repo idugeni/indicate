@@ -136,6 +136,19 @@ describe('validateBootstrapConfig gagal', () => {
     expect(invalid.success).toBe(false);
   });
 
+  it('menerima INDEXNOW_KEY opsional dan menolak format salah', () => {
+    const valid = validateBootstrapConfig({ ...validEnv(), INDEXNOW_KEY: 'abc12345-DEF67890' });
+    expect(valid.success).toBe(true);
+    if (!valid.success) return;
+    expect(valid.config.seo.indexnowKey).toBe('abc12345-DEF67890');
+    const missing = validateBootstrapConfig(validEnv());
+    expect(missing.success).toBe(true);
+    if (!missing.success) return;
+    expect(missing.config.seo.indexnowKey).toBe(null);
+    const invalid = validateBootstrapConfig({ ...validEnv(), INDEXNOW_KEY: 'pendek' });
+    expect(invalid.success).toBe(false);
+  });
+
   it('menerima kredensial google oauth dan smtp resend opsional', () => {
     const valid = validateBootstrapConfig({
       ...validEnv(),

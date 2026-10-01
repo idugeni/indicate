@@ -6,6 +6,7 @@ import { MediaService } from '@/modules/publishing/media-service';
 import { PublicationService } from '@/modules/publishing/publication-service';
 import { PublicationWorker } from '@/modules/publishing/publication-worker';
 import { HttpSharePrewarm } from '@/modules/publishing/share-prewarm';
+import { HttpIndexNowSubmitter } from '@/integrations/indexnow/indexnow-submitter';
 import { ApiKeyService } from '@/modules/integrations/api-key-service';
 import { CustomerService } from '@/modules/integrations/customer-service';
 import { RateLimitService } from '@/modules/integrations/rate-limit-service';
@@ -108,6 +109,7 @@ export function createPublicationWorkerComposition(config: RuntimeConfig, bootst
         undefined,
         undefined,
         new HttpSharePrewarm(),
+        config.seo.indexnowKey === null ? null : new HttpIndexNowSubmitter(config.seo.indexnowKey),
       );
     },
   };

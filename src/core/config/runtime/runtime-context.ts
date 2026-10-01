@@ -167,6 +167,7 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
     seo: Object.freeze({
       defaultLocale: bootstrap.seo.defaultLocale,
       defaultAssetUrl: bootstrap.seo.defaultAssetUrl,
+      indexnowKey: bootstrap.seo.indexnowKey,
     }),
   });
 }

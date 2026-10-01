@@ -27,6 +27,7 @@ const INDICATE_NAMESPACE_PREFIXES = [
   'GENERIC_',
   'CRON_',
   'GOOGLE_',
+  'INDEXNOW_',
   'DEFAULT_',
   'SITE_',
   'APP_',
@@ -74,6 +75,7 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'GENERIC_WEBHOOK_SECRET',
   'CRON_SECRET',
   'GOOGLE_SITE_VERIFICATION',
+  'INDEXNOW_KEY',
   'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
   'TURNSTILE_REPORT_SECRETS',
 ]);
@@ -230,6 +232,10 @@ const bootstrapSchema = z
       .string()
       .regex(/^[A-Za-z0-9_-]{8,128}$/)
       .optional(),
+    INDEXNOW_KEY: z
+      .string()
+      .regex(/^[A-Za-z0-9-]{8,128}$/)
+      .optional(),
     GOOGLE_CLIENT_ID: z
       .string()
       .regex(/^[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/)
@@ -308,6 +314,7 @@ export interface BootstrapConfig {
     readonly defaultLocale: string;
     readonly defaultAssetUrl: string;
     readonly googleSiteVerification: string | null;
+    readonly indexnowKey: string | null;
   }>;
   readonly supabase: Readonly<{
     readonly projectRef?: string;
@@ -388,6 +395,7 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       defaultLocale: value.DEFAULT_LOCALE,
       defaultAssetUrl: value.SITE_DEFAULT_ASSET_URL,
       googleSiteVerification: value.GOOGLE_SITE_VERIFICATION ?? null,
+      indexnowKey: value.INDEXNOW_KEY ?? null,
     }),
     supabase: Object.freeze({
       projectRef,

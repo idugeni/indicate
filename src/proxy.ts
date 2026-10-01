@@ -151,6 +151,34 @@ const TENANT_ALIASES: Record<string, string> = {
   '/terms': '/syarat-ketentuan',
 };
 const TENANT_GONE = new Set(['/services', '/pricing', '/network', '/partners', '/faq']);
+
+/**
+ * Matches an IndexNow key-file request at the host root.
+ *
+ * @param path - Request pathname.
+ * @returns True when the path looks like `/{8,128 key chars}.txt`.
+ */
+export function isIndexNowKeyFile(path: string): boolean {
+  return /^\/[A-Za-z0-9-]{8,128}\.txt$/u.test(path);
+}
+
+/**
+ * Serves the IndexNow ownership key file directly from the edge.
+ *
+ * @param path - Request pathname already matched by `isIndexNowKeyFile`.
+ * @param key - Configured platform key; null disables the surface.
+ * @returns 200 text/plain with long edge cache on exact match, else 404.
+ */
+export function indexNowKeyFileResponse(path: string, key: string | null): NextResponse {
+  if (key !== null && path === `/${key}.txt`) {
+    const response = new NextResponse(`${key}\n`, {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=86400, stale-while-revalidate=600' },
+    });
+    return withSecurityHeaders(response);
+  }
+  return deny(404, new Headers());
+}
 /**
  * Control surfaces that must never render on tenant hostnames.
  *
@@ -223,6 +251,7 @@ export async function proxy(request: NextRequest) {
   const canonicalSlash = trailingSlashRedirect(request);
   if (canonicalSlash !== null) return canonicalSlash;
   const path = request.nextUrl.pathname;
+  if (isIndexNowKeyFile(path)) return indexNowKeyFileResponse(path, process.env.INDEXNOW_KEY ?? null);
   if (isPlatformPath(path)) {
     const allowlist = parsePlatformAllowedIps(process.env[PLATFORM_ALLOWED_IPS_ENV]);
     const originSecret = process.env[PLATFORM_ORIGIN_SECRET_ENV] ?? '';

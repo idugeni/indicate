@@ -102,5 +102,6 @@ export interface RuntimeConfig {
   readonly seo: {
     readonly defaultLocale: string;
     readonly defaultAssetUrl: string;
+    readonly indexnowKey: string | null;
   };
 }

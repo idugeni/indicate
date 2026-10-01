@@ -229,6 +229,40 @@ describe('PublicationWorker run', () => {
     await expect(worker.run('w-1')).resolves.toEqual({ claimed: 1, processed: 1, reconciled: 0, cleaned: 0, failed: 0 });
     expect(prewarmer.prewarm).toHaveBeenCalledWith(['https://portal.example/a']);
   });
+
+  it('meneruskan url terbit ke indexnow dan bertahan saat gagal', async () => {
+    const claim: QueueClaim = { logicalId: 'org-1:job-1', claimToken: 't-1', leaseExpiresAt: new Date() };
+    const queue = queueStub([claim]);
+    const workerClaim: WorkerClaim = { organizationId: 'org-1', jobId: 'job-1', workerId: 'w-1', fencingToken: 1, leaseExpiresAt: new Date().toISOString() };
+    const target: PublicationTargetRecord = {
+      id: 'tgt-1', organizationId: 'org-1', jobId: 'job-1', articleSiteId: 'as-1', siteId: 'site-1', state: 'queued',
+      attempt: 1, fencingToken: 1, nextAttemptAt: '2026-09-18T00:00:00.000Z', startedAt: null, finishedAt: null,
+      publishedUrl: null, publishedAt: null, sanitizedError: null,
+    };
+    const terminal: PublicationStatusProjection = {
+      job: jobRecord({ state: 'published', finalizedAt: '2026-09-19T11:00:00.000Z' }),
+      targets: [{ ...target, state: 'published', publishedUrl: 'https://portal.test/a' }],
+      result: { finalState: 'published', successfulCount: 1, urls: ['https://portal.test/a'] },
+    };
+    const served = { done: false };
+    const repository = repositoryStub({
+      claimJob: async () => workerClaim,
+      runnableTargets: async () => {
+        if (served.done) return [];
+        served.done = true;
+        return [target];
+      },
+      transitionTarget: (async () => ({ status: terminal, receiptId: 'rc-1' })) as never,
+      getPublication: async () => terminal,
+    });
+    const indexNow = { submit: vi.fn(async () => undefined) };
+    const worker = new PublicationWorker(repository, queue, PUBLISHER, STORAGE, POLICY, undefined, undefined, undefined, indexNow);
+    await expect(worker.run('w-1')).resolves.toEqual({ claimed: 1, processed: 1, reconciled: 0, cleaned: 0, failed: 0 });
+    expect(indexNow.submit).toHaveBeenCalledWith(['https://portal.example/a']);
+    const failing = { submit: vi.fn(async () => { throw new Error('jaringan putus'); }) };
+    const resilient = new PublicationWorker(repositoryStub(), queueStub(), PUBLISHER, STORAGE, POLICY, undefined, undefined, undefined, failing);
+    await expect(resilient.run('w-1')).resolves.toEqual({ claimed: 0, processed: 0, reconciled: 0, cleaned: 0, failed: 0 });
+  });
 });
 
 describe('PublicationWorker reconcile', () => {

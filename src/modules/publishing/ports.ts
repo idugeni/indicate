@@ -228,6 +228,18 @@ export interface PublicationSharePrewarmPort {
   prewarm(urls: readonly string[]): Promise<void>;
 }
 
+/**
+ * Notifies IndexNow-enabled search engines about freshly published URLs.
+ *
+ * @remarks Implementations never throw and bound every fetch with a timeout:
+ * IndexNow delivery is opportunistic telemetry-grade work that must never
+ * delay or fail the worker. A single shared platform key fans out to Bing,
+ * Yandex, Naver, and other participants via the global endpoint.
+ */
+export interface PublicationIndexNowPort {
+  submit(urls: readonly string[]): Promise<void>;
+}
+
 export class PublishingAccessDeniedError extends Error {
   constructor() { super('Publishing tenant resource unavailable'); }
 }
