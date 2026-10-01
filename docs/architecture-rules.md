@@ -50,7 +50,7 @@ Two layers, two owners:
 
 A dispatch batch is bounded by the claim lease, so `dispatch()` runs its per-task work through a bounded-concurrency helper rather than a sequential loop. The ceiling stays under `DEFAULT_POOL_MAX`: a sequential loop over `batch_size` tasks can outlive the lease it was claimed under, the claim SQL then re-selects the same rows with a fresh token, and the batch repeats forever without completing anything.
 
-When adding a tenant-visible mutation: build a `NetworkMutation`, call `planInvalidation()`, persist via `createInvalidation()` in the committing transaction. Do not call `revalidateTag`/`revalidatePath` inline from the CMS route (exception: the marketing `site-content` tag with hourly TTL, invalidated directly in `src/app/api/dashboard/content/route.ts:139`).
+When adding a tenant-visible mutation: build a `NetworkMutation`, call `planInvalidation()`, persist via `createInvalidation()` in the committing transaction. Do not call `revalidateTag`/`revalidatePath` inline from the CMS route (exception: the marketing `site-content` tag with hourly TTL, invalidated directly in `src/app/api/dashboard/content/route.ts:119`).
 
 ## 5. Database access & egress policy
 
