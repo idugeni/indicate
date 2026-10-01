@@ -7,10 +7,10 @@ import { ClipboardCopy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /**
- * Renders the shareable text of a published article: its headline, then every
- * live URL numbered in display order.
+ * Renders the shareable text of a published article: every live URL numbered
+ * in display order, headline excluded so the WhatsApp paste stays clean.
  *
- * @param params.title - Article headline, omitted from the text when blank.
+ * @param params.title - Article headline, kept out of the copied text.
  * @param params.urls - Live URLs in the order they should be numbered.
  * @returns Plain text, no code fence, so pasting it into a chat leaves clean lines.
  * @remarks Numbering follows display order rather than publish order, so the
@@ -46,7 +46,7 @@ export function PublishedUrlBlock({
 }) {
   const [isCopied, setIsCopied] = useState(false);
   if (urls.length === 0) return null;
-  const text = formatPublishedUrlBlock({ title, urls });
+  const text = formatPublishedUrlBlock({ urls });
 
   const copy = async () => {
     try {

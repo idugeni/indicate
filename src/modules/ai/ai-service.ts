@@ -125,7 +125,7 @@ export interface AiServiceDeps {
 
 async function logAiRequest(db: AiDb, entry: AiRequestLogEntry): Promise<void> {
   try {
-    const tools = entry.toolsExecuted === undefined ? null : [...entry.toolsExecuted];
+    const tools = toToolsParam(entry.toolsExecuted);
     await db.execute(
       sql`insert into ai_request_logs (correlation_id, channel, provider_id, model_name, credential_id, organization_id, status, retry_count, latency_ms, prompt_tokens, completion_tokens, total_tokens, tools_executed, error_class, error_message) values (${entry.correlationId}, ${entry.channel}, ${entry.providerId}, ${entry.modelName}, ${entry.credentialId}, ${entry.organizationId ?? null}, ${entry.status}, ${entry.retryCount}, ${entry.latencyMs}, ${entry.promptTokens ?? 0}, ${entry.completionTokens ?? 0}, ${entry.totalTokens ?? 0}, ${tools}, ${entry.errorClass ?? null}, ${entry.errorMessage ?? null})`,
     );
@@ -151,6 +151,20 @@ export function computeRetryDelayMs(retryNumber: number, random: () => number = 
   const exponential = AI_RETRY_BASE_DELAY_MS * 2 ** Math.max(0, retryNumber - 1);
   const capped = Math.min(exponential, AI_RETRY_MAX_DELAY_MS);
   return capped + Math.floor(random() * AI_RETRY_BASE_DELAY_MS);
+}
+
+/**
+ * Menormalkan daftar tool untuk kolom array Postgres.
+ *
+ * @param tools - Nama tool yang dieksekusi model; kosong di semua jalur dasbor.
+ * @returns Null bila tidak ada; daftar baru bila ada.
+ * @remarks Array kosong dikirim sebagai null karena driver pooler gagal
+ * menserialkan literal array kosong, yang membuat baris audit sukses hilang
+ * tanpa suara sementara baris gagal (null) tercatat normal.
+ */
+export function toToolsParam(tools: readonly string[] | undefined): string[] | null {
+  if (tools === undefined || tools.length === 0) return null;
+  return [...tools];
 }
 
 function defaultSleep(ms: number): Promise<void> {

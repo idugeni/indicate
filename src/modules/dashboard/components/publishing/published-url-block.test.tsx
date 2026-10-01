@@ -19,13 +19,15 @@ function stubClipboard() {
 
 describe('formatPublishedUrlBlock', () => {
   it('bernomor urut mengikuti urutan tampil dan tidak memakai code fence', () => {
-    expect(formatPublishedUrlBlock({ title: 'Judul Berita', urls: ['https://a.example/slug', 'https://b.example/slug'] })).toBe(
-      'Judul Berita\n\n1. https://a.example/slug\n2. https://b.example/slug',
+    expect(formatPublishedUrlBlock({ urls: ['https://a.example/slug', 'https://b.example/slug'] })).toBe(
+      '1. https://a.example/slug\n2. https://b.example/slug',
     );
   });
 
-  it('lewatkan judul kosong tanpa baris kosong di depan', () => {
-    expect(formatPublishedUrlBlock({ title: '   ', urls: ['https://a.example/slug'] })).toBe('1. https://a.example/slug');
+  it('tanpa judul agar salinan WA bersih', () => {
+    expect(formatPublishedUrlBlock({ title: 'Judul Berita', urls: ['https://a.example/slug'] })).toBe(
+      'Judul Berita\n\n1. https://a.example/slug',
+    );
   });
 });
 
@@ -38,7 +40,7 @@ describe('PublishedUrlBlock', () => {
   it('menampilkan nomor urut sesuai isi blok', () => {
     render(<PublishedUrlBlock title="Judul Berita" urls={['https://a.example/slug', 'https://b.example/slug']} />);
     const block = screen.getByLabelText('Daftar URL untuk Judul Berita').textContent;
-    expect(block).toBe('Judul Berita\n\n1. https://a.example/slug\n2. https://b.example/slug');
+    expect(block).toBe('1. https://a.example/slug\n2. https://b.example/slug');
     expect(screen.getByText('2 URL tayang')).toBeDefined();
   });
 
@@ -49,7 +51,7 @@ describe('PublishedUrlBlock', () => {
     fireEvent.click(screen.getByRole('button', { name: /salin untuk whatsapp/i }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     const copied = writeText.mock.calls[0]![0];
-    expect(copied.split('\n')).toHaveLength(502);
+    expect(copied.split('\n')).toHaveLength(500);
     expect(copied).toContain('500. https://portal-499.example/slug');
   });
 

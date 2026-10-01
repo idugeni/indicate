@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { computeRetryDelayMs, executeAiQuery, type AiRequestLogEntry, type AiServiceDeps } from '@/modules/ai/ai-service';
+import { computeRetryDelayMs, executeAiQuery, toToolsParam, type AiRequestLogEntry, type AiServiceDeps } from '@/modules/ai/ai-service';
 import { aiRateLimitWindow, aiRpmKey } from '@/modules/ai/ai-rate-limit';
 import type { AiDb } from '@/modules/ai/ai-types';
 
@@ -324,8 +324,7 @@ describe('executeAiQuery enforcement rpm/tpm', () => {
   });
 });
 
-describe('computeRetryDelayMs', () => {
-  it('tumbuh eksponensial dengan random nol', () => {
+describe('computeRetryDelayMs', () => {  it('tumbuh eksponensial dengan random nol', () => {
     expect(computeRetryDelayMs(1, () => 0)).toBe(500);
     expect(computeRetryDelayMs(2, () => 0)).toBe(1000);
     expect(computeRetryDelayMs(3, () => 0)).toBe(2000);
@@ -334,5 +333,19 @@ describe('computeRetryDelayMs', () => {
   it('terbatas pada cap plus jitter satu base', () => {
     expect(computeRetryDelayMs(10, () => 0)).toBe(3000);
     expect(computeRetryDelayMs(10, () => 0.999)).toBeLessThanOrEqual(3500);
+  });
+});
+
+describe('toToolsParam', () => {
+  it('undefined dan array kosong menjadi null', () => {
+    expect(toToolsParam(undefined)).toBeNull();
+    expect(toToolsParam([])).toBeNull();
+  });
+
+  it('menyalin array terisi', () => {
+    const source = ['cari_berita'];
+    const result = toToolsParam(source);
+    expect(result).toEqual(['cari_berita']);
+    expect(result).not.toBe(source);
   });
 });
