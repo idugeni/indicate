@@ -27,6 +27,14 @@ import { DateTimeField } from '@/modules/dashboard/components/shared/date-time-f
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -1056,30 +1064,50 @@ export function ArticleCreateForm({
               </div>
               {generatingTitles && titleVariants === null ? <AiPending label="Menyusun varian judul" rows={[100, 80]} /> : null}
               {titleVariants !== null ? (
-                <ul className="m-0 list-none space-y-1 p-0">
-                  {titleVariants.map((item) => (
-                    <li key={item} className="flex items-center justify-between gap-2">
-                      <span className="min-w-0 flex-1 truncate font-sans text-xs text-paper">{item}</span>
-                      <span className="flex flex-none items-center gap-1">
-                        <Button type="button" variant="ghost" size="xs" onClick={() => handleTitleChange(item)}>
-                          <span>Pakai</span>
-                        </Button>
-                      </span>
-                    </li>
-                  ))}
-                  <li>
-                    <AppTooltip label="Minta varian judul lain">
-                      <AiActionButton
-                        busy={aiAction === 'title-variants'}
-                        idleLabel="Buat ulang varian"
-                        icon={RefreshCw}
-                        size="xs"
-                        disabled={!aiReady}
-                        onClick={() => refineTitles('title-variants')}
-                      />
-                    </AppTooltip>
-                  </li>
-                </ul>
+                <div className="space-y-2">
+                  <div className="overflow-hidden rounded-lg border border-hairline">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b border-hairline hover:bg-transparent">
+                          <TableHead className="w-8 px-2 py-1.5 font-mono text-[10px] font-medium uppercase tracking-wider text-paper-faint">No</TableHead>
+                          <TableHead className="px-2 py-1.5 font-mono text-[10px] font-medium uppercase tracking-wider text-paper-faint">Varian judul</TableHead>
+                          <TableHead className="w-16 px-2 py-1.5 font-mono text-[10px] font-medium uppercase tracking-wider text-paper-faint">Panjang</TableHead>
+                          <TableHead className="w-20 px-2 py-1.5 text-right font-mono text-[10px] font-medium uppercase tracking-wider text-paper-faint">Aksi</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {titleVariants.map((item, index) => (
+                          <TableRow key={item} className="border-b border-hairline align-top last:border-0">
+                            <TableCell className="px-2 py-1.5 align-top font-mono text-[11px] tabular-nums text-paper-faint">{index + 1}</TableCell>
+                            <TableCell className="px-2 py-1.5 align-top">
+                              <p className="m-0 line-clamp-2 break-words font-sans text-xs leading-relaxed text-paper">{item}</p>
+                            </TableCell>
+                            <TableCell className="px-2 py-1.5 align-top">
+                              <span className={`font-mono text-[11px] tabular-nums ${item.length <= 60 ? 'text-signal' : item.length <= 100 ? 'text-brass' : 'text-error'}`}>
+                                {item.length}/60
+                              </span>
+                            </TableCell>
+                            <TableCell className="px-2 py-1.5 text-right align-top">
+                              <Button type="button" variant="outline" size="xs" onClick={() => handleTitleChange(item)}>
+                                <span>Pakai</span>
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <AppTooltip label="Minta varian judul lain">
+                    <AiActionButton
+                      busy={aiAction === 'title-variants'}
+                      idleLabel="Buat ulang varian"
+                      icon={RefreshCw}
+                      size="xs"
+                      disabled={!aiReady}
+                      onClick={() => refineTitles('title-variants')}
+                    />
+                  </AppTooltip>
+                </div>
               ) : null}
             </Field>
             <Field>
