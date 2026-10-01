@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
 import type { ReactNode } from 'react';
-import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Toaster } from '@/components/ui/sonner';
 import { WEBMCP_BRIDGE_PATH, WEBMCP_DEFAULT_PACKS, WEBMCP_MCP_PATH } from '@/modules/webmcp/bridge-source';
 import { SERVICE_SUMMARY } from '@/ui/site/marketing-content';
@@ -134,7 +133,13 @@ export default function RootLayout({
         <script type="module" async src={WEBMCP_BRIDGE_PATH} data-packs={WEBMCP_DEFAULT_PACKS} data-mcp-url={WEBMCP_MCP_PATH} />
         {children}
         <Toaster />
-        <SpeedInsights />
+        {process.env.NEXT_PUBLIC_CF_BEACON_TOKEN === undefined || process.env.NEXT_PUBLIC_CF_BEACON_TOKEN === '' ? null : (
+          <script
+            defer
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon={JSON.stringify({ token: process.env.NEXT_PUBLIC_CF_BEACON_TOKEN })}
+          />
+        )}
       </body>
     </html>
   );
