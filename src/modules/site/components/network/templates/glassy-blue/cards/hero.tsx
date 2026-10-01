@@ -136,7 +136,7 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
               </div>
             </div>
             <div className="flex flex-none items-center gap-2">
-              <GlassyBlueHeroActions slug={article.slug} title={article.title} />
+              <GlassyBlueHeroActions slug={article.slug} title={article.title} href={article.href} />
               <Link
                 href={article.href}
                 aria-label={`Baca: ${article.title}`}

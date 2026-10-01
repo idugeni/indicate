@@ -53,6 +53,22 @@ describe('TemplateShareButton', () => {
     expect(await screen.findByText('Tautan tersalin!')).toBeDefined();
   });
 
+  it('memakai href absolut apa adanya untuk artikel warisan', async () => {
+    render(
+      <TemplateShareButton
+        slug="berita-x"
+        title="Judul X"
+        href="https://wonosobo.portal.example/berita-x"
+        className="tombol"
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Bagikan artikel' }));
+    await screen.findByRole('dialog');
+    expect(screen.getByRole('link', { name: 'Bagikan ke WhatsApp' }).getAttribute('href')).toContain(
+      encodeURIComponent('https://wonosobo.portal.example/berita-x'),
+    );
+  });
+
   it('menampilkan lima kanal dalam satu baris di semua lebar layar', async () => {
     render(<TemplateShareButton slug="berita-x" title="Judul X" className="tombol" />);
     fireEvent.click(screen.getByRole('button', { name: 'Bagikan artikel' }));

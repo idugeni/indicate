@@ -78,7 +78,7 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
               Baca Selengkapnya
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
-            <RedEditorialHeroActions slug={article.slug} title={article.title} />
+            <RedEditorialHeroActions slug={article.slug} title={article.title} href={article.href} />
           </div>
         </div>
 

@@ -15,20 +15,23 @@ import { cn } from '@/ui/cn';
 export type TemplateShareButtonProps = {
   readonly slug: string;
   readonly title: string;
+  /** Absolute or host-relative article URL; defaults to the slug path on the current host. */
+  readonly href?: string | undefined;
   readonly className?: string | undefined;
 };
 
 /**
  * Share button opening the channel dialog on every platform.
  *
- * @param props - Article slug and title plus caller shape classes.
+ * @param props - Article slug, title, optional href, plus caller shape classes.
  * @returns Round icon button plus a `--tpl-*`-themed channel dialog.
  */
-export function TemplateShareButton({ slug, title, className }: TemplateShareButtonProps) {
+export function TemplateShareButton({ slug, title, href, className }: TemplateShareButtonProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const url = typeof window === 'undefined' ? `/${slug}` : `${window.location.origin}/${slug}`;
+  const path = href ?? `/${slug}`;
+  const url = typeof window === 'undefined' ? path : /^https?:\/\//iu.test(path) ? path : `${window.location.origin}${path}`;
   const shareText = encodeURIComponent(`${title} ${url}`);
 
   const openShare = () => {

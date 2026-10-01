@@ -50,7 +50,7 @@ export function WarmEditorialHero({ article }: { readonly article: ArticleListIt
             Baca Selengkapnya
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
-          <WarmEditorialHeroActions slug={article.slug} title={article.title} />
+          <WarmEditorialHeroActions slug={article.slug} title={article.title} href={article.href} />
         </div>
       </div>
 

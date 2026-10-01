@@ -59,7 +59,7 @@ export function SoftBlueHero({ article }: { readonly article: ArticleListItem })
               <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} dateVariant="long" />
             </div>
           </div>
-          <SoftBlueHeroActions slug={article.slug} title={article.title} />
+          <SoftBlueHeroActions slug={article.slug} title={article.title} href={article.href} />
         </div>
       </div>
       </div>

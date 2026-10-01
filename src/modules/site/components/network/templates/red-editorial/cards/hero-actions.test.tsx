@@ -34,4 +34,16 @@ describe('RedEditorialHeroActions', () => {
       expect(toast.success).toHaveBeenCalledWith('Tautan tersalin');
     });
   });
+
+  it('meneruskan href absolut artikel warisan ke kanal', async () => {
+    Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
+    render(
+      <RedEditorialHeroActions slug="berita-x" title="Judul X" href="https://wonosobo.portal.example/berita-x" />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Bagikan artikel' }));
+    await screen.findByRole('dialog');
+    expect(screen.getByRole('link', { name: 'Bagikan ke WhatsApp' }).getAttribute('href')).toContain(
+      encodeURIComponent('https://wonosobo.portal.example/berita-x'),
+    );
+  });
 });

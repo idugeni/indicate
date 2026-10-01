@@ -69,7 +69,7 @@ export function PurpleEditorialHero({ article }: { readonly article: ArticleList
             </div>
           </div>
           <div className="flex flex-none items-center gap-2">
-            <PurpleEditorialHeroActions slug={article.slug} title={article.title} />
+            <PurpleEditorialHeroActions slug={article.slug} title={article.title} href={article.href} />
             <Link
               href={article.href}
               aria-label={`Baca: ${article.title}`}
