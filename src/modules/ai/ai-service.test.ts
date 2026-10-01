@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { computeRetryDelayMs, executeAiQuery, toToolsParam, type AiRequestLogEntry, type AiServiceDeps } from '@/modules/ai/ai-service';
+import { computeRetryDelayMs, executeAiQuery, normalizeCachePrompt, toToolsParam, type AiRequestLogEntry, type AiServiceDeps } from '@/modules/ai/ai-service';
 import { aiRateLimitWindow, aiRpmKey } from '@/modules/ai/ai-rate-limit';
 import type { AiDb } from '@/modules/ai/ai-types';
 
@@ -324,9 +324,102 @@ describe('executeAiQuery enforcement rpm/tpm', () => {
   });
 });
 
+describe('normalizeCachePrompt', () => {
+  it('trim, gabung whitespace, dan lowercase', () => {
+    expect(normalizeCachePrompt('  Tulis   RINGKASAN\nberita\tHARI ini  ')).toBe('tulis ringkasan berita hari ini');
+  });
+
+  it('murni dan stabil untuk varian spasi sama', () => {
+    expect(normalizeCachePrompt('Berita  Hari Ini')).toBe(normalizeCachePrompt('  berita hari ini\n'));
+  });
+});
+
+describe('executeAiQuery mode retry', () => {
+  const LIMITED_POLICY = {
+    ...POLICY_ROW,
+    primary_provider_id: 'gemini',
+    fallback_provider_id: null,
+    default_model: 'gemini-3.8-flash',
+    fallback_model: 'gemini-3.6-flash',
+    max_retries: 1,
+    per_key_retry_limit: 1,
+  };
+
+  it('interactive default fail-fast ke fallback setelah satu percobaan', async () => {
+    const fake = setup(
+      [[credentialRow('cred-1', 'gemini'), credentialRow('cred-2', 'gemini')], [credentialRow('cred-2', 'gemini')]],
+      LIMITED_POLICY,
+    );
+    const result = await executeAiQuery(depsFor(fake, undefined, ['gemini-3.8-flash']), PROMPT);
+    expect(result.modelName).toBe('gemini-3.6-flash');
+    expect(fake.adapterCalls).toEqual([
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
+      { providerId: 'gemini', modelName: 'gemini-3.6-flash' },
+    ]);
+  });
+
+  it('background mengizinkan batas atas existing sebelum fallback', async () => {
+    const fake = setup(
+      [[credentialRow('cred-1', 'gemini'), credentialRow('cred-2', 'gemini')], [credentialRow('cred-2', 'gemini')]],
+      LIMITED_POLICY,
+    );
+    const result = await executeAiQuery(depsFor(fake, undefined, ['gemini-3.8-flash']), { ...PROMPT, mode: 'background' });
+    expect(result.modelName).toBe('gemini-3.6-flash');
+    expect(fake.adapterCalls).toEqual([
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
+      { providerId: 'gemini', modelName: 'gemini-3.6-flash' },
+    ]);
+  });
+});
+
+describe('executeAiQuery cache dan redactor', () => {
+  it('lookup cache memakai prompt ternormalisasi', async () => {
+    const fake = setup([[credentialRow('cred-1', 'gemini')]]);
+    const seen: string[] = [];
+    const stored: string[] = [];
+    const result = await executeAiQuery(
+      depsFor(fake, {
+        cache: {
+          lookup: async (prompt: string) => {
+            seen.push(prompt);
+            return null;
+          },
+          store: async (prompt: string) => {
+            stored.push(prompt);
+          },
+        },
+      }),
+      { ...PROMPT, prompt: '  Tulis   RINGKASAN berita hari ini  ' },
+    );
+    expect(result.providerId).toBe('gemini');
+    expect(seen).toEqual(['tulis ringkasan berita hari ini']);
+    expect(stored).toEqual(['tulis ringkasan berita hari ini']);
+  });
+
+  it('redactor opsional membersihkan prompt sebelum kirim', async () => {
+    const fake = setup([[credentialRow('cred-1', 'gemini')]]);
+    const sent: string[] = [];
+    const result = await executeAiQuery(
+      depsFor(fake, {
+        resolveAdapter: () => ({
+          execute: async (_apiKey: string, _model: string, prompt: { readonly prompt: string }) => {
+            sent.push(prompt.prompt);
+            return { text: 'Jawaban redaksi yang cukup panjang.', tokensUsage: { prompt: 10, completion: 20, total: 30 }, toolCallsExecuted: [] as string[] };
+          },
+        }),
+      }),
+      { ...PROMPT, prompt: 'Hubungi 08123456789 segera.', redactor: (text: string) => text.replace(/08\d+/, '[redacted]') },
+    );
+    expect(result.providerId).toBe('gemini');
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toContain('[redacted]');
+    expect(sent[0]).not.toContain('08123456789');
+  });
+});
+
 describe('computeRetryDelayMs', () => {
-  it('tumbuh eksponensial dengan random nol', () => {
-    expect(computeRetryDelayMs(1, () => 0)).toBe(500);
+  it('tumbuh eksponensial dengan random nol', () => {    expect(computeRetryDelayMs(1, () => 0)).toBe(500);
     expect(computeRetryDelayMs(2, () => 0)).toBe(1000);
     expect(computeRetryDelayMs(3, () => 0)).toBe(2000);
   });

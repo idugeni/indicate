@@ -61,6 +61,12 @@ export interface AiProviderAdapter {
   ): Promise<AiAdapterResult>;
 }
 
+/**
+ * Hasil mentah satu eksekusi adapter provider sebelum redaksi output.
+ *
+ * @remarks `text` boleh kosong bila provider mengembalikan media saja;
+ * entri kosong tanpa media diperlakukan sebagai respons malformed.
+ */
 export interface AiAdapterResult {
   readonly text: string;
   readonly tokensUsage?:
@@ -144,6 +150,39 @@ export const AI_RETRY_MAX_DELAY_MS = 3000;
 export const GATEWAY_FALLBACK_MIN_TOKENS = 2048;
 
 /**
+ * Batas pakai-ulang satu key dalam mode background.
+ *
+ * @remarks Sama dengan clamp atas `perKeyRetryLimit` interaktif; mode
+ * background memakai angka ini langsung tanpa membaca policy.
+ */
+export const AI_BACKGROUND_PER_KEY_LIMIT = 5;
+
+/**
+ * Mode eksekusi retry untuk satu query.
+ *
+ * @remarks `interactive` adalah default dan mempertahankan batas existing:
+ * tiap model dicoba terbatas lalu fail-fast ke model fallback berikutnya
+ * dalam rantai. `background` mengizinkan batas atas existing (hingga
+ * `credentials.length` percobaan per model dan
+ * `AI_BACKGROUND_PER_KEY_LIMIT` pakai-ulang per key) untuk pekerjaan
+ * latar yang tidak diburu waktu.
+ */
+export type AiExecutionMode = 'interactive' | 'background';
+
+/**
+ * Permintaan generasi untuk `executeAiQuery` dengan hook eksekusi opsional.
+ *
+ * @remarks Memperluas `AiChatPrompt` tanpa mengubah kolom existing; `mode`
+ * default `interactive` dan `redactor` default `undefined`, sehingga
+ * keduanya mempertahankan perilaku lama bila tidak diisi. Scrub PII
+ * penuh milik modul lain; `redactor` hanya titik panggil opsional.
+ */
+export interface AiServicePrompt extends AiChatPrompt {
+  readonly mode?: AiExecutionMode | undefined;
+  readonly redactor?: ((text: string) => string) | undefined;
+}
+
+/**
  * Menghitung jeda exponential backoff plus jitter penuh untuk satu retry.
  *
  * @param retryNumber - Nomor retry mulai dari 1 (percobaan kedua).
@@ -154,6 +193,16 @@ export function computeRetryDelayMs(retryNumber: number, random: () => number = 
   const exponential = AI_RETRY_BASE_DELAY_MS * 2 ** Math.max(0, retryNumber - 1);
   const capped = Math.min(exponential, AI_RETRY_MAX_DELAY_MS);
   return capped + Math.floor(random() * AI_RETRY_BASE_DELAY_MS);
+}
+
+/**
+ * Menormalkan prompt menjadi kunci cache semantik.
+ *
+ * @param prompt - Teks prompt mentah dari pemanggil.
+ * @returns Prompt yang di-trim, whitespace berurutan digabung satu spasi, dan lowercase.
+ */
+export function normalizeCachePrompt(prompt: string): string {
+  return prompt.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
 /**
@@ -202,17 +251,24 @@ async function executeWithTimeout(
  * Execute one guarded generation across the provider fallback chain.
  *
  * @param deps - Injected database, budget, adapter, cache, log, and clock boundaries.
- * @param promptData - Caller request with tenant scope and channel.
+ * @param promptData - Caller request with tenant scope, channel, and optional execution hooks.
  * @returns Generation result with secret-scrubbed text and masked credential identity.
  * @remarks Pipeline order is fixed: injection guardrail, global budget,
- * optional semantic cache, per-key provider retries, output redaction, then
- * request logging. Plaintext keys stay inside the key loop and are never
- * logged or returned.
+ * optional semantic cache (keyed by `normalizeCachePrompt`), per-key
+ * provider retries, output redaction, then request logging. Plaintext keys
+ * stay inside the key loop and are never logged or returned. Mode
+ * `interactive` (default) bounds per-model attempts by policy then
+ * fail-fast to the next fallback model; `background` allows the existing
+ * upper bounds instead. When `redactor` is provided it runs on the prompt
+ * text before wrapping and sending; `undefined` keeps legacy behavior.
  */
 export async function executeAiQuery(
   deps: AiServiceDeps,
-  promptData: AiChatPrompt,
+  promptData: AiServicePrompt,
 ): Promise<AiGenerationResult> {
+  const mode: AiExecutionMode = promptData.mode ?? 'interactive';
+  const scrubbedPrompt =
+    promptData.redactor === undefined ? promptData.prompt : promptData.redactor(promptData.prompt);
   const clock = deps.clock ?? (() => new Date());
   const correlationId =
     promptData.correlationId ?? `req_${clock().getTime()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -290,7 +346,7 @@ export async function executeAiQuery(
   );
   const effectivePrompt: AiChatPrompt = {
     ...promptData,
-    prompt: isStaff ? promptData.prompt : wrapUntrustedUserInput(promptData.prompt),
+    prompt: isStaff ? scrubbedPrompt : wrapUntrustedUserInput(scrubbedPrompt),
     systemInstruction,
     thinkingConfig,
   };
@@ -299,8 +355,9 @@ export async function executeAiQuery(
   const targetModel = promptData.modelOverride ?? policy.defaultModel;
   const hasImages = (promptData.images?.length ?? 0) > 0;
   const wantsMedia = (promptData.responseModalities?.length ?? 0) > 0;
+  const cacheKey = normalizeCachePrompt(promptData.prompt);
   if (deps.cache !== undefined && !hasImages && !wantsMedia && historyLength <= 2 && promptData.prompt.length >= 6) {
-    const hit = await deps.cache.lookup(promptData.prompt, targetModel).catch(() => null);
+    const hit = await deps.cache.lookup(cacheKey, targetModel).catch(() => null);
     if (hit !== null) {
       await log({
         correlationId,
@@ -374,7 +431,10 @@ export async function executeAiQuery(
 
   const sleep = deps.sleep ?? defaultSleep;
   const timeoutMs = Math.min(Math.max(policy.requestTimeoutMs || 60000, 1000), 300000);
-  const perKeyLimit = Math.min(Math.max(policy.perKeyRetryLimit || 1, 1), 5);
+  const perKeyLimit =
+    mode === 'background'
+      ? AI_BACKGROUND_PER_KEY_LIMIT
+      : Math.min(Math.max(policy.perKeyRetryLimit || 1, 1), 5);
   const breakerStore = deps.rateLimit?.store;
   const fullChain = resolveAiModelChain(policy, promptData.modelOverride);
   const openChain: Array<{ readonly providerId: string; readonly modelName: string }> = [];
@@ -397,7 +457,8 @@ export async function executeAiQuery(
     });
     if (credentials.length === 0) continue;
 
-    const maxRetries = Math.min(policy.maxRetries || 3, credentials.length);
+    const maxRetries =
+      mode === 'background' ? credentials.length : Math.min(policy.maxRetries || 3, credentials.length);
     for (let attempt = 0; attempt < maxRetries; attempt += 1) {
       totalAttempts += 1;
       if (attempt > 0) await sleep(computeRetryDelayMs(attempt));
@@ -456,7 +517,7 @@ export async function executeAiQuery(
 
         if (deps.cache !== undefined && !hasImages && !wantsMedia && result.text.length > 20) {
           deps.cache
-            .store(promptData.prompt, result.text, modelName, 86400)
+            .store(cacheKey, result.text, modelName, 86400)
             .catch(() => undefined);
         }
 
