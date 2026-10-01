@@ -1,0 +1,32 @@
+name: Cache Prune
+
+# Actions cache menumpuk tiap push (batas repo 10 GB): hapus entri yang
+# tidak disentuh 14 hari. Entri aktif tetap dipakai ulang CI berikutnya;
+# yang terhapus dibangun ulang otomatis saat dibutuhkan.
+on:
+  schedule:
+    # Senin 03:30 Asia/Jakarta, sebelum dependabot mingguan.
+    - cron: '30 20 * * 0'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cutoff=$(date -d '14 days ago' +%s)
+          deleted=0
+          while read -r id at; do
+            [ -z "$id" ] && continue
+            if [ "$(date -d "$at" +%s)" -lt "$cutoff" ]; then
+              gh cache delete "$id" && deleted=$((deleted + 1))
+            fi
+          done < <(gh cache list --limit 100 --json id,lastAccessedAt -q '.[] | "\(.id) \(.lastAccessedAt)"')
+          echo "deleted=${deleted}"

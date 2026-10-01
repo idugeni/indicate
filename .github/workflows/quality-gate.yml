@@ -2,8 +2,12 @@ name: Release Quality Gate
 
 on:
   pull_request:
+    paths-ignore:
+      - '**/*.md'
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
   schedule:
     # Senin 04:00 Asia/Jakarta, setelah dependabot mingguan (03:00),
     # agar bit-rot eksternal ketahuan tanpa menunggu push.

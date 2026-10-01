@@ -1,0 +1,40 @@
+name: Docs Gate
+
+# Ringan untuk perubahan dokumentasi saja: quality gate penuh memakai
+# paths-ignore untuk **/*.md, jadi file md tetap dijaga workflow ini.
+on:
+  pull_request:
+    paths:
+      - '**/*.md'
+  push:
+    branches: [main]
+    paths:
+      - '**/*.md'
+  schedule:
+    # Ikut Senin 04:00 Asia/Jakarta agar link check berkala tetap jalan
+    # walau tak ada push dokumen.
+    - cron: '0 21 * * 0'
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    concurrency:
+      group: docs-gate-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint:md
+      - run: npm run lint:md:citations
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: --no-progress --timeout 20 --max-retries 2 --exclude-path 'docs/vercel-multi-tenant/**' --exclude 'https://www.whatsmydns.net/*' '*.md' 'docs/**/*.md' '.github/**/*.md' 'workers/**/*.md' 'src/**/*.md' 'public/**/*.md'
+          fail: true
