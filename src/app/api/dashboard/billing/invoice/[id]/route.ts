@@ -1,18 +1,14 @@
 import { cookies } from 'next/headers';
 import { z } from 'zod';
 
-import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
+import { authenticateDashboardUser, authorizeDashboardPlatform } from '@/modules/auth/authenticate-dashboard';
 import { BillingService } from '@/modules/billing/billing-service';
 import type { InvoiceRecord } from '@/modules/billing/models';
 import { terbilangIdr } from '@/modules/billing/terbilang';
 import { COMPANY_EMAIL, COMPANY_NAME } from '@/modules/site/company-contact';
-import { getPublicConfig } from '@/core/config/public-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
-import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { getSharedRuntimeDatabase } from '@/data/client';
-import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzleBillingRepository } from '@/data/repos/billing';
-import { UuidGenerator } from '@/core/system/uuid-generator';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 
@@ -330,25 +326,13 @@ async function handleGET(request: Request, context: { readonly params: Promise<{
     return new Response('Not Found', { status: 404 });
   }
   const cookieStore = await cookies();
-  const publicConfig = getPublicConfig(process.env);
-  const auth = createSupabaseSsrAuthAdapter({
-    url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey,
-    cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }),
-  });
-  const identity = await auth.verifyCookieSession();
-  if (identity === null) return new Response('Not Found', { status: 404 });
   const serverContext = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(serverContext.bootstrap);
+  const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
+  if (user === null) return new Response('Not Found', { status: 404 });
+  const actor = await authorizeDashboardPlatform(runtime.db, user, requestId, parsed.data.organizationId);
+  if (actor === null) return new Response('Not Found', { status: 404 });
   {
-    const authorization = new DrizzleAuthorizationRepository(runtime.db);
-    const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
-    if (!local.ok || local.value.status !== 'active') return new Response('Not Found', { status: 404 });
-    const platformPermissions = await authorization.listPlatformPermissions(local.value.id);
-    const actor = {
-      actorType: 'user' as const, actorId: local.value.id, verifiedAuthUserId: identity.authUserId,
-      organizationId: null, permissionSet: new Set<string>(), platformPermissionSet: new Set(platformPermissions),
-      entryPoint: 'dashboard' as const, requestId,
-    };
     const service = new BillingService(new DrizzleBillingRepository(runtime.db));
     const result = await service.invoiceDetail(actor, parsed.data.organizationId, id);
     if (!result.ok) return new Response('Not Found', { status: 404 });

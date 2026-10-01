@@ -2,17 +2,14 @@ import { cookies } from 'next/headers';
 import { after, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
+import { authenticateDashboardUser, authorizeDashboardOrganization } from '@/modules/auth/authenticate-dashboard';
 import { MediaService } from '@/modules/publishing/media-service';
 import { PublicationService } from '@/modules/publishing/publication-service';
-import { getPublicConfig } from '@/core/config/public-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
-import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getSharedRuntimeDatabase } from '@/data/client';
-import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import {
   DrizzlePublishingRepository,
   MEDIA_SNAPSHOT_COLLECTIONS,
@@ -76,25 +73,19 @@ export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'R
 
 async function contextFor(organizationId: string, requestId: string): Promise<ContextResult> {
   const cookieStore = await cookies();
-  const publicConfig = getPublicConfig(process.env);
-  const auth = createSupabaseSsrAuthAdapter({ url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey, cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }) });
-  const identity = await auth.verifyCookieSession();
-  if (identity === null) {
+  const context = await getServerRuntimeContext();
+  const config = context.config;
+  const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
+  if (user === null) {
     logEvent('warn', { event: 'publishing.auth.denied', requestId, context: { reason: 'no_session' } });
     return createPublicError('UNAUTHENTICATED', 'Sesi berakhir. Muat ulang lalu masuk kembali.', requestId);
   }
-  const context = await getServerRuntimeContext(); const config = context.config; const runtime = getSharedRuntimeDatabase(context.bootstrap); const authorization = new DrizzleAuthorizationRepository(runtime.db);
-  const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
-  if (!local.ok) {
-    logEvent('warn', { event: 'publishing.auth.denied', requestId, context: { reason: 'identity_unavailable' } });
-    return createNonDisclosingDenial(requestId);
-  }
-  const membership = await authorization.findActiveMembership(organizationId, local.value.id);
-  if (membership === null || !membership.roleActive) {
+  const actor = await authorizeDashboardOrganization(runtime.db, user, organizationId, requestId);
+  if (actor === null) {
     logEvent('warn', { event: 'publishing.auth.denied', requestId, context: { reason: 'no_membership' } });
     return createNonDisclosingDenial(requestId);
   }
-  const actor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), regionScopeId: membership.regionId ?? null, entryPoint: 'dashboard', requestId };
   const repository = new DrizzlePublishingRepository(runtime.db);
   const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, publicBucketName: config.r2.publicBucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey });
   const queue = new UpstashPublicationQueueAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace, resourceId: config.redis.resourceId });

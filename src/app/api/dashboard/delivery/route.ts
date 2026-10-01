@@ -1,18 +1,13 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
+import { authenticateDashboardUser, authorizeDashboardOrganization } from '@/modules/auth/authenticate-dashboard';
 import { DeliveryOperationPendingError } from '@/modules/delivery/domain-provisioning-service';
-import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
-import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
-import { UuidGenerator } from '@/core/system/uuid-generator';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { DeliveryConflictError, DeliveryResourceUnavailableError } from '@/modules/delivery/ports';
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
-import { getPublicConfig } from '@/core/config/public-config';
 import { deliveryOperationsComposition } from '@/modules/delivery';
 
 const commandSchema = z.object({ organizationId: z.uuid(), siteId: z.uuid(), action: z.enum(['activate', 'deactivate']), hostname: z.string().min(1).max(253), previousHostname: z.string().min(1).max(253).nullable().optional() });
@@ -39,14 +34,12 @@ async function handlePOST(request: Request) {
   const composition = await deliveryOperationsComposition();
   try {
     const cookieStore = await cookies();
-    const publicConfig = getPublicConfig(process.env);
-    const auth = createSupabaseSsrAuthAdapter({ url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey, cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }) });
-    const identity = await auth.verifyCookieSession(); if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
-    const authorization = new DrizzleAuthorizationRepository(composition.runtime.db);
-    const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator()); if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
-    const membership = await authorization.findActiveMembership(parsed.data.organizationId, local.value.id);
-    if (membership === null || !membership.roleActive || !membership.orgPermissions.has('sites.manage')) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
-    const actor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId: parsed.data.organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), regionScopeId: membership.regionId ?? null, entryPoint: 'dashboard', requestId };
+    const user = await authenticateDashboardUser(composition.runtime.db, cookieStore, requestId);
+    if (user === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+    const actor = await authorizeDashboardOrganization(composition.runtime.db, user, parsed.data.organizationId, requestId);
+    if (actor === null || !actor.permissionSet.has('sites.manage')) {
+      return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+    }
     if (parsed.data.action === 'activate') {
       const context = await composition.provisioning.activate(actor, parsed.data.siteId, parsed.data.hostname, new Date(), parsed.data.previousHostname ?? null);
       return NextResponse.json(context);

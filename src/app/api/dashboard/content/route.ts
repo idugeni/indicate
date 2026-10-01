@@ -3,15 +3,11 @@ import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { z } from 'zod';
 
-import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
-import { getPublicConfig } from '@/core/config/public-config';
-import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
+import { authenticateDashboardUser } from '@/modules/auth/authenticate-dashboard';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
-import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
+import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getSharedRuntimeDatabase } from '@/data/client';
-import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { ContentAdminAccessDeniedError, DrizzleContentAdminRepository } from '@/data/repos/content/admin';
-import { UuidGenerator } from '@/core/system/uuid-generator';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
 
@@ -68,22 +64,14 @@ const commandSchema = z.discriminatedUnion('action', [
 async function handleGET() {
   const requestId = crypto.randomUUID();
   const cookieStore = await cookies();
-  const publicConfig = getPublicConfig(process.env);
-  const auth = createSupabaseSsrAuthAdapter({
-    url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey,
-    cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }),
-  });
-  const identity = await auth.verifyCookieSession();
-  if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
+  if (user === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   {
-    const authorization = new DrizzleAuthorizationRepository(runtime.db);
-    const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
-    if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     const repository = new DrizzleContentAdminRepository(runtime.db);
     try {
-      return NextResponse.json(await repository.listContent(identity.authUserId, local.value.id));
+      return NextResponse.json(await repository.listContent(user.authUserId, user.localUserId));
     } catch {
       return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     }
@@ -111,29 +99,21 @@ async function handlePOST(request: Request) {
   const parsed = commandSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json(createPublicError('INVALID_INPUT', 'Invalid content command.', requestId), { status: 400 });
   const cookieStore = await cookies();
-  const publicConfig = getPublicConfig(process.env);
-  const auth = createSupabaseSsrAuthAdapter({
-    url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey,
-    cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }),
-  });
-  const identity = await auth.verifyCookieSession();
-  if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
+  if (user === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   {
-    const authorization = new DrizzleAuthorizationRepository(runtime.db);
-    const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
-    if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     const repository = new DrizzleContentAdminRepository(runtime.db);
     try {
       const command = parsed.data;
       switch (command.action) {
-        case 'testimonial.save': await repository.saveTestimonial(identity.authUserId, local.value.id, command.row); break;
-        case 'faq.save': await repository.saveFaq(identity.authUserId, local.value.id, command.row); break;
-        case 'showcase.save': await repository.saveShowcaseEntry(identity.authUserId, local.value.id, command.row); break;
-        case 'channel.save': await repository.saveChannel(identity.authUserId, local.value.id, command.row); break;
-        case 'template.save': await repository.saveTemplatePreset(identity.authUserId, local.value.id, command.row); break;
-        case 'row.delete': await repository.deleteContentRow(identity.authUserId, local.value.id, command.kind, command.id); break;
+        case 'testimonial.save': await repository.saveTestimonial(user.authUserId, user.localUserId, command.row); break;
+        case 'faq.save': await repository.saveFaq(user.authUserId, user.localUserId, command.row); break;
+        case 'showcase.save': await repository.saveShowcaseEntry(user.authUserId, user.localUserId, command.row); break;
+        case 'channel.save': await repository.saveChannel(user.authUserId, user.localUserId, command.row); break;
+        case 'template.save': await repository.saveTemplatePreset(user.authUserId, user.localUserId, command.row); break;
+        case 'row.delete': await repository.deleteContentRow(user.authUserId, user.localUserId, command.kind, command.id); break;
       }
       try {
         revalidateTag('site-content', 'max');

@@ -2,9 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
-import { DASHBOARD_ACCESS_KEY_COOKIE } from '@/modules/auth/dashboard-access-keys/cookie';
-import { resolveAccessKeyActor } from '@/modules/auth/dashboard-access-keys/resolve-access-key-actor';
+import { authenticateDashboardUser, authorizeDashboardOrganization } from '@/modules/auth/authenticate-dashboard';
 import { DashboardAccessKeyService } from '@/modules/auth/dashboard-access-keys/access-key-service';
 import { DrizzleDashboardAccessKeyRepository } from '@/data/repos/dashboard-access-keys';
 import { AiService } from '@/modules/integrations/ai-service';
@@ -12,13 +10,10 @@ import { ApiKeyService } from '@/modules/integrations/api-key-service';
 import { CustomerService } from '@/modules/integrations/customer-service';
 import { EmailTestService } from '@/modules/integrations/email-test-service';
 import { RateLimitService } from '@/modules/integrations/rate-limit-service';
-import { getPublicConfig } from '@/core/config/public-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getSharedRuntimeDatabase } from '@/data/client';
-import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzleAiRepository } from '@/data/repos/ai';
 import { DrizzleIntegrationsRepository } from '@/data/repos/integrations';
 import { createResendEmailApiAdapter } from '@/integrations/email/resend-email-api';
@@ -43,25 +38,17 @@ type ContextResult = Context | PublicErrorEnvelope; const isError = (value: Cont
 
 async function contextFor(organizationId: string, requestId: string): Promise<ContextResult> {
   const cookieStore = await cookies();
-  const publicConfig = getPublicConfig(process.env); const auth = createSupabaseSsrAuthAdapter({ url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey, cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }) });
-  const identity = await auth.verifyCookieSession();
-  const context = await getServerRuntimeContext(); const config = context.config; const runtime = getSharedRuntimeDatabase(context.bootstrap); const authorization = new DrizzleAuthorizationRepository(runtime.db);
+  const context = await getServerRuntimeContext(); const config = context.config; const runtime = getSharedRuntimeDatabase(context.bootstrap);
   const identifiers = new UuidGenerator();
   const repository = new DrizzleIntegrationsRepository(runtime.db);
   const accessKeys = new DashboardAccessKeyService(new DrizzleDashboardAccessKeyRepository(runtime.db), identifiers);
   const emailPort = config.email === null ? null : createResendEmailApiAdapter(config.email.apiKey, config.email.defaultFrom);
   const shared = { repository, apiKeys: new ApiKeyService(repository, identifiers), accessKeys, ai: new AiService(new DrizzleAiRepository(runtime.db)), customers: new CustomerService(repository, identifiers), emailTest: new EmailTestService(emailPort), emailStatus: config.email === null ? Object.freeze({ configured: false as const, defaultFrom: null, webhook: false as const }) : Object.freeze({ configured: true as const, defaultFrom: config.email.defaultFrom, webhook: config.email.webhookSecret !== null }), rateLimits: new RateLimitService(new UpstashRateLimitAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })), policy: { ...config.rateLimits.mutation, failureMode: 'closed' as const } };
-  if (identity === null) {
-    const bearer = cookieStore.get(DASHBOARD_ACCESS_KEY_COOKIE)?.value ?? null;
-    if (bearer === null) return createNonDisclosingDenial(requestId);
-    const resolved = await resolveAccessKeyActor(runtime.db, bearer, requestId).catch(() => null);
-    if (resolved === null || resolved.actor.organizationId !== organizationId) return createNonDisclosingDenial(requestId);
-    return { actor: resolved.actor, localUserId: resolved.localUser.id, ...shared };
-  }
-  const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator()); if (!local.ok) { return createNonDisclosingDenial(requestId); }
-  const membership = await authorization.findActiveMembership(organizationId, local.value.id); if (membership === null || !membership.roleActive) { return createNonDisclosingDenial(requestId); }
-  const actor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), regionScopeId: membership.regionId ?? null, entryPoint: 'dashboard', requestId };
-  return { actor, localUserId: local.value.id, ...shared };
+  const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
+  if (user === null) return createNonDisclosingDenial(requestId);
+  const actor = await authorizeDashboardOrganization(runtime.db, user, organizationId, requestId);
+  if (actor === null) return createNonDisclosingDenial(requestId);
+  return { actor, localUserId: user.localUserId, ...shared };
 }
 function response(error: PublicErrorEnvelope) { const retry = error.error.fields?.retryAfterSeconds?.[0]; return NextResponse.json(error, { status: statusFor(error), ...(retry === undefined ? {} : { headers: { 'Retry-After': retry } }) }); }
 

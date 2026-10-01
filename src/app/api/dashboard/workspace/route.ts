@@ -2,20 +2,15 @@ import { cookies } from 'next/headers';
 import { after, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
+import { authenticateDashboardUser, authorizeDashboardOrganization } from '@/modules/auth/authenticate-dashboard';
 import { reindexArticleEmbeddings } from '@/modules/ai/ai-embeddings';
-import { readAccessKeyCookie } from '@/modules/auth/dashboard-access-keys/cookie';
-import { resolveAccessKeyActor } from '@/modules/auth/dashboard-access-keys/resolve-access-key-actor';
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
 import { fetchCachedAnalytics, fetchCachedDashboard, NextDashboardCacheInvalidator } from '@/modules/dashboard/dashboard-dal';
-import { getPublicConfig } from '@/core/config/public-config';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { deliveryOperationsComposition } from '@/modules/delivery';
-import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { UuidGenerator } from '@/core/system/uuid-generator';
 import { withApiAccess } from '@/core/observability/api-access';
@@ -50,47 +45,35 @@ export const responseStatus = (error: ReturnType<typeof createNonDisclosingDenia
 
 async function contextFor(organizationId: string, requestId: string, headers: Headers): Promise<ContextResult> {
   const cookieStore = await cookies();
-  const publicConfig = getPublicConfig(process.env);
-  const auth = createSupabaseSsrAuthAdapter({ url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey, cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }) });
-  const identity = await auth.verifyCookieSession();
-  if (identity === null) {
-    const bearer = readAccessKeyCookie(headers.get('cookie'));
-    if (bearer !== null) {
-      const keyContext = await getServerRuntimeContext();
-      const keyRuntime = getSharedRuntimeDatabase(keyContext.bootstrap);
-      const resolved = await resolveAccessKeyActor(keyRuntime.db, bearer, requestId).catch(() => null);
-      if (resolved !== null && resolved.actor.organizationId === organizationId) {
-        if (isPlatformOnlyWithoutTicket({ orgPermissionCount: resolved.actor.permissionSet.size, platformPermissionCount: resolved.actor.platformPermissionSet?.size ?? 0, headers })) {
-          return createNonDisclosingDenial(requestId);
-        }
-        return {
-          actor: resolved.actor,
-          service: new TenantBusinessService(new DrizzleDashboardRepository(keyRuntime.db), new UuidGenerator(), undefined, undefined, new NextDashboardCacheInvalidator()),
-        };
-      }
-    }
-    return createNonDisclosingDenial(requestId);
-  }
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
-  const authorization = new DrizzleAuthorizationRepository(runtime.db);
-  const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
-  if (!local.ok) return createNonDisclosingDenial(requestId);
-  const membership = await authorization.findActiveMembership(organizationId, local.value.id);
-  if (membership === null || !membership.roleActive) {
-    const deniedActor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(), platformPermissionSet: new Set(), entryPoint: 'dashboard', requestId };
+  const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
+  if (user === null) return createNonDisclosingDenial(requestId);
+  if (user.accessKey !== null) {
+    if (user.accessKey.actor.organizationId !== organizationId) return createNonDisclosingDenial(requestId);
+    if (isPlatformOnlyWithoutTicket({ orgPermissionCount: user.accessKey.actor.permissionSet.size, platformPermissionCount: user.accessKey.actor.platformPermissionSet?.size ?? 0, headers })) {
+      return createNonDisclosingDenial(requestId);
+    }
+    return {
+      actor: user.accessKey.actor,
+      service: new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator(), undefined, undefined, new NextDashboardCacheInvalidator()),
+    };
+  }
+  const actor = await authorizeDashboardOrganization(runtime.db, user, organizationId, requestId);
+  if (actor === null) {
+    const deniedActor: AuthorizedTenantActorContext = { actorType: 'user', actorId: user.localUserId, verifiedAuthUserId: user.authUserId, organizationId, permissionSet: new Set(), platformPermissionSet: new Set(), entryPoint: 'dashboard', requestId };
     try { await new DrizzleDashboardRepository(runtime.db).recordDenied(deniedActor, 'dashboard.organization.authorize', 'organization'); }
     catch { return createPublicError('DEPENDENCY_UNAVAILABLE', 'The operation could not be completed.', requestId); }
     return createNonDisclosingDenial(requestId);
   }
-  if (isPlatformOnlyWithoutTicket({ orgPermissionCount: membership.orgPermissions.size, platformPermissionCount: membership.platformPermissions.size, headers })) {
-    const deniedActor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(), platformPermissionSet: new Set(), entryPoint: 'dashboard', requestId };
+  if (isPlatformOnlyWithoutTicket({ orgPermissionCount: actor.permissionSet.size, platformPermissionCount: actor.platformPermissionSet?.size ?? 0, headers })) {
+    const deniedActor: AuthorizedTenantActorContext = { actorType: 'user', actorId: user.localUserId, verifiedAuthUserId: user.authUserId, organizationId, permissionSet: new Set(), platformPermissionSet: new Set(), entryPoint: 'dashboard', requestId };
     try { await new DrizzleDashboardRepository(runtime.db).recordDenied(deniedActor, 'dashboard.platform_token.denied', 'organization'); }
     catch { return createPublicError('DEPENDENCY_UNAVAILABLE', 'The operation could not be completed.', requestId); }
     return createNonDisclosingDenial(requestId);
   }
   return {
-    actor: { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), regionScopeId: membership.regionId ?? null, entryPoint: 'dashboard', requestId },
+    actor,
     service: new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator(), undefined, undefined, new NextDashboardCacheInvalidator()),
   };
 }

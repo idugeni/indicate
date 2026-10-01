@@ -2,15 +2,12 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
-import { getPublicConfig } from '@/core/config/public-config';
+import { authenticateDashboardUser } from '@/modules/auth/authenticate-dashboard';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
-import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
-import { UuidGenerator } from '@/core/system/uuid-generator';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
 
@@ -44,19 +41,12 @@ async function handlePOST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json(createPublicError('INVALID_INPUT', 'Invalid profile command.', requestId), { status: 400 });
   const cookieStore = await cookies();
-  const publicConfig = getPublicConfig(process.env);
-  const auth = createSupabaseSsrAuthAdapter({
-    url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey,
-    cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }),
-  });
-  const identity = await auth.verifyCookieSession();
-  if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
+  if (user === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   {
     const repository = new DrizzleAuthorizationRepository(runtime.db);
-    const local = await resolveVerifiedLocalUser(identity, repository, new UuidGenerator());
-    if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     const storage = new R2ObjectStorageAdapter({ accountId: context.config.r2.accountId, bucketName: context.config.r2.bucketName, publicBucketName: context.config.r2.publicBucketName, accessKeyId: context.config.r2.accessKeyId, secretAccessKey: context.config.r2.secretAccessKey });
     if (parsed.data.action === 'request-upload') {
       const allowedTypes = context.config.r2.allowedTypes;
@@ -64,16 +54,16 @@ async function handlePOST(request: Request) {
       if (ext === undefined || !allowedTypes.includes(parsed.data.contentType)) {
         return NextResponse.json(createPublicError('INVALID_INPUT', 'Invalid profile command.', requestId), { status: 400 });
       }
-      const key = `${AVATAR_KEY_PREFIX}${local.value.id}/avatar.${ext}`;
+      const key = `${AVATAR_KEY_PREFIX}${user.localUserId}/avatar.${ext}`;
       const authorization = await storage.authorizeExactPut(key, parsed.data.contentType, parsed.data.checksumSha256, context.config.r2.uploadTtlSeconds);
       return NextResponse.json({ key, url: authorization.url, expiresAt: authorization.expiresAt.toISOString(), requiredHeaders: authorization.requiredHeaders });
     }
-    const expectedPrefix = `${AVATAR_KEY_PREFIX}${local.value.id}/`;
+    const expectedPrefix = `${AVATAR_KEY_PREFIX}${user.localUserId}/`;
     let avatarUrl: string | null | undefined;
     switch (parsed.data.avatar.kind) {
       case 'keep': avatarUrl = undefined; break;
       case 'remove': avatarUrl = null; break;
-      case 'oauth': avatarUrl = identity.avatarUrl; break;
+      case 'oauth': avatarUrl = user.avatarUrl; break;
       case 'url': avatarUrl = parsed.data.avatar.url; break;
       case 'upload': {
         if (!parsed.data.avatar.key.startsWith(expectedPrefix)) return NextResponse.json(createPublicError('INVALID_INPUT', 'Invalid profile command.', requestId), { status: 400 });
@@ -82,7 +72,7 @@ async function handlePOST(request: Request) {
         break;
       }
     }
-    const updated = await repository.updateOwnProfile(identity.authUserId, {
+    const updated = await repository.updateOwnProfile(user.authUserId, {
       ...(parsed.data.bio !== undefined ? { bio: parsed.data.bio } : {}),
       ...(parsed.data.locale !== undefined ? { locale: parsed.data.locale } : {}),
       ...(parsed.data.timezone !== undefined ? { timezone: parsed.data.timezone } : {}),
@@ -98,20 +88,15 @@ export { handlePOST as POST };
 async function handleGET() {
   const requestId = crypto.randomUUID();
   const cookieStore = await cookies();
-  const publicConfig = getPublicConfig(process.env);
-  const auth = createSupabaseSsrAuthAdapter({
-    url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey,
-    cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }),
-  });
-  const identity = await auth.verifyCookieSession();
-  if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
+  if (user === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   {
     const repository = new DrizzleAuthorizationRepository(runtime.db);
-    const profile = await repository.getOwnProfile(identity.authUserId);
+    const profile = await repository.getOwnProfile(user.authUserId);
     if (profile === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
-    return NextResponse.json({ ...profile, oauthAvatarUrl: identity.avatarUrl });
+    return NextResponse.json({ ...profile, oauthAvatarUrl: user.avatarUrl });
   }
 }
 

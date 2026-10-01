@@ -2,16 +2,12 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
-import { getPublicConfig } from '@/core/config/public-config';
+import { authenticateDashboardUser } from '@/modules/auth/authenticate-dashboard';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getServerRuntimeContext, invalidateServerRuntimeConfig } from '@/core/config/runtime/runtime-context';
-import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { getSharedRuntimeDatabase } from '@/data/client';
-import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzleRuntimeConfigAdminRepository, RuntimeConfigAdminAccessDeniedError, RuntimeConfigAdminConflictError } from '@/data/repos/runtime-config/admin';
 import { mediaPolicySchema } from '@/core/config/persisted/persisted-schema';
-import { UuidGenerator } from '@/core/system/uuid-generator';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
 
@@ -22,24 +18,16 @@ const commandSchema = z.discriminatedUnion('action', [
 async function handleGET() {
   const requestId = crypto.randomUUID();
   const cookieStore = await cookies();
-  const publicConfig = getPublicConfig(process.env);
-  const auth = createSupabaseSsrAuthAdapter({
-    url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey,
-    cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }),
-  });
-  const identity = await auth.verifyCookieSession();
-  if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
+  if (user === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   {
-    const authorization = new DrizzleAuthorizationRepository(runtime.db);
-    const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
-    if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     const repository = new DrizzleRuntimeConfigAdminRepository(runtime.db);
     try {
       const [policy, policies] = await Promise.all([
-        repository.readMediaPolicy(identity.authUserId, local.value.id),
-        repository.readPoliciesOverview(identity.authUserId, local.value.id),
+        repository.readMediaPolicy(user.authUserId, user.localUserId),
+        repository.readPoliciesOverview(user.authUserId, user.localUserId),
       ]);
       return NextResponse.json({ policy, policies });
     } catch (error) {
@@ -67,23 +55,15 @@ async function handlePOST(request: Request) {
   const parsed = commandSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json(createPublicError('INVALID_INPUT', 'Invalid runtime configuration command.', requestId), { status: 400 });
   const cookieStore = await cookies();
-  const publicConfig = getPublicConfig(process.env);
-  const auth = createSupabaseSsrAuthAdapter({
-    url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey,
-    cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }),
-  });
-  const identity = await auth.verifyCookieSession();
-  if (identity === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
+  const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
+  if (user === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   {
-    const authorization = new DrizzleAuthorizationRepository(runtime.db);
-    const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
-    if (!local.ok) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     const repository = new DrizzleRuntimeConfigAdminRepository(runtime.db);
     try {
       const policy = parsed.data.policy;
-      const result = await repository.updateMediaPolicy(identity.authUserId, local.value.id, {
+      const result = await repository.updateMediaPolicy(user.authUserId, user.localUserId, {
         allowedMimeTypes: [...policy.allowedMimeTypes],
         maxObjectBytes: policy.maxObjectBytes,
         uploadAuthorizationSeconds: policy.uploadAuthorizationSeconds,

@@ -3,17 +3,11 @@ import { NextResponse } from 'next/server';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
-import { DASHBOARD_ACCESS_KEY_COOKIE } from '@/modules/auth/dashboard-access-keys/cookie';
-import { resolveAccessKeyActor } from '@/modules/auth/dashboard-access-keys/resolve-access-key-actor';
+import { authenticateDashboardUser, authorizeDashboardOrganization } from '@/modules/auth/authenticate-dashboard';
 import type { ActorContext } from '@/core/operation-context';
-import { getPublicConfig } from '@/core/config/public-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
-import { createHardenedSupabaseCookieStore, createSupabaseSsrAuthAdapter } from '@/integrations/supabase/supabase-ssr';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getSharedRuntimeDatabase } from '@/data/client';
-import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
-import { UuidGenerator } from '@/core/system/uuid-generator';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
@@ -134,42 +128,13 @@ async function serviceDeps(organizationId?: string | undefined): Promise<AiServi
 
 async function sessionFor(organizationId: string, requestId: string): Promise<{ readonly actor: ActorContext } | PublicErrorEnvelope> {
   const cookieStore = await cookies();
-  const publicConfig = getPublicConfig(process.env);
-  const auth = createSupabaseSsrAuthAdapter({
-    url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey,
-    cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }),
-  });
-  const identity = await auth.verifyCookieSession();
-  if (identity === null) {
-    const bearer = cookieStore.get(DASHBOARD_ACCESS_KEY_COOKIE)?.value ?? null;
-    if (bearer !== null) {
-      const keyContext = await getServerRuntimeContext();
-      const keyRuntime = getSharedRuntimeDatabase(keyContext.bootstrap);
-      const resolved = await resolveAccessKeyActor(keyRuntime.db, bearer, requestId).catch(() => null);
-      if (resolved !== null && resolved.actor.organizationId === organizationId) {
-        return {
-          actor: {
-            actorType: 'user', actorId: resolved.actor.actorId, verifiedAuthUserId: resolved.identity.authUserId, organizationId,
-            permissionSet: new Set(), platformPermissionSet: new Set(), entryPoint: 'dashboard', requestId,
-          },
-        };
-      }
-    }
-    return createNonDisclosingDenial(requestId);
-  }
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
-  const authorization = new DrizzleAuthorizationRepository(runtime.db);
-  const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
-  if (!local.ok || local.value.status !== 'active') return createNonDisclosingDenial(requestId);
-  const membership = await authorization.findActiveMembership(organizationId, local.value.id).catch(() => null);
-  if (membership === null || !membership.roleActive) return createNonDisclosingDenial(requestId);
-  return {
-    actor: {
-      actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId,
-      permissionSet: new Set(), platformPermissionSet: new Set(), entryPoint: 'dashboard', requestId,
-    },
-  };
+  const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
+  if (user === null) return createNonDisclosingDenial(requestId);
+  const actor = await authorizeDashboardOrganization(runtime.db, user, organizationId, requestId);
+  if (actor === null) return createNonDisclosingDenial(requestId);
+  return { actor };
 }
 
 async function auditDraftStream(db: AiDb, entry: {

@@ -2,17 +2,13 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
+import { authenticateDashboardUser, authorizeDashboardPlatform } from '@/modules/auth/authenticate-dashboard';
 import { BillingService } from '@/modules/billing/billing-service';
 import type { ActorContext } from '@/core/operation-context';
-import { getPublicConfig } from '@/core/config/public-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
-import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getSharedRuntimeDatabase } from '@/data/client';
-import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzleBillingRepository } from '@/data/repos/billing';
-import { UuidGenerator } from '@/core/system/uuid-generator';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
@@ -40,28 +36,12 @@ interface Session { readonly actor: ActorContext; readonly close: () => Promise<
 
 async function sessionFor(requestId: string, organizationId?: string): Promise<Session | PublicErrorEnvelope> {
   const cookieStore = await cookies();
-  const publicConfig = getPublicConfig(process.env);
-  const auth = createSupabaseSsrAuthAdapter({
-    url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey,
-    cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }),
-  });
-  const identity = await auth.verifyCookieSession();
-  if (identity === null) return createNonDisclosingDenial(requestId);
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
-  const authorization = new DrizzleAuthorizationRepository(runtime.db);
-  const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
-  if (!local.ok || local.value.status !== 'active') { return createNonDisclosingDenial(requestId); }
-  let platformPermissions: readonly string[];
-  try {
-    platformPermissions = await authorization.listPlatformPermissions(local.value.id, organizationId);
-  } catch {
-    return createNonDisclosingDenial(requestId);
-  }
-  const actor: ActorContext = {
-    actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId: null,
-    permissionSet: new Set(), platformPermissionSet: new Set(platformPermissions), entryPoint: 'dashboard', requestId,
-  };
+  const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
+  if (user === null) return createNonDisclosingDenial(requestId);
+  const actor = await authorizeDashboardPlatform(runtime.db, user, requestId, organizationId);
+  if (actor === null) return createNonDisclosingDenial(requestId);
   return { actor, close: async () => undefined };
 }
 
@@ -81,7 +61,7 @@ async function handleGET(request: Request) {
   const url = new URL(request.url);
   const parsed = getSchema.safeParse({ scope: url.searchParams.get('scope'), organizationId: url.searchParams.get('organizationId') ?? undefined });
   if (!parsed.success) return response(createNonDisclosingDenial(requestId));
-  const session = await sessionFor(requestId);
+  const session = await sessionFor(requestId, parsed.data.organizationId);
   if ('error' in session) return response(session);
   try {
     return await withService(session, async (service) => {
