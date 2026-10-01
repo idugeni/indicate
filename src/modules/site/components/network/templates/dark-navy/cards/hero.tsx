@@ -35,7 +35,9 @@ export function DarkNavyHero({ articles }: { readonly articles: readonly Article
     <section
       aria-label="Sorotan utama"
       className="relative overflow-hidden rounded-2xl shadow-sm"
-      onMouseEnter={() => setPaused(true)}
+      onMouseEnter={() => {
+        if (window.matchMedia('(hover: hover)').matches) setPaused(true);
+      }}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}

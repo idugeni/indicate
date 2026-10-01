@@ -94,7 +94,7 @@ export function TemplateShareButton({ slug, title, href, className }: TemplateSh
           <Share2 className="h-4 w-4" aria-hidden="true" />
         </button>
       </TemplateTooltip>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={setOpen} modal={false}>
         <DialogContent
           aria-label="Pilih kanal bagikan"
           className={cn(

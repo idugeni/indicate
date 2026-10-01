@@ -48,7 +48,9 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
     <section
       aria-label="Sorotan utama"
       className="relative overflow-hidden rounded-3xl bg-white/70 p-4 shadow-xl shadow-[#1f7cff]/10 ring-1 ring-white backdrop-blur-xl sm:p-5"
-      onMouseEnter={() => setPaused(true)}
+      onMouseEnter={() => {
+        if (window.matchMedia('(hover: hover)').matches) setPaused(true);
+      }}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
@@ -117,7 +119,7 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
               </div>
             ) : null}
           </div>
-          <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.12] tracking-tight text-[var(--tpl-ink,#0e1b33)] sm:text-4xl">
+          <h1 className="m-0 mt-3 line-clamp-2 font-sans text-3xl font-extrabold leading-[1.12] tracking-tight text-[var(--tpl-ink,#0e1b33)] sm:text-4xl">
             <Link href={article.href} className="hover:text-[var(--tpl-primary,#1f7cff)]">
               {article.title}
             </Link>

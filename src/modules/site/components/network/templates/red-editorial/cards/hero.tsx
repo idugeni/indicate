@@ -44,7 +44,9 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
     <section
       aria-label="Sorotan utama"
       className="flex flex-col gap-10 lg:gap-12"
-      onMouseEnter={() => setPaused(true)}
+      onMouseEnter={() => {
+        if (window.matchMedia('(hover: hover)').matches) setPaused(true);
+      }}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
@@ -55,7 +57,7 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
             <span aria-hidden="true" className="h-px w-8 bg-[var(--tpl-primary,#b91c1c)]" />
             {kicker}
           </p>
-          <h1 className="m-0 mt-4 font-serif text-4xl font-bold leading-[1.12] tracking-tight text-[var(--tpl-ink,#230d0d)] sm:text-5xl">
+          <h1 className="m-0 mt-4 line-clamp-2 font-serif text-4xl font-bold leading-[1.12] tracking-tight text-[var(--tpl-ink,#230d0d)] sm:text-5xl">
             {head === '' ? (
               article.title
             ) : (
@@ -64,7 +66,7 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
               </>
             )}
           </h1>
-          <p className="m-0 mt-4 max-w-xl text-[15px] leading-relaxed text-[var(--tpl-muted,#705050)]">
+          <p className="m-0 mt-4 line-clamp-2 max-w-xl text-[15px] leading-relaxed text-[var(--tpl-muted,#705050)]">
             {article.description}
           </p>
           <p className="m-0 mt-3 font-sans text-xs tabular-nums text-[var(--tpl-faint,#ac9393)]">
