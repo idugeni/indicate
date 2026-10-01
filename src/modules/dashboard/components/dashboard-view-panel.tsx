@@ -2,7 +2,7 @@
 
 import { memo } from 'react';
 import dynamic from 'next/dynamic';
-import { X } from 'lucide-react';
+import { Globe, KeyRound, LogIn, Palette, Plug, UserRound, X, Zap } from 'lucide-react';
 
 import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,12 @@ import { DataView } from '@/modules/dashboard/components/data-view';
 import { FilterControls } from '@/modules/dashboard/components/filter-controls';
 import { PanelErrorBoundary } from '@/modules/dashboard/components/shared/panel-error-boundary';
 import {
-  DashboardCollectionsSkeleton,
-  DashboardContentSkeleton,
   DashboardFormSkeleton,
+  DashboardFormsGridSkeleton,
+  DashboardMediaSkeleton,
+  DashboardSplitFormSkeleton,
+  DashboardStatsSkeleton,
+  DashboardViewSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
 import type { EmailStatus } from '@/modules/dashboard/components/settings/integration-settings';
 import { VIEW_REGISTRY, VIEWS_WITHOUT_RAW_COLLECTIONS } from '@/modules/dashboard/components/view-registry';
@@ -22,11 +25,11 @@ import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 
 const ConfigurationPanel = dynamic(
   () => import('@/modules/dashboard/components/infrastructure/configuration-panel').then((module) => ({ default: module.ConfigurationPanel })),
-  { loading: () => <DashboardFormSkeleton /> },
+  { loading: () => <DashboardFormsGridSkeleton columns={3} /> },
 );
 const AccessManagementForm = dynamic(
   () => import('@/modules/dashboard/components/infrastructure/access-management-form').then((module) => ({ default: module.AccessManagementForm })),
-  { loading: () => <DashboardFormSkeleton /> },
+  { loading: () => <DashboardFormsGridSkeleton columns={2} /> },
 );
 const SiteSettingsForm = dynamic(
   () => import('@/modules/dashboard/components/infrastructure/site-settings-form').then((module) => ({ default: module.SiteSettingsForm })),
@@ -34,19 +37,19 @@ const SiteSettingsForm = dynamic(
 );
 const CachePurgeForm = dynamic(
   () => import('@/modules/dashboard/components/infrastructure/cache-purge-form').then((module) => ({ default: module.CachePurgeForm })),
-  { loading: () => <DashboardFormSkeleton /> },
+  { loading: () => <DashboardSplitFormSkeleton /> },
 );
 const CustomerManagement = dynamic(
   () => import('@/modules/dashboard/components/customers/customer-management').then((module) => ({ default: module.CustomerManagement })),
-  { loading: () => <DashboardFormSkeleton /> },
+  { loading: () => <DashboardFormsGridSkeleton columns={3} /> },
 );
 const ContentManager = dynamic(
   () => import('@/modules/dashboard/components/content/content-manager').then((module) => ({ default: module.ContentManager })),
-  { loading: () => <DashboardFormSkeleton /> },
+  { loading: () => <DashboardViewSkeleton view="content" /> },
 );
 const ArticleCreateForm = dynamic(
   () => import('@/modules/dashboard/components/editorial/editorial-form').then((module) => ({ default: module.ArticleCreateForm })),
-  { loading: () => <DashboardFormSkeleton /> },
+  { loading: () => <DashboardSplitFormSkeleton /> },
 );
 const ArticleDistributeForm = dynamic(
   () => import('@/modules/dashboard/components/editorial/article-distribute-form').then((module) => ({ default: module.ArticleDistributeForm })),
@@ -54,7 +57,7 @@ const ArticleDistributeForm = dynamic(
 );
 const IntegrationSettings = dynamic(
   () => import('@/modules/dashboard/components/settings/integration-settings').then((module) => ({ default: module.IntegrationSettings })),
-  { loading: () => <DashboardFormSkeleton /> },
+  { loading: () => <DashboardFormsGridSkeleton columns={2} /> },
 );
 const AccessKeySettings = dynamic(
   () => import('@/modules/dashboard/components/settings/access-key-settings').then((module) => ({ default: module.AccessKeySettings })),
@@ -62,7 +65,14 @@ const AccessKeySettings = dynamic(
 );
 const AiManagementPanel = dynamic(
   () => import('@/modules/dashboard/components/settings/ai-management-panel').then((module) => ({ default: module.AiManagementPanel })),
-  { loading: () => <DashboardFormSkeleton /> },
+  {
+    loading: () => (
+      <div className="space-y-4">
+        <DashboardStatsSkeleton count={5} />
+        <DashboardFormsGridSkeleton columns={2} />
+      </div>
+    ),
+  },
 );
 function selectEmailStatus(data: unknown): EmailStatus | null {
   if (typeof data !== 'object' || data === null || !('email' in data)) return null;
@@ -75,35 +85,35 @@ function selectEmailStatus(data: unknown): EmailStatus | null {
 }
 const MediaLibrary = dynamic(
   () => import('@/modules/dashboard/components/publishing/media-library').then((module) => ({ default: module.MediaLibrary })),
-  { loading: () => <DashboardFormSkeleton /> },
+  { loading: () => <DashboardMediaSkeleton /> },
 );
 const PublisherForm = dynamic(
   () => import('@/modules/dashboard/components/editorial/publisher-form').then((module) => ({ default: module.PublisherForm })),
-  { loading: () => <DashboardFormSkeleton /> },
+  { loading: () => <DashboardFormsGridSkeleton columns={2} /> },
 );
 const TaxonomyManager = dynamic(
   () => import('@/modules/dashboard/components/editorial/taxonomy-manager').then((module) => ({ default: module.TaxonomyManager })),
-  { loading: () => <DashboardFormSkeleton /> },
+  { loading: () => <DashboardViewSkeleton view="taxonomy" /> },
 );
 const ArticleManager = dynamic(
   () => import('@/modules/dashboard/components/editorial/article-manager').then((module) => ({ default: module.ArticleManager })),
-  { loading: () => <DashboardFormSkeleton /> },
+  { loading: () => <DashboardViewSkeleton view="articles" /> },
 );
 const PublishingForm = dynamic(
   () => import('@/modules/dashboard/components/publishing/publishing-form').then((module) => ({ default: module.PublishingForm })),
-  { loading: () => <DashboardFormSkeleton /> },
+  { loading: () => <DashboardFormsGridSkeleton columns={2} /> },
 );
 const PublishedUrlBoard = dynamic(
   () => import('@/modules/dashboard/components/publishing/published-url-board').then((module) => ({ default: module.PublishedUrlBoard })),
-  { loading: () => <DashboardFormSkeleton /> },
+  { loading: () => <DashboardViewSkeleton view="published" /> },
 );
 const BillingPanel = dynamic(
   () => import('@/modules/dashboard/components/billing/billing-panel').then((module) => ({ default: module.BillingPanel })),
-  { loading: () => <DashboardFormSkeleton /> },
+  { loading: () => <DashboardViewSkeleton view="billing" /> },
 );
 const ModerationPanel = dynamic(
   () => import('@/modules/dashboard/components/moderation/moderation-panel').then((module) => ({ default: module.ModerationPanel })),
-  { loading: () => <DashboardFormSkeleton /> },
+  { loading: () => <DashboardViewSkeleton view="moderation" /> },
 );
 const LoginMethodsForm = dynamic(
   () => import('@/modules/dashboard/components/settings/login-methods-form').then((module) => ({ default: module.LoginMethodsForm })),
@@ -238,10 +248,22 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       {view === 'configuration' ? (
         <Tabs defaultValue="domain" className="w-full">
           <TabsList aria-label="Bagian infrastruktur" className="max-w-full overflow-x-auto overflow-y-clip">
-            <TabsTrigger value="domain" className="flex-none">Domain & Wilayah</TabsTrigger>
-            <TabsTrigger value="brand" className="flex-none">SEO & Brand</TabsTrigger>
-            <TabsTrigger value="cache" className="flex-none">Cache</TabsTrigger>
-            <TabsTrigger value="access" className="flex-none">Akses</TabsTrigger>
+            <TabsTrigger value="domain" className="flex-none">
+              <Globe className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
+              <span>Domain & Wilayah</span>
+            </TabsTrigger>
+            <TabsTrigger value="brand" className="flex-none">
+              <Palette className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
+              <span>SEO & Brand</span>
+            </TabsTrigger>
+            <TabsTrigger value="cache" className="flex-none">
+              <Zap className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
+              <span>Cache</span>
+            </TabsTrigger>
+            <TabsTrigger value="access" className="flex-none">
+              <KeyRound className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
+              <span>Akses</span>
+            </TabsTrigger>
           </TabsList>
           <TabsContent keepMounted value="domain">
             <div className="space-y-6">
@@ -281,9 +303,18 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       {view === 'settings' ? (
         <Tabs defaultValue="koneksi" className="w-full">
           <TabsList aria-label="Bagian pengaturan" className="max-w-full overflow-x-auto overflow-y-clip">
-            <TabsTrigger value="koneksi" className="flex-none">Koneksi</TabsTrigger>
-            <TabsTrigger value="profil" className="flex-none">Profil</TabsTrigger>
-            <TabsTrigger value="login" className="flex-none">Login</TabsTrigger>
+            <TabsTrigger value="koneksi" className="flex-none">
+              <Plug className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
+              <span>Koneksi</span>
+            </TabsTrigger>
+            <TabsTrigger value="profil" className="flex-none">
+              <UserRound className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
+              <span>Profil</span>
+            </TabsTrigger>
+            <TabsTrigger value="login" className="flex-none">
+              <LogIn className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
+              <span>Login</span>
+            </TabsTrigger>
           </TabsList>
           <TabsContent keepMounted value="koneksi">
             <div className="space-y-6">
@@ -303,12 +334,12 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       {view === 'billing' ? <BillingPanel organizationId={organizationId} permissions={[...permissions]} /> : null}
       {view === 'moderation' ? <ModerationPanel organizationId={organizationId} /> : null}
       {view === 'ai' ? <AiManagementPanel organizationId={organizationId} command={command} /> : null}
-      {view === 'customers' ? <CustomerManagement command={command} /> : null}
+      {view === 'customers' ? <CustomerManagement command={command} organizationId={organizationId} /> : null}
       {view === 'content' ? <ContentManager /> : null}
       </PanelErrorBoundary>
 
       {VIEWS_WITHOUT_RAW_COLLECTIONS.has(view) ? null : showSkeleton ? (
-        view === 'dashboard' ? <DashboardContentSkeleton /> : <DashboardCollectionsSkeleton />
+        <DashboardViewSkeleton view={view} />
       ) : (
         <PanelErrorBoundary key={`data:${organizationId}:${view}`} name={`${metadata.title} — data`}>
         <DataView

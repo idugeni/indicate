@@ -5,10 +5,18 @@ import { cleanup, render, screen } from '@testing-library/react';
 import {
   DashboardCollectionsSkeleton,
   DashboardContentSkeleton,
+  DashboardFormsGridSkeleton,
   DashboardFormSkeleton,
-  DashboardPanelSkeleton,
+  DashboardMediaSkeleton,
+  DashboardMiniCardsSkeleton,
+  DashboardSplitFormSkeleton,
   DashboardStatsSkeleton,
+  DashboardTablesGridSkeleton,
+  DashboardTilesSkeleton,
+  DashboardViewSkeleton,
+  DashboardPanelSkeleton,
   DashboardTableSkeleton,
+  DashboardTabsSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
 
 afterEach(() => {
@@ -46,10 +54,73 @@ describe('Skeleton dashboard', () => {
     expect(shell.className).toContain('space-y-6');
   });
 
-  it('menyusun dua tabel untuk skeleton koleksi', () => {
+  it('menyusun dua tabel dengan ritme yang sama seperti DataView', () => {
     render(<DashboardCollectionsSkeleton />);
     const shell = screen.getByRole('status');
     expect(shell.getAttribute('aria-label')).toBe('Memuat data modul');
-    expect(shell.className).toContain('space-y-10');
+    expect(shell.className).toContain('space-y-6');
+  });
+
+  it('meniru kisi tabel dan formulir sesuai jumlah kolom konten', () => {
+    const { container: tables } = render(<DashboardTablesGridSkeleton columns={3} />);
+    expect(tables.firstElementChild?.innerHTML).toContain('lg:grid-cols-3');
+    const { container: forms } = render(<DashboardFormsGridSkeleton columns={2} />);
+    expect(forms.firstElementChild?.innerHTML).toContain('md:grid-cols-2');
+  });
+
+  it('membentuk skeleton sesuai view aktif', () => {
+    const { unmount } = render(<DashboardViewSkeleton view="configuration" />);
+    expect(screen.getByRole('status', { name: 'Memuat data modul' })).toBeDefined();
+    unmount();
+    cleanup();
+    render(<DashboardViewSkeleton view="dashboard" />);
+    expect(screen.getByRole('status', { name: 'Memuat data workspace' })).toBeDefined();
+  });
+
+  it('meniru kisi media, kartu mini, dan form terpisah sesuai konten', () => {
+    const { container: media, unmount: unmountMedia } = render(<DashboardMediaSkeleton />);
+    expect(media.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThan(0);
+    expect(screen.getByRole('status', { name: 'Memuat pustaka media' })).toBeDefined();
+    unmountMedia();
+    cleanup();
+    const { container: split } = render(<DashboardSplitFormSkeleton />);
+    expect(split.textContent).toBe('');
+    cleanup();
+    render(<DashboardMiniCardsSkeleton count={4} />);
+    render(<DashboardTilesSkeleton count={4} />);
+  });
+
+  it('membentuk skeleton untuk semua view tanpa fallback generik yang salah', () => {
+    const views = [
+      'configuration',
+      'publishers',
+      'editorial',
+      'taxonomy',
+      'articles',
+      'media',
+      'publishing',
+      'published',
+      'analytics',
+      'audit',
+      'operations',
+      'settings',
+      'customers',
+      'content',
+      'billing',
+      'moderation',
+      'ai',
+    ] as const;
+    for (const view of views) {
+      const { unmount } = render(<DashboardViewSkeleton view={view} />);
+      expect(screen.getByRole('status')).toBeDefined();
+      unmount();
+      cleanup();
+    }
+  });
+
+  it('merender bilah tab sebagai murni dekoratif tanpa status', () => {
+    const { container } = render(<DashboardTabsSkeleton />);
+    expect(container.querySelector('[role="status"]')).toBeNull();
+    expect(container.firstElementChild?.getAttribute('aria-hidden')).toBe('true');
   });
 });

@@ -53,8 +53,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  DashboardCollectionsSkeleton,
-  DashboardContentSkeleton,
+  DashboardViewSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
 import type { AnalyticsProjection } from '@/modules/dashboard/models';
@@ -110,7 +109,7 @@ export function DataView({
   organizationId,
 }: DataViewProps) {
   if (data === null || data === undefined) {
-    return view === 'dashboard' ? <DashboardContentSkeleton /> : <DashboardCollectionsSkeleton />;
+    return <DashboardViewSkeleton view={view} />;
   }
 
   if (view === 'dashboard') {
@@ -377,10 +376,33 @@ export function DataView({
     );
   }
 
+  if (collections.length > 1 && (view === 'configuration' || view === 'settings')) {
+    return (
+      <div
+        className={`grid items-start gap-6 ${collections.length >= 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}
+      >
+        {collections.map(([collectionKey, items]) => renderTable(collectionKey, items))}
+      </div>
+    );
+  }
+
   return <div className="space-y-6">{collections.map(([collectionKey, items]) => renderTable(collectionKey, items))}</div>;
 }
 
 type CollectionItem = Record<string, unknown>;
+
+const COLLECTION_ICONS: Readonly<Record<string, typeof Globe>> = {
+  domains: Globe,
+  regions: Network,
+  sites: LayoutGrid,
+  articles: FileText,
+  media: Images,
+  auditLogs: ListChecks,
+  retentionRuns: Archive,
+  invalidationTasks: RefreshCw,
+  objectCleanupTasks: Archive,
+  webhookReplayClaims: Send,
+};
 
 const dashboardFeatures = tableFeatures({
   rowSortingFeature,
@@ -429,6 +451,7 @@ function CollectionTable({
 
   const editorConfig = command === undefined ? undefined : getEditorConfig(collectionKey);
   const formattedTitle = collectionLabel(collectionKey);
+  const CollectionIcon = COLLECTION_ICONS[collectionKey];
   const memoData = useMemo(() => [...rawItems], [rawItems]);
   const hasStatusSignal = useMemo(() => memoData.some((item) => resolveRowStatus(item) !== 'unknown'), [memoData]);
   // `site_settings` and similar projections carry no status field at all, so the
@@ -671,7 +694,8 @@ function CollectionTable({
     <section key={collectionKey} aria-label={formattedTitle} className="min-w-0 rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-3">
         {showTitle ? (
-          <h2 className="m-0 font-sans text-sm font-semibold tracking-tight text-paper">
+          <h2 className="m-0 flex items-center gap-1.5 font-sans text-sm font-semibold tracking-tight text-paper">
+            {CollectionIcon ? <CollectionIcon className="h-4 w-4 text-brass" aria-hidden="true" /> : null}
             {formattedTitle}
           </h2>
         ) : (
