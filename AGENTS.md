@@ -1,14 +1,3 @@
-<!-- CODEGRAPH_START -->
-## CodeGraph
-
-In repositories indexed by CodeGraph (a `.codegraph/` directory exists at the repo root), reach for it BEFORE grep/find or reading files when you need to understand or locate code:
-
-- **MCP tool** (when available): `codegraph_explore` answers most code questions in one call — the relevant symbols' verbatim source plus the call paths between them, including dynamic-dispatch hops grep can't follow. Name a file or symbol in the query to read its current line-numbered source. If it's listed but deferred, load it by name via tool search.
-- **Shell** (always works): `codegraph explore "<symbol names or question>"` prints the same output.
-
-If there is no `.codegraph/` directory, skip CodeGraph entirely — indexing is the user's decision.
-<!-- CODEGRAPH_END -->
-
 ## Division of labour
 
 This file is the rulebook: every rule that binds a change in this repository
@@ -22,7 +11,7 @@ shape, update the card; when it touches a rule, update this file.
 
 Use the connected tools when they help. Retrieval beats memory, but nothing here blocks progress.
 
-- **CodeGraph**: preferred before grep/find/Read when indexed.
+- **codebase-memory**: preferred before grep/find/Read when indexed.
 - **Supabase MCP**: recommended for database work. Inspect live state
   before writing a migration and verify with a test query after applying
   when possible; run `security` and `performance` advisors after DDL
@@ -89,6 +78,33 @@ Use the connected tools when they help. Retrieval beats memory, but nothing here
   `src/data/migrations/meta/_journal.json`, snapshots, ledger digests. Prefer forward
   migrations for live fixes, but history edits are allowed in development
   with reviewer approval. There are no `db:*` workflows by default.
+
+### Routing: skill, MCP, or both
+
+Decide by whether the task touches a live system and whether a paired skill exists
+(skill triggers stay in the Skills bullet above; this only sets the mode):
+
+1. **Skill only** — no live system is touched. Conventions and patterns
+   (`indicate-conventions`, `drizzle-best-practices`), static review and
+   styling guidance (`code-security` without running scans, `frontend-design`,
+   `web-design-guidelines`), file deliverables (`docx`, `pdf`, `xlsx`),
+   procedural playbooks (`tenant-onboarding`, `seo`), reply discipline
+   (`agent-discipline`).
+2. **MCP only** — live lookup or inspection with no paired skill: `exa`,
+   `resend`, `gsc`, `codebase-memory` (its server instructions are the
+   guidance), `sequential-thinking`, `webmcp`, `next-devtools`.
+3. **Skill + MCP** — live work on a system that has a paired skill; the
+   skill sets the shape, the MCP executes and verifies: `supabase` skill +
+   Supabase MCP, `cloudflare` + `cloudflare-api`, `vercel-optimize` /
+   `vercel-react-best-practices` + `vercel` MCP, `upstash-redis-js` +
+   `upstash-redis` MCP, `semgrep` skill (+ `code-security` for policy) +
+   `semgrep` MCP, `context7-mcp` skill + `context7` MCP, `web-perf` +
+   `chrome-devtools` MCP.
+4. **Order**: load the skill first, act through the MCP, verify through the
+   MCP again — inspect → change → verify, per the Supabase MCP bullet above.
+5. **Conflict**: live MCP output wins for facts about the outside world;
+   repo docs and `indicate-conventions` win for repo shape. A routing choice
+   never excuses skipping `indicate-conventions` on `src/**` changes.
 
 ## Windows pwsh (WAJIB — bukan relaxed mode)
 
@@ -547,6 +563,107 @@ di budget ratchet.
 
 Perbaikan untuk semua ini adalah pekerjaan terpisah; tugas ini hanya
 menetapkan policy plus pagar automate.
+
+### 10. Menjaga kuota egress: penyebab ledakan dan pagarnya
+
+Kuota Free 5 GB dipakai bersama Database, Auth, dan Shared Pooler, dan
+pemakaian berubah setiap hari — jadi bagian ini tidak mematok angka
+absolut atau tanggal. Yang dipatok adalah penyebab dan perilakunya.
+Egress meledak selalu lewat satu rumus: rows × bytes/row × frequency.
+Setiap penyebab di bawah adalah salah satu faktor yang diperbesar diam-diam:
+
+1. **Full-table read di tabel tumbuh** — `audit_logs`,
+   `invalidation_tasks`, `site_settings` ber-JSONB berat. Satu GET
+   dashboard × ribuan baris × KB per baris = MB per refresh.
+2. **Pemicu manual berulang** — refresh dashboard saat dev, run ulang
+   script hygiene/audit ke prod, "cek" halaman pemanggil
+   `snapshot()`/`load()`. Frequency yang seharusnya 1 menjadi puluhan.
+3. **Inspeksi live yang ceroboh** — `SELECT *` eksplorasi, scan
+   `information_schema`/`pg_*` yang lebar, retry query gagal dengan bentuk
+   sama (membayar dua kali untuk jawaban yang sama).
+4. **Fallback yang berubah jadi full read** — cache miss → baca seluruh
+   tabel; cold start → reload config penuh; koneksi baru → katalog
+   `pg_type` ditarik ulang (churn).
+5. **Delivery lewat DB** — lookup per request untuk object yang bisa
+   disajikan R2/CDN; tiap request membayar bytes yang sama berulang-ulang.
+6. **Duplikasi dan N+1** — fetch data yang sudah ada di context/cache,
+   lalu pola N+1 melipatgandakan rows tanpa terlihat di satu query pun.
+
+Pagarnya (berlaku selalu; makin ketat saat kuota menipis):
+
+1. **Cek posisi dulu.** Sebelum sesi yang menyentuh Supabase MCP, lihat
+   pemakaian live di dashboard Supabase (Settings → Usage). Di atas ~70%:
+   mode hemat di bawah berlaku penuh; di atas ~90%: inspeksi live berhenti
+   kecuali untuk memverifikasi perbaikan egress.
+2. **Local-first.** Schema dari bootstrap/migrasi; agregat (`count(*)`,
+   ukuran relasi) sebelum baris; gabung pertanyaan menjadi sesedikit
+   mungkin eksekusi.
+3. **Eksplorasi selalu berbatas.** `LIMIT` + proyeksi di tiap query live;
+   `SELECT *` live dilarang, termasuk "sekilas".
+4. **Jangan picu §9 manual.** Tanpa justifikasi tertulis: no refresh
+   dashboard berulang, no hygiene ke prod, no reload pemicu
+   snapshot/load.
+5. **Bekukan sumber baru.** Selama mode hemat: tidak ada fitur/cron baru
+   yang menambah rows/day; setiap perubahan volume = regresi sampai
+   terbukti sebaliknya (§6).
+6. **Akuntansi per sesi.** Tutup sesi Supabase MCP dengan estimasi bytes
+   sesi (rows × bytes/row, order-of-magnitude cukup) agar ledakan ketahuan
+   hari itu juga, bukan saat grace period.
+
+## Biaya Vercel (WAJIB — bukan relaxed mode)
+
+Tagihan berubah setiap siklus — bagian ini tidak mematok nominal dolar atau
+tanggal. Yang dipatok adalah penyebab dan perilakunya. Setiap pos biaya
+meledak lewat rumusnya sendiri: Build Minutes = build × menit;
+Invocations = tick × rute; Transfer/CPU/Memory = bytes × frequency.
+Urutkan prioritas dari dashboard Usage (atau `vercel usage` dengan scope
+team safenca eksplisit — jebakan scope ada di seksi Tool use) pada saat
+sesi dimulai, bukan dari ingatan.
+
+Penyebab dan mekanismenya di tree ini:
+
+1. **Cron padat (`vercel.json`: 11 jadwal).** Ada cron per-menit, dua
+   per-5-menit, per-15-menit, per-jam. Tiap tick = Invocation + Active CPU
+   + memory + egress DB di handler-nya. Frequency adalah pengali terbesar.
+2. **Build berulang.** Tiap push/deploy = install + compile. Preview build
+   per PR dan redeploy manual "buat cek" menumpuk menit.
+3. **Origin transfer.** `/api/*` dan dashboard sengaja `no-store`
+   (`next.config.ts`, by design); sisanya yang tak ter-cache, payload API
+   besar, dan crawler ke ribuan hostname (sitemap/rss per tenant) membayar
+   bytes per request.
+4. **ISR churn.** TTL pendek (`revalidate: 60` di status) dan revalidasi
+   on-demand massal saat publish storm; tiap tulis/baca = Writes/Reads ×
+   paths.
+5. **Handler berat.** Kerja DB/API besar di dalam function (publishing
+   work, reconcile) → Active CPU + provisioned memory per eksekusi.
+6. **Analytics events.** Event custom = biaya per event; tracking granular
+   (per-keystroke/scroll) meledak diam-diam.
+
+Pagarnya:
+
+1. **Metrics dulu.** Klaim biaya dan rekomendasi optimasi wajib dari Usage
+   live, bukan dari grep. Audit mendalam lewat skill `vercel-optimize`
+   (metrics-first, candidate-bound); jangan optimasi buta.
+2. **Cron baru = justifikasi frekuensi.** Tiap jadwal baru wajib menyatakan
+   calls/day dan biaya; jangan tambah cron per-menit baru — gabung ke
+   reconcile yang ada bila memungkinkan.
+3. **Build hemat.** `build` tetap `next build` murni; jangan selipkan
+   typecheck/lint/test ke dalamnya. Andalkan `ignoreCommand` skip-build;
+   jangan redeploy manual untuk "cek"; jaga dependency tetap ramping.
+4. **Cache yang boleh di-cache.** Rute publik pakai `s-maxage` + SWR ikut
+   pola yang ada (60–3600). Yang sensitif (`/api/*`, dashboard, respons
+   auth/error/fallback) tetap dinamis — jangan "dioptimasi" jadi cacheable.
+   Payload API dipaginasi/diproyeksi; ini double-win dengan egress §10.
+5. **ISR secukupnya.** Tiap TTL `revalidate` punya justifikasi tertulis;
+   revalidasi massal ikut pola budget (`PURGE_URL_BUDGET`); jangan turunkan
+   TTL "agar fresh" tanpa menghitung Writes/Reads × paths.
+6. **Handler ramping.** Kerja berat keluar dari user-visible path (enqueue
+   lalu return ID). Streaming/SSE long-lived bukan masalah selama tidak
+   ada kerja pra-byte-pertama yang bisa dihindari atau kerja pasca-respons
+   yang bisa dipindah.
+7. **Gambar tetap nol.** `images.unoptimized: true` + prop `unoptimized`
+   tidak boleh dimatikan tanpa persetujuan owner (seksi Gambar); klaim
+   penghematan dalam frasa magnitudo, bukan nominal dolar.
 
 ## Owner overrides (rules stay flexible)
 

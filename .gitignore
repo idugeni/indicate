@@ -12,9 +12,6 @@ semantic-review/
 *.tsbuildinfo
 .DS_Store
 
-# Cache index CodeGraph (18 MB, regenerable via `codegraph init`)
-.codegraph/
-
 # Konfig personal AI-agent CLI (untracked, per-mesin)
 .codex/
 .gemini/

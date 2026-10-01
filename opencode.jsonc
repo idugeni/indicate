@@ -10,24 +10,15 @@
         "type": "remote",
         "url": "https://mcp.supabase.com/mcp?project_ref=cmqipmerhfpfqoeasibs&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching%2Cstorage"
       },
-      "codegraph": {
-        // Dipanggil lewat bundle resmi, bukan `cmd /c codegraph`. Rantai shim
-        // lama (cmd -> .cmd nvm4w -> npm-shim.js -> bundle Node 24) sempat
-        // membuat OpenCode menutup transport dengan "Connection closed" tanpa
-        // baris log dan tanpa proses tersisa, padahal `codegraph serve --mcp`
-        // sehat saat dijalankan manual. Menunjuk `node.exe` + `codegraph.js`
-        // langsung memotong dua hop pertama. Path ini mengikuti lokasi
-        // install global Node; sinkronkan ulang bila `npm root -g` berubah.
+      "codebase-memory": {
         "type": "local",
         "command": [
-          "C:/nvm4w/nodejs/node_modules/@colbymchenry/codegraph/node_modules/@colbymchenry/codegraph-win32-x64/node.exe",
-          "--liftoff-only",
-          "--disable-warning=ExperimentalWarning",
-          "C:/nvm4w/nodejs/node_modules/@colbymchenry/codegraph/node_modules/@colbymchenry/codegraph-win32-x64/lib/dist/bin/codegraph.js",
-          "serve",
-          "--mcp"
-        ],
-        "enabled": true
+          "cmd",
+          "/c",
+          "npx",
+          "-y",
+          "codebase-memory-mcp"
+        ]
       },
       "chrome-devtools": {
         "type": "local",

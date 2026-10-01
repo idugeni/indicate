@@ -47,7 +47,7 @@ What was explicitly excluded (do not reintroduce):
 
 ## 3. Verify, don't guess
 
-- Inspect repo state (CodeGraph first, then Read/Grep, Supabase/Cloudflare
+- Inspect repo state (codebase-memory first, then Read/Grep, Supabase/Cloudflare
   MCP, context7) before asserting. Evidence beats memory.
 - For anything that may have changed since training (current docs, limits,
   prices, API shapes, news, office-holders, binary events), search current

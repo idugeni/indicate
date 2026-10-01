@@ -4,15 +4,11 @@
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=cmqipmerhfpfqoeasibs&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching%2Cstorage"
     },
-    "codegraph": {
-      "type": "stdio",
-      "command": "C:/nvm4w/nodejs/node_modules/@colbymchenry/codegraph/node_modules/@colbymchenry/codegraph-win32-x64/node.exe",
+    "codebase-memory": {
+      "command": "npx",
       "args": [
-        "--liftoff-only",
-        "--disable-warning=ExperimentalWarning",
-        "C:/nvm4w/nodejs/node_modules/@colbymchenry/codegraph/node_modules/@colbymchenry/codegraph-win32-x64/lib/dist/bin/codegraph.js",
-        "serve",
-        "--mcp"
+        "-y",
+        "codebase-memory-mcp"
       ]
     },
     "chrome-devtools": {
