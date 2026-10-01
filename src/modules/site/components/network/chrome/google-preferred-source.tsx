@@ -14,7 +14,7 @@ const PREFERRED_SOURCE_ENDPOINT = 'https://www.google.com/preferences/source';
  * Host diambil dari `site.context` agar rebrand domain tidak perlu menyentuh
  * markup ini.
  */
-function preferredSourceHref(hostname: string): string {
+export function preferredSourceHref(hostname: string): string {
   return `${PREFERRED_SOURCE_ENDPOINT}?q=${encodeURIComponent(`https://${hostname}`)}`;
 }
 

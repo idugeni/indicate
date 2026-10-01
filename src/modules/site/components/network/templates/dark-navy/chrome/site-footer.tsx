@@ -6,7 +6,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { COMPANY_NAME, SOCIAL_ORDER } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
-import { GooglePreferredSourceLink } from '@/modules/site/components/network/chrome/google-preferred-source';
+import { DarkNavyPreferredSourceButton } from '@/modules/site/components/network/templates/dark-navy/chrome/preferred-source-button';
 import { StoreBadges } from '@/modules/site/components/network/chrome/store-badges';
 
 const ABOUT_LINKS = [
@@ -75,12 +75,9 @@ export async function DarkNavyFooter({ site }: { readonly site: NetworkSiteData 
               </Link>
             </p>
           ) : null}
-          <p className="m-0 mt-4 flex flex-wrap items-center gap-2">
-            <GooglePreferredSourceLink
-              site={site}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-[#9aa9c4] ring-1 ring-[#1b2c4f] transition-colors hover:text-[#2f7bff]"
-            />
-          </p>
+          <div className="m-0 mt-4">
+            <DarkNavyPreferredSourceButton site={site} />
+          </div>
         </div>
 
         <nav aria-label="Kategori">

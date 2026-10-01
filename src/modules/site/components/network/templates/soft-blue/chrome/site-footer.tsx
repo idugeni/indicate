@@ -6,7 +6,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { COMPANY_NAME, SOCIAL_ORDER } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
-import { GooglePreferredSourceLink } from '@/modules/site/components/network/chrome/google-preferred-source';
+import { SoftBluePreferredSourceButton } from '@/modules/site/components/network/templates/soft-blue/chrome/preferred-source-button';
 import { StoreBadges } from '@/modules/site/components/network/chrome/store-badges';
 
 const ABOUT_LINKS = [
@@ -28,8 +28,8 @@ export async function SoftBlueFooter({ site }: { readonly site: NetworkSiteData 
 
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:grid-cols-2 sm:gap-10 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
-        <div className="col-span-2 sm:col-span-1">
+      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:grid-cols-2 sm:gap-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)]">
+        <div className="order-4 col-span-2 sm:col-span-1">
           <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
             <Image
               unoptimized
@@ -77,15 +77,12 @@ export async function SoftBlueFooter({ site }: { readonly site: NetworkSiteData 
               </Link>
             </p>
           ) : null}
-          <p className="m-0 mt-4 flex flex-wrap items-center gap-2">
-            <GooglePreferredSourceLink
-              site={site}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#2563eb]"
-            />
-          </p>
+          <div className="m-0 mt-4">
+            <SoftBluePreferredSourceButton site={site} />
+          </div>
         </div>
 
-        <nav aria-label="Kategori">
+        <nav aria-label="Kategori" className="order-1">
           <h2 className="m-0 font-sans text-sm font-bold text-slate-900">Kategori</h2>
           <ul className="m-0 mt-4 list-none space-y-2.5 p-0">
             {categories.map((item) => (
@@ -98,7 +95,7 @@ export async function SoftBlueFooter({ site }: { readonly site: NetworkSiteData 
           </ul>
         </nav>
 
-        <nav aria-label="Tentang kami">
+        <nav aria-label="Tentang kami" className="order-2">
           <h2 className="m-0 font-sans text-sm font-bold text-slate-900">Tentang Kami</h2>
           <ul className="m-0 mt-4 list-none space-y-2.5 p-0">
             {ABOUT_LINKS.map((item) => (
@@ -111,7 +108,7 @@ export async function SoftBlueFooter({ site }: { readonly site: NetworkSiteData 
           </ul>
         </nav>
 
-        <div className="col-span-2 sm:col-span-1">
+        <div className="order-3 col-span-2 sm:col-span-1">
           <h2 className="m-0 font-sans text-sm font-bold text-slate-900">Aplikasi Mobile</h2>
           <p className="m-0 mt-4 font-sans text-sm leading-relaxed text-slate-600">
             Baca berita kapan saja, di mana saja dengan aplikasi {site.settings.name}.
