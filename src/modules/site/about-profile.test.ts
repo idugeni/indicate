@@ -7,6 +7,7 @@ import {
   aboutTitle,
   deriveAboutCategories,
   deriveAboutPublisher,
+  networkAttribution,
 } from '@/modules/site/about-profile';
 
 describe('deriveAboutCategories', () => {
@@ -82,5 +83,29 @@ describe('about region meta', () => {
   it('memakai fallback deskripsi saat pengaturan kosong', () => {
     expect(aboutDescription('Portal', undefined, null)).toContain('Profil Portal');
     expect(aboutDescription('Portal', '  ', 'Jawa Tengah')).toContain('Melayani wilayah Jawa Tengah.');
+  });
+});
+
+describe('networkAttribution', () => {
+  it('menautkan portal tayang ke direktori jaringan dengan anchor deterministik', () => {
+    const first = networkAttribution(makeNetworkSite([makeNetworkArticle({})]), 'indicate.website');
+    const second = networkAttribution(makeNetworkSite([makeNetworkArticle({})]), 'indicate.website');
+    expect(first).not.toBe(null);
+    expect(first?.href).toBe('https://indicate.website/network');
+    expect(first?.anchor).toBe(second?.anchor);
+    expect(['jaringan Indicate', 'platform Indicate', 'Indicate']).toContain(first?.anchor);
+  });
+
+  it('menyaring portal kosong, noindex, sindikasi, dan host sendiri', () => {
+    expect(networkAttribution(makeNetworkSite(), 'indicate.website')).toBe(null);
+    expect(
+      networkAttribution(makeNetworkSite([makeNetworkArticle({ robotsDirective: 'noindex, nofollow' })]), 'indicate.website'),
+    ).toBe(null);
+    expect(
+      networkAttribution(makeNetworkSite([makeNetworkArticle({ href: 'https://lain.example/artikel' })]), 'indicate.website'),
+    ).toBe(null);
+    const self = makeNetworkSite([makeNetworkArticle({})]);
+    const selfHost = { ...self, context: { ...self.context, normalizedHostname: 'indicate.website' } };
+    expect(networkAttribution(selfHost, 'indicate.website')).toBe(null);
   });
 });

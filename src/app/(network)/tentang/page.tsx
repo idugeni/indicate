@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { AboutPage } from '@/modules/site/components/network/network-listing';
-import { aboutDescription, aboutTitle } from '@/modules/site/about-profile';
+import { NetworkAttribution } from '@/modules/site/components/network/ui/network-attribution';
+import { aboutDescription, aboutTitle, networkAttribution } from '@/modules/site/about-profile';
+import { getControlHosts } from '@/core/config/edge-hosts';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -19,15 +21,18 @@ export default async function AboutPageRoute() {
   const site = await resolveNetworkSite({}, '/tentang');
   const siteName = site.settings.seoSiteName ?? site.settings.name;
   return (
-    <AboutPage
-      site={site}
-      title={aboutTitle(siteName, site.regionName)}
-      description={aboutDescription(
-        siteName,
-        site.settings.seoDefaultDescription ?? site.settings.description,
-        site.regionName,
-      )}
-      path="/tentang"
-    />
+    <>
+      <AboutPage
+        site={site}
+        title={aboutTitle(siteName, site.regionName)}
+        description={aboutDescription(
+          siteName,
+          site.settings.seoDefaultDescription ?? site.settings.description,
+          site.regionName,
+        )}
+        path="/tentang"
+      />
+      <NetworkAttribution attribution={networkAttribution(site, getControlHosts().dashboard)} />
+    </>
   );
 }
