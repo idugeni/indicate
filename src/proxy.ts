@@ -254,13 +254,14 @@ export async function proxy(request: NextRequest) {
     return nextWithCorrelation(request);
   }
   if (parsed.hostname === status) {
-    if (path === '/') {
-      const url = request.nextUrl.clone();
-      url.pathname = '/status';
-      return NextResponse.rewrite(url);
-    }
     if (path === '/status' || path === '/api/status' || path === '/api/health') return nextWithCorrelation(request);
-    return deny(404, request.headers);
+    if (path.startsWith('/api/')) return deny(404, request.headers);
+    const url = request.nextUrl.clone();
+    url.hostname = dashboard;
+    url.pathname = '/status';
+    const redirect = NextResponse.redirect(url, 308);
+    redirect.headers.set(REQUEST_ID_HEADER, ensureRequestId(request.headers).requestId);
+    return withSecurityHeaders(redirect);
   }
   const alias = TENANT_ALIASES[path];
   if (alias !== undefined) {
