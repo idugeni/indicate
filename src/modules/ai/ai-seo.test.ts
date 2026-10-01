@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseExcerptSuggestion, parseMetaDescription, parseTitleSuggestions, suggestExcerpt, suggestMetaDescription, suggestTitles } from '@/modules/ai/ai-seo';
+import { parseExcerptSuggestion, parseMetaDescription, parseSeoBundle, parseTitleSuggestions, suggestExcerpt, suggestMetaDescription, suggestSeoBundle, suggestTitles } from '@/modules/ai/ai-seo';
 
 describe('parseTitleSuggestions', () => {
   it('mengurai tiga judul dan memotong kelebihan', () => {
@@ -47,18 +47,50 @@ describe('suggest fallback sibuk', () => {
     await expect(suggestTitles({ title: '', body: '' })).resolves.toMatchObject({ ok: false });
     await expect(suggestMetaDescription({ title: '', body: '' })).resolves.toMatchObject({ ok: false });
     await expect(suggestExcerpt({ title: '', body: '' })).resolves.toMatchObject({ ok: false });
+    await expect(suggestSeoBundle({ title: '', body: '' })).resolves.toMatchObject({ ok: false });
   });
 
   it('mengembalikan pesan sibuk saat control plane belum dikonfigurasi', async () => {
     const input = { title: 'Banjir di Wonosobo', body: 'Air mulai surut.' };
-    const [titles, meta, excerpt] = await Promise.all([
+    const [titles, meta, excerpt, bundle] = await Promise.all([
       suggestTitles(input),
       suggestMetaDescription(input),
       suggestExcerpt(input),
+      suggestSeoBundle(input),
     ]);
-    for (const result of [titles, meta, excerpt]) {
+    for (const result of [titles, meta, excerpt, bundle]) {
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error).toContain('sibuk');
     }
+  });
+});
+
+describe('parseSeoBundle', () => {
+  it('mengurai paket lengkap dalam satu respons', () => {
+    const raw = JSON.stringify({ titles: ['a', 'b', 'c'], excerpt: 'Air surut.', meta_description: 'Deskripsi.' });
+    expect(parseSeoBundle(raw)).toEqual({ titles: ['a', 'b', 'c'], excerpt: 'Air surut.', metaDescription: 'Deskripsi.' });
+  });
+
+  it('mengembalikan null bila ada bagian hilang', () => {
+    expect(parseSeoBundle(JSON.stringify({ titles: ['a'], excerpt: 'x' }))).toBeNull();
+    expect(parseSeoBundle(JSON.stringify({ titles: ['a'], excerpt: '', meta_description: 'd' }))).toBeNull();
+    expect(parseSeoBundle('bukan json')).toBeNull();
+  });
+
+  it('strict melempar Error deskriptif untuk bentuk liar', () => {
+    expect(() => parseSeoBundle('bukan json', { strict: true })).toThrow(/JSON objek/);
+    expect(() => parseSeoBundle(JSON.stringify({ excerpt: 'x', meta_description: 'd' }), { strict: true })).toThrow(/titles/);
+    expect(() => parseSeoBundle(JSON.stringify({ titles: ['a'], excerpt: 'x' }), { strict: true })).toThrow(/meta_description/);
+    expect(() => parseSeoBundle(JSON.stringify({ titles: ['a'], meta_description: 'd' }), { strict: true })).toThrow(/excerpt/);
+  });
+});
+
+describe('parser lama strict', () => {
+  it('melempar Error deskriptif dan non-strict tetap null', () => {
+    expect(() => parseTitleSuggestions('bukan json', { strict: true })).toThrow(/Judul SEO/);
+    expect(() => parseMetaDescription(JSON.stringify({}), { strict: true })).toThrow(/meta_description/);
+    expect(() => parseExcerptSuggestion(JSON.stringify({}), { strict: true })).toThrow(/excerpt/);
+    expect(parseTitleSuggestions('bukan json')).toBeNull();
+    expect(parseMetaDescription(JSON.stringify({}))).toBeNull();
   });
 });
