@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { aiBreakerKey, classifyAiError, isModelBreakerTripped, recordModelInfraFailure, recordModelSuccess, resetAiRotationState, resolveAiModelChain, selectCredential } from '@/modules/ai/ai-router';
+import { AI_TASK_THINKING_BUDGET, BACKGROUND_MAX_RETRIES, INTERACTIVE_MAX_RETRIES, aiBreakerKey, classifyAiError, isModelBreakerTripped, recordModelInfraFailure, recordModelSuccess, resetAiRotationState, resolveAiModelChain, resolveMaxRetries, resolveTaskThinkingBudget, selectCredential, shouldAlertBreakerTrip } from '@/modules/ai/ai-router';
 import type { AiCredentialRecord, AiRoutingPolicy } from '@/modules/ai/ai-types';
 
 function makeCredential(overrides: Partial<AiCredentialRecord> & { id: string }): AiCredentialRecord {
@@ -84,6 +84,23 @@ describe('selectCredential', () => {
       makeCredential({ id: 'p1-clean', priority: 1, totalRequests: 10, failedRequests: 0 }),
     ];
     expect(selectCredential(candidates, 'health_aware')?.id).toBe('p1-clean');
+  });
+
+  it('health_aware menurunkan kunci lambat dan memakai weight sebagai tie-break', () => {
+    const slow = makeCredential({ id: 'slow', priority: 1, avgLatencyMs: 9000, weight: 100 });
+    const fast = makeCredential({ id: 'fast', priority: 1, avgLatencyMs: 200, weight: 100 });
+    expect(selectCredential([slow, fast], 'health_aware')?.id).toBe('fast');
+    const light = makeCredential({ id: 'light', priority: 1, avgLatencyMs: 200, weight: 10 });
+    const heavy = makeCredential({ id: 'heavy', priority: 1, avgLatencyMs: 200, weight: 90 });
+    expect(selectCredential([light, heavy], 'health_aware')?.id).toBe('heavy');
+  });
+
+  it('health_aware tetap mengutamakan prioritas di atas latensi', () => {
+    const candidates = [
+      makeCredential({ id: 'p2-fast', priority: 2, avgLatencyMs: 50 }),
+      makeCredential({ id: 'p1-slow', priority: 1, avgLatencyMs: 9000 }),
+    ];
+    expect(selectCredential(candidates, 'health_aware')?.id).toBe('p1-slow');
   });
 });
 
@@ -236,5 +253,54 @@ describe('model circuit breaker', () => {
     };
     expect(await isModelBreakerTripped(failing, 'gemini', 'gemini-3.8-flash')).toBe(false);
     await recordModelInfraFailure(failing, 'gemini', 'gemini-3.8-flash');
+  });
+});
+
+describe('resolveTaskThinkingBudget', () => {
+  it('caption dan seo memakai anggaran kecil', () => {
+    expect(resolveTaskThinkingBudget('caption')?.thinkingBudget).toBe(AI_TASK_THINKING_BUDGET.caption);
+    expect(resolveTaskThinkingBudget('seo')?.thinkingBudget).toBe(AI_TASK_THINKING_BUDGET.seo);
+    expect(AI_TASK_THINKING_BUDGET.caption).toBeLessThan(AI_TASK_THINKING_BUDGET.polish);
+    expect(AI_TASK_THINKING_BUDGET.seo).toBeLessThan(AI_TASK_THINKING_BUDGET.summarize);
+  });
+
+  it('polish dan ringkas memakai anggaran besar', () => {
+    expect(resolveTaskThinkingBudget('polish')?.thinkingBudget).toBe(AI_TASK_THINKING_BUDGET.polish);
+    expect(resolveTaskThinkingBudget('summarize')?.thinkingBudget).toBe(AI_TASK_THINKING_BUDGET.summarize);
+  });
+
+  it('override pengguna menang atas anggaran tugas', () => {
+    const override = { thinkingBudget: 1234, includeThoughts: false };
+    expect(resolveTaskThinkingBudget('caption', override)).toEqual(override);
+  });
+
+  it('tugas tak dikenal memakai default kanal', () => {
+    expect(resolveTaskThinkingBudget('tak-dikenal', undefined, 'api')).toEqual({
+      thinkingBudget: 32768,
+      includeThoughts: true,
+    });
+    expect(resolveTaskThinkingBudget('tak-dikenal', undefined, 'web')?.thinkingBudget).toBe(-1);
+  });
+});
+
+describe('shouldAlertBreakerTrip', () => {
+  it('benar hanya saat increment menyeberangi ambang', () => {
+    expect(shouldAlertBreakerTrip(4, 5)).toBe(true);
+    expect(shouldAlertBreakerTrip(3, 5)).toBe(false);
+    expect(shouldAlertBreakerTrip(5, 5)).toBe(false);
+  });
+
+  it('mendukung ambang kustom', () => {
+    expect(shouldAlertBreakerTrip(1, 2)).toBe(true);
+    expect(shouldAlertBreakerTrip(0, 2)).toBe(false);
+  });
+});
+
+describe('resolveMaxRetries', () => {
+  it('interaktif memakai batas kecil dan background memakai batas besar', () => {
+    expect(INTERACTIVE_MAX_RETRIES).toBe(2);
+    expect(BACKGROUND_MAX_RETRIES).toBe(5);
+    expect(resolveMaxRetries('interactive')).toBe(2);
+    expect(resolveMaxRetries('background')).toBe(5);
   });
 });

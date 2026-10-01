@@ -36,6 +36,31 @@ export const DEFAULT_AI_ROUTING_POLICY: AiRoutingPolicy = {
   updatedAt: '1970-01-01T00:00:00.000Z',
 };
 
+/**
+ * Batas retry untuk panggilan interaktif yang menunggu respons.
+ */
+export const INTERACTIVE_MAX_RETRIES = 2;
+
+/**
+ * Batas retry untuk pekerjaan background tanpa pengguna menunggu.
+ */
+export const BACKGROUND_MAX_RETRIES = 5;
+
+/**
+ * Mode retry berdasarkan urgensi respons.
+ */
+export type AiRetryMode = 'interactive' | 'background';
+
+/**
+ * Resolve batas retry berdasarkan mode panggilan.
+ *
+ * @param mode - Mode interaktif atau background.
+ * @returns Batas retry untuk mode tersebut.
+ */
+export function resolveMaxRetries(mode: AiRetryMode): number {
+  return mode === 'background' ? BACKGROUND_MAX_RETRIES : INTERACTIVE_MAX_RETRIES;
+}
+
 /** Full column projection for one credential row, kept explicit for egress review. */
 const CREDENTIAL_COLUMNS = sql`id, provider_id, organization_id, label, key_encrypted, key_masked, status, priority, weight, cooldown_until, last_used_at, last_success_at, last_failure_at, last_error_message, last_error_class, total_requests, successful_requests, failed_requests, rate_limit_count, quota_exhausted_count, avg_latency_ms, created_at, updated_at`;
 
@@ -177,6 +202,46 @@ export function resolveThinkingBudget(
     default:
       return { thinkingBudget: -1, includeThoughts: true };
   }
+}
+
+/**
+ * Tugas yang memiliki anggaran thinking berbeda.
+ *
+ * @remarks Caption dan SEO hanya butuh penalaran pendek; polish dan
+ * ringkas memakai anggaran besar untuk menjaga kualitas hasil.
+ */
+export type AiThinkingTask = 'caption' | 'seo' | 'polish' | 'summarize';
+
+/**
+ * Pemetaan tugas ke anggaran thinking dalam token.
+ *
+ * @remarks Caption dan SEO kecil agar cepat; polish dan ringkas besar
+ * agar hasilnya matang.
+ */
+export const AI_TASK_THINKING_BUDGET: Record<AiThinkingTask, number> = {
+  caption: 1024,
+  seo: 2048,
+  polish: 8192,
+  summarize: 8192,
+};
+
+/**
+ * Resolve anggaran thinking berdasarkan tugas.
+ *
+ * @param task - Tugas yang menentukan anggaran default.
+ * @param userOverride - Override eksplisit pemanggil, dihormati lebih dulu.
+ * @param channel - Kanal akses untuk fallback saat tugas tidak dikenal.
+ * @returns Konfigurasi thinking tugas tersebut atau default kanal.
+ */
+export function resolveTaskThinkingBudget(
+  task: AiThinkingTask | (string & {}),
+  userOverride?: AiThinkingConfig | undefined,
+  channel?: AiAccessChannel | undefined,
+): AiThinkingConfig | undefined {
+  if (userOverride?.thinkingBudget !== undefined) return userOverride;
+  const budget = (AI_TASK_THINKING_BUDGET as Record<string, number>)[task];
+  if (typeof budget === 'number') return { thinkingBudget: budget, includeThoughts: true };
+  return resolveThinkingBudget(channel, undefined, 0);
 }
 
 /**
@@ -342,6 +407,21 @@ export async function recordModelInfraFailure(
 }
 
 /**
+ * Tentukan apakah increment terakhir menyeberangi ambang breaker.
+ *
+ * @param previousCount - Hitungan gagal sebelum increment terakhir.
+ * @param threshold - Ambang trip; default AI_BREAKER_TRIP_THRESHOLD.
+ * @returns True hanya saat increment terakhir menyeberangi ambang.
+ */
+export function shouldAlertBreakerTrip(
+  previousCount: number,
+  threshold: number = AI_BREAKER_TRIP_THRESHOLD,
+): boolean {
+  if (!Number.isFinite(previousCount) || !Number.isFinite(threshold)) return false;
+  return previousCount < threshold && previousCount + 1 >= threshold;
+}
+
+/**
  * Mendinginkan hitungan gagal satu model setelah sukses.
  *
  * @param store - Counter Redis; undefined berarti tidak dicatat.
@@ -452,6 +532,8 @@ export function selectCredential(
         const rateA = errorRate(a);
         const rateB = errorRate(b);
         if (rateA !== rateB) return rateA - rateB;
+        if (a.avgLatencyMs !== b.avgLatencyMs) return a.avgLatencyMs - b.avgLatencyMs;
+        if (a.weight !== b.weight) return b.weight - a.weight;
         return a.totalRequests - b.totalRequests;
       })[0];
       return selected ?? null;
