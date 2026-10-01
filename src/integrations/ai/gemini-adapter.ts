@@ -340,14 +340,14 @@ export async function executeGeminiAdapter(
         };
   if (tokensUsage === undefined) {
     return {
-      text: response.text ?? 'Informasi telah diproses oleh sistem.',
+      text: response.text ?? '',
       toolCallsExecuted: executedTools,
       toolResults,
       ...(inlineData.length === 0 ? {} : { inlineData }),
     };
   }
   return {
-    text: response.text ?? 'Informasi telah diproses oleh sistem.',
+    text: response.text ?? '',
     toolCallsExecuted: executedTools,
     toolResults,
     tokensUsage,

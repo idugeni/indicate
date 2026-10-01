@@ -410,6 +410,24 @@ export async function executeAiQuery(
       const startedAt = clock().getTime();
       try {
         const result = await executeWithTimeout(adapter, plainKey, modelName, effectivePrompt, timeoutMs);
+        if (result.text.trim() === '' && (result.inlineData?.length ?? 0) === 0) {
+          const emptyMs = clock().getTime() - startedAt;
+          await recordKeyFailure(deps.db, credential.id, 'malformed_response', 'Provider returned empty text.', policy.cooldownDurationSec);
+          await log({
+            correlationId,
+            channel,
+            providerId,
+            modelName,
+            credentialId: credential.id,
+            organizationId,
+            status: 'failed',
+            retryCount: totalAttempts - 1,
+            latencyMs: emptyMs,
+            errorClass: 'malformed_response',
+            errorMessage: 'Provider returned empty text.',
+          });
+          continue;
+        }
         const latencyMs = clock().getTime() - startedAt;
         await recordKeySuccess(deps.db, credential.id, latencyMs);
         await recordModelSuccess(breakerStore, providerId, modelName);

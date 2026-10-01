@@ -78,6 +78,9 @@ by design (`bootstrap-schema.ts` rejects unknown `AI_*` keys in production).
   fail-open, like every other guard here.
 - `request_timeout_ms` (1s–300s, default 60s) bounds every provider call and
   every draft stream; a timeout classifies as retryable and moves the chain.
+- Empty text without media is retried as `malformed_response` instead of
+  reaching callers; the non-stream adapter no longer masks it with a
+  placeholder sentence.
 
 ## Per-model rate limits
 

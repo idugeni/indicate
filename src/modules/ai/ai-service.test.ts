@@ -350,3 +350,73 @@ describe('toToolsParam', () => {
     expect(result).not.toBe(source);
   });
 });
+
+describe('executeAiQuery teks kosong', () => {
+  const SAME_PROVIDER_POLICY = {
+    ...POLICY_ROW,
+    primary_provider_id: 'gemini',
+    fallback_provider_id: null,
+    default_model: 'gemini-3.8-flash',
+    fallback_model: 'gemini-3.6-flash',
+  };
+
+  it('teks kosong tanpa media dicoba ulang ke model berikut', async () => {
+    const fake = setup([[credentialRow('cred-1', 'gemini')]], SAME_PROVIDER_POLICY);
+    const calls: string[] = [];
+    const result = await executeAiQuery(
+      depsFor(fake, {
+        resolveAdapter: () => ({
+          execute: async (_apiKey: string, name: string) => {
+            calls.push(name);
+            if (name === 'gemini-3.8-flash') return { text: '', toolCallsExecuted: [] as string[] };
+            return { text: 'Jawaban redaksi yang cukup panjang.', tokensUsage: { prompt: 10, completion: 20, total: 30 }, toolCallsExecuted: [] as string[] };
+          },
+        }),
+      }),
+      PROMPT,
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.modelName).toBe('gemini-3.6-flash');
+    expect(calls).toEqual(['gemini-3.8-flash', 'gemini-3.6-flash']);
+    expect(fake.logs.some((entry) => entry.status === 'failed' && entry.errorClass === 'malformed_response')).toBe(true);
+  });
+
+  it('semua kosong berarti kehabisan retry', async () => {
+    const samePolicy = { ...SAME_PROVIDER_POLICY, fallback_model: 'gemini-3.8-flash' };
+    const fake = setup([[credentialRow('cred-1', 'gemini')]], samePolicy);
+    const calls: string[] = [];
+    const result = await executeAiQuery(
+      depsFor(fake, {
+        resolveAdapter: () => ({
+          execute: async (_apiKey: string, name: string) => {
+            calls.push(name);
+            return { text: '', toolCallsExecuted: [] as string[] };
+          },
+        }),
+      }),
+      PROMPT,
+    );
+    expect(result.error).toBe('ALL_RETRIES_EXHAUSTED');
+    expect(calls).toEqual(['gemini-3.8-flash']);
+    expect(fake.logs.some((entry) => entry.status === 'failed' && entry.errorClass === 'malformed_response')).toBe(true);
+  });
+
+  it('teks kosong berlampiran media tetap sukses', async () => {
+    const samePolicy = { ...SAME_PROVIDER_POLICY, fallback_model: 'gemini-3.8-flash' };
+    const fake = setup([[credentialRow('cred-1', 'gemini')]], samePolicy);
+    const result = await executeAiQuery(
+      depsFor(fake, {
+        resolveAdapter: () => ({
+          execute: async () => ({
+            text: '',
+            toolCallsExecuted: [] as string[],
+            inlineData: [{ mimeType: 'image/png', base64: 'AAA' }],
+          }),
+        }),
+      }),
+      PROMPT,
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.inlineData).toHaveLength(1);
+  });
+});
