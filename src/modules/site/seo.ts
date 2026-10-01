@@ -396,6 +396,9 @@ export function serializeJsonLd(documents: readonly Readonly<Record<string, unkn
  * report every one of them as "Corrupted Image" (Meta refuses the fetch and never sees the
  * bytes). The carve-out is longer than `/api/`, so longest-match precedence makes `Allow`
  * win. Logo and favicon already ship from `/logo.png` + `/icon.png` for the same reason.
+ * `/cdn-cgi/` is Cloudflare infrastructure (email-protection decode, challenge platform):
+ * audit crawlers strip the `#hash` off obfuscated mailto links and flag the bare decode URL
+ * as broken, so compliant crawlers are told not to fetch the prefix at all.
  */
 export function serializeRobots(site: {
   readonly context: ResolvedSiteContext;
@@ -418,6 +421,7 @@ export function serializeRobots(site: {
     'Disallow: /api/',
     'Disallow: /mcp',
     'Disallow: /.webmcp/',
+    'Disallow: /cdn-cgi/',
     'Disallow: /dashboard',
     'Disallow: /auth',
     'Disallow: /sign-in',

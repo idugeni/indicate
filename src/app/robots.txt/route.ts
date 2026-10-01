@@ -24,6 +24,7 @@ export const controlPlaneRobots = (host: string) => [
   'Disallow: /api/',
   'Disallow: /mcp',
   'Disallow: /.webmcp/',
+  'Disallow: /cdn-cgi/',
   'Disallow: /domain-pending',
   'Disallow: /categories',
   'Disallow: /kebijakan-privasi',

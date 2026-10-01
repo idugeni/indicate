@@ -211,6 +211,7 @@ describe('serializers', () => {
     expect(robots).toContain('Allow: /logo.png');
     expect(robots).toContain('Allow: /manifest.webmanifest');
     expect(robots).toContain('Allow: /api/network/media/');
+    expect(robots).toContain('Disallow: /cdn-cgi/');
     expect(robots).toContain('Sitemap: https://portal.example/sitemap.xml');
   });
 

@@ -9,6 +9,7 @@ describe('controlPlaneRobots', () => {
     expect(body).toContain('Allow: /$');
     expect(body).toContain('Disallow: /dashboard');
     expect(body).toContain('Disallow: /api/');
+    expect(body).toContain('Disallow: /cdn-cgi/');
     expect(body).toContain('Sitemap: https://indicate.website/sitemap.xml');
   });
 });
