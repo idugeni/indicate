@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { assistantChat, buildAssistantPrompt } from '@/modules/ai/ai-assistant';
+import { assistantChat, buildAssistantPrompt, TASK_MODEL_PROFILE, taskThinkingOverride } from '@/modules/ai/ai-assistant';
 
 describe('buildAssistantPrompt', () => {
   it('melipat transkrip berlabel plus pertanyaan saat ini', () => {
@@ -50,5 +50,36 @@ describe('assistantChat fallback', () => {
     const result = await assistantChat({ messages: [{ role: 'user', text: 'Bagaimana menyusun judul berita?' }] });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toContain('sibuk');
+  });
+});
+
+describe('grounding konteks artikel asisten', () => {
+  it('mempertahankan prompt lama bila konteks kosong', () => {
+    const without = buildAssistantPrompt([{ role: 'user', text: 'Bagaimana menyusun judul berita?' }]);
+    expect(without).not.toContain('jangan menambah fakta baru');
+  });
+
+  it('menyertakan kutipan dan isi acuan plus kalimat anti-halusinasi', () => {
+    const prompt = buildAssistantPrompt(
+      [{ role: 'user', text: 'Ringkas artikel ini.' }],
+      { excerpt: 'Banjir surut di Wonosobo.', body: 'Warga kembali ke rumah masing-masing.' },
+    );
+    expect(prompt).toContain('Kutipan:\nBanjir surut di Wonosobo.');
+    expect(prompt).toContain('Isi (terpotong):\nWarga kembali ke rumah masing-masing.');
+    expect(prompt).toContain('jangan menambah fakta baru');
+    expect(prompt.length).toBeLessThanOrEqual(4000);
+  });
+});
+
+describe('TASK_MODEL_PROFILE dan taskThinkingOverride chat', () => {
+  it('memetakan tujuh tugas ke tier murah dengan suhu chat 0.7', () => {
+    expect(Object.keys(TASK_MODEL_PROFILE).sort()).toEqual(['caption', 'chat', 'embed', 'polish', 'ringkas', 'sampul', 'seo']);
+    expect(TASK_MODEL_PROFILE.chat).toEqual({ modelTier: 'murah', temperature: 0.7 });
+  });
+
+  it('mengembalikan undefined untuk chat dan menghormati override pemanggil', () => {
+    expect(taskThinkingOverride('chat')).toBeUndefined();
+    expect(taskThinkingOverride('seo')).toEqual({ thinkingBudget: 2048, includeThoughts: true });
+    expect(taskThinkingOverride('chat', { thinkingBudget: 4096, includeThoughts: false })).toEqual({ thinkingBudget: 4096, includeThoughts: false });
   });
 });

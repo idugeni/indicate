@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { classifyArticle, parseClassification, parsePolishedBody, polishBody } from '@/modules/ai/ai-polish';
+import { classifyArticle, parseClassification, parsePolishedBody, polishBody, TASK_MODEL_PROFILE, taskThinkingOverride } from '@/modules/ai/ai-polish';
 
 describe('parsePolishedBody', () => {
   it('mengurai isi dari JSON model', () => {
@@ -60,5 +60,34 @@ describe('validasi polish dan klasifikasi', () => {
       ok: false,
       error: 'Belum ada kategori untuk dipilih.',
     });
+  });
+
+  it('menerima excerpt opsional tanpa mengubah validasi lama', async () => {
+    await expect(polishBody({ title: '', body: '   ', excerpt: 'kutipan acuan' })).resolves.toEqual({
+      ok: false,
+      error: 'Isi artikel masih kosong.',
+    });
+    await expect(classifyArticle({ title: '', body: '', excerpt: 'kutipan acuan', categories: ['Nasional'] })).resolves.toEqual({
+      ok: false,
+      error: 'Judul atau isi diperlukan.',
+    });
+  });
+});
+
+describe('TASK_MODEL_PROFILE dan taskThinkingOverride', () => {
+  it('memetakan tujuh tugas ke tier murah dengan suhu yang disarankan', () => {
+    expect(Object.keys(TASK_MODEL_PROFILE).sort()).toEqual(['caption', 'chat', 'embed', 'polish', 'ringkas', 'sampul', 'seo']);
+    for (const profile of Object.values(TASK_MODEL_PROFILE)) expect(profile.modelTier).toBe('murah');
+    expect(TASK_MODEL_PROFILE.polish.temperature).toBe(0.5);
+    expect(TASK_MODEL_PROFILE.ringkas.thinkingBudget).toBe(8192);
+  });
+
+  it('mengembalikan anggaran tugas dan menghormati override pemanggil', () => {
+    expect(taskThinkingOverride('polish')).toEqual({ thinkingBudget: 8192, includeThoughts: true });
+    expect(taskThinkingOverride('caption')).toEqual({ thinkingBudget: 1024, includeThoughts: true });
+    expect(taskThinkingOverride('sampul')).toBeUndefined();
+    expect(taskThinkingOverride('embed')).toBeUndefined();
+    expect(taskThinkingOverride('tak-dikenal')).toBeUndefined();
+    expect(taskThinkingOverride('seo', { thinkingBudget: 512 })).toEqual({ thinkingBudget: 512 });
   });
 });

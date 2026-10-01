@@ -9,7 +9,7 @@ import {
   embedTextsViaWorkersAi,
 } from '@/integrations/ai/gateway/workers-ai/workers-ai-embedding';
 import { resolveApiKey } from '@/modules/ai/ai-router';
-import type { AiDb } from '@/modules/ai/ai-types';
+import type { AiDb, AiThinkingConfig } from '@/modules/ai/ai-types';
 
 /** Lebar maksimum satu chunk, sejajar dengan check `document_embeddings_chunk_nonempty`. */
 export const EMBEDDING_CHUNK_CHARS = 2000;
@@ -19,6 +19,60 @@ export const EMBEDDING_MAX_CHUNKS = 20;
 
 /** Plafon kandidat vektor per pencarian arsip; cosine dihitung di JS. */
 export const SEMANTIC_CANDIDATE_LIMIT = 100;
+
+/**
+ * Jenis tugas AI yang dipetakan ke profil model hemat.
+ *
+ * @remarks Kunci `ringkas` adalah alias tugas `summarize` di control plane.
+ */
+export type AiTaskKind = 'caption' | 'seo' | 'polish' | 'ringkas' | 'sampul' | 'chat' | 'embed';
+
+/**
+ * Profil model hemat per tugas: tier murah, suhu yang disarankan, dan anggaran thinking.
+ *
+ * @remarks `thinkingBudget` yang `undefined` berarti memakai default kanal adapter;
+ * `provider` hanya diisi tugas embed sebagai urutan provider default.
+ */
+export interface TaskModelProfile {
+  readonly modelTier: 'murah';
+  readonly temperature: number;
+  readonly thinkingBudget?: number | undefined;
+  readonly provider?: EmbeddingProvider | undefined;
+}
+
+/**
+ * Matriks tugas ke profil model hemat.
+ *
+ * @remarks Caption dan SEO memakai penalaran pendek agar cepat; polish dan
+ * ringkas memakai anggaran besar agar hasilnya matang; sampul, chat, dan
+ * embed memakai default kanal tanpa thinking tambahan.
+ */
+export const TASK_MODEL_PROFILE: Record<AiTaskKind, TaskModelProfile> = {
+  caption: { modelTier: 'murah', temperature: 0.3, thinkingBudget: 1024 },
+  seo: { modelTier: 'murah', temperature: 0.5, thinkingBudget: 2048 },
+  polish: { modelTier: 'murah', temperature: 0.5, thinkingBudget: 8192 },
+  ringkas: { modelTier: 'murah', temperature: 0.3, thinkingBudget: 8192 },
+  sampul: { modelTier: 'murah', temperature: 0.8 },
+  chat: { modelTier: 'murah', temperature: 0.7 },
+  embed: { modelTier: 'murah', temperature: 0, provider: 'auto' },
+};
+
+/**
+ * Mengembalikan override thinking untuk satu tugas dari matriks profil.
+ *
+ * @param task - Tugas yang menentukan anggaran default.
+ * @param userOverride - Override eksplisit pemanggil, dihormati lebih dulu.
+ * @returns Konfigurasi thinking tugas tersebut, atau undefined bila memakai default kanal.
+ */
+export function taskThinkingOverride(
+  task: AiTaskKind | (string & {}),
+  userOverride?: AiThinkingConfig | undefined,
+): AiThinkingConfig | undefined {
+  if (userOverride?.thinkingBudget !== undefined) return userOverride;
+  const profile = (TASK_MODEL_PROFILE as Record<string, TaskModelProfile>)[task];
+  if (profile?.thinkingBudget === undefined) return undefined;
+  return { thinkingBudget: profile.thinkingBudget, includeThoughts: true };
+}
 
 /** Opsi transport untuk satu aksi reindex. */
 export interface ReindexEmbeddingsOptions {
@@ -134,7 +188,7 @@ export async function embedArticleChunks(
   organizationId: string,
   options?: ReindexEmbeddingsOptions | undefined,
 ): Promise<{ readonly vectors: Array<readonly number[] | null>; readonly provider: 'workers-ai' | 'gemini' | 'none' }> {
-  const provider = options?.provider ?? 'auto';
+  const provider = options?.provider ?? TASK_MODEL_PROFILE.embed.provider ?? 'auto';
   const empty = chunks.map(() => null);
   if (chunks.length === 0) return { vectors: [], provider: 'none' };
   if ((provider === 'workers-ai' || provider === 'auto') && options?.workersAi !== undefined) {

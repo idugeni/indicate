@@ -1,6 +1,62 @@
 import 'server-only';
 
 import { BUSY_MESSAGE, runQuery, scanPrompt, stripCodeFence, truncateInput } from '@/modules/ai/ai-usage';
+import type { AiThinkingConfig } from '@/modules/ai/ai-types';
+
+const GROUNDING_SENTENCE =
+  'Gunakan hanya fakta dari judul, kutipan, dan isi yang diberikan; jangan menambah fakta baru di luar teks tersebut.';
+
+/**
+ * Jenis tugas AI yang dipetakan ke profil model hemat.
+ *
+ * @remarks Kunci `ringkas` adalah alias tugas `summarize` di control plane.
+ */
+export type AiTaskKind = 'caption' | 'seo' | 'polish' | 'ringkas' | 'sampul' | 'chat' | 'embed';
+
+/**
+ * Profil model hemat per tugas: tier murah, suhu yang disarankan, dan anggaran thinking.
+ *
+ * @remarks `thinkingBudget` yang `undefined` berarti memakai default kanal adapter.
+ */
+export interface TaskModelProfile {
+  readonly modelTier: 'murah';
+  readonly temperature: number;
+  readonly thinkingBudget?: number | undefined;
+}
+
+/**
+ * Matriks tugas ke profil model hemat.
+ *
+ * @remarks Caption dan SEO memakai penalaran pendek agar cepat; polish dan
+ * ringkas memakai anggaran besar agar hasilnya matang; sampul, chat, dan
+ * embed memakai default kanal tanpa thinking tambahan.
+ */
+export const TASK_MODEL_PROFILE: Record<AiTaskKind, TaskModelProfile> = {
+  caption: { modelTier: 'murah', temperature: 0.3, thinkingBudget: 1024 },
+  seo: { modelTier: 'murah', temperature: 0.5, thinkingBudget: 2048 },
+  polish: { modelTier: 'murah', temperature: 0.5, thinkingBudget: 8192 },
+  ringkas: { modelTier: 'murah', temperature: 0.3, thinkingBudget: 8192 },
+  sampul: { modelTier: 'murah', temperature: 0.8 },
+  chat: { modelTier: 'murah', temperature: 0.7 },
+  embed: { modelTier: 'murah', temperature: 0 },
+};
+
+/**
+ * Mengembalikan override thinking untuk satu tugas dari matriks profil.
+ *
+ * @param task - Tugas yang menentukan anggaran default.
+ * @param userOverride - Override eksplisit pemanggil, dihormati lebih dulu.
+ * @returns Konfigurasi thinking tugas tersebut, atau undefined bila memakai default kanal.
+ */
+export function taskThinkingOverride(
+  task: AiTaskKind | (string & {}),
+  userOverride?: AiThinkingConfig | undefined,
+): AiThinkingConfig | undefined {
+  if (userOverride?.thinkingBudget !== undefined) return userOverride;
+  const profile = (TASK_MODEL_PROFILE as Record<string, TaskModelProfile>)[task];
+  if (profile?.thinkingBudget === undefined) return undefined;
+  return { thinkingBudget: profile.thinkingBudget, includeThoughts: true };
+}
 
 const POLISH_SYSTEM = [
   'Kamu adalah editor bahasa senior media Indonesia.',
@@ -24,21 +80,24 @@ const CLASSIFY_SYSTEM = [
  *
  * @param input.title - Judul sebagai konteks nada tulisan.
  * @param input.body - Isi mentah yang dipoles per paragraf.
+ * @param input.excerpt - Kutipan acuan opsional sebagai sumber grounding tambahan; kosong berarti perilaku lama.
  * @param input.organizationId - Organisasi untuk cakupan kredensial dan audit.
  * @returns Isi yang sudah dipoles atau pesan sibuk yang aman.
  */
 export async function polishBody(input: {
   readonly title: string;
   readonly body: string;
+  readonly excerpt?: string;
   readonly organizationId?: string;
 }): Promise<{ readonly ok: true; readonly body: string } | { readonly ok: false; readonly error: string }> {
   const title = truncateInput(input.title, 200);
   const body = truncateInput(input.body, 8000);
+  const excerpt = truncateInput(input.excerpt ?? '', 2000);
   if (body === '') return { ok: false, error: 'Isi artikel masih kosong.' };
   const result = await runQuery('editor', input.organizationId, {
-    prompt: `Poles naskah berikut${title === '' ? '' : ` (konteks judul: ${title})`}:\n\n${body}`,
+    prompt: `Poles naskah berikut${title === '' ? '' : ` (konteks judul: ${title})`}:\n\n${body}${excerpt === '' ? '' : `\n\nKutipan acuan:\n${excerpt}`}\n${GROUNDING_SENTENCE}`,
     systemInstruction: POLISH_SYSTEM,
-    temperature: 0.5,
+    temperature: TASK_MODEL_PROFILE.polish.temperature,
     maxOutputTokens: 4096,
     responseMimeType: 'application/json',
   });
@@ -77,6 +136,7 @@ export interface ArticleClassification {
  *
  * @param input.title - Judul artikel.
  * @param input.body - Isi lengkap artikel.
+ * @param input.excerpt - Kutipan acuan opsional sebagai sumber grounding tambahan; kosong berarti perilaku lama.
  * @param input.categories - Nama kategori yang boleh dipilih; di luar itu ditolak.
  * @param input.organizationId - Organisasi untuk cakupan kredensial dan audit.
  * @returns Kategori terpilih plus tag atau pesan sibuk yang aman.
@@ -84,18 +144,20 @@ export interface ArticleClassification {
 export async function classifyArticle(input: {
   readonly title: string;
   readonly body: string;
+  readonly excerpt?: string;
   readonly categories: readonly string[];
   readonly organizationId?: string;
 }): Promise<{ readonly ok: true; readonly classification: ArticleClassification } | { readonly ok: false; readonly error: string }> {
   const title = truncateInput(input.title, 200);
   const body = truncateInput(input.body, 8000);
+  const excerpt = truncateInput(input.excerpt ?? '', 2000);
   if (title === '' && body === '') return { ok: false, error: 'Judul atau isi diperlukan.' };
   const allowed = [...new Set(input.categories.map((name) => name.trim()).filter((name) => name !== ''))].slice(0, 80);
   if (allowed.length === 0) return { ok: false, error: 'Belum ada kategori untuk dipilih.' };
   const scanned = scanPrompt(`${title}\n${body}`);
   if (!scanned.ok) return { ok: false, error: scanned.reason };
   const result = await runQuery('editor', input.organizationId, {
-    prompt: `Klasifikasikan artikel berikut.\n\nJudul: ${title}\n\nIsi:\n${body}\n\nDaftar kategori:\n${allowed.map((name) => `- ${name}`).join('\n')}`,
+    prompt: `Klasifikasikan artikel berikut.\n\nJudul: ${title}\n\nIsi:\n${body}${excerpt === '' ? '' : `\n\nKutipan acuan:\n${excerpt}`}\n\nDaftar kategori:\n${allowed.map((name) => `- ${name}`).join('\n')}\n${GROUNDING_SENTENCE}`,
     systemInstruction: CLASSIFY_SYSTEM,
     temperature: 0.3,
     maxOutputTokens: 512,

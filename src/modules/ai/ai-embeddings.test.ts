@@ -6,6 +6,8 @@ import {
   EMBEDDING_MAX_CHUNKS,
   reindexArticleEmbeddings,
   splitArticleChunks,
+  TASK_MODEL_PROFILE,
+  taskThinkingOverride,
 } from '@/modules/ai/ai-embeddings';
 import type { AiDb } from '@/modules/ai/ai-types';
 
@@ -152,5 +154,18 @@ describe('reindexArticleEmbeddings', () => {
     expect((await reindexArticleEmbeddings(missing, { organizationId: ORG_A, articleId: ARTICLE })).ok).toBe(false);
     const empty = makeFakeDb({ org: ORG_A, id: ARTICLE, title: '  ', excerpt: '', body: '' });
     expect((await reindexArticleEmbeddings(empty, { organizationId: ORG_A, articleId: ARTICLE })).ok).toBe(false);
+  });
+});
+
+describe('TASK_MODEL_PROFILE dan taskThinkingOverride embed', () => {
+  it('memetakan tujuh tugas ke tier murah dengan provider embed auto', () => {
+    expect(Object.keys(TASK_MODEL_PROFILE).sort()).toEqual(['caption', 'chat', 'embed', 'polish', 'ringkas', 'sampul', 'seo']);
+    expect(TASK_MODEL_PROFILE.embed).toMatchObject({ modelTier: 'murah', provider: 'auto' });
+  });
+
+  it('mengembalikan undefined untuk embed dan menghormati override pemanggil', () => {
+    expect(taskThinkingOverride('embed')).toBeUndefined();
+    expect(taskThinkingOverride('ringkas')).toEqual({ thinkingBudget: 8192, includeThoughts: true });
+    expect(taskThinkingOverride('embed', { thinkingBudget: 1024 })).toEqual({ thinkingBudget: 1024 });
   });
 });

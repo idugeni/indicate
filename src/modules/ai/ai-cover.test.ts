@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildCoverImagePrompt, generateCoverImage, pickCoverImage } from '@/modules/ai/ai-cover';
+import { buildCoverImagePrompt, generateCoverImage, pickCoverImage, TASK_MODEL_PROFILE, taskThinkingOverride } from '@/modules/ai/ai-cover';
 
 describe('buildCoverImagePrompt', () => {
   it('menyusun deskripsi visual dengan preset foto jurnalistik dan bingkai 16:9', () => {
@@ -60,5 +60,36 @@ describe('generateCoverImage fallback', () => {
     const result = await generateCoverImage({ title: 'Banjir Surut di Wonosobo', style: 'Foto jurnalistik', aspectRatio: '16:9' });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toContain('sibuk');
+  });
+});
+
+describe('grounding sampul', () => {
+  it('menambahkan kalimat anti-halusinasi di akhir prompt perilaku lama', () => {
+    const built = buildCoverImagePrompt({ title: 'Banjir Surut di Wonosobo' });
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.prompt).toContain('jangan menambah fakta baru');
+  });
+
+  it('menyertakan kutipan dan isi acuan terpotong bila diberikan', () => {
+    const built = buildCoverImagePrompt({ title: 'Banjir Surut di Wonosobo', excerpt: 'Air setinggi lutut.', body: 'Warga mengungsi ke balai desa.' });
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.prompt).toContain('Kutipan acuan:\nAir setinggi lutut.');
+    expect(built.prompt).toContain('Isi acuan (terpotong):\nWarga mengungsi ke balai desa.');
+    expect(built.prompt.endsWith('di luar teks tersebut.')).toBe(true);
+  });
+});
+
+describe('TASK_MODEL_PROFILE dan taskThinkingOverride sampul', () => {
+  it('memetakan tujuh tugas ke tier murah dengan suhu sampul 0.8', () => {
+    expect(Object.keys(TASK_MODEL_PROFILE).sort()).toEqual(['caption', 'chat', 'embed', 'polish', 'ringkas', 'sampul', 'seo']);
+    expect(TASK_MODEL_PROFILE.sampul).toEqual({ modelTier: 'murah', temperature: 0.8 });
+  });
+
+  it('mengembalikan undefined untuk sampul dan menghormati override pemanggil', () => {
+    expect(taskThinkingOverride('sampul')).toBeUndefined();
+    expect(taskThinkingOverride('polish')).toEqual({ thinkingBudget: 8192, includeThoughts: true });
+    expect(taskThinkingOverride('sampul', { thinkingBudget: 1024 })).toEqual({ thinkingBudget: 1024 });
   });
 });
