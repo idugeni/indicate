@@ -259,6 +259,22 @@ sudah ter-push tidak ditulis ulang tanpa persetujuan owner.
    tanpa `.env*`, tanpa file generated yang tidak disengaja.
 6. Definition-of-done commit: pesan lolos standar + gate hijau di atas.
 
+## Definition of done — push (WAJIB — bukan relaxed mode)
+
+Setiap push ke remote wajib lolos gerbang ini berurutan. Langgar = perbaiki
+sebelum push berikutnya; histori yang sudah ter-push tidak ditulis ulang
+tanpa persetujuan owner.
+
+1. `npm run typecheck`, `npm run lint`, test terdampak: hijau lokal.
+2. Bila menyentuh database: migrasi forward + entri jurnal + digest
+   (`migration-digest.test`) hijau, `npm run db:bootstrap` +
+   `db:bootstrap:check` hijau, file migrasi LF, lalu advisors `security` dan
+   `performance` bersih dari temuan baru (yang tersisa dijelaskan tertulis).
+3. `git status` ditelaah baris per baris sebelum `git add`: jangan sapu file
+   sesi lain (`git add -A` buta dilarang bila pohon dipakai bersama).
+4. Setelah push: pantau run CI sampai hijau; merah = perbaiki atau revert
+   di giliran berikutnya, bukan dibiarkan.
+
 ## MCP + Skills discovery (mandatory, not advisory)
 
 This section is mandatory and is not covered by relaxed mode. Every agent
