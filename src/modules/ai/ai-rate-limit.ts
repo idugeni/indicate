@@ -164,3 +164,95 @@ export function createAiModelRateLimitStore(config: { readonly url: string; read
     },
   };
 }
+
+/** Time-to-live for per-organization daily quota counters. */
+export const AI_ORG_QUOTA_TTL_SECONDS = 48 * 3600;
+
+/** Daily ceilings for one organization; null means unlimited. */
+export interface AiOrganizationQuotaLimits {
+  readonly dailyRequestLimit: number | null;
+  readonly dailyTokenLimit: number | null;
+}
+
+/** Verdict of one pre-call per-organization quota check. */
+export interface AiOrganizationQuotaCheck {
+  readonly allowed: boolean;
+  readonly reason?: 'org_daily_requests_exceeded' | 'org_daily_tokens_exceeded' | undefined;
+  readonly remainingRequests?: number | undefined;
+  readonly remainingTokens?: number | undefined;
+}
+
+/**
+ * Build the daily request-counter key for one organization.
+ *
+ * @param organizationId - Tenant under enforcement.
+ * @param day - Calendar day (`YYYY-MM-DD`) shared by every instance.
+ * @returns Namespaced per-organization request key.
+ */
+export function aiOrgQuotaRequestsKey(organizationId: string, day: string): string {
+  return `ai:quota:org:req:${organizationId}:${day}`;
+}
+
+/**
+ * Build the daily token-counter key for one organization.
+ *
+ * @param organizationId - Tenant under enforcement.
+ * @param day - Calendar day (`YYYY-MM-DD`) shared by every instance.
+ * @returns Namespaced per-organization token key.
+ */
+export function aiOrgQuotaTokensKey(organizationId: string, day: string): string {
+  return `ai:quota:org:tok:${organizationId}:${day}`;
+}
+
+/**
+ * Enforce per-organization daily request and token quotas.
+ *
+ * @param store - Redis counter surface.
+ * @param organizationId - Tenant under enforcement.
+ * @param limits - Daily ceilings; nulls skip that dimension.
+ * @param estimatedTokens - Pre-call input estimate charged to the token quota.
+ * @param now - Observation time; defaults to the current time.
+ * @returns Allowed verdict with remaining quota, or the exceeded dimension.
+ * Blocked calls consume nothing; every Redis failure resolves to allowed.
+ */
+export async function checkOrganizationQuota(
+  store: AiRateLimitStore,
+  organizationId: string,
+  limits: AiOrganizationQuotaLimits,
+  estimatedTokens = 1,
+  now: Date = new Date(),
+): Promise<AiOrganizationQuotaCheck> {
+  const day = now.toISOString().slice(0, 10);
+  const requestsKey = aiOrgQuotaRequestsKey(organizationId, day);
+  const tokensKey = aiOrgQuotaTokensKey(organizationId, day);
+  const charge = Math.max(1, Math.floor(estimatedTokens));
+  try {
+    let remainingRequests: number | undefined;
+    let remainingTokens: number | undefined;
+    if (limits.dailyRequestLimit !== null) {
+      const current = (await store.get(requestsKey)) ?? 0;
+      if (current >= limits.dailyRequestLimit) {
+        return { allowed: false, reason: 'org_daily_requests_exceeded', remainingRequests: 0 };
+      }
+      remainingRequests = limits.dailyRequestLimit - current;
+    }
+    if (limits.dailyTokenLimit !== null) {
+      const current = (await store.get(tokensKey)) ?? 0;
+      if (current + charge > limits.dailyTokenLimit) {
+        return { allowed: false, reason: 'org_daily_tokens_exceeded', remainingTokens: Math.max(0, limits.dailyTokenLimit - current) };
+      }
+      remainingTokens = limits.dailyTokenLimit - current;
+    }
+    if (limits.dailyRequestLimit !== null) {
+      await store.incrby(requestsKey, 1);
+      await store.expire(requestsKey, AI_ORG_QUOTA_TTL_SECONDS);
+    }
+    if (limits.dailyTokenLimit !== null) {
+      await store.incrby(tokensKey, charge);
+      await store.expire(tokensKey, AI_ORG_QUOTA_TTL_SECONDS);
+    }
+    return { allowed: true, remainingRequests, remainingTokens };
+  } catch {
+    return { allowed: true };
+  }
+}

@@ -144,6 +144,31 @@ export function redactSecrets(text: string): string {
   return sanitized;
 }
 
+/** Placeholder replacing a detected national identity number. */
+export const PII_NIK_MASK = '[REDACTED_NIK]';
+
+/** Placeholder replacing a detected phone number. */
+export const PII_PHONE_MASK = '[REDACTED_PHONE]';
+
+/** Placeholder replacing a detected email address. */
+export const PII_EMAIL_MASK = '[REDACTED_EMAIL]';
+
+/**
+ * Strip personal identifiers from draft input before it reaches a provider.
+ *
+ * @param text - Raw caller-supplied draft text.
+ * @returns Text with secrets, identity numbers, phone numbers, and email
+ * addresses replaced by placeholders.
+ */
+export function scrubDraftPII(text: string): string {
+  if (!text) return '';
+  let sanitized = redactSecrets(text);
+  sanitized = sanitized.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, PII_EMAIL_MASK);
+  sanitized = sanitized.replace(/(?<!\d)\d{16}(?!\d)/g, PII_NIK_MASK);
+  sanitized = sanitized.replace(/(?:(?<!\d)\+62[\s-]?\d[\d\s-]{6,13}\d(?!\d)|\b08\d{7,11}\b)/g, PII_PHONE_MASK);
+  return sanitized;
+}
+
 /**
  * Build a Redis-backed daily token and hourly request budget guard.
  *

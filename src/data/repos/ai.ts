@@ -1,4 +1,5 @@
 import { desc, eq, gte, sql } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
@@ -682,4 +683,59 @@ export class DrizzleAiRepository {
       /* denial remains non-disclosing when audit storage is unavailable */
     }
   }
+}
+
+/** Structural database port for the per-organization token rollup. */
+export interface AiTokenRollupDb {
+  readonly execute: (query: SQL) => Promise<unknown>;
+}
+
+/** Token consumption of one organization for one model. */
+export interface AiModelTokenUsage {
+  readonly modelName: string;
+  readonly requests: number;
+  readonly promptTokens: number;
+  readonly completionTokens: number;
+  readonly totalTokens: number;
+}
+
+/** Upper bound for per-model rows returned by the rollup. */
+export const ORG_TOKEN_USAGE_MODEL_MAX_ROWS = 50;
+
+function toTokenCount(value: unknown): number {
+  const parsed = typeof value === 'string' ? Number(value) : typeof value === 'number' ? value : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+}
+
+/**
+ * Aggregate token consumption of one organization per model since a cutoff.
+ *
+ * @param db - Database port executing one grouped aggregate query.
+ * @param organizationId - Tenant whose `ai_request_logs` rows are summed.
+ * @param since - Inclusive lower bound for `created_at`.
+ * @returns At most 50 rows ordered by total tokens descending.
+ */
+export async function getOrganizationTokenUsage(
+  db: AiTokenRollupDb,
+  organizationId: string,
+  since: Date | string,
+): Promise<readonly AiModelTokenUsage[]> {
+  const sinceDate = since instanceof Date ? since : new Date(since);
+  const value = await db.execute(sql`select model_name, count(*) as requests,
+    coalesce(sum(prompt_tokens), 0) as prompt_tokens,
+    coalesce(sum(completion_tokens), 0) as completion_tokens,
+    coalesce(sum(total_tokens), 0) as total_tokens
+    from ai_request_logs
+    where organization_id = ${organizationId} and created_at >= ${sinceDate}
+    group by model_name
+    order by coalesce(sum(total_tokens), 0) desc
+    limit ${ORG_TOKEN_USAGE_MODEL_MAX_ROWS}`);
+  const rows = Array.isArray(value) ? value : [];
+  return (rows as readonly Record<string, unknown>[]).map((row) => ({
+    modelName: typeof row.model_name === 'string' ? row.model_name : '',
+    requests: toTokenCount(row.requests),
+    promptTokens: toTokenCount(row.prompt_tokens),
+    completionTokens: toTokenCount(row.completion_tokens),
+    totalTokens: toTokenCount(row.total_tokens),
+  }));
 }

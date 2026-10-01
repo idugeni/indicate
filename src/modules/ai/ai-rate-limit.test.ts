@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  aiOrgQuotaRequestsKey,
+  aiOrgQuotaTokensKey,
   aiRateLimitWindow,
   aiRpmKey,
   aiTpmKey,
   checkAiModelRateLimit,
+  checkOrganizationQuota,
   estimateAiInputTokens,
   getAiModelLimits,
   type AiRateLimitStore,
@@ -112,5 +115,55 @@ describe('window helpers', () => {
     expect(estimateAiInputTokens('', 0)).toBe(1);
     expect(estimateAiInputTokens('x'.repeat(400), 0)).toBe(100);
     expect(estimateAiInputTokens('x'.repeat(400), 2)).toBeGreaterThan(100);
+  });
+});
+
+describe('checkOrganizationQuota', () => {
+  const now = new Date('2026-09-30T00:01:30.000Z');
+  const day = '2026-09-30';
+
+  it('memblokir kuota request harian yang terlampaui tanpa membakar key', async () => {
+    const store = memoryStore();
+    store.counts.set(aiOrgQuotaRequestsKey('org-a', day), 100);
+    const verdict = await checkOrganizationQuota(store, 'org-a', { dailyRequestLimit: 100, dailyTokenLimit: null }, 10, now);
+    expect(verdict.allowed).toBe(false);
+    expect(verdict.reason).toBe('org_daily_requests_exceeded');
+    expect(store.incrCalls).toHaveLength(0);
+  });
+
+  it('memblokir kuota token harian yang terlampaui tanpa membakar key', async () => {
+    const store = memoryStore();
+    store.counts.set(aiOrgQuotaTokensKey('org-a', day), 9990);
+    const verdict = await checkOrganizationQuota(store, 'org-a', { dailyRequestLimit: null, dailyTokenLimit: 10000 }, 50, now);
+    expect(verdict.allowed).toBe(false);
+    expect(verdict.reason).toBe('org_daily_tokens_exceeded');
+    expect(store.incrCalls).toHaveLength(0);
+  });
+
+  it('request lolos mengonsumsi counter harian per-org', async () => {
+    const store = memoryStore();
+    const verdict = await checkOrganizationQuota(store, 'org-a', { dailyRequestLimit: 100, dailyTokenLimit: 10000 }, 50, now);
+    expect(verdict.allowed).toBe(true);
+    expect(store.counts.get(aiOrgQuotaRequestsKey('org-a', day))).toBe(1);
+    expect(store.counts.get(aiOrgQuotaTokensKey('org-a', day))).toBe(50);
+  });
+
+  it('org berbeda memakai kunci terpisah', async () => {
+    const store = memoryStore();
+    await checkOrganizationQuota(store, 'org-a', { dailyRequestLimit: 100, dailyTokenLimit: null }, 1, now);
+    expect(store.counts.get(aiOrgQuotaRequestsKey('org-b', day))).toBeUndefined();
+  });
+
+  it('redis mati berarti lolos (fail-open)', async () => {
+    const store = memoryStore(true);
+    const verdict = await checkOrganizationQuota(store, 'org-a', { dailyRequestLimit: 1, dailyTokenLimit: 1 }, 5000, now);
+    expect(verdict).toEqual({ allowed: true });
+  });
+
+  it('org tanpa batas selalu lolos tanpa menyentuh redis', async () => {
+    const store = memoryStore();
+    const verdict = await checkOrganizationQuota(store, 'org-a', { dailyRequestLimit: null, dailyTokenLimit: null }, 100, now);
+    expect(verdict).toEqual({ allowed: true });
+    expect(store.incrCalls).toHaveLength(0);
   });
 });

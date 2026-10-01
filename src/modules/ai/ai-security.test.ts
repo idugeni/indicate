@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   redactSecrets,
   scanPromptForInjection,
+  scrubDraftPII,
   wrapUntrustedRetrievedData,
   wrapUntrustedUserInput,
 } from '@/modules/ai/ai-security';
@@ -84,5 +85,39 @@ describe('redactSecrets', () => {
       'Jadwal rapat redaksi pukul sembilan.',
     );
     expect(redactSecrets('')).toBe('');
+  });
+});
+
+describe('scrubDraftPII', () => {
+  it('menyamarkan NIK 16 digit', () => {
+    const scrubbed = scrubDraftPII('NIK saya 3174051209900001 mohon diproses.');
+    expect(scrubbed).toContain('[REDACTED_NIK]');
+    expect(scrubbed).not.toContain('3174051209900001');
+  });
+
+  it('menyamarkan nomor telepon Indonesia', () => {
+    const scrubbed = scrubDraftPII('Hubungi 081234567890 atau +6281234567890 ya.');
+    expect(scrubbed).not.toContain('081234567890');
+    expect(scrubbed).not.toContain('6281234567890');
+    expect(scrubbed).toContain('[REDACTED_PHONE]');
+  });
+
+  it('menyamarkan alamat email', () => {
+    const scrubbed = scrubDraftPII('Kirim ke redaksi@example.co.id segera.');
+    expect(scrubbed).toContain('[REDACTED_EMAIL]');
+    expect(scrubbed).not.toContain('redaksi@example.co.id');
+  });
+
+  it('memakai ulang pola sensitif untuk secret provider', () => {
+    const openai = `sk-${'b'.repeat(20)}`;
+    const scrubbed = scrubDraftPII(`kunci ${openai} bocor`);
+    expect(scrubbed).toContain('[REDACTED_SENSITIVE_DATA]');
+    expect(scrubbed).not.toContain(openai);
+  });
+
+  it('membiarkan teks bersih dan cocok sebagai redactor', () => {
+    const redactor: (text: string) => string = scrubDraftPII;
+    expect(redactor('Jadwal rapat redaksi pukul sembilan.')).toBe('Jadwal rapat redaksi pukul sembilan.');
+    expect(redactor('')).toBe('');
   });
 });
