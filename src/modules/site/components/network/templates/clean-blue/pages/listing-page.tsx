@@ -67,7 +67,7 @@ export function CleanBlueListing({ site, title, description, path, indexable }: 
             </div>
             <CleanBlueArchivePager
               articles={archive}
-              heading="Arsip Berita"
+              heading="Jelajahi Liputan"
               description="Jelajahi semua liputan kanal ini"
             />
           </>

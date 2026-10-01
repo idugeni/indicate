@@ -41,7 +41,7 @@ export function RedEditorialListing({ site, title, description, path, indexable 
             <RedEditorialNewsletter />
             <RedEditorialArchivePager
               articles={archive}
-              heading="Arsip Berita"
+              heading="Himpunan Berita"
               description="Jelajahi semua liputan kanal ini"
             />
           </>

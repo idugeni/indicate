@@ -61,7 +61,7 @@ export function GreenMinimalListing({ site, title, description, path, indexable 
             <GreenMinimalNewsletter />
             <GreenMinimalArchivePager
               articles={archive}
-              heading="Arsip Berita"
+              heading="Semua Liputan"
               description="Jelajahi semua liputan kanal ini"
             />
           </>

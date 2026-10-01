@@ -42,7 +42,7 @@ export function WarmEditorialListing({ site, title, description, path, indexable
             <WarmEditorialNewsletter />
             <WarmEditorialArchivePager
               articles={archive}
-              heading="Arsip Berita"
+              heading="Cerita Lainnya"
               description="Jelajahi semua liputan kanal ini"
             />
           </>

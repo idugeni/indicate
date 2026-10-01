@@ -63,7 +63,7 @@ export function DarkNavyListing({ site, title, description, path, indexable }: L
             </div>
             <DarkNavyArchivePager
               articles={archive}
-              heading="Arsip Berita"
+              heading="Kumpulan Berita"
               description="Jelajahi semua liputan kanal ini"
             />
           </>

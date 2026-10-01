@@ -79,7 +79,7 @@ export function OrangeModernListing({ site, title, description, path, indexable 
             <OrangeModernNewsletter />
             <OrangeModernArchivePager
               articles={archive}
-              heading="Arsip Berita"
+              heading="Berita Lainnya"
               description="Jelajahi semua liputan kanal ini"
             />
           </>

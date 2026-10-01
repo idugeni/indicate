@@ -44,7 +44,7 @@ export function PurpleEditorialListing({ site, title, description, path, indexab
             <PurpleEditorialNewsletter />
             <PurpleEditorialArchivePager
               articles={archive}
-              heading="Arsip Berita"
+              heading="Koleksi Berita"
               description="Jelajahi semua liputan kanal ini"
             />
           </>

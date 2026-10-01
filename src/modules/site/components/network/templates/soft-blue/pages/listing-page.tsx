@@ -67,7 +67,7 @@ export function SoftBlueListing({ site, title, description, path, indexable }: L
             <SoftBlueNewsletter />
             <SoftBlueArchivePager
               articles={archive}
-              heading="Arsip Berita"
+              heading="Kabar Lainnya"
               description="Jelajahi semua liputan kanal ini"
             />
           </>

@@ -61,7 +61,7 @@ export async function GlassyBlueListing({ site, title, description, path, indexa
             <GlassyBlueNewsletter />
             <GlassyBlueArchivePager
               articles={archive}
-              heading="Arsip Berita"
+              heading="Liputan Lengkap"
               description="Jelajahi semua liputan kanal ini"
             />
           </>

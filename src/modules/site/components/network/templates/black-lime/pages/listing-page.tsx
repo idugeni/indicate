@@ -66,7 +66,7 @@ export function BlackLimeListing({ site, title, description, path, indexable }: 
             <BlackLimeNewsletter />
             <BlackLimeArchivePager
               articles={archive}
-              heading="Arsip Berita"
+              heading="Semua Kabar"
               description="Jelajahi semua liputan kanal ini"
             />
           </>
