@@ -1,6 +1,29 @@
 import type { Metadata } from 'next';
 import { unstable_cache } from 'next/cache';
 import Link from 'next/link';
+import type { IconType } from 'react-icons';
+import {
+  LuActivity,
+  LuCircleCheck,
+  LuCircleHelp,
+  LuClock,
+  LuCpu,
+  LuDatabase,
+  LuExternalLink,
+  LuHardDrive,
+  LuHistory,
+  LuLayers,
+  LuOctagonAlert,
+  LuRadio,
+  LuRefreshCw,
+  LuSend,
+  LuServer,
+  LuShieldCheck,
+  LuTerminal,
+  LuTriangleAlert,
+  LuWebhook,
+  LuZap,
+} from 'react-icons/lu';
 
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
@@ -13,14 +36,26 @@ import {
   type StatusComponent,
 } from '@/modules/status/status-probe';
 import { siteMetadata } from '@/ui/site/metadata-guard';
-
+import { AppTooltip } from '@/ui/app-tooltip';
 import { getControlHosts } from '@/core/config/edge-hosts';
 
-const DESCRIPTION = 'Kondisi langsung seluruh layanan Indicate: database, cache, penyimpanan, autentikasi, penerbitan, AI, dan API — beserta riwayat insiden.';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+const DESCRIPTION =
+  'Konsol telemetri langsung seluruh simpul layanan Indicate: database, cache, penyimpanan, autentikasi, AI, penerbitan, dan API publik.';
 
 export function generateMetadata(): Metadata {
   const canonical = `https://${getControlHosts().status}/`;
-  const base = siteMetadata('Status Layanan', DESCRIPTION, '/status');
+  const base = siteMetadata('Status Sistem & Telemetri', DESCRIPTION, '/status');
   return {
     ...base,
     alternates: { canonical, languages: { 'id-ID': canonical } },
@@ -28,46 +63,121 @@ export function generateMetadata(): Metadata {
   };
 }
 
-const OVERALL_DOT: Readonly<Record<ComponentHealth, string>> = {
-  ok: 'bg-signal',
-  degraded: 'bg-brass',
-  down: 'bg-error',
-};
-
-const OVERALL_COPY: Readonly<Record<ComponentHealth, { readonly title: string; readonly text: string }>> = {
+const HEALTH_CONFIG: Readonly<
+  Record<
+    ComponentHealth | 'unknown',
+    {
+      readonly label: string;
+      readonly icon: IconType;
+      readonly dotClass: string;
+      readonly pingClass: string;
+      readonly badgeVariant: 'default' | 'secondary' | 'destructive' | 'outline';
+      readonly badgeCustomClass: string;
+      readonly borderClass: string;
+      readonly textClass: string;
+    }
+  >
+> = {
   ok: {
-    title: 'Semua sistem operasional',
-    text: 'Seluruh komponen menjawab pemeriksaan otomatis terakhir.',
+    label: 'OPERATIONAL',
+    icon: LuCircleCheck,
+    dotClass: 'bg-signal',
+    pingClass: 'bg-signal/60',
+    badgeVariant: 'outline',
+    badgeCustomClass: 'border-signal/40 bg-signal/10 text-signal',
+    borderClass: 'border-signal/30',
+    textClass: 'text-signal',
   },
   degraded: {
-    title: 'Sebagian sistem menurun',
-    text: 'Satu atau lebih komponen melambat. Insiden dibuka otomatis di bawah.',
+    label: 'DEGRADED',
+    icon: LuTriangleAlert,
+    dotClass: 'bg-brass',
+    pingClass: 'bg-brass/60',
+    badgeVariant: 'outline',
+    badgeCustomClass: 'border-brass/40 bg-brass/10 text-brass',
+    borderClass: 'border-brass/30',
+    textClass: 'text-brass',
   },
   down: {
-    title: 'Gangguan berlangsung',
-    text: 'Satu atau lebih komponen tidak merespons. Insiden dibuka otomatis di bawah.',
+    label: 'OUTAGE',
+    icon: LuOctagonAlert,
+    dotClass: 'bg-error',
+    pingClass: 'bg-error/60',
+    badgeVariant: 'destructive',
+    badgeCustomClass: 'border-error/40 bg-error/15 text-error',
+    borderClass: 'border-error/40',
+    textClass: 'text-error',
+  },
+  unknown: {
+    label: 'UNTRACKED',
+    icon: LuCircleHelp,
+    dotClass: 'bg-paper-faint',
+    pingClass: 'bg-paper-faint/30',
+    badgeVariant: 'outline',
+    badgeCustomClass: 'border-hairline bg-paper-faint/10 text-paper-faint',
+    borderClass: 'border-hairline',
+    textClass: 'text-paper-faint',
   },
 };
 
-function barTone(uptimePct: number | null): string {
-  if (uptimePct === null) return 'bg-paper-faint/30';
-  if (uptimePct >= 99.9) return 'bg-signal';
-  if (uptimePct >= 99) return 'bg-signal/60';
-  if (uptimePct >= 95) return 'bg-brass';
-  return 'bg-error';
+const OVERALL_SYSTEM_COPY: Readonly<
+  Record<ComponentHealth, { readonly headline: string; readonly description: string }>
+> = {
+  ok: {
+    headline: 'Seluruh Layanan Beroperasi Normal',
+    description: 'Semua simpul backend, cache terdistribusi, API publik, dan inferensi AI merespons probe telemetri tanpa anomali.',
+  },
+  degraded: {
+    headline: 'Penurunan Latensi Terdeteksi',
+    description: 'Satu atau lebih komponen merespons di luar ambang batas standar latensi. Tindakan mitigasi beban sedang berjalan.',
+  },
+  down: {
+    headline: 'Interupsi Kritis Berlangsung',
+    description: 'Kegagalan respons terdeteksi pada simpul utama. Tim teknis sedang mengisolasi sumber masalah.',
+  },
+};
+
+function getComponentIcon(component: StatusComponent): IconType {
+  const normalized = component.toLowerCase();
+  if (normalized.includes('database') || normalized.includes('db')) return LuDatabase;
+  if (normalized.includes('cache') || normalized.includes('redis')) return LuLayers;
+  if (normalized.includes('storage') || normalized.includes('bucket')) return LuHardDrive;
+  if (normalized.includes('auth') || normalized.includes('session')) return LuShieldCheck;
+  if (normalized.includes('ai') || normalized.includes('model')) return LuCpu;
+  if (normalized.includes('publish') || normalized.includes('feed')) return LuSend;
+  if (normalized.includes('api') || normalized.includes('edge')) return LuWebhook;
+  return LuServer;
 }
 
-function healthWord(health: ComponentHealth | 'unknown'): string {
-  if (health === 'ok') return 'Operasional';
-  if (health === 'degraded') return 'Menurun';
-  if (health === 'down') return 'Gangguan';
-  return 'Belum ada data';
+function barTone(uptimePct: number | null): string {
+  if (uptimePct === null) return 'bg-paper-faint/20 hover:bg-paper-faint/40';
+  if (uptimePct >= 99.9) return 'bg-signal hover:opacity-80';
+  if (uptimePct >= 99.0) return 'bg-signal/60 hover:opacity-80';
+  if (uptimePct >= 95.0) return 'bg-brass hover:opacity-80';
+  return 'bg-error hover:opacity-80';
 }
 
 function formatMoment(value: string): string {
   const time = new Date(value).getTime();
   if (Number.isNaN(time)) return value;
-  return new Date(time).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(time).toLocaleString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+function formatDayLabel(dayString: string): string {
+  const time = new Date(dayString).getTime();
+  if (Number.isNaN(time)) return dayString;
+  return new Date(time).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 interface ComponentView {
@@ -98,188 +208,533 @@ interface StatusSnapshot {
 async function loadSnapshot(): Promise<StatusSnapshot> {
   const context = await getServerRuntimeContext();
   const repository = new DrizzleStatusRepository(getSharedRuntimeDatabase(context.bootstrap).db);
+
   const [latest, incidents, daily] = await Promise.all([
     repository.lastTwoPerComponent(),
     repository.recentIncidents(20),
     repository.dailySince(new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10)),
   ]);
-  const newest = new Map<string, { readonly health: string; readonly latencyMs: number | null; readonly checkedAt: string }>();
+
+  const newest = new Map<
+    string,
+    { readonly health: string; readonly latencyMs: number | null; readonly checkedAt: string }
+  >();
+
   for (const row of latest) {
     const at = row.checkedAt instanceof Date ? row.checkedAt.toISOString() : String(row.checkedAt);
     const current = newest.get(row.component);
     if (current === undefined || current.checkedAt < at) {
-      newest.set(row.component, { health: row.health, latencyMs: row.latencyMs, checkedAt: at });
+      newest.set(row.component, {
+        health: row.health,
+        latencyMs: row.latencyMs,
+        checkedAt: at,
+      });
     }
   }
+
   const days: string[] = [];
   const base = new Date();
   const baseDay = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate()));
+
   for (let back = 89; back >= 0; back -= 1) {
     days.push(new Date(baseDay.getTime() - back * 86_400_000).toISOString().slice(0, 10));
   }
+
   const components = STATUS_COMPONENTS.map((component) => {
     const current = newest.get(component);
     const health = (current?.health ?? 'unknown') as ComponentHealth | 'unknown';
-    const byDay = new Map(daily.filter((row) => row.component === component).map((row) => [row.day, row.uptimePct] as const));
+    const byDay = new Map(
+      daily.filter((row) => row.component === component).map((row) => [row.day, row.uptimePct] as const)
+    );
     const cells = days.map((day) => ({ day, uptimePct: byDay.get(day) ?? null }));
     const known = cells.filter((cell) => cell.uptimePct !== null);
+
     return {
       component,
       health,
       latencyMs: current?.latencyMs ?? null,
       checkedAt: current?.checkedAt ?? null,
-      uptime90: known.length === 0 ? null : known.reduce((sum, cell) => sum + (cell.uptimePct ?? 0), 0) / known.length,
+      uptime90:
+        known.length === 0
+          ? null
+          : known.reduce((sum, cell) => sum + (cell.uptimePct ?? 0), 0) / known.length,
       days: cells,
     };
   });
+
   const knownHealth = components.filter((item) => item.health !== 'unknown');
+
   return {
-    overall: overallHealth(knownHealth.map((item) => ({
-      component: item.component,
-      health: item.health as ComponentHealth,
-      latencyMs: item.latencyMs,
-      detail: null,
-      checkedAt: item.checkedAt ?? new Date(0).toISOString(),
-    }))),
+    overall: overallHealth(
+      knownHealth.map((item) => ({
+        component: item.component,
+        health: item.health as ComponentHealth,
+        latencyMs: item.latencyMs,
+        detail: null,
+        checkedAt: item.checkedAt ?? new Date(0).toISOString(),
+      }))
+    ),
     components,
     incidents: incidents.map((incident) => ({
       id: incident.id,
       title: incident.title,
       status: incident.status,
-      startedAt: incident.startedAt instanceof Date ? incident.startedAt.toISOString() : String(incident.startedAt),
-      resolvedAt: incident.resolvedAt === null ? null : incident.resolvedAt instanceof Date ? incident.resolvedAt.toISOString() : String(incident.resolvedAt),
+      startedAt:
+        incident.startedAt instanceof Date
+          ? incident.startedAt.toISOString()
+          : String(incident.startedAt),
+      resolvedAt:
+        incident.resolvedAt === null
+          ? null
+          : incident.resolvedAt instanceof Date
+            ? incident.resolvedAt.toISOString()
+            : String(incident.resolvedAt),
       updates: incident.updates,
     })),
     generatedAt: new Date().toISOString(),
   };
 }
 
-const loadCachedSnapshot = unstable_cache(loadSnapshot, ['status-snapshot'], { revalidate: 60, tags: ['status'] });
+const loadCachedSnapshot = unstable_cache(loadSnapshot, ['status-snapshot'], {
+  revalidate: 60,
+  tags: ['status'],
+});
 
-function StatusBanner({ snapshot }: { readonly snapshot: StatusSnapshot }) {
-  const overall = OVERALL_COPY[snapshot.overall];
+function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }) {
+  const overallConfig = HEALTH_CONFIG[snapshot.overall];
+  const overallCopy = OVERALL_SYSTEM_COPY[snapshot.overall];
+  const OverallIcon = overallConfig.icon;
+
+  const validLatencies = snapshot.components
+    .map((c) => c.latencyMs)
+    .filter((l): l is number => l !== null);
+  const avgLatency =
+    validLatencies.length > 0
+      ? Math.round(validLatencies.reduce((a, b) => a + b, 0) / validLatencies.length)
+      : null;
+
+  const validUptimes = snapshot.components
+    .map((c) => c.uptime90)
+    .filter((u): u is number => u !== null);
+  const aggregateUptime =
+    validUptimes.length > 0
+      ? validUptimes.reduce((a, b) => a + b, 0) / validUptimes.length
+      : null;
+
+  const activeProbes = snapshot.components.filter((c) => c.health === 'ok').length;
+
   return (
-    <div className="rounded-xl border border-hairline bg-bg-raised p-5 sm:p-6">
-      <p className="m-0 flex items-center gap-2.5 font-sans text-lg font-semibold text-paper sm:text-xl">
-        <span aria-hidden="true" className={`inline-block size-3 rounded-full ${OVERALL_DOT[snapshot.overall]}`} />
-        {overall.title}
-      </p>
-      <p className="m-0 mt-1.5 font-sans text-sm text-paper-dim">{overall.text}</p>
-      <p className="m-0 mt-2 font-mono text-[11px] tabular-nums text-paper-faint">Diperbarui {formatMoment(snapshot.generatedAt)}</p>
+    <div className="w-full border-b border-hairline bg-bg-raised/60 backdrop-blur-md">
+      <div className="w-full px-4 sm:px-8 lg:px-12 py-3 border-b border-hairline">
+        <div className="flex flex-wrap items-center justify-between gap-4 font-mono text-[11px] text-paper-faint">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5 font-bold tracking-widest text-paper uppercase">
+              <LuActivity className="size-3.5 text-signal" />
+              Indicate Telemetry
+            </span>
+            <Separator orientation="vertical" className="h-3 bg-hairline" />
+            <span className="tracking-wider">CORE SYSTEM METRICS</span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-signal/60" />
+                <span className="relative inline-flex size-2 rounded-full bg-signal" />
+              </span>
+              <span className="tracking-wider">LIVE 60S CYCLE</span>
+            </div>
+            <Separator orientation="vertical" className="h-3 bg-hairline hidden sm:block" />
+            <div className="hidden sm:flex items-center gap-1.5 tabular-nums">
+              <LuClock className="size-3" />
+              <span>{formatMoment(snapshot.generatedAt)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="w-full px-4 sm:px-8 lg:px-12 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          <div className="lg:col-span-7 space-y-4">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Badge
+                variant={overallConfig.badgeVariant}
+                className={`font-mono text-xs tracking-wider uppercase px-3 py-1 flex items-center gap-1.5 ${overallConfig.badgeCustomClass}`}
+              >
+                <OverallIcon className="size-3.5" />
+                {overallConfig.label}
+              </Badge>
+              <Badge variant="outline" className="border-hairline text-paper-dim font-mono text-xs">
+                PROBE COUNT: {snapshot.components.length}
+              </Badge>
+            </div>
+
+            <div>
+              <h1 className="m-0 font-sans text-2xl sm:text-4xl font-bold tracking-tight text-paper">
+                {overallCopy.headline}
+              </h1>
+              <p className="m-0 mt-2 max-w-2xl font-sans text-sm sm:text-base text-paper-dim leading-relaxed">
+                {overallCopy.description}
+              </p>
+            </div>
+          </div>
+
+          <div className="lg:col-span-5 grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <Card className="border-hairline bg-bg shadow-none rounded-lg">
+              <CardHeader className="p-3.5 pb-1">
+                <CardDescription className="font-mono text-[10px] uppercase tracking-wider text-paper-faint flex items-center gap-1.5">
+                  <LuShieldCheck className="size-3 text-signal" /> SLA 90 Hari
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-3.5 pt-0">
+                <div className="font-mono text-xl sm:text-2xl font-semibold tabular-nums text-paper">
+                  {aggregateUptime !== null ? `${aggregateUptime.toFixed(2)}%` : '---'}
+                </div>
+                <div className="font-mono text-[10px] text-paper-faint mt-0.5">Seluruh Layer</div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-hairline bg-bg shadow-none rounded-lg">
+              <CardHeader className="p-3.5 pb-1">
+                <CardDescription className="font-mono text-[10px] uppercase tracking-wider text-paper-faint flex items-center gap-1.5">
+                  <LuZap className="size-3 text-brass" /> Latensi Rerata
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-3.5 pt-0">
+                <div className="font-mono text-xl sm:text-2xl font-semibold tabular-nums text-paper">
+                  {avgLatency !== null ? `${avgLatency} ms` : '---'}
+                </div>
+                <div className="font-mono text-[10px] text-paper-faint mt-0.5">Round-Trip Time</div>
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-2 sm:col-span-1 border-hairline bg-bg shadow-none rounded-lg">
+              <CardHeader className="p-3.5 pb-1">
+                <CardDescription className="font-mono text-[10px] uppercase tracking-wider text-paper-faint flex items-center gap-1.5">
+                  <LuRadio className="size-3 text-paper-dim" /> Simpul Aktif
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-3.5 pt-0">
+                <div className="font-mono text-xl sm:text-2xl font-semibold tabular-nums text-paper">
+                  {activeProbes}/{snapshot.components.length}
+                </div>
+                <div className="font-mono text-[10px] text-paper-faint mt-0.5">Respon Positif</div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function ComponentList({ snapshot }: { readonly snapshot: StatusSnapshot }) {
+function ComponentTelemetryGrid({ snapshot }: { readonly snapshot: StatusSnapshot }) {
   return (
-    <ul className="m-0 list-none space-y-2.5 p-0">
-      {snapshot.components.map((item) => (
-        <li key={item.component} className="rounded-xl border border-hairline bg-bg-raised p-4 sm:p-5">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <p className="m-0 font-sans text-sm font-semibold text-paper">{COMPONENT_LABELS[item.component]}</p>
-            <p className="m-0 font-mono text-[11px] tabular-nums text-paper-dim">
-              {healthWord(item.health)}
-              {item.latencyMs === null ? '' : ` · ${item.latencyMs} ms`}
-              {item.uptime90 === null ? '' : ` · ${item.uptime90.toFixed(2)}%`}
-            </p>
+    <section aria-labelledby="matrix-heading" className="w-full">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
+        <div className="flex items-center gap-2">
+          <LuServer className="size-4 text-paper-dim" />
+          <h2
+            id="matrix-heading"
+            className="m-0 font-mono text-xs uppercase tracking-[0.2em] font-semibold text-paper"
+          >
+            Matriks Status Komponen
+          </h2>
+        </div>
+        <div className="flex items-center gap-2 font-mono text-xs text-paper-faint">
+          <LuActivity className="size-3.5 text-signal" />
+          <span>Riwayat SLA 90 Hari</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 grid-flow-dense">
+        {snapshot.components.map((item, index) => {
+          const config = HEALTH_CONFIG[item.health];
+          const CompIcon = getComponentIcon(item.component);
+          const NodeIcon = config.icon;
+          const nodeIndex = String(index + 1).padStart(2, '0');
+          const featured =
+            index === 0 ||
+            index === snapshot.components.length - 1 ||
+            (item.health !== 'ok' && item.health !== 'unknown');
+
+          return (
+            <Card
+              key={item.component}
+              className={`border ${config.borderClass} bg-bg-raised shadow-none transition-all duration-200 hover:border-paper-faint/60 flex flex-col justify-between ${featured ? 'md:col-span-2' : ''}`}
+            >
+              <CardHeader className="p-5 pb-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-hairline bg-bg text-paper">
+                      <CompIcon className="size-4" />
+                    </div>
+                    <div>
+                      <div className="font-mono text-[10px] uppercase tracking-widest text-paper-faint">
+                        NODE-{nodeIndex} · {item.component}
+                      </div>
+                      <CardTitle className="text-base font-semibold text-paper mt-0.5">
+                        {COMPONENT_LABELS[item.component]}
+                      </CardTitle>
+                    </div>
+                  </div>
+
+                  <Badge
+                    variant={config.badgeVariant}
+                    className={`font-mono text-[10px] tracking-wider uppercase px-2 py-0.5 flex items-center gap-1 shrink-0 ${config.badgeCustomClass}`}
+                  >
+                    <NodeIcon className="size-3" />
+                    {config.label}
+                  </Badge>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-5 pt-0 space-y-4">
+                <div className="grid grid-cols-2 gap-2 border-y border-hairline py-2.5 font-mono text-xs">
+                  <div>
+                    <span className="block text-[10px] uppercase text-paper-faint">Latensi Node</span>
+                    <span className="font-medium tabular-nums text-paper">
+                      {item.latencyMs !== null ? `${item.latencyMs} ms` : 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] uppercase text-paper-faint">Uptime 90H</span>
+                    <span className="font-medium tabular-nums text-paper">
+                      {item.uptime90 !== null ? `${item.uptime90.toFixed(2)}%` : 'Data Baru'}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <div
+                    className={`flex items-end gap-[1.5px] overflow-hidden ${featured ? 'h-10' : 'h-7'}`}
+                    aria-label={`Uptime 90 hari untuk ${COMPONENT_LABELS[item.component]}`}
+                  >
+                    {item.days.map((cell) => {
+                      const uptimeText =
+                        cell.uptimePct !== null ? `${cell.uptimePct.toFixed(1)}%` : 'Tanpa data';
+                      return (
+                        <AppTooltip key={cell.day} label={`${formatDayLabel(cell.day)}: ${uptimeText}`}>
+                          <span className={`h-full min-w-0 flex-1 transition-all ${barTone(cell.uptimePct)}`} />
+                        </AppTooltip>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-2 flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-paper-faint">
+                    <span>-90 HARI</span>
+                    <span>SLI AKTIVITAS</span>
+                    <span>SEKARANG</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <Card className="mt-4 border-hairline bg-bg shadow-none rounded-lg p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 font-mono text-[11px] text-paper-faint">
+          <span className="flex items-center gap-1.5 text-paper-dim">
+            <LuActivity className="size-3.5 text-signal" /> Skala Ketersediaan:
+          </span>
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-xs bg-signal" /> &ge; 99.9%
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-xs bg-signal/60" /> &ge; 99.0%
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-xs bg-brass" /> &ge; 95.0%
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-xs bg-error" /> &lt; 95.0%
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-xs bg-paper-faint/20" /> Tidak Tersedia
+            </span>
           </div>
-          <div className="mt-2.5 flex gap-[3px]" aria-label={`Uptime 90 hari ${COMPONENT_LABELS[item.component]}`}>
-            {item.days.map((cell) => (
-              <span key={cell.day} aria-hidden="true" className={`h-8 min-w-0 flex-1 rounded-[3px] ${barTone(cell.uptimePct)}`} />
-            ))}
-          </div>
-        </li>
-      ))}
-    </ul>
+        </div>
+      </Card>
+    </section>
   );
 }
 
-function IncidentList({ snapshot }: { readonly snapshot: StatusSnapshot }) {
+function IncidentSection({ snapshot }: { readonly snapshot: StatusSnapshot }) {
   const open = snapshot.incidents.filter((incident) => incident.status === 'open');
   const resolved = snapshot.incidents.filter((incident) => incident.status !== 'open');
+
   return (
-    <div>
-      {open.length > 0 ? (
-        <ul className="m-0 list-none space-y-2.5 p-0">
-          {open.map((incident) => (
-            <li key={incident.id} className="rounded-xl border border-error/40 bg-error/[0.06] p-4 sm:p-5">
-              <p className="m-0 font-sans text-sm font-semibold text-paper">{incident.title}</p>
-              <p className="m-0 mt-0.5 font-mono text-[11px] text-paper-faint">Sejak {formatMoment(incident.startedAt)}</p>
-              <IncidentUpdates updates={incident.updates} />
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="m-0 rounded-xl border border-hairline bg-bg-raised p-4 font-sans text-sm text-paper-dim sm:p-5">
-          Tidak ada insiden terbuka dalam 90 hari terakhir.
-        </p>
-      )}
-      {resolved.length > 0 ? (
-        <ul className="m-0 mt-2.5 list-none space-y-2.5 p-0">
-          {resolved.map((incident) => (
-            <li key={incident.id} className="rounded-xl border border-hairline bg-bg-raised p-4 sm:p-5">
-              <p className="m-0 font-sans text-sm font-semibold text-paper">{incident.title}</p>
-              <p className="m-0 mt-0.5 font-mono text-[11px] text-paper-faint">
-                {formatMoment(incident.startedAt)}{incident.resolvedAt === null ? '' : ` → ${formatMoment(incident.resolvedAt)}`}
-              </p>
-              <IncidentUpdates updates={incident.updates} />
-            </li>
-          ))}
-        </ul>
-      ) : null}
+    <section aria-labelledby="incidents-heading" className="w-full">
+      <div className="flex items-center justify-between pb-4">
+        <div className="flex items-center gap-2">
+          <LuTerminal className="size-4 text-paper-dim" />
+          <h2
+            id="incidents-heading"
+            className="m-0 font-mono text-xs uppercase tracking-[0.2em] font-semibold text-paper"
+          >
+            Log Insiden & Pemeliharaan
+          </h2>
+        </div>
+        <span className="font-mono text-[11px] text-paper-faint">ARSIP 90 HARI</span>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="lg:col-span-5 flex flex-col space-y-3">
+          <div className="font-mono text-[11px] uppercase tracking-wider text-paper-faint flex items-center gap-1.5">
+            <LuTriangleAlert className="size-3.5 text-error" />
+            <span>Investigasi Aktif</span>
+          </div>
+
+          {open.length > 0 ? (
+            open.map((incident) => (
+              <Alert
+                key={incident.id}
+                variant="destructive"
+                className="border-error/40 bg-error/[0.05] p-5 shadow-none"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <AlertTitle className="text-base font-semibold text-paper">
+                      {incident.title}
+                    </AlertTitle>
+                    <AlertDescription className="font-mono text-xs text-paper-faint mt-1">
+                      Dimulai: {formatMoment(incident.startedAt)}
+                    </AlertDescription>
+                  </div>
+                  <Badge variant="destructive" className="font-mono text-[10px] tracking-wider uppercase">
+                    OPEN
+                  </Badge>
+                </div>
+                <div className="mt-4 border-t border-error/20 pt-3">
+                  <IncidentUpdates updates={incident.updates} />
+                </div>
+              </Alert>
+            ))
+          ) : (
+            <Card className="border-hairline bg-bg-raised shadow-none flex-1 flex flex-col justify-center">
+              <CardHeader className="p-6 pb-2 flex flex-col items-center text-center">
+                <div className="mx-auto flex size-9 items-center justify-center rounded-full border border-signal/30 bg-signal/10 text-signal mb-3">
+                  <LuCircleCheck className="size-5" />
+                </div>
+                <CardTitle className="font-sans text-sm font-medium text-paper">Semua Subsistem Bersih</CardTitle>
+                <CardDescription className="font-sans text-xs text-paper-dim">
+                  Tidak ada tiket insiden atau gangguan aktif yang memerlukan mitigasi.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+        </div>
+
+        <div className="lg:col-span-7 flex flex-col space-y-3">
+          <div className="font-mono text-[11px] uppercase tracking-wider text-paper-faint flex items-center gap-1.5">
+            <LuHistory className="size-3.5 text-paper-dim" />
+            <span>Riwayat Pemulihan Selesai</span>
+          </div>
+
+          {resolved.length > 0 ? (
+            <div className="space-y-3">
+              {resolved.map((incident) => (
+                <Card
+                  key={incident.id}
+                  className="border-hairline bg-bg-raised shadow-none transition-colors hover:border-paper-faint/50"
+                >
+                  <CardHeader className="p-5 pb-2">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <CardTitle className="text-base font-semibold text-paper">
+                        {incident.title}
+                      </CardTitle>
+                      <Badge variant="outline" className="border-hairline font-mono text-[10px] text-paper-dim">
+                        RESOLVED
+                      </Badge>
+                    </div>
+                    <CardDescription className="font-mono text-xs tabular-nums text-paper-faint mt-1">
+                      {formatMoment(incident.startedAt)}
+                      {incident.resolvedAt !== null ? ` → ${formatMoment(incident.resolvedAt)}` : ''}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-5 pt-1">
+                    <IncidentUpdates updates={incident.updates} />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="border-hairline bg-bg-raised shadow-none flex-1 flex flex-col justify-center">
+              <CardContent className="p-6 text-center">
+                <CardDescription className="font-mono text-xs text-paper-faint">
+                  Tidak ada catatan gangguan lampau dalam jendela 90 hari terakhir.
+                </CardDescription>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function IncidentUpdates({
+  updates,
+}: {
+  readonly updates: readonly { readonly at: string; readonly text: string }[];
+}) {
+  if (updates.length === 0) return null;
+
+  return (
+    <div className="space-y-2.5 pt-1">
+      {updates.map((update, index) => (
+        <div key={`${update.at}-${index}`} className="flex items-start gap-2.5 text-xs leading-relaxed text-paper-dim">
+          <span className="mt-1.5 size-1 shrink-0 rounded-full bg-paper-faint" />
+          <div>
+            <span className="font-mono text-[11px] tabular-nums text-paper-faint mr-1.5">
+              [{formatMoment(update.at)}]
+            </span>
+            <span>{update.text}</span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
 
 export default async function StatusPage() {
   const snapshot = await loadCachedSnapshot();
-  return (
-    <div className="min-h-screen bg-bg font-sans text-paper">
-      <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-        <header className="mb-8">
-          <p className="m-0 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-paper-faint">
-            <span aria-hidden="true" className={`inline-block size-2 rounded-full ${OVERALL_DOT[snapshot.overall]}`} />
-            Indicate · Status
-          </p>
-          <h1 className="m-0 mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Status layanan</h1>
-          <p className="m-0 mt-2 max-w-xl text-sm leading-relaxed text-paper-dim">
-            Kondisi langsung seluruh layanan beserta riwayat insiden 90 hari. Diperbarui otomatis setiap 15 menit.
-          </p>
-        </header>
-        <main className="space-y-8">
-          <section aria-label="Kondisi saat ini">
-            <StatusBanner snapshot={snapshot} />
-          </section>
-          <section aria-label="Komponen">
-            <h2 className="m-0 mb-3 font-mono text-[11px] uppercase tracking-[0.2em] text-paper-faint">Komponen</h2>
-            <ComponentList snapshot={snapshot} />
-            <p className="m-0 mt-3 font-mono text-[11px] text-paper-faint">Hijau 99.9%+, hijau pudar 99%+, kuning 95%+, merah di bawahnya, abu-abu tanpa data.</p>
-          </section>
-          <section aria-label="Insiden">
-            <h2 className="m-0 mb-3 font-mono text-[11px] uppercase tracking-[0.2em] text-paper-faint">Insiden</h2>
-            <IncidentList snapshot={snapshot} />
-          </section>
-        </main>
-        <footer className="mt-10 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-hairline pt-4 font-mono text-[11px] text-paper-faint">
-          <Link className="hover:text-paper" href="/">indicate.website</Link>
-          <Link className="hover:text-paper" href="/api/status">JSON</Link>
-          <span className="ml-auto tabular-nums">Diperbarui {formatMoment(snapshot.generatedAt)}</span>
-        </footer>
-      </div>
-    </div>
-  );
-}
 
-function IncidentUpdates({ updates }: { readonly updates: readonly { readonly at: string; readonly text: string }[] }) {
-  if (updates.length === 0) return null;
   return (
-    <ul className="m-0 mt-2.5 list-none space-y-1.5 border-t border-hairline pt-2.5 p-0">
-      {updates.map((update, index) => (
-        <li key={`${update.at}-${index}`} className="text-xs leading-relaxed text-paper-dim">
-          <span className="font-mono text-[11px] text-paper-faint">{formatMoment(update.at)} — </span>
-          {update.text}
-        </li>
-      ))}
-    </ul>
+    <div className="min-h-screen w-full bg-bg font-sans text-paper antialiased">
+      <ObservabilityHeader snapshot={snapshot} />
+
+      <main className="w-full px-4 sm:px-8 lg:px-12 py-8 sm:py-10 space-y-12">
+        <ComponentTelemetryGrid snapshot={snapshot} />
+        <IncidentSection snapshot={snapshot} />
+      </main>
+
+      <footer className="w-full border-t border-hairline bg-bg px-4 sm:px-8 lg:px-12 py-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between font-mono text-xs text-paper-faint">
+          <div className="flex items-center gap-4">
+            <Link
+              className="inline-flex items-center gap-1.5 transition-colors hover:text-paper"
+              href="/"
+            >
+              <span>INDICATE.WEBSITE</span>
+              <LuExternalLink className="size-3" />
+            </Link>
+            <Separator orientation="vertical" className="h-3 bg-hairline" />
+            <Link
+              className="inline-flex items-center gap-1.5 transition-colors hover:text-paper"
+              href="/api/status"
+            >
+              <LuTerminal className="size-3" />
+              <span>RAW JSON</span>
+            </Link>
+          </div>
+          <div className="flex items-center gap-2 tabular-nums">
+            <LuRefreshCw className="size-3 text-signal" />
+            <span>SINKRONISASI TELEMETRI: {formatMoment(snapshot.generatedAt)}</span>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }

@@ -133,13 +133,6 @@ export default function RootLayout({
         <script type="module" async src={WEBMCP_BRIDGE_PATH} data-packs={WEBMCP_DEFAULT_PACKS} data-mcp-url={WEBMCP_MCP_PATH} />
         {children}
         <Toaster />
-        {process.env.NEXT_PUBLIC_CF_BEACON_TOKEN === undefined || process.env.NEXT_PUBLIC_CF_BEACON_TOKEN === '' ? null : (
-          <script
-            defer
-            src="https://static.cloudflareinsights.com/beacon.min.js"
-            data-cf-beacon={JSON.stringify({ token: process.env.NEXT_PUBLIC_CF_BEACON_TOKEN })}
-          />
-        )}
       </body>
     </html>
   );
