@@ -257,27 +257,40 @@
     background-color: #b88d3a;
   }
 
-  html:has(.dashboard-scroll) {
+  html:has(.dashboard-scroll, .status-scroll) {
     scrollbar-color: var(--hairline-strong) var(--bg);
     color-scheme: dark;
   }
-  html:has(.dashboard-scroll)::-webkit-scrollbar-track,
-  html:has(.dashboard-scroll)::-webkit-scrollbar-corner,
+  html:has(.dashboard-scroll, .status-scroll)::-webkit-scrollbar-track,
+  html:has(.dashboard-scroll, .status-scroll)::-webkit-scrollbar-corner,
   .dashboard-scroll::-webkit-scrollbar-track,
   .dashboard-scroll::-webkit-scrollbar-corner,
   .dashboard-scroll ::-webkit-scrollbar-track,
-  .dashboard-scroll ::-webkit-scrollbar-corner {
+  .dashboard-scroll ::-webkit-scrollbar-corner,
+  .status-scroll::-webkit-scrollbar-track,
+  .status-scroll::-webkit-scrollbar-corner,
+  .status-scroll ::-webkit-scrollbar-track,
+  .status-scroll ::-webkit-scrollbar-corner {
     background: var(--bg);
   }
-  html:has(.dashboard-scroll)::-webkit-scrollbar-thumb,
+  html:has(.dashboard-scroll, .status-scroll)::-webkit-scrollbar-thumb,
   .dashboard-scroll::-webkit-scrollbar-thumb,
-  .dashboard-scroll ::-webkit-scrollbar-thumb {
+  .dashboard-scroll ::-webkit-scrollbar-thumb,
+  .status-scroll::-webkit-scrollbar-thumb,
+  .status-scroll ::-webkit-scrollbar-thumb {
     background-color: var(--hairline-strong);
+    transition: background-color var(--motion-fast) var(--easing-standard);
   }
-  html:has(.dashboard-scroll)::-webkit-scrollbar-thumb:hover,
+  html:has(.dashboard-scroll, .status-scroll)::-webkit-scrollbar-thumb:hover,
   .dashboard-scroll::-webkit-scrollbar-thumb:hover,
-  .dashboard-scroll ::-webkit-scrollbar-thumb:hover {
+  .dashboard-scroll ::-webkit-scrollbar-thumb:hover,
+  .status-scroll::-webkit-scrollbar-thumb:hover,
+  .status-scroll ::-webkit-scrollbar-thumb:hover {
     background-color: var(--brass);
+  }
+
+  .status-scroll {
+    scroll-behavior: smooth;
   }
 
   /* Sidebar nav rail: slimmer than the page gutter (6px instead of 10px, so a
@@ -744,6 +757,16 @@
     100% { opacity: 1; }
   }
 
+  .status-bar-rise {
+    transform-origin: bottom;
+    animation: status-bar-rise 0.5s ease-out backwards;
+  }
+
+  @keyframes status-bar-rise {
+    from { transform: scaleY(0); }
+    to { transform: scaleY(1); }
+  }
+
   .ticker-progress {
     animation-name: ticker-progress;
     animation-timing-function: linear;
@@ -777,7 +800,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .ticker-progress { animation: none; }
-    .ai-shimmer, .ai-busy-glow { animation: none; }
+    .ai-shimmer, .ai-busy-glow, .status-bar-rise { animation: none; }
   }
 
   .gallery-rail,

@@ -23,6 +23,8 @@ export const statusDaily = pgTable('status_daily', {
   day: text('day').notNull(),
   uptimePct: real('uptime_pct').notNull(),
   checks: integer('checks').default(0).notNull(),
+  /** Rerata latensi harian (ms) untuk sparkline; null untuk hari lama tanpa data. */
+  avgLatencyMs: integer('avg_latency_ms'),
   ...timestamps,
 }, (table) => [
   primaryKey({ name: 'status_daily_pk', columns: [table.component, table.day] }),

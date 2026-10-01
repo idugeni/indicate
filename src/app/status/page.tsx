@@ -6,7 +6,6 @@ import {
   LuActivity,
   LuCircleCheck,
   LuCircleHelp,
-  LuClock,
   LuCpu,
   LuDatabase,
   LuExternalLink,
@@ -37,6 +36,9 @@ import {
 } from '@/modules/status/status-probe';
 import { siteMetadata } from '@/ui/site/metadata-guard';
 import { AppTooltip } from '@/ui/app-tooltip';
+import { CountUp } from '@/app/status/count-up';
+import { LatencySparkline } from '@/app/status/latency-sparkline';
+import { StatusLiveIndicator } from '@/app/status/live-indicator';
 import { getControlHosts } from '@/core/config/edge-hosts';
 
 import {
@@ -150,11 +152,32 @@ function getComponentIcon(component: StatusComponent): IconType {
 }
 
 function barTone(uptimePct: number | null): string {
-  if (uptimePct === null) return 'bg-paper-faint/20 hover:bg-paper-faint/40';
-  if (uptimePct >= 99.9) return 'bg-signal hover:opacity-80';
-  if (uptimePct >= 99.0) return 'bg-signal/60 hover:opacity-80';
-  if (uptimePct >= 95.0) return 'bg-brass hover:opacity-80';
-  return 'bg-error hover:opacity-80';
+  if (uptimePct === null) return 'bg-paper-faint/20';
+  if (uptimePct >= 99.9) return 'bg-signal';
+  if (uptimePct >= 99.0) return 'bg-signal/60';
+  if (uptimePct >= 95.0) return 'bg-brass';
+  return 'bg-error';
+}
+
+function rollupDays(
+  days: readonly { readonly day: string; readonly uptimePct: number | null }[],
+  size: number
+): readonly { readonly day: string; readonly endDay: string; readonly uptimePct: number | null }[] {
+  const rolled: { day: string; endDay: string; uptimePct: number | null }[] = [];
+  for (let i = 0; i < days.length; i += size) {
+    const chunk = days.slice(i, i + size);
+    const first = chunk[0];
+    const last = chunk[chunk.length - 1];
+    if (first === undefined || last === undefined) continue;
+    const known = chunk.filter((cell) => cell.uptimePct !== null);
+    rolled.push({
+      day: first.day,
+      endDay: last.day,
+      uptimePct:
+        known.length === 0 ? null : Math.min(...known.map((cell) => cell.uptimePct ?? 0)),
+    });
+  }
+  return rolled;
 }
 
 function formatMoment(value: string): string {
@@ -187,6 +210,7 @@ interface ComponentView {
   readonly checkedAt: string | null;
   readonly uptime90: number | null;
   readonly days: readonly { readonly day: string; readonly uptimePct: number | null }[];
+  readonly latencyTrend: readonly (number | null)[];
 }
 
 interface IncidentView {
@@ -205,6 +229,9 @@ interface StatusSnapshot {
   readonly generatedAt: string;
 }
 
+/** Jendela riwayat yang dirender: 90 hari terakhir. */
+const STATUS_HISTORY_DAYS = 90;
+
 async function loadSnapshot(): Promise<StatusSnapshot> {
   const context = await getServerRuntimeContext();
   const repository = new DrizzleStatusRepository(getSharedRuntimeDatabase(context.bootstrap).db);
@@ -212,7 +239,7 @@ async function loadSnapshot(): Promise<StatusSnapshot> {
   const [latest, incidents, daily] = await Promise.all([
     repository.lastTwoPerComponent(),
     repository.recentIncidents(20),
-    repository.dailySince(new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10)),
+    repository.dailySince(new Date(Date.now() - STATUS_HISTORY_DAYS * 86_400_000).toISOString().slice(0, 10)),
   ]);
 
   const newest = new Map<
@@ -236,7 +263,7 @@ async function loadSnapshot(): Promise<StatusSnapshot> {
   const base = new Date();
   const baseDay = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate()));
 
-  for (let back = 89; back >= 0; back -= 1) {
+  for (let back = STATUS_HISTORY_DAYS - 1; back >= 0; back -= 1) {
     days.push(new Date(baseDay.getTime() - back * 86_400_000).toISOString().slice(0, 10));
   }
 
@@ -245,6 +272,9 @@ async function loadSnapshot(): Promise<StatusSnapshot> {
     const health = (current?.health ?? 'unknown') as ComponentHealth | 'unknown';
     const byDay = new Map(
       daily.filter((row) => row.component === component).map((row) => [row.day, row.uptimePct] as const)
+    );
+    const latencyByDay = new Map(
+      daily.filter((row) => row.component === component).map((row) => [row.day, row.avgLatencyMs] as const)
     );
     const cells = days.map((day) => ({ day, uptimePct: byDay.get(day) ?? null }));
     const known = cells.filter((cell) => cell.uptimePct !== null);
@@ -259,6 +289,7 @@ async function loadSnapshot(): Promise<StatusSnapshot> {
           ? null
           : known.reduce((sum, cell) => sum + (cell.uptimePct ?? 0), 0) / known.length,
       days: cells,
+      latencyTrend: days.map((day) => latencyByDay.get(day) ?? null),
     };
   });
 
@@ -336,20 +367,7 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
             <span className="tracking-wider">CORE SYSTEM METRICS</span>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-signal/60" />
-                <span className="relative inline-flex size-2 rounded-full bg-signal" />
-              </span>
-              <span className="tracking-wider">LIVE 60S CYCLE</span>
-            </div>
-            <Separator orientation="vertical" className="h-3 bg-hairline hidden sm:block" />
-            <div className="hidden sm:flex items-center gap-1.5 tabular-nums">
-              <LuClock className="size-3" />
-              <span>{formatMoment(snapshot.generatedAt)}</span>
-            </div>
-          </div>
+          <StatusLiveIndicator generatedAt={snapshot.generatedAt} />
         </div>
       </div>
 
@@ -388,7 +406,7 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
               </CardHeader>
               <CardContent className="p-3.5 pt-0">
                 <div className="font-mono text-xl sm:text-2xl font-semibold tabular-nums text-paper">
-                  {aggregateUptime !== null ? `${aggregateUptime.toFixed(2)}%` : '---'}
+                  {aggregateUptime !== null ? <CountUp value={aggregateUptime} decimals={2} suffix="%" /> : '---'}
                 </div>
                 <div className="font-mono text-[10px] text-paper-faint mt-0.5">Seluruh Layer</div>
               </CardContent>
@@ -402,7 +420,7 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
               </CardHeader>
               <CardContent className="p-3.5 pt-0">
                 <div className="font-mono text-xl sm:text-2xl font-semibold tabular-nums text-paper">
-                  {avgLatency !== null ? `${avgLatency} ms` : '---'}
+                  {avgLatency !== null ? <CountUp value={avgLatency} suffix=" ms" /> : '---'}
                 </div>
                 <div className="font-mono text-[10px] text-paper-faint mt-0.5">Round-Trip Time</div>
               </CardContent>
@@ -416,7 +434,7 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
               </CardHeader>
               <CardContent className="p-3.5 pt-0">
                 <div className="font-mono text-xl sm:text-2xl font-semibold tabular-nums text-paper">
-                  {activeProbes}/{snapshot.components.length}
+                  <CountUp value={activeProbes} />/{snapshot.components.length}
                 </div>
                 <div className="font-mono text-[10px] text-paper-faint mt-0.5">Respon Positif</div>
               </CardContent>
@@ -424,6 +442,43 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function BarsStrip({
+  componentLabel,
+  days,
+}: {
+  readonly componentLabel: string;
+  readonly days: readonly {
+    readonly day: string;
+    readonly endDay: string;
+    readonly uptimePct: number | null;
+  }[];
+}) {
+  return (
+    <div
+      className="grid h-8 items-end gap-[2px] overflow-hidden"
+      style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+      aria-label={`Uptime 90 hari untuk ${componentLabel}`}
+    >
+      {days.map((cell, dayIndex) => {
+        const uptimeText =
+          cell.uptimePct !== null ? `${cell.uptimePct.toFixed(1)}%` : 'Tanpa data';
+        const range =
+          cell.endDay === cell.day
+            ? formatDayLabel(cell.day)
+            : `${formatDayLabel(cell.day)} – ${formatDayLabel(cell.endDay)}`;
+        return (
+          <AppTooltip key={cell.day} label={`${range}: ${uptimeText}`}>
+            <span
+              style={{ animationDelay: `${Math.min(dayIndex, STATUS_HISTORY_DAYS - 1) * 8}ms` }}
+              className={`status-bar-rise h-full min-w-0 rounded-sm transition-all hover:brightness-125 ${barTone(cell.uptimePct)}`}
+            />
+          </AppTooltip>
+        );
+      })}
     </div>
   );
 }
@@ -489,37 +544,44 @@ function ComponentTelemetryGrid({ snapshot }: { readonly snapshot: StatusSnapsho
                 </div>
               </CardHeader>
 
-              <CardContent className="p-5 pt-0 space-y-4">
-                <div className="grid grid-cols-2 gap-2 border-y border-hairline py-2.5 font-mono text-xs">
+              <CardContent
+                className={
+                  featured
+                    ? 'p-5 pt-0 flex-1 grid gap-5 md:grid-cols-[170px_1fr] md:items-center'
+                    : 'p-5 pt-0 space-y-4'
+                }
+              >
+                <div
+                  className={
+                    featured
+                      ? 'grid grid-cols-2 md:grid-cols-1 gap-3 font-mono text-xs'
+                      : 'grid grid-cols-2 gap-2 border-y border-hairline py-2.5 font-mono text-xs'
+                  }
+                >
                   <div>
                     <span className="block text-[10px] uppercase text-paper-faint">Latensi Node</span>
                     <span className="font-medium tabular-nums text-paper">
-                      {item.latencyMs !== null ? `${item.latencyMs} ms` : 'N/A'}
+                      {item.latencyMs !== null ? <CountUp value={item.latencyMs} suffix=" ms" /> : 'N/A'}
                     </span>
+                    <LatencySparkline
+                      points={item.latencyTrend}
+                      strokeClass={config.textClass}
+                      label={`Tren latensi 30 hari ${COMPONENT_LABELS[item.component]}`}
+                    />
                   </div>
                   <div>
                     <span className="block text-[10px] uppercase text-paper-faint">Uptime 90H</span>
                     <span className="font-medium tabular-nums text-paper">
-                      {item.uptime90 !== null ? `${item.uptime90.toFixed(2)}%` : 'Data Baru'}
+                      {item.uptime90 !== null ? <CountUp value={item.uptime90} decimals={2} suffix="%" /> : 'Data Baru'}
                     </span>
                   </div>
                 </div>
 
                 <div>
-                  <div
-                    className={`flex items-end gap-[1.5px] overflow-hidden ${featured ? 'h-10' : 'h-7'}`}
-                    aria-label={`Uptime 90 hari untuk ${COMPONENT_LABELS[item.component]}`}
-                  >
-                    {item.days.map((cell) => {
-                      const uptimeText =
-                        cell.uptimePct !== null ? `${cell.uptimePct.toFixed(1)}%` : 'Tanpa data';
-                      return (
-                        <AppTooltip key={cell.day} label={`${formatDayLabel(cell.day)}: ${uptimeText}`}>
-                          <span className={`h-full min-w-0 flex-1 transition-all ${barTone(cell.uptimePct)}`} />
-                        </AppTooltip>
-                      );
-                    })}
-                  </div>
+                  <BarsStrip
+                    componentLabel={COMPONENT_LABELS[item.component]}
+                    days={featured ? item.days.map((cell) => ({ ...cell, endDay: cell.day })) : rollupDays(item.days, 3)}
+                  />
                   <div className="mt-2 flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-paper-faint">
                     <span>-90 HARI</span>
                     <span>SLI AKTIVITAS</span>
@@ -702,7 +764,7 @@ export default async function StatusPage() {
   const snapshot = await loadCachedSnapshot();
 
   return (
-    <div className="min-h-screen w-full bg-bg font-sans text-paper antialiased">
+    <div className="status-scroll min-h-screen w-full bg-bg font-sans text-paper antialiased">
       <ObservabilityHeader snapshot={snapshot} />
 
       <main className="w-full px-4 sm:px-8 lg:px-12 py-8 sm:py-10 space-y-12">

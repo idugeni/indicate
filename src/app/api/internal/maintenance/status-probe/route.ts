@@ -149,21 +149,30 @@ async function handleGET(request: Request) {
     return [{
       component: check.component as StatusComponent,
       health: check.health as ComponentHealth,
+      latencyMs: check.latencyMs,
       checkedAt: check.checkedAt instanceof Date ? check.checkedAt.toISOString() : String(check.checkedAt),
     }];
   });
   const counts = new Map<string, number>();
+  const latencySums = new Map<string, number>();
+  const latencyCounts = new Map<string, number>();
   for (const check of typedChecks) {
     counts.set(check.component, (counts.get(check.component) ?? 0) + 1);
+    if (check.latencyMs !== null && Number.isFinite(check.latencyMs)) {
+      latencySums.set(check.component, (latencySums.get(check.component) ?? 0) + check.latencyMs);
+      latencyCounts.set(check.component, (latencyCounts.get(check.component) ?? 0) + 1);
+    }
   }
   await repository.upsertDaily(
     STATUS_COMPONENTS.map((component) => {
       const summary = summarizeUptime(typedChecks, component, 1, new Date())[0];
+      const samples = latencyCounts.get(component) ?? 0;
       return {
         component,
         day: today,
         uptimePct: summary?.uptimePct ?? 100,
         checks: counts.get(component) ?? 0,
+        avgLatencyMs: samples === 0 ? null : Math.round((latencySums.get(component) ?? 0) / samples),
       };
     }),
   );

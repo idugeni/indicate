@@ -38,6 +38,7 @@ export interface StatusDailyRow {
   readonly day: string;
   readonly uptimePct: number;
   readonly checks: number;
+  readonly avgLatencyMs: number | null;
 }
 
 /**
@@ -96,9 +97,9 @@ export class DrizzleStatusRepository {
    * @param since - Batas bawah `checked_at`.
    * @returns Maksimal `CHECK_READ_MAX_ROWS` baris terproyeksi.
    */
-  async checksSince(since: Date): Promise<readonly { readonly component: string; readonly health: string; readonly checkedAt: Date }[]> {
+  async checksSince(since: Date): Promise<readonly { readonly component: string; readonly health: string; readonly latencyMs: number | null; readonly checkedAt: Date }[]> {
     const rows = await this.database
-      .select({ component: statusChecks.component, health: statusChecks.health, checkedAt: statusChecks.checkedAt })
+      .select({ component: statusChecks.component, health: statusChecks.health, latencyMs: statusChecks.latencyMs, checkedAt: statusChecks.checkedAt })
       .from(statusChecks)
       .where(gte(statusChecks.checkedAt, since))
       .orderBy(statusChecks.checkedAt)
@@ -189,10 +190,10 @@ export class DrizzleStatusRepository {
     for (const row of rows) {
       await this.database
         .insert(statusDaily)
-        .values({ component: row.component, day: row.day, uptimePct: row.uptimePct, checks: row.checks })
+        .values({ component: row.component, day: row.day, uptimePct: row.uptimePct, checks: row.checks, avgLatencyMs: row.avgLatencyMs })
         .onConflictDoUpdate({
           target: [statusDaily.component, statusDaily.day],
-          set: { uptimePct: row.uptimePct, checks: row.checks, updatedAt: new Date() },
+          set: { uptimePct: row.uptimePct, checks: row.checks, avgLatencyMs: row.avgLatencyMs, updatedAt: new Date() },
         });
     }
   }
@@ -205,7 +206,7 @@ export class DrizzleStatusRepository {
    */
   async dailySince(sinceDay: string): Promise<readonly StatusDailyRow[]> {
     const rows = await this.database
-      .select({ component: statusDaily.component, day: statusDaily.day, uptimePct: statusDaily.uptimePct, checks: statusDaily.checks })
+      .select({ component: statusDaily.component, day: statusDaily.day, uptimePct: statusDaily.uptimePct, checks: statusDaily.checks, avgLatencyMs: statusDaily.avgLatencyMs })
       .from(statusDaily)
       .where(gte(statusDaily.day, sinceDay))
       .orderBy(statusDaily.day)
