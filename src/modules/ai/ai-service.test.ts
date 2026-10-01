@@ -324,7 +324,8 @@ describe('executeAiQuery enforcement rpm/tpm', () => {
   });
 });
 
-describe('computeRetryDelayMs', () => {  it('tumbuh eksponensial dengan random nol', () => {
+describe('computeRetryDelayMs', () => {
+  it('tumbuh eksponensial dengan random nol', () => {
     expect(computeRetryDelayMs(1, () => 0)).toBe(500);
     expect(computeRetryDelayMs(2, () => 0)).toBe(1000);
     expect(computeRetryDelayMs(3, () => 0)).toBe(2000);
