@@ -98,7 +98,13 @@ export function IndexPage({ site, categories, path = '/indeks' }: IndexPageProps
   }
 }
 
-function IndexContent({
+/**
+ * Isi daftar kanal A–Z (tanpa cangkang template) agar dapat diuji langsung.
+ *
+ * @param props - Situs tenant dan kanal terurut nama.
+ * @returns Grup huruf kanal berisi artikel beserta catatan sisanya.
+ */
+export function IndexContent({
   site,
   categories,
 }: {
@@ -106,8 +112,10 @@ function IndexContent({
   readonly categories: readonly CategoryNavItem[];
 }) {
   const counts = categoryFrequencyRank(site);
+  const filled = categories.filter((item) => (counts.get(item.slug ?? item.href) ?? 0) > 0);
+  const hiddenCount = categories.length - filled.length;
   const groups = new Map<string, readonly CategoryNavItem[]>();
-  for (const item of categories) {
+  for (const item of filled) {
     const letter = (item.label.charAt(0) || '#').toUpperCase();
     groups.set(letter, [...(groups.get(letter) ?? []), item]);
   }
@@ -122,11 +130,15 @@ function IndexContent({
           Semua kanal liputan
         </h1>
         <p className="m-0 mt-2 max-w-2xl font-sans text-sm leading-relaxed text-[var(--tpl-muted)]">
-          Jelajahi {categories.length} kanal {site.settings.name} dari A sampai Z.
+          {filled.length === 0
+            ? `Belum ada kanal ${site.settings.name} berisi artikel.`
+            : `Jelajahi ${filled.length} kanal ${site.settings.name} berisi artikel${hiddenCount > 0 ? `; ${hiddenCount} kanal lainnya belum memiliki artikel.` : '.'}`}
         </p>
       </div>
       {categories.length === 0 ? (
         <p className="m-0 font-sans text-sm text-[var(--tpl-muted)]">Belum ada kanal yang diterbitkan.</p>
+      ) : filled.length === 0 ? (
+        <p className="m-0 font-sans text-sm text-[var(--tpl-muted)]">Terbitkan artikel berkategori agar kanal tampil di sini.</p>
       ) : (
         letters.map((letter) => (
           <section key={letter} aria-label={`Kanal huruf ${letter}`}>
@@ -134,7 +146,7 @@ function IndexContent({
               <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--tpl-primary-soft,var(--tpl-faint))] font-sans text-sm font-extrabold text-[var(--tpl-primary)]">
                 {letter}
               </span>
-              {letter}
+              <span className="sr-only">Kanal huruf {letter}</span>
             </h2>
             <ul className="m-0 mt-4 grid list-none gap-2 p-0 sm:grid-cols-2 lg:grid-cols-3">
               {(groups.get(letter) ?? []).map((item) => {
