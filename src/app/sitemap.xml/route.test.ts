@@ -7,9 +7,14 @@ describe('controlPlaneSitemap', () => {
   it('memuat root dan seluruh service path sebagai URL absolut', () => {
     const body = controlPlaneSitemap('indicate.website');
     expect(body).toContain('<loc>https://indicate.website/</loc>');
-    for (const path of SERVICE_PATHS) {
+    for (const path of SERVICE_PATHS.filter((service) => service !== '/status')) {
       expect(body).toContain(`<loc>https://indicate.website${path}</loc>`);
     }
+  });
+
+  it('mengeluarkan status apex karena status tayang di subdomain', () => {
+    const body = controlPlaneSitemap('indicate.website');
+    expect(body).not.toContain('<loc>https://indicate.website/status</loc>');
   });
 
   it('memberi prioritas tertinggi pada beranda', () => {
