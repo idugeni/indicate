@@ -853,7 +853,7 @@ describe('Formulir tulis artikel', () => {
     setup({ organizationId: 'org-1' });
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Banjir' } });
     fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Air surut.' } });
-    mockAiFetch(() => ({ result: { titles: ['Banjir Surut di Wonosobo', 'Warga Kembali'], metaDescription: '', slug: '', excerpt: '' } }));
+    mockAiFetch((body) => body.action === 'seo-titles' ? { titles: ['Banjir Surut di Wonosobo', 'Warga Kembali'] } : {});
 
     await user.click(screen.getByRole('button', { name: 'Sempurnakan judul' }));
     await waitFor(() => expect(screen.queryByText('Banjir Surut di Wonosobo')).not.toBeNull());
@@ -866,7 +866,7 @@ describe('Formulir tulis artikel', () => {
     setup({ organizationId: 'org-1' });
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Banjir' } });
     fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Air surut.' } });
-    mockAiFetch(() => ({ result: { titles: [], metaDescription: 'Air di Wonosobo surut.', slug: '', excerpt: '' } }));
+    mockAiFetch((body) => body.action === 'seo-meta' ? { metaDescription: 'Air di Wonosobo surut.' } : {});
 
     await user.click(screen.getByRole('button', { name: 'Buatkan deskripsi' }));
     await waitFor(() =>
@@ -878,7 +878,7 @@ describe('Formulir tulis artikel', () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn(async (_url: unknown, _init?: { readonly body?: unknown }) => ({
       ok: true,
-      json: async () => ({ result: { titles: [], metaDescription: 'Air di Wonosobo telah surut total.', slug: '', excerpt: '' } }),
+      json: async () => ({ metaDescription: 'Air di Wonosobo telah surut total.' }),
     }));
     vi.stubGlobal('fetch', fetchMock);
     setup({ organizationId: 'org-1' });

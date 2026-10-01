@@ -18,7 +18,7 @@ import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import { configureAiUsage, buildDraftArticleInput, draftModerationReply, generateArticleDraft, narrateInsights, ocVisionDraft, scanPrompt, suggestTags, summarizeReport } from '@/modules/ai/ai-usage';
-import { configureAiSeo, suggestSeo } from '@/modules/ai/ai-seo';
+import { configureAiSeo, suggestExcerpt, suggestMetaDescription, suggestTitles } from '@/modules/ai/ai-seo';
 import { classifyArticle, polishBody } from '@/modules/ai/ai-polish';
 import { configureAiCover, generateCoverImage } from '@/modules/ai/ai-cover';
 import { configureAiTts, synthesizeSpeech } from '@/modules/ai/ai-tts';
@@ -54,7 +54,9 @@ const commandSchema = z.object({
     'insight-narrative',
     'semantic-search',
     'embeddings-reindex',
-    'seo-suggest',
+    'seo-titles',
+    'seo-meta',
+    'seo-excerpt',
     'polish-body',
     'classify-article',
     'cover-image',
@@ -508,8 +510,16 @@ async function handlePOST(request: Request) {
           ? NextResponse.json({ ok: true, chunks: result.chunks, embedded: result.embedded, embeddingProvider: result.embeddingProvider })
           : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
       }
-      case 'seo-suggest': {
-        const result = await suggestSeo({ title: str(payload.title, 200), body: str(payload.body, 8000), current: str(payload.current, 400), organizationId });
+      case 'seo-titles': {
+        const result = await suggestTitles({ title: str(payload.title, 200), body: str(payload.body, 8000), organizationId });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
+      }
+      case 'seo-meta': {
+        const result = await suggestMetaDescription({ title: str(payload.title, 200), body: str(payload.body, 8000), current: str(payload.current, 400), organizationId });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
+      }
+      case 'seo-excerpt': {
+        const result = await suggestExcerpt({ title: str(payload.title, 200), body: str(payload.body, 8000), organizationId });
         return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
       }
       case 'polish-body': {

@@ -11,19 +11,17 @@ import { AppTooltip } from '@/ui/app-tooltip';
 export interface SeoApplySelection {
   readonly title?: string | undefined;
   readonly metaDescription?: string | undefined;
-  readonly slug?: string | undefined;
   readonly excerpt?: string | undefined;
 }
 
 interface SeoPreview {
   readonly titles: readonly string[];
   readonly metaDescription: string;
-  readonly slug: string;
   readonly excerpt: string;
 }
 
 /**
- * Menyarankan judul, deskripsi meta, slug, dan kutipan tanpa menyimpan otomatis.
+ * Menyarankan judul, deskripsi meta, dan kutipan tanpa menyimpan otomatis.
  *
  * @param organizationId - Tenant pemilik permintaan; kosong menonaktifkan tombol.
  * @param currentTitle - Judul artikel saat ini.
@@ -54,12 +52,45 @@ export function AiSeoAssist({
     setBusy(true);
     setError(null);
     try {
-      const result = (await callAi(organizationId, 'seo-suggest', { title, body })) as {
-        readonly result?: SeoPreview;
+      const payload = { title, body };
+      const settled = await Promise.allSettled([
+        callAi(organizationId, 'seo-titles', payload),
+        callAi(organizationId, 'seo-meta', payload),
+        callAi(organizationId, 'seo-excerpt', payload),
+      ]);
+      const pick = (index: number): SeoPreview => {
+        const entry = settled[index];
+        if (entry !== undefined && entry.status === 'fulfilled') return entry.value as SeoPreview;
+        return {} as SeoPreview;
       };
-      if (result.result === undefined) throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
-      setSuggestion(result.result);
+      const titlesRaw = pick(0).titles;
+      const titles = Array.isArray(titlesRaw)
+        ? titlesRaw.filter((item): item is string => typeof item === 'string' && item.trim() !== '').slice(0, 3)
+        : [];
+      if (titles.length === 0) throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
+      const metaDescription = typeof pick(1).metaDescription === 'string' ? pick(1).metaDescription : '';
+      const excerpt = typeof pick(2).excerpt === 'string' ? pick(2).excerpt : '';
+      setSuggestion({ titles, metaDescription, excerpt });
       toast.success('Saran SEO siap. Tinjau sebelum diterapkan.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runTitlesOnly = async () => {
+    if (organizationId === undefined || organizationId === '' || suggestion === null) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = (await callAi(organizationId, 'seo-titles', { title, body })) as SeoPreview;
+      const titles = Array.isArray(result.titles)
+        ? result.titles.filter((item): item is string => typeof item === 'string' && item.trim() !== '').slice(0, 3)
+        : [];
+      if (titles.length === 0) throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
+      setSuggestion({ ...suggestion, titles });
+      toast.success('Varian judul baru siap.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
     } finally {
@@ -80,19 +111,19 @@ export function AiSeoAssist({
           onClick={() => void run()}
         />
         {suggestion !== null && !busy ? (
-          <AppTooltip label="Minta varian judul dan deskripsi lain">
+          <AppTooltip label="Minta varian judul lain">
             <AiActionButton
               busy={false}
               idleLabel="Buat ulang varian"
               icon={RefreshCw}
               disabled={disabled}
-              onClick={() => void run()}
+              onClick={() => void runTitlesOnly()}
             />
           </AppTooltip>
         ) : null}
       </div>
       {error !== null ? <p className="m-0 font-sans text-xs text-error" role="alert">{error}</p> : null}
-      {busy ? <AiPending label="Menyusun judul, deskripsi, dan slug" /> : null}
+      {busy ? <AiPending label="Menyusun judul dan deskripsi" /> : null}
       {suggestion !== null ? (
         <div className="space-y-2">
           <ul className="m-0 list-none space-y-1 p-0">
@@ -109,12 +140,6 @@ export function AiSeoAssist({
               <AiActionButton busy={false} idleLabel="Pakai deskripsi" size="xs" onClick={() => onApply({ metaDescription: suggestion.metaDescription })} />
             </div>
           ) : null}
-          {suggestion.slug !== '' ? (
-            <div className="flex items-center justify-between gap-2">
-              <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-paper-dim">{suggestion.slug}</span>
-              <AiActionButton busy={false} idleLabel="Pakai slug" size="xs" onClick={() => onApply({ slug: suggestion.slug })} />
-            </div>
-          ) : null}
           {suggestion.excerpt !== '' ? (
             <div className="flex items-center justify-between gap-2">
               <span className="min-w-0 flex-1 truncate font-sans text-[11px] text-paper-dim">{suggestion.excerpt}</span>
@@ -126,7 +151,7 @@ export function AiSeoAssist({
             idleLabel="Terapkan semua"
             icon={Check}
             tone="primary"
-            onClick={() => onApply({ title: suggestion.titles[0], metaDescription: suggestion.metaDescription, slug: suggestion.slug, excerpt: suggestion.excerpt })}
+            onClick={() => onApply({ title: suggestion.titles[0], metaDescription: suggestion.metaDescription, excerpt: suggestion.excerpt })}
           />
           <p className="m-0 font-sans text-[11px] text-paper-faint">Hasil hanya mengisi formulir untuk ditinjau editor; tidak menyimpan otomatis.</p>
         </div>

@@ -453,11 +453,11 @@ export function ArticleCreateForm({
     if (!aiReady || titleText.trim() === '' || !claimAi(action)) return;
     void (async () => {
       try {
-        const result = (await callAi(organizationId, 'seo-suggest', { title: titleText.trim(), body: bodyText.trim() })) as {
-          readonly result?: { readonly titles?: readonly string[] };
+        const result = (await callAi(organizationId, 'seo-titles', { title: titleText.trim(), body: bodyText.trim() })) as {
+          readonly titles?: readonly string[];
         };
-        const titles = Array.isArray(result.result?.titles)
-          ? result.result.titles.filter((item): item is string => typeof item === 'string' && item.trim() !== '').slice(0, 3)
+        const titles = Array.isArray(result.titles)
+          ? result.titles.filter((item): item is string => typeof item === 'string' && item.trim() !== '').slice(0, 3)
           : [];
         if (titles.length === 0) throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
         setTitleVariants(titles);
@@ -473,14 +473,14 @@ export function ArticleCreateForm({
     if (!aiReady || !claimAi('description')) return;
     void (async () => {
       try {
-        const result = (await callAi(organizationId, 'seo-suggest', {
+        const result = (await callAi(organizationId, 'seo-meta', {
           title: titleText.trim(),
           body: bodyText.trim(),
           current: descriptionText.trim(),
         })) as {
-          readonly result?: { readonly metaDescription?: string };
+          readonly metaDescription?: string;
         };
-        const meta = typeof result.result?.metaDescription === 'string' ? result.result.metaDescription.trim().slice(0, 160) : '';
+        const meta = typeof result.metaDescription === 'string' ? result.metaDescription.trim().slice(0, 160) : '';
         if (meta === '') throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
         setDescriptionText(meta);
         toast.success('Deskripsi disempurnakan AI.');

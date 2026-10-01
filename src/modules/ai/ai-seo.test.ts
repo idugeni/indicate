@@ -1,44 +1,64 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseSeoSuggestion, suggestSeo } from '@/modules/ai/ai-seo';
+import { parseExcerptSuggestion, parseMetaDescription, parseTitleSuggestions, suggestExcerpt, suggestMetaDescription, suggestTitles } from '@/modules/ai/ai-seo';
 
-describe('parseSeoSuggestion', () => {
-  it('mengurai JSON saran SEO beserta slug', () => {
-    const raw = JSON.stringify({ titles: ['Banjir Surut di Wonosobo', 'Warga Kembali Pascabanjir', 'BPBD Salurkan Bantuan'], meta_description: 'Banjir di Wonosobo surut, warga kembali dan BPBD menyalurkan bantuan.', slug: 'Banjir Surut Wonosobo', excerpt: 'Air surut, warga kembali.' });
-    const suggestion = parseSeoSuggestion(raw);
-    expect(suggestion?.titles).toHaveLength(3);
-    expect(suggestion?.slug).toBe('banjir-surut-wonosobo');
-    expect(suggestion?.metaDescription.length).toBeLessThanOrEqual(160);
+describe('parseTitleSuggestions', () => {
+  it('mengurai tiga judul dan memotong kelebihan', () => {
+    const raw = JSON.stringify({ titles: ['a', 'b', 'c', 'd'] });
+    expect(parseTitleSuggestions(raw)).toEqual(['a', 'b', 'c']);
   });
 
-  it('mengurai JSON berpagar kode dan memotong maksimal 3 judul', () => {
-    const raw = '```json\n{"titles":["a","b","c","d"],"meta_description":"Deskripsi.","slug":"slug-contoh","excerpt":"Kutipan."}\n```';
-    expect(parseSeoSuggestion(raw)?.titles).toEqual(['a', 'b', 'c']);
-  });
-
-  it('memotong deskripsi meta maksimal 160 karakter dan slug dari judul bila kosong', () => {
-    const raw = JSON.stringify({ titles: ['Judul Utama Berita Hari Ini'], meta_description: 'x'.repeat(300), slug: '', excerpt: 'Kutipan.' });
-    const suggestion = parseSeoSuggestion(raw);
-    expect(suggestion?.metaDescription).toHaveLength(160);
-    expect(suggestion?.slug).toBe('judul-utama-berita-hari-ini');
+  it('mengurai JSON berpagar kode dan alias judul', () => {
+    expect(parseTitleSuggestions('```json\n{"judul":["x","y"]}\n```')).toEqual(['x', 'y']);
   });
 
   it('mengembalikan null untuk JSON rusak atau tanpa judul', () => {
-    expect(parseSeoSuggestion('bukan json')).toBeNull();
-    expect(parseSeoSuggestion('{"titles":[],"meta_description":"x"}')).toBeNull();
-    expect(parseSeoSuggestion('{"meta_description":"tanpa judul"}')).toBeNull();
+    expect(parseTitleSuggestions('bukan json')).toBeNull();
+    expect(parseTitleSuggestions('{"titles":[]}')).toBeNull();
   });
 });
 
-describe('suggestSeo fallback sibuk', () => {
+describe('parseMetaDescription', () => {
+  it('mengurai meta_description dan memotong 160 karakter', () => {
+    const raw = JSON.stringify({ meta_description: 'x'.repeat(300) });
+    expect(parseMetaDescription(raw)).toHaveLength(160);
+  });
+
+  it('mendukung alias metaDescription dan menolak kosong', () => {
+    expect(parseMetaDescription(JSON.stringify({ metaDescription: 'Deskripsi.' }))).toBe('Deskripsi.');
+    expect(parseMetaDescription(JSON.stringify({ meta_description: '' }))).toBeNull();
+    expect(parseMetaDescription('bukan json')).toBeNull();
+  });
+});
+
+describe('parseExcerptSuggestion', () => {
+  it('mengurai kutipan maksimal 400 karakter', () => {
+    expect(parseExcerptSuggestion(JSON.stringify({ excerpt: 'Air surut.' }))).toBe('Air surut.');
+    expect(parseExcerptSuggestion(JSON.stringify({ excerpt: 'x'.repeat(500) }))?.length).toBe(400);
+  });
+
+  it('mengembalikan null bila JSON rusak', () => {
+    expect(parseExcerptSuggestion('bukan json')).toBeNull();
+  });
+});
+
+describe('suggest fallback sibuk', () => {
   it('menolak input kosong tanpa memanggil model', async () => {
-    const result = await suggestSeo({ title: '', body: '' });
-    expect(result.ok).toBe(false);
+    await expect(suggestTitles({ title: '', body: '' })).resolves.toMatchObject({ ok: false });
+    await expect(suggestMetaDescription({ title: '', body: '' })).resolves.toMatchObject({ ok: false });
+    await expect(suggestExcerpt({ title: '', body: '' })).resolves.toMatchObject({ ok: false });
   });
 
   it('mengembalikan pesan sibuk saat control plane belum dikonfigurasi', async () => {
-    const result = await suggestSeo({ title: 'Banjir di Wonosobo', body: 'Air mulai surut.' });
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain('sibuk');
+    const input = { title: 'Banjir di Wonosobo', body: 'Air mulai surut.' };
+    const [titles, meta, excerpt] = await Promise.all([
+      suggestTitles(input),
+      suggestMetaDescription(input),
+      suggestExcerpt(input),
+    ]);
+    for (const result of [titles, meta, excerpt]) {
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error).toContain('sibuk');
+    }
   });
 });
