@@ -11,6 +11,7 @@ import type {
 } from '@/modules/publishing/models';
 import { aggregateJobState, isAllowedTargetTransition, projectPublicationResult, seedInitialViewCount } from '@/modules/publishing/publication-policy';
 import { regionScopeCovers } from '@/modules/site/region-scope';
+import { isArticleScopedPurpose } from '@/modules/publishing/object-key';
 import { duplicateIssuesAcrossSites, excerptForDescription } from '@/modules/publishing/variant-suggester';
 import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
 import {
@@ -197,7 +198,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
     try {
       return await this.database.transaction(async (transaction) => {
         await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.mediaManage); await this.enforceWritableSubscription(transaction, actor);
-        if (input.owner.kind === 'organization' && actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new PublishingAccessDeniedError();
+        if (input.owner.kind === 'organization' && !isArticleScopedPurpose(input.purpose) && actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new PublishingAccessDeniedError();
         if (input.owner.kind === 'article') {
           const rows = await transaction.select({ id: articles.id, regionId: articles.regionId }).from(articles).where(and(eq(articles.organizationId, actor.organizationId), eq(articles.id, input.owner.articleId), inArray(articles.status, ['draft', 'active']))).limit(1);
           if (rows.length !== 1) throw new PublishingAccessDeniedError();
@@ -224,9 +225,9 @@ export class DrizzlePublishingRepository implements PublishingRepository {
   async markReservationOccupied(actor: AuthorizedTenantActorContext, reservationId: string, now: string): Promise<void> {
     await this.database.transaction(async (transaction) => {
       await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.mediaManage); await this.enforceWritableSubscription(transaction, actor);
-      const rows = await transaction.update(mediaKeyReservations).set({ status: 'occupied', updatedAt: new Date(now) }).where(and(eq(mediaKeyReservations.organizationId, actor.organizationId), eq(mediaKeyReservations.id, reservationId), eq(mediaKeyReservations.status, 'reserved'))).returning({ id: mediaKeyReservations.id, organizationAsset: mediaKeyReservations.organizationAsset });
+      const rows = await transaction.update(mediaKeyReservations).set({ status: 'occupied', updatedAt: new Date(now) }).where(and(eq(mediaKeyReservations.organizationId, actor.organizationId), eq(mediaKeyReservations.id, reservationId), eq(mediaKeyReservations.status, 'reserved'))).returning({ id: mediaKeyReservations.id, purpose: mediaKeyReservations.purpose, organizationAsset: mediaKeyReservations.organizationAsset });
       if (rows.length !== 1) throw new PublishingAccessDeniedError();
-      if (rows[0]!.organizationAsset && actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new PublishingAccessDeniedError();
+      if (rows[0]!.organizationAsset && !isArticleScopedPurpose(rows[0]!.purpose) && actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new PublishingAccessDeniedError();
     });
   }
   async readReservation(actor: AuthorizedTenantActorContext, reservationId: string) {
@@ -241,7 +242,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.mediaManage); await this.enforceWritableSubscription(transaction, actor);
       const reservations = await transaction.select().from(mediaKeyReservations).where(and(eq(mediaKeyReservations.organizationId, actor.organizationId), eq(mediaKeyReservations.id, input.reservationId), eq(mediaKeyReservations.status, 'reserved'), gt(mediaKeyReservations.expiresAt, sql`clock_timestamp()`))).limit(1).for('update');
       const reservation = reservations[0]; if (reservation === undefined) throw new PublishingAccessDeniedError();
-      if (reservation.organizationAsset && actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new PublishingAccessDeniedError();
+      if (reservation.organizationAsset && !isArticleScopedPurpose(reservation.purpose) && actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new PublishingAccessDeniedError();
       const rows = await transaction.insert(media).values({ organizationId: actor.organizationId, id: input.mediaId, objectKey: reservation.objectKey, purpose: reservation.purpose, mediaType: input.mediaType, sizeBytes: input.sizeBytes, checksum: input.checksum, thumbObjectKey: input.thumbObjectKey, widthPx: input.widthPx, heightPx: input.heightPx, altText: input.altText, caption: input.caption, sortOrder: input.sortOrder ?? 0, focalX: input.focalX, focalY: input.focalY, ...getOwnerColumns(mapOwnerFromRow(reservation)), state: 'active', createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning();
       await transaction.update(mediaKeyReservations).set({ status: 'used', updatedAt: new Date(input.now) }).where(and(eq(mediaKeyReservations.organizationId, actor.organizationId), eq(mediaKeyReservations.id, reservation.id)));
       const affected = reservation.siteId !== null ? [reservation.siteId] : reservation.articleId !== null ? (await transaction.select({ siteId: articleSites.siteId }).from(articleSites).where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.articleId, reservation.articleId), eq(articleSites.active, true)))).map(({ siteId }) => siteId) : [];
@@ -253,9 +254,9 @@ export class DrizzlePublishingRepository implements PublishingRepository {
   async rejectMedia(actor: AuthorizedTenantActorContext, reservationId: string, reason: string, now: string): Promise<void> {
     await this.database.transaction(async (transaction) => {
       await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.mediaManage); await this.enforceWritableSubscription(transaction, actor);
-      const rows = await transaction.update(mediaKeyReservations).set({ status: 'occupied', updatedAt: new Date(now) }).where(and(eq(mediaKeyReservations.organizationId, actor.organizationId), eq(mediaKeyReservations.id, reservationId), eq(mediaKeyReservations.status, 'reserved'))).returning({ id: mediaKeyReservations.id, objectKey: mediaKeyReservations.objectKey, organizationAsset: mediaKeyReservations.organizationAsset });
+      const rows = await transaction.update(mediaKeyReservations).set({ status: 'occupied', updatedAt: new Date(now) }).where(and(eq(mediaKeyReservations.organizationId, actor.organizationId), eq(mediaKeyReservations.id, reservationId), eq(mediaKeyReservations.status, 'reserved'))).returning({ id: mediaKeyReservations.id, objectKey: mediaKeyReservations.objectKey, purpose: mediaKeyReservations.purpose, organizationAsset: mediaKeyReservations.organizationAsset });
       const row = rows[0]; if (row === undefined) throw new PublishingAccessDeniedError();
-      if (row.organizationAsset && actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new PublishingAccessDeniedError();
+      if (row.organizationAsset && !isArticleScopedPurpose(row.purpose) && actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new PublishingAccessDeniedError();
       await this.enqueueObjectCleanup(transaction, actor.organizationId, row.objectKey, reason, new Date(now));
       await this.audit(transaction, actor, 'media.reject', 'media_key_reservation', row.id, { reason }, new Date(now));
     });
@@ -265,7 +266,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.mediaManage); await this.enforceWritableSubscription(transaction, actor);
       const existingRows = await transaction.select().from(media).where(and(eq(media.organizationId, actor.organizationId), eq(media.id, mediaId))).limit(1).for('update');
       const existing = existingRows[0]; if (existing === undefined || existing.state !== 'active') throw new PublishingAccessDeniedError();
-      if (existing.organizationAsset && actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new PublishingAccessDeniedError();
+      if (existing.organizationAsset && !isArticleScopedPurpose(existing.purpose) && actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new PublishingAccessDeniedError();
       if (existing.version !== expectedVersion) throw new PublishingConflictError();
       const rows = await transaction.update(media).set({ state: 'archived', version: existing.version + 1, updatedAt: new Date(now) }).where(and(eq(media.organizationId, actor.organizationId), eq(media.id, mediaId), eq(media.version, existing.version), eq(media.state, 'active'))).returning();
       if (rows.length !== 1) throw new PublishingConflictError();
@@ -287,7 +288,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.mediaManage); await this.enforceWritableSubscription(transaction, actor);
       const existingRows = await transaction.select().from(media).where(and(eq(media.organizationId, actor.organizationId), eq(media.id, input.mediaId))).limit(1).for('update');
       const existing = existingRows[0]; if (existing === undefined || existing.state !== 'active') throw new PublishingAccessDeniedError();
-      if (existing.organizationAsset && actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new PublishingAccessDeniedError();
+      if (existing.organizationAsset && !isArticleScopedPurpose(existing.purpose) && actor.regionScopeId !== undefined && actor.regionScopeId !== null) throw new PublishingAccessDeniedError();
       if (existing.version !== input.expectedVersion) throw new PublishingConflictError();
       const rows = await transaction.update(media).set({
         ...(input.altText === undefined ? {} : { altText: input.altText }),

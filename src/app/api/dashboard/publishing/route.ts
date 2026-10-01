@@ -72,16 +72,28 @@ const isError = (value: ContextResult): value is PublicErrorEnvelope => 'error' 
  * @param error - Envelope produced by `PublicationService` or denial helpers.
  * @returns Status code honoring 409 for idempotency and lease conflicts.
  */
-export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : ['CONFLICT', 'IDEMPOTENCY_CONFLICT', 'INVALID_STATE_TRANSITION'].includes(error.error.code) ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
+export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'UNAUTHENTICATED' ? 401 : error.error.code === 'FORBIDDEN' ? 403 : error.error.code === 'INVALID_INPUT' ? 400 : ['CONFLICT', 'IDEMPOTENCY_CONFLICT', 'INVALID_STATE_TRANSITION'].includes(error.error.code) ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
 
 async function contextFor(organizationId: string, requestId: string): Promise<ContextResult> {
   const cookieStore = await cookies();
   const publicConfig = getPublicConfig(process.env);
   const auth = createSupabaseSsrAuthAdapter({ url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey, cookies: createHardenedSupabaseCookieStore({ getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })), set: (name, value, options) => { cookieStore.set(name, value, options); } }) });
-  const identity = await auth.verifyCookieSession(); if (identity === null) return createNonDisclosingDenial(requestId);
+  const identity = await auth.verifyCookieSession();
+  if (identity === null) {
+    logEvent('warn', { event: 'publishing.auth.denied', requestId, context: { reason: 'no_session' } });
+    return createPublicError('UNAUTHENTICATED', 'Sesi berakhir. Muat ulang lalu masuk kembali.', requestId);
+  }
   const context = await getServerRuntimeContext(); const config = context.config; const runtime = getSharedRuntimeDatabase(context.bootstrap); const authorization = new DrizzleAuthorizationRepository(runtime.db);
-  const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator()); if (!local.ok) { return createNonDisclosingDenial(requestId); }
-  const membership = await authorization.findActiveMembership(organizationId, local.value.id); if (membership === null || !membership.roleActive) { return createNonDisclosingDenial(requestId); }
+  const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
+  if (!local.ok) {
+    logEvent('warn', { event: 'publishing.auth.denied', requestId, context: { reason: 'identity_unavailable' } });
+    return createNonDisclosingDenial(requestId);
+  }
+  const membership = await authorization.findActiveMembership(organizationId, local.value.id);
+  if (membership === null || !membership.roleActive) {
+    logEvent('warn', { event: 'publishing.auth.denied', requestId, context: { reason: 'no_membership' } });
+    return createNonDisclosingDenial(requestId);
+  }
   const actor: AuthorizedTenantActorContext = { actorType: 'user', actorId: local.value.id, verifiedAuthUserId: identity.authUserId, organizationId, permissionSet: new Set(membership.orgPermissions), platformPermissionSet: new Set(membership.platformPermissions), regionScopeId: membership.regionId ?? null, entryPoint: 'dashboard', requestId };
   const repository = new DrizzlePublishingRepository(runtime.db);
   const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, publicBucketName: config.r2.publicBucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey });

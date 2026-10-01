@@ -24,6 +24,23 @@ export const PUBLIC_OBJECT_KEY_PREFIX = 'pub/';
 export const PUBLIC_MEDIA_PURPOSES: readonly MediaPurpose[] = ['article-cover'];
 
 /**
+ * Purposes scoped to article content rather than global brand surfaces.
+ * Regional editors upload these before the article exists, so the row is
+ * temporarily organization-owned until `activateMedia` links it.
+ */
+export const ARTICLE_SCOPED_MEDIA_PURPOSES: readonly MediaPurpose[] = ['article-cover', 'article-inline'];
+
+/**
+ * Decide whether a purpose belongs to article content.
+ *
+ * @param purpose - Canonical media purpose.
+ * @returns True for cover and inline bytes; fail-closed to false otherwise.
+ */
+export function isArticleScopedPurpose(purpose: string): boolean {
+  return (ARTICLE_SCOPED_MEDIA_PURPOSES as readonly string[]).includes(purpose);
+}
+
+/**
  * Decide whether a purpose is served from the public bucket.
  *
  * @param purpose - Canonical media purpose.

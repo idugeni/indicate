@@ -12,6 +12,8 @@ describe('publishing statusFor', () => {
 
   it('memetakan denial dan dependency', () => {
     expect(statusFor(createNonDisclosingDenial('req-1'))).toBe(404);
+    expect(statusFor(createPublicError('UNAUTHENTICATED', 'x', 'req-1'))).toBe(401);
+    expect(statusFor(createPublicError('FORBIDDEN', 'x', 'req-1'))).toBe(403);
     expect(statusFor(createPublicError('INVALID_INPUT', 'x', 'req-1'))).toBe(400);
     expect(statusFor(createPublicError('DEPENDENCY_UNAVAILABLE', 'x', 'req-1'))).toBe(503);
     expect(statusFor(createPublicError('INTERNAL_ERROR', 'x', 'req-1'))).toBe(500);

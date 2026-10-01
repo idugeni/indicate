@@ -69,13 +69,23 @@ describe('MediaService reserveUpload', () => {
     expect(result.error.error.code).toBe('INVALID_INPUT');
   });
 
-  it('menolak owner organisasi dari aktor terkunci region', async () => {
+  it('menolak aset global organisasi dari aktor terkunci region', async () => {
     const { service } = harness();
     const locked = { ...actor, regionScopeId: 'region-1' };
-    const result = await service.reserveUpload(locked, { ...upload, owner: { kind: 'organization' } });
+    const result = await service.reserveUpload(locked, { ...upload, purpose: 'site-logo', owner: { kind: 'organization' } });
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');
     expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+  });
+
+  it('mengizinkan sampul dan inline artikel organisasi dari aktor terkunci region', async () => {
+    const { service, storage } = harness();
+    const locked = { ...actor, regionScopeId: 'region-1' };
+    for (const purpose of ['article-cover', 'article-inline'] as const) {
+      const result = await service.reserveUpload(locked, { ...upload, purpose, owner: { kind: 'organization' } });
+      expect(result.ok).toBe(true);
+    }
+    expect(storage.authorizeExactPut).toHaveBeenCalledTimes(2);
   });
 
   it('menolak tipe tak didukung dan ukuran berlebih dengan field', async () => {

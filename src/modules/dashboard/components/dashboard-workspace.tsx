@@ -214,7 +214,9 @@ export function DashboardWorkspace({
 
         if (!response.ok) {
           const apiError = body as ApiErrorResponse;
-          setError(apiError.error?.message ?? 'Server gagal memproses. Coba lagi.');
+          setError(response.status === 401
+            ? 'Sesi berakhir. Muat ulang lalu masuk kembali.'
+            : (apiError.error?.message ?? 'Server gagal memproses. Coba lagi.'));
         } else if (targetView === 'dashboard') {
           if (activeOrgRef.current !== targetOrg) return;
           setPayload({ key: `${targetOrg}|${targetView}|${query}|`, body: withAnalytics(body, analytics) });
@@ -319,7 +321,10 @@ export function DashboardWorkspace({
         const fieldDetails = apiErr.error?.fields
           ? ` (${Object.entries(apiErr.error.fields).map(([f, m]) => `${f}: ${m.join(', ')}`).join('; ')})`
           : '';
-        throw new Error(`${apiErr.error?.message ?? 'Gagal menjalankan perintah.'}${fieldDetails}`);
+        const message = response.status === 401
+          ? 'Sesi berakhir. Muat ulang lalu masuk kembali.'
+          : `${apiErr.error?.message ?? 'Gagal menjalankan perintah.'}${fieldDetails}`;
+        throw Object.assign(new Error(message), { status: response.status });
       }
       return body;
     };
