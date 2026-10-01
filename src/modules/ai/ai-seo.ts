@@ -48,7 +48,7 @@ async function runQuery(callerRole: AiCallerRole, organizationId: string | undef
 const SEO_SYSTEM = [
   'Kamu adalah editor SEO redaksi jaringan media multi-portal Indonesia.',
   'Tulis formal, faktual, tanpa clickbait, tanpa mengarang angka, nama, atau kutipan.',
-  'Susun 3 varian judul ringkas, satu deskripsi meta maksimal 160 karakter, satu slug, dan satu kutipan ringkas hanya dari judul dan isi yang diberikan.',
+  'Susun 3 varian judul ringkas, satu deskripsi meta 150-160 karakter (bidik sedekat mungkin ke 160 tanpa melebihi), satu slug, dan satu kutipan ringkas hanya dari judul dan isi yang diberikan.',
   'Keluarkan JSON murni tanpa pagar kode:',
   '{"titles":["...","...","..."],"meta_description":"...","slug":"...","excerpt":"..."}',
 ].join('\n');
@@ -110,7 +110,7 @@ export async function suggestSeo(input: { readonly title: string; readonly body:
   const current = truncateInput(input.current ?? '', 400);
   if (title === '' && body === '') return { ok: false, error: 'Judul atau isi diperlukan.' };
   const result = await runQuery('editor', input.organizationId, {
-    prompt: `Susun saran SEO untuk artikel berikut:\n\nJudul: ${title}\n\nIsi:\n${body}${current === '' ? '' : `\n\nDeskripsi saat ini (sempurnakan tanpa mengubah makna, maksimal 160 karakter):\n${current}`}`,
+    prompt: `Susun saran SEO untuk artikel berikut:\n\nJudul: ${title}\n\nIsi:\n${body}${current === '' ? '' : `\n\nDeskripsi saat ini (sempurnakan tanpa mengubah makna menjadi 150-160 karakter, sedekat mungkin ke 160):\n${current}`}`,
     systemInstruction: SEO_SYSTEM, temperature: 0.7, maxOutputTokens: 1024, responseMimeType: 'application/json',
   });
   if (!result.ok) return result;
