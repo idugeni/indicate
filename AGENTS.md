@@ -624,7 +624,7 @@ Penyebab dan mekanismenya di tree ini:
 
 1. **Cron padat (`vercel.json`: 11 jadwal).** Ada cron per-menit, dua
    per-5-menit, per-15-menit, per-jam. Tiap tick = Invocation + Active CPU
-   + memory + egress DB di handler-nya. Frequency adalah pengali terbesar.
+   serta memory dan egress DB di handler-nya. Frequency adalah pengali terbesar.
 2. **Build berulang.** Tiap push/deploy = install + compile. Preview build
    per PR dan redeploy manual "buat cek" menumpuk menit.
 3. **Origin transfer.** `/api/*` dan dashboard sengaja `no-store`
