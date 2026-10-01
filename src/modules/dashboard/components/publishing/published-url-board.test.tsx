@@ -74,10 +74,12 @@ describe('collectPublishedUrls', () => {
 });
 
 describe('PublishedUrlBoard', () => {
-  it('merender satu kartu per artikel tayang dengan blok bernomor', () => {
+  it('merender satu kartu ringkas per artikel dengan blok yang bisa dibuka', () => {
     render(<PublishedUrlBoard data={{ articles: ARTICLES, sites: SITES, articleSites: ARTICLE_SITES }} />);
     expect(screen.getByText('Berita Pertama')).toBeDefined();
     expect(screen.getByText('2 URL tayang')).toBeDefined();
+    expect(screen.queryByLabelText('Daftar URL untuk Berita Pertama')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /lihat url/i }));
     expect(screen.getByLabelText('Daftar URL untuk Berita Pertama').textContent).toContain('1. https://alpha.example/berita-pertama');
   });
 
@@ -138,8 +140,9 @@ describe('PublishedUrlBoard pagination', () => {
     expect(screen.getByLabelText('Ke halaman berikutnya').getAttribute('aria-disabled')).toBe('true');
   });
 
-  it('menyorot satu blok URL utuh per artikel, tidak memotong antarhalaman', () => {
+  it('menyorot satu blok URL utuh per artikel setelah dibuka, tidak memotong antarhalaman', () => {
     render(<PublishedUrlBoard data={pagedData} />);
+    fireEvent.click(screen.getAllByRole('button', { name: /lihat url/i })[0]!);
     expect(screen.getByLabelText('Daftar URL untuk Berita 00').textContent).toContain('1. https://alpha.example/berita-00');
   });
 

@@ -5,6 +5,7 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { OrangeModernHeaderBar } from '@/modules/site/components/network/templates/orange-modern/chrome/header-bar';
 import { OrangeModernTopBar } from '@/modules/site/components/network/templates/orange-modern/chrome/top-bar';
 import { OrangeModernDesktopNav, OrangeModernMobileNav } from '@/modules/site/components/network/templates/orange-modern/chrome/site-nav-menu';
+import { CategoryNavStrip } from '@/modules/site/components/network/ui/category-nav-strip';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
@@ -12,7 +13,7 @@ import { getSiteCategoryNav } from '@/modules/site/components/network/server/sit
  * Center: Home plus inline categories up to the limit, the rest under the "Lainnya" menu.
  */
 export async function OrangeModernHeader({ site, path = '/' }: { readonly site: NetworkSiteData; readonly path?: string }) {
-  const nav = await getSiteCategoryNav(site, 8);
+  const nav = await getSiteCategoryNav(site);
   const showRegion =
     site.regionName !== null &&
     site.regionName !== undefined &&
@@ -51,6 +52,7 @@ export async function OrangeModernHeader({ site, path = '/' }: { readonly site: 
         nav={<OrangeModernDesktopNav categories={nav} path={path} />}
         sidebar={<OrangeModernMobileNav categories={nav} path={path} />}
       />
+      <CategoryNavStrip categories={nav} path={path} />
       </div>
     </>
   );

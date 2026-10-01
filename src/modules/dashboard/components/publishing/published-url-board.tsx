@@ -107,7 +107,7 @@ function formatPublishedAt(value: string | null): string {
  * Page listing every published article with its live URLs, ready to share.
  *
  * @param props.data - Editorial workspace payload (articles, sites, articleSites).
- * @returns One card per published article, each with a numbered copyable block, 20 per page.
+ * @returns One compact card per published article with a collapsed copyable block, 20 per page.
  * @remarks Reads the state that is already durable, so the page shows the real
  * result without waiting on the publication worker: rows it lists are the ones
  * the reader can open right now. Pagination is by article rather than by URL so

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { DarkNavyHeaderBar } from '@/modules/site/components/network/templates/dark-navy/chrome/header-bar';
 import { DarkNavyDesktopNav, DarkNavyMobileNav } from '@/modules/site/components/network/templates/dark-navy/chrome/site-nav-menu';
+import { CategoryNavStrip } from '@/modules/site/components/network/ui/category-nav-strip';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
@@ -11,7 +12,7 @@ import { getSiteCategoryNav } from '@/modules/site/components/network/server/sit
  * Center: Home plus inline categories up to the limit, the rest under the "Lainnya" menu.
  */
 export async function DarkNavyHeader({ site, path = '/' }: { readonly site: NetworkSiteData; readonly path?: string }) {
-  const nav = await getSiteCategoryNav(site, 8);
+  const nav = await getSiteCategoryNav(site);
   const showRegion =
     site.regionName !== null &&
     site.regionName !== undefined &&
@@ -48,6 +49,7 @@ export async function DarkNavyHeader({ site, path = '/' }: { readonly site: Netw
         nav={<DarkNavyDesktopNav categories={nav} path={path} />}
         sidebar={<DarkNavyMobileNav categories={nav} path={path} />}
       />
+      <CategoryNavStrip categories={nav} path={path} />
     </header>
   );
 }

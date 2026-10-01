@@ -140,6 +140,9 @@ export const AI_RETRY_BASE_DELAY_MS = 500;
 /** Batas jeda backoff agar skenario gagal total tidak menggantung terlalu lama. */
 export const AI_RETRY_MAX_DELAY_MS = 3000;
 
+/** Batas bawah token untuk entri fallback gateway; model reasoning gratis butuh ruang bernapas. */
+export const GATEWAY_FALLBACK_MIN_TOKENS = 2048;
+
 /**
  * Menghitung jeda exponential backoff plus jitter penuh untuk satu retry.
  *
@@ -407,9 +410,12 @@ export async function executeAiQuery(
       const plainKey = await decryptAiKey(deps.db, credential.keyEncrypted);
       if (plainKey === '') continue;
 
+      const entryPrompt = providerId === 'vercel-gateway'
+        ? { ...effectivePrompt, maxOutputTokens: Math.max(effectivePrompt.maxOutputTokens ?? 0, GATEWAY_FALLBACK_MIN_TOKENS) }
+        : effectivePrompt;
       const startedAt = clock().getTime();
       try {
-        const result = await executeWithTimeout(adapter, plainKey, modelName, effectivePrompt, timeoutMs);
+        const result = await executeWithTimeout(adapter, plainKey, modelName, entryPrompt, timeoutMs);
         if (result.text.trim() === '' && (result.inlineData?.length ?? 0) === 0) {
           const emptyMs = clock().getTime() - startedAt;
           await recordKeyFailure(deps.db, credential.id, 'malformed_response', 'Provider returned empty text.', policy.cooldownDurationSec);

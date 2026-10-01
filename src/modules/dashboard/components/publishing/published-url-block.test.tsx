@@ -37,8 +37,10 @@ describe('PublishedUrlBlock', () => {
     expect(container.firstChild).toBe(null);
   });
 
-  it('menampilkan nomor urut sesuai isi blok', () => {
+  it('menyembunyikan daftar URL secara default dan menampilkannya saat dibuka', () => {
     render(<PublishedUrlBlock title="Judul Berita" urls={['https://a.example/slug', 'https://b.example/slug']} />);
+    expect(screen.queryByLabelText('Daftar URL untuk Judul Berita')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /lihat url/i }));
     const block = screen.getByLabelText('Daftar URL untuk Judul Berita').textContent;
     expect(block).toBe('1. https://a.example/slug\n2. https://b.example/slug');
     expect(screen.getByText('2 URL tayang')).toBeDefined();

@@ -13,23 +13,25 @@ function kanal(n: number) {
 }
 
 describe('BlackLimeDesktopNav', () => {
-  it('menampilkan beranda, empat kategori, dan pemicu lainnya', () => {
+  it('menampilkan beranda, lima kategori, indeks, dan pemicu lainnya', () => {
     render(<BlackLimeDesktopNav categories={kanal(7)} path="/" />);
     expect(screen.getByRole('link', { name: 'Beranda' })).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Kat 4' })).toBeDefined();
-    expect(screen.queryByRole('link', { name: 'Kat 5' })).toBe(null);
-    expect(screen.getByRole('button', { name: /kategori lainnya \(3\)/i })).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Kat 5' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Kat 6' })).toBe(null);
+    expect(screen.getByRole('link', { name: 'Indeks' }).getAttribute('href')).toBe('/indeks');
+    expect(screen.getByRole('button', { name: /kategori lainnya \(2\)/i })).toBeDefined();
   });
 
   it('menandai path aktif', () => {
     render(<BlackLimeDesktopNav categories={kanal(3)} path="/kat-2" />);
     expect(screen.getByRole('link', { name: 'Kat 2' }).getAttribute('aria-current')).toBe('page');
+    expect(screen.getByRole('link', { name: 'Kat 2' }).getAttribute('class')).toMatch(/underline/);
   });
 
   it('membuka menu lainnya dan menampilkan sisa kategori', async () => {
     render(<BlackLimeDesktopNav categories={kanal(7)} path="/" />);
     fireEvent.click(screen.getByRole('button', { name: /kategori lainnya/i }));
-    expect(await screen.findByRole('menuitem', { name: 'Kat 5' })).toBeDefined();
+    expect(await screen.findByRole('menuitem', { name: 'Kat 6' })).toBeDefined();
     expect(screen.getByRole('menuitem', { name: 'Kat 7' })).toBeDefined();
   });
 });
@@ -39,6 +41,7 @@ describe('BlackLimeMobileNav', () => {
     render(<BlackLimeMobileNav categories={kanal(3)} path="/" />);
     expect(screen.getByRole('link', { name: 'Beranda' })).toBeDefined();
     expect(screen.getByRole('link', { name: 'Kat 3' })).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Indeks' }).getAttribute('href')).toBe('/indeks');
     expect(screen.queryByRole('link', { name: 'Profil' })).toBe(null);
     fireEvent.click(screen.getByRole('button', { name: 'Informasi' }));
     expect(await screen.findByRole('link', { name: 'Profil' })).toBeDefined();
