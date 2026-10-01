@@ -19,6 +19,7 @@ import {
   withCategoryIndex,
   type CategoryNavItem,
 } from '@/modules/site/components/network/ui/nav';
+import { useDesktopMenuOpen } from '@/modules/site/components/network/ui/desktop-menu';
 
 const INFO_LINKS = [
   { label: 'Profil', href: '/tentang' },
@@ -43,6 +44,7 @@ function linkClass(active: boolean): string {
 }
 
 export function GlassyBlueDesktopNav({ categories, path }: { readonly categories: readonly CategoryNavItem[]; readonly path: string }) {
+  const [menuOpen, setMenuOpen] = useDesktopMenuOpen();
   const { visible, overflow } = splitCategoryNav(categories, CATEGORY_NAV_VISIBLE_COUNT);
   const overflowActive = overflow.some((item) => isCategoryNavActive(path, item.href));
   const indexActive = isCategoryNavActive(path, CATEGORY_INDEX_HREF);
@@ -70,7 +72,7 @@ export function GlassyBlueDesktopNav({ categories, path }: { readonly categories
         })}
         {overflow.length > 0 ? (
           <li className="m-0 shrink-0 p-0">
-            <DropdownMenu modal={false}>
+            <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
               <DropdownMenuTrigger
                 aria-label={`Kategori lainnya (${overflow.length})`}
                 className={`inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent [&[data-popup-open]>svg]:rotate-180 ${linkClass(overflowActive)}`}

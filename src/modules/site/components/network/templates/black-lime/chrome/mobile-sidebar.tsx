@@ -7,6 +7,7 @@ import { Search, X } from 'lucide-react';
 
 import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
 import { cn } from '@/ui/cn';
+import { useCloseBelowDesktop } from '@/modules/site/components/network/ui/desktop-menu';
 
 /**
  * Mobile navigation sidebar with unified search.
@@ -56,6 +57,8 @@ export function BlackLimeMobileSidebar({
       window.removeEventListener('keydown', onKey);
     };
   }, [open, onClose, onFocusReturn, closeRef]);
+
+  useCloseBelowDesktop(open, onClose);
 
   const submitSidebar = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
