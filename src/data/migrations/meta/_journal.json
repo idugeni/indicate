@@ -1688,6 +1688,13 @@
       "when": 1790831000000,
       "tag": "20261001050000_national_articles",
       "breakpoints": true
+    },
+    {
+      "idx": 241,
+      "version": "7",
+      "when": 1790832000000,
+      "tag": "20261001060000_orphan_cover_sweep",
+      "breakpoints": true
     }
   ]
 }
