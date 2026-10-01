@@ -112,7 +112,7 @@ export const authors = pgTable('authors', {
 export const articles = pgTable('articles', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
   id: uuid('id').notNull(),
-  regionId: uuid('region_id').notNull(),
+  regionId: uuid('region_id'),
   publisherId: uuid('publisher_id'),
   categoryId: uuid('category_id'),
   authorId: uuid('author_id'),

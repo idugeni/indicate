@@ -83,8 +83,10 @@ export function selectNetworkArticles(
   if (site === undefined) return [];
   return filterArticles(state, { ...filter, siteId }).filter((article) => {
     if (article.status !== 'active') return false;
-    const region = state.regions.find((candidate) => candidate.organizationId === state.organizationId && candidate.id === article.regionId && candidate.status === 'active');
-    if (region === undefined) return false;
+    if (article.regionId !== null) {
+      const region = state.regions.find((candidate) => candidate.organizationId === state.organizationId && candidate.id === article.regionId && candidate.status === 'active');
+      if (region === undefined) return false;
+    }
     if (site.regionId !== null && state.regions.find((candidate) => candidate.organizationId === state.organizationId && candidate.id === site.regionId && candidate.status === 'active') === undefined) return false;
     return state.articleSites.some((assignment) => assignment.organizationId === state.organizationId && assignment.articleId === article.id
       && assignment.siteId === siteId
@@ -166,7 +168,7 @@ export function buildAnalytics(
   const dimension = (articleId: string, siteId: string, value: string) => {
     const article = articleById.get(articleId); const site = siteById.get(siteId);
     const regionId = site?.regionId ?? article?.regionId;
-    return article === undefined || site === undefined || regionId === undefined ? null : `${siteId}:${regionId}:${value}`;
+    return article === undefined || site === undefined || regionId === undefined || regionId === null ? null : `${siteId}:${regionId}:${value}`;
   };
   const jobDimensions = tenantJobs.flatMap((job) => tenantTargets
     .filter(({ jobId }) => jobId === job.id)
@@ -287,7 +289,7 @@ export function buildAnalytics(
   for (const article of allTenantArticles) articleLabels[article.id] = article.title;
 
   return Object.freeze({
-    articlesByRegion: group(tenantArticles.map(({ regionId }) => regionId)),
+    articlesByRegion: group(tenantArticles.flatMap(({ regionId }) => regionId === null ? [] : [regionId])),
     articlesBySite: group(activeAssignments.map(({ siteId }) => siteId)),
     articlesByCategory: group(tenantArticles.flatMap(({ categoryId }) => categoryId ?? [])),
     articlesByPublisher: group(tenantArticles.flatMap(({ publisherId }) => publisherId ?? [])),

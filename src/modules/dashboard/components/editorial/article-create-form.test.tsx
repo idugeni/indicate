@@ -954,4 +954,41 @@ describe('Formulir tulis artikel', () => {
       expect((screen.getByLabelText('Isi Artikel') as HTMLTextAreaElement).value).toContain('membersihkan selokan'),
     );
   });
+
+  it('admin menerbitkan nasional ke semua apex tanpa memilih wilayah', async () => {
+    const user = userEvent.setup();
+    const submit = vi.fn(async () => ({ id: 'art-baru', slug: 'judul-uji' }));
+    const cmd = vi.fn(async (action: string, payload: unknown) => {
+      if (action !== 'publication.suggest') return {};
+      const { siteIds } = payload as { readonly siteIds: readonly string[] };
+      return {
+        overrides: Object.fromEntries(
+          siteIds.map((siteId, index) => [siteId, { title: `Judul portal ${index}`, description: `Deskripsi portal ${index}.` }]),
+        ),
+      };
+    });
+    const { container } = render(
+      <ArticleCreateForm data={{ ...DATA, regionScope: null }} onSubmit={submit} command={cmd} organizationId="org-1" />,
+    );
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
+
+    await user.click(screen.getByRole('checkbox', { name: 'Nasional — semua apex utama' }));
+    expect(screen.queryByLabelText('Wilayah')).toBeNull();
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({ regionId: null })));
+    await waitFor(() =>
+      expect(cmd).toHaveBeenCalledWith('publication.request', expect.objectContaining({ siteIds: ['s-apex-1', 's-apex-2'] })),
+    );
+  });
+
+  it('menyembunyikan opsi nasional bila cakupan wilayah terkunci', () => {
+    setup({});
+    expect(screen.queryByLabelText('Nasional — semua apex utama')).toBeNull();
+    expect(screen.getByLabelText('Wilayah')).toBeDefined();
+  });
+
 });

@@ -160,7 +160,7 @@ export interface AuthorRecord extends VersionedRecord {
 }
 
 export interface ArticleRecord extends VersionedRecord {
-  readonly regionId: string;
+  readonly regionId: string | null;
   readonly publisherId: string | null;
   readonly categoryId: string | null;
   /** Ordered category set; first entry mirrors the primary `categoryId`. */
@@ -307,7 +307,7 @@ export interface ArticleFilter {
 
 export interface EditorialSummaryArticle {
   readonly id: string;
-  readonly regionId: string;
+  readonly regionId: string | null;
   readonly slug: string;
   readonly title: string;
   readonly status: ArticleStatus;

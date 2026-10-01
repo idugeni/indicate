@@ -184,7 +184,7 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
     title: 'Ubah Artikel',    fields: [
       { key: 'title', label: 'Judul', kind: 'text', required: true },
       { key: 'slug', label: 'Slug URL', kind: 'text', required: true, pattern: '[a-z0-9-]+' },
-      { key: 'regionId', label: 'Wilayah', kind: 'select', required: true, optionSource: 'regions' },
+      { key: 'regionId', label: 'Wilayah', kind: 'select', optionSource: 'regions', allowEmpty: true, emptyLabel: 'Nasional — semua apex' },
       { key: 'publisherId', label: 'Penerbit', kind: 'select', optionSource: 'publishers', allowEmpty: true, emptyLabel: 'Tanpa penerbit' },
       { key: 'categoryId', label: 'Kategori', kind: 'select', optionSource: 'categories', allowEmpty: true, emptyLabel: 'Tanpa kategori' },
       { key: 'authorId', label: 'Penulis', kind: 'select', optionSource: 'authors', allowEmpty: true, emptyLabel: 'Tanpa penulis' },
@@ -341,7 +341,7 @@ export function buildUpdatePayload(
         return value === '' ? null : value;
       };
       return {
-        id, expectedVersion, regionId: text('regionId'), publisherId: nullableId('publisherId'),
+        id, expectedVersion, regionId: nullableId('regionId'), publisherId: nullableId('publisherId'),
         categoryId: nullableId('categoryId'), authorId: nullableId('authorId'), slug: lower('slug'),
         title: text('title'), excerpt: optionalText('excerpt'),
         canonicalUrl: optionalText('canonicalUrl'), body: String(values.body ?? '').trim(), source: text('source'),

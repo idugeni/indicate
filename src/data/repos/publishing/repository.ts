@@ -476,7 +476,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         if (articleRows.length !== 1) throw new PublishingAccessDeniedError();
         const lock = actor.regionScopeId ?? null;
         const geography = lock === null ? [] : await transaction.select({ id: regions.id, kind: regions.kind, parentRegionId: regions.parentRegionId }).from(regions).where(eq(regions.organizationId, actor.organizationId));
-        if (lock !== null && !regionScopeCovers(lock, articleRows[0]!.regionId, geography)) throw new PublishingAccessDeniedError();
+        if (lock !== null && (articleRows[0]!.regionId === null || !regionScopeCovers(lock, articleRows[0]!.regionId, geography))) throw new PublishingAccessDeniedError();
         const distinctSites = [...new Set(input.siteIds)];
         const siteRows = await transaction.select({ id: sites.id, regionId: sites.regionId }).from(sites).where(and(eq(sites.organizationId, actor.organizationId), inArray(sites.id, distinctSites), eq(sites.status, 'active')));
         if (siteRows.length !== distinctSites.length) throw new PublishingAccessDeniedError();
@@ -914,7 +914,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         wants('articleSites') ? transaction.select({ id: articleSites.id, articleId: articleSites.articleId, siteId: articleSites.siteId, state: articleSites.state, active: articleSites.active }).from(articleSites).where(eq(articleSites.organizationId, organizationId)).orderBy(desc(articleSites.createdAt)).limit(SNAPSHOT_MAX_ASSIGNMENTS) : [],
       ]);
       const settingsBySite = new Map(settingsRows.map((row) => [row.siteId, [row.logoMediaId, row.faviconMediaId, row.defaultMediaId].filter((value): value is string => value !== null)]));
-      const articleVisible = (row: { readonly id: string; readonly regionId: string }) => lock === null || row.regionId === lock;
+      const articleVisible = (row: { readonly id: string; readonly regionId: string | null }) => lock === null || row.regionId === lock;
       const siteVisible = (row: { readonly id: string; readonly regionId: string | null }) => lock === null || row.regionId === null || row.regionId === lock;
       const visibleArticles = articleRows.filter(articleVisible);
       const visibleArticleIds = new Set(visibleArticles.map((row) => row.id));

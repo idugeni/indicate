@@ -59,7 +59,7 @@ export interface ArticleListItem {
   /** Optional per-article robots override (`noindex`, `nosnippet`); null follows site default. */
   readonly robotsDirective?: 'index, follow' | 'noindex, nofollow' | 'noindex, nofollow, nosnippet' | null;
   readonly tags: readonly string[];
-  readonly regionId: string;  readonly categoryId: string | null;
+  readonly regionId: string | null;  readonly categoryId: string | null;
   readonly categorySlug: string | null;
   readonly categoryName: string | null;
   readonly authorName: string | null;

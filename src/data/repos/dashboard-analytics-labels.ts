@@ -8,7 +8,7 @@ export interface AnalyticsLabelInput {
   readonly bySite: readonly { key: string }[];
   readonly byCategory: readonly { key: string }[];
   readonly byPublisher: readonly { key: string }[];
-  readonly byRegion: readonly { key: string }[];
+  readonly byRegion: readonly { key: string | null }[];
   readonly outcomesBySite: readonly { key: string }[];
   readonly jobDimensions: readonly { siteId: string; regionId: string | null }[];
   readonly outcomeDimensions: readonly { siteId: string; regionId: string | null }[];
@@ -38,7 +38,7 @@ export function pruneAnalyticsLabels(input: AnalyticsLabelInput): {
     if (regionId !== null) regionIds.add(regionId);
   };
   for (const point of input.bySite) siteIds.add(point.key);
-  for (const point of input.byRegion) regionIds.add(point.key);
+  for (const point of input.byRegion) if (point.key !== null) regionIds.add(point.key);
   for (const point of input.outcomesBySite) {
     const separator = point.key.indexOf(':');
     if (separator > 0) siteIds.add(point.key.slice(0, separator));

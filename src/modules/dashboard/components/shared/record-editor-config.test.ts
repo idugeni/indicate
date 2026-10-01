@@ -191,7 +191,10 @@ describe('buildUpdatePayload', () => {
         status: 'draft',
       },
     );
-    expect(articlePayload).toMatchObject({ publisherId: null, authorId: null, slug: 'judul-utama', title: 'Judul Utama' });
+    expect(articlePayload).toMatchObject({ regionId: 'r1', publisherId: null, authorId: null, slug: 'judul-utama', title: 'Judul Utama' });
+    expect(
+      buildUpdatePayload('articles', { id: 'a1', version: 3 }, { regionId: '', title: 'T', slug: 's', body: 'B', source: '', status: 'draft' }),
+    ).toMatchObject({ regionId: null });
     const rolePayload = buildUpdatePayload(
       'roles',
       { id: 'r1', version: 1 },

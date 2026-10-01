@@ -57,6 +57,10 @@ describe('buildArticlePayload', () => {
     expect(buildArticlePayload({ ...SNAPSHOT, cityId: 'r-2' }, []).regionId).toBe('r-2');
   });
 
+  it('mengirim null sebagai wilayah nasional bila provinsi dan kota kosong', () => {
+    expect(buildArticlePayload({ ...SNAPSHOT, provinceId: null, cityId: null }, []).regionId).toBeNull();
+  });
+
   it('membuang jadwal saat status bukan terjadwal', () => {
     const payload = buildArticlePayload({ ...SNAPSHOT, status: 'active', rawSchedule: '2026-10-01T07:00' }, []);
     expect(payload.scheduledAt).toBeNull();

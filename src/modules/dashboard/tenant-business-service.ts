@@ -903,8 +903,8 @@ export class TenantBusinessService {
     }
   }
 
-  private requireArticleReferences(state: MutableTenantState, value: { regionId: string; publisherId: string | null; categoryId: string | null; categoryIds?: readonly string[] | undefined; authorId: string | null }): void {
-    if (requireRecord(state.regions, value.regionId).status !== 'active') throw new DashboardAccessDeniedError();
+  private requireArticleReferences(state: MutableTenantState, value: { regionId: string | null; publisherId: string | null; categoryId: string | null; categoryIds?: readonly string[] | undefined; authorId: string | null }): void {
+    if (value.regionId !== null && requireRecord(state.regions, value.regionId).status !== 'active') throw new DashboardAccessDeniedError();
     if (value.publisherId !== null && requireRecord(state.publishers, value.publisherId).status !== 'active') throw new DashboardAccessDeniedError();
     if (value.categoryId !== null && requireRecord(state.categories, value.categoryId).status !== 'active') throw new DashboardAccessDeniedError();
     for (const categoryId of value.categoryIds ?? []) {

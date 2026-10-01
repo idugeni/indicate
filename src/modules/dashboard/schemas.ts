@@ -133,7 +133,7 @@ export const tagRemoveSchema = z.object({ tag: canonicalTag }).strict();
 export const authorCreateSchema = z.object({ displayName: z.string().trim().min(1).max(160), byline: z.string().trim().min(1).max(200), status: lifecycleStatus.default('active') }).strict();
 export const authorUpdateSchema = authorCreateSchema.extend({ id, expectedVersion });
 export const articleCreateSchema = z.object({
-  regionId: id,
+  regionId: id.nullable(),
   publisherId: id.nullable().default(null),
   categoryId: id.nullable().default(null),
   /** Ordered category set; first entry is the primary `categoryId` mirror. Omitted on update preserves existing rows. */

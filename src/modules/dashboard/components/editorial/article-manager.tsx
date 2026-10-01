@@ -49,7 +49,7 @@ interface ArchiveArticle {
   readonly publishedAt: string | null;
   readonly tags: readonly string[];
   readonly categoryIds: readonly string[];
-  readonly regionId: string;
+  readonly regionId: string | null;
   readonly version: number;
   readonly body: string;
   readonly excerpt?: string | null;

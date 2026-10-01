@@ -492,6 +492,43 @@ describe('TenantBusinessService assignment saat pembuatan', () => {
     if (!result.ok) throw new Error('expected ok');
     expect(state.articleSites as unknown[]).toHaveLength(0);
   });
+
+  it('admin membuat artikel nasional tanpa wilayah', async () => {
+    const { service, state } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+      sites: [site()],
+      articles: [],
+      articleSites: [],
+    });
+    const result = await service.createArticle(actor, { ...draft, regionId: null });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.regionId).toBeNull();
+    expect((state.articles as { regionId: unknown }[])[0]?.regionId).toBeNull();
+  });
+
+  it('aktor terkunci ditolak membuat artikel nasional', async () => {
+    const { service } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+      sites: [site()],
+      articles: [],
+      articleSites: [],
+    });
+    const locked = { ...actor, regionScopeId: ID2 };
+    const result = await service.createArticle(locked, { ...draft, regionId: null });
+    expect(result.ok).toBe(false);
+  });
+
+  it('aktor terkunci ditolak mengubah artikel menjadi nasional', async () => {
+    const article = { id: ID, organizationId: 'org-1', regionId: ID2, slug: 'berita-utama', title: 'T', body: 'B', source: 'S', tags: [], status: 'draft', version: 1, publisherId: null, categoryId: null, authorId: null };
+    const { service } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+      articles: [article],
+    });
+    const locked = { ...actor, regionScopeId: ID2 };
+    const result = await service.updateArticle(locked, { id: ID, expectedVersion: 1, regionId: null, publisherId: null, categoryId: null, authorId: null, slug: 'berita-utama', title: 'T', body: 'B', source: 'S', tags: [], status: 'draft', scheduledAt: null });
+    expect(result.ok).toBe(false);
+  });
 });
 
 describe('TenantBusinessService hapus artikel', () => {

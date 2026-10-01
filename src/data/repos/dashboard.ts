@@ -257,7 +257,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const windowEnd = `${nextDay(window.akhir)}T00:00:00Z`;
       const inArticleRange = sql`(${from}::timestamptz IS NULL OR created_at >= ${from}::timestamptz) AND (${to}::timestamptz IS NULL OR created_at <= ${to}::timestamptz)`;
       const [byRegion, byCategory, byPublisher, byStatus, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions, taskRows, hourRows, newTasks, newOutcomes, newArticles, flowRows, deliveryRows, viewRows, dailyViewRows, siteViewRows, articleViewRows, totalRow, siteLabelRows, categoryLabelRows, publisherLabelRows, regionLabelRows] = await Promise.all([
-        transaction.execute<{ key: string; count: number }>(sql`
+        transaction.execute<{ key: string | null; count: number }>(sql`
           SELECT region_id AS key, count(*)::int AS count FROM articles
           WHERE organization_id = ${orgId} AND ${inArticleRange} GROUP BY region_id`),
         transaction.execute<{ key: string; count: number }>(sql`
@@ -288,7 +288,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
             AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
             AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)
           GROUP BY s.site_id, s.state`),
-        transaction.execute<{ siteId: string; regionId: string; state: string }>(sql`
+        transaction.execute<{ siteId: string; regionId: string | null; state: string }>(sql`
           SELECT s.site_id AS "siteId", COALESCE(st.region_id, ar.region_id) AS "regionId", j.state AS state
           FROM publishing_jobs j
           JOIN publishing_job_targets t ON t.organization_id = ${orgId} AND t.job_id = j.id
@@ -298,7 +298,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
           WHERE j.organization_id = ${orgId}
             AND (${from}::timestamptz IS NULL OR COALESCE(j.finalized_at, j.updated_at) >= ${from}::timestamptz)
             AND (${to}::timestamptz IS NULL OR COALESCE(j.finalized_at, j.updated_at) <= ${to}::timestamptz)`),
-        transaction.execute<{ siteId: string; regionId: string; state: string }>(sql`
+        transaction.execute<{ siteId: string; regionId: string | null; state: string }>(sql`
           SELECT s.site_id AS "siteId", COALESCE(st.region_id, ar.region_id) AS "regionId", s.state AS state
           FROM article_sites s
           JOIN articles ar ON ar.organization_id = ${orgId} AND ar.id = s.article_id
@@ -417,8 +417,8 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         transaction.execute<{ id: string; name: string }>(sql`
           SELECT id, name AS name FROM regions WHERE organization_id = ${orgId}`),
       ]);
-      const points = (rows: readonly { key: string; count: number }[]) =>
-        [...rows].map(({ key, count }) => ({ key, count })).sort((a, b) => a.key.localeCompare(b.key));
+      const points = (rows: readonly { key: string | null; count: number }[]) =>
+        [...rows].filter((row): row is { key: string; count: number } => row.key !== null).map(({ key, count }) => ({ key, count })).sort((a, b) => a.key.localeCompare(b.key));
       const dimensionPoints = (rows: readonly { siteId: string; regionId: string | null; state: string }[]) => {
         const counts = new Map<string, number>();
         for (const row of rows) {
@@ -806,7 +806,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const like = `%${keyword.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
       const scope = actor.regionScopeId ?? null;
       const rows = await transaction.execute<{
-        readonly id: string; readonly regionId: string; readonly slug: string; readonly title: string;
+        readonly id: string; readonly regionId: string | null; readonly slug: string; readonly title: string;
         readonly status: EditorialSummaryArticle['status']; readonly createdAt: Date;
       }>(sql`
         SELECT id, region_id AS "regionId", slug, title, status, created_at AS "createdAt"

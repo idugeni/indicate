@@ -12,7 +12,19 @@ export function siteInScope(site: { readonly regionId: string | null }, lock: st
   return regionScopeCovers(lock, site.regionId, geography);
 }
 
-export function articleInScope(article: { readonly regionId: string }, lock: string | null, geography: readonly ScopeGeography[]): boolean {
+/**
+ * Cakupan artikel nasional (tanpa wilayah) hanya untuk aktor tanpa kunci.
+ *
+ * @param article - Artikel yang diperiksa; `regionId` null berarti nasional.
+ * @param lock - Kunci wilayah aktor; null berarti admin tak terbatas.
+ * @param geography - Geografi tenant untuk resolusi induk kota.
+ * @returns True bila aktor boleh melihat artikel.
+ * @remarks Berbeda dari portal apex yang selalu terlihat: artikel nasional
+ * disembunyikan dari aktor terkunci agar selaras dengan RLS yang menyimpan
+ * `region_id = current` tanpa pengecualian NULL.
+ */
+export function articleInScope(article: { readonly regionId: string | null }, lock: string | null, geography: readonly ScopeGeography[]): boolean {
+  if (article.regionId === null) return lock === null;
   return regionScopeCovers(lock, article.regionId, geography);
 }
 
@@ -32,6 +44,19 @@ export function requireArticleInScope(state: DashboardTenantState, articleId: st
   return article;
 }
 
-export function requireLockedRegionValue(state: DashboardTenantState, actor: AuthorizedTenantActorContext, regionId: string): void {
+/**
+ * Kunci nilai wilayah dengan pengecualian nasional khusus admin.
+ *
+ * @param state - State tenant untuk resolusi geografi.
+ * @param actor - Aktor yang menulis; null `regionId` menuntut kunci null.
+ * @param regionId - Geografi yang diminta; null berarti artikel nasional.
+ * @throws {DashboardAccessDeniedError} Bila aktor terkunci meminta nasional
+ * atau geografi di luar cakupannya.
+ */
+export function requireLockedRegionValue(state: DashboardTenantState, actor: AuthorizedTenantActorContext, regionId: string | null): void {
+  if (regionId === null) {
+    if (regionLock(actor) !== null) throw new DashboardAccessDeniedError();
+    return;
+  }
   if (!regionScopeCovers(regionLock(actor), regionId, state.regions)) throw new DashboardAccessDeniedError();
 }

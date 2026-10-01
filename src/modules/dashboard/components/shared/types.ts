@@ -48,7 +48,7 @@ export interface AuthorEntity {
 
 export interface ArticleEntity {
   readonly id: string;
-  readonly regionId: string;
+  readonly regionId: string | null;
   readonly publisherId: string | null;
   readonly categoryId: string | null;
   readonly authorId: string | null;

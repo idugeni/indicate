@@ -170,9 +170,11 @@ export function ArticleCreateForm({
     readonly authors?: readonly AuthorEntity[];
     readonly articles?: readonly ArticleEntity[];
     readonly sites?: readonly PublishTargetSite[];
+    readonly regionScope?: { readonly id: string; readonly name: string } | null;
   } | null;
 
   const regionSelectId = useId();
+  const nationalCheckId = useId();
   const citySelectId = useId();
   const publisherSelectId = useId();
   const authorSelectId = useId();
@@ -201,6 +203,10 @@ export function ArticleCreateForm({
   const [featuredStatus, setFeaturedStatus] = useState<string | null>(null);
   const [provinceId, setProvinceId] = useState<string | null>(null);
   const [cityId, setCityId] = useState<string | null>(null);
+  const [isNational, setIsNational] = useState(false);
+  /** Admin tanpa kunci wilayah boleh menerbitkan nasional ke semua apex. */
+  const isUnrestricted = model !== null && model.regionScope === null;
+  const nationalActive = isUnrestricted && isNational;
   const [uploadingFeatured, setUploadingFeatured] = useState(false);
   const [featuredVersion, setFeaturedVersion] = useState<number | null>(null);
   const [featuredAlt, setFeaturedAlt] = useState('');
@@ -231,9 +237,10 @@ export function ArticleCreateForm({
   };
   const liveSites = useMemo(() => model?.sites ?? [], [model?.sites]);
   const publicationScope = useMemo<PublicationScope>(() => {
+    if (nationalActive) return { kind: 'apex' };
     const pickedCity = model?.regions?.find((region) => region.id === cityId);
     return pickedCity?.kind === 'city' ? { kind: 'city', regionId: pickedCity.id } : { kind: 'apex' };
-  }, [model?.regions, cityId]);
+  }, [model?.regions, cityId, nationalActive]);
   const targetSiteIds = useMemo(
     () => selectPublicationTargets(liveSites, publicationScope),
     [liveSites, publicationScope],
@@ -840,7 +847,7 @@ export function ArticleCreateForm({
       toast.error('Slug hanya boleh huruf kecil, angka, dan strip.');
       return;
     }
-    if (provinceId === null) {
+    if (provinceId === null && !nationalActive) {
       toast.error('Pilih wilayah dulu.');
       return;
     }
@@ -921,6 +928,7 @@ export function ArticleCreateForm({
       setPublisherId(null);
       setProvinceId(null);
       setCityId(null);
+      setIsNational(false);
       touchedAuthor.current = false;
       setAuthorId(defaultAuthorId);
       setTitleText('');
@@ -1389,6 +1397,33 @@ export function ArticleCreateForm({
                   <span aria-hidden="true" className="h-3 w-0.5 rounded-full bg-brass" />
                   <p className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper">Atribusi</p>
                 </div>
+              {isUnrestricted ? (
+                <div className="flex items-start gap-2 rounded border border-hairline bg-bg p-2.5">
+                  <Checkbox
+                    id={nationalCheckId}
+                    checked={isNational}
+                    onCheckedChange={(checked) => {
+                      const next = checked === true;
+                      setIsNational(next);
+                      if (next) {
+                        setProvinceId(null);
+                        setCityId(null);
+                      }
+                    }}
+                    disabled={isSubmitting}
+                    className="mt-0.5 border-hairline-strong data-checked:border-brass data-checked:bg-brass data-checked:text-bg"
+                  />
+                  <div className="min-w-0 space-y-0.5">
+                    <Label htmlFor={nationalCheckId} className="font-mono text-xs text-paper">
+                      Nasional — semua apex utama
+                    </Label>
+                    <p className="m-0 font-mono text-[11px] leading-relaxed text-paper-faint">
+                      Tayang ke semua portal apex tanpa memilih wilayah; portal region dan kota tidak ikut.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+              {nationalActive ? null : (
               <div className="space-y-1.5">
                 <Label htmlFor={regionSelectId} className="font-mono text-xs text-paper-dim">
                   Wilayah
@@ -1407,8 +1442,9 @@ export function ArticleCreateForm({
                   options={regionOptions}
                 />
               </div>
+              )}
 
-              {provinceId === null ? null : (
+              {nationalActive || provinceId === null ? null : (
                 <div className="space-y-1.5">
                   <Label htmlFor={citySelectId} className="font-mono text-xs text-paper-dim">
                     Kota / kabupaten

@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (240 migrations):
+-- Reviewed sources, in journal order (241 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -254,6 +254,7 @@
 --   238  20261001010000_status_daily_avg_latency  ledger sha256:a1f82f5cfacc5bab9462212b1926daaeaabe9657a691f521915394aaa782f3fb
 --   239  20261001020000_ai_routing_fallback_wire  ledger sha256:c6f6b83bc20382d4b93e694a72f11a6f0a8f8350e8caca271216bd9e644b1373
 --   240  20261001043000_media_orphan_cleanup  ledger sha256:8d339f6794cf0232ad6948aaae9833c70c586d17e6394f18ae6e572db2cb58d9
+--   241  20261001050000_national_articles  ledger sha256:dbdf1483b56136f410fed8f898f4f10fac8aaa78fca789cc83350fd859f0aefc
 
 BEGIN;
 
@@ -19793,4 +19794,31 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (240, 'media_orphan_cleanup', 'sha256:dfe149c28bb2e3da531d91672050ab399ab8973526d1c55e9bebe4631692fef4');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('8d339f6794cf0232ad6948aaae9833c70c586d17e6394f18ae6e572db2cb58d9', 1790828755254);
+
+-- ----------------------------------------------------------------------
+-- 20261001050000_national_articles
+-- ----------------------------------------------------------------------
+-- Artikel nasional: region_id boleh NULL untuk berita yang tayang ke semua apex utama.
+--
+-- Sebelumnya setiap artikel wajib membawa satu geografi (provinsi atau kota),
+-- sehingga redaksi yang ingin menerbitkan berita nasional ke seluruh portal
+-- apex tetap dipaksa memilih satu wilayah di UI. NULL berarti nasional:
+-- taksonomi tanpa wilayah, hanya boleh ditulis aktor tanpa kunci wilayah
+-- (admin), dan hanya didistribusikan ke portal apex (tanpa kota berarti
+-- scope apex di selectPublicationTargets).
+--
+-- RLS sengaja tidak diubah: predikat yang ada (`region_id = current`)
+-- bernilai tidak-benar untuk NULL, sehingga baris nasional tetap
+-- tersembunyi dari aktor terkunci wilayah — selaras dengan articleInScope
+-- di aplikasi. Membukanya untuk aktor terkunci adalah tindak lanjut
+-- terpisah (tambah `OR region_id IS NULL` di kebijakan articles dan
+-- turunannya).
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.articles ALTER COLUMN region_id DROP NOT NULL;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (241, 'national_articles', 'sha256:124377c94c7f682b27a7db4ebb16ed731454066605190fe4a6d361e1a9f85892');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('dbdf1483b56136f410fed8f898f4f10fac8aaa78fca789cc83350fd859f0aefc', 1790831000000);
 COMMIT;
