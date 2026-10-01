@@ -20,6 +20,8 @@ export function CleanBlueArchivePager({
       label={heading}
       header={<SectionHeading description={description}>{heading}</SectionHeading>}
       renderCard={(article, index) => <CleanBluePickCard key={article.id} article={article} index={index} />}
+      gridClassName="md:grid-cols-2"
+      pageSize={8}
     />
   );
 }

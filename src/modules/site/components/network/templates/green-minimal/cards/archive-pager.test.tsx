@@ -23,20 +23,23 @@ describe('GreenMinimalArchivePager', () => {
 
   it('berpindah halaman dengan sebelumnya dan berikutnya', () => {
     render(<GreenMinimalArchivePager articles={articles(12)} heading="Terkini" description="d" />);
-    expect(screen.getByRole('status')).toHaveTextContent('1–9/12');
-    expect(screen.getByText('Berita 1')).toBeDefined();
+    expect(screen.getByRole('status')).toHaveTextContent('1–4/12');
     const previous = screen.getByRole('button', { name: /sebelumnya/i });
     const next = screen.getByRole('button', { name: /berikutnya/i });
     expect(previous).toBeDisabled();
 
     fireEvent.click(next);
-    expect(screen.getByRole('status')).toHaveTextContent('10–12/12');
+    expect(screen.getByRole('status')).toHaveTextContent('5–8/12');
+    expect(screen.getByText('Halaman 2 dari 3')).toBeDefined();
+
+    fireEvent.click(next);
+    expect(screen.getByRole('status')).toHaveTextContent('9–12/12');
     expect(screen.getByText('Berita 12')).toBeDefined();
-    expect(screen.getByText('Halaman 2 dari 2')).toBeDefined();
+    expect(screen.getByText('Halaman 3 dari 3')).toBeDefined();
     expect(next).toBeDisabled();
 
     fireEvent.click(previous);
-    expect(screen.getByRole('status')).toHaveTextContent('1–9/12');
+    expect(screen.getByRole('status')).toHaveTextContent('5–8/12');
   });
 
   it('tanpa kendali bila kurang dari satu halaman', () => {

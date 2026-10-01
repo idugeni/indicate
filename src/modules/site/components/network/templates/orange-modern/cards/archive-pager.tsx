@@ -20,6 +20,8 @@ export function OrangeModernArchivePager({
       label={heading}
       header={<SectionHeading description={description}>{heading}</SectionHeading>}
       renderCard={(article, index) => <OrangeModernPickCard key={article.id} article={article} index={index} />}
+      gridClassName="sm:grid-cols-2 lg:grid-cols-4"
+      pageSize={8}
     />
   );
 }

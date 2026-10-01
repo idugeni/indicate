@@ -20,6 +20,8 @@ export function PurpleEditorialArchivePager({
       label={heading}
       header={<SectionHeading description={description}>{heading}</SectionHeading>}
       renderCard={(article, index) => <PurpleEditorialPickCard key={article.id} article={article} index={index} />}
+      gridClassName="md:grid-cols-3"
+      pageSize={6}
     />
   );
 }

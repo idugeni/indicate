@@ -39,7 +39,7 @@ export async function GlassyBlueListing({ site, title, description, path, indexa
 
   return (
     <GlassyBlueShell site={site} path={path ?? '/'}>
-      <Container className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-10 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <GlassyBlueTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (

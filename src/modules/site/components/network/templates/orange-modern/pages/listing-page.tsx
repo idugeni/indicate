@@ -38,7 +38,7 @@ export function OrangeModernListing({ site, title, description, path, indexable 
 
   return (
     <OrangeModernShell site={site} path={path ?? '/'}>
-      <Container className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-6 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? (
           <div className="flex flex-col gap-2 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200/70 sm:flex-row sm:items-center sm:gap-3">

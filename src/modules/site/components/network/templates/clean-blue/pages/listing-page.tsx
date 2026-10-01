@@ -60,11 +60,11 @@ export function CleanBlueListing({ site, title, description, path, indexable }: 
           <CleanBlueEmpty title={title} />
         ) : (
           <>
+            <CleanBlueNewsletter />
             <div className="grid gap-8">
               {hero ? <CleanBlueHero article={hero} /> : null}
               <CleanBluePicks articles={rest.slice(0, 2)} description={description ?? 'Informasi terkurasi untuk Anda'} />
             </div>
-            <CleanBlueNewsletter />
             <CleanBlueArchivePager
               articles={archive}
               heading="Arsip Berita"

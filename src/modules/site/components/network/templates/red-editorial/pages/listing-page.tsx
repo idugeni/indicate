@@ -8,7 +8,6 @@ import { RedEditorialNewsletter } from '@/modules/site/components/network/templa
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { RedEditorialEmpty } from '@/modules/site/components/network/templates/red-editorial/ui/empty';
-import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
 export interface ListingProps {
   readonly site: NetworkSiteData;
@@ -32,8 +31,7 @@ export function RedEditorialListing({ site, title, description, path, indexable 
 
   return (
     <RedEditorialShell site={site} path={path ?? '/'}>
-      <Container className="space-y-8 py-6 md:py-8">
-        <StatusLine count={site.articles.length} title={title} />
+      <Container className="space-y-12 py-8 md:py-12">
         {site.articles.length === 0 ? (
           <RedEditorialEmpty title={title} />
         ) : (

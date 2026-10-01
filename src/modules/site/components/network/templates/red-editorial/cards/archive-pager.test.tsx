@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 
 import { makeNetworkArticle } from '@/modules/delivery/network-test-fixtures';
 import { RedEditorialArchivePager } from '@/modules/site/components/network/templates/red-editorial/cards/archive-pager';
@@ -21,22 +21,11 @@ describe('RedEditorialArchivePager', () => {
     expect(container.firstChild).toBe(null);
   });
 
-  it('berpindah halaman dengan sebelumnya dan berikutnya', () => {
+  it('satu halaman penuh tanpa navigasi', () => {
     render(<RedEditorialArchivePager articles={articles(12)} heading="Terkini" description="d" />);
-    expect(screen.getByRole('status')).toHaveTextContent('1–9/12');
-    expect(screen.getByText('Berita 1')).toBeDefined();
-    const previous = screen.getByRole('button', { name: /sebelumnya/i });
-    const next = screen.getByRole('button', { name: /berikutnya/i });
-    expect(previous).toBeDisabled();
-
-    fireEvent.click(next);
-    expect(screen.getByRole('status')).toHaveTextContent('10–12/12');
+    expect(screen.getByRole('status')).toHaveTextContent('1–12/12');
     expect(screen.getByText('Berita 12')).toBeDefined();
-    expect(screen.getByText('Halaman 2 dari 2')).toBeDefined();
-    expect(next).toBeDisabled();
-
-    fireEvent.click(previous);
-    expect(screen.getByRole('status')).toHaveTextContent('1–9/12');
+    expect(screen.queryByRole('navigation')).toBe(null);
   });
 
   it('tanpa kendali bila kurang dari satu halaman', () => {

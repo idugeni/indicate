@@ -20,6 +20,8 @@ export function RedEditorialArchivePager({
       label={heading}
       header={<SectionHeading description={description}>{heading}</SectionHeading>}
       renderCard={(article, index) => <RedEditorialPickCard key={article.id} article={article} index={index} />}
+      gridClassName="md:grid-cols-2"
+      pageSize={12}
     />
   );
 }

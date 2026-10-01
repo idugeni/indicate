@@ -21,6 +21,7 @@ export function SoftBlueArchivePager({
       header={<SectionHeading description={description}>{heading}</SectionHeading>}
       renderCard={(article, index) => <SoftBluePickCard key={article.id} article={article} index={index} />}
       gridClassName="sm:grid-cols-2"
+      pageSize={6}
     />
   );
 }

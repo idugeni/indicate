@@ -44,7 +44,7 @@ export function BlackLimeListing({ site, title, description, path, indexable }: 
 
   return (
     <BlackLimeShell site={site} path={path ?? '/'}>
-      <Container className="space-y-8 py-6 md:py-8">
+      <Container className="space-y-10 py-6 md:py-10">
         <StatusLine count={site.articles.length} title={title} />
         {site.articles.length > 0 ? <BlackLimeTicker articles={site.articles} /> : null}
         {site.articles.length === 0 ? (

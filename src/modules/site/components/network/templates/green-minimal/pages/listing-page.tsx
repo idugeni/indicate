@@ -9,7 +9,6 @@ import { GreenMinimalNewsletter } from '@/modules/site/components/network/templa
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { GreenMinimalEmpty } from '@/modules/site/components/network/templates/green-minimal/ui/empty';
-import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { tickerHeadline } from '@/modules/site/components/network/ui/format';
 
 export interface ListingProps {
@@ -33,8 +32,7 @@ export function GreenMinimalListing({ site, title, description, path, indexable 
 
   return (
     <GreenMinimalShell site={site} path={path ?? '/'}>
-      <Container className="space-y-8 py-6 md:py-8">
-        <StatusLine count={site.articles.length} title={title} />
+      <Container className="space-y-10 py-8 md:py-10">
         {site.articles.length > 0 ? (
           <div className="flex flex-col gap-2 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200/70 sm:flex-row sm:items-center sm:gap-3">
             <span className="flex-none self-start rounded-full bg-[var(--tpl-primary,#1d7a38)] px-3.5 py-1.5 font-sans text-xs font-bold tracking-wide text-white sm:self-auto">

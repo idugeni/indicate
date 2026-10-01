@@ -23,20 +23,20 @@ describe('PurpleEditorialArchivePager', () => {
 
   it('berpindah halaman dengan sebelumnya dan berikutnya', () => {
     render(<PurpleEditorialArchivePager articles={articles(12)} heading="Terkini" description="d" />);
-    expect(screen.getByRole('status')).toHaveTextContent('1–9/12');
+    expect(screen.getByRole('status')).toHaveTextContent('1–6/12');
     expect(screen.getByText('Berita 1')).toBeDefined();
     const previous = screen.getByRole('button', { name: /sebelumnya/i });
     const next = screen.getByRole('button', { name: /berikutnya/i });
     expect(previous).toBeDisabled();
 
     fireEvent.click(next);
-    expect(screen.getByRole('status')).toHaveTextContent('10–12/12');
+    expect(screen.getByRole('status')).toHaveTextContent('7–12/12');
     expect(screen.getByText('Berita 12')).toBeDefined();
     expect(screen.getByText('Halaman 2 dari 2')).toBeDefined();
     expect(next).toBeDisabled();
 
     fireEvent.click(previous);
-    expect(screen.getByRole('status')).toHaveTextContent('1–9/12');
+    expect(screen.getByRole('status')).toHaveTextContent('1–6/12');
   });
 
   it('tanpa kendali bila kurang dari satu halaman', () => {

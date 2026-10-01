@@ -2,14 +2,13 @@ import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { PurpleEditorialShell } from '@/modules/site/components/network/templates/purple-editorial/chrome/shell';
 import { PurpleEditorialHero } from '@/modules/site/components/network/templates/purple-editorial/cards/hero';
-import { PurpleEditorialLatest } from '@/modules/site/components/network/templates/purple-editorial/cards/latest';
+import { PurpleEditorialQuotePanel } from '@/modules/site/components/network/templates/purple-editorial/cards/latest';
 import { PurpleEditorialPicks } from '@/modules/site/components/network/templates/purple-editorial/cards/picks';
 import { PurpleEditorialArchivePager } from '@/modules/site/components/network/templates/purple-editorial/cards/archive-pager';
 import { PurpleEditorialNewsletter } from '@/modules/site/components/network/templates/purple-editorial/cards/newsletter';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
 import { PurpleEditorialEmpty } from '@/modules/site/components/network/templates/purple-editorial/ui/empty';
-import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
 export interface ListingProps {
   readonly site: NetworkSiteData;
@@ -29,21 +28,19 @@ export function PurpleEditorialListing({ site, title, description, path, indexab
   const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const [hero, ...rest] = site.articles;
   const picks = rest.slice(0, 3);
-  const latest = rest.slice(3, 7);
-  const archive = rest.slice(7);
+  const archive = rest.slice(3);
   const quote = site.settings.tagline ?? site.settings.description;
 
   return (
     <PurpleEditorialShell site={site} path={path ?? '/'}>
-      <Container className="space-y-8 py-6 md:py-8">
-        <StatusLine count={site.articles.length} title={title} />
+      <Container className="space-y-10 py-6 md:py-8">
         {site.articles.length === 0 ? (
           <PurpleEditorialEmpty title={title} />
         ) : (
           <>
             {hero ? <PurpleEditorialHero article={hero} /> : null}
+            <PurpleEditorialQuotePanel siteName={site.settings.name} quote={quote} />
             <PurpleEditorialPicks articles={picks} description={description ?? 'Informasi terkurasi untuk Anda'} />
-            <PurpleEditorialLatest articles={latest} siteName={site.settings.name} quote={quote} />
             <PurpleEditorialNewsletter />
             <PurpleEditorialArchivePager
               articles={archive}

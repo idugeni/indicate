@@ -20,6 +20,8 @@ export function GreenMinimalArchivePager({
       label={heading}
       header={<SectionHeading description={description}>{heading}</SectionHeading>}
       renderCard={(article, index) => <GreenMinimalPickCard key={article.id} article={article} index={index} />}
+      gridClassName="grid-cols-1"
+      pageSize={4}
     />
   );
 }

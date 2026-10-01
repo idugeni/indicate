@@ -20,6 +20,8 @@ export function DarkNavyArchivePager({
       label={heading}
       header={<SectionHeading description={description}>{heading}</SectionHeading>}
       renderCard={(article, index) => <DarkNavyPickCard key={article.id} article={article} index={index} />}
+      gridClassName="md:grid-cols-2 lg:grid-cols-3"
+      pageSize={9}
     />
   );
 }
