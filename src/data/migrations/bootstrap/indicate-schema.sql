@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (236 migrations):
+-- Reviewed sources, in journal order (237 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -250,6 +250,7 @@
 --   234  20260930150000_ai_master_secrets_runtime  ledger sha256:9fa0e0c96504169bd85e7a5b9a616af4d6834be660af0464b5f666a9c9bec7b6
 --   235  20260930160000_retention_windows_tighten  ledger sha256:fe6725b3b9804176b2331c872fdef2f888b26de62010732969b1865868f730e4
 --   236  20260930170000_status_tables  ledger sha256:5c504527e7ebf64f4d623f603699dbf129aa97947538b5b2e785475207b7e4ee
+--   237  20261001000000_ai_free_tier_gateways  ledger sha256:dae1cdb8cde3912cf4d1bf316cf2f5b19a11c81d289fef420f63c73dbaa03bff
 
 BEGIN;
 
@@ -19567,4 +19568,32 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (236, 'status_tables', 'sha256:98a588a39f8645c8e75d4b21ead0db9c4dfb5ec8b8e8fb81bb63fadae8948370');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5c504527e7ebf64f4d623f603699dbf129aa97947538b5b2e785475207b7e4ee', 1790787600000);
+
+-- ----------------------------------------------------------------------
+-- 20261001000000_ai_free_tier_gateways
+-- ----------------------------------------------------------------------
+-- Seed provider gratis AI: Workers AI embedding + Vercel AI Gateway chat.
+--
+-- Baris memakai ON CONFLICT DO NOTHING agar apply ulang aman; tanpa secrets:
+-- kredensial disimpan operator lewat panel AI (ai_credentials) setelah migrasi
+-- di-apply. Workers AI embedding menghemat kuota Gemini untuk reindex dan
+-- semantic-search; vercel-gateway menampung beban redaksi non-kritis lewat
+-- free-tier bulanan dengan budget per organisasi+model di Redis (kode, bukan
+-- kolom). Tanpa kredensial aktif, kedua provider di-skip oleh router.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+INSERT INTO public.ai_providers (id, name, description, is_active, is_primary, priority, created_at, updated_at)
+VALUES
+  ('workers-ai', 'Cloudflare Workers AI', 'Workers AI embeddings billed from the free Neurons allocation', true, false, 50, now(), now()),
+  ('vercel-gateway', 'Vercel AI Gateway', 'Multi-provider gateway free-tier for editorial workloads', true, false, 60, now(), now())
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.ai_models (id, provider_id, model_name, display_name, description, context_window, output_token_limit, supported_modalities, rpm_limit, tpm_limit, task_recommendation, supports_tools, supports_vision, is_default, is_active, priority, created_at, updated_at)
+VALUES
+  ('workers-ai-bge-base', 'workers-ai', '@cf/baai/bge-base-en-v1.5', 'BGE Base Embeddings', 'Free-tier text embeddings for archive semantic search', 512, NULL, ARRAY['text'], 60, 100000, 'embeddings', false, false, false, true, 10, now(), now())
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (237, 'ai_free_tier_gateways', 'sha256:67bfbcba1e0292a86d09fe1396aaf31ecc550045d1066f10610f8082b61bc5c5');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('dae1cdb8cde3912cf4d1bf316cf2f5b19a11c81d289fef420f63c73dbaa03bff', 1790791200000);
 COMMIT;
