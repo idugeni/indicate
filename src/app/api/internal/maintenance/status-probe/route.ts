@@ -192,7 +192,7 @@ async function handleGET(request: Request) {
 }
 
 /**
- * Putaran probe status lima menitan: tulis hasil, kelola insiden otomatis.
+ * Putaran probe status tiga puluh menitan: tulis hasil, kelola insiden otomatis.
  *
  * @remarks Diotorisasi rahasia cron yang sama dengan perawatan lain; tanpa itu
  * 404 agar endpoint tak terpetakan.

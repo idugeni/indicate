@@ -12,10 +12,6 @@
       "schedule": "* * * * *"
     },
     {
-      "path": "/api/internal/publishing?mode=reconcile",
-      "schedule": "*/5 * * * *"
-    },
-    {
       "path": "/api/internal/delivery/reconcile?scope=provisioning",
       "schedule": "0 * * * *"
     },
@@ -37,7 +33,7 @@
     },
     {
       "path": "/api/internal/maintenance/status-probe",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/health",
