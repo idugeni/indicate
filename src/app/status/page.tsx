@@ -12,8 +12,6 @@ import {
   type StatusComponent,
 } from '@/modules/status/status-probe';
 import { siteMetadata } from '@/ui/site/metadata-guard';
-import { HeaderSecondaryCta, Section } from '@/modules/site/components/layout/content';
-import { PublicPage } from '@/modules/site/components/layout/public-page';
 
 const DESCRIPTION = 'Kondisi langsung seluruh layanan Indicate: database, cache, penyimpanan, autentikasi, penerbitan, AI, dan API — beserta riwayat insiden.';
 
@@ -21,21 +19,24 @@ export function generateMetadata(): Metadata {
   return siteMetadata('Status Layanan', DESCRIPTION, '/status');
 }
 
-const OVERALL_COPY: Readonly<Record<ComponentHealth, { readonly title: string; readonly tone: string; readonly text: string }>> = {
+const OVERALL_DOT: Readonly<Record<ComponentHealth, string>> = {
+  ok: 'bg-signal',
+  degraded: 'bg-brass',
+  down: 'bg-error',
+};
+
+const OVERALL_COPY: Readonly<Record<ComponentHealth, { readonly title: string; readonly text: string }>> = {
   ok: {
     title: 'Semua sistem operasional',
-    tone: 'border-signal/40 bg-signal/10 text-signal',
     text: 'Seluruh komponen menjawab pemeriksaan otomatis terakhir.',
   },
   degraded: {
     title: 'Sebagian sistem menurun',
     text: 'Satu atau lebih komponen melambat. Insiden dibuka otomatis di bawah.',
-    tone: 'border-brass/40 bg-brass/10 text-brass',
   },
   down: {
     title: 'Gangguan berlangsung',
     text: 'Satu atau lebih komponen tidak merespons. Insiden dibuka otomatis di bawah.',
-    tone: 'border-error/40 bg-error/10 text-error',
   },
 };
 
@@ -45,6 +46,13 @@ function barTone(uptimePct: number | null): string {
   if (uptimePct >= 99) return 'bg-signal/60';
   if (uptimePct >= 95) return 'bg-brass';
   return 'bg-error';
+}
+
+function healthWord(health: ComponentHealth | 'unknown'): string {
+  if (health === 'ok') return 'Operasional';
+  if (health === 'degraded') return 'Menurun';
+  if (health === 'down') return 'Gangguan';
+  return 'Belum ada data';
 }
 
 function formatMoment(value: string): string {
@@ -142,29 +150,33 @@ const loadCachedSnapshot = unstable_cache(loadSnapshot, ['status-snapshot'], { r
 function StatusBanner({ snapshot }: { readonly snapshot: StatusSnapshot }) {
   const overall = OVERALL_COPY[snapshot.overall];
   return (
-    <div className={`rounded-lg border p-4 sm:p-5 ${overall.tone}`}>
-      <p className="m-0 font-sans text-base font-semibold sm:text-lg">{overall.title}</p>
-      <p className="m-0 mt-1 font-sans text-sm opacity-90">{overall.text}</p>
-      <p className="m-0 mt-1 font-mono text-[11px] opacity-75">Diperbarui {formatMoment(snapshot.generatedAt)}</p>
+    <div className="rounded-xl border border-hairline bg-bg-raised p-5 sm:p-6">
+      <p className="m-0 flex items-center gap-2.5 font-sans text-lg font-semibold text-paper sm:text-xl">
+        <span aria-hidden="true" className={`inline-block size-3 rounded-full ${OVERALL_DOT[snapshot.overall]}`} />
+        {overall.title}
+      </p>
+      <p className="m-0 mt-1.5 font-sans text-sm text-paper-dim">{overall.text}</p>
+      <p className="m-0 mt-2 font-mono text-[11px] tabular-nums text-paper-faint">Diperbarui {formatMoment(snapshot.generatedAt)}</p>
     </div>
   );
 }
 
 function ComponentList({ snapshot }: { readonly snapshot: StatusSnapshot }) {
   return (
-    <ul className="m-0 mt-4 list-none space-y-3 p-0">
+    <ul className="m-0 list-none space-y-2.5 p-0">
       {snapshot.components.map((item) => (
-        <li key={item.component} className="rounded-lg border border-hairline bg-bg-raised p-3.5 sm:p-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <li key={item.component} className="rounded-xl border border-hairline bg-bg-raised p-4 sm:p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <p className="m-0 font-sans text-sm font-semibold text-paper">{COMPONENT_LABELS[item.component]}</p>
-            <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
-              {item.health === 'unknown' ? 'belum ada data' : `${item.health === 'ok' ? 'operasional' : item.health === 'degraded' ? 'menurun' : 'mati'}${item.latencyMs === null ? '' : ` · ${item.latencyMs} ms`}`}
-              {item.uptime90 === null ? '' : ` · ${item.uptime90.toFixed(2)}% / 90 hari`}
+            <p className="m-0 font-mono text-[11px] tabular-nums text-paper-dim">
+              {healthWord(item.health)}
+              {item.latencyMs === null ? '' : ` · ${item.latencyMs} ms`}
+              {item.uptime90 === null ? '' : ` · ${item.uptime90.toFixed(2)}%`}
             </p>
           </div>
-          <div className="mt-2 flex gap-[2px]" aria-label={`Uptime 90 hari ${COMPONENT_LABELS[item.component]}`}>
+          <div className="mt-2.5 flex gap-[3px]" aria-label={`Uptime 90 hari ${COMPONENT_LABELS[item.component]}`}>
             {item.days.map((cell) => (
-              <span key={cell.day} aria-hidden="true" className={`h-6 min-w-0 flex-1 rounded-[2px] ${barTone(cell.uptimePct)}`} />
+              <span key={cell.day} aria-hidden="true" className={`h-8 min-w-0 flex-1 rounded-[3px] ${barTone(cell.uptimePct)}`} />
             ))}
           </div>
         </li>
@@ -177,11 +189,11 @@ function IncidentList({ snapshot }: { readonly snapshot: StatusSnapshot }) {
   const open = snapshot.incidents.filter((incident) => incident.status === 'open');
   const resolved = snapshot.incidents.filter((incident) => incident.status !== 'open');
   return (
-    <>
+    <div>
       {open.length > 0 ? (
-        <ul className="m-0 list-none space-y-3 p-0">
+        <ul className="m-0 list-none space-y-2.5 p-0">
           {open.map((incident) => (
-            <li key={incident.id} className="rounded-lg border border-error/40 bg-error/[0.06] p-3.5 sm:p-4">
+            <li key={incident.id} className="rounded-xl border border-error/40 bg-error/[0.06] p-4 sm:p-5">
               <p className="m-0 font-sans text-sm font-semibold text-paper">{incident.title}</p>
               <p className="m-0 mt-0.5 font-mono text-[11px] text-paper-faint">Sejak {formatMoment(incident.startedAt)}</p>
               <IncidentUpdates updates={incident.updates} />
@@ -189,12 +201,14 @@ function IncidentList({ snapshot }: { readonly snapshot: StatusSnapshot }) {
           ))}
         </ul>
       ) : (
-        <p className="m-0 font-sans text-sm text-paper-dim">Tidak ada insiden terbuka.</p>
+        <p className="m-0 rounded-xl border border-hairline bg-bg-raised p-4 font-sans text-sm text-paper-dim sm:p-5">
+          Tidak ada insiden terbuka dalam 90 hari terakhir.
+        </p>
       )}
       {resolved.length > 0 ? (
-        <ul className="m-0 mt-4 list-none space-y-3 p-0">
+        <ul className="m-0 mt-2.5 list-none space-y-2.5 p-0">
           {resolved.map((incident) => (
-            <li key={incident.id} className="rounded-lg border border-hairline bg-bg-raised p-3.5 sm:p-4">
+            <li key={incident.id} className="rounded-xl border border-hairline bg-bg-raised p-4 sm:p-5">
               <p className="m-0 font-sans text-sm font-semibold text-paper">{incident.title}</p>
               <p className="m-0 mt-0.5 font-mono text-[11px] text-paper-faint">
                 {formatMoment(incident.startedAt)}{incident.resolvedAt === null ? '' : ` → ${formatMoment(incident.resolvedAt)}`}
@@ -204,39 +218,55 @@ function IncidentList({ snapshot }: { readonly snapshot: StatusSnapshot }) {
           ))}
         </ul>
       ) : null}
-    </>
+    </div>
   );
 }
 
 export default async function StatusPage() {
   const snapshot = await loadCachedSnapshot();
   return (
-    <PublicPage
-      eyebrow="Status"
-      title="Status layanan Indicate"
-      description={DESCRIPTION}
-      meta={['Pemeriksaan otomatis 15 menitan', 'Insiden otomatis tanpa input manual']}
-      trail={[{ href: '/', label: 'Beranda' }]}
-      actions={<HeaderSecondaryCta href="/contact">Laporkan Gangguan</HeaderSecondaryCta>}
-    >
-      <Section title="Kondisi saat ini" description="Pemeriksaan otomatis setiap 15 menit ke seluruh komponen." eyebrow="Live">
-        <StatusBanner snapshot={snapshot} />
-        <ComponentList snapshot={snapshot} />
-        <p className="m-0 mt-3 font-mono text-[11px] text-paper-faint">Hijau 99.9%+, hijau pudar 99%+, kuning 95%+, merah di bawahnya, abu-abu tanpa data.</p>
-      </Section>
-      <Section title="Insiden" description="Dibuka dan ditutup otomatis oleh evaluasi probe; tanpa penulisan manual." eyebrow="Riwayat">
-        <IncidentList snapshot={snapshot} />
-      </Section>
-    </PublicPage>
+    <div className="min-h-screen bg-bg font-sans text-paper">
+      <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+        <header className="mb-8">
+          <p className="m-0 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-paper-faint">
+            <span aria-hidden="true" className={`inline-block size-2 rounded-full ${OVERALL_DOT[snapshot.overall]}`} />
+            Indicate · Status
+          </p>
+          <h1 className="m-0 mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Status layanan</h1>
+          <p className="m-0 mt-2 max-w-xl text-sm leading-relaxed text-paper-dim">
+            Kondisi langsung seluruh layanan beserta riwayat insiden 90 hari. Diperbarui otomatis setiap 15 menit.
+          </p>
+        </header>
+        <main className="space-y-8">
+          <section aria-label="Kondisi saat ini">
+            <StatusBanner snapshot={snapshot} />
+          </section>
+          <section aria-label="Komponen">
+            <h2 className="m-0 mb-3 font-mono text-[11px] uppercase tracking-[0.2em] text-paper-faint">Komponen</h2>
+            <ComponentList snapshot={snapshot} />
+            <p className="m-0 mt-3 font-mono text-[11px] text-paper-faint">Hijau 99.9%+, hijau pudar 99%+, kuning 95%+, merah di bawahnya, abu-abu tanpa data.</p>
+          </section>
+          <section aria-label="Insiden">
+            <h2 className="m-0 mb-3 font-mono text-[11px] uppercase tracking-[0.2em] text-paper-faint">Insiden</h2>
+            <IncidentList snapshot={snapshot} />
+          </section>
+        </main>
+        <footer className="mt-10 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-hairline pt-4 font-mono text-[11px] text-paper-faint">
+          <a className="hover:text-paper" href="/">indicate.website</a>
+          <a className="hover:text-paper" href="/api/status">JSON</a>
+          <span className="ml-auto tabular-nums">Diperbarui {formatMoment(snapshot.generatedAt)}</span>
+        </footer>
+      </div>
+    </div>
   );
 }
 
 function IncidentUpdates({ updates }: { readonly updates: readonly { readonly at: string; readonly text: string }[] }) {
   if (updates.length === 0) return null;
   return (
-    <ul className="m-0 mt-2 list-none space-y-1.5 border-t border-hairline pt-2 p-0">
+    <ul className="m-0 mt-2.5 list-none space-y-1.5 border-t border-hairline pt-2.5 p-0">
       {updates.map((update, index) => (
-        <li key={`${update.at}-${index}`} className="font-sans text-xs leading-relaxed text-paper-dim">
+        <li key={`${update.at}-${index}`} className="text-xs leading-relaxed text-paper-dim">
           <span className="font-mono text-[11px] text-paper-faint">{formatMoment(update.at)} — </span>
           {update.text}
         </li>
