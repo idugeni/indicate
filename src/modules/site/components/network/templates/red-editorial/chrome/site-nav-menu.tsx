@@ -60,7 +60,7 @@ export function RedEditorialDesktopNav({ categories, path }: { readonly categori
   const indexActive = isCategoryNavActive(path, CATEGORY_INDEX_HREF);
   return (
     <nav aria-label="Navigasi utama" className="hidden min-w-0 flex-1 justify-center lg:flex">
-      <ul className="m-0 flex list-none items-center justify-center gap-1 p-0">
+      <ul className="m-0 flex max-w-full list-none items-center gap-1 overflow-x-auto p-0 [-ms-overflow-style:none] [justify-content:safe_center] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <li className="m-0 shrink-0 p-0">
           <Link href="/" aria-current={isCategoryNavActive(path, '/') ? 'page' : undefined} className={linkClass(isCategoryNavActive(path, '/'))}>
             Beranda
