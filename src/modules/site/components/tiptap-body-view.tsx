@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { AtSign, Camera, ClipboardList, FileText, FolderOpen, HardDrive, Music2, Play, Presentation, Table, ThumbsUp, type LucideIcon } from 'lucide-react';
 
-import { extractDriveUrl, extractFacebookUrl, extractInstagramUrl, extractTikTokUrl, extractTweetUrl, extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, isTipTapDoc, resolveMediaSrc, type TipTapNode } from '@/modules/site/tiptap-document';
+import { extractDriveUrl, extractFacebookUrl, extractInstagramUrl, extractTikTokUrl, extractTweetUrl, extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, isTipTapDoc, resolveMediaSrc, resolveMediaThumbSrc, type TipTapNode } from '@/modules/site/tiptap-document';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
 
 function renderTextNode(node: TipTapNode, key: string): ReactNode {
@@ -208,7 +208,7 @@ function renderNode(node: TipTapNode, key: string, context: RenderContext): Reac
     const rawAlt = typeof node.attrs?.alt === 'string' ? node.attrs.alt : '';
     const caption = typeof node.attrs?.title === 'string' && node.attrs.title.trim() !== '' ? node.attrs.title : typeof node.attrs?.caption === 'string' && node.attrs.caption.trim() !== '' ? node.attrs.caption : null;
     return (
-      <EditorialImage key={key} src={src} alt={rawAlt === '' ? 'Gambar artikel' : rawAlt} caption={caption} />
+      <EditorialImage key={key} src={src} thumbSrc={resolveMediaThumbSrc(rawSrc)} alt={rawAlt === '' ? 'Gambar artikel' : rawAlt} caption={caption} />
     );
   }
   if (node.type === 'youtube' || node.type === 'video') {

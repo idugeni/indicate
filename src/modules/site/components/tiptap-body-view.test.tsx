@@ -55,8 +55,21 @@ describe('TipTapBodyView', () => {
     const images = container.querySelectorAll('img');
     expect(images).toHaveLength(1);
     expect(images[0]?.getAttribute('src')).toBe('/api/network/media/0199a2b3-4c5d-7e8f-9012-3456789abcde');
+    expect(images[0]?.getAttribute('srcset')).toContain('/api/network/media/0199a2b3-4c5d-7e8f-9012-3456789abcde?variant=thumb 640w');
     expect(images[0]?.getAttribute('alt')).toBe('Pasar pagi');
     expect(container.textContent).toContain('Suasana pasar');
+  });
+
+  it('melewatkan srcset untuk gambar eksternal', () => {
+    const doc = {
+      type: 'doc',
+      content: [{ type: 'image', attrs: { src: 'https://cdn.contoh.id/gambar.webp', alt: 'Eksternal' } }],
+    };
+    const { container } = render(<TipTapBodyView doc={doc} paragraphClassName={PARAGRAPH} listClassName={LIST} />);
+    const images = container.querySelectorAll('img');
+    expect(images).toHaveLength(1);
+    expect(images[0]?.getAttribute('src')).toBe('https://cdn.contoh.id/gambar.webp');
+    expect(images[0]?.getAttribute('srcset')).toBe(null);
   });
 
   it('merender sematan YouTube sebagai kartu tautan aman', () => {

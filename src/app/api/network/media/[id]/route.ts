@@ -26,7 +26,8 @@ async function handleGET(request: Request, { params }: { readonly params: Promis
     const asset = await repository.authorizePublicMedia(result.context, id, requestId);
     if (asset === null || asset.state !== 'active') return new NextResponse(null, { status: 404, headers: { 'Cache-Control': 'no-store' } });
     const storage = new R2ObjectStorageAdapter({ accountId: config.r2.accountId, bucketName: config.r2.bucketName, publicBucketName: config.r2.publicBucketName, accessKeyId: config.r2.accessKeyId, secretAccessKey: config.r2.secretAccessKey });
-    const objectKey = new URL(request.url).searchParams.get('variant') === 'thumb' ? asset.thumbObjectKey : asset.objectKey;
+    const wantThumb = new URL(request.url).searchParams.get('variant') === 'thumb';
+    const objectKey = wantThumb ? (asset.thumbObjectKey ?? asset.objectKey) : asset.objectKey;
     if (objectKey === null) return new NextResponse(null, { status: 404, headers: { 'Cache-Control': 'no-store' } });
     if (asset.purpose === 'site-default') {
       const stored = await storage.getExact(objectKey);

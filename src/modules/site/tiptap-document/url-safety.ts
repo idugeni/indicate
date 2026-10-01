@@ -102,3 +102,30 @@ export function resolveMediaSrc(src: string): string {
   }
   return trimmed;
 }
+
+/**
+ * Resolve a durable media reference to its listing-thumbnail variant.
+ *
+ * @param src - Stored image source (`media:<uuid>` or a site media path).
+ * @returns Thumbnail URL (`?variant=thumb`) for internal media refs; null otherwise.
+ */
+export function resolveMediaThumbSrc(src: string): string | null {
+  const trimmed = src.trim();
+  if (trimmed.startsWith('media:')) {
+    const id = trimmed.slice('media:'.length);
+    if (UUID_PATTERN.test(id)) return `/api/network/media/${id}?variant=thumb`;
+    return null;
+  }
+  if (trimmed.startsWith('/api/network/media/')) {
+    const rest = trimmed.slice('/api/network/media/'.length);
+    const id = rest.split(/[?#]/u)[0] ?? '';
+    if (!UUID_PATTERN.test(id)) return null;
+    if (/[?&#]variant=thumb(?:[&#]|$)/u.test(trimmed)) return trimmed;
+    const hashIndex = trimmed.indexOf('#');
+    const withoutHash = hashIndex === -1 ? trimmed : trimmed.slice(0, hashIndex);
+    const hash = hashIndex === -1 ? '' : trimmed.slice(hashIndex);
+    const separator = withoutHash.includes('?') ? '&' : '?';
+    return `${withoutHash}${separator}variant=thumb${hash}`;
+  }
+  return null;
+}

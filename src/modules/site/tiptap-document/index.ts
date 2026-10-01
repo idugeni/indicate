@@ -20,5 +20,5 @@ export {
   type TipTapNode,
   type TipTapTextMark,
 } from './types';
-export { isSafeHttpUrl, isSafeLinkUrl, isSafeMediaSrc, resolveMediaSrc } from './url-safety';
+export { isSafeHttpUrl, isSafeLinkUrl, isSafeMediaSrc, resolveMediaSrc, resolveMediaThumbSrc } from './url-safety';
 export { extractTipTapImages, validateTipTapDoc } from './validate';

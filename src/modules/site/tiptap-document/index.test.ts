@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { detectDriveEmbed, detectSocialEmbed, extractDriveUrl, extractFacebookUrl, extractInstagramUrl, extractTikTokUrl, extractTweetUrl, extractTipTapImages, extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, tiptapToLegacyBody, tiptapToText, validateTipTapDoc } from '@/modules/site/tiptap-document';
+import { detectDriveEmbed, detectSocialEmbed, extractDriveUrl, extractFacebookUrl, extractInstagramUrl, extractTikTokUrl, extractTweetUrl, extractTipTapImages, extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, resolveMediaThumbSrc, tiptapToLegacyBody, tiptapToText, validateTipTapDoc } from '@/modules/site/tiptap-document';
 
 describe('isSafeLinkUrl', () => {
   it('menerima path relatif dan https publik', () => {
@@ -28,6 +28,23 @@ describe('isSafeMediaSrc', () => {
     expect(isSafeMediaSrc('http://cdn.contoh.id/gambar.jpg')).toBe(false);
     expect(isSafeMediaSrc('data:image/png;base64,aaa')).toBe(false);
     expect(isSafeMediaSrc('media:bukan-uuid')).toBe(false);
+  });
+});
+
+describe('resolveMediaThumbSrc', () => {
+  it('memetakan referensi internal ke varian thumb', () => {
+    expect(resolveMediaThumbSrc('media:0199a2b3-4c5d-7e8f-9012-3456789abcde')).toBe(
+      '/api/network/media/0199a2b3-4c5d-7e8f-9012-3456789abcde?variant=thumb',
+    );
+    expect(resolveMediaThumbSrc('/api/network/media/0199a2b3-4c5d-7e8f-9012-3456789abcde')).toBe(
+      '/api/network/media/0199a2b3-4c5d-7e8f-9012-3456789abcde?variant=thumb',
+    );
+  });
+
+  it('menolak eksternal dan uuid rusak', () => {
+    expect(resolveMediaThumbSrc('https://cdn.contoh.id/gambar.webp')).toBe(null);
+    expect(resolveMediaThumbSrc('media:bukan-uuid')).toBe(null);
+    expect(resolveMediaThumbSrc('/api/network/media/bukan-uuid')).toBe(null);
   });
 });
 
