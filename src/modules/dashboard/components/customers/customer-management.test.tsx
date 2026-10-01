@@ -1,8 +1,24 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { CustomerManagement } from '@/modules/dashboard/components/customers/customer-management';
+
+function stubCustomers() {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({
+      ok: true,
+      json: async () => [
+        {
+          customer: { id: 'org-9', name: 'Pemkab Wonosobo', slug: 'pemkab-wonosobo' },
+          subscription: null,
+        },
+      ],
+    })),
+  );
+}
 
 afterEach(() => {
   cleanup();
@@ -56,5 +72,23 @@ describe('Manajemen pelanggan', () => {
       ),
     );
     expect(await screen.findByText('Admin pertama berhasil ditetapkan.')).toBeDefined();
+  });
+
+  it('memilih organisasi lewat combobox saat daftar tersedia', async () => {
+    const user = userEvent.setup();
+    stubCustomers();
+    const command = vi.fn(async () => ({}));
+    const { container } = render(<CustomerManagement command={command} organizationId="org-0" />);
+    const form = container.querySelectorAll('form')[1] as HTMLFormElement;
+    await user.click(await within(form).findByPlaceholderText('Cari organisasi…'));
+    await user.click(await screen.findByRole('option', { name: 'Pemkab Wonosobo · pemkab-wonosobo' }));
+    fireEvent.change(within(form).getByPlaceholderText('admin@organisasi.id'), { target: { value: 'admin@organisasi.id' } });
+    fireEvent.submit(form);
+    await waitFor(() =>
+      expect(command).toHaveBeenCalledWith(
+        'membership.assign-first',
+        expect.objectContaining({ organizationId: 'org-9', userEmail: 'admin@organisasi.id' }),
+      ),
+    );
   });
 });

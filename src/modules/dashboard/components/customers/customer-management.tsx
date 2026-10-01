@@ -1,21 +1,48 @@
 'use client';
 
-import { useId, useState, useTransition, type FormEvent } from 'react';
+import { useEffect, useId, useMemo, useState, useTransition, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Building2, Loader2, MailPlus, Plus, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { createInviteSecret, formatInviteCode, hashInviteCode } from '@/modules/dashboard/components/shared/invite-code';
 import { slugify } from '@/modules/site/slugify';
 
+interface CustomerOption {
+  readonly id: string;
+  readonly name: string;
+  readonly slug: string;
+}
+
+function selectCustomerOptions(body: unknown): readonly CustomerOption[] {
+  if (!Array.isArray(body)) return [];
+  return body.flatMap((item): readonly CustomerOption[] => {
+    if (typeof item !== 'object' || item === null) return [];
+    const customer = (item as { readonly customer?: unknown }).customer;
+    if (typeof customer !== 'object' || customer === null) return [];
+    const row = customer as Record<string, unknown>;
+    if (typeof row.id !== 'string' || typeof row.name !== 'string') return [];
+    return [
+      {
+        id: row.id,
+        name: row.name,
+        slug: typeof row.slug === 'string' ? row.slug : '',
+      },
+    ];
+  });
+}
+
 export function CustomerManagement({
   command,
+  organizationId,
 }: {
   readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly organizationId?: string | undefined;
 }) {
   const nameInputId = useId();
   const slugInputId = useId();
@@ -95,6 +122,40 @@ export function CustomerManagement({
   const [isInviting, startInviteTransition] = useTransition();
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [inviteNotice, setInviteNotice] = useState<string | null>(null);
+  const [customers, setCustomers] = useState<readonly CustomerOption[]>([]);
+  const [customersLoaded, setCustomersLoaded] = useState(false);
+
+  useEffect(() => {
+    if (organizationId === undefined || organizationId === '') return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch(
+          `/api/dashboard/integrations?organizationId=${encodeURIComponent(organizationId)}&view=customers`,
+          { cache: 'no-store' },
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!cancelled) setCustomers(selectCustomerOptions(await response.json()));
+      } catch {
+        if (!cancelled) setCustomers([]);
+      } finally {
+        if (!cancelled) setCustomersLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationId]);
+
+  const customerOptions = useMemo(
+    () =>
+      customers.map((customer) => ({
+        value: customer.id,
+        label: customer.slug === '' ? customer.name : `${customer.name} · ${customer.slug}`,
+      })),
+    [customers],
+  );
+  const hasCustomerOptions = customersLoaded && customerOptions.length > 0;
 
   const handleCreateInvite = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -134,12 +195,12 @@ export function CustomerManagement({
   };
 
   return (
-    <div className="grid w-full grid-cols-1 items-start gap-4 lg:grid-cols-3">
+    <div className="grid w-full grid-cols-1 items-start gap-6 lg:grid-cols-3">
       <SectionCard icon={Building2} title="Organisasi Baru" eyebrow="Registrasi akun">
 
-        <form noValidate onSubmit={handleCreateCustomer} className="space-y-3">
+        <form noValidate onSubmit={handleCreateCustomer} className="flex flex-col gap-3.5">
           <div className="space-y-1.5">
-            <Label htmlFor={nameInputId} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
+            <Label htmlFor={nameInputId} className="font-mono text-xs uppercase tracking-wider text-paper-dim">
               Nama organisasi / lembaga
             </Label>
             <Input
@@ -149,12 +210,12 @@ export function CustomerManagement({
               disabled={isCreatingCustomer}
               onBlur={handleNameBlur}
               placeholder="Pemerintah Kabupaten Wonosobo"
-              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-sans text-xs text-paper placeholder:text-paper-dim/50 transition duration-150 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor={slugInputId} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
+            <Label htmlFor={slugInputId} className="font-mono text-xs uppercase tracking-wider text-paper-dim">
               Kode organisasi
             </Label>
             <Input
@@ -166,12 +227,12 @@ export function CustomerManagement({
               onChange={(e) => setCustomerSlug(e.target.value)}
               pattern="[a-z0-9-]+"
               placeholder="pemkab-wonosobo"
-              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-mono text-xs text-paper placeholder:text-paper-dim/50 transition duration-150 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor={`${slugInputId}-status`} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
+            <Label htmlFor={`${slugInputId}-status`} className="font-mono text-xs uppercase tracking-wider text-paper-dim">
               Status awal
             </Label>
             <p className="m-0 font-sans text-[11px] text-paper-faint">Aktivasi manual setelah pembayaran diterima.</p>
@@ -208,27 +269,38 @@ export function CustomerManagement({
 
       <SectionCard icon={UserCheck} title="Admin pertama" eyebrow="Penetapan peran">
 
-        <form noValidate onSubmit={handleAssignFirstAdmin} className="space-y-3">
+        <form noValidate onSubmit={handleAssignFirstAdmin} className="flex flex-col gap-3.5">
           <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">
             Pengguna harus sudah masuk sekali agar terdaftar.
           </p>
           <div className="space-y-1.5">
-            <Label htmlFor={`${slugInputId}-org`} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
-              ID organisasi
+            <Label htmlFor={`${slugInputId}-org`} className="font-mono text-xs uppercase tracking-wider text-paper-dim">
+              Organisasi target
             </Label>
-            <Input
-              id={`${slugInputId}-org`}
-              required
-              disabled={isAssigning}
-              value={assignOrgId}
-              onChange={(e) => setAssignOrgId(e.target.value)}
-              placeholder="ID organisasi"
-              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
-            />
+            {hasCustomerOptions ? (
+              <SearchCombobox
+                id={`${slugInputId}-org`}
+                value={assignOrgId}
+                onValueChange={(next) => setAssignOrgId(next ?? '')}
+                disabled={isAssigning}
+                placeholder="Cari organisasi…"
+                options={customerOptions}
+              />
+            ) : (
+              <Input
+                id={`${slugInputId}-org`}
+                required
+                disabled={isAssigning}
+                value={assignOrgId}
+                onChange={(e) => setAssignOrgId(e.target.value)}
+                placeholder="ID organisasi"
+                className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-mono text-xs text-paper placeholder:text-paper-dim/50 transition duration-150 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
+              />
+            )}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor={`${slugInputId}-email`} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
+            <Label htmlFor={`${slugInputId}-email`} className="font-mono text-xs uppercase tracking-wider text-paper-dim">
               Surel pengguna
             </Label>
             <Input
@@ -239,7 +311,7 @@ export function CustomerManagement({
               value={assignEmail}
               onChange={(e) => setAssignEmail(e.target.value)}
               placeholder="admin@organisasi.id"
-              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-sans text-xs text-paper placeholder:text-paper-dim/50 transition duration-150 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
             />
           </div>
 
@@ -266,24 +338,35 @@ export function CustomerManagement({
 
       <SectionCard icon={MailPlus} title="Undangan organisasi" eyebrow="24 jam · sekali pakai">
 
-        <form noValidate onSubmit={handleCreateInvite} className="space-y-3">
+        <form noValidate onSubmit={handleCreateInvite} className="flex flex-col gap-3.5">
           <div className="space-y-1.5">
-            <Label htmlFor={`${slugInputId}-invite-org`} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
-              ID organisasi
+            <Label htmlFor={`${slugInputId}-invite-org`} className="font-mono text-xs uppercase tracking-wider text-paper-dim">
+              Organisasi target
             </Label>
-            <Input
-              id={`${slugInputId}-invite-org`}
-              required
-              disabled={isInviting}
-              value={inviteOrgId}
-              onChange={(e) => setInviteOrgId(e.target.value)}
-              placeholder="ID organisasi"
-              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
-            />
+            {hasCustomerOptions ? (
+              <SearchCombobox
+                id={`${slugInputId}-invite-org`}
+                value={inviteOrgId}
+                onValueChange={(next) => setInviteOrgId(next ?? '')}
+                disabled={isInviting}
+                placeholder="Cari organisasi…"
+                options={customerOptions}
+              />
+            ) : (
+              <Input
+                id={`${slugInputId}-invite-org`}
+                required
+                disabled={isInviting}
+                value={inviteOrgId}
+                onChange={(e) => setInviteOrgId(e.target.value)}
+                placeholder="ID organisasi"
+                className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-mono text-xs text-paper placeholder:text-paper-dim/50 transition duration-150 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
+              />
+            )}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor={`${slugInputId}-invite-role`} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
+            <Label htmlFor={`${slugInputId}-invite-role`} className="font-mono text-xs uppercase tracking-wider text-paper-dim">
               ID peran target
             </Label>
             <Input
@@ -293,12 +376,12 @@ export function CustomerManagement({
               value={inviteRoleId}
               onChange={(e) => setInviteRoleId(e.target.value)}
               placeholder="ID peran (bukan superadmin)"
-              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-mono text-xs text-paper placeholder:text-paper-dim/50 transition duration-150 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor={`${slugInputId}-invite-email`} className="font-mono text-[10px] uppercase tracking-wider text-paper-dim">
+            <Label htmlFor={`${slugInputId}-invite-email`} className="font-mono text-xs uppercase tracking-wider text-paper-dim">
               Surel penerima
             </Label>
             <Input
@@ -309,7 +392,7 @@ export function CustomerManagement({
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="anggota@organisasi.id"
-              className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
+              className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-sans text-xs text-paper placeholder:text-paper-dim/50 transition duration-150 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
             />
           </div>
 

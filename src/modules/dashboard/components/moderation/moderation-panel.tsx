@@ -1,13 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { Archive, Flag, Hourglass, Lock, Ticket, Trash2 } from 'lucide-react';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { AppTooltip } from '@/ui/app-tooltip';
+import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { AiModerationAssist } from '@/modules/ai/components/ai-moderation-assist';
@@ -73,6 +77,20 @@ const CATEGORY_LABELS: Readonly<Record<string, string>> = {
   misinformation: 'Misinformasi',
   other: 'Lainnya',
 };
+
+const REPORT_TONE: Readonly<Record<string, string>> = {
+  received: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+  under_review: 'border-sky-500/30 bg-sky-500/10 text-sky-400',
+};
+
+const TICKET_TONE: Readonly<Record<string, string>> = {
+  open: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+  in_progress: 'border-sky-500/30 bg-sky-500/10 text-sky-400',
+  fulfilled: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+  rejected: 'border-rose-500/30 bg-rose-500/10 text-rose-400',
+};
+
+const FALLBACK_TONE = 'border-hairline-strong bg-bg text-paper-dim';
 
 export function ModerationPanel({ organizationId }: { readonly organizationId: string }) {
   const [reports, setReports] = useState<readonly ReportRow[]>([]);
@@ -249,13 +267,26 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
   return (
     <Tabs defaultValue="laporan" className="w-full">
       <TabsList aria-label="Bagian moderasi" className="max-w-full overflow-x-auto overflow-y-clip">
-        <TabsTrigger value="laporan" className="flex-none">Laporan</TabsTrigger>
-        <TabsTrigger value="privasi" className="flex-none">Privasi</TabsTrigger>
-        <TabsTrigger value="retensi" className="flex-none">Retensi</TabsTrigger>
+        <TabsTrigger value="laporan" className="flex-none">
+          <Flag className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
+          <span>Laporan</span>
+        </TabsTrigger>
+        <TabsTrigger value="privasi" className="flex-none">
+          <Lock className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
+          <span>Privasi</span>
+        </TabsTrigger>
+        <TabsTrigger value="retensi" className="flex-none">
+          <Archive className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
+          <span>Retensi</span>
+        </TabsTrigger>
       </TabsList>
       <TabsContent keepMounted value="laporan">
-        <section aria-label="Laporan konten" className="rounded border border-hairline bg-bg-raised p-3">
-        <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">Laporan konten publik</p>
+        <SectionCard
+          icon={Flag}
+          title="Laporan Konten"
+          eyebrow={`${reports.length.toLocaleString('id-ID')} laporan · SLA 1x24 jam`}
+        >
+        <p className="m-0 font-sans text-xs font-medium text-paper">Laporan konten publik</p>
         <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">
           SLA peninjauan 1x24 jam (Ketentuan §14). Tindakan penarikan dilakukan lewat alur unpublish yang sudah ada,
           lalu laporan ditandai di sini sebagai bukti penanganan.
@@ -263,18 +294,25 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
         {busy ? <p className="m-0 mt-1 font-sans text-xs text-paper-faint">Memuat…</p> : null}
         {error ? <FormNotice tone="error">{error}</FormNotice> : null}
         {notice ? <FormNotice tone="success">{notice}</FormNotice> : null}
-        <ul className="m-0 mt-2 grid list-none gap-0 p-0 md:grid-cols-2 md:gap-x-10">
+        <ul className="m-0 mt-3 grid list-none gap-2.5 p-0 md:grid-cols-2">
           {reports.map((report) => (
-            <li key={report.id} className="border-b border-hairline py-2">
-              <p className="m-0 font-sans text-xs font-medium text-paper">
-                {CATEGORY_LABELS[report.reasonCategory] ?? report.reasonCategory} · {report.status}
-              </p>
-              <p className="m-0 mt-0.5 font-sans text-[11px] leading-relaxed text-paper-dim">{report.details}</p>
-              <p className="m-0 mt-0.5 font-mono text-[10px] tabular-nums text-paper-faint">
-                {report.id} · {report.reporterContact}
-              </p>
+            <li key={report.id} className="rounded-md border border-hairline bg-bg p-3 transition duration-150 hover:border-hairline-strong">
+              <div className="flex items-start justify-between gap-2">
+                <p className="m-0 font-sans text-xs font-medium text-paper">
+                  {CATEGORY_LABELS[report.reasonCategory] ?? report.reasonCategory}
+                </p>
+                <Badge variant="outline" className={`shrink-0 font-mono text-[9px] uppercase tracking-wider ${REPORT_TONE[report.status] ?? FALLBACK_TONE}`}>
+                  {report.status}
+                </Badge>
+              </div>
+              <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">{report.details}</p>
+              <AppTooltip label={`${report.id} · ${report.reporterContact}`} side="top">
+                <p className="m-0 mt-1 truncate font-mono text-[10px] tabular-nums text-paper-faint">
+                  {report.id} · {report.reporterContact}
+                </p>
+              </AppTooltip>
               {report.status === 'received' || report.status === 'under_review' ? (
-                <div className="mt-1.5 flex flex-col gap-1.5">
+                <div className="mt-2 flex flex-col gap-1.5 border-t border-hairline/60 pt-2">
                   <AiModerationAssist
                     organizationId={organizationId} category={report.reasonCategory} details={report.details}
                     onReply={(draft) => setDecisionNote((prev) => ({ ...prev, [report.id]: draft }))}
@@ -284,7 +322,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
                     onChange={(event) => setDecisionNote((prev) => ({ ...prev, [report.id]: event.target.value }))}
                     placeholder="Catatan penanganan (opsional)"
                     aria-label="Catatan penanganan laporan"
-                    className="h-8 font-sans text-xs"
+                    className="h-9 rounded-md border-hairline-strong bg-bg-raised px-3 font-sans text-xs text-paper placeholder:text-paper-dim/50 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
                   />
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Button
@@ -302,15 +340,15 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               ) : null}
             </li>
           ))}
-          {reports.length === 0 ? <li><EmptyState compact title="Belum ada laporan konten." className="mt-2" /></li> : null}
+          {reports.length === 0 ? <li className="md:col-span-2"><EmptyState compact title="Belum ada laporan konten." className="mt-1" /></li> : null}
         </ul>
-      </section>
+        </SectionCard>
       </TabsContent>
       <TabsContent keepMounted value="privasi">
         <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-          <section aria-label="Permintaan data" className="rounded border border-hairline bg-bg-raised p-3">
-        <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">Permintaan data baru</p>
-        <div className="mt-2 flex flex-col gap-2">
+          <SectionCard icon={Lock} title="Permintaan Data" eyebrow="Pengajuan baru">
+        <p className="m-0 font-sans text-xs font-medium text-paper">Permintaan data baru</p>
+        <div className="mt-2 flex flex-col gap-2.5">
           <DashboardSelect
             value={privacyType} disabled={busy}
             placeholder="Pilih jenis permintaan"
@@ -335,25 +373,33 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             Kirim permintaan
           </Button>
         </div>
-      </section>
+      </SectionCard>
 
-      <section aria-label="Tiket permintaan data" className="rounded border border-hairline bg-bg-raised p-3">
-        <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">Tiket permintaan (SLA 30 hari)</p>
-        <ul className="m-0 mt-1.5 grid list-none gap-0 p-0">
+      <SectionCard
+        icon={Ticket}
+        title="Tiket Permintaan"
+        eyebrow={`${privacy.length.toLocaleString('id-ID')} tiket · SLA 30 hari`}
+      >
+        <p className="m-0 font-sans text-xs font-medium text-paper">Tiket permintaan (SLA 30 hari)</p>
+        <ul className="m-0 mt-2 grid list-none gap-2.5 p-0">
           {privacy.map((ticket) => (
-            <li key={ticket.id} className="border-b border-hairline py-2 last:border-b-0">
-              <p className="m-0 font-sans text-xs font-medium text-paper">
-                {ticket.ticketNumber} · {ticket.requestType} · {ticket.status}
-              </p>
-              <p className="m-0 mt-0.5 font-sans text-[11px] leading-relaxed text-paper-dim">{ticket.details}</p>
+            <li key={ticket.id} className="rounded-md border border-hairline bg-bg p-3 transition duration-150 hover:border-hairline-strong">
+              <div className="flex items-start justify-between gap-2">
+                <p className="m-0 font-mono text-[11px] text-paper">{ticket.ticketNumber}</p>
+                <Badge variant="outline" className={`shrink-0 font-mono text-[9px] uppercase tracking-wider ${TICKET_TONE[ticket.status] ?? FALLBACK_TONE}`}>
+                  {ticket.status}
+                </Badge>
+              </div>
+              <p className="m-0 mt-0.5 font-mono text-[10px] text-paper-dim">{ticket.requestType}</p>
+              <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">{ticket.details}</p>
               {ticket.status === 'open' || ticket.status === 'in_progress' ? (
-                <div className="mt-1.5 flex flex-col gap-1.5">
+                <div className="mt-2 flex flex-col gap-1.5 border-t border-hairline/60 pt-2">
                   <Input
                     type="text" value={decisionNote[ticket.ticketNumber] ?? ''} disabled={busy}
                     onChange={(event) => setDecisionNote((prev) => ({ ...prev, [ticket.ticketNumber]: event.target.value }))}
                     placeholder="Catatan penyelesaian (opsional)"
                     aria-label="Catatan penyelesaian tiket"
-                    className="h-8 font-sans text-xs"
+                    className="h-9 rounded-md border-hairline-strong bg-bg-raised px-3 font-sans text-xs text-paper placeholder:text-paper-dim/50 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
                   />
                   <div className="flex flex-wrap items-center gap-1.5">
                     {(['in_progress', 'fulfilled', 'rejected'] as const).map((status) => (
@@ -368,15 +414,19 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               ) : null}
             </li>
           ))}
-          {privacy.length === 0 ? <li><EmptyState compact title="Belum ada tiket permintaan data." className="mt-2" /></li> : null}
+          {privacy.length === 0 ? <li><EmptyState compact title="Belum ada tiket permintaan data." className="mt-1" /></li> : null}
         </ul>
-      </section>
+      </SectionCard>
         </div>
       </TabsContent>
       <TabsContent keepMounted value="retensi">
         <div className="grid grid-cols-1 items-start gap-4">
-          <section aria-label="Tunda hapus resmi" className="rounded border border-hairline bg-bg-raised p-3">
-        <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">Tunda hapus resmi</p>
+          <SectionCard
+            icon={Hourglass}
+            title="Tunda Hapus Resmi"
+            eyebrow={`${holds.length.toLocaleString('id-ID')} penundaan`}
+          >
+        <p className="m-0 font-sans text-xs font-medium text-paper">Tunda hapus resmi</p>
         <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">
           Organisasi yang ditunda dilewatkan pembersihan retensi dan penghapusan sampai penundaan dilepas. Satu penundaan aktif per organisasi.
         </p>
@@ -398,7 +448,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             <Input
               id="hold-reason" value={holdReason} onChange={(event) => setHoldReason(event.target.value)} disabled={busy}
               placeholder="Perkara No. … / permintaan aparat …"
-              className="h-8 font-sans text-xs"
+              className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-sans text-xs text-paper placeholder:text-paper-dim/50 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
             />
           </div>
           <div className="flex items-end">
@@ -409,18 +459,23 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             </Button>
           </div>
         </div>
-        <ul className="m-0 mt-1.5 grid list-none gap-0 p-0 md:grid-cols-2 md:gap-x-10">
+        <ul className="m-0 mt-3 grid list-none gap-2.5 p-0 md:grid-cols-2">
           {holds.map((hold) => (
-            <li key={hold.id} className="border-b border-hairline py-2">
-              <p className="m-0 font-sans text-xs font-medium text-paper">
-                {hold.releasedAt === null ? 'Aktif' : 'Dilepas'}
-              </p>
-              <p className="m-0 mt-0.5 font-sans text-[11px] leading-relaxed text-paper-dim">{hold.reason}</p>
-              <p className="m-0 mt-0.5 font-mono text-[10px] tabular-nums text-paper-faint">
+            <li key={hold.id} className="rounded-md border border-hairline bg-bg p-3 transition duration-150 hover:border-hairline-strong">
+              <div className="flex items-start justify-between gap-2">
+                <p className="m-0 font-sans text-xs font-medium text-paper">
+                  {hold.releasedAt === null ? 'Aktif' : 'Dilepas'}
+                </p>
+                <Badge variant="outline" className={`shrink-0 font-mono text-[9px] uppercase tracking-wider ${hold.releasedAt === null ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : FALLBACK_TONE}`}>
+                  {hold.releasedAt === null ? 'Aktif' : 'Dilepas'}
+                </Badge>
+              </div>
+              <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">{hold.reason}</p>
+              <p className="m-0 mt-1 font-mono text-[10px] tabular-nums text-paper-faint">
                 {formatDate(hold.createdAt)} ({formatRelative(hold.createdAt)})
               </p>
               {hold.releasedAt === null ? (
-                <div className="mt-1.5">
+                <div className="mt-2 border-t border-hairline/60 pt-2">
                   <Button
                     type="button" variant="outline" size="sm" onClick={() => void releaseHold(hold.id)} disabled={busy}
                   >
@@ -430,13 +485,13 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
               ) : null}
             </li>
           ))}
-          {holds.length === 0 ? <li><EmptyState compact title="Belum ada penundaan." className="mt-2" /></li> : null}
+          {holds.length === 0 ? <li className="md:col-span-2"><EmptyState compact title="Belum ada penundaan." className="mt-1" /></li> : null}
         </ul>
-      </section>
+      </SectionCard>
 
-      <section aria-label="Hapus data organisasi" className="rounded border border-error/60 bg-bg-raised p-3">
-        <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">Hapus data organisasi</p>
-        <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">
+      <SectionCard icon={Trash2} title="Hapus Data Organisasi" eyebrow="Permanen · arsip legal dipertahankan">
+        <p className="m-0 font-sans text-xs font-medium text-paper">Hapus data organisasi</p>
+        <p className="m-0 mt-1 rounded-md border border-rose-500/30 bg-rose-500/10 px-2.5 py-1.5 font-sans text-[11px] leading-relaxed text-rose-200">
           Hapus permanen data operasional + samarkan data pribadi anggota. Arsip legal (audit, faktur, order,
           langganan) dipertahankan; organisasi menjadi arsip. Organisasi yang ditunda atau organisasi platform akan ditolak sistem.
         </p>
@@ -458,7 +513,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             <Input
               id="erasure-reason" value={erasureReason} onChange={(event) => setErasureReason(event.target.value)} disabled={busy}
               placeholder="Alasan penghapusan data…"
-              className="h-8 font-sans text-xs"
+              className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-sans text-xs text-paper placeholder:text-paper-dim/50 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
             />
           </div>
           <div className="flex items-end">
@@ -469,22 +524,28 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             </Button>
           </div>
         </div>
-        <ul className="m-0 mt-1.5 grid list-none gap-0 p-0 md:grid-cols-2 md:gap-x-10">
+        <ul className="m-0 mt-3 grid list-none gap-2.5 p-0 md:grid-cols-2">
           {erasures.map((row) => (
-            <li key={row.id} className="border-b border-hairline py-2">
-              <p className="m-0 font-sans text-xs font-medium text-paper">
-                {row.status}
-              </p>
-              <p className="m-0 mt-0.5 font-sans text-[11px] leading-relaxed text-paper-dim">{row.reason}</p>
-              <p className="m-0 mt-0.5 font-mono text-[10px] tabular-nums text-paper-faint">
-                {formatDate(row.createdAt)} ({formatRelative(row.createdAt)})
+            <li key={row.id} className="rounded-md border border-hairline bg-bg p-3 transition duration-150 hover:border-hairline-strong">
+              <div className="flex items-start justify-between gap-2">
+                <p className="m-0 font-sans text-xs font-medium text-paper">
+                  {row.status}
+                </p>
+                <Badge variant="outline" className={`shrink-0 font-mono text-[9px] uppercase tracking-wider ${TICKET_TONE[row.status] ?? FALLBACK_TONE}`}>
+                  {row.status}
+                </Badge>
+              </div>
+              <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">{row.reason}</p>
+              <p className="m-0 mt-1 font-mono text-[10px] tabular-nums text-paper-faint">
+                {formatDate(row.createdAt)} ({formatRelative(row.createdAt)}
                 {row.completedAt ? ` → ${formatDate(row.completedAt)}` : ''}
+                )
               </p>
             </li>
           ))}
-          {erasures.length === 0 ? <li><EmptyState compact title="Belum ada permintaan hapus data." className="mt-2" /></li> : null}
+          {erasures.length === 0 ? <li className="md:col-span-2"><EmptyState compact title="Belum ada permintaan hapus data." className="mt-1" /></li> : null}
         </ul>
-      </section>
+      </SectionCard>
         </div>
       </TabsContent>
     </Tabs>

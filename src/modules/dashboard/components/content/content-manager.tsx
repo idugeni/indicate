@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshCw, Trash2 } from 'lucide-react';
+import { ImageIcon, Info, LayoutTemplate, Phone, RefreshCw, Search, Star, Trash2 } from 'lucide-react';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { Button } from '@/components/ui/button';
@@ -79,6 +79,14 @@ const TYPES: readonly TypeDef[] = Object.freeze([
     newRow: () => ({ id: '', name: '', description: '', category: 'news' }),
   },
 ]);
+
+const KIND_ICONS: Readonly<Record<string, typeof Star>> = {
+  testimonial: Star,
+  faq: Info,
+  showcase: ImageIcon,
+  channel: Phone,
+  template: LayoutTemplate,
+};
 
 type Row = Record<string, unknown>;
 interface ContentBundle {
@@ -183,12 +191,16 @@ export function ContentManager() {
     <Tabs value={activeKind} onValueChange={setActiveKind} className="w-full space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <TabsList aria-label="Jenis konten website" className="max-w-full flex-1 overflow-x-auto overflow-y-clip">
-          {TYPES.map((t) => (
-            <TabsTrigger key={t.kind} value={t.kind} className="flex-none">
-              {t.label}
-              <span className="ml-1.5 font-mono text-[10px] tabular-nums text-paper-faint">{rowsFor(t.kind).length}</span>
-            </TabsTrigger>
-          ))}
+          {TYPES.map((t) => {
+            const KindIcon = KIND_ICONS[t.kind];
+            return (
+              <TabsTrigger key={t.kind} value={t.kind} className="flex-none">
+                {KindIcon ? <KindIcon className="h-3.5 w-3.5 text-brass" aria-hidden="true" /> : null}
+                {t.label}
+                <span className="ml-1.5 rounded bg-bg px-1 font-mono text-[10px] tabular-nums text-paper-dim">{rowsFor(t.kind).length.toLocaleString('id-ID')}</span>
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
         <Button type="button" variant="ghost" size="xs" onClick={() => void reload()} disabled={busy} className="flex-none text-paper-dim hover:text-paper">
           <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Muat ulang
@@ -202,14 +214,17 @@ export function ContentManager() {
         return (
           <TabsContent key={t.kind} value={t.kind} className="mt-0">
             <div className="flex flex-wrap items-center gap-2">
-              <Input
-                value={search}
-                disabled={busy}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={`Cari ${t.label.toLowerCase()}…`}
-                aria-label={`Cari ${t.label}`}
-                className="h-8 min-w-0 max-w-xs flex-1 font-mono text-xs"
-              />
+              <div className="relative min-w-0 max-w-xs flex-1">
+                <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-paper-dim" aria-hidden="true" />
+                <Input
+                  value={search}
+                  disabled={busy}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={`Cari ${t.label.toLowerCase()}…`}
+                  aria-label={`Cari ${t.label}`}
+                  className="h-9 rounded-md border-hairline-strong bg-bg pr-3 pl-9 font-mono text-xs text-paper placeholder:text-paper-dim/50 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
+                />
+              </div>
               <span className="font-mono text-[11px] tabular-nums text-paper-faint">
                 {typeRows.length.toLocaleString('id-ID')} dari {total.length.toLocaleString('id-ID')} baris
               </span>
@@ -230,7 +245,7 @@ export function ContentManager() {
                   const current = getDraftFor(t.kind, t.idKey, row);
                   const rowId = String(row[t.idKey]);
                   return (
-                    <section key={rowId} aria-label={titleFor(t, row)} className="rounded border border-hairline bg-bg-raised p-3">
+                    <section key={rowId} aria-label={titleFor(t, row)} className="rounded-lg border border-hairline bg-bg-raised p-3.5 transition duration-150 hover:border-hairline-strong">
                       <div className="flex items-baseline justify-between gap-2">
                         <p className="m-0 min-w-0 flex-1 truncate font-sans text-xs font-medium text-paper">
                           <AppTooltip label={titleFor(t, row)} side="top">
@@ -252,7 +267,7 @@ export function ContentManager() {
                             ) : field.kind === 'textarea' ? (
                               <Textarea value={String(toFieldValue(field, current))} onChange={(e) => setDraftFor(t.kind, t.idKey, row, field.key, e.target.value)} rows={3} className="font-sans text-xs" />
                             ) : (
-                              <Input type={field.kind === 'color' ? 'text' : field.kind} value={String(toFieldValue(field, current) ?? '')} onChange={(e) => setDraftFor(t.kind, t.idKey, row, field.key, e.target.value)} className="h-8 font-sans text-xs" />
+                              <Input type={field.kind === 'color' ? 'text' : field.kind} value={String(toFieldValue(field, current) ?? '')} onChange={(e) => setDraftFor(t.kind, t.idKey, row, field.key, e.target.value)} className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-sans text-xs text-paper placeholder:text-paper-dim/50 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass" />
                             )}
                           </Label>
                         ))}
