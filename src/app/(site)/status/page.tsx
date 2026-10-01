@@ -215,11 +215,11 @@ export default async function StatusPage() {
       eyebrow="Status"
       title="Status layanan Indicate"
       description={DESCRIPTION}
-      meta={['Pemeriksaan otomatis lima menitan', 'Insiden otomatis tanpa input manual']}
+      meta={['Pemeriksaan otomatis 15 menitan', 'Insiden otomatis tanpa input manual']}
       trail={[{ href: '/', label: 'Beranda' }]}
       actions={<HeaderSecondaryCta href="/contact">Laporkan Gangguan</HeaderSecondaryCta>}
     >
-      <Section title="Kondisi saat ini" description="Pemeriksaan otomatis setiap lima menit ke seluruh komponen." eyebrow="Live">
+      <Section title="Kondisi saat ini" description="Pemeriksaan otomatis setiap 15 menit ke seluruh komponen." eyebrow="Live">
         <StatusBanner snapshot={snapshot} />
         <ComponentList snapshot={snapshot} />
         <p className="m-0 mt-3 font-mono text-[11px] text-paper-faint">Hijau 99.9%+, hijau pudar 99%+, kuning 95%+, merah di bawahnya, abu-abu tanpa data.</p>
