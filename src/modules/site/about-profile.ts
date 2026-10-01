@@ -114,16 +114,18 @@ export function aboutDescription(
 const NETWORK_ATTRIBUTION_ANCHORS: readonly string[] = ['jaringan Indicate', 'platform Indicate', 'Indicate'];
 
 export interface NetworkAttribution {
-  readonly href: string;
-  readonly anchor: string;
+  readonly networkHref: string;
+  readonly networkAnchor: string;
+  readonly corporateHref: string;
+  readonly corporateName: string;
 }
 
 /**
- * Resolves the editorial network attribution link for a tenant About page.
+ * Resolves the editorial network attribution links for a tenant About page.
  *
  * @param site - Tenant site with its visible articles.
  * @param dashboardHost - Control-plane hostname hosting the network directory.
- * @returns Absolute directory href plus a deterministic brand-only anchor, or null when the portal has no owned indexable article or would link to itself.
+ * @returns Directory plus corporate links with a deterministic brand-only anchor, or null when the portal has no owned indexable article or would link to itself.
  */
 export function networkAttribution(site: NetworkSiteData, dashboardHost: string): NetworkAttribution | null {
   if (site.context.normalizedHostname === dashboardHost) return null;
@@ -136,5 +138,10 @@ export function networkAttribution(site: NetworkSiteData, dashboardHost: string)
     hash = (hash * 31 + site.context.normalizedHostname.charCodeAt(index)) >>> 0;
   }
   const anchor = NETWORK_ATTRIBUTION_ANCHORS[hash % NETWORK_ATTRIBUTION_ANCHORS.length] ?? NETWORK_ATTRIBUTION_ANCHORS[0]!;
-  return { href: `https://${dashboardHost}/network`, anchor };
+  return {
+    networkHref: `https://${dashboardHost}/network`,
+    networkAnchor: anchor,
+    corporateHref: 'https://safenca.id',
+    corporateName: 'PT Sanca Phena Cakra',
+  };
 }

@@ -4,11 +4,19 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { NetworkAttribution } from '@/modules/site/components/network/ui/network-attribution';
 
 describe('NetworkAttribution', () => {
-  it('merender satu tautan dofollow kontekstual', () => {
+  it('merender dua tautan dofollow kontekstual', () => {
     const html = renderToStaticMarkup(
-      <NetworkAttribution attribution={{ href: 'https://indicate.website/network', anchor: 'jaringan Indicate' }} />,
+      <NetworkAttribution
+        attribution={{
+          networkHref: 'https://indicate.website/network',
+          networkAnchor: 'jaringan Indicate',
+          corporateHref: 'https://safenca.id',
+          corporateName: 'PT Sanca Phena Cakra',
+        }}
+      />,
     );
     expect(html).toContain('href="https://indicate.website/network"');
+    expect(html).toContain('href="https://safenca.id"');
     expect(html).toContain('jaringan Indicate');
     expect(html).not.toContain('rel=');
   });

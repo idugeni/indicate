@@ -87,13 +87,15 @@ describe('about region meta', () => {
 });
 
 describe('networkAttribution', () => {
-  it('menautkan portal tayang ke direktori jaringan dengan anchor deterministik', () => {
+  it('menautkan portal tayang ke direktori jaringan dan korporat dengan anchor deterministik', () => {
     const first = networkAttribution(makeNetworkSite([makeNetworkArticle({})]), 'indicate.website');
     const second = networkAttribution(makeNetworkSite([makeNetworkArticle({})]), 'indicate.website');
     expect(first).not.toBe(null);
-    expect(first?.href).toBe('https://indicate.website/network');
-    expect(first?.anchor).toBe(second?.anchor);
-    expect(['jaringan Indicate', 'platform Indicate', 'Indicate']).toContain(first?.anchor);
+    expect(first?.networkHref).toBe('https://indicate.website/network');
+    expect(first?.corporateHref).toBe('https://safenca.id');
+    expect(first?.corporateName).toBe('PT Sanca Phena Cakra');
+    expect(first?.networkAnchor).toBe(second?.networkAnchor);
+    expect(['jaringan Indicate', 'platform Indicate', 'Indicate']).toContain(first?.networkAnchor);
   });
 
   it('menyaring portal kosong, noindex, sindikasi, dan host sendiri', () => {
