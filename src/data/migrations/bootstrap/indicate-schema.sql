@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (237 migrations):
+-- Reviewed sources, in journal order (239 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -251,6 +251,8 @@
 --   235  20260930160000_retention_windows_tighten  ledger sha256:fe6725b3b9804176b2331c872fdef2f888b26de62010732969b1865868f730e4
 --   236  20260930170000_status_tables  ledger sha256:5c504527e7ebf64f4d623f603699dbf129aa97947538b5b2e785475207b7e4ee
 --   237  20261001000000_ai_free_tier_gateways  ledger sha256:dae1cdb8cde3912cf4d1bf316cf2f5b19a11c81d289fef420f63c73dbaa03bff
+--   238  20261001010000_status_daily_avg_latency  ledger sha256:a1f82f5cfacc5bab9462212b1926daaeaabe9657a691f521915394aaa782f3fb
+--   239  20261001020000_ai_routing_fallback_wire  ledger sha256:c6f6b83bc20382d4b93e694a72f11a6f0a8f8350e8caca271216bd9e644b1373
 
 BEGIN;
 
@@ -19596,4 +19598,43 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (237, 'ai_free_tier_gateways', 'sha256:67bfbcba1e0292a86d09fe1396aaf31ecc550045d1066f10610f8082b61bc5c5');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('dae1cdb8cde3912cf4d1bf316cf2f5b19a11c81d289fef420f63c73dbaa03bff', 1790791200000);
+
+-- ----------------------------------------------------------------------
+-- 20261001010000_status_daily_avg_latency
+-- ----------------------------------------------------------------------
+-- Riwayat latensi harian untuk sparkline halaman status.
+--
+-- Kolom nullable: hari lama tetap NULL (tanpa backfill khayalan), penulis
+-- agregat harian mengisinya mulai apply ini. Tanpa indeks baru dan tanpa
+-- backfill massal; satu ALTER ringan yang tidak mengunci baca.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.status_daily ADD COLUMN IF NOT EXISTS avg_latency_ms integer;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (238, 'status_daily_avg_latency', 'sha256:0f2abf06b09f08b178052e05f295c3bf24ffe147a31af871918ebee1c3083d93');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a1f82f5cfacc5bab9462212b1926daaeaabe9657a691f521915394aaa782f3fb', 1790794800000);
+
+-- ----------------------------------------------------------------------
+-- 20261001020000_ai_routing_fallback_wire
+-- ----------------------------------------------------------------------
+-- Mengaktifkan fallback satu provider yang diniatkan v230.
+--
+-- v230 memindahkan default ke gemini-3.8-flash "dengan fallback
+-- gemini-3.6-flash", tetapi fallback_provider_id dibiarkan NULL sehingga
+-- rantai failover tidak pernah terbentuk: setiap 503 model utama langsung
+-- menjadi DEPENDENCY_UNAVAILABLE. Baris ini mengikat fallback ke provider
+-- primary agar panel menampilkan rantai eksplisit; kode membaca NULL
+-- sebagai primary sehingga perilaku tetap sama tanpa migrasi ini. Guard
+-- IS NULL menjaga baris yang operator ubah lewat panel setelah v230.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+UPDATE public.ai_routing_policies SET fallback_provider_id = 'gemini', updated_at = now()
+  WHERE id = 'default' AND fallback_provider_id IS NULL;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (239, 'ai_routing_fallback_wire', 'sha256:9d046ce50cc38913ea88b6d24c7ae017702af42cc875c8f836e8b180e5284f4c');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c6f6b83bc20382d4b93e694a72f11a6f0a8f8350e8caca271216bd9e644b1373', 1790798400000);
 COMMIT;
