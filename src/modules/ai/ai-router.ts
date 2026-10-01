@@ -3,6 +3,7 @@ import 'server-only';
 import { sql } from 'drizzle-orm';
 
 import { decryptAiKey } from '@/modules/ai/ai-crypto';
+import type { AiRateLimitStore } from '@/modules/ai/ai-rate-limit';
 import type {
   AiAccessChannel,
   AiCredentialRecord,
@@ -234,6 +235,133 @@ export async function getActiveRoutingPolicy(db: AiDb): Promise<AiRoutingPolicy>
 }
 
 /**
+ * Satu langkah dalam rantai failover model.
+ */
+export interface AiModelChainEntry {
+  readonly providerId: string;
+  readonly modelName: string;
+}
+
+/**
+ * Menyusun rantai model primary → fallback untuk satu query.
+ *
+ * @param policy - Kebijakan routing aktif dari database.
+ * @param modelOverride - Model khusus modalitas (sampul, TTS, transkripsi); bila diisi, rantai hanya berisi override tersebut.
+ * @returns Satu atau dua entri; fallback ditambahkan bila provider atau modelnya berbeda dari primary.
+ * @remarks `fallback_provider_id` yang null dibaca sebagai provider primary, sehingga `fallback_model` yang berbeda tetap menyelamatkan query saat model utama kelebihan beban.
+ */
+export function resolveAiModelChain(
+  policy: AiRoutingPolicy,
+  modelOverride?: string | undefined,
+): readonly AiModelChainEntry[] {
+  const primaryProviderId = policy.primaryProviderId ?? 'gemini';
+  const targetModel = modelOverride ?? policy.defaultModel;
+  if (modelOverride !== undefined) return [{ providerId: primaryProviderId, modelName: targetModel }];
+  const fallbackProviderId = policy.fallbackProviderId ?? primaryProviderId;
+  if (fallbackProviderId === primaryProviderId && policy.fallbackModel === targetModel) {
+    return [{ providerId: primaryProviderId, modelName: targetModel }];
+  }
+  return [
+    { providerId: primaryProviderId, modelName: targetModel },
+    { providerId: fallbackProviderId, modelName: policy.fallbackModel },
+  ];
+}
+
+/**
+ * Gagal infrastruktur beruntun yang membuka circuit breaker satu model.
+ */
+export const AI_BREAKER_TRIP_THRESHOLD = 5;
+
+/**
+ * Jendela memori kegagalan model; kedaluwarsa berarti half-open.
+ */
+export const AI_BREAKER_WINDOW_SECONDS = 120;
+
+/**
+ * Kelas error yang menandai modelnya (bukan key-nya) sedang bermasalah.
+ */
+export const AI_BREAKER_ERROR_CLASSES: readonly AiErrorClass[] = [
+  'provider_unavailable',
+  'timeout',
+  'rate_limit',
+  'quota_exhausted',
+];
+
+/**
+ * Kunci Redis untuk hitungan gagal satu model.
+ *
+ * @param providerId - Provider pemilik model.
+ * @param modelName - Model yang diputus sementara saat trip.
+ * @returns Kunci counter dengan TTL jendela breaker.
+ */
+export function aiBreakerKey(providerId: string, modelName: string): string {
+  return `ai:breaker:${providerId}:${modelName}`;
+}
+
+/**
+ * Memeriksa apakah satu model sedang diputus sementara.
+ *
+ * @param store - Counter Redis; undefined berarti fail-open (sehat).
+ * @param providerId - Provider pemilik model.
+ * @param modelName - Model kandidat.
+ * @returns True bila gagal beruntun mencapai ambang dalam jendela.
+ */
+export async function isModelBreakerTripped(
+  store: AiRateLimitStore | undefined,
+  providerId: string,
+  modelName: string,
+): Promise<boolean> {
+  if (store === undefined) return false;
+  try {
+    const count = (await store.get(aiBreakerKey(providerId, modelName))) ?? 0;
+    return count >= AI_BREAKER_TRIP_THRESHOLD;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Mencatat satu kegagalan infrastruktur untuk satu model.
+ *
+ * @param store - Counter Redis; undefined berarti tidak dicatat.
+ * @param providerId - Provider pemilik model.
+ * @param modelName - Model yang gagal.
+ */
+export async function recordModelInfraFailure(
+  store: AiRateLimitStore | undefined,
+  providerId: string,
+  modelName: string,
+): Promise<void> {
+  if (store === undefined) return;
+  try {
+    await store.incrby(aiBreakerKey(providerId, modelName), 1);
+    await store.expire(aiBreakerKey(providerId, modelName), AI_BREAKER_WINDOW_SECONDS);
+  } catch {
+    /* Breaker tidak boleh menggagalkan jawaban. */
+  }
+}
+
+/**
+ * Mendinginkan hitungan gagal satu model setelah sukses.
+ *
+ * @param store - Counter Redis; undefined berarti tidak dicatat.
+ * @param providerId - Provider pemilik model.
+ * @param modelName - Model yang sukses.
+ */
+export async function recordModelSuccess(
+  store: AiRateLimitStore | undefined,
+  providerId: string,
+  modelName: string,
+): Promise<void> {
+  if (store === undefined) return;
+  try {
+    await store.expire(aiBreakerKey(providerId, modelName), 1);
+  } catch {
+    /* Breaker tidak boleh menggagalkan jawaban. */
+  }
+}
+
+/**
  * List usable credentials for one provider.
  *
  * @param db - Runtime database port.
@@ -363,7 +491,7 @@ export function classifyAiError(error: unknown): AiClassifiedError {
     return { errorClass: 'rate_limit', isRetryable: true, message };
   }
 
-  if (lower.includes('timeout') || lower.includes('deadline exceeded') || lower.includes('aborterror')) {
+  if (lower.includes('timeout') || lower.includes('timed out') || lower.includes('deadline exceeded') || lower.includes('aborterror')) {
     return { errorClass: 'timeout', isRetryable: true, message };
   }
 

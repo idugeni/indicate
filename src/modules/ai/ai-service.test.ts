@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { executeAiQuery, type AiRequestLogEntry, type AiServiceDeps } from '@/modules/ai/ai-service';
+import { computeRetryDelayMs, executeAiQuery, type AiRequestLogEntry, type AiServiceDeps } from '@/modules/ai/ai-service';
 import { aiRateLimitWindow, aiRpmKey } from '@/modules/ai/ai-rate-limit';
 import type { AiDb } from '@/modules/ai/ai-types';
 
@@ -61,14 +61,14 @@ interface FakeDb {
   readonly logs: AiRequestLogEntry[];
 }
 
-function setup(credentialSelects: Record<string, unknown>[][]): FakeDb {
+function setup(credentialSelects: Record<string, unknown>[][], policyRow: Record<string, unknown> = POLICY_ROW): FakeDb {
   const adapterCalls: { readonly providerId: string; readonly modelName: string }[] = [];
   const logs: AiRequestLogEntry[] = [];
   let credentialSelect = 0;
   const db: AiDb = {
     execute: async (query: unknown) => {
       const text = sqlText(query);
-      if (text.includes('ai_routing_policies')) return [{ ...POLICY_ROW }];
+      if (text.includes('ai_routing_policies')) return [{ ...policyRow }];
       if (text.includes('decrypt_ai_key')) return [{ plain: 'plain-test-key' }];
       if (text.includes('key_encrypted')) {
         const rows = credentialSelects[Math.min(credentialSelect, credentialSelects.length - 1)] ?? [];
@@ -84,7 +84,8 @@ function setup(credentialSelects: Record<string, unknown>[][]): FakeDb {
   return { db, adapterCalls, logs };
 }
 
-function depsFor(fake: FakeDb, extra?: Partial<AiServiceDeps>): AiServiceDeps {
+function depsFor(fake: FakeDb, extra?: Partial<AiServiceDeps>, failModels: readonly string[] = []): AiServiceDeps {
+  const failing = new Set(failModels);
   return {
     db: fake.db,
     budget: {
@@ -94,6 +95,7 @@ function depsFor(fake: FakeDb, extra?: Partial<AiServiceDeps>): AiServiceDeps {
     resolveAdapter: (providerId: string) => ({
       execute: async (_apiKey: string, modelName: string) => {
         fake.adapterCalls.push({ providerId, modelName });
+        if (failing.has(modelName)) throw new Error('Gemini request failed (http 503: unavailable).');
         return { text: 'Jawaban redaksi yang cukup panjang.', tokensUsage: { prompt: 10, completion: 20, total: 30 }, toolCallsExecuted: [] };
       },
     }),
@@ -101,6 +103,7 @@ function depsFor(fake: FakeDb, extra?: Partial<AiServiceDeps>): AiServiceDeps {
       fake.logs.push(entry);
     },
     clock: () => new Date('2026-09-30T00:00:00.000Z'),
+    sleep: async () => {},
     ...extra,
   };
 }
@@ -128,6 +131,135 @@ describe('executeAiQuery fallback terkonfigurasi', () => {
     expect(fake.logs).toHaveLength(1);
     expect(fake.logs[0]?.organizationId).toBe('org-9');
     expect(fake.logs[0]?.status).toBe('success');
+  });
+});
+
+describe('executeAiQuery fallback satu provider', () => {
+  const SAME_PROVIDER_POLICY = {
+    ...POLICY_ROW,
+    primary_provider_id: 'gemini',
+    fallback_provider_id: null,
+    default_model: 'gemini-3.8-flash',
+    fallback_model: 'gemini-3.6-flash',
+  };
+
+  it('mencoba fallback_model saat primary 503 di semua key', async () => {
+    const fake = setup(
+      [[credentialRow('cred-1', 'gemini')], [credentialRow('cred-1', 'gemini')]],
+      SAME_PROVIDER_POLICY,
+    );
+    const result = await executeAiQuery(depsFor(fake, undefined, ['gemini-3.8-flash']), PROMPT);
+    expect(result.providerId).toBe('gemini');
+    expect(result.modelName).toBe('gemini-3.6-flash');
+    expect(result.error).toBeUndefined();
+    expect(fake.adapterCalls).toEqual([
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
+      { providerId: 'gemini', modelName: 'gemini-3.6-flash' },
+    ]);
+  });
+
+  it('tidak mengulang model yang sama saat fallback identik', async () => {
+    const samePolicy = { ...SAME_PROVIDER_POLICY, fallback_model: 'gemini-3.8-flash' };
+    const fake = setup([[credentialRow('cred-1', 'gemini')]], samePolicy);
+    const result = await executeAiQuery(depsFor(fake), PROMPT);
+    expect(result.providerId).toBe('gemini');
+    expect(fake.adapterCalls).toHaveLength(1);
+  });
+
+  it('modelOverride tidak memakai fallback teks', async () => {
+    const fake = setup([[credentialRow('cred-1', 'gemini')]], SAME_PROVIDER_POLICY);
+    const result = await executeAiQuery(
+      depsFor(fake, undefined, ['gemini-3.1-flash-image']),
+      { ...PROMPT, modelOverride: 'gemini-3.1-flash-image' },
+    );
+    expect(result.error).toBe('ALL_RETRIES_EXHAUSTED');
+    expect(fake.adapterCalls).toEqual([{ providerId: 'gemini', modelName: 'gemini-3.1-flash-image' }]);
+  });
+
+  it('menunggu backoff antar percobaan key', async () => {
+    const fake = setup(
+      [[credentialRow('cred-1', 'gemini'), credentialRow('cred-2', 'gemini')], [credentialRow('cred-2', 'gemini')]],
+      SAME_PROVIDER_POLICY,
+    );
+    const delays: number[] = [];
+    const result = await executeAiQuery(
+      depsFor(fake, { sleep: async (ms: number) => { delays.push(ms); } }, ['gemini-3.8-flash']),
+      PROMPT,
+    );
+    expect(result.modelName).toBe('gemini-3.6-flash');
+    expect(fake.adapterCalls).toEqual([
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
+      { providerId: 'gemini', modelName: 'gemini-3.6-flash' },
+    ]);
+    expect(delays).toHaveLength(1);
+    expect(delays[0]).toBeGreaterThanOrEqual(500);
+    expect(delays[0]).toBeLessThanOrEqual(1000);
+  });
+
+  it('perKeyRetryLimit 1 memblokir pemakaian ulang key di fallback', async () => {
+    const strictPolicy = { ...SAME_PROVIDER_POLICY, per_key_retry_limit: 1 };
+    const fake = setup([[credentialRow('cred-1', 'gemini')]], strictPolicy);
+    const result = await executeAiQuery(depsFor(fake, undefined, ['gemini-3.8-flash']), PROMPT);
+    expect(result.error).toBe('ALL_RETRIES_EXHAUSTED');
+    expect(fake.adapterCalls).toEqual([{ providerId: 'gemini', modelName: 'gemini-3.8-flash' }]);
+  });
+
+  it('timeout adapter tercatat sebagai kegagalan retryable', async () => {
+    const impatientPolicy = { ...SAME_PROVIDER_POLICY, fallback_model: 'gemini-3.8-flash', request_timeout_ms: 1000 };
+    const fake = setup([[credentialRow('cred-1', 'gemini')]], impatientPolicy);
+    const result = await executeAiQuery(
+      depsFor(fake, {
+        resolveAdapter: () => ({
+          execute: () => new Promise<never>(() => {}),
+        }),
+      }),
+      PROMPT,
+    );
+    expect(result.error).toBe('ALL_RETRIES_EXHAUSTED');
+    expect(fake.logs).toHaveLength(1);
+    expect(fake.logs[0]?.errorClass).toBe('timeout');
+    expect(fake.logs[0]?.status).toBe('failed');
+  });
+
+  it('breaker yang trip melewati model utama langsung ke fallback', async () => {
+    const fake = setup([[credentialRow('cred-1', 'gemini')]], SAME_PROVIDER_POLICY);
+    const calls: string[] = [];
+    const store = {
+      get: async (key: string) => {
+        calls.push(`get:${key}`);
+        return key.endsWith('gemini-3.8-flash') ? 5 : null;
+      },
+      incrby: async (key: string, delta: number) => {
+        calls.push(`incrby:${key}:${delta}`);
+        return delta;
+      },
+      expire: async (key: string, seconds: number) => {
+        calls.push(`expire:${key}:${seconds}`);
+      },
+    };
+    const result = await executeAiQuery(depsFor(fake, { rateLimit: { store } }), PROMPT);
+    expect(result.modelName).toBe('gemini-3.6-flash');
+    expect(fake.adapterCalls).toEqual([{ providerId: 'gemini', modelName: 'gemini-3.6-flash' }]);
+    expect(calls).toContain('expire:ai:breaker:gemini:gemini-3.6-flash:1');
+  });
+
+  it('kegagalan infra menaikkan counter breaker model', async () => {
+    const fake = setup(
+      [[credentialRow('cred-1', 'gemini')], [credentialRow('cred-1', 'gemini')]],
+      SAME_PROVIDER_POLICY,
+    );
+    const bumped: string[] = [];
+    const store = {
+      get: async () => null,
+      incrby: async (key: string, delta: number) => {
+        bumped.push(`${key}:${delta}`);
+        return delta;
+      },
+      expire: async () => {},
+    };
+    await executeAiQuery(depsFor(fake, { rateLimit: { store } }, ['gemini-3.8-flash']), PROMPT);
+    expect(bumped).toContain('ai:breaker:gemini:gemini-3.8-flash:1');
   });
 });
 
@@ -189,5 +321,18 @@ describe('executeAiQuery enforcement rpm/tpm', () => {
     );
     expect(result.providerId).toBe('gemini');
     expect(fake.adapterCalls).toHaveLength(1);
+  });
+});
+
+describe('computeRetryDelayMs', () => {
+  it('tumbuh eksponensial dengan random nol', () => {
+    expect(computeRetryDelayMs(1, () => 0)).toBe(500);
+    expect(computeRetryDelayMs(2, () => 0)).toBe(1000);
+    expect(computeRetryDelayMs(3, () => 0)).toBe(2000);
+  });
+
+  it('terbatas pada cap plus jitter satu base', () => {
+    expect(computeRetryDelayMs(10, () => 0)).toBe(3000);
+    expect(computeRetryDelayMs(10, () => 0.999)).toBeLessThanOrEqual(3500);
   });
 });

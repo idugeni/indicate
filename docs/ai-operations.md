@@ -62,8 +62,22 @@ by design (`bootstrap-schema.ts` rejects unknown `AI_*` keys in production).
   the key at the provider, then re-enable.
 - Model failover: routing policy holds `default_model` plus `fallback_provider`
   and `fallback_model`. When every key for the primary is exhausted, the service
-  retries the chain on the fallback before giving up. Both are editable in the
-  panel; the active chain is shown underneath the form.
+  retries the chain on the fallback before giving up; an empty fallback provider
+  means the fallback model runs on the primary provider. Both are editable in the
+  panel; the active chain is shown underneath the form. Draft streaming follows
+  the same chain but stays on the primary provider, since its transport is
+  Gemini-specific.
+- `per_key_retry_limit` (1–5) caps how many times one key is tried per query,
+  across both chain entries; `max_retries` caps attempts per chain entry.
+- Retries use exponential backoff with full jitter (500ms base, 3s cap)
+  between key attempts, per the provider's retry guidance for 429/5xx.
+- Model circuit breaker: 5 consecutive infra failures (`provider_unavailable`,
+  `timeout`, `rate_limit`, `quota_exhausted`) trip one model for 120s in Redis
+  (`ai:breaker:{provider}:{model}`); tripped models are skipped unless every
+  entry is tripped (half-open). Success decays the counter. Redis down means
+  fail-open, like every other guard here.
+- `request_timeout_ms` (1s–300s, default 60s) bounds every provider call and
+  every draft stream; a timeout classifies as retryable and moves the chain.
 
 ## Per-model rate limits
 

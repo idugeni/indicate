@@ -29,6 +29,7 @@ import { createAiSemanticCache } from '@/modules/ai/ai-semantic-cache';
 import { SEMANTIC_CANDIDATE_LIMIT, embedQueryVector, reindexArticleEmbeddings, toSemanticCandidate, type WorkersAiCredentials } from '@/modules/ai/ai-embeddings';
 import type { AiDb } from '@/modules/ai/ai-types';
 import type { AiServiceDeps } from '@/modules/ai/ai-service';
+import { computeRetryDelayMs } from '@/modules/ai/ai-service';
 import type { AiChatPrompt as ServicePrompt } from '@/modules/ai/ai-types';
 import { createAiBudgetGuard, redactSecrets } from '@/modules/ai/ai-security';
 import { createAiModelRateLimitStore } from '@/modules/ai/ai-rate-limit';
@@ -38,7 +39,7 @@ import { executeGeminiStream } from '@/integrations/ai/gemini-adapter';
 import { createVercelGatewayBudgetGuard } from '@/integrations/ai/gateway/vercel/vercel-gateway';
 import { rankSemanticCandidates, type SemanticCandidate } from '@/integrations/ai/embeddings';
 import { decryptAiKey } from '@/modules/ai/ai-crypto';
-import { classifyAiError, getActiveRoutingPolicy, getAvailableCredentials, recordKeyFailure, recordKeySuccess } from '@/modules/ai/ai-router';
+import { AI_BREAKER_ERROR_CLASSES, classifyAiError, getActiveRoutingPolicy, getAvailableCredentials, isModelBreakerTripped, recordKeyFailure, recordKeySuccess, recordModelInfraFailure, recordModelSuccess, resolveAiModelChain } from '@/modules/ai/ai-router';
 import type { AiChatPrompt as AdapterPrompt } from '@/integrations/ai/ai-prompt';
 
 const commandSchema = z.object({
@@ -234,15 +235,31 @@ async function handleDraftArticleStream(
     return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'Layanan AI sedang sibuk. Silakan coba lagi.', requestId));
   }
   const policy = await getActiveRoutingPolicy(deps.db);
-  const providerId = policy.primaryProviderId ?? 'gemini';
-  const modelName = policy.defaultModel;
-  const credentials = await getAvailableCredentials(deps.db, providerId, { organizationId });
-  const credential = credentials[0];
-  if (credential === undefined) {
-    return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'Layanan AI sedang sibuk. Silakan coba lagi.', requestId));
+  const primaryProviderId = policy.primaryProviderId ?? 'gemini';
+  const timeoutMs = Math.min(Math.max(policy.requestTimeoutMs || 60000, 1000), 300000);
+  const breakerStore = deps.rateLimit?.store;
+  const streamableChain = resolveAiModelChain(policy).filter((entry) => entry.providerId === primaryProviderId);
+  const runnableChain: typeof streamableChain = [];
+  for (const entry of streamableChain) {
+    if (!(await isModelBreakerTripped(breakerStore, entry.providerId, entry.modelName))) runnableChain.push(entry);
   }
-  const plainKey = await decryptAiKey(deps.db, credential.keyEncrypted);
-  if (plainKey === '') {
+  const effectiveChain = runnableChain.length > 0 ? runnableChain : streamableChain;
+  async function resolveStreamCredential(entry: { readonly providerId: string; readonly modelName: string }): Promise<{ readonly credentialId: string; readonly plainKey: string } | null> {
+    const credentials = await getAvailableCredentials(deps.db, entry.providerId, { organizationId });
+    const credential = credentials[0];
+    if (credential === undefined) return null;
+    const plainKey = await decryptAiKey(deps.db, credential.keyEncrypted);
+    if (plainKey === '') return null;
+    return { credentialId: credential.id, plainKey };
+  }
+  let resolvable = false;
+  for (const entry of effectiveChain) {
+    if ((await resolveStreamCredential(entry)) !== null) {
+      resolvable = true;
+      break;
+    }
+  }
+  if (!resolvable) {
     return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'Layanan AI sedang sibuk. Silakan coba lagi.', requestId));
   }
   const startedAt = Date.now();
@@ -266,60 +283,98 @@ async function handleDraftArticleStream(
       };
       const run = async (): Promise<void> => {
         try {
-          const result = await executeGeminiStream(
-            plainKey,
-            modelName,
-            {
-              prompt: built.prompt,
-              systemInstruction: built.systemInstruction,
-              temperature: 0.7,
-              maxOutputTokens: 2048,
-              responseMimeType: 'application/json',
-            },
-            {
-              signal: requestSignal,
-              onChunk: (delta) => send(null, { delta: redactSecrets(delta) }),
-              ...(gateway === null ? {} : { gateway }),
-            },
-          );
-          const latencyMs = Date.now() - startedAt;
-          await recordKeySuccess(deps.db, credential.id, latencyMs);
-          await deps.budget.recordAiTokenUsage(result.tokensUsage?.total ?? 0);
-          await auditDraftStream(deps.db, {
-            correlationId: requestId,
-            providerId,
-            modelName,
-            credentialId: credential.id,
-            organizationId,
-            status: 'success',
-            latencyMs,
-            promptTokens: result.tokensUsage?.prompt ?? 0,
-            completionTokens: result.tokensUsage?.completion ?? 0,
-            totalTokens: result.tokensUsage?.total ?? 0,
-          });
-          send('done', { text: redactSecrets(result.text) });
-        } catch (error) {
-          const aborted = error instanceof Error && error.message === 'Gemini stream aborted.';
-          const latencyMs = Date.now() - startedAt;
-          if (!aborted) {
-            const classified = classifyAiError(error);
-            await recordKeyFailure(deps.db, credential.id, classified.errorClass, classified.message, policy.cooldownDurationSec);
+          let sentAny = false;
+          const combinedSignal = AbortSignal.any([requestSignal, AbortSignal.timeout(timeoutMs)]);
+          for (const [index, entry] of effectiveChain.entries()) {
+            if (index > 0) await new Promise((resolve) => setTimeout(resolve, computeRetryDelayMs(1)));
+            const resolved = await resolveStreamCredential(entry);
+            if (resolved === null) continue;
+            try {
+              const result = await executeGeminiStream(
+                resolved.plainKey,
+                entry.modelName,
+                {
+                  prompt: built.prompt,
+                  systemInstruction: built.systemInstruction,
+                  temperature: 0.7,
+                  maxOutputTokens: 2048,
+                  responseMimeType: 'application/json',
+                },
+                {
+                  signal: combinedSignal,
+                  onChunk: (delta) => {
+                    sentAny = true;
+                    send(null, { delta: redactSecrets(delta) });
+                  },
+                  ...(gateway === null ? {} : { gateway }),
+                },
+              );
+              const latencyMs = Date.now() - startedAt;
+              await recordKeySuccess(deps.db, resolved.credentialId, latencyMs);
+              await recordModelSuccess(breakerStore, entry.providerId, entry.modelName);
+              await deps.budget.recordAiTokenUsage(result.tokensUsage?.total ?? 0);
+              await auditDraftStream(deps.db, {
+                correlationId: requestId,
+                providerId: entry.providerId,
+                modelName: entry.modelName,
+                credentialId: resolved.credentialId,
+                organizationId,
+                status: 'success',
+                latencyMs,
+                promptTokens: result.tokensUsage?.prompt ?? 0,
+                completionTokens: result.tokensUsage?.completion ?? 0,
+                totalTokens: result.tokensUsage?.total ?? 0,
+              });
+              send('done', { text: redactSecrets(result.text) });
+              return;
+            } catch (error) {
+              const aborted = error instanceof Error && error.message === 'Gemini stream aborted.';
+              const latencyMs = Date.now() - startedAt;
+              if (!aborted && !sentAny) {
+                const classified = classifyAiError(error);
+                await recordKeyFailure(deps.db, resolved.credentialId, classified.errorClass, classified.message, policy.cooldownDurationSec);
+                if (AI_BREAKER_ERROR_CLASSES.includes(classified.errorClass)) {
+                  await recordModelInfraFailure(breakerStore, entry.providerId, entry.modelName);
+                }
+                if (classified.isRetryable) continue;
+              } else if (!aborted) {
+                const classified = classifyAiError(error);
+                await recordKeyFailure(deps.db, resolved.credentialId, classified.errorClass, classified.message, policy.cooldownDurationSec);
+              }
+              await auditDraftStream(deps.db, {
+                correlationId: requestId,
+                providerId: entry.providerId,
+                modelName: entry.modelName,
+                credentialId: resolved.credentialId,
+                organizationId,
+                status: 'failed',
+                latencyMs,
+                promptTokens: 0,
+                completionTokens: 0,
+                totalTokens: 0,
+                errorClass: aborted ? 'aborted' : 'stream_failed',
+                errorMessage: 'draft-article-stream failed',
+              });
+              send('error', { error: aborted ? 'Streaming dibatalkan.' : 'Layanan AI sedang sibuk. Silakan coba lagi.' });
+              return;
+            }
           }
+          const exhausted = effectiveChain[effectiveChain.length - 1];
           await auditDraftStream(deps.db, {
             correlationId: requestId,
-            providerId,
-            modelName,
-            credentialId: credential.id,
+            providerId: exhausted?.providerId ?? primaryProviderId,
+            modelName: exhausted?.modelName ?? policy.defaultModel,
+            credentialId: null,
             organizationId,
             status: 'failed',
-            latencyMs,
+            latencyMs: Date.now() - startedAt,
             promptTokens: 0,
             completionTokens: 0,
             totalTokens: 0,
-            errorClass: aborted ? 'aborted' : 'stream_failed',
+            errorClass: 'stream_failed',
             errorMessage: 'draft-article-stream failed',
           });
-          send('error', { error: aborted ? 'Streaming dibatalkan.' : 'Layanan AI sedang sibuk. Silakan coba lagi.' });
+          send('error', { error: 'Layanan AI sedang sibuk. Silakan coba lagi.' });
         } finally {
           try {
             controller.close();

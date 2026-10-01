@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { classifyAiError, resetAiRotationState, selectCredential } from '@/modules/ai/ai-router';
-import type { AiCredentialRecord } from '@/modules/ai/ai-types';
+import { aiBreakerKey, classifyAiError, isModelBreakerTripped, recordModelInfraFailure, recordModelSuccess, resetAiRotationState, resolveAiModelChain, selectCredential } from '@/modules/ai/ai-router';
+import type { AiCredentialRecord, AiRoutingPolicy } from '@/modules/ai/ai-types';
 
 function makeCredential(overrides: Partial<AiCredentialRecord> & { id: string }): AiCredentialRecord {
   return {
@@ -114,6 +114,10 @@ describe('classifyAiError', () => {
     expect(result.isRetryable).toBe(true);
   });
 
+  it('mengenali "timed out" sebagai timeout', () => {
+    expect(classifyAiError('The operation timed out.').errorClass).toBe('timeout');
+  });
+
   it('mengenali gangguan provider sebagai retryable', () => {
     expect(classifyAiError('fetch failed').errorClass).toBe('provider_unavailable');
     expect(classifyAiError('service 503').errorClass).toBe('provider_unavailable');
@@ -130,5 +134,107 @@ describe('classifyAiError', () => {
     expect(result.errorClass).toBe('application_error');
     expect(result.isRetryable).toBe(true);
     expect(result.message).toBe('something entirely unexpected');
+  });
+});
+
+function makePolicy(overrides?: Partial<AiRoutingPolicy>): AiRoutingPolicy {
+  return {
+    id: 'default',
+    rotationStrategy: 'health_aware',
+    primaryProviderId: 'gemini',
+    fallbackProviderId: null,
+    defaultModel: 'gemini-3.8-flash',
+    fallbackModel: 'gemini-3.6-flash',
+    maxRetries: 5,
+    perKeyRetryLimit: 2,
+    cooldownDurationSec: 60,
+    requestTimeoutMs: 60000,
+    globalConcurrencyLimit: 100,
+    updatedAt: '2026-09-30T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+describe('resolveAiModelChain', () => {
+  it('fallback null dengan model berbeda memakai provider primary', () => {
+    expect(resolveAiModelChain(makePolicy())).toEqual([
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
+      { providerId: 'gemini', modelName: 'gemini-3.6-flash' },
+    ]);
+  });
+
+  it('fallback identik menghasilkan satu entri', () => {
+    const policy = makePolicy({ fallbackProviderId: null, fallbackModel: 'gemini-3.8-flash' });
+    expect(resolveAiModelChain(policy)).toEqual([
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
+    ]);
+  });
+
+  it('fallback lintas provider dipertahankan', () => {
+    const policy = makePolicy({ fallbackProviderId: 'backup', fallbackModel: 'gemini-2.5-flash' });
+    expect(resolveAiModelChain(policy)).toEqual([
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
+      { providerId: 'backup', modelName: 'gemini-2.5-flash' },
+    ]);
+  });
+
+  it('modelOverride mengabaikan fallback', () => {
+    expect(resolveAiModelChain(makePolicy(), 'gemini-3.1-flash-image')).toEqual([
+      { providerId: 'gemini', modelName: 'gemini-3.1-flash-image' },
+    ]);
+  });
+});
+
+function makeBreakerStore(counts = new Map<string, number>()) {
+  const calls: string[] = [];
+  return {
+    calls,
+    store: {
+      get: async (key: string) => {
+        calls.push(`get:${key}`);
+        return counts.get(key) ?? null;
+      },
+      incrby: async (key: string, delta: number) => {
+        calls.push(`incrby:${key}:${delta}`);
+        const next = (counts.get(key) ?? 0) + delta;
+        counts.set(key, next);
+        return next;
+      },
+      expire: async (key: string, seconds: number) => {
+        calls.push(`expire:${key}:${seconds}`);
+      },
+    },
+  };
+}
+
+describe('model circuit breaker', () => {
+  it('trip setelah lima gagal infra dalam jendela', async () => {
+    const { store } = makeBreakerStore();
+    expect(await isModelBreakerTripped(store, 'gemini', 'gemini-3.8-flash')).toBe(false);
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await recordModelInfraFailure(store, 'gemini', 'gemini-3.8-flash');
+    }
+    expect(await isModelBreakerTripped(store, 'gemini', 'gemini-3.8-flash')).toBe(true);
+    expect(await isModelBreakerTripped(store, 'gemini', 'gemini-3.6-flash')).toBe(false);
+  });
+
+  it('sukses mendinginkan counter', async () => {
+    const counts = new Map([[aiBreakerKey('gemini', 'gemini-3.8-flash'), 5]]);
+    const { store, calls } = makeBreakerStore(counts);
+    await recordModelSuccess(store, 'gemini', 'gemini-3.8-flash');
+    expect(calls).toContain('expire:ai:breaker:gemini:gemini-3.8-flash:1');
+  });
+
+  it('fail-open tanpa store dan saat redis mati', async () => {
+    expect(await isModelBreakerTripped(undefined, 'gemini', 'gemini-3.8-flash')).toBe(false);
+    await recordModelInfraFailure(undefined, 'gemini', 'gemini-3.8-flash');
+    await recordModelSuccess(undefined, 'gemini', 'gemini-3.8-flash');
+    const failing = {
+      get: async (_key: string): Promise<number | null> => { throw new Error('redis down'); },
+      incrby: async (_key: string, _delta: number): Promise<number> => { throw new Error('redis down'); },
+      expire: async (_key: string, _seconds: number): Promise<void> => { throw new Error('redis down'); },
+    };
+    expect(await isModelBreakerTripped(failing, 'gemini', 'gemini-3.8-flash')).toBe(false);
+    await recordModelInfraFailure(failing, 'gemini', 'gemini-3.8-flash');
   });
 });

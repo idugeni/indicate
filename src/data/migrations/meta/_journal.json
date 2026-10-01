@@ -1660,6 +1660,20 @@
       "when": 1790791200000,
       "tag": "20261001000000_ai_free_tier_gateways",
       "breakpoints": true
+    },
+    {
+      "idx": 237,
+      "version": "7",
+      "when": 1790794800000,
+      "tag": "20261001010000_status_daily_avg_latency",
+      "breakpoints": true
+    },
+    {
+      "idx": 238,
+      "version": "7",
+      "when": 1790798400000,
+      "tag": "20261001020000_ai_routing_fallback_wire",
+      "breakpoints": true
     }
   ]
 }

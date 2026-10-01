@@ -11,11 +11,16 @@ import {
   type AiRateLimitStore,
 } from '@/modules/ai/ai-rate-limit';
 import {
+  AI_BREAKER_ERROR_CLASSES,
   classifyAiError,
   getActiveRoutingPolicy,
   getAvailableCredentials,
+  isModelBreakerTripped,
   recordKeyFailure,
   recordKeySuccess,
+  recordModelInfraFailure,
+  recordModelSuccess,
+  resolveAiModelChain,
   resolveThinkingBudget,
   selectCredential,
 } from '@/modules/ai/ai-router';
@@ -111,6 +116,7 @@ export interface AiServiceDeps {
   readonly cache?: AiSemanticCache | undefined;
   readonly log?: ((entry: AiRequestLogEntry) => Promise<void>) | undefined;
   readonly clock?: (() => Date) | undefined;
+  readonly sleep?: ((ms: number) => Promise<void>) | undefined;
   readonly rateLimit?: {
     readonly store?: AiRateLimitStore | undefined;
     readonly getLimits?: ((modelName: string) => Promise<AiModelRateLimits>) | undefined;
@@ -125,6 +131,53 @@ async function logAiRequest(db: AiDb, entry: AiRequestLogEntry): Promise<void> {
     );
   } catch {
     /* Logging must never fail an answer. */
+  }
+}
+
+/** Jeda dasar antar percobaan key sesuai anjuran backoff docs provider. */
+export const AI_RETRY_BASE_DELAY_MS = 500;
+
+/** Batas jeda backoff agar skenario gagal total tidak menggantung terlalu lama. */
+export const AI_RETRY_MAX_DELAY_MS = 3000;
+
+/**
+ * Menghitung jeda exponential backoff plus jitter penuh untuk satu retry.
+ *
+ * @param retryNumber - Nomor retry mulai dari 1 (percobaan kedua).
+ * @param random - Sumber acak; diisi deterministik di test.
+ * @returns Jeda milidetik antara `base * 2^(n-1)` dan nilai itu plus `base`.
+ */
+export function computeRetryDelayMs(retryNumber: number, random: () => number = Math.random): number {
+  const exponential = AI_RETRY_BASE_DELAY_MS * 2 ** Math.max(0, retryNumber - 1);
+  const capped = Math.min(exponential, AI_RETRY_MAX_DELAY_MS);
+  return capped + Math.floor(random() * AI_RETRY_BASE_DELAY_MS);
+}
+
+function defaultSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function executeWithTimeout(
+  adapter: AiProviderAdapter,
+  apiKey: string,
+  modelName: string,
+  prompt: AiChatPrompt,
+  timeoutMs: number,
+): Promise<AiAdapterResult> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      adapter.execute(apiKey, modelName, prompt),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`AI request timed out after ${timeoutMs}ms.`));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
   }
 }
 
@@ -302,20 +355,19 @@ export async function executeAiQuery(
     }
   }
 
-  const providerChain: Array<{ readonly providerId: string; readonly modelName: string }> = [
-    { providerId: policy.primaryProviderId ?? 'gemini', modelName: targetModel },
-  ];
-  if (
-    policy.fallbackProviderId !== null &&
-    policy.fallbackProviderId !== (policy.primaryProviderId ?? 'gemini')
-  ) {
-    providerChain.push({
-      providerId: policy.fallbackProviderId,
-      modelName: policy.fallbackModel,
-    });
+  const sleep = deps.sleep ?? defaultSleep;
+  const timeoutMs = Math.min(Math.max(policy.requestTimeoutMs || 60000, 1000), 300000);
+  const perKeyLimit = Math.min(Math.max(policy.perKeyRetryLimit || 1, 1), 5);
+  const breakerStore = deps.rateLimit?.store;
+  const fullChain = resolveAiModelChain(policy, promptData.modelOverride);
+  const openChain: Array<{ readonly providerId: string; readonly modelName: string }> = [];
+  for (const entry of fullChain) {
+    if (!(await isModelBreakerTripped(breakerStore, entry.providerId, entry.modelName))) openChain.push(entry);
   }
+  const providerChain = openChain.length > 0 ? openChain : fullChain;
 
   let totalAttempts = 0;
+  const keyAttempts = new Map<string, number>();
   for (const { providerId, modelName } of providerChain) {
     let adapter: AiProviderAdapter;
     try {
@@ -329,23 +381,24 @@ export async function executeAiQuery(
     if (credentials.length === 0) continue;
 
     const maxRetries = Math.min(policy.maxRetries || 3, credentials.length);
-    const triedKeyIds = new Set<string>();
     for (let attempt = 0; attempt < maxRetries; attempt += 1) {
       totalAttempts += 1;
-      const eligible = credentials.filter((credential) => !triedKeyIds.has(credential.id));
+      if (attempt > 0) await sleep(computeRetryDelayMs(attempt));
+      const eligible = credentials.filter((credential) => (keyAttempts.get(credential.id) ?? 0) < perKeyLimit);
       if (eligible.length === 0) break;
       const credential = selectCredential(eligible, policy.rotationStrategy);
       if (credential === null) break;
-      triedKeyIds.add(credential.id);
+      keyAttempts.set(credential.id, (keyAttempts.get(credential.id) ?? 0) + 1);
 
       const plainKey = await decryptAiKey(deps.db, credential.keyEncrypted);
       if (plainKey === '') continue;
 
       const startedAt = clock().getTime();
       try {
-        const result = await adapter.execute(plainKey, modelName, effectivePrompt);
+        const result = await executeWithTimeout(adapter, plainKey, modelName, effectivePrompt, timeoutMs);
         const latencyMs = clock().getTime() - startedAt;
         await recordKeySuccess(deps.db, credential.id, latencyMs);
+        await recordModelSuccess(breakerStore, providerId, modelName);
         await deps.budget.recordAiTokenUsage(result.tokensUsage?.total ?? 0);
         await log({
           correlationId,
@@ -388,6 +441,9 @@ export async function executeAiQuery(
         const latencyMs = clock().getTime() - startedAt;
         const { errorClass, isRetryable, message } = classifyAiError(error);
         await recordKeyFailure(deps.db, credential.id, errorClass, message, policy.cooldownDurationSec);
+        if (AI_BREAKER_ERROR_CLASSES.includes(errorClass)) {
+          await recordModelInfraFailure(breakerStore, providerId, modelName);
+        }
         await log({
           correlationId,
           channel,
