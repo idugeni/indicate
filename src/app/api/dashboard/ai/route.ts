@@ -11,7 +11,7 @@ import { getSharedRuntimeDatabase } from '@/data/client';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
-import { configureAiUsage, buildDraftArticleInput, draftModerationReply, generateArticleDraft, narrateInsights, ocVisionDraft, scanPrompt, suggestTags, summarizeReport } from '@/modules/ai/ai-usage';
+import { configureAiUsage, buildDraftArticleInput, draftModerationReply, generateArticleDraft, narrateInsights, ocCoverCaption, ocVisionDraft, scanPrompt, suggestTags, summarizeReport } from '@/modules/ai/ai-usage';
 import { configureAiSeo, suggestExcerpt, suggestMetaDescription, suggestTitles } from '@/modules/ai/ai-seo';
 import { classifyArticle, polishBody } from '@/modules/ai/ai-polish';
 import { configureAiCover, generateCoverImage } from '@/modules/ai/ai-cover';
@@ -45,6 +45,7 @@ const commandSchema = z.object({
     'summarize-report',
     'moderation-reply',
     'vision-draft',
+    'cover-caption',
     'insight-narrative',
     'semantic-search',
     'embeddings-reindex',
@@ -403,6 +404,10 @@ async function handlePOST(request: Request) {
       }
       case 'vision-draft': {
         const result = await ocVisionDraft({ base64: str(payload.base64, 7_000_000), mimeType: str(payload.mimeType, 60), hint: str(payload.hint, 500), organizationId });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
+      }
+      case 'cover-caption': {
+        const result = await ocCoverCaption({ base64: str(payload.base64, 7_000_000), mimeType: str(payload.mimeType, 60), title: str(payload.title, 200), organizationId });
         return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
       }
       case 'insight-narrative': {

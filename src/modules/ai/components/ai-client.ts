@@ -6,6 +6,7 @@ export type AiAction =
   | 'summarize-report'
   | 'moderation-reply'
   | 'vision-draft'
+  | 'cover-caption'
   | 'insight-narrative'
   | 'semantic-search'
   | 'seo-titles'

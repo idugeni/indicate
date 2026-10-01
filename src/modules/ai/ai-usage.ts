@@ -382,6 +382,72 @@ export async function draftModerationReply(input: { readonly context: string; re
   return { ok: true, draft };
 }
 
+const COVER_CAPTION_SYSTEM = [
+  'Kamu adalah editor foto redaksi media Indonesia.',
+  'Tulis teks alt dan keterangan foto dalam Bahasa Indonesia berdasarkan gambar sampul yang dilampirkan.',
+  'Alt: satu kalimat faktual yang mendeskripsikan isi visual untuk pembaca tunanetra; tanpa clickbait, tanpa mengarang nama, angka, atau peristiwa di luar yang terlihat.',
+  'Caption: satu kalimat keterangan foto yang layak tampil di bawah gambar; boleh memakai konteks judul artikel bila diberikan.',
+  'Keluarkan JSON murni tanpa pagar kode:',
+  '{"alt":"...","caption":"..."}',
+].join('\n');
+
+export interface CoverCaption {
+  readonly alt: string;
+  readonly caption: string;
+}
+
+/**
+ * Mengurai alt dan caption sampul dari model dengan fallback aman.
+ *
+ * @param text - Output mentah model.
+ * @returns Alt dan caption ternormalisasi; null bila keduanya kosong.
+ */
+export function parseCoverCaption(text: string): CoverCaption | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stripCodeFence(text)) as unknown;
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== 'object' || parsed === null) return null;
+  const record = parsed as Record<string, unknown>;
+  const alt = typeof record.alt === 'string' ? record.alt.trim().slice(0, 200) : '';
+  const caption = typeof record.caption === 'string' ? record.caption.trim().slice(0, 200) : '';
+  if (alt === '' && caption === '') return null;
+  return { alt, caption };
+}
+
+/**
+ * Menyusun teks alt dan caption untuk gambar sampul yang sudah diunggah.
+ *
+ * @param input.base64 - Gambar base64, dibatasi 7 juta karakter.
+ * @param input.mimeType - Tipe MIME gambar; hanya JPEG, PNG, dan WebP.
+ * @param input.title - Judul artikel sebagai konteks opsional.
+ * @param input.organizationId - Organisasi untuk cakupan kredensial dan audit.
+ * @returns Alt dan caption dari model, atau pesan galat yang aman.
+ */
+export async function ocCoverCaption(input: { readonly base64: string; readonly mimeType: string; readonly title?: string; readonly organizationId?: string }): Promise<{ readonly ok: true; readonly caption: CoverCaption } | { readonly ok: false; readonly error: string }> {
+  const compact = input.base64.replace(/^data:image\/[a-z0-9.+-]+;base64,/i, '');
+  if (compact === '' || compact.length > AI_LIMITS.base64) return { ok: false, error: 'Berkas gambar terlalu besar atau kosong.' };
+  const mimeType = input.mimeType.trim().toLowerCase();
+  if (!VISION_MIME_ALLOWLIST.has(mimeType)) return { ok: false, error: 'Format gambar belum didukung. Gunakan JPEG, PNG, atau WebP.' };
+  if (!/^[A-Za-z0-9+/=\s]+$/.test(compact)) return { ok: false, error: 'Berkas gambar tidak valid.' };
+  const title = truncateInput(input.title ?? '', 200);
+  if (title !== '') {
+    const scanned = scanPrompt(title);
+    if (!scanned.ok) return { ok: false, error: scanned.reason };
+  }
+  const result = await runQuery('editor', input.organizationId, {
+    prompt: title === '' ? 'Deskripsikan gambar sampul terlampir untuk teks alt dan keterangan foto.' : `Deskripsikan gambar sampul terlampir untuk teks alt dan keterangan foto.\n\nJudul artikel:\n${title}`,
+    systemInstruction: COVER_CAPTION_SYSTEM, temperature: 0.3, maxOutputTokens: 256, responseMimeType: 'application/json',
+    images: [{ base64: compact, mimeType }],
+  });
+  if (!result.ok) return result;
+  const caption = parseCoverCaption(result.text);
+  if (caption === null) return { ok: false, error: BUSY_MESSAGE };
+  return { ok: true, caption };
+}
+
 export interface VisionDraft {
   readonly title: string;
   readonly slug: string;

@@ -11,7 +11,7 @@ import { toast } from 'sonner';
  * `title` dan `title-variants` sengaja terpisah meski pekerjaannya sama,
  * karena keduanya punya tombol sendiri yang harus hidup independen.
  */
-export type AiAction = 'idle' | 'title' | 'title-variants' | 'description' | 'polish' | 'transcribe' | 'classify';
+export type AiAction = 'idle' | 'title' | 'title-variants' | 'description' | 'polish' | 'transcribe' | 'classify' | 'caption';
 
 export interface AiSlot {
   /** Aksi yang sedang berjalan; `'idle'` bila tidak ada. */

@@ -7,6 +7,7 @@ import {
   Clock,
   Image as ImageIcon,
   ImagePlus,
+  Images,
   Link2,
   Loader2,
   Minus,
@@ -104,6 +105,65 @@ const MODE_HINTS: Record<'tulis' | 'pratinjau' | 'sumber', string> = {
 
 /** Awalan id kategori yang masih hidup di memori dan belum ada di server. */
 const PENDING_CATEGORY_PREFIX = 'new:';
+
+/** Jumlah pustaka sampul per halaman; otorisasi pratinjau diminta per halaman tampil. */
+const LIBRARY_PAGE = 24;
+
+/** Batas byte gambar untuk caption AI; 5 MB tetap di bawah batas 7 juta karakter base64 server. */
+const COVER_CAPTION_BYTES_MAX = 5_000_000;
+
+/** MIME yang diterima model vision; sama dengan allowlist server. */
+const COVER_CAPTION_MIME_ALLOWLIST: ReadonlySet<string> = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+/** Gambar yang layak jadi sampul dan bisa dipratinjau browser. */
+const COVER_PICK_MIME_ALLOWLIST: ReadonlySet<string> = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
+
+/** Satu baris media dari `GET view=media` yang layak jadi sampul. */
+interface CoverLibraryItem {
+  readonly id: string;
+  readonly objectKey: string;
+  readonly mediaType: string;
+  readonly sizeBytes: number;
+  readonly altText: string | null;
+  readonly caption: string | null;
+  readonly version: number;
+}
+
+function fileNameOf(objectKey: string): string {
+  const segments = objectKey.split('/').filter((segment) => segment.length > 0);
+  return segments[segments.length - 1] ?? objectKey;
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+    reader.onerror = () => reject(new Error('Gagal membaca gambar sampul.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Menyaring satu baris media pustaka menjadi kandidat sampul.
+ *
+ * @param value - Baris mentah dari respons `view=media`.
+ * @returns Kandidat sampul; null bila bukan gambar aktif berversi.
+ */
+function toCoverLibraryItem(value: unknown): CoverLibraryItem | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const row = value as Record<string, unknown>;
+  if (typeof row.id !== 'string' || typeof row.objectKey !== 'string' || typeof row.mediaType !== 'string') return null;
+  if (row.state !== 'active' || !COVER_PICK_MIME_ALLOWLIST.has(row.mediaType) || typeof row.version !== 'number') return null;
+  return {
+    id: row.id,
+    objectKey: row.objectKey,
+    mediaType: row.mediaType,
+    sizeBytes: typeof row.sizeBytes === 'number' ? row.sizeBytes : 0,
+    altText: typeof row.altText === 'string' ? row.altText : null,
+    caption: typeof row.caption === 'string' ? row.caption : null,
+    version: row.version,
+  };
+}
 
 /**
  * Bilah ukur panjang metadata terhadap rentang tampil idealnya.
@@ -212,6 +272,17 @@ export function ArticleCreateForm({
   const [featuredAlt, setFeaturedAlt] = useState('');
   const [featuredCaption, setFeaturedCaption] = useState('');
   const [featuredFocal, setFeaturedFocal] = useState<{ readonly x: number; readonly y: number } | null>(null);
+  const coverBlobRef = useRef<{ readonly blob: Blob; readonly mimeType: string } | null>(null);
+  const coverRemoteRef = useRef<{ readonly url: string; readonly mimeType: string } | null>(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryItems, setLibraryItems] = useState<readonly CoverLibraryItem[] | null>(null);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
+  const [libraryQuery, setLibraryQuery] = useState('');
+  const [libraryShown, setLibraryShown] = useState(LIBRARY_PAGE);
+  const [libraryPreviews, setLibraryPreviews] = useState<Readonly<Record<string, string>>>({});
+  const libraryAuthInFlight = useRef<Set<string>>(new Set());
+  const librarySearchInputId = useId();
   const [savingFeaturedMeta, setSavingFeaturedMeta] = useState(false);
   const [coverUrl, setCoverUrl] = useState('');
   const [titleText, setTitleText] = useState('');
@@ -613,6 +684,132 @@ export function ArticleCreateForm({
     })();
   };
 
+  const openLibrary = () => {
+    if (command === undefined || organizationId === undefined || organizationId === '') {
+      toast.error('Pustaka media tidak tersedia di pratinjau.');
+      return;
+    }
+    setLibraryOpen((open) => !open);
+    if (libraryItems !== null || libraryLoading) return;
+    setLibraryLoading(true);
+    setLibraryError(null);
+    void (async () => {
+      try {
+        const response = await fetch(
+          `/api/dashboard/publishing?organizationId=${encodeURIComponent(organizationId)}&view=media`,
+          { cache: 'no-store' },
+        );
+        if (!response.ok) throw new Error('Gagal memuat pustaka media.');
+        const body = (await response.json()) as { readonly media?: readonly unknown[] };
+        const items = (Array.isArray(body.media) ? body.media : [])
+          .map(toCoverLibraryItem)
+          .filter((item): item is CoverLibraryItem => item !== null);
+        setLibraryItems(items);
+        if (items.length === 0) toast.info('Pustaka media belum berisi gambar.');
+      } catch {
+        setLibraryError('Gagal memuat pustaka media. Coba lagi.');
+      } finally {
+        setLibraryLoading(false);
+      }
+    })();
+  };
+
+  const libraryFiltered = useMemo(() => {
+    const needle = libraryQuery.trim().toLowerCase();
+    const items = libraryItems ?? [];
+    if (needle === '') return items;
+    return items.filter((item) =>
+      `${fileNameOf(item.objectKey)} ${item.altText ?? ''} ${item.caption ?? ''}`.toLowerCase().includes(needle),
+    );
+  }, [libraryItems, libraryQuery]);
+  const libraryVisible = libraryFiltered.slice(0, libraryShown);
+
+  useEffect(() => {
+    if (!libraryOpen || command === undefined || libraryVisible.length === 0) return;
+    const missing = libraryVisible.filter(
+      (item) => libraryPreviews[item.id] === undefined && !libraryAuthInFlight.current.has(item.id),
+    );
+    if (missing.length === 0) return;
+    for (const item of missing) libraryAuthInFlight.current.add(item.id);
+    void (async () => {
+      const entries: [string, string][] = [];
+      for (const item of missing) {
+        try {
+          const auth = (await command('media.read', { mediaId: item.id })) as { readonly url?: unknown } | null;
+          if (typeof auth?.url === 'string' && auth.url !== '') entries.push([item.id, auth.url]);
+        } catch {
+          /* Pratinjau per baris best-effort; kartu tanpa URL tetap bisa dipilih. */
+        }
+      }
+      if (entries.length > 0) setLibraryPreviews((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
+    })().finally(() => {
+      for (const item of missing) libraryAuthInFlight.current.delete(item.id);
+    });
+  }, [libraryOpen, libraryVisible, command, libraryPreviews]);
+
+  const pickLibraryCover = (item: CoverLibraryItem) => {
+    const url = libraryPreviews[item.id];
+    if (url === undefined) {
+      toast.error('Pratinjau belum siap. Tunggu sebentar lalu coba lagi.');
+      return;
+    }
+    coverBlobRef.current = null;
+    coverRemoteRef.current = { url, mimeType: item.mediaType };
+    setFeaturedId(item.id);
+    setFeaturedName(fileNameOf(item.objectKey));
+    setFeaturedVersion(item.version);
+    setFeaturedFocal(null);
+    if (featuredAlt.trim() === '' && (item.altText ?? '').trim() !== '') {
+      setFeaturedAlt((item.altText ?? '').trim().slice(0, 300));
+    }
+    if (featuredCaption.trim() === '' && (item.caption ?? '').trim() !== '') {
+      setFeaturedCaption((item.caption ?? '').trim().slice(0, 500));
+    }
+    setFeaturedPreviewUrl(url);
+    setFeaturedStatus(null);
+    setLibraryOpen(false);
+    toast.success('Sampul diambil dari pustaka.');
+  };
+
+  const resolveCoverBytes = async (): Promise<{ readonly dataUrl: string; readonly mimeType: string }> => {
+    const direct = coverBlobRef.current;
+    if (direct !== null) {
+      return { dataUrl: await blobToDataUrl(direct.blob), mimeType: direct.mimeType };
+    }
+    const remote = coverRemoteRef.current;
+    if (remote === null) throw new Error('Gambar sampul tidak tersedia.');
+    if (!COVER_CAPTION_MIME_ALLOWLIST.has(remote.mimeType)) {
+      throw new Error('Format gambar belum didukung. Gunakan JPEG, PNG, atau WebP.');
+    }
+    const response = await fetch(remote.url);
+    if (!response.ok) throw new Error('Gagal mengunduh gambar sampul.');
+    const blob = await response.blob();
+    if (blob.size === 0 || blob.size > COVER_CAPTION_BYTES_MAX) throw new Error('Berkas gambar terlalu besar atau kosong.');
+    return { dataUrl: await blobToDataUrl(blob), mimeType: remote.mimeType };
+  };
+
+  const captionCoverInline = () => {
+    if (!aiReady || featuredId === null || !claimAi('caption')) return;
+    void (async () => {
+      try {
+        const { dataUrl, mimeType } = await resolveCoverBytes();
+        const result = (await callAi(organizationId, 'cover-caption', { base64: dataUrl, mimeType, title: titleText.trim().slice(0, 200) })) as {
+          readonly caption?: { readonly alt?: unknown; readonly caption?: unknown };
+        };
+        const alt = typeof result.caption?.alt === 'string' ? result.caption.alt.trim().slice(0, 300) : '';
+        const caption = typeof result.caption?.caption === 'string' ? result.caption.caption.trim().slice(0, 500) : '';
+        if (alt === '' && caption === '') throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
+        if (alt !== '') setFeaturedAlt(alt);
+        if (caption !== '') setFeaturedCaption(caption);
+        toast.success('Alt dan caption terisi otomatis — tinjau lalu simpan metadata sampul.');
+      } catch (err) {
+        toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+      } finally {
+        releaseAi();
+      }
+    })();
+  };
+
   const handleCreateCategory = (rawName: string): string | null => {
     const name = rawName.trim();
     if (name === '') {
@@ -689,14 +886,17 @@ export function ArticleCreateForm({
       toast.error('Berkas harus gambar.');
       return;
     }
+    coverBlobRef.current = null;
+    coverRemoteRef.current = null;
     setUploadingFeatured(true);
     setFeaturedStatus('Menganalisis & mengompresi gambar di perangkat…');
     try {
-      const { mediaId, previewUrl, storedSrc, version, sizeBytes, savingsBytes } = await uploadEditorImage(file, { kind: 'organization' }, command, {
+      const { mediaId, previewUrl, storedSrc, version, sizeBytes, savingsBytes, compressedBlob, compressedMediaType } = await uploadEditorImage(file, { kind: 'organization' }, command, {
         purpose: 'article-cover',
         compress: COVER_COMPRESS,
         onConverting: () => setFeaturedStatus('Mengonversi HEIC ke JPEG di perangkat…'),
       });
+      coverBlobRef.current = { blob: compressedBlob, mimeType: compressedMediaType };
       setFeaturedId(mediaId);
       setFeaturedName(file.name);
       setFeaturedVersion(version);
@@ -949,6 +1149,8 @@ export function ArticleCreateForm({
       setFeaturedAlt('');
       setFeaturedCaption('');
       setFeaturedFocal(null);
+      coverBlobRef.current = null;
+      coverRemoteRef.current = null;
       setCoverUrl('');
       setBodyJsonDraft(null);
       setRichResetKey((key) => key + 1);
@@ -1585,7 +1787,7 @@ export function ArticleCreateForm({
                         type="button"
                         variant="ghost"
                         size="xs"
-                        onClick={() => { setFeaturedId(null); setFeaturedName(''); setFeaturedPreviewUrl(null); setFeaturedVersion(null); setFeaturedAlt(''); setFeaturedCaption(''); setFeaturedFocal(null); }}
+                        onClick={() => { coverBlobRef.current = null; coverRemoteRef.current = null; setFeaturedId(null); setFeaturedName(''); setFeaturedPreviewUrl(null); setFeaturedVersion(null); setFeaturedAlt(''); setFeaturedCaption(''); setFeaturedFocal(null); }}
                         disabled={isSubmitting || uploadingFeatured}
                       >
                         <span>Hapus</span>
@@ -1648,6 +1850,21 @@ export function ArticleCreateForm({
                         className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
                       />
                     </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <AppTooltip label="Susun teks alt dan caption dari gambar sampul dengan AI">
+                        <AiActionButton
+                          busy={aiAction === 'caption'}
+                          idleLabel="Isi otomatis"
+                          icon={Sparkles}
+                          size="xs"
+                          tone="primary"
+                          disabled={!aiReady || featuredId === null}
+                          onClick={captionCoverInline}
+                          ariaLabel="Isi alt dan caption otomatis"
+                        />
+                      </AppTooltip>
+                      {aiAction === 'caption' ? <AiPending label="Menyusun alt dan caption" /> : null}
+                    </div>
                     <Button
                       type="button"
                       variant="outline"
@@ -1663,16 +1880,99 @@ export function ArticleCreateForm({
                     </p>
                   </div>
                 ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isSubmitting || uploadingFeatured}
-                    className="w-full"
-                    onClick={() => document.getElementById(featuredFileId)?.click()}
-                  >
-                    <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>{uploadingFeatured ? 'Mengunggah...' : 'Pilih gambar...'}</span>
-                  </Button>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        disabled={isSubmitting || uploadingFeatured}
+                        className="flex-1"
+                        onClick={() => document.getElementById(featuredFileId)?.click()}
+                      >
+                        <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>{uploadingFeatured ? 'Mengunggah...' : 'Pilih gambar...'}</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        disabled={isSubmitting || uploadingFeatured}
+                        className="flex-1"
+                        onClick={openLibrary}
+                        aria-expanded={libraryOpen}
+                      >
+                        <Images className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>{libraryOpen ? 'Tutup pustaka' : 'Pilih dari pustaka...'}</span>
+                      </Button>
+                    </div>
+                    {libraryOpen ? (
+                      <div className="space-y-2 rounded border border-hairline bg-bg p-2.5">
+                        <Input
+                          id={librarySearchInputId}
+                          type="search"
+                          value={libraryQuery}
+                          onChange={(event) => { setLibraryQuery(event.target.value); setLibraryShown(LIBRARY_PAGE); }}
+                          placeholder="Cari gambar di pustaka..."
+                          aria-label="Cari gambar di pustaka"
+                          className="h-8 rounded border-hairline-strong bg-bg-raised px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
+                        />
+                        {libraryLoading ? (
+                          <p className="m-0 font-mono text-[11px] text-paper-faint">Memuat pustaka…</p>
+                        ) : libraryError !== null ? (
+                          <p className="m-0 font-mono text-[11px] text-error" role="alert">{libraryError}</p>
+                        ) : libraryFiltered.length === 0 ? (
+                          <p className="m-0 font-mono text-[11px] text-paper-faint">
+                            {libraryItems === null ? 'Pustaka belum dimuat.' : 'Tidak ada gambar yang cocok. Unggah baru atau ubah kata kunci.'}
+                          </p>
+                        ) : (
+                          <>
+                            <div className="grid max-h-64 grid-cols-3 gap-1.5 overflow-y-auto">
+                              {libraryVisible.map((item) => {
+                                const preview = libraryPreviews[item.id];
+                                return (
+                                  <button
+                                    key={item.id}
+                                    type="button"
+                                    onClick={() => pickLibraryCover(item)}
+                                    aria-label={`Pilih ${fileNameOf(item.objectKey)} sebagai sampul`}
+                                    className="group min-w-0 overflow-hidden rounded border border-hairline bg-bg-raised text-left transition-colors duration-180 hover:border-brass"
+                                  >
+                                    {preview === undefined ? (
+                                      <span className="flex h-20 items-center justify-center gap-1 bg-bg px-1">
+                                        <ImageIcon className="h-4 w-4 flex-none text-paper-faint" aria-hidden="true" />
+                                        <span className="truncate font-mono text-[10px] text-paper-faint">{formatBytes(item.sizeBytes)}</span>
+                                      </span>
+                                    ) : (
+                                      // eslint-disable-next-line @next/next/no-img-element -- dashboard preview only; public delivery uses EditorialImage
+                                      <img src={preview} alt={fileNameOf(item.objectKey)} className="h-20 w-full object-cover" />
+                                    )}
+                                    <span className="block truncate px-1.5 py-1 font-mono text-[10px] text-paper-dim">
+                                      {fileNameOf(item.objectKey)}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
+                              {libraryVisible.length.toLocaleString('id-ID')} dari {libraryFiltered.length.toLocaleString('id-ID')} gambar
+                            </p>
+                            {libraryVisible.length < libraryFiltered.length ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="xs"
+                                onClick={() => setLibraryShown((shown) => shown + LIBRARY_PAGE)}
+                                className="w-full"
+                              >
+                                <span>Tampilkan {(libraryFiltered.length - libraryVisible.length).toLocaleString('id-ID')} lagi</span>
+                              </Button>
+                            ) : null}
+                          </>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
                 )}
                 <input
                   id={featuredFileId}

@@ -991,4 +991,145 @@ describe('Formulir tulis artikel', () => {
     expect(screen.getByLabelText('Wilayah')).toBeDefined();
   });
 
+  it('mengambil sampul dari pustaka media beserta metadatanya', async () => {
+    const user = userEvent.setup();
+    const libraryItem = {
+      id: 'm-lib',
+      objectKey: 'org/sampul-pustaka.webp',
+      mediaType: 'image/webp',
+      sizeBytes: 120,
+      altText: 'Alt pustaka.',
+      caption: 'Caption pustaka.',
+      state: 'active',
+      version: 3,
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: unknown) => ({
+        ok: true,
+        json: async () => (String(url).includes('view=media') ? { media: [libraryItem], articles: [], sites: [] } : {}),
+      })),
+    );
+    try {
+      const cmd = vi.fn(async (action: string) => {
+        if (action === 'media.read') return { url: 'https://r2.example/preview-lib' };
+        return {};
+      });
+      render(<ArticleCreateForm data={DATA} onSubmit={vi.fn(async () => null)} command={cmd} organizationId="org-1" />);
+      await user.click(screen.getByRole('button', { name: /pilih dari pustaka/i }));
+      await waitFor(() => expect(screen.queryByAltText('sampul-pustaka.webp')).not.toBeNull());
+      await user.click(screen.getByRole('button', { name: 'Pilih sampul-pustaka.webp sebagai sampul' }));
+      await waitFor(() => expect(screen.queryByLabelText('Teks alt sampul')).not.toBeNull());
+      expect((screen.getByLabelText('Teks alt sampul') as HTMLInputElement).value).toBe('Alt pustaka.');
+      expect((screen.getByLabelText('Keterangan sampul (opsional)') as HTMLInputElement).value).toBe('Caption pustaka.');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('mengisi alt dan caption AI untuk sampul dari pustaka', async () => {
+    const user = userEvent.setup();
+    const libraryItem = {
+      id: 'm-lib',
+      objectKey: 'org/sampul-pustaka.webp',
+      mediaType: 'image/webp',
+      sizeBytes: 120,
+      altText: '',
+      caption: '',
+      state: 'active',
+      version: 3,
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: unknown, init?: { readonly body?: unknown }) => {
+        const target = String(url);
+        if (target.includes('view=media')) {
+          return { ok: true, json: async () => ({ media: [libraryItem], articles: [], sites: [] }) };
+        }
+        if (target === 'https://r2.example/preview-lib') {
+          return { ok: true, blob: async () => new Blob(['isi-gambar'], { type: 'image/jpeg' }) };
+        }
+        return {
+          ok: true,
+          json: async () => {
+            const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+            return body.action === 'cover-caption'
+              ? { caption: { alt: 'Alt AI pustaka.', caption: 'Caption AI pustaka.' } }
+              : {};
+          },
+        };
+      }),
+    );
+    try {
+      const cmd = vi.fn(async (action: string) => {
+        if (action === 'media.read') return { url: 'https://r2.example/preview-lib' };
+        return {};
+      });
+      render(<ArticleCreateForm data={DATA} onSubmit={vi.fn(async () => null)} command={cmd} organizationId="org-1" />);
+      await user.click(screen.getByRole('button', { name: /pilih dari pustaka/i }));
+      await waitFor(() => expect(screen.queryByAltText('sampul-pustaka.webp')).not.toBeNull());
+      await user.click(screen.getByRole('button', { name: 'Pilih sampul-pustaka.webp sebagai sampul' }));
+      await waitFor(() => expect(screen.queryByLabelText('Teks alt sampul')).not.toBeNull());
+      await user.click(screen.getByRole('button', { name: 'Isi alt dan caption otomatis' }));
+      await waitFor(() =>
+        expect((screen.getByLabelText('Teks alt sampul') as HTMLInputElement).value).toBe('Alt AI pustaka.'),
+      );
+      expect((screen.getByLabelText('Keterangan sampul (opsional)') as HTMLInputElement).value).toBe('Caption AI pustaka.');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('mengisi alt dan caption sampul otomatis dengan AI', async () => {
+    const user = userEvent.setup();
+    const putMock = vi.fn(async () => ({ ok: true }));
+    vi.stubGlobal('fetch', putMock);
+    try {
+      const cmd = vi.fn(async (action: string, payload: unknown) => {
+        if (action === 'media.reserve') return { reservationId: 'res-1', authorization: { url: 'https://r2.example/put', requiredHeaders: { Authorization: 'sig' } } };
+        if (action === 'media.complete') return { id: 'm-1', version: 1 };
+        if (action === 'media.read') return { url: 'https://r2.example/preview' };
+        if (action === 'publication.suggest') {
+          const { siteIds } = payload as { readonly siteIds: readonly string[] };
+          return {
+            overrides: Object.fromEntries(
+              siteIds.map((siteId, index) => [siteId, { title: `Judul portal ${index}`, description: `Deskripsi portal ${index}.` }]),
+            ),
+          };
+        }
+        return {};
+      });
+      render(<ArticleCreateForm data={DATA} onSubmit={vi.fn(async () => null)} command={cmd} organizationId="org-1" />);
+      fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Panen Raya' } });
+      const picker = document.querySelector('[data-testid="featured-file-input"]') as HTMLInputElement;
+      await user.upload(picker, new File(['isi-gambar'], 'sampul.png', { type: 'image/png' }));
+      await waitFor(() => expect(screen.queryByLabelText('Teks alt sampul')).not.toBeNull());
+
+      const aiMock = vi.fn(async (_url: unknown, init?: { readonly body?: unknown }) => ({
+        ok: true,
+        json: async () => {
+          const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+          return body.action === 'cover-caption'
+            ? { caption: { alt: 'Suasana pasar pagi.', caption: 'Pedagang menata dagangan.' } }
+            : {};
+        },
+      }));
+      vi.stubGlobal('fetch', aiMock);
+      await user.click(screen.getByRole('button', { name: 'Isi alt dan caption otomatis' }));
+      await waitFor(() =>
+        expect((screen.getByLabelText('Teks alt sampul') as HTMLInputElement).value).toBe('Suasana pasar pagi.'),
+      );
+      expect((screen.getByLabelText('Keterangan sampul (opsional)') as HTMLInputElement).value).toBe(
+        'Pedagang menata dagangan.',
+      );
+      const sent = JSON.parse(String(vi.mocked(aiMock).mock.calls[0]?.[1]?.body ?? '{}')) as {
+        readonly action?: string;
+        readonly payload?: { readonly mimeType?: string; readonly title?: string };
+      };
+      expect(sent.action).toBe('cover-caption');
+      expect(sent.payload?.title).toBe('Panen Raya');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

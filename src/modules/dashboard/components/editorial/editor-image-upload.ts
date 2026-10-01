@@ -42,7 +42,7 @@ export interface UploadEditorImageOptions {
  * @param owner - Media owner; new drafts use `{ kind: 'organization' }`.
  * @param command - Dashboard command dispatcher (`media.reserve`, `media.complete`, `media.read`).
  * @param options - Purpose, compression budget, conversion progress, and injectable browser dependencies.
- * @returns Durable stored `src`, a preview URL for the editor canvas, the media id, the activated version, and the stored/thrifted byte counts.
+ * @returns Durable stored `src`, a preview URL for the editor canvas, the media id, the activated version, the stored/thrifted byte counts, plus the compressed bytes that were uploaded (already within the AI image allowlist, so callers needing the same bytes — e.g. an AI caption — reuse them instead of compressing twice).
  * @throws {Error} With an Indonesian user-facing message when the HEIC conversion fails, the source file is over the size ceiling, or any step fails.
  */
 export async function uploadEditorImage(
@@ -57,6 +57,8 @@ export async function uploadEditorImage(
   readonly version: number;
   readonly sizeBytes: number;
   readonly savingsBytes: number;
+  readonly compressedBlob: Blob;
+  readonly compressedMediaType: string;
 }> {
   const prepare = options.prepare ?? prepareImageUpload;
   const fetchFn = options.fetchFn ?? fetch;
@@ -111,6 +113,8 @@ export async function uploadEditorImage(
     version: typeof completed?.version === 'number' ? completed.version : 1,
     sizeBytes: prepared.sizeBytes,
     savingsBytes: prepared.savingsBytes,
+    compressedBlob: prepared.blob,
+    compressedMediaType: prepared.mediaType,
   } as const;
   try {
     const read = (await command('media.read', { mediaId })) as { readonly url?: string } | null;

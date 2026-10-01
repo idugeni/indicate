@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   generateArticleDraft,
+  ocCoverCaption,
   ocVisionDraft,
   parseArticleDraft,
+  parseCoverCaption,
   parseModerationAnalysis,
   parseTagSuggestion,
   parseVisionDraft,
@@ -84,6 +86,32 @@ describe('ai-usage fallback sibuk', () => {
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error).toContain('sibuk');
     }
+  });
+});
+
+describe('parseCoverCaption', () => {
+  it('mengurai alt dan caption beserta pagar kode', () => {
+    const caption = parseCoverCaption('```json\n{"alt":"Suasana pasar pagi.","caption":"Pedagang menata dagangan."}\n```');
+    expect(caption?.alt).toBe('Suasana pasar pagi.');
+    expect(caption?.caption).toBe('Pedagang menata dagangan.');
+  });
+
+  it('mengembalikan null bila keduanya kosong atau bukan json', () => {
+    expect(parseCoverCaption('{"alt":"","caption":""}')).toBeNull();
+    expect(parseCoverCaption('{"alt":"","caption":"  "}')).toBeNull();
+    expect(parseCoverCaption('bukan json')).toBeNull();
+  });
+
+  it('menolak gambar melebihi batas dan mime di luar allowlist tanpa memanggil model', async () => {
+    expect((await ocCoverCaption({ base64: 'x'.repeat(8_000_000), mimeType: 'image/jpeg' })).ok).toBe(false);
+    expect((await ocCoverCaption({ base64: 'aGVsbG8=', mimeType: 'image/avif' })).ok).toBe(false);
+    expect((await ocCoverCaption({ base64: '', mimeType: 'image/jpeg' })).ok).toBe(false);
+  });
+
+  it('melewati validasi gambar lalu menunda karena control plane belum dikonfigurasi', async () => {
+    const result = await ocCoverCaption({ base64: 'aGVsbG8=', mimeType: 'image/webp', title: 'Panen Raya' });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain('sibuk');
   });
 });
 
