@@ -146,7 +146,7 @@
         // GSC_ALLOW_DESTRUCTIVE sengaja tidak di-set. Tanpa itu `add_site`,
         // `delete_site`, dan `delete_sitemap` mati, dan MCP ini tidak bisa
         // menulis apa pun ke Search Console maupun ke Postgres. Script
-        // `npm run gsc:verify` tetap satu-satunya jalur yang boleh
+        // `npm run gsc:apply` tetap satu-satunya jalur yang boleh
         // mendaftarkan property dan submit sitemap, karena itu menulis DNS TXT
         // lewat Cloudflare.
         "type": "local",

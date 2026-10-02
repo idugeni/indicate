@@ -25,10 +25,10 @@
  * a confirmation step.
  *
  * Usage:
- *   npm run gsc:verify -- --apply
- *   npm run gsc:verify -- --apply --only=artikulasi.biz.id
- *   npm run gsc:verify -- --host=example.com --apply
- *   npm run gsc:verify -- --apply --skip-sitemaps
+ *   npm run gsc:apply -- --apply
+ *   npm run gsc:apply -- --apply --only=artikulasi.biz.id
+ *   npm run gsc:apply -- --host=example.com --apply
+ *   npm run gsc:apply -- --apply --skip-sitemaps
  *
  * A property that is already `siteOwner` but has lost its TXT record is also
  * picked up: the record is reissued and rewritten, because Google re-checks DNS
