@@ -732,6 +732,13 @@ describe('Formulir tulis artikel', () => {
   });
 
   it('mengirim status terjadwal beserta jadwal terbit', async () => {
+    // Read "besok" before interacting: crossing local midnight mid-test would
+    // otherwise compare two different days.
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const pad = (part: number) => String(part).padStart(2, '0');
+    const expectedDay = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+
     const user = userEvent.setup();
     const { submit, container } = setup({});
     await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
@@ -743,17 +750,18 @@ describe('Formulir tulis artikel', () => {
     fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const pad = (part: number) => String(part).padStart(2, '0');
-    const prefix = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
     await waitFor(() =>
       expect(submit).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'scheduled' }),
       ),
     );
     const payload = vi.mocked(submit).mock.calls[0]?.[0] as { readonly scheduledAt?: string } | undefined;
-    expect(typeof payload?.scheduledAt === 'string' && payload.scheduledAt.startsWith(prefix)).toBe(true);
+    expect(typeof payload?.scheduledAt).toBe('string');
+    // The shortcut carries the current clock, and `localDateTimeToIso` emits UTC.
+    // Compare in the browser's timezone, or an early-morning local time shifts the
+    // UTC date back a day and the comparison is meaningless.
+    const scheduled = new Date(payload?.scheduledAt as string);
+    expect(`${scheduled.getFullYear()}-${pad(scheduled.getMonth() + 1)}-${pad(scheduled.getDate())}`).toBe(expectedDay);
   });
 
   it('slug mengikuti judul kata per kata sampai disentuh manual', async () => {
