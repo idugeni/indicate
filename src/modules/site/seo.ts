@@ -222,9 +222,6 @@ export function buildSeoDocument(site: NetworkSiteData, options: { readonly path
   const canonical = resolveArticleCanonical(site, options.path, article);
   const image = absoluteSiteAssetUrl(site.context, article?.imageUrl ?? site.settings.defaultImageUrl);
   const logo = absoluteSiteAssetUrl(site.context, site.settings.logoUrl);
-  const publisherLogo = article?.publisherLogoUrl === null || article?.publisherLogoUrl === undefined
-    ? logo
-    : absoluteSiteAssetUrl(site.context, article.publisherLogoUrl);
   const publisher = article?.officialInstitution ?? article?.publisherName ?? siteName;
   const websiteId = absoluteSiteUrl(site.context, '/#website');
   const organizationId = absoluteSiteUrl(site.context, '/#organization');
@@ -236,9 +233,11 @@ export function buildSeoDocument(site: NetworkSiteData, options: { readonly path
       potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: absoluteSiteUrl(site.context, '/search?q={search_term_string}') }, 'query-input': 'required name=search_term_string' },
     },
     {
-      '@context': 'https://schema.org', '@type': 'Organization', '@id': organizationId, name: publisher, url: absoluteSiteUrl(site.context, '/'), logo: { '@type': 'ImageObject', url: logo },
+      '@context': 'https://schema.org', '@type': 'NewsMediaOrganization', '@id': organizationId, name: siteName,
+      legalName: publisher, url: absoluteSiteUrl(site.context, '/'), logo: { '@type': 'ImageObject', url: logo },
+      masthead: absoluteSiteUrl(site.context, '/tentang'),
       ...(aboutProfile === null
-        ? {}
+        ? { description }
         : {
             description: aboutProfile.bio ?? description,
             ...(sameAs.length === 0 ? {} : { sameAs }),
@@ -250,8 +249,8 @@ export function buildSeoDocument(site: NetworkSiteData, options: { readonly path
   ];
   if (aboutProfile !== null) {
     jsonLd.push({
-      '@context': 'https://schema.org', '@type': 'AboutPage', '@id': `${canonical}#about`, url: canonical, name: title, description,
-      inLanguage: 'id', about: { '@id': organizationId },
+      '@context': 'https://schema.org', '@type': 'ProfilePage', '@id': `${canonical}#about`, url: canonical, name: title, description,
+      inLanguage: 'id', mainEntity: { '@id': organizationId },
     });
     jsonLd.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Beranda', item: absoluteSiteUrl(site.context, '/') }, { '@type': 'ListItem', position: 2, name: title, item: canonical }] });
   }
@@ -267,7 +266,7 @@ export function buildSeoDocument(site: NetworkSiteData, options: { readonly path
       ...((article.authorDisplayName ?? article.authorName) === null
         ? {}
         : { author: { '@type': 'Person', name: article.authorDisplayName ?? article.authorName ?? article.attribution } }),
-      publisher: { '@type': 'Organization', name: publisher, logo: { '@type': 'ImageObject', url: publisherLogo } },
+      publisher: { '@id': organizationId },
       isPartOf: { '@id': websiteId },
     });
     jsonLd.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Beranda', item: absoluteSiteUrl(site.context, '/') }, ...(article.categoryName === null || article.categorySlug === null ? [] : [{ '@type': 'ListItem', position: 2, name: article.categoryName, item: absoluteSiteUrl(site.context, `/categories/${article.categorySlug}`) }]), { '@type': 'ListItem', position: article.categoryName === null ? 2 : 3, name: article.title, item: canonical }] });
@@ -303,12 +302,18 @@ export interface WebSiteSchema {
   readonly potentialAction?: Readonly<Record<string, unknown>>;
 }
 
-export interface OrganizationSchema {
+export interface NewsMediaOrganizationSchema {
   readonly '@context': 'https://schema.org';
-  readonly '@type': 'Organization';
+  readonly '@type': 'NewsMediaOrganization';
   readonly name: string;
+  readonly legalName?: string;
   readonly url: string;
   readonly logo?: string | Readonly<{ '@type': 'ImageObject'; url: string }>;
+  /** Page disclosing who runs the site; the newsroom-standards disclosure. */
+  readonly masthead?: string;
+  readonly description?: string;
+  readonly sameAs?: readonly string[];
+  readonly address?: Readonly<Record<string, unknown>>;
 }
 
 export interface NewsArticleSchema {
@@ -325,12 +330,20 @@ export interface NewsArticleSchema {
   readonly wordCount?: number;
   readonly articleSection?: string;
   readonly keywords?: string;
-  readonly author: Readonly<{ '@type': 'Person'; name: string }>;
-  readonly publisher: Readonly<{
-    '@type': 'Organization';
-    name: string;
-    logo?: Readonly<{ '@type': 'ImageObject'; url: string }>;
-  }>;
+  /** Absent while an article has no named author. */
+  readonly author?: Readonly<{ '@type': 'Person'; name: string }>;
+  readonly publisher: Readonly<{ '@id': string }>;
+}
+
+export interface ProfilePageSchema {
+  readonly '@context': 'https://schema.org';
+  readonly '@type': 'ProfilePage';
+  readonly '@id': string;
+  readonly url: string;
+  readonly name: string;
+  readonly description: string;
+  readonly inLanguage?: string;
+  readonly mainEntity: Readonly<{ '@id': string }>;
 }
 
 export interface BreadcrumbItemSchema {
@@ -360,8 +373,9 @@ export interface FaqPageSchema {
 
 export type JsonLdSchema =
   | WebSiteSchema
-  | OrganizationSchema
+  | NewsMediaOrganizationSchema
   | NewsArticleSchema
+  | ProfilePageSchema
   | BreadcrumbListSchema
   | FaqPageSchema
   | Readonly<Record<string, unknown>>;

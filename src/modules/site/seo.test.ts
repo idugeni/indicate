@@ -156,7 +156,7 @@ describe('buildSeoDocument', () => {
     expect(document.canonical).toBe('https://portal.example/berita-utama');
   });
 
-  it('memperkaya Organization dan AboutPage untuk halaman tentang', () => {
+  it('memperkaya NewsMediaOrganization dan ProfilePage untuk halaman tentang', () => {
     const article = makeNetworkArticle({
       publisherName: 'Humas Uji',
       publisherBio: 'Bio humas uji.',
@@ -167,19 +167,41 @@ describe('buildSeoDocument', () => {
     const base = makeNetworkSite([article]);
     const site = { ...base, settings: { ...base.settings, socialLinks: { x: 'https://x.com/portaluji' } } };
     const document = buildSeoDocument(site, { path: '/tentang' });
-    const organization = document.jsonLd.find((node) => node['@type'] === 'Organization');
+    const organization = document.jsonLd.find((node) => node['@type'] === 'NewsMediaOrganization');
     expect(organization?.['description']).toBe('Bio humas uji.');
     expect(organization?.['sameAs']).toEqual(
       expect.arrayContaining(['https://x.com/portaluji', 'https://instagram.com/humasuji']),
     );
     expect(organization?.['address']).toMatchObject({ addressLocality: 'Wonosobo', addressCountry: 'ID' });
-    expect(document.jsonLd.some((node) => node['@type'] === 'AboutPage')).toBe(true);
+    expect(document.jsonLd.some((node) => node['@type'] === 'ProfilePage')).toBe(true);
     expect(document.jsonLd.some((node) => node['@type'] === 'BreadcrumbList')).toBe(true);
   });
 
-  it('tidak menyematkan AboutPage di luar halaman tentang', () => {
+  it('tidak menyematkan ProfilePage di luar halaman tentang', () => {
     const document = buildSeoDocument(makeNetworkSite(), { path: '/' });
-    expect(document.jsonLd.some((node) => node['@type'] === 'AboutPage')).toBe(false);
+    expect(document.jsonLd.some((node) => node['@type'] === 'ProfilePage')).toBe(false);
+  });
+
+  it('menaikkan identitas penerbit ke NewsMediaOrganization dengan masthead', () => {
+    const document = buildSeoDocument(makeNetworkSite(), { path: '/' });
+    const organization = document.jsonLd.find((node) => node['@type'] === 'NewsMediaOrganization');
+    expect(document.jsonLd.some((node) => node['@type'] === 'Organization')).toBe(false);
+    expect(organization?.['name']).toBe('Portal');
+    expect(organization?.['masthead']).toBe('https://portal.example/tentang');
+  });
+
+  it('menautkan NewsArticle.publisher ke node organisasi lewat @id', () => {
+    const document = buildSeoDocument(makeNetworkSite(), { path: '/berita-utama', article: makeNetworkArticle() });
+    const article = document.jsonLd.find((node) => node['@type'] === 'NewsArticle');
+    expect(article?.['publisher']).toEqual({ '@id': 'https://portal.example/#organization' });
+    expect(article?.['publisher']).not.toHaveProperty('name');
+  });
+
+  it('menyembunyikan author pada artikel tanpa penulis bernama', () => {
+    const anonymous = makeNetworkArticle({ authorName: null, authorDisplayName: null });
+    const document = buildSeoDocument(makeNetworkSite(), { path: '/berita-utama', article: anonymous });
+    const article = document.jsonLd.find((node) => node['@type'] === 'NewsArticle');
+    expect(article).not.toHaveProperty('author');
   });
 
   it('menerapkan override deskripsi regional', () => {
