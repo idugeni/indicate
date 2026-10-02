@@ -2,6 +2,8 @@ import type { PublishingState } from '@/modules/dashboard/models';
 
 export type { PublishingState };
 
+export type MediaOwnerKind = MediaOwner['kind'];
+
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | readonly JsonValue[] | { readonly [key: string]: JsonValue };
 

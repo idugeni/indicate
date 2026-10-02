@@ -41,6 +41,15 @@ export const mediaCompletionSchema = z.object({
   .refine((value) => (value.widthPx === undefined) === (value.heightPx === undefined), 'widthPx and heightPx must travel together')
   .refine((value) => (value.focalX === undefined) === (value.focalY === undefined), 'focalX and focalY must travel together');
 export const mediaReadSchema = z.object({ mediaId: z.uuid() }).strict();
+export const mediaReadManySchema = z.object({ mediaIds: z.array(z.uuid()).min(1).max(24) }).strict();
+export const mediaListSchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(24),
+  cursor: z.string().trim().min(1).max(100).optional(),
+  owner: z.enum(['article', 'site', 'organization']).optional(),
+  purpose: z.enum(MEDIA_PURPOSES).optional(),
+  state: z.enum(['active', 'archived', 'rejected']).optional(),
+  search: z.string().trim().min(1).max(120).optional(),
+}).strict();
 export const mediaArchiveSchema = z.object({ mediaId: z.uuid(), expectedVersion: z.number().int().positive() }).strict();
 export const mediaMetadataSchema = z.object({
   mediaId: z.uuid(),

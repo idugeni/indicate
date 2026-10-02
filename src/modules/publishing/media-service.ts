@@ -3,11 +3,11 @@ import { buildScopedObjectKey, buildThumbObjectKey, isArticleScopedPurpose, isPu
 import type { MediaAssetRecord } from '@/modules/publishing/models';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import type { ExactObjectAuthorization, ObjectStoragePort } from '@/integrations/storage/ports';
-import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type PublishingRepository } from '@/modules/publishing/ports';
+import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type MediaListPage, type PublishingRepository } from '@/modules/publishing/ports';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import { sanitizeError } from '@/core/security/redaction';
 import type { Result } from '@/core/result';
-import { mediaArchiveSchema, mediaCompletionSchema, mediaMetadataSchema, mediaReadSchema, mediaReservationSchema } from '@/modules/publishing/schemas';
+import { mediaArchiveSchema, mediaCompletionSchema, mediaListSchema, mediaMetadataSchema, mediaReadManySchema, mediaReadSchema, mediaReservationSchema } from '@/modules/publishing/schemas';
 
 interface ClockLike { now(): Date }
 export interface MediaPolicy {
@@ -143,8 +143,10 @@ export class MediaService {
     }
   }
 
-  async list(actor: AuthorizedTenantActorContext): Promise<Result<readonly MediaAssetRecord[], PublicErrorEnvelope>> {
-    try { return { ok: true, value: await this.repository.listMedia(actor) }; }
+  async list(actor: AuthorizedTenantActorContext, raw: unknown = {}): Promise<Result<MediaListPage, PublicErrorEnvelope>> {
+    const parsed = mediaListSchema.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Invalid media list query.', actor.requestId) };
+    try { return { ok: true, value: await this.repository.listMedia(actor, parsed.data) }; }
     catch (error) { return error instanceof PublishingAccessDeniedError ? this.denied(actor, 'media.list.denied', 'media') : this.failure(actor); }
   }
 
@@ -153,6 +155,27 @@ export class MediaService {
     try {
       const media = await this.repository.authorizeTenantMedia(actor, parsed.data.mediaId); if (media === null) return this.denied(actor, 'media.access.denied', 'media');
       return { ok: true, value: await this.storage.authorizeExactGet(media.objectKey, this.policy.readTtlSeconds) };
+    } catch (error) { return error instanceof PublishingAccessDeniedError ? this.denied(actor, 'media.access.denied', 'media') : this.failure(actor); }
+  }
+
+  /**
+   * Authorize a bounded batch of media reads with one round trip.
+   *
+   * @param actor - Authorized tenant actor.
+   * @param raw - Payload with 1-24 media ids.
+   * @returns Per-item presigned URLs with expiry, in caller order.
+   */
+  async authorizeTenantReadMany(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<readonly { readonly mediaId: string; readonly url: string; readonly expiresAt: string }[], PublicErrorEnvelope>> {
+    const parsed = mediaReadManySchema.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Invalid media batch read.', actor.requestId) };
+    try {
+      const records = await this.repository.authorizeTenantMediaMany(actor, parsed.data.mediaIds);
+      const items = [];
+      for (const record of records) {
+        const authorization = await this.storage.authorizeExactGet(record.objectKey, this.policy.readTtlSeconds);
+        items.push({ mediaId: record.id, url: authorization.url, expiresAt: authorization.expiresAt.toISOString() });
+      }
+      return { ok: true, value: items };
     } catch (error) { return error instanceof PublishingAccessDeniedError ? this.denied(actor, 'media.access.denied', 'media') : this.failure(actor); }
   }
 

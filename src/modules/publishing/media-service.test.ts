@@ -306,6 +306,35 @@ describe('MediaService read archive', () => {
   });
 });
 
+describe('MediaService paged list dan batch read', () => {
+  it('meneruskan opsi halaman dan menolak kueri rusak', async () => {
+    const listMedia = vi.fn(async () => ({ items: [{ id: MEDIA }], nextCursor: 'kursor' }));
+    const { service } = harness({ listMedia });
+    const paged = await service.list(actor, { limit: 24, search: 'pasar' });
+    expect(paged.ok).toBe(true);
+    expect(listMedia).toHaveBeenCalledWith(actor, expect.objectContaining({ limit: 24, search: 'pasar' }));
+
+    const broken = await service.list(actor, { limit: 500 });
+    expect(broken.ok).toBe(false);
+  });
+
+  it('mengotorisasi baca batch dalam satu respons', async () => {
+    const authorizeTenantMediaMany = vi.fn(async () => [{ id: MEDIA, objectKey: 'org/object.jpg' }]);
+    const { service } = harness(
+      { authorizeTenantMediaMany },
+      { authorizeExactGet: vi.fn(async () => ({ url: 'https://get.example', headers: {}, expiresAt: new Date('2026-10-02T00:10:00.000Z') })) },
+    );
+    const result = await service.authorizeTenantReadMany(actor, { mediaIds: [MEDIA] });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value).toEqual([{ mediaId: MEDIA, url: 'https://get.example', expiresAt: '2026-10-02T00:10:00.000Z' }]);
+    expect(authorizeTenantMediaMany).toHaveBeenCalledTimes(1);
+
+    const broken = await service.authorizeTenantReadMany(actor, { mediaIds: [] });
+    expect(broken.ok).toBe(false);
+  });
+});
+
 describe('MediaService updateMetadata', () => {
   it('meneruskan metadata editorial ke repo', async () => {
     const updateMediaMetadata = vi.fn(async () => ({ id: MEDIA, version: 2 }));

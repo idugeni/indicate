@@ -358,3 +358,84 @@ describe('snapshot() hanya membaca koleksi yang diminta', () => {
     expect(result?.sites).toHaveLength(1);
   });
 });
+
+describe('listMedia paginasi keyset dan baca batch', () => {
+  const actor = {
+    organizationId: 'o1',
+    actorId: 'u1',
+    actorType: 'user',
+    permissionSet: new Set<string>(),
+    regionScopeId: null,
+    entryPoint: 'dashboard',
+    requestId: 'req-1',
+    verifiedAuthUserId: 'u1',
+  } as never;
+
+  function libraryRow(id: string, createdAt: string) {
+    return { ...mediaRow(), id, createdAt: new Date(createdAt), updatedAt: new Date(createdAt) };
+  }
+
+  function pageHarness(mainRows: readonly unknown[]) {
+    let selects = 0;
+    const recorded: { readonly method: string; readonly args: readonly unknown[] }[] = [];
+    const inserts: unknown[][] = [];
+    const chainable: Record<string, (...args: readonly unknown[]) => unknown> = {};
+    for (const method of ['from', 'where', 'innerJoin', 'leftJoin', 'orderBy']) {
+      chainable[method] = (...args: readonly unknown[]) => {
+        recorded.push({ method, args });
+        return chainable;
+      };
+    }
+    chainable.limit = async (...args: readonly unknown[]) => {
+      recorded.push({ method: 'limit', args });
+      selects += 1;
+      return selects === 1 ? [{ userId: 'u1' }] : [...mainRows];
+    };
+    const transaction = {
+      execute: async () => [],
+      select: () => chainable,
+      insert: () => ({
+        values: async (...args: readonly unknown[]) => {
+          inserts.push([...args]);
+          return [];
+        },
+      }),
+    };
+    const database = { transaction: async (callback: (tx: unknown) => unknown) => callback(transaction) };
+    return { repository: new DrizzlePublishingRepository(database as never), recorded, inserts };
+  }
+
+  it('membatasi halaman dan menerbitkan kursor berikutnya', async () => {
+    const rows = [
+      libraryRow('m-3', '2026-09-24T03:00:00.000Z'),
+      libraryRow('m-2', '2026-09-24T02:00:00.000Z'),
+      libraryRow('m-1', '2026-09-24T01:00:00.000Z'),
+    ];
+    const { repository, recorded } = pageHarness(rows);
+    const page = await repository.listMedia(actor, { limit: 2 });
+    expect(page.items.map((item) => item.id)).toEqual(['m-3', 'm-2']);
+    expect(page.nextCursor).toBe('2026-09-24T02:00:00.000Z|m-2');
+    expect(recorded.filter((call) => call.method === 'limit').map((call) => call.args[0])).toContain(3);
+  });
+
+  it('kursor rusak kembali ke halaman pertama tanpa galat', async () => {
+    const { repository } = pageHarness([libraryRow('m-1', '2026-09-24T01:00:00.000Z')]);
+    const page = await repository.listMedia(actor, { limit: 2, cursor: 'bukan-kursor' });
+    expect(page.items.map((item) => item.id)).toEqual(['m-1']);
+    expect(page.nextCursor).toBe(null);
+  });
+
+  it('baca batch mengembalikan urutan pemanggil dengan satu audit', async () => {
+    const rows = [libraryRow('m-1', '2026-09-24T01:00:00.000Z'), libraryRow('m-3', '2026-09-24T03:00:00.000Z')];
+    const { repository, inserts } = pageHarness(rows);
+    const result = await repository.authorizeTenantMediaMany(actor, ['m-3', 'm-1', 'm-2']);
+    expect(result.map((item) => item.id)).toEqual(['m-3', 'm-1']);
+    expect(inserts).toHaveLength(1);
+  });
+
+  it('baca batch kosong tanpa audit', async () => {
+    const { repository, inserts } = pageHarness([]);
+    expect(await repository.authorizeTenantMediaMany(actor, [])).toEqual([]);
+    expect(inserts).toHaveLength(0);
+  });
+});

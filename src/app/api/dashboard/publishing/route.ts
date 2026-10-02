@@ -101,8 +101,17 @@ async function handleGET(request: Request) {
     if (parsed.data.view === 'media') {
       const snapshot = await context.repository.snapshot(context.actor.organizationId, context.actor.regionScopeId ?? null, MEDIA_SNAPSHOT_COLLECTIONS);
       if (snapshot === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
-      const listed = await context.media.list(context.actor); if (!listed.ok) return NextResponse.json(listed.error, { status: statusFor(listed.error) });
-      return NextResponse.json({ media: listed.value, articles: snapshot.articles, sites: snapshot.sites });
+      const listed = await context.media.list(context.actor, {
+        limit: url.searchParams.get('limit') ?? undefined,
+        cursor: url.searchParams.get('cursor') ?? undefined,
+        owner: url.searchParams.get('owner') ?? undefined,
+        purpose: url.searchParams.get('purpose') ?? undefined,
+        state: url.searchParams.get('state') ?? undefined,
+        search: url.searchParams.get('search') ?? undefined,
+      });
+      if (!listed.ok) return NextResponse.json(listed.error, { status: statusFor(listed.error) });
+      const counts = await context.repository.mediaOwnerCounts(context.actor).catch(() => []);
+      return NextResponse.json({ media: listed.value.items, nextCursor: listed.value.nextCursor, mediaCounts: counts, articles: snapshot.articles, sites: snapshot.sites });
     }
     if (!context.actor.permissionSet.has(PUBLISHING_PERMISSIONS.publishingRead)) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     if (parsed.data.jobId !== undefined) { const result = await context.publication.status(context.actor, { jobId: parsed.data.jobId }); return result.ok ? NextResponse.json(result.value) : NextResponse.json(result.error, { status: statusFor(result.error) }); }
@@ -125,6 +134,8 @@ async function handlePOST(request: Request) {
       'media.archive': (payload) => context.media.archive(context.actor, payload),
       'media.update': (payload) => context.media.updateMetadata(context.actor, payload),
       'media.read': (payload) => context.media.authorizeTenantRead(context.actor, payload),
+      'media.readMany': (payload) => context.media.authorizeTenantReadMany(context.actor, payload),
+      'media.list': (payload) => context.media.list(context.actor, payload),
       'publication.request': (payload) => context.publication.request(context.actor, payload),
       'publication.requestBulk': (payload) => context.publication.requestBulk(context.actor, payload),
       'publication.suggest': (payload) => context.publication.suggest(context.actor, payload),

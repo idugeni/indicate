@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, ilike, inArray, isNotNull, isNull, lt, lte, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext, HostnameContext } from '@/core/operation-context';
@@ -12,12 +12,11 @@ import type {
 import { aggregateJobState, isAllowedTargetTransition, projectPublicationResult, seedInitialViewCount } from '@/modules/publishing/publication-policy';
 import { regionScopeCovers } from '@/modules/site/region-scope';
 import { isArticleScopedPurpose } from '@/modules/publishing/object-key';
-import { duplicateIssuesAcrossSites, excerptForDescription } from '@/modules/publishing/variant-suggester';
 import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
 import {
   PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type AcceptPublicationInput, type AcceptPublicationResult,
   type ActivateMediaInput, type ArticleSiteRobotsInput, type ArticleSiteRobotsResult, type ArticleVariantContext, type JobNotificationContext, type PublicationTargetSelection, type ReserveMediaCandidate, type ReservationCandidateResult, type PublishingRepository, type PublishingSnapshotCollection,
-  type TargetTransitionInput, type UpdateMediaMetadataInput,
+  type TargetTransitionInput, type UpdateMediaMetadataInput, type MediaListOptions, type MediaListPage, type MediaOwnerCount,
 } from '@/modules/publishing/ports';
 import { redact } from '@/core/security/redaction';
 import {
@@ -96,8 +95,25 @@ export const MEDIA_SNAPSHOT_COLLECTIONS: ReadonlySet<PublishingSnapshotCollectio
 /** Collections the publishing queue and distributing form render. */
 export const PUBLISHING_SNAPSHOT_COLLECTIONS: ReadonlySet<PublishingSnapshotCollection> = new Set<PublishingSnapshotCollection>(['articles', 'sites', 'domains', 'articleSites']);
 
-/** Row ceiling for the dashboard media library; see `listMedia()`. */
-const MEDIA_LIST_MAX_ROWS = 1_000;
+/** Default and maximum rows for one media library page. */
+export const MEDIA_LIST_DEFAULT_LIMIT = 24;
+const MEDIA_LIST_MAX_LIMIT = 100;
+
+/**
+ * Parse an opaque media list cursor (`createdAt|id`).
+ *
+ * @param cursor - Raw cursor value from the caller.
+ * @returns Cursor position, or null when missing or malformed.
+ */
+function parseMediaCursor(cursor: string | undefined): { readonly createdAt: Date; readonly id: string } | null {
+  if (cursor === undefined) return null;
+  const separator = cursor.indexOf('|');
+  if (separator < 0) return null;
+  const createdAt = new Date(cursor.slice(0, separator));
+  const id = cursor.slice(separator + 1);
+  if (Number.isNaN(createdAt.getTime()) || id === '') return null;
+  return { createdAt, id };
+}
 
 /**
  * Row ceiling for one job's targets, read for update.
@@ -321,11 +337,60 @@ export class DrizzlePublishingRepository implements PublishingRepository {
    * @param actor - Authorized tenant actor.
    * @returns Active and archived media, newest first.
    */
-  async listMedia(actor: AuthorizedTenantActorContext) {
+  /**
+   * List one keyset page of the dashboard media library, newest first.
+   *
+   * @remarks Reserved rows are excluded in SQL and the result is keyset-bounded,
+   * so a tenant with a long media history cannot turn this into an unbounded
+   * read. The cursor is opaque (`createdAt|id`); an unparsable cursor yields no
+   * extra predicate beyond the first page rather than an error, keeping
+   * load-more idempotent. See `AGENTS.md` §"Database access & egress".
+   *
+   * @param actor - Authorized tenant actor.
+   * @param options - Page size (clamped 1-100), opaque cursor, and optional filters.
+   * @returns Media page plus the cursor for the next page, if any.
+   */
+  async listMedia(actor: AuthorizedTenantActorContext, options?: MediaListOptions | undefined): Promise<MediaListPage> {
     return this.database.transaction(async (transaction) => {
       await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.mediaRead);
-      const rows = await transaction.select().from(media).where(and(eq(media.organizationId, actor.organizationId), sql`${media.state} <> 'reserved'`)).orderBy(desc(media.createdAt)).limit(MEDIA_LIST_MAX_ROWS);
-      return rows.map(mapMedia);
+      const limit = Math.min(Math.max(options?.limit ?? MEDIA_LIST_DEFAULT_LIMIT, 1), MEDIA_LIST_MAX_LIMIT);
+      const filters = [];
+      if (options?.owner === 'article') filters.push(isNotNull(media.articleId));
+      else if (options?.owner === 'site') filters.push(isNotNull(media.siteId));
+      else if (options?.owner === 'organization') filters.push(and(isNull(media.articleId), isNull(media.siteId)));
+      if (options?.purpose !== undefined) filters.push(eq(media.purpose, options.purpose));
+      if (options?.state !== undefined) filters.push(eq(media.state, options.state));
+      if (options?.search !== undefined) {
+        const needle = `%${escapeLikePattern(options.search)}%`;
+        filters.push(or(ilike(media.objectKey, needle), ilike(media.altText, needle), ilike(media.caption, needle)));
+      }
+      const cursor = parseMediaCursor(options?.cursor);
+      if (cursor !== null) {
+        filters.push(or(lt(media.createdAt, cursor.createdAt), and(eq(media.createdAt, cursor.createdAt), lt(media.id, cursor.id))));
+      }
+      const rows = await transaction.select().from(media).where(and(eq(media.organizationId, actor.organizationId), sql`${media.state} <> 'reserved'`, ...filters)).orderBy(desc(media.createdAt), desc(media.id)).limit(limit + 1);
+      const page = rows.slice(0, limit).map(mapMedia);
+      const last = page[page.length - 1];
+      return { items: page, nextCursor: rows.length > limit && last !== undefined ? `${last.createdAt}|${last.id}` : null };
+    });
+  }
+  /**
+   * Aggregate media counts per owner kind for library folder badges.
+   *
+   * @param actor - Authorized tenant actor.
+   * @returns One row per non-empty owner kind with row count and total bytes.
+   */
+  async mediaOwnerCounts(actor: AuthorizedTenantActorContext): Promise<readonly MediaOwnerCount[]> {
+    return this.database.transaction(async (transaction) => {
+      await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.mediaRead);
+      const value = await transaction.execute(sql`select case when article_id is not null then 'article' when site_id is not null then 'site' else 'organization' end as kind, count(*) as count, coalesce(sum(size_bytes), 0) as bytes from media where organization_id = ${actor.organizationId} and state <> 'reserved' group by 1`);
+      const counts: MediaOwnerCount[] = [];
+      for (const row of value as unknown as readonly Record<string, unknown>[]) {
+        const kind = row.kind;
+        if (kind !== 'article' && kind !== 'site' && kind !== 'organization') continue;
+        counts.push({ kind, count: Number(row.count ?? 0), bytes: Number(row.bytes ?? 0) });
+      }
+      return counts;
     });
   }
   async authorizeTenantMedia(actor: AuthorizedTenantActorContext, mediaId: string) {
@@ -335,6 +400,27 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       const row = rows[0]; if (row === undefined) return null;
       await this.audit(transaction, actor, 'media.access.authorize', 'media', mediaId, { scope: 'tenant' }, new Date());
       return mapMedia(row);
+    });
+  }
+  /**
+   * Authorize a bounded batch of active tenant media in one transaction.
+   *
+   * @remarks One SELECT plus one summary audit row regardless of batch size,
+   * so preview grids cost one round trip instead of one per image. Members
+   * missing, foreign, or inactive are skipped silently (non-disclosing).
+   *
+   * @param actor - Authorized tenant actor.
+   * @param mediaIds - Media ids to authorize, already bounded by schema (max 24).
+   * @returns Authorized records in caller order, without the skipped members.
+   */
+  async authorizeTenantMediaMany(actor: AuthorizedTenantActorContext, mediaIds: readonly string[]): Promise<readonly MediaAssetRecord[]> {
+    return this.database.transaction(async (transaction) => {
+      await this.actorContext(transaction, actor); await this.authorize(transaction, actor, PUBLISHING_PERMISSIONS.mediaRead);
+      if (mediaIds.length === 0) return [];
+      const rows = await transaction.select().from(media).where(and(eq(media.organizationId, actor.organizationId), inArray(media.id, [...mediaIds]), eq(media.state, 'active'))).limit(mediaIds.length);
+      await this.audit(transaction, actor, 'media.access.authorizeMany', 'media', null, { count: rows.length, scope: 'tenant' }, new Date());
+      const position = new Map(mediaIds.map((id, index) => [id, index] as const));
+      return rows.map(mapMedia).sort((a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0));
     });
   }
   async authorizePublicMedia(context: HostnameContext, mediaId: string, requestId: string) {
@@ -391,42 +477,6 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       .innerJoin(articleSites, and(eq(articleSites.organizationId, articles.organizationId), eq(articleSites.articleId, articles.id)))
       .where(and(liveArticle, publishedCopy, sql`${articles.bodyJson}::text LIKE ${`%media:${escapeLikePattern(mediaId)}%`} ESCAPE '\\'`)).limit(1);
     return inline.length > 0;
-  }
-
-  private async rejectCrossSiteDuplicates(
-    transaction: Transaction,
-    organizationId: string,
-    articleId: string,
-    canonicalTitle: string,
-    canonicalDescription: string,
-    siteIds: readonly string[],
-    overrides: Readonly<Record<string, { readonly title?: string | undefined; readonly description?: string | undefined }>>,
-  ): Promise<void> {
-    const rows = await transaction.select({
-      siteId: articleSites.siteId, customTitle: articleSites.customTitle, customDescription: articleSites.customDescription,
-      active: articleSites.active, state: articleSites.state,
-    }).from(articleSites).where(and(eq(articleSites.organizationId, organizationId), eq(articleSites.articleId, articleId)));
-    const effective = new Map<string, { title: string; description: string }>();
-    for (const row of rows) {
-      if (!row.active || (row.state !== 'queued' && row.state !== 'processing' && row.state !== 'retrying' && row.state !== 'published')) continue;
-      effective.set(row.siteId, {
-        title: row.customTitle ?? canonicalTitle,
-        description: row.customDescription ?? canonicalDescription,
-      });
-    }
-    for (const siteId of siteIds) {
-      const prior = effective.get(siteId);
-      effective.set(siteId, {
-        title: overrides[siteId]?.title ?? prior?.title ?? canonicalTitle,
-        description: overrides[siteId]?.description ?? prior?.description ?? canonicalDescription,
-      });
-    }
-    const issues = duplicateIssuesAcrossSites(
-      [...effective].map(([siteId, value]) => ({ siteId, title: value.title, description: value.description })),
-    );
-    if (issues.length > 0) {
-      throw new PublishingConflictError('duplicate_variant');
-    }
   }
 
   async getArticleVariantContext(actor: AuthorizedTenantActorContext, articleId: string): Promise<ArticleVariantContext | null> {
@@ -487,7 +537,6 @@ export class DrizzlePublishingRepository implements PublishingRepository {
             .where(and(eq(media.organizationId, actor.organizationId), inArray(media.id, overrideImageIds), eq(media.state, 'active'), eq(media.purpose, 'article-cover'), sql`${media.mediaType} LIKE 'image/%'`));
           if (coverRows.length !== overrideImageIds.length) throw new PublishingAccessDeniedError();
         }
-        await this.rejectCrossSiteDuplicates(transaction, actor.organizationId, input.articleId, articleRows[0]!.title, excerptForDescription(articleRows[0]!.body), distinctSites, input.overrides);
         const jobRows = await transaction.insert(publishingJobs).values({ organizationId: actor.organizationId, id: input.jobId, articleId: input.articleId, idempotencyKey: input.idempotencyKey, fingerprint: input.fingerprint, fingerprintVersion: input.fingerprintVersion, state: 'queued', options: input.options as Record<string, unknown>, dispatchStatus: 'pending', nextDispatchAt: new Date(input.publishAt), createdAt: new Date(input.now), updatedAt: new Date(input.now) }).returning();
         for (let index = 0; index < distinctSites.length; index += 1) {
           const siteId = distinctSites[index]!;

@@ -1,10 +1,39 @@
 import type { AuthorizedTenantActorContext, HostnameContext } from '@/core/operation-context';
 import type { CascadeSiteLevel } from '@/modules/site/site-cascade';
 import type {
-  ClaimedCleanupTask, MediaAssetRecord, MediaOwner, MediaReservationRecord, PublicationJobRecord,
+  ClaimedCleanupTask, MediaAssetRecord, MediaOwner, MediaOwnerKind, MediaReservationRecord, PublicationJobRecord,
   PublicationOptions, PublicationOverride, PublicationStatusProjection, PublicationTargetRecord, PublishingSnapshotCollection, PublishingState, PublishingTenantSnapshot, TargetTransitionCommit,
   TransitionReceiptRecord, WorkerClaim,
 } from '@/modules/publishing/models';
+
+/**
+ * Bounded media list query; every field optional with safe defaults.
+ */
+export interface MediaListOptions {
+  readonly limit?: number | undefined;
+  readonly cursor?: string | undefined;
+  readonly owner?: MediaOwnerKind | undefined;
+  readonly purpose?: string | undefined;
+  readonly state?: 'active' | 'archived' | 'rejected' | undefined;
+  readonly search?: string | undefined;
+}
+
+/**
+ * One media list page plus the cursor for the next page, if any.
+ */
+export interface MediaListPage {
+  readonly items: readonly MediaAssetRecord[];
+  readonly nextCursor: string | null;
+}
+
+/**
+ * Aggregate media counts per owner kind for library folder badges.
+ */
+export interface MediaOwnerCount {
+  readonly kind: MediaOwnerKind;
+  readonly count: number;
+  readonly bytes: number;
+}
 
 export interface ReserveMediaCandidate {
   readonly reservationId: string;
@@ -138,8 +167,10 @@ export interface PublishingRepository {
   rejectMedia(actor: AuthorizedTenantActorContext, reservationId: string, reason: string, now: string): Promise<void>;
   archiveMedia(actor: AuthorizedTenantActorContext, mediaId: string, expectedVersion: number, now: string): Promise<MediaAssetRecord>;
   updateMediaMetadata(actor: AuthorizedTenantActorContext, input: UpdateMediaMetadataInput): Promise<MediaAssetRecord>;
-  listMedia(actor: AuthorizedTenantActorContext): Promise<readonly MediaAssetRecord[]>;
+  listMedia(actor: AuthorizedTenantActorContext, options?: MediaListOptions | undefined): Promise<MediaListPage>;
+  mediaOwnerCounts(actor: AuthorizedTenantActorContext): Promise<readonly MediaOwnerCount[]>;
   authorizeTenantMedia(actor: AuthorizedTenantActorContext, mediaId: string): Promise<MediaAssetRecord | null>;
+  authorizeTenantMediaMany(actor: AuthorizedTenantActorContext, mediaIds: readonly string[]): Promise<readonly MediaAssetRecord[]>;
   authorizePublicMedia(context: HostnameContext, mediaId: string, requestId: string): Promise<MediaAssetRecord | null>;
   recordDenial(actor: AuthorizedTenantActorContext, action: string, targetType: string, now: string): Promise<void>;
 
