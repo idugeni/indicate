@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (243 migrations):
+-- Reviewed sources, in journal order (244 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -257,6 +257,7 @@
 --   241  20261001050000_national_articles  ledger sha256:dbdf1483b56136f410fed8f898f4f10fac8aaa78fca789cc83350fd859f0aefc
 --   242  20261001060000_orphan_cover_sweep  ledger sha256:ac1b188530fccdf89dedc520bca454a8c88c5b4190801b9be662548b6e05c332
 --   243  20261002000000_dashboard_list_pagination  ledger sha256:b41fe6f64d31744110e6e6249189f2d7a4f39bc6c7fc99b048a11bcfe5887b28
+--   244  20261003040000_backfill_article_author  ledger sha256:ee62a52cdd0399874d6cdaa3a5ec537a297b90c0e5b98a7f0669d32f321e8b8b
 
 BEGIN;
 
@@ -20216,4 +20217,46 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (243, 'dashboard_list_pagination', 'sha256:19e96dd45ee3728bdd787ffdfa4fb79d2b5e54f9d4ed8696957c3de2f502f05b');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b41fe6f64d31744110e6e6249189f2d7a4f39bc6c7fc99b048a11bcfe5887b28', 1790899200000);
+
+-- ----------------------------------------------------------------------
+-- 20261003040000_backfill_article_author
+-- ----------------------------------------------------------------------
+-- Give the unnamed articles a byline so `NewsArticle.author` is emitted.
+--
+-- `seo.ts` only emits `author` when an article resolves a display name, and
+-- Google lists `author` among the recommended `Article` properties: it drives
+-- the byline shown in search results. Fourteen active articles had
+-- `author_id IS NULL`, so their structured data silently omitted the field
+-- while the thirty that name "Indicate" carried it. The corpus had two
+-- bylines only because those fourteen were left unset, not because they
+-- belong to a different desk.
+--
+-- Scoped to the operator organization so a tenant's own articles are never
+-- reassigned, and to `status = 'active'` so drafts stay editable. The guard is
+-- `author_id IS NULL`, so re-running matches nothing and a row an editor has
+-- since attributed is left alone. Version churn is intentional: `author_id` is
+-- a real editorial change, and the optimistic-concurrency token must move with
+-- it.
+UPDATE public.articles AS article
+   SET author_id = (
+         SELECT author.id
+           FROM public.authors AS author
+          WHERE author.display_name = 'Indicate'
+            AND author.organization_id = article.organization_id
+       ),
+       version = article.version + 1,
+       updated_at = now()
+  FROM public.organizations AS organization
+ WHERE article.organization_id = organization.id
+   AND organization.kind = 'operator'
+   AND article.status = 'active'
+   AND article.author_id IS NULL
+   AND EXISTS (
+         SELECT 1
+           FROM public.authors AS candidate
+          WHERE candidate.display_name = 'Indicate'
+            AND candidate.organization_id = article.organization_id
+       );
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ee62a52cdd0399874d6cdaa3a5ec537a297b90c0e5b98a7f0669d32f321e8b8b', 1790985600000);
 COMMIT;
