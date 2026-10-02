@@ -5,6 +5,7 @@ import {
   articleCategories,
   articles,
   articleSites,
+  auditLogs,
   authors,
   categories,
   domains,
@@ -42,7 +43,7 @@ function scopeHarness(results: Record<string, unknown[]>, executeImpl?: () => Pr
     Object.entries({
       organizations, domains, regions, sites, siteSettings, roles, rolePermissions, memberships,
       publishers, officialAffiliations, categories, authors, articles, articleCategories, articleSites,
-      media, publishingJobs, publishingJobTargets,
+      media, publishingJobs, publishingJobTargets, auditLogs,
     }).map(([name, table]) => [table, name]),
   );
   let pendingProjection: readonly string[] = [];
@@ -190,8 +191,21 @@ describe('scoped dashboard reads', () => {
     expect(fromTables).toContain('categories');
   });
 
-  it('execute(scope) menolak operasi yang menyentuh koleksi di luar scope', async () => {
-    const { repository } = scopeHarness({ organizations: ORG, memberships: MEMBER });
+  it('auditLogPage memakai keyset seq dan tanpa payload before/after', async () => {
+    const { repository, selections } = scopeHarness({ organizations: ORG, memberships: MEMBER });
+    const first = await repository.auditLogPage(ACTOR as never, 'audit.read', {});
+    expect(first.logs).toEqual([]);
+    expect(first.nextCursor).toBeNull();
+    const auditSelections = selections.filter((selection) => selection.table === 'auditLogs');
+    expect(auditSelections.length).toBeGreaterThan(0);
+    for (const selection of auditSelections) {
+      expect(selection.projection).not.toContain('before');
+      expect(selection.projection).not.toContain('after');
+      expect(selection.projection).toContain('seq');
+    }
+  });
+
+  it('execute(scope) menolak operasi yang menyentuh koleksi di luar scope', async () => {    const { repository } = scopeHarness({ organizations: ORG, memberships: MEMBER });
     await expect(
       repository.execute(
         ACTOR as never,

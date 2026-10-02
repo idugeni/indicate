@@ -317,6 +317,9 @@ export interface PublisherScope {
 /** Scoped editorial read: SQL-filtered bodyless articles plus the lookups the board needs. */
 export interface EditorialScope {
   readonly articles: readonly ArticleRecord[];
+  readonly articlesNextCursor: string | null;
+  readonly total: number;
+  readonly tagOptions: readonly { readonly tag: string; readonly count: number }[];
   readonly articleSites: readonly ArticleSiteRecord[];
   readonly categories: readonly CategoryRecord[];
   readonly authors: readonly AuthorRecord[];
@@ -354,11 +357,17 @@ export interface NetworkArticlesScope {
 export interface ArticleFilter {
   readonly regionId?: string;
   readonly siteId?: string;
+  readonly siteHostname?: string;
   readonly categoryId?: string;
   readonly publisherId?: string;
   readonly authorId?: string;
   readonly publicationState?: PublishingState;
+  readonly status?: string;
+  readonly tag?: string;
   readonly search?: string;
+  readonly sort?: 'updated' | 'published-desc' | 'published-asc' | 'title' | 'syndicated';
+  readonly limit?: number;
+  readonly cursor?: string;
 }
 
 export interface EditorialSummaryArticle {

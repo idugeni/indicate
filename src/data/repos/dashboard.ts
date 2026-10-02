@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
@@ -14,14 +14,23 @@ import {
 } from '@/data/schema';
 import type * as schema from '@/data/schema';
 import { completeInvalidationValues } from '@/data/repos/shared/delivery-invalidation-values';
+import { clampLimit } from '@/data/repos/shared/list-page';
 import { sqlStringArray } from '@/data/repos/shared/sql-array';
 import { pruneAnalyticsLabels } from '@/data/repos/dashboard-analytics-labels';
+
+/** Default audit page; the previous fixed 500-row window is now the ceiling, not the floor. */
+const AUDIT_LOG_PAGE_MAX_ROWS = 500;
+
+/** Default editorial page; keyset-paged, never a full tenant dump. */
+const EDITORIAL_PAGE_MAX_ROWS = 500;
 
 type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 const iso = (value: Date) => value.toISOString();
 const isoOf = (value: Date | string) => (value instanceof Date ? value.toISOString() : new Date(value).toISOString());
 const optionalIso = (value: Date | null) => value?.toISOString() ?? null;
+/** Null-safe ISO for raw-`execute` rows, whose driver values may be `string` instead of `Date`. */
+const optionalIsoOf = (value: Date | string | null): string | null => (value === null || value === undefined ? null : isoOf(value));
 
 function subtractDays(day: string, count: number): string {
   const date = new Date(`${day}T00:00:00Z`);
@@ -537,13 +546,25 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     }));
   }
 
-  async auditLogPage(actor: AuthorizedTenantActorContext, permission: string, filter: AuditFilter): Promise<readonly AuditRecord[]> {
+  /**
+   * Latest audit log (desc, keyset pages) matching the filter.
+   *
+   * `before`/`after` snapshots stay out of the list projection: the dashboard
+   * table renders name/status/actions only, and the full payloads ride the
+   * WORM export. Keyset is the append-only `seq` chain (never wall-clock
+   * text: `occurred_at` carries microsecond fractions that ISO millisecond
+   * cursors silently skip at page boundaries), so pages never gap or repeat
+   * and follow hash-chain order.
+   */
+  async auditLogPage(actor: AuthorizedTenantActorContext, permission: string, filter: AuditFilter, page?: { readonly limit?: number; readonly cursor?: string }): Promise<{ readonly logs: readonly AuditRecord[]; readonly nextCursor: string | null }> {
     return this.database.transaction(async (transaction) => {
       await this.establishContext(transaction, actor);
       await this.authorize(transaction, actor, permission);
       const organization = await transaction.select({ id: organizations.id }).from(organizations).where(and(eq(organizations.id, actor.organizationId), eq(organizations.status, 'active'))).limit(1);
       if (organization.length !== 1) throw new DashboardAccessDeniedError();
       const orgId = actor.organizationId;
+      const limit = clampLimit(page?.limit, 100, AUDIT_LOG_PAGE_MAX_ROWS);
+      const cursorSeq = page?.cursor !== undefined && /^\d+$/.test(page.cursor) ? Number(page.cursor) : null;
       const rows = await transaction
         .select({
           id: auditLogs.id,
@@ -555,34 +576,47 @@ export class DrizzleDashboardRepository implements DashboardRepository {
           targetId: auditLogs.targetId,
           outcome: auditLogs.outcome,
           changedFields: auditLogs.changedFields,
-          before: auditLogs.before,
-          after: auditLogs.after,
           requestId: auditLogs.requestId,
           occurredAt: auditLogs.occurredAt,
+          seq: auditLogs.seq,
         })
         .from(auditLogs)
         .where(and(
           eq(auditLogs.organizationId, orgId),
+          // Chain rows only: a missing seq can never advance a `<` cursor past
+          // NULLS FIRST, so anomalous rows stay out of paging instead of
+          // looping the first page forever.
+          isNotNull(auditLogs.seq),
           ...(filter.actorId === undefined ? [] : [eq(auditLogs.actorId, filter.actorId)]),
           ...(filter.action === undefined ? [] : [eq(auditLogs.action, filter.action)]),
           ...(filter.targetType === undefined ? [] : [eq(auditLogs.targetType, filter.targetType)]),
           ...(filter.outcome === undefined ? [] : [eq(auditLogs.outcome, filter.outcome)]),
           ...(filter.from === undefined ? [] : [gte(auditLogs.occurredAt, new Date(filter.from))]),
           ...(filter.to === undefined ? [] : [lte(auditLogs.occurredAt, new Date(filter.to))]),
+          ...(cursorSeq === null ? [] : [lt(auditLogs.seq, cursorSeq)]),
         ))
-        .orderBy(desc(auditLogs.occurredAt))
-        .limit(500);
+        .orderBy(desc(auditLogs.seq))
+        .limit(limit + 1);
       // Telegram traffic is not part of the dashboard audit trail, and the schema enums are wider than `AuditRecord`.
       const dashboardRows = rows.filter((row): row is typeof row & {
         readonly actorType: AuditRecord['actorType'];
         readonly entryPoint: AuditRecord['entryPoint'];
       } => row.actorType !== 'telegram' && row.entryPoint !== 'telegram');
-      return Object.freeze(dashboardRows.map((row) => ({
+      const logs = dashboardRows.slice(0, limit).map((row) => ({
         id: row.id, organizationId: orgId, actorType: row.actorType, actorId: row.actorId, entryPoint: row.entryPoint,
         action: row.action, targetType: row.targetType, targetId: row.targetId, outcome: row.outcome,
-        changedFields: [...row.changedFields], before: row.before, after: row.after,
+        changedFields: [...row.changedFields], before: null, after: null,
         requestId: row.requestId, occurredAt: row.occurredAt.toISOString(),
-      })));
+      }));
+      // Cursor trails the last RETURNED row, not the raw probe: telegram rows
+      // filtered out of the window shift consumption past the raw limit index,
+      // and a raw-index cursor would replay those rows on the next page.
+      const consumed = dashboardRows.slice(0, limit);
+      const lastConsumed = consumed.length > 0 ? consumed[consumed.length - 1]?.seq ?? null : rows[limit - 1]?.seq ?? null;
+      return Object.freeze({
+        logs: Object.freeze(logs),
+        nextCursor: rows.length > limit && lastConsumed !== null && lastConsumed !== undefined ? String(lastConsumed) : null,
+      });
     });
   }
 
@@ -685,12 +719,12 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         }>(sql`SELECT id, email, role_id, role_name, expires_at, accepted_at, created_at FROM indicate_private.invite_list(${actor.actorId}::uuid, ${actor.organizationId}::uuid)`);
         const now = Date.now();
         return Object.freeze(rows.map((row) => {
-          const status = row.accepted_at !== null ? 'accepted' as const : row.expires_at.getTime() <= now ? 'expired' as const : 'pending' as const;
+          const status = row.accepted_at !== null ? 'accepted' as const : new Date(row.expires_at).getTime() <= now ? 'expired' as const : 'pending' as const;
           return {
             id: row.id, organizationId: actor.organizationId, name: row.email, status,
             email: row.email, roleId: row.role_id ?? '', roleName: row.role_name ?? '—',
-            expiresAt: row.expires_at.toISOString(), acceptedAt: row.accepted_at?.toISOString() ?? null,
-            createdAt: row.created_at.toISOString(),
+            expiresAt: isoOf(row.expires_at), acceptedAt: row.accepted_at === null ? null : isoOf(row.accepted_at),
+            createdAt: isoOf(row.created_at),
           };
         }));
       } catch (error) {
@@ -907,17 +941,26 @@ export class DrizzleDashboardRepository implements DashboardRepository {
   }
 
   /**
-   * Scoped editorial read: SQL-filtered bodyless articles plus board lookups.
+   * Scoped editorial read: SQL-filtered, server-ordered, keyset-paged articles.
    *
-   * Every article predicate (region lock, status/search, reference filters,
-   * site/state assignment) runs in the database; `body` is only matched with
-   * `ILIKE` in `WHERE` and never selected. Assignments cover exactly the
-   * returned articles plus the in-scope sites, instead of the whole tenant.
+   * All manager/board filters (region, site, category, publisher, author,
+   * publication state, status, tag, search) plus the sort key run in the
+   * database; `body` is matched with `ILIKE` but never selected. The default
+   * sort mirrors the board/manager newest-first view over
+   * `COALESCE(updated, created, published, scheduled)` with an `id` tiebreak;
+   * the keyset carries microsecond-exact sort keys because ISO millisecond
+   * cursors demonstrably skip rows at page boundaries. `total` is an exact
+   * `COUNT(*)` over the same predicates for pager totals, and `tagOptions`
+   * aggregates the complete tag vocabulary under the region lock so filter
+   * dropdowns never shrink to the loaded window. Assignments cover the page
+   * articles and are limited to rows the UI can display (active, or published
+   * for the board); dormant rows never reach the client.
    */
   async readEditorialScope(
     actor: AuthorizedTenantActorContext,
     permission: string,
-    filter: { readonly regionId?: string; readonly siteId?: string; readonly categoryId?: string; readonly publisherId?: string; readonly authorId?: string; readonly publicationState?: string; readonly search?: string },
+    filter: { readonly regionId?: string; readonly siteId?: string; readonly siteHostname?: string; readonly categoryId?: string; readonly publisherId?: string; readonly authorId?: string; readonly publicationState?: string; readonly status?: string; readonly tag?: string; readonly search?: string; readonly sort?: 'updated' | 'published-desc' | 'published-asc' | 'title' | 'syndicated' },
+    page?: { readonly limit?: number; readonly cursor?: string },
   ): Promise<EditorialScope> {
     return this.database.transaction(async (transaction) => {
       await this.establishContext(transaction, actor);
@@ -925,30 +968,78 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const organizationId = actor.organizationId;
       const lock = actor.regionScopeId ?? null;
       const needle = filter.search === undefined || filter.search.trim() === '' ? null : `%${filter.search.trim().replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
-      const [articleRows, categoryRows, authorRows, publisherRows, regionRows, siteRows, domainRows] = await Promise.all([
-        transaction.execute<{
-          id: string; region_id: string | null; publisher_id: string | null; category_id: string | null; author_id: string | null;
-          lead_media_id: string | null; cover_image_url: string | null; slug: string; title: string; excerpt: string | null;
-          canonical_url: string | null; source: string; tags: string[]; status: string; published_at: Date | null;
-          scheduled_at: Date | null; archived_at: Date | null; version: number; created_at: Date; updated_at: Date;
-        }>(sql`
+      const sort = filter.sort ?? 'updated';
+      const limit = page?.limit === 0 ? 0 : clampLimit(page?.limit, 50, EDITORIAL_PAGE_MAX_ROWS);
+      const predicates = [
+        sql`a.organization_id = ${organizationId}`,
+        sql`(${lock}::uuid IS NULL OR (a.region_id IS NOT NULL AND (a.region_id = ${lock}::uuid OR a.region_id IN (
+          SELECT r.id FROM regions r WHERE r.organization_id = ${organizationId} AND r.parent_region_id = ${lock}::uuid))))`,
+        ...(filter.regionId === undefined ? [] : [sql`a.region_id = ${filter.regionId}::uuid`]),
+        ...(filter.categoryId === undefined ? [] : [sql`a.category_id = ${filter.categoryId}::uuid`]),
+        ...(filter.publisherId === undefined ? [] : [sql`a.publisher_id = ${filter.publisherId}::uuid`]),
+        ...(filter.authorId === undefined ? [] : [sql`a.author_id = ${filter.authorId}::uuid`]),
+        ...(filter.status === undefined ? [] : [sql`a.status = ${filter.status}`]),
+        ...(filter.tag === undefined ? [] : [sql`a.tags @> ARRAY[${filter.tag}]`]),
+        ...((filter.siteId === undefined && filter.publicationState === undefined) ? [] : [sql`EXISTS (
+          SELECT 1 FROM article_sites s
+          WHERE s.organization_id = ${organizationId} AND s.article_id = a.id AND s.active
+            AND (${filter.siteId ?? null}::uuid IS NULL OR s.site_id = ${filter.siteId ?? null}::uuid)
+            AND (${filter.publicationState ?? null}::text IS NULL OR s.state = ${filter.publicationState ?? null}))`]),
+        ...(filter.siteHostname === undefined ? [] : [sql`EXISTS (
+          SELECT 1 FROM article_sites s
+          JOIN sites st ON st.organization_id = ${organizationId} AND st.id = s.site_id
+          JOIN sites apex ON apex.organization_id = ${organizationId} AND apex.domain_id = st.domain_id
+            AND apex.site_level = 'apex' AND apex.normalized_hostname = ${filter.siteHostname}
+          WHERE s.organization_id = ${organizationId} AND s.article_id = a.id AND s.active)`]),
+        ...(needle === null ? [] : [sql`(a.title ILIKE ${needle} ESCAPE '\\' OR a.slug ILIKE ${needle} ESCAPE '\\')`]),
+      ];
+      const whereAll = sql.join(predicates, sql` AND `);
+      const updatedKey = sql`(EXTRACT(EPOCH FROM COALESCE(a.updated_at, a.created_at, a.published_at, a.scheduled_at)) * 1000000)::bigint`;
+      const publishedKey = sql`(EXTRACT(EPOCH FROM COALESCE((SELECT max(s.published_at) FROM article_sites s WHERE s.organization_id = ${organizationId} AND s.article_id = a.id AND s.state = 'published' AND s.active), a.published_at, a.created_at)) * 1000000)::bigint`;
+      const syndicatedKey = sql`(SELECT count(*)::bigint FROM article_sites s WHERE s.organization_id = ${organizationId} AND s.article_id = a.id AND s.state = 'published')`;
+      const orderKey = sort === 'title' ? null : sort === 'syndicated' ? syndicatedKey : sort === 'published-desc' || sort === 'published-asc' ? publishedKey : updatedKey;
+      const descending = sort !== 'published-asc';
+      type CursorKey = { readonly key: string; readonly id: string };
+      let cursor: CursorKey | null = null;
+      if (page?.cursor !== undefined && /^[0-9a-fA-F-]{36}$/.test(page.cursor)) {
+        const found = await transaction.execute<{ key: string; id: string }>(sql`
+          SELECT ${orderKey ?? sql`a.title`} AS key, a.id FROM articles a
+          WHERE a.organization_id = ${organizationId} AND a.id = ${page.cursor}::uuid LIMIT 1`);
+        const row = found[0];
+        if (row !== undefined) cursor = { key: String(row.key), id: row.id };
+      }
+      const keyPredicate = cursor === null ? sql`TRUE` : sort === 'title'
+        ? sql`(a.title < ${cursor.key} OR (a.title = ${cursor.key} AND a.id < ${cursor.id}::uuid))`
+        : descending
+          ? sql`(${orderKey} < ${cursor.key}::bigint OR (${orderKey} = ${cursor.key}::bigint AND a.id < ${cursor.id}::uuid))`
+          : sql`(${orderKey} > ${cursor.key}::bigint OR (${orderKey} = ${cursor.key}::bigint AND a.id > ${cursor.id}::uuid))`;
+      const orderBy = sort === 'title'
+        ? sql`a.title ASC, a.id ASC`
+        : descending
+          ? sql`${orderKey} DESC, a.id DESC`
+          : sql`${orderKey} ASC, a.id ASC`;
+      type ArticleRow = {
+        id: string; region_id: string | null; publisher_id: string | null; category_id: string | null; author_id: string | null;
+        lead_media_id: string | null; cover_image_url: string | null; slug: string; title: string; excerpt: string | null;
+        canonical_url: string | null; source: string; tags: string[]; status: string; published_at: Date | null;
+        scheduled_at: Date | null; archived_at: Date | null; version: number; created_at: Date; updated_at: Date;
+      };
+      const [articleRows, totalRows, tagRows, categoryRows, authorRows, publisherRows, regionRows, siteRows, domainRows] = await Promise.all([
+        limit === 0 ? [] : transaction.execute<ArticleRow>(sql`
           SELECT a.id, a.region_id, a.publisher_id, a.category_id, a.author_id, a.lead_media_id, a.cover_image_url,
             a.slug, a.title, a.excerpt, a.canonical_url, a.source, a.tags, a.status, a.published_at, a.scheduled_at,
             a.archived_at, a.version, a.created_at, a.updated_at
           FROM articles a
+          WHERE ${whereAll} AND ${keyPredicate}
+          ORDER BY ${orderBy}
+          LIMIT ${limit + 1}`),
+        transaction.execute<{ count: number }>(sql`SELECT count(*)::int AS count FROM articles a WHERE ${whereAll}`),
+        transaction.execute<{ tag: string; count: number }>(sql`
+          SELECT t.tag AS tag, count(*)::int AS count FROM articles a, unnest(a.tags) AS t(tag)
           WHERE a.organization_id = ${organizationId}
             AND (${lock}::uuid IS NULL OR (a.region_id IS NOT NULL AND (a.region_id = ${lock}::uuid OR a.region_id IN (
               SELECT r.id FROM regions r WHERE r.organization_id = ${organizationId} AND r.parent_region_id = ${lock}::uuid))))
-            AND (${filter.regionId ?? null}::uuid IS NULL OR a.region_id = ${filter.regionId ?? null}::uuid)
-            AND (${filter.categoryId ?? null}::uuid IS NULL OR a.category_id = ${filter.categoryId ?? null}::uuid)
-            AND (${filter.publisherId ?? null}::uuid IS NULL OR a.publisher_id = ${filter.publisherId ?? null}::uuid)
-            AND (${filter.authorId ?? null}::uuid IS NULL OR a.author_id = ${filter.authorId ?? null}::uuid)
-            AND ((${filter.siteId ?? null}::uuid IS NULL AND ${filter.publicationState ?? null} IS NULL) OR EXISTS (
-              SELECT 1 FROM article_sites s
-              WHERE s.organization_id = ${organizationId} AND s.article_id = a.id AND s.active
-                AND (${filter.siteId ?? null}::uuid IS NULL OR s.site_id = ${filter.siteId ?? null}::uuid)
-                AND (${filter.publicationState ?? null} IS NULL OR s.state = ${filter.publicationState ?? null})))
-            AND (${needle} IS NULL OR (a.title ILIKE ${needle} ESCAPE '\\' OR a.source ILIKE ${needle} ESCAPE '\\' OR a.body ILIKE ${needle} ESCAPE '\\'))`),
+          GROUP BY t.tag ORDER BY count DESC, t.tag`),
         transaction.select({ id: categories.id, name: categories.name, slug: categories.slug, status: categories.status, version: categories.version, createdAt: categories.createdAt, updatedAt: categories.updatedAt }).from(categories).where(eq(categories.organizationId, organizationId)),
         transaction.select({ id: authors.id, displayName: authors.displayName, byline: authors.byline, status: authors.status, version: authors.version, createdAt: authors.createdAt, updatedAt: authors.updatedAt }).from(authors).where(eq(authors.organizationId, organizationId)),
         transaction.select({ id: publishers.id, name: publishers.name, attributionLabel: publishers.attributionLabel, status: publishers.status }).from(publishers).where(eq(publishers.organizationId, organizationId)),
@@ -956,14 +1047,13 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         transaction.select({ id: sites.id, domainId: sites.domainId, regionId: sites.regionId, siteLevel: sites.siteLevel, parentSiteId: sites.parentSiteId, normalizedHostname: sites.normalizedHostname, status: sites.status, activationState: sites.activationState, version: sites.version, createdAt: sites.createdAt, updatedAt: sites.updatedAt }).from(sites).where(eq(sites.organizationId, organizationId)),
         transaction.select({ id: domains.id, normalizedHostname: domains.normalizedHostname }).from(domains).where(eq(domains.organizationId, organizationId)),
       ]);
-      const articleIds = articleRows.map((row) => row.id);
-      const geography = regionRows.map((row) => ({ id: row.id, kind: row.kind, parentRegionId: row.parentRegionId }));
-      const inScopeSiteIds = siteRows.filter((site) => regionScopeCovers(lock, site.regionId, geography)).map((site) => site.id);
-      const [linkRows, assignmentRows] = articleIds.length === 0 && inScopeSiteIds.length === 0
+      const pageRows = limit === 0 ? [] : articleRows.slice(0, limit);
+      const articleIds = pageRows.map((row) => row.id);
+      const [linkRows, assignmentRows] = articleIds.length === 0
         ? [[], []] as const
         : await Promise.all([
-          articleIds.length === 0 ? [] : transaction.select({ articleId: articleCategories.articleId, categoryId: articleCategories.categoryId, position: articleCategories.position }).from(articleCategories).where(and(eq(articleCategories.organizationId, organizationId), inArray(articleCategories.articleId, articleIds))).orderBy(articleCategories.position),
-          transaction.select({ id: articleSites.id, articleId: articleSites.articleId, siteId: articleSites.siteId, state: articleSites.state, stateOccurredAt: articleSites.stateOccurredAt, publishedUrl: articleSites.publishedUrl, publishedAt: articleSites.publishedAt, active: articleSites.active, viewCount: articleSites.viewCount, assignmentSource: articleSites.assignmentSource, expandedFromSiteId: articleSites.expandedFromSiteId, customCanonicalUrl: articleSites.customCanonicalUrl, version: articleSites.version, createdAt: articleSites.createdAt, updatedAt: articleSites.updatedAt }).from(articleSites).where(and(eq(articleSites.organizationId, organizationId), or(articleIds.length === 0 ? sql`false` : inArray(articleSites.articleId, articleIds), inScopeSiteIds.length === 0 ? sql`false` : inArray(articleSites.siteId, inScopeSiteIds)))),
+          transaction.select({ articleId: articleCategories.articleId, categoryId: articleCategories.categoryId, position: articleCategories.position }).from(articleCategories).where(and(eq(articleCategories.organizationId, organizationId), inArray(articleCategories.articleId, articleIds))).orderBy(articleCategories.position),
+          transaction.select({ id: articleSites.id, articleId: articleSites.articleId, siteId: articleSites.siteId, state: articleSites.state, stateOccurredAt: articleSites.stateOccurredAt, publishedUrl: articleSites.publishedUrl, publishedAt: articleSites.publishedAt, active: articleSites.active, viewCount: articleSites.viewCount, assignmentSource: articleSites.assignmentSource, expandedFromSiteId: articleSites.expandedFromSiteId, customCanonicalUrl: articleSites.customCanonicalUrl, version: articleSites.version, createdAt: articleSites.createdAt, updatedAt: articleSites.updatedAt }).from(articleSites).where(and(eq(articleSites.organizationId, organizationId), inArray(articleSites.articleId, articleIds), or(eq(articleSites.active, true), eq(articleSites.state, 'published')))),
         ]);
       const categoryIdsByArticle = new Map<string, string[]>();
       for (const link of linkRows) {
@@ -971,8 +1061,13 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         list.push(link.categoryId);
         categoryIdsByArticle.set(link.articleId, list);
       }
+      const articles = pageRows.map((row) => ({ id: row.id, organizationId, regionId: row.region_id, publisherId: row.publisher_id, categoryId: row.category_id, categoryIds: categoryIdsByArticle.get(row.id) ?? [], authorId: row.author_id, leadMediaId: row.lead_media_id, coverImageUrl: row.cover_image_url, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonical_url, body: '', bodyJson: null, source: row.source, tags: [...row.tags], status: row.status as ArticleRecord['status'], publishedAt: optionalIsoOf(row.published_at), scheduledAt: optionalIsoOf(row.scheduled_at), archivedAt: optionalIsoOf(row.archived_at), version: row.version, createdAt: isoOf(row.created_at), updatedAt: isoOf(row.updated_at) }));
+      const lastConsumed = articles.length > 0 ? (articleIds[articleIds.length - 1] as string) : null;
       return {
-        articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.region_id, publisherId: row.publisher_id, categoryId: row.category_id, categoryIds: categoryIdsByArticle.get(row.id) ?? [], authorId: row.author_id, leadMediaId: row.lead_media_id, coverImageUrl: row.cover_image_url, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonical_url, body: '', bodyJson: null, source: row.source, tags: [...row.tags], status: row.status as ArticleRecord['status'], publishedAt: optionalIso(row.published_at), scheduledAt: optionalIso(row.scheduled_at), archivedAt: optionalIso(row.archived_at), version: row.version, createdAt: iso(row.created_at), updatedAt: iso(row.updated_at) })),
+        articles,
+        articlesNextCursor: articleRows.length > limit && lastConsumed !== null ? lastConsumed : null,
+        total: totalRows[0]?.count ?? 0,
+        tagOptions: tagRows.map((row) => ({ tag: row.tag, count: row.count })),
         articleSites: assignmentRows.map((row) => ({ id: row.id, organizationId, articleId: row.articleId, siteId: row.siteId, state: row.state, stateOccurredAt: iso(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: optionalIso(row.publishedAt), active: row.active, viewCount: row.viewCount, assignmentSource: row.assignmentSource as 'manual' | 'auto', expandedFromSiteId: row.expandedFromSiteId, customCanonicalUrl: row.customCanonicalUrl, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
         categories: categoryRows.map((row) => ({ id: row.id, organizationId, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
         authors: authorRows.map((row) => ({ id: row.id, organizationId, displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
@@ -1061,7 +1156,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       }
       return {
         ...emptyScope,
-        articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.region_id, publisherId: row.publisher_id, categoryId: row.category_id, categoryIds: categoryIdsByArticle.get(row.id) ?? [], authorId: row.author_id, leadMediaId: row.lead_media_id, coverImageUrl: row.cover_image_url, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonical_url, body: '', bodyJson: null, source: row.source, tags: [...row.tags], status: row.status as ArticleRecord['status'], publishedAt: optionalIso(row.published_at), scheduledAt: optionalIso(row.scheduled_at), archivedAt: optionalIso(row.archived_at), version: row.version, createdAt: iso(row.created_at), updatedAt: iso(row.updated_at) })),
+        articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.region_id, publisherId: row.publisher_id, categoryId: row.category_id, categoryIds: categoryIdsByArticle.get(row.id) ?? [], authorId: row.author_id, leadMediaId: row.lead_media_id, coverImageUrl: row.cover_image_url, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonical_url, body: '', bodyJson: null, source: row.source, tags: [...row.tags], status: row.status as ArticleRecord['status'], publishedAt: optionalIsoOf(row.published_at), scheduledAt: optionalIsoOf(row.scheduled_at), archivedAt: optionalIsoOf(row.archived_at), version: row.version, createdAt: isoOf(row.created_at), updatedAt: isoOf(row.updated_at) })),
       };
     });
   }
@@ -1104,7 +1199,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
           AND (title ILIKE ${like} ESCAPE '\' OR body ILIKE ${like} ESCAPE '\')
         ORDER BY created_at DESC
         LIMIT ${bounded}`);
-      return Object.freeze(rows.map((row) => Object.freeze({ id: row.id, regionId: row.regionId, slug: row.slug, title: row.title, status: row.status, createdAt: row.createdAt.toISOString() })));
+      return Object.freeze(rows.map((row) => Object.freeze({ id: row.id, regionId: row.regionId, slug: row.slug, title: row.title, status: row.status, createdAt: isoOf(row.createdAt) })));
     });
   }
 

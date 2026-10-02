@@ -25,8 +25,12 @@ const querySchema = z.object({
   view: z.enum(['dashboard', 'configuration', 'publishers', 'editorial', 'taxonomy', 'articles', 'published', 'analytics', 'audit', 'operations']),
   regionId: organizationSchema.optional(), siteId: organizationSchema.optional(), categoryId: organizationSchema.optional(), publisherId: organizationSchema.optional(), authorId: organizationSchema.optional(),
   publicationState: z.enum(['queued', 'processing', 'published', 'failed', 'retrying', 'unpublished']).optional(), search: z.string().max(300).optional(),
+  siteHostname: z.string().max(253).optional(),
   actorId: z.string().max(200).optional(), action: z.string().max(200).optional(), targetType: z.string().max(100).optional(), outcome: z.enum(['succeeded', 'denied', 'failed']).optional(),
   from: z.iso.datetime().optional(), to: z.iso.datetime().optional(),
+  limit: z.coerce.number().int().min(1).max(500).optional(), cursor: z.string().max(200).optional(),
+  status: z.enum(['draft', 'in_review', 'scheduled', 'active', 'archived']).optional(), tag: z.string().max(60).optional(),
+  sort: z.enum(['updated', 'published-desc', 'published-asc', 'title', 'syndicated']).optional(),
 });
 const commandSchema = z.object({ organizationId: organizationSchema, action: z.string().min(1).max(100), payload: z.unknown() });
 
@@ -95,19 +99,23 @@ async function handleGET(request: Request) {
   const context = await contextFor(parsed.data.organizationId, requestId, request.headers); if (isContextError(context)) return NextResponse.json(context, { status: responseStatus(context) });
   const { actor, service } = context;
   const compact = (entries: readonly (readonly [string, string | undefined])[]) => Object.fromEntries(entries.filter(([, item]) => item !== undefined));
-    const editorialFilter = compact([['regionId', parsed.data.regionId], ['siteId', parsed.data.siteId], ['categoryId', parsed.data.categoryId], ['publisherId', parsed.data.publisherId], ['authorId', parsed.data.authorId], ['publicationState', parsed.data.publicationState], ['search', parsed.data.search]]);
+    const editorialFilter = compact([['regionId', parsed.data.regionId], ['siteId', parsed.data.siteId], ['siteHostname', parsed.data.siteHostname], ['categoryId', parsed.data.categoryId], ['publisherId', parsed.data.publisherId], ['authorId', parsed.data.authorId], ['publicationState', parsed.data.publicationState], ['status', parsed.data.status], ['tag', parsed.data.tag], ['search', parsed.data.search], ['sort', parsed.data.sort], ['limit', parsed.data.limit === undefined ? undefined : String(parsed.data.limit)], ['cursor', parsed.data.cursor]]);
     const rangeFilter = compact([['from', parsed.data.from], ['to', parsed.data.to]]);
-    const auditFilter = { ...rangeFilter, ...compact([['actorId', parsed.data.actorId], ['action', parsed.data.action], ['targetType', parsed.data.targetType], ['outcome', parsed.data.outcome]]) };
+    const auditFilter = { ...rangeFilter, ...compact([['actorId', parsed.data.actorId], ['action', parsed.data.action], ['targetType', parsed.data.targetType], ['outcome', parsed.data.outcome], ['limit', parsed.data.limit === undefined ? undefined : String(parsed.data.limit)], ['cursor', parsed.data.cursor]]) };
     const result = parsed.data.view === 'dashboard'
       ? actor.actorType === 'user'
         ? await fetchCachedDashboard(actor)
         : { ok: false as const, error: createNonDisclosingDenial(requestId) }
       : parsed.data.view === 'configuration' ? await service.listConfiguration(actor, { search: parsed.data.search })
       : parsed.data.view === 'publishers' ? await service.listPublishers(actor, { search: parsed.data.search })
-      : parsed.data.view === 'editorial' ? await service.listEditorial(actor, editorialFilter)
+      : parsed.data.view === 'editorial' ? await service.listEditorial(actor, { ...editorialFilter, limit: 0 })
       : parsed.data.view === 'taxonomy' ? await service.listTaxonomy(actor)
-      : parsed.data.view === 'articles' ? await service.listEditorial(actor, {})
-      : parsed.data.view === 'published' ? await service.listEditorial(actor, {})
+      : parsed.data.view === 'articles' ? await service.listEditorial(actor, editorialFilter)
+      : parsed.data.view === 'published'
+        ? await service.listEditorial(actor, {
+          ...editorialFilter,
+          publicationState: parsed.data.publicationState ?? 'published',
+        })
       : parsed.data.view === 'analytics'
         ? actor.actorType === 'user'
           ? await fetchCachedAnalytics(actor, rangeFilter)

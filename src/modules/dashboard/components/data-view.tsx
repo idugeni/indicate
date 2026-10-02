@@ -82,6 +82,9 @@ interface DataViewProps {
   readonly onSelectView?: (view: View) => void;
   /** Tenant scope for additive AI assists; absent disables them. */
   readonly organizationId?: string | undefined;
+  /** Keyset cursor for the audit trail; when present with `onLoadMoreAudit`, the audit table grows page by page. */
+  readonly auditNextCursor?: string | null | undefined;
+  readonly onLoadMoreAudit?: (() => void) | undefined;
 }
 
 function StatusMark({ status }: { readonly status: string }) {
@@ -108,6 +111,8 @@ export function DataView({
   command,
   onSelectView,
   organizationId,
+  auditNextCursor,
+  onLoadMoreAudit,
 }: DataViewProps) {
   if (data === null || data === undefined) {
     return <DashboardViewSkeleton view={view} />;
@@ -339,6 +344,8 @@ export function DataView({
       command={command}
       showTitle={showTitle}
       compactEmpty={collections.length > 1}
+      nextCursor={collectionKey === 'auditLogs' ? (auditNextCursor ?? null) : null}
+      onLoadMore={collectionKey === 'auditLogs' ? onLoadMoreAudit : undefined}
     />
   );
 
@@ -429,6 +436,8 @@ function CollectionTable({
   command,
   showTitle = true,
   compactEmpty = false,
+  nextCursor = null,
+  onLoadMore,
 }: {
   readonly collectionKey: string;
   readonly rawItems: readonly CollectionItem[];
@@ -439,6 +448,12 @@ function CollectionTable({
   readonly command: DashboardCommand | undefined;
   /** Set false when a wrapping section already names the table. */
   readonly showTitle?: boolean;
+  /**
+   * Keyset cursor for server-paged collections; with `onLoadMore` the table
+   * grows page by page instead of truncating at the first window.
+   */
+  readonly nextCursor?: string | null | undefined;
+  readonly onLoadMore?: (() => void) | undefined;
   /**
    * True when other collections share the page. An empty sidecar table then gets
    * a one-line note instead of a full-page empty block.
@@ -897,6 +912,13 @@ function CollectionTable({
           onPageChange={handlePageChange}
           note={isTruncated ? 'termuat' : undefined}
         />
+      ) : null}
+      {onLoadMore !== undefined && nextCursor !== null ? (
+        <div className="mt-3 flex justify-center">
+          <Button type="button" variant="outline" size="sm" onClick={onLoadMore}>
+            Muat riwayat lebih lama
+          </Button>
+        </div>
       ) : null}
     </section>
   );

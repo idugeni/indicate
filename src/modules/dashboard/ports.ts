@@ -30,8 +30,8 @@ export interface DashboardRepository {
   readConfigurationScope(actor: AuthorizedTenantActorContext, permission: string): Promise<ConfigurationScope>;
   /** Scoped publisher read (publishers, claims, mini geography). */
   readPublisherScope(actor: AuthorizedTenantActorContext, permission: string): Promise<PublisherScope>;
-  /** Scoped editorial read (SQL-filtered bodyless articles plus board lookups). */
-  readEditorialScope(actor: AuthorizedTenantActorContext, permission: string, filter: { readonly regionId?: string; readonly siteId?: string; readonly categoryId?: string; readonly publisherId?: string; readonly authorId?: string; readonly publicationState?: string; readonly search?: string }): Promise<EditorialScope>;
+  /** Scoped editorial read (server-ordered, keyset-paged articles plus board lookups). */
+  readEditorialScope(actor: AuthorizedTenantActorContext, permission: string, filter: { readonly regionId?: string; readonly siteId?: string; readonly siteHostname?: string; readonly categoryId?: string; readonly publisherId?: string; readonly authorId?: string; readonly publicationState?: string; readonly status?: string; readonly tag?: string; readonly search?: string; readonly sort?: 'updated' | 'published-desc' | 'published-asc' | 'title' | 'syndicated' }, page?: { readonly limit?: number; readonly cursor?: string }): Promise<EditorialScope>;
   /** Scoped taxonomy read (narrow article facets for counting, never bodies). */
   readTaxonomyScope(actor: AuthorizedTenantActorContext, permission: string): Promise<TaxonomyScope>;
   /** Scoped publisher-claim read (one publisher plus its claim rows). */
@@ -50,8 +50,8 @@ export interface DashboardRepository {
     permission: string,
     filter: { readonly from?: string | undefined; readonly to?: string | undefined },
   ): Promise<AnalyticsProjection>;
-  /** Latest audit log (desc, bounded) matching the filter; without loading the full tenant state. */
-  auditLogPage(actor: AuthorizedTenantActorContext, permission: string, filter: AuditFilter): Promise<readonly AuditRecord[]>;
+  /** Latest audit log (desc, keyset pages) matching the filter; list carries no before/after payloads. */
+  auditLogPage(actor: AuthorizedTenantActorContext, permission: string, filter: AuditFilter, page?: { readonly limit?: number; readonly cursor?: string }): Promise<{ readonly logs: readonly AuditRecord[]; readonly nextCursor: string | null }>;
   /** Retention/sweep run evidence (global + org); without loading the full tenant state. */
   retentionRuns(actor: AuthorizedTenantActorContext, permission: string): Promise<readonly RetentionRunRecord[]>;
   /** Domain activation attempts (desc, bounded); without loading the full tenant state. */

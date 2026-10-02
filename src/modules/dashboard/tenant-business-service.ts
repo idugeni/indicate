@@ -840,7 +840,10 @@ export class TenantBusinessService {
 
   private async readEditorial(actor: AuthorizedTenantActorContext, filter: ArticleFilter, action: string, targetType: string) {
     try {
-      const scope = await this.repository.readEditorialScope(actor, DASHBOARD_PERMISSIONS.articleRead, filter);
+      const scope = await this.repository.readEditorialScope(actor, DASHBOARD_PERMISSIONS.articleRead, filter, {
+        ...(filter.limit === undefined ? {} : { limit: filter.limit }),
+        ...(filter.cursor === undefined ? {} : { cursor: filter.cursor }),
+      });
       this.requireFilterReferences(scope, filter, actor);
       const lock = regionLock(actor);
       const regions = scope.regions.filter((region) => regionScopeCovers(lock, region.id, scope.regions));
@@ -848,7 +851,8 @@ export class TenantBusinessService {
       const scopeRegion = lock === null ? null : regions.find(({ id }) => id === lock);
       const referencedDomainIds = new Set(sites.map((site) => site.domainId).filter((domainId): domainId is string => typeof domainId === 'string'));
       return { ok: true as const, value: {
-        articles: scope.articles, categories: scope.categories, authors: scope.authors,
+        articles: scope.articles, articlesNextCursor: scope.articlesNextCursor, total: scope.total, tagOptions: scope.tagOptions,
+        categories: scope.categories, authors: scope.authors,
         publishers: scope.publishers.map(({ id, name, attributionLabel, status }) => ({ id, name, attributionLabel, status })), regions, sites,
         domains: scope.domains.filter((domain) => referencedDomainIds.has(domain.id)).map(({ id, normalizedHostname }) => ({ id, normalizedHostname })),
         articleSites: scope.articleSites,
@@ -1150,15 +1154,15 @@ export class TenantBusinessService {
       repository.analyticsSummary(actor, DASHBOARD_PERMISSIONS.analyticsRead, parsed.data));
   }
 
-  async auditLogs(actor: AuthorizedTenantActorContext, rawFilter: unknown = {}): Promise<Result<{ readonly auditLogs: readonly AuditRecord[]; readonly retentionRuns: readonly RetentionRunRecord[] }, PublicErrorEnvelope>> {
+  async auditLogs(actor: AuthorizedTenantActorContext, rawFilter: unknown = {}): Promise<Result<{ readonly auditLogs: readonly AuditRecord[]; readonly auditNextCursor: string | null; readonly retentionRuns: readonly RetentionRunRecord[] }, PublicErrorEnvelope>> {
     const parsed = auditFilterSchema.safeParse(rawFilter);
     if (!parsed.success) return Promise.resolve(this.invalid(actor, parsed.error));
     try {
-      const [auditLogs, retentionRuns] = await Promise.all([
-        this.repository.auditLogPage(actor, DASHBOARD_PERMISSIONS.auditRead, defined(parsed.data) as AuditFilter),
+      const [page, retentionRuns] = await Promise.all([
+        this.repository.auditLogPage(actor, DASHBOARD_PERMISSIONS.auditRead, defined(parsed.data) as AuditFilter, defined(parsed.data) as { limit?: number; cursor?: string }),
         this.repository.retentionRuns(actor, DASHBOARD_PERMISSIONS.auditRead),
       ]);
-      return { ok: true, value: { auditLogs, retentionRuns } };
+      return { ok: true, value: { auditLogs: page.logs, auditNextCursor: page.nextCursor, retentionRuns } };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'audit.list', 'audit_log');
       return this.internal(actor, error, 'dashboard.query.failed', 'audit.list', 'audit_log', DASHBOARD_PERMISSIONS.auditRead);

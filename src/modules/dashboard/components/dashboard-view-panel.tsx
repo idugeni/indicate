@@ -157,6 +157,11 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   onPageChange,
   onRefresh,
   onSelectView,
+  auditNextCursor,
+  onLoadMoreAudit,
+  articlesNextCursor,
+  articlesTotal,
+  onLoadMoreArticles,
 }: {
   readonly view: View;
   readonly data: unknown;
@@ -172,6 +177,11 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   readonly onPageChange: (page: number) => void;
   readonly onRefresh: () => void;
   readonly onSelectView: (view: View) => void;
+  readonly auditNextCursor?: string | null | undefined;
+  readonly onLoadMoreAudit?: (() => void) | undefined;
+  readonly articlesNextCursor?: string | null | undefined;
+  readonly articlesTotal?: number | undefined;
+  readonly onLoadMoreArticles?: (() => Promise<{ readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null>) | undefined;
 }) {
   const metadata = VIEW_REGISTRY[view];
 
@@ -244,7 +254,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         />
       ) : null}
       {view === 'taxonomy' ? <TaxonomyManager data={data} command={command} organizationId={organizationId} /> : null}
-      {view === 'articles' ? <ArticleManager data={data} command={command} /> : null}
+      {view === 'articles' ? <ArticleManager data={data} command={command} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} /> : null}
       {view === 'configuration' ? (
         <Tabs defaultValue="domain" className="w-full">
           <TabsList aria-label="Bagian infrastruktur" className="max-w-full overflow-x-auto overflow-y-clip">
@@ -289,7 +299,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         </Tabs>
       ) : null}
       {view === 'media' ? <MediaLibrary data={data} command={command} organizationId={organizationId} /> : null}
-      {view === 'published' ? <PublishedUrlBoard data={data} /> : null}
+      {view === 'published' ? <PublishedUrlBoard data={data} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} /> : null}
       {view === 'publishing' ? (
         <div className="grid gap-6">
           <PublishingForm data={data} command={command} />
@@ -351,6 +361,8 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           command={command}
           onSelectView={onSelectView}
           organizationId={organizationId}
+          auditNextCursor={auditNextCursor}
+          onLoadMoreAudit={onLoadMoreAudit}
         />
         </PanelErrorBoundary>
       )}

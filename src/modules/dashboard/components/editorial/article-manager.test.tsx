@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { ArticleManager } from '@/modules/dashboard/components/editorial/article-manager';
@@ -43,8 +43,8 @@ describe('ArticleManager', () => {
         data={{
           ...DATA,
           articles: [
-            { id: 'a-1', title: 'Lama', slug: 'lama', status: 'active', publishedAt: '2026-09-10T00:00:00.000Z', tags: [], categoryIds: ['c-1'], regionId: 'r-1', createdAt: '2026-09-10T00:00:00.000Z', updatedAt: '2026-09-11T00:00:00.000Z', version: 1 },
             { id: 'a-2', title: 'Baru', slug: 'baru', status: 'active', publishedAt: '2026-09-20T00:00:00.000Z', tags: [], categoryIds: ['c-1'], regionId: 'r-1', createdAt: '2026-09-20T00:00:00.000Z', updatedAt: '2026-09-21T00:00:00.000Z', version: 1 },
+            { id: 'a-1', title: 'Lama', slug: 'lama', status: 'active', publishedAt: '2026-09-10T00:00:00.000Z', tags: [], categoryIds: ['c-1'], regionId: 'r-1', createdAt: '2026-09-10T00:00:00.000Z', updatedAt: '2026-09-11T00:00:00.000Z', version: 1 },
           ],
         }}
       />,
@@ -207,5 +207,148 @@ describe('ArticleManager', () => {
   it('menampilkan status kosong yang ramah', () => {
     render(<ArticleManager data={{ articles: [], categories: [], sites: [], articleSites: [] }} />);
     expect(screen.getByText(/Tidak ada artikel yang cocok/)).toBeDefined();
+  });
+});
+
+function makeServerArticles(count: number, prefix = 'srv'): Array<Record<string, unknown>> {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `${prefix}-${index}`,
+    title: `Judul ${prefix} ${String(index).padStart(2, '0')}`,
+    slug: `slug-${prefix}-${index}`,
+    status: 'active',
+    publishedAt: '2026-09-20T00:00:00.000Z',
+    updatedAt: '2026-09-22T00:00:00.000Z',
+    tags: [],
+    categoryIds: [],
+    regionId: null,
+    version: 1,
+    body: 'Isi.',
+  }));
+}
+
+describe('ArticleManager server-driven', () => {
+  it('mengirim status bawaan aktif ke server dengan debounce', async () => {
+    const onFilterApply = vi.fn();
+    render(<ArticleManager data={DATA} onFilterApply={onFilterApply} />);
+    await waitFor(() => expect(onFilterApply).toHaveBeenCalledWith('&status=active'), { timeout: 2000 });
+  });
+
+  it('mengenkode pencarian ke query server beserta status bawaan', async () => {
+    const onFilterApply = vi.fn();
+    render(<ArticleManager data={DATA} onFilterApply={onFilterApply} />);
+    await waitFor(() => expect(onFilterApply).toHaveBeenCalledWith('&status=active'), { timeout: 2000 });
+    onFilterApply.mockClear();
+    fireEvent.change(screen.getByLabelText('Pencarian'), { target: { value: 'banjir & wonosobo' } });
+    await waitFor(
+      () => expect(onFilterApply).toHaveBeenCalledWith('&status=active&search=banjir%20%26%20wonosobo'),
+      { timeout: 2000 },
+    );
+  });
+
+  it('mengirim perubahan status ke query server', async () => {
+    const user = userEvent.setup();
+    const onFilterApply = vi.fn();
+    render(<ArticleManager data={DATA} onFilterApply={onFilterApply} />);
+    await waitFor(() => expect(onFilterApply).toHaveBeenCalled(), { timeout: 2000 });
+    onFilterApply.mockClear();
+    await user.click(screen.getByLabelText('Status'));
+    await user.click(await screen.findByRole('option', { name: 'Draf' }));
+    await waitFor(() => expect(onFilterApply).toHaveBeenCalledWith('&status=draft'), { timeout: 2000 });
+  });
+
+  it('allTags mengutamakan tagOptions model', async () => {
+    const user = userEvent.setup();
+    render(
+      <ArticleManager
+        data={{ ...DATA, tagOptions: [{ tag: 'server-tag', count: 5 }] }}
+      />,
+    );
+    await user.click(screen.getByLabelText('Tag'));
+    expect(await screen.findByRole('option', { name: 'server-tag' })).toBeDefined();
+    expect(screen.queryByRole('option', { name: 'bencana' })).toBeNull();
+  });
+
+  it('memakai total server dari model untuk judul dan pager', () => {
+    render(
+      <ArticleManager
+        data={{ ...DATA, total: 100, articlesNextCursor: null }}
+        onLoadMoreArticles={vi.fn(async () => null)}
+      />,
+    );
+    expect(screen.getByText('Kelola artikel (100)')).toBeDefined();
+    expect(screen.getByRole('status').textContent).toBe('1–1 dari 100');
+  });
+
+  it('memakai articlesTotal prop saat model tanpa total', () => {
+    render(<ArticleManager data={DATA} articlesTotal={77} />);
+    expect(screen.getByText('Kelola artikel (77)')).toBeDefined();
+    expect(screen.getByRole('status').textContent).toBe('1–1 dari 77');
+  });
+
+  it('tombol muat lebih muncul dengan cursor prop dan memanggil onLoadMoreArticles', async () => {
+    const user = userEvent.setup();
+    const onLoadMoreArticles = vi.fn(async () => ({ loaded: 2, total: 2, nextCursor: null }) as const);
+    render(<ArticleManager data={DATA} articlesNextCursor="cur-1" onLoadMoreArticles={onLoadMoreArticles} />);
+    const button = screen.getByRole('button', { name: 'Muat artikel lebih lama' });
+    expect(button).toBeDefined();
+    await user.click(button);
+    await waitFor(() => expect(onLoadMoreArticles).toHaveBeenCalledTimes(1));
+  });
+
+  it('tombol muat lebih membaca cursor dari model dan sembunyi saat habis', () => {
+    const onLoadMoreArticles = vi.fn(async () => null);
+    const { rerender } = render(
+      <ArticleManager data={{ ...DATA, articlesNextCursor: 'model-cur' }} onLoadMoreArticles={onLoadMoreArticles} />,
+    );
+    expect(screen.getByRole('button', { name: 'Muat artikel lebih lama' })).toBeDefined();
+    rerender(<ArticleManager data={{ ...DATA, articlesNextCursor: null }} onLoadMoreArticles={onLoadMoreArticles} />);
+    expect(screen.queryByRole('button', { name: 'Muat artikel lebih lama' })).toBeNull();
+  });
+
+  it('rerender dengan artikel tambahan menampilkan baris baru', () => {
+    const onLoadMoreArticles = vi.fn(async () => null);
+    const { rerender } = render(
+      <ArticleManager data={DATA} articlesNextCursor="cur-1" onLoadMoreArticles={onLoadMoreArticles} />,
+    );
+    expect(screen.queryByText('Judul Tambahan')).toBeNull();
+    rerender(
+      <ArticleManager
+        data={{
+          ...DATA,
+          articles: [
+            ...DATA.articles,
+            { id: 'a-3', title: 'Judul Tambahan', slug: 'judul-tambahan', status: 'active', publishedAt: null, updatedAt: '2026-09-23T00:00:00.000Z', tags: [], categoryIds: [], regionId: 'r-1', version: 1, body: 'Isi tambahan.' },
+          ],
+          articlesNextCursor: null,
+        }}
+        onLoadMoreArticles={onLoadMoreArticles}
+      />,
+    );
+    expect(screen.getByText('Judul Tambahan')).toBeDefined();
+  });
+
+  it('jump-fill memanggil onLoadMoreArticles saat lompat halaman', async () => {
+    const onLoadMoreArticles = vi.fn(async () => ({ loaded: 40, total: 45, nextCursor: null }) as const);
+    render(
+      <ArticleManager
+        data={{ articles: makeServerArticles(20), categories: [], sites: [], articleSites: [], total: 45, articlesNextCursor: 'cur-1' }}
+        onLoadMoreArticles={onLoadMoreArticles}
+      />,
+    );
+    expect(screen.getByRole('status').textContent).toBe('1–20 dari 45');
+    fireEvent.click(screen.getByLabelText('Ke halaman berikutnya'));
+    await waitFor(() => expect(onLoadMoreArticles).toHaveBeenCalled(), { timeout: 2000 });
+  });
+
+  it('jump-fill berhenti setelah 10 percobaan saat kursor macet', async () => {
+    const onLoadMoreArticles = vi.fn(async () => ({ loaded: 5, total: 500, nextCursor: 'stuck' }) as const);
+    render(
+      <ArticleManager
+        data={{ articles: makeServerArticles(5), categories: [], sites: [], articleSites: [], total: 500, articlesNextCursor: 'stuck' }}
+        onLoadMoreArticles={onLoadMoreArticles}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Ke halaman berikutnya'));
+    await waitFor(() => expect(onLoadMoreArticles).toHaveBeenCalledTimes(10), { timeout: 3000 });
   });
 });

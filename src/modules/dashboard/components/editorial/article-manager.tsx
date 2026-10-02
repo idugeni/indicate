@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   Archive,
   ArchiveRestore,
@@ -60,15 +60,6 @@ interface ArchiveArticle {
   readonly createdAt?: string | null;
   readonly updatedAt?: string | null;
   readonly scheduledAt?: string | null;
-}
-
-function articleTimestamp(value: ArchiveArticle): number {
-  for (const candidate of [value.updatedAt, value.createdAt, value.publishedAt, value.scheduledAt]) {
-    if (candidate === undefined || candidate === null) continue;
-    const time = new Date(candidate).getTime();
-    if (!Number.isNaN(time)) return time;
-  }
-  return 0;
 }
 
 interface ArchiveCategory {
@@ -188,13 +179,24 @@ function useArticleLayout(): ArticleLayout {
 export function ArticleManager({
   data,
   command,
+  onFilterApply,
+  articlesNextCursor,
+  articlesTotal,
+  onLoadMoreArticles,
 }: {
   readonly data: unknown;
   readonly command?: ((action: string, payload: unknown) => Promise<unknown>) | undefined;
+  readonly onFilterApply?: ((query: string) => void) | undefined;
+  readonly articlesNextCursor?: string | null | undefined;
+  readonly articlesTotal?: number | undefined;
+  readonly onLoadMoreArticles?: (() => Promise<{ readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null>) | undefined;
 }) {
   const [page, setPage] = useDashboardPage('archivePage');
   const model = data as {
     readonly articles?: readonly ArchiveArticle[];
+    readonly articlesNextCursor?: string | null;
+    readonly total?: number;
+    readonly tagOptions?: readonly { readonly tag: string; readonly count: number }[];
     readonly categories?: readonly ArchiveCategory[];
     readonly sites?: readonly ArchiveSite[];
     readonly articleSites?: readonly ArchiveAssignment[];
@@ -203,15 +205,7 @@ export function ArticleManager({
     readonly authors?: readonly Record<string, unknown>[];
   } | null;
 
-  const articles = useMemo(
-    () =>
-      [...(model?.articles ?? [])].sort((left, right) => {
-        const diff = articleTimestamp(right) - articleTimestamp(left);
-        if (diff !== 0) return diff;
-        return right.slug.localeCompare(left.slug);
-      }),
-    [model],
-  );
+  const articles = useMemo(() => [...(model?.articles ?? [])], [model]);
   const categories = useMemo(() => model?.categories ?? [], [model]);
   const sites = useMemo(
     () =>
@@ -238,6 +232,25 @@ export function ArticleManager({
   const [deleting, setDeleting] = useState<ArchiveArticle | null>(null);
   const editorConfig = getEditorConfig('articles');
   const layout = useArticleLayout();
+
+  /**
+   * Push the manager filters to the server (debounced): the list, totals,
+   * and tag options below are all computed from the same predicates, so the
+   * client never pages over a partial window it filtered itself.
+   */
+  useEffect(() => {
+    if (onFilterApply === undefined) return;
+    const needle = search.trim();
+    const parts = [
+      `status=${encodeURIComponent(status === '' ? 'active' : status)}`,
+      ...(needle === '' ? [] : [`search=${encodeURIComponent(needle)}`]),
+      ...(category === '' ? [] : [`categoryId=${encodeURIComponent(category)}`]),
+      ...(tag === '' ? [] : [`tag=${encodeURIComponent(tag)}`]),
+      ...(site === '' ? [] : [`siteHostname=${encodeURIComponent(site)}`]),
+    ];
+    const timer = window.setTimeout(() => onFilterApply(`&${parts.join('&')}`), 350);
+    return () => window.clearTimeout(timer);
+  }, [search, category, tag, site, status, onFilterApply]);
 
   const categoryNames = useMemo(
     () => new Map(categories.map((item) => [item.id, item.name] as const)),
@@ -277,8 +290,8 @@ export function ArticleManager({
     return grouped;
   }, [assignments, apexHostnames, apexByDomain, domainBySite]);
   const allTags = useMemo(
-    () => [...new Set(articles.flatMap((article) => article.tags))].sort(),
-    [articles],
+    () => model?.tagOptions?.map((option) => option.tag).sort() ?? [...new Set(articles.flatMap((article) => article.tags))].sort(),
+    [model, articles],
   );
   const portalOptions = useMemo(
     () =>
@@ -309,7 +322,31 @@ export function ArticleManager({
     });
   }, [articles, search, category, tag, status, site, sitesByArticle]);
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const serverTotal = model?.total ?? articlesTotal;
+  const totalCount = serverTotal ?? filtered.length;
+  const nextCursor = model?.articlesNextCursor ?? articlesNextCursor ?? null;
+  const fillingRef = useRef(false);
+
+  const goToPage = (next: number) => {
+    setPage(next);
+    if (onLoadMoreArticles === undefined || fillingRef.current) return;
+    void (async () => {
+      fillingRef.current = true;
+      try {
+        let guard = 0;
+        let state = { loaded: articles.length, cursor: nextCursor };
+        while (next * PAGE_SIZE > state.loaded && state.cursor !== null && guard++ < 10) {
+          const result = await onLoadMoreArticles();
+          if (result === null) break;
+          state = { loaded: result.loaded, cursor: result.nextCursor };
+        }
+      } finally {
+        fillingRef.current = false;
+      }
+    })();
+  };
+
+  const pageCount = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
   const visible = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const lookups: LookupTables = {
@@ -360,7 +397,7 @@ export function ArticleManager({
   };
 
   return (
-    <SectionCard icon={Newspaper} title={`Kelola artikel (${filtered.length})`} eyebrow="Lintas portal">
+    <SectionCard icon={Newspaper} title={`Kelola artikel (${totalCount})`} eyebrow="Lintas portal">
       <div className="space-y-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <div className="flex-1 space-y-1.5">
@@ -872,11 +909,29 @@ export function ArticleManager({
       <DashboardPager
         startIndex={(safePage - 1) * PAGE_SIZE}
         visibleCount={visible.length}
-        total={filtered.length}
+        total={totalCount}
         page={safePage}
         pageCount={pageCount}
-        onPageChange={setPage}
+        onPageChange={goToPage}
       />
+      {onLoadMoreArticles !== undefined && nextCursor !== null ? (
+        <div className="mt-3 flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (fillingRef.current) return;
+              fillingRef.current = true;
+              void onLoadMoreArticles().finally(() => {
+                fillingRef.current = false;
+              });
+            }}
+          >
+            Muat artikel lebih lama
+          </Button>
+        </div>
+      ) : null}
     </SectionCard>
   );
 }

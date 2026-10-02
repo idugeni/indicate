@@ -465,7 +465,11 @@ export function ArticleCreateForm({
     touchedAuthor.current = true;
     setAuthorId(next === null || next === '' ? null : next);
   };
-  const tagSuggestions = useMemo(() => rankTags(model?.articles ?? []), [model?.articles]);
+  const tagSuggestions = useMemo(() => {
+    const options = (model as { readonly tagOptions?: readonly { readonly tag: string }[] } | null)?.tagOptions;
+    if (options !== undefined) return options.map((option) => option.tag);
+    return rankTags(model?.articles ?? []);
+  }, [model]);
 
   const handleTitleChange = (value: string) => {
     setTitleText(value);

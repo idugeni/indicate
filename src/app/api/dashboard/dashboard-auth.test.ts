@@ -295,7 +295,10 @@ vi.mock('@/modules/integrations/customer-service', async () => {
 vi.mock('@/modules/dashboard/tenant-business-service', () => ({
   TenantBusinessService: class {
     createArticle = async () => ({ ok: true, value: {} });
-    listEditorial = async () => ({ ok: true, value: [] });
+    listEditorial = async () => ({
+      ok: true,
+      value: { articles: [], articlesNextCursor: null, total: 0, tagOptions: [] },
+    });
   },
 }));
 

@@ -262,4 +262,31 @@ describe('Dashboard workspace', () => {
     await waitFor(() => expect(calls.filter((call) => call.init?.body !== undefined)).toHaveLength(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
     expect(calls.filter((call) => call.init?.body === undefined)).toHaveLength(1);
   }, 20000);
+
+  it('menumbuhkan riwayat audit halaman demi halaman lewat kursor', async () => {
+    const calls: string[] = [];
+    const fetchMock = vi.fn(async (url: unknown) => {
+      const target = String(url);
+      calls.push(target);
+      const second = target.includes('cursor=');
+      return {
+        ok: true,
+        json: async () => ({
+          auditLogs: [
+            { id: second ? 'log-2' : 'log-1', action: second ? 'article.update' : 'article.create', outcome: 'succeeded', actorType: 'user', actorId: 'u-1', entryPoint: 'dashboard', targetType: 'article', targetId: 'a-1', changedFields: [], before: null, after: null, requestId: 'r-1', occurredAt: '2026-09-18T14:00:00.000Z' },
+          ],
+          auditNextCursor: second ? null : 'cursor-1',
+          retentionRuns: [],
+        }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    initialView = 'audit';
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+    await screen.findByText('article.create', {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
+    fireEvent.click(await screen.findByRole('button', { name: 'Muat riwayat lebih lama' }, { timeout: LAZY_MODULE_TIMEOUT_MS }));
+    await waitFor(() => expect(calls.some((url) => url.includes('cursor=cursor-1'))).toBe(true), { timeout: LAZY_MODULE_TIMEOUT_MS });
+    expect(await screen.findByText('article.update', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Muat riwayat lebih lama' })).toBeNull();
+  }, 20000);
 });

@@ -161,13 +161,19 @@ export const assignmentSchema = z.object({ articleId: id, siteIds: z.array(id).m
 export const siteViewsSchema = z.object({ articleId: id, siteId: id, viewCount: z.int().min(0).max(1_000_000_000) }).strict();
 export const siteViewsBulkSchema = z.object({ articleId: id, siteIds: z.array(id).min(1).max(200), viewCount: z.int().min(0).max(1_000_000_000) }).strict();
 export const articleFilterSchema = z.object({
-  regionId: id.optional(), siteId: id.optional(), categoryId: id.optional(), publisherId: id.optional(), authorId: id.optional(),
+  regionId: id.optional(), siteId: id.optional(), siteHostname: z.string().trim().min(1).max(253).optional(),
+  categoryId: id.optional(), publisherId: id.optional(), authorId: id.optional(),
   publicationState: z.enum(['queued', 'processing', 'published', 'failed', 'retrying', 'unpublished']).optional(),
+  status: z.enum(['draft', 'in_review', 'scheduled', 'active', 'archived']).optional(),
+  tag: z.string().trim().min(1).max(60).optional(),
   search: z.string().trim().max(300).optional(),
+  sort: z.enum(['updated', 'published-desc', 'published-asc', 'title', 'syndicated']).optional(),
+  limit: z.coerce.number().int().min(0).max(500).optional(), cursor: z.uuid().optional(),
 }).strict();
 export const auditFilterSchema = z.object({
   actorId: z.string().max(200).optional(), action: z.string().max(200).optional(), targetType: z.string().max(100).optional(),
   outcome: z.enum(['succeeded', 'denied', 'failed']).optional(), from: z.iso.datetime().optional(), to: z.iso.datetime().optional(),
+  limit: z.coerce.number().int().min(1).max(500).optional(), cursor: z.string().max(200).optional(),
 }).strict();
 
 export type DomainCreateInput = z.infer<typeof domainCreateSchema>;

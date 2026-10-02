@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { PublishedUrlBoard, collectPublishedUrls } from '@/modules/dashboard/components/publishing/published-url-board';
 
@@ -153,5 +154,134 @@ describe('PublishedUrlBoard pagination', () => {
 
     fireEvent.change(screen.getByLabelText('Cari Berita'), { target: { value: 'Berita 00' } });
     expect(screen.getByRole('status').textContent).toBe('1–1 dari 1');
+  });
+});
+
+describe('PublishedUrlBoard server-driven', () => {
+  it('mengirim sort bawaan published-desc dengan debounce', async () => {
+    const onFilterApply = vi.fn();
+    render(<PublishedUrlBoard data={{ articles: ARTICLES, sites: SITES, articleSites: ARTICLE_SITES }} onFilterApply={onFilterApply} />);
+    await waitFor(
+      () => expect(onFilterApply).toHaveBeenCalledWith('&publicationState=published&sort=published-desc'),
+      { timeout: 2000 },
+    );
+  });
+
+  it('mengirim search yang dienkode beserta sort aktif', async () => {
+    const onFilterApply = vi.fn();
+    render(<PublishedUrlBoard data={{ articles: ARTICLES, sites: SITES, articleSites: ARTICLE_SITES }} onFilterApply={onFilterApply} />);
+    await waitFor(() => expect(onFilterApply).toHaveBeenCalled(), { timeout: 2000 });
+    onFilterApply.mockClear();
+    fireEvent.change(screen.getByLabelText('Cari Berita'), { target: { value: 'berita & kedua' } });
+    await waitFor(
+      () => expect(onFilterApply).toHaveBeenCalledWith('&publicationState=published&sort=published-desc&search=berita%20%26%20kedua'),
+      { timeout: 2000 },
+    );
+  });
+
+  it.each([
+    ['Terlama Ditayangkan', 'published-asc'],
+    ['Jaringan Portal Terbanyak', 'syndicated'],
+    ['Abjad Judul (A-Z)', 'title'],
+  ] as const)('sort %s mengirim param server %s', async (label, param) => {
+    const user = userEvent.setup();
+    const onFilterApply = vi.fn();
+    render(<PublishedUrlBoard data={{ articles: ARTICLES, sites: SITES, articleSites: ARTICLE_SITES }} onFilterApply={onFilterApply} />);
+    await waitFor(() => expect(onFilterApply).toHaveBeenCalled(), { timeout: 2000 });
+    onFilterApply.mockClear();
+    await user.click(screen.getByRole('combobox'));
+    await user.click(await screen.findByRole('option', { name: label }));
+    await waitFor(
+      () => expect(onFilterApply).toHaveBeenCalledWith(`&publicationState=published&sort=${param}`),
+      { timeout: 2000 },
+    );
+  });
+
+  it('tidak mengurut ulang di klien saat sort berubah: urutan tetap milik server', async () => {
+    const user = userEvent.setup();
+    const twoArticles = [
+      { id: 'a-z', title: 'Zebra', slug: 'zebra', publishedAt: '2026-09-25T10:00:00.000Z' },
+      { id: 'a-a', title: 'Alpha', slug: 'alpha', publishedAt: '2026-09-20T10:00:00.000Z' },
+    ];
+    const twoSites = [{ id: 'site-a', normalizedHostname: 'alpha.example' }];
+    const twoRows = [
+      { articleId: 'a-z', siteId: 'site-a', state: 'published', publishedUrl: null, publishedAt: '2026-09-25T10:00:00.000Z' },
+      { articleId: 'a-a', siteId: 'site-a', state: 'published', publishedUrl: null, publishedAt: '2026-09-20T10:00:00.000Z' },
+    ];
+    const onFilterApply = vi.fn();
+    render(<PublishedUrlBoard data={{ articles: twoArticles, sites: twoSites, articleSites: twoRows }} onFilterApply={onFilterApply} />);
+    const before = document.body.innerHTML;
+    expect(before.indexOf('Zebra')).toBeGreaterThan(-1);
+    expect(before.indexOf('Zebra')).toBeLessThan(before.indexOf('Alpha'));
+    await user.click(screen.getByRole('combobox'));
+    await user.click(await screen.findByRole('option', { name: 'Abjad Judul (A-Z)' }));
+    await waitFor(() => expect(onFilterApply).toHaveBeenCalledWith(expect.stringContaining('sort=title')), { timeout: 2000 });
+    const after = document.body.innerHTML;
+    expect(after.indexOf('Zebra')).toBeLessThan(after.indexOf('Alpha'));
+  });
+
+  it('memakai total dari payload untuk teks Menampilkan', () => {
+    render(
+      <PublishedUrlBoard
+        data={{ articles: ARTICLES, sites: SITES, articleSites: ARTICLE_SITES, total: 50, articlesNextCursor: null }}
+      />,
+    );
+    expect(screen.getByText(/Menampilkan 1 dari 50 artikel tersindikasi/)).toBeDefined();
+  });
+
+  it('memakai articlesTotal prop saat model tanpa total', () => {
+    render(
+      <PublishedUrlBoard
+        data={{ articles: ARTICLES, sites: SITES, articleSites: ARTICLE_SITES }}
+        articlesTotal={77}
+      />,
+    );
+    expect(screen.getByText(/Menampilkan 1 dari 77 artikel tersindikasi/)).toBeDefined();
+  });
+
+  it('tombol muat lebih muncul dengan cursor dan memanggil onLoadMoreArticles', async () => {
+    const user = userEvent.setup();
+    const onLoadMoreArticles = vi.fn(async () => ({ loaded: 1, total: 1, nextCursor: null }) as const);
+    render(
+      <PublishedUrlBoard
+        data={{ articles: ARTICLES, sites: SITES, articleSites: ARTICLE_SITES }}
+        articlesNextCursor="cur-1"
+        onLoadMoreArticles={onLoadMoreArticles}
+      />,
+    );
+    const button = screen.getByRole('button', { name: 'Muat lebih lama' });
+    expect(button).toBeDefined();
+    await user.click(button);
+    await waitFor(() => expect(onLoadMoreArticles).toHaveBeenCalledTimes(1));
+  });
+
+  it('tombol muat lebih membaca cursor dari model dan sembunyi saat habis', () => {
+    const onLoadMoreArticles = vi.fn(async () => null);
+    const { rerender } = render(
+      <PublishedUrlBoard
+        data={{ articles: ARTICLES, sites: SITES, articleSites: ARTICLE_SITES, articlesNextCursor: 'model-cur' }}
+        onLoadMoreArticles={onLoadMoreArticles}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Muat lebih lama' })).toBeDefined();
+    rerender(
+      <PublishedUrlBoard
+        data={{ articles: ARTICLES, sites: SITES, articleSites: ARTICLE_SITES, articlesNextCursor: null }}
+        onLoadMoreArticles={onLoadMoreArticles}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: 'Muat lebih lama' })).toBeNull();
+  });
+
+  it('jump-fill memanggil onLoadMoreArticles saat lompat halaman', async () => {
+    const onLoadMoreArticles = vi.fn(async () => ({ loaded: 40, total: 45, nextCursor: null }) as const);
+    render(
+      <PublishedUrlBoard
+        data={{ articles: pagedArticles, sites: SITES, articleSites: pagedArticleSites, total: 45, articlesNextCursor: 'cur-1' }}
+        onLoadMoreArticles={onLoadMoreArticles}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Ke halaman berikutnya'));
+    await waitFor(() => expect(onLoadMoreArticles).toHaveBeenCalled(), { timeout: 2000 });
   });
 });

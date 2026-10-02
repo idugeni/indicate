@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { regionCreateSchema, regionUpdateSchema, siteCachePurgeSchema, siteSettingsSchema } from '@/modules/dashboard/schemas';
+import { articleFilterSchema, auditFilterSchema, regionCreateSchema, regionUpdateSchema, siteCachePurgeSchema, siteSettingsSchema } from '@/modules/dashboard/schemas';
 
 const SETTINGS_BASE = {
   siteId: '0199a2b3-4c5d-7e8f-9012-3456789abcde',
@@ -8,6 +8,43 @@ const SETTINGS_BASE = {
   description: 'Deskripsi portal contoh yang cukup panjang untuk lolos validasi minimal.',
 };
 
+describe('articleFilterSchema pagination', () => {
+  const CURSOR = '123e4567-e89b-12d3-a456-426614174000';
+
+  it('menerima filter paginasi editorial lengkap', () => {
+    const result = articleFilterSchema.safeParse({
+      status: 'active', tag: 'politik', siteHostname: 'wonosobo.fakta01.my.id',
+      sort: 'published-desc', limit: 50, cursor: CURSOR,
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) throw new Error('expected ok');
+    expect(result.data).toMatchObject({ status: 'active', tag: 'politik', sort: 'published-desc', limit: 50, cursor: CURSOR });
+  });
+
+  it('menerima limit nol untuk tampilan tanpa daftar artikel', () => {
+    expect(articleFilterSchema.safeParse({ limit: 0 }).success).toBe(true);
+  });
+
+  it('menolak sort dan status tak dikenal', () => {
+    expect(articleFilterSchema.safeParse({ sort: 'bogus' }).success).toBe(false);
+    expect(articleFilterSchema.safeParse({ status: 'bogus' }).success).toBe(false);
+    expect(articleFilterSchema.safeParse({ limit: 501 }).success).toBe(false);
+  });
+});
+
+describe('auditFilterSchema pagination', () => {
+  it('menerima limit dan kursor keyset', () => {
+    const result = auditFilterSchema.safeParse({ limit: 25, cursor: 'seq-100' });
+    expect(result.success).toBe(true);
+    if (!result.success) throw new Error('expected ok');
+    expect(result.data).toMatchObject({ limit: 25, cursor: 'seq-100' });
+  });
+
+  it('menolak limit di luar 1..500', () => {
+    expect(auditFilterSchema.safeParse({ limit: 0 }).success).toBe(false);
+    expect(auditFilterSchema.safeParse({ limit: 501 }).success).toBe(false);
+  });
+});
 describe('siteCachePurgeSchema', () => {
   it('menolak purge massal tanpa konfirmasi eksplisit', () => {
     expect(siteCachePurgeSchema.safeParse({}).success).toBe(false);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   Check,
   Copy,
@@ -112,7 +112,13 @@ function formatPublishedAt(value: string | null): string {
   return moment === null ? 'Jadwal belum tercatat' : `Tayang ${moment}`;
 }
 
-export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
+export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, articlesTotal, onLoadMoreArticles }: {
+  readonly data: unknown;
+  readonly onFilterApply?: ((query: string) => void) | undefined;
+  readonly articlesNextCursor?: string | null | undefined;
+  readonly articlesTotal?: number | undefined;
+  readonly onLoadMoreArticles?: (() => Promise<{ readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null>) | undefined;
+}) {
   const searchInputId = useId();
   const sortSelectId = useId();
 
@@ -125,6 +131,8 @@ export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
     readonly articles?: readonly ArticleInput[];
     readonly sites?: readonly SiteInput[];
     readonly articleSites?: readonly ArticleSiteInput[];
+    readonly total?: number;
+    readonly articlesNextCursor?: string | null;
   };
 
   const published = useMemo(
@@ -137,51 +145,49 @@ export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
     [model.articles, model.sites, model.articleSites],
   );
 
+  /**
+   * Search and sort run on the server (same predicates the board used to
+   * apply locally); the rows below only group assignments per article.
+   */
+  useEffect(() => {
+    if (onFilterApply === undefined) return;
+    const needle = query.trim();
+    const serverSort = sortOrder === 'newest' ? 'published-desc' : sortOrder === 'oldest' ? 'published-asc' : sortOrder === 'alphabetical' ? 'title' : 'syndicated';
+    const parts = [
+      'publicationState=published',
+      `sort=${serverSort}`,
+      ...(needle === '' ? [] : [`search=${encodeURIComponent(needle)}`]),
+    ];
+    const timer = window.setTimeout(() => {
+      onFilterApply(`&${parts.join('&')}`);
+      setPage(1);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [query, sortOrder, onFilterApply, setPage]);
+
+  const serverTotal = model.total ?? articlesTotal;
+  const nextCursor = model.articlesNextCursor ?? articlesNextCursor ?? null;
+
   const needle = query.trim().toLowerCase();
 
-  const filteredAndSorted = useMemo(() => {
-    const result =
-      needle === ''
-        ? [...published]
-        : published.filter(
-          (entry) =>
-            entry.title.toLowerCase().includes(needle) ||
-            entry.slug.toLowerCase().includes(needle),
-        );
+  /**
+   * The server applies the same title/slug match and the requested sort, so
+   * this re-filter only narrows the loaded window idempotently while the
+   * first page is still arriving. Row order always stays server-owned to keep
+   * appended pages coherent.
+   */
+  const filtered = useMemo(() => {
+    if (needle === '') return [...published];
+    return published.filter(
+      (entry) =>
+        entry.title.toLowerCase().includes(needle) ||
+        entry.slug.toLowerCase().includes(needle),
+    );
+  }, [published, needle]);
 
-    switch (sortOrder) {
-      case 'oldest':
-        result.sort((a, b) => {
-          if (a.publishedAt === b.publishedAt) return a.title.localeCompare(b.title, 'id-ID');
-          if (a.publishedAt === null) return 1;
-          if (b.publishedAt === null) return -1;
-          return a.publishedAt.localeCompare(b.publishedAt);
-        });
-        break;
-      case 'most-syndicated':
-        result.sort((a, b) => {
-          if (b.urls.length === a.urls.length) {
-            return (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '');
-          }
-          return b.urls.length - a.urls.length;
-        });
-        break;
-      case 'alphabetical':
-        result.sort((a, b) => a.title.localeCompare(b.title, 'id-ID'));
-        break;
-      case 'newest':
-      default:
-        result.sort((a, b) => {
-          if (a.publishedAt === b.publishedAt) return a.title.localeCompare(b.title, 'id-ID');
-          if (a.publishedAt === null) return 1;
-          if (b.publishedAt === null) return -1;
-          return b.publishedAt.localeCompare(a.publishedAt);
-        });
-        break;
-    }
-
-    return result;
-  }, [published, needle, sortOrder]);
+  // Standalone (tests, no server paging): the client filter is authoritative.
+  // Server-driven: the server already filtered; the total rides the payload.
+  const total = serverTotal ?? filtered.length;
 
   const totalUrls = useMemo(
     () => published.reduce((sum, entry) => sum + entry.urls.length, 0),
@@ -193,9 +199,29 @@ export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
     return (totalUrls / published.length).toFixed(1);
   }, [published, totalUrls]);
 
-  const pageCount = Math.max(1, Math.ceil(filteredAndSorted.length / PAGE_SIZE));
+  const fillingRef = useRef(false);
+  const goToPage = (next: number) => {
+    setPage(next);
+    if (onLoadMoreArticles === undefined || fillingRef.current) return;
+    void (async () => {
+      fillingRef.current = true;
+      try {
+        let guard = 0;
+        let state = { loaded: published.length, cursor: nextCursor };
+        while (next * PAGE_SIZE > state.loaded && state.cursor !== null && guard++ < 10) {
+          const result = await onLoadMoreArticles();
+          if (result === null) break;
+          state = { loaded: result.loaded, cursor: result.nextCursor };
+        }
+      } finally {
+        fillingRef.current = false;
+      }
+    })();
+  };
+
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
-  const visible = filteredAndSorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const visible = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const handleCopySlug = (articleId: string, slug: string) => {
     void navigator.clipboard.writeText(slug);
@@ -205,14 +231,14 @@ export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
   };
 
   const handleCopyAllSummary = () => {
-    if (filteredAndSorted.length === 0) return;
-    const payload = filteredAndSorted
+    if (filtered.length === 0) return;
+    const payload = filtered
       .slice(0, 50)
       .map((entry) => `${entry.title}\n${entry.urls.join('\n')}`)
       .join('\n\n---\n\n');
 
     void navigator.clipboard.writeText(payload);
-    toast.success(`Daftar tautan ${Math.min(filteredAndSorted.length, 50)} artikel disalin.`);
+    toast.success(`Daftar tautan ${Math.min(filtered.length, 50)} artikel disalin.`);
   };
 
   return (
@@ -312,7 +338,7 @@ export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
               </DashboardSelect>
             </div>
 
-            {filteredAndSorted.length > 0 && (
+            {filtered.length > 0 && (
               <Button
                 type="button"
                 variant="outline"
@@ -329,7 +355,7 @@ export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
         </div>
       </SectionCard>
 
-      {filteredAndSorted.length === 0 ? (
+      {filtered.length === 0 ? (
         <EmptyState
           title={published.length === 0 ? 'Belum ada artikel yang tayang di jaringan' : 'Tidak ada berita yang cocok'}
           description={
@@ -342,7 +368,7 @@ export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
         <div className="flex flex-col gap-3.5">
           <div className="flex items-center justify-between px-1">
             <span className="font-mono text-xs text-paper-dim">
-              Menampilkan {visible.length.toLocaleString('id-ID')} dari {filteredAndSorted.length.toLocaleString('id-ID')} artikel tersindikasi
+              Menampilkan {visible.length.toLocaleString('id-ID')} dari {total.toLocaleString('id-ID')} artikel tersindikasi
             </span>
           </div>
 
@@ -406,11 +432,18 @@ export function PublishedUrlBoard({ data }: { readonly data: unknown }) {
             <DashboardPager
               startIndex={(safePage - 1) * PAGE_SIZE}
               visibleCount={visible.length}
-              total={filteredAndSorted.length}
+              total={total}
               page={safePage}
               pageCount={pageCount}
-              onPageChange={setPage}
+              onPageChange={goToPage}
             />
+            {onLoadMoreArticles !== undefined && nextCursor !== null ? (
+              <div className="mt-3 flex justify-center">
+                <Button type="button" variant="outline" size="sm" onClick={() => void onLoadMoreArticles()}>
+                  Muat lebih lama
+                </Button>
+              </div>
+            ) : null}
           </div>
         </div>
       )}

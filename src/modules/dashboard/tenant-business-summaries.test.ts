@@ -35,7 +35,7 @@ function harness(repoOverrides: Record<string, unknown> = {}) {
   const repository = {
     dashboardCounts: vi.fn(async () => ({ activeSites: 2 })),
     analyticsSummary: vi.fn(async () => ({ articlesByRegion: [] })),
-    auditLogPage: vi.fn(async () => [{ id: 'log-1' }]),
+    auditLogPage: vi.fn(async () => ({ logs: [{ id: 'log-1' }], nextCursor: null })),
     retentionRuns: vi.fn(async () => []),
     operationsSummary: vi.fn(async () => ({ pending: 0 })),
     readConfigurationScope: vi.fn(async () => tenantState),
@@ -58,8 +58,26 @@ describe('TenantBusinessService read summaries', () => {
     expect(audit.ok).toBe(true);
     if (!audit.ok) throw new Error('expected ok');
     expect(audit.value.auditLogs).toHaveLength(1);
+    expect(audit.value.auditNextCursor).toBeNull();
     await expect(service.operations(actor)).resolves.toMatchObject({ ok: true });
     expect(repository.dashboardCounts).toHaveBeenCalledTimes(1);
+  });
+
+  it('meneruskan limit/kursor audit dan mengembalikan auditNextCursor', async () => {
+    const { service, repository } = harness({
+      auditLogPage: vi.fn(async () => ({ logs: [{ id: 'log-9' }], nextCursor: 'seq-123' })),
+    });
+    const result = await service.auditLogs(actor, { limit: 25, cursor: 'seq-100' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.auditLogs).toEqual([{ id: 'log-9' }]);
+    expect(result.value.auditNextCursor).toBe('seq-123');
+    expect(repository.auditLogPage).toHaveBeenCalledWith(
+      actor,
+      'audit.read',
+      expect.objectContaining({ limit: 25, cursor: 'seq-100' }),
+      expect.objectContaining({ limit: 25, cursor: 'seq-100' }),
+    );
   });
 
   it('menolak filter analitik dan audit yang rusak', async () => {

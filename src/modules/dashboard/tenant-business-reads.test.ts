@@ -51,6 +51,9 @@ function harness(options: { readonly collections?: Record<string, readonly unkno
     }),
     readEditorialScope: vi.fn(async () => ({
       articles: editorialState.articles,
+      articlesNextCursor: null,
+      total: editorialState.articles.length,
+      tagOptions: [],
       articleSites: editorialState.articleSites,
       categories: [],
       authors: [],
@@ -112,6 +115,9 @@ describe('TenantBusinessService editorial reads', () => {
       repo: {
         readEditorialScope: vi.fn(async () => ({
           articles: editorialState.articles,
+          articlesNextCursor: null,
+          total: editorialState.articles.length,
+          tagOptions: [],
           articleSites: editorialState.articleSites,
           categories: [],
           authors: [],
@@ -244,6 +250,64 @@ describe('TenantBusinessService editorial reads', () => {
     } finally {
       spy.mockRestore();
     }
+  });
+});
+
+describe('TenantBusinessService editorial pagination', () => {
+  const CURSOR = '123e4567-e89b-12d3-a456-426614174000';
+
+  function pagedHarness() {
+    return harness({
+      repo: {
+        readEditorialScope: vi.fn(async () => ({
+          articles: editorialState.articles,
+          articlesNextCursor: CURSOR,
+          total: 42,
+          tagOptions: [{ tag: 'politik', count: 7 }],
+          articleSites: editorialState.articleSites,
+          categories: [],
+          authors: [],
+          publishers: [],
+          regions: editorialState.regions,
+          sites: editorialState.sites,
+          domains: [],
+        })),
+      },
+    });
+  }
+
+  it('meneruskan limit/kursor/status/tag/sort dan mengembalikan kolom paginasi', async () => {
+    const { service, repository } = pagedHarness();
+    const result = await service.listEditorial(actor, {
+      limit: 50, cursor: CURSOR, status: 'active', tag: 'politik', sort: 'updated',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(repository.readEditorialScope).toHaveBeenCalledWith(
+      actor,
+      'article.read',
+      expect.objectContaining({ limit: 50, cursor: CURSOR, status: 'active', tag: 'politik', sort: 'updated' }),
+      { limit: 50, cursor: CURSOR },
+    );
+    expect(result.value.articles).toHaveLength(1);
+    expect(result.value.articlesNextCursor).toBe(CURSOR);
+    expect(result.value.total).toBe(42);
+    expect(result.value.tagOptions).toEqual([{ tag: 'politik', count: 7 }]);
+  });
+
+  it('menolak sort dan status tak dikenal sebagai INVALID_INPUT tanpa menyentuh repo', async () => {
+    const { service, repository } = pagedHarness();
+    const badSort = await service.listEditorial(actor, { sort: 'bogus' });
+    expect(badSort.ok).toBe(false);
+    if (badSort.ok) throw new Error('expected error');
+    expect(badSort.error.error.code).toBe('INVALID_INPUT');
+
+    const badStatus = await service.listEditorial(actor, { status: 'bogus' });
+    expect(badStatus.ok).toBe(false);
+    if (badStatus.ok) throw new Error('expected error');
+    expect(badStatus.error.error.code).toBe('INVALID_INPUT');
+
+    expect(repository.readEditorialScope).not.toHaveBeenCalled();
   });
 });
 

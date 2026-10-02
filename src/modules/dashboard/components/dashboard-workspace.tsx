@@ -387,17 +387,118 @@ export function DashboardWorkspace({
   const selectView = useCallback((next: View) => {
     setView(next);
     setCurrentPage(1);
+    setFilterQuery('');
   }, [setView, setCurrentPage]);
 
   const selectMobileNavView = useCallback((next: View) => {
     setView(next);
     setCurrentPage(1);
+    setFilterQuery('');
     setNavOpen(false);
   }, [setView, setCurrentPage]);
 
   const refreshActiveView = useCallback(() => {
     void fetchData(view, organizationId, filterQuery);
   }, [fetchData, view, organizationId, filterQuery]);
+
+  const articlesMoreInflightRef = useRef(false);
+  /**
+   * Append the next article keyset page into the active payload.
+   *
+   * Returns the merged totals so pagers can fill forward across page jumps.
+   * Lookups, tag options, and totals always describe the first page scope;
+   * only the row arrays grow.
+   */
+  const fetchMoreArticles = useCallback(async (): Promise<{ readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null> => {
+    const targetOrg = organizationId;
+    const targetView = view;
+    const query = filterQuery;
+    const key = `${targetOrg}|${targetView}|${query}|`;
+    const current = payload !== null && payload.key === key ? payload.body as {
+      readonly articles?: readonly unknown[]; readonly articlesNextCursor?: string | null; readonly total?: number;
+      readonly articleSites?: readonly unknown[];
+    } : null;
+    const cursor = current?.articlesNextCursor ?? null;
+    if (cursor === null || articlesMoreInflightRef.current) return null;
+    articlesMoreInflightRef.current = true;
+    setBusy(true);
+    try {
+      const endpoint = resolveApiEndpoint(targetView);
+      const response = await fetch(`/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${targetView}${query}&limit=50&cursor=${encodeURIComponent(cursor)}`);
+      const body = (await response.json()) as { readonly articles?: readonly unknown[]; readonly articlesNextCursor?: string | null; readonly total?: number; readonly articleSites?: readonly unknown[] };
+      if (!response.ok || activeOrgRef.current !== targetOrg) return null;
+      let merged: { readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null = null;
+      setPayload((previous) => {
+        if (previous === null || previous.key !== key) return previous;
+        const prevBody = previous.body as { readonly articles?: readonly unknown[]; readonly articleSites?: readonly unknown[] };
+        const articles = [...(prevBody.articles ?? []), ...(body.articles ?? [])];
+        const articleSites = [...(prevBody.articleSites ?? []), ...(body.articleSites ?? [])];
+        const nextCursor = typeof body.articlesNextCursor === 'string' ? body.articlesNextCursor : null;
+        merged = { loaded: articles.length, total: typeof body.total === 'number' ? body.total : articles.length, nextCursor };
+        return { key, body: { ...(body as Record<string, unknown>), articles, articleSites } };
+      });
+      return merged;
+    } catch {
+      if (activeOrgRef.current === targetOrg) setError('Gagal memuat artikel lebih banyak. Coba lagi.');
+      return null;
+    } finally {
+      articlesMoreInflightRef.current = false;
+      if (activeOrgRef.current === targetOrg) setBusy(false);
+    }
+  }, [organizationId, view, filterQuery, payload]);
+
+  const articlesMore = (() => {
+    if ((view !== 'articles' && view !== 'published') || data === null || typeof data !== 'object') {
+      return { cursor: null as string | null, total: 0 };
+    }
+    const body = data as { readonly articlesNextCursor?: unknown; readonly total?: unknown };
+    return {
+      cursor: typeof body.articlesNextCursor === 'string' ? body.articlesNextCursor : null,
+      total: typeof body.total === 'number' ? body.total : 0,
+    };
+  })();
+
+  const moreInflightRef = useRef(false);
+  /**
+   * Append the next audit keyset page into the active payload.
+   *
+   * The audit trail is append-only and server-ordered, so concatenating pages
+   * keeps every row exactly once without disturbing filters or paging state.
+   */
+  const fetchMoreAudit = useCallback(async () => {
+    const targetOrg = organizationId;
+    const targetView = view;
+    const query = filterQuery;
+    const key = `${targetOrg}|${targetView}|${query}|`;
+    const current = payload !== null && payload.key === key ? payload.body as {
+      readonly auditLogs?: readonly unknown[]; readonly auditNextCursor?: string | null;
+    } : null;
+    const cursor = current?.auditNextCursor ?? null;
+    if (cursor === null || moreInflightRef.current) return;
+    moreInflightRef.current = true;
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/dashboard/workspace?organizationId=${encodeURIComponent(targetOrg)}&view=audit${query}&limit=100&cursor=${encodeURIComponent(cursor)}`);
+      const body = (await response.json()) as { readonly auditLogs?: readonly unknown[]; readonly auditNextCursor?: string | null };
+      if (!response.ok || activeOrgRef.current !== targetOrg) return;
+      setPayload((previous) => {
+        if (previous === null || previous.key !== key) return previous;
+        const prevBody = previous.body as { readonly auditLogs?: readonly unknown[] };
+        return { key, body: { ...(body as Record<string, unknown>), auditLogs: [...(prevBody.auditLogs ?? []), ...(body.auditLogs ?? [])] } };
+      });
+    } catch {
+      if (activeOrgRef.current === targetOrg) setError('Gagal memuat riwayat lebih lama. Coba lagi.');
+    } finally {
+      moreInflightRef.current = false;
+      if (activeOrgRef.current === targetOrg) setBusy(false);
+    }
+  }, [organizationId, view, filterQuery, payload]);
+
+  const auditNextCursor = (() => {
+    if (view !== 'audit' || data === null || typeof data !== 'object') return null;
+    const cursor = (data as { readonly auditNextCursor?: unknown }).auditNextCursor;
+    return typeof cursor === 'string' ? cursor : null;
+  })();
 
   return (
     <TooltipProvider delay={150}>
@@ -558,6 +659,11 @@ export function DashboardWorkspace({
           onPageChange={setCurrentPage}
           onRefresh={refreshActiveView}
           onSelectView={selectView}
+          auditNextCursor={auditNextCursor}
+          onLoadMoreAudit={view === 'audit' ? fetchMoreAudit : undefined}
+          articlesNextCursor={articlesMore.cursor}
+          articlesTotal={articlesMore.total}
+          onLoadMoreArticles={view === 'articles' || view === 'published' ? fetchMoreArticles : undefined}
         />
         <DashboardFooter />
         </div>
