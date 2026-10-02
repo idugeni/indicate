@@ -14,7 +14,7 @@ This file is the repository engineering rulebook.
 
 For every non-trivial change:
 
-**INSPECT → IDENTIFY → BOUND → IMPLEMENT → VERIFY → RE-AUDIT → CLOSE**
+> INSPECT → IDENTIFY → BOUND → IMPLEMENT → VERIFY → RE-AUDIT → CLOSE
 
 Inspect relevant code, schema, indexes, callers, cache/invalidation paths, tests, and applicable skills before editing.
 
@@ -41,7 +41,7 @@ Never guess schema, runtime state, library APIs, or external limits when they ca
 
 For live infrastructure work:
 
-**inspect → change → verify**
+> inspect → change → verify
 
 ## 4. Database Access & Egress
 
@@ -49,7 +49,7 @@ PostgreSQL/Supabase is the source of truth.
 
 Default principle:
 
-**READ LESS · FETCH ONCE · QUERY BY SCOPE · PAGINATE GROWING DATA · CACHE APPROPRIATELY · NEVER FULL-TABLE DUMP**
+> READ LESS · FETCH ONCE · QUERY BY SCOPE · PAGINATE GROWING DATA · CACHE APPROPRIATELY · NEVER FULL-TABLE DUMP
 
 Hard rules:
 
@@ -71,7 +71,7 @@ Hard rules:
 
 Prefer SQL-native targeted operations over:
 
-**load-everything → process-in-memory → persist**
+> load-everything → process-in-memory → persist
 
 Use targeted `INSERT`, `UPSERT`, `UPDATE`, `DELETE`, joins, aggregates, window functions, and read models where appropriate.
 
@@ -81,7 +81,7 @@ CRUD must operate on the smallest valid scope and projection while preserving tr
 
 Audit the complete path:
 
-**UI → hook/data layer → API/server action → service → repository → SQL → response → cache → UI**
+> UI → hook/data layer → API/server action → service → repository → SQL → response → cache → UI
 
 Rules:
 
