@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   Building2,
   Check,
@@ -73,6 +73,8 @@ export interface LibraryMedia {
 
 interface LibraryModel {
   readonly media?: readonly LibraryMedia[];
+  readonly nextCursor?: string | null;
+  readonly mediaCounts?: readonly { readonly kind: MediaOwnerKind; readonly count: number; readonly bytes: number }[];
   readonly articles?: readonly { readonly id: string; readonly title?: string }[];
   readonly sites?: readonly { readonly id: string; readonly normalizedHostname: string }[];
 }
@@ -133,7 +135,8 @@ const PREVIEWABLE = new Set([
   'image/x-icon',
 ]);
 
-const PAGE_SIZE = 48;
+const PAGE_SIZE = 24;
+const SEARCH_DEBOUNCE_MS = 400;
 
 function fileNameOf(objectKey: string): string {
   const segments = objectKey.split('/').filter((segment) => segment.length > 0);
@@ -161,6 +164,26 @@ function ownerLabel(media: LibraryMedia, model: LibraryModel | null): string {
   return 'Aset Organisasi';
 }
 
+/**
+ * Normalize one `media.list` command response into items plus cursor.
+ *
+ * @param value - Raw command result.
+ * @returns Page items with next cursor, or null when the shape is unusable.
+ */
+function readPage(value: unknown): { readonly items: readonly LibraryMedia[]; readonly next: string | null } | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const record = value as { readonly items?: unknown; readonly nextCursor?: unknown };
+  if (!Array.isArray(record.items)) return null;
+  const items = record.items.filter(
+    (item): item is LibraryMedia =>
+      typeof item === 'object' && item !== null && typeof (item as LibraryMedia).id === 'string' && typeof (item as LibraryMedia).objectKey === 'string',
+  );
+  return {
+    items,
+    next: typeof record.nextCursor === 'string' && record.nextCursor !== '' ? record.nextCursor : null,
+  };
+}
+
 export function MediaLibrary({ data, command, organizationId }: MediaLibraryProps) {
   const model = data as LibraryModel | null;
   const searchId = useId();
@@ -174,6 +197,11 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [activePanel, setActivePanel] = useState<'none' | 'upload' | 'ai'>('none');
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const [items, setItems] = useState<readonly LibraryMedia[]>(model?.media ?? []);
+  const [cursor, setCursor] = useState<string | null>(model?.nextCursor ?? null);
+  const [serverCounts] = useState<readonly { readonly kind: MediaOwnerKind; readonly count: number; readonly bytes: number }[] | null>(model?.mediaCounts ?? null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
 
   const [previewCache, setPreviewCache] = useState<Record<string, SignedAssetAuthorization>>({});
   const [loadingMediaId, setLoadingMediaId] = useState<string | null>(null);
@@ -181,17 +209,26 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
   const [savingCover, setSavingCover] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
 
-  const media = useMemo(() => model?.media ?? [], [model]);
+  const media = useMemo(() => items, [items]);
   const purposes = useMemo(() => [...new Set(media.map((item) => item.purpose))].sort(), [media]);
 
   const folders = useMemo<readonly Folder[]>(() => {
+    const server = (kind: MediaOwnerKind) => serverCounts?.find((entry) => entry.kind === kind) ?? null;
     const group = (kind: MediaOwnerKind) => {
+      const hit = server(kind);
+      if (hit !== null) return { count: hit.count, bytes: hit.bytes };
       const rows = media.filter((item) => item.owner.kind === kind);
       return {
         count: rows.length,
         bytes: rows.reduce((total, item) => total + item.sizeBytes, 0),
       };
     };
+    const all = serverCounts === null
+      ? { count: media.length, bytes: media.reduce((total, item) => total + item.sizeBytes, 0) }
+      : {
+        count: serverCounts.reduce((total, entry) => total + entry.count, 0),
+        bytes: serverCounts.reduce((total, entry) => total + entry.bytes, 0),
+      };
     const organization = group('organization');
     const article = group('article');
     const site = group('site');
@@ -199,10 +236,10 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
       {
         key: 'all',
         label: 'Semua Media',
-        hint: `${media.length.toLocaleString('id-ID')} berkas`,
+        hint: `${all.count.toLocaleString('id-ID')} berkas`,
         icon: FolderOpen,
-        count: media.length,
-        bytes: media.reduce((total, item) => total + item.sizeBytes, 0),
+        count: all.count,
+        bytes: all.bytes,
       },
       {
         key: 'organization',
@@ -226,7 +263,7 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
         ...site,
       },
     ];
-  }, [media]);
+  }, [media, serverCounts]);
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -245,6 +282,71 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
   const remaining = filtered.length - visible.length;
   const resetWindow = () => setLimit(PAGE_SIZE);
 
+  const commandRef = useRef(command);
+  useEffect(() => {
+    commandRef.current = command;
+  }, [command]);
+
+  const firstLoad = useRef(true);
+  useEffect(() => {
+    if (firstLoad.current) {
+      firstLoad.current = false;
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      const run = commandRef.current;
+      setListError(null);
+      void (async () => {
+        try {
+          const page = readPage(
+            await run('media.list', {
+              limit: PAGE_SIZE,
+              ...(folder === 'all' ? {} : { owner: folder }),
+              ...(purpose === '' ? {} : { purpose }),
+              ...(state === '' ? {} : { state }),
+              ...(search.trim() === '' ? {} : { search: search.trim() }),
+            }),
+          );
+          if (page === null) return;
+          setItems(page.items);
+          setCursor(page.next);
+          setLimit(PAGE_SIZE);
+        } catch {
+          setListError('Gagal memuat ulang daftar media.');
+        }
+      })();
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [folder, purpose, state, search]);
+
+  const loadMore = async () => {
+    if (cursor === null || loadingMore) return;
+    setLoadingMore(true);
+    setListError(null);
+    try {
+      const page = readPage(
+        await command('media.list', {
+          limit: PAGE_SIZE,
+          cursor,
+          ...(folder === 'all' ? {} : { owner: folder }),
+          ...(purpose === '' ? {} : { purpose }),
+          ...(state === '' ? {} : { state }),
+          ...(search.trim() === '' ? {} : { search: search.trim() }),
+        }),
+      );
+      if (page === null) return;
+      setItems((prev) => {
+        const known = new Set(prev.map((item) => item.id));
+        return [...prev, ...page.items.filter((item) => !known.has(item.id))];
+      });
+      setCursor(page.next);
+      setLimit((curr) => curr + PAGE_SIZE);
+    } catch {
+      setListError('Gagal memuat halaman berikutnya.');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
   const totalBytes = useMemo(
     () => media.reduce((total, item) => total + item.sizeBytes, 0),
     [media],
@@ -769,22 +871,30 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
           </div>
         )}
 
-        {remaining > 0 && (
+        {(remaining > 0 || cursor !== null) && (
           <div className="mt-3 flex items-center justify-between border-t border-hairline pt-3">
             <span className="font-mono text-[11px] tabular-nums text-paper-dim">
-              Sisa {remaining.toLocaleString('id-ID')} berkas belum dimuat
+              {remaining > 0
+                ? `Sisa ${remaining.toLocaleString('id-ID')} berkas belum dimuat`
+                : 'Ada halaman berikutnya di server'}
             </span>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setLimit((curr) => curr + PAGE_SIZE)}
+              onClick={() => void loadMore()}
+              disabled={loadingMore}
               className="font-sans text-xs"
             >
-              Muat {Math.min(remaining, PAGE_SIZE).toLocaleString('id-ID')} lagi
+              {loadingMore ? 'Memuat…' : remaining > 0 ? `Muat ${Math.min(remaining, PAGE_SIZE).toLocaleString('id-ID')} lagi` : `Muat ${PAGE_SIZE} lagi`}
             </Button>
           </div>
         )}
+        {listError !== null ? (
+          <p role="alert" className="m-0 mt-2 font-mono text-[11px] text-rose-400">
+            {listError}
+          </p>
+        ) : null}
       </section>
 
       {inspectedMedia && (

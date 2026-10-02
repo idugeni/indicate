@@ -62,9 +62,32 @@ describe('Pratinjau artikel', () => {
   });
 
   it('meminta url pratinjau untuk tiap media di dokumen', async () => {
-    const command = vi.fn(async () => ({ url: 'https://r2.contoh.id/pratinjau.png' }));
+    const command = vi.fn(async () => ({ items: [{ mediaId: MEDIA_ID, url: 'https://r2.contoh.id/pratinjau.png', expiresAt: '2026-10-02T00:10:00.000Z' }] }));
     render(<ArticlePreview title="Kabar" description="" doc={docWithImage(MEDIA_ID)} command={command} />);
-    await waitFor(() => expect(command).toHaveBeenCalledWith('media.read', { mediaId: MEDIA_ID }));
+    await waitFor(() => expect(command).toHaveBeenCalledWith('media.readMany', { mediaIds: [MEDIA_ID] }));
+  });
+
+  it('menggabungkan banyak media dalam satu panggilan dan memakai cache segar', async () => {
+    const fresh = new Date(Date.now() + 10 * 60_000).toISOString();
+    const command = vi.fn(async () => ({
+      items: [
+        { mediaId: MEDIA_ID, url: 'https://r2.contoh.id/a.png', expiresAt: fresh },
+        { mediaId: OTHER_MEDIA_ID, url: 'https://r2.contoh.id/b.png', expiresAt: fresh },
+      ],
+    }));
+    const doc = {
+      type: 'doc',
+      content: [
+        { type: 'image', attrs: { src: `/api/network/media/${MEDIA_ID}`, alt: 'A' } },
+        { type: 'image', attrs: { src: `/api/network/media/${OTHER_MEDIA_ID}`, alt: 'B' } },
+      ],
+    } as TipTapDoc;
+    const { rerender } = render(<ArticlePreview title="Kabar" description="" doc={doc} command={command} />);
+    await waitFor(() => expect(command).toHaveBeenCalledTimes(1));
+    expect(command).toHaveBeenCalledWith('media.readMany', { mediaIds: [MEDIA_ID, OTHER_MEDIA_ID] });
+    rerender(<ArticlePreview title="Kabar" description="" doc={doc} command={command} />);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(command).toHaveBeenCalledTimes(1);
   });
 
   it('menahan url media awet bila pembacaan ditolak', async () => {
@@ -77,14 +100,14 @@ describe('Pratinjau artikel', () => {
   });
 
   it('mengabaikan url kosong maupun non-teks dari pembacaan media', async () => {
-    const command = vi.fn(async () => ({ url: '' }));
+    const command = vi.fn(async () => ({ items: [{ mediaId: MEDIA_ID, url: '' }] }));
     const { rerender } = render(<ArticlePreview title="Kabar" description="" doc={docWithImage(MEDIA_ID)} command={command} />);
     await waitFor(() => expect(command).toHaveBeenCalled());
     expect(screen.getByText('Paragraf naskah')).toBeDefined();
 
-    const nonText = vi.fn(async () => ({ url: 7 }));
+    const nonText = vi.fn(async () => ({ items: [{ mediaId: OTHER_MEDIA_ID, url: 7 }] }));
     rerender(<ArticlePreview title="Kabar" description="" doc={docWithImage(OTHER_MEDIA_ID)} command={nonText} />);
-    await waitFor(() => expect(nonText).toHaveBeenCalledWith('media.read', { mediaId: OTHER_MEDIA_ID }));
+    await waitFor(() => expect(nonText).toHaveBeenCalledWith('media.readMany', { mediaIds: [OTHER_MEDIA_ID] }));
     expect(screen.getByText('Paragraf naskah')).toBeDefined();
   });
 

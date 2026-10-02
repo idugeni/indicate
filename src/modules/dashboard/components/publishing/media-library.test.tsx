@@ -77,4 +77,35 @@ describe('MediaLibrary', () => {
     await waitFor(() => expect(command).toHaveBeenCalledWith('media.read', { mediaId: 'm-1' }));
     expect((await screen.findAllByAltText('berkas-1.png')).length).toBeGreaterThan(0);
   });
+
+  it('memuat halaman berikutnya dari server dan menambahkannya', async () => {
+    const user = userEvent.setup();
+    const command = vi.fn(async (action: string) => {
+      if (action === 'media.list') return { items: [asset(4, 'organization')], nextCursor: null };
+      return undefined;
+    });
+    render(<MediaLibrary data={{ ...DATA, nextCursor: 'kursor-1' }} command={command} />);
+    await user.click(screen.getByRole('button', { name: /Muat 24 lagi/ }));
+    await waitFor(() =>
+      expect(command).toHaveBeenCalledWith('media.list', expect.objectContaining({ cursor: 'kursor-1', limit: 24 })),
+    );
+    expect(screen.getByText(/Menampilkan 4 dari 4 aset dalam filter/)).toBeDefined();
+  });
+
+  it('memuat ulang dari server saat filter berubah', async () => {
+    const user = userEvent.setup();
+    const all = [asset(1, 'organization'), asset(2, 'site'), asset(3, 'article')];
+    const command = vi.fn(async (action: string, payload: unknown) => {
+      if (action !== 'media.list') return undefined;
+      const owner = (payload as { readonly owner?: string }).owner;
+      const items = owner === undefined ? all : all.filter((item) => (item.owner as { readonly kind: string }).kind === owner);
+      return { items, nextCursor: null };
+    });
+    render(<MediaLibrary data={DATA} command={command} />);
+    await user.click(screen.getByRole('button', { name: /Portal Regional/ }));
+    await waitFor(() =>
+      expect(command).toHaveBeenCalledWith('media.list', expect.objectContaining({ owner: 'site' })),
+    );
+    expect(screen.getByText(/Menampilkan 1 dari 1 aset dalam filter/)).toBeDefined();
+  });
 });

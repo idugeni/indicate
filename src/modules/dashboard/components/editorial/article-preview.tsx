@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -57,32 +57,44 @@ export function ArticlePreview({
   readonly command: CommandFn;
 }) {
   const [resolved, setResolved] = useState<ReadonlyMap<string, string>>(() => new Map());
+  const expiryRef = useRef<ReadonlyMap<string, number>>(new Map());
   const [device, setDevice] = useState<'desktop' | 'ponsel'>('desktop');
   const mediaIds = useMemo(() => (doc === null ? [] : collectMediaIds(doc)), [doc]);
 
   useEffect(() => {
     if (doc === null) return undefined;
-    const missing = mediaIds.filter((id) => !resolved.has(`/api/network/media/${id}`));
-    if (missing.length === 0) return undefined;
     let cancelled = false;
-    void (async () => {
-      const next = new Map(resolved);
-      await Promise.all(
-        missing.map(async (id) => {
-          try {
-            const read = (await command('media.read', { mediaId: id })) as { readonly url?: unknown } | null;
-            if (typeof read?.url === 'string' && read.url !== '') {
-              next.set(`/api/network/media/${id}`, read.url);
-            }
-          } catch {
-            /* Keep the durable relative URL. */
+    const timer = window.setTimeout(() => {
+      const now = Date.now();
+      const missing = mediaIds.filter((id) => {
+        if (resolved.get(`/api/network/media/${id}`) === undefined) return true;
+        return (expiryRef.current.get(id) ?? 0) - 60_000 <= now;
+      });
+      if (missing.length === 0) return;
+      void (async () => {
+        try {
+          const result = (await command('media.readMany', { mediaIds: missing })) as {
+            readonly items?: readonly { readonly mediaId?: unknown; readonly url?: unknown; readonly expiresAt?: unknown }[];
+          } | null;
+          if (!Array.isArray(result?.items) || cancelled) return;
+          const next = new Map(resolved);
+          const expiry = new Map(expiryRef.current);
+          for (const item of result.items) {
+            if (typeof item?.mediaId !== 'string' || typeof item?.url !== 'string' || item.url === '') continue;
+            next.set(`/api/network/media/${item.mediaId}`, item.url);
+            const expires = typeof item?.expiresAt === 'string' ? Date.parse(item.expiresAt) : Number.NaN;
+            if (Number.isFinite(expires)) expiry.set(item.mediaId, expires);
           }
-        }),
-      );
-      if (!cancelled) setResolved(next);
-    })();
+          expiryRef.current = expiry;
+          setResolved(next);
+        } catch {
+          /* Keep the durable relative URL. */
+        }
+      })();
+    }, 500);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [doc, command, mediaIds, resolved]);
 
