@@ -39,8 +39,12 @@ export function DarkNavyHero({ articles }: { readonly articles: readonly Article
         if (window.matchMedia('(hover: hover)').matches) setPaused(true);
       }}
       onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)}
-      onBlur={() => setPaused(false)}
+      onFocusCapture={(event) => {
+        if (event.currentTarget.contains(event.target as Node | null)) setPaused(true);
+      }}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false);
+      }}
     >
       <Image
         unoptimized

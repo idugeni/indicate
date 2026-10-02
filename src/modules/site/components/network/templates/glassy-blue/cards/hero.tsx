@@ -52,8 +52,12 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
         if (window.matchMedia('(hover: hover)').matches) setPaused(true);
       }}
       onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)}
-      onBlur={() => setPaused(false)}
+      onFocusCapture={(event) => {
+        if (event.currentTarget.contains(event.target as Node | null)) setPaused(true);
+      }}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false);
+      }}
     >
       <div className="grid items-center gap-6 lg:grid-cols-[1.05fr_minmax(0,1fr)] lg:gap-8">
         <Link

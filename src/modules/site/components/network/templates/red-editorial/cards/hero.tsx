@@ -48,8 +48,12 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
         if (window.matchMedia('(hover: hover)').matches) setPaused(true);
       }}
       onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)}
-      onBlur={() => setPaused(false)}
+      onFocusCapture={(event) => {
+        if (event.currentTarget.contains(event.target as Node | null)) setPaused(true);
+      }}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false);
+      }}
     >
       <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
         <div className="min-w-0">
@@ -57,7 +61,7 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
             <span aria-hidden="true" className="h-px w-8 bg-[var(--tpl-primary,#b91c1c)]" />
             {kicker}
           </p>
-          <h1 className="m-0 mt-4 line-clamp-2 font-serif text-4xl font-bold leading-[1.12] tracking-tight text-[var(--tpl-ink,#230d0d)] sm:text-5xl">
+          <h1 className="m-0 mt-4 min-h-[121px] font-serif text-4xl font-bold leading-[1.12] tracking-tight text-[var(--tpl-ink,#230d0d)] sm:min-h-[162px] sm:text-5xl">
             {head === '' ? (
               article.title
             ) : (
