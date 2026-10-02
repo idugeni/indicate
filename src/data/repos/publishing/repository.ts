@@ -122,6 +122,27 @@ function parseMediaCursor(cursor: string | undefined): { readonly createdAt: Dat
  * (100), so this is a growth guard rather than a truncation path.
  */
 const JOB_TARGET_MAX_ROWS = 500;
+/**
+ * Build the canonical article row's first-publication update.
+ *
+ * @remarks The status predicate flips a draft or scheduled article to active, so
+ * this fires once per article; the IS NULL predicate keeps a publication date an
+ * editor already set. `stampedAt` is the scheduled-or-now instant the live target
+ * received, which keeps the article time equal to its earliest `article_sites`
+ * stamp. A later target publishing the same article must not rewrite it.
+ */
+export function firstPublicationUpdate(input: { readonly organizationId: string; readonly articleId: string; readonly stampedAt: Date; readonly now: Date }) {
+  return {
+    set: { status: 'active' as const, publishedAt: input.stampedAt, updatedAt: input.now },
+    where: and(
+      eq(articles.organizationId, input.organizationId),
+      eq(articles.id, input.articleId),
+      inArray(articles.status, ['draft', 'scheduled']),
+      isNull(articles.publishedAt),
+    ),
+  };
+}
+
 export class DrizzlePublishingRepository implements PublishingRepository {
   constructor(private readonly database: Database) {}
 
@@ -782,7 +803,8 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       if (input.toState === 'published') {
         const current = (await transaction.select({ viewCount: articleSites.viewCount, publishedAt: articleSites.publishedAt }).from(articleSites).where(and(eq(articleSites.organizationId, claim.organizationId), eq(articleSites.id, target.articleSiteId))).limit(1))[0];
         if (current !== undefined && current.viewCount === 0) seededViews = seedInitialViewCount(current.viewCount, current.publishedAt !== null);
-        await transaction.update(articles).set({ status: 'active', updatedAt: new Date(input.now) }).where(and(eq(articles.organizationId, claim.organizationId), eq(articles.id, job.articleId), inArray(articles.status, ['draft', 'scheduled'])));
+        const activation = firstPublicationUpdate({ organizationId: claim.organizationId, articleId: job.articleId, stampedAt, now: nowDate });
+        await transaction.update(articles).set(activation.set).where(activation.where);
       }
       await transaction.update(articleSites).set({ state: input.toState, stateOccurredAt: new Date(input.now), publishedUrl: input.toState === 'published' ? input.publishedUrl ?? null : null, publishedAt: input.toState === 'published' ? stampedAt : null, sanitizedFailure: input.sanitizedError ?? null, attempt: input.toState === 'processing' ? target.attempt + 1 : target.attempt, ...(seededViews === null ? {} : { viewCount: seededViews }), version: sql`${articleSites.version} + 1`, updatedAt: new Date(input.now) }).where(and(eq(articleSites.organizationId, claim.organizationId), eq(articleSites.id, target.articleSiteId)));
       if (input.toState === 'published' || input.toState === 'unpublished') {

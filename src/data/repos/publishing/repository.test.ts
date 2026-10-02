@@ -7,6 +7,7 @@ import {
   DrizzlePublishingRepository,
   MEDIA_SNAPSHOT_COLLECTIONS,
   PUBLISHING_SNAPSHOT_COLLECTIONS,
+  firstPublicationUpdate,
 } from '@/data/repos/publishing/repository';
 import {
   articleSites,
@@ -235,6 +236,37 @@ describe('isolasi tenant pada SQL yang dihasilkan', () => {
     const { text, params } = compileCondition(unscoped);
     expect(text).not.toContain('"organization_id"');
     expect(params).not.toContain(CONTEXT.organizationId);
+  });
+});
+
+describe('Penodymenan publikasi pertama pada baris artikel kanonik', () => {
+  const STAMPED_AT = new Date('2026-10-02T04:45:21.991Z');
+  const NOW = new Date('2026-10-02T04:45:30.000Z');
+
+  it('menyetel published_at ke waktu target yang benar-benar tayang', () => {
+    const { set } = firstPublicationUpdate({ organizationId: 'o1', articleId: 'a1', stampedAt: STAMPED_AT, now: NOW });
+    expect(set.status).toBe('active');
+    expect(set.publishedAt).toBe(STAMPED_AT);
+    expect(set.updatedAt).toBe(NOW);
+  });
+
+  it('hanya menyentuh draf dan jadwal, tidak artikel yang sudah aktif', () => {
+    const { text, params } = compileCondition(firstPublicationUpdate({ organizationId: 'o1', articleId: 'a1', stampedAt: STAMPED_AT, now: NOW }).where);
+    expect(text).toContain('"status"');
+    expect(params).toEqual(expect.arrayContaining(['draft', 'scheduled']));
+    expect(params).not.toContain('active');
+  });
+
+  it('tidak menimpa tanggal terbit yang sudah diisi editor', () => {
+    const { text } = compileCondition(firstPublicationUpdate({ organizationId: 'o1', articleId: 'a1', stampedAt: STAMPED_AT, now: NOW }).where);
+    expect(text).toContain('"published_at"');
+    expect(text.toLowerCase()).toContain('is null');
+  });
+
+  it('mempertahankan isolasi tenant dan identitas artikel', () => {
+    const { text, params } = compileCondition(firstPublicationUpdate({ organizationId: 'o1', articleId: 'a1', stampedAt: STAMPED_AT, now: NOW }).where);
+    expect(text).toContain('"organization_id"');
+    expect(params).toEqual(expect.arrayContaining(['o1', 'a1']));
   });
 });
 

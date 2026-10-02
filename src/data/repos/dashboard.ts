@@ -120,6 +120,24 @@ export function sameJson(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+/**
+ * Report whether an article row still matches its persisted counterpart.
+ *
+ * @remarks Every persisted column is compared, including `publishedAt`. Skipping it
+ * would let a draft-to-published transition look unchanged, and the tenant-state
+ * upsert would then never stamp the publication time.
+ */
+export function articleUnchanged(prior: ArticleRecord, row: ArticleRecord): boolean {
+  return prior.regionId === row.regionId && prior.publisherId === row.publisherId
+    && prior.categoryId === row.categoryId && prior.authorId === row.authorId && prior.leadMediaId === row.leadMediaId
+    && prior.coverImageUrl === row.coverImageUrl && prior.slug === row.slug && prior.title === row.title
+    && prior.excerpt === row.excerpt && prior.canonicalUrl === row.canonicalUrl && prior.body === row.body
+    && prior.source === row.source && prior.status === row.status && prior.publishedAt === row.publishedAt
+    && prior.scheduledAt === row.scheduledAt
+    && prior.archivedAt === row.archivedAt && prior.version === row.version && prior.updatedAt === row.updatedAt
+    && sameJson(prior.bodyJson ?? null, row.bodyJson ?? null) && sameJson(prior.tags, row.tags);
+}
+
 /** Rows per multi-row insert, kept well under the 65,535 bind-parameter ceiling. */
 const INSERT_CHUNK_ROWS = 200;
 
@@ -1432,17 +1450,11 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     const changedArticles: DashboardTenantState['articles'][number][] = [];
     for (const row of articleRows) {
       const prior = index.priorArticles.get(row.id);
-      if (prior !== undefined && prior.regionId === row.regionId && prior.publisherId === row.publisherId
-        && prior.categoryId === row.categoryId && prior.authorId === row.authorId && prior.leadMediaId === row.leadMediaId
-        && prior.coverImageUrl === row.coverImageUrl && prior.slug === row.slug && prior.title === row.title
-        && prior.excerpt === row.excerpt && prior.canonicalUrl === row.canonicalUrl && prior.body === row.body
-        && prior.source === row.source && prior.status === row.status && prior.scheduledAt === row.scheduledAt
-        && prior.archivedAt === row.archivedAt && prior.version === row.version && prior.updatedAt === row.updatedAt
-        && sameJson(prior.bodyJson ?? null, row.bodyJson ?? null) && sameJson(prior.tags, row.tags)) continue;
+      if (prior !== undefined && articleUnchanged(prior, row)) continue;
       changedArticles.push(row);
       const contentTrusted = row.body !== '' || (row.bodyJson !== null && row.bodyJson !== undefined);
       const hydratedContent = contentTrusted ? { body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null } : {};
-      await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, ...hydratedContent, source: row.source, tags: [...row.tags], status: row.status, scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
+      await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, ...hydratedContent, source: row.source, tags: [...row.tags], status: row.status, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
     }
     if (want('articleCategories') && !sameJson(
       [...state.articleCategories].map((row) => [row.articleId, row.categoryId, row.position]),
