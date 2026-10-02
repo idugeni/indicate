@@ -140,6 +140,33 @@ describe('networkMetadata social card completeness', () => {
   });
 });
 
+describe('tenant listing keywords', () => {
+  beforeEach(() => {
+    load.mockReset();
+  });
+
+  it('memberi kata kunci nama situs dan kategori di halaman utama', async () => {
+    load.mockResolvedValue(makeNetworkSite([makeNetworkArticle({ categoryName: 'Ekonomi', categorySlug: 'ekonomi' } as never)]));
+    const result = await meta('/');
+    expect(result.keywords).toContain('Portal');
+    expect(result.keywords).toContain('Ekonomi');
+  });
+
+  it('mendahulukan nama kategori di halaman kanal', async () => {
+    const articles = [1, 2, 3].map((n) => makeNetworkArticle({ id: `a-${n}`, slug: `b-${n}`, categoryName: 'Ekonomi', categorySlug: 'ekonomi' }) as never);
+    load.mockResolvedValue(makeNetworkSite(articles));
+    const result = await meta('/categories/ekonomi', { categorySlug: 'ekonomi' });
+    expect((result.keywords as readonly string[])[0]).toBe('Ekonomi');
+  });
+
+  it('mendahulukan nama topik di halaman tag', async () => {
+    const articles = [1, 2, 3].map((n) => makeNetworkArticle({ id: `a-${n}`, slug: `b-${n}`, tags: ['daerah'] }) as never);
+    load.mockResolvedValue(makeNetworkSite(articles));
+    const result = await meta('/tags/daerah', { tag: 'daerah' });
+    expect((result.keywords as readonly string[])[0]).toBe('daerah');
+  });
+});
+
 describe('tenant brand isolation', () => {
   beforeEach(() => {
     load.mockReset();
