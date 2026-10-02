@@ -23,7 +23,7 @@ describe('deriveSiteLabel', () => {
 });
 
 describe('suggestPublicationVariants', () => {
-  it('menghasilkan override unik deterministik per site', () => {
+  it('memakai judul dan deskripsi kanonik apa adanya di semua portal', () => {
     const input = {
       title: 'Judul Artikel Kanonik Redaksi',
       description: 'Deskripsi kanonik artikel yang cukup panjang untuk menjadi basis saran varian publikasi.',
@@ -36,19 +36,10 @@ describe('suggestPublicationVariants', () => {
     const second = suggestPublicationVariants(input);
     expect(first).toEqual(second);
     expect(Object.keys(first).sort()).toEqual(['s-a', 's-b']);
-    expect(first['s-a']?.title).not.toBe(first['s-b']?.title);
-    expect(first['s-a']?.description).not.toBe(first['s-b']?.description);
-  });
-
-  it('menghindari judul yang sudah terpakai', () => {
-    const taken = 'Judul Artikel Kanonik Redaksi — Sorotan Wonosobo';
-    const overrides = suggestPublicationVariants({
-      title: 'Judul Artikel Kanonik Redaksi',
-      description: 'Deskripsi kanonik artikel yang cukup panjang untuk menjadi basis saran varian publikasi.',
-      sites: [{ siteId: 's-a', label: 'Wonosobo' }],
-      takenTitles: [taken],
-    });
-    expect(overrides['s-a']?.title).not.toBe(taken);
+    expect(first['s-a']?.title).toBe('Judul Artikel Kanonik Redaksi');
+    expect(first['s-b']?.title).toBe('Judul Artikel Kanonik Redaksi');
+    expect(first['s-a']?.description).toBe(input.description);
+    expect(first['s-b']?.description).toBe(input.description);
   });
 });
 
@@ -58,60 +49,27 @@ describe('findCrossSiteDuplicates', () => {
     canonicalDescription: 'Deskripsi kanonik yang cukup panjang untuk diuji duplikasi lintas portal.',
   };
 
-  it('aman saat setiap portal terdiferensiasi', () => {
+  it('mengizinkan judul sama di semua portal', () => {
     expect(
       findCrossSiteDuplicates({
         ...canonical,
         existing: [],
         requestedSiteIds: ['a', 'b'],
         overrides: {
-          a: { title: 'Judul A Yang Unik Sekali', description: 'Deskripsi A yang cukup panjang dan jelas berbeda dari lainnya.' },
-          b: { title: 'Judul B Yang Jelas Berbeda', description: 'Deskripsi B yang juga panjang dan tidak sama dengan portal A.' },
+          a: { title: 'Judul Sama Persis', description: 'Deskripsi sama yang cukup panjang dan jelas identik antar portal.' },
+          b: { title: 'Judul Sama Persis', description: 'Deskripsi sama yang cukup panjang dan jelas identik antar portal.' },
         },
       }),
     ).toEqual([]);
   });
 
-  it('mendeteksi tabrakan dengan varian tayang lama', () => {
+  it('mengizinkan kanonis yang sudah tayang dipakai lagi di portal lain', () => {
     const issues = findCrossSiteDuplicates({
       ...canonical,
       existing: [{ siteId: 'old', customTitle: 'Judul Kanonik', customDescription: null }],
       requestedSiteIds: ['new'],
       overrides: {},
     });
-    expect(issues).toContainEqual({ field: 'title', code: 'duplicate' });
-  });
-
-  it('menandai judul sama di dua portal berbeda sebagai duplikat', () => {
-    const issues = findCrossSiteDuplicates({
-      ...canonical,
-      existing: [],
-      requestedSiteIds: ['city', 'region', 'apex'],
-      overrides: {},
-    });
-    expect(issues).toContainEqual({ field: 'title', code: 'duplicate' });
-  });
-
-  it('menerima judul berbeda per portal', () => {
-    const issues = findCrossSiteDuplicates({
-      ...canonical,
-      existing: [],
-      requestedSiteIds: ['city', 'region'],
-      overrides: {
-        city: { title: 'Edisi Kota', description: 'Ringkasan panjang untuk portal kota agar berbeda.' },
-        region: { title: 'Edisi Region', description: 'Ringkasan panjang untuk portal region agar berbeda.' },
-      },
-    });
     expect(issues).toEqual([]);
-  });
-
-  it('tetap mendeteksi duplikat lintas portal', () => {
-    const issues = findCrossSiteDuplicates({
-      ...canonical,
-      existing: [{ siteId: 'other', customTitle: 'Judul Kanonik', customDescription: null }],
-      requestedSiteIds: ['new'],
-      overrides: {},
-    });
-    expect(issues).toContainEqual({ field: 'title', code: 'duplicate' });
   });
 });

@@ -210,8 +210,8 @@ describe('PublicationService request validation', () => {  it('menolak payload m
     expect(result.error.error.code).toBe('INVALID_INPUT');
   });
 
-  it('mewajibkan override per site untuk multi-site', async () => {
-    const { service } = harness();
+  it('menerima multi-site tanpa override (kanonik dipakai di semua portal)', async () => {
+    const { service, repository } = harness();
     const result = await service.request(actor, {
       articleId: ARTICLE,
       siteIds: [SITE_A, SITE_B],
@@ -219,13 +219,12 @@ describe('PublicationService request validation', () => {  it('menolak payload m
       options: {},
       overrides: {},
     });
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected error');
-    expect(result.error.error.code).toBe('INVALID_INPUT');
+    expect(result.ok).toBe(true);
+    expect(repository.acceptPublication).toHaveBeenCalledTimes(1);
   });
 
-  it('menolak override duplikat antar site', async () => {
-    const { service } = harness();
+  it('menerima override identik antar site', async () => {
+    const { service, repository } = harness();
     const duplicate = { title: 'Judul Sama Persis Di Sini', description: LONG_DESCRIPTION };
     const result = await service.request(actor, {
       articleId: ARTICLE,
@@ -234,9 +233,8 @@ describe('PublicationService request validation', () => {  it('menolak payload m
       options: {},
       overrides: { [SITE_A]: duplicate, [SITE_B]: { ...duplicate } },
     });
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected error');
-    expect(result.error.error.code).toBe('INVALID_INPUT');
+    expect(result.ok).toBe(true);
+    expect(repository.acceptPublication).toHaveBeenCalledTimes(1);
   });
 
   it('menerima multi-site dengan override berbeda', async () => {
@@ -294,7 +292,7 @@ describe('PublicationService request validation', () => {  it('menolak payload m
     expect(repository.acceptPublication).not.toHaveBeenCalled();
   });
 
-  it('menolak judul yang sama di portal berbeda', async () => {
+  it('menerima judul yang sama di portal berbeda', async () => {
     const city = '0199a2b3-4c5d-7e8f-9012-3456789abc11';
     const region = '0199a2b3-4c5d-7e8f-9012-3456789abc12';
     const apex = '0199a2b3-4c5d-7e8f-9012-3456789abc13';
@@ -312,10 +310,8 @@ describe('PublicationService request validation', () => {  it('menolak payload m
       siteIds: [city],
       overrides: { [city]: { title: variantContext.title, description: 'Deskripsi yang persis sama dengan yang sudah tayang di portal apex.' } },
     });
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected error');
-    expect(result.error.error.code).toBe('INVALID_INPUT');
-    expect(repository.acceptPublication).not.toHaveBeenCalled();
+    expect(result.ok).toBe(true);
+    expect(repository.acceptPublication).toHaveBeenCalledTimes(1);
   });
 
   it('menolak portal region karena hanya penghubung', async () => {
@@ -362,7 +358,7 @@ describe('PublicationService request validation', () => {  it('menolak payload m
     expect(repository.acceptPublication).toHaveBeenCalledWith(actor, expect.objectContaining({ siteIds: [city] }));
   });
 
-  it('tetap menolak duplikat lintas keluarga manual', async () => {
+  it('menerima publish ke portal lain walau judul kanonik sudah tayang', async () => {
     const context = {
       ...variantContext,
       variants: [
@@ -370,11 +366,10 @@ describe('PublicationService request validation', () => {  it('menolak payload m
       ],
       regions: [],
     };
-    const { service } = harness({ getArticleVariantContext: async () => context });
+    const { service, repository } = harness({ getArticleVariantContext: async () => context });
     const result = await service.request(actor, { ...singleRequest, siteIds: [SITE_B] });
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected error');
-    expect(result.error.error.code).toBe('INVALID_INPUT');
+    expect(result.ok).toBe(true);
+    expect(repository.acceptPublication).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -458,7 +453,7 @@ describe('PublicationService request outcomes', () => {
     expect(result.error.error.code).toBe('FORBIDDEN');
   });
 
-  it('memetakan varian duplikat ke invalid input', async () => {
+  it('memetakan konflik repo ke dependency unavailable', async () => {
     const { service } = harness({
       acceptPublication: async () => {
         throw new PublishingConflictError('duplicate_variant');
@@ -467,7 +462,7 @@ describe('PublicationService request outcomes', () => {
     const result = await service.request(actor, singleRequest);
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');
-    expect(result.error.error.code).toBe('INVALID_INPUT');
+    expect(result.error.error.code).toBe('DEPENDENCY_UNAVAILABLE');
   });
 
   it('memetakan kegagalan tak dikenal ke dependency unavailable', async () => {

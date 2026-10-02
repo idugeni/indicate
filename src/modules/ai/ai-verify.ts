@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { executeAiQuery, type AiServiceDeps } from '@/modules/ai/ai-service';
+import { PUBLISHER_VERIFY_SCHEMA } from '@/modules/ai/ai-response-schemas';
 import type { AiCallerRole } from '@/modules/ai/ai-types';
 import { AI_LIMITS, scanPrompt, stripCodeFence, truncateInput } from '@/modules/ai/ai-usage';
 
@@ -69,6 +70,7 @@ async function runQuery(
     readonly temperature: number;
     readonly maxOutputTokens: number;
     readonly responseMimeType?: string;
+    readonly responseSchema?: Record<string, unknown> | undefined;
   },
 ): Promise<{ readonly ok: true; readonly text: string } | { readonly ok: false; readonly error: string }> {
   const scanned = scanPrompt(query.prompt);
@@ -81,6 +83,7 @@ async function runQuery(
     temperature: query.temperature,
     maxOutputTokens: query.maxOutputTokens,
     responseMimeType: query.responseMimeType,
+    ...(query.responseSchema === undefined ? {} : { responseSchema: query.responseSchema }),
     channel: 'web',
     callerRole,
     enableTools: false,
@@ -148,6 +151,7 @@ export async function verifyPublisher(input: {
     temperature: 0.3,
     maxOutputTokens: 1024,
     responseMimeType: 'application/json',
+    responseSchema: PUBLISHER_VERIFY_SCHEMA,
   });
   if (!result.ok) return result;
   const assessment = parseVerification(result.text);

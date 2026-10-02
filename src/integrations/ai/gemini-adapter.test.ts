@@ -80,15 +80,16 @@ describe('executeGeminiAdapter', () => {
     expect(state.calls[0]).not.toHaveProperty('tools');
   });
 
-  it('memetakan thinkingBudget ke thinkingLevel untuk gemini-3 tanpa sampling lawas', async () => {
+  it('meneruskan temperature eksplisit untuk gemini-3 tanpa sampling lawas', async () => {
     state.responses.push(okResponse());
     await executeGeminiAdapter('AIza-classic-key', 'gemini-3-pro-preview', {
       prompt: 'hai',
+      temperature: 0.3,
       thinkingConfig: { thinkingBudget: 40000 },
     });
     const config = state.calls[0]?.config as Record<string, Record<string, unknown>>;
     expect(config.thinkingConfig).toMatchObject({ thinkingLevel: 'HIGH' });
-    expect(config).not.toHaveProperty('temperature');
+    expect(config.temperature).toBe(0.3);
     expect(config).not.toHaveProperty('topP');
   });
 

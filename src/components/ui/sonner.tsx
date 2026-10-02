@@ -9,6 +9,7 @@ export function Toaster(props: Readonly<ToasterProps>) {
       theme="dark"
       position="bottom-right"
       gap={8}
+      visibleToasts={3}
       closeButton
       toastOptions={{
         unstyled: false,

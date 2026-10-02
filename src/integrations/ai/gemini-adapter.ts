@@ -56,7 +56,11 @@ function describeUpstreamError(error: unknown, secret: string): string {
 function buildConfig(promptData: AiChatPrompt, modelName: string): Record<string, unknown> {
   const config: Record<string, unknown> = {};
   if (promptData.systemInstruction !== undefined) config.systemInstruction = promptData.systemInstruction;
-  if (!isGemini3(modelName)) {
+  if (isGemini3(modelName)) {
+    if (promptData.temperature !== undefined) config.temperature = promptData.temperature;
+    if (promptData.topP !== undefined) config.topP = promptData.topP;
+    if (promptData.topK !== undefined) config.topK = promptData.topK;
+  } else {
     config.temperature = promptData.temperature ?? 1.0;
     config.topP = promptData.topP ?? 1.0;
     config.topK = promptData.topK ?? 64;

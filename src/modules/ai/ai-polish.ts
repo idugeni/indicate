@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { BUSY_MESSAGE, runQuery, scanPrompt, stripCodeFence, truncateInput } from '@/modules/ai/ai-usage';
+import { CLASSIFY_ARTICLE_SCHEMA, POLISH_BODY_SCHEMA } from '@/modules/ai/ai-response-schemas';
 import type { AiThinkingConfig } from '@/modules/ai/ai-types';
 
 const GROUNDING_SENTENCE =
@@ -100,6 +101,7 @@ export async function polishBody(input: {
     temperature: TASK_MODEL_PROFILE.polish.temperature,
     maxOutputTokens: 4096,
     responseMimeType: 'application/json',
+    responseSchema: POLISH_BODY_SCHEMA,
   });
   if (!result.ok) return result;
   const polished = parsePolishedBody(result.text);
@@ -162,6 +164,7 @@ export async function classifyArticle(input: {
     temperature: 0.3,
     maxOutputTokens: 512,
     responseMimeType: 'application/json',
+    responseSchema: CLASSIFY_ARTICLE_SCHEMA,
   });
   if (!result.ok) return result;
   const classification = parseClassification(result.text, allowed);

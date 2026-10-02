@@ -1,6 +1,12 @@
 import 'server-only';
 
 import { executeAiQuery, type AiServiceDeps } from '@/modules/ai/ai-service';
+import {
+  SEO_BUNDLE_SCHEMA,
+  SEO_EXCERPT_SCHEMA,
+  SEO_META_SCHEMA,
+  SEO_TITLES_SCHEMA,
+} from '@/modules/ai/ai-response-schemas';
 import type { AiCallerRole, AiChatImage } from '@/modules/ai/ai-types';
 import { AI_LIMITS, scanPrompt, stripCodeFence, truncateInput } from '@/modules/ai/ai-usage';
 
@@ -23,6 +29,7 @@ async function runQuery(callerRole: AiCallerRole, organizationId: string | undef
   readonly temperature: number;
   readonly maxOutputTokens: number;
   readonly responseMimeType?: string;
+  readonly responseSchema?: Record<string, unknown> | undefined;
   readonly images?: readonly AiChatImage[] | undefined;
 }): Promise<{ readonly ok: true; readonly text: string } | { readonly ok: false; readonly error: string }> {
   const scanned = scanPrompt(query.prompt);
@@ -35,6 +42,7 @@ async function runQuery(callerRole: AiCallerRole, organizationId: string | undef
     temperature: query.temperature,
     maxOutputTokens: query.maxOutputTokens,
     responseMimeType: query.responseMimeType,
+    ...(query.responseSchema === undefined ? {} : { responseSchema: query.responseSchema }),
     channel: 'web',
     callerRole,
     enableTools: false,
@@ -260,6 +268,7 @@ export async function suggestTitles(input: { readonly title: string; readonly bo
   const result = await runQuery('editor', input.organizationId, {
     prompt: `Susun 3 varian judul ringkas untuk artikel berikut:\n\nJudul: ${base.title}\n\nIsi:\n${base.body}`,
     systemInstruction: SEO_TITLE_SYSTEM, temperature: 0.7, maxOutputTokens: 512, responseMimeType: 'application/json',
+    responseSchema: SEO_TITLES_SCHEMA,
   });
   if (!result.ok) return result;
   const titles = parseTitleSuggestions(result.text);
@@ -283,6 +292,7 @@ export async function suggestMetaDescription(input: { readonly title: string; re
   const result = await runQuery('editor', input.organizationId, {
     prompt: `Susun satu deskripsi meta untuk artikel berikut:\n\nJudul: ${base.title}\n\nIsi:\n${base.body}${current === '' ? '' : `\n\nDeskripsi saat ini (sempurnakan tanpa mengubah makna menjadi 150-160 karakter, sedekat mungkin ke 160):\n${current}`}`,
     systemInstruction: SEO_META_SYSTEM, temperature: 0.5, maxOutputTokens: 256, responseMimeType: 'application/json',
+    responseSchema: SEO_META_SCHEMA,
   });
   if (!result.ok) return result;
   const metaDescription = parseMetaDescription(result.text);
@@ -304,6 +314,7 @@ export async function suggestExcerpt(input: { readonly title: string; readonly b
   const result = await runQuery('editor', input.organizationId, {
     prompt: `Susun satu kutipan ringkas untuk artikel berikut:\n\nJudul: ${base.title}\n\nIsi:\n${base.body}`,
     systemInstruction: SEO_EXCERPT_SYSTEM, temperature: 0.7, maxOutputTokens: 512, responseMimeType: 'application/json',
+    responseSchema: SEO_EXCERPT_SCHEMA,
   });
   if (!result.ok) return result;
   const excerpt = parseExcerptSuggestion(result.text);
@@ -328,6 +339,7 @@ export async function suggestSeoBundle(input: SeoBundleInput): Promise<{ readonl
   const result = await runQuery('editor', input.organizationId, {
     prompt: `Susun paket SEO gabungan (3 judul, 1 kutipan, 1 deskripsi meta) untuk artikel berikut. Setiap klaim harus tertelusur ke teks yang diberi.\n\n${sections.join('\n\n')}`,
     systemInstruction: SEO_BUNDLE_SYSTEM, temperature: 0.6, maxOutputTokens: 768, responseMimeType: 'application/json',
+    responseSchema: SEO_BUNDLE_SCHEMA,
   });
   if (!result.ok) return result;
   const bundle = parseSeoBundle(result.text);

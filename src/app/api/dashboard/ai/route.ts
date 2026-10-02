@@ -19,6 +19,7 @@ import { configureAiTts, synthesizeSpeech } from '@/modules/ai/ai-tts';
 import { configureAiTranscribe, transcribeAudio, transcribeToArticle } from '@/modules/ai/ai-transcribe';
 import { configurePublisherVerify, verifyPublisher } from '@/modules/ai/ai-verify';
 import { configureAiAssistant, assistantChat } from '@/modules/ai/ai-assistant';
+import { ARTICLE_DRAFT_SCHEMA } from '@/modules/ai/ai-response-schemas';
 import { createAiSemanticCache } from '@/modules/ai/ai-semantic-cache';
 import { SEMANTIC_CANDIDATE_LIMIT, embedQueryVector, reindexArticleEmbeddings, toSemanticCandidate, type WorkersAiCredentials } from '@/modules/ai/ai-embeddings';
 import type { AiDb } from '@/modules/ai/ai-types';
@@ -268,6 +269,7 @@ async function handleDraftArticleStream(
                   temperature: 0.7,
                   maxOutputTokens: 2048,
                   responseMimeType: 'application/json',
+                  responseSchema: ARTICLE_DRAFT_SCHEMA,
                 },
                 {
                   signal: combinedSignal,

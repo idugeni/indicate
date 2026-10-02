@@ -176,21 +176,21 @@ describe('executeAiQuery fallback satu provider', () => {
     expect(fake.adapterCalls).toEqual([{ providerId: 'gemini', modelName: 'gemini-3.1-flash-image' }]);
   });
 
-  it('menunggu backoff antar percobaan key', async () => {
+  it('mundur antar ronde dengan backoff lalu kehabisan upaya', async () => {
     const fake = setup(
       [[credentialRow('cred-1', 'gemini'), credentialRow('cred-2', 'gemini')], [credentialRow('cred-2', 'gemini')]],
       SAME_PROVIDER_POLICY,
     );
     const delays: number[] = [];
     const result = await executeAiQuery(
-      depsFor(fake, { sleep: async (ms: number) => { delays.push(ms); } }, ['gemini-3.8-flash']),
+      depsFor(fake, { sleep: async (ms: number) => { delays.push(ms); } }, ['gemini-3.8-flash', 'gemini-3.6-flash']),
       PROMPT,
     );
-    expect(result.modelName).toBe('gemini-3.6-flash');
+    expect(result.error).toBe('ALL_RETRIES_EXHAUSTED');
     expect(fake.adapterCalls).toEqual([
       { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
-      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
       { providerId: 'gemini', modelName: 'gemini-3.6-flash' },
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
     ]);
     expect(delays).toHaveLength(1);
     expect(delays[0]).toBeGreaterThanOrEqual(500);
@@ -358,7 +358,7 @@ describe('executeAiQuery mode retry', () => {
     ]);
   });
 
-  it('background mengizinkan batas atas existing sebelum fallback', async () => {
+  it('background tetap failover cepat ke fallback', async () => {
     const fake = setup(
       [[credentialRow('cred-1', 'gemini'), credentialRow('cred-2', 'gemini')], [credentialRow('cred-2', 'gemini')]],
       LIMITED_POLICY,
@@ -366,7 +366,6 @@ describe('executeAiQuery mode retry', () => {
     const result = await executeAiQuery(depsFor(fake, undefined, ['gemini-3.8-flash']), { ...PROMPT, mode: 'background' });
     expect(result.modelName).toBe('gemini-3.6-flash');
     expect(fake.adapterCalls).toEqual([
-      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
       { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
       { providerId: 'gemini', modelName: 'gemini-3.6-flash' },
     ]);
@@ -395,6 +394,36 @@ describe('executeAiQuery cache dan redactor', () => {
     expect(result.providerId).toBe('gemini');
     expect(seen).toEqual(['tulis ringkasan berita hari ini']);
     expect(stored).toEqual(['tulis ringkasan berita hari ini']);
+  });
+
+  it('menyajikan hit cache model fallback tanpa memanggil provider', async () => {
+    const fallbackPolicy = {
+      ...POLICY_ROW,
+      primary_provider_id: 'gemini',
+      fallback_provider_id: 'backup',
+      default_model: 'gemini-3.8-flash',
+      fallback_model: 'gemini-3.6-flash',
+    };
+    const fake = setup([[credentialRow('cred-1', 'gemini')]], fallbackPolicy);
+    const queried: string[] = [];
+    const result = await executeAiQuery(
+      depsFor(fake, {
+        cache: {
+          lookup: async (_prompt: string, modelName: string) => {
+            queried.push(modelName);
+            return modelName === 'gemini-3.6-flash'
+              ? { responseText: 'Jawaban cache fallback yang cukup panjang.', modelName }
+              : null;
+          },
+          store: async () => {},
+        },
+      }),
+      PROMPT,
+    );
+    expect(result.providerId).toBe('semantic-cache');
+    expect(result.modelName).toBe('gemini-3.6-flash');
+    expect(queried).toEqual(['gemini-3.8-flash', 'gemini-3.6-flash']);
+    expect(fake.adapterCalls).toEqual([]);
   });
 
   it('redactor opsional membersihkan prompt sebelum kirim', async () => {

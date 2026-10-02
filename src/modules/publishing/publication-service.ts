@@ -2,7 +2,7 @@ import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import { FINGERPRINT_VERSION, publicationFingerprint, retryDelaySeconds, type RetryPolicy } from '@/modules/publishing/publication-policy';
 import type { PublicationOverride, PublicationStatusProjection } from '@/modules/publishing/models';
 import type { ArticleVariantContext } from '@/modules/publishing/ports';
-import { deriveSiteLabel, excerptForDescription, findCrossSiteDuplicates, suggestPublicationVariants } from '@/modules/publishing/variant-suggester';
+import { excerptForDescription, suggestPublicationVariants } from '@/modules/publishing/variant-suggester';
 import { CascadeIncompleteError, unresolvedCascadeAncestors } from '@/modules/site/site-cascade';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import type { RedisCoordinationPort } from '@/integrations/redis/ports';
@@ -10,7 +10,6 @@ import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscri
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import type { Result } from '@/core/result';
 import { publicationRequestSchema, publicationBulkRequestSchema, publicationSiteRobotsSchema, publicationStatusSchema, publicationSuggestSchema, publicationTargetSelectionSchema } from '@/modules/publishing/schemas';
-import { findDuplicateOverrides } from '@/modules/site/seo-validation';
 
 interface ClockLike { now(): Date }
 
@@ -31,23 +30,6 @@ export class PublicationService {
     }
     return { ok: false, error: createNonDisclosingDenial(actor.requestId) };
   }
-
-  private crossSiteDuplicates(
-    context: ArticleVariantContext,
-    siteIds: readonly string[],
-    overrides: Readonly<Record<string, PublicationOverride>>,
-  ): readonly { field: string; code: string }[] {
-    const renderable = context.variants.filter((variant) =>
-      variant.active && (variant.state === 'queued' || variant.state === 'processing' || variant.state === 'retrying' || variant.state === 'published'));
-    return findCrossSiteDuplicates({
-      canonicalTitle: context.title,
-      canonicalDescription: excerptForDescription(context.body),
-      existing: renderable.map((variant) => ({ siteId: variant.siteId, customTitle: variant.customTitle, customDescription: variant.customDescription })),
-      requestedSiteIds: siteIds,
-      overrides,
-    });
-  }
-
 
   /**
    * Resolve the sites a publication writes an assignment row to.
@@ -80,10 +62,6 @@ export class PublicationService {
     return [...new Set(manualSiteIds)].sort();
   }
 
-  private duplicateVariantError(actor: AuthorizedTenantActorContext) {
-    return createPublicError('INVALID_INPUT', 'Judul dan deskripsi antar portal harus unik, termasuk portal yang sudah tayang. Minta saran varian unik atau isi override berbeda per portal.', actor.requestId);
-  }
-
   private incompleteHierarchyError(actor: AuthorizedTenantActorContext, error: CascadeIncompleteError) {
     const missing = [...new Set(error.unresolved.map((entry) => entry.missing))].join(' dan ');
     return createPublicError('INVALID_INPUT', `Hierarki portal tidak lengkap: ${missing} belum tersedia. Lengkapi rantai apex -> region -> city di pengaturan situs sebelum menerbitkan.`, actor.requestId);
@@ -112,17 +90,6 @@ export class PublicationService {
     for (const siteId of Object.keys(overrides)) {
       if (!manualSiteIds.includes(siteId)) return { ok: false, error: createPublicError('INVALID_INPUT', 'Overrides must reference a requested site.', actor.requestId) };
     }
-    if (manualSiteIds.length > 1) {
-      for (const siteId of manualSiteIds) {
-        const override = overrides[siteId];
-        if (override?.title === undefined || override.description === undefined) {
-          return { ok: false, error: createPublicError('INVALID_INPUT', 'Multi-site publish requires a distinct custom title and description per site.', actor.requestId) };
-        }
-      }
-      if (findDuplicateOverrides(overrides).length > 0) {
-        return { ok: false, error: createPublicError('INVALID_INPUT', 'Each site needs a distinct title and description; duplicates were found.', actor.requestId) };
-      }
-    }
     const now = this.clock.now();
     try {
       const variantContext = await this.repository.getArticleVariantContext(actor, parsed.data.articleId);
@@ -134,9 +101,6 @@ export class PublicationService {
       const publishAtKey = publishAt.getTime() === now.getTime() ? null : publishAt.toISOString();
       const expanded = this.expandRequest(variantContext, manualSiteIds);
       const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds: expanded, options: parsed.data.options, publishAt: publishAtKey, overrides });
-      if (this.crossSiteDuplicates(variantContext, expanded, overrides).length > 0) {
-        return { ok: false, error: this.duplicateVariantError(actor) };
-      }
       const accepted = await this.repository.acceptPublication(actor, {
         jobId: this.identifiers.create(), organizationId: actor.organizationId, articleId: parsed.data.articleId, siteIds: [...expanded],
         idempotencyKey: parsed.data.idempotencyKey, fingerprint, fingerprintVersion: FINGERPRINT_VERSION,
@@ -152,17 +116,16 @@ export class PublicationService {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'publication.request.denied');
       if (error instanceof CascadeIncompleteError) return { ok: false, error: this.incompleteHierarchyError(actor, error) };
       if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat meminta penerbitan.', actor.requestId) };
-      if (error instanceof PublishingConflictError && error.code === 'duplicate_variant') return { ok: false, error: this.duplicateVariantError(actor) };
       return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The publication request could not be completed.', actor.requestId) };
     }
   }
 
   /**
-   * Compose unique per-portal title/description override suggestions without writing a job.
+   * Compose per-portal title/description overrides without writing a job.
    *
    * @param actor - Authorized tenant context.
    * @param raw - Unvalidated `{ articleId, siteIds }`.
-   * @returns Map of siteId to overrides ready to use in `request`.
+   * @returns Map of siteId to overrides carrying the canonical copy unchanged.
    */
   async suggest(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<{ readonly articleId: string; readonly overrides: Readonly<Record<string, PublicationOverride>> }, PublicErrorEnvelope>> {
     const parsed = publicationSuggestSchema.safeParse(raw);
@@ -175,16 +138,11 @@ export class PublicationService {
       for (const siteId of siteIds) {
         if (!known.has(siteId)) return this.denied(actor, 'publication.suggest.denied');
       }
-      const renderable = context.variants.filter((variant) =>
-        variant.active && (variant.state === 'queued' || variant.state === 'processing' || variant.state === 'retrying' || variant.state === 'published')
-        && !siteIds.includes(variant.siteId));
       const canonicalDescription = excerptForDescription(context.body);
       const overrides = suggestPublicationVariants({
         title: context.title,
         description: canonicalDescription,
-        sites: siteIds.map((siteId) => ({ siteId, label: deriveSiteLabel(known.get(siteId)!.normalizedHostname) })),
-        takenTitles: renderable.map((variant) => variant.customTitle ?? context.title),
-        takenDescriptions: renderable.map((variant) => variant.customDescription ?? canonicalDescription),
+        sites: siteIds.map((siteId) => ({ siteId, label: '' })),
       });
       return { ok: true, value: { articleId: context.articleId, overrides } };
     } catch (error) {
@@ -280,17 +238,6 @@ export class PublicationService {
     for (const siteId of Object.keys(overrides)) {
       if (!manualSiteIds.includes(siteId)) return { ok: false, error: createPublicError('INVALID_INPUT', 'Overrides must reference a requested site.', actor.requestId) };
     }
-    if (manualSiteIds.length > 1) {
-      for (const siteId of manualSiteIds) {
-        const override = overrides[siteId];
-        if (override?.title === undefined || override.description === undefined) {
-          return { ok: false, error: createPublicError('INVALID_INPUT', 'Multi-site publish requires a distinct custom title and description per site.', actor.requestId) };
-        }
-      }
-      if (findDuplicateOverrides(overrides).length > 0) {
-        return { ok: false, error: createPublicError('INVALID_INPUT', 'Each site needs a distinct title and description; duplicates were found.', actor.requestId) };
-      }
-    }
     const articleIds = [...new Set(parsed.data.articleIds)].sort();
     const now = this.clock.now();
     const results: PublicationStatusProjection[] = [];
@@ -302,9 +249,6 @@ export class PublicationService {
         if (publishAt === null) return this.invalidPublishTime(actor);
         const publishAtKey = publishAt.getTime() === now.getTime() ? null : publishAt.toISOString();
         const expanded = this.expandRequest(variantContext, manualSiteIds);
-        if (this.crossSiteDuplicates(variantContext, expanded, overrides).length > 0) {
-          return { ok: false, error: this.duplicateVariantError(actor) };
-        }
         const fingerprint = await publicationFingerprint({ organizationId: actor.organizationId, articleId, siteIds: expanded, options: parsed.data.options, publishAt: publishAtKey, overrides });
         const accepted = await this.repository.acceptPublication(actor, {
           jobId: this.identifiers.create(), organizationId: actor.organizationId, articleId, siteIds: [...expanded],
@@ -322,7 +266,6 @@ export class PublicationService {
     } catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'publication.request.denied');
       if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat meminta penerbitan.', actor.requestId) };
-      if (error instanceof PublishingConflictError && error.code === 'duplicate_variant') return { ok: false, error: this.duplicateVariantError(actor) };
       return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The bulk publication request could not be completed.', actor.requestId) };
     }
   }

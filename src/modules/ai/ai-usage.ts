@@ -1,6 +1,13 @@
 import 'server-only';
 
 import { executeAiQuery, type AiServiceDeps } from '@/modules/ai/ai-service';
+import {
+  ARTICLE_DRAFT_SCHEMA,
+  COVER_CAPTION_SCHEMA,
+  MODERATION_ANALYSIS_SCHEMA,
+  TAG_SUGGESTION_SCHEMA,
+  VISION_DRAFT_SCHEMA,
+} from '@/modules/ai/ai-response-schemas';
 import type { AiCallerRole, AiChatImage } from '@/modules/ai/ai-types';
 import { slugify } from '@/modules/site/slugify';
 
@@ -192,6 +199,7 @@ export async function runQuery(callerRole: AiCallerRole, organizationId: string 
   readonly temperature: number;
   readonly maxOutputTokens: number;
   readonly responseMimeType?: string;
+  readonly responseSchema?: Record<string, unknown> | undefined;
   readonly images?: readonly AiChatImage[] | undefined;
   readonly audio?: readonly { readonly base64: string; readonly mimeType: string }[] | undefined;
   readonly modelOverride?: string | undefined;
@@ -208,6 +216,7 @@ export async function runQuery(callerRole: AiCallerRole, organizationId: string 
     temperature: query.temperature,
     maxOutputTokens: query.maxOutputTokens,
     responseMimeType: query.responseMimeType,
+    ...(query.responseSchema === undefined ? {} : { responseSchema: query.responseSchema }),
     channel: 'web',
     callerRole,
     enableTools: false,
@@ -311,6 +320,7 @@ export async function generateArticleDraft(input: { readonly topic: string; read
   const result = await runQuery('editor', input.organizationId, {
     prompt: built.prompt,
     systemInstruction: built.systemInstruction, temperature: 0.7, maxOutputTokens: 2048, responseMimeType: 'application/json',
+    responseSchema: ARTICLE_DRAFT_SCHEMA,
   });
   if (!result.ok) return result;
   const draft = parseArticleDraft(result.text, built.topic);
@@ -333,6 +343,7 @@ export async function suggestTags(input: { readonly title: string; readonly body
   const result = await runQuery('editor', input.organizationId, {
     prompt: `Sarankan tag dan kategori untuk artikel berikut:\n\nJudul: ${title}\n\nIsi:\n${body}`,
     systemInstruction: TAG_SYSTEM, temperature: 0.3, maxOutputTokens: 512, responseMimeType: 'application/json',
+    responseSchema: TAG_SUGGESTION_SCHEMA,
   });
   if (!result.ok) return result;
   const suggestion = parseTagSuggestion(result.text);
@@ -355,6 +366,7 @@ export async function summarizeReport(input: { readonly category: string; readon
   const result = await runQuery('admin', input.organizationId, {
     prompt: `Analisis laporan konten berikut (kontak pelapor sengaja tidak disertakan):\n\nKategori: ${category === '' ? 'Lainnya' : category}\n\nUraian:\n${details}`,
     systemInstruction: MODERATION_SYSTEM, temperature: 0.3, maxOutputTokens: 1024, responseMimeType: 'application/json',
+    responseSchema: MODERATION_ANALYSIS_SCHEMA,
   });
   if (!result.ok) return result;
   const analysis = parseModerationAnalysis(result.text);
@@ -440,6 +452,7 @@ export async function ocCoverCaption(input: { readonly base64: string; readonly 
   const result = await runQuery('editor', input.organizationId, {
     prompt: title === '' ? 'Deskripsikan gambar sampul terlampir untuk teks alt dan keterangan foto.' : `Deskripsikan gambar sampul terlampir untuk teks alt dan keterangan foto.\n\nJudul artikel:\n${title}`,
     systemInstruction: COVER_CAPTION_SYSTEM, temperature: 0.3, maxOutputTokens: 256, responseMimeType: 'application/json',
+    responseSchema: COVER_CAPTION_SCHEMA,
     images: [{ base64: compact, mimeType }],
   });
   if (!result.ok) return result;
@@ -512,6 +525,7 @@ export async function ocVisionDraft(input: { readonly base64: string; readonly m
   const result = await runQuery('editor', input.organizationId, {
     prompt: hint === '' ? 'Ekstrak gambar terlampir menjadi draf berita.' : `Ekstrak gambar terlampir menjadi draf berita.\n\nPetunjuk redaksi:\n${hint}`,
     systemInstruction: VISION_SYSTEM, temperature: 0.3, maxOutputTokens: 2048, responseMimeType: 'application/json',
+    responseSchema: VISION_DRAFT_SCHEMA,
     images: [{ base64: compact, mimeType }],
   });
   if (!result.ok) return result;

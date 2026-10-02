@@ -114,6 +114,10 @@
       "semgrep": {
         // Python sistem 3.14 tidak didukung semgrep; uvx pin interpreter
         // 3.13 terisolasi agar install ini tidak menyentuh environment utama.
+        // Package dipin ke 1.178.0: 1.179.0 tidak mempublikasi win_amd64 wheel
+        // di PyPI sehingga Windows fallback ke sdist tanpa semgrep-core.exe
+        // dan exit 2 sebelum handshake MCP. Naikkan pin setelah upstream
+        // mempublikasi ulang wheel Windows.
         "type": "local",
         "command": [
           "cmd",
@@ -121,7 +125,7 @@
           "uvx",
           "--python",
           "3.13",
-          "semgrep",
+          "semgrep@1.178.0",
           "mcp"
         ]
       },

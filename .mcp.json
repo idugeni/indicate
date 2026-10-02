@@ -83,7 +83,7 @@
       "args": [
         "--python",
         "3.13",
-        "semgrep",
+        "semgrep@1.178.0",
         "mcp"
       ]
     },

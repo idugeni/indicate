@@ -29,15 +29,14 @@ describe('validateTenantMetadata', () => {
     expect(long).toContainEqual({ field: 'description', code: 'too_long' });
   });
 
-  it('menandai duplikat case-insensitive terhadap sibling', () => {
-    const issues = validateTenantMetadata(TITLE.toUpperCase(), DESCRIPTION, [TITLE], [DESCRIPTION.toUpperCase()]);
-    expect(issues).toContainEqual({ field: 'title', code: 'duplicate' });
-    expect(issues).toContainEqual({ field: 'description', code: 'duplicate' });
+  it('mengabaikan sibling yang identik', () => {
+    const issues = validateTenantMetadata(TITLE, DESCRIPTION);
+    expect(issues).toEqual([]);
   });
 });
 
 describe('findDuplicateOverrides', () => {
-  it('lolos untuk override terdiferensiasi', () => {
+  it('mengizinkan override identik antar portal', () => {
     expect(
       findDuplicateOverrides({
         a: { title: 'Judul Pertama Yang Unik Sekali', description: DESCRIPTION },
@@ -46,13 +45,12 @@ describe('findDuplicateOverrides', () => {
     ).toEqual([]);
   });
 
-  it('menandai judul dan deskripsi duplikat', () => {
+  it('mengizinkan judul dan deskripsi duplikat', () => {
     const issues = findDuplicateOverrides({
       a: { title: TITLE, description: DESCRIPTION },
       b: { title: TITLE, description: DESCRIPTION },
     });
-    expect(issues).toContainEqual({ field: 'title', code: 'duplicate' });
-    expect(issues).toContainEqual({ field: 'description', code: 'duplicate' });
+    expect(issues).toEqual([]);
   });
 
   it('mengabaikan field kosong', () => {

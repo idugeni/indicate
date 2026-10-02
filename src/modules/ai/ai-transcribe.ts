@@ -1,6 +1,11 @@
 import 'server-only';
 
 import { executeAiQuery, type AiServiceDeps } from '@/modules/ai/ai-service';
+import {
+  ARTICLE_DRAFT_SCHEMA,
+  CLASSIFY_ARTICLE_SCHEMA,
+  TRANSCRIPT_SCHEMA,
+} from '@/modules/ai/ai-response-schemas';
 import { scanPrompt, stripCodeFence, parseArticleDraft, type ArticleDraft } from '@/modules/ai/ai-usage';
 import { parseClassification, type ArticleClassification } from '@/modules/ai/ai-polish';
 
@@ -100,6 +105,7 @@ export async function transcribeAudio(input: {
     temperature: 0.2,
     maxOutputTokens: 4096,
     responseMimeType: 'application/json',
+    responseSchema: TRANSCRIPT_SCHEMA,
     channel: 'web',
     callerRole: 'editor',
     enableTools: false,
@@ -157,6 +163,7 @@ export async function transcribeToArticle(input: {
     temperature: 0.7,
     maxOutputTokens: 4096,
     responseMimeType: 'application/json',
+    responseSchema: ARTICLE_DRAFT_SCHEMA,
     channel: 'web',
     callerRole: 'editor',
     enableTools: false,
@@ -171,6 +178,7 @@ export async function transcribeToArticle(input: {
     temperature: 0.3,
     maxOutputTokens: 512,
     responseMimeType: 'application/json',
+    responseSchema: CLASSIFY_ARTICLE_SCHEMA,
     channel: 'web',
     callerRole: 'editor',
     enableTools: false,

@@ -254,9 +254,13 @@ async function executeWithTimeout(
  * @param promptData - Caller request with tenant scope, channel, and optional execution hooks.
  * @returns Generation result with secret-scrubbed text and masked credential identity.
  * @remarks Pipeline order is fixed: injection guardrail, global budget,
- * optional semantic cache (keyed by `normalizeCachePrompt`), per-key
- * provider retries, output redaction, then request logging. Plaintext keys
- * stay inside the key loop and are never logged or returned. Mode
+ * optional semantic cache (keyed by `normalizeCachePrompt`, probed for the
+ * target model then every fallback chain model so a fallback success is
+ * re-servable), round-robin provider retries, output redaction, then
+ * request logging. Plaintext keys stay inside the key loop and are never
+ * stay inside the key loop and are never logged or returned. Rounds walk
+ * every chain entry once before repeating, so the fallback model is tried
+ * second instead of after the primary budget is exhausted. Mode
  * `interactive` (default) bounds per-model attempts by policy then
  * fail-fast to the next fallback model; `background` allows the existing
  * upper bounds instead. When `redactor` is provided it runs on the prompt
@@ -356,35 +360,38 @@ export async function executeAiQuery(
   const hasImages = (promptData.images?.length ?? 0) > 0;
   const wantsMedia = (promptData.responseModalities?.length ?? 0) > 0;
   const cacheKey = normalizeCachePrompt(promptData.prompt);
-  if (deps.cache !== undefined && !hasImages && !wantsMedia && historyLength <= 2 && promptData.prompt.length >= 6) {
+  const cacheApplies =
+    !hasImages && !wantsMedia && historyLength <= 2 && promptData.prompt.length >= 6;
+  const serveCacheHit = async (hit: { readonly responseText: string; readonly modelName: string }) => {
+    await log({
+      correlationId,
+      channel,
+      providerId: 'semantic-cache',
+      modelName: hit.modelName,
+      credentialId: null,
+      organizationId,
+      status: 'success',
+      retryCount: 0,
+      latencyMs: 12,
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      toolsExecuted: [],
+    });
+    return {
+      text: hit.responseText,
+      providerId: 'semantic-cache',
+      modelName: hit.modelName,
+      credentialId: 'cache-hit',
+      credentialMasked: 'SEMANTIC_CACHE_HIT',
+      latencyMs: 12,
+      retryCount: 0,
+      toolCallsExecuted: [],
+    };
+  };
+  if (deps.cache !== undefined && cacheApplies) {
     const hit = await deps.cache.lookup(cacheKey, targetModel).catch(() => null);
-    if (hit !== null) {
-      await log({
-        correlationId,
-        channel,
-        providerId: 'semantic-cache',
-        modelName: hit.modelName,
-        credentialId: null,
-        organizationId,
-        status: 'success',
-        retryCount: 0,
-        latencyMs: 12,
-        promptTokens: 0,
-        completionTokens: 0,
-        totalTokens: 0,
-        toolsExecuted: [],
-      });
-      return {
-        text: hit.responseText,
-        providerId: 'semantic-cache',
-        modelName: hit.modelName,
-        credentialId: 'cache-hit',
-        credentialMasked: 'SEMANTIC_CACHE_HIT',
-        latencyMs: 12,
-        retryCount: 0,
-        toolCallsExecuted: [],
-      };
-    }
+    if (hit !== null) return serveCacheHit(hit);
   }
 
   const rateLimitStore = deps.rateLimit?.store;
@@ -443,8 +450,28 @@ export async function executeAiQuery(
   }
   const providerChain = openChain.length > 0 ? openChain : fullChain;
 
+  if (deps.cache !== undefined && cacheApplies) {
+    const seen = new Set([targetModel]);
+    for (const entry of fullChain) {
+      if (seen.has(entry.modelName)) continue;
+      seen.add(entry.modelName);
+      const fallbackHit = await deps.cache.lookup(cacheKey, entry.modelName).catch(() => null);
+      if (fallbackHit !== null) return serveCacheHit(fallbackHit);
+    }
+  }
+
   let totalAttempts = 0;
   const keyAttempts = new Map<string, number>();
+  const entryAttempts = new Map<string, number>();
+  interface PreparedEntry {
+    readonly key: string;
+    readonly providerId: string;
+    readonly modelName: string;
+    readonly adapter: AiProviderAdapter;
+    readonly credentials: Awaited<ReturnType<typeof getAvailableCredentials>>;
+    readonly entryBudget: number;
+  }
+  const entries: PreparedEntry[] = [];
   for (const { providerId, modelName } of providerChain) {
     let adapter: AiProviderAdapter;
     try {
@@ -456,16 +483,29 @@ export async function executeAiQuery(
       organizationId: promptData.organizationId ?? null,
     });
     if (credentials.length === 0) continue;
-
-    const maxRetries =
-      mode === 'background' ? credentials.length : Math.min(policy.maxRetries || 3, credentials.length);
-    for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+    entries.push({
+      key: `${providerId}:${modelName}`,
+      providerId,
+      modelName,
+      adapter,
+      credentials,
+      entryBudget:
+        mode === 'background' ? credentials.length : Math.min(policy.maxRetries || 3, credentials.length),
+    });
+  }
+  const maxRounds = entries.reduce((max, entry) => Math.max(max, entry.entryBudget), 0);
+  for (let round = 0; round < maxRounds; round += 1) {
+    for (const entry of entries) {
+      if (round >= entry.entryBudget) continue;
+      const { providerId, modelName, adapter, credentials } = entry;
+      const used = entryAttempts.get(entry.key) ?? 0;
+      if (used > 0) await sleep(computeRetryDelayMs(used));
+      entryAttempts.set(entry.key, used + 1);
       totalAttempts += 1;
-      if (attempt > 0) await sleep(computeRetryDelayMs(attempt));
       const eligible = credentials.filter((credential) => (keyAttempts.get(credential.id) ?? 0) < perKeyLimit);
-      if (eligible.length === 0) break;
+      if (eligible.length === 0) continue;
       const credential = selectCredential(eligible, policy.rotationStrategy);
-      if (credential === null) break;
+      if (credential === null) continue;
       keyAttempts.set(credential.id, (keyAttempts.get(credential.id) ?? 0) + 1);
 
       const plainKey = await decryptAiKey(deps.db, credential.keyEncrypted);
